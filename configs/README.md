@@ -58,7 +58,7 @@ This is the most important block, that **must be always defined by the user**. T
 
 ### Nodes
 
-For list of all nodes, see [nodes](src/luxonis_train/nodes/README.md).
+For list of all nodes, see [nodes](../luxonis_train/nodes/README.md).
 
 | Key           | Type | Default value | Description                                                                                          |
 | ------------- | ---- | ------------- | ---------------------------------------------------------------------------------------------------- |
@@ -82,7 +82,7 @@ Modules that are attached to a node. This include losses, metrics and visualzier
 #### Losses
 
 At least one node must have a loss attached to it.
-You can see the list of all currently supported loss functions and their parameters [here](./src/luxonis_train/attached_modules/losses/README.md).
+You can see the list of all currently supported loss functions and their parameters [here](../luxonis_train/attached_modules/losses/README.md).
 
 | Key    | Type  | Default value | Description                              |
 | ------ | ----- | ------------- | ---------------------------------------- |
@@ -91,7 +91,7 @@ You can see the list of all currently supported loss functions and their paramet
 #### Metrics
 
 In this section, you configure which metrics should be used for which node.
-You can see the list of all currently supported metrics and their parameters [here](./src/luxonis_train/attached_modules/metrics/README.md).
+You can see the list of all currently supported metrics and their parameters [here](../luxonis_train/attached_modules/metrics/README.md).
 
 | Key            | Type | Default value | Description                                                                             |
 | -------------- | ---- | ------------- | --------------------------------------------------------------------------------------- |
@@ -100,7 +100,7 @@ You can see the list of all currently supported metrics and their parameters [he
 #### Visualizers
 
 In this section, you configure which visualizers should be used for which node. Visualizers are responsible for creating images during training.
-You can see the list of all currently supported visualizers and their parameters [here](./src/luxonis_train/attached_modules/visualizers/README.md).
+You can see the list of all currently supported visualizers and their parameters [here](../luxonis_train/attached_modules/visualizers/README.md).
 
 Visualizers have no specific configuration.
 
@@ -195,7 +195,7 @@ List of all optimizers can be found [here](https://pytorch.org/docs/stable/optim
 ### Callbacks
 
 Callbacks sections contains a list of callbacks.
-More information on callbacks and a list of available ones can be found [here](src/luxonis_train/callbacks/README.md)
+More information on callbacks and a list of available ones can be found [here](../luxonis_train/callbacks/README.md)
 Each callback is a dictionary with the following fields:
 
 | Key    | Type | Default value | Description                 |

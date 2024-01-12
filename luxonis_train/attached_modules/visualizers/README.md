@@ -25,7 +25,7 @@ Visualizer for bounding boxes.
 
 **Example**
 
-![bbox_viz_example](../../../../media/example_viz/bbox.png)
+![bbox_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/bbox.png)
 
 ## KeypointVisualizer
 
@@ -40,7 +40,7 @@ Visualizer for bounding boxes.
 
 **Example**
 
-![kpt_viz_example](../../../../media/example_viz/kpts.png)
+![kpt_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/kpts.png)
 
 ## SegmentationVisualizer
 
@@ -53,7 +53,7 @@ Visualizer for bounding boxes.
 
 **Example**
 
-![seg_viz_example](../../../../media/example_viz/segmentation.png)
+![seg_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/segmentation.png)
 
 ## ClassificationVisualizer
 
@@ -68,7 +68,7 @@ Visualizer for bounding boxes.
 
 **Example**
 
-![class_viz_example](../../../../media/example_viz/class.png)
+![class_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/class.png)
 
 ## MultiVisualizer
 
@@ -84,4 +84,4 @@ Special type of meta-visualizer that combines several visualizers into one. The 
 
 Example of combining [KeypointVisualizer](#keypointvisualizer) and [BBoxVisualizer](#bboxvisualizer).
 
-![multi_viz_example](../../../../media/example_viz/multi.png)
+![multi_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/multi.png)

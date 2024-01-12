@@ -40,7 +40,7 @@ See `luxonis_train --help` for more information.
 
 The entire configuration is specified in a `yaml` file. This includes the model
 structure, used losses, metrics, optimizers etc. For specific instructions and example
-configuration files, see [Configuration](./configs/README.md).
+configuration files, see [Configuration](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md).
 
 ## Training
 
@@ -61,7 +61,7 @@ where key and value are space separated and sub-keys are dot (`.`) separated. If
 ## Tuning
 
 To improve training performance you can use `Tuner` for hyperparameter optimization.
-To use tuning, you have to specify [tuner](configs/README.md#tuner) section in the config file.
+To use tuning, you have to specify [tuner](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#tuner) section in the config file.
 
 To start the tuning, run
 
@@ -69,13 +69,13 @@ To start the tuning, run
 luxonis_train tune --config config.yaml
 ```
 
-You can see an example tuning configuration [here](configs/example_tuning.yaml).
+You can see an example tuning configuration [here](https://github.com/luxonis/luxonis-train/blob/main/configs/example_tuning.yaml).
 
 ## Exporting
 
 We support export to `ONNX`, and `DepthAI .blob format` which is used for OAK cameras. By default, we export to `ONNX` format.
 
-To use the exporter, you have to specify the [exporter](configs/README.md#exporter) section in the config file.
+To use the exporter, you have to specify the [exporter](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#exporter) section in the config file.
 
 Once you have the config file ready you can export the model using
 
@@ -83,18 +83,25 @@ Once you have the config file ready you can export the model using
 luxonis_train export --config config.yaml
 ```
 
-You can see an example export configuration [here](configs/example_export.yaml).
+You can see an example export configuration [here](https://github.com/luxonis/luxonis-train/blob/main/configs/example_export.yaml).
 
 ## Customizations
 
-We provide a registry interface through which you can create new [nodes](src/luxonis_train/nodes/README.md), [losses](src/luxonis_train/attached_modules/losses/README.md), [metrics](src/luxonis_train/attached_modules/metrics/README.md), [visualizers](src/luxonis_train/attached_modules/visualizers/README.md), [callbacks](src/luxonis_train/callbacks/README.md), [optimizers](configs/README.md#optimizer), and [schedulers](configs/README.md#scheduler).
+We provide a registry interface through which you can create new
+[nodes](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/nodes/README.md),
+[losses](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/README.md),
+[metrics](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/README.md),
+[visualizers](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/README.md),
+[callbacks](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/callbacks/README.md),
+[optimizers](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#optimizer),
+and [schedulers](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#scheduler).
 
 Registered components can be then referenced in the config file. Custom components need to inherit from their respective base classes:
 
-- Node - [BaseNode](src/luxonis_train/models/nodes/base_node.py)
-- Loss - [BaseLoss](src/luxonis_train/attached_modules/losses/base_loss.py)
-- Metric - [BaseMetric](src/luxonis_train/attached_modules/metrics/base_metric.py)
-- Visualizer - [BaseVisualizer](src/luxonis_train/attached_modules/visualizers/base_visualizer.py)
+- Node - [BaseNode](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/models/nodes/base_node.py)
+- Loss - [BaseLoss](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/base_loss.py)
+- Metric - [BaseMetric](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/base_metric.py)
+- Visualizer - [BaseVisualizer](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/base_visualizer.py)
 - Callback - [Callback from lightning.pytorch.callbacks](lightning.pytorch.callbacks)
 - Optimizer - [Optimizer from torch.optim](https://pytorch.org/docs/stable/optim.html#torch.optim.Optimizer)
 - Scheduler - [LRScheduler from torch.optim.lr_scheduler](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate)
@@ -140,7 +147,7 @@ You have these options how to set up the environment variables:
 
 - Using standard environment variables
 - Specifying the variables in a `.env` file. If a variable is both in the environment and present in `.env` file, the exported variable takes precedense.
-- Specifying the variables in the [ENVIRON](configs/README.md#environ) section of the config file. Note that this is not a recommended way. Variables defined in config take precedense over environment and `.env` variables.
+- Specifying the variables in the [ENVIRON](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#environ) section of the config file. Note that this is not a recommended way. Variables defined in config take precedense over environment and `.env` variables.
 
 ### S3
 
@@ -186,4 +193,4 @@ If you want to contribute to the development, install the dev version of the pac
 pip install luxonis-train[dev]
 ```
 
-Consult the [Contribution guide](CONTRIBUTING.md) before making a pull request.
+Consult the [Contribution guide](https://github.com/luxonis/luxonis-train/blob/main/CONTRIBUTING.md) before making a pull request.
