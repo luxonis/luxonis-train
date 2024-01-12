@@ -5,11 +5,11 @@
 ![MacOS](https://img.shields.io/badge/mac%20os-000000?style=for-the-badge&logo=apple&logoColor=white)
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-![PyBadge](media/pybadge.svg)
+![PyBadge](https://github.com/luxonis/luxonis-train/blob/main/media/pybadge.svg)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-![UnitTests](https://github.com/luxonis/models/actions/workflows/tests.yaml/badge.svg)
-![Docs](https://github.com/luxonis/luxonis-ml/actions/workflows/docs.yaml/badge.svg)
-[![Coverage](media/coverage_badge.svg)](https://github.com/luxonis/models/actions)
+![UnitTests](https://github.com/luxonis/luxonis-train/actions/workflows/tests.yaml/badge.svg)
+![Docs](https://github.com/luxonis/luxonis-train/actions/workflows/docs.yaml/badge.svg)
+[![Coverage](media/coverage_badge.svg)](https://github.com/luxonis/luxonis-train/actions)
 
 Luxonis training framework (`luxonis-train`) is intended for training deep learning models that can run fast on OAK products.
 
