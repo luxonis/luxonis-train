@@ -19,7 +19,7 @@ List of supported callbacks from `lightning.pytorch`.
 - [ LearningRateMonitor ](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.LearningRateMonitor.html#lightning.pytorch.callbacks.LearningRateMonitor)
 - [ ModelCheckpoint ](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.ModelCheckpoint.html#lightning.pytorch.callbacks.ModelCheckpoint)
 - [ RichModelSummary ](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.RichModelSummary.html#lightning.pytorch.callbacks.RichModelSummary)
-  - Added automatically if `use_rich_text` is set to `True` in [config](../../../configs/README.md#topleveloptions).
+  - Added automatically if `use_rich_text` is set to `True` in [config](../../configs/README.md#topleveloptions).
 
 ## ExportOnTrainEnd
 
@@ -34,7 +34,7 @@ Performs export on train end with best weights according to the validation loss.
 ## LuxonisProgressBar
 
 Custom rich text progress bar based on RichProgressBar from Pytorch Lightning.
-Added automatically if `use_rich_text` is set to `True` in [config](../../../configs/README.md#topleveloptions).
+Added automatically if `use_rich_text` is set to `True` in [config](../../configs/README.md#topleveloptions).
 
 ## MetadataLogger
 
