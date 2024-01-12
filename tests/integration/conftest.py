@@ -26,8 +26,11 @@ def create_dataset(name: str) -> LuxonisDataset:
 def create_coco_dataset():
     dataset = create_dataset("coco_test")
     url = "https://drive.google.com/uc?id=1XlvFK7aRmt8op6-hHkWVKIJQeDtOwoRT"
-    output_zip = "../data/COCO_people_subset.zip"
     output_folder = "../data/"
+    output_zip = os.path.join(output_folder, "COCO_people_subset.zip")
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
 
     if not os.path.exists(output_zip) and not os.path.exists(
         os.path.join(output_folder, "COCO_people_subset")
@@ -38,8 +41,8 @@ def create_coco_dataset():
             zip_ref.extractall(output_folder)
 
     def COCO_people_subset_generator():
-        img_dir = "../data/person_val2017_subset"
-        annot_file = "../data/person_keypoints_val2017.json"
+        img_dir = os.path.join(output_folder, "person_val2017_subset")
+        annot_file = os.path.join(output_folder, "person_keypoints_val2017.json")
         im_paths = glob.glob(img_dir + "/*.jpg")
         nums = np.array([int(Path(path).stem) for path in im_paths])
         idxs = np.argsort(nums)
@@ -106,7 +109,7 @@ def create_coco_dataset():
 
     dataset.set_classes(["person"])
 
-    annot_file = "../data/person_keypoints_val2017.json"
+    annot_file = os.path.join(output_folder, "person_keypoints_val2017.json")
     with open(annot_file) as file:
         data = json.load(file)
     dataset.set_skeletons(
@@ -124,8 +127,11 @@ def create_coco_dataset():
 @pytest.fixture(scope="session", autouse=True)
 def create_cifar10_dataset():
     dataset = create_dataset("cifar10_test")
+    output_folder = "../data/"
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
     cifar10_torch = torchvision.datasets.CIFAR10(
-        root="../data", train=False, download=True
+        root=output_folder, train=False, download=True
     )
     classes = [
         "airplane",
@@ -144,7 +150,7 @@ def create_cifar10_dataset():
         for i, (image, label) in enumerate(cifar10_torch):  # type: ignore
             if i == 1000:
                 break
-            path = f"../data/cifar_{i}.png"
+            path = os.path.join(output_folder, f"cifar_{i}.png")
             image.save(path)
             yield {
                 "file": path,
