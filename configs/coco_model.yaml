@@ -1,0 +1,183 @@
+# An example configuration for a more complex network.
+
+
+model:
+  name: coco_test
+  nodes:
+    - name: EfficientRep
+      params:
+        channels_list: [64, 128, 256, 512, 1024]
+        num_repeats: [1, 6, 12, 18, 6]
+        depth_mul: 0.33
+        width_mul: 0.33
+
+    - name: RepPANNeck
+      inputs:
+        - EfficientRep
+      params:
+        channels_list: [256, 128, 128, 256, 256, 512]
+        num_repeats: [12, 12, 12, 12]
+        depth_mul: 0.33
+        width_mul: 0.33
+
+    - name: ImplicitKeypointBBoxHead
+      inputs:
+        - RepPANNeck
+      params:
+        conf_thres: 0.25
+        iou_thres: 0.45
+
+    - name: SegmentationHead
+      inputs:
+        - RepPANNeck
+
+    - name: EfficientBBoxHead
+      inputs:
+        - RepPANNeck
+      params:
+        conf_thres: 0.75
+        iou_thres: 0.45
+
+  losses:
+    - name: AdaptiveDetectionLoss
+      attached_to: EfficientBBoxHead
+    - name: BCEWithLogitsLoss
+      attached_to: SegmentationHead
+    - name: ImplicitKeypointBBoxLoss
+      attached_to: ImplicitKeypointBBoxHead
+      params:
+        keypoint_distance_loss_weight: 0.5
+        keypoint_visibility_loss_weight: 0.7
+        bbox_loss_weight: 0.05
+        objectness_loss_weight: 0.2
+
+  metrics:
+    - name: ObjectKeypointSimilarity
+      is_main_metric: true
+      attached_to: ImplicitKeypointBBoxHead
+    - name: MeanAveragePrecisionKeypoints
+      attached_to: ImplicitKeypointBBoxHead
+    - name: MeanAveragePrecision
+      attached_to: EfficientBBoxHead
+    - name: F1Score
+      attached_to: SegmentationHead
+      params:
+        task: binary
+    - name: JaccardIndex
+      attached_to: SegmentationHead
+      params:
+        task: binary
+
+  visualizers:
+    - name: MultiVisualizer
+      attached_to: ImplicitKeypointBBoxHead
+      params:
+        visualizers:
+          - name: KeypointVisualizer
+            params:
+              nonvisible_color: blue
+          - name: BBoxVisualizer
+            params:
+              colors:
+                person: "#FF5055"
+    - name: SegmentationVisualizer
+      attached_to: SegmentationHead
+      params:
+        colors: "#FF5055"
+    - name: BBoxVisualizer
+      attached_to: EfficientBBoxHead
+
+tracker:
+  project_name: coco_test
+  save_directory: output
+  is_tensorboard: True
+  is_wandb: False
+  wandb_entity: luxonis
+  is_mlflow: False
+
+dataset:
+  dataset_name: coco_test
+  train_view: train
+  val_view: val
+  test_view: test
+
+trainer:
+  accelerator: auto
+  devices: auto
+  strategy: auto
+
+  num_sanity_val_steps: 1
+  profiler: null
+  verbose: True
+  batch_size: 4
+  accumulate_grad_batches: 1
+  epochs: &epochs 200
+  num_workers: 8
+  train_metrics_interval: -1
+  validation_interval: 10
+  num_log_images: 8
+  skip_last_batch: True
+  main_head_index: 0
+  log_sub_losses: True
+  save_top_k: 3
+
+  preprocessing:
+    train_image_size: [&height 256, &width 320]
+    keep_aspect_ratio: False
+    train_rgb: True
+    normalize:
+      active: True
+    augmentations:
+      - name: Defocus
+        params:
+          p: 0.1
+      - name: Sharpen
+        params:
+          p: 0.1
+      - name: Flip
+      - name: RandomRotate90
+      - name: Mosaic4
+        params:
+          out_width: *width
+          out_height: *height
+
+  callbacks:
+    - name: LearningRateMonitor
+      params:
+        logging_interval: step
+    - name: MetadataLogger
+      params:
+        hyperparams: ["trainer.epochs", trainer.batch_size]
+    - name: EarlyStopping
+      params:
+        patience: 3
+        monitor: val/loss
+        mode: min
+        verbose: true
+    - name: DeviceStatsMonitor
+    - name: ExportOnTrainEnd
+    - name: TestOnTrainEnd
+
+  optimizer:
+    name: SGD
+    params:
+      lr: 0.02
+      momentum: 0.937
+      nesterov: True
+      weight_decay: 0.0005
+
+  scheduler:
+    name: CosineAnnealingLR
+    params:
+      T_max: *epochs
+      eta_min: 0
+
+exporter:
+  onnx:
+    opset_version: 11
+
+tuner:
+  params:
+    trainer.optimizer.name_categorical: ["Adam", "SGD"]
+    trainer.optimizer.params.lr_float: [0.0001, 0.001]
+    trainer.batch_size_int: [4, 16, 4]

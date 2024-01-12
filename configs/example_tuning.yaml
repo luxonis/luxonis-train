@@ -1,0 +1,39 @@
+# Example configuration for tuning a predefined segmentation model
+
+
+use_rich_text: True
+
+model:
+  name: coco_segmentation
+  predefined_model:
+    name: SegmentationModel
+    params:
+      backbone: MicroNet
+      task: binary
+
+dataset:
+  dataset_name: coco_test
+
+trainer:
+  preprocessing:
+    train_image_size: [&height 256, &width 320]
+    keep_aspect_ratio: False
+    normalize:
+      active: True
+
+  batch_size: 4
+  epochs: &epochs 1
+  validation_interval: 1
+  num_log_images: 8
+
+  scheduler:
+    name: CosineAnnealingLR
+    params:
+      T_max: *epochs
+      eta_min: 0
+
+tuner:
+  params:
+    trainer.optimizer.name_categorical: ["Adam", "SGD"]
+    trainer.optimizer.params.lr_float: [0.0001, 0.001]
+    trainer.batch_size_int: [4, 16, 4]

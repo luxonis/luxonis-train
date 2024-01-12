@@ -1,0 +1,26 @@
+name: Docs
+
+on:
+  pull_request:
+    branches: [ dev, main ]
+    paths:
+      - 'luxonis_train/**'
+      - .github/workflows/docs.yaml
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Install dependencies
+        run: |
+          pip install pydoctor
+          curl -L "https://raw.githubusercontent.com/luxonis/python-api-analyzer-to-json/main/gen-docs.py" -o "gen-docs.py"
+
+      - name: Build docs
+        run: |
+          python gen-docs.py luxonis_train

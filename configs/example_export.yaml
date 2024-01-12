@@ -1,0 +1,42 @@
+# Example configuration for exporting a predefined segmentation model
+
+
+use_rich_text: True
+
+model:
+  name: coco_segmentation
+  weights: null  # specify a path to the weights here
+  predefined_model:
+    name: SegmentationModel
+    params:
+      backbone: MicroNet
+      task: binary
+
+dataset:
+  dataset_name: coco_test
+
+trainer:
+  preprocessing:
+    train_image_size: [&height 256, &width 320]
+    keep_aspect_ratio: False
+    normalize:
+      active: True
+
+  batch_size: 4
+  epochs: &epochs 200
+  num_workers: 4
+  validation_interval: 10
+  num_log_images: 8
+
+  optimizer:
+    name: SGD
+
+  scheduler:
+    name: ConstantLR
+
+exporter:
+  onnx:
+    opset_version: 11
+  blobconverter:
+    active: True
+    shaves: 8
