@@ -398,7 +398,17 @@ class LuxonisModel(pl.LightningModule):
                 for i in range(len(out))
             ]
         )
-        output_names = [
+
+        if self.cfg.exporter.output_names is not None:
+            len_names = len(self.cfg.exporter.output_names)
+            if len_names != len(output_order):
+                logger.warning(
+                    f"Number of provided output names ({len_names}) does not match "
+                    f"number of outputs ({len(output_order)}). Using default names."
+                )
+                self.cfg.exporter.output_names = None
+
+        output_names = self.cfg.exporter.output_names or [
             f"{node_name}/{output_name}/{i}"
             for node_name, output_name, i in output_order
         ]
