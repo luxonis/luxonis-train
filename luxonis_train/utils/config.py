@@ -252,6 +252,7 @@ class ExportConfig(BaseModel):
     reverse_input_channels: bool = True
     scale_values: list[float] | None = None
     mean_values: list[float] | None = None
+    output_names: list[str] | None = None
     onnx: OnnxExportConfig = OnnxExportConfig()
     blobconverter: BlobconverterExportConfig = BlobconverterExportConfig()
     upload_url: str | None = None
