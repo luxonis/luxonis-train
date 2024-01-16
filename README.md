@@ -13,7 +13,7 @@
 
 Luxonis training framework (`luxonis-train`) is intended for training deep learning models that can run fast on OAK products.
 
-The project is in alpha state - please report any feedback.
+**The project is in an alpha state - please report any feedback.**
 
 ## Table Of Contents
 
@@ -41,6 +41,14 @@ See `luxonis_train --help` for more information.
 The entire configuration is specified in a `yaml` file. This includes the model
 structure, used losses, metrics, optimizers etc. For specific instructions and example
 configuration files, see [Configuration](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md).
+
+### Data Preparation
+
+This library requires data to be in the Luxonis Dataset Format.
+
+For instructions on how to create a dataset in the LDF, follow the
+[examples](https://github.com/luxonis/luxonis-ml/tree/main/examples) in
+the [luxonis-ml](https://github.com/luxonis/luxonis-ml) repository.
 
 ## Training
 
@@ -127,7 +135,7 @@ class CustomLoss(BaseLoss):
         ...
 ```
 
-And then in the config you reference this `CustomOptimizer` and `CustomLoss` by their names.
+And then in the config you reference this `CustomOptimizer` and `CustomLoss` by their names:
 
 ```yaml
 losses:
@@ -193,4 +201,4 @@ If you want to contribute to the development, install the dev version of the pac
 pip install luxonis-train[dev]
 ```
 
-Consult the [Contribution guide](https://github.com/luxonis/luxonis-train/blob/main/CONTRIBUTING.md) before making a pull request.
+Consult the [Contribution guide](https://github.com/luxonis/luxonis-train/blob/main/CONTRIBUTING.md) for further instructions.
