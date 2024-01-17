@@ -121,7 +121,7 @@ class LuxonisModel(pl.LightningModule):
         self.cfg = cfg
         self.original_in_shape = Size(input_shape)
         self.dataset_metadata = dataset_metadata or DatasetMetadata()
-        self.frozen_nodes: list[nn.Module] = []
+        self.frozen_nodes: list[tuple[nn.Module, int]] = []
         self.graph: dict[str, list[str]] = {}
         self.input_shapes: dict[str, list[Size]] = {}
         self.loss_weights: dict[str, float] = {}
@@ -136,15 +136,22 @@ class LuxonisModel(pl.LightningModule):
 
         self._logged_images = 0
 
-        frozen_nodes: list[str] = []
+        frozen_nodes: list[tuple[str, int]] = []
         nodes: dict[str, tuple[type[BaseNode], Kwargs]] = {}
 
         for node_cfg in self.cfg.model.nodes:
             node_name = node_cfg.name
             Node = BaseNode.REGISTRY.get(node_name)
             node_name = node_cfg.override_name or node_name
-            if node_cfg.frozen:
-                frozen_nodes.append(node_name)
+            if node_cfg.freezing.active:
+                epochs = self.cfg.trainer.epochs
+                if node_cfg.freezing.unfreeze_after is None:
+                    unfreeze_after = epochs
+                elif isinstance(node_cfg.freezing.unfreeze_after, int):
+                    unfreeze_after = node_cfg.freezing.unfreeze_after
+                else:
+                    unfreeze_after = int(node_cfg.freezing.unfreeze_after * epochs)
+                frozen_nodes.append((node_name, unfreeze_after))
             nodes[node_name] = (Node, node_cfg.params)
             if not node_cfg.inputs:
                 self.input_shapes[node_name] = [Size(input_shape)]
@@ -175,7 +182,7 @@ class LuxonisModel(pl.LightningModule):
             )
 
         self.outputs = self.cfg.model.outputs
-        self.frozen_nodes = [self.nodes[name] for name in frozen_nodes]
+        self.frozen_nodes = [(self.nodes[name], e) for name, e in frozen_nodes]
         self.losses = self._to_module_dict(self.losses)  # type: ignore
         self.metrics = self._to_module_dict(self.metrics)  # type: ignore
         self.visualizers = self._to_module_dict(self.visualizers)  # type: ignore

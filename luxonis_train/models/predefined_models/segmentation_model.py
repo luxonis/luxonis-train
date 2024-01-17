@@ -27,14 +27,14 @@ class SegmentationModel(BasePredefinedModel):
             ModelNodeConfig(
                 name=self.backbone,
                 override_name="segmentation_backbone",
-                frozen=self.backbone_params.pop("frozen", False),
+                freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="SegmentationHead",
                 override_name="segmentation_head",
                 inputs=["segmentation_backbone"],
-                frozen=self.head_params.pop("frozen", False),
+                freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
             ),
         ]
