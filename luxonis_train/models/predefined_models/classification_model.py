@@ -27,14 +27,14 @@ class ClassificationModel(BasePredefinedModel):
             ModelNodeConfig(
                 name=self.backbone,
                 override_name="classification_backbone",
-                frozen=self.backbone_params.pop("frozen", False),
+                freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="ClassificationHead",
                 override_name="classification_head",
                 inputs=["classification_backbone"],
-                frozen=self.head_params.pop("frozen", False),
+                freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
             ),
         ]

@@ -28,12 +28,17 @@ class MetricModuleConfig(AttachedModuleConfig):
     is_main_metric: bool = False
 
 
+class FreezingConfig(BaseModel):
+    active: bool = False
+    unfreeze_after: int | float | None = None
+
+
 class ModelNodeConfig(BaseModel):
     name: str
     override_name: str | None = None
     inputs: list[str] = []
     params: dict[str, Any] = {}
-    frozen: bool = False
+    freezing: FreezingConfig = FreezingConfig()
 
 
 class PredefinedModelConfig(BaseModel):

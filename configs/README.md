@@ -60,13 +60,14 @@ This is the most important block, that **must be always defined by the user**. T
 
 For list of all nodes, see [nodes](../luxonis_train/nodes/README.md).
 
-| Key           | Type | Default value | Description                                                                                          |
-| ------------- | ---- | ------------- | ---------------------------------------------------------------------------------------------------- |
-| name          | str  |               | name of the node                                                                                     |
-| override_name | str  | None          | custom name for the node                                                                             |
-| params        | dict | {}            | parameters for the node                                                                              |
-| inputs        | list | \[\]          | list of input nodes for this node, if empty, the node is understood to be an input node of the model |
-| frozen        | bool | False         | whether should the node be trained                                                                   |
+| Key                     | Type                 | Default value | Description                                                                                                                                 |
+| ----------------------- | -------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| name                    | str                  |               | name of the node                                                                                                                            |
+| override_name           | str                  | None          | custom name for the node                                                                                                                    |
+| params                  | dict                 | {}            | parameters for the node                                                                                                                     |
+| inputs                  | list                 | \[\]          | list of input nodes for this node, if empty, the node is understood to be an input node of the model                                        |
+| freezing.active         | bool                 | False         | whether to freeze the modules so the weights are not updated                                                                                |
+| freezing.unfreeze_after | int \| float \| None | None          | after how many epochs should the modules be unfrozen, can be `int` for a specific number of epochs or `float` for a portion of the training |
 
 ### Attached Modules
 
