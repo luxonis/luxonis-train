@@ -9,7 +9,7 @@ model:
     name: KeypointDetectionModel
 
 dataset:
-  dataset_name: coco_test
+  name: coco_test
 
 trainer:
   preprocessing:

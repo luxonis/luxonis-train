@@ -122,9 +122,9 @@ class Core:
             callbacks=LuxonisProgressBar() if self.cfg.use_rich_text else None,
         )
         self.dataset = LuxonisDataset(
-            dataset_name=self.cfg.dataset.dataset_name,
+            dataset_name=self.cfg.dataset.name,
             team_id=self.cfg.dataset.team_id,
-            dataset_id=self.cfg.dataset.dataset_id,
+            dataset_id=self.cfg.dataset.id,
             bucket_type=self.cfg.dataset.bucket_type,
             bucket_storage=self.cfg.dataset.bucket_storage,
         )

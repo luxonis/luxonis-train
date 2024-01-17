@@ -142,7 +142,7 @@ class LuxonisModel(pl.LightningModule):
         for node_cfg in self.cfg.model.nodes:
             node_name = node_cfg.name
             Node = BaseNode.REGISTRY.get(node_name)
-            node_name = node_cfg.override_name or node_name
+            node_name = node_cfg.alias or node_name
             if node_cfg.freezing.active:
                 epochs = self.cfg.trainer.epochs
                 if node_cfg.freezing.unfreeze_after is None:
@@ -714,7 +714,7 @@ class LuxonisModel(pl.LightningModule):
         storage: Mapping[str, Mapping[str, BaseAttachedModule]],
     ) -> tuple[str, str]:
         Module = registry.get(cfg.name)
-        module_name = cfg.override_name or cfg.name
+        module_name = cfg.alias or cfg.name
         node_name = cfg.attached_to
         module = Module(**cfg.params, node=self.nodes[node_name])
         storage[node_name][module_name] = module  # type: ignore

@@ -5,6 +5,7 @@ import lightning.pytorch as pl
 import pkg_resources
 import yaml
 
+from luxonis_train.utils.config import Config
 from luxonis_train.utils.registry import CALLBACKS
 
 
@@ -23,7 +24,7 @@ class MetadataLogger(pl.Callback):
         self.hyperparams = hyperparams
 
     def on_fit_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
-        cfg = pl_module.cfg
+        cfg: Config = pl_module.cfg
 
         hparams = {key: cfg.get(key) for key in self.hyperparams}
 

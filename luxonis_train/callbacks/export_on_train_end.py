@@ -49,7 +49,7 @@ class ExportOnTrainEnd(pl.Callback):
         cfg: Config = pl_module.cfg
         cfg.model.weights = best_model_path
         if self.upload_to_mlflow:
-            if pl_module.cfg.tracker.is_mlflow:
+            if cfg.tracker.is_mlflow:
                 tracker = cast(LuxonisTrackerPL, trainer.logger)
                 new_upload_directory = f"mlflow://{tracker.project_id}/{tracker.run_id}"
                 cfg.exporter.upload_directory = new_upload_directory

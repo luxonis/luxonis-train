@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class AttachedModuleConfig(BaseModel):
     name: str
     attached_to: str
-    override_name: str | None = None
+    alias: str | None = None
     params: dict[str, Any] = {}
 
 
@@ -35,7 +35,7 @@ class FreezingConfig(BaseModel):
 
 class ModelNodeConfig(BaseModel):
     name: str
-    override_name: str | None = None
+    alias: str | None = None
     inputs: list[str] = []
     params: dict[str, Any] = {}
     freezing: FreezingConfig = FreezingConfig()
@@ -82,14 +82,14 @@ class ModelConfig(BaseModel):
 
     @model_validator(mode="after")
     def check_graph(self):
-        graph = {node.override_name or node.name: node.inputs for node in self.nodes}
+        graph = {node.alias or node.name: node.inputs for node in self.nodes}
         if not is_acyclic(graph):
             raise ValueError("Model graph is not acyclic.")
         if not self.outputs:
             outputs: list[str] = []  # nodes which are not inputs to any nodes
             inputs = set(node_name for node in self.nodes for node_name in node.inputs)
             for node in self.nodes:
-                name = node.override_name or node.name
+                name = node.alias or node.name
                 if name not in inputs:
                     outputs.append(name)
             self.outputs = outputs
@@ -97,12 +97,21 @@ class ModelConfig(BaseModel):
             raise ValueError("No outputs specified.")
         return self
 
-    model_config = {
-        "json_schema_extra": {
-            "if": {"properties": {"predefined_model": {"type": "null"}}},
-            "then": {"properties": {"nodes": {"type": "array"}}},
-        }
-    }
+    @model_validator(mode="after")
+    def check_unique_names(self):
+        for section, objects in [
+            ("nodes", self.nodes),
+            ("losses", self.losses),
+            ("metrics", self.metrics),
+            ("visualizers", self.visualizers),
+        ]:
+            names = set()
+            for obj in objects:
+                name = obj.alias or obj.name
+                if name in names:
+                    raise ValueError(f"Duplicate name `{name}` in `{section}` section.")
+                names.add(name)
+        return self
 
 
 class TrackerConfig(BaseModel):
@@ -118,8 +127,8 @@ class TrackerConfig(BaseModel):
 
 
 class DatasetConfig(BaseModel):
-    dataset_name: str | None = None
-    dataset_id: str | None = None
+    name: str | None = None
+    id: str | None = None
     team_name: str | None = None
     team_id: str | None = None
     bucket_type: BucketType = BucketType.INTERNAL
@@ -132,25 +141,6 @@ class DatasetConfig(BaseModel):
     @field_serializer("bucket_storage", "bucket_type")
     def get_enum_value(self, v: Enum, _) -> str:
         return str(v.value)
-
-    model_config = {
-        "json_schema_extra": {
-            "anyOf": [
-                {
-                    "allOf": [
-                        {"required": ["dataset_name"]},
-                        {"properties": {"dataset_name": {"type": "string"}}},
-                    ]
-                },
-                {
-                    "allOf": [
-                        {"required": ["dataset_id"]},
-                        {"properties": {"dataset_id": {"type": "string"}}},
-                    ]
-                },
-            ]
-        },
-    }
 
 
 class NormalizeAugmentationConfig(BaseModel):
@@ -288,9 +278,7 @@ class TunerConfig(BaseModel):
     storage: StorageConfig = StorageConfig()
     params: Annotated[
         dict[str, list[str | int | float | bool]], Field(default={}, min_length=1)
-    ] = {}
-
-    model_config = {"json_schema_extra": {"required": ["params"]}}
+    ]
 
 
 class Config(LuxonisConfig):
@@ -300,19 +288,8 @@ class Config(LuxonisConfig):
     tracker: TrackerConfig = TrackerConfig()
     trainer: TrainerConfig = TrainerConfig()
     exporter: ExportConfig = ExportConfig()
-    tuner: TunerConfig = TunerConfig()
+    tuner: TunerConfig | None = None
     ENVIRON: Environ = Field(Environ(), exclude=True)
-
-    @model_validator(mode="before")
-    @classmethod
-    def check_tuner_init(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            if data.get("tuner") and not data.get("tuner", {}).get("params"):
-                del data["tuner"]
-                logger.warning(
-                    "`tuner` block specified but no `tuner.params`. If trying to tune values you have to specify at least one parameter"
-                )
-        return data
 
     @model_validator(mode="before")
     @classmethod

@@ -126,9 +126,9 @@ def inspect(
     image_size = cfg.trainer.preprocessing.train_image_size
 
     dataset = LuxonisDataset(
-        dataset_name=cfg.dataset.dataset_name,
+        dataset_name=cfg.dataset.name,
         team_id=cfg.dataset.team_id,
-        dataset_id=cfg.dataset.dataset_id,
+        dataset_id=cfg.dataset.id,
         bucket_type=cfg.dataset.bucket_type,
         bucket_storage=cfg.dataset.bucket_storage,
     )

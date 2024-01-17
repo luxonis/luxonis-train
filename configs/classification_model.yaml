@@ -16,7 +16,7 @@ model:
         include_plot: True
 
 dataset:
-  dataset_name: cifar10_test
+  name: cifar10_test
 
 trainer:
   preprocessing:

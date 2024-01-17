@@ -26,13 +26,13 @@ class ClassificationModel(BasePredefinedModel):
         return [
             ModelNodeConfig(
                 name=self.backbone,
-                override_name="classification_backbone",
+                alias="classification_backbone",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="ClassificationHead",
-                override_name="classification_head",
+                alias="classification_head",
                 inputs=["classification_backbone"],
                 freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
@@ -44,7 +44,7 @@ class ClassificationModel(BasePredefinedModel):
         return [
             LossModuleConfig(
                 name="CrossEntropyLoss",
-                override_name="classification_loss",
+                alias="classification_loss",
                 attached_to="classification_head",
                 params=self.loss_params,
                 weight=1.0,
@@ -56,20 +56,20 @@ class ClassificationModel(BasePredefinedModel):
         return [
             MetricModuleConfig(
                 name="F1Score",
-                override_name="classification_f1_score",
+                alias="classification_f1_score",
                 is_main_metric=True,
                 attached_to="classification_head",
                 params={"task": self.task},
             ),
             MetricModuleConfig(
                 name="Accuracy",
-                override_name="classification_accuracy",
+                alias="classification_accuracy",
                 attached_to="classification_head",
                 params={"task": self.task},
             ),
             MetricModuleConfig(
                 name="Recall",
-                override_name="classification_recall",
+                alias="classification_recall",
                 attached_to="classification_head",
                 params={"task": self.task},
             ),

@@ -26,7 +26,7 @@ class KeypointDetectionModel(BasePredefinedModel):
         nodes = [
             ModelNodeConfig(
                 name="EfficientRep",
-                override_name="kpt_detection_backbone",
+                alias="kpt_detection_backbone",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
@@ -35,7 +35,7 @@ class KeypointDetectionModel(BasePredefinedModel):
             nodes.append(
                 ModelNodeConfig(
                     name="RepPANNeck",
-                    override_name="kpt_detection_neck",
+                    alias="kpt_detection_neck",
                     inputs=["kpt_detection_backbone"],
                     freezing=self.neck_params.pop("freezing", {}),
                     params=self.neck_params,
@@ -45,7 +45,7 @@ class KeypointDetectionModel(BasePredefinedModel):
         nodes.append(
             ModelNodeConfig(
                 name="ImplicitKeypointBBoxHead",
-                override_name="kpt_detection_head",
+                alias="kpt_detection_head",
                 inputs=["kpt_detection_neck"]
                 if self.use_neck
                 else ["kpt_detection_backbone"],
@@ -71,13 +71,13 @@ class KeypointDetectionModel(BasePredefinedModel):
         return [
             MetricModuleConfig(
                 name="ObjectKeypointSimilarity",
-                override_name="kpt_detection_oks",
+                alias="kpt_detection_oks",
                 attached_to="kpt_detection_head",
                 is_main_metric=True,
             ),
             MetricModuleConfig(
                 name="MeanAveragePrecisionKeypoints",
-                override_name="kpt_detection_map",
+                alias="kpt_detection_map",
                 attached_to="kpt_detection_head",
             ),
         ]
@@ -87,7 +87,7 @@ class KeypointDetectionModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="MultiVisualizer",
-                override_name="kpt_detection_visualizer",
+                alias="kpt_detection_visualizer",
                 attached_to="kpt_detection_head",
                 params={
                     "visualizers": [

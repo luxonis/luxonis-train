@@ -63,7 +63,7 @@ For list of all nodes, see [nodes](../luxonis_train/nodes/README.md).
 | Key                     | Type                 | Default value | Description                                                                                                                                 |
 | ----------------------- | -------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | name                    | str                  |               | name of the node                                                                                                                            |
-| override_name           | str                  | None          | custom name for the node                                                                                                                    |
+| alias                   | str                  | None          | custom name for the node                                                                                                                    |
 | params                  | dict                 | {}            | parameters for the node                                                                                                                     |
 | inputs                  | list                 | \[\]          | list of input nodes for this node, if empty, the node is understood to be an input node of the model                                        |
 | freezing.active         | bool                 | False         | whether to freeze the modules so the weights are not updated                                                                                |
@@ -73,12 +73,12 @@ For list of all nodes, see [nodes](../luxonis_train/nodes/README.md).
 
 Modules that are attached to a node. This include losses, metrics and visualziers.
 
-| Key           | Type | Default value | Description                                 |
-| ------------- | ---- | ------------- | ------------------------------------------- |
-| name          | str  |               | name of the module                          |
-| attached_to   | str  |               | Name of the node the module is attached to. |
-| override_name | str  | None          | custom name for the module                  |
-| params        | dict | {}            | parameters of the module                    |
+| Key         | Type | Default value | Description                                 |
+| ----------- | ---- | ------------- | ------------------------------------------- |
+| name        | str  |               | name of the module                          |
+| attached_to | str  |               | Name of the node the module is attached to. |
+| alias       | str  | None          | custom name for the module                  |
+| params      | dict | {}            | parameters of the module                    |
 
 #### Losses
 
@@ -128,9 +128,9 @@ To store and load the data we use LuxonisDataset and LuxonisLoader. For specific
 
 | Key            | Type                                     | Default value       | Description                                    |
 | -------------- | ---------------------------------------- | ------------------- | ---------------------------------------------- |
-| dataset_name   | str \| None                              | None                | name of the dataset                            |
+| name           | str \| None                              | None                | name of the dataset                            |
+| id             | str \| None                              | None                | id of the dataset                              |
 | team_id        | str \| None                              | None                | team under which you can find all datasets     |
-| dataset_id     | str \| None                              | None                | id of the dataset                              |
 | bucket_type    | Literal\["intenal", "external"\]         | internal            | type of underlying storage                     |
 | bucket_storage | Literal\["local", "s3", "gcc", "azure"\] | BucketStorage.LOCAL | underlying object storage for a bucket         |
 | train_view     | str                                      | train               | view to use for training                       |

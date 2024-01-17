@@ -25,7 +25,7 @@ class DetectionModel(BasePredefinedModel):
         nodes = [
             ModelNodeConfig(
                 name="EfficientRep",
-                override_name="detection_backbone",
+                alias="detection_backbone",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
@@ -34,7 +34,7 @@ class DetectionModel(BasePredefinedModel):
             nodes.append(
                 ModelNodeConfig(
                     name="RepPANNeck",
-                    override_name="detection_neck",
+                    alias="detection_neck",
                     inputs=["detection_backbone"],
                     freezing=self.neck_params.pop("freezing", {}),
                     params=self.neck_params,
@@ -44,7 +44,7 @@ class DetectionModel(BasePredefinedModel):
         nodes.append(
             ModelNodeConfig(
                 name="EfficientBBoxHead",
-                override_name="detection_head",
+                alias="detection_head",
                 freezing=self.head_params.pop("freezing", {}),
                 inputs=["detection_neck"] if self.use_neck else ["detection_backbone"],
                 params=self.head_params,
@@ -57,7 +57,7 @@ class DetectionModel(BasePredefinedModel):
         return [
             LossModuleConfig(
                 name="AdaptiveDetectionLoss",
-                override_name="detection_loss",
+                alias="detection_loss",
                 attached_to="detection_head",
                 params=self.loss_params,
                 weight=1.0,
@@ -69,7 +69,7 @@ class DetectionModel(BasePredefinedModel):
         return [
             MetricModuleConfig(
                 name="MeanAveragePrecision",
-                override_name="detection_map",
+                alias="detection_map",
                 attached_to="detection_head",
                 is_main_metric=True,
             ),
@@ -80,7 +80,7 @@ class DetectionModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="BBoxVisualizer",
-                override_name="detection_visualizer",
+                alias="detection_visualizer",
                 attached_to="detection_head",
                 params=self.visualizer_params,
             )
