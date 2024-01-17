@@ -26,19 +26,22 @@ class Tuner(Core):
             used for config overriding.
         """
         super().__init__(cfg, args)
+        if self.cfg.tuner is None:
+            raise ValueError("You have to specify the `tuner` section in config.")
+        self.tune_cfg = self.cfg.tuner
 
     def tune(self) -> None:
         """Runs Optuna tunning of hyperparameters."""
 
         pruner = (
             optuna.pruners.MedianPruner()
-            if self.cfg.tuner.use_pruner
+            if self.tune_cfg.use_pruner
             else optuna.pruners.NopPruner()
         )
 
         storage = None
-        if self.cfg.tuner.storage.active:
-            if self.cfg.tuner.storage.storage_type == "local":
+        if self.tune_cfg.storage.active:
+            if self.tune_cfg.storage.storage_type == "local":
                 storage = "sqlite:///study_local.db"
             else:
                 storage = "postgresql://{}:{}@{}:{}/{}".format(
@@ -50,7 +53,7 @@ class Tuner(Core):
                 )
 
         study = optuna.create_study(
-            study_name=self.cfg.tuner.study_name,
+            study_name=self.tune_cfg.study_name,
             storage=storage,
             direction="minimize",
             pruner=pruner,
@@ -59,8 +62,8 @@ class Tuner(Core):
 
         study.optimize(
             self._objective,
-            n_trials=self.cfg.tuner.n_trials,
-            timeout=self.cfg.tuner.timeout,
+            n_trials=self.tune_cfg.n_trials,
+            timeout=self.tune_cfg.timeout,
         )
 
     def _objective(self, trial: optuna.trial.Trial) -> float:
@@ -128,7 +131,7 @@ class Tuner(Core):
 
     def _get_trial_params(self, trial: optuna.trial.Trial) -> dict[str, Any]:
         """Get trial params based on specified config."""
-        cfg_tuner = self.cfg.tuner.params
+        cfg_tuner = self.tune_cfg.params
         new_params = {}
         for key, value in cfg_tuner.items():
             key_info = key.split("_")

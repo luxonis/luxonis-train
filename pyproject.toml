@@ -1,6 +1,6 @@
 [project]
 name = "luxonis-train"
-version = "0.1.0"
+version = "0.0.1"
 description = "Luxonis training framework for seamless training of various neural networks."
 readme = "README.md"
 requires-python = ">=3.10"

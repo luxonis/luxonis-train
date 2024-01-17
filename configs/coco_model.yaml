@@ -96,7 +96,7 @@ tracker:
   is_mlflow: False
 
 dataset:
-  dataset_name: coco_test
+  name: coco_test
   train_view: train
   val_view: val
   test_view: test

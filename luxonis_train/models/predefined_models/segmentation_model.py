@@ -26,13 +26,13 @@ class SegmentationModel(BasePredefinedModel):
         return [
             ModelNodeConfig(
                 name=self.backbone,
-                override_name="segmentation_backbone",
+                alias="segmentation_backbone",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="SegmentationHead",
-                override_name="segmentation_head",
+                alias="segmentation_head",
                 inputs=["segmentation_backbone"],
                 freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
@@ -46,7 +46,7 @@ class SegmentationModel(BasePredefinedModel):
                 name="BCEWithLogitsLoss"
                 if self.task == "binary"
                 else "CrossEntropyLoss",
-                override_name="segmentation_loss",
+                alias="segmentation_loss",
                 attached_to="segmentation_head",
                 params=self.loss_params,
                 weight=1.0,
@@ -58,14 +58,14 @@ class SegmentationModel(BasePredefinedModel):
         return [
             MetricModuleConfig(
                 name="JaccardIndex",
-                override_name="segmentation_jaccard_index",
+                alias="segmentation_jaccard_index",
                 attached_to="segmentation_head",
                 is_main_metric=True,
                 params={"task": self.task},
             ),
             MetricModuleConfig(
                 name="F1Score",
-                override_name="segmentation_f1_score",
+                alias="segmentation_f1_score",
                 attached_to="segmentation_head",
                 params={"task": self.task},
             ),
@@ -76,7 +76,7 @@ class SegmentationModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="SegmentationVisualizer",
-                override_name="segmentation_visualizer",
+                alias="segmentation_visualizer",
                 attached_to="segmentation_head",
                 params=self.visualizer_params,
             )

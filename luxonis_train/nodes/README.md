@@ -172,9 +172,11 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
 **Params**
 
-| Key       | Type | Default value | Description            |
-| --------- | ---- | ------------- | ---------------------- |
-| num_heads | bool | 3             | Number of output heads |
+| Key        | Type  | Default value | Description                                        |
+| ---------- | ----- | ------------- | -------------------------------------------------- |
+| num_heads  | bool  | 3             | Number of output heads                             |
+| conf_thres | float | 0.25          | confidence threshold for nms (used for evaluation) |
+| iou_thres  | float | 0.45          | iou threshold for nms (used for evaluation)        |
 
 ## ImplicitKeypointBBoxHead
 
