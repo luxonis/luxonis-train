@@ -1,17 +1,18 @@
 
 model:
-  name: resnet18_classification
+  name: resnet50_classification
   nodes:
-    - name: ResNet18
+    - name: ResNet
+      variant: "50"
       download_weights: True
 
     - name: ClassificationHead
       inputs:
-        - ResNet18
+        - ResNet
     
     - name: SegmentationHead
       inputs:
-        - ResNet18
+        - ResNet
 
   losses:
     - name: CrossEntropyLoss

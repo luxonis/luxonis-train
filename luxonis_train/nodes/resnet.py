@@ -1,7 +1,6 @@
-"""ResNet18 backbone.
+"""ResNet backbone.
 
-Source: U{https://pytorch.org/vision/main/models/generated/
-torchvision.models.resnet18.html}
+Source: U{https://pytorch.org/vision/main/models/resnet.html}
 @license: U{PyTorch<https://github.com/pytorch/pytorch/blob/master/LICENSE>}
 """
 from typing import Literal
