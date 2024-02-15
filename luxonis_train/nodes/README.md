@@ -5,7 +5,7 @@ arbitrarily as long as the two nodes are compatible with each other.
 
 ## Table Of Contents
 
-- [ResNet18](#resnet18)
+- [ResNet](#resnet)
 - [MicroNet](#micronet)
 - [RepVGG](#repvgg)
 - [EfficientRep](#efficientrep)
@@ -30,15 +30,16 @@ Every node takes these parameters:
 
 Additional parameters for specific nodes are listed below.
 
-## ResNet18
+## ResNet
 
-Adapted from [here](https://pytorch.org/vision/main/models/generated/torchvision.models.resnet18.html).
+Adapted from [here](https://pytorch.org/vision/main/models/resnet.html).
 
 **Params**
 
-| Key              | Type | Default value | Description                            |
-| ---------------- | ---- | ------------- | -------------------------------------- |
-| download_weights | bool | False         | If True download weights from imagenet |
+| Key              | Type                                      | Default value | Description                            |
+| ---------------- | ----------------------------------------- | ------------- | -------------------------------------- |
+| variant          | Literal\["18", "34", "50", "101", "152"\] | "18"          | Variant of the network.                |
+| download_weights | bool                                      | False         | If True download weights from imagenet |
 
 ## MicroNet
 
