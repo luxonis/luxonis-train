@@ -13,7 +13,7 @@ from .luxonis_progress_bar import LuxonisProgressBar
 from .metadata_logger import MetadataLogger
 from .module_freezer import ModuleFreezer
 from .test_on_train_end import TestOnTrainEnd
-from .upload_checkpoint_on_train_end import UploadCheckpointOnTrainEnd
+from .upload_checkpoint import UploadCheckpoint
 
 CALLBACKS.register_module(module=EarlyStopping)
 CALLBACKS.register_module(module=LearningRateMonitor)
@@ -28,5 +28,5 @@ __all__ = [
     "MetadataLogger",
     "ModuleFreezer",
     "TestOnTrainEnd",
-    "UploadCheckpointOnTrainEnd",
+    "UploadCheckpoint",
 ]
