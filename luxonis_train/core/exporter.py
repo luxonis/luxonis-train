@@ -200,7 +200,7 @@ class Exporter(Core):
                 remote_path=self.cfg.exporter.export_model_name + suffix,
             )
 
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(prefix="config", suffix=".yaml") as f:
             self.cfg.save_data(f.name)
             fs.put_file(local_path=f.name, remote_path="config.yaml")
 
@@ -209,7 +209,9 @@ class Exporter(Core):
         )
         modelconverter_config = self._get_modelconverter_config(onnx_path)
 
-        with tempfile.NamedTemporaryFile(mode="w+") as f:
+        with tempfile.NamedTemporaryFile(
+            prefix="config_export", suffix=".yaml", mode="w+"
+        ) as f:
             yaml.dump(modelconverter_config, f, default_flow_style=False)
             fs.put_file(local_path=f.name, remote_path="config_export.yaml")
 
