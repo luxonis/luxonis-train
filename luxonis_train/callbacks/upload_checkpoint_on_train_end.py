@@ -23,7 +23,7 @@ class UploadCheckpointOnTrainEnd(pl.Callback):
 
     def on_train_end(self, trainer: pl.Trainer, _: pl.LightningModule) -> None:
         logger = logging.getLogger(__name__)
-        logger.info(f"Started checkpoint upload to {self.fs.full_path()}...")
+        logger.info(f"Started checkpoint upload to {self.fs.full_path}...")
         model_checkpoint_callbacks = [
             c
             for c in trainer.callbacks  # type: ignore
