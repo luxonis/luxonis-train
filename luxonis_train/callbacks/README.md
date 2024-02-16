@@ -57,6 +57,6 @@ Callback to perform a test run at the end of the training.
 
 Callback that uploads currently best checkpoint (based on validation loss) to specified cloud directory after every validation epoch.
 
-| Key         | Type        | Default value | Description                                                                                                             |
-| ----------- | ----------- | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| upload_directory | str | /          | Path to cloud directory where checkpoints should be uploaded to. If you want to use current mlflow run set it to `mlflow://`. |
+| Key              | Type | Default value | Description                                                                                                                   |
+| ---------------- | ---- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| upload_directory | str  | /             | Path to cloud directory where checkpoints should be uploaded to. If you want to use current mlflow run set it to `mlflow://`. |

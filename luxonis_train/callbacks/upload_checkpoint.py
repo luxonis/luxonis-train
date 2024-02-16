@@ -1,9 +1,9 @@
 import logging
 import os
-import torch
 from typing import Any
 
 import lightning.pytorch as pl
+import torch
 from luxonis_ml.utils.filesystem import LuxonisFileSystem
 
 from luxonis_train.utils.registry import CALLBACKS
