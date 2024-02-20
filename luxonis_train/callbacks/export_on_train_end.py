@@ -51,8 +51,8 @@ class ExportOnTrainEnd(pl.Callback):
         if self.upload_to_mlflow:
             if cfg.tracker.is_mlflow:
                 tracker = cast(LuxonisTrackerPL, trainer.logger)
-                new_upload_directory = f"mlflow://{tracker.project_id}/{tracker.run_id}"
-                cfg.exporter.upload_directory = new_upload_directory
+                new_upload_url = f"mlflow://{tracker.project_id}/{tracker.run_id}"
+                cfg.exporter.upload_url = new_upload_url
             else:
                 logging.getLogger(__name__).warning(
                     "`upload_to_mlflow` is set to True, "
