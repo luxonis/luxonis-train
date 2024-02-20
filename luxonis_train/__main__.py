@@ -224,7 +224,7 @@ def common(
     ] = None,
 ):
     if source:
-        exec(source.read_text(), {}, {})
+        exec(source.read_text())
 
 
 if __name__ == "__main__":
