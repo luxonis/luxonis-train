@@ -10,7 +10,7 @@ from .mobilenetv2 import MobileNetV2
 from .mobileone import MobileOne
 from .reppan_neck import RepPANNeck
 from .repvgg import RepVGG
-from .resnet18 import ResNet18
+from .resnet import ResNet
 from .rexnetv1 import ReXNetV1_lite
 from .segmentation_head import SegmentationHead
 
@@ -28,6 +28,6 @@ __all__ = [
     "ReXNetV1_lite",
     "RepPANNeck",
     "RepVGG",
-    "ResNet18",
+    "ResNet",
     "SegmentationHead",
 ]
