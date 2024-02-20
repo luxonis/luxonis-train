@@ -1,10 +1,9 @@
-"""ResNet18 backbone.
+"""ResNet backbone.
 
-Source: U{https://pytorch.org/vision/main/models/generated/
-torchvision.models.resnet18.html}
+Source: U{https://pytorch.org/vision/main/models/resnet.html}
 @license: U{PyTorch<https://github.com/pytorch/pytorch/blob/master/LICENSE>}
 """
-
+from typing import Literal
 
 import torchvision
 from torch import Tensor
@@ -12,19 +11,22 @@ from torch import Tensor
 from .base_node import BaseNode
 
 
-class ResNet18(BaseNode[Tensor, list[Tensor]]):
+class ResNet(BaseNode[Tensor, list[Tensor]]):
     attach_index: int = -1
 
     def __init__(
         self,
+        variant: Literal["18", "34", "50", "101", "152"] = "18",
         channels_list: list[int] | None = None,
         download_weights: bool = False,
         **kwargs,
     ):
-        """Implementation of the ResNet18 backbone.
+        """Implementation of the ResNetX backbone.
 
         TODO: add more info
 
+        @type variant: Literal["18", "34", "50", "101", "152"]
+        @param variant: ResNet variant. Defaults to "18".
         @type channels_list: list[int] | None
         @param channels_list: List of channels to return.
             If unset, defaults to [64, 128, 256, 512].
@@ -35,7 +37,12 @@ class ResNet18(BaseNode[Tensor, list[Tensor]]):
         """
         super().__init__(**kwargs)
 
-        self.backbone = torchvision.models.resnet18(
+        if variant not in RESNET_VARIANTS:
+            raise ValueError(
+                f"ResNet model variant should be in {list(RESNET_VARIANTS.keys())}"
+            )
+
+        self.backbone = RESNET_VARIANTS[variant](
             weights="DEFAULT" if download_weights else None
         )
         self.channels_list = channels_list or [64, 128, 256, 512]
@@ -57,3 +64,12 @@ class ResNet18(BaseNode[Tensor, list[Tensor]]):
         outs.append(x)
 
         return outs
+
+
+RESNET_VARIANTS = {
+    "18": torchvision.models.resnet18,
+    "34": torchvision.models.resnet34,
+    "50": torchvision.models.resnet50,
+    "101": torchvision.models.resnet101,
+    "152": torchvision.models.resnet152,
+}
