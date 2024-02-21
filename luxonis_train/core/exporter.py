@@ -18,15 +18,12 @@ logger = getLogger(__name__)
 
 
 class Exporter(Core):
-    """Main API which is used to create the model, setup pytorch lightning environment
-    and perform training based on provided arguments and config."""
-
     def __init__(
         self,
         cfg: str | dict[str, Any] | Config,
         opts: list[str] | tuple[str, ...] | dict[str, Any] | None = None,
     ):
-        """Constructs a new Exporter instance.
+        """Provides an interface for exporting models to .onnx and .blob formats.
 
         @type cfg: str | dict[str, Any] | Config
         @param cfg: Path to config file or config dict used to setup training.

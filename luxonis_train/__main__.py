@@ -214,13 +214,18 @@ def common(
             "--version", callback=version_callback, help="Show version and exit."
         ),
     ] = False,
+    source: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Path to a python file with custom components. "
+            "Will be sourced before running the command.",
+            metavar="FILE",
+        ),
+    ] = None,
 ):
-    ...
-
-
-def main():
-    app()
+    if source:
+        exec(source.read_text())
 
 
 if __name__ == "__main__":
-    main()
+    app()
