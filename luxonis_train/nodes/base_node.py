@@ -291,7 +291,7 @@ class BaseNode(
         """
 
         match output:
-            case Tensor(data=out):
+            case Tensor() as out:
                 outputs = [out]
             case list(tensors) if all(isinstance(t, Tensor) for t in tensors):
                 outputs = tensors

@@ -360,7 +360,7 @@ class LuxonisModel(pl.LightningModule):
                         computed_submetrics = {
                             metric_name: metric_value,
                         } | submetrics
-                    case Tensor(data=metric_value):
+                    case Tensor() as metric_value:
                         computed_submetrics = {metric_name: metric_value}
                     case dict(submetrics):
                         computed_submetrics = submetrics
