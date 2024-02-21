@@ -128,7 +128,7 @@ class Exporter(Core):
             model_onnx = onnx.load(onnx_path)
             onnx_model, check = onnxsim.simplify(model_onnx)
             if not check:
-                raise RuntimeError("Onnx simplify failed.")
+                raise RuntimeError("ONNX simplify failed.")
             onnx.save(onnx_model, onnx_path)
             logger.info(f"ONNX model saved to {onnx_path}")
 
