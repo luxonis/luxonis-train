@@ -125,9 +125,8 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
         )
         self.features = nn.Sequential(*features)
 
-    def forward(self, inputs: Tensor) -> list[Tensor]:
+    def forward(self, x: Tensor) -> list[Tensor]:
         outs = []
-        x = inputs
         for i, module in enumerate(self.features):
             x = module(x)
             if i in self.out_indices:

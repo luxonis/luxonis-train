@@ -96,8 +96,9 @@ class BaseNode(
         super().__init__()
 
         if attach_index is None:
-            inputs_forward_type = inspect.signature(self.forward).parameters.get(
-                "inputs"
+            parameters = inspect.signature(self.forward).parameters
+            inputs_forward_type = parameters.get(
+                "inputs", parameters.get("input", parameters.get("x", None))
             )
             if (
                 inputs_forward_type is not None

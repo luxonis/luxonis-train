@@ -77,9 +77,8 @@ class MicroNet(BaseNode[Tensor, list[Tensor]]):
             )
             in_channels = out_channels
 
-    def forward(self, inputs: Tensor) -> list[Tensor]:
+    def forward(self, x: Tensor) -> list[Tensor]:
         outs = []
-        x = inputs
         for m in self.features:
             x = m(x)
             outs.append(x)
