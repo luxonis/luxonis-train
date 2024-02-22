@@ -15,8 +15,6 @@ class MobileNetV2(BaseNode[Tensor, list[Tensor]]):
     TODO: add more info
     """
 
-    attach_index: int = -1
-
     def __init__(self, download_weights: bool = False, **kwargs):
         """Constructor of the MobileNetV2 backbone.
 
@@ -35,10 +33,11 @@ class MobileNetV2(BaseNode[Tensor, list[Tensor]]):
         self.channels = [24, 32, 96, 320]
         self.backbone = mobilenet_v2
 
-    def forward(self, x: Tensor) -> list[Tensor]:
+    def forward(self, inputs: Tensor) -> list[Tensor]:
         outs = []
-        for i, m in enumerate(self.backbone.features):
-            x = m(x)
+        x = inputs
+        for i, module in enumerate(self.backbone.features):
+            x = module(x)
             if i in self.out_indices:
                 outs.append(x)
 

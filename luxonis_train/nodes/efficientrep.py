@@ -19,8 +19,6 @@ from .base_node import BaseNode
 
 
 class EfficientRep(BaseNode[Tensor, list[Tensor]]):
-    attach_index: int = -1
-
     def __init__(
         self,
         channels_list: list[int] | None = None,
@@ -104,9 +102,9 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
                 if isinstance(module, RepVGGBlock):
                     module.reparametrize()
 
-    def forward(self, x: Tensor) -> list[Tensor]:
+    def forward(self, inputs: Tensor) -> list[Tensor]:
         outputs = []
-        x = self.repvgg_encoder(x)
+        x = self.repvgg_encoder(inputs)
         for block in self.blocks:
             x = block(x)
             outputs.append(x)

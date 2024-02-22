@@ -1,3 +1,4 @@
+import inspect
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
@@ -80,8 +81,6 @@ class BaseNode(
         Provide only in case the `input_shapes` were not provided.
     """
 
-    attach_index: AttachIndexType = "all"
-
     def __init__(
         self,
         *,
@@ -96,7 +95,20 @@ class BaseNode(
     ):
         super().__init__()
 
-        self.attach_index = attach_index or self.attach_index
+        if attach_index is None:
+            inputs_forward_type = inspect.signature(self.forward).parameters.get(
+                "inputs"
+            )
+            if (
+                inputs_forward_type is not None
+                and inputs_forward_type.annotation == Tensor
+            ):
+                self.attach_index = -1
+            else:
+                self.attach_index = "all"
+        else:
+            self.attach_index = attach_index
+
         self.in_protocols = in_protocols or [FeaturesProtocol]
         self.task_type = task_type
 

@@ -1,6 +1,6 @@
 import logging
 import math
-from typing import Literal, cast
+from typing import cast
 
 import torch
 from torch import Tensor, nn
@@ -22,8 +22,6 @@ logger = logging.getLogger(__name__)
 
 
 class ImplicitKeypointBBoxHead(BaseNode):
-    attach_index: Literal["all"] = "all"
-
     def __init__(
         self,
         n_keypoints: int | None = None,
