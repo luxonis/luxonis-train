@@ -3,8 +3,9 @@ model:
   name: resnet50_classification
   nodes:
     - name: ResNet
-      variant: "50"
-      download_weights: True
+      params:
+        variant: "50"
+        download_weights: True
 
     - name: ClassificationHead
       inputs:

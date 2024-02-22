@@ -117,7 +117,6 @@ trainer:
   validation_interval: 10
   num_log_images: 8
   skip_last_batch: True
-  main_head_index: 0
   log_sub_losses: True
   save_top_k: 3
 
