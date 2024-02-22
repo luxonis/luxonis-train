@@ -1,38 +1,7 @@
 """MobileOne backbone.
 
-Soure: U{https://github.com/apple/ml-mobileone} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
+Source: U{<https://github.com/apple/ml-mobileone>}
+@license: U{Apple<https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
 """
 
 
