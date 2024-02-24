@@ -18,8 +18,6 @@ from .base_node import BaseNode
 
 
 class ContextSpatial(BaseNode[Tensor, list[Tensor]]):
-    attach_index: int = -1
-
     def __init__(self, context_backbone: str = "MobileNetV2", **kwargs):
         """Context spatial backbone.
         TODO: Add more documentation.
@@ -34,9 +32,9 @@ class ContextSpatial(BaseNode[Tensor, list[Tensor]]):
         self.spatial_path = SpatialPath(3, 128)
         self.ffm = FeatureFusionBlock(256, 256)
 
-    def forward(self, x: Tensor) -> list[Tensor]:
-        spatial_out = self.spatial_path(x)
-        context16, _ = self.context_path(x)
+    def forward(self, inputs: Tensor) -> list[Tensor]:
+        spatial_out = self.spatial_path(inputs)
+        context16, _ = self.context_path(inputs)
         fm_fuse = self.ffm(spatial_out, context16)
         outs = [fm_fuse]
         return outs

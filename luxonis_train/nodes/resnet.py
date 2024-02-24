@@ -12,8 +12,6 @@ from .base_node import BaseNode
 
 
 class ResNet(BaseNode[Tensor, list[Tensor]]):
-    attach_index: int = -1
-
     def __init__(
         self,
         variant: Literal["18", "34", "50", "101", "152"] = "18",
@@ -47,9 +45,9 @@ class ResNet(BaseNode[Tensor, list[Tensor]]):
         )
         self.channels_list = channels_list or [64, 128, 256, 512]
 
-    def forward(self, x: Tensor) -> list[Tensor]:
+    def forward(self, inputs: Tensor) -> list[Tensor]:
         outs = []
-        x = self.backbone.conv1(x)
+        x = self.backbone.conv1(inputs)
         x = self.backbone.bn1(x)
         x = self.backbone.relu(x)
         x = self.backbone.maxpool(x)
