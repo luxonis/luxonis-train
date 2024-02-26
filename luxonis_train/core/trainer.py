@@ -67,6 +67,7 @@ class Trainer(Core):
                     self.fs.put_file(
                         local_path="luxonis_train.log",
                         remote_path="luxonis_train.log",
+                        mlflow_instance=self.tracker.experiment.get("mlflow", None),
                     )
 
         else:
