@@ -40,6 +40,19 @@ class Trainer(Core):
             input_shape=self.loader_train.input_shape,
         )
 
+    def _upload_logs(self) -> None:
+        if self.cfg.tracker.is_mlflow:
+            self.fs = LuxonisFileSystem(
+                "mlflow://",
+                allow_active_mlflow_run=True,
+                allow_local=False,
+            )
+            self.fs.put_file(
+                local_path="luxonis_train.log",
+                remote_path="luxonis_train.log",
+                mlflow_instance=self.tracker.experiment.get("mlflow", None),
+            )
+
     def train(self, new_thread: bool = False) -> None:
         """Runs training.
 
@@ -58,22 +71,13 @@ class Trainer(Core):
                 logger.info("Training finished")
                 logger.info(f"Checkpoints saved in: {self.get_save_dir()}")
             finally:
-                if self.cfg.tracker.is_mlflow:
-                    self.fs = LuxonisFileSystem(
-                        "mlflow://",
-                        allow_active_mlflow_run=True,
-                        allow_local=False,
-                    )
-                    self.fs.put_file(
-                        local_path="luxonis_train.log",
-                        remote_path="luxonis_train.log",
-                        mlflow_instance=self.tracker.experiment.get("mlflow", None),
-                    )
+                self._upload_logs()
 
         else:
             # Every time exception happens in the Thread, this hook will activate
             def thread_exception_hook(args):
                 self.error_message = str(args.exc_value)
+                self._upload_logs()
 
             threading.excepthook = thread_exception_hook
 
