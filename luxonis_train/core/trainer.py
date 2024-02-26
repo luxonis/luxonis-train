@@ -3,6 +3,7 @@ from logging import getLogger
 from typing import Any, Literal
 
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
+from luxonis_ml.utils import LuxonisFileSystem
 
 from luxonis_train.models import LuxonisModel
 from luxonis_train.utils.config import Config
@@ -46,15 +47,28 @@ class Trainer(Core):
         @param new_thread: Runs training in new thread if set to True.
         """
         if not new_thread:
-            logger.info(f"Checkpoints will be saved in: {self.get_save_dir()}")
-            logger.info("Starting training...")
-            self.pl_trainer.fit(
-                self.lightning_module,
-                self.pytorch_loader_train,
-                self.pytorch_loader_val,
-            )
-            logger.info("Training finished")
-            logger.info(f"Checkpoints saved in: {self.get_save_dir()}")
+            try:
+                logger.info(f"Checkpoints will be saved in: {self.get_save_dir()}")
+                logger.info("Starting training...")
+                self.pl_trainer.fit(
+                    self.lightning_module,
+                    self.pytorch_loader_train,
+                    self.pytorch_loader_val,
+                )
+                logger.info("Training finished")
+                logger.info(f"Checkpoints saved in: {self.get_save_dir()}")
+            finally:
+                if self.cfg.tracker.is_mlflow:
+                    self.fs = LuxonisFileSystem(
+                        "mlflow://",
+                        allow_active_mlflow_run=True,
+                        allow_local=False,
+                    )
+                    self.fs.put_file(
+                        local_path="luxonis_train.log",
+                        remote_path="luxonis_train.log",
+                    )
+
         else:
             # Every time exception happens in the Thread, this hook will activate
             def thread_exception_hook(args):
