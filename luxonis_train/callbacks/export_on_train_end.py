@@ -58,7 +58,7 @@ class ExportOnTrainEnd(pl.Callback):
                 new_upload_url = f"mlflow://{tracker.project_id}/{tracker.run_id}"
                 cfg.exporter.upload_url = new_upload_url
             else:
-                logger.warning(
+                logger.error(
                     "`upload_to_mlflow` is set to True, "
                     "but there is no MLFlow active run, skipping."
                 )
