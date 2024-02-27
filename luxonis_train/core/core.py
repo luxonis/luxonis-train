@@ -81,10 +81,11 @@ class Core:
         )
         # NOTE: to add the file handler (we only get the save dir now,
         # but we want to use the logger before)
+        self.log_file = osp.join(self.run_save_dir, "luxonis_train.log")
         reset_logging()
         setup_logging(
             use_rich=self.cfg.use_rich_text,
-            file=osp.join(self.run_save_dir, "luxonis_train.log"),
+            file=self.log_file,
         )
 
         # NOTE: overriding logger in pl so it uses our logger to log device info

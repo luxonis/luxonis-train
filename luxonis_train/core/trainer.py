@@ -42,13 +42,14 @@ class Trainer(Core):
 
     def _upload_logs(self) -> None:
         if self.cfg.tracker.is_mlflow:
+            logger.info("Uploading logs to MLFlow.")
             self.fs = LuxonisFileSystem(
                 "mlflow://",
                 allow_active_mlflow_run=True,
                 allow_local=False,
             )
             self.fs.put_file(
-                local_path="luxonis_train.log",
+                local_path=self.log_file,
                 remote_path="luxonis_train.log",
                 mlflow_instance=self.tracker.experiment.get("mlflow", None),
             )
