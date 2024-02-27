@@ -53,6 +53,12 @@ class Trainer(Core):
                 mlflow_instance=self.tracker.experiment.get("mlflow", None),
             )
 
+    def _traner_fit(self, *args, **kwargs):
+        try:
+            self.pl_trainer.fit(*args, **kwargs)
+        finally:
+            self._upload_logs()
+
     def train(self, new_thread: bool = False) -> None:
         """Runs training.
 
@@ -60,29 +66,25 @@ class Trainer(Core):
         @param new_thread: Runs training in new thread if set to True.
         """
         if not new_thread:
-            try:
-                logger.info(f"Checkpoints will be saved in: {self.get_save_dir()}")
-                logger.info("Starting training...")
-                self.pl_trainer.fit(
-                    self.lightning_module,
-                    self.pytorch_loader_train,
-                    self.pytorch_loader_val,
-                )
-                logger.info("Training finished")
-                logger.info(f"Checkpoints saved in: {self.get_save_dir()}")
-            finally:
-                self._upload_logs()
+            logger.info(f"Checkpoints will be saved in: {self.get_save_dir()}")
+            logger.info("Starting training...")
+            self._traner_fit(
+                self.lightning_module,
+                self.pytorch_loader_train,
+                self.pytorch_loader_val,
+            )
+            logger.info("Training finished")
+            logger.info(f"Checkpoints saved in: {self.get_save_dir()}")
 
         else:
             # Every time exception happens in the Thread, this hook will activate
             def thread_exception_hook(args):
                 self.error_message = str(args.exc_value)
-                self._upload_logs()
 
             threading.excepthook = thread_exception_hook
 
             self.thread = threading.Thread(
-                target=self.pl_trainer.fit,
+                target=self._traner_fit,
                 args=(
                     self.lightning_module,
                     self.pytorch_loader_train,
