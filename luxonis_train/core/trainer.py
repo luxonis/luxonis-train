@@ -57,6 +57,8 @@ class Trainer(Core):
     def _traner_fit(self, *args, **kwargs):
         try:
             self.pl_trainer.fit(*args, **kwargs)
+        except Exception:
+            logger.exception("Encountered exception during training.")
         finally:
             self._upload_logs()
 
