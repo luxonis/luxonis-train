@@ -8,6 +8,8 @@ from luxonis_train.utils.config import Config
 from luxonis_train.utils.registry import CALLBACKS
 from luxonis_train.utils.tracker import LuxonisTrackerPL
 
+logger = logging.getLogger(__name__)
+
 
 @CALLBACKS.register_module()
 class ExportOnTrainEnd(pl.Callback):
@@ -41,11 +43,13 @@ class ExportOnTrainEnd(pl.Callback):
         # NOTE: assume that first checkpoint callback is based on val loss
         best_model_path = model_checkpoint_callbacks[0].best_model_path
         if not best_model_path:
-            raise RuntimeError(
-                "No best model path found. "
-                "Please make sure that ModelCheckpoint callback is present "
-                "and at least one validation epoch has been performed."
+            logger.error(
+                "No model checkpoint found. "
+                "Make sure that `ModelCheckpoint` callback is present "
+                "and at least one validation epoch has been performed. "
+                "Skipping model export."
             )
+            return
         cfg: Config = pl_module.cfg
         cfg.model.weights = best_model_path
         if self.upload_to_mlflow:
@@ -54,9 +58,9 @@ class ExportOnTrainEnd(pl.Callback):
                 new_upload_url = f"mlflow://{tracker.project_id}/{tracker.run_id}"
                 cfg.exporter.upload_url = new_upload_url
             else:
-                logging.getLogger(__name__).warning(
+                logger.warning(
                     "`upload_to_mlflow` is set to True, "
-                    "but there is  no MLFlow active run, skipping."
+                    "but there is no MLFlow active run, skipping."
                 )
         exporter = Exporter(cfg=cfg)
         onnx_path = str(Path(best_model_path).parent.with_suffix(".onnx"))
