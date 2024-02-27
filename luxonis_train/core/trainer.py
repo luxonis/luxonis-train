@@ -54,7 +54,7 @@ class Trainer(Core):
                 mlflow_instance=self.tracker.experiment.get("mlflow", None),
             )
 
-    def _traner_fit(self, *args, **kwargs):
+    def _trainer_fit(self, *args, **kwargs):
         try:
             self.pl_trainer.fit(*args, **kwargs)
         except Exception:
@@ -71,7 +71,7 @@ class Trainer(Core):
         if not new_thread:
             logger.info(f"Checkpoints will be saved in: {self.get_save_dir()}")
             logger.info("Starting training...")
-            self._traner_fit(
+            self._trainer_fit(
                 self.lightning_module,
                 self.pytorch_loader_train,
                 self.pytorch_loader_val,
@@ -87,7 +87,7 @@ class Trainer(Core):
             threading.excepthook = thread_exception_hook
 
             self.thread = threading.Thread(
-                target=self._traner_fit,
+                target=self._trainer_fit,
                 args=(
                     self.lightning_module,
                     self.pytorch_loader_train,
