@@ -682,11 +682,8 @@ class LuxonisModel(pl.LightningModule):
         if path is None:
             return
 
-        try:
-            checkpoint = torch.load(path, map_location=self.device)
-        except Exception:
-            logger.error(f"Could not load checkpoint from '{path}'.")
-            return
+        checkpoint = torch.load(path, map_location=self.device)
+
         if "state_dict" not in checkpoint:
             raise ValueError("Checkpoint does not contain state_dict.")
         state_dict = {}
