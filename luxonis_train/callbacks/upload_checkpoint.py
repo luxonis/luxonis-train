@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 import lightning.pytorch as pl
@@ -46,7 +47,9 @@ class UploadCheckpoint(pl.Callback):
                     self.logger.info(
                         f"Started checkpoint upload to {self.fs.full_path}..."
                     )
-                    temp_filename = "curr_best_val_loss.ckpt"
+                    temp_filename = (
+                        Path(curr_best_checkpoint).parent.with_suffix(".ckpt").name
+                    )
                     torch.save(checkpoint, temp_filename)
                     self.fs.put_file(
                         local_path=temp_filename,
