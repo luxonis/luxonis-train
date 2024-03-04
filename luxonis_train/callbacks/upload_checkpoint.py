@@ -31,7 +31,7 @@ class UploadCheckpoint(pl.Callback):
     def on_save_checkpoint(
         self,
         trainer: pl.Trainer,
-        pl_module: pl.LightningModule,
+        _: pl.LightningModule,
         checkpoint: dict[str, Any],
     ) -> None:
         # Log only once per epoch in case there are multiple ModelCheckpoint callbacks
@@ -40,8 +40,8 @@ class UploadCheckpoint(pl.Callback):
                 c.best_model_path
                 for c in trainer.callbacks  # type: ignore
                 if isinstance(c, pl.callbacks.ModelCheckpoint)  # type: ignore
+                and c.best_model_path
             ]
-            # NOTE: assume that first checkpoint callback is based on val loss
             for curr_best_checkpoint in checkpoint_paths:
                 if curr_best_checkpoint not in self.last_best_checkpoints:
                     self.logger.info(
@@ -51,6 +51,7 @@ class UploadCheckpoint(pl.Callback):
                         Path(curr_best_checkpoint).parent.with_suffix(".ckpt").name
                     )
                     torch.save(checkpoint, temp_filename)
+
                     self.fs.put_file(
                         local_path=temp_filename,
                         remote_path=temp_filename,
