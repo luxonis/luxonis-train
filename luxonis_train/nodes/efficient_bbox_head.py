@@ -30,6 +30,7 @@ class EfficientBBoxHead(
         n_heads: Literal[2, 3, 4] = 3,
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
+        max_det: int = 300,
         **kwargs,
     ):
         """Head for object detection.
@@ -52,6 +53,8 @@ class EfficientBBoxHead(
 
         self.conf_thres = conf_thres
         self.iou_thres = iou_thres
+
+        self.max_det = max_det
 
         self.stride = self._fit_stride_to_num_heads()
         self.grid_cell_offset = 0.5
