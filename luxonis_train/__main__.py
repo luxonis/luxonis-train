@@ -200,6 +200,13 @@ def inspect(
                     exit()
 
 
+@app.command()
+def archive(config: ConfigType = None, opts: OptsType = None, executable: Path = None):
+    """Generate NN archive."""
+    from luxonis_train.core import Archiver
+
+    Archiver(str(config), opts).archive(executable)
+
 def version_callback(value: bool):
     if value:
         typer.echo(f"LuxonisTrain Version: {version(__package__)}")
