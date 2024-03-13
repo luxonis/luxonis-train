@@ -1,5 +1,5 @@
-import os
 import logging
+import os
 from pathlib import Path
 from typing import cast
 
@@ -13,7 +13,8 @@ from luxonis_train.utils.tracker import LuxonisTrackerPL
 @CALLBACKS.register_module()
 class ArchiveOnTrainEnd(pl.Callback):
     def __init__(self, upload_to_mlflow: bool = False):
-        """Callback that performs archiving of onnx or exported model at the end of training/export. TODO: description
+        """Callback that performs archiving of onnx or exported model at the end of
+        training/export. TODO: description.
 
         @type upload_to_mlflow: bool
         @param upload_to_mlflow: If set to True, overrides the upload url in Archiver
@@ -59,15 +60,13 @@ class ArchiveOnTrainEnd(pl.Callback):
                     "`upload_to_mlflow` is set to True, "
                     "but there is  no MLFlow active run, skipping."
                 )
-        
+
         onnx_path = str(Path(best_model_path).parent.with_suffix(".onnx"))
         if not os.path.exists(onnx_path):
-            raise FileNotFoundError("Model executable not found. Make sure to run exporter callback before archiver callback")
-            # TODO: if onnx model non-existent, should export be ran?
-            #from luxonis_train.core.exporter import Exporter
-            #exporter = Exporter(cfg=cfg)
-            #exporter.export(onnx_path=onnx_path)
+            raise FileNotFoundError(
+                "Model executable not found. Make sure to run exporter callback before archiver callback"
+            )
 
         archiver = Archiver(cfg=cfg)
-        
+
         archiver.archive(onnx_path)

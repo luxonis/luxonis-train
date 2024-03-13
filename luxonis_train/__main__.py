@@ -207,6 +207,7 @@ def archive(config: ConfigType = None, opts: OptsType = None, executable: Path =
 
     Archiver(str(config), opts).archive(executable)
 
+
 def version_callback(value: bool):
     if value:
         typer.echo(f"LuxonisTrain Version: {version(__package__)}")
