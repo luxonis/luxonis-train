@@ -1,17 +1,16 @@
 import os
 from logging import getLogger
 from pathlib import Path
-from typing import Any, List, Dict
+from typing import Any
+
 import onnx
-
-from luxonis_train.utils.config import Config
-from luxonis_train.models import LuxonisModel
-from luxonis_train.nodes.enums.head_categorization import ImplementedHeads
-
-from luxonis_ml.utils import LuxonisFileSystem
-
 from luxonis_ml.nn_archive.archive_generator import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
+from luxonis_ml.utils import LuxonisFileSystem
+
+from luxonis_train.models import LuxonisModel
+from luxonis_train.nodes.enums.head_categorization import ImplementedHeads
+from luxonis_train.utils.config import Config
 
 from .core import Core
 
@@ -19,7 +18,8 @@ logger = getLogger(__name__)
 
 
 class Archiver(Core):
-    """Main API which is used to construct the NN archive file out of a trainig config and model executables."""
+    """Main API which is used to construct the NN archive out of a trainig config and
+    model executables."""
 
     def __init__(
         self,
@@ -30,13 +30,9 @@ class Archiver(Core):
 
         @type cfg: str | dict[str, Any] | Config
         @param cfg: Path to config file or config dict used to setup training.
-
         @type opts: list[str] | tuple[str, ...] | dict[str, Any] | None
         @param opts: Argument dict provided through command line,
             used for config overriding.
-
-        @type executable: str
-        @param executable: Path to model executable file.
         """
 
         super().__init__(cfg, opts)
@@ -49,7 +45,7 @@ class Archiver(Core):
         )
 
         self.model_name = self.cfg.model.name
-        
+
         self.archive_name = self.cfg.archiver.archive_name
         archive_save_directory = Path(self.cfg.archiver.archive_save_directory)
         if not archive_save_directory.exists():
@@ -92,15 +88,9 @@ class Archiver(Core):
         for output_name in outputs_dict:
             self._add_output(name=output_name, dtype=outputs_dict[output_name]["dtype"])
 
-        heads_dict = self._get_heads()
+        heads_dict = self._get_heads(executable_path)
         for head_name in heads_dict:
-            outputs_list = [
-                output_name for output_name in outputs_dict if True
-            ]  # TODO: currently we list all output names. Is this correct?
-            self._add_head(
-                outputs_list=outputs_list,
-                head_metadata=heads_dict[head_name]["head_metadata"],
-            )
+            self._add_head(heads_dict[head_name])
 
         model = {
             "metadata": {
@@ -124,14 +114,10 @@ class Archiver(Core):
             executables_paths=[executable_path],  # TODO: what if more executables?
         ).make_archive()
 
-        #self.archive_path = os.path.join(
-        #    self.archive_save_directory, f"{self.archive_name}.tar.gz"
-        #)  # TODO: instead of making it manually, modify ArchiveGenerator.make_archive() to return it!
-
         if self.cfg.archiver.upload_url is not None:
             self._upload()
 
-        return self.archive_path  # TODO: is this necessary?
+        return self.archive_path
 
     def _get_inputs(self, executable_path: str):
         """Get inputs of a model executable.
@@ -182,27 +168,23 @@ class Archiver(Core):
 
         @type name: str
         @param name: Name of the input layer.
-
         @type dtype: str
         @param dtype: Data type of the input data (e.g., 'float32').
-
         @type shape: list
         @param shape: Shape of the input data as a list of integers (e.g. [H,W], [H,W,C], [BS,H,W,C], ...).
-
         @type preprocessing: dict
         @param preprocessing: Preprocessing steps applied to the input data.
-
         @type input_type: str
         @param input_type: Type of input data (e.g., 'image').
         """
 
         self.inputs.append(
             {
-                "name": name,  # name of the input layer
+                "name": name,
                 "dtype": dtype,
                 "input_type": input_type,
-                "shape": shape,  # Shape of the input data as a list of integers (e.g. [H,W], [H,W,C], [BS,H,W,C], ...).
-                "preprocessing": preprocessing,  # Preprocessing steps applied to the input data.
+                "shape": shape,
+                "preprocessing": preprocessing,
             }
         )
 
@@ -238,11 +220,10 @@ class Archiver(Core):
         return outputs_dict
 
     def _add_output(self, name: str, dtype: str) -> None:
-        """Add output to self.outputs
+        """Add output to self.outputs.
 
         @type name: str
         @param name: Name of the output layer.
-
         @type dtype: str
         @param dtype: Data type of the output data (e.g., 'float32').
         """
@@ -263,49 +244,104 @@ class Archiver(Core):
                 f"No classes found for the specified head family ({head_family})"
             )
 
-    def _get_head_specific_metadata(self, head_name, head_alias) -> dict:
-        """Get head-specific metadata.
+    def _get_head_specific_parameters(
+        self, head_name, head_alias, executable_path
+    ) -> dict:
+        """Get parameters specific to head.
 
         @type head_name: str
-        @param head_name: TODO: ...
+        @param head_name: Name of the head (e.g. 'EfficientBBoxHead').
         @type head_alias: str
-        @param head_alias: TODO: ...
+        @param head_alias: Alias of the head (e.g. 'detection_head').
+        @type executable_path: str
+        @param executable_path: Path to model executable file.
         """
 
-        head_specific_metadata = {}
+        parameters = {}
         if head_name == "ClassificationHead":
-            # TODO
-            # is_softmax: bool
-            raise NotImplementedError
+            parameters["is_softmax"] = self._is_softmax(executable_path)  # TODO: test
         elif head_name == "EfficientBBoxHead":
-            head_specific_metadata["subtype"] = "yolov6"
+            parameters["subtype"] = "yolov6"
             head_node = self.lightning_module._modules["nodes"][head_alias]
-            head_specific_metadata["iou_threshold"] = head_node.iou_thres
-            head_specific_metadata["conf_threshold"] = head_node.conf_thres
-            head_specific_metadata["max_det"] = head_node.max_det
-            # head_specific_metadata["n_keypoints"] # TODO
-            # head_specific_metadata["n_prototypes"] # TODO
-            # head_specific_metadata["prototype_output_name"] # TODO
+            parameters["iou_threshold"] = head_node.iou_thres
+            parameters["conf_threshold"] = head_node.conf_thres
+            parameters["max_det"] = head_node.max_det
+            # head_outputs["n_keypoints"] # TODO: implement
+            # head_outputs["n_prototypes"] # TODO: implement
+            # head_outputs["prototype_output_name"] # TODO: implement
         elif head_name == "ObjectDetectionSSD":
-            # TODO:
-            # anchors: list
             raise NotImplementedError
+            # head_outputs["anchors"] # TODO: implement
         elif head_name == "SegmentationHead":
-            # TODO:
-            # is_softmax: bool
-            raise NotImplementedError
+            parameters["is_softmax"] = self._is_softmax(executable_path)  # TODO: test
         elif head_name == "BiSeNetHead":
-            # TODO:
-            # is_softmax: bool
+            parameters["is_softmax"] = self._is_softmax(executable_path)  # TODO: test
+        elif head_name == "ImplicitKeypointBBoxHead":
+            raise NotImplementedError
+        else:
+            raise ValueError("Unknown head name")
+        return parameters
+
+    def _is_softmax(self, executable_path) -> bool:
+        """Check if model output is softmaxed.
+
+        @type executable_path: str
+        @param executable_path: Path to model executable file.
+        """
+
+        _, executable_suffix = os.path.splitext(executable_path)
+        if executable_suffix == ".onnx":
+            return self._is_softmax_onnx(executable_path)
+        else:
+            raise NotImplementedError(
+                f"Missing softmax checking function for {executable_suffix} models."
+            )
+
+    def _is_softmax_onnx(self, executable_path) -> bool:
+        """Check if ONNX model output is softmaxed.
+
+        @type executable_path: str
+        @param executable_path: Path to model executable file.
+        """
+
+        model = onnx.load(executable_path)
+        for node in model.graph.node:
+            if node.op_type.lower() == "softmax":
+                return True
+        return False
+
+    def _get_head_outputs(self, head_name) -> dict:
+        """Get model outputs in a head-specific format.
+
+        @type head_name: str
+        @param head_name: Name of the head (e.g. 'EfficientBBoxHead').
+        """
+
+        head_outputs = {}
+        if head_name == "ClassificationHead":
+            head_outputs["predictions"] = self.outputs[0]["name"]  # TODO: test
+        elif head_name == "EfficientBBoxHead":
+            head_outputs["yolo_outputs"] = [
+                output_dict["name"] for output_dict in self.outputs
+            ]  # TODO: test
+        elif head_name == "ObjectDetectionSSD":
+            raise NotImplementedError  # TODO: boxes, scores
+        elif head_name == "SegmentationHead":
+            raise NotImplementedError  # TODO: predictions
+        elif head_name == "BiSeNetHead":
             raise NotImplementedError
         elif head_name == "ImplicitKeypointBBoxHead":
             raise NotImplementedError
         else:
             raise ValueError("Unknown head name")
-        return head_specific_metadata
+        return head_outputs
 
-    def _get_heads(self):
-        """Get model heads."""
+    def _get_heads(self, executable_path):
+        """Get model heads.
+
+        @type executable_path: str
+        @param executable_path: Path to model executable file.
+        """
         heads_dict = {}
 
         for node in self.cfg.model.nodes:
@@ -316,38 +352,33 @@ class Archiver(Core):
                 if node_name in ImplementedHeads.__members__:
                     head_family = getattr(ImplementedHeads, node_name).value
                     classes = self._get_classes(head_family)
-                    head_metadata = {
+                    head_outputs = self._get_head_outputs(node_name)
+                    head_dict = {
                         "family": head_family,
+                        "outputs": head_outputs,
                         "classes": classes,
                         "n_classes": len(classes),
                     }
-                    head_metadata.update(
-                        self._get_head_specific_metadata(node_name, node_alias)
+                    head_dict.update(
+                        self._get_head_specific_parameters(
+                            node_name, node_alias, executable_path
+                        )
                     )
-                    heads_dict[node_name] = {"head_metadata": head_metadata}
+                    heads_dict[node_name] = head_dict
         return heads_dict
 
-    def _add_head(self, head_metadata: dict, outputs_list: list) -> str:
+    def _add_head(self, head_metadata: dict) -> str:
         """Add head to self.heads.
 
-        @type outputs: list
-        @param outputs: A list of output names.
         @type metadata: dict
         @param metadata: Parameters required by head to run postprocessing.
         """
 
-        self.heads.append(
-            {
-                "outputs": outputs_list,
-                "metadata": head_metadata,
-            }
-        )
+        self.heads.append(head_metadata)
 
     def _upload(self):
         """Uploads the archive file to specified s3 bucket.
 
-        @type archive_path: str
-        @param archive_path: Path to archive file.
         @raises ValueError: If upload url was not specified in config file.
         """
 
@@ -357,7 +388,7 @@ class Archiver(Core):
         fs = LuxonisFileSystem(self.cfg.archiver.upload_url, allow_local=False)
         logger.info(f"Started Archive upload to {fs.full_path}...")
 
-        fs.put_file(  # transfer the data from the temporary file to a remote file system
+        fs.put_file(
             local_path=self.archive_path,
             remote_path=self.archive_name,
         )
