@@ -142,6 +142,12 @@ class DatasetConfig(CustomBaseModel):
     val_view: str = "val"
     test_view: str = "test"
 
+    use_ldf: bool = True
+    custom_dataset_params: dict[str, Any] = {}
+    custom_train_loader: str | None = None
+    custom_val_loader: str | None = None
+    custom_test_loader: str | None = None
+
     @field_serializer("bucket_storage", "bucket_type")
     def get_enum_value(self, v: Enum, _) -> str:
         return str(v.value)

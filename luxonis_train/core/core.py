@@ -14,7 +14,8 @@ from luxonis_ml.utils import reset_logging, setup_logging
 from luxonis_train.callbacks import LuxonisProgressBar
 from luxonis_train.utils.config import Config
 from luxonis_train.utils.general import DatasetMetadata
-from luxonis_train.utils.loaders import LuxonisLoaderTorch, collate_fn
+from luxonis_train.utils.loaders import LuxonisLoaderTorch
+from luxonis_train.utils.registry import LOADERS
 from luxonis_train.utils.tracker import LuxonisTrackerPL
 
 logger = getLogger(__name__)
@@ -123,41 +124,60 @@ class Core:
             # should be configurable inside configure_callbacks(),
             callbacks=LuxonisProgressBar() if self.cfg.use_rich_text else None,
         )
-        self.dataset = LuxonisDataset(
-            dataset_name=self.cfg.dataset.name,
-            team_id=self.cfg.dataset.team_id,
-            dataset_id=self.cfg.dataset.id,
-            bucket_type=self.cfg.dataset.bucket_type,
-            bucket_storage=self.cfg.dataset.bucket_storage,
-        )
+        if self.cfg.dataset.use_ldf:
+            self.dataset = LuxonisDataset(
+                dataset_name=self.cfg.dataset.name,
+                team_id=self.cfg.dataset.team_id,
+                dataset_id=self.cfg.dataset.id,
+                bucket_type=self.cfg.dataset.bucket_type,
+                bucket_storage=self.cfg.dataset.bucket_storage,
+            )
 
-        self.loader_train = LuxonisLoaderTorch(
-            self.dataset,
-            view=self.cfg.dataset.train_view,
-            augmentations=self.train_augmentations,
-        )
-        self.loader_val = LuxonisLoaderTorch(
-            self.dataset,
-            view=self.cfg.dataset.val_view,
-            augmentations=self.val_augmentations,
-        )
-        self.loader_test = LuxonisLoaderTorch(
-            self.dataset,
-            view=self.cfg.dataset.test_view,
-            augmentations=self.val_augmentations,
-        )
+        if self.cfg.dataset.custom_train_loader:
+            self.loader_train = LOADERS.get(self.cfg.dataset.custom_train_loader)(
+                view=self.cfg.dataset.train_view,
+                augmentations=self.train_augmentations,
+            )
+        else:
+            self.loader_train = LuxonisLoaderTorch(
+                self.dataset,
+                view=self.cfg.dataset.train_view,
+                augmentations=self.train_augmentations,
+            )
+        if self.cfg.dataset.custom_val_loader:
+            self.loader_val = LOADERS.get(self.cfg.dataset.custom_val_loader)(
+                view=self.cfg.dataset.val_view,
+                augmentations=self.val_augmentations,
+            )
+        else:
+            self.loader_val = LuxonisLoaderTorch(
+                self.dataset,
+                view=self.cfg.dataset.val_view,
+                augmentations=self.val_augmentations,
+            )
+        if self.cfg.dataset.custom_test_loader:
+            self.loader_test = LOADERS.get(self.cfg.dataset.custom_test_loader)(
+                view=self.cfg.dataset.test_view,
+                augmentations=self.val_augmentations,
+            )
+        else:
+            self.loader_test = LuxonisLoaderTorch(
+                self.dataset,
+                view=self.cfg.dataset.test_view,
+                augmentations=self.val_augmentations,
+            )
 
         self.pytorch_loader_val = torch.utils.data.DataLoader(
             self.loader_val,
             batch_size=self.cfg.trainer.batch_size,
             num_workers=self.cfg.trainer.num_workers,
-            collate_fn=collate_fn,
+            collate_fn=self.loader_val.collate_fn,
         )
         self.pytorch_loader_test = torch.utils.data.DataLoader(
             self.loader_test,
             batch_size=self.cfg.trainer.batch_size,
             num_workers=self.cfg.trainer.num_workers,
-            collate_fn=collate_fn,
+            collate_fn=self.loader_test.collate_fn,
         )
         sampler = None
         if self.cfg.trainer.use_weighted_sampler:
@@ -176,13 +196,16 @@ class Core:
             shuffle=True,
             batch_size=self.cfg.trainer.batch_size,
             num_workers=self.cfg.trainer.num_workers,
-            collate_fn=collate_fn,
+            collate_fn=self.loader_train.collate_fn,
             drop_last=self.cfg.trainer.skip_last_batch,
             sampler=sampler,
         )
         self.error_message = None
 
-        self.dataset_metadata = DatasetMetadata.from_dataset(self.dataset)
+        if self.cfg.dataset.use_ldf:
+            self.dataset_metadata = DatasetMetadata.from_dataset(self.dataset)
+        else:
+            self.dataset_metadata = self.loader_train.dataset_metadata
         self.dataset_metadata.set_loader(self.pytorch_loader_train)
 
         self.cfg.save_data(os.path.join(self.run_save_dir, "config.yaml"))

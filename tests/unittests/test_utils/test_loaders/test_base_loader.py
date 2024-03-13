@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from luxonis_train.utils.loaders import (
-    collate_fn,
+    LuxonisLoaderTorch,
 )
 from luxonis_train.utils.types import LabelType
 
@@ -21,7 +21,7 @@ def test_collate_fn():
     ]
 
     # Call collate_fn
-    imgs, annotations = collate_fn(batch)
+    imgs, annotations = LuxonisLoaderTorch.collate_fn(batch)
 
     # Check images tensor
     assert imgs.shape == (2, 3, 224, 224)

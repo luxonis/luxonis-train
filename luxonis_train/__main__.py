@@ -8,6 +8,8 @@ import cv2
 import torch
 import typer
 
+from luxonis_train.utils.registry import LOADERS
+
 app = typer.Typer(help="Luxonis Train CLI", add_completion=False)
 
 
@@ -110,7 +112,7 @@ def inspect(
         get_unnormalized_images,
     )
     from luxonis_train.utils.config import Config
-    from luxonis_train.utils.loaders import LuxonisLoaderTorch, collate_fn
+    from luxonis_train.utils.loaders import LuxonisLoaderTorch
     from luxonis_train.utils.types import LabelType
 
     overrides = {}
@@ -123,7 +125,8 @@ def inspect(
 
     cfg = Config.get_config(str(config), overrides)
 
-    image_size = cfg.trainer.preprocessing.train_image_size
+    if cfg.dataset.use_ldf:
+        image_size = cfg.trainer.preprocessing.train_image_size
 
     dataset = LuxonisDataset(
         dataset_name=cfg.dataset.name,
@@ -152,17 +155,22 @@ def inspect(
         )
     )
 
-    loader_train = LuxonisLoaderTorch(
-        dataset,
-        view=view,
-        augmentations=augmentations,
-    )
+    if cfg.dataset.custom_train_loader:
+        loader_train = LOADERS.get(cfg.dataset.custom_train_loader)(
+            view=view, augmentations=augmentations
+        )
+    else:
+        loader_train = LuxonisLoaderTorch(
+            dataset,
+            view=view,
+            augmentations=augmentations,
+        )
 
     pytorch_loader_train = torch.utils.data.DataLoader(
         loader_train,
         batch_size=4,
         num_workers=1,
-        collate_fn=collate_fn,
+        collate_fn=loader_train.collate_fn,
     )
 
     if save_dir is not None:
