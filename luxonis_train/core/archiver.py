@@ -266,13 +266,10 @@ class Archiver(Core):
             parameters["iou_threshold"] = head_node.iou_thres
             parameters["conf_threshold"] = head_node.conf_thres
             parameters["max_det"] = head_node.max_det
-            # head_outputs["n_keypoints"] # TODO: implement
-            # head_outputs["n_prototypes"] # TODO: implement
-            # head_outputs["prototype_output_name"] # TODO: implement
         elif head_name in ["SegmentationHead", "BiSeNetHead"]:
             parameters["is_softmax"] = self._is_softmax(executable_path)
         elif head_name == "ImplicitKeypointBBoxHead":
-            pass
+            parameters["n_keypoints"] = self.dataset_metadata._n_keypoints
         else:
             raise ValueError("Unknown head name")
         return parameters
