@@ -277,7 +277,7 @@ class Archiver(Core):
         elif head_name == "BiSeNetHead":
             parameters["is_softmax"] = self._is_softmax(executable_path)  # TODO: test
         elif head_name == "ImplicitKeypointBBoxHead":
-            raise NotImplementedError
+            pass
         else:
             raise ValueError("Unknown head name")
         return parameters
@@ -331,7 +331,7 @@ class Archiver(Core):
         elif head_name == "BiSeNetHead":
             raise NotImplementedError
         elif head_name == "ImplicitKeypointBBoxHead":
-            raise NotImplementedError
+            head_outputs["predictions"] = self.outputs[0]["name"]  # TODO: test
         else:
             raise ValueError("Unknown head name")
         return head_outputs
