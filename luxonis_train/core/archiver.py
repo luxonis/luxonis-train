@@ -259,7 +259,7 @@ class Archiver(Core):
 
         parameters = {}
         if head_name == "ClassificationHead":
-            parameters["is_softmax"] = self._is_softmax(executable_path)  # TODO: test
+            parameters["is_softmax"] = self._is_softmax(executable_path)
         elif head_name == "EfficientBBoxHead":
             parameters["subtype"] = "yolov6"
             head_node = self.lightning_module._modules["nodes"][head_alias]
@@ -269,10 +269,8 @@ class Archiver(Core):
             # head_outputs["n_keypoints"] # TODO: implement
             # head_outputs["n_prototypes"] # TODO: implement
             # head_outputs["prototype_output_name"] # TODO: implement
-        elif head_name == "SegmentationHead":
-            parameters["is_softmax"] = self._is_softmax(executable_path)  # TODO: test
-        elif head_name == "BiSeNetHead":
-            parameters["is_softmax"] = self._is_softmax(executable_path)  # TODO: test
+        elif head_name in ["SegmentationHead", "BiSeNetHead"]:
+            parameters["is_softmax"] = self._is_softmax(executable_path)
         elif head_name == "ImplicitKeypointBBoxHead":
             pass
         else:
@@ -316,17 +314,13 @@ class Archiver(Core):
 
         head_outputs = {}
         if head_name == "ClassificationHead":
-            head_outputs["predictions"] = self.outputs[0]["name"]  # TODO: test
+            head_outputs["predictions"] = self.outputs[0]["name"]
         elif head_name == "EfficientBBoxHead":
-            head_outputs["yolo_outputs"] = [
-                output_dict["name"] for output_dict in self.outputs
-            ]  # TODO: test
-        elif head_name == "SegmentationHead":
-            raise NotImplementedError  # TODO: predictions
-        elif head_name == "BiSeNetHead":
-            raise NotImplementedError
+            head_outputs["yolo_outputs"] = [output["name"] for output in self.outputs]
+        elif head_name in ["SegmentationHead", "BiSeNetHead"]:
+            head_outputs["predictions"] = self.outputs[0]["name"]
         elif head_name == "ImplicitKeypointBBoxHead":
-            head_outputs["predictions"] = self.outputs[0]["name"]  # TODO: test
+            head_outputs["predictions"] = self.outputs[0]["name"]
         else:
             raise ValueError("Unknown head name")
         return head_outputs
