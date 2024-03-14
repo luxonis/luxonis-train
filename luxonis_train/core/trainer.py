@@ -43,8 +43,14 @@ class Trainer(Core):
     def _upload_logs(self) -> None:
         if self.cfg.tracker.is_mlflow:
             logger.info("Uploading logs to MLFlow.")
+            if self.cfg.tracker.project_id and self.cfg.tracker.run_id:
+                mlflow_url = (
+                    f"mlflow://{self.cfg.tracker.project_id}/{self.cfg.tracker.run_id}"
+                )
+            else:
+                mlflow_url = "mlflow://"
             fs = LuxonisFileSystem(
-                "mlflow://",
+                mlflow_url,
                 allow_active_mlflow_run=True,
                 allow_local=False,
             )
