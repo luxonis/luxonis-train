@@ -269,9 +269,6 @@ class Archiver(Core):
             # head_outputs["n_keypoints"] # TODO: implement
             # head_outputs["n_prototypes"] # TODO: implement
             # head_outputs["prototype_output_name"] # TODO: implement
-        elif head_name == "ObjectDetectionSSD":
-            raise NotImplementedError
-            # head_outputs["anchors"] # TODO: implement
         elif head_name == "SegmentationHead":
             parameters["is_softmax"] = self._is_softmax(executable_path)  # TODO: test
         elif head_name == "BiSeNetHead":
@@ -324,8 +321,6 @@ class Archiver(Core):
             head_outputs["yolo_outputs"] = [
                 output_dict["name"] for output_dict in self.outputs
             ]  # TODO: test
-        elif head_name == "ObjectDetectionSSD":
-            raise NotImplementedError  # TODO: boxes, scores
         elif head_name == "SegmentationHead":
             raise NotImplementedError  # TODO: predictions
         elif head_name == "BiSeNetHead":
