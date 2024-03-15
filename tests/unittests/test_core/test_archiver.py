@@ -4,6 +4,7 @@ import os
 import random
 import shutil
 import tarfile
+import time
 
 import cv2
 import lightning.pytorch as pl
@@ -112,6 +113,7 @@ class TestArchiver:
     def teardown_class(cls):
         """Remove all created files."""
         LuxonisDataset(cls.ldf_name).delete_dataset()
+        time.sleep(1)  # wait for all files to be released by other processes
         shutil.rmtree(cls.tmp_path)
 
     def test_archive_creation(self):
