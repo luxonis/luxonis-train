@@ -6,6 +6,7 @@ from typing import Any
 import onnx
 from luxonis_ml.nn_archive.archive_generator import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
+from luxonis_ml.nn_archive.config_building_blocks import ObjectDetectionSubtypeYOLO
 from luxonis_ml.utils import LuxonisFileSystem
 
 from luxonis_train.models import LuxonisModel
@@ -261,7 +262,7 @@ class Archiver(Core):
         if head_name == "ClassificationHead":
             parameters["is_softmax"] = self._is_softmax(executable_path)
         elif head_name == "EfficientBBoxHead":
-            parameters["subtype"] = "yolov6"
+            parameters["subtype"] = ObjectDetectionSubtypeYOLO.YOLOv6.value
             head_node = self.lightning_module._modules["nodes"][head_alias]
             parameters["iou_threshold"] = head_node.iou_thres
             parameters["conf_threshold"] = head_node.conf_thres
@@ -269,7 +270,14 @@ class Archiver(Core):
         elif head_name in ["SegmentationHead", "BiSeNetHead"]:
             parameters["is_softmax"] = self._is_softmax(executable_path)
         elif head_name == "ImplicitKeypointBBoxHead":
-            parameters["n_keypoints"] = self.dataset_metadata._n_keypoints
+            parameters["subtype"] = ObjectDetectionSubtypeYOLO.YOLOv7.value
+            head_node = self.lightning_module._modules["nodes"][head_alias]
+            parameters["iou_threshold"] = head_node.iou_thres
+            parameters["conf_threshold"] = head_node.conf_thres
+            parameters["max_det"] = head_node.max_det
+            parameters["n_keypoints"] = head_node.n_keypoints
+            parameters["anchors"] = head_node.anchors.tolist()
+
         else:
             raise ValueError("Unknown head name")
         return parameters
