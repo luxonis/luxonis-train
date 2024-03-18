@@ -10,7 +10,10 @@ from luxonis_ml.nn_archive.config_building_blocks import ObjectDetectionSubtypeY
 from luxonis_ml.utils import LuxonisFileSystem
 
 from luxonis_train.models import LuxonisModel
-from luxonis_train.nodes.enums.head_categorization import ImplementedHeads
+from luxonis_train.nodes.enums.head_categorization import (
+    ImplementedHeads,
+    ImplementedHeadsIsSoxtmaxed,
+)
 from luxonis_train.utils.config import Config
 
 from .core import Core
@@ -262,7 +265,9 @@ class Archiver(Core):
 
         parameters = {}
         if head_name == "ClassificationHead":
-            parameters["is_softmax"] = self._is_softmax(executable_path)
+            parameters["is_softmax"] = getattr(
+                ImplementedHeadsIsSoxtmaxed, head_name
+            ).value
         elif head_name == "EfficientBBoxHead":
             parameters["subtype"] = ObjectDetectionSubtypeYOLO.YOLOv6.value
             head_node = self.lightning_module._modules["nodes"][head_alias]
@@ -270,7 +275,9 @@ class Archiver(Core):
             parameters["conf_threshold"] = head_node.conf_thres
             parameters["max_det"] = head_node.max_det
         elif head_name in ["SegmentationHead", "BiSeNetHead"]:
-            parameters["is_softmax"] = self._is_softmax(executable_path)
+            parameters["is_softmax"] = getattr(
+                ImplementedHeadsIsSoxtmaxed, head_name
+            ).value
         elif head_name == "ImplicitKeypointBBoxHead":
             parameters["subtype"] = ObjectDetectionSubtypeYOLO.YOLOv7.value
             head_node = self.lightning_module._modules["nodes"][head_alias]
@@ -283,34 +290,6 @@ class Archiver(Core):
         else:
             raise ValueError("Unknown head name")
         return parameters
-
-    def _is_softmax(self, executable_path) -> bool:
-        """Check if model output is softmaxed.
-
-        @type executable_path: str
-        @param executable_path: Path to model executable file.
-        """
-
-        _, executable_suffix = os.path.splitext(executable_path)
-        if executable_suffix == ".onnx":
-            return self._is_softmax_onnx(executable_path)
-        else:
-            raise NotImplementedError(
-                f"Missing softmax checking function for {executable_suffix} models."
-            )
-
-    def _is_softmax_onnx(self, executable_path) -> bool:
-        """Check if ONNX model output is softmaxed.
-
-        @type executable_path: str
-        @param executable_path: Path to model executable file.
-        """
-
-        model = onnx.load(executable_path)
-        for node in model.graph.node:
-            if node.op_type.lower() == "softmax":
-                return True
-        return False
 
     def _get_head_outputs(self, head_name) -> dict:
         """Get model outputs in a head-specific format.
