@@ -4,7 +4,6 @@ import os
 import random
 import shutil
 import tarfile
-import time
 
 import cv2
 import lightning.pytorch as pl
@@ -86,16 +85,20 @@ class TestArchiver:
         ]
         model_checkpoint_path = callbacks[0].best_model_path
         model_ckpt = os.path.join(trainer.run_save_dir, model_checkpoint_path)
+        trainer.reset_logging()
 
         # export model to ONNX
         cfg.model.weights = model_ckpt
         exporter = Exporter(cfg=cfg)
         cls.onnx_model_path = os.path.join(cls.tmp_path, "model.onnx")
         exporter.export(onnx_path=cls.onnx_model_path)
+        exporter.reset_logging()
 
         # make archive
         cfg.archiver.archive_save_directory = cls.tmp_path
-        cls.archive_path = Archiver(cls.config_path).archive(cls.onnx_model_path)
+        archiver = Archiver(cls.config_path)
+        cls.archive_path = archiver.archive(cls.onnx_model_path)
+        archiver.reset_logging()
 
         # load archive files into memory
         with tarfile.open(cls.archive_path, mode="r") as tar:
@@ -113,7 +116,6 @@ class TestArchiver:
     def teardown_class(cls):
         """Remove all created files."""
         LuxonisDataset(cls.ldf_name).delete_dataset()
-        time.sleep(1)  # wait for all files to be released by other processes
         shutil.rmtree(cls.tmp_path)
 
     def test_archive_creation(self):
