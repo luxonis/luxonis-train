@@ -115,6 +115,8 @@ class Archiver(Core):
             executables_paths=[executable_path],  # TODO: what if more executables?
         ).make_archive()
 
+        logger.info(f"archive saved to {self.archive_path}")
+
         if self.cfg.archiver.upload_url is not None:
             self._upload()
 
