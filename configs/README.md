@@ -144,6 +144,7 @@ Here you can change everything related to actual training of the model.
 
 | Key                     | Type                                    | Default value | Description                                                                                                                                      |
 | ----------------------- | --------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| seed                    | int                                     | None          | seed for reproducibility                                                                                                                         |
 | batch_size              | int                                     | 32            | batch size used for training                                                                                                                     |
 | accumulate_grad_batches | int                                     | 1             | number of batches for gradient accumulation                                                                                                      |
 | use_weighted_sampler    | bool                                    | False         | bool if use WeightedRandomSampler for training, only works with classification tasks                                                             |

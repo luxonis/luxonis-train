@@ -106,6 +106,7 @@ trainer:
   devices: auto
   strategy: auto
 
+  seed: 123
   num_sanity_val_steps: 1
   profiler: null
   verbose: True
