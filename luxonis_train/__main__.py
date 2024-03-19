@@ -201,7 +201,13 @@ def inspect(
 
 
 @app.command()
-def archive(config: ConfigType = None, opts: OptsType = None, executable: Path = None):
+def archive(
+    executable: Annotated[
+        Optional[Path], typer.Option(help="Path to the model file.", show_default=False)
+    ],
+    config: ConfigType = None,
+    opts: OptsType = None,
+):
     """Generate NN archive."""
     from luxonis_train.core import Archiver
 
