@@ -200,6 +200,20 @@ def inspect(
                     exit()
 
 
+@app.command()
+def archive(
+    executable: Annotated[
+        Optional[Path], typer.Option(help="Path to the model file.", show_default=False)
+    ],
+    config: ConfigType = None,
+    opts: OptsType = None,
+):
+    """Generate NN archive."""
+    from luxonis_train.core import Archiver
+
+    Archiver(str(config), opts).archive(executable)
+
+
 def version_callback(value: bool):
     if value:
         typer.echo(f"LuxonisTrain Version: {version(__package__)}")
