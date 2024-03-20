@@ -269,6 +269,12 @@ class ExportConfig(CustomBaseModel):
         return self
 
 
+class ArchiveConfig(BaseModel):
+    archive_name: str = "nn_archive"
+    archive_save_directory: str = "output_archive"
+    upload_url: str | None = None
+
+
 class StorageConfig(CustomBaseModel):
     active: bool = True
     storage_type: Literal["local", "remote"] = "local"
@@ -292,6 +298,7 @@ class Config(LuxonisConfig):
     tracker: TrackerConfig = TrackerConfig()
     trainer: TrainerConfig = TrainerConfig()
     exporter: ExportConfig = ExportConfig()
+    archiver: ArchiveConfig = ArchiveConfig()
     tuner: TunerConfig | None = None
     ENVIRON: Environ = Field(Environ(), exclude=True)
 

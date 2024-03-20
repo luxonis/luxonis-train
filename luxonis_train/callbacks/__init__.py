@@ -8,6 +8,7 @@ from lightning.pytorch.callbacks import (
 
 from luxonis_train.utils.registry import CALLBACKS
 
+from .archive_on_train_end import ArchiveOnTrainEnd
 from .export_on_train_end import ExportOnTrainEnd
 from .luxonis_progress_bar import LuxonisProgressBar
 from .metadata_logger import MetadataLogger
@@ -23,6 +24,7 @@ CALLBACKS.register_module(module=DeviceStatsMonitor)
 
 
 __all__ = [
+    "ArchiveOnTrainEnd",
     "ExportOnTrainEnd",
     "LuxonisProgressBar",
     "MetadataLogger",

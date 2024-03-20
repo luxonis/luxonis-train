@@ -234,3 +234,7 @@ class Core:
         @return: Path to best checkpoint with respect to best validation metric
         """
         return self.pl_trainer.checkpoint_callbacks[1].best_model_path  # type: ignore
+
+    def reset_logging(self) -> None:
+        """Close file handlers to release the log file."""
+        reset_logging()
