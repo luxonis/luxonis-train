@@ -45,11 +45,15 @@ SaveDirType = Annotated[
 
 
 @app.command()
-def train(config: ConfigType = None, opts: OptsType = None):
+def train(
+    config: ConfigType = None,
+    resume: Annotated[bool, typer.Option(help="Resume training.")] = False,
+    opts: OptsType = None,
+):
     """Start training."""
     from luxonis_train.core import Trainer
 
-    Trainer(str(config), opts).train()
+    Trainer(str(config), opts, resume=resume).train()
 
 
 @app.command()

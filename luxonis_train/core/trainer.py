@@ -1,3 +1,5 @@
+import os.path as osp
+import signal
 import threading
 from logging import getLogger
 from typing import Any, Literal
@@ -21,6 +23,7 @@ class Trainer(Core):
         self,
         cfg: str | dict[str, Any] | Config,
         opts: list[str] | tuple[str, ...] | dict[str, Any] | None = None,
+        resume: bool = False,
     ):
         """Constructs a new Trainer instance.
 
@@ -30,15 +33,45 @@ class Trainer(Core):
         @type opts: list[str] | tuple[str, ...] | dict[str, Any] | None
         @param opts: Argument dict provided through command line,
             used for config overriding.
+
+        @type resume: bool
+        @param resume: If set to C{True}, training will resume from the last checkpoint.
         """
         super().__init__(cfg, opts)
 
+        self.weights = self.cfg.model.weights
+        if resume and self.weights is None:
+            logger.warning("No weights specified in config file for resume.")
+        self.resume = resume and self.weights is not None
         self.lightning_module = LuxonisModel(
             cfg=self.cfg,
             dataset_metadata=self.dataset_metadata,
             save_dir=self.run_save_dir,
             input_shape=self.loader_train.input_shape,
         )
+
+        def graceful_exit(signum, frame):
+            logger.info("SIGTERM received, stopping training...")
+            ckpt_path = osp.join(self.run_save_dir, "resume.ckpt")
+            self.pl_trainer.save_checkpoint(ckpt_path)
+            self._upload_logs()
+
+            if self.cfg.tracker.is_mlflow:
+                logger.info("Uploading checkpoint to MLFlow.")
+                fs = LuxonisFileSystem(
+                    "mlflow://",
+                    allow_active_mlflow_run=True,
+                    allow_local=False,
+                )
+                fs.put_file(
+                    local_path=ckpt_path,
+                    remote_path="resume.ckpt",
+                    mlflow_instance=self.tracker.experiment.get("mlflow", None),
+                )
+
+            exit(0)
+
+        signal.signal(signal.SIGTERM, graceful_exit)
 
     def _upload_logs(self) -> None:
         if self.cfg.tracker.is_mlflow:
@@ -56,7 +89,8 @@ class Trainer(Core):
 
     def _trainer_fit(self, *args, **kwargs):
         try:
-            self.pl_trainer.fit(*args, **kwargs)
+            ckpt = self.weights if self.resume else None
+            self.pl_trainer.fit(*args, ckpt_path=ckpt, **kwargs)
         except Exception:
             logger.exception("Encountered exception during training.")
         finally:
