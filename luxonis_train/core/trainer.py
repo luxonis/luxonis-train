@@ -23,7 +23,7 @@ class Trainer(Core):
         self,
         cfg: str | dict[str, Any] | Config,
         opts: list[str] | tuple[str, ...] | dict[str, Any] | None = None,
-        resume: bool = False,
+        resume: str | None = None,
     ):
         """Constructs a new Trainer instance.
 
@@ -34,15 +34,16 @@ class Trainer(Core):
         @param opts: Argument dict provided through command line,
             used for config overriding.
 
-        @type resume: bool
-        @param resume: If set to C{True}, training will resume from the last checkpoint.
+        @type resume: str | None
+        @param resume: Training will resume from this checkpoint.
         """
         super().__init__(cfg, opts)
 
-        self.weights = self.cfg.model.weights
-        if resume and self.weights is None:
-            logger.warning("No weights specified in config file for resume.")
-        self.resume = resume and self.weights is not None
+        if resume is not None:
+            self.resume = str(LuxonisFileSystem.download(resume, self.run_save_dir))
+        else:
+            self.resume = None
+
         self.lightning_module = LuxonisModel(
             cfg=self.cfg,
             dataset_metadata=self.dataset_metadata,
@@ -89,8 +90,7 @@ class Trainer(Core):
 
     def _trainer_fit(self, *args, **kwargs):
         try:
-            ckpt = self.weights if self.resume else None
-            self.pl_trainer.fit(*args, ckpt_path=ckpt, **kwargs)
+            self.pl_trainer.fit(*args, ckpt_path=self.resume, **kwargs)
         except Exception:
             logger.exception("Encountered exception during training.")
         finally:

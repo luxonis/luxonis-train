@@ -47,7 +47,9 @@ SaveDirType = Annotated[
 @app.command()
 def train(
     config: ConfigType = None,
-    resume: Annotated[bool, typer.Option(help="Resume training.")] = False,
+    resume: Annotated[
+        Optional[str], typer.Option(help="Resume training from this checkpoint.")
+    ] = None,
     opts: OptsType = None,
 ):
     """Start training."""
