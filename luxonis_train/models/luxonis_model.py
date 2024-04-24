@@ -262,7 +262,7 @@ class LuxonisModel(pl.LightningModule):
 
         @type inputs: L{Tensor}
         @param inputs: Input tensor.
-        @type task_labels: L{Labels} | None
+        @type task_labels: L{TaskLabels} | None
         @param task_labels: Labels dictionary. Defaults to C{None}.
         @type images: L{Tensor} | None
         @param images: Canvas tensor for visualizers. Defaults to C{None}.
