@@ -120,7 +120,7 @@ def create_coco_dataset():
             }
         }
     )
-    dataset.add(COCO_people_subset_generator)  # type: ignore
+    dataset.add(COCO_people_subset_generator())
     dataset.make_splits()
 
 
@@ -161,5 +161,5 @@ def create_cifar10_dataset():
 
     dataset.set_classes(classes)
 
-    dataset.add(CIFAR10_subset_generator)  # type: ignore
+    dataset.add(CIFAR10_subset_generator())
     dataset.make_splits()

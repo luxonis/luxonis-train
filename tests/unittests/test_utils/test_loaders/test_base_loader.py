@@ -12,11 +12,11 @@ def test_collate_fn():
     batch = [
         (
             torch.rand(3, 224, 224, dtype=torch.float32),
-            {LabelType.CLASSIFICATION: torch.tensor([1, 0])},
+            {"default": {LabelType.CLASSIFICATION: torch.tensor([1, 0])}},
         ),
         (
             torch.rand(3, 224, 224, dtype=torch.float32),
-            {LabelType.CLASSIFICATION: torch.tensor([0, 1])},
+            {"default": {LabelType.CLASSIFICATION: torch.tensor([0, 1])}},
         ),
     ]
 
@@ -28,6 +28,8 @@ def test_collate_fn():
     assert imgs.dtype == torch.float32
 
     # Check annotations
+    assert "default" in annotations
+    annotations = annotations["default"]
     assert LabelType.CLASSIFICATION in annotations
     assert annotations[LabelType.CLASSIFICATION].shape == (2, 2)
     assert annotations[LabelType.CLASSIFICATION].dtype == torch.int64

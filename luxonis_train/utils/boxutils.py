@@ -404,6 +404,7 @@ def anchors_from_dataset(
     n_anchors: int = 9,
     n_generations: int = 1000,
     ratio_threshold: float = 4.0,
+    task_group: str = "default",
 ) -> tuple[Tensor, float]:
     """Generates anchors based on bounding box annotations present in provided data
     loader. It uses K-Means for initial proposals which are then refined with genetic
@@ -425,7 +426,8 @@ def anchors_from_dataset(
 
     widths = []
     inputs = None
-    for inp, labels in loader:
+    for inp, task_labels in loader:
+        labels = next(iter(task_labels.values()))  # TODO: handle multiple tasks
         boxes = labels[LabelType.BOUNDINGBOX]
         curr_wh = boxes[:, 4:]
         widths.append(curr_wh)

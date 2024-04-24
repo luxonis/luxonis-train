@@ -226,7 +226,7 @@ class TestArchiver:
                     for label in labels
                 }
             )
-        dataset.add(dataset_generator)
+        dataset.add(dataset_generator())
         dataset.make_splits(ratios=split_ratios)
 
     def _make_dummy_cfg_dict(head_name: str, ldf_name: str, save_path: str) -> dict:
