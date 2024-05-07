@@ -272,6 +272,7 @@ class StorageConfig(BaseModel):
 
 class TunerConfig(BaseModel):
     study_name: str = "test-study"
+    continue_existing_study: bool = True
     use_pruner: bool = True
     n_trials: int | None = 15
     timeout: int | None = None

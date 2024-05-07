@@ -57,7 +57,7 @@ class Tuner(Core):
             storage=storage,
             direction="minimize",
             pruner=pruner,
-            load_if_exists=True,
+            load_if_exists=self.tune_cfg.continue_existing_study,
         )
 
         study.optimize(
@@ -94,9 +94,7 @@ class Tuner(Core):
             save_dir=run_save_dir,
             input_shape=self.loader_train.input_shape,
         )
-        pruner_callback = PyTorchLightningPruningCallback(
-            trial, monitor="val_loss/loss"
-        )
+        pruner_callback = PyTorchLightningPruningCallback(trial, monitor="val/loss")
         callbacks: list[pl.Callback] = (
             [LuxonisProgressBar()] if self.cfg.use_rich_text else []
         )
