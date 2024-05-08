@@ -203,6 +203,7 @@ class TrainerConfig(CustomBaseModel):
     strategy: Literal["auto", "ddp"] = "auto"
     num_sanity_val_steps: int = 2
     profiler: Literal["simple", "advanced"] | None = None
+    matmul_precision: Literal["medium", "high", "highest"] | None = None
     verbose: bool = True
 
     batch_size: int = 32

@@ -4,6 +4,7 @@ import threading
 from logging import getLogger
 from typing import Any, Literal
 
+import torch
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
 from luxonis_ml.utils import LuxonisFileSystem
 
@@ -38,6 +39,9 @@ class Trainer(Core):
         @param resume: Training will resume from this checkpoint.
         """
         super().__init__(cfg, opts)
+
+        if self.cfg.trainer.matmul_precision is not None:
+            torch.set_float32_matmul_precision(self.cfg.trainer.matmul_precision)
 
         if resume is not None:
             self.resume = str(LuxonisFileSystem.download(resume, self.run_save_dir))
