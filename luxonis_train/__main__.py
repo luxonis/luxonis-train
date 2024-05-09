@@ -112,6 +112,7 @@ def inspect(
     from luxonis_train.utils.config import Config
     from luxonis_train.utils.loaders import LuxonisLoaderTorch, collate_fn
     from luxonis_train.utils.types import LabelType
+    from lightning.pytorch import seed_everything
 
     overrides = {}
     if opts:
@@ -122,6 +123,8 @@ def inspect(
             overrides[opts[i]] = opts[i + 1]
 
     cfg = Config.get_config(str(config), overrides)
+    if cfg.trainer.seed is not None:
+        seed_everything(cfg.trainer.seed, workers=True)
 
     image_size = cfg.trainer.preprocessing.train_image_size
 
