@@ -1,5 +1,6 @@
 import os.path as osp
 from typing import Any
+from logging import getLogger
 
 import lightning.pytorch as pl
 import optuna
@@ -12,6 +13,8 @@ from luxonis_train.utils import Config
 from luxonis_train.utils.tracker import LuxonisTrackerPL
 
 from .core import Core
+
+logger = getLogger(__name__)
 
 
 class Tuner(Core):
@@ -32,6 +35,7 @@ class Tuner(Core):
 
     def tune(self) -> None:
         """Runs Optuna tunning of hyperparameters."""
+        logger.info("Starting tuning...")
 
         pruner = (
             optuna.pruners.MedianPruner()
@@ -65,6 +69,8 @@ class Tuner(Core):
             n_trials=self.tune_cfg.n_trials,
             timeout=self.tune_cfg.timeout,
         )
+
+        logger.info(f"Best study parameters: {study.best_params}")
 
     def _objective(self, trial: optuna.trial.Trial) -> float:
         """Objective function used to optimize Optuna study."""
