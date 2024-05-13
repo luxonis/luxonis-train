@@ -55,6 +55,9 @@ class TorchMetricWrapper(BaseMetric):
     def compute(self):
         return self.metric.compute()
 
+    def reset(self) -> None:
+        self.metric.reset()
+
 
 class Accuracy(TorchMetricWrapper):
     Metric = torchmetrics.Accuracy
