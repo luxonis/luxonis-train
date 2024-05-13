@@ -157,7 +157,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
         features, predictions = outputs
 
         if self.export:
-            return {"boxes_and_keypoints": [predictions]}
+            return {"features": [features]} # Changed from predictions to features
 
         if self.training:
             return {"features": features}
