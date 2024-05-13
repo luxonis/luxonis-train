@@ -1,6 +1,7 @@
 import logging
 
 import torchmetrics
+from torch import Tensor
 
 from .base_metric import BaseMetric
 
@@ -47,12 +48,12 @@ class TorchMetricWrapper(BaseMetric):
 
         self.metric = self.Metric(**kwargs)
 
-    def update(self, preds, target, *args, **kwargs):
+    def update(self, preds, target, *args, **kwargs) -> None:
         if self.task in ["multiclass"]:
             target = target.argmax(dim=1)
         self.metric.update(preds, target, *args, **kwargs)
 
-    def compute(self):
+    def compute(self) -> Tensor:
         return self.metric.compute()
 
     def reset(self) -> None:
