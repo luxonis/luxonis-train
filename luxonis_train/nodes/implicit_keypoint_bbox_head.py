@@ -143,13 +143,17 @@ class ImplicitKeypointBBoxHead(BaseNode):
         predictions = []
         reshaped_features = []
 
-        # Common reshaping and prediction building
         for i, feat in enumerate(features):
             batch_size, _, feature_height, feature_width = feat.shape
             reshaped_feat = feat.reshape(
                 batch_size, self.n_anchors, self.n_out, feature_height, feature_width
             ).permute(0, 1, 3, 4, 2)
             reshaped_features.append(reshaped_feat)
+
+            if i >= len(self.grid):
+                self.grid.append(
+                    self._construct_grid(feature_width, feature_height).to(feat.device)
+                )
 
             prediction = self._build_predictions(
                 reshaped_feat, self.anchor_grid[i], self.grid[i], self.stride[i]
@@ -159,7 +163,6 @@ class ImplicitKeypointBBoxHead(BaseNode):
         if self.training:
             return {"features": reshaped_features}
 
-        # For non-training (e.g., inference), apply non-max suppression
         nms = non_max_suppression(
             torch.cat(predictions, dim=1),
             n_classes=self.n_classes,
@@ -173,7 +176,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
             "keypoints": [
                 detection[:, 6:].reshape(-1, self.n_keypoints, 3) for detection in nms
             ],
-            "features": features,  # Optionally switch to reshaped_features if needed outside of training
+            "features": reshaped_features, 
         }
 
 
