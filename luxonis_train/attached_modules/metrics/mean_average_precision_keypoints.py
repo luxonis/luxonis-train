@@ -201,9 +201,6 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
                 item.get("iscrowd", torch.zeros_like(item["labels"]))
             )
 
-    def reset(self) -> None:
-        self.metric.reset()
-
     def compute(self) -> tuple[Tensor, dict[str, Tensor]]:
         """Torchmetric compute function."""
         coco_target, coco_preds = COCO(), COCO()

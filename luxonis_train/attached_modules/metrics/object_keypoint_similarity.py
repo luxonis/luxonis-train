@@ -133,11 +133,6 @@ class ObjectKeypointSimilarity(
             self.groundtruth_keypoints.append(keypoints)
             self.groundtruth_scales.append(item["scales"])
 
-    def reset(self) -> None:
-        self.pred_keypoints = []
-        self.groundtruth_keypoints = []
-        self.groundtruth_scales = []
-
     def compute(self) -> Tensor:
         """Computes the OKS metric based on the inner state."""
 
