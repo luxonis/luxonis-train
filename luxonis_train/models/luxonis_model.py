@@ -35,7 +35,7 @@ from luxonis_train.utils.general import (
 )
 from luxonis_train.utils.registry import CALLBACKS, OPTIMIZERS, SCHEDULERS, Registry
 from luxonis_train.utils.tracker import LuxonisTrackerPL
-from luxonis_train.utils.types import Kwargs, Labels, Packet
+from luxonis_train.utils.types import Kwargs, Labels, Packet, TaskLabels
 
 from .luxonis_output import LuxonisOutput
 
@@ -139,10 +139,13 @@ class LuxonisModel(pl.LightningModule):
         frozen_nodes: list[tuple[str, int]] = []
         nodes: dict[str, tuple[type[BaseNode], Kwargs]] = {}
 
+        self.node_tasks: dict[str, str] = {}
+
         for node_cfg in self.cfg.model.nodes:
             node_name = node_cfg.name
             Node = BaseNode.REGISTRY.get(node_name)
             node_name = node_cfg.alias or node_name
+            self.node_tasks[node_name] = node_cfg.task_group
             if node_cfg.freezing.active:
                 epochs = self.cfg.trainer.epochs
                 if node_cfg.freezing.unfreeze_after is None:
@@ -244,7 +247,7 @@ class LuxonisModel(pl.LightningModule):
     def forward(
         self,
         inputs: Tensor,
-        labels: Labels | None = None,
+        task_labels: TaskLabels | None = None,
         images: Tensor | None = None,
         *,
         compute_loss: bool = True,
@@ -259,8 +262,8 @@ class LuxonisModel(pl.LightningModule):
 
         @type inputs: L{Tensor}
         @param inputs: Input tensor.
-        @type labels: L{Labels} | None
-        @param labels: Labels dictionary. Defaults to C{None}.
+        @type task_labels: L{TaskLabels} | None
+        @param task_labels: Labels dictionary. Defaults to C{None}.
         @type images: L{Tensor} | None
         @param images: Canvas tensor for visualizers. Defaults to C{None}.
         @type compute_loss: bool
@@ -296,6 +299,7 @@ class LuxonisModel(pl.LightningModule):
             node_inputs = [computed[pred] for pred in input_names]
             outputs = node.run(node_inputs)
             computed[node_name] = outputs
+            labels = task_labels[self.node_tasks[node_name]] if task_labels else None
 
             if compute_loss and node_name in self.losses and labels is not None:
                 for loss_name, loss in self.losses[node_name].items():
@@ -360,7 +364,7 @@ class LuxonisModel(pl.LightningModule):
                         computed_submetrics = {
                             metric_name: metric_value,
                         } | submetrics
-                    case Tensor(data=metric_value):
+                    case Tensor() as metric_value:
                         computed_submetrics = {metric_name: metric_value}
                     case dict(submetrics):
                         computed_submetrics = submetrics
@@ -681,7 +685,9 @@ class LuxonisModel(pl.LightningModule):
         """
         if path is None:
             return
+
         checkpoint = torch.load(path, map_location=self.device)
+
         if "state_dict" not in checkpoint:
             raise ValueError("Checkpoint does not contain state_dict.")
         state_dict = {}

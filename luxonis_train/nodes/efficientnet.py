@@ -11,6 +11,8 @@ from .base_node import BaseNode
 
 
 class EfficientNet(BaseNode[Tensor, list[Tensor]]):
+    attach_index: int = -1
+
     def __init__(self, download_weights: bool = False, **kwargs):
         """EfficientNet backbone.
 

@@ -18,15 +18,12 @@ logger = getLogger(__name__)
 
 
 class Exporter(Core):
-    """Main API which is used to create the model, setup pytorch lightning environment
-    and perform training based on provided arguments and config."""
-
     def __init__(
         self,
         cfg: str | dict[str, Any] | Config,
         opts: list[str] | tuple[str, ...] | dict[str, Any] | None = None,
     ):
-        """Constructs a new Exporter instance.
+        """Provides an interface for exporting models to .onnx and .blob formats.
 
         @type cfg: str | dict[str, Any] | Config
         @param cfg: Path to config file or config dict used to setup training.
@@ -131,7 +128,7 @@ class Exporter(Core):
             model_onnx = onnx.load(onnx_path)
             onnx_model, check = onnxsim.simplify(model_onnx)
             if not check:
-                raise RuntimeError("Onnx simplify failed.")
+                raise RuntimeError("ONNX simplify failed.")
             onnx.save(onnx_model, onnx_path)
             logger.info(f"ONNX model saved to {onnx_path}")
 
@@ -200,7 +197,7 @@ class Exporter(Core):
                 remote_path=self.cfg.exporter.export_model_name + suffix,
             )
 
-        with tempfile.TemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(prefix="config", suffix=".yaml") as f:
             self.cfg.save_data(f.name)
             fs.put_file(local_path=f.name, remote_path="config.yaml")
 
@@ -209,7 +206,9 @@ class Exporter(Core):
         )
         modelconverter_config = self._get_modelconverter_config(onnx_path)
 
-        with tempfile.TemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(
+            prefix="config_export", suffix=".yaml", mode="w+"
+        ) as f:
             yaml.dump(modelconverter_config, f, default_flow_style=False)
             fs.put_file(local_path=f.name, remote_path="config_export.yaml")
 

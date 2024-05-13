@@ -9,6 +9,7 @@ List of all supported callbacks.
 - [LuxonisProgressBar](#luxonisprogressbar)
 - [MetadataLogger](#metadatalogger)
 - [TestOnTrainEnd](#testontrainend)
+- [UploadCheckpoint](#uploadcheckpoint)
 
 ## PytorchLightning Callbacks
 
@@ -51,3 +52,11 @@ Metadata include all defined hyperparameters together with git hashes of `luxoni
 ## TestOnTrainEnd
 
 Callback to perform a test run at the end of the training.
+
+## UploadCheckpoint
+
+Callback that uploads currently best checkpoint (based on validation loss) to specified cloud directory after every validation epoch.
+
+| Key              | Type | Default value | Description                                                                                                                   |
+| ---------------- | ---- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| upload_directory | str  | /             | Path to cloud directory where checkpoints should be uploaded to. If you want to use current mlflow run set it to `mlflow://`. |

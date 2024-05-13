@@ -7,7 +7,6 @@ from .base_node import BaseNode
 
 class ClassificationHead(BaseNode[Tensor, Tensor]):
     in_channels: int
-    attach_index: int = -1
 
     def __init__(
         self,

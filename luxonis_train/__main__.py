@@ -45,11 +45,17 @@ SaveDirType = Annotated[
 
 
 @app.command()
-def train(config: ConfigType = None, opts: OptsType = None):
+def train(
+    config: ConfigType = None,
+    resume: Annotated[
+        Optional[str], typer.Option(help="Resume training from this checkpoint.")
+    ] = None,
+    opts: OptsType = None,
+):
     """Start training."""
     from luxonis_train.core import Trainer
 
-    Trainer(str(config), opts).train()
+    Trainer(str(config), opts, resume=resume).train()
 
 
 @app.command()
@@ -200,6 +206,20 @@ def inspect(
                     exit()
 
 
+@app.command()
+def archive(
+    executable: Annotated[
+        Optional[Path], typer.Option(help="Path to the model file.", show_default=False)
+    ],
+    config: ConfigType = None,
+    opts: OptsType = None,
+):
+    """Generate NN archive."""
+    from luxonis_train.core import Archiver
+
+    Archiver(str(config), opts).archive(executable)
+
+
 def version_callback(value: bool):
     if value:
         typer.echo(f"LuxonisTrain Version: {version(__package__)}")
@@ -214,13 +234,18 @@ def common(
             "--version", callback=version_callback, help="Show version and exit."
         ),
     ] = False,
+    source: Annotated[
+        Optional[Path],
+        typer.Option(
+            help="Path to a python file with custom components. "
+            "Will be sourced before running the command.",
+            metavar="FILE",
+        ),
+    ] = None,
 ):
-    ...
-
-
-def main():
-    app()
+    if source:
+        exec(source.read_text())
 
 
 if __name__ == "__main__":
-    main()
+    app()

@@ -216,10 +216,7 @@ class RepVGGBlock(nn.Module):
         kernel_size: int = 3,
         stride: int = 1,
         padding: int = 1,
-        dilation: int = 1,
         groups: int = 1,
-        padding_mode: str = "zeros",
-        deploy: bool = False,
         use_se: bool = False,
     ):
         """RepVGGBlock is a basic rep-style block, including training and deploy status
@@ -249,7 +246,6 @@ class RepVGGBlock(nn.Module):
         """
         super().__init__()
 
-        self.deploy = deploy
         self.groups = groups
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -262,49 +258,37 @@ class RepVGGBlock(nn.Module):
         self.nonlinearity = nn.ReLU()
 
         if use_se:
-            #   Note that RepVGG-D2se uses SE before nonlinearity. But RepVGGplus models uses SqueezeExciteBlock after nonlinearity.
+            # NOTE: that RepVGG-D2se uses SE before nonlinearity.
+            # But RepVGGplus models uses SqueezeExciteBlock after nonlinearity.
             self.se = SqueezeExciteBlock(
                 out_channels, intermediate_channels=int(out_channels // 16)
             )
         else:
-            self.se = nn.Identity()  # type: ignore
+            self.se = nn.Identity()
 
-        if deploy:
-            self.rbr_reparam = nn.Conv2d(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                kernel_size=kernel_size,
-                stride=stride,
-                padding=padding,
-                dilation=dilation,
-                groups=groups,
-                bias=True,
-                padding_mode=padding_mode,
-            )
-        else:
-            self.rbr_identity = (
-                nn.BatchNorm2d(num_features=in_channels)
-                if out_channels == in_channels and stride == 1
-                else None
-            )
-            self.rbr_dense = ConvModule(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                kernel_size=kernel_size,
-                stride=stride,
-                padding=padding,
-                groups=groups,
-                activation=nn.Identity(),
-            )
-            self.rbr_1x1 = ConvModule(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                kernel_size=1,
-                stride=stride,
-                padding=padding_11,
-                groups=groups,
-                activation=nn.Identity(),
-            )
+        self.rbr_identity = (
+            nn.BatchNorm2d(num_features=in_channels)
+            if out_channels == in_channels and stride == 1
+            else None
+        )
+        self.rbr_dense = ConvModule(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            groups=groups,
+            activation=nn.Identity(),
+        )
+        self.rbr_1x1 = ConvModule(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=1,
+            stride=stride,
+            padding=padding_11,
+            groups=groups,
+            activation=nn.Identity(),
+        )
 
     def forward(self, x: Tensor):
         if hasattr(self, "rbr_reparam"):
@@ -320,6 +304,7 @@ class RepVGGBlock(nn.Module):
     def reparametrize(self):
         if hasattr(self, "rbr_reparam"):
             return
+
         kernel, bias = self._get_equivalent_kernel_bias()
         self.rbr_reparam = nn.Conv2d(
             in_channels=self.rbr_dense[0].in_channels,
