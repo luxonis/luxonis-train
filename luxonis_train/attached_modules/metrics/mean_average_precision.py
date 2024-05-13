@@ -12,7 +12,7 @@ from luxonis_train.utils.types import (
 from .base_metric import BaseMetric
 
 
-class MeanAveragePrecision(BaseMetric, detection.MeanAveragePrecision):
+class MeanAveragePrecision(BaseMetric):
     """Compute the Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR) for object
     detection predictions.
 
