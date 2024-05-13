@@ -116,10 +116,8 @@ class ImplicitKeypointBBoxHead(BaseNode):
         if init_coco_biases:
             self._initialize_weights_and_biases()
 
-    def forward(self, inputs: list[Tensor]) -> tuple[list[Tensor], Tensor]:
-        predictions: list[Tensor] = []
+    def forward(self, inputs: list[Tensor]) -> list[Tensor]:
         features: list[Tensor] = []
-
         self.anchor_grid = self.anchor_grid.to(inputs[0].device)
 
         for i in range(self.num_heads):
@@ -131,44 +129,43 @@ class ImplicitKeypointBBoxHead(BaseNode):
                         self.kpt_heads[i](inputs[i]),
                     ),
                     axis=1,
-                ),  # type: ignore
+                ),
             )
-
-            batch_size, _, feature_height, feature_width = feat.shape
-            if i >= len(self.grid):
-                self.grid.append(
-                    self._construct_grid(feature_width, feature_height).to(feat.device)
-                )
-
-            feat = feat.reshape(
-                batch_size, self.n_anchors, self.n_out, feature_height, feature_width
-            ).permute(0, 1, 3, 4, 2)
 
             features.append(feat)
-            predictions.append(
-                self._build_predictions(
-                    feat, self.anchor_grid[i], self.grid[i], self.stride[i]
-                )
-            )
 
-        return features, torch.cat(predictions, dim=1)
+        return features
 
-    def wrap(self, outputs: tuple[list[Tensor], Tensor]) -> Packet[Tensor]:
-        features, predictions = outputs
-
+    def wrap(self, features: list[Tensor]) -> dict:
         if self.export:
-            return {"features": [features]} 
+            return {"features": [features]}
+
+        predictions = []
+        reshaped_features = []
+
+        # Common reshaping and prediction building
+        for i, feat in enumerate(features):
+            batch_size, _, feature_height, feature_width = feat.shape
+            reshaped_feat = feat.reshape(
+                batch_size, self.n_anchors, self.n_out, feature_height, feature_width
+            ).permute(0, 1, 3, 4, 2)
+            reshaped_features.append(reshaped_feat)
+
+            prediction = self._build_predictions(
+                reshaped_feat, self.anchor_grid[i], self.grid[i], self.stride[i]
+            )
+            predictions.append(prediction)
 
         if self.training:
-            return {"features": features}
+            return {"features": reshaped_features}
 
+        # For non-training (e.g., inference), apply non-max suppression
         nms = non_max_suppression(
-            predictions,
+            torch.cat(predictions, dim=1),
             n_classes=self.n_classes,
             conf_thres=self.conf_thres,
             iou_thres=self.iou_thres,
             bbox_format="cxcywh",
-            max_det=self.max_det,
         )
 
         return {
@@ -176,8 +173,9 @@ class ImplicitKeypointBBoxHead(BaseNode):
             "keypoints": [
                 detection[:, 6:].reshape(-1, self.n_keypoints, 3) for detection in nms
             ],
-            "features": features,
+            "features": features,  # Optionally switch to reshaped_features if needed outside of training
         }
+
 
     def _build_predictions(
         self, feat: Tensor, anchor_grid: Tensor, grid: Tensor, stride: Tensor
