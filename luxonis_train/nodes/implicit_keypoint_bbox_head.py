@@ -137,8 +137,6 @@ class ImplicitKeypointBBoxHead(BaseNode):
         return features
 
     def wrap(self, features: list[Tensor]) -> dict:
-        if self.export:
-            return {"features": features}
 
         predictions = []
         reshaped_features = []
@@ -156,10 +154,13 @@ class ImplicitKeypointBBoxHead(BaseNode):
                 )
 
             prediction = self._build_predictions(
-                reshaped_feat, self.anchor_grid[i], self.grid[i], self.stride[i]
+                feat, self.anchor_grid[i], self.grid[i], self.stride[i] # reshaped_feat to feat
             )
             predictions.append(prediction)
 
+        if self.export:
+            return {"predictions": predictions}
+        
         if self.training:
             return {"features": reshaped_features}
 
