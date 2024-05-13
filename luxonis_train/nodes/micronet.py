@@ -15,8 +15,6 @@ class MicroNet(BaseNode[Tensor, list[Tensor]]):
     TODO: DOCS
     """
 
-    attach_index: int = -1
-
     def __init__(self, variant: Literal["M1", "M2", "M3"] = "M1", **kwargs):
         """MicroNet backbone.
 
@@ -236,23 +234,21 @@ class MicroBlock(nn.Module):
                 ChannelShuffle(out_channels // 2) if y3 != 0 else nn.Sequential(),
             )
 
-    def forward(self, x: Tensor):
-        identity = x
-        out = self.layers(x)
+    def forward(self, inputs: Tensor) -> Tensor:
+        out = self.layers(inputs)
         if self.identity:
-            out += identity
+            out += inputs
         return out
 
 
 class ChannelShuffle(nn.Module):
     def __init__(self, groups: int):
-        super(ChannelShuffle, self).__init__()
+        super().__init__()
         self.groups = groups
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         b, c, h, w = x.size()
         channels_per_group = c // self.groups
-        # reshape
         x = x.view(b, self.groups, channels_per_group, h, w)
         x = torch.transpose(x, 1, 2).contiguous()
         out = x.view(b, -1, h, w)
@@ -300,7 +296,7 @@ class DYShiftMax(nn.Module):
         indexs = torch.cat([indexs[1], indexs[0]], dim=2)
         self.index = indexs.view(in_channels).long()
 
-    def forward(self, x: Tensor):
+    def forward(self, x: Tensor) -> Tensor:
         B, C, _, _ = x.shape
         x_out = x
 
@@ -350,7 +346,7 @@ class SwishLinear(nn.Module):
             nn.Linear(in_channels, out_channels), nn.BatchNorm1d(out_channels), HSwish()
         )
 
-    def forward(self, x: Tensor):
+    def forward(self, x: Tensor) -> Tensor:
         return self.linear(x)
 
 
@@ -383,7 +379,7 @@ class SpatialSepConvSF(nn.Module):
             ChannelShuffle(out_channels1),
         )
 
-    def forward(self, x: Tensor):
+    def forward(self, x: Tensor) -> Tensor:
         return self.conv(x)
 
 
@@ -394,7 +390,7 @@ class Stem(nn.Module):
             SpatialSepConvSF(in_channels, outs, 3, stride), nn.ReLU6(True)
         )
 
-    def forward(self, x: Tensor):
+    def forward(self, x: Tensor) -> Tensor:
         return self.stem(x)
 
 
@@ -430,7 +426,7 @@ class DepthSpatialSepConv(nn.Module):
             nn.BatchNorm2d(out_channels),
         )
 
-    def forward(self, x: Tensor):
+    def forward(self, x: Tensor) -> Tensor:
         return self.conv(x)
 
 

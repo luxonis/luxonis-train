@@ -1,4 +1,5 @@
-from copy import deepcopy
+import logging
+from typing import Literal
 
 import torch.utils.checkpoint as checkpoint
 from torch import Tensor, nn
@@ -6,6 +7,8 @@ from torch import Tensor, nn
 from luxonis_train.nodes.blocks import RepVGGBlock
 
 from .base_node import BaseNode
+
+logger = logging.getLogger(__name__)
 
 
 class RepVGG(BaseNode):
@@ -18,53 +21,37 @@ class RepVGG(BaseNode):
     """
 
     in_channels: int
+    attach_index: int = -1
 
     VARIANTS_SETTINGS = {
         "A0": {
             "num_blocks": [2, 4, 14, 1],
-            "num_classes": 1000,
             "width_multiplier": [0.75, 0.75, 0.75, 2.5],
         },
         "A1": {
             "num_blocks": [2, 4, 14, 1],
-            "num_classes": 1000,
             "width_multiplier": [1, 1, 1, 2.5],
         },
         "A2": {
             "num_blocks": [2, 4, 14, 1],
-            "num_classes": 1000,
             "width_multiplier": [1.5, 1.5, 1.5, 2.75],
         },
     }
 
-    def __new__(cls, **kwargs):
-        variant = kwargs.pop("variant", "A0")
-
-        if variant not in RepVGG.VARIANTS_SETTINGS.keys():
-            raise ValueError(
-                f"RepVGG model variant should be in {list(RepVGG.VARIANTS_SETTINGS.keys())}"
-            )
-
-        overrides = deepcopy(kwargs)
-        kwargs.clear()
-        kwargs.update(RepVGG.VARIANTS_SETTINGS[variant])
-        kwargs.update(overrides)
-        return cls.__new__(cls)
-
     def __init__(
         self,
-        deploy: bool = False,
+        variant: Literal["A0", "A1", "A2"] = "A0",
+        num_blocks: list[int] | None = None,
+        width_multiplier: list[float] | None = None,
         override_groups_map: dict[int, int] | None = None,
         use_se: bool = False,
         use_checkpoint: bool = False,
-        num_blocks: list[int] | None = None,
-        width_multiplier: list[float] | None = None,
         **kwargs,
     ):
         """Constructor for the RepVGG module.
 
-        @type deploy: bool
-        @param deploy: Whether to use the model in deploy mode.
+        @type variant: Literal["A0", "A1", "A2"]
+        @param variant: RepVGG model variant. Defaults to "A0".
         @type override_groups_map: dict[int, int] | None
         @param override_groups_map: Dictionary mapping layer index to number of groups.
         @type use_se: bool
@@ -77,9 +64,16 @@ class RepVGG(BaseNode):
         @param width_multiplier: Width multiplier for each stage.
         """
         super().__init__(**kwargs)
-        num_blocks = num_blocks or [2, 4, 14, 1]
-        width_multiplier = width_multiplier or [0.75, 0.75, 0.75, 2.5]
-        self.deploy = deploy
+        if variant not in self.VARIANTS_SETTINGS.keys():
+            raise ValueError(
+                f"RepVGG model variant should be one of "
+                f"{list(self.VARIANTS_SETTINGS.keys())}."
+            )
+
+        num_blocks = num_blocks or self.VARIANTS_SETTINGS[variant]["num_blocks"]
+        width_multiplier = (
+            width_multiplier or self.VARIANTS_SETTINGS[variant]["width_multiplier"]
+        )
         self.override_groups_map = override_groups_map or {}
         assert 0 not in self.override_groups_map
         self.use_se = use_se
@@ -92,7 +86,6 @@ class RepVGG(BaseNode):
             kernel_size=3,
             stride=2,
             padding=1,
-            deploy=self.deploy,
             use_se=self.use_se,
         )
         self.cur_layer_idx = 1
@@ -135,10 +128,22 @@ class RepVGG(BaseNode):
                     stride=stride,
                     padding=1,
                     groups=cur_groups,
-                    deploy=self.deploy,
                     use_se=self.use_se,
                 )
             )
             self.in_planes = planes
             self.cur_layer_idx += 1
         return nn.ModuleList(blocks)
+
+    def set_export_mode(self, mode: bool = True) -> None:
+        """Reparametrizes instances of L{RepVGGBlock} in the network.
+
+        @type mode: bool
+        @param mode: Whether to set the export mode. Defaults to C{True}.
+        """
+        super().set_export_mode(mode)
+        if self.export:
+            logger.info("Reparametrizing RepVGG.")
+            for module in self.modules():
+                if isinstance(module, RepVGGBlock):
+                    module.reparametrize()

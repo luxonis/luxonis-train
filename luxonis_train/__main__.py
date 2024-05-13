@@ -45,11 +45,17 @@ SaveDirType = Annotated[
 
 
 @app.command()
-def train(config: ConfigType = None, opts: OptsType = None):
+def train(
+    config: ConfigType = None,
+    resume: Annotated[
+        Optional[str], typer.Option(help="Resume training from this checkpoint.")
+    ] = None,
+    opts: OptsType = None,
+):
     """Start training."""
     from luxonis_train.core import Trainer
 
-    Trainer(str(config), opts).train()
+    Trainer(str(config), opts, resume=resume).train()
 
 
 @app.command()
@@ -201,6 +207,20 @@ def inspect(
                 cv2.imshow("img", img_arr)
                 if cv2.waitKey() == ord("q"):
                     exit()
+
+
+@app.command()
+def archive(
+    executable: Annotated[
+        Optional[Path], typer.Option(help="Path to the model file.", show_default=False)
+    ],
+    config: ConfigType = None,
+    opts: OptsType = None,
+):
+    """Generate NN archive."""
+    from luxonis_train.core import Archiver
+
+    Archiver(str(config), opts).archive(executable)
 
 
 def version_callback(value: bool):

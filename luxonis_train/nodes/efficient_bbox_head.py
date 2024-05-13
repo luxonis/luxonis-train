@@ -30,6 +30,7 @@ class EfficientBBoxHead(
         n_heads: Literal[2, 3, 4] = 3,
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
+        max_det: int = 300,
         **kwargs,
     ):
         """Head for object detection.
@@ -45,6 +46,9 @@ class EfficientBBoxHead(
 
         @type iou_thres: float
         @param iou_thres: Threshold for IoU. Defaults to C{0.45}.
+
+        @type max_det: int
+        @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
         """
         super().__init__(task_type=LabelType.BOUNDINGBOX, **kwargs)
 
@@ -52,6 +56,7 @@ class EfficientBBoxHead(
 
         self.conf_thres = conf_thres
         self.iou_thres = iou_thres
+        self.max_det = max_det
 
         self.stride = self._fit_stride_to_num_heads()
         self.grid_cell_offset = 0.5
@@ -163,5 +168,6 @@ class EfficientBBoxHead(
             conf_thres=self.conf_thres,
             iou_thres=self.iou_thres,
             bbox_format="xyxy",
+            max_det=self.max_det,
             predicts_objectness=False,
         )

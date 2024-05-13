@@ -1,6 +1,6 @@
 import logging
 import math
-from typing import Literal, cast
+from typing import cast
 
 import torch
 from torch import Tensor, nn
@@ -22,8 +22,6 @@ logger = logging.getLogger(__name__)
 
 
 class ImplicitKeypointBBoxHead(BaseNode):
-    attach_index: Literal["all"] = "all"
-
     def __init__(
         self,
         n_keypoints: int | None = None,
@@ -32,6 +30,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
         init_coco_biases: bool = True,
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
+        max_det: int = 300,
         **kwargs,
     ):
         """Head for object and keypoint detection.
@@ -55,6 +54,8 @@ class ImplicitKeypointBBoxHead(BaseNode):
         @param conf_thres: Threshold for confidence. Defaults to C{0.25}.
         @type iou_thres: float
         @param iou_thres: Threshold for IoU. Defaults to C{0.45}.
+        @type max_det: int
+        @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
         """
         super().__init__(task_type=LabelType.KEYPOINT, **kwargs)
 
@@ -65,6 +66,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
 
         self.conf_thres = conf_thres
         self.iou_thres = iou_thres
+        self.max_det = max_det
 
         n_keypoints = n_keypoints or self.dataset_metadata._n_keypoints
 
@@ -166,6 +168,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
             conf_thres=self.conf_thres,
             iou_thres=self.iou_thres,
             bbox_format="cxcywh",
+            max_det=self.max_det,
         )
 
         return {

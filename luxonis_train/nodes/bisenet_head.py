@@ -15,7 +15,6 @@ from .base_node import BaseNode
 
 
 class BiSeNetHead(BaseNode[Tensor, Tensor]):
-    attach_index: int = -1
     in_height: int
     in_channels: int
 
@@ -45,6 +44,6 @@ class BiSeNetHead(BaseNode[Tensor, Tensor]):
         return {"segmentation": [output]}
 
     def forward(self, inputs: Tensor) -> Tensor:
-        inputs = self.conv_3x3(inputs)
-        inputs = self.conv_1x1(inputs)
-        return self.upscale(inputs)
+        x = self.conv_3x3(inputs)
+        x = self.conv_1x1(x)
+        return self.upscale(x)

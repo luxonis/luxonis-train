@@ -43,6 +43,7 @@ class ModelNodeConfig(CustomBaseModel):
     inputs: list[str] = []
     params: dict[str, Any] = {}
     freezing: FreezingConfig = FreezingConfig()
+    task_group: str = "default"
 
 
 class PredefinedModelConfig(CustomBaseModel):
@@ -202,6 +203,7 @@ class TrainerConfig(CustomBaseModel):
     strategy: Literal["auto", "ddp"] = "auto"
     num_sanity_val_steps: int = 2
     profiler: Literal["simple", "advanced"] | None = None
+    matmul_precision: Literal["medium", "high", "highest"] | None = None
     verbose: bool = True
 
     seed: int | None = None
@@ -270,6 +272,12 @@ class ExportConfig(CustomBaseModel):
         return self
 
 
+class ArchiveConfig(BaseModel):
+    archive_name: str = "nn_archive"
+    archive_save_directory: str = "output_archive"
+    upload_url: str | None = None
+
+
 class StorageConfig(CustomBaseModel):
     active: bool = True
     storage_type: Literal["local", "remote"] = "local"
@@ -293,6 +301,7 @@ class Config(LuxonisConfig):
     tracker: TrackerConfig = TrackerConfig()
     trainer: TrainerConfig = TrainerConfig()
     exporter: ExportConfig = ExportConfig()
+    archiver: ArchiveConfig = ArchiveConfig()
     tuner: TunerConfig | None = None
     ENVIRON: Environ = Field(Environ(), exclude=True)
 
