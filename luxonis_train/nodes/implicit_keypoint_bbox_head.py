@@ -156,13 +156,13 @@ class ImplicitKeypointBBoxHead(BaseNode):
                 )
 
             prediction = self._build_predictions(
-                feat, self.anchor_grid[i], self.grid[i], self.stride[i]
+                reshaped_feat, self.anchor_grid[i], self.grid[i], self.stride[i]
             )
-            predictions_reshaped.append(prediction)
+            predictions_reshaped.append(prediction.view(batch_size, self.n_anchors * self.n_out, feature_height, feature_width))
             predictions.append(prediction.reshape(batch_size, -1, self.n_out))
 
         if self.export:
-            return {"predictions_reshaped_": predictions_reshaped}
+            return {"predictions_reshaped": predictions_reshaped}
 
         if self.training:
             return {"features": reshaped_features}
@@ -184,72 +184,33 @@ class ImplicitKeypointBBoxHead(BaseNode):
         }
 
 
-    # def _build_predictions(
-    #     self, feat: Tensor, anchor_grid: Tensor, grid: Tensor, stride: Tensor
-    # ) -> Tensor:
-    #     batch_size = feat.shape[0]
-    #     x_bbox = feat[..., : self.box_offset + self.n_classes]
-    #     x_keypoints = feat[..., self.box_offset + self.n_classes :]
-
-    #     box_cxcy, box_wh, box_tail = process_bbox_predictions(x_bbox, anchor_grid)
-    #     grid = grid.to(box_cxcy.device)
-    #     stride = stride.to(box_cxcy.device)
-    #     box_cxcy = (box_cxcy + grid) * stride
-    #     out_bbox = torch.cat((box_cxcy, box_wh, box_tail), dim=-1)
-
-    #     grid_x = grid[..., 0:1]
-    #     grid_y = grid[..., 1:2]
-    #     kpt_x, kpt_y, kpt_vis = process_keypoints_predictions(x_keypoints)
-    #     kpt_x = (kpt_x + grid_x) * stride
-    #     kpt_y = (kpt_y + grid_y) * stride
-    #     out_kpt = torch.stack([kpt_x, kpt_y, kpt_vis.sigmoid()], dim=-1).reshape(
-    #         *kpt_x.shape[:-1], -1
-    #     )
-
-    #     out = torch.cat((out_bbox, out_kpt), dim=-1)
-
-    #     # return out.reshape(batch_size, -1, self.n_out)
-    #     return out
-
-
     def _build_predictions(
         self, feat: Tensor, anchor_grid: Tensor, grid: Tensor, stride: Tensor
     ) -> Tensor:
-        batch_size, n_channels, feature_height, feature_width = feat.shape
-        n_anchors = self.n_anchors
-        box_offset = self.box_offset
-        n_classes = self.n_classes
+        batch_size = feat.shape[0]
+        x_bbox = feat[..., : self.box_offset + self.n_classes]
+        x_keypoints = feat[..., self.box_offset + self.n_classes :]
 
-        # Split feat into x_bbox and x_keypoints directly using the appropriate indices
-        x_bbox = feat[:, :box_offset + n_classes * n_anchors, :, :]
-        x_keypoints = feat[:, box_offset + n_classes * n_anchors:, :, :]
-
-        # Reshape to separate anchors
-        x_bbox = x_bbox.view(batch_size, n_anchors, box_offset + n_classes, feature_height, feature_width)
-        x_keypoints = x_keypoints.view(batch_size, n_anchors, -1, feature_height, feature_width)
-
-        # Process bounding boxes
         box_cxcy, box_wh, box_tail = process_bbox_predictions(x_bbox, anchor_grid)
         grid = grid.to(box_cxcy.device)
         stride = stride.to(box_cxcy.device)
         box_cxcy = (box_cxcy + grid) * stride
-        out_bbox = torch.cat((box_cxcy, box_wh, box_tail), dim=2)
+        out_bbox = torch.cat((box_cxcy, box_wh, box_tail), dim=-1)
 
-        # Process keypoints
-        grid_x = grid[:, :, 0:1, :, :]
-        grid_y = grid[:, :, 1:2, :, :]
+        grid_x = grid[..., 0:1]
+        grid_y = grid[..., 1:2]
         kpt_x, kpt_y, kpt_vis = process_keypoints_predictions(x_keypoints)
         kpt_x = (kpt_x + grid_x) * stride
         kpt_y = (kpt_y + grid_y) * stride
-        out_kpt = torch.stack([kpt_x, kpt_y, kpt_vis.sigmoid()], dim=2).reshape(
-            batch_size, n_anchors, -1, feature_height, feature_width
-        )
+        # out_kpt = torch.stack([kpt_x, kpt_y, kpt_vis.sigmoid()], dim=-1).reshape(
+        #     *kpt_x.shape[:-1], -1
+        # )
+        kpt_vis_sig = kpt_vis.sigmoid()
+        out_kpt = torch.cat((kpt_x, kpt_y, kpt_vis_sig), dim=-1)
+        out_kpt = out_kpt.reshape(*kpt_x.shape[:-1], -1)
+        out = torch.cat((out_bbox, out_kpt), dim=-1)
 
-        # Concatenate bounding boxes and keypoints along the appropriate dimension
-        out_bbox = out_bbox.view(batch_size, -1, feature_height, feature_width)
-        out_kpt = out_kpt.view(batch_size, -1, feature_height, feature_width)
-        out = torch.cat((out_bbox, out_kpt), dim=1)
-
+        # return out.reshape(batch_size, -1, self.n_out)
         return out
 
     def _infer_bbox(
