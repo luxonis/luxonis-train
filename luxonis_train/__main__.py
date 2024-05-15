@@ -156,34 +156,40 @@ def inspect(
 
     counter = 0
     for data in pytorch_loader:
-        imgs, label_dict = data
-        images = get_unnormalized_images(cfg, imgs)
-        for i, img in enumerate(images):
-            for label_type, labels in label_dict.items():
-                if label_type == LabelType.CLASSIFICATION:
-                    continue
-                elif label_type == LabelType.BOUNDINGBOX:
-                    img = draw_bounding_box_labels(
-                        img, labels[labels[:, 0] == i][:, 2:], colors="yellow", width=1
-                    )
-                elif label_type == LabelType.KEYPOINT:
-                    img = draw_keypoint_labels(
-                        img, labels[labels[:, 0] == i][:, 1:], colors="red"
-                    )
-                elif label_type == LabelType.SEGMENTATION:
-                    img = draw_segmentation_labels(
-                        img, labels[i], alpha=0.8, colors="#5050FF"
-                    )
+        imgs, task_dict = data
+        for task, label_dict in task_dict.items():
+            images = get_unnormalized_images(cfg, imgs)
+            for i, img in enumerate(images):
+                for label_type, labels in label_dict.items():
+                    if label_type == LabelType.CLASSIFICATION:
+                        continue
+                    elif label_type == LabelType.BOUNDINGBOX:
+                        img = draw_bounding_box_labels(
+                            img,
+                            labels[labels[:, 0] == i][:, 2:],
+                            colors="yellow",
+                            width=1,
+                        )
+                    elif label_type == LabelType.KEYPOINT:
+                        img = draw_keypoint_labels(
+                            img, labels[labels[:, 0] == i][:, 1:], colors="red"
+                        )
+                    elif label_type == LabelType.SEGMENTATION:
+                        img = draw_segmentation_labels(
+                            img, labels[i], alpha=0.8, colors="#5050FF"
+                        )
 
-            img_arr = img.permute(1, 2, 0).numpy()
-            img_arr = cv2.cvtColor(img_arr, cv2.COLOR_RGB2BGR)
-            if save_dir is not None:
-                counter += 1
-                cv2.imwrite(os.path.join(save_dir, f"{counter}.png"), img_arr)
-            else:
-                cv2.imshow("img", img_arr)
-                if cv2.waitKey() == ord("q"):
-                    exit()
+                img_arr = img.permute(1, 2, 0).numpy()
+                img_arr = cv2.cvtColor(img_arr, cv2.COLOR_RGB2BGR)
+                if save_dir is not None:
+                    counter += 1
+                    cv2.imwrite(
+                        os.path.join(save_dir, f"{counter}_{task}.png"), img_arr
+                    )
+                else:
+                    cv2.imshow(task, img_arr)
+        if save_dir is None and cv2.waitKey() == ord("q"):
+            exit()
 
 
 @app.command()
