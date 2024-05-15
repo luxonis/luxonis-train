@@ -1,11 +1,9 @@
 import logging
 import sys
-from enum import Enum
 from typing import Annotated, Any, Literal
 
-from luxonis_ml.data import BucketStorage, BucketType
 from luxonis_ml.utils import Environ, LuxonisConfig, LuxonisFileSystem, setup_logging
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from luxonis_train.utils.general import is_acyclic
 from luxonis_train.utils.registry import MODELS
@@ -131,21 +129,27 @@ class TrackerConfig(CustomBaseModel):
     is_mlflow: bool = False
 
 
-class DatasetConfig(CustomBaseModel):
-    name: str | None = None
-    id: str | None = None
-    team_name: str | None = None
-    team_id: str | None = None
-    bucket_type: BucketType = BucketType.INTERNAL
-    bucket_storage: BucketStorage = BucketStorage.LOCAL
-    json_mode: bool = False
+class LoaderConfig(CustomBaseModel):
+    name: str = "LuxonisLoaderTorch"
     train_view: str = "train"
     val_view: str = "val"
     test_view: str = "test"
+    params: dict[str, Any] = {}
 
-    @field_serializer("bucket_storage", "bucket_type")
-    def get_enum_value(self, v: Enum, _) -> str:
-        return str(v.value)
+
+class DatasetConfig(CustomBaseModel):
+    name: str = "LuxonisDataset"
+    params: dict[str, Any] = {}
+    # id: str | None = None
+    # team_name: str | None = None
+    # team_id: str | None = None
+    # bucket_type: BucketType = BucketType.INTERNAL
+    # bucket_storage: BucketStorage = BucketStorage.LOCAL
+    # json_mode: bool = False
+
+    # @field_serializer("bucket_storage", "bucket_type")
+    # def get_enum_value(self, v: Enum, _) -> str:
+    #     return str(v.value)
 
 
 class NormalizeAugmentationConfig(CustomBaseModel):
@@ -296,6 +300,7 @@ class TunerConfig(CustomBaseModel):
 class Config(LuxonisConfig):
     use_rich_text: bool = True
     model: ModelConfig
+    loader: LoaderConfig = LoaderConfig()
     dataset: DatasetConfig = DatasetConfig()
     tracker: TrackerConfig = TrackerConfig()
     trainer: TrainerConfig = TrainerConfig()

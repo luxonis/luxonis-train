@@ -1,6 +1,7 @@
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 
 import torch
+from luxonis_ml.data import Augmentations, BaseDataset
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor
 from torch.utils.data import Dataset
@@ -22,7 +23,18 @@ class BaseLoaderTorch(
     """Base abstract loader class that enforces LuxonisLoaderTorchOutput output label
     structure."""
 
-    @abstractproperty
+    def __init__(
+        self,
+        dataset: BaseDataset,
+        view: str,
+        augmentations: Augmentations | None = None,
+    ):
+        self.dataset = dataset
+        self.view = view
+        self.augmentations = augmentations
+
+    @property
+    @abstractmethod
     def input_shape(self) -> Size:
         """Input shape in [N,C,H,W] format."""
         ...

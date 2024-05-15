@@ -2,7 +2,7 @@ import logging
 import math
 from typing import Generator, TypeVar
 
-from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.data import BaseDataset
 from pydantic import BaseModel
 from torch import Size, Tensor
 from torch.utils.data import DataLoader
@@ -154,7 +154,7 @@ class DatasetMetadata:
         self.loader = loader
 
     @classmethod
-    def from_dataset(cls, dataset: LuxonisDataset) -> "DatasetMetadata":
+    def from_dataset(cls, dataset: BaseDataset) -> "DatasetMetadata":
         """Creates a L{DatasetMetadata} object from a L{LuxonisDataset}.
 
         @type dataset: LuxonisDataset

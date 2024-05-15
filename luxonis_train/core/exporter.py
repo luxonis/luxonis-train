@@ -42,7 +42,7 @@ class Exporter(Core):
             )
         self.local_path = self.cfg.model.weights
         if input_shape is None:
-            self.input_shape = self.loader_val.input_shape
+            self.input_shape = self.loaders["val"].input_shape
         else:
             self.input_shape = Size(input_shape)
 

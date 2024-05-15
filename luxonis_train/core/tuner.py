@@ -92,8 +92,9 @@ class Tuner(Core):
             cfg=cfg,
             dataset_metadata=self.dataset_metadata,
             save_dir=run_save_dir,
-            input_shape=self.loader_train.input_shape,
+            input_shape=self.loaders["train"].input_shape,
         )
+        lightning_module._core = self
         pruner_callback = PyTorchLightningPruningCallback(
             trial, monitor="val_loss/loss"
         )
@@ -116,8 +117,8 @@ class Tuner(Core):
 
         pl_trainer.fit(
             lightning_module,  # type: ignore
-            self.pytorch_loader_train,
-            self.pytorch_loader_val,
+            self.pytorch_loaders["train"],
+            self.pytorch_loaders["val"],
         )
         pruner_callback.check_pruned()
 

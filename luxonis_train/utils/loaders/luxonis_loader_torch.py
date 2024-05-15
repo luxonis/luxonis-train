@@ -1,23 +1,18 @@
 import numpy as np
-from luxonis_ml.data import Augmentations, LuxonisDataset, LuxonisLoader
+from luxonis_ml.data import LuxonisLoader
 from torch import Size, Tensor
 
 from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput
 
 
 class LuxonisLoaderTorch(BaseLoaderTorch):
-    def __init__(
-        self,
-        dataset: LuxonisDataset,
-        view: str = "train",
-        stream: bool = False,
-        augmentations: Augmentations | None = None,
-    ):
+    def __init__(self, stream: bool = False, **kwargs):
+        super().__init__(**kwargs)
         self.base_loader = LuxonisLoader(
-            dataset=dataset,
-            view=view,
+            dataset=self.dataset,
+            view=self.view,
             stream=stream,
-            augmentations=augmentations,
+            augmentations=self.augmentations,
         )
 
     def __len__(self) -> int:
