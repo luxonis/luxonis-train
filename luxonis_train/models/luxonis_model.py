@@ -280,10 +280,6 @@ class LuxonisModel(pl.LightningModule):
         """
         input_node_name = list(self.input_shapes.keys())[0]
         input_dict = {input_node_name: [inputs]}
-        # print(inputs.shape)
-        # if task_labels:
-        #     print(task_labels["default"][LabelType.SEGMENTATION].shape)
-        #     exit()
 
         losses: dict[
             str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]
