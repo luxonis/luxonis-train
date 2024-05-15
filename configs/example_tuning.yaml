@@ -12,7 +12,8 @@ model:
       task: binary
 
 dataset:
-  name: coco_test
+  params:
+    dataset_name: coco_test
 
 trainer:
   preprocessing:

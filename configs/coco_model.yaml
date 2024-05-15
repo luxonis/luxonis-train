@@ -95,11 +95,14 @@ tracker:
   wandb_entity: luxonis
   is_mlflow: False
 
-dataset:
-  name: coco_test
+loader:
   train_view: train
   val_view: val
   test_view: test
+
+dataset:
+  params:
+    dataset_name: coco_test
 
 trainer:
   accelerator: auto

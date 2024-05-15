@@ -30,7 +30,8 @@ model:
         include_plot: True
 
 dataset:
-  name: cifar10_test
+  params:
+    dataset_name: cifar10_test
 
 trainer:
   batch_size: 4
