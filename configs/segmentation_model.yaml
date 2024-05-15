@@ -15,9 +15,6 @@ dataset:
   params:
     dataset_name: coco_test
 
-loader:
-  name: CustomLoader
-
 trainer:
   preprocessing:
     train_image_size: [&height 256, &width 320]
