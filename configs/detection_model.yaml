@@ -10,7 +10,7 @@ model:
     params:
       use_neck: True
 
-dataset:
+loader:
   params:
     dataset_name: coco_test
 

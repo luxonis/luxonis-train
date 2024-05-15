@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 import torch
-from luxonis_ml.data import Augmentations, BaseDataset
+from luxonis_ml.data import Augmentations
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor
 from torch.utils.data import Dataset
@@ -25,11 +25,9 @@ class BaseLoaderTorch(
 
     def __init__(
         self,
-        dataset: BaseDataset,
         view: str,
         augmentations: Augmentations | None = None,
     ):
-        self.dataset = dataset
         self.view = view
         self.augmentations = augmentations
 
@@ -54,6 +52,24 @@ class BaseLoaderTorch(
         @return: Sample's data in L{LuxonisLoaderTorchOutput} format
         """
         ...
+
+    @abstractmethod
+    def get_classes(self) -> dict[LabelType, list[str]]:
+        """Gets classes according to computer vision task.
+
+        @rtype: dict[LabelType, list[str]]
+        @return: A dictionary mapping tasks to their classes.
+        """
+        pass
+
+    def get_skeletons(self) -> dict[str, dict] | None:
+        """Returns the dictionary defining the semantic skeleton for each class using
+        keypoints.
+
+        @rtype: Dict[str, Dict]
+        @return: A dictionary mapping classes to their skeleton definitions.
+        """
+        return None
 
 
 def collate_fn(

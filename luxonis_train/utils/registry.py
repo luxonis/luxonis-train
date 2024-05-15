@@ -6,9 +6,6 @@ from luxonis_ml.utils.registry import Registry
 LOADERS = Registry(name="loaders")
 """Registry for all loaders."""
 
-DATASETS = Registry(name="datasets")
-"""Registry for all datasets."""
-
 CALLBACKS = Registry(name="callbacks")
 """Registry for all callbacks."""
 

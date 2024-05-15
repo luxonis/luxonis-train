@@ -1,13 +1,35 @@
 import numpy as np
-from luxonis_ml.data import LuxonisLoader
+from luxonis_ml.data import (
+    BucketStorage,
+    BucketType,
+    LabelType,
+    LuxonisDataset,
+    LuxonisLoader,
+)
 from torch import Size, Tensor
 
 from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput
 
 
 class LuxonisLoaderTorch(BaseLoaderTorch):
-    def __init__(self, stream: bool = False, **kwargs):
+    def __init__(
+        self,
+        dataset_name: str | None = None,
+        team_id: str | None = None,
+        dataset_id: str | None = None,
+        bucket_type: BucketType = BucketType.INTERNAL,
+        bucket_storage: BucketStorage = BucketStorage.LOCAL,
+        stream: bool = False,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
+        self.dataset = LuxonisDataset(
+            dataset_name=dataset_name,
+            team_id=team_id,
+            dataset_id=dataset_id,
+            bucket_type=bucket_type,
+            bucket_storage=bucket_storage,
+        )
         self.base_loader = LuxonisLoader(
             dataset=self.dataset,
             view=self.view,
@@ -34,3 +56,10 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 annotations[key] = Tensor(annotations[key])  # type: ignore
 
         return tensor_img, group_annotations
+
+    def get_classes(self) -> dict[LabelType, list[str]]:
+        _, classes = self.dataset.get_classes()
+        return {LabelType(task): classes[task] for task in classes}
+
+    def get_skeletons(self) -> dict[str, dict] | None:
+        return self.dataset.get_skeletons()

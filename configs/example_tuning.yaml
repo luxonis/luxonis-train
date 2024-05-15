@@ -11,7 +11,7 @@ model:
       backbone: MicroNet
       task: binary
 
-dataset:
+loader:
   params:
     dataset_name: coco_test
 

@@ -8,7 +8,7 @@ import cv2
 import typer
 from torch.utils.data import DataLoader
 
-from luxonis_train.utils.registry import DATASETS, LOADERS
+from luxonis_train.utils.registry import LOADERS
 
 app = typer.Typer(help="Luxonis Train CLI", add_completion=False)
 
@@ -135,7 +135,6 @@ def inspect(
 
     image_size = cfg.trainer.preprocessing.train_image_size
 
-    dataset = DATASETS.get(cfg.dataset.name)(**cfg.dataset.params)
     augmentations = (TrainAugmentations if view == "train" else ValAugmentations)(
         image_size=image_size,
         augmentations=[i.model_dump() for i in cfg.trainer.preprocessing.augmentations],
@@ -144,7 +143,7 @@ def inspect(
     )
 
     loader = LOADERS.get(cfg.loader.name)(
-        dataset=dataset, view=view, augmentations=augmentations
+        view=view, augmentations=augmentations, **cfg.loader.params
     )
 
     pytorch_loader = DataLoader(

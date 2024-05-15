@@ -137,11 +137,6 @@ class LoaderConfig(CustomBaseModel):
     params: dict[str, Any] = {}
 
 
-class DatasetConfig(CustomBaseModel):
-    name: str = "LuxonisDataset"
-    params: dict[str, Any] = {}
-
-
 class NormalizeAugmentationConfig(CustomBaseModel):
     active: bool = True
     params: dict[str, Any] = {
@@ -292,7 +287,6 @@ class Config(LuxonisConfig):
     use_rich_text: bool = True
     model: ModelConfig
     loader: LoaderConfig = LoaderConfig()
-    dataset: DatasetConfig = DatasetConfig()
     tracker: TrackerConfig = TrackerConfig()
     trainer: TrainerConfig = TrainerConfig()
     exporter: ExportConfig = ExportConfig()

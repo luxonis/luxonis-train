@@ -11,9 +11,9 @@ model:
       backbone: MicroNet
       task: binary
 
-dataset:
-  params:
-    dataset_name: coco_test
+# loader:
+#   params:
+#     dataset_name: coco_test
 
 trainer:
   preprocessing:

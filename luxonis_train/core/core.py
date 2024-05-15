@@ -16,7 +16,7 @@ from luxonis_train.callbacks import LuxonisProgressBar
 from luxonis_train.utils.config import Config
 from luxonis_train.utils.general import DatasetMetadata
 from luxonis_train.utils.loaders import collate_fn
-from luxonis_train.utils.registry import DATASETS, LOADERS
+from luxonis_train.utils.registry import LOADERS
 from luxonis_train.utils.tracker import LuxonisTrackerPL
 
 logger = getLogger(__name__)
@@ -131,11 +131,9 @@ class Core:
             callbacks=LuxonisProgressBar() if self.cfg.use_rich_text else None,
             deterministic=deterministic,
         )
-        self.dataset = DATASETS.get(self.cfg.dataset.name)(**self.cfg.dataset.params)
 
         self.loaders = {
             view: LOADERS.get(self.cfg.loader.name)(
-                dataset=self.dataset,
                 augmentations=self.train_augmentations
                 if view == "train"
                 else self.val_augmentations,
@@ -174,7 +172,7 @@ class Core:
         }
         self.error_message = None
 
-        self.dataset_metadata = DatasetMetadata.from_dataset(self.dataset)
+        self.dataset_metadata = DatasetMetadata.from_loader(self.loaders["train"])
         self.dataset_metadata.set_loader(self.pytorch_loaders["train"])
 
         self.cfg.save_data(os.path.join(self.run_save_dir, "config.yaml"))

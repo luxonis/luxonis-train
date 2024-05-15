@@ -100,7 +100,6 @@ loader:
   val_view: val
   test_view: test
 
-dataset:
   params:
     dataset_name: coco_test
 
