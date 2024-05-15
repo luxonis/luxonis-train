@@ -5,8 +5,10 @@ from pathlib import Path
 from typing import Annotated, Optional
 
 import cv2
-import torch
 import typer
+from torch.utils.data import DataLoader
+
+from luxonis_train.utils.registry import DATASETS, LOADERS
 
 app = typer.Typer(help="Luxonis Train CLI", add_completion=False)
 
@@ -104,7 +106,6 @@ def inspect(
 ):
     """Inspect dataset."""
     from luxonis_ml.data import (
-        LuxonisDataset,
         TrainAugmentations,
         ValAugmentations,
     )
@@ -116,7 +117,7 @@ def inspect(
         get_unnormalized_images,
     )
     from luxonis_train.utils.config import Config
-    from luxonis_train.utils.loaders import LuxonisLoaderTorch, collate_fn
+    from luxonis_train.utils.loaders import collate_fn
     from luxonis_train.utils.types import LabelType
 
     overrides = {}
@@ -131,43 +132,22 @@ def inspect(
 
     image_size = cfg.trainer.preprocessing.train_image_size
 
-    dataset = LuxonisDataset(
-        dataset_name=cfg.dataset.name,
-        team_id=cfg.dataset.team_id,
-        dataset_id=cfg.dataset.id,
-        bucket_type=cfg.dataset.bucket_type,
-        bucket_storage=cfg.dataset.bucket_storage,
-    )
-    augmentations = (
-        TrainAugmentations(
-            image_size=image_size,
-            augmentations=[
-                i.model_dump() for i in cfg.trainer.preprocessing.augmentations
-            ],
-            train_rgb=cfg.trainer.preprocessing.train_rgb,
-            keep_aspect_ratio=cfg.trainer.preprocessing.keep_aspect_ratio,
-        )
-        if view == "train"
-        else ValAugmentations(
-            image_size=image_size,
-            augmentations=[
-                i.model_dump() for i in cfg.trainer.preprocessing.augmentations
-            ],
-            train_rgb=cfg.trainer.preprocessing.train_rgb,
-            keep_aspect_ratio=cfg.trainer.preprocessing.keep_aspect_ratio,
-        )
+    dataset = DATASETS.get(cfg.dataset.name)(**cfg.dataset.params)
+    augmentations = (TrainAugmentations if view == "train" else ValAugmentations)(
+        image_size=image_size,
+        augmentations=[i.model_dump() for i in cfg.trainer.preprocessing.augmentations],
+        train_rgb=cfg.trainer.preprocessing.train_rgb,
+        keep_aspect_ratio=cfg.trainer.preprocessing.keep_aspect_ratio,
     )
 
-    loader_train = LuxonisLoaderTorch(
-        dataset,
-        view=view,
-        augmentations=augmentations,
+    loader = LOADERS.get(cfg.loader.name)(
+        dataset=dataset, view=view, augmentations=augmentations
     )
 
-    pytorch_loader_train = torch.utils.data.DataLoader(
-        loader_train,
-        batch_size=4,
-        num_workers=1,
+    pytorch_loader = DataLoader(
+        loader,
+        batch_size=1,
+        num_workers=0,
         collate_fn=collate_fn,
     )
 
@@ -175,7 +155,7 @@ def inspect(
         os.makedirs(save_dir, exist_ok=True)
 
     counter = 0
-    for data in pytorch_loader_train:
+    for data in pytorch_loader:
         imgs, label_dict = data
         images = get_unnormalized_images(cfg, imgs)
         for i, img in enumerate(images):
