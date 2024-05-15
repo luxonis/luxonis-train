@@ -265,7 +265,7 @@ T = TypeVar("T")
 # TEST:
 def traverse_graph(
     graph: dict[str, list[str]], nodes: dict[str, T]
-) -> Generator[tuple[str, T, list[str], set[str]], None, None]:
+) -> Generator[tuple[str, T, list[str], list[str]], None, None]:
     """Traverses the graph in topological order.
 
     @type graph: dict[str, list[str]]
@@ -273,12 +273,14 @@ def traverse_graph(
         names, values are inputs to the node (list of node names).
     @type nodes: dict[str, T]
     @param nodes: Dictionary mapping node names to node objects.
-    @rtype: Generator[tuple[str, T, list[str], set[str]], None, None]
+    @rtype: Generator[tuple[str, T, list[str], list[str]], None, None]
     @return: Generator of tuples containing node name, node object, node dependencies
         and unprocessed nodes.
     @raises RuntimeError: If the graph is malformed.
     """
-    unprocessed_nodes = set(nodes.keys())
+    unprocessed_nodes = sorted(
+        set(nodes.keys())
+    )  # sort the set to allow reproducibility
     processed: set[str] = set()
 
     while unprocessed_nodes:

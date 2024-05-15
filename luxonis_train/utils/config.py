@@ -210,6 +210,7 @@ class TrainerConfig(CustomBaseModel):
     matmul_precision: Literal["medium", "high", "highest"] | None = None
     verbose: bool = True
 
+    seed: int | None = None
     batch_size: int = 32
     accumulate_grad_batches: int = 1
     use_weighted_sampler: bool = False
