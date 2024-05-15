@@ -103,6 +103,7 @@ def inspect(
     opts: OptsType = None,
 ):
     """Inspect dataset."""
+    from lightning.pytorch import seed_everything
     from luxonis_ml.data import (
         LuxonisDataset,
         TrainAugmentations,
@@ -118,7 +119,6 @@ def inspect(
     from luxonis_train.utils.config import Config
     from luxonis_train.utils.loaders import LuxonisLoaderTorch, collate_fn
     from luxonis_train.utils.types import LabelType
-    from lightning.pytorch import seed_everything
 
     overrides = {}
     if opts:
