@@ -9,7 +9,6 @@ from .base_visualizer import BaseVisualizer
 from .utils import (
     Color,
     draw_segmentation_labels,
-    draw_segmentation_masks,
     get_color,
     seg_output_to_bool,
 )
@@ -63,10 +62,9 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         for i in range(len(canvas)):
             prediction = predictions[i]
             mask = seg_output_to_bool(prediction)
-            mask = mask.to(canvas.device)
-            viz[i] = draw_segmentation_masks(
+            viz[i] = draw_segmentation_labels(
                 canvas[i].clone(), mask, colors=colors, **kwargs
-            )
+            ).to(canvas.device)
         return viz
 
     @staticmethod

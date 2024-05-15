@@ -103,6 +103,7 @@ def inspect(
     opts: OptsType = None,
 ):
     """Inspect dataset."""
+    from lightning.pytorch import seed_everything
     from luxonis_ml.data import (
         LuxonisDataset,
         TrainAugmentations,
@@ -128,6 +129,8 @@ def inspect(
             overrides[opts[i]] = opts[i + 1]
 
     cfg = Config.get_config(str(config), overrides)
+    if cfg.trainer.seed is not None:
+        seed_everything(cfg.trainer.seed, workers=True)
 
     image_size = cfg.trainer.preprocessing.train_image_size
 
