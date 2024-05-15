@@ -101,6 +101,12 @@ class Tuner(Core):
             [LuxonisProgressBar()] if self.cfg.use_rich_text else []
         )
         callbacks.append(pruner_callback)
+
+        deterministic = False
+        if self.cfg.trainer.seed:
+            pl.seed_everything(cfg.trainer.seed, workers=True)
+            deterministic = True
+
         pl_trainer = pl.Trainer(
             accelerator=cfg.trainer.accelerator,
             devices=cfg.trainer.devices,
@@ -112,6 +118,7 @@ class Tuner(Core):
             num_sanity_val_steps=cfg.trainer.num_sanity_val_steps,
             profiler=cfg.trainer.profiler,
             callbacks=callbacks,
+            deterministic=deterministic,
         )
 
         pl_trainer.fit(

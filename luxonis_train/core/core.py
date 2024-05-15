@@ -92,6 +92,11 @@ class Core:
         # NOTE: overriding logger in pl so it uses our logger to log device info
         rank_zero_module.log = logger
 
+        deterministic = False
+        if self.cfg.trainer.seed is not None:
+            pl.seed_everything(self.cfg.trainer.seed, workers=True)
+            deterministic = True
+
         self.train_augmentations = TrainAugmentations(
             image_size=self.cfg.trainer.preprocessing.train_image_size,
             augmentations=[
@@ -122,6 +127,7 @@ class Core:
             # NOTE: this is likely PL bug,
             # should be configurable inside configure_callbacks(),
             callbacks=LuxonisProgressBar() if self.cfg.use_rich_text else None,
+            deterministic=deterministic,
         )
         self.dataset = LuxonisDataset(
             dataset_name=self.cfg.dataset.name,
