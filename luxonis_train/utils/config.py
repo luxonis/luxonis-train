@@ -140,16 +140,6 @@ class LoaderConfig(CustomBaseModel):
 class DatasetConfig(CustomBaseModel):
     name: str = "LuxonisDataset"
     params: dict[str, Any] = {}
-    # id: str | None = None
-    # team_name: str | None = None
-    # team_id: str | None = None
-    # bucket_type: BucketType = BucketType.INTERNAL
-    # bucket_storage: BucketStorage = BucketStorage.LOCAL
-    # json_mode: bool = False
-
-    # @field_serializer("bucket_storage", "bucket_type")
-    # def get_enum_value(self, v: Enum, _) -> str:
-    #     return str(v.value)
 
 
 class NormalizeAugmentationConfig(CustomBaseModel):
