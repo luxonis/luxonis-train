@@ -116,8 +116,10 @@ class ImplicitKeypointBBoxHead(BaseNode):
         if init_coco_biases:
             self._initialize_weights_and_biases()
 
-    def forward(self, inputs: list[Tensor]) -> list[Tensor]:
+    def forward(self, inputs: list[Tensor]) -> tuple[list[Tensor], Tensor]:
+        predictions: list[Tensor] = []
         features: list[Tensor] = []
+
         self.anchor_grid = self.anchor_grid.to(inputs[0].device)
 
         for i in range(self.num_heads):
@@ -129,48 +131,44 @@ class ImplicitKeypointBBoxHead(BaseNode):
                         self.kpt_heads[i](inputs[i]),
                     ),
                     axis=1,
-                ),
+                ),  # type: ignore
             )
 
-            features.append(feat)
-
-        return features
-
-    def wrap(self, features: list[Tensor]) -> dict:
-        predictions = []
-        predictions_reshaped = []
-        reshaped_features = []
-
-        for i, feat in enumerate(features):
             batch_size, _, feature_height, feature_width = feat.shape
-            reshaped_feat = feat.reshape(
-                batch_size, self.n_anchors, self.n_out, feature_height, feature_width
-            ).permute(0, 1, 3, 4, 2)
-            reshaped_features.append(reshaped_feat)
-
             if i >= len(self.grid):
                 self.grid.append(
                     self._construct_grid(feature_width, feature_height).to(feat.device)
                 )
 
-            prediction = self._build_predictions(
-                reshaped_feat, self.anchor_grid[i], self.grid[i], self.stride[i]
+            feat = feat.reshape(
+                batch_size, self.n_anchors, self.n_out, feature_height, feature_width
+            ).permute(0, 1, 3, 4, 2)
+
+            features.append(feat)
+            predictions.append(
+                self._build_predictions(
+                    feat, self.anchor_grid[i], self.grid[i], self.stride[i]
+                )
             )
-            predictions_reshaped.append(prediction.view(batch_size, self.n_anchors * self.n_out, feature_height, feature_width))
-            predictions.append(prediction.reshape(batch_size, -1, self.n_out))
+
+        return features, torch.cat(predictions, dim=1)
+
+    def wrap(self, outputs: tuple[list[Tensor], Tensor]) -> Packet[Tensor]:
+        features, predictions = outputs
 
         if self.export:
-            return {"predictions": predictions}
+            return {"boxes_and_keypoints": [predictions]}
 
         if self.training:
-            return {"features": reshaped_features}
+            return {"features": features}
 
         nms = non_max_suppression(
-            torch.cat(predictions, dim=1),
+            predictions,
             n_classes=self.n_classes,
             conf_thres=self.conf_thres,
             iou_thres=self.iou_thres,
             bbox_format="cxcywh",
+            max_det=self.max_det,
         )
 
         return {
@@ -178,9 +176,8 @@ class ImplicitKeypointBBoxHead(BaseNode):
             "keypoints": [
                 detection[:, 6:].reshape(-1, self.n_keypoints, 3) for detection in nms
             ],
-            "features": reshaped_features, 
+            "features": features,
         }
-
 
     def _build_predictions(
         self, feat: Tensor, anchor_grid: Tensor, grid: Tensor, stride: Tensor
@@ -200,13 +197,14 @@ class ImplicitKeypointBBoxHead(BaseNode):
         kpt_x, kpt_y, kpt_vis = process_keypoints_predictions(x_keypoints)
         kpt_x = (kpt_x + grid_x) * stride
         kpt_y = (kpt_y + grid_y) * stride
-
         kpt_vis_sig = kpt_vis.sigmoid()
         out_kpt = torch.cat((kpt_x, kpt_y, kpt_vis_sig), dim=-1)
         out_kpt = out_kpt.reshape(*kpt_x.shape[:-1], -1)
         out = torch.cat((out_bbox, out_kpt), dim=-1)
 
-        return out
+        out = torch.cat((out_bbox, out_kpt), dim=-1)
+
+        return out.reshape(batch_size, -1, self.n_out)
 
     def _infer_bbox(
         self, bbox: Tensor, stride: Tensor, grid: Tensor, anchor_grid: Tensor
