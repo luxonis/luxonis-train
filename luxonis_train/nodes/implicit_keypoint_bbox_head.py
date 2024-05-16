@@ -137,8 +137,6 @@ class ImplicitKeypointBBoxHead(BaseNode):
         return features
 
     def wrap(self, features: list[Tensor]) -> dict:
-
-
         predictions = []
         predictions_reshaped = []
         reshaped_features = []
@@ -162,7 +160,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
             predictions.append(prediction.reshape(batch_size, -1, self.n_out))
 
         if self.export:
-            return {"predictions_reshaped": predictions_reshaped}
+            return {"predictions": predictions}
 
         if self.training:
             return {"features": reshaped_features}
@@ -202,15 +200,12 @@ class ImplicitKeypointBBoxHead(BaseNode):
         kpt_x, kpt_y, kpt_vis = process_keypoints_predictions(x_keypoints)
         kpt_x = (kpt_x + grid_x) * stride
         kpt_y = (kpt_y + grid_y) * stride
-        # out_kpt = torch.stack([kpt_x, kpt_y, kpt_vis.sigmoid()], dim=-1).reshape(
-        #     *kpt_x.shape[:-1], -1
-        # )
+
         kpt_vis_sig = kpt_vis.sigmoid()
         out_kpt = torch.cat((kpt_x, kpt_y, kpt_vis_sig), dim=-1)
         out_kpt = out_kpt.reshape(*kpt_x.shape[:-1], -1)
         out = torch.cat((out_bbox, out_kpt), dim=-1)
 
-        # return out.reshape(batch_size, -1, self.n_out)
         return out
 
     def _infer_bbox(
