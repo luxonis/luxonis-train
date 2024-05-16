@@ -202,8 +202,6 @@ class ImplicitKeypointBBoxHead(BaseNode):
         out_kpt = out_kpt.reshape(*kpt_x.shape[:-1], -1)
         out = torch.cat((out_bbox, out_kpt), dim=-1)
 
-        out = torch.cat((out_bbox, out_kpt), dim=-1)
-
         return out.reshape(batch_size, -1, self.n_out)
 
     def _infer_bbox(
