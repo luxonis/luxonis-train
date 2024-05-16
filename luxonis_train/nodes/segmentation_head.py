@@ -16,7 +16,6 @@ from .base_node import BaseNode
 
 
 class SegmentationHead(BaseNode[Tensor, Tensor]):
-    attach_index: int = -1
     in_height: int
     in_channels: int
 

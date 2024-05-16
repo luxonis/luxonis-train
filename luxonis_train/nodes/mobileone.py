@@ -1,38 +1,7 @@
 """MobileOne backbone.
 
-Soure: U{https://github.com/apple/ml-mobileone} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>} @license: U{Apple
-<https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
-@license: U{Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
+Source: U{<https://github.com/apple/ml-mobileone>}
+@license: U{Apple<https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
 """
 
 
@@ -52,7 +21,6 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
     TODO: add more details
     """
 
-    attach_index: int = -1
     in_channels: int
 
     VARIANTS_SETTINGS: dict[str, dict] = {
@@ -115,9 +83,9 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
             num_se_blocks=self.num_blocks_per_stage[3] if self.use_se else 0,
         )
 
-    def forward(self, x: Tensor) -> list[Tensor]:
+    def forward(self, inputs: Tensor) -> list[Tensor]:
         outs = []
-        x = self.stage0(x)
+        x = self.stage0(inputs)
         outs.append(x)
         x = self.stage1(x)
         outs.append(x)

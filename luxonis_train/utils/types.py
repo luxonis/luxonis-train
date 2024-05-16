@@ -7,6 +7,7 @@ from torch import Size, Tensor
 Kwargs = dict[str, Any]
 OutputTypes = Literal["boxes", "class", "keypoints", "segmentation", "features"]
 Labels = dict[LabelType, Tensor]
+TaskLabels = dict[str, Labels]
 
 AttachIndexType = Literal["all"] | int | tuple[int, int] | tuple[int, int, int]
 """AttachIndexType is used to specify to which output of the prevoius node does the

@@ -29,11 +29,13 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         return Size([1, *img.shape])
 
     def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
-        img, annotations = self.base_loader[idx]
+        img, group_annotations = self.base_loader[idx]
 
         img = np.transpose(img, (2, 0, 1))  # HWC to CHW
         tensor_img = Tensor(img)
-        for key in annotations:
-            annotations[key] = Tensor(annotations[key])  # type: ignore
+        for task in group_annotations:
+            annotations = group_annotations[task]
+            for key in annotations:
+                annotations[key] = Tensor(annotations[key])  # type: ignore
 
-        return tensor_img, annotations
+        return tensor_img, group_annotations

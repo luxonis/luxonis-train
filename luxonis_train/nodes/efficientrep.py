@@ -17,10 +17,10 @@ from luxonis_train.utils.general import make_divisible
 
 from .base_node import BaseNode
 
+logger = logging.getLogger(__name__)
+
 
 class EfficientRep(BaseNode[Tensor, list[Tensor]]):
-    attach_index: int = -1
-
     def __init__(
         self,
         channels_list: list[int] | None = None,
@@ -91,22 +91,21 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         )
 
     def set_export_mode(self, mode: bool = True) -> None:
-        """Reparametrizes instances of `RepVGGBlock` in the network.
+        """Reparametrizes instances of L{RepVGGBlock} in the network.
 
         @type mode: bool
         @param mode: Whether to set the export mode. Defaults to C{True}.
         """
         super().set_export_mode(mode)
-        logger = logging.getLogger(__name__)
-        if mode:
+        if self.export:
             logger.info("Reparametrizing EfficientRep.")
             for module in self.modules():
                 if isinstance(module, RepVGGBlock):
                     module.reparametrize()
 
-    def forward(self, x: Tensor) -> list[Tensor]:
+    def forward(self, inputs: Tensor) -> list[Tensor]:
         outputs = []
-        x = self.repvgg_encoder(x)
+        x = self.repvgg_encoder(inputs)
         for block in self.blocks:
             x = block(x)
             outputs.append(x)

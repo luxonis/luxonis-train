@@ -405,7 +405,7 @@ def combine_visualizations(
         return fst_resized, snd_resized
 
     match visualization:
-        case Tensor(data=viz):
+        case Tensor() as viz:
             return viz
         case (Tensor(data=viz_labels), Tensor(data=viz_predictions)):
             viz_labels, viz_predictions = resize_to_match(viz_labels, viz_predictions)

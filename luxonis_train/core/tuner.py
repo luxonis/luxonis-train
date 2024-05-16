@@ -1,6 +1,6 @@
 import os.path as osp
-from typing import Any
 from logging import getLogger
+from typing import Any
 
 import lightning.pytorch as pl
 import optuna

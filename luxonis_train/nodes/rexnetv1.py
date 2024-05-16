@@ -17,8 +17,6 @@ from .base_node import BaseNode
 
 
 class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
-    attach_index: int = -1
-
     def __init__(
         self,
         fix_head_stem: bool = False,
@@ -129,8 +127,8 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
 
     def forward(self, x: Tensor) -> list[Tensor]:
         outs = []
-        for i, m in enumerate(self.features):
-            x = m(x)
+        for i, module in enumerate(self.features):
+            x = module(x)
             if i in self.out_indices:
                 outs.append(x)
         return outs
@@ -186,12 +184,11 @@ class LinearBottleneck(nn.Module):
 
         self.out = nn.Sequential(*out)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         out = self.out(x)
 
         if self.use_shortcut:
-            # this results in a ScatterND node which isn't supported yet in myriad
-            # out[:, 0:self.in_channels] += x
+            # NOTE: this results in a ScatterND node which isn't supported yet in myriad
             a = out[:, : self.in_channels]
             b = x
             a = a + b

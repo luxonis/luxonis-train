@@ -8,12 +8,13 @@ from lightning.pytorch.callbacks import (
 
 from luxonis_train.utils.registry import CALLBACKS
 
+from .archive_on_train_end import ArchiveOnTrainEnd
 from .export_on_train_end import ExportOnTrainEnd
 from .luxonis_progress_bar import LuxonisProgressBar
 from .metadata_logger import MetadataLogger
 from .module_freezer import ModuleFreezer
 from .test_on_train_end import TestOnTrainEnd
-from .upload_checkpoint_on_train_end import UploadCheckpointOnTrainEnd
+from .upload_checkpoint import UploadCheckpoint
 
 CALLBACKS.register_module(module=EarlyStopping)
 CALLBACKS.register_module(module=LearningRateMonitor)
@@ -23,10 +24,11 @@ CALLBACKS.register_module(module=DeviceStatsMonitor)
 
 
 __all__ = [
+    "ArchiveOnTrainEnd",
     "ExportOnTrainEnd",
     "LuxonisProgressBar",
     "MetadataLogger",
     "ModuleFreezer",
     "TestOnTrainEnd",
-    "UploadCheckpointOnTrainEnd",
+    "UploadCheckpoint",
 ]
