@@ -33,6 +33,20 @@ class Tuner(Core):
             raise ValueError("You have to specify the `tuner` section in config.")
         self.tune_cfg = self.cfg.tuner
 
+        # Parent tracker that only logs the best study parameters at the end
+        rank = rank_zero_only.rank
+        cfg_tracker = self.cfg.tracker
+        tracker_params = cfg_tracker.model_dump()
+        self.parent_tracker = LuxonisTrackerPL(
+            rank=rank,
+            mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
+            is_sweep=False,
+            **tracker_params,
+        )
+        if self.parent_tracker.is_mlflow:
+            run = self.parent_tracker.experiment["mlflow"].active_run()
+            self.parent_run_id = run.info.run_id
+
     def tune(self) -> None:
         """Runs Optuna tunning of hyperparameters."""
         logger.info("Starting tuning...")
@@ -70,27 +84,30 @@ class Tuner(Core):
             timeout=self.tune_cfg.timeout,
         )
 
-        logger.info(f"Best study parameters: {study.best_params}")
+        best_study_params = study.best_params
+        logger.info(f"Best study parameters: {best_study_params}")
+        self.parent_tracker.log_hyperparams(best_study_params)
 
     def _objective(self, trial: optuna.trial.Trial) -> float:
         """Objective function used to optimize Optuna study."""
         rank = rank_zero_only.rank
         cfg_tracker = self.cfg.tracker
         tracker_params = cfg_tracker.model_dump()
-        tracker = LuxonisTrackerPL(
+        child_tracker = LuxonisTrackerPL(
             rank=rank,
             mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
             is_sweep=True,
             **tracker_params,
         )
-        run_save_dir = osp.join(cfg_tracker.save_directory, tracker.run_name)
+
+        run_save_dir = osp.join(cfg_tracker.save_directory, child_tracker.run_name)
 
         curr_params = self._get_trial_params(trial)
         curr_params["model.predefined_model"] = None
         Config.clear_instance()
         cfg = Config.get_config(self.cfg.model_dump(), curr_params)
 
-        tracker.log_hyperparams(curr_params)
+        child_tracker.log_hyperparams(curr_params)
 
         cfg.save_data(osp.join(run_save_dir, "config.yaml"))
 
@@ -100,16 +117,20 @@ class Tuner(Core):
             save_dir=run_save_dir,
             input_shape=self.loader_train.input_shape,
         )
-        pruner_callback = PyTorchLightningPruningCallback(trial, monitor="val/loss")
         callbacks: list[pl.Callback] = (
             [LuxonisProgressBar()] if self.cfg.use_rich_text else []
         )
+        pruner_callback = PyTorchLightningPruningCallback(trial, monitor="val/loss")
         callbacks.append(pruner_callback)
+
+        tracker_end_run = TrackerEndRun()
+        callbacks.append(tracker_end_run)
+
         pl_trainer = pl.Trainer(
             accelerator=cfg.trainer.accelerator,
             devices=cfg.trainer.devices,
             strategy=cfg.trainer.strategy,
-            logger=tracker,  # type: ignore
+            logger=child_tracker,  # type: ignore
             max_epochs=cfg.trainer.epochs,
             accumulate_grad_batches=cfg.trainer.accumulate_grad_batches,
             check_val_every_n_epoch=cfg.trainer.validation_interval,
@@ -118,12 +139,20 @@ class Tuner(Core):
             callbacks=callbacks,
         )
 
-        pl_trainer.fit(
-            lightning_module,  # type: ignore
-            self.pytorch_loader_train,
-            self.pytorch_loader_val,
-        )
-        pruner_callback.check_pruned()
+        try:
+            pl_trainer.fit(
+                lightning_module,  # type: ignore
+                self.pytorch_loader_train,
+                self.pytorch_loader_val,
+            )
+
+            pruner_callback.check_pruned()
+
+        except optuna.TrialPruned as e:
+            # Pruning is done by raising an error
+            # When .fit() errors out we have to gracefully also end the trackers
+            tracker_end_run.end_trackers(child_tracker)
+            logger.info(e)
 
         if "val/loss" not in pl_trainer.callback_metrics:
             raise ValueError(
@@ -174,3 +203,24 @@ class Tuner(Core):
                 "No paramteres to tune. Specify them under `tuner.params`."
             )
         return new_params
+
+
+class TrackerEndRun(pl.Callback):
+    """Callback that ends trackers of child processes during tuning study"""
+
+    def teardown(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule, stage: str
+    ) -> None:
+        self.end_trackers(trainer.logger)  # type: ignore
+        return super().teardown(trainer, pl_module, stage)
+
+    def end_trackers(self, tracker: LuxonisTrackerPL) -> None:
+        """Ends WandB and MLFlow trackers
+
+        Args:
+            tracker (LuxonisTrackerPL): Currently active tracker
+        """
+        if tracker.is_wandb:
+            tracker.experiment["wandb"].finish()
+        if tracker.is_mlflow:
+            tracker.experiment["mlflow"].end_run()
