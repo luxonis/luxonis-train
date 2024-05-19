@@ -43,6 +43,9 @@ class Tuner(Core):
             is_sweep=False,
             **tracker_params,
         )
+        if self.parent_tracker.is_mlflow:
+            # Experiment needs to be interacted with to create actual MLFlow run
+            run = self.parent_tracker.experiment["mlflow"].active_run()
 
     def tune(self) -> None:
         """Runs Optuna tunning of hyperparameters."""
