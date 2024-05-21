@@ -40,29 +40,25 @@ from luxonis_train.utils.registry import CALLBACKS
 
 @CALLBACKS.register_module()
 class GPUStatsMonitor(pl.Callback):
-    r"""
-    .. deprecated:: v1.5
-        The `GPUStatsMonitor` callback was deprecated in v1.5 and will be removed in v1.7.
-        Please use the `DeviceStatsMonitor` callback instead.
-
-    Automatically monitors and logs GPU stats during training stage. ``GPUStatsMonitor``
-    is a callback and in order to use it you need to assign a logger in the ``Trainer``.
+    """Automatically monitors and logs GPU stats during training stage.
+    C{GPUStatsMonitor} is a callback and in order to use it you need to assign a logger
+    in the C{Trainer}.
 
     Args:
-        memory_utilization: Set to ``True`` to monitor used, free and percentage of memory
-            utilization at the start and end of each step. Default: ``True``.
-        gpu_utilization: Set to ``True`` to monitor percentage of GPU utilization
-            at the start and end of each step. Default: ``True``.
-        intra_step_time: Set to ``True`` to monitor the time of each step. Default: ``False``.
-        inter_step_time: Set to ``True`` to monitor the time between the end of one step
-            and the start of the next step. Default: ``False``.
-        fan_speed: Set to ``True`` to monitor percentage of fan speed. Default: ``False``.
-        temperature: Set to ``True`` to monitor the memory and gpu temperature in degree Celsius.
-            Default: ``False``.
+        memory_utilization: Set to C{True} to monitor used, free and percentage of memory
+            utilization at the start and end of each step. Default: C{True}.
+        gpu_utilization: Set to C{True} to monitor percentage of GPU utilization
+            at the start and end of each step. Default: C{True}.
+        intra_step_time: Set to C{True} to monitor the time of each step. Default: {False}.
+        inter_step_time: Set to C{True} to monitor the time between the end of one step
+            and the start of the next step. Default: C{False}.
+        fan_speed: Set to C{True} to monitor percentage of fan speed. Default: C{False}.
+        temperature: Set to C{True} to monitor the memory and gpu temperature in degree Celsius.
+            Default: C{False}.
 
     Raises:
         MisconfigurationException:
-            If NVIDIA driver is not installed, not running on GPUs, or ``Trainer`` has no logger.
+            If NVIDIA driver is not installed, not running on GPUs, or C{Trainer} has no logger.
 
     Example::
 
@@ -71,7 +67,7 @@ class GPUStatsMonitor(pl.Callback):
         >>> gpu_stats = GPUStatsMonitor() # doctest: +SKIP
         >>> trainer = Trainer(callbacks=[gpu_stats]) # doctest: +SKIP
 
-    GPU stats are mainly based on `nvidia-smi --query-gpu` command. The description of the queries is as follows:
+    GPU stats are mainly based on C{nvidia-smi --query-gpu} command. The description of the queries is as follows:
 
     - **fan.speed** – The fan speed value is the percent of maximum speed that the device's fan is currently
       intended to run at. It ranges from 0 to 100 %. Note: The reported speed is the intended fan speed.
@@ -85,7 +81,6 @@ class GPUStatsMonitor(pl.Callback):
       being read or written. The sample period may be between 1 second and 1/6 second depending on the product.
     - **temperature.gpu** – Core GPU temperature, in degrees C.
     - **temperature.memory** – HBM memory temperature, in degrees C.
-
     """
 
     def __init__(
