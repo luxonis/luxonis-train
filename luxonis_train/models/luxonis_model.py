@@ -622,6 +622,8 @@ class LuxonisModel(pl.LightningModule):
         self.best_val_metric_checkpoints_path = f"{self.save_dir}/best_val_metric"
         model_name = self.cfg.model.name
 
+        user_callbacks = [c.name for c in self.cfg.trainer.callbacks]
+
         callbacks: list[pl.Callback] = [
             ModelCheckpoint(
                 monitor="val/loss",
@@ -631,9 +633,12 @@ class LuxonisModel(pl.LightningModule):
                 save_top_k=self.cfg.trainer.save_top_k,
                 mode="min",
             ),
-            DeviceStatsMonitor(cpu_stats=True),
-            GPUStatsMonitor(),
         ]
+        if "DeviceStatsMonitor" not in user_callbacks:
+            callbacks.append(DeviceStatsMonitor(cpu_stats=True))
+
+        if "GPUStatsMonitor" not in user_callbacks:
+            callbacks.append(GPUStatsMonitor())
 
         if self.main_metric is not None:
             main_metric = self.main_metric.replace("/", "_")
