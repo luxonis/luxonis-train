@@ -68,7 +68,7 @@ class Core:
         opts = opts or []
 
         if self.cfg.use_rich_text:
-            rich.traceback.install(suppress=[pl, torch])
+            rich.traceback.install(suppress=[pl, torch], show_locals=False)
 
         self.rank = rank_zero_only.rank
 
