@@ -63,6 +63,9 @@ class Trainer(Core):
             self._upload_logs()
 
             if self.cfg.tracker.is_mlflow:
+                import mlflow
+                from mlflow.entities.run_status import RunStatus
+
                 logger.info("Uploading checkpoint to MLFlow.")
                 fs = LuxonisFileSystem(
                     "mlflow://",
@@ -74,6 +77,7 @@ class Trainer(Core):
                     remote_path="resume.ckpt",
                     mlflow_instance=self.tracker.experiment.get("mlflow", None),
                 )
+                mlflow.end_run(RunStatus.to_string(RunStatus.FAILED))
 
             exit(0)
 
