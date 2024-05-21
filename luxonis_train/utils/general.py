@@ -2,12 +2,12 @@ import logging
 import math
 from typing import Generator, TypeVar
 
-from luxonis_ml.data import LuxonisDataset
 from pydantic import BaseModel
 from torch import Size, Tensor
 from torch.utils.data import DataLoader
 
 from luxonis_train.utils.boxutils import anchors_from_dataset
+from luxonis_train.utils.loaders import BaseLoaderTorch
 from luxonis_train.utils.types import LabelType, Packet
 
 
@@ -154,7 +154,7 @@ class DatasetMetadata:
         self.loader = loader
 
     @classmethod
-    def from_dataset(cls, dataset: LuxonisDataset) -> "DatasetMetadata":
+    def from_loader(cls, loader: BaseLoaderTorch) -> "DatasetMetadata":
         """Creates a L{DatasetMetadata} object from a L{LuxonisDataset}.
 
         @type dataset: LuxonisDataset
@@ -162,22 +162,23 @@ class DatasetMetadata:
         @rtype: DatasetMetadata
         @return: Instance of L{DatasetMetadata} created from the provided dataset.
         """
-        _, classes = dataset.get_classes()
-        skeletons = dataset.get_skeletons()
+        classes = loader.get_classes()
+        skeletons = loader.get_skeletons()
 
         keypoint_names = None
         connectivity = None
 
-        if len(skeletons) == 1:
-            name = list(skeletons.keys())[0]
-            keypoint_names = skeletons[name]["labels"]
-            connectivity = skeletons[name]["edges"]
+        if skeletons is not None:
+            if len(skeletons) == 1:
+                name = list(skeletons.keys())[0]
+                keypoint_names = skeletons[name]["labels"]
+                connectivity = skeletons[name]["edges"]
 
-        elif len(skeletons) > 1:
-            raise NotImplementedError(
-                "The dataset defines multiclass keypoint detection. "
-                "This is not yet supported."
-            )
+            elif len(skeletons) > 1:
+                raise NotImplementedError(
+                    "The dataset defines multiclass keypoint detection. "
+                    "This is not yet supported."
+                )
 
         return cls(
             classes=classes,

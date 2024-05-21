@@ -10,8 +10,9 @@ model:
     params:
       use_neck: True
 
-dataset:
-  name: coco_test
+loader:
+  params:
+    dataset_name: coco_test
 
 trainer:
   preprocessing:

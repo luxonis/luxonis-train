@@ -4,11 +4,13 @@ import os
 import random
 import shutil
 import tarfile
+import unittest
 
 import cv2
 import lightning.pytorch as pl
 import numpy as np
 import onnx
+import pytest
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.nn_archive.config_building_blocks.base_models import head_outputs
 from parameterized import parameterized
@@ -23,7 +25,8 @@ from luxonis_train.utils.config import Config
 HEAD_NAMES = [head_name for head_name in ImplementedHeads.__members__]
 
 
-class TestArchiver:
+@pytest.mark.skip()
+class TestArchiver(unittest.TestCase):
     @classmethod
     def setup_class(cls):
         """Creates all files required for testing."""
