@@ -24,6 +24,8 @@ from luxonis_train.attached_modules.visualizers import (
     get_unnormalized_images,
 )
 from luxonis_train.callbacks import (
+    DeviceStatsMonitor,
+    GPUStatsMonitor,
     LuxonisProgressBar,
     ModuleFreezer,
 )
@@ -620,9 +622,7 @@ class LuxonisModel(pl.LightningModule):
         self.best_val_metric_checkpoints_path = f"{self.save_dir}/best_val_metric"
         model_name = self.cfg.model.name
 
-        callbacks: list[pl.Callback] = []
-
-        callbacks.append(
+        callbacks: list[pl.Callback] = [
             ModelCheckpoint(
                 monitor="val/loss",
                 dirpath=self.min_val_loss_checkpoints_path,
@@ -630,8 +630,10 @@ class LuxonisModel(pl.LightningModule):
                 auto_insert_metric_name=False,
                 save_top_k=self.cfg.trainer.save_top_k,
                 mode="min",
-            )
-        )
+            ),
+            DeviceStatsMonitor(cpu_stats=True),
+            GPUStatsMonitor(),
+        ]
 
         if self.main_metric is not None:
             main_metric = self.main_metric.replace("/", "_")

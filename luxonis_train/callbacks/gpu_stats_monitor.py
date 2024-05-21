@@ -28,7 +28,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import pytorch_lightning as pl
 import torch
 from lightning.pytorch.accelerators import CUDAAccelerator  # type: ignore
-from pytorch_lightning.utilities import rank_zero_deprecation, rank_zero_only
+from pytorch_lightning.utilities import rank_zero_only
 from pytorch_lightning.utilities.exceptions import (
     MisconfigurationException,  # type: ignore
 )
@@ -98,11 +98,6 @@ class GPUStatsMonitor(pl.Callback):
         temperature: bool = False,
     ):
         super().__init__()
-
-        rank_zero_deprecation(
-            "The `GPUStatsMonitor` callback was deprecated in v1.5 and will be removed in v1.7."
-            " Please use the `DeviceStatsMonitor` callback instead."
-        )
 
         if shutil.which("nvidia-smi") is None:
             raise MisconfigurationException(
