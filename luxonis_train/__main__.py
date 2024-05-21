@@ -5,8 +5,10 @@ from pathlib import Path
 from typing import Annotated, Optional
 
 import cv2
-import torch
 import typer
+from torch.utils.data import DataLoader
+
+from luxonis_train.utils.registry import LOADERS
 
 app = typer.Typer(help="Luxonis Train CLI", add_completion=False)
 
@@ -105,7 +107,6 @@ def inspect(
     """Inspect dataset."""
     from lightning.pytorch import seed_everything
     from luxonis_ml.data import (
-        LuxonisDataset,
         TrainAugmentations,
         ValAugmentations,
     )
@@ -117,7 +118,7 @@ def inspect(
         get_unnormalized_images,
     )
     from luxonis_train.utils.config import Config
-    from luxonis_train.utils.loaders import LuxonisLoaderTorch, collate_fn
+    from luxonis_train.utils.loaders import collate_fn
     from luxonis_train.utils.types import LabelType
 
     overrides = {}
@@ -134,43 +135,21 @@ def inspect(
 
     image_size = cfg.trainer.preprocessing.train_image_size
 
-    dataset = LuxonisDataset(
-        dataset_name=cfg.dataset.name,
-        team_id=cfg.dataset.team_id,
-        dataset_id=cfg.dataset.id,
-        bucket_type=cfg.dataset.bucket_type,
-        bucket_storage=cfg.dataset.bucket_storage,
-    )
-    augmentations = (
-        TrainAugmentations(
-            image_size=image_size,
-            augmentations=[
-                i.model_dump() for i in cfg.trainer.preprocessing.augmentations
-            ],
-            train_rgb=cfg.trainer.preprocessing.train_rgb,
-            keep_aspect_ratio=cfg.trainer.preprocessing.keep_aspect_ratio,
-        )
-        if view == "train"
-        else ValAugmentations(
-            image_size=image_size,
-            augmentations=[
-                i.model_dump() for i in cfg.trainer.preprocessing.augmentations
-            ],
-            train_rgb=cfg.trainer.preprocessing.train_rgb,
-            keep_aspect_ratio=cfg.trainer.preprocessing.keep_aspect_ratio,
-        )
+    augmentations = (TrainAugmentations if view == "train" else ValAugmentations)(
+        image_size=image_size,
+        augmentations=[i.model_dump() for i in cfg.trainer.preprocessing.augmentations],
+        train_rgb=cfg.trainer.preprocessing.train_rgb,
+        keep_aspect_ratio=cfg.trainer.preprocessing.keep_aspect_ratio,
     )
 
-    loader_train = LuxonisLoaderTorch(
-        dataset,
-        view=view,
-        augmentations=augmentations,
+    loader = LOADERS.get(cfg.loader.name)(
+        view=view, augmentations=augmentations, **cfg.loader.params
     )
 
-    pytorch_loader_train = torch.utils.data.DataLoader(
-        loader_train,
-        batch_size=4,
-        num_workers=1,
+    pytorch_loader = DataLoader(
+        loader,
+        batch_size=1,
+        num_workers=0,
         collate_fn=collate_fn,
     )
 
@@ -178,35 +157,41 @@ def inspect(
         os.makedirs(save_dir, exist_ok=True)
 
     counter = 0
-    for data in pytorch_loader_train:
-        imgs, label_dict = data
-        images = get_unnormalized_images(cfg, imgs)
-        for i, img in enumerate(images):
-            for label_type, labels in label_dict.items():
-                if label_type == LabelType.CLASSIFICATION:
-                    continue
-                elif label_type == LabelType.BOUNDINGBOX:
-                    img = draw_bounding_box_labels(
-                        img, labels[labels[:, 0] == i][:, 2:], colors="yellow", width=1
-                    )
-                elif label_type == LabelType.KEYPOINT:
-                    img = draw_keypoint_labels(
-                        img, labels[labels[:, 0] == i][:, 1:], colors="red"
-                    )
-                elif label_type == LabelType.SEGMENTATION:
-                    img = draw_segmentation_labels(
-                        img, labels[i], alpha=0.8, colors="#5050FF"
-                    )
+    for data in pytorch_loader:
+        imgs, task_dict = data
+        for task, label_dict in task_dict.items():
+            images = get_unnormalized_images(cfg, imgs)
+            for i, img in enumerate(images):
+                for label_type, labels in label_dict.items():
+                    if label_type == LabelType.CLASSIFICATION:
+                        continue
+                    elif label_type == LabelType.BOUNDINGBOX:
+                        img = draw_bounding_box_labels(
+                            img,
+                            labels[labels[:, 0] == i][:, 2:],
+                            colors="yellow",
+                            width=1,
+                        )
+                    elif label_type == LabelType.KEYPOINT:
+                        img = draw_keypoint_labels(
+                            img, labels[labels[:, 0] == i][:, 1:], colors="red"
+                        )
+                    elif label_type == LabelType.SEGMENTATION:
+                        img = draw_segmentation_labels(
+                            img, labels[i], alpha=0.8, colors="#5050FF"
+                        )
 
-            img_arr = img.permute(1, 2, 0).numpy()
-            img_arr = cv2.cvtColor(img_arr, cv2.COLOR_RGB2BGR)
-            if save_dir is not None:
-                counter += 1
-                cv2.imwrite(os.path.join(save_dir, f"{counter}.png"), img_arr)
-            else:
-                cv2.imshow("img", img_arr)
-                if cv2.waitKey() == ord("q"):
-                    exit()
+                img_arr = img.permute(1, 2, 0).numpy()
+                img_arr = cv2.cvtColor(img_arr, cv2.COLOR_RGB2BGR)
+                if save_dir is not None:
+                    counter += 1
+                    cv2.imwrite(
+                        os.path.join(save_dir, f"{counter}_{task}.png"), img_arr
+                    )
+                else:
+                    cv2.imshow(task, img_arr)
+        if save_dir is None and cv2.waitKey() == ord("q"):
+            exit()
 
 
 @app.command()

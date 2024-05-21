@@ -15,8 +15,9 @@ model:
         thickness: 2
         include_plot: True
 
-dataset:
-  name: cifar10_test
+loader:
+  params:
+    dataset_name: cifar10_test
 
 trainer:
   preprocessing:

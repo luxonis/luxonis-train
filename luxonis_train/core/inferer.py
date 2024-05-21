@@ -22,11 +22,11 @@ class Inferer(Trainer):
         opts += ["trainer.batch_size", "1"]
         super().__init__(cfg, opts)
         if view == "train":
-            self.loader = self.pytorch_loader_train
+            self.loader = self.pytorch_loaders["train"]
         elif view == "test":
-            self.loader = self.pytorch_loader_test
+            self.loader = self.pytorch_loaders["test"]
         else:
-            self.loader = self.pytorch_loader_val
+            self.loader = self.pytorch_loaders["val"]
         self.save_dir = save_dir
         if self.save_dir is not None:
             self.save_dir.mkdir(exist_ok=True, parents=True)

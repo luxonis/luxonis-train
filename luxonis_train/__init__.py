@@ -1,4 +1,5 @@
 from .attached_modules import *
+from .core import *
 from .models import *
 from .utils import *
 
