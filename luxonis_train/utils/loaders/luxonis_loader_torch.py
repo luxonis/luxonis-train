@@ -1,3 +1,5 @@
+from typing import Literal
+
 import numpy as np
 from luxonis_ml.data import (
     BucketStorage,
@@ -17,8 +19,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         dataset_name: str | None = None,
         team_id: str | None = None,
         dataset_id: str | None = None,
-        bucket_type: BucketType = BucketType.INTERNAL,
-        bucket_storage: BucketStorage = BucketStorage.LOCAL,
+        bucket_type: Literal["internal", "external"] = "internal",
+        bucket_storage: Literal["local", "s3", "gcs", "azure"] = "local",
         stream: bool = False,
         **kwargs,
     ):
@@ -27,8 +29,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             dataset_name=dataset_name,
             team_id=team_id,
             dataset_id=dataset_id,
-            bucket_type=bucket_type,
-            bucket_storage=bucket_storage,
+            bucket_type=BucketType(bucket_type),
+            bucket_storage=BucketStorage(bucket_storage),
         )
         self.base_loader = LuxonisLoader(
             dataset=self.dataset,
