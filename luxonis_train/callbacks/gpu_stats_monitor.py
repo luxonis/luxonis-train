@@ -253,7 +253,7 @@ class GPUStatsMonitor(pl.Callback):
             for j, (x, unit) in enumerate(keys):
                 if unit == "%":
                     unit = "percent"
-                logs[f"GPU {device_id}/{x} {unit}"] = stats[i][j]
+                logs[f"GPU_{device_id}/{x} - {unit}"] = stats[i][j]
         return logs
 
     def _get_gpu_stat_keys(self) -> List[Tuple[str, str]]:
