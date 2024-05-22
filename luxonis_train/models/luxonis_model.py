@@ -638,7 +638,13 @@ class LuxonisModel(pl.LightningModule):
             callbacks.append(DeviceStatsMonitor(cpu_stats=True))
 
         if "GPUStatsMonitor" not in user_callbacks:
-            callbacks.append(GPUStatsMonitor())
+            if GPUStatsMonitor.is_available():
+                callbacks.append(GPUStatsMonitor())
+            else:
+                logger.warning(
+                    "GPUStatsMonitor is not available for this machine."
+                    "Verify that `nvidia-smi` is installed."
+                )
 
         if self.main_metric is not None:
             main_metric = self.main_metric.replace("/", "_")

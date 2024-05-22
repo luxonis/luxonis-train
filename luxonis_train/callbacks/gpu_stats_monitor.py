@@ -116,6 +116,12 @@ class GPUStatsMonitor(pl.Callback):
         # The unmasked real GPU IDs
         self._gpu_ids: List[str] = []  # will be assigned later in setup()
 
+    @staticmethod
+    def is_available() -> bool:
+        if shutil.which("nvidia-smi") is None:
+            return False
+        return CUDAAccelerator.is_available()
+
     def setup(
         self,
         trainer: "pl.Trainer",
