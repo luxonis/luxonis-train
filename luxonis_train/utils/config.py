@@ -147,6 +147,7 @@ class NormalizeAugmentationConfig(CustomBaseModel):
 
 class AugmentationConfig(CustomBaseModel):
     name: str
+    active: bool = True
     params: dict[str, Any] = {}
 
 
@@ -166,6 +167,13 @@ class PreprocessingConfig(CustomBaseModel):
                 AugmentationConfig(name="Normalize", params=self.normalize.params)
             )
         return self
+
+    def get_active_augmentations(self) -> list[AugmentationConfig]:
+        """Returns list of augmentations that are active
+        @rtype: list[AugmentationConfig]
+        @return: Filtered list of active augmentation configs
+        """
+        return [aug for aug in self.augmentations if aug.active]
 
 
 class CallbackConfig(CustomBaseModel):
