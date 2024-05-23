@@ -55,30 +55,35 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
     def forward(
         self, prediction: Tensor, target: Tensor, area: Tensor
     ) -> tuple[Tensor, dict[str, Tensor]]:
-        """Computes the keypoint loss and visibility loss for a given prediction and
-        target.
+        """Computes the keypoint loss and visibility loss for a given prediction and target.
 
         @type prediction: Tensor
         @param prediction: Predicted tensor of shape C{[n_detections, n_keypoints * 3]}.
         @type target: Tensor
-        @param target: Target tensor of shape C{[n_detections, n_keypoints * 2]}.
-        @rtype: tuple[Tensor, Tensor]
-        @return: A tuple containing the regression loss tensor of shape C{[1,]} and the
-            visibility loss tensor of shape C{[1,]}.
+        @param target: Target tensor of shape C{[n_detections, n_keypoints * 3]}.
+        @type area: Tensor
+        @param area: Area tensor of shape C{[n_detections]}.
+        @rtype: tuple[Tensor, dict[str, Tensor]]
+        @return: A tuple containing the total loss tensor of shape C{[1,]} and a dictionary
+            with the regression loss and visibility loss tensors.
         """
         pred_x, pred_y, pred_v = process_keypoints_predictions(prediction)
         gt_x = target[:, 0::3]
         gt_y = target[:, 1::3]
         gt_v = target[:, 2::3]
-        visibility_loss = self.b_cross_entropy.forward(pred_v, gt_v)
+
+        visibility_loss = self.b_cross_entropy(pred_v, gt_v)
         scales = area * self.area_factor
+
         d = (gt_x - pred_x) ** 2 + (gt_y - pred_y) ** 2
-        e = d / (2 * self.sigmas ** 2) / (scales.view(-1, 1) + 1e-9) / 2  # [Num Instances, Num Joints]
+        e = d / (2 * self.sigmas ** 2) / (scales.view(-1, 1) + 1e-9) / 2
+
         regression_loss_unreduced = 1 - torch.exp(-e)
-        regression_loss_reduced = (regression_loss_unreduced * gt_v).sum(dim=1, keepdim=False) / (
-            gt_v.sum(dim=1, keepdim=False) + 1e-9
-        )
+        regression_loss_reduced = (regression_loss_unreduced * gt_v).sum(dim=1) / (gt_v.sum(dim=1) + 1e-9)
         regression_loss = regression_loss_reduced.mean()
-        loss = regression_loss + visibility_loss
-        return loss, {"regression": regression_loss, "visibility": visibility_loss}
+
+        total_loss = regression_loss + visibility_loss
+
+        return total_loss, {"regression": regression_loss, "visibility": visibility_loss}
+
 
