@@ -67,6 +67,9 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         @return: A tuple containing the total loss tensor of shape C{[1,]} and a dictionary
             with the regression loss and visibility loss tensors.
         """
+        device = prediction.device
+        sigmas = self.sigmas.to(device)
+        
         pred_x, pred_y, pred_v = process_keypoints_predictions(prediction)
         gt_x = target[:, 0::3]
         gt_y = target[:, 1::3]
@@ -76,7 +79,7 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         scales = area * self.area_factor
 
         d = (gt_x - pred_x) ** 2 + (gt_y - pred_y) ** 2
-        e = d / (2 * self.sigmas ** 2) / (scales.view(-1, 1) + 1e-9) / 2
+        e = d / (2 * sigmas ** 2) / (scales.view(-1, 1) + 1e-9) / 2
 
         regression_loss_unreduced = 1 - torch.exp(-e)
         regression_loss_reduced = (regression_loss_unreduced * gt_v).sum(dim=1) / (gt_v.sum(dim=1) + 1e-9)

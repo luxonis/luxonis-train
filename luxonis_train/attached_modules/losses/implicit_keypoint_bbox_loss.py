@@ -303,7 +303,7 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
                 _, kpt_sublosses = self.keypoint_loss.forward(
                     pred_subset[:, self.box_offset + self.n_classes :],
                     kpt_target.to(device),
-                    area,
+                    area.to(device),
                 )
 
                 sub_losses["kpt_regression"] += (
