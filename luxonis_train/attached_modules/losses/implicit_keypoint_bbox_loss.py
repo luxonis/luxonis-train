@@ -209,7 +209,6 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         for i in range(self.num_heads):
             anchor = self.anchors[i]
             feature_height, feature_width = predictions[i].shape[2:4]
-            print(f"targets = {targets[:, self.box_offset + 3 :: 3]}")
             scaled_targets, xy_shifts = match_to_anchor(
                 targets,
                 anchor,
@@ -335,8 +334,15 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
     def _create_keypoint_target(self, scaled_targets: Tensor, box_xy_deltas: Tensor):
         keypoint_target = scaled_targets[:, self.box_offset + 1 : -1]
         for j in range(self.n_keypoints):
-            low = 2 * j
-            high = 2 * (j + 1)
-            keypoint_mask = keypoint_target[:, low:high] != 0
-            keypoint_target[:, low:high][keypoint_mask] -= box_xy_deltas[keypoint_mask]
+            idx = 3 * j 
+            keypoint_coords = keypoint_target[:, idx:idx + 2] 
+            visibility = keypoint_target[:, idx + 2]
+            
+            keypoint_mask = visibility != 0
+            keypoint_coords[keypoint_mask] -= box_xy_deltas[keypoint_mask]
+
+            keypoint_target[:, idx:idx + 2] = keypoint_coords
+            keypoint_target[:, idx + 2] = visibility
+            
         return keypoint_target
+

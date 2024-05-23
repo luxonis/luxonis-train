@@ -57,13 +57,11 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         gt_x = target[:, 0::3]
         gt_y = target[:, 1::3]
         gt_v = target[:, 2::3]
+        
         pred = torch.stack((pred_x, pred_y, pred_v), dim=2)
         reshaped_targets = torch.stack((gt_x, gt_y, gt_v), dim=-1)
 
-        mask = target[:, 0::3] != 0
-        print(f"mask = {mask}")
-        print(f"gt_v = {gt_v}")
-        visibility_loss = self.b_cross_entropy.forward(pred_v, mask.float())
+        visibility_loss = self.b_cross_entropy.forward(pred_v, gt_v)
 
         if len(self.sigmas) == 17:
             use_cocoeval = (self.sigmas == torch.tensor(
@@ -77,9 +75,11 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         okc = compute_oks(pred, reshaped_targets, area * 0.53, use_cocoeval, self.sigmas)
         
         regression_loss_unreduced = 1 - torch.exp(-okc)
+        print(f"regression_loss_unreduced.shape = {regression_loss_unreduced.shape}")
+        print(f"gt_v.shape = {gt_v.shape}")
         regression_loss_reduced = (
-            (regression_loss_unreduced * mask).sum(dim=1, keepdim=False) /
-            (mask.sum(dim=1, keepdim=False) + 1e-9)
+            (regression_loss_unreduced * gt_v).sum(dim=1, keepdim=False) /
+            (gt_v.sum(dim=1, keepdim=False) + 1e-9)
         )
         regression_loss = regression_loss_reduced.mean()
         loss = regression_loss + visibility_loss
