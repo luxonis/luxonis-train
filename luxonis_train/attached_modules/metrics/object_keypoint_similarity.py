@@ -2,6 +2,10 @@ import torch
 from scipy.optimize import linear_sum_assignment
 from torch import Tensor
 from torchvision.ops import box_convert
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 from luxonis_train.utils.types import (
     KeypointProtocol,
@@ -93,7 +97,7 @@ class ObjectKeypointSimilarity(
             curr_kpts[:, 1::3] *= image_size[0]
             curr_bboxs_widths = curr_bboxs[:, 2] - curr_bboxs[:, 0]
             curr_bboxs_heights = curr_bboxs[:, 3] - curr_bboxs[:, 1]
-            curr_scales = torch.sqrt(curr_bboxs_widths * curr_bboxs_heights)
+            curr_scales = curr_bboxs_widths * curr_bboxs_heights
             label_list_oks.append({"keypoints": curr_kpts, "scales": curr_scales})
 
         return output_list_oks, label_list_oks
@@ -145,7 +149,7 @@ class ObjectKeypointSimilarity(
         ):
             gt_kpts = torch.reshape(gt_kpts, (-1, self.n_keypoints, 3))  # [N, K, 3]
 
-            image_ious = self._compute_oks(pred_kpts, gt_kpts, gt_scales)  # [M, N]
+            image_ious = compute_oks(pred_kpts, gt_kpts, gt_scales, self.use_cocoeval_oks, self.kpt_sigmas)  # [M, N]
             gt_indices, pred_indices = linear_sum_assignment(
                 image_ious.cpu().numpy(), maximize=True
             )
@@ -156,44 +160,50 @@ class ObjectKeypointSimilarity(
 
         return final_oks
 
-    def _compute_oks(self, pred: Tensor, gt: Tensor, scales: Tensor) -> Tensor:
-        """Compute Object Keypoint Similarity between every GT and prediction.
+def compute_oks(pred: Tensor, gt: Tensor, scales: Tensor, use_cocoeval_oks: bool, kpt_sigmas: Tensor) -> Tensor:
+    """Compute Object Keypoint Similarity between every GT and prediction.
 
-        @type pred: Tensor[N, K, 3]
-        @param pred: Predicted keypoints.
-        @type gt: Tensor[M, K, 3]
-        @param gt: Groundtruth keypoints.
-        @type scales: Tensor[M]
-        @param scales: Scales of the bounding boxes.
-        @rtype: Tensor
-        @return: Object Keypoint Similarity every pred and gt [M, N]
-        """
-        eps = 1e-7
-        distances = (gt[:, None, :, 0] - pred[..., 0]) ** 2 + (
-            gt[:, None, :, 1] - pred[..., 1]
-        ) ** 2
-        kpt_mask = gt[..., 2] != 0  # only compute on visible keypoints
-        if self.use_cocoeval_oks:
-            # use same formula as in COCOEval script here:
-            # https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L229
-            oks = (
-                distances
-                / (2 * self.kpt_sigmas) ** 2
-                / (scales[:, None, None] + eps)
-                / 2
-            )
-        else:
-            # use same formula as defined here: https://cocodataset.org/#keypoints-eval
-            oks = (
-                distances
-                / ((scales[:, None, None] + eps) * self.kpt_sigmas.to(scales.device))
-                ** 2
-                / 2
-            )
-
-        return (torch.exp(-oks) * kpt_mask[:, None]).sum(-1) / (
-            kpt_mask.sum(-1)[:, None] + eps
+    @type pred: Tensor[N, K, 3]
+    @param pred: Predicted keypoints.
+    @type gt: Tensor[M, K, 3]
+    @param gt: Groundtruth keypoints.
+    @type scales: Tensor[M]
+    @param scales: Scales of the bounding boxes.
+    @rtype: Tensor
+    @return: Object Keypoint Similarity every pred and gt [M, N]
+    @type kpt_sigmas: Tensor
+    @param kpt_sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then
+        use same weights for all.
+    @type use_cocoeval_oks: bool
+    @param use_cocoeval_oks: Whether to use same OKS formula as in COCOeval or use the
+        one from definition.
+    """
+    eps = 1e-7
+    distances = (gt[:, None, :, 0] - pred[..., 0]) ** 2 + (
+        gt[:, None, :, 1] - pred[..., 1]
+    ) ** 2
+    kpt_mask = gt[..., 2] != 0  # only compute on visible keypoints
+    if use_cocoeval_oks:
+        # use same formula as in COCOEval script here:
+        # https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L229
+        oks = (
+            distances
+            / (2 * kpt_sigmas) ** 2
+            / (scales[:, None, None] + eps)
+            / 2
         )
+    else:
+        # use same formula as defined here: https://cocodataset.org/#keypoints-eval
+        oks = (
+            distances
+            / ((scales[:, None, None] + eps) * kpt_sigmas.to(scales.device))
+            ** 2
+            / 2
+        )
+
+    return (torch.exp(-oks) * kpt_mask[:, None]).sum(-1) / (
+        kpt_mask.sum(-1)[:, None] + eps
+    )
 
 
 def fix_empty_tensors(input_tensor: Tensor) -> Tensor:
@@ -201,3 +211,19 @@ def fix_empty_tensors(input_tensor: Tensor) -> Tensor:
     if input_tensor.numel() == 0 and input_tensor.ndim == 1:
         return input_tensor.unsqueeze(0)
     return input_tensor
+
+def set_sigmas(sigmas: list[float] | None, n_keypoints: int):
+    """Validate and set the sigma values."""
+    if sigmas is not None:
+        if len(sigmas) == n_keypoints:
+            return torch.tensor(sigmas, dtype=torch.float32)
+        else:
+            raise ValueError("The length of the sigmas list must be the same as the number of keypoints.")
+    else:
+        if n_keypoints == 17:
+            logger.warning("Default COCO sigmas are being used.")  # Use logger instead of print
+            return torch.tensor([0.026, 0.025, 0.025, 0.035, 0.035, 0.079, 0.079, 0.072, 0.072, 0.062, 0.062, 0.107, 0.107, 0.087, 0.087, 0.089, 0.089], dtype=torch.float32)
+        else:
+            logger.warning("Default sigma of 0.04 is being used for each keypoint.")  # Use logger instead of print
+            return torch.tensor([0.04] * n_keypoints, dtype=torch.float32)
+

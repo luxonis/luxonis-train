@@ -7,6 +7,7 @@ from torchvision.ops import box_convert
 from typing_extensions import Annotated
 
 from luxonis_train.attached_modules.losses.keypoint_loss import KeypointLoss
+from luxonis_train.attached_modules.metrics.object_keypoint_similarity import set_sigmas
 from luxonis_train.nodes import ImplicitKeypointBBoxHead
 from luxonis_train.utils.boxutils import (
     compute_iou_loss,
@@ -45,8 +46,9 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         label_smoothing: float = 0.0,
         min_objectness_iou: float = 0.0,
         bbox_loss_weight: float = 0.05,
-        keypoint_distance_loss_weight: float = 0.10,
         keypoint_visibility_loss_weight: float = 0.6,
+        keypoint_regression_loss_weight: float = 0.5,
+        sigmas: list[float] | None = None,
         class_loss_weight: float = 0.6,
         objectness_loss_weight: float = 0.7,
         anchor_threshold: float = 4.0,
@@ -76,6 +78,8 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         @param keypoint_distance_loss_weight: Weight for the keypoint distance loss. Defaults to C{0.10}.
         @type keypoint_visibility_loss_weight: float
         @param keypoint_visibility_loss_weight: Weight for the keypoint visibility loss. Defaults to C{0.6}.
+        @type keypoint_regression_loss_weight: float
+        @param keypoint_regression_loss_weight: Weight for the keypoint regression loss. Defaults to C{0.5}.
         @type class_loss_weight: float
         @param class_loss_weight: Weight for the class loss. Defaults to C{0.6}.
         @type objectness_loss_weight: float
@@ -117,11 +121,12 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
 
         self.min_objectness_iou = min_objectness_iou
         self.bbox_weight = bbox_loss_weight
-        self.kpt_distance_weight = keypoint_distance_loss_weight
         self.class_weight = class_loss_weight
         self.objectness_weight = objectness_loss_weight
         self.kpt_visibility_weight = keypoint_visibility_loss_weight
+        self.keypoint_regression_loss_weight = keypoint_regression_loss_weight
         self.anchor_threshold = anchor_threshold
+        self.sigmas = set_sigmas(sigmas, self.n_keypoints)
 
         self.bias = bias
 
@@ -135,8 +140,7 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         )
         self.keypoint_loss = KeypointLoss(
             bce_power=viz_pw,
-            distance_weight=keypoint_distance_loss_weight,
-            visibility_weight=keypoint_visibility_loss_weight,
+            sigmas=self.sigmas,
             **kwargs,
         )
 
@@ -169,14 +173,16 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         boxes = labels[LabelType.BOUNDINGBOX]
 
         nkpts = (kpts.shape[1] - 2) // 3
-        targets = torch.zeros((len(boxes), nkpts * 2 + self.box_offset + 1))
+        targets = torch.zeros((len(boxes), nkpts * 3 + self.box_offset + 1))
         targets[:, :2] = boxes[:, :2]
         targets[:, 2 : self.box_offset + 1] = box_convert(
             boxes[:, 2:], "xywh", "cxcywh"
         )
-        targets[:, self.box_offset + 1 :: 2] = kpts[:, 2::3]  # insert kp x coordinates
-        targets[:, self.box_offset + 2 :: 2] = kpts[:, 3::3]  # insert kp y coordinates
 
+        targets[:, self.box_offset + 1 :: 3] = kpts[:, 2::3]  # insert kp x coordinates
+        targets[:, self.box_offset + 2 :: 3] = kpts[:, 3::3]  # insert kp y coordinates
+        targets[:, self.box_offset + 3 :: 3] = kpts[:, 4::3]  # insert kp visibility
+ 
         n_targets = len(targets)
 
         class_targets: list[Tensor] = []
@@ -203,7 +209,7 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         for i in range(self.num_heads):
             anchor = self.anchors[i]
             feature_height, feature_width = predictions[i].shape[2:4]
-
+            print(f"targets = {targets[:, self.box_offset + 3 :: 3]}")
             scaled_targets, xy_shifts = match_to_anchor(
                 targets,
                 anchor,
@@ -259,7 +265,7 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
             "objectness": torch.tensor(0.0, device=device),
             "class": torch.tensor(0.0, device=device),
             "kpt_visibility": torch.tensor(0.0, device=device),
-            "kpt_distance": torch.tensor(0.0, device=device),
+            "kpt_regression": torch.tensor(0.0, device=device),
         }
 
         for pred, class_target, box_target, kpt_target, index, anchor, balance in zip(
@@ -284,13 +290,16 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
 
                 sub_losses["bboxes"] += bbox_loss * self.bbox_weight
 
+                area = box_target[:, 2] * box_target[:, 3]
+
                 _, kpt_sublosses = self.keypoint_loss.forward(
                     pred_subset[:, self.box_offset + self.n_classes :],
                     kpt_target.to(device),
+                    area 
                 )
 
-                sub_losses["kpt_distance"] += (
-                    kpt_sublosses["distance"] * self.kpt_distance_weight
+                sub_losses["kpt_regression"] += (
+                    kpt_sublosses["regression"] * self.keypoint_regression_loss_weight
                 )
                 sub_losses["kpt_visibility"] += (
                     kpt_sublosses["visibility"] * self.kpt_visibility_weight
