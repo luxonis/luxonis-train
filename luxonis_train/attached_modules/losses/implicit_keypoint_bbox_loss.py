@@ -343,15 +343,14 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
     def _create_keypoint_target(self, scaled_targets: Tensor, box_xy_deltas: Tensor):
         keypoint_target = scaled_targets[:, self.box_offset + 1 : -1]
         for j in range(self.n_keypoints):
-            idx = 3 * j 
-            keypoint_coords = keypoint_target[:, idx:idx + 2] 
+            idx = 3 * j
+            keypoint_coords = keypoint_target[:, idx : idx + 2]
             visibility = keypoint_target[:, idx + 2]
-            
+
             keypoint_mask = visibility != 0
             keypoint_coords[keypoint_mask] -= box_xy_deltas[keypoint_mask]
 
-            keypoint_target[:, idx:idx + 2] = keypoint_coords
+            keypoint_target[:, idx : idx + 2] = keypoint_coords
             keypoint_target[:, idx + 2] = visibility
-            
-        return keypoint_target
 
+        return keypoint_target
