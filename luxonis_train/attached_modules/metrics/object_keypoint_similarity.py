@@ -4,17 +4,15 @@ from torch import Tensor
 from torchvision.ops import box_convert
 import logging
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
-
 from luxonis_train.utils.types import (
     KeypointProtocol,
     Labels,
     LabelType,
     Packet,
 )
-
 from .base_metric import BaseMetric
+
+logger = logging.getLogger(__name__)
 
 
 class ObjectKeypointSimilarity(
@@ -149,7 +147,9 @@ class ObjectKeypointSimilarity(
         ):
             gt_kpts = torch.reshape(gt_kpts, (-1, self.n_keypoints, 3))  # [N, K, 3]
 
-            image_ious = compute_oks(pred_kpts, gt_kpts, gt_scales, self.use_cocoeval_oks, self.kpt_sigmas)  # [M, N]
+            image_ious = compute_oks(
+                pred_kpts, gt_kpts, gt_scales, self.kpt_sigmas, self.use_cocoeval_oks
+            )  # [M, N]
             gt_indices, pred_indices = linear_sum_assignment(
                 image_ious.cpu().numpy(), maximize=True
             )
@@ -160,7 +160,14 @@ class ObjectKeypointSimilarity(
 
         return final_oks
 
-def compute_oks(pred: Tensor, gt: Tensor, scales: Tensor, use_cocoeval_oks: bool, kpt_sigmas: Tensor) -> Tensor:
+
+def compute_oks(
+    pred: Tensor,
+    gt: Tensor,
+    scales: Tensor,
+    kpt_sigmas: Tensor,
+    use_cocoeval_oks: bool,
+) -> Tensor:
     """Compute Object Keypoint Similarity between every GT and prediction.
 
     @type pred: Tensor[N, K, 3]
@@ -186,18 +193,12 @@ def compute_oks(pred: Tensor, gt: Tensor, scales: Tensor, use_cocoeval_oks: bool
     if use_cocoeval_oks:
         # use same formula as in COCOEval script here:
         # https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L229
-        oks = (
-            distances
-            / (2 * kpt_sigmas) ** 2
-            / (scales[:, None, None] + eps)
-            / 2
-        )
+        oks = distances / (2 * kpt_sigmas) ** 2 / (scales[:, None, None] + eps) / 2
     else:
         # use same formula as defined here: https://cocodataset.org/#keypoints-eval
         oks = (
             distances
-            / ((scales[:, None, None] + eps) * kpt_sigmas.to(scales.device))
-            ** 2
+            / ((scales[:, None, None] + eps) * kpt_sigmas.to(scales.device)) ** 2
             / 2
         )
 
@@ -212,18 +213,61 @@ def fix_empty_tensors(input_tensor: Tensor) -> Tensor:
         return input_tensor.unsqueeze(0)
     return input_tensor
 
-def set_sigmas(sigmas: list[float] | None, n_keypoints: int):
+
+def set_sigmas(
+    sigmas: list[float] | None, n_keypoints: int, class_name: str | None
+) -> Tensor:
     """Validate and set the sigma values."""
     if sigmas is not None:
         if len(sigmas) == n_keypoints:
             return torch.tensor(sigmas, dtype=torch.float32)
         else:
-            raise ValueError("The length of the sigmas list must be the same as the number of keypoints.")
+            error_msg = "The length of the sigmas list must be the same as the number of keypoints."
+            if class_name:
+                error_msg = f"[{class_name}] {error_msg}"
+            raise ValueError(error_msg)
     else:
         if n_keypoints == 17:
-            logger.warning("Default COCO sigmas are being used.")  # Use logger instead of print
-            return torch.tensor([0.026, 0.025, 0.025, 0.035, 0.035, 0.079, 0.079, 0.072, 0.072, 0.062, 0.062, 0.107, 0.107, 0.087, 0.087, 0.089, 0.089], dtype=torch.float32)
+            warn_msg = "Default COCO sigmas are being used."
+            if class_name:
+                warn_msg = f"[{class_name}] {warn_msg}"
+            logger.warning(warn_msg)
+            return torch.tensor(
+                [
+                    0.026,
+                    0.025,
+                    0.025,
+                    0.035,
+                    0.035,
+                    0.079,
+                    0.079,
+                    0.072,
+                    0.072,
+                    0.062,
+                    0.062,
+                    0.107,
+                    0.107,
+                    0.087,
+                    0.087,
+                    0.089,
+                    0.089,
+                ],
+                dtype=torch.float32,
+            )
         else:
-            logger.warning("Default sigma of 0.04 is being used for each keypoint.")  # Use logger instead of print
+            warn_msg = "Default sigma of 0.04 is being used for each keypoint."
+            if class_name:
+                warn_msg = f"[{class_name}] {warn_msg}"
+            logger.warning(warn_msg)
             return torch.tensor([0.04] * n_keypoints, dtype=torch.float32)
 
+
+def set_area_factor(area_factor: float | None, class_name: str | None) -> float:
+    if area_factor is None:
+        warn_msg = "Default area_factor of 0.53 is being used bbox area scaling."
+        if class_name:
+            warn_msg = f"[{class_name}] {warn_msg}"
+        logger.warning(warn_msg)
+        return 0.53
+    else:
+        return area_factor
