@@ -7,7 +7,6 @@ from torchvision.ops import box_convert
 from typing_extensions import Annotated
 
 from luxonis_train.attached_modules.losses.keypoint_loss import KeypointLoss
-from luxonis_train.attached_modules.metrics.object_keypoint_similarity import set_sigmas
 from luxonis_train.nodes import ImplicitKeypointBBoxHead
 from luxonis_train.utils.boxutils import (
     compute_iou_loss,
@@ -49,6 +48,8 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         keypoint_visibility_loss_weight: float = 0.6,
         keypoint_regression_loss_weight: float = 0.5,
         sigmas: list[float] | None = None,
+        area_factor: float | None = None,
+        use_cocoeval_oks: bool = True,
         class_loss_weight: float = 0.6,
         objectness_loss_weight: float = 0.7,
         anchor_threshold: float = 4.0,
@@ -80,6 +81,12 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         @param keypoint_visibility_loss_weight: Weight for the keypoint visibility loss. Defaults to C{0.6}.
         @type keypoint_regression_loss_weight: float
         @param keypoint_regression_loss_weight: Weight for the keypoint regression loss. Defaults to C{0.5}.
+        @type sigmas: list[float] | None
+        @param sigmas: Sigmas used in KeypointLoss for OKS metric. If None then use COCO ones if possible or default ones. Defaults to C{None}.
+        @type area_factor: float | None
+        @param area_factor: Factor by which we multiply bbox area which is used in KeypointLoss. If None then use default one. Defaults to C{None}.
+        @type use_cocoeval_oks: bool
+        @param use_cocoeval_oks: If True then use same OKS formula as COCOEval otherwise use one for definition. Defaults to C{True}.
         @type class_loss_weight: float
         @param class_loss_weight: Weight for the class loss. Defaults to C{0.6}.
         @type objectness_loss_weight: float
@@ -126,7 +133,6 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         self.kpt_visibility_weight = keypoint_visibility_loss_weight
         self.keypoint_regression_loss_weight = keypoint_regression_loss_weight
         self.anchor_threshold = anchor_threshold
-        self.sigmas = set_sigmas(sigmas, self.n_keypoints)
 
         self.bias = bias
 
@@ -139,8 +145,11 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
             **kwargs,
         )
         self.keypoint_loss = KeypointLoss(
+            n_keypoints=self.n_keypoints,
             bce_power=viz_pw,
-            sigmas=self.sigmas,
+            sigmas=sigmas,
+            area_factor=area_factor,
+            use_cocoeval_oks=use_cocoeval_oks,
             **kwargs,
         )
 
@@ -182,7 +191,7 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         targets[:, self.box_offset + 1 :: 3] = kpts[:, 2::3]  # insert kp x coordinates
         targets[:, self.box_offset + 2 :: 3] = kpts[:, 3::3]  # insert kp y coordinates
         targets[:, self.box_offset + 3 :: 3] = kpts[:, 4::3]  # insert kp visibility
- 
+
         n_targets = len(targets)
 
         class_targets: list[Tensor] = []
@@ -295,7 +304,7 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
                 _, kpt_sublosses = self.keypoint_loss.forward(
                     pred_subset[:, self.box_offset + self.n_classes :],
                     kpt_target.to(device),
-                    area 
+                    area,
                 )
 
                 sub_losses["kpt_regression"] += (
