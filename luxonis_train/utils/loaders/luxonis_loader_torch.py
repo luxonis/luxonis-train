@@ -1,5 +1,13 @@
+from typing import Literal
+
 import numpy as np
-from luxonis_ml.data import Augmentations, LuxonisDataset, LuxonisLoader
+from luxonis_ml.data import (
+    BucketStorage,
+    BucketType,
+    LabelType,
+    LuxonisDataset,
+    LuxonisLoader,
+)
 from torch import Size, Tensor
 
 from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput
@@ -8,16 +16,27 @@ from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput
 class LuxonisLoaderTorch(BaseLoaderTorch):
     def __init__(
         self,
-        dataset: LuxonisDataset,
-        view: str = "train",
+        dataset_name: str | None = None,
+        team_id: str | None = None,
+        dataset_id: str | None = None,
+        bucket_type: Literal["internal", "external"] = "internal",
+        bucket_storage: Literal["local", "s3", "gcs", "azure"] = "local",
         stream: bool = False,
-        augmentations: Augmentations | None = None,
+        **kwargs,
     ):
+        super().__init__(**kwargs)
+        self.dataset = LuxonisDataset(
+            dataset_name=dataset_name,
+            team_id=team_id,
+            dataset_id=dataset_id,
+            bucket_type=BucketType(bucket_type),
+            bucket_storage=BucketStorage(bucket_storage),
+        )
         self.base_loader = LuxonisLoader(
-            dataset=dataset,
-            view=view,
+            dataset=self.dataset,
+            view=self.view,
             stream=stream,
-            augmentations=augmentations,
+            augmentations=self.augmentations,
         )
 
     def __len__(self) -> int:
@@ -39,3 +58,10 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 annotations[key] = Tensor(annotations[key])  # type: ignore
 
         return tensor_img, group_annotations
+
+    def get_classes(self) -> dict[LabelType, list[str]]:
+        _, classes = self.dataset.get_classes()
+        return {LabelType(task): classes[task] for task in classes}
+
+    def get_skeletons(self) -> dict[str, dict] | None:
+        return self.dataset.get_skeletons()

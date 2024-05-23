@@ -45,7 +45,7 @@ class Archiver(Core):
             cfg=self.cfg,
             dataset_metadata=self.dataset_metadata,
             save_dir=self.run_save_dir,
-            input_shape=self.loader_train.input_shape,
+            input_shape=self.loaders["train"].input_shape,
         )
 
         self.model_name = self.cfg.model.name

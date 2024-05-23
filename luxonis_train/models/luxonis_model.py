@@ -12,6 +12,7 @@ from lightning.pytorch.callbacks import (
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
 from torch import Size, Tensor, nn
 
+import luxonis_train
 from luxonis_train.attached_modules import (
     BaseAttachedModule,
     BaseLoss,
@@ -90,6 +91,7 @@ class LuxonisModel(pl.LightningModule):
     """
 
     _trainer: pl.Trainer
+    _core: "luxonis_train.core.Core"
     logger: LuxonisTrackerPL
 
     def __init__(
@@ -496,7 +498,7 @@ class LuxonisModel(pl.LightningModule):
         training_step_output["loss"] = final_loss.detach().cpu()
         return final_loss, training_step_output
 
-    def training_step(self, train_batch: tuple[Tensor, Labels]) -> Tensor:
+    def training_step(self, train_batch: tuple[Tensor, TaskLabels]) -> Tensor:
         """Performs one step of training with provided batch."""
         outputs = self.forward(*train_batch)
         assert outputs.losses, "Losses are empty, check if you have defined any loss"

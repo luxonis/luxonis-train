@@ -132,8 +132,9 @@ class Tuner(Core):
             cfg=cfg,
             dataset_metadata=self.dataset_metadata,
             save_dir=run_save_dir,
-            input_shape=self.loader_train.input_shape,
+            input_shape=self.loaders["train"].input_shape,
         )
+        lightning_module._core = self
         callbacks: list[pl.Callback] = (
             [LuxonisProgressBar()] if self.cfg.use_rich_text else []
         )
@@ -161,8 +162,8 @@ class Tuner(Core):
         try:
             pl_trainer.fit(
                 lightning_module,  # type: ignore
-                self.pytorch_loader_train,
-                self.pytorch_loader_val,
+                self.pytorch_loaders["val"],
+                self.pytorch_loaders["train"],
             )
 
             pruner_callback.check_pruned()
