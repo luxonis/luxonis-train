@@ -10,7 +10,11 @@ from torch.utils.data import DataLoader
 
 from luxonis_train.utils.registry import LOADERS
 
-app = typer.Typer(help="Luxonis Train CLI", add_completion=False)
+app = typer.Typer(
+    help="Luxonis Train CLI",
+    add_completion=False,
+    pretty_exceptions_show_locals=False,
+)
 
 
 class View(str, Enum):

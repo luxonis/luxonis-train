@@ -24,6 +24,8 @@ from luxonis_train.attached_modules.visualizers import (
     get_unnormalized_images,
 )
 from luxonis_train.callbacks import (
+    DeviceStatsMonitor,
+    GPUStatsMonitor,
     LuxonisProgressBar,
     ModuleFreezer,
 )
@@ -620,9 +622,9 @@ class LuxonisModel(pl.LightningModule):
         self.best_val_metric_checkpoints_path = f"{self.save_dir}/best_val_metric"
         model_name = self.cfg.model.name
 
-        callbacks: list[pl.Callback] = []
+        user_callbacks = [c.name for c in self.cfg.trainer.callbacks]
 
-        callbacks.append(
+        callbacks: list[pl.Callback] = [
             ModelCheckpoint(
                 monitor="val/loss",
                 dirpath=self.min_val_loss_checkpoints_path,
@@ -630,8 +632,19 @@ class LuxonisModel(pl.LightningModule):
                 auto_insert_metric_name=False,
                 save_top_k=self.cfg.trainer.save_top_k,
                 mode="min",
-            )
-        )
+            ),
+        ]
+        if "DeviceStatsMonitor" not in user_callbacks:
+            callbacks.append(DeviceStatsMonitor(cpu_stats=True))
+
+        if "GPUStatsMonitor" not in user_callbacks:
+            if GPUStatsMonitor.is_available():
+                callbacks.append(GPUStatsMonitor())
+            else:
+                logger.warning(
+                    "GPUStatsMonitor is not available for this machine."
+                    "Verify that `nvidia-smi` is installed."
+                )
 
         if self.main_metric is not None:
             main_metric = self.main_metric.replace("/", "_")
