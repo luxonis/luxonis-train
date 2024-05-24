@@ -141,7 +141,9 @@ def inspect(
 
     augmentations = (TrainAugmentations if view == "train" else ValAugmentations)(
         image_size=image_size,
-        augmentations=[i.model_dump() for i in cfg.trainer.preprocessing.augmentations],
+        augmentations=[
+            i.model_dump() for i in cfg.trainer.preprocessing.get_active_augmentations()
+        ],
         train_rgb=cfg.trainer.preprocessing.train_rgb,
         keep_aspect_ratio=cfg.trainer.preprocessing.keep_aspect_ratio,
     )
