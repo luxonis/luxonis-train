@@ -222,20 +222,15 @@ class EfficientKeypointBBoxLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor,
             )
 
         batched_kpts = self._preprocess_kpts_target(target_kpts, batch_size, gt_kpts_scale)
-        print("Batched Keypoints:", batched_kpts)
         assigned_gt_idx_expanded = assigned_gt_idx.unsqueeze(-1).unsqueeze(-1)
         selected_keypoints = batched_kpts.gather(
             1, assigned_gt_idx_expanded.expand(-1, -1, self.n_kps, 3)
         )
-        print("Selected Keypoints before normalization:", selected_keypoints)
         xy_components = selected_keypoints[:, :, :, :2]
         normalized_xy = xy_components / stride_tensor.view(1, -1, 1, 1)
         selected_keypoints = torch.cat((normalized_xy, selected_keypoints[:, :, :, 2:]), dim=-1)
-        print("Selected Keypoints after normalization:", selected_keypoints)
         gt_kpt = selected_keypoints[mask_positive]
         pred_kpts = pred_kpts[mask_positive]
-        print("Filtered Ground Truth Keypoints (gt_kpt):", gt_kpt)
-        print("Filtered Predicted Keypoints (pred_kpts):", pred_kpts)
         assigned_bboxes = assigned_bboxes / stride_tensor
 
         area = (assigned_bboxes[mask_positive][:, 0] - assigned_bboxes[mask_positive][:, 2]) * (assigned_bboxes[mask_positive][:, 1] - assigned_bboxes[mask_positive][:, 3]) 
