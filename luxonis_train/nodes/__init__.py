@@ -6,6 +6,7 @@ from .efficient_bbox_head import EfficientBBoxHead
 from .efficientnet import EfficientNet
 from .efficientrep import EfficientRep
 from .implicit_keypoint_bbox_head import ImplicitKeypointBBoxHead
+from .efficient_keypoint_bbox_head import EfficientKeypointBBoxHead
 from .micronet import MicroNet
 from .mobilenetv2 import MobileNetV2
 from .mobileone import MobileOne
@@ -22,6 +23,7 @@ __all__ = [
     "EfficientBBoxHead",
     "EfficientNet",
     "EfficientRep",
+    "EfficientKeypointBBoxHead",
     "ImplicitKeypointBBoxHead",
     "BaseNode",
     "MicroNet",

@@ -7,6 +7,7 @@ class ImplementedHeads(Enum):
     ClassificationHead = "Classification"
     EfficientBBoxHead = "ObjectDetectionYOLO"
     ImplicitKeypointBBoxHead = "KeypointDetectionYOLO"
+    EfficientKeypointBBoxHead = "Keypoint"
     SegmentationHead = "Segmentation"
     BiSeNetHead = "Segmentation"
 
@@ -17,5 +18,6 @@ class ImplementedHeadsIsSoxtmaxed(Enum):
     ClassificationHead = False
     EfficientBBoxHead = None
     ImplicitKeypointBBoxHead = None
+    EfficientKeypointBBoxHead = None
     SegmentationHead = False
     BiSeNetHead = False

@@ -121,7 +121,7 @@ class TaskAlignedAssigner(nn.Module):
 
         out_mask_positive = mask_pos_sum.bool()
 
-        return assigned_labels, assigned_bboxes, assigned_scores, out_mask_positive
+        return assigned_labels, assigned_bboxes, assigned_scores, out_mask_positive, assigned_gt_idx
 
     def _get_alignment_metric(
         self,

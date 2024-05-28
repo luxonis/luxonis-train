@@ -124,6 +124,7 @@ class ATSSAssigner(nn.Module):
             assigned_bboxes,
             assigned_scores,
             out_mask_positive,
+            assigned_gt_idx,
         )
 
     def _get_bbox_center(self, bbox: Tensor) -> Tensor:

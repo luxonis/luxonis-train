@@ -8,7 +8,6 @@ from luxonis_train.utils.boxutils import process_keypoints_predictions
 from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
     set_sigmas,
     set_area_factor,
-    compute_oks,
 )
 from luxonis_train.utils.types import (
     BaseProtocol,
@@ -32,7 +31,6 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         bce_power: float = 1.0,
         sigmas: list[float] | None = None,
         area_factor: float | None = None,
-        use_cocoeval_oks: bool = True,
         **kwargs,
     ):
         super().__init__(
@@ -47,7 +45,6 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         self.area_factor = set_area_factor(
             area_factor, class_name=self.__class__.__name__
         )
-        self.use_cocoeval_oks = use_cocoeval_oks
 
     def prepare(self, inputs: Packet[Tensor], labels: Labels) -> tuple[Tensor, Tensor]:
         return torch.cat(inputs["keypoints"], dim=0), labels[LabelType.KEYPOINT]
@@ -73,14 +70,14 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         pred_x, pred_y, pred_v = process_keypoints_predictions(prediction)
         gt_x = target[:, 0::3]
         gt_y = target[:, 1::3]
-        gt_v = target[:, 2::3]
-
-        visibility_loss = self.b_cross_entropy(pred_v, gt_v)
+        gt_v = (target[:, 2::3] > 0).float()	
+         
+        visibility_loss = self.b_cross_entropy.forward(pred_v, gt_v)
         scales = area * self.area_factor
 
         d = (gt_x - pred_x) ** 2 + (gt_y - pred_y) ** 2
         e = d / (2 * sigmas ** 2) / (scales.view(-1, 1) + 1e-9) / 2
-
+        
         regression_loss_unreduced = 1 - torch.exp(-e)
         regression_loss_reduced = (regression_loss_unreduced * gt_v).sum(dim=1) / (gt_v.sum(dim=1) + 1e-9)
         regression_loss = regression_loss_reduced.mean()

@@ -95,7 +95,7 @@ class ObjectKeypointSimilarity(
             curr_kpts[:, 1::3] *= image_size[0]
             curr_bboxs_widths = curr_bboxs[:, 2] - curr_bboxs[:, 0]
             curr_bboxs_heights = curr_bboxs[:, 3] - curr_bboxs[:, 1]
-            curr_scales = curr_bboxs_widths * curr_bboxs_heights
+            curr_scales = torch.sqrt(curr_bboxs_widths * curr_bboxs_heights)
             label_list_oks.append({"keypoints": curr_kpts, "scales": curr_scales})
 
         return output_list_oks, label_list_oks

@@ -3,6 +3,7 @@ from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
 from .cross_entropy import CrossEntropyLoss
 from .implicit_keypoint_bbox_loss import ImplicitKeypointBBoxLoss
+from .efficient_keypoint_bbox_loss import EfficientKeypointBBoxLoss
 from .keypoint_loss import KeypointLoss
 from .sigmoid_focal_loss import SigmoidFocalLoss
 from .smooth_bce_with_logits import SmoothBCEWithLogitsLoss
@@ -12,6 +13,7 @@ __all__ = [
     "AdaptiveDetectionLoss",
     "BCEWithLogitsLoss",
     "CrossEntropyLoss",
+    "EfficientKeypointBBoxLoss",
     "ImplicitKeypointBBoxLoss",
     "KeypointLoss",
     "BaseLoss",

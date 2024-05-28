@@ -49,7 +49,6 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         keypoint_regression_loss_weight: float = 0.5,
         sigmas: list[float] | None = None,
         area_factor: float | None = None,
-        use_cocoeval_oks: bool = True,
         class_loss_weight: float = 0.6,
         objectness_loss_weight: float = 0.7,
         anchor_threshold: float = 4.0,
@@ -85,8 +84,6 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         @param sigmas: Sigmas used in KeypointLoss for OKS metric. If None then use COCO ones if possible or default ones. Defaults to C{None}.
         @type area_factor: float | None
         @param area_factor: Factor by which we multiply bbox area which is used in KeypointLoss. If None then use default one. Defaults to C{None}.
-        @type use_cocoeval_oks: bool
-        @param use_cocoeval_oks: If True then use same OKS formula as COCOEval otherwise use one for definition. Defaults to C{True}.
         @type class_loss_weight: float
         @param class_loss_weight: Weight for the class loss. Defaults to C{0.6}.
         @type objectness_loss_weight: float
@@ -149,7 +146,6 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
             bce_power=viz_pw,
             sigmas=sigmas,
             area_factor=area_factor,
-            use_cocoeval_oks=use_cocoeval_oks,
             **kwargs,
         )
 
@@ -177,7 +173,7 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
             shape (n_targets, n_classes + box_offset + n_keypoints * 3).
         """
         predictions = outputs["features"]
-
+        
         kpts = labels[LabelType.KEYPOINT]
         boxes = labels[LabelType.BOUNDINGBOX]
 
