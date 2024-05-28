@@ -153,7 +153,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             n_classes=self.n_classes,
             conf_thres=self.conf_thres,
             iou_thres=self.iou_thres,
-            bbox_format="cxcywh",
+            bbox_format="xyxy",
             max_det=self.max_det,
             predicts_objectness=False,
         )
