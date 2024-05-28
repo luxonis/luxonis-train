@@ -49,7 +49,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             self.grid_cell_size,
             self.grid_cell_offset,
             multiply_with_stride=False,
-        )
+        ) 
 
         kpt_list: list[Tensor] = []
         bs = inputs[0].shape[0]  
@@ -73,10 +73,6 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             [kpt_list[i].flatten(2) for i in range(len(kpt_list))], dim=2
         ).permute(0, 2, 1) # (bs, h1*w1 + h2*w2 + h3*w3, n_keypoints*3)
 
-        if self.export:
-            kpt = self.kpts_decode(kpt_tensor)
-            return {"out_cls": cls_tensor, "out_reg": reg_tensor, "kpt": kpt}
-
         if self.training:
             return {
                 "features": features,
@@ -84,8 +80,11 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
                 "distributions": [reg_tensor],
                 "keypoints_raw": [kpt_tensor],
             }
-
+        
         pred_kpt = self.kpts_decode(kpt_tensor)
+        if self.export:
+            return {"out_cls": cls_tensor, "out_reg": reg_tensor, "kpt": pred_kpt}
+
         detections = self._process_to_bbox_and_kps((features, cls_tensor, reg_tensor, pred_kpt))
         return {
             "boxes": [detection[:, :6] for detection in detections],
@@ -123,17 +122,10 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
     ) -> list[Tensor]:
         """Performs post-processing of the output and returns bboxs after NMS."""
         features, cls_score_list, reg_dist_list, keypoints = output
-        _, anchor_points, _, stride_tensor = anchors_for_fpn_features(
-            features,
-            self.stride,
-            self.grid_cell_size,
-            self.grid_cell_offset,
-            multiply_with_stride=False,
-        )
 
-        pred_bboxes = dist2bbox(reg_dist_list, anchor_points, out_format="xyxy")
+        pred_bboxes = dist2bbox(reg_dist_list, self.anchor_points, out_format="xyxy")
 
-        pred_bboxes *= stride_tensor
+        pred_bboxes *= self.stride_tensor
         output_merged = torch.cat(
             [
                 pred_bboxes,

@@ -185,8 +185,7 @@ class EfficientKeypointBBoxLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor,
         pred_kpts = self.kpts_decode(anchor_points_strided, pred_kpts.view(batch_size, -1, n_kpts, 3 )) # (bs, h*w, n_keypoints, 3)
 
         target_bbox = self._preprocess_bbox_target(target_bbox, batch_size, gt_bboxes_scale)
-        batched_kpts = self._preprocess_kpts_target(target_kpts, batch_size, gt_kpts_scale)
-
+    
         gt_bbox_labels = target_bbox[:, :, :1] 
         gt_xyxy = target_bbox[:, :, 1:]
         mask_gt = (gt_xyxy.sum(-1, keepdim=True) > 0).float()
@@ -222,17 +221,21 @@ class EfficientKeypointBBoxLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor,
                 mask_gt,
             )
 
+        batched_kpts = self._preprocess_kpts_target(target_kpts, batch_size, gt_kpts_scale)
+        print("Batched Keypoints:", batched_kpts)
         assigned_gt_idx_expanded = assigned_gt_idx.unsqueeze(-1).unsqueeze(-1)
         selected_keypoints = batched_kpts.gather(
             1, assigned_gt_idx_expanded.expand(-1, -1, self.n_kps, 3)
         )
+        print("Selected Keypoints before normalization:", selected_keypoints)
         xy_components = selected_keypoints[:, :, :, :2]
         normalized_xy = xy_components / stride_tensor.view(1, -1, 1, 1)
         selected_keypoints = torch.cat((normalized_xy, selected_keypoints[:, :, :, 2:]), dim=-1)
-
+        print("Selected Keypoints after normalization:", selected_keypoints)
         gt_kpt = selected_keypoints[mask_positive]
         pred_kpts = pred_kpts[mask_positive]
-
+        print("Filtered Ground Truth Keypoints (gt_kpt):", gt_kpt)
+        print("Filtered Predicted Keypoints (pred_kpts):", pred_kpts)
         assigned_bboxes = assigned_bboxes / stride_tensor
 
         area = (assigned_bboxes[mask_positive][:, 0] - assigned_bboxes[mask_positive][:, 2]) * (assigned_bboxes[mask_positive][:, 1] - assigned_bboxes[mask_positive][:, 3]) 
@@ -308,7 +311,7 @@ class EfficientKeypointBBoxLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor,
         return out_target
     
     def _preprocess_kpts_target(self, kpts_target: Tensor, batch_size: int, scale_tensor: Tensor):
-        """Preprocesses the target keypoints in shape [batch_size, N, 3] where N is the maximum number of keypoints in one image."""
+        """Preprocesses the target keypoints in shape [batch_size, N, n_keypoints, 3] where N is the maximum number of keypoints in one image."""
         
         sample_ids, counts = torch.unique(kpts_target[:, 0].int(), return_counts=True)
         max_kpts = int(counts.max()) if counts.numel() > 0 else 0
@@ -318,8 +321,8 @@ class EfficientKeypointBBoxLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor,
         for i in range(batch_size):
             keypoints_i = kpts_target[kpts_target[:, 0] == i]
             scaled_keypoints_i = keypoints_i[:,2:].clone()
-            scaled_keypoints_i[:, :2] *= scale_tensor[:2] 
             batched_keypoints[i, :keypoints_i.shape[0]] = scaled_keypoints_i.view(-1, self.n_kps, 3)
+            batched_keypoints[i, :, :, :2] *= scale_tensor[:2]
 
         return batched_keypoints
         
