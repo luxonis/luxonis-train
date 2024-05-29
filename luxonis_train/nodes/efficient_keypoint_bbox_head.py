@@ -79,17 +79,26 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         ) 
 
         kpt_list: list[Tensor] = []
-        bs = inputs[0].shape[0]  
+        # bs = inputs[0].shape[0]  
         kpt_list = []
         for i in range(self.n_heads):
-            kpt_pred = self.kpt_layers[i](inputs[i]).view(bs, self.nk, -1) 
+            kpt_pred = self.kpt_layers[i](inputs[i])
+            # kpt_pred = self.kpt_layers[i](inputs[i]).view(bs, self.nk, -1) 
             kpt_list.append(kpt_pred)
 
         return features, cls_score_list, reg_distri_list, kpt_list
 
     def wrap(self, output: tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]]) -> Packet[Tensor]:
         features, cls_score_list, reg_distri_list, kpt_list = output
+        bs = features[0].shape[0]
 
+        if self.export:
+            outputs = []
+            for out_cls, out_reg, out_kpts in zip(cls_score_list, reg_distri_list, kpt_list, strict=True):
+                out = torch.cat([out_reg, out_cls, out_kpts], dim=1)
+                outputs.append(out)
+            return {"outputs": outputs}
+        
         cls_tensor = torch.cat(
             [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))], dim=2
         ).permute(0, 2, 1)
@@ -97,12 +106,8 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             [reg_distri_list[i].flatten(2) for i in range(len(reg_distri_list))], dim=2
         ).permute(0, 2, 1)
         kpt_tensor = torch.cat(
-            [kpt_list[i].flatten(2) for i in range(len(kpt_list))], dim=2
+            [kpt_list[i].view(bs, self.nk, -1) .flatten(2) for i in range(len(kpt_list))], dim=2
         ).permute(0, 2, 1)
-
-        if self.export:
-            pred_kpt = self._kpts_decode(kpt_tensor)
-            return {"out_cls": cls_tensor, "out_reg": reg_tensor, "out_kpt": pred_kpt}
 
         if self.training:
             return {
@@ -126,20 +131,21 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         }
 
     def _kpts_decode(self, kpts):
-        """Decodes keypoints with ONNX-friendly operations."""
-        y = kpts.clone()
+        """Decodes keypoints."""
+        y = kpts.clone() 
+
+        y[:, :, 2::3] = y[:, :,  2::3].sigmoid()
 
         anchor_points_transposed = self.anchor_points.transpose(0, 1)
-        stride_tensor = self.stride_tensor.squeeze(-1).view(1, -1, 1)
+        stride_tensor = self.stride_tensor.squeeze(-1) 
+
+        stride_tensor = stride_tensor.view(1, -1, 1)
         anchor_points_x = anchor_points_transposed[0].view(1, -1, 1)
         anchor_points_y = anchor_points_transposed[1].view(1, -1, 1)
 
-        x_coords = (y[:, :, 0::3] * 2.0 + (anchor_points_x - 0.5)) * stride_tensor
-        y_coords = (y[:, :, 1::3] * 2.0 + (anchor_points_y - 0.5)) * stride_tensor
-        v = y[:, :, 2::3].sigmoid()
-
-        y = torch.cat([x_coords, y_coords, v], dim=2)
-
+        y[:, :, 0::3] = (y[:, :, 0::3] * 2.0 + (anchor_points_x - 0.5)) * stride_tensor 
+        y[:, :, 1::3] = (y[:, :, 1::3] * 2.0 + (anchor_points_y - 0.5)) * stride_tensor
+        
         return y
 
 
