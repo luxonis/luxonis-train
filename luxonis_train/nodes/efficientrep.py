@@ -127,8 +127,8 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
 
 
 EFFICIENTREP_VARIANTS = {
-    "s": (0.33, 0.50),
     "n": (0.33, 0.25),
+    "s": (0.33, 0.50),
     "m": (0.60, 0.75),
-    "l": (1.0, 1.2),
+    "l": (1.0, 1.0),
 }
