@@ -78,13 +78,15 @@ def match_to_anchor(
     # last index is anchor index. Those are not scaled.
     scale_length = 3 * n_keypoints + box_offset + 2
     scales = torch.ones(scale_length, device=targets.device)
-    
+
     # Scale box and keypoint coordinates, but not visibility
     for i in range(n_keypoints):
         scales[box_offset + 1 + 3 * i] = scale_width
         scales[box_offset + 2 + 3 * i] = scale_height
-    
-    scales[2:box_offset + 1] = torch.tensor([scale_width, scale_height, scale_width, scale_height])
+
+    scales[2 : box_offset + 1] = torch.tensor(
+        [scale_width, scale_height, scale_width, scale_height]
+    )
 
     scaled_targets = targets * scales
 
@@ -112,8 +114,6 @@ def match_to_anchor(
 
     shifts = xy_shifts.unsqueeze(1).repeat((1, len(box_xy), 1))[mask]
     return final_targets, shifts
-
-
 
 
 def dist2bbox(

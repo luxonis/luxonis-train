@@ -1,8 +1,9 @@
+import logging
+
 import torch
 from scipy.optimize import linear_sum_assignment
 from torch import Tensor
 from torchvision.ops import box_convert
-import logging
 
 from luxonis_train.utils.types import (
     KeypointProtocol,
@@ -10,6 +11,7 @@ from luxonis_train.utils.types import (
     LabelType,
     Packet,
 )
+
 from .base_metric import BaseMetric
 
 logger = logging.getLogger(__name__)

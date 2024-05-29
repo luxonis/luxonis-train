@@ -173,7 +173,7 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
             shape (n_targets, n_classes + box_offset + n_keypoints * 3).
         """
         predictions = outputs["features"]
-        
+
         kpts = labels[LabelType.KEYPOINT]
         boxes = labels[LabelType.BOUNDINGBOX]
 

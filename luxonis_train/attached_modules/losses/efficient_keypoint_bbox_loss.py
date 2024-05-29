@@ -7,13 +7,12 @@ from torch import Tensor, nn
 from torchvision.ops import box_convert
 from typing_extensions import Annotated
 
-from luxonis_train.attached_modules.losses.keypoint_loss import KeypointLoss
+from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
+    set_area_factor,
+    set_sigmas,
+)
 from luxonis_train.nodes import EfficientKeypointBBoxHead
 from luxonis_train.utils.assigners import ATSSAssigner, TaskAlignedAssigner
-from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
-    set_sigmas,
-    set_area_factor,
-)
 from luxonis_train.utils.boxutils import (
     IoUType,
     anchors_for_fpn_features,
@@ -31,13 +30,16 @@ from luxonis_train.utils.types import (
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
 
+
 class Protocol(BaseProtocol):
     features: list[Tensor]
     class_scores: Annotated[list[Tensor], Field(min_length=1, max_length=1)]
     distributions: Annotated[list[Tensor], Field(min_length=1, max_length=1)]
 
 
-class EfficientKeypointBBoxLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]):
+class EfficientKeypointBBoxLoss(
+    BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]
+):
     node: EfficientKeypointBBoxHead
 
     class NodePacket(Packet[Tensor]):
@@ -134,7 +136,7 @@ class EfficientKeypointBBoxLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor,
         y[..., 0] += anchor_points[:, [0]] - 0.5
         y[..., 1] += anchor_points[:, [1]] - 0.5
         return y
-    
+
     def prepare(
         self, outputs: Packet[Tensor], labels: Labels
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
@@ -142,13 +144,12 @@ class EfficientKeypointBBoxLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor,
         pred_scores = outputs["class_scores"][0]
         pred_distri = outputs["distributions"][0]
         pred_kpts = outputs["keypoints_raw"][0]
-        
 
         batch_size = pred_scores.shape[0]
         device = pred_scores.device
 
         target_bbox = labels[LabelType.BOUNDINGBOX].to(device)
-        target_kpts = labels[LabelType.KEYPOINT].to(device) # (bs, n_keypoints*3)
+        target_kpts = labels[LabelType.KEYPOINT].to(device)  # (bs, n_keypoints*3)
         n_kpts = (target_kpts.shape[1] - 2) // 3
 
         gt_bboxes_scale = torch.tensor(
@@ -182,11 +183,15 @@ class EfficientKeypointBBoxLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor,
 
         anchor_points_strided = anchor_points / stride_tensor
         pred_bboxes = dist2bbox(pred_distri, anchor_points_strided)
-        pred_kpts = self.kpts_decode(anchor_points_strided, pred_kpts.view(batch_size, -1, n_kpts, 3 )) # (bs, h*w, n_keypoints, 3)
+        pred_kpts = self.kpts_decode(
+            anchor_points_strided, pred_kpts.view(batch_size, -1, n_kpts, 3)
+        )  # (bs, h*w, n_keypoints, 3)
 
-        target_bbox = self._preprocess_bbox_target(target_bbox, batch_size, gt_bboxes_scale)
-    
-        gt_bbox_labels = target_bbox[:, :, :1] 
+        target_bbox = self._preprocess_bbox_target(
+            target_bbox, batch_size, gt_bboxes_scale
+        )
+
+        gt_bbox_labels = target_bbox[:, :, :1]
         gt_xyxy = target_bbox[:, :, 1:]
         mask_gt = (gt_xyxy.sum(-1, keepdim=True) > 0).float()
 
@@ -221,20 +226,28 @@ class EfficientKeypointBBoxLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor,
                 mask_gt,
             )
 
-        batched_kpts = self._preprocess_kpts_target(target_kpts, batch_size, gt_kpts_scale)
+        batched_kpts = self._preprocess_kpts_target(
+            target_kpts, batch_size, gt_kpts_scale
+        )
         assigned_gt_idx_expanded = assigned_gt_idx.unsqueeze(-1).unsqueeze(-1)
         selected_keypoints = batched_kpts.gather(
             1, assigned_gt_idx_expanded.expand(-1, -1, self.n_kps, 3)
         )
         xy_components = selected_keypoints[:, :, :, :2]
         normalized_xy = xy_components / stride_tensor.view(1, -1, 1, 1)
-        selected_keypoints = torch.cat((normalized_xy, selected_keypoints[:, :, :, 2:]), dim=-1)
+        selected_keypoints = torch.cat(
+            (normalized_xy, selected_keypoints[:, :, :, 2:]), dim=-1
+        )
         gt_kpt = selected_keypoints[mask_positive]
         pred_kpts = pred_kpts[mask_positive]
         assigned_bboxes = assigned_bboxes / stride_tensor
 
-        area = (assigned_bboxes[mask_positive][:, 0] - assigned_bboxes[mask_positive][:, 2]) * (assigned_bboxes[mask_positive][:, 1] - assigned_bboxes[mask_positive][:, 3]) 
-        
+        area = (
+            assigned_bboxes[mask_positive][:, 0] - assigned_bboxes[mask_positive][:, 2]
+        ) * (
+            assigned_bboxes[mask_positive][:, 1] - assigned_bboxes[mask_positive][:, 3]
+        )
+
         return (
             pred_bboxes,
             pred_scores,
@@ -261,10 +274,14 @@ class EfficientKeypointBBoxLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor,
     ):
         device = pred_bboxes.device
         sigmas = self.sigmas.to(device)
-        d = (gt_kpts[..., 0] - pred_kpts[..., 0]).pow(2) + (gt_kpts[..., 1] - pred_kpts[..., 1]).pow(2)
-        e = d / (2 * sigmas ** 2) / (area.view(-1, 1) + 1e-9) / 2
+        d = (gt_kpts[..., 0] - pred_kpts[..., 0]).pow(2) + (
+            gt_kpts[..., 1] - pred_kpts[..., 1]
+        ).pow(2)
+        e = d / (2 * sigmas**2) / (area.view(-1, 1) + 1e-9) / 2
         mask = (gt_kpts[..., 2] > 0).float()
-        regression_loss = ((1 - torch.exp(-e) * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-9)).mean()
+        regression_loss = (
+            (1 - torch.exp(-e) * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-9)
+        ).mean()
         visibility_loss = self.b_cross_entropy.forward(pred_kpts[..., 2], mask)
 
         one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[..., :-1]
@@ -283,17 +300,30 @@ class EfficientKeypointBBoxLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor,
             bbox_format="xyxy",
         )[0]
 
-        loss = self.class_bbox_loss_weight * loss_cls + self.iou_loss_weight * loss_iou + regression_loss * self.regr_kpts_loss_weight + visibility_loss * self.vis_kpts_loss_weight
+        loss = (
+            self.class_bbox_loss_weight * loss_cls
+            + self.iou_loss_weight * loss_iou
+            + regression_loss * self.regr_kpts_loss_weight
+            + visibility_loss * self.vis_kpts_loss_weight
+        )
 
-        sub_losses = {"class": loss_cls.detach(), "iou": loss_iou.detach(), "regression": regression_loss.detach(), "visibility": visibility_loss.detach()}
+        sub_losses = {
+            "class": loss_cls.detach(),
+            "iou": loss_iou.detach(),
+            "regression": regression_loss.detach(),
+            "visibility": visibility_loss.detach(),
+        }
 
         return loss, sub_losses
 
-    def _preprocess_bbox_target(self, bbox_target: Tensor, batch_size: int, scale_tensor: Tensor):
-        """Preprocess target bboxes in shape [batch_size, N, 5] where N is maximum number of
-        instances in one image."""
+    def _preprocess_bbox_target(
+        self, bbox_target: Tensor, batch_size: int, scale_tensor: Tensor
+    ):
+        """Preprocess target bboxes in shape [batch_size, N, 5] where N is maximum
+        number of instances in one image."""
         sample_ids, counts = cast(
-            tuple[Tensor, Tensor], torch.unique(bbox_target[:, 0].int(), return_counts=True)
+            tuple[Tensor, Tensor],
+            torch.unique(bbox_target[:, 0].int(), return_counts=True),
         )
         c_max = int(counts.max()) if counts.numel() > 0 else 0
         out_target = torch.zeros(batch_size, c_max, 5, device=bbox_target.device)
@@ -304,10 +334,13 @@ class EfficientKeypointBBoxLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor,
         scaled_target = out_target[:, :, 1:5] * scale_tensor
         out_target[..., 1:] = box_convert(scaled_target, "xywh", "xyxy")
         return out_target
-    
-    def _preprocess_kpts_target(self, kpts_target: Tensor, batch_size: int, scale_tensor: Tensor):
-        """Preprocesses the target keypoints in shape [batch_size, N, n_keypoints, 3] where N is the maximum number of keypoints in one image."""
-        
+
+    def _preprocess_kpts_target(
+        self, kpts_target: Tensor, batch_size: int, scale_tensor: Tensor
+    ):
+        """Preprocesses the target keypoints in shape [batch_size, N, n_keypoints, 3]
+        where N is the maximum number of keypoints in one image."""
+
         sample_ids, counts = torch.unique(kpts_target[:, 0].int(), return_counts=True)
         max_kpts = int(counts.max()) if counts.numel() > 0 else 0
         batched_keypoints = torch.zeros(
@@ -315,13 +348,15 @@ class EfficientKeypointBBoxLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor,
         )
         for i in range(batch_size):
             keypoints_i = kpts_target[kpts_target[:, 0] == i]
-            scaled_keypoints_i = keypoints_i[:,2:].clone()
-            batched_keypoints[i, :keypoints_i.shape[0]] = scaled_keypoints_i.view(-1, self.n_kps, 3)
+            scaled_keypoints_i = keypoints_i[:, 2:].clone()
+            batched_keypoints[i, : keypoints_i.shape[0]] = scaled_keypoints_i.view(
+                -1, self.n_kps, 3
+            )
             batched_keypoints[i, :, :, :2] *= scale_tensor[:2]
 
         return batched_keypoints
-        
-        
+
+
 class VarifocalLoss(nn.Module):
     def __init__(self, alpha: float = 0.75, gamma: float = 2.0):
         """Varifocal Loss is a loss function for training a dense object detector to predict
