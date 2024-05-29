@@ -1,11 +1,10 @@
 from typing import Literal
 import torch
 from torch import Tensor, nn
-import math
 
 from luxonis_train.nodes.blocks import ConvModule
 
-from luxonis_train.utils.types import LabelType, Packet
+from luxonis_train.utils.types import Packet
 from luxonis_train.utils.boxutils import (
     anchors_for_fpn_features,
     dist2bbox,
@@ -23,12 +22,40 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         max_det: int = 300,
         **kwargs,
     ):
-        """Head for object detection and keypoint detection."""
+        """Head for object and keypoint detection.
+
+        Adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial
+        Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
+        
+        @type n_keypoints: int | None
+        @param n_keypoints: Number of keypoints. If not defined, inferred
+            from the dataset metadata (if provided). Defaults to C{None}.
+
+        @type n_heads: int
+        @param n_heads: Number of output heads. Defaults to C{3}.
+            B{Note:} Should be same also on neck in most cases.
+        
+        type conf_thres: float
+        @param conf_thres: Threshold for confidence. Defaults to C{0.25}.
+
+        @type iou_thres: float
+        @param iou_thres: Threshold for IoU. Defaults to C{0.45}.
+
+        @type max_det: int
+        @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
+
+        """
         super().__init__(n_heads=n_heads, conf_thres=conf_thres, iou_thres=iou_thres, max_det=max_det, **kwargs)
 
         n_keypoints = n_keypoints or self.dataset_metadata._n_keypoints
+
+        if n_keypoints is None:
+            raise ValueError(
+                "Number of keypoints must be specified either in the constructor or "
+                "in the dataset metadata."
+            )
+
         self.n_keypoints = n_keypoints
-        self.kpt_shape = (n_keypoints, 3)
         self.nk = n_keypoints * 3
 
         c4 = max(self.in_channels[0] // 4, self.nk)
@@ -55,7 +82,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         bs = inputs[0].shape[0]  
         kpt_list = []
         for i in range(self.n_heads):
-            kpt_pred = self.kpt_layers[i](inputs[i]).view(bs, self.nk, -1) # (bs, n_keypoints*3, h*w)
+            kpt_pred = self.kpt_layers[i](inputs[i]).view(bs, self.nk, -1) 
             kpt_list.append(kpt_pred)
 
         return features, cls_score_list, reg_distri_list, kpt_list
@@ -71,7 +98,11 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         ).permute(0, 2, 1)
         kpt_tensor = torch.cat(
             [kpt_list[i].flatten(2) for i in range(len(kpt_list))], dim=2
-        ).permute(0, 2, 1) # (bs, h1*w1 + h2*w2 + h3*w3, n_keypoints*3)
+        ).permute(0, 2, 1)
+
+        if self.export:
+            pred_kpt = self._kpts_decode(kpt_tensor)
+            return {"out_cls": cls_tensor, "out_reg": reg_tensor, "out_kpt": pred_kpt}
 
         if self.training:
             return {
@@ -81,10 +112,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
                 "keypoints_raw": [kpt_tensor],
             }
         
-        pred_kpt = self.kpts_decode(kpt_tensor)
-        if self.export:
-            return {"out_cls": cls_tensor, "out_reg": reg_tensor, "kpt": pred_kpt}
-
+        pred_kpt = self._kpts_decode(kpt_tensor)
         detections = self._process_to_bbox_and_kps((features, cls_tensor, reg_tensor, pred_kpt))
         return {
             "boxes": [detection[:, :6] for detection in detections],
@@ -97,24 +125,23 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             "keypoints_raw": [kpt_tensor],
         }
 
-    def kpts_decode(self, kpts):
-        """Decodes keypoints."""
-        ndim = self.kpt_shape[1]
-        y = kpts.clone() # (bs,h1*w1 + h2*w2 + h3*w3, n_keypoints*3) -> (bs, -1, n_keypoints*3)
-
-        y[:, :, 2::3] = y[:, :,  2::3].sigmoid()
+    def _kpts_decode(self, kpts):
+        """Decodes keypoints with ONNX-friendly operations."""
+        y = kpts.clone()
 
         anchor_points_transposed = self.anchor_points.transpose(0, 1)
-        stride_tensor = self.stride_tensor.squeeze(-1) 
-
-        stride_tensor = stride_tensor.view(1, -1, 1)
+        stride_tensor = self.stride_tensor.squeeze(-1).view(1, -1, 1)
         anchor_points_x = anchor_points_transposed[0].view(1, -1, 1)
         anchor_points_y = anchor_points_transposed[1].view(1, -1, 1)
 
-        y[:, :, 0::ndim] = (y[:, :, 0::ndim] * 2.0 + (anchor_points_x - 0.5)) * stride_tensor 
-        y[:, :, 1::ndim] = (y[:, :, 1::ndim] * 2.0 + (anchor_points_y - 0.5)) * stride_tensor
-        
+        x_coords = (y[:, :, 0::3] * 2.0 + (anchor_points_x - 0.5)) * stride_tensor
+        y_coords = (y[:, :, 1::3] * 2.0 + (anchor_points_y - 0.5)) * stride_tensor
+        v = y[:, :, 2::3].sigmoid()
+
+        y = torch.cat([x_coords, y_coords, v], dim=2)
+
         return y
+
 
 
     def _process_to_bbox_and_kps(
