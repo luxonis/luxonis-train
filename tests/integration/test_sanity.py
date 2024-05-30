@@ -22,6 +22,8 @@ def test_sanity(config_file):
         "1",
         "trainer.callbacks",
         "[]",
+        "trainer.batch_size",
+        "1",
     ]
     result = subprocess.run(
         ["luxonis_train", "train", "--config", f"configs/{config_file}", *opts],
@@ -80,6 +82,8 @@ def test_tuner():
             "[]",
             "tuner.n_trials",
             "4",
+            "trainer.batch_size",
+            "1",
         ],
     )
     assert result.returncode == 0
