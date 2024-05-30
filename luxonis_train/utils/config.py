@@ -169,7 +169,8 @@ class PreprocessingConfig(CustomBaseModel):
         return self
 
     def get_active_augmentations(self) -> list[AugmentationConfig]:
-        """Returns list of augmentations that are active
+        """Returns list of augmentations that are active.
+
         @rtype: list[AugmentationConfig]
         @return: Filtered list of active augmentation configs
         """
