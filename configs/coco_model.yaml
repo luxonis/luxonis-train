@@ -155,7 +155,6 @@ trainer:
         monitor: val/loss
         mode: min
         verbose: true
-    - name: DeviceStatsMonitor
     - name: ExportOnTrainEnd
     - name: TestOnTrainEnd
 

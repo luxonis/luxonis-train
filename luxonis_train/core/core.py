@@ -68,7 +68,7 @@ class Core:
         opts = opts or []
 
         if self.cfg.use_rich_text:
-            rich.traceback.install(suppress=[pl, torch])
+            rich.traceback.install(suppress=[pl, torch], show_locals=False)
 
         self.rank = rank_zero_only.rank
 
@@ -102,7 +102,8 @@ class Core:
         self.train_augmentations = TrainAugmentations(
             image_size=self.cfg.trainer.preprocessing.train_image_size,
             augmentations=[
-                i.model_dump() for i in self.cfg.trainer.preprocessing.augmentations
+                i.model_dump()
+                for i in self.cfg.trainer.preprocessing.get_active_augmentations()
             ],
             train_rgb=self.cfg.trainer.preprocessing.train_rgb,
             keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
@@ -110,7 +111,8 @@ class Core:
         self.val_augmentations = ValAugmentations(
             image_size=self.cfg.trainer.preprocessing.train_image_size,
             augmentations=[
-                i.model_dump() for i in self.cfg.trainer.preprocessing.augmentations
+                i.model_dump()
+                for i in self.cfg.trainer.preprocessing.get_active_augmentations()
             ],
             train_rgb=self.cfg.trainer.preprocessing.train_rgb,
             keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
@@ -134,12 +136,16 @@ class Core:
 
         self.loaders = {
             view: LOADERS.get(self.cfg.loader.name)(
-                augmentations=self.train_augmentations
-                if view == "train"
-                else self.val_augmentations,
-                view=self.cfg.loader.train_view
-                if view == "train"
-                else self.cfg.loader.val_view,
+                augmentations=(
+                    self.train_augmentations
+                    if view == "train"
+                    else self.val_augmentations
+                ),
+                view=(
+                    self.cfg.loader.train_view
+                    if view == "train"
+                    else self.cfg.loader.val_view
+                ),
                 **self.cfg.loader.params,
             )
             for view in ["train", "val", "test"]
@@ -163,9 +169,9 @@ class Core:
                 num_workers=self.cfg.trainer.num_workers,
                 collate_fn=collate_fn,
                 shuffle=view == "train",
-                drop_last=self.cfg.trainer.skip_last_batch
-                if view == "train"
-                else False,
+                drop_last=(
+                    self.cfg.trainer.skip_last_batch if view == "train" else False
+                ),
                 sampler=sampler if view == "train" else None,
             )
             for view in ["train", "val", "test"]
