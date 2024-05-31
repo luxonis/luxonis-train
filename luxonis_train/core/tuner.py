@@ -1,6 +1,6 @@
+import os.path as osp
 import random
 from logging import getLogger
-import os.path as osp
 from typing import Any
 
 import lightning.pytorch as pl
@@ -203,7 +203,7 @@ class Tuner(Core):
         return new_params
 
     def _augs_to_indices(self, aug_names: list[str]) -> list[int]:
-        """Maps augmentation names to indices"""
+        """Maps augmentation names to indices."""
         all_augs = self.cfg.trainer.preprocessing.augmentations
         aug_indices = []
         for aug_name in aug_names:
