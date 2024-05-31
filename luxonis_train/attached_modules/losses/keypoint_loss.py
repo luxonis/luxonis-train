@@ -33,6 +33,20 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         area_factor: float | None = None,
         **kwargs,
     ):
+        """Keypoint based loss that is computed from OKS-based regression and visibility
+        loss.
+
+        @type n_keypoints: int
+        @param n_keypoints: Number of keypoints.
+        @type bce_power: float
+        @param bce_power: Power used for BCE visibility loss. Defaults to C{1.0}.
+        @param sigmas: Sigmas used for OKS. If None then use COCO ones if possible or
+            default ones. Defaults to C{None}.
+        @type area_factor: float | None
+        @param area_factor: Factor by which we multiply bbox area. If None then use
+            default one. Defaults to C{None}.
+        """
+
         super().__init__(
             protocol=Protocol, required_labels=[LabelType.KEYPOINT], **kwargs
         )

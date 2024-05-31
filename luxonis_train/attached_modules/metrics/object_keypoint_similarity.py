@@ -20,18 +20,6 @@ logger = logging.getLogger(__name__)
 class ObjectKeypointSimilarity(
     BaseMetric[list[dict[str, Tensor]], list[dict[str, Tensor]]]
 ):
-    """Object Keypoint Similarity metric for evaluating keypoint predictions.
-
-    @type n_keypoints: int
-    @param n_keypoints: Number of keypoints.
-    @type kpt_sigmas: Tensor
-    @param kpt_sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then
-        use same weights for all.
-    @type use_cocoeval_oks: bool
-    @param use_cocoeval_oks: Whether to use same OKS formula as in COCOeval or use the
-        one from definition.
-    """
-
     is_differentiable: bool = False
     higher_is_better: bool = True
     full_state_update: bool = True
@@ -45,10 +33,25 @@ class ObjectKeypointSimilarity(
     def __init__(
         self,
         n_keypoints: int | None = None,
-        kpt_sigmas: Tensor | None = None,
-        use_cocoeval_oks: bool = False,
+        sigmas: list[float] | None = None,
+        area_factor: float | None = None,
+        use_cocoeval_oks: bool = True,
         **kwargs,
     ) -> None:
+        """Object Keypoint Similarity metric for evaluating keypoint predictions.
+
+        @type n_keypoints: int
+        @param n_keypoints: Number of keypoints.
+        @type sigmas: list[float] | None
+        @param sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then
+            use COCO if possible otherwise defaults. Defaults to C{None}.
+        @type area_factor: float | None
+        @param area_factor: Factor by which we multiply bbox area. If None then use
+            default one. Defaults to C{None}.
+        @type use_cocoeval_oks: bool
+        @param use_cocoeval_oks: Whether to use same OKS formula as in COCOeval or use
+            the one from definition. Defaults to C{True}.
+        """
         super().__init__(
             required_labels=[LabelType.KEYPOINT], protocol=KeypointProtocol, **kwargs
         )
@@ -59,9 +62,9 @@ class ObjectKeypointSimilarity(
                 f"to {self.__class__.__name__}."
             )
         self.n_keypoints = n_keypoints or self.node.n_keypoints
-        if kpt_sigmas is not None and len(kpt_sigmas) != self.n_keypoints:
-            raise ValueError("Expected kpt_sigmas to be of shape (num_keypoints).")
-        self.kpt_sigmas = kpt_sigmas or torch.ones(self.n_keypoints) / self.n_keypoints
+
+        self.sigmas = set_sigmas(sigmas, self.n_keypoints, self.__class__.__name__)
+        self.area_factor = set_area_factor(area_factor, self.__class__.__name__)
         self.use_cocoeval_oks = use_cocoeval_oks
 
         self.add_state("pred_keypoints", default=[], dist_reduce_fx=None)
@@ -97,7 +100,7 @@ class ObjectKeypointSimilarity(
             curr_kpts[:, 1::3] *= image_size[0]
             curr_bboxs_widths = curr_bboxs[:, 2] - curr_bboxs[:, 0]
             curr_bboxs_heights = curr_bboxs[:, 3] - curr_bboxs[:, 1]
-            curr_scales = torch.sqrt(curr_bboxs_widths * curr_bboxs_heights)
+            curr_scales = curr_bboxs_widths * curr_bboxs_heights * self.area_factor
             label_list_oks.append({"keypoints": curr_kpts, "scales": curr_scales})
 
         return output_list_oks, label_list_oks
@@ -140,7 +143,7 @@ class ObjectKeypointSimilarity(
     def compute(self) -> Tensor:
         """Computes the OKS metric based on the inner state."""
 
-        self.kpt_sigmas = self.kpt_sigmas.to(self.device)
+        self.sigmas = self.sigmas.to(self.device)
         image_mean_oks = torch.zeros(len(self.groundtruth_keypoints))
         for i, (pred_kpts, gt_kpts, gt_scales) in enumerate(
             zip(
@@ -150,7 +153,11 @@ class ObjectKeypointSimilarity(
             gt_kpts = torch.reshape(gt_kpts, (-1, self.n_keypoints, 3))  # [N, K, 3]
 
             image_ious = compute_oks(
-                pred_kpts, gt_kpts, gt_scales, self.kpt_sigmas, self.use_cocoeval_oks
+                pred_kpts,
+                gt_kpts,
+                gt_scales,
+                self.sigmas,
+                self.use_cocoeval_oks,
             )  # [M, N]
             gt_indices, pred_indices = linear_sum_assignment(
                 image_ious.cpu().numpy(), maximize=True
@@ -167,7 +174,7 @@ def compute_oks(
     pred: Tensor,
     gt: Tensor,
     scales: Tensor,
-    kpt_sigmas: Tensor,
+    sigmas: Tensor,
     use_cocoeval_oks: bool,
 ) -> Tensor:
     """Compute Object Keypoint Similarity between every GT and prediction.
@@ -180,9 +187,9 @@ def compute_oks(
     @param scales: Scales of the bounding boxes.
     @rtype: Tensor
     @return: Object Keypoint Similarity every pred and gt [M, N]
-    @type kpt_sigmas: Tensor
-    @param kpt_sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then
-        use same weights for all.
+    @type sigmas: Tensor
+    @param sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then use
+        same weights for all.
     @type use_cocoeval_oks: bool
     @param use_cocoeval_oks: Whether to use same OKS formula as in COCOeval or use the
         one from definition.
@@ -195,12 +202,12 @@ def compute_oks(
     if use_cocoeval_oks:
         # use same formula as in COCOEval script here:
         # https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L229
-        oks = distances / (2 * kpt_sigmas) ** 2 / (scales[:, None, None] + eps) / 2
+        oks = distances / (2 * sigmas) ** 2 / (scales[:, None, None] + eps) / 2
     else:
         # use same formula as defined here: https://cocodataset.org/#keypoints-eval
         oks = (
             distances
-            / ((scales[:, None, None] + eps) * kpt_sigmas.to(scales.device)) ** 2
+            / ((scales[:, None, None] + eps) * sigmas.to(scales.device)) ** 2
             / 2
         )
 
@@ -265,6 +272,7 @@ def set_sigmas(
 
 
 def set_area_factor(area_factor: float | None, class_name: str | None) -> float:
+    """Set the default area factor if not defined."""
     if area_factor is None:
         warn_msg = "Default area_factor of 0.53 is being used bbox area scaling."
         if class_name:
