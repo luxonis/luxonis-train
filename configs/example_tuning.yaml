@@ -46,4 +46,4 @@ tuner:
     trainer.optimizer.name_categorical: ["Adam", "SGD"]
     trainer.optimizer.params.lr_float: [0.0001, 0.001]
     trainer.batch_size_int: [4, 16, 4]
-    trainer.preprocessgitsing.augmentations_subset: [["Defocus", "Sharpen", "Flip"], 2]
+    trainer.preprocessing.augmentations_subset: [["Defocus", "Sharpen", "Flip"], 2]

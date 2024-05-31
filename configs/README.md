@@ -173,7 +173,7 @@ We use [Albumentations](https://albumentations.ai/docs/) library for `augmentati
 | train_rgb         | bool                                                                                 | True          | bool if train on rgb or bgr                                                                                                                                             |
 | normalize.active  | bool                                                                                 | True          | bool if use normalization                                                                                                                                               |
 | normalize.params  | dict                                                                                 | {}            | params for normalization, see [documentation](https://albumentations.ai/docs/api_reference/augmentations/transforms/#albumentations.augmentations.transforms.Normalize) |
-| augmentations     | list\[{"name": Name of the augmentation, "params": Parameters of the augmentation}\] | \[\]          | list of Albumentations augmentations                                                                                                                                    |
+| augmentations     | list\[{"name": Name of the augmentation, "active": Bool if aug is active, by default set to True, "params": Parameters of the augmentation}\] | \[\]          | list of Albumentations augmentations                                                                                                                                    |
 
 ### Optimizer
 
@@ -247,7 +247,10 @@ Here you can specify options for tuning.
 | use_pruner | bool              | True          | Whether to use the MedianPruner.                                                                                                                                                                                                                                                                                   |
 | n_trials   | int \| None       | 15            | Number of trials for each process. `None` represents no limit in terms of numbner of trials.                                                                                                                                                                                                                       |
 | timeout    | int \| None       | None          | Stop study after the given number of seconds.                                                                                                                                                                                                                                                                      |
-| params     | dict\[str, list\] | {}            | Which parameters to tune. The keys should be in the format `key1.key2.key3_<type>`. Type can be one of `[categorical, float, int, longuniform, uniform]`. For more information about the types, visit [Optuna documentation](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.trial.Trial.html). |
+| params     | dict\[str, list\] | {}            | Which parameters to tune. The keys should be in the format `key1.key2.key3_<type>`. Type can be one of `[categorical, float, int, longuniform, uniform, subset]`. For more information about the types, visit [Optuna documentation](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.trial.Trial.html). |
+
+**Note**: "subset" sampling is currently only supported for augmentations. You can specify a set of augmentations defined in `trainer` to choose from and every run subset of random N augmentations will be active.
+
 
 Example of params for tuner block:
 
@@ -257,6 +260,7 @@ tuner:
     trainer.optimizer.name_categorical: ["Adam", "SGD"]
     trainer.optimizer.params.lr_float: [0.0001, 0.001]
     trainer.batch_size_int: [4, 16, 4]
+    trainer.preprocessing.augmentations_subset: [["Defocus", "Sharpen", "Flip"], 2]
 ```
 
 ### Storage
