@@ -109,7 +109,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
         output_list_kpt_map = []
         label_list_kpt_map = []
-        image_size = self.node.original_in_shape[2:]
+        image_size = self.node.original_in_shape[self.node.images_name][1:]
 
         output_kpts: list[Tensor] = outputs["keypoints"]
         output_bboxes: list[Tensor] = outputs["boxes"]

@@ -79,7 +79,7 @@ class ObjectKeypointSimilarity(
 
         output_list_oks = []
         label_list_oks = []
-        image_size = self.node.original_in_shape[2:]
+        image_size = self.node.original_in_shape[self.node.images_name][1:]
 
         for i, pred_kpt in enumerate(outputs["keypoints"]):
             output_list_oks.append({"keypoints": pred_kpt})

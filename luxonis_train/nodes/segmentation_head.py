@@ -29,7 +29,7 @@ class SegmentationHead(BaseNode[Tensor, Tensor]):
         """
         super().__init__(task_type=LabelType.SEGMENTATION, **kwargs)
 
-        original_height = self.original_in_shape[2]
+        original_height = self.original_in_shape[self.images_name][1]
         num_up = infer_upscale_factor(self.in_height, original_height, strict=False)
 
         modules = []
