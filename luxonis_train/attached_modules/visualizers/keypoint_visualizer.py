@@ -4,9 +4,7 @@ import torch
 from torch import Tensor
 
 from luxonis_train.utils.types import (
-    Labels,
     LabelType,
-    Packet,
 )
 
 from .base_visualizer import BaseVisualizer
@@ -42,16 +40,16 @@ class KeypointVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         @param nonvisible_color: Color of nonvisible keypoints. If C{None}, nonvisible
             keypoints are not drawn. Defaults to C{None}.
         """
-        super().__init__(required_labels=[LabelType.KEYPOINT], **kwargs)
+        super().__init__(required_labels=[LabelType.KEYPOINTS], **kwargs)
         self.visibility_threshold = visibility_threshold
         self.connectivity = connectivity
         self.visible_color = visible_color
         self.nonvisible_color = nonvisible_color
 
-    def prepare(
-        self, output: Packet[Tensor], label: Labels
-    ) -> tuple[list[Tensor], Tensor]:
-        return output["keypoints"], label[LabelType.KEYPOINT]
+    # def prepare(
+    #     self, output: Packet[Tensor], label: Labels
+    # ) -> tuple[list[Tensor], Tensor]:
+    #     return output[self.task], label[self.task][0]
 
     @staticmethod
     def draw_predictions(

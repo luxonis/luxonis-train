@@ -66,6 +66,27 @@ def test_sanity(config_file):
     shutil.rmtree(save_dir, ignore_errors=True)
 
 
+def test_task():
+    opts = [
+        "trainer.epochs",
+        "1",
+        "trainer.validation_interval",
+        "1",
+        "trainer.callbacks",
+        "[]",
+        "trainer.batch_size",
+        "1",
+        "model.nodes.1.task",
+        "cifar10_task",
+        "loader.params.dataset_name",
+        "cifar10_task_test",
+    ]
+    result = subprocess.run(
+        ["luxonis_train", "train", "--config", "configs/resnet_model.yaml", *opts],
+    )
+    assert result.returncode == 0
+
+
 def test_tuner():
     Path("study_local.db").unlink(missing_ok=True)
     result = subprocess.run(

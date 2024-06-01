@@ -12,27 +12,25 @@ def test_collate_fn():
     batch = [
         (
             torch.rand(3, 224, 224, dtype=torch.float32),
-            {"default": {LabelType.CLASSIFICATION: torch.tensor([1, 0])}},
+            {"classification": (torch.tensor([1, 0]), LabelType.CLASSIFICATION)},
         ),
         (
             torch.rand(3, 224, 224, dtype=torch.float32),
-            {"default": {LabelType.CLASSIFICATION: torch.tensor([0, 1])}},
+            {"classification": (torch.tensor([0, 1]), LabelType.CLASSIFICATION)},
         ),
     ]
 
     # Call collate_fn
-    imgs, annotations = collate_fn(batch)
+    imgs, annotations = collate_fn(batch)  # type: ignore
 
     # Check images tensor
     assert imgs.shape == (2, 3, 224, 224)
     assert imgs.dtype == torch.float32
 
     # Check annotations
-    assert "default" in annotations
-    annotations = annotations["default"]
-    assert LabelType.CLASSIFICATION in annotations
-    assert annotations[LabelType.CLASSIFICATION].shape == (2, 2)
-    assert annotations[LabelType.CLASSIFICATION].dtype == torch.int64
+    assert "classification" in annotations
+    assert annotations["classification"][0].shape == (2, 2)
+    assert annotations["classification"][0].dtype == torch.int64
 
     # TODO: test also segmentation, boundingbox and keypoint
 
