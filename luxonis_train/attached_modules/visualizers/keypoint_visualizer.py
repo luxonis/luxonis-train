@@ -46,11 +46,6 @@ class KeypointVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         self.visible_color = visible_color
         self.nonvisible_color = nonvisible_color
 
-    # def prepare(
-    #     self, output: Packet[Tensor], label: Labels
-    # ) -> tuple[list[Tensor], Tensor]:
-    #     return output[self.task], label[self.task][0]
-
     @staticmethod
     def draw_predictions(
         canvas: Tensor,

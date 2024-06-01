@@ -46,7 +46,7 @@ class SegmentationHead(BaseNode[Tensor, Tensor]):
         )
 
     def wrap(self, output: Tensor) -> Packet[Tensor]:
-        return {"segmentation": [output]}
+        return {self.task: [output]}
 
     def forward(self, inputs: Tensor) -> Tensor:
         return self.head(inputs)

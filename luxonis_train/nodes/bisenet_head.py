@@ -41,7 +41,7 @@ class BiSeNetHead(BaseNode[Tensor, Tensor]):
         self.upscale = nn.PixelShuffle(upscale_factor)
 
     def wrap(self, output: Tensor) -> Packet[Tensor]:
-        return {"segmentation": [output]}
+        return {self.task: [output]}
 
     def forward(self, inputs: Tensor) -> Tensor:
         x = self.conv_3x3(inputs)
