@@ -100,7 +100,7 @@ class LuxonisModel(pl.LightningModule):
         self,
         cfg: Config,
         save_dir: str,
-        input_shape: list[int] | Size,
+        input_shape: dict[str, Size],
         dataset_metadata: DatasetMetadata | None = None,
         **kwargs,
     ):
@@ -110,8 +110,9 @@ class LuxonisModel(pl.LightningModule):
         @param cfg: Config object.
         @type save_dir: str
         @param save_dir: Directory to save checkpoints.
-        @type input_shape: list[int] | L{Size}
-        @param input_shape: Shape of the input tensor.
+        @type input_shape: dict[str, Size]
+        @param input_shape: Dictionary of input shapes. Keys are input names, values are
+            shapes.
         @type dataset_metadata: L{DatasetMetadata} | None
         @param dataset_metadata: Dataset metadata.
         @type kwargs: Any
@@ -123,11 +124,12 @@ class LuxonisModel(pl.LightningModule):
         self._export: bool = False
 
         self.cfg = cfg
-        self.original_in_shape = Size(input_shape)
+        self.original_in_shape = input_shape
+        self.images_name = cfg.loader.images_name
         self.dataset_metadata = dataset_metadata or DatasetMetadata()
         self.frozen_nodes: list[tuple[nn.Module, int]] = []
         self.graph: dict[str, list[str]] = {}
-        self.input_shapes: dict[str, list[Size]] = {}
+        self.loader_input_shapes: dict[str, Size] = {}
         self.loss_weights: dict[str, float] = {}
         self.main_metric: str | None = None
         self.save_dir = save_dir
@@ -160,8 +162,33 @@ class LuxonisModel(pl.LightningModule):
                     unfreeze_after = int(node_cfg.freezing.unfreeze_after * epochs)
                 frozen_nodes.append((node_name, unfreeze_after))
             nodes[node_name] = (Node, node_cfg.params)
-            if not node_cfg.inputs:
-                self.input_shapes[node_name] = [Size(input_shape)]
+
+            # Handle inputs for this node
+
+            if not node_cfg.inputs and not node_cfg.input_sources:
+                # If no inputs (= preceding nodes) nor any input_sources (= loader outputs) are specified,
+                # assume the node is the starting node and takes all inputs from the loader.
+
+                self.loader_input_shapes[node_name] = {
+                    k: Size(v) for k, v in input_shape.items()
+                }
+            else:
+                # For each input_source, check if the loader provides the required output.
+                # If yes, add the shape to the input_shapes dict. If not, raise an error.
+                self.loader_input_shapes[node_name] = {}
+                for input_source in node_cfg.input_sources:
+                    if input_source not in input_shape:
+                        raise ValueError(
+                            f"Node {node_name} requires input source {input_source}, "
+                            "which is not provided by the loader."
+                        )
+
+                    self.loader_input_shapes[node_name][input_source] = Size(
+                        input_shape[input_source]
+                    )
+
+                # Inputs (= preceding nodes) are handled in the _initiate_nodes method.
+
             self.graph[node_name] = node_cfg.inputs
 
         self.nodes = self._initiate_nodes(nodes)
@@ -213,44 +240,64 @@ class LuxonisModel(pl.LightningModule):
         """
         initiated_nodes: dict[str, BaseNode] = {}
 
-        dummy_outputs: dict[str, Packet[Tensor]] = {
-            f"__{node_name}_input__": {
-                "features": [torch.zeros(2, *shape[1:]) for shape in shapes]
-            }
-            for node_name, shapes in self.input_shapes.items()
+        dummy_inputs: dict[str, Packet[Tensor]] = {
+            input_name: [torch.zeros(2, *shape)]
+            for node_name, shapes in self.loader_input_shapes.items()
+            for input_name, shape in shapes.items()
         }
 
         for node_name, (Node, node_kwargs), node_input_names, _ in traverse_graph(
             self.graph, nodes
         ):
-            node_input_shapes: list[Packet[Size]] = []
             node_dummy_inputs: list[Packet[Tensor]] = []
+            """List of dummy input packets for the node.
 
-            if not node_input_names:
-                node_input_names = [f"__{node_name}_input__"]
+            The first one is always from the loader.
+            """
+            node_input_shapes: list[Packet[Size]] = []
+            """Corresponding list of input shapes."""
 
+            # Add inputs from the loader (if the node has at least one input_source)
+            if len(self.loader_input_shapes[node_name]) > 0:
+                loader_packet = {}
+                for input_name in self.loader_input_shapes[node_name]:
+                    loader_packet[input_name] = dummy_inputs[input_name]
+
+                # Add the loader packet to the list of inputs
+                node_dummy_inputs.append(loader_packet)
+
+                # Add its shape to the list of input shapes
+                loader_shape_packet = get_shape_packet(loader_packet)
+                node_input_shapes.append(loader_shape_packet)
+
+            # Add inputs from preceding Nodes
             for node_input_name in node_input_names:
-                dummy_output = dummy_outputs[node_input_name]
-                shape_packet = get_shape_packet(dummy_output)
+                dummy_input = dummy_inputs[node_input_name]
+
+                # Add the input to the list of inputs
+                node_dummy_inputs.append(dummy_input)
+
+                # Add its shape to the list of input shapes
+                shape_packet = get_shape_packet(dummy_input)
                 node_input_shapes.append(shape_packet)
-                node_dummy_inputs.append(dummy_output)
 
-                node = Node(
-                    input_shapes=node_input_shapes,
-                    original_in_shape=self.original_in_shape,
-                    dataset_metadata=self.dataset_metadata,
-                    **node_kwargs,
-                )
-                node_outputs = node.run(node_dummy_inputs)
+            node = Node(
+                input_shapes=node_input_shapes,
+                original_in_shape=self.original_in_shape,
+                images_name=self.images_name,
+                dataset_metadata=self.dataset_metadata,
+                **node_kwargs,
+            )
+            node_outputs = node.run(node_dummy_inputs)
 
-                dummy_outputs[node_name] = node_outputs
-                initiated_nodes[node_name] = node
+            dummy_inputs[node_name] = node_outputs
+            initiated_nodes[node_name] = node
 
         return nn.ModuleDict(initiated_nodes)
 
     def forward(
         self,
-        inputs: Tensor,
+        inputs: dict[str, Tensor],
         task_labels: TaskLabels | None = None,
         images: Tensor | None = None,
         *,
@@ -280,27 +327,32 @@ class LuxonisModel(pl.LightningModule):
         @rtype: L{LuxonisOutput}
         @return: Output of the model.
         """
-        input_node_name = list(self.input_shapes.keys())[0]
-        input_dict = {input_node_name: [inputs]}
 
         losses: dict[
             str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]
         ] = defaultdict(dict)
         visualizations: dict[str, dict[str, Tensor]] = defaultdict(dict)
 
-        computed: dict[str, Packet[Tensor]] = {
-            f"__{node_name}_input__": {"features": input_tensors}
-            for node_name, input_tensors in input_dict.items()
-        }
+        packetized_inputs = {name: [inputs[name]] for name in inputs}
+
+        computed = {}
         for node_name, node, input_names, unprocessed in traverse_graph(
             self.graph, cast(dict[str, BaseNode], self.nodes)
         ):
-            # Special input for the first node. Will be changed when
-            # multiple inputs will be supported in `luxonis-ml.data`.
-            if not input_names:
-                input_names = [f"__{node_name}_input__"]
+            # Build node inputs from loader and preceding nodes
+            node_inputs = []
 
-            node_inputs = [computed[pred] for pred in input_names]
+            # Add inputs from the loader (if the node has at least one input_source)
+            if len(self.loader_input_shapes[node_name]) > 0:
+                loader_packet = {}
+                for input_name in self.loader_input_shapes[node_name]:
+                    loader_packet[input_name] = packetized_inputs[input_name]
+
+                # Add the loader packet to the list of inputs
+                node_inputs.append(loader_packet)
+
+            # Add inputs from preceding Nodes
+            node_inputs += [computed[pred] for pred in input_names]
             outputs = node.run(node_inputs)
             computed[node_name] = outputs
             labels = task_labels[self.node_tasks[node_name]] if task_labels else None
@@ -334,7 +386,10 @@ class LuxonisModel(pl.LightningModule):
                 if computed_name in self.outputs:
                     continue
                 for node_name in unprocessed:
-                    if computed_name in self.graph[node_name]:
+                    if (
+                        computed_name in self.graph[node_name]
+                        or computed_name in self.loader_input_shapes[node_name]
+                    ):
                         break
                 else:
                     del computed[computed_name]
@@ -393,18 +448,22 @@ class LuxonisModel(pl.LightningModule):
         """
 
         inputs = {
-            name: [torch.zeros(shape).to(self.device) for shape in shapes]
-            for name, shapes in self.input_shapes.items()
+            input_name: torch.zeros([1, *shape]).to(self.device)
+            for name, shapes in self.loader_input_shapes.items()
+            for input_name, shape in shapes.items()
         }
 
-        # TODO: multiple inputs
-        inp = list(inputs.values())[0][0]
+        inputs_deep_clone = {
+            k: torch.zeros(elem.shape).to(self.device) for k, elem in inputs.items()
+        }
+
+        inputs_for_onnx = {"inputs": inputs_deep_clone}
 
         for module in self.modules():
             if isinstance(module, BaseNode):
                 module.set_export_mode()
 
-        outputs = self.forward(inp.clone()).outputs
+        outputs = self.forward(inputs_deep_clone).outputs
         output_order = sorted(
             [
                 (node_name, output_name, i)
@@ -444,10 +503,13 @@ class LuxonisModel(pl.LightningModule):
             )
 
         self.forward = export_forward  # type: ignore
+
+        if "input_names" not in kwargs:
+            kwargs["input_names"] = list(inputs.keys())
         if "output_names" not in kwargs:
             kwargs["output_names"] = output_names
 
-        self.to_onnx(save_path, inp, **kwargs)
+        self.to_onnx(save_path, inputs_for_onnx, **kwargs)
 
         self.forward = old_forward  # type: ignore
 
