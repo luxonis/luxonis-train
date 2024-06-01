@@ -37,7 +37,7 @@ def create_coco_dataset():
     parser.parse(random_split=True)
 
 
-def _create_cifar10(dataset_name: str, task_name: str) -> None:
+def _create_cifar10(dataset_name: str, task_names: list[str]) -> None:
     dataset = create_dataset(dataset_name)
     output_folder = "../data/"
     if not os.path.exists(output_folder):
@@ -64,14 +64,15 @@ def _create_cifar10(dataset_name: str, task_name: str) -> None:
                 break
             path = os.path.join(output_folder, f"cifar_{i}.png")
             image.save(path)
-            yield {
-                "file": path,
-                "annotation": {
-                    "type": "classification",
-                    "task": task_name,
-                    "class": classes[label],
-                },
-            }
+            for task_name in task_names:
+                yield {
+                    "file": path,
+                    "annotation": {
+                        "type": "classification",
+                        "task": task_name,
+                        "class": classes[label],
+                    },
+                }
 
     dataset.add(CIFAR10_subset_generator())
     dataset.make_splits()
@@ -79,9 +80,9 @@ def _create_cifar10(dataset_name: str, task_name: str) -> None:
 
 @pytest.fixture(scope="session", autouse=True)
 def create_cifar10_dataset():
-    _create_cifar10("cifar10_test", "classification")
+    _create_cifar10("cifar10_test", ["classification"])
 
 
 @pytest.fixture(scope="session", autouse=True)
 def create_cifar10_task_dataset():
-    _create_cifar10("cifar10_task_test", "cifar10_task")
+    _create_cifar10("cifar10_task_test", [f"classification_{i}" for i in [1, 2, 3]])
