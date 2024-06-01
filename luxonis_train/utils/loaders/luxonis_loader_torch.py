@@ -43,9 +43,9 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         return len(self.base_loader)
 
     @property
-    def input_shape(self) -> Size:
-        img, _ = self[0]
-        return Size([1, *img.shape])
+    def input_shape(self) -> dict[str, Size]:
+        img = self[0][0][self._images_name]
+        return {self._images_name: img.shape}
 
     def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
         img, group_annotations = self.base_loader[idx]
@@ -57,7 +57,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             for key in annotations:
                 annotations[key] = Tensor(annotations[key])  # type: ignore
 
-        return tensor_img, group_annotations
+        return {self._images_name: tensor_img}, group_annotations
 
     def get_classes(self) -> dict[LabelType, list[str]]:
         _, classes = self.dataset.get_classes()
