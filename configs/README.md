@@ -249,7 +249,7 @@ Here you can specify options for tuning.
 | timeout    | int \| None       | None          | Stop study after the given number of seconds.                                                                                                                                                                                                                                                                              |
 | params     | dict\[str, list\] | {}            | Which parameters to tune. The keys should be in the format `key1.key2.key3_<type>`. Type can be one of `[categorical, float, int, longuniform, uniform, subset]`. For more information about the types, visit [Optuna documentation](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.trial.Trial.html). |
 
-**Note**: "subset" sampling is currently only supported for augmentations. You can specify a set of augmentations defined in `trainer` to choose from and every run subset of random N augmentations will be active.
+**Note**: "subset" sampling is currently only supported for augmentations. You can specify a set of augmentations defined in `trainer` to choose from and every run subset of random N augmentations will be active (`is_active` parameter will be True for chosen ones and False for the rest in the set).
 
 Example of params for tuner block:
 
