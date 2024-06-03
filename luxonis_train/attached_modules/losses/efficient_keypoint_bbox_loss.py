@@ -185,7 +185,7 @@ class EfficientKeypointBBoxLoss(
         pred_bboxes = dist2bbox(pred_distri, anchor_points_strided)
         pred_kpts = self.kpts_decode(
             anchor_points_strided, pred_kpts.view(batch_size, -1, n_kpts, 3)
-        )  # (bs, h*w, n_keypoints, 3)
+        )
 
         target_bbox = self._preprocess_bbox_target(
             target_bbox, batch_size, gt_bboxes_scale
@@ -280,7 +280,7 @@ class EfficientKeypointBBoxLoss(
         e = d / (2 * sigmas**2) / (area.view(-1, 1) + 1e-9) / 2
         mask = (gt_kpts[..., 2] > 0).float()
         regression_loss = (
-            (1 - torch.exp(-e) * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-9)
+            ((1 - torch.exp(-e)) * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-9)
         ).mean()
         visibility_loss = self.b_cross_entropy.forward(pred_kpts[..., 2], mask)
 
