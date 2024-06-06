@@ -277,7 +277,7 @@ class EfficientKeypointBBoxLoss(
         d = (gt_kpts[..., 0] - pred_kpts[..., 0]).pow(2) + (
             gt_kpts[..., 1] - pred_kpts[..., 1]
         ).pow(2)
-        e = d / (2 * sigmas**2) / (area.view(-1, 1) + 1e-9) / 2
+        e = d / ((2 * sigmas).pow(2) * ((area.view(-1, 1) + 1e-9) * 2))
         mask = (gt_kpts[..., 2] > 0).float()
         regression_loss = (
             ((1 - torch.exp(-e)) * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-9)
@@ -352,7 +352,7 @@ class EfficientKeypointBBoxLoss(
             batched_keypoints[i, : keypoints_i.shape[0]] = scaled_keypoints_i.view(
                 -1, self.n_kps, 3
             )
-            batched_keypoints[i, :, :, :2] *= scale_tensor[:2]
+            # batched_keypoints[i, :, :, :2] *= scale_tensor[:2]
 
         return batched_keypoints
 
