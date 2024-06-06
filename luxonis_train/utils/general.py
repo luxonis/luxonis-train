@@ -71,11 +71,11 @@ class DatasetMetadata:
             )
         return self._classes
 
-    def n_classes(self, label_type: LabelType | None) -> int:
-        """Gets the number of classes for the specified label type.
+    def n_classes(self, task: str | None) -> int:
+        """Gets the number of classes for the specified task.
 
-        @type label_type: L{LabelType} | None
-        @param label_type: Label type to get the number of classes for.
+        @type task: str | None
+        @param task: Task to get the number of classes for.
         @rtype: int
         @return: Number of classes for the specified label type.
         @raises ValueError: If the dataset loader was not provided during
@@ -83,12 +83,10 @@ class DatasetMetadata:
         @raises ValueError: If the dataset contains different number of classes for
             different label types.
         """
-        if label_type is not None:
-            if label_type not in self.classes:
-                raise ValueError(
-                    f"Task type {label_type.name} is not present in the dataset."
-                )
-            return len(self.classes[label_type])
+        if task is not None:
+            if task not in self.classes:
+                raise ValueError(f"Task '{task}' is not present in the dataset.")
+            return len(self.classes[task])
         n_classes = len(list(self.classes.values())[0])
         for classes in self.classes.values():
             if len(classes) != n_classes:
@@ -97,11 +95,11 @@ class DatasetMetadata:
                 )
         return n_classes
 
-    def class_names(self, label_type: LabelType | None) -> list[str]:
-        """Gets the class names for the specified label type.
+    def class_names(self, task: str | None) -> list[str]:
+        """Gets the class names for the specified task.
 
-        @type label_type: L{LabelType} | None
-        @param label_type: Label type to get the class names for.
+        @type task: str | None
+        @param task: Task to get the class names for.
         @rtype: list[str]
         @return: List of class names for the specified label type.
         @raises ValueError: If the dataset loader was not provided during
@@ -109,12 +107,10 @@ class DatasetMetadata:
         @raises ValueError: If the dataset contains different class names for different
             label types.
         """
-        if label_type is not None:
-            if label_type not in self.classes:
-                raise ValueError(
-                    f"Task type {label_type.name} is not present in the dataset."
-                )
-            return self.classes[label_type]
+        if task is not None:
+            if task not in self.classes:
+                raise ValueError(f"Task type {task} is not present in the dataset.")
+            return self.classes[task]
         class_names = list(self.classes.values())[0]
         for classes in self.classes.values():
             if classes != class_names:
@@ -170,9 +166,10 @@ class DatasetMetadata:
 
         if skeletons is not None:
             if len(skeletons) == 1:
-                name = list(skeletons.keys())[0]
-                keypoint_names = skeletons[name]["labels"]
-                connectivity = skeletons[name]["edges"]
+                task_name = next(iter(skeletons))
+                class_name = next(iter(skeletons[task_name]))
+                keypoint_names = skeletons[task_name][class_name]["labels"]
+                connectivity = skeletons[task_name][class_name]["edges"]
 
             elif len(skeletons) > 1:
                 raise NotImplementedError(

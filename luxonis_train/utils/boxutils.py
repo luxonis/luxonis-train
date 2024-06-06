@@ -6,6 +6,7 @@ from typing import Literal, TypeAlias
 import torch
 from scipy.cluster.vq import kmeans
 from torch import Tensor
+from torch.utils.data import DataLoader
 from torchvision.ops import (
     batched_nms,
     box_convert,
@@ -400,11 +401,10 @@ def non_max_suppression(
 
 
 def anchors_from_dataset(
-    loader: torch.utils.data.DataLoader,
+    loader: DataLoader,
     n_anchors: int = 9,
     n_generations: int = 1000,
     ratio_threshold: float = 4.0,
-    task_group: str = "default",
 ) -> tuple[Tensor, float]:
     """Generates anchors based on bounding box annotations present in provided data
     loader. It uses K-Means for initial proposals which are then refined with genetic
@@ -426,11 +426,11 @@ def anchors_from_dataset(
 
     widths = []
     inputs = None
-    for inp, task_labels in loader:
-        labels = next(iter(task_labels.values()))  # TODO: handle multiple tasks
-        boxes = labels[LabelType.BOUNDINGBOX]
-        curr_wh = boxes[:, 4:]
-        widths.append(curr_wh)
+    for inp, labels in loader:
+        for tensor, label_type in labels.values():
+            if label_type == LabelType.BOUNDINGBOX:
+                curr_wh = tensor[:, 4:]
+                widths.append(curr_wh)
         inputs = inp
     assert inputs is not None, "No inputs found in data loader"
     _, _, h, w = inputs.shape  # assuming all images are same size

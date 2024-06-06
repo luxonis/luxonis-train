@@ -243,7 +243,7 @@ class Archiver(Core):
         if head_family.startswith("Classification"):
             return self.dataset_metadata._classes["class"]
         elif head_family.startswith("Object"):
-            return self.dataset_metadata._classes["boxes"]
+            return self.dataset_metadata._classes["boundingbox"]
         elif head_family.startswith("Segmentation"):
             return self.dataset_metadata._classes["segmentation"]
         elif head_family.startswith("Keypoint"):

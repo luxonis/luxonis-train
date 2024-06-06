@@ -1,15 +1,11 @@
-import glob
-import json
 import os
-import zipfile
 from pathlib import Path
 
-import cv2
 import gdown
-import numpy as np
 import pytest
 import torchvision
 from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.utils import environ
 
 Path(environ.LUXONISML_BASE_PATH).mkdir(exist_ok=True)
@@ -24,7 +20,7 @@ def create_dataset(name: str) -> LuxonisDataset:
 
 @pytest.fixture(scope="session", autouse=True)
 def create_coco_dataset():
-    dataset = create_dataset("coco_test")
+    dataset_name = "coco_test"
     url = "https://drive.google.com/uc?id=1XlvFK7aRmt8op6-hHkWVKIJQeDtOwoRT"
     output_folder = "../data/"
     output_zip = os.path.join(output_folder, "COCO_people_subset.zip")
@@ -37,96 +33,12 @@ def create_coco_dataset():
     ):
         gdown.download(url, output_zip, quiet=False)
 
-        with zipfile.ZipFile(output_zip, "r") as zip_ref:
-            zip_ref.extractall(output_folder)
-
-    def COCO_people_subset_generator():
-        img_dir = os.path.join(output_folder, "person_val2017_subset")
-        annot_file = os.path.join(output_folder, "person_keypoints_val2017.json")
-        im_paths = glob.glob(img_dir + "/*.jpg")
-        nums = np.array([int(Path(path).stem) for path in im_paths])
-        idxs = np.argsort(nums)
-        im_paths = list(np.array(im_paths)[idxs])
-        with open(annot_file) as file:
-            data = json.load(file)
-        imgs = data["images"]
-        anns = data["annotations"]
-
-        for path in im_paths:
-            gran = Path(path).name
-            img = [img for img in imgs if img["file_name"] == gran][0]
-            img_id = img["id"]
-            img_anns = [ann for ann in anns if ann["image_id"] == img_id]
-
-            im = cv2.imread(path)
-            height, width, _ = im.shape
-
-            if len(img_anns):
-                yield {
-                    "file": path,
-                    "class": "person",
-                    "type": "classification",
-                    "value": True,
-                }
-
-            for ann in img_anns:
-                seg = ann["segmentation"]
-                if isinstance(seg, list):
-                    poly = []
-                    for s in seg:
-                        poly_arr = np.array(s).reshape(-1, 2)
-                        poly += [
-                            (poly_arr[i, 0] / width, poly_arr[i, 1] / height)
-                            for i in range(len(poly_arr))
-                        ]
-                    yield {
-                        "file": path,
-                        "class": "person",
-                        "type": "polyline",
-                        "value": poly,
-                    }
-
-                x, y, w, h = ann["bbox"]
-                yield {
-                    "file": path,
-                    "class": "person",
-                    "type": "box",
-                    "value": (x / width, y / height, w / width, h / height),
-                }
-
-                kps = np.array(ann["keypoints"]).reshape(-1, 3)
-                keypoint = []
-                for kp in kps:
-                    keypoint.append(
-                        (float(kp[0] / width), float(kp[1] / height), int(kp[2]))
-                    )
-                yield {
-                    "file": path,
-                    "class": "person",
-                    "type": "keypoints",
-                    "value": keypoint,
-                }
-
-    dataset.set_classes(["person"])
-
-    annot_file = os.path.join(output_folder, "person_keypoints_val2017.json")
-    with open(annot_file) as file:
-        data = json.load(file)
-    dataset.set_skeletons(
-        {
-            "person": {
-                "labels": data["categories"][0]["keypoints"],
-                "edges": (np.array(data["categories"][0]["skeleton"]) - 1).tolist(),
-            }
-        }
-    )
-    dataset.add(COCO_people_subset_generator())
-    dataset.make_splits()
+    parser = LuxonisParser(output_zip, dataset_name=dataset_name, delete_existing=True)
+    parser.parse(random_split=True)
 
 
-@pytest.fixture(scope="session", autouse=True)
-def create_cifar10_dataset():
-    dataset = create_dataset("cifar10_test")
+def _create_cifar10(dataset_name: str, task_names: list[str]) -> None:
+    dataset = create_dataset(dataset_name)
     output_folder = "../data/"
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
@@ -152,14 +64,25 @@ def create_cifar10_dataset():
                 break
             path = os.path.join(output_folder, f"cifar_{i}.png")
             image.save(path)
-            yield {
-                "file": path,
-                "class": classes[label],
-                "type": "classification",
-                "value": True,
-            }
-
-    dataset.set_classes(classes)
+            for task_name in task_names:
+                yield {
+                    "file": path,
+                    "annotation": {
+                        "type": "classification",
+                        "task": task_name,
+                        "class": classes[label],
+                    },
+                }
 
     dataset.add(CIFAR10_subset_generator())
     dataset.make_splits()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def create_cifar10_dataset():
+    _create_cifar10("cifar10_test", ["classification"])
+
+
+@pytest.fixture(scope="session", autouse=True)
+def create_cifar10_task_dataset():
+    _create_cifar10("cifar10_task_test", [f"classification_{i}" for i in [1, 2, 3]])

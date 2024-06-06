@@ -104,7 +104,7 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         batch_size = pred_scores.shape[0]
         device = pred_scores.device
 
-        target = labels[LabelType.BOUNDINGBOX].to(device)
+        target = labels[self.task][0].to(device)
         gt_bboxes_scale = torch.tensor(
             [
                 self.original_img_size[1],

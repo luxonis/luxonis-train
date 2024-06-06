@@ -41,7 +41,7 @@ class ModelNodeConfig(CustomBaseModel):
     inputs: list[str] = []
     params: dict[str, Any] = {}
     freezing: FreezingConfig = FreezingConfig()
-    task_group: str = "default"
+    task: str | None = None
 
 
 class PredefinedModelConfig(CustomBaseModel):
