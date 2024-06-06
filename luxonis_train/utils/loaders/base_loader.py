@@ -9,7 +9,7 @@ from torch.utils.data import Dataset
 from luxonis_train.utils.registry import LOADERS
 from luxonis_train.utils.types import Labels, LabelType
 
-LuxonisLoaderTorchOutput = tuple[Tensor, dict[str, Labels]]
+LuxonisLoaderTorchOutput = tuple[Tensor, Labels]
 """LuxonisLoaderTorchOutput is a tuple of images and corresponding labels."""
 
 
@@ -74,7 +74,7 @@ class BaseLoaderTorch(
 
 def collate_fn(
     batch: list[LuxonisLoaderTorchOutput],
-) -> tuple[Tensor, dict[str, dict[LabelType, Tensor]]]:
+) -> tuple[Tensor, Labels]:
     """Default collate function used for training.
 
     @type batch: list[LuxonisLoaderTorchOutput]
@@ -83,46 +83,26 @@ def collate_fn(
     @rtype: tuple[Tensor, dict[LabelType, Tensor]]
     @return: Tuple of images and annotations in the format expected by the model.
     """
-    imgs, group_dicts = zip(*batch)
-    out_group_dicts = {task: {} for task in group_dicts[0].keys()}
-    imgs = torch.stack(imgs, 0)
+    imgs: tuple[Tensor, ...]
+    labels: tuple[Labels, ...]
+    imgs, labels = zip(*batch)
 
-    for task in list(group_dicts[0].keys()):
-        anno_dicts = [group[task] for group in group_dicts]
+    out_labels = {}
 
-        present_annotations = anno_dicts[0].keys()
-        out_annotations: dict[LabelType, Tensor] = {
-            anno: torch.empty(0) for anno in present_annotations
-        }
+    for task in labels[0].keys():
+        label_type = labels[0][task][1]
+        annos = [label[task][0] for label in labels]
+        if label_type in [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]:
+            out_labels[task] = torch.stack(annos, 0), label_type
 
-        if LabelType.CLASSIFICATION in present_annotations:
-            class_annos = [anno[LabelType.CLASSIFICATION] for anno in anno_dicts]
-            out_annotations[LabelType.CLASSIFICATION] = torch.stack(class_annos, 0)
-
-        if LabelType.SEGMENTATION in present_annotations:
-            seg_annos = [anno[LabelType.SEGMENTATION] for anno in anno_dicts]
-            out_annotations[LabelType.SEGMENTATION] = torch.stack(seg_annos, 0)
-
-        if LabelType.BOUNDINGBOX in present_annotations:
-            bbox_annos = [anno[LabelType.BOUNDINGBOX] for anno in anno_dicts]
+        elif label_type in [LabelType.KEYPOINTS, LabelType.BOUNDINGBOX]:
             label_box: list[Tensor] = []
-            for i, box in enumerate(bbox_annos):
-                l_box = torch.zeros((box.shape[0], 6))
+            for i, box in enumerate(annos):
+                l_box = torch.zeros((box.shape[0], box.shape[1] + 1))
                 l_box[:, 0] = i  # add target image index for build_targets()
                 l_box[:, 1:] = box
                 label_box.append(l_box)
-            out_annotations[LabelType.BOUNDINGBOX] = torch.cat(label_box, 0)
+            out_labels[task] = torch.cat(label_box, 0), label_type
 
-        if LabelType.KEYPOINT in present_annotations:
-            keypoint_annos = [anno[LabelType.KEYPOINT] for anno in anno_dicts]
-            label_keypoints: list[Tensor] = []
-            for i, points in enumerate(keypoint_annos):
-                l_kps = torch.zeros((points.shape[0], points.shape[1] + 1))
-                l_kps[:, 0] = i  # add target image index for build_targets()
-                l_kps[:, 1:] = points
-                label_keypoints.append(l_kps)
-            out_annotations[LabelType.KEYPOINT] = torch.cat(label_keypoints, 0)
-
-        out_group_dicts[task] = out_annotations
-
-    return imgs, out_group_dicts
+    # exit()
+    return torch.stack(imgs, 0), out_labels
