@@ -34,4 +34,4 @@ class ClassificationHead(BaseNode[Tensor, Tensor]):
         return self.head(inputs)
 
     def wrap(self, output: Tensor) -> Packet[Tensor]:
-        return {self.task: [output]}
+        return {"classification": [output]}

@@ -74,16 +74,38 @@ class BaseAttachedModule(
             )
         return self._node
 
+    def get_label(self, labels: Labels) -> tuple[Tensor, LabelType]:
+        if len(self.required_labels) != 1:
+            if self.task in labels:
+                return labels[self.task]
+            raise NotImplementedError(
+                f"{self.__class__.__name__} requires multiple labels, "
+                "the default `prepare` implementation does not support this."
+            )
+        for label, label_type in labels.values():
+            if label_type == self.required_labels[0]:
+                return label, label_type
+        raise IncompatibleException.from_missing_task(
+            self.required_labels[0].value, list(labels.keys()), self.__class__.__name__
+        )
+
+    def get_input_tensors(self, inputs: Packet[Tensor]) -> list[Tensor]:
+        if self.protocol is not None:
+            return inputs[self.protocol.get_task()]
+        if self.node._task_type is not None:
+            return inputs[self.node._task_type.value]
+        return inputs[self.node.task]
+
     @property
     def task(self) -> str:
         """Task of the node that this module is attached to.
 
         @rtype: str
         """
-        if self.required_labels and len(self.required_labels) == 1:
-            return self.required_labels[0].value
-        task = self.node.task
+        task = self.node._task
         if task is None:
+            if self.required_labels and len(self.required_labels) == 1:
+                return self.required_labels[0].value
             raise RuntimeError(
                 "Attempt to access `task` reference, but the node does not have a task. ",
                 f"You have to specify the task in the configuration for node {self.node.__class__.__name__}.",
@@ -118,8 +140,8 @@ class BaseAttachedModule(
                 "This module requires multiple labels, the default `prepare` "
                 "implementation does not support this."
             )
-        x = inputs[self.task]
-        label, label_type = labels[self.task]
+        x = self.get_input_tensors(inputs)
+        label, label_type = self.get_label(labels)
         if label_type in [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]:
             if isinstance(x, list) and len(x) == 1:
                 x = x[0]
