@@ -352,7 +352,7 @@ class EfficientKeypointBBoxLoss(
             batched_keypoints[i, : keypoints_i.shape[0]] = scaled_keypoints_i.view(
                 -1, self.n_kps, 3
             )
-            # batched_keypoints[i, :, :, :2] *= scale_tensor[:2]
+            batched_keypoints[i, :, :, :2] *= scale_tensor[:2]
 
         return batched_keypoints
 
