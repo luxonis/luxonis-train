@@ -243,9 +243,15 @@ class EfficientKeypointBBoxLoss(
         assigned_bboxes = assigned_bboxes / stride_tensor
 
         area = (
-            assigned_bboxes[mask_positive][:, 0] - assigned_bboxes[mask_positive][:, 2]
-        ) * (
-            assigned_bboxes[mask_positive][:, 1] - assigned_bboxes[mask_positive][:, 3]
+            (
+                assigned_bboxes[mask_positive][:, 0]
+                - assigned_bboxes[mask_positive][:, 2]
+            )
+            * (
+                assigned_bboxes[mask_positive][:, 1]
+                - assigned_bboxes[mask_positive][:, 3]
+            )
+            * self.area_factor
         )
 
         return (
