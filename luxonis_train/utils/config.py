@@ -198,7 +198,7 @@ class TrainerConfig(CustomBaseModel):
 
     accelerator: Literal["auto", "cpu", "gpu"] = "auto"
     devices: int | list[int] | str = "auto"
-    strategy: Literal["auto", "ddp"] = "auto"
+    strategy: Literal["auto", "ddp", "ddp_find_unused_parameters_true"] = "auto"
     num_sanity_val_steps: int = 2
     profiler: Literal["simple", "advanced"] | None = None
     matmul_precision: Literal["medium", "high", "highest"] | None = None
