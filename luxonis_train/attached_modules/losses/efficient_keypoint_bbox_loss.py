@@ -257,7 +257,7 @@ class EfficientKeypointBBoxLoss(
             mask_positive,
             gt_kpt,
             pred_kpts,
-            area,
+            area * self.area_factor,
         )
 
     def forward(
