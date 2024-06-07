@@ -204,19 +204,20 @@ class Tuner(Core):
 
     def _augs_to_indices(self, aug_names: list[str]) -> list[int]:
         """Maps augmentation names to indices."""
-        all_augs = self.cfg.trainer.preprocessing.augmentations
+        all_augs = [a.name for a in self.cfg.trainer.preprocessing.augmentations]
         aug_indices = []
         for aug_name in aug_names:
             if aug_name == "Normalize":
                 logger.warn(
-                    f"'{aug_name}' should should be tuned directly by adding '...normalize.active_categorical' to the tuner params, skipping."
+                    f"'{aug_name}' should be tuned directly by adding '...normalize.active_categorical' to the tuner params, skipping."
                 )
                 continue
-            index = [i for i, a in enumerate(all_augs) if a.name == aug_name]
-            if len(index) == 0:
+            try:
+                index = all_augs.index(aug_name)
+                aug_indices.append(index)
+            except ValueError:
                 logger.warn(
                     f"Augmentation '{aug_name}' not found under trainer augemntations, skipping."
                 )
                 continue
-            aug_indices.append(index[0])
         return aug_indices
