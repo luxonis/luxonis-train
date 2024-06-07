@@ -109,7 +109,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         nkpts = (kpts.shape[1] - 2) // 3
         label = torch.zeros((len(boxes), nkpts * 3 + 6))
         label[:, :2] = boxes[:, :2]
-        label[:, 2:6] = box_convert(boxes[:, 2:], "xywh", "xyxy")
+        label[:, 2:6] = boxes[:, 2:]
         label[:, 6::3] = kpts[:, 2::3]  # x
         label[:, 7::3] = kpts[:, 3::3]  # y
         label[:, 8::3] = kpts[:, 4::3]  # visiblity
