@@ -1,5 +1,6 @@
 import os
 import shutil
+from pathlib import Path
 from typing import Annotated
 
 import pytest
@@ -8,7 +9,7 @@ from pydantic import Field
 from torch import Tensor
 from torch.nn.parameter import Parameter
 
-from luxonis_train.core import Trainer
+from luxonis_train.core import Exporter, Inferer, Trainer
 from luxonis_train.nodes import BaseNode
 from luxonis_train.utils.loaders import BaseLoaderTorch
 from luxonis_train.utils.registry import LOADERS
@@ -29,10 +30,6 @@ class CustomMultiInputLoader(BaseLoaderTorch):
             "disparity": torch.Size([1, 224, 224]),
             "pointcloud": torch.Size([1000, 3]),
         }
-
-    @property
-    def images_name(self):
-        return "left"
 
     def __getitem__(self, idx):
         # Fake data
@@ -169,27 +166,25 @@ def clear_output():
     "config_file", [path for path in os.listdir("configs") if "multi_input" in path]
 )
 def test_sanity(config_file):
-    # opts = [
-    #     "trainer.epochs",
-    #     "3",
-    #     "trainer.validation_interval",
-    #     "3",
-    # ]
+    # Test training
+    trainer = Trainer(f"configs/{config_file}")
+    trainer.train()
+    # Test evaluation
+    trainer.test(view="val")
 
-    Trainer(f"configs/{config_file}").train()
+    # Test export
+    Exporter(f"configs/{config_file}").export("test_export_multi_input.onnx")
+    # Cleanup after exporter
+    assert os.path.exists("test_export_multi_input.onnx")
+    os.remove("test_export_multi_input.onnx")
 
-    # TODO add export and eval tests
-    # opts += ["model.weights", str(list(Path("output").rglob("*.ckpt"))[0])]
-    # opts += ["exporter.onnx.opset_version", "11"]
-
-    # result = subprocess.run(
-    #     ["luxonis_train", "export", "--config", f"configs/{config_file}", *opts],
-    # )
-
-    # assert result.returncode == 0
-
-    # result = subprocess.run(
-    #     ["luxonis_train", "eval", "--config", f"configs/{config_file}", *opts],
-    # )
-
-    # assert result.returncode == 0
+    # Test inference
+    Inferer(
+        f"configs/{config_file}",
+        opts=None,
+        view="train",
+        save_dir=Path("infer_save_dir"),
+    ).infer()
+    # Cleanup after inferer
+    assert os.path.exists("infer_save_dir")
+    shutil.rmtree("infer_save_dir")
