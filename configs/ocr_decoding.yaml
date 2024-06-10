@@ -1,0 +1,132 @@
+# An example configuration for OCR Decoding network.
+
+
+model:
+  name: ocr_decoding_test
+  nodes:
+    - name: OCRDecoderBackbone
+      params:
+        task: "text"
+        num_characters: 37
+        in_channels: 3
+        dropout_rate: 0.1
+
+    - name: OCRDecoderHead
+      inputs:
+        - OCRDecoderBackbone
+      params:
+        task: "text"
+        num_characters: 37
+
+
+
+  losses:
+    - name: FocalCTC
+      attached_to: OCRDecoderHead
+      params:
+        blank: 0
+
+  metrics:
+    - name: OCRAccuracy
+      is_main_metric: true
+      attached_to: OCRDecoderHead
+
+#  visualizers:
+#    - name: MultiVisualizer
+#      attached_to: ImplicitKeypointBBoxHead
+#      params:
+#        visualizers:
+#          - name: KeypointVisualizer
+#            params:
+#              nonvisible_color: blue
+#          - name: BBoxVisualizer
+#            params:
+#              colors:
+#                person: "#FF5055"
+#    - name: SegmentationVisualizer
+#      attached_to: SegmentationHead
+#      params:
+#        colors: "#FF5055"
+#    - name: BBoxVisualizer
+#      attached_to: EfficientBBoxHead
+
+tracker:
+  project_name: ocr_example
+  save_directory: ocr_output
+  is_tensorboard: True
+  is_wandb: False
+  wandb_entity: luxonis
+  is_mlflow: False
+
+loader:
+  train_view: train
+  val_view: val
+  test_view: test
+
+  params:
+    dataset_name: dataset_dev_0
+
+trainer:
+  accelerator: auto
+  devices: auto
+  strategy: auto
+
+  num_sanity_val_steps: 1
+  profiler: null
+  verbose: True
+  batch_size: 2
+  accumulate_grad_batches: 1
+  epochs: &epochs 200
+  num_workers: 2
+  train_metrics_interval: -1
+  validation_interval: 1
+  num_log_images: 1
+  skip_last_batch: False
+  log_sub_losses: True
+  save_top_k: 3
+
+  preprocessing:
+    train_image_size: [&height 160, &width 320]
+    keep_aspect_ratio: False
+    train_rgb: True
+    normalize:
+      active: True
+    augmentations:
+      - name: OCRAugmentation
+        params:
+          image_size: [160, 320]
+          is_rgb: True
+          is_train: True
+
+  callbacks:
+    - name: LearningRateMonitor
+      params:
+        logging_interval: step
+    - name: MetadataLogger
+      params:
+        hyperparams: ["trainer.epochs", trainer.batch_size]
+    - name: TestOnTrainEnd
+
+  optimizer:
+    name: SGD
+    params:
+      lr: 0.0001
+      momentum: 0.937
+      nesterov: True
+      weight_decay: 0.0005
+
+  scheduler:
+    name: CosineAnnealingLR
+    params:
+      T_max: *epochs
+      eta_min: 0
+
+exporter:
+  onnx:
+    opset_version: 11
+
+tuner:
+  params:
+    trainer.optimizer.name_categorical: ["Adam", "SGD"]
+    trainer.optimizer.params.lr_float: [0.0001, 0.001]
+    trainer.batch_size_int: [4, 16, 4]

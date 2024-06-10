@@ -7,6 +7,7 @@ from .keypoint_loss import KeypointLoss
 from .sigmoid_focal_loss import SigmoidFocalLoss
 from .smooth_bce_with_logits import SmoothBCEWithLogitsLoss
 from .softmax_focal_loss import SoftmaxFocalLoss
+from .ocr_decoding_loss import FocalCTC
 
 __all__ = [
     "AdaptiveDetectionLoss",
@@ -18,4 +19,5 @@ __all__ = [
     "SigmoidFocalLoss",
     "SmoothBCEWithLogitsLoss",
     "SoftmaxFocalLoss",
+    "FocalCTC"
 ]

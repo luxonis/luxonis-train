@@ -14,6 +14,7 @@ from .repvgg import RepVGG
 from .resnet import ResNet
 from .rexnetv1 import ReXNetV1_lite
 from .segmentation_head import SegmentationHead
+from .ocr_decoder import OCRDecoderHead, OCRDecoderBackbone
 
 __all__ = [
     "BiSeNetHead",
@@ -32,4 +33,6 @@ __all__ = [
     "RepVGG",
     "ResNet",
     "SegmentationHead",
+    "OCRDecoderHead",
+    "OCRDecoderBackbone"
 ]

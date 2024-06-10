@@ -3,6 +3,8 @@ from .common import Accuracy, F1Score, JaccardIndex, Precision, Recall
 from .mean_average_precision import MeanAveragePrecision
 from .mean_average_precision_keypoints import MeanAveragePrecisionKeypoints
 from .object_keypoint_similarity import ObjectKeypointSimilarity
+from .ocr_accuracy import OCRAccuracy
+
 
 __all__ = [
     "Accuracy",
@@ -14,4 +16,5 @@ __all__ = [
     "ObjectKeypointSimilarity",
     "Precision",
     "Recall",
+    "OCRAccuracy"
 ]
