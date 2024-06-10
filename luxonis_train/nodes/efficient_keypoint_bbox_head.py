@@ -107,7 +107,15 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             ):
                 out = torch.cat([out_reg, out_cls, out_kpts], dim=1)
                 outputs.append(out)
-            return {"outputs": outputs}
+            kpt_tensor = torch.cat(
+                [
+                    kpt_list[i].view(bs, self.nk, -1).flatten(2)
+                    for i in range(len(kpt_list))
+                ],
+                dim=2,
+            ).permute(0, 2, 1)
+            pred_kpt = self._kpts_decode(kpt_tensor)
+            return {"outputs": outputs, "kpts": [pred_kpt]}
         cls_tensor = torch.cat(
             [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))], dim=2
         ).permute(0, 2, 1)
@@ -157,9 +165,26 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         anchor_points_x = anchor_points_transposed[0].view(1, -1, 1)
         anchor_points_y = anchor_points_transposed[1].view(1, -1, 1)
 
-        y[:, :, 0::3] = (y[:, :, 0::3] * 2.0 + (anchor_points_x - 0.5)) * stride_tensor
-        y[:, :, 1::3] = (y[:, :, 1::3] * 2.0 + (anchor_points_y - 0.5)) * stride_tensor
-        y[:, :, 2::3] = y[:, :, 2::3].sigmoid()
+        # Using torch functions to achieve the desired indexing
+        idx_0 = torch.arange(0, y.size(2), 3, device=y.device)
+        idx_1 = torch.arange(1, y.size(2), 3, device=y.device)
+        idx_2 = torch.arange(2, y.size(2), 3, device=y.device)
+
+        y.index_add_(
+            2,
+            idx_0,
+            (y.index_select(2, idx_0) * 2.0 + (anchor_points_x - 0.5)) * stride_tensor
+            - y.index_select(2, idx_0),
+        )
+        y.index_add_(
+            2,
+            idx_1,
+            (y.index_select(2, idx_1) * 2.0 + (anchor_points_y - 0.5)) * stride_tensor
+            - y.index_select(2, idx_1),
+        )
+        y.index_add_(
+            2, idx_2, y.index_select(2, idx_2).sigmoid() - y.index_select(2, idx_2)
+        )
 
         return y
 
