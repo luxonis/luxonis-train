@@ -70,7 +70,7 @@ If you wish to manually override some config parameters you can do this by provi
 luxonis_train train --config config.yaml trainer.batch_size 8 trainer.epochs 10
 ```
 
-where key and value are space separated and sub-keys are dot (.) separated. If the configuration field is a list, then key/sub-key should be a number (e.g. trainer.preprocessing.augmentations.0.name RotateCustom).
+where key and value are space separated and sub-keys are dot (`.`) separated. If the configuration field is a list, then key/sub-key should be a number (e.g. `trainer.preprocessing.augmentations.0.name RotateCustom`).
 
 ## Evaluating
 
