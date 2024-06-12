@@ -12,10 +12,7 @@ from torch.nn.parameter import Parameter
 from luxonis_train.core import Exporter, Inferer, Trainer
 from luxonis_train.nodes import BaseNode
 from luxonis_train.utils.loaders import BaseLoaderTorch
-from luxonis_train.utils.registry import LOADERS
 from luxonis_train.utils.types import BaseProtocol, FeaturesProtocol, LabelType
-
-LOADERS.register_module()
 
 
 class CustomMultiInputLoader(BaseLoaderTorch):
@@ -47,9 +44,7 @@ class CustomMultiInputLoader(BaseLoaderTorch):
         # Fake labels
         segmap = torch.zeros(1, 224, 224, dtype=torch.float32)
         labels = {
-            "default": {
-                LabelType.SEGMENTATION: segmap,
-            }
+            "segmentation": (segmap, LabelType.SEGMENTATION),
         }
 
         return inputs, labels
@@ -136,11 +131,11 @@ class FusionNeck2(MultiInputTestBaseNode):
 class CustomSegHead1(MultiInputTestBaseNode):
     def __init__(self, **kwargs):
         in_protocols = [FeaturesProtocol]
-        super().__init__(**kwargs)
+        super().__init__(**kwargs, _task_type=LabelType.SEGMENTATION)
         self.in_protocols = in_protocols
 
     def wrap(self, outputs: list[Tensor]):
-        return {"segmentation": outputs}
+        return {"segmentation": [outputs[0]]}
 
 
 class CustomSegHead2(MultiInputTestBaseNode):
@@ -150,11 +145,11 @@ class CustomSegHead2(MultiInputTestBaseNode):
             FeaturesProtocol,
             FeaturesProtocol,
         ]
-        super().__init__(**kwargs)
+        super().__init__(**kwargs, _task_type=LabelType.SEGMENTATION)
         self.in_protocols = in_protocols
 
     def wrap(self, outputs: list[Tensor]):
-        return {"segmentation": outputs}
+        return {"segmentation": [outputs[0]]}
 
 
 @pytest.fixture(scope="function", autouse=True)

@@ -4,7 +4,6 @@ import numpy as np
 from luxonis_ml.data import (
     BucketStorage,
     BucketType,
-    LabelType,
     LuxonisDataset,
     LuxonisLoader,
 )
@@ -44,24 +43,23 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
 
     @property
     def input_shape(self) -> dict[str, Size]:
-        img = self[0][0][self._images_name]
-        return {self._images_name: img.shape}
+        img = self[0][0][self.images_name]
+        return {self.images_name: img.shape}
 
     def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
-        img, group_annotations = self.base_loader[idx]
+        img, labels = self.base_loader[idx]
 
         img = np.transpose(img, (2, 0, 1))  # HWC to CHW
         tensor_img = Tensor(img)
-        for task in group_annotations:
-            annotations = group_annotations[task]
-            for key in annotations:
-                annotations[key] = Tensor(annotations[key])  # type: ignore
+        tensor_labels = {}
+        for task, (array, label_type) in labels.items():
+            tensor_labels[task] = (Tensor(array), label_type)
 
-        return {self._images_name: tensor_img}, group_annotations
+        return {self.images_name: tensor_img}, tensor_labels
 
-    def get_classes(self) -> dict[LabelType, list[str]]:
+    def get_classes(self) -> dict[str, list[str]]:
         _, classes = self.dataset.get_classes()
-        return {LabelType(task): classes[task] for task in classes}
+        return {task: classes[task] for task in classes}
 
     def get_skeletons(self) -> dict[str, dict] | None:
         return self.dataset.get_skeletons()

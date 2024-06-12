@@ -38,7 +38,7 @@ from luxonis_train.utils.general import (
 )
 from luxonis_train.utils.registry import CALLBACKS, OPTIMIZERS, SCHEDULERS, Registry
 from luxonis_train.utils.tracker import LuxonisTrackerPL
-from luxonis_train.utils.types import Kwargs, Labels, Packet, TaskLabels
+from luxonis_train.utils.types import Kwargs, Labels, Packet
 
 from .luxonis_output import LuxonisOutput
 
@@ -129,7 +129,7 @@ class LuxonisModel(pl.LightningModule):
         self.dataset_metadata = dataset_metadata or DatasetMetadata()
         self.frozen_nodes: list[tuple[nn.Module, int]] = []
         self.graph: dict[str, list[str]] = {}
-        self.loader_input_shapes: dict[str, Size] = {}
+        self.loader_input_shapes: dict[str, dict[str, Size]] = {}
         self.loss_weights: dict[str, float] = {}
         self.main_metric: str | None = None
         self.save_dir = save_dir
@@ -145,13 +145,10 @@ class LuxonisModel(pl.LightningModule):
         frozen_nodes: list[tuple[str, int]] = []
         nodes: dict[str, tuple[type[BaseNode], Kwargs]] = {}
 
-        self.node_tasks: dict[str, str] = {}
-
         for node_cfg in self.cfg.model.nodes:
             node_name = node_cfg.name
             Node = BaseNode.REGISTRY.get(node_name)
             node_name = node_cfg.alias or node_name
-            self.node_tasks[node_name] = node_cfg.task_group
             if node_cfg.freezing.active:
                 epochs = self.cfg.trainer.epochs
                 if node_cfg.freezing.unfreeze_after is None:
@@ -161,7 +158,7 @@ class LuxonisModel(pl.LightningModule):
                 else:
                     unfreeze_after = int(node_cfg.freezing.unfreeze_after * epochs)
                 frozen_nodes.append((node_name, unfreeze_after))
-            nodes[node_name] = (Node, node_cfg.params)
+            nodes[node_name] = (Node, {**node_cfg.params, "task": node_cfg.task})
 
             # Handle inputs for this node
 
@@ -298,7 +295,7 @@ class LuxonisModel(pl.LightningModule):
     def forward(
         self,
         inputs: dict[str, Tensor],
-        task_labels: TaskLabels | None = None,
+        labels: Labels | None = None,
         images: Tensor | None = None,
         *,
         compute_loss: bool = True,
@@ -355,7 +352,6 @@ class LuxonisModel(pl.LightningModule):
             node_inputs += [computed[pred] for pred in input_names]
             outputs = node.run(node_inputs)
             computed[node_name] = outputs
-            labels = task_labels[self.node_tasks[node_name]] if task_labels else None
 
             if compute_loss and node_name in self.losses and labels is not None:
                 for loss_name, loss in self.losses[node_name].items():
@@ -562,7 +558,7 @@ class LuxonisModel(pl.LightningModule):
         training_step_output["loss"] = final_loss.detach().cpu()
         return final_loss, training_step_output
 
-    def training_step(self, train_batch: tuple[Tensor, TaskLabels]) -> Tensor:
+    def training_step(self, train_batch: tuple[Tensor, Labels]) -> Tensor:
         """Performs one step of training with provided batch."""
         outputs = self.forward(*train_batch)
         assert outputs.losses, "Losses are empty, check if you have defined any loss"

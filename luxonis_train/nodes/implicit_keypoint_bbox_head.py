@@ -57,7 +57,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
         @type max_det: int
         @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
         """
-        super().__init__(task_type=LabelType.KEYPOINT, **kwargs)
+        super().__init__(_task_type=LabelType.KEYPOINTS, **kwargs)
 
         if anchors is None:
             logger.info("No anchors provided, generating them automatically.")
@@ -172,7 +172,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
         )
 
         return {
-            "boxes": [detection[:, :6] for detection in nms],
+            "boundingbox": [detection[:, :6] for detection in nms],
             "keypoints": [
                 detection[:, 6:].reshape(-1, self.n_keypoints, 3) for detection in nms
             ],

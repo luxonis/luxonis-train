@@ -1,6 +1,12 @@
 loader:
-  name: CustomMultiInputLoader  # Yields "left", "right", "disparity", and "pointcloud" inputs. See implementation in `tests/integration/test_multi_input.py`.
-  images_name: left  # Name of the key in the batch that contains image-like data. Needs to be set for visualizers and evaluators to work.
+
+  # Yields "left", "right", "disparity", and "pointcloud" inputs.
+  # See implementation in `tests/integration/test_multi_input.py`.
+  name: CustomMultiInputLoader
+
+  # Name of the key in the batch that contains image-like data.
+  # Needs to be set for visualizers and evaluators to work.
+  images_name: left
 
 use_rich_text: True
 
@@ -36,7 +42,7 @@ model:
         - rgbd_backbone
         - pointcloud_backbone
         - full_backbone
-    
+
     - name: CustomSegHead1
       alias: head_1
       inputs:
@@ -75,14 +81,14 @@ model:
 
 trainer:
   batch_size: 8
-  epochs: &epochs 3
+  epochs: 3
   num_workers: 4
   validation_interval: 3
   num_log_images: -1
 
   callbacks:
     - name: ExportOnTrainEnd
-  
+
   optimizer:
     name: Adam
     params:
@@ -91,11 +97,3 @@ trainer:
 exporter:
   onnx:
     opset_version: 11
-
-# tracker:
-#   project_name: ace_reid_spot_segmentation
-#   save_directory: output
-#   is_tensorboard: True
-#   is_wandb: False
-#   wandb_entity: luxonis
-#   is_mlflow: False

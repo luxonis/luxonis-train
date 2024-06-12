@@ -92,7 +92,8 @@ class BaseNode(
         in_protocols: list[type[BaseModel]] | None = None,
         n_classes: int | None = None,
         in_sizes: Size | list[Size] | None = None,
-        task_type: LabelType | None = None,
+        task: str | None = None,
+        _task_type: LabelType | None = None,
     ):
         super().__init__()
 
@@ -112,7 +113,10 @@ class BaseNode(
             self.attach_index = attach_index
 
         self.in_protocols = in_protocols or [FeaturesProtocol]
-        self.task_type = task_type
+        self._task_type = _task_type
+        if task is None and self._task_type is not None:
+            task = self._task_type.value
+        self._task = task
 
         self._input_shapes = input_shapes
         self._original_in_shape = original_in_shape
@@ -136,17 +140,26 @@ class BaseNode(
     def images_name(self) -> str:
         """Getter for the images name (name of the key from the loader which contains
         images)."""
+        if self._images_name is None:
+            raise self._non_set_error("images_name")
         return self._images_name
+
+    @property
+    def task(self) -> str:
+        """Getter for the task."""
+        if self._task is None:
+            raise self._non_set_error("task")
+        return self._task
 
     @property
     def n_classes(self) -> int:
         """Getter for the number of classes."""
-        return self.dataset_metadata.n_classes(self.task_type)
+        return self.dataset_metadata.n_classes(self.task)
 
     @property
     def class_names(self) -> list[str]:
         """Getter for the class names."""
-        return self.dataset_metadata.class_names(self.task_type)
+        return self.dataset_metadata.class_names(self.task)
 
     @property
     def input_shapes(self) -> list[Packet[Size]]:
@@ -320,7 +333,7 @@ class BaseNode(
                 raise IncompatibleException(
                     "Default `wrap` expects a single tensor or a list of tensors."
                 )
-        return {"features": outputs}
+        return {self._task or "features": outputs}
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:
         """Combines the forward pass with the wrapping and unwrapping of the inputs.

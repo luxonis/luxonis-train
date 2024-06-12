@@ -46,7 +46,7 @@ class ObjectKeypointSimilarity(
         **kwargs,
     ) -> None:
         super().__init__(
-            required_labels=[LabelType.KEYPOINT], protocol=KeypointProtocol, **kwargs
+            required_labels=[LabelType.KEYPOINTS], protocol=KeypointProtocol, **kwargs
         )
 
         if n_keypoints is None and self.node is None:
@@ -67,8 +67,8 @@ class ObjectKeypointSimilarity(
     def prepare(
         self, outputs: Packet[Tensor], labels: Labels
     ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
-        kpts_labels = labels[LabelType.KEYPOINT]
-        bbox_labels = labels[LabelType.BOUNDINGBOX]
+        kpts_labels = labels["keypoints"][0]
+        bbox_labels = labels["boundingbox"][0]
         num_keypoints = (kpts_labels.shape[1] - 2) // 3
         label = torch.zeros((len(bbox_labels), num_keypoints * 3 + 6))
         label[:, :2] = bbox_labels[:, :2]

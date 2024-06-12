@@ -1,13 +1,12 @@
 from typing import Annotated, Any, Literal, TypeVar
 
-from luxonis_ml.enums import LabelType
+from luxonis_ml.data import LabelType
 from pydantic import BaseModel, Field, ValidationError
 from torch import Size, Tensor
 
 Kwargs = dict[str, Any]
-OutputTypes = Literal["boxes", "class", "keypoints", "segmentation", "features"]
-Labels = dict[LabelType, Tensor]
-TaskLabels = dict[str, Labels]
+OutputTypes = Literal["boundingbox", "class", "keypoints", "segmentation", "features"]
+Labels = dict[str, tuple[Tensor, LabelType]]
 
 AttachIndexType = Literal["all"] | int | tuple[int, int] | tuple[int, int, int]
 """AttachIndexType is used to specify to which output of the prevoius node does the
@@ -36,18 +35,25 @@ class IncompatibleException(Exception):
         )
 
     @classmethod
-    def from_missing_label(
-        cls, label: LabelType, present_labels: list[LabelType], class_name: str
-    ):
+    def from_missing_task(cls, task: str, present_tasks: list[str], class_name: str):
         return cls(
-            f"{class_name} requires {label} label, but it was not found in "
-            f"the label dictionary. Available labels: {present_labels}."
+            f"{class_name} requires {task} label, but it was not found in "
+            f"the label dictionary. Available labels: {present_tasks}."
         )
 
 
 class BaseProtocol(BaseModel):
     class Config:
         arbitrary_types_allowed = True
+
+    @classmethod
+    def get_task(cls) -> str:
+        if len(cls.__annotations__) == 1:
+            return list(cls.__annotations__)[0]
+        raise ValueError(
+            "Protocol must have exactly one field for automatic task inference. "
+            "Implement custom `prepare` method in your attached module."
+        )
 
 
 class SegmentationProtocol(BaseProtocol):
@@ -59,7 +65,7 @@ class KeypointProtocol(BaseProtocol):
 
 
 class BBoxProtocol(BaseProtocol):
-    boxes: Annotated[list[Tensor], Field(min_length=1)]
+    boundingbox: Annotated[list[Tensor], Field(min_length=1)]
 
 
 class FeaturesProtocol(BaseProtocol):

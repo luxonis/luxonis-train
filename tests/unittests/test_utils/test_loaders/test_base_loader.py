@@ -41,9 +41,10 @@ def test_collate_fn(input_names_and_shapes, batch_size):
             inputs[name] = torch.rand(shape, dtype=torch.float32)
 
         labels = {
-            "default": {
-                LabelType.CLASSIFICATION: torch.randint(0, 2, (2,), dtype=torch.int64),
-            }
+            "classification": (
+                torch.randint(0, 2, (2,), dtype=torch.int64),
+                LabelType.CLASSIFICATION,
+            )
         }
 
         return inputs, labels
@@ -51,18 +52,16 @@ def test_collate_fn(input_names_and_shapes, batch_size):
     batch = [build_batch_element() for _ in range(batch_size)]
 
     # Call collate_fn
-    inputs, annotations = collate_fn(batch)
+    inputs, annotations = collate_fn(batch)  # type: ignore
 
     # Check images tensor
     assert inputs["features"].shape == (batch_size, 3, 224, 224)
     assert inputs["features"].dtype == torch.float32
 
     # Check annotations
-    assert "default" in annotations
-    annotations = annotations["default"]
-    assert LabelType.CLASSIFICATION in annotations
-    assert annotations[LabelType.CLASSIFICATION].shape == (batch_size, 2)
-    assert annotations[LabelType.CLASSIFICATION].dtype == torch.int64
+    assert "classification" in annotations
+    assert annotations["classification"][0].shape == (batch_size, 2)
+    assert annotations["classification"][0].dtype == torch.int64
 
 
 # TODO: test also segmentation, boundingbox and keypoint
