@@ -42,3 +42,5 @@ boxes.
 ## MeanAveragePrecisionKeypoints
 
 Similar to [MeanAveragePrecision](#meanaverageprecision), but uses [OKS](#objectkeypointsimilarity) as `IoU` measure.
+For a deeper understanding of how OKS works, please refer to the detailed explanation provided [here](https://learnopencv.com/object-keypoint-similarity/).
+Evaluation leverages  COCO evaluation framework (COCOeval) to assess mAP performance.

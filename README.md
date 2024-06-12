@@ -50,6 +50,12 @@ For instructions on how to create a dataset in the LDF, follow the
 [examples](https://github.com/luxonis/luxonis-ml/tree/main/examples) in
 the [luxonis-ml](https://github.com/luxonis/luxonis-ml) repository.
 
+To inspect dataset images by split (train, val, test), use the command:
+
+```bash
+luxonis_train data inspect --config <config.yaml> --view <train/val/test>
+```
+
 ## Training
 
 Once you've created your `config.yaml` file you can train the model using this command:
@@ -64,7 +70,13 @@ If you wish to manually override some config parameters you can do this by provi
 luxonis_train train --config config.yaml trainer.batch_size 8 trainer.epochs 10
 ```
 
-where key and value are space separated and sub-keys are dot (`.`) separated. If the configuration field is a list, then key/sub-key should be a number (e.g. `trainer.preprocessing.augmentations.0.name RotateCustom`).
+## Evaluating
+
+To evaluate the model on a specific dataset split (train, test, or val), use the following command:
+
+```bash
+luxonis_train eval --config <config.yaml> --view <train/test/val>
+```
 
 ## Tuning
 
