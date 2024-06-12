@@ -74,8 +74,6 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         @param min_objectness_iou: Minimum objectness iou. Defaults to C{0.0}.
         @type bbox_loss_weight: float
         @param bbox_loss_weight: Weight for the bounding box loss.
-        @type keypoint_distance_loss_weight: float
-        @param keypoint_distance_loss_weight: Weight for the keypoint distance loss. Defaults to C{0.10}.
         @type keypoint_visibility_loss_weight: float
         @param keypoint_visibility_loss_weight: Weight for the keypoint visibility loss. Defaults to C{0.6}.
         @type keypoint_regression_loss_weight: float
