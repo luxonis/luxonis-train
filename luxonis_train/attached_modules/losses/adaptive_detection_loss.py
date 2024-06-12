@@ -100,7 +100,6 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         feats = outputs["features"]
         pred_scores = outputs["class_scores"][0]
         pred_distri = outputs["distributions"][0]
-        print(f"self.training: {self.training}")
         batch_size = pred_scores.shape[0]
         device = pred_scores.device
 
