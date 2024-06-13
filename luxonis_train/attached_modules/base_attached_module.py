@@ -1,3 +1,4 @@
+import logging
 from abc import ABC
 from typing import Generic
 
@@ -15,6 +16,8 @@ from luxonis_train.utils.types import (
     LabelType,
     Packet,
 )
+
+logger = logging.getLogger(__name__)
 
 Ts = TypeVarTuple("Ts")
 
@@ -74,6 +77,44 @@ class BaseAttachedModule(
             )
         return self._node
 
+    def get_label(self, labels: Labels) -> tuple[Tensor, LabelType]:
+        if len(self.required_labels) != 1:
+            if self.task in labels:
+                return labels[self.task]
+            raise NotImplementedError(
+                f"{self.__class__.__name__} requires multiple labels, "
+                "the default `prepare` implementation does not support this."
+            )
+        for label, label_type in labels.values():
+            if label_type == self.required_labels[0]:
+                return label, label_type
+        raise IncompatibleException.from_missing_task(
+            self.required_labels[0].value, list(labels.keys()), self.__class__.__name__
+        )
+
+    def get_input_tensors(self, inputs: Packet[Tensor]) -> list[Tensor]:
+        if self.protocol is not None:
+            return inputs[self.protocol.get_task()]
+        if self.node._task_type is not None:
+            return inputs[self.node._task_type.value]
+        return inputs[self.node.task]
+
+    @property
+    def task(self) -> str:
+        """Task of the node that this module is attached to.
+
+        @rtype: str
+        """
+        task = self.node._task
+        if task is None:
+            if self.required_labels and len(self.required_labels) == 1:
+                return self.required_labels[0].value
+            raise RuntimeError(
+                "Attempt to access `task` reference, but the node does not have a task. ",
+                f"You have to specify the task in the configuration for node {self.node.__class__.__name__}.",
+            )
+        return task
+
     def prepare(self, inputs: Packet[Tensor], labels: Labels) -> tuple[Unpack[Ts]]:
         """Prepares node outputs for the forward pass of the module.
 
@@ -102,20 +143,21 @@ class BaseAttachedModule(
                 "This module requires multiple labels, the default `prepare` "
                 "implementation does not support this."
             )
-        if not self.required_labels:
-            if "boxes" in inputs and LabelType.BOUNDINGBOX in labels:
-                return inputs["boxes"], labels[LabelType.BOUNDINGBOX]  # type: ignore
-            if "classes" in inputs and LabelType.CLASSIFICATION in labels:
-                return inputs["classes"][0], labels[LabelType.CLASSIFICATION]  # type: ignore
-            if "keypoints" in inputs and LabelType.KEYPOINT in labels:
-                return inputs["keypoints"], labels[LabelType.KEYPOINT]  # type: ignore
-            if "segmentation" in inputs and LabelType.SEGMENTATION in labels:
-                return inputs["segmentation"][0], labels[LabelType.SEGMENTATION]  # type: ignore
-            raise IncompatibleException(
-                f"No matching labels and outputs found for {self.__class__.__name__}"
-            )
-        label_type = self.required_labels[0]
-        return inputs[label_type.value], labels[label_type]  # type: ignore
+        x = self.get_input_tensors(inputs)
+        label, label_type = self.get_label(labels)
+        if label_type in [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]:
+            if isinstance(x, list):
+                if len(x) == 1:
+                    x = x[0]
+                else:
+                    logger.warning(
+                        f"Module {self.__class__.__name__} expects a single tensor as input, "
+                        f"but got {len(x)} tensors. Using the last tensor. "
+                        f"If this is not the desired behavior, please override the `prepare` method of the attached module or the `wrap` method of {self.node.__class__.__name__}."
+                    )
+                    x = x[-1]
+
+        return x, label  # type: ignore
 
     def validate(self, inputs: Packet[Tensor], labels: Labels) -> None:
         """Validates that the inputs and labels are compatible with the module.
@@ -126,11 +168,10 @@ class BaseAttachedModule(
         @param labels: Labels from the dataset. @raises L{IncompatibleException}: If the
             inputs are not compatible with the module.
         """
-        for label in self.required_labels:
-            if label not in labels:
-                raise IncompatibleException.from_missing_label(
-                    label, list(labels.keys()), self.__class__.__name__
-                )
+        if self.node.task is not None and self.node.task not in labels:
+            raise IncompatibleException.from_missing_task(
+                self.node.task, list(labels.keys()), self.__class__.__name__
+            )
 
         if self.protocol is not None:
             try:

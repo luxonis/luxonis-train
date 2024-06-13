@@ -9,8 +9,8 @@ from torch.utils.data import Dataset
 from luxonis_train.utils.registry import LOADERS
 from luxonis_train.utils.types import Labels, LabelType
 
-LuxonisLoaderTorchOutput = tuple[Tensor, dict[str, Labels]]
-"""LuxonisLoaderTorchOutput is a tuple of images and corresponding labels."""
+LuxonisLoaderTorchOutput = tuple[dict[str, Tensor], Labels]
+"""LuxonisLoaderTorchOutput is a tuple of source tensors and corresponding labels."""
 
 
 class BaseLoaderTorch(
@@ -27,14 +27,57 @@ class BaseLoaderTorch(
         self,
         view: str,
         augmentations: Augmentations | None = None,
+        image_source: str | None = None,
     ):
         self.view = view
         self.augmentations = augmentations
+        self._image_source = image_source
+
+    @property
+    def image_source(self) -> str:
+        """Name of the input image group.
+
+        Example: 'image'
+        """
+        if self._image_source is None:
+            raise ValueError("image_source is not set")
+        return self._image_source
 
     @property
     @abstractmethod
-    def input_shape(self) -> Size:
-        """Input shape in [N,C,H,W] format."""
+    def input_shape(self) -> dict[str, Size]:
+        """
+        Shape of each loader group (sub-element), WITHOUT batch dimension.
+        Examples:
+
+        1. Single image input:
+            {
+                'image': torch.Size([3, 224, 224]),
+            }
+
+        2. Image and segmentation input:
+            {
+                'image': torch.Size([3, 224, 224]),
+                'segmentation': torch.Size([1, 224, 224]),
+            }
+
+        3. Left image, right image and disparity input:
+            {
+                'left': torch.Size([3, 224, 224]),
+                'right': torch.Size([3, 224, 224]),
+                'disparity': torch.Size([1, 224, 224]),
+            }
+
+        4. Image, keypoints, and point cloud input:
+            {
+                'image': torch.Size([3, 224, 224]),
+                'keypoints': torch.Size([17, 2]),
+                'point_cloud': torch.Size([20000, 3]),
+            }
+
+        @rtype: dict[str, Size]
+        @return: A dictionary mapping group names to their shapes.
+        """
         ...
 
     @abstractmethod
@@ -74,55 +117,37 @@ class BaseLoaderTorch(
 
 def collate_fn(
     batch: list[LuxonisLoaderTorchOutput],
-) -> tuple[Tensor, dict[str, dict[LabelType, Tensor]]]:
+) -> tuple[dict[str, Tensor], Labels]:
     """Default collate function used for training.
 
     @type batch: list[LuxonisLoaderTorchOutput]
-    @param batch: List of images and their annotations in the LuxonisLoaderTorchOutput
-        format.
-    @rtype: tuple[Tensor, dict[LabelType, Tensor]]
-    @return: Tuple of images and annotations in the format expected by the model.
+    @param batch: List of loader outputs (dict of Tensors) and labels (dict of Tensors)
+        in the LuxonisLoaderTorchOutput format.
+    @rtype: tuple[dict[str, Tensor], dict[LabelType, Tensor]]
+    @return: Tuple of inputs and annotations in the format expected by the model.
     """
-    imgs, group_dicts = zip(*batch)
-    out_group_dicts = {task: {} for task in group_dicts[0].keys()}
-    imgs = torch.stack(imgs, 0)
+    inputs: tuple[dict[str, Tensor], ...]
+    labels: tuple[Labels, ...]
+    inputs, labels = zip(*batch)
 
-    for task in list(group_dicts[0].keys()):
-        anno_dicts = [group[task] for group in group_dicts]
+    out_inputs = {k: torch.stack([i[k] for i in inputs], 0) for k in inputs[0].keys()}
+    out_labels = {task: {} for task in labels[0].keys()}
 
-        present_annotations = anno_dicts[0].keys()
-        out_annotations: dict[LabelType, Tensor] = {
-            anno: torch.empty(0) for anno in present_annotations
-        }
+    out_labels = {}
 
-        if LabelType.CLASSIFICATION in present_annotations:
-            class_annos = [anno[LabelType.CLASSIFICATION] for anno in anno_dicts]
-            out_annotations[LabelType.CLASSIFICATION] = torch.stack(class_annos, 0)
+    for task in labels[0].keys():
+        label_type = labels[0][task][1]
+        annos = [label[task][0] for label in labels]
+        if label_type in [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]:
+            out_labels[task] = torch.stack(annos, 0), label_type
 
-        if LabelType.SEGMENTATION in present_annotations:
-            seg_annos = [anno[LabelType.SEGMENTATION] for anno in anno_dicts]
-            out_annotations[LabelType.SEGMENTATION] = torch.stack(seg_annos, 0)
-
-        if LabelType.BOUNDINGBOX in present_annotations:
-            bbox_annos = [anno[LabelType.BOUNDINGBOX] for anno in anno_dicts]
+        elif label_type in [LabelType.KEYPOINTS, LabelType.BOUNDINGBOX]:
             label_box: list[Tensor] = []
-            for i, box in enumerate(bbox_annos):
-                l_box = torch.zeros((box.shape[0], 6))
+            for i, box in enumerate(annos):
+                l_box = torch.zeros((box.shape[0], box.shape[1] + 1))
                 l_box[:, 0] = i  # add target image index for build_targets()
                 l_box[:, 1:] = box
                 label_box.append(l_box)
-            out_annotations[LabelType.BOUNDINGBOX] = torch.cat(label_box, 0)
+            out_labels[task] = torch.cat(label_box, 0), label_type
 
-        if LabelType.KEYPOINT in present_annotations:
-            keypoint_annos = [anno[LabelType.KEYPOINT] for anno in anno_dicts]
-            label_keypoints: list[Tensor] = []
-            for i, points in enumerate(keypoint_annos):
-                l_kps = torch.zeros((points.shape[0], points.shape[1] + 1))
-                l_kps[:, 0] = i  # add target image index for build_targets()
-                l_kps[:, 1:] = points
-                label_keypoints.append(l_kps)
-            out_annotations[LabelType.KEYPOINT] = torch.cat(label_keypoints, 0)
-
-        out_group_dicts[task] = out_annotations
-
-    return imgs, out_group_dicts
+    return out_inputs, out_labels

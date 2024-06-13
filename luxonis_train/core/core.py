@@ -9,7 +9,7 @@ import rich.traceback
 import torch
 import torch.utils.data as torch_data
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
-from luxonis_ml.data import TrainAugmentations, ValAugmentations
+from luxonis_ml.data import Augmentations
 from luxonis_ml.utils import reset_logging, setup_logging
 
 from luxonis_train.callbacks import LuxonisProgressBar
@@ -68,7 +68,7 @@ class Core:
         opts = opts or []
 
         if self.cfg.use_rich_text:
-            rich.traceback.install(suppress=[pl, torch])
+            rich.traceback.install(suppress=[pl, torch], show_locals=False)
 
         self.rank = rank_zero_only.rank
 
@@ -99,21 +99,24 @@ class Core:
             pl.seed_everything(self.cfg.trainer.seed, workers=True)
             deterministic = True
 
-        self.train_augmentations = TrainAugmentations(
+        self.train_augmentations = Augmentations(
             image_size=self.cfg.trainer.preprocessing.train_image_size,
             augmentations=[
-                i.model_dump() for i in self.cfg.trainer.preprocessing.augmentations
+                i.model_dump()
+                for i in self.cfg.trainer.preprocessing.get_active_augmentations()
             ],
             train_rgb=self.cfg.trainer.preprocessing.train_rgb,
             keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
         )
-        self.val_augmentations = ValAugmentations(
+        self.val_augmentations = Augmentations(
             image_size=self.cfg.trainer.preprocessing.train_image_size,
             augmentations=[
-                i.model_dump() for i in self.cfg.trainer.preprocessing.augmentations
+                i.model_dump()
+                for i in self.cfg.trainer.preprocessing.get_active_augmentations()
             ],
             train_rgb=self.cfg.trainer.preprocessing.train_rgb,
             keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
+            only_normalize=True,
         )
 
         self.pl_trainer = pl.Trainer(
@@ -134,19 +137,24 @@ class Core:
 
         self.loaders = {
             view: LOADERS.get(self.cfg.loader.name)(
-                augmentations=self.train_augmentations
-                if view == "train"
-                else self.val_augmentations,
-                view=self.cfg.loader.train_view
-                if view == "train"
-                else self.cfg.loader.val_view,
+                augmentations=(
+                    self.train_augmentations
+                    if view == "train"
+                    else self.val_augmentations
+                ),
+                view=(
+                    self.cfg.loader.train_view
+                    if view == "train"
+                    else self.cfg.loader.val_view
+                ),
+                image_source=self.cfg.loader.image_source,
                 **self.cfg.loader.params,
             )
             for view in ["train", "val", "test"]
         }
         sampler = None
         if self.cfg.trainer.use_weighted_sampler:
-            classes_count = self.dataset.get_classes()[1]
+            classes_count = self.loaders["train"].get_classes()[1]
             if len(classes_count) == 0:
                 logger.warning(
                     "WeightedRandomSampler only available for classification tasks. Using default sampler instead."
@@ -163,9 +171,9 @@ class Core:
                 num_workers=self.cfg.trainer.num_workers,
                 collate_fn=collate_fn,
                 shuffle=view == "train",
-                drop_last=self.cfg.trainer.skip_last_batch
-                if view == "train"
-                else False,
+                drop_last=(
+                    self.cfg.trainer.skip_last_batch if view == "train" else False
+                ),
                 sampler=sampler if view == "train" else None,
             )
             for view in ["train", "val", "test"]
@@ -177,15 +185,15 @@ class Core:
 
         self.cfg.save_data(os.path.join(self.run_save_dir, "config.yaml"))
 
-    def set_train_augmentations(self, aug: TrainAugmentations) -> None:
+    def set_train_augmentations(self, aug: Augmentations) -> None:
         """Sets augmentations used for training dataset."""
         self.train_augmentations = aug
 
-    def set_val_augmentations(self, aug: ValAugmentations) -> None:
+    def set_val_augmentations(self, aug: Augmentations) -> None:
         """Sets augmentations used for validation dataset."""
         self.val_augmentations = aug
 
-    def set_test_augmentations(self, aug: ValAugmentations) -> None:
+    def set_test_augmentations(self, aug: Augmentations) -> None:
         """Sets augmentations used for test dataset."""
         self.test_augmentations = aug
 

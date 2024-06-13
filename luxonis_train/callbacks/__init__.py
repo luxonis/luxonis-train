@@ -10,6 +10,7 @@ from luxonis_train.utils.registry import CALLBACKS
 
 from .archive_on_train_end import ArchiveOnTrainEnd
 from .export_on_train_end import ExportOnTrainEnd
+from .gpu_stats_monitor import GPUStatsMonitor
 from .luxonis_progress_bar import LuxonisProgressBar
 from .metadata_logger import MetadataLogger
 from .module_freezer import ModuleFreezer
@@ -31,4 +32,5 @@ __all__ = [
     "ModuleFreezer",
     "TestOnTrainEnd",
     "UploadCheckpoint",
+    "GPUStatsMonitor",
 ]

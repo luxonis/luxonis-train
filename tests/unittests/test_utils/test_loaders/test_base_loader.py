@@ -7,34 +7,64 @@ from luxonis_train.utils.loaders import (
 from luxonis_train.utils.types import LabelType
 
 
-def test_collate_fn():
+@pytest.mark.parametrize(
+    "input_names_and_shapes",
+    [
+        [("features", torch.Size([3, 224, 224]))],
+        [
+            ("features", torch.Size([3, 224, 224])),
+            ("segmentation", torch.Size([1, 224, 224])),
+        ],
+        [
+            ("features", torch.Size([3, 224, 224])),
+            ("segmentation", torch.Size([1, 224, 224])),
+            ("disparity", torch.Size([1, 224, 224])),
+        ],
+        [
+            ("features", torch.Size([3, 224, 224])),
+            ("pointcloud", torch.Size([1000, 3])),
+        ],
+        [
+            ("features", torch.Size([3, 224, 224])),
+            ("pointcloud", torch.Size([1000, 3])),
+            ("foobar", torch.Size([2, 3, 4, 5, 6])),
+        ],
+    ],
+)
+@pytest.mark.parametrize("batch_size", [1, 2])
+def test_collate_fn(input_names_and_shapes, batch_size):
     # Mock batch data
-    batch = [
-        (
-            torch.rand(3, 224, 224, dtype=torch.float32),
-            {"default": {LabelType.CLASSIFICATION: torch.tensor([1, 0])}},
-        ),
-        (
-            torch.rand(3, 224, 224, dtype=torch.float32),
-            {"default": {LabelType.CLASSIFICATION: torch.tensor([0, 1])}},
-        ),
-    ]
+
+    def build_batch_element():
+        inputs = {}
+        for name, shape in input_names_and_shapes:
+            inputs[name] = torch.rand(shape, dtype=torch.float32)
+
+        labels = {
+            "classification": (
+                torch.randint(0, 2, (2,), dtype=torch.int64),
+                LabelType.CLASSIFICATION,
+            )
+        }
+
+        return inputs, labels
+
+    batch = [build_batch_element() for _ in range(batch_size)]
 
     # Call collate_fn
-    imgs, annotations = collate_fn(batch)
+    inputs, annotations = collate_fn(batch)  # type: ignore
 
     # Check images tensor
-    assert imgs.shape == (2, 3, 224, 224)
-    assert imgs.dtype == torch.float32
+    assert inputs["features"].shape == (batch_size, 3, 224, 224)
+    assert inputs["features"].dtype == torch.float32
 
     # Check annotations
-    assert "default" in annotations
-    annotations = annotations["default"]
-    assert LabelType.CLASSIFICATION in annotations
-    assert annotations[LabelType.CLASSIFICATION].shape == (2, 2)
-    assert annotations[LabelType.CLASSIFICATION].dtype == torch.int64
+    assert "classification" in annotations
+    assert annotations["classification"][0].shape == (batch_size, 2)
+    assert annotations["classification"][0].dtype == torch.int64
 
-    # TODO: test also segmentation, boundingbox and keypoint
+
+# TODO: test also segmentation, boundingbox and keypoint
 
 
 if __name__ == "__main__":

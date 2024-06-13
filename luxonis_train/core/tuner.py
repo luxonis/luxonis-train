@@ -1,4 +1,5 @@
 import os.path as osp
+from logging import getLogger
 from typing import Any
 
 import lightning.pytorch as pl
@@ -12,6 +13,8 @@ from luxonis_train.utils import Config
 from luxonis_train.utils.tracker import LuxonisTrackerPL
 
 from .core import Core
+
+logger = getLogger(__name__)
 
 
 class Tuner(Core):
@@ -30,8 +33,26 @@ class Tuner(Core):
             raise ValueError("You have to specify the `tuner` section in config.")
         self.tune_cfg = self.cfg.tuner
 
+        # Parent tracker that only logs the best study parameters at the end
+        rank = rank_zero_only.rank
+        cfg_tracker = self.cfg.tracker
+        tracker_params = cfg_tracker.model_dump()
+        tracker_params[
+            "is_wandb"
+        ] = False  # wandb doesn't allow multiple concurrent runs, handle this separately
+        self.parent_tracker = LuxonisTrackerPL(
+            rank=rank,
+            mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
+            is_sweep=False,
+            **tracker_params,
+        )
+        if self.parent_tracker.is_mlflow:
+            # Experiment needs to be interacted with to create actual MLFlow run
+            self.parent_tracker.experiment["mlflow"].active_run()
+
     def tune(self) -> None:
         """Runs Optuna tunning of hyperparameters."""
+        logger.info("Starting tuning...")
 
         pruner = (
             optuna.pruners.MedianPruner()
@@ -57,7 +78,7 @@ class Tuner(Core):
             storage=storage,
             direction="minimize",
             pruner=pruner,
-            load_if_exists=True,
+            load_if_exists=self.tune_cfg.continue_existing_study,
         )
 
         study.optimize(
@@ -66,25 +87,44 @@ class Tuner(Core):
             timeout=self.tune_cfg.timeout,
         )
 
+        best_study_params = study.best_params
+        logger.info(f"Best study parameters: {best_study_params}")
+
+        self.parent_tracker.log_hyperparams(best_study_params)
+
+        if self.cfg.tracker.is_wandb:
+            # If wandb used then init parent tracker separately at the end
+            wandb_parent_tracker = LuxonisTrackerPL(
+                project_name=self.cfg.tracker.project_name,
+                project_id=self.cfg.tracker.project_id,
+                run_name=self.parent_tracker.run_name,
+                save_directory=self.cfg.tracker.save_directory,
+                is_wandb=True,
+                wandb_entity=self.cfg.tracker.wandb_entity,
+                rank=rank_zero_only.rank,
+            )
+            wandb_parent_tracker.log_hyperparams(best_study_params)
+
     def _objective(self, trial: optuna.trial.Trial) -> float:
         """Objective function used to optimize Optuna study."""
         rank = rank_zero_only.rank
         cfg_tracker = self.cfg.tracker
         tracker_params = cfg_tracker.model_dump()
-        tracker = LuxonisTrackerPL(
+        child_tracker = LuxonisTrackerPL(
             rank=rank,
             mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
             is_sweep=True,
             **tracker_params,
         )
-        run_save_dir = osp.join(cfg_tracker.save_directory, tracker.run_name)
+
+        run_save_dir = osp.join(cfg_tracker.save_directory, child_tracker.run_name)
 
         curr_params = self._get_trial_params(trial)
         curr_params["model.predefined_model"] = None
         Config.clear_instance()
         cfg = Config.get_config(self.cfg.model_dump(), curr_params)
 
-        tracker.log_hyperparams(curr_params)
+        child_tracker.log_hyperparams(curr_params)
 
         cfg.save_data(osp.join(run_save_dir, "config.yaml"))
 
@@ -95,14 +135,11 @@ class Tuner(Core):
             input_shape=self.loaders["train"].input_shape,
         )
         lightning_module._core = self
-        pruner_callback = PyTorchLightningPruningCallback(
-            trial, monitor="val_loss/loss"
-        )
         callbacks: list[pl.Callback] = (
             [LuxonisProgressBar()] if self.cfg.use_rich_text else []
         )
+        pruner_callback = PyTorchLightningPruningCallback(trial, monitor="val/loss")
         callbacks.append(pruner_callback)
-
         deterministic = False
         if self.cfg.trainer.seed:
             pl.seed_everything(cfg.trainer.seed, workers=True)
@@ -112,7 +149,7 @@ class Tuner(Core):
             accelerator=cfg.trainer.accelerator,
             devices=cfg.trainer.devices,
             strategy=cfg.trainer.strategy,
-            logger=tracker,  # type: ignore
+            logger=child_tracker,  # type: ignore
             max_epochs=cfg.trainer.epochs,
             accumulate_grad_batches=cfg.trainer.accumulate_grad_batches,
             check_val_every_n_epoch=cfg.trainer.validation_interval,
@@ -122,12 +159,18 @@ class Tuner(Core):
             deterministic=deterministic,
         )
 
-        pl_trainer.fit(
-            lightning_module,  # type: ignore
-            self.pytorch_loaders["train"],
-            self.pytorch_loaders["val"],
-        )
-        pruner_callback.check_pruned()
+        try:
+            pl_trainer.fit(
+                lightning_module,  # type: ignore
+                self.pytorch_loaders["val"],
+                self.pytorch_loaders["train"],
+            )
+
+            pruner_callback.check_pruned()
+
+        except optuna.TrialPruned as e:
+            # Pruning is done by raising an error
+            logger.info(e)
 
         if "val/loss" not in pl_trainer.callback_metrics:
             raise ValueError(

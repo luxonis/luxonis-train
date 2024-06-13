@@ -10,7 +10,11 @@ from torch.utils.data import DataLoader
 
 from luxonis_train.utils.registry import LOADERS
 
-app = typer.Typer(help="Luxonis Train CLI", add_completion=False)
+app = typer.Typer(
+    help="Luxonis Train CLI",
+    add_completion=False,
+    pretty_exceptions_show_locals=False,
+)
 
 
 class View(str, Enum):
@@ -106,10 +110,7 @@ def inspect(
 ):
     """Inspect dataset."""
     from lightning.pytorch import seed_everything
-    from luxonis_ml.data import (
-        TrainAugmentations,
-        ValAugmentations,
-    )
+    from luxonis_ml.data import Augmentations
 
     from luxonis_train.attached_modules.visualizers.utils import (
         draw_bounding_box_labels,
@@ -135,11 +136,14 @@ def inspect(
 
     image_size = cfg.trainer.preprocessing.train_image_size
 
-    augmentations = (TrainAugmentations if view == "train" else ValAugmentations)(
+    augmentations = Augmentations(
         image_size=image_size,
-        augmentations=[i.model_dump() for i in cfg.trainer.preprocessing.augmentations],
+        augmentations=[
+            i.model_dump() for i in cfg.trainer.preprocessing.get_active_augmentations()
+        ],
         train_rgb=cfg.trainer.preprocessing.train_rgb,
         keep_aspect_ratio=cfg.trainer.preprocessing.keep_aspect_ratio,
+        only_normalize=view != "train",
     )
 
     loader = LOADERS.get(cfg.loader.name)(
@@ -172,7 +176,7 @@ def inspect(
                             colors="yellow",
                             width=1,
                         )
-                    elif label_type == LabelType.KEYPOINT:
+                    elif label_type == LabelType.KEYPOINTS:
                         img = draw_keypoint_labels(
                             img, labels[labels[:, 0] == i][:, 1:], colors="red"
                         )
