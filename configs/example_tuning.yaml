@@ -31,7 +31,7 @@ trainer:
       - name: Flip
 
   batch_size: 4
-  epochs: &epochs 1
+  epochs: &epochs 10
   validation_interval: 1
   num_log_images: 8
 

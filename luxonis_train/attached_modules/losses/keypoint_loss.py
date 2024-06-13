@@ -29,7 +29,7 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         **kwargs,
     ):
         super().__init__(
-            protocol=Protocol, required_labels=[LabelType.KEYPOINT], **kwargs
+            protocol=Protocol, required_labels=[LabelType.KEYPOINTS], **kwargs
         )
         self.b_cross_entropy = BCEWithLogitsLoss(
             pos_weight=torch.tensor([bce_power]), **kwargs
@@ -38,7 +38,7 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         self.visibility_weight = visibility_weight
 
     def prepare(self, inputs: Packet[Tensor], labels: Labels) -> tuple[Tensor, Tensor]:
-        return torch.cat(inputs["keypoints"], dim=0), labels[LabelType.KEYPOINT]
+        return torch.cat(inputs["keypoints"], dim=0), labels[LabelType.KEYPOINTS]
 
     def forward(
         self, prediction: Tensor, target: Tensor

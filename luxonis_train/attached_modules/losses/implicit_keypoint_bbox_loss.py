@@ -89,7 +89,7 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         """
 
         super().__init__(
-            required_labels=[LabelType.BOUNDINGBOX, LabelType.KEYPOINT],
+            required_labels=[LabelType.BOUNDINGBOX, LabelType.KEYPOINTS],
             **kwargs,
         )
 
@@ -165,8 +165,8 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         """
         predictions = outputs["features"]
 
-        kpts = labels[LabelType.KEYPOINT]
-        boxes = labels[LabelType.BOUNDINGBOX]
+        kpts = labels["keypoints"][0]
+        boxes = labels["boundingbox"][0]
 
         nkpts = (kpts.shape[1] - 2) // 3
         targets = torch.zeros((len(boxes), nkpts * 2 + self.box_offset + 1))

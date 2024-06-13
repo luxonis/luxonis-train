@@ -5,6 +5,7 @@ Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
 """
 
 import logging
+from typing import Literal
 
 from torch import Tensor, nn
 
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 class EfficientRep(BaseNode[Tensor, list[Tensor]]):
     def __init__(
         self,
+        variant: Literal["s", "n", "m", "l"] = "n",
         channels_list: list[int] | None = None,
         num_repeats: list[int] | None = None,
         depth_mul: float = 0.33,
@@ -31,20 +33,32 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
     ):
         """EfficientRep backbone.
 
+        @type variant: Literal["s", "n", "m", "l"]
+        @param variant: EfficientRep variant. Defaults to "n".
         @type channels_list: list[int] | None
-        @param channels_list: List of number of channels for each block. Defaults to
-            C{[64, 128, 256, 512, 1024]}.
+        @param channels_list: List of number of channels for each block. If unspecified,
+            defaults to [64, 128, 256, 512, 1024].
         @type num_repeats: list[int] | None
-        @param num_repeats: List of number of repeats of RepVGGBlock. Defaults to C{[1,
-            6, 12, 18, 6]}.
+        @param num_repeats: List of number of repeats of RepVGGBlock. If unspecified,
+            defaults to [1, 6, 12, 18, 6].
         @type depth_mul: float
-        @param depth_mul: Depth multiplier. Defaults to 0.33.
+        @param depth_mul: Depth multiplier. Depending on the variant, defaults to 0.33.
         @type width_mul: float
-        @param width_mul: Width multiplier. Defaults to 0.25.
+        @param width_mul: Width multiplier. Depending on the variant, defaults to 0.25.
         @type kwargs: Any
         @param kwargs: Additional arguments to pass to L{BaseNode}.
         """
         super().__init__(**kwargs)
+
+        if variant not in EFFICIENTREP_VARIANTS:
+            raise ValueError(
+                f"EfficientRep model variant should be in {list(EFFICIENTREP_VARIANTS.keys())}"
+            )
+
+        (
+            depth_mul,
+            width_mul,
+        ) = EFFICIENTREP_VARIANTS[variant]
 
         channels_list = channels_list or [64, 128, 256, 512, 1024]
         num_repeats = num_repeats or [1, 6, 12, 18, 6]
@@ -110,3 +124,11 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
             x = block(x)
             outputs.append(x)
         return outputs
+
+
+EFFICIENTREP_VARIANTS = {
+    "n": (0.33, 0.25),
+    "s": (0.33, 0.50),
+    "m": (0.60, 0.75),
+    "l": (1.0, 1.0),
+}

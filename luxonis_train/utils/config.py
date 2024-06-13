@@ -5,9 +5,6 @@ from typing import Annotated, Any, Literal
 from luxonis_ml.utils import Environ, LuxonisConfig, LuxonisFileSystem, setup_logging
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from luxonis_train.utils.general import is_acyclic
-from luxonis_train.utils.registry import MODELS
-
 logger = logging.getLogger(__name__)
 
 
@@ -38,10 +35,11 @@ class FreezingConfig(CustomBaseModel):
 class ModelNodeConfig(CustomBaseModel):
     name: str
     alias: str | None = None
-    inputs: list[str] = []
+    inputs: list[str] = []  # From preceding nodes
+    input_sources: list[str] = []  # From data loader
     params: dict[str, Any] = {}
     freezing: FreezingConfig = FreezingConfig()
-    task_group: str = "default"
+    task: str | None = None
 
 
 class PredefinedModelConfig(CustomBaseModel):
@@ -65,6 +63,8 @@ class ModelConfig(CustomBaseModel):
 
     @model_validator(mode="after")
     def check_predefined_model(self):
+        from luxonis_train.utils.registry import MODELS
+
         if self.predefined_model:
             logger.info(f"Using predefined model: `{self.predefined_model.name}`")
             model = MODELS.get(self.predefined_model.name)(
@@ -85,6 +85,8 @@ class ModelConfig(CustomBaseModel):
 
     @model_validator(mode="after")
     def check_graph(self):
+        from luxonis_train.utils.general import is_acyclic
+
         graph = {node.alias or node.name: node.inputs for node in self.nodes}
         if not is_acyclic(graph):
             raise ValueError("Model graph is not acyclic.")
@@ -131,6 +133,7 @@ class TrackerConfig(CustomBaseModel):
 
 class LoaderConfig(CustomBaseModel):
     name: str = "LuxonisLoaderTorch"
+    image_source: str = "image"
     train_view: str = "train"
     val_view: str = "val"
     test_view: str = "test"
@@ -283,6 +286,7 @@ class StorageConfig(CustomBaseModel):
 
 class TunerConfig(CustomBaseModel):
     study_name: str = "test-study"
+    continue_existing_study: bool = True
     use_pruner: bool = True
     n_trials: int | None = 15
     timeout: int | None = None
