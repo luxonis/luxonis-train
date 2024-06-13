@@ -208,7 +208,7 @@ class EfficientKeypointBBoxLoss(
                 assigned_scores,
                 mask_positive,
                 assigned_gt_idx,
-            ) = self.tal_assigner.forward(
+            ) = self.tal_assigner(
                 pred_scores.detach(),
                 pred_bboxes.detach() * stride_tensor,
                 anchor_points,

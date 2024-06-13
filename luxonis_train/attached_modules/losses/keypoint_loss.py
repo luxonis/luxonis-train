@@ -61,7 +61,7 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         )
 
     def prepare(self, inputs: Packet[Tensor], labels: Labels) -> tuple[Tensor, Tensor]:
-        return torch.cat(inputs["keypoints"], dim=0), labels[LabelType.KEYPOINTS]
+        return torch.cat(inputs["keypoints"], dim=0), self.get_label(labels)[0]
 
     def forward(
         self, prediction: Tensor, target: Tensor, area: Tensor
