@@ -3,7 +3,7 @@ from pprint import pformat
 
 from torch import Tensor
 
-from luxonis_train.utils.general import get_shape_packet
+from luxonis_train.utils.general import to_shape_packet
 from luxonis_train.utils.types import Packet
 
 
@@ -16,7 +16,7 @@ class LuxonisOutput:
 
     def __str__(self) -> str:
         outputs = {
-            node_name: get_shape_packet(packet)
+            node_name: to_shape_packet(packet)
             for node_name, packet in self.outputs.items()
         }
         viz = {

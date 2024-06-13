@@ -191,13 +191,13 @@ class BaseNode(
 
         Example:
 
-            >>> input_shapes = [{"features": [Size(1, 64, 128, 128), Size(1, 3, 224, 224)]}]
+            >>> input_shapes = [{"features": [Size(64, 128, 128), Size(3, 224, 224)]}]
             >>> attach_index = -1
-            >>> in_sizes = Size(1, 3, 224, 224)
+            >>> in_sizes = Size(3, 224, 224)
 
-            >>> input_shapes = [{"features": [Size(1, 64, 128, 128), Size(1, 3, 224, 224)]}]
+            >>> input_shapes = [{"features": [Size(64, 128, 128), Size(3, 224, 224)]}]
             >>> attach_index = "all"
-            >>> in_sizes = [Size(1, 64, 128, 128), Size(1, 3, 224, 224)]
+            >>> in_sizes = [Size(64, 128, 128), Size(3, 224, 224)]
 
         @type: Size | list[Size]
         @raises IncompatibleException: If the C{input_shapes} are too complicated for
@@ -230,7 +230,7 @@ class BaseNode(
         @raises IncompatibleException: If the C{input_shapes} are too complicated for
             the default implementation.
         """
-        return self._get_nth_size(1)
+        return self._get_nth_size(-3)
 
     @property
     def in_height(self) -> int | list[int]:
@@ -243,7 +243,7 @@ class BaseNode(
         @raises IncompatibleException: If the C{input_shapes} are too complicated for
             the default implementation.
         """
-        return self._get_nth_size(2)
+        return self._get_nth_size(-2)
 
     @property
     def in_width(self) -> int | list[int]:
@@ -256,7 +256,7 @@ class BaseNode(
         @raises IncompatibleException: If the C{input_shapes} are too complicated for
             the default implementation.
         """
-        return self._get_nth_size(3)
+        return self._get_nth_size(-1)
 
     @property
     def export(self) -> bool:

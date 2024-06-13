@@ -1,3 +1,4 @@
+import logging
 from abc import ABC
 from typing import Generic
 
@@ -15,6 +16,8 @@ from luxonis_train.utils.types import (
     LabelType,
     Packet,
 )
+
+logger = logging.getLogger(__name__)
 
 Ts = TypeVarTuple("Ts")
 
@@ -143,8 +146,16 @@ class BaseAttachedModule(
         x = self.get_input_tensors(inputs)
         label, label_type = self.get_label(labels)
         if label_type in [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]:
-            if isinstance(x, list) and len(x) == 1:
-                x = x[0]
+            if isinstance(x, list):
+                if len(x) == 1:
+                    x = x[0]
+                else:
+                    logger.warning(
+                        f"Module {self.__class__.__name__} expects a single tensor as input, "
+                        f"but got {len(x)} tensors. Using the last tensor. "
+                        f"If this is not the desired behavior, please override the `prepare` method of the attached module or the `wrap` method of {self.node.__class__.__name__}."
+                    )
+                    x = x[-1]
 
         return x, label  # type: ignore
 

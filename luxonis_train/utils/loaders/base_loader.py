@@ -9,8 +9,8 @@ from torch.utils.data import Dataset
 from luxonis_train.utils.registry import LOADERS
 from luxonis_train.utils.types import Labels, LabelType
 
-LuxonisLoaderTorchOutput = tuple[Tensor, Labels]
-"""LuxonisLoaderTorchOutput is a tuple of images and corresponding labels."""
+LuxonisLoaderTorchOutput = tuple[dict[str, Tensor], Labels]
+"""LuxonisLoaderTorchOutput is a tuple of source tensors and corresponding labels."""
 
 
 class BaseLoaderTorch(
@@ -27,14 +27,57 @@ class BaseLoaderTorch(
         self,
         view: str,
         augmentations: Augmentations | None = None,
+        image_source: str | None = None,
     ):
         self.view = view
         self.augmentations = augmentations
+        self._image_source = image_source
+
+    @property
+    def image_source(self) -> str:
+        """Name of the input image group.
+
+        Example: 'image'
+        """
+        if self._image_source is None:
+            raise ValueError("image_source is not set")
+        return self._image_source
 
     @property
     @abstractmethod
-    def input_shape(self) -> Size:
-        """Input shape in [N,C,H,W] format."""
+    def input_shape(self) -> dict[str, Size]:
+        """
+        Shape of each loader group (sub-element), WITHOUT batch dimension.
+        Examples:
+
+        1. Single image input:
+            {
+                'image': torch.Size([3, 224, 224]),
+            }
+
+        2. Image and segmentation input:
+            {
+                'image': torch.Size([3, 224, 224]),
+                'segmentation': torch.Size([1, 224, 224]),
+            }
+
+        3. Left image, right image and disparity input:
+            {
+                'left': torch.Size([3, 224, 224]),
+                'right': torch.Size([3, 224, 224]),
+                'disparity': torch.Size([1, 224, 224]),
+            }
+
+        4. Image, keypoints, and point cloud input:
+            {
+                'image': torch.Size([3, 224, 224]),
+                'keypoints': torch.Size([17, 2]),
+                'point_cloud': torch.Size([20000, 3]),
+            }
+
+        @rtype: dict[str, Size]
+        @return: A dictionary mapping group names to their shapes.
+        """
         ...
 
     @abstractmethod
@@ -74,18 +117,21 @@ class BaseLoaderTorch(
 
 def collate_fn(
     batch: list[LuxonisLoaderTorchOutput],
-) -> tuple[Tensor, Labels]:
+) -> tuple[dict[str, Tensor], Labels]:
     """Default collate function used for training.
 
     @type batch: list[LuxonisLoaderTorchOutput]
-    @param batch: List of images and their annotations in the LuxonisLoaderTorchOutput
-        format.
-    @rtype: tuple[Tensor, dict[LabelType, Tensor]]
-    @return: Tuple of images and annotations in the format expected by the model.
+    @param batch: List of loader outputs (dict of Tensors) and labels (dict of Tensors)
+        in the LuxonisLoaderTorchOutput format.
+    @rtype: tuple[dict[str, Tensor], dict[LabelType, Tensor]]
+    @return: Tuple of inputs and annotations in the format expected by the model.
     """
-    imgs: tuple[Tensor, ...]
+    inputs: tuple[dict[str, Tensor], ...]
     labels: tuple[Labels, ...]
-    imgs, labels = zip(*batch)
+    inputs, labels = zip(*batch)
+
+    out_inputs = {k: torch.stack([i[k] for i in inputs], 0) for k in inputs[0].keys()}
+    out_labels = {task: {} for task in labels[0].keys()}
 
     out_labels = {}
 
@@ -104,5 +150,4 @@ def collate_fn(
                 label_box.append(l_box)
             out_labels[task] = torch.cat(label_box, 0), label_type
 
-    # exit()
-    return torch.stack(imgs, 0), out_labels
+    return out_inputs, out_labels
