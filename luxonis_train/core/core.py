@@ -7,14 +7,16 @@ import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
 import rich.traceback
 import torch
+import torch.utils.data as torch_data
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
-from luxonis_ml.data import LuxonisDataset, TrainAugmentations, ValAugmentations
+from luxonis_ml.data import Augmentations
 from luxonis_ml.utils import reset_logging, setup_logging
 
 from luxonis_train.callbacks import LuxonisProgressBar
 from luxonis_train.utils.config import Config
 from luxonis_train.utils.general import DatasetMetadata
-from luxonis_train.utils.loaders import LuxonisLoaderTorch, collate_fn
+from luxonis_train.utils.loaders import collate_fn
+from luxonis_train.utils.registry import LOADERS
 from luxonis_train.utils.tracker import LuxonisTrackerPL
 
 logger = getLogger(__name__)
@@ -66,7 +68,7 @@ class Core:
         opts = opts or []
 
         if self.cfg.use_rich_text:
-            rich.traceback.install(suppress=[pl, torch])
+            rich.traceback.install(suppress=[pl, torch], show_locals=False)
 
         self.rank = rank_zero_only.rank
 
@@ -92,21 +94,29 @@ class Core:
         # NOTE: overriding logger in pl so it uses our logger to log device info
         rank_zero_module.log = logger
 
-        self.train_augmentations = TrainAugmentations(
+        deterministic = False
+        if self.cfg.trainer.seed is not None:
+            pl.seed_everything(self.cfg.trainer.seed, workers=True)
+            deterministic = True
+
+        self.train_augmentations = Augmentations(
             image_size=self.cfg.trainer.preprocessing.train_image_size,
             augmentations=[
-                i.model_dump() for i in self.cfg.trainer.preprocessing.augmentations
+                i.model_dump()
+                for i in self.cfg.trainer.preprocessing.get_active_augmentations()
             ],
             train_rgb=self.cfg.trainer.preprocessing.train_rgb,
             keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
         )
-        self.val_augmentations = ValAugmentations(
+        self.val_augmentations = Augmentations(
             image_size=self.cfg.trainer.preprocessing.train_image_size,
             augmentations=[
-                i.model_dump() for i in self.cfg.trainer.preprocessing.augmentations
+                i.model_dump()
+                for i in self.cfg.trainer.preprocessing.get_active_augmentations()
             ],
             train_rgb=self.cfg.trainer.preprocessing.train_rgb,
             keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
+            only_normalize=True,
         )
 
         self.pl_trainer = pl.Trainer(
@@ -122,46 +132,29 @@ class Core:
             # NOTE: this is likely PL bug,
             # should be configurable inside configure_callbacks(),
             callbacks=LuxonisProgressBar() if self.cfg.use_rich_text else None,
-        )
-        self.dataset = LuxonisDataset(
-            dataset_name=self.cfg.dataset.name,
-            team_id=self.cfg.dataset.team_id,
-            dataset_id=self.cfg.dataset.id,
-            bucket_type=self.cfg.dataset.bucket_type,
-            bucket_storage=self.cfg.dataset.bucket_storage,
+            deterministic=deterministic,
         )
 
-        self.loader_train = LuxonisLoaderTorch(
-            self.dataset,
-            view=self.cfg.dataset.train_view,
-            augmentations=self.train_augmentations,
-        )
-        self.loader_val = LuxonisLoaderTorch(
-            self.dataset,
-            view=self.cfg.dataset.val_view,
-            augmentations=self.val_augmentations,
-        )
-        self.loader_test = LuxonisLoaderTorch(
-            self.dataset,
-            view=self.cfg.dataset.test_view,
-            augmentations=self.val_augmentations,
-        )
-
-        self.pytorch_loader_val = torch.utils.data.DataLoader(
-            self.loader_val,
-            batch_size=self.cfg.trainer.batch_size,
-            num_workers=self.cfg.trainer.num_workers,
-            collate_fn=collate_fn,
-        )
-        self.pytorch_loader_test = torch.utils.data.DataLoader(
-            self.loader_test,
-            batch_size=self.cfg.trainer.batch_size,
-            num_workers=self.cfg.trainer.num_workers,
-            collate_fn=collate_fn,
-        )
+        self.loaders = {
+            view: LOADERS.get(self.cfg.loader.name)(
+                augmentations=(
+                    self.train_augmentations
+                    if view == "train"
+                    else self.val_augmentations
+                ),
+                view=(
+                    self.cfg.loader.train_view
+                    if view == "train"
+                    else self.cfg.loader.val_view
+                ),
+                image_source=self.cfg.loader.image_source,
+                **self.cfg.loader.params,
+            )
+            for view in ["train", "val", "test"]
+        }
         sampler = None
         if self.cfg.trainer.use_weighted_sampler:
-            classes_count = self.dataset.get_classes()[1]
+            classes_count = self.loaders["train"].get_classes()[1]
             if len(classes_count) == 0:
                 logger.warning(
                     "WeightedRandomSampler only available for classification tasks. Using default sampler instead."
@@ -169,33 +162,38 @@ class Core:
             else:
                 weights = [1 / i for i in classes_count.values()]
                 num_samples = sum(classes_count.values())
-                sampler = torch.utils.data.WeightedRandomSampler(weights, num_samples)
+                sampler = torch_data.WeightedRandomSampler(weights, num_samples)
 
-        self.pytorch_loader_train = torch.utils.data.DataLoader(
-            self.loader_train,
-            shuffle=True,
-            batch_size=self.cfg.trainer.batch_size,
-            num_workers=self.cfg.trainer.num_workers,
-            collate_fn=collate_fn,
-            drop_last=self.cfg.trainer.skip_last_batch,
-            sampler=sampler,
-        )
+        self.pytorch_loaders = {
+            view: torch_data.DataLoader(
+                self.loaders[view],
+                batch_size=self.cfg.trainer.batch_size,
+                num_workers=self.cfg.trainer.num_workers,
+                collate_fn=collate_fn,
+                shuffle=view == "train",
+                drop_last=(
+                    self.cfg.trainer.skip_last_batch if view == "train" else False
+                ),
+                sampler=sampler if view == "train" else None,
+            )
+            for view in ["train", "val", "test"]
+        }
         self.error_message = None
 
-        self.dataset_metadata = DatasetMetadata.from_dataset(self.dataset)
-        self.dataset_metadata.set_loader(self.pytorch_loader_train)
+        self.dataset_metadata = DatasetMetadata.from_loader(self.loaders["train"])
+        self.dataset_metadata.set_loader(self.pytorch_loaders["train"])
 
         self.cfg.save_data(os.path.join(self.run_save_dir, "config.yaml"))
 
-    def set_train_augmentations(self, aug: TrainAugmentations) -> None:
+    def set_train_augmentations(self, aug: Augmentations) -> None:
         """Sets augmentations used for training dataset."""
         self.train_augmentations = aug
 
-    def set_val_augmentations(self, aug: ValAugmentations) -> None:
+    def set_val_augmentations(self, aug: Augmentations) -> None:
         """Sets augmentations used for validation dataset."""
         self.val_augmentations = aug
 
-    def set_test_augmentations(self, aug: ValAugmentations) -> None:
+    def set_test_augmentations(self, aug: Augmentations) -> None:
         """Sets augmentations used for test dataset."""
         self.test_augmentations = aug
 

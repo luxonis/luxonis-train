@@ -1,13 +1,14 @@
 import logging
 import math
+from copy import deepcopy
 from typing import Generator, TypeVar
 
-from luxonis_ml.data import LuxonisDataset
 from pydantic import BaseModel
 from torch import Size, Tensor
 from torch.utils.data import DataLoader
 
 from luxonis_train.utils.boxutils import anchors_from_dataset
+from luxonis_train.utils.loaders import BaseLoaderTorch
 from luxonis_train.utils.types import LabelType, Packet
 
 
@@ -71,11 +72,11 @@ class DatasetMetadata:
             )
         return self._classes
 
-    def n_classes(self, label_type: LabelType | None) -> int:
-        """Gets the number of classes for the specified label type.
+    def n_classes(self, task: str | None) -> int:
+        """Gets the number of classes for the specified task.
 
-        @type label_type: L{LabelType} | None
-        @param label_type: Label type to get the number of classes for.
+        @type task: str | None
+        @param task: Task to get the number of classes for.
         @rtype: int
         @return: Number of classes for the specified label type.
         @raises ValueError: If the dataset loader was not provided during
@@ -83,12 +84,10 @@ class DatasetMetadata:
         @raises ValueError: If the dataset contains different number of classes for
             different label types.
         """
-        if label_type is not None:
-            if label_type not in self.classes:
-                raise ValueError(
-                    f"Task type {label_type.name} is not present in the dataset."
-                )
-            return len(self.classes[label_type])
+        if task is not None:
+            if task not in self.classes:
+                raise ValueError(f"Task '{task}' is not present in the dataset.")
+            return len(self.classes[task])
         n_classes = len(list(self.classes.values())[0])
         for classes in self.classes.values():
             if len(classes) != n_classes:
@@ -97,11 +96,11 @@ class DatasetMetadata:
                 )
         return n_classes
 
-    def class_names(self, label_type: LabelType | None) -> list[str]:
-        """Gets the class names for the specified label type.
+    def class_names(self, task: str | None) -> list[str]:
+        """Gets the class names for the specified task.
 
-        @type label_type: L{LabelType} | None
-        @param label_type: Label type to get the class names for.
+        @type task: str | None
+        @param task: Task to get the class names for.
         @rtype: list[str]
         @return: List of class names for the specified label type.
         @raises ValueError: If the dataset loader was not provided during
@@ -109,12 +108,10 @@ class DatasetMetadata:
         @raises ValueError: If the dataset contains different class names for different
             label types.
         """
-        if label_type is not None:
-            if label_type not in self.classes:
-                raise ValueError(
-                    f"Task type {label_type.name} is not present in the dataset."
-                )
-            return self.classes[label_type]
+        if task is not None:
+            if task not in self.classes:
+                raise ValueError(f"Task type {task} is not present in the dataset.")
+            return self.classes[task]
         class_names = list(self.classes.values())[0]
         for classes in self.classes.values():
             if classes != class_names:
@@ -154,7 +151,7 @@ class DatasetMetadata:
         self.loader = loader
 
     @classmethod
-    def from_dataset(cls, dataset: LuxonisDataset) -> "DatasetMetadata":
+    def from_loader(cls, loader: BaseLoaderTorch) -> "DatasetMetadata":
         """Creates a L{DatasetMetadata} object from a L{LuxonisDataset}.
 
         @type dataset: LuxonisDataset
@@ -162,22 +159,24 @@ class DatasetMetadata:
         @rtype: DatasetMetadata
         @return: Instance of L{DatasetMetadata} created from the provided dataset.
         """
-        _, classes = dataset.get_classes()
-        skeletons = dataset.get_skeletons()
+        classes = loader.get_classes()
+        skeletons = loader.get_skeletons()
 
         keypoint_names = None
         connectivity = None
 
-        if len(skeletons) == 1:
-            name = list(skeletons.keys())[0]
-            keypoint_names = skeletons[name]["labels"]
-            connectivity = skeletons[name]["edges"]
+        if skeletons is not None:
+            if len(skeletons) == 1:
+                task_name = next(iter(skeletons))
+                class_name = next(iter(skeletons[task_name]))
+                keypoint_names = skeletons[task_name][class_name]["labels"]
+                connectivity = skeletons[task_name][class_name]["edges"]
 
-        elif len(skeletons) > 1:
-            raise NotImplementedError(
-                "The dataset defines multiclass keypoint detection. "
-                "This is not yet supported."
-            )
+            elif len(skeletons) > 1:
+                raise NotImplementedError(
+                    "The dataset defines multiclass keypoint detection. "
+                    "This is not yet supported."
+                )
 
         return cls(
             classes=classes,
@@ -212,7 +211,7 @@ def infer_upscale_factor(
         )
 
 
-def get_shape_packet(packet: Packet[Tensor]) -> Packet[Size]:
+def to_shape_packet(packet: Packet[Tensor]) -> Packet[Size]:
     shape_packet: Packet[Size] = {}
     for name, value in packet.items():
         shape_packet[name] = [x.shape for x in value]
@@ -265,7 +264,7 @@ T = TypeVar("T")
 # TEST:
 def traverse_graph(
     graph: dict[str, list[str]], nodes: dict[str, T]
-) -> Generator[tuple[str, T, list[str], set[str]], None, None]:
+) -> Generator[tuple[str, T, list[str], list[str]], None, None]:
     """Traverses the graph in topological order.
 
     @type graph: dict[str, list[str]]
@@ -273,14 +272,17 @@ def traverse_graph(
         names, values are inputs to the node (list of node names).
     @type nodes: dict[str, T]
     @param nodes: Dictionary mapping node names to node objects.
-    @rtype: Generator[tuple[str, T, list[str], set[str]], None, None]
+    @rtype: Generator[tuple[str, T, list[str], list[str]], None, None]
     @return: Generator of tuples containing node name, node object, node dependencies
         and unprocessed nodes.
     @raises RuntimeError: If the graph is malformed.
     """
-    unprocessed_nodes = set(nodes.keys())
+    unprocessed_nodes = sorted(
+        set(nodes.keys())
+    )  # sort the set to allow reproducibility
     processed: set[str] = set()
 
+    graph = deepcopy(graph)
     while unprocessed_nodes:
         unprocessed_nodes_copy = unprocessed_nodes.copy()
         for node_name in unprocessed_nodes_copy:

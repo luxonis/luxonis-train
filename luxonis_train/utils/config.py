@@ -1,14 +1,9 @@
 import logging
 import sys
-from enum import Enum
 from typing import Annotated, Any, Literal
 
-from luxonis_ml.data import BucketStorage, BucketType
 from luxonis_ml.utils import Environ, LuxonisConfig, LuxonisFileSystem, setup_logging
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_validator
-
-from luxonis_train.utils.general import is_acyclic
-from luxonis_train.utils.registry import MODELS
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +35,11 @@ class FreezingConfig(CustomBaseModel):
 class ModelNodeConfig(CustomBaseModel):
     name: str
     alias: str | None = None
-    inputs: list[str] = []
+    inputs: list[str] = []  # From preceding nodes
+    input_sources: list[str] = []  # From data loader
     params: dict[str, Any] = {}
     freezing: FreezingConfig = FreezingConfig()
-    task_group: str = "default"
+    task: str | None = None
 
 
 class PredefinedModelConfig(CustomBaseModel):
@@ -67,6 +63,8 @@ class ModelConfig(CustomBaseModel):
 
     @model_validator(mode="after")
     def check_predefined_model(self):
+        from luxonis_train.utils.registry import MODELS
+
         if self.predefined_model:
             logger.info(f"Using predefined model: `{self.predefined_model.name}`")
             model = MODELS.get(self.predefined_model.name)(
@@ -87,6 +85,8 @@ class ModelConfig(CustomBaseModel):
 
     @model_validator(mode="after")
     def check_graph(self):
+        from luxonis_train.utils.general import is_acyclic
+
         graph = {node.alias or node.name: node.inputs for node in self.nodes}
         if not is_acyclic(graph):
             raise ValueError("Model graph is not acyclic.")
@@ -131,21 +131,13 @@ class TrackerConfig(CustomBaseModel):
     is_mlflow: bool = False
 
 
-class DatasetConfig(CustomBaseModel):
-    name: str | None = None
-    id: str | None = None
-    team_name: str | None = None
-    team_id: str | None = None
-    bucket_type: BucketType = BucketType.INTERNAL
-    bucket_storage: BucketStorage = BucketStorage.LOCAL
-    json_mode: bool = False
+class LoaderConfig(CustomBaseModel):
+    name: str = "LuxonisLoaderTorch"
+    image_source: str = "image"
     train_view: str = "train"
     val_view: str = "val"
     test_view: str = "test"
-
-    @field_serializer("bucket_storage", "bucket_type")
-    def get_enum_value(self, v: Enum, _) -> str:
-        return str(v.value)
+    params: dict[str, Any] = {}
 
 
 class NormalizeAugmentationConfig(CustomBaseModel):
@@ -158,6 +150,7 @@ class NormalizeAugmentationConfig(CustomBaseModel):
 
 class AugmentationConfig(CustomBaseModel):
     name: str
+    active: bool = True
     params: dict[str, Any] = {}
 
 
@@ -177,6 +170,14 @@ class PreprocessingConfig(CustomBaseModel):
                 AugmentationConfig(name="Normalize", params=self.normalize.params)
             )
         return self
+
+    def get_active_augmentations(self) -> list[AugmentationConfig]:
+        """Returns list of augmentations that are active.
+
+        @rtype: list[AugmentationConfig]
+        @return: Filtered list of active augmentation configs
+        """
+        return [aug for aug in self.augmentations if aug.active]
 
 
 class CallbackConfig(CustomBaseModel):
@@ -206,6 +207,7 @@ class TrainerConfig(CustomBaseModel):
     matmul_precision: Literal["medium", "high", "highest"] | None = None
     verbose: bool = True
 
+    seed: int | None = None
     batch_size: int = 32
     accumulate_grad_batches: int = 1
     use_weighted_sampler: bool = False
@@ -297,7 +299,7 @@ class TunerConfig(CustomBaseModel):
 class Config(LuxonisConfig):
     use_rich_text: bool = True
     model: ModelConfig
-    dataset: DatasetConfig = DatasetConfig()
+    loader: LoaderConfig = LoaderConfig()
     tracker: TrackerConfig = TrackerConfig()
     trainer: TrainerConfig = TrainerConfig()
     exporter: ExportConfig = ExportConfig()

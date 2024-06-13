@@ -98,13 +98,20 @@ class Tuner(Core):
             cfg=cfg,
             dataset_metadata=self.dataset_metadata,
             save_dir=run_save_dir,
-            input_shape=self.loader_train.input_shape,
+            input_shape=self.loaders["train"].input_shape,
         )
         pruner_callback = PyTorchLightningPruningCallback(trial, monitor="val/loss")
+        lightning_module._core = self
         callbacks: list[pl.Callback] = (
             [LuxonisProgressBar()] if self.cfg.use_rich_text else []
         )
         callbacks.append(pruner_callback)
+
+        deterministic = False
+        if self.cfg.trainer.seed:
+            pl.seed_everything(cfg.trainer.seed, workers=True)
+            deterministic = True
+
         pl_trainer = pl.Trainer(
             accelerator=cfg.trainer.accelerator,
             devices=cfg.trainer.devices,
@@ -116,12 +123,13 @@ class Tuner(Core):
             num_sanity_val_steps=cfg.trainer.num_sanity_val_steps,
             profiler=cfg.trainer.profiler,
             callbacks=callbacks,
+            deterministic=deterministic,
         )
 
         pl_trainer.fit(
             lightning_module,  # type: ignore
-            self.pytorch_loader_train,
-            self.pytorch_loader_val,
+            self.pytorch_loaders["train"],
+            self.pytorch_loaders["val"],
         )
         pruner_callback.check_pruned()
 

@@ -52,11 +52,12 @@ class Trainer(Core):
             cfg=self.cfg,
             dataset_metadata=self.dataset_metadata,
             save_dir=self.run_save_dir,
-            input_shape=self.loader_train.input_shape,
+            input_shape=self.loaders["train"].input_shape,
         )
+        self.lightning_module._core = self
 
-        def graceful_exit(signum, frame):
-            logger.info("SIGTERM received, stopping training...")
+        def graceful_exit(signum: int, _):
+            logger.info(f"{signal.Signals(signum).name} received, stopping training...")
             ckpt_path = osp.join(self.run_save_dir, "resume.ckpt")
             self.pl_trainer.save_checkpoint(ckpt_path)
             self._upload_logs()
@@ -111,8 +112,8 @@ class Trainer(Core):
             logger.info("Starting training...")
             self._trainer_fit(
                 self.lightning_module,
-                self.pytorch_loader_train,
-                self.pytorch_loader_val,
+                self.pytorch_loaders["train"],
+                self.pytorch_loaders["val"],
             )
             logger.info("Training finished")
             logger.info(f"Checkpoints saved in: {self.get_save_dir()}")
@@ -128,8 +129,8 @@ class Trainer(Core):
                 target=self._trainer_fit,
                 args=(
                     self.lightning_module,
-                    self.pytorch_loader_train,
-                    self.pytorch_loader_val,
+                    self.pytorch_loaders["train"],
+                    self.pytorch_loaders["val"],
                 ),
                 daemon=True,
             )
@@ -145,11 +146,11 @@ class Trainer(Core):
         """
 
         if view == "test":
-            loader = self.pytorch_loader_test
+            loader = self.pytorch_loaders["test"]
         elif view == "val":
-            loader = self.pytorch_loader_val
+            loader = self.pytorch_loaders["val"]
         elif view == "train":
-            loader = self.pytorch_loader_train
+            loader = self.pytorch_loaders["train"]
 
         if not new_thread:
             self.pl_trainer.test(self.lightning_module, loader)

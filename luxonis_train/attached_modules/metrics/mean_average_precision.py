@@ -12,7 +12,7 @@ from luxonis_train.utils.types import (
 from .base_metric import BaseMetric
 
 
-class MeanAveragePrecision(BaseMetric, detection.MeanAveragePrecision):
+class MeanAveragePrecision(BaseMetric):
     """Compute the Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR) for object
     detection predictions.
 
@@ -38,10 +38,10 @@ class MeanAveragePrecision(BaseMetric, detection.MeanAveragePrecision):
     def prepare(
         self, outputs: Packet[Tensor], labels: Labels
     ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
-        label = labels[LabelType.BOUNDINGBOX]
-        output_nms = outputs["boxes"]
+        label = labels[self.task][0]
+        output_nms = self.get_input_tensors(outputs)
 
-        image_size = self.node.original_in_shape[2:]
+        image_size = self.node.original_in_shape[1:]
 
         output_list: list[dict[str, Tensor]] = []
         label_list: list[dict[str, Tensor]] = []
@@ -61,6 +61,9 @@ class MeanAveragePrecision(BaseMetric, detection.MeanAveragePrecision):
             label_list.append({"boxes": curr_bboxs, "labels": curr_label[:, 1].int()})
 
         return output_list, label_list
+
+    def reset(self) -> None:
+        self.metric.reset()
 
     def compute(self) -> tuple[Tensor, dict[str, Tensor]]:
         metric_dict = self.metric.compute()

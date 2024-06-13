@@ -57,7 +57,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
         @type max_det: int
         @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
         """
-        super().__init__(task_type=LabelType.KEYPOINT, **kwargs)
+        super().__init__(_task_type=LabelType.KEYPOINTS, **kwargs)
 
         if anchors is None:
             logger.info("No anchors provided, generating them automatically.")
@@ -172,7 +172,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
         )
 
         return {
-            "boxes": [detection[:, :6] for detection in nms],
+            "boundingbox": [detection[:, :6] for detection in nms],
             "keypoints": [
                 detection[:, 6:].reshape(-1, self.n_keypoints, 3) for detection in nms
             ],
@@ -197,10 +197,9 @@ class ImplicitKeypointBBoxHead(BaseNode):
         kpt_x, kpt_y, kpt_vis = process_keypoints_predictions(x_keypoints)
         kpt_x = (kpt_x + grid_x) * stride
         kpt_y = (kpt_y + grid_y) * stride
-        out_kpt = torch.stack([kpt_x, kpt_y, kpt_vis.sigmoid()], dim=-1).reshape(
-            *kpt_x.shape[:-1], -1
-        )
-
+        kpt_vis_sig = kpt_vis.sigmoid()
+        out_kpt = torch.cat((kpt_x, kpt_y, kpt_vis_sig), dim=-1)
+        out_kpt = out_kpt.reshape(*kpt_x.shape[:-1], -1)
         out = torch.cat((out_bbox, out_kpt), dim=-1)
 
         return out.reshape(batch_size, -1, self.n_out)
@@ -219,7 +218,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
         out_channel_list = channel_list[: self.num_heads]
         stride = torch.tensor(
             [
-                self.original_in_shape[2] / h
+                self.original_in_shape[1] / h
                 for h in cast(list[int], self.in_height)[: self.num_heads]
             ],
             dtype=torch.int,

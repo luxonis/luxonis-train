@@ -1,5 +1,12 @@
+from typing import Literal
+
 import numpy as np
-from luxonis_ml.data import Augmentations, LuxonisDataset, LuxonisLoader
+from luxonis_ml.data import (
+    BucketStorage,
+    BucketType,
+    LuxonisDataset,
+    LuxonisLoader,
+)
 from torch import Size, Tensor
 
 from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput
@@ -8,34 +15,51 @@ from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput
 class LuxonisLoaderTorch(BaseLoaderTorch):
     def __init__(
         self,
-        dataset: LuxonisDataset,
-        view: str = "train",
+        dataset_name: str | None = None,
+        team_id: str | None = None,
+        dataset_id: str | None = None,
+        bucket_type: Literal["internal", "external"] = "internal",
+        bucket_storage: Literal["local", "s3", "gcs", "azure"] = "local",
         stream: bool = False,
-        augmentations: Augmentations | None = None,
+        **kwargs,
     ):
+        super().__init__(**kwargs)
+        self.dataset = LuxonisDataset(
+            dataset_name=dataset_name,
+            team_id=team_id,
+            dataset_id=dataset_id,
+            bucket_type=BucketType(bucket_type),
+            bucket_storage=BucketStorage(bucket_storage),
+        )
         self.base_loader = LuxonisLoader(
-            dataset=dataset,
-            view=view,
+            dataset=self.dataset,
+            view=self.view,
             stream=stream,
-            augmentations=augmentations,
+            augmentations=self.augmentations,
         )
 
     def __len__(self) -> int:
         return len(self.base_loader)
 
     @property
-    def input_shape(self) -> Size:
-        img, _ = self[0]
-        return Size([1, *img.shape])
+    def input_shape(self) -> dict[str, Size]:
+        img = self[0][0][self.image_source]
+        return {self.image_source: img.shape}
 
     def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
-        img, group_annotations = self.base_loader[idx]
+        img, labels = self.base_loader[idx]
 
         img = np.transpose(img, (2, 0, 1))  # HWC to CHW
         tensor_img = Tensor(img)
-        for task in group_annotations:
-            annotations = group_annotations[task]
-            for key in annotations:
-                annotations[key] = Tensor(annotations[key])  # type: ignore
+        tensor_labels = {}
+        for task, (array, label_type) in labels.items():
+            tensor_labels[task] = (Tensor(array), label_type)
 
-        return tensor_img, group_annotations
+        return {self.image_source: tensor_img}, tensor_labels
+
+    def get_classes(self) -> dict[str, list[str]]:
+        _, classes = self.dataset.get_classes()
+        return {task: classes[task] for task in classes}
+
+    def get_skeletons(self) -> dict[str, dict] | None:
+        return self.dataset.get_skeletons()
