@@ -42,19 +42,20 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         return len(self.base_loader)
 
     @property
-    def input_shape(self) -> Size:
-        img, _ = self[0]
-        return Size([1, *img.shape])
+    def input_shape(self) -> dict[str, Size]:
+        img = self[0][0][self.image_source]
+        return {self.image_source: img.shape}
 
     def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
         img, labels = self.base_loader[idx]
 
         img = np.transpose(img, (2, 0, 1))  # HWC to CHW
         tensor_img = Tensor(img)
+        tensor_labels = {}
         for task, (array, label_type) in labels.items():
-            labels[task] = (Tensor(array), label_type)  # type: ignore
+            tensor_labels[task] = (Tensor(array), label_type)
 
-        return tensor_img, labels
+        return {self.image_source: tensor_img}, tensor_labels
 
     def get_classes(self) -> dict[str, list[str]]:
         _, classes = self.dataset.get_classes()

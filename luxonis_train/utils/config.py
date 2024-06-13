@@ -35,7 +35,8 @@ class FreezingConfig(CustomBaseModel):
 class ModelNodeConfig(CustomBaseModel):
     name: str
     alias: str | None = None
-    inputs: list[str] = []
+    inputs: list[str] = []  # From preceding nodes
+    input_sources: list[str] = []  # From data loader
     params: dict[str, Any] = {}
     freezing: FreezingConfig = FreezingConfig()
     task: str | None = None
@@ -132,6 +133,7 @@ class TrackerConfig(CustomBaseModel):
 
 class LoaderConfig(CustomBaseModel):
     name: str = "LuxonisLoaderTorch"
+    image_source: str = "image"
     train_view: str = "train"
     val_view: str = "val"
     test_view: str = "test"
