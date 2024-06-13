@@ -86,7 +86,6 @@ class BaseNode(
         *,
         input_shapes: list[Packet[Size]] | None = None,
         original_in_shape: Size | None = None,
-        images_name: str = "features",
         dataset_metadata: DatasetMetadata | None = None,
         attach_index: AttachIndexType | None = None,
         in_protocols: list[type[BaseModel]] | None = None,
@@ -120,7 +119,6 @@ class BaseNode(
 
         self._input_shapes = input_shapes
         self._original_in_shape = original_in_shape
-        self._images_name = images_name
         if n_classes is not None:
             if dataset_metadata is not None:
                 raise ValueError("Cannot set both `dataset_metadata` and `n_classes`.")
@@ -135,14 +133,6 @@ class BaseNode(
             f"{self.__class__.__name__} is trying to access `{name}`, "
             "but it was not set during initialization. "
         )
-
-    @property
-    def images_name(self) -> str:
-        """Getter for the images name (name of the key from the loader which contains
-        images)."""
-        if self._images_name is None:
-            raise self._non_set_error("images_name")
-        return self._images_name
 
     @property
     def task(self) -> str:
@@ -216,13 +206,13 @@ class BaseNode(
         if self._in_sizes is not None:
             return self._in_sizes
 
-        features = self.input_shapes[0].get(self._images_name)
+        features = self.input_shapes[0].get("features")
         if features is None:
             raise IncompatibleException(
-                f"Images field '{self._images_name}' is missing in {self.__class__.__name__}. "
+                f"Feature field is missing in {self.__class__.__name__}. "
                 "The default implementation of `in_sizes` cannot be used."
             )
-        shapes = self.get_attached(self.input_shapes[0][self._images_name])
+        shapes = self.get_attached(self.input_shapes[0]["features"])
         if isinstance(shapes, list) and len(shapes) == 1:
             return shapes[0]
         return shapes

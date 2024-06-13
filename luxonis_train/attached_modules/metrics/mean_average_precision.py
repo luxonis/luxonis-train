@@ -41,7 +41,7 @@ class MeanAveragePrecision(BaseMetric):
         label = labels[self.task][0]
         output_nms = self.get_input_tensors(outputs)
 
-        image_size = self.node.original_in_shape[self.node.images_name][1:]
+        image_size = self.node.original_in_shape[1:]
 
         output_list: list[dict[str, Tensor]] = []
         label_list: list[dict[str, Tensor]] = []

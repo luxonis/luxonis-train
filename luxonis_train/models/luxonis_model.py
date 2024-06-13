@@ -280,8 +280,7 @@ class LuxonisModel(pl.LightningModule):
 
             node = Node(
                 input_shapes=node_input_shapes,
-                original_in_shape=self.original_in_shape,
-                images_name=self.images_name,
+                original_in_shape=self.original_in_shape[self.images_name],
                 dataset_metadata=self.dataset_metadata,
                 **node_kwargs,
             )

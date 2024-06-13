@@ -32,7 +32,7 @@ class BiSeNetHead(BaseNode[Tensor, Tensor]):
         """
         super().__init__(task=LabelType.SEGMENTATION, **kwargs)
 
-        original_height = self.original_in_shape[self.images_name][1]
+        original_height = self.original_in_shape[1]
         upscale_factor = 2 ** infer_upscale_factor(self.in_height, original_height)
         out_channels = self.n_classes * upscale_factor * upscale_factor
 

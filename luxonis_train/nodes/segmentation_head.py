@@ -4,7 +4,6 @@ Adapted from: U{https://github.com/pytorch/vision/blob/main/torchvision/models/s
 @license: U{BSD-3 <https://github.com/pytorch/vision/blob/main/LICENSE>}
 """
 
-
 import torch.nn as nn
 from torch import Tensor
 
@@ -29,7 +28,7 @@ class SegmentationHead(BaseNode[Tensor, Tensor]):
         """
         super().__init__(_task_type=LabelType.SEGMENTATION, **kwargs)
 
-        original_height = self.original_in_shape[self.images_name][1]
+        original_height = self.original_in_shape[1]
         num_up = infer_upscale_factor(self.in_height, original_height, strict=False)
 
         modules = []

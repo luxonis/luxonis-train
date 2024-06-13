@@ -218,7 +218,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
         out_channel_list = channel_list[: self.num_heads]
         stride = torch.tensor(
             [
-                self.original_in_shape[self.images_name][1] / h
+                self.original_in_shape[1] / h
                 for h in cast(list[int], self.in_height)[: self.num_heads]
             ],
             dtype=torch.int,
