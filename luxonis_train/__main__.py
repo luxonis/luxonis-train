@@ -201,7 +201,7 @@ def inspect(
 @app.command()
 def archive(
     executable: Annotated[
-        Optional[Path], typer.Option(help="Path to the model file.", show_default=False)
+        str, typer.Option(help="Path to the model file.", show_default=False)
     ],
     config: ConfigType = None,
     opts: OptsType = None,
