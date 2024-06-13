@@ -6,7 +6,7 @@ loader:
 
   # Name of the key in the batch that contains image-like data.
   # Needs to be set for visualizers and evaluators to work.
-  images_name: left
+  image_source: left
 
 use_rich_text: True
 

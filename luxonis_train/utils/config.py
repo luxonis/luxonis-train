@@ -133,7 +133,7 @@ class TrackerConfig(CustomBaseModel):
 
 class LoaderConfig(CustomBaseModel):
     name: str = "LuxonisLoaderTorch"
-    images_name: str = "image"
+    image_source: str = "image"
     train_view: str = "train"
     val_view: str = "val"
     test_view: str = "test"

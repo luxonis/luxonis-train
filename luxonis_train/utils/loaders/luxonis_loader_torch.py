@@ -43,8 +43,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
 
     @property
     def input_shape(self) -> dict[str, Size]:
-        img = self[0][0][self.images_name]
-        return {self.images_name: img.shape}
+        img = self[0][0][self.image_source]
+        return {self.image_source: img.shape}
 
     def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
         img, labels = self.base_loader[idx]
@@ -55,7 +55,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         for task, (array, label_type) in labels.items():
             tensor_labels[task] = (Tensor(array), label_type)
 
-        return {self.images_name: tensor_img}, tensor_labels
+        return {self.image_source: tensor_img}, tensor_labels
 
     def get_classes(self) -> dict[str, list[str]]:
         _, classes = self.dataset.get_classes()

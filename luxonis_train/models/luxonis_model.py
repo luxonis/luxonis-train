@@ -125,7 +125,7 @@ class LuxonisModel(pl.LightningModule):
 
         self.cfg = cfg
         self.original_in_shape = input_shape
-        self.images_name = cfg.loader.images_name
+        self.image_source = cfg.loader.image_source
         self.dataset_metadata = dataset_metadata or DatasetMetadata()
         self.frozen_nodes: list[tuple[nn.Module, int]] = []
         self.graph: dict[str, list[str]] = {}
@@ -269,7 +269,7 @@ class LuxonisModel(pl.LightningModule):
 
             node = Node(
                 input_shapes=node_input_shapes,
-                original_in_shape=self.original_in_shape[self.images_name],
+                original_in_shape=self.original_in_shape[self.image_source],
                 dataset_metadata=self.dataset_metadata,
                 **node_kwargs,
             )

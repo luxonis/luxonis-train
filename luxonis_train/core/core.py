@@ -147,7 +147,7 @@ class Core:
                     if view == "train"
                     else self.cfg.loader.val_view
                 ),
-                images_name=self.cfg.loader.images_name,
+                image_source=self.cfg.loader.image_source,
                 **self.cfg.loader.params,
             )
             for view in ["train", "val", "test"]

@@ -434,7 +434,7 @@ def anchors_from_dataset(
         inputs = inp
     assert inputs is not None, "No inputs found in data loader"
     _, _, h, w = inputs[
-        loader.dataset.images_name
+        loader.dataset.image_source  # type: ignore
     ].shape  # assuming all images are same size
     img_size = torch.tensor([w, h])
     wh = torch.vstack(widths) * img_size

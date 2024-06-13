@@ -27,21 +27,21 @@ class BaseLoaderTorch(
         self,
         view: str,
         augmentations: Augmentations | None = None,
-        images_name: str | None = None,
+        image_source: str | None = None,
     ):
         self.view = view
         self.augmentations = augmentations
-        self._images_name = images_name
+        self._image_source = image_source
 
     @property
-    def images_name(self) -> str:
+    def image_source(self) -> str:
         """Name of the input image group.
 
-        Example: 'features'
+        Example: 'image'
         """
-        if self._images_name is None:
-            raise ValueError("images_name is not set")
-        return self._images_name
+        if self._image_source is None:
+            raise ValueError("image_source is not set")
+        return self._image_source
 
     @property
     @abstractmethod

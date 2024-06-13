@@ -222,7 +222,7 @@ def unnormalize(
 
 def get_unnormalized_images(cfg: Config, inputs: dict[str, Tensor]) -> Tensor:
     # Get images from inputs according to config
-    images = inputs[cfg.loader.images_name]
+    images = inputs[cfg.loader.image_source]
 
     normalize_params = cfg.trainer.preprocessing.normalize.params
     mean = std = None
