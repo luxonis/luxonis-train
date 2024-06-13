@@ -33,7 +33,7 @@ from luxonis_train.nodes import BaseNode
 from luxonis_train.utils.config import AttachedModuleConfig, Config
 from luxonis_train.utils.general import (
     DatasetMetadata,
-    get_shape_packet,
+    to_shape_packet,
     traverse_graph,
 )
 from luxonis_train.utils.registry import CALLBACKS, OPTIMIZERS, SCHEDULERS, Registry
@@ -274,8 +274,7 @@ class LuxonisModel(pl.LightningModule):
                 # Add the input to the list of inputs
                 node_dummy_inputs.append(dummy_input)
 
-                # Add its shape to the list of input shapes
-                shape_packet = get_shape_packet(dummy_input)
+                shape_packet = to_shape_packet(dummy_input)
                 node_input_shapes.append(shape_packet)
 
             node = Node(

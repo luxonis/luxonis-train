@@ -1,5 +1,6 @@
 import logging
 import math
+from copy import deepcopy
 from typing import Generator, TypeVar
 
 from pydantic import BaseModel
@@ -210,7 +211,7 @@ def infer_upscale_factor(
         )
 
 
-def get_shape_packet(packet: Packet[Tensor]) -> Packet[Size]:
+def to_shape_packet(packet: Packet[Tensor]) -> Packet[Size]:
     shape_packet: Packet[Size] = {}
     for name, value in packet.items():
         shape_packet[name] = [x.shape for x in value]
@@ -281,6 +282,7 @@ def traverse_graph(
     )  # sort the set to allow reproducibility
     processed: set[str] = set()
 
+    graph = deepcopy(graph)
     while unprocessed_nodes:
         unprocessed_nodes_copy = unprocessed_nodes.copy()
         for node_name in unprocessed_nodes_copy:
