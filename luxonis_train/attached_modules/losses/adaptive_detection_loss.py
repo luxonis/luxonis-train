@@ -158,7 +158,7 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
                 assigned_scores,
                 mask_positive,
                 _,
-            ) = self.tal_assigner.forward(
+            ) = self.tal_assigner(
                 pred_scores.detach(),
                 pred_bboxes.detach() * stride_tensor,
                 anchor_points,

@@ -9,7 +9,7 @@ from luxonis_train.utils.boxutils import (
     dist2bbox,
     non_max_suppression,
 )
-from luxonis_train.utils.types import Packet
+from luxonis_train.utils.types import LabelType, Packet
 
 from .efficient_bbox_head import EfficientBBoxHead
 
@@ -51,6 +51,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             conf_thres=conf_thres,
             iou_thres=iou_thres,
             max_det=max_det,
+            _task_type=LabelType.KEYPOINTS,
             **kwargs,
         )
 
@@ -144,7 +145,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             (features, cls_tensor, reg_tensor, pred_kpt)
         )
         return {
-            "boxes": [detection[:, :6] for detection in detections],
+            "boundingbox": [detection[:, :6] for detection in detections],
             "features": features,
             "class_scores": [cls_tensor],
             "distributions": [reg_tensor],

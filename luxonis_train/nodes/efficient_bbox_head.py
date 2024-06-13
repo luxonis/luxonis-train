@@ -50,7 +50,9 @@ class EfficientBBoxHead(
         @type max_det: int
         @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
         """
-        super().__init__(_task_type=LabelType.BOUNDINGBOX, **kwargs)
+        super().__init__(
+            _task_type=kwargs.pop("_task_type", LabelType.BOUNDINGBOX), **kwargs
+        )
 
         self.n_heads = n_heads
 

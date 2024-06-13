@@ -102,7 +102,7 @@ class EfficientKeypointBBoxLoss(
         self.stride = self.node.stride
         self.grid_cell_size = self.node.grid_cell_size
         self.grid_cell_offset = self.node.grid_cell_offset
-        self.original_img_size = self.node.original_in_shape[2:]
+        self.original_img_size = self.node.original_in_shape[1:]
         self.n_heads = self.node.n_heads
         self.n_kps = self.node.n_keypoints
 
@@ -139,8 +139,8 @@ class EfficientKeypointBBoxLoss(
         batch_size = pred_scores.shape[0]
         device = pred_scores.device
 
-        target_bbox = labels[LabelType.BOUNDINGBOX].to(device)
-        target_kpts = labels[LabelType.KEYPOINT].to(device)
+        target_bbox = labels["boundingbox"][0].to(device)
+        target_kpts = labels["keypoints"][0].to(device)
         n_kpts = (target_kpts.shape[1] - 2) // 3
 
         gt_bboxes_scale = torch.tensor(
