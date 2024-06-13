@@ -1,6 +1,6 @@
 from lightning.pytorch.loggers.logger import Logger
-from luxonis_ml.tracker import LuxonisTracker
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
+from luxonis_ml.tracker import LuxonisTracker
 
 
 class LuxonisTrackerPL(LuxonisTracker, Logger):
@@ -8,7 +8,7 @@ class LuxonisTrackerPL(LuxonisTracker, Logger):
 
     @rank_zero_only
     def finalize(self, status: str = "success") -> None:
-        """Finalizes current run"""
+        """Finalizes current run."""
         if self.is_tensorboard:
             self.experiment["tensorboard"].flush()
             self.experiment["tensorboard"].close()
