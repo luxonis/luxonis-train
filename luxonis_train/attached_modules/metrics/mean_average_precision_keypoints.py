@@ -9,8 +9,8 @@ from torch import Tensor
 from torchvision.ops import box_convert
 
 from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
-    set_area_factor,
-    set_sigmas,
+    get_area_factor,
+    get_sigmas,
 )
 from luxonis_train.utils.types import (
     BBoxProtocol,
@@ -82,8 +82,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
         self.n_keypoints = self.node.n_keypoints
 
-        self.sigmas = set_sigmas(sigmas, self.n_keypoints, self.__class__.__name__)
-        self.area_factor = set_area_factor(area_factor, self.__class__.__name__)
+        self.sigmas = get_sigmas(sigmas, self.n_keypoints, self.__class__.__name__)
+        self.area_factor = get_area_factor(area_factor, self.__class__.__name__)
 
         allowed_box_formats = ("xyxy", "xywh", "cxcywh")
         if box_format not in allowed_box_formats:

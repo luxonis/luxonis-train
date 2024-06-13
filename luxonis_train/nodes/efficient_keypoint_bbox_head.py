@@ -174,7 +174,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         return y
 
     def _process_to_bbox_and_kps(
-        self, output: tuple[list[Tensor], Tensor, Tensor]
+        self, output: tuple[list[Tensor], Tensor, Tensor, Tensor]
     ) -> list[Tensor]:
         """Performs post-processing of the output and returns bboxs after NMS."""
         features, cls_score_list, reg_dist_list, keypoints = output

@@ -63,8 +63,8 @@ class ObjectKeypointSimilarity(
             )
         self.n_keypoints = n_keypoints or self.node.n_keypoints
 
-        self.sigmas = set_sigmas(sigmas, self.n_keypoints, self.__class__.__name__)
-        self.area_factor = set_area_factor(area_factor, self.__class__.__name__)
+        self.sigmas = get_sigmas(sigmas, self.n_keypoints, self.__class__.__name__)
+        self.area_factor = get_area_factor(area_factor, self.__class__.__name__)
         self.use_cocoeval_oks = use_cocoeval_oks
 
         self.add_state("pred_keypoints", default=[], dist_reduce_fx=None)
@@ -223,7 +223,7 @@ def fix_empty_tensors(input_tensor: Tensor) -> Tensor:
     return input_tensor
 
 
-def set_sigmas(
+def get_sigmas(
     sigmas: list[float] | None, n_keypoints: int, class_name: str | None
 ) -> Tensor:
     """Validate and set the sigma values."""
@@ -271,7 +271,7 @@ def set_sigmas(
             return torch.tensor([0.04] * n_keypoints, dtype=torch.float32)
 
 
-def set_area_factor(area_factor: float | None, class_name: str | None) -> float:
+def get_area_factor(area_factor: float | None, class_name: str | None) -> float:
     """Set the default area factor if not defined."""
     if area_factor is None:
         warn_msg = "Default area_factor of 0.53 is being used bbox area scaling."

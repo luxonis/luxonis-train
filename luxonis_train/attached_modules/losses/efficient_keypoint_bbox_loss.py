@@ -8,8 +8,8 @@ from torchvision.ops import box_convert
 from typing_extensions import Annotated
 
 from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
-    set_area_factor,
-    set_sigmas,
+    get_area_factor,
+    get_sigmas,
 )
 from luxonis_train.nodes import EfficientKeypointBBoxHead
 from luxonis_train.utils.assigners import ATSSAssigner, TaskAlignedAssigner
@@ -109,10 +109,10 @@ class EfficientKeypointBBoxLoss(
         self.b_cross_entropy = BCEWithLogitsLoss(
             pos_weight=torch.tensor([viz_pw]), **kwargs
         )
-        self.sigmas = set_sigmas(
+        self.sigmas = get_sigmas(
             sigmas=sigmas, n_keypoints=self.n_kps, class_name=self.__class__.__name__
         )
-        self.area_factor = set_area_factor(
+        self.area_factor = get_area_factor(
             area_factor, class_name=self.__class__.__name__
         )
 
@@ -130,7 +130,7 @@ class EfficientKeypointBBoxLoss(
 
     def prepare(
         self, outputs: Packet[Tensor], labels: Labels
-    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
         feats = outputs["features"]
         pred_scores = outputs["class_scores"][0]
         pred_distri = outputs["distributions"][0]
@@ -309,7 +309,7 @@ class EfficientKeypointBBoxLoss(
 
     def _preprocess_bbox_target(
         self, bbox_target: Tensor, batch_size: int, scale_tensor: Tensor
-    ):
+    ) -> Tensor:
         """Preprocess target bboxes in shape [batch_size, N, 5] where N is maximum
         number of instances in one image."""
         sample_ids, counts = cast(
@@ -328,7 +328,7 @@ class EfficientKeypointBBoxLoss(
 
     def _preprocess_kpts_target(
         self, kpts_target: Tensor, batch_size: int, scale_tensor: Tensor
-    ):
+    ) -> Tensor:
         """Preprocesses the target keypoints in shape [batch_size, N, n_keypoints, 3]
         where N is the maximum number of keypoints in one image."""
 
@@ -347,7 +347,7 @@ class EfficientKeypointBBoxLoss(
 
         return batched_keypoints
 
-    def kpts_decode(self, anchor_points: Tensor, pred_kpts: Tensor):
+    def kpts_decode(self, anchor_points: Tensor, pred_kpts: Tensor) -> Tensor:
         """Adjusts and scales predicted keypoints relative to anchor points without
         considering image stride."""
         y = pred_kpts.clone()
