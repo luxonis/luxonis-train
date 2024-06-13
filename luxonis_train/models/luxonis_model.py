@@ -130,6 +130,7 @@ class LuxonisModel(pl.LightningModule):
         self.frozen_nodes: list[tuple[nn.Module, int]] = []
         self.graph: dict[str, list[str]] = {}
         self.loader_input_shapes: dict[str, dict[str, Size]] = {}
+        self.node_input_sources: dict[str, list[str]] = defaultdict(list)
         self.loss_weights: dict[str, float] = {}
         self.main_metric: str | None = None
         self.save_dir = save_dir
@@ -161,6 +162,8 @@ class LuxonisModel(pl.LightningModule):
             nodes[node_name] = (Node, {**node_cfg.params, "task": node_cfg.task})
 
             # Handle inputs for this node
+            if node_cfg.input_sources:
+                self.node_input_sources[node_name] = node_cfg.input_sources
 
             if not node_cfg.inputs and not node_cfg.input_sources:
                 # If no inputs (= preceding nodes) nor any input_sources (= loader outputs) are specified,
@@ -169,6 +172,7 @@ class LuxonisModel(pl.LightningModule):
                 self.loader_input_shapes[node_name] = {
                     k: Size(v) for k, v in input_shape.items()
                 }
+                self.node_input_sources[node_name] = list(input_shape.keys())
             else:
                 # For each input_source, check if the loader provides the required output.
                 # If yes, add the shape to the input_shapes dict. If not, raise an error.
@@ -238,9 +242,9 @@ class LuxonisModel(pl.LightningModule):
         initiated_nodes: dict[str, BaseNode] = {}
 
         dummy_inputs: dict[str, Packet[Tensor]] = {
-            input_name: [torch.zeros(2, *shape)]
-            for node_name, shapes in self.loader_input_shapes.items()
-            for input_name, shape in shapes.items()
+            source_name: {"features": [torch.zeros(2, *shape)]}
+            for shapes in self.loader_input_shapes.values()
+            for source_name, shape in shapes.items()
         }
 
         for node_name, (Node, node_kwargs), node_input_names, _ in traverse_graph(
@@ -254,24 +258,10 @@ class LuxonisModel(pl.LightningModule):
             node_input_shapes: list[Packet[Size]] = []
             """Corresponding list of input shapes."""
 
-            # Add inputs from the loader (if the node has at least one input_source)
-            if len(self.loader_input_shapes[node_name]) > 0:
-                loader_packet = {}
-                for input_name in self.loader_input_shapes[node_name]:
-                    loader_packet[input_name] = dummy_inputs[input_name]
-
-                # Add the loader packet to the list of inputs
-                node_dummy_inputs.append(loader_packet)
-
-                # Add its shape to the list of input shapes
-                loader_shape_packet = get_shape_packet(loader_packet)
-                node_input_shapes.append(loader_shape_packet)
-
-            # Add inputs from preceding Nodes
+            node_input_names += self.node_input_sources[node_name]
             for node_input_name in node_input_names:
                 dummy_input = dummy_inputs[node_input_name]
 
-                # Add the input to the list of inputs
                 node_dummy_inputs.append(dummy_input)
 
                 shape_packet = to_shape_packet(dummy_input)
@@ -322,32 +312,23 @@ class LuxonisModel(pl.LightningModule):
         @rtype: L{LuxonisOutput}
         @return: Output of the model.
         """
-
         losses: dict[
             str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]
         ] = defaultdict(dict)
         visualizations: dict[str, dict[str, Tensor]] = defaultdict(dict)
 
-        packetized_inputs = {name: [inputs[name]] for name in inputs}
-
-        computed = {}
+        computed: dict[str, Packet[Tensor]] = {}
         for node_name, node, input_names, unprocessed in traverse_graph(
             self.graph, cast(dict[str, BaseNode], self.nodes)
         ):
-            # Build node inputs from loader and preceding nodes
-            node_inputs = []
+            input_names += self.node_input_sources[node_name]
 
-            # Add inputs from the loader (if the node has at least one input_source)
-            if len(self.loader_input_shapes[node_name]) > 0:
-                loader_packet = {}
-                for input_name in self.loader_input_shapes[node_name]:
-                    loader_packet[input_name] = packetized_inputs[input_name]
-
-                # Add the loader packet to the list of inputs
-                node_inputs.append(loader_packet)
-
-            # Add inputs from preceding Nodes
-            node_inputs += [computed[pred] for pred in input_names]
+            node_inputs: list[Packet[Tensor]] = []
+            for pred in input_names:
+                if pred in computed:
+                    node_inputs.append(computed[pred])
+                else:
+                    node_inputs.append({"features": [inputs[pred]]})
             outputs = node.run(node_inputs)
             computed[node_name] = outputs
 
@@ -380,10 +361,7 @@ class LuxonisModel(pl.LightningModule):
                 if computed_name in self.outputs:
                     continue
                 for node_name in unprocessed:
-                    if (
-                        computed_name in self.graph[node_name]
-                        or computed_name in self.loader_input_shapes[node_name]
-                    ):
+                    if computed_name in self.graph[node_name]:
                         break
                 else:
                     del computed[computed_name]
@@ -443,7 +421,7 @@ class LuxonisModel(pl.LightningModule):
 
         inputs = {
             input_name: torch.zeros([1, *shape]).to(self.device)
-            for name, shapes in self.loader_input_shapes.items()
+            for shapes in self.loader_input_shapes.values()
             for input_name, shape in shapes.items()
         }
 
@@ -556,7 +534,7 @@ class LuxonisModel(pl.LightningModule):
         training_step_output["loss"] = final_loss.detach().cpu()
         return final_loss, training_step_output
 
-    def training_step(self, train_batch: tuple[Tensor, Labels]) -> Tensor:
+    def training_step(self, train_batch: tuple[dict[str, Tensor], Labels]) -> Tensor:
         """Performs one step of training with provided batch."""
         outputs = self.forward(*train_batch)
         assert outputs.losses, "Losses are empty, check if you have defined any loss"
@@ -565,11 +543,15 @@ class LuxonisModel(pl.LightningModule):
         self.training_step_outputs.append(training_step_output)
         return loss
 
-    def validation_step(self, val_batch: tuple[Tensor, Labels]) -> dict[str, Tensor]:
+    def validation_step(
+        self, val_batch: tuple[dict[str, Tensor], Labels]
+    ) -> dict[str, Tensor]:
         """Performs one step of validation with provided batch."""
         return self._evaluation_step("val", val_batch)
 
-    def test_step(self, test_batch: tuple[Tensor, Labels]) -> dict[str, Tensor]:
+    def test_step(
+        self, test_batch: tuple[dict[str, Tensor], Labels]
+    ) -> dict[str, Tensor]:
         """Performs one step of testing with provided batch."""
         return self._evaluation_step("test", test_batch)
 
@@ -609,7 +591,7 @@ class LuxonisModel(pl.LightningModule):
             return (self.current_epoch / self.cfg.trainer.epochs) * 100
 
     def _evaluation_step(
-        self, mode: Literal["test", "val"], batch: tuple[Tensor, Labels]
+        self, mode: Literal["test", "val"], batch: tuple[dict[str, Tensor], Labels]
     ) -> dict[str, Tensor]:
         inputs, labels = batch
         images = None

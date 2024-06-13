@@ -1,18 +1,16 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Annotated
 
 import pytest
 import torch
-from pydantic import Field
 from torch import Tensor
 from torch.nn.parameter import Parameter
 
 from luxonis_train.core import Exporter, Inferer, Trainer
 from luxonis_train.nodes import BaseNode
 from luxonis_train.utils.loaders import BaseLoaderTorch
-from luxonis_train.utils.types import BaseProtocol, FeaturesProtocol, LabelType
+from luxonis_train.utils.types import FeaturesProtocol, LabelType
 
 
 class CustomMultiInputLoader(BaseLoaderTorch):
@@ -56,27 +54,6 @@ class CustomMultiInputLoader(BaseLoaderTorch):
         return {LabelType.SEGMENTATION: ["square"]}
 
 
-class FullCustomMultiInputProtocol(BaseProtocol):
-    left: Annotated[list[Tensor], Field(min_length=1)]
-    right: Annotated[list[Tensor], Field(min_length=1)]
-    disparity: Annotated[list[Tensor], Field(min_length=1)]
-    pointcloud: Annotated[list[Tensor], Field(min_length=1)]
-
-
-class RGBDCustomMultiInputProtocol(BaseProtocol):
-    left: Annotated[list[Tensor], Field(min_length=1)]
-    right: Annotated[list[Tensor], Field(min_length=1)]
-    disparity: Annotated[list[Tensor], Field(min_length=1)]
-
-
-class PointcloudCustomMultiInputProtocol(BaseProtocol):
-    pointcloud: Annotated[list[Tensor], Field(min_length=1)]
-
-
-class DisparityCustomMultiInputProtocol(BaseProtocol):
-    disparity: Annotated[list[Tensor], Field(min_length=1)]
-
-
 class MultiInputTestBaseNode(BaseNode):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -91,21 +68,21 @@ class MultiInputTestBaseNode(BaseNode):
 
 class FullBackbone(MultiInputTestBaseNode):
     def __init__(self, **kwargs):
-        in_protocols = [FullCustomMultiInputProtocol]
+        in_protocols = [FeaturesProtocol] * 4
         super().__init__(**kwargs)
         self.in_protocols = in_protocols
 
 
 class RGBDBackbone(MultiInputTestBaseNode):
     def __init__(self, **kwargs):
-        in_protocols = [RGBDCustomMultiInputProtocol]
+        in_protocols = [FeaturesProtocol] * 3
         super().__init__(**kwargs)
         self.in_protocols = in_protocols
 
 
 class PointcloudBackbone(MultiInputTestBaseNode):
     def __init__(self, **kwargs):
-        in_protocols = [PointcloudCustomMultiInputProtocol]
+        in_protocols = [FeaturesProtocol]
         super().__init__(**kwargs)
         self.in_protocols = in_protocols
 
@@ -113,7 +90,7 @@ class PointcloudBackbone(MultiInputTestBaseNode):
 class FusionNeck(MultiInputTestBaseNode):
     def __init__(self, **kwargs):
         in_protocols = [
-            DisparityCustomMultiInputProtocol,
+            FeaturesProtocol,
             FeaturesProtocol,
             FeaturesProtocol,
         ]
@@ -134,22 +111,16 @@ class CustomSegHead1(MultiInputTestBaseNode):
         super().__init__(**kwargs, _task_type=LabelType.SEGMENTATION)
         self.in_protocols = in_protocols
 
-    def wrap(self, outputs: list[Tensor]):
-        return {"segmentation": [outputs[0]]}
-
 
 class CustomSegHead2(MultiInputTestBaseNode):
     def __init__(self, **kwargs):
         in_protocols = [
-            DisparityCustomMultiInputProtocol,
+            FeaturesProtocol,
             FeaturesProtocol,
             FeaturesProtocol,
         ]
         super().__init__(**kwargs, _task_type=LabelType.SEGMENTATION)
         self.in_protocols = in_protocols
-
-    def wrap(self, outputs: list[Tensor]):
-        return {"segmentation": [outputs[0]]}
 
 
 @pytest.fixture(scope="function", autouse=True)
