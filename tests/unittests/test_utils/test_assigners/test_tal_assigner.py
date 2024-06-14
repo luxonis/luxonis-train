@@ -31,7 +31,7 @@ def test_forward():
     mask_gt = torch.rand(batch_size, num_max_boxes, 1)
 
     # Call the forward method
-    labels, bboxes, scores, mask = assigner.forward(
+    labels, bboxes, scores, mask, assigned_gt_idx = assigner.forward(
         pred_scores, pred_bboxes, anchor_points, gt_labels, gt_bboxes, mask_gt
     )
 
@@ -60,6 +60,10 @@ def test_forward():
     assert torch.equal(
         mask, torch.zeros_like(mask)
     )  # All mask values should be zero as there are no GT boxes
+    assert assigned_gt_idx.shape == (batch_size, num_anchors)
+    assert torch.equal(
+        assigned_gt_idx, torch.zeros_like(assigned_gt_idx)
+    )  # All assigned_gt_idx values should be zero as there are no GT boxes
 
 
 def test_get_alignment_metric():
