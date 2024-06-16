@@ -20,7 +20,7 @@ logger = getLogger(__name__)
 class Exporter(Core):
     def __init__(
         self,
-        cfg: str | dict[str, Any] | Config,
+        cfg: str | dict[str, Any] | Config | None = None,
         opts: list[str] | tuple[str, ...] | dict[str, Any] | None = None,
     ):
         """Provides an interface for exporting models to .onnx and .blob formats.
