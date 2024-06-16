@@ -1,11 +1,12 @@
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import cv2
 
 from luxonis_train.attached_modules.visualizers import (
     get_unnormalized_images,
 )
+from luxonis_train.utils.config import Config
 
 from .trainer import Trainer
 
@@ -13,9 +14,9 @@ from .trainer import Trainer
 class Inferer(Trainer):
     def __init__(
         self,
-        cfg: str | dict,
-        opts: list[str] | tuple[str, ...] | None,
-        view: Literal["train", "test", "val"],
+        cfg: str | dict[str, Any] | Config | None = None,
+        opts: list[str] | tuple[str, ...] | None = None,
+        view: Literal["train", "test", "val"] = "val",
         save_dir: Path | None = None,
     ):
         opts = list(opts or [])

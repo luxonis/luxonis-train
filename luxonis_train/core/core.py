@@ -31,7 +31,7 @@ class Core:
 
     def __init__(
         self,
-        cfg: str | dict[str, Any] | Config,
+        cfg: str | dict[str, Any] | Config | None,
         opts: list[str] | tuple[str, ...] | dict[str, Any] | None = None,
     ):
         """Constructs a new Core instance.
@@ -46,24 +46,10 @@ class Core:
         @param opts: Argument dict provided through command line, used for config overriding
         """
 
-        overrides = {}
-        if opts:
-            if isinstance(opts, dict):
-                overrides = opts
-            else:
-                if len(opts) % 2 != 0:
-                    raise ValueError(
-                        "Override options should be a list of key-value pairs"
-                    )
-
-                # NOTE: has to be done like this for torchx to work
-                for i in range(0, len(opts), 2):
-                    overrides[opts[i]] = opts[i + 1]
-
         if isinstance(cfg, Config):
             self.cfg = cfg
         else:
-            self.cfg = Config.get_config(cfg, overrides)
+            self.cfg = Config.get_config(cfg, opts)
 
         opts = opts or []
 
