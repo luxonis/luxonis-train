@@ -52,7 +52,7 @@ class PredefinedModelConfig(CustomBaseModel):
 
 
 class ModelConfig(CustomBaseModel):
-    name: str
+    name: str = "model"
     predefined_model: PredefinedModelConfig | None = None
     weights: str | None = None
     nodes: list[ModelNodeConfig] = []
@@ -298,7 +298,7 @@ class TunerConfig(CustomBaseModel):
 
 class Config(LuxonisConfig):
     use_rich_text: bool = True
-    model: ModelConfig
+    model: ModelConfig = ModelConfig()
     loader: LoaderConfig = LoaderConfig()
     tracker: TrackerConfig = TrackerConfig()
     trainer: TrainerConfig = TrainerConfig()
@@ -329,7 +329,7 @@ class Config(LuxonisConfig):
     def get_config(
         cls,
         cfg: str | dict[str, Any] | None = None,
-        overrides: dict[str, Any] | None = None,
+        overrides: dict[str, Any] | list[str] | tuple[str, ...] | None = None,
     ):
         instance = super().get_config(cfg, overrides)
         if not isinstance(cfg, str):

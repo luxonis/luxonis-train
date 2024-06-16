@@ -18,7 +18,11 @@ logger = getLogger(__name__)
 
 
 class Tuner(Core):
-    def __init__(self, cfg: str | dict, args: list[str] | tuple[str, ...] | None):
+    def __init__(
+        self,
+        cfg: str | dict[str, Any] | Config | None = None,
+        opts: list[str] | tuple[str, ...] | None = None,
+    ):
         """Main API which is used to perform hyperparameter tunning.
 
         @type cfg: str | dict[str, Any] | Config
@@ -28,7 +32,7 @@ class Tuner(Core):
         @param args: Argument dict provided through command line,
             used for config overriding.
         """
-        super().__init__(cfg, args)
+        super().__init__(cfg, opts)
         if self.cfg.tuner is None:
             raise ValueError("You have to specify the `tuner` section in config.")
         self.tune_cfg = self.cfg.tuner
