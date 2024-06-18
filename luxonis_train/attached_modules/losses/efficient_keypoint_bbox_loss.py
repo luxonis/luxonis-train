@@ -174,7 +174,7 @@ class EfficientKeypointBBoxLoss(
 
         anchor_points_strided = anchor_points / stride_tensor
         pred_bboxes = dist2bbox(pred_distri, anchor_points_strided)
-        pred_kpts = self.kpts_decode(
+        pred_kpts = self.dist2kpts_noscale(
             anchor_points_strided, pred_kpts.view(batch_size, -1, n_kpts, 3)
         )
 
