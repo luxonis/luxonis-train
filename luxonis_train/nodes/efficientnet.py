@@ -5,7 +5,7 @@ Source: U{https://github.com/rwightman/gen-efficientnet-pytorch}
 """
 
 import torch
-from torch import Tensor
+from torch import Tensor, nn
 
 from .base_node import BaseNode
 
@@ -27,6 +27,10 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
             "efficientnet_lite0",
             pretrained=download_weights,
         )
+        efficientnet_lite0_model.classifier = nn.Identity()
+        efficientnet_lite0_model.bn2 = nn.Identity()
+        efficientnet_lite0_model.conv_head = nn.Identity()
+
         self.out_indices = [1, 2, 4, 6]
         self.backbone = efficientnet_lite0_model
 
