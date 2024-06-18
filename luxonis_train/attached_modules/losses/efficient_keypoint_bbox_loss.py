@@ -347,14 +347,18 @@ class EfficientKeypointBBoxLoss(
 
         return batched_keypoints
 
-    def kpts_decode(self, anchor_points: Tensor, pred_kpts: Tensor) -> Tensor:
+    def dist2kpts_noscale(self, anchor_points: Tensor, kpts: Tensor) -> Tensor:
         """Adjusts and scales predicted keypoints relative to anchor points without
         considering image stride."""
-        y = pred_kpts.clone()
-        y[..., :2] *= 2.0
-        y[..., 0] += anchor_points[:, [0]] - 0.5
-        y[..., 1] += anchor_points[:, [1]] - 0.5
-        return y
+        adj_kpts = kpts.clone()
+        scale = 2.0
+        x_adj = anchor_points[:, [0]] - 0.5
+        y_adj = anchor_points[:, [1]] - 0.5
+
+        adj_kpts[..., :2] *= scale
+        adj_kpts[..., 0] += x_adj
+        adj_kpts[..., 1] += y_adj
+        return adj_kpts
 
 
 class VarifocalLoss(nn.Module):

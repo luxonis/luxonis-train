@@ -66,12 +66,12 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         self.n_keypoints = n_keypoints
         self.nk = n_keypoints * 3
 
-        c4 = max(self.in_channels[0] // 4, self.nk)
+        mid_ch = max(self.in_channels[0] // 4, self.nk)
         self.kpt_layers = nn.ModuleList(
             nn.Sequential(
-                ConvModule(x, c4, 3, 1, 1, activation=nn.SiLU()),
-                ConvModule(c4, c4, 3, 1, 1, activation=nn.SiLU()),
-                nn.Conv2d(c4, self.nk, 1, 1),
+                ConvModule(x, mid_ch, 3, 1, 1, activation=nn.SiLU()),
+                ConvModule(mid_ch, mid_ch, 3, 1, 1, activation=nn.SiLU()),
+                nn.Conv2d(mid_ch, self.nk, 1, 1),
             )
             for x in self.in_channels
         )
@@ -140,7 +140,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
                 "keypoints_raw": [kpt_tensor],
             }
 
-        pred_kpt = self._kpts_decode(kpt_tensor)
+        pred_kpt = self._dist2kpts(kpt_tensor)
         detections = self._process_to_bbox_and_kps(
             (features, cls_tensor, reg_tensor, pred_kpt)
         )
@@ -156,7 +156,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             "keypoints_raw": [kpt_tensor],
         }
 
-    def _kpts_decode(self, kpts):
+    def _dist2kpts(self, kpts):
         """Decodes keypoints."""
         y = kpts.clone()
 
