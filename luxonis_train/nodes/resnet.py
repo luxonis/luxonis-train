@@ -6,7 +6,7 @@ Source: U{https://pytorch.org/vision/main/models/resnet.html}
 from typing import Literal
 
 import torchvision
-from torch import Tensor
+from torch import Tensor, nn
 
 from .base_node import BaseNode
 
@@ -43,6 +43,9 @@ class ResNet(BaseNode[Tensor, list[Tensor]]):
         self.backbone = RESNET_VARIANTS[variant](
             weights="DEFAULT" if download_weights else None
         )
+
+        self.backbone.fc = nn.Identity()
+
         self.channels_list = channels_list or [64, 128, 256, 512]
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
