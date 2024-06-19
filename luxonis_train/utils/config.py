@@ -292,7 +292,8 @@ class TunerConfig(CustomBaseModel):
     timeout: int | None = None
     storage: StorageConfig = StorageConfig()
     params: Annotated[
-        dict[str, list[str | int | float | bool]], Field(default={}, min_length=1)
+        dict[str, list[str | int | float | bool | list]],
+        Field(default={}, min_length=1),
     ]
 
 
