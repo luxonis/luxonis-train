@@ -1,4 +1,5 @@
 import os.path as osp
+import random
 from logging import getLogger
 from typing import Any
 
@@ -125,8 +126,15 @@ class Tuner(Core):
 
         curr_params = self._get_trial_params(trial)
         curr_params["model.predefined_model"] = None
+
+        cfg_copy = self.cfg.model_copy(deep=True)
+        cfg_copy.trainer.preprocessing.augmentations = [
+            a
+            for a in cfg_copy.trainer.preprocessing.augmentations
+            if a.name != "Normalize"
+        ]  # manually remove Normalize so it doesn't duplicate it when creating new cfg instance
         Config.clear_instance()
-        cfg = Config.get_config(self.cfg.model_dump(), curr_params)
+        cfg = Config.get_config(cfg_copy.model_dump(), curr_params)
 
         child_tracker.log_hyperparams(curr_params)
 
@@ -193,6 +201,18 @@ class Tuner(Core):
             key_name = "_".join(key_info[:-1])
             key_type = key_info[-1]
             match key_type, value:
+                case "subset", [list(whole_set), int(subset_size)]:
+                    if key_name.split(".")[-1] != "augmentations":
+                        raise ValueError(
+                            "Subset sampling currently only supported for augmentations"
+                        )
+                    whole_set_indices = self._augs_to_indices(whole_set)
+                    subset = random.sample(whole_set_indices, subset_size)
+                    for aug_id in whole_set_indices:
+                        new_params[f"{key_name}.{aug_id}.active"] = (
+                            True if aug_id in subset else False
+                        )
+                    continue
                 case "categorical", list(lst):
                     new_value = trial.suggest_categorical(key_name, lst)
                 case "float", [float(low), float(high), *tail]:
@@ -225,3 +245,23 @@ class Tuner(Core):
                 "No paramteres to tune. Specify them under `tuner.params`."
             )
         return new_params
+
+    def _augs_to_indices(self, aug_names: list[str]) -> list[int]:
+        """Maps augmentation names to indices."""
+        all_augs = [a.name for a in self.cfg.trainer.preprocessing.augmentations]
+        aug_indices = []
+        for aug_name in aug_names:
+            if aug_name == "Normalize":
+                logger.warn(
+                    f"'{aug_name}' should be tuned directly by adding '...normalize.active_categorical' to the tuner params, skipping."
+                )
+                continue
+            try:
+                index = all_augs.index(aug_name)
+                aug_indices.append(index)
+            except ValueError:
+                logger.warn(
+                    f"Augmentation '{aug_name}' not found under trainer augemntations, skipping."
+                )
+                continue
+        return aug_indices

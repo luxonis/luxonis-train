@@ -21,6 +21,14 @@ trainer:
     keep_aspect_ratio: False
     normalize:
       active: True
+    augmentations:
+      - name: Defocus
+        params:
+          p: 0.1
+      - name: Sharpen
+        params:
+          p: 0.1
+      - name: Flip
 
   batch_size: 4
   epochs: &epochs 10
@@ -38,3 +46,4 @@ tuner:
     trainer.optimizer.name_categorical: ["Adam", "SGD"]
     trainer.optimizer.params.lr_float: [0.0001, 0.001]
     trainer.batch_size_int: [4, 16, 4]
+    trainer.preprocessing.augmentations_subset: [["Defocus", "Sharpen", "Flip"], 2]
