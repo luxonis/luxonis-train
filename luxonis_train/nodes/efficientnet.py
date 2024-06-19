@@ -28,8 +28,6 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
             pretrained=download_weights,
         )
         efficientnet_lite0_model.classifier = nn.Identity()
-
-
         self.out_indices = [1, 2, 4, 6]
         self.backbone = efficientnet_lite0_model
 

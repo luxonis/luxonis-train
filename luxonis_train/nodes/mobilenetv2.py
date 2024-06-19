@@ -30,11 +30,9 @@ class MobileNetV2(BaseNode[Tensor, list[Tensor]]):
             weights="DEFAULT" if download_weights else None
         )
         mobilenet_v2.classifier = nn.Identity()
-
         self.out_indices = [3, 6, 13, 18]
         self.channels = [24, 32, 96, 1280]
         self.backbone = mobilenet_v2
-
 
     def forward(self, x: Tensor) -> list[Tensor]:
         outs = []
