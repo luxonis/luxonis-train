@@ -44,7 +44,7 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
         """
         super().__init__(**kwargs)
 
-        self.out_indices = [1, 4, 10, 16]
+        self.out_indices = [1, 4, 10, 17]
         self.channels = [16, 48, 112, 184]
         layers = [1, 2, 2, 3, 3, 5]
         strides = [1, 2, 2, 2, 1, 2]
