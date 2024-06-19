@@ -47,4 +47,5 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
         x = self.backbone.bn2(x)
         x = self.backbone.act2(x)
         x = self.backbone.global_pool(x)
+        outs.append(x)
         return outs
