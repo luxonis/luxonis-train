@@ -28,7 +28,7 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
             pretrained=download_weights,
         )
         efficientnet_lite0_model.classifier = nn.Identity()
-        self.out_indices = [1, 2, 4, 6]
+        self.out_indices = [1, 4, 6]
         self.backbone = efficientnet_lite0_model
 
     def forward(self, x: Tensor) -> list[Tensor]:
@@ -44,6 +44,6 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
         x = self.backbone.conv_head(x)
         x = self.backbone.bn2(x)
         x = self.backbone.act2(x)
-        x = self.backbone.global_pool(x)
         outs.append(x)
+        x = self.backbone.global_pool(x)
         return outs
