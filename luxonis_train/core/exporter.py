@@ -37,8 +37,8 @@ class Exporter(Core):
 
         input_shape = self.cfg.exporter.input_shape
         if self.cfg.model.weights is None:
-            raise ValueError(
-                "Model weights must be specified in config file for export."
+            logger.warning(
+                "No model weights specified. Exporting model without weights."
             )
         self.local_path = self.cfg.model.weights
         if input_shape is None:
