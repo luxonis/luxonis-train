@@ -712,7 +712,9 @@ class LuxonisModel(pl.LightningModule):
 
     def configure_optimizers(
         self,
-    ) -> tuple[list[torch.optim.Optimizer], list[nn.Module]]:
+    ) -> tuple[
+        list[torch.optim.Optimizer], list[torch.optim.lr_scheduler._LRScheduler]
+    ]:
         """Configures model optimizers and schedulers."""
         cfg_optimizer = self.cfg.trainer.optimizer
         cfg_scheduler = self.cfg.trainer.scheduler
