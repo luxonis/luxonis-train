@@ -5,8 +5,8 @@ from pydantic import Field
 from torch import Tensor
 
 from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
-    set_area_factor,
-    set_sigmas,
+    get_area_factor,
+    get_sigmas,
 )
 from luxonis_train.utils.boxutils import process_keypoints_predictions
 from luxonis_train.utils.types import (
@@ -48,20 +48,20 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         """
 
         super().__init__(
-            protocol=Protocol, required_labels=[LabelType.KEYPOINT], **kwargs
+            protocol=Protocol, required_labels=[LabelType.KEYPOINTS], **kwargs
         )
         self.b_cross_entropy = BCEWithLogitsLoss(
             pos_weight=torch.tensor([bce_power]), **kwargs
         )
-        self.sigmas = set_sigmas(
+        self.sigmas = get_sigmas(
             sigmas=sigmas, n_keypoints=n_keypoints, class_name=self.__class__.__name__
         )
-        self.area_factor = set_area_factor(
+        self.area_factor = get_area_factor(
             area_factor, class_name=self.__class__.__name__
         )
 
     def prepare(self, inputs: Packet[Tensor], labels: Labels) -> tuple[Tensor, Tensor]:
-        return torch.cat(inputs["keypoints"], dim=0), labels[LabelType.KEYPOINT]
+        return torch.cat(inputs["keypoints"], dim=0), self.get_label(labels)[0]
 
     def forward(
         self, prediction: Tensor, target: Tensor, area: Tensor

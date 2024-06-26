@@ -9,8 +9,8 @@ from torch import Tensor
 from torchvision.ops import box_convert
 
 from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
-    set_area_factor,
-    set_sigmas,
+    get_area_factor,
+    get_sigmas,
 )
 from luxonis_train.utils.types import (
     BBoxProtocol,
@@ -79,14 +79,14 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         """
         super().__init__(
             protocol=Protocol,
-            required_labels=[LabelType.BOUNDINGBOX, LabelType.KEYPOINT],
+            required_labels=[LabelType.BOUNDINGBOX, LabelType.KEYPOINTS],
             **kwargs,
         )
 
         self.n_keypoints = self.node.n_keypoints
 
-        self.sigmas = set_sigmas(sigmas, self.n_keypoints, self.__class__.__name__)
-        self.area_factor = set_area_factor(area_factor, self.__class__.__name__)
+        self.sigmas = get_sigmas(sigmas, self.n_keypoints, self.__class__.__name__)
+        self.area_factor = get_area_factor(area_factor, self.__class__.__name__)
         self.max_dets = max_dets
 
         allowed_box_formats = ("xyxy", "xywh", "cxcywh")
@@ -108,8 +108,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         self.add_state("groundtruth_keypoints", default=[], dist_reduce_fx=None)
 
     def prepare(self, outputs: Packet[Tensor], labels: Labels):
-        kpts = labels[LabelType.KEYPOINT]
-        boxes = labels[LabelType.BOUNDINGBOX]
+        kpts = labels["keypoints"][0]
+        boxes = labels["boundingbox"][0]
         nkpts = (kpts.shape[1] - 2) // 3
         label = torch.zeros((len(boxes), nkpts * 3 + 6))
         label[:, :2] = boxes[:, :2]
@@ -120,10 +120,10 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
         output_list_kpt_map = []
         label_list_kpt_map = []
-        image_size = self.node.original_in_shape[2:]
+        image_size = self.node.original_in_shape[1:]
 
         output_kpts: list[Tensor] = outputs["keypoints"]
-        output_bboxes: list[Tensor] = outputs["boxes"]
+        output_bboxes: list[Tensor] = outputs["boundingbox"]
         for i in range(len(output_kpts)):
             output_list_kpt_map.append(
                 {

@@ -9,7 +9,7 @@ from luxonis_train.utils.boxutils import (
     dist2bbox,
     non_max_suppression,
 )
-from luxonis_train.utils.types import Packet
+from luxonis_train.utils.types import LabelType, Packet
 
 from .efficient_bbox_head import EfficientBBoxHead
 
@@ -29,28 +29,29 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         Adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial
         Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
 
-        @type n_keypoints: int | None
         @param n_keypoints: Number of keypoints. If not defined, inferred
             from the dataset metadata (if provided). Defaults to C{None}.
+        @type n_keypoints: int | None
 
-        @type n_heads: int
         @param n_heads: Number of output heads. Defaults to C{3}.
             B{Note:} Should be same also on neck in most cases.
+        @type n_heads: int
 
-        type conf_thres: float
         @param conf_thres: Threshold for confidence. Defaults to C{0.25}.
+        @type conf_thres: float
 
-        @type iou_thres: float
         @param iou_thres: Threshold for IoU. Defaults to C{0.45}.
+        @type iou_thres: float
 
-        @type max_det: int
         @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
+        @type max_det: int
         """
         super().__init__(
             n_heads=n_heads,
             conf_thres=conf_thres,
             iou_thres=iou_thres,
             max_det=max_det,
+            _task_type=LabelType.KEYPOINTS,
             **kwargs,
         )
 
@@ -65,12 +66,12 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         self.n_keypoints = n_keypoints
         self.nk = n_keypoints * 3
 
-        c4 = max(self.in_channels[0] // 4, self.nk)
+        mid_ch = max(self.in_channels[0] // 4, self.nk)
         self.kpt_layers = nn.ModuleList(
             nn.Sequential(
-                ConvModule(x, c4, 3, 1, 1, activation=nn.SiLU()),
-                ConvModule(c4, c4, 3, 1, 1, activation=nn.SiLU()),
-                nn.Conv2d(c4, self.nk, 1, 1),
+                ConvModule(x, mid_ch, 3, 1, 1, activation=nn.SiLU()),
+                ConvModule(mid_ch, mid_ch, 3, 1, 1, activation=nn.SiLU()),
+                nn.Conv2d(mid_ch, self.nk, 1, 1),
             )
             for x in self.in_channels
         )
@@ -105,7 +106,16 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             for out_cls, out_reg, out_kpts in zip(
                 cls_score_list, reg_distri_list, kpt_list, strict=True
             ):
-                out = torch.cat([out_reg, out_cls, out_kpts], dim=1)
+                chunks = out_kpts.split(3, dim=1)
+                modified_chunks = []
+                for chunk in chunks:
+                    x = chunk[:, 0:1, :, :]
+                    y = chunk[:, 1:2, :, :]
+                    v = torch.sigmoid(chunk[:, 2:3, :, :])
+                    modified_chunk = torch.cat([x, y, v], dim=1)
+                    modified_chunks.append(modified_chunk)
+                out_kpts_modified = torch.cat(modified_chunks, dim=1)
+                out = torch.cat([out_reg, out_cls, out_kpts_modified], dim=1)
                 outputs.append(out)
             return {"outputs": outputs}
         cls_tensor = torch.cat(
@@ -130,12 +140,12 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
                 "keypoints_raw": [kpt_tensor],
             }
 
-        pred_kpt = self._kpts_decode(kpt_tensor)
+        pred_kpt = self._dist2kpts(kpt_tensor)
         detections = self._process_to_bbox_and_kps(
             (features, cls_tensor, reg_tensor, pred_kpt)
         )
         return {
-            "boxes": [detection[:, :6] for detection in detections],
+            "boundingbox": [detection[:, :6] for detection in detections],
             "features": features,
             "class_scores": [cls_tensor],
             "distributions": [reg_tensor],
@@ -146,7 +156,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             "keypoints_raw": [kpt_tensor],
         }
 
-    def _kpts_decode(self, kpts):
+    def _dist2kpts(self, kpts):
         """Decodes keypoints."""
         y = kpts.clone()
 
@@ -164,7 +174,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         return y
 
     def _process_to_bbox_and_kps(
-        self, output: tuple[list[Tensor], Tensor, Tensor]
+        self, output: tuple[list[Tensor], Tensor, Tensor, Tensor]
     ) -> list[Tensor]:
         """Performs post-processing of the output and returns bboxs after NMS."""
         features, cls_score_list, reg_dist_list, keypoints = output

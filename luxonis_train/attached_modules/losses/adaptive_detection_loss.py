@@ -82,7 +82,7 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         self.stride = self.node.stride
         self.grid_cell_size = self.node.grid_cell_size
         self.grid_cell_offset = self.node.grid_cell_offset
-        self.original_img_size = self.node.original_in_shape[2:]
+        self.original_img_size = self.node.original_in_shape[1:]
 
         self.n_warmup_epochs = n_warmup_epochs
         self.atts_assigner = ATSSAssigner(topk=9, n_classes=self.n_classes)
@@ -100,11 +100,10 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         feats = outputs["features"]
         pred_scores = outputs["class_scores"][0]
         pred_distri = outputs["distributions"][0]
-        print(f"self.training: {self.training}")
         batch_size = pred_scores.shape[0]
         device = pred_scores.device
 
-        target = labels[LabelType.BOUNDINGBOX].to(device)
+        target = labels[self.task][0].to(device)
         gt_bboxes_scale = torch.tensor(
             [
                 self.original_img_size[1],
@@ -159,7 +158,7 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
                 assigned_scores,
                 mask_positive,
                 _,
-            ) = self.tal_assigner.forward(
+            ) = self.tal_assigner(
                 pred_scores.detach(),
                 pred_bboxes.detach() * stride_tensor,
                 anchor_points,

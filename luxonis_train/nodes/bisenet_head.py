@@ -30,9 +30,9 @@ class BiSeNetHead(BaseNode[Tensor, Tensor]):
         @param intermediate_channels: How many intermediate channels to use.
             Defaults to C{64}.
         """
-        super().__init__(task_type=LabelType.SEGMENTATION, **kwargs)
+        super().__init__(task=LabelType.SEGMENTATION, **kwargs)
 
-        original_height = self.original_in_shape[2]
+        original_height = self.original_in_shape[1]
         upscale_factor = 2 ** infer_upscale_factor(self.in_height, original_height)
         out_channels = self.n_classes * upscale_factor * upscale_factor
 

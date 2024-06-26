@@ -91,7 +91,8 @@ class BaseNode(
         in_protocols: list[type[BaseModel]] | None = None,
         n_classes: int | None = None,
         in_sizes: Size | list[Size] | None = None,
-        task_type: LabelType | None = None,
+        task: str | None = None,
+        _task_type: LabelType | None = None,
     ):
         super().__init__()
 
@@ -111,7 +112,10 @@ class BaseNode(
             self.attach_index = attach_index
 
         self.in_protocols = in_protocols or [FeaturesProtocol]
-        self.task_type = task_type
+        self._task_type = _task_type
+        if task is None and self._task_type is not None:
+            task = self._task_type.value
+        self._task = task
 
         self._input_shapes = input_shapes
         self._original_in_shape = original_in_shape
@@ -131,14 +135,21 @@ class BaseNode(
         )
 
     @property
+    def task(self) -> str:
+        """Getter for the task."""
+        if self._task is None:
+            raise self._non_set_error("task")
+        return self._task
+
+    @property
     def n_classes(self) -> int:
         """Getter for the number of classes."""
-        return self.dataset_metadata.n_classes(self.task_type)
+        return self.dataset_metadata.n_classes(self.task)
 
     @property
     def class_names(self) -> list[str]:
         """Getter for the class names."""
-        return self.dataset_metadata.class_names(self.task_type)
+        return self.dataset_metadata.class_names(self.task)
 
     @property
     def input_shapes(self) -> list[Packet[Size]]:
@@ -180,13 +191,13 @@ class BaseNode(
 
         Example:
 
-            >>> input_shapes = [{"features": [Size(1, 64, 128, 128), Size(1, 3, 224, 224)]}]
+            >>> input_shapes = [{"features": [Size(64, 128, 128), Size(3, 224, 224)]}]
             >>> attach_index = -1
-            >>> in_sizes = Size(1, 3, 224, 224)
+            >>> in_sizes = Size(3, 224, 224)
 
-            >>> input_shapes = [{"features": [Size(1, 64, 128, 128), Size(1, 3, 224, 224)]}]
+            >>> input_shapes = [{"features": [Size(64, 128, 128), Size(3, 224, 224)]}]
             >>> attach_index = "all"
-            >>> in_sizes = [Size(1, 64, 128, 128), Size(1, 3, 224, 224)]
+            >>> in_sizes = [Size(64, 128, 128), Size(3, 224, 224)]
 
         @type: Size | list[Size]
         @raises IncompatibleException: If the C{input_shapes} are too complicated for
@@ -219,7 +230,7 @@ class BaseNode(
         @raises IncompatibleException: If the C{input_shapes} are too complicated for
             the default implementation.
         """
-        return self._get_nth_size(1)
+        return self._get_nth_size(-3)
 
     @property
     def in_height(self) -> int | list[int]:
@@ -232,7 +243,7 @@ class BaseNode(
         @raises IncompatibleException: If the C{input_shapes} are too complicated for
             the default implementation.
         """
-        return self._get_nth_size(2)
+        return self._get_nth_size(-2)
 
     @property
     def in_width(self) -> int | list[int]:
@@ -245,7 +256,7 @@ class BaseNode(
         @raises IncompatibleException: If the C{input_shapes} are too complicated for
             the default implementation.
         """
-        return self._get_nth_size(3)
+        return self._get_nth_size(-1)
 
     @property
     def export(self) -> bool:
@@ -312,7 +323,7 @@ class BaseNode(
                 raise IncompatibleException(
                     "Default `wrap` expects a single tensor or a list of tensors."
                 )
-        return {"features": outputs}
+        return {self._task or "features": outputs}
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:
         """Combines the forward pass with the wrapping and unwrapping of the inputs.

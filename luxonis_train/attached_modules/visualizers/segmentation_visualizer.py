@@ -45,7 +45,7 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         self.alpha = alpha
 
     def prepare(self, output: Packet[Tensor], label: Labels) -> tuple[Tensor, Tensor]:
-        return output["segmentation"][0], label[LabelType.SEGMENTATION]
+        return output[self.node.task][0], label[self.task][0]
 
     @staticmethod
     def draw_predictions(

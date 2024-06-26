@@ -72,9 +72,12 @@ class Archiver(Core):
         _, executable_suffix = os.path.splitext(executable_fname)
         self.archive_name += f"_{executable_suffix[1:]}"
 
+        def _mult(lst: list[float | int]) -> list[float]:
+            return [round(x * 255.0, 5) for x in lst]
+
         preprocessing = {  # TODO: keep preprocessing same for each input?
-            "mean": self.cfg.trainer.preprocessing.normalize.params["mean"],
-            "scale": self.cfg.trainer.preprocessing.normalize.params["std"],
+            "mean": _mult(self.cfg.trainer.preprocessing.normalize.params["mean"]),
+            "scale": _mult(self.cfg.trainer.preprocessing.normalize.params["std"]),
             "reverse_channels": self.cfg.trainer.preprocessing.train_rgb,
             "interleaved_to_planar": False,  # TODO: make it modifiable?
         }
@@ -240,7 +243,7 @@ class Archiver(Core):
         if head_family.startswith("Classification"):
             return self.dataset_metadata._classes["class"]
         elif head_family.startswith("Object"):
-            return self.dataset_metadata._classes["boxes"]
+            return self.dataset_metadata._classes["boundingbox"]
         elif head_family.startswith("Segmentation"):
             return self.dataset_metadata._classes["segmentation"]
         elif head_family.startswith("Keypoint"):

@@ -27,9 +27,9 @@ class TorchMetricWrapper(BaseMetric):
                 f"assuming {task}."
             )
             kwargs["task"] = task
-        self.task = task
+        self._task = task
 
-        if self.task == "multiclass":
+        if self._task == "multiclass":
             if "num_classes" not in kwargs:
                 if self.node is None:
                     raise ValueError(
@@ -37,7 +37,7 @@ class TorchMetricWrapper(BaseMetric):
                         "multiclass torchmetrics."
                     )
                 kwargs["num_classes"] = self.node.n_classes
-        elif self.task == "multilabel":
+        elif self._task == "multilabel":
             if "num_labels" not in kwargs:
                 if self.node is None:
                     raise ValueError(
@@ -49,7 +49,7 @@ class TorchMetricWrapper(BaseMetric):
         self.metric = self.Metric(**kwargs)
 
     def update(self, preds, target, *args, **kwargs) -> None:
-        if self.task in ["multiclass"]:
+        if self._task in ["multiclass"]:
             target = target.argmax(dim=1)
         self.metric.update(preds, target, *args, **kwargs)
 

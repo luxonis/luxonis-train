@@ -20,6 +20,7 @@ arbitrarily as long as the two nodes are compatible with each other.
 - [BiSeNetHead](#bisenethead)
 - [EfficientBBoxHead](#efficientbboxhead)
 - [ImplicitKeypointBBoxHead](#implicitkeypointbboxhead)
+- [EfficientKeypointBBoxHead](#efficientkeypointbboxhead)
 
 Every node takes these parameters:
 
@@ -193,3 +194,16 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
 | init_coco_biases | bool                        | True          | Whether to use COCO bias and weight initialization                                                         |
 | conf_thres       | float                       | 0.25          | confidence threshold for nms (used for evaluation)                                                         |
 | iou_thres        | float                       | 0.45          | iou threshold for nms (used for evaluation)                                                                |
+
+## EfficientKeypointBBoxHead
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
+
+**Params**
+
+| Key         | Type        | Default value | Description                                        |
+| ----------- | ----------- | ------------- | -------------------------------------------------- |
+| n_keypoints | int \| None | None          | Number of keypoints.                               |
+| n_heads     | int         | 3             | Number of output heads                             |
+| conf_thres  | float       | 0.25          | confidence threshold for nms (used for evaluation) |
+| iou_thres   | float       | 0.45          | iou threshold for nms (used for evaluation)        |
