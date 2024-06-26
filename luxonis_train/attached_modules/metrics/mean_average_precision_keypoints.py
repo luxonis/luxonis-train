@@ -52,6 +52,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         self,
         sigmas: list[float] | None = None,
         area_factor: float | None = None,
+        max_dets: int = 20,
         box_format: Literal["xyxy", "xywh", "cxcywh"] = "xyxy",
         **kwargs,
     ):
@@ -68,7 +69,9 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         @param sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then
             use COCO if possible otherwise defaults. Defaults to C{None}.
         @type area_factor: float | None
-        @param area_factor:Factor by which we multiply bbox area. If None then use default one. Defaults to C{None}.
+        @param area_factor: Factor by which we multiply bbox area. If None then use default one. Defaults to C{None}.
+        @type max_dets: int,
+        @param max_dets: Maximum number of detections to be considered per image. Defaults to C{20}.
         @type box_format: Literal["xyxy", "xywh", "cxcywh"]
         @param box_format: Input bbox format.
         @type kwargs: Any
@@ -84,6 +87,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
         self.sigmas = set_sigmas(sigmas, self.n_keypoints, self.__class__.__name__)
         self.area_factor = set_area_factor(area_factor, self.__class__.__name__)
+        self.max_dets = max_dets
 
         allowed_box_formats = ("xyxy", "xywh", "cxcywh")
         if box_format not in allowed_box_formats:
@@ -221,7 +225,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         coco_preds.dataset = self._get_coco_format(
             self.pred_boxes,
             self.pred_keypoints,
-            self.groundtruth_labels,
+            self.pred_labels,
             scores=self.pred_scores,
         )  # type: ignore
 
@@ -231,6 +235,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
             self.coco_eval = COCOeval(coco_target, coco_preds, iouType="keypoints")
             self.coco_eval.params.kpt_oks_sigmas = self.sigmas.cpu().numpy()
+            self.coco_eval.params.maxDets = [self.max_dets]
 
             self.coco_eval.evaluate()
             self.coco_eval.accumulate()
@@ -302,6 +307,9 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
                 else:
                     area_stat = image_box[2] * image_box[3] * self.area_factor
 
+                num_keypoints = len(
+                    [i for i in range(2, len(image_kpt), 3) if image_kpt[i] != 0]
+                )  # number of annotated keypoints
                 annotation = {
                     "id": annotation_id,
                     "image_id": image_id,
@@ -312,7 +320,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
                         crowds[image_id][k].cpu().tolist() if crowds is not None else 0
                     ),
                     "keypoints": image_kpt,
-                    "num_keypoints": self.n_keypoints,
+                    "num_keypoints": num_keypoints,
                 }
 
                 if scores is not None:

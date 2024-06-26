@@ -185,14 +185,14 @@ def compute_oks(
     @param gt: Groundtruth keypoints.
     @type scales: Tensor[M]
     @param scales: Scales of the bounding boxes.
-    @rtype: Tensor
-    @return: Object Keypoint Similarity every pred and gt [M, N]
     @type sigmas: Tensor
     @param sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then use
         same weights for all.
     @type use_cocoeval_oks: bool
     @param use_cocoeval_oks: Whether to use same OKS formula as in COCOeval or use the
         one from definition.
+    @rtype: Tensor
+    @return: Object Keypoint Similarity every pred and gt [M, N]
     """
     eps = 1e-7
     distances = (gt[:, None, :, 0] - pred[..., 0]) ** 2 + (
