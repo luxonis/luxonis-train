@@ -128,7 +128,7 @@ class EfficientBBoxHead(
         """Returns correct stride for number of heads and attach index."""
         stride = torch.tensor(
             [
-                self.original_in_shape[1] / x[1]  # type: ignore
+                self.original_in_shape[1] / x[2]  # type: ignore
                 for x in self.in_sizes[: self.n_heads]
             ],
             dtype=torch.int,
