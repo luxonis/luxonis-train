@@ -160,6 +160,7 @@ class Exporter(Core):
                     optimizer_params=optimizer_params,
                     data_type=self.cfg.exporter.data_type,
                     shaves=self.cfg.exporter.blobconverter.shaves,
+                    version=self.cfg.exporter.blobconverter.version,
                     use_cache=False,
                     output_dir=self.export_path,
                 )
