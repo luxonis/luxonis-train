@@ -232,10 +232,11 @@ Option specific for ONNX export.
 
 ### Blob
 
-| Key    | Type | Default value | Description                          |
-| ------ | ---- | ------------- | ------------------------------------ |
-| active | bool | False         | Whether to export to `.blob` format. |
-| shaves | int  | 6             | How many shaves.                     |
+| Key     | Type                                                             | Default value | Description                             |
+| ------- | ---------------------------------------------------------------- | ------------- | --------------------------------------- |
+| active  | bool                                                             | False         | Whether to export to `.blob` format.    |
+| shaves  | int                                                              | 6             | How many shaves.                        |
+| version | Literal\["2021.2", "2021.3", "2021.4", "2022.1", "2022.3_RVC3"\] | "2022.1"      | OpenVINO version to use for conversion. |
 
 ## Tuner
 
