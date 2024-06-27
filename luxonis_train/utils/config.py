@@ -245,6 +245,7 @@ class OnnxExportConfig(CustomBaseModel):
 class BlobconverterExportConfig(CustomBaseModel):
     active: bool = False
     shaves: int = 6
+    version: Literal["2021.2", "2021.3", "2021.4", "2022.1", "2022.3_RVC3"] = "2022.1"
 
 
 class ExportConfig(CustomBaseModel):
