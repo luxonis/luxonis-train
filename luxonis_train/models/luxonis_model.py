@@ -312,9 +312,9 @@ class LuxonisModel(pl.LightningModule):
         @rtype: L{LuxonisOutput}
         @return: Output of the model.
         """
-        losses: dict[str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]] = (
-            defaultdict(dict)
-        )
+        losses: dict[
+            str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]
+        ] = defaultdict(dict)
         visualizations: dict[str, dict[str, Tensor]] = defaultdict(dict)
 
         computed: dict[str, Packet[Tensor]] = {}
@@ -527,9 +527,9 @@ class LuxonisModel(pl.LightningModule):
 
                 loss *= self.loss_weights[loss_name]
                 final_loss += loss
-                training_step_output[f"loss/{node_name}/{loss_name}"] = (
-                    loss.detach().cpu()
-                )
+                training_step_output[
+                    f"loss/{node_name}/{loss_name}"
+                ] = loss.detach().cpu()
                 if self.cfg.trainer.log_sub_losses and sublosses:
                     for subloss_name, subloss_value in sublosses.items():
                         training_step_output[
