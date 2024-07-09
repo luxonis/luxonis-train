@@ -418,6 +418,7 @@ class LuxonisModel(pl.LightningModule):
         @rtype: list[str]
         @return: List of output names.
         """
+        self.eval()
 
         inputs = {
             input_name: torch.zeros([1, *shape]).to(self.device)
@@ -490,6 +491,9 @@ class LuxonisModel(pl.LightningModule):
                 module.set_export_mode(False)
 
         logger.info(f"Model exported to {save_path}")
+
+        self.train()
+
         return output_names
 
     def process_losses(
