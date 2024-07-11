@@ -24,7 +24,7 @@ def test_forward():
     mask_gt = torch.rand(bs, n_max_boxes, 1)
     pred_bboxes = torch.rand(bs, n_anchors, 4)
 
-    labels, bboxes, scores, mask = assigner.forward(
+    labels, bboxes, scores, mask, assigned_gt_idx = assigner.forward(
         anchor_bboxes, n_level_bboxes, gt_labels, gt_bboxes, mask_gt, pred_bboxes
     )
 
@@ -32,6 +32,7 @@ def test_forward():
     assert bboxes.shape == (bs, n_anchors, 4)
     assert scores.shape == (bs, n_anchors, n_classes)
     assert mask.shape == (bs, n_anchors)
+    assert assigned_gt_idx.shape == (bs, n_anchors)
 
 
 def test_get_bbox_center():

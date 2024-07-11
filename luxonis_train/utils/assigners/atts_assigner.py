@@ -38,7 +38,7 @@ class ATSSAssigner(nn.Module):
         gt_bboxes: Tensor,
         mask_gt: Tensor,
         pred_bboxes: Tensor,
-    ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
         """Assigner's forward method which generates final assignments.
 
         @type anchor_bboxes: Tensor
@@ -53,7 +53,7 @@ class ATSSAssigner(nn.Module):
         @param mask_gt: Mask for valid GTs [bs, n_max_boxes, 1]
         @type pred_bboxes: Tensor
         @param pred_bboxes: Predicted bboxes of shape [bs, n_anchors, 4]
-        @rtype: tuple[Tensor, Tensor, Tensor, Tensor]
+        @rtype: tuple[Tensor, Tensor, Tensor, Tensor, Tensor]
         @return: Assigned labels of shape [bs, n_anchors], assigned bboxes of shape [bs,
             n_anchors, 4], assigned scores of shape [bs, n_anchors, n_classes] and
             output positive mask of shape [bs, n_anchors].
@@ -69,6 +69,7 @@ class ATSSAssigner(nn.Module):
                 torch.full([self.bs, self.n_anchors], self.n_classes).to(device),
                 torch.zeros([self.bs, self.n_anchors, 4]).to(device),
                 torch.zeros([self.bs, self.n_anchors, self.n_classes]).to(device),
+                torch.zeros([self.bs, self.n_anchors]).to(device),
                 torch.zeros([self.bs, self.n_anchors]).to(device),
             )
 
@@ -124,6 +125,7 @@ class ATSSAssigner(nn.Module):
             assigned_bboxes,
             assigned_scores,
             out_mask_positive,
+            assigned_gt_idx,
         )
 
     def _get_bbox_center(self, bbox: Tensor) -> Tensor:

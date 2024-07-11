@@ -3,6 +3,7 @@ from .bisenet_head import BiSeNetHead
 from .classification_head import ClassificationHead
 from .contextspatial import ContextSpatial
 from .efficient_bbox_head import EfficientBBoxHead
+from .efficient_keypoint_bbox_head import EfficientKeypointBBoxHead
 from .efficientnet import EfficientNet
 from .efficientrep import EfficientRep
 from .implicit_keypoint_bbox_head import ImplicitKeypointBBoxHead
@@ -22,6 +23,7 @@ __all__ = [
     "EfficientBBoxHead",
     "EfficientNet",
     "EfficientRep",
+    "EfficientKeypointBBoxHead",
     "ImplicitKeypointBBoxHead",
     "BaseNode",
     "MicroNet",
