@@ -236,6 +236,15 @@ class TrainerConfig(CustomBaseModel):
             )
         return self
 
+    @model_validator(mode="after")
+    def check_validation_interval(self):
+        if self.validation_interval > self.epochs:
+            logger.warning(
+                "Setting `validation_interval` same as `epochs` otherwise no checkpoint would be generated."
+            )
+            self.validation_interval = self.epochs
+        return self
+
 
 class OnnxExportConfig(CustomBaseModel):
     opset_version: int = 12
