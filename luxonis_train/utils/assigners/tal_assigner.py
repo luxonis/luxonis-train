@@ -50,7 +50,7 @@ class TaskAlignedAssigner(nn.Module):
         gt_labels: Tensor,
         gt_bboxes: Tensor,
         mask_gt: Tensor,
-    ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
         """Assigner's forward method which generates final assignments.
 
         @type pred_scores: Tensor
@@ -65,7 +65,7 @@ class TaskAlignedAssigner(nn.Module):
         @param gt_bboxes: Initial GT bboxes [bs, n_max_boxes, 4]
         @type mask_gt: Tensor
         @param mask_gt: Mask for valid GTs [bs, n_max_boxes, 1]
-        @rtype: tuple[Tensor, Tensor, Tensor, Tensor]
+        @rtype: tuple[Tensor, Tensor, Tensor, Tensor, Tensor]
         @return: Assigned labels of shape [bs, n_anchors], assigned bboxes of shape [bs,
             n_anchors, 4], assigned scores of shape [bs, n_anchors, n_classes] and
             output mask of shape [bs, n_anchors]
@@ -79,6 +79,7 @@ class TaskAlignedAssigner(nn.Module):
                 torch.full_like(pred_scores[..., 0], self.n_classes).to(device),
                 torch.zeros_like(pred_bboxes).to(device),
                 torch.zeros_like(pred_scores).to(device),
+                torch.zeros_like(pred_scores[..., 0]).to(device),
                 torch.zeros_like(pred_scores[..., 0]).to(device),
             )
 
@@ -121,7 +122,13 @@ class TaskAlignedAssigner(nn.Module):
 
         out_mask_positive = mask_pos_sum.bool()
 
-        return assigned_labels, assigned_bboxes, assigned_scores, out_mask_positive
+        return (
+            assigned_labels,
+            assigned_bboxes,
+            assigned_scores,
+            out_mask_positive,
+            assigned_gt_idx,
+        )
 
     def _get_alignment_metric(
         self,

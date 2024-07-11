@@ -289,7 +289,13 @@ class Archiver(Core):
             parameters["max_det"] = head_node.max_det
             parameters["n_keypoints"] = head_node.n_keypoints
             parameters["anchors"] = head_node.anchors.tolist()
-
+        elif head_name == "EfficientKeypointBBoxHead":
+            # or appropriate subtype
+            head_node = self.lightning_module._modules["nodes"][head_alias]
+            parameters["iou_threshold"] = head_node.iou_thres
+            parameters["conf_threshold"] = head_node.conf_thres
+            parameters["max_det"] = head_node.max_det
+            parameters["n_keypoints"] = head_node.n_keypoints
         else:
             raise ValueError("Unknown head name")
         return parameters
@@ -309,6 +315,8 @@ class Archiver(Core):
         elif head_name in ["SegmentationHead", "BiSeNetHead"]:
             head_outputs["predictions"] = self.outputs[0]["name"]
         elif head_name == "ImplicitKeypointBBoxHead":
+            head_outputs["predictions"] = self.outputs[0]["name"]
+        elif head_name == "EfficientKeypointBBoxHead":
             head_outputs["predictions"] = self.outputs[0]["name"]
         else:
             raise ValueError("Unknown head name")

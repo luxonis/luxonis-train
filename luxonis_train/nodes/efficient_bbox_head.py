@@ -50,7 +50,9 @@ class EfficientBBoxHead(
         @type max_det: int
         @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
         """
-        super().__init__(_task_type=LabelType.BOUNDINGBOX, **kwargs)
+        super().__init__(
+            _task_type=kwargs.pop("_task_type", LabelType.BOUNDINGBOX), **kwargs
+        )
 
         self.n_heads = n_heads
 
@@ -126,7 +128,7 @@ class EfficientBBoxHead(
         """Returns correct stride for number of heads and attach index."""
         stride = torch.tensor(
             [
-                self.original_in_shape[1] / x[1]  # type: ignore
+                self.original_in_shape[1] / x[2]  # type: ignore
                 for x in self.in_sizes[: self.n_heads]
             ],
             dtype=torch.int,

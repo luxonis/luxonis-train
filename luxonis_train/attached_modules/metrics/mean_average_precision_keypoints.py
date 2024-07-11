@@ -8,6 +8,10 @@ from pycocotools.cocoeval import COCOeval
 from torch import Tensor
 from torchvision.ops import box_convert
 
+from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
+    get_area_factor,
+    get_sigmas,
+)
 from luxonis_train.utils.types import (
     BBoxProtocol,
     KeypointProtocol,
@@ -46,7 +50,9 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
     def __init__(
         self,
-        kpt_sigmas: Tensor | None = None,
+        sigmas: list[float] | None = None,
+        area_factor: float | None = None,
+        max_dets: int = 20,
         box_format: Literal["xyxy", "xywh", "cxcywh"] = "xyxy",
         **kwargs,
     ):
@@ -59,8 +65,13 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
         @type num_keypoints: int
         @param num_keypoints: Number of keypoints.
-        @type kpt_sigmas: Tensor or None
-        @param kpt_sigmas: Sigma for each keypoint to weigh its importance, if None use same weights for all.
+        @type sigmas: list[float] | None
+        @param sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then
+            use COCO if possible otherwise defaults. Defaults to C{None}.
+        @type area_factor: float | None
+        @param area_factor: Factor by which we multiply bbox area. If None then use default one. Defaults to C{None}.
+        @type max_dets: int,
+        @param max_dets: Maximum number of detections to be considered per image. Defaults to C{20}.
         @type box_format: Literal["xyxy", "xywh", "cxcywh"]
         @param box_format: Input bbox format.
         @type kwargs: Any
@@ -74,9 +85,9 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
         self.n_keypoints = self.node.n_keypoints
 
-        if kpt_sigmas is not None and len(kpt_sigmas) != self.n_keypoints:
-            raise ValueError("Expected kpt_sigmas to be of shape (num_keypoints).")
-        self.kpt_sigmas = kpt_sigmas or torch.ones(self.n_keypoints)
+        self.sigmas = get_sigmas(sigmas, self.n_keypoints, self.__class__.__name__)
+        self.area_factor = get_area_factor(area_factor, self.__class__.__name__)
+        self.max_dets = max_dets
 
         allowed_box_formats = ("xyxy", "xywh", "cxcywh")
         if box_format not in allowed_box_formats:
@@ -214,7 +225,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         coco_preds.dataset = self._get_coco_format(
             self.pred_boxes,
             self.pred_keypoints,
-            self.groundtruth_labels,
+            self.pred_labels,
             scores=self.pred_scores,
         )  # type: ignore
 
@@ -223,7 +234,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
             coco_preds.createIndex()
 
             self.coco_eval = COCOeval(coco_target, coco_preds, iouType="keypoints")
-            self.coco_eval.params.kpt_oks_sigmas = self.kpt_sigmas.cpu().numpy()
+            self.coco_eval.params.kpt_oks_sigmas = self.sigmas.cpu().numpy()
+            self.coco_eval.params.maxDets = [self.max_dets]
 
             self.coco_eval.evaluate()
             self.coco_eval.accumulate()
@@ -293,19 +305,22 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
                 if area is not None and area[image_id][k].cpu().item() > 0:
                     area_stat = area[image_id][k].cpu().tolist()
                 else:
-                    area_stat = image_box[2] * image_box[3]
+                    area_stat = image_box[2] * image_box[3] * self.area_factor
 
+                num_keypoints = len(
+                    [i for i in range(2, len(image_kpt), 3) if image_kpt[i] != 0]
+                )  # number of annotated keypoints
                 annotation = {
                     "id": annotation_id,
                     "image_id": image_id,
                     "bbox": image_box,
                     "area": area_stat,
                     "category_id": image_label,
-                    "iscrowd": crowds[image_id][k].cpu().tolist()
-                    if crowds is not None
-                    else 0,
+                    "iscrowd": (
+                        crowds[image_id][k].cpu().tolist() if crowds is not None else 0
+                    ),
                     "keypoints": image_kpt,
-                    "num_keypoints": self.n_keypoints,
+                    "num_keypoints": num_keypoints,
                 }
 
                 if scores is not None:

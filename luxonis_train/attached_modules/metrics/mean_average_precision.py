@@ -38,7 +38,9 @@ class MeanAveragePrecision(BaseMetric):
     def prepare(
         self, outputs: Packet[Tensor], labels: Labels
     ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
-        label = labels[self.task][0]
+        label = labels["boundingbox"][
+            0
+        ]  # TODO: Think of a better way to deal with multi-task heads
         output_nms = self.get_input_tensors(outputs)
 
         image_size = self.node.original_in_shape[1:]

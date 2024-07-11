@@ -45,8 +45,10 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         label_smoothing: float = 0.0,
         min_objectness_iou: float = 0.0,
         bbox_loss_weight: float = 0.05,
-        keypoint_distance_loss_weight: float = 0.10,
         keypoint_visibility_loss_weight: float = 0.6,
+        keypoint_regression_loss_weight: float = 0.5,
+        sigmas: list[float] | None = None,
+        area_factor: float | None = None,
         class_loss_weight: float = 0.6,
         objectness_loss_weight: float = 0.7,
         anchor_threshold: float = 4.0,
@@ -72,10 +74,14 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         @param min_objectness_iou: Minimum objectness iou. Defaults to C{0.0}.
         @type bbox_loss_weight: float
         @param bbox_loss_weight: Weight for the bounding box loss.
-        @type keypoint_distance_loss_weight: float
-        @param keypoint_distance_loss_weight: Weight for the keypoint distance loss. Defaults to C{0.10}.
         @type keypoint_visibility_loss_weight: float
         @param keypoint_visibility_loss_weight: Weight for the keypoint visibility loss. Defaults to C{0.6}.
+        @type keypoint_regression_loss_weight: float
+        @param keypoint_regression_loss_weight: Weight for the keypoint regression loss. Defaults to C{0.5}.
+        @type sigmas: list[float] | None
+        @param sigmas: Sigmas used in KeypointLoss for OKS metric. If None then use COCO ones if possible or default ones. Defaults to C{None}.
+        @type area_factor: float | None
+        @param area_factor: Factor by which we multiply bbox area which is used in KeypointLoss. If None then use default one. Defaults to C{None}.
         @type class_loss_weight: float
         @param class_loss_weight: Weight for the class loss. Defaults to C{0.6}.
         @type objectness_loss_weight: float
@@ -117,10 +123,10 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
 
         self.min_objectness_iou = min_objectness_iou
         self.bbox_weight = bbox_loss_weight
-        self.kpt_distance_weight = keypoint_distance_loss_weight
         self.class_weight = class_loss_weight
         self.objectness_weight = objectness_loss_weight
         self.kpt_visibility_weight = keypoint_visibility_loss_weight
+        self.keypoint_regression_loss_weight = keypoint_regression_loss_weight
         self.anchor_threshold = anchor_threshold
 
         self.bias = bias
@@ -134,9 +140,10 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
             **kwargs,
         )
         self.keypoint_loss = KeypointLoss(
+            n_keypoints=self.n_keypoints,
             bce_power=viz_pw,
-            distance_weight=keypoint_distance_loss_weight,
-            visibility_weight=keypoint_visibility_loss_weight,
+            sigmas=sigmas,
+            area_factor=area_factor,
             **kwargs,
         )
 
@@ -169,13 +176,15 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         boxes = labels["boundingbox"][0]
 
         nkpts = (kpts.shape[1] - 2) // 3
-        targets = torch.zeros((len(boxes), nkpts * 2 + self.box_offset + 1))
+        targets = torch.zeros((len(boxes), nkpts * 3 + self.box_offset + 1))
         targets[:, :2] = boxes[:, :2]
         targets[:, 2 : self.box_offset + 1] = box_convert(
             boxes[:, 2:], "xywh", "cxcywh"
         )
-        targets[:, self.box_offset + 1 :: 2] = kpts[:, 2::3]  # insert kp x coordinates
-        targets[:, self.box_offset + 2 :: 2] = kpts[:, 3::3]  # insert kp y coordinates
+
+        targets[:, self.box_offset + 1 :: 3] = kpts[:, 2::3]  # insert kp x coordinates
+        targets[:, self.box_offset + 2 :: 3] = kpts[:, 3::3]  # insert kp y coordinates
+        targets[:, self.box_offset + 3 :: 3] = kpts[:, 4::3]  # insert kp visibility
 
         n_targets = len(targets)
 
@@ -203,7 +212,6 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         for i in range(self.num_heads):
             anchor = self.anchors[i]
             feature_height, feature_width = predictions[i].shape[2:4]
-
             scaled_targets, xy_shifts = match_to_anchor(
                 targets,
                 anchor,
@@ -259,7 +267,7 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
             "objectness": torch.tensor(0.0, device=device),
             "class": torch.tensor(0.0, device=device),
             "kpt_visibility": torch.tensor(0.0, device=device),
-            "kpt_distance": torch.tensor(0.0, device=device),
+            "kpt_regression": torch.tensor(0.0, device=device),
         }
 
         for pred, class_target, box_target, kpt_target, index, anchor, balance in zip(
@@ -284,13 +292,16 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
 
                 sub_losses["bboxes"] += bbox_loss * self.bbox_weight
 
+                area = box_target[:, 2] * box_target[:, 3]
+
                 _, kpt_sublosses = self.keypoint_loss.forward(
                     pred_subset[:, self.box_offset + self.n_classes :],
                     kpt_target.to(device),
+                    area.to(device),
                 )
 
-                sub_losses["kpt_distance"] += (
-                    kpt_sublosses["distance"] * self.kpt_distance_weight
+                sub_losses["kpt_regression"] += (
+                    kpt_sublosses["regression"] * self.keypoint_regression_loss_weight
                 )
                 sub_losses["kpt_visibility"] += (
                     kpt_sublosses["visibility"] * self.kpt_visibility_weight
@@ -326,8 +337,14 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
     def _create_keypoint_target(self, scaled_targets: Tensor, box_xy_deltas: Tensor):
         keypoint_target = scaled_targets[:, self.box_offset + 1 : -1]
         for j in range(self.n_keypoints):
-            low = 2 * j
-            high = 2 * (j + 1)
-            keypoint_mask = keypoint_target[:, low:high] != 0
-            keypoint_target[:, low:high][keypoint_mask] -= box_xy_deltas[keypoint_mask]
+            idx = 3 * j
+            keypoint_coords = keypoint_target[:, idx : idx + 2]
+            visibility = keypoint_target[:, idx + 2]
+
+            keypoint_mask = visibility != 0
+            keypoint_coords[keypoint_mask] -= box_xy_deltas[keypoint_mask]
+
+            keypoint_target[:, idx : idx + 2] = keypoint_coords
+            keypoint_target[:, idx + 2] = visibility
+
         return keypoint_target

@@ -46,7 +46,7 @@ model:
     - name: ImplicitKeypointBBoxLoss
       attached_to: ImplicitKeypointBBoxHead
       params:
-        keypoint_distance_loss_weight: 0.5
+        keypoint_regression_loss_weight: 0.5
         keypoint_visibility_loss_weight: 0.7
         bbox_loss_weight: 0.05
         objectness_loss_weight: 0.2
