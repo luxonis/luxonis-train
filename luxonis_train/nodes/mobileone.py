@@ -93,6 +93,8 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
         outs.append(x)
         x = self.stage3(x)
         outs.append(x)
+        x = self.stage4(x)
+        outs.append(x)
 
         return outs
 
