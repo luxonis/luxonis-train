@@ -128,11 +128,11 @@ class Core:
                     if view == "train"
                     else self.val_augmentations
                 ),
-                view=(
-                    self.cfg.loader.train_view
-                    if view == "train"
-                    else self.cfg.loader.val_view
-                ),
+                view={
+                    "train": self.cfg.loader.train_view,
+                    "val": self.cfg.loader.val_view,
+                    "test": self.cfg.loader.test_view,
+                }[view],
                 image_source=self.cfg.loader.image_source,
                 **self.cfg.loader.params,
             )
