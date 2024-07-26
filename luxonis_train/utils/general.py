@@ -20,7 +20,7 @@ class DatasetMetadata:
     def __init__(
         self,
         *,
-        classes: dict[LabelType, list[str]] | None = None,
+        classes: dict[str, list[str]] | None = None,
         n_classes: int | None = None,
         n_keypoints: int | None = None,
         keypoint_names: list[str] | None = None,
@@ -31,8 +31,8 @@ class DatasetMetadata:
         classes, number of keypoints, I{etc.} instead of passing them as arguments to
         the model.
 
-        @type classes: dict[LabelType, list[str]] | None
-        @param classes: Dictionary mapping label types to lists of class names. If not
+        @type classes: dict[str, list[str]] | None
+        @param classes: Dictionary mapping task names to lists of class names. If not
             provided, will be inferred from the dataset loader.
         @type n_classes: int | None
         @param n_classes: Number of classes for each label type.
@@ -47,7 +47,7 @@ class DatasetMetadata:
         """
         if classes is None and n_classes is not None:
             classes = {
-                LabelType(lbl): [str(i) for i in range(n_classes)]
+                LabelType(lbl).value: [str(i) for i in range(n_classes)]
                 for lbl in LabelType.__members__
             }
         self._classes = classes
@@ -59,10 +59,10 @@ class DatasetMetadata:
         self._loader = loader
 
     @property
-    def classes(self) -> dict[LabelType, list[str]]:
+    def classes(self) -> dict[str, list[str]]:
         """Dictionary mapping label types to lists of class names.
 
-        @type: dict[LabelType, list[str]]
+        @type: dict[str, list[str]]
         @raises ValueError: If classes were not provided during initialization.
         """
         if self._classes is None:
