@@ -56,7 +56,7 @@ class UploadCheckpoint(pl.Callback):
                         local_path=temp_filename,
                         remote_path=temp_filename,
                         mlflow_instance=trainer.logger.experiment.get(  # type: ignore
-                            "mlflow", None
+                            "mlflow",
                         ),
                     )
                     os.remove(temp_filename)

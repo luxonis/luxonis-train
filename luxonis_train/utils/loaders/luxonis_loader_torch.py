@@ -17,7 +17,6 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         self,
         dataset_name: str | None = None,
         team_id: str | None = None,
-        dataset_id: str | None = None,
         bucket_type: Literal["internal", "external"] = "internal",
         bucket_storage: Literal["local", "s3", "gcs", "azure"] = "local",
         stream: bool = False,
@@ -27,7 +26,6 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         self.dataset = LuxonisDataset(
             dataset_name=dataset_name,
             team_id=team_id,
-            dataset_id=dataset_id,
             bucket_type=BucketType(bucket_type),
             bucket_storage=BucketStorage(bucket_storage),
         )

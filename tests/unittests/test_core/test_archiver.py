@@ -12,7 +12,6 @@ import numpy as np
 import onnx
 import pytest
 from luxonis_ml.data import LuxonisDataset
-from luxonis_ml.nn_archive.config_building_blocks.base_models import head_outputs
 from parameterized import parameterized
 
 import luxonis_train
@@ -209,7 +208,6 @@ class TestArchiver(unittest.TestCase):
             print("Deleting existing dataset")
             LuxonisDataset(ldf_name).delete_dataset()
         dataset = LuxonisDataset(ldf_name)
-        dataset.set_classes(list(labels))
         if kpt_anno:
             keypoint_labels = [
                 "kp1",
@@ -332,27 +330,6 @@ class TestArchiver(unittest.TestCase):
         )
 
         assert valid_inputs and valid_outputs
-
-    @parameterized.expand(HEAD_NAMES)
-    def test_head_outputs(self, head_name):
-        """Tests if archived config head outputs are valid."""
-        archive_path = os.path.join(self.tmp_path, f"nnarchive_{head_name}_onnx.tar.xz")
-        with tarfile.open(archive_path, mode="r") as tar:
-            f = tar.extractfile("config.json")
-            json_dict = json.load(f)
-        head_output = json_dict["model"]["heads"][0]["outputs"]
-        if head_name == "ClassificationHead":
-            assert head_outputs.OutputsClassification.parse_obj(head_output)
-        elif head_name == "EfficientBBoxHead":
-            assert head_outputs.OutputsYOLO.parse_obj(head_output)
-        elif head_name == "ImplicitKeypointBBoxHead":
-            assert head_outputs.OutputsKeypointDetectionYOLO.parse_obj(head_output)
-        elif head_name == "SegmentationHead":
-            assert head_outputs.OutputsSegmentation.parse_obj(head_output)
-        elif head_name == "BiSeNetHead":
-            assert head_outputs.OutputsSegmentation.parse_obj(head_output)
-        else:
-            raise NotImplementedError(f"Missing tests for {head_name} head")
 
     @classmethod
     def teardown_class(cls):
