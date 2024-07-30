@@ -72,7 +72,7 @@ class Trainer(Core):
                 fs.put_file(
                     local_path=ckpt_path,
                     remote_path="resume.ckpt",
-                    mlflow_instance=self.tracker.experiment.get("mlflow", None),
+                    mlflow_instance=self.tracker.experiment.get("mlflow"),
                 )
 
             exit(0)
@@ -90,7 +90,7 @@ class Trainer(Core):
             fs.put_file(
                 local_path=self.log_file,
                 remote_path="luxonis_train.log",
-                mlflow_instance=self.tracker.experiment.get("mlflow", None),
+                mlflow_instance=self.tracker.experiment.get("mlflow"),
             )
 
     def _trainer_fit(self, *args, **kwargs):
