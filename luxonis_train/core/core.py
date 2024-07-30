@@ -62,7 +62,7 @@ class Core:
         # NOTE: tracker.experiment has to be called first in order
         # for the run_id to be initialized
         # TODO: it shouldn't be a property because of the above
-        _ = self.tracker.experiment
+        # _ = self.tracker.experiment
         self._run_id = self.tracker.run_id
 
         self.run_save_dir = os.path.join(
