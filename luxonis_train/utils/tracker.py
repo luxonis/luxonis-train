@@ -1,3 +1,5 @@
+from typing import Literal
+
 from lightning.pytorch.loggers.logger import Logger
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
 from luxonis_ml.tracker import LuxonisTracker
@@ -7,7 +9,9 @@ class LuxonisTrackerPL(LuxonisTracker, Logger):
     """Implementation of LuxonisTracker that is compatible with PytorchLightning."""
 
     @rank_zero_only
-    def finalize(self, status: str = "success") -> None:
+    def finalize(
+        self, status: Literal["success", "failed", "finished"] = "success"
+    ) -> None:
         """Finalizes current run."""
         if self.is_tensorboard:
             self.experiment["tensorboard"].flush()
