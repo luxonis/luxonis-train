@@ -58,11 +58,12 @@ class Core:
 
         self.rank = rank_zero_only.rank
 
-        self.tracker = LuxonisTrackerPL(
-            rank=self.rank,
-            mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
-            **self.cfg.tracker.model_dump(),
-        )
+        self.tracker = self._create_tracker()
+        # NOTE: tracker.experiment has to be called first in order
+        # for the run_id to be initialized
+        # TODO: it shouldn't be a property because of the above
+        _ = self.tracker.experiment
+        self._run_id = self.tracker.run_id
 
         self.run_save_dir = os.path.join(
             self.cfg.tracker.save_directory, self.tracker.run_name
@@ -222,3 +223,13 @@ class Core:
     def reset_logging(self) -> None:
         """Close file handlers to release the log file."""
         reset_logging()
+
+    def _create_tracker(self, run_id: str | None = None) -> LuxonisTrackerPL:
+        kwargs = self.cfg.tracker.model_dump()
+        if run_id is not None:
+            kwargs["run_id"] = run_id
+        return LuxonisTrackerPL(
+            rank=self.rank,
+            mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
+            **kwargs,
+        )
