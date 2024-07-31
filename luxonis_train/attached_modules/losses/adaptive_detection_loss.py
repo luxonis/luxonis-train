@@ -6,7 +6,7 @@ from pydantic import Field
 from torch import Tensor, nn
 from torchvision.ops import box_convert
 from typing_extensions import Annotated
-import time
+
 from luxonis_train.nodes import EfficientBBoxHead
 from luxonis_train.utils.assigners import ATSSAssigner, TaskAlignedAssigner
 from luxonis_train.utils.boxutils import (
@@ -99,7 +99,7 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         self.n_anchors_list = None
         self.stride_tensor = None
         self.gt_bboxes_scale = None
-    
+
     def prepare(
         self, outputs: Packet[Tensor], labels: Labels
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
@@ -224,7 +224,7 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         out_target[:, :, 0] = -1
         for id, count in zip(sample_ids, counts):
             out_target[id, :count] = target[target[:, 0] == id][:, 1:]
-        
+
         scaled_target = out_target[:, :, 1:5] * self.gt_bboxes_scale
         out_target[..., 1:] = box_convert(scaled_target, "xywh", "xyxy")
         return out_target
