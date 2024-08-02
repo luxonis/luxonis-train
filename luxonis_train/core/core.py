@@ -1,5 +1,6 @@
 import os
 import os.path as osp
+from contextlib import suppress
 from logging import getLogger
 from typing import Any
 
@@ -62,7 +63,8 @@ class Core:
         # NOTE: tracker.experiment has to be called first in order
         # for the run_id to be initialized
         # TODO: it shouldn't be a property because of the above
-        _ = self.tracker.experiment
+        with suppress(Exception):
+            _ = self.tracker.experiment
         self._run_id = self.tracker.run_id
 
         self.run_save_dir = os.path.join(
