@@ -51,48 +51,6 @@ class BaseNode(
     The L{run} method combines the C{unwrap}, C{forward} and C{wrap} methods
     together with input validation.
 
-
-    @type input_shapes: list[Packet[Size]] | None
-    @param input_shapes: List of input shapes for the module.
-
-    @type original_in_shape: Size | None
-    @param original_in_shape: Original input shape of the model. Some
-        nodes won't function if not provided.
-
-    @type dataset_metadata: L{DatasetMetadata} | None
-    @param dataset_metadata: Metadata of the dataset.
-        Some nodes won't function if not provided.
-
-    @type n_classes: int | None
-    @param n_classes: Number of classes in the dataset. Provide only
-        in case `dataset_metadata` is not provided. Defaults to None.
-
-    @type in_sizes: Size | list[Size] | None
-    @param in_sizes: List of input sizes for the node.
-        Provide only in case the `input_shapes` were not provided.
-
-    @type _tasks: dict[LabelType, str] | None
-    @param _tasks: Dictionary of tasks that the node supports. Overrides the
-        class L{tasks} attribute. Shouldn't be provided by the user in most cases.
-
-    @type input_protocols: list[type[BaseModel]]
-    @ivar input_protocols: List of input protocols used to validate inputs to the node.
-        Defaults to [L{FeaturesProtocol}]. Protoco
-
-    @type attach_index: AttachIndexType
-    @ivar attach_index: Index of previous output that this node attaches to.
-        Can be a single integer to specify a single output, a tuple of
-        two or three integers to specify a range of outputs or `"all"` to
-        specify all outputs. Defaults to "all". Python indexing conventions apply.
-
-    @type tasks: list[LabelType] | dict[LabelType, str] | None
-    @ivar tasks: Dictionary of tasks that the node supports. Should be defined
-        by the user as a class attribute. The key is the task type and the value
-        is the name of the task. For example:
-        C{{LabelType.CLASSIFICATION: "classification"}}.
-        Only needs to be defined for head nodes.
-
-
     When subclassing, the following methods should be implemented:
         - L{forward}: Forward pass of the module.
         - L{unwrap}: Optional. Unwraps the inputs from the input packet.
@@ -134,6 +92,46 @@ class BaseNode(
                 # default task name for it to be automatically recognized
                 # by the attached modules.
                 return {"classification": [output]}
+
+    @type input_shapes: list[Packet[Size]] | None
+    @param input_shapes: List of input shapes for the module.
+
+    @type original_in_shape: Size | None
+    @param original_in_shape: Original input shape of the model. Some
+        nodes won't function if not provided.
+
+    @type dataset_metadata: L{DatasetMetadata} | None
+    @param dataset_metadata: Metadata of the dataset.
+        Some nodes won't function if not provided.
+
+    @type n_classes: int | None
+    @param n_classes: Number of classes in the dataset. Provide only
+        in case `dataset_metadata` is not provided. Defaults to None.
+
+    @type in_sizes: Size | list[Size] | None
+    @param in_sizes: List of input sizes for the node.
+        Provide only in case the `input_shapes` were not provided.
+
+    @type _tasks: dict[LabelType, str] | None
+    @param _tasks: Dictionary of tasks that the node supports. Overrides the
+        class L{tasks} attribute. Shouldn't be provided by the user in most cases.
+
+    @type input_protocols: list[type[BaseModel]]
+    @ivar input_protocols: List of input protocols used to validate inputs to the node.
+        Defaults to [L{FeaturesProtocol}]. Protoco
+
+    @type attach_index: AttachIndexType
+    @ivar attach_index: Index of previous output that this node attaches to.
+        Can be a single integer to specify a single output, a tuple of
+        two or three integers to specify a range of outputs or `"all"` to
+        specify all outputs. Defaults to "all". Python indexing conventions apply.
+
+    @type tasks: list[LabelType] | dict[LabelType, str] | None
+    @ivar tasks: Dictionary of tasks that the node supports. Should be defined
+        by the user as a class attribute. The key is the task type and the value
+        is the name of the task. For example:
+        C{{LabelType.CLASSIFICATION: "classification"}}.
+        Only needs to be defined for head nodes.
     """
 
     input_protocols: list[type[BaseModel]] = [FeaturesProtocol]

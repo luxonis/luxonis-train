@@ -25,6 +25,15 @@ class BaseAttachedModule(
     should be sufficient for most simple cases. More complex modules should
     override the `prepare` method.
 
+    When subclassing, the following methods can be overridden:
+        - L{prepare}: Prepares node outputs for the forward pass of the module.
+          Override this method if the default implementation is not sufficient.
+
+    Additionally, the following attributes can be overridden:
+        - L{supported_labels}: List of label types that the module supports.
+          Used to determine which labels to extract from the dataset and to validate
+          compatibility with the node based on the node's tasks.
+
     @type node: BaseNode
     @param node: Reference to the node that this module is attached to.
 
@@ -40,15 +49,6 @@ class BaseAttachedModule(
             - C{[(LabelType.BOUNDINGBOX, LabelType.KEYPOINTS), LabelType.SEGMENTATION]}
               means that the module requires either both bounding box I{and} keypoint
               labels I{or} segmentation labels.
-
-    When subclassing, the following methods can be overridden:
-        - L{prepare}: Prepares node outputs for the forward pass of the module.
-          Override this method if the default implementation is not sufficient.
-
-    Additionally, the following attributes can be overridden:
-        - L{supported_labels}: List of label types that the module supports.
-          Used to determine which labels to extract from the dataset and to validate
-          compatibility with the node based on the node's tasks.
     """
 
     supported_labels: list[LabelType | tuple[LabelType, ...]] | None = None
@@ -158,6 +158,17 @@ class BaseAttachedModule(
     ) -> list[Tensor]:
         """Extracts the input tensors from the packet.
 
+        Example::
+            >>> # supported_labels = [LabelType.SEGMENTATION]
+            >>> # node.tasks = {LabelType.SEGMENTATION: "segmentation-task"}
+            >>> inputs = [{"segmentation-task": [seg_tensor]}, {"features": [feat_tensor]}]
+            >>> get_input_tensors(inputs)  # matches supported labels to node's tasks
+            [seg_tensor]
+            >>> get_input_tensors(inputs, "features")
+            [feat_tensor]
+            >>> get_input_tensors(inputs, LabelType.CLASSIFICATION)
+            ValueError: Task 'classification' is not supported by the node.
+
         @type inputs: L{Packet}[Tensor]
         @param inputs: Output from the node this module is attached to.
         @type task_type: LabelType | str | None
@@ -171,17 +182,6 @@ class BaseAttachedModule(
 
         @raises NotImplementedError: If the module requires multiple labels.
             For such cases, the `prepare` method should be overridden.
-
-        Example::
-            >>> # supported_labels = [LabelType.SEGMENTATION]
-            >>> # node.tasks = {LabelType.SEGMENTATION: "segmentation-task"}
-            >>> inputs = [{"segmentation-task": [seg_tensor]}, {"features": [feat_tensor]}]
-            >>> get_input_tensors(inputs)  # matches supported labels to node's tasks
-            [seg_tensor]
-            >>> get_input_tensors(inputs, "features")
-            [feat_tensor]
-            >>> get_input_tensors(inputs, LabelType.CLASSIFICATION)
-            ValueError: Task 'classification' is not supported by the node.
         """
         if task_type is not None:
             if isinstance(task_type, LabelType):
