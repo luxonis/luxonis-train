@@ -112,16 +112,16 @@ class EfficientKeypointBBoxLoss(
     def prepare(
         self, outputs: Packet[Tensor], labels: Labels
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
-        feats = outputs["features"]
-        pred_scores = outputs["class_scores"][0]
-        pred_distri = outputs["distributions"][0]
-        pred_kpts = outputs["keypoints_raw"][0]
+        feats = self.get_input_tensors(outputs, "features")
+        pred_scores = self.get_input_tensors(outputs, "class_scores")[0]
+        pred_distri = self.get_input_tensors(outputs, "distributions")[0]
+        pred_kpts = self.get_input_tensors(outputs, "keypoints_raw")[0]
 
         batch_size = pred_scores.shape[0]
         device = pred_scores.device
 
-        target_kpts = labels[self.node.tasks[LabelType.KEYPOINTS]][0]
-        target_bbox = labels[self.node.tasks[LabelType.BOUNDINGBOX]][0]
+        target_kpts = self.get_label(labels, LabelType.KEYPOINTS)[0]
+        target_bbox = self.get_label(labels, LabelType.BOUNDINGBOX)[0]
         n_kpts = (target_kpts.shape[1] - 2) // 3
 
         gt_bboxes_scale = torch.tensor(

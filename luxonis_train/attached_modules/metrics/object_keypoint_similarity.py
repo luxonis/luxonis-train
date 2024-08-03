@@ -84,7 +84,7 @@ class ObjectKeypointSimilarity(
         image_size = self.node.original_in_shape[1:]
 
         for i, pred_kpt in enumerate(
-            outputs[self.node.get_task_name(LabelType.KEYPOINTS)]
+            self.get_input_tensors(outputs, LabelType.KEYPOINTS)
         ):
             output_list_oks.append({"keypoints": pred_kpt})
 

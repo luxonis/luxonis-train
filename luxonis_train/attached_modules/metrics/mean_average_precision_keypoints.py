@@ -97,8 +97,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
     def prepare(self, outputs: Packet[Tensor], labels: Labels):
         assert self.node.tasks is not None
-        kpts = labels[self.node.tasks[LabelType.KEYPOINTS]][0]
-        boxes = labels[self.node.tasks[LabelType.BOUNDINGBOX]][0]
+        kpts = self.get_label(labels, LabelType.KEYPOINTS)[0]
+        boxes = self.get_label(labels, LabelType.BOUNDINGBOX)[0]
 
         nkpts = (kpts.shape[1] - 2) // 3
         label = torch.zeros((len(boxes), nkpts * 3 + 6))
@@ -112,9 +112,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         label_list_kpt_map = []
         image_size = self.node.original_in_shape[1:]
 
-        assert self.node.tasks is not None
-        output_kpts: list[Tensor] = outputs[self.node.tasks[LabelType.KEYPOINTS]]
-        output_bboxes: list[Tensor] = outputs[self.node.tasks[LabelType.BOUNDINGBOX]]
+        output_kpts = self.get_input_tensors(outputs, LabelType.KEYPOINTS)
+        output_bboxes = self.get_input_tensors(outputs, LabelType.BOUNDINGBOX)
         for i in range(len(output_kpts)):
             output_list_kpt_map.append(
                 {

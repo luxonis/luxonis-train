@@ -151,10 +151,10 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
             feature_width, n_classes + box_offset + n_keypoints * 3) to get a tensor of
             shape (n_targets, n_classes + box_offset + n_keypoints * 3).
         """
-        predictions = outputs["features"]
+        predictions = self.get_input_tensors(outputs, "features")
 
-        kpts = labels[self.node.tasks[LabelType.KEYPOINTS]][0]
-        boxes = labels[self.node.tasks[LabelType.BOUNDINGBOX]][0]
+        kpts = self.get_label(labels, LabelType.KEYPOINTS)[0]
+        boxes = self.get_label(labels, LabelType.BOUNDINGBOX)[0]
 
         nkpts = (kpts.shape[1] - 2) // 3
         targets = torch.zeros((len(boxes), nkpts * 3 + self.box_offset + 1))
