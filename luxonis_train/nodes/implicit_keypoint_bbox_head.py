@@ -171,10 +171,8 @@ class ImplicitKeypointBBoxHead(BaseNode):
         )
 
         return {
-            self.get_task_name(LabelType.BOUNDINGBOX): [
-                detection[:, :6] for detection in nms
-            ],
-            self.get_task_name(LabelType.KEYPOINTS): [
+            "boundingbox": [detection[:, :6] for detection in nms],
+            "keypoints": [
                 detection[:, 6:].reshape(-1, self.n_keypoints, 3) for detection in nms
             ],
             "features": features,

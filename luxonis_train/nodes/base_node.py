@@ -189,8 +189,17 @@ class BaseNode(
             return {task: task.value for task in tasks}
 
     def get_task_name(self, task: LabelType) -> str:
-        if self._tasks is None:
+        """Gets the name of a task for a particular C{LabelType}.
+
+        @type task: LabelType
+        @param task: Task to get the name for.
+        @rtype: str
+        @return: Name of the task.
+        @raises ValueError: If the task is not supported by the node.
+        """
+        if not self._tasks:
             raise ValueError(f"Node {self.name} does not have any tasks defined.")
+
         if task not in self._tasks:
             raise ValueError(
                 f"Node {self.name} does not have support {task.value} task."
@@ -206,10 +215,11 @@ class BaseNode(
         """Getter for the task."""
         if not self._tasks:
             raise ValueError(f"{self.name} does not have any tasks defined.")
+
         if len(self._tasks) > 1:
             raise ValueError(
                 f"Node {self.name} has multiple tasks defined. "
-                "Use `tasks` attribute to specify the task."
+                "Use `get_task_name` method instead."
             )
         return next(iter(self._tasks.values()))
 
@@ -423,7 +433,13 @@ class BaseNode(
         """
         unwrapped = self.unwrap(self.validate(inputs))
         outputs = self(unwrapped)
-        return self.wrap(outputs)
+        wrapped = self.wrap(outputs)
+        str_tasks = [task.value for task in self._tasks] if self._tasks else []
+        for key in list(wrapped.keys()):
+            if key in str_tasks:
+                value = wrapped.pop(key)
+                wrapped[self.get_task_name(LabelType(key))] = value
+        return wrapped
 
     def validate(self, data: list[Packet[Tensor]]) -> list[Packet[Tensor]]:
         """Validates the inputs against `inpur_protocols`."""

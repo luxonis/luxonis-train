@@ -146,10 +146,8 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             (features, cls_tensor, reg_tensor, pred_kpt)
         )
         return {
-            self.get_task_name(LabelType.BOUNDINGBOX): [
-                detection[:, :6] for detection in detections
-            ],
-            self.get_task_name(LabelType.KEYPOINTS): [
+            "boundingbox": [detection[:, :6] for detection in detections],
+            "keypoints": [
                 detection[:, 6:].reshape(-1, self.n_keypoints, 3)
                 for detection in detections
             ],
