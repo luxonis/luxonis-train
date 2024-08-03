@@ -11,10 +11,7 @@ logger = logging.getLogger(__name__)
 
 class TorchMetricWrapper(BaseMetric):
     def __init__(self, **kwargs):
-        super().__init__(
-            node=kwargs.pop("node", None),
-            protocol=kwargs.pop("protocol", None),
-        )
+        super().__init__(node=kwargs.pop("node", None))
         task = kwargs.get("task")
 
         if task is None:

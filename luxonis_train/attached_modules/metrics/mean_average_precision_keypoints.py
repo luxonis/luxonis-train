@@ -12,19 +12,9 @@ from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
     get_area_factor,
     get_sigmas,
 )
-from luxonis_train.utils.types import (
-    BBoxProtocol,
-    KeypointProtocol,
-    Labels,
-    LabelType,
-    Packet,
-)
+from luxonis_train.utils.types import Labels, LabelType, Packet
 
 from .base_metric import BaseMetric
-
-
-class Protocol(KeypointProtocol, BBoxProtocol):
-    ...
 
 
 class MeanAveragePrecisionKeypoints(BaseMetric):
@@ -79,7 +69,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         @type kwargs: Any
         @param kwargs: Additional arguments to pass to L{BaseMetric}.
         """
-        super().__init__(protocol=Protocol, **kwargs)
+        super().__init__(**kwargs)
 
         self.n_keypoints = self.node.n_keypoints
 

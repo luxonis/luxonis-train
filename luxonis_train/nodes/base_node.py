@@ -124,18 +124,27 @@ class BaseNode(
         self._epoch = 0
         self._in_sizes = in_sizes
 
+    def get_task_name(self, task: LabelType) -> str:
+        if self.tasks is None:
+            raise ValueError(f"Node {self.name} does not have any tasks defined.")
+        if task not in self.tasks:
+            raise ValueError(
+                f"Node {self.name} does not have support {task.value} task."
+            )
+        return self.tasks[task]
+
     @property
-    def node_name(self) -> str:
+    def name(self) -> str:
         return self.__class__.__name__
 
     @property
     def task(self) -> str:
         """Getter for the task."""
         if not self.tasks:
-            raise ValueError(f"{self.node_name} does not have any tasks defined.")
+            raise ValueError(f"{self.name} does not have any tasks defined.")
         if len(self.tasks) > 1:
             raise ValueError(
-                f"Node {self.node_name} has multiple tasks defined. "
+                f"Node {self.name} has multiple tasks defined. "
                 "Use `tasks` attribute to specify the task."
             )
         return next(iter(self.tasks.values()))
@@ -214,7 +223,7 @@ class BaseNode(
         features = self.input_shapes[0].get("features")
         if features is None:
             raise IncompatibleException(
-                f"Feature field is missing in {self.node_name}. "
+                f"Feature field is missing in {self.name}. "
                 "The default implementation of `in_sizes` cannot be used."
             )
         shapes = self.get_attached(self.input_shapes[0]["features"])
@@ -356,7 +365,7 @@ class BaseNode(
         """Validates the inputs against `inpur_protocols`."""
         if len(data) != len(self.input_protocols):
             raise IncompatibleException(
-                f"Node {self.node_name} expects {len(self.input_protocols)} inputs, "
+                f"Node {self.name} expects {len(self.input_protocols)} inputs, "
                 f"but got {len(data)} inputs instead."
             )
         try:
@@ -365,7 +374,7 @@ class BaseNode(
                 for d, protocol in zip(data, self.input_protocols)
             ]
         except ValidationError as e:
-            raise IncompatibleException.from_validation_error(e, self.node_name) from e
+            raise IncompatibleException.from_validation_error(e, self.name) from e
 
     T = TypeVar("T", Tensor, Size)
 
@@ -428,6 +437,6 @@ class BaseNode(
 
     def _non_set_error(self, name: str) -> ValueError:
         return ValueError(
-            f"{self.node_name} is trying to access `{name}`, "
+            f"{self.name} is trying to access `{name}`, "
             "but it was not set during initialization. "
         )

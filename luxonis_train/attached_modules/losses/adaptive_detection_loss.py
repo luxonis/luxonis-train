@@ -2,10 +2,8 @@ from typing import Literal, cast
 
 import torch
 import torch.nn.functional as F
-from pydantic import Field
 from torch import Tensor, nn
 from torchvision.ops import box_convert
-from typing_extensions import Annotated
 
 from luxonis_train.nodes import EfficientBBoxHead
 from luxonis_train.utils.assigners import ATSSAssigner, TaskAlignedAssigner
@@ -15,21 +13,9 @@ from luxonis_train.utils.boxutils import (
     compute_iou_loss,
     dist2bbox,
 )
-from luxonis_train.utils.types import (
-    BaseProtocol,
-    IncompatibleException,
-    Labels,
-    LabelType,
-    Packet,
-)
+from luxonis_train.utils.types import IncompatibleException, Labels, LabelType, Packet
 
 from .base_loss import BaseLoss
-
-
-class Protocol(BaseProtocol):
-    features: list[Tensor]
-    class_scores: Annotated[list[Tensor], Field(min_length=1, max_length=1)]
-    distributions: Annotated[list[Tensor], Field(min_length=1, max_length=1)]
 
 
 class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]):
@@ -68,7 +54,7 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         @type kwargs: dict
         @param kwargs: Additional arguments to pass to L{BaseLoss}.
         """
-        super().__init__(protocol=Protocol, **kwargs)
+        super().__init__(**kwargs)
 
         if not isinstance(self.node, EfficientBBoxHead):
             raise IncompatibleException(
@@ -96,9 +82,9 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
     def prepare(
         self, outputs: Packet[Tensor], labels: Labels
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
-        feats = outputs["features"]
-        pred_scores = outputs["class_scores"][0]
-        pred_distri = outputs["distributions"][0]
+        feats = self.get_input_tensors(outputs, "features")
+        pred_scores = self.get_input_tensors(outputs, "class_scores")[0]
+        pred_distri = self.get_input_tensors(outputs, "distributions")[0]
         batch_size = pred_scores.shape[0]
         device = pred_scores.device
 

@@ -1,7 +1,4 @@
-from typing import Annotated
-
 import torch
-from pydantic import Field
 from torch import Tensor
 
 from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
@@ -9,19 +6,10 @@ from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
     get_sigmas,
 )
 from luxonis_train.utils.boxutils import process_keypoints_predictions
-from luxonis_train.utils.types import (
-    BaseProtocol,
-    Labels,
-    LabelType,
-    Packet,
-)
+from luxonis_train.utils.types import Labels, LabelType, Packet
 
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
-
-
-class Protocol(BaseProtocol):
-    keypoints: Annotated[list[Tensor], Field(min_length=1, max_length=1)]
 
 
 class KeypointLoss(BaseLoss[Tensor, Tensor]):
@@ -49,7 +37,7 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
             default one. Defaults to C{None}.
         """
 
-        super().__init__(protocol=Protocol, **kwargs)
+        super().__init__(**kwargs)
         self.b_cross_entropy = BCEWithLogitsLoss(
             pos_weight=torch.tensor([bce_power]), **kwargs
         )

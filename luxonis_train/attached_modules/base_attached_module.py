@@ -3,19 +3,11 @@ from abc import ABC
 from typing import Generic
 
 from luxonis_ml.utils.registry import AutoRegisterMeta
-from pydantic import ValidationError
 from torch import Tensor, nn
 from typing_extensions import TypeVarTuple, Unpack
 
 from luxonis_train.nodes import BaseNode
-from luxonis_train.utils.general import validate_packet
-from luxonis_train.utils.types import (
-    BaseProtocol,
-    IncompatibleException,
-    Labels,
-    LabelType,
-    Packet,
-)
+from luxonis_train.utils.types import IncompatibleException, Labels, LabelType, Packet
 
 logger = logging.getLogger(__name__)
 
@@ -37,16 +29,23 @@ class BaseAttachedModule(
     @ivar node: Reference to the node that this module is attached to.
     @type protocol: type[BaseProtocol]
     @ivar protocol: Schema for validating inputs to the module.
+    @type supported_labels: list[LabelType | tuple[LabelType, ...]] | None
+    @ivar supported_labels: List of label types that the module supports.
+        Elements of the list can be either a single label type or a tuple of
+        label types. In case of the latter, the module requires all of the
+        specified labels to be present.
+
+        Example:
+            1. C{[LabelType.CLASSIFICATION, LabelType.SEGMENTATION]} means that the
+                module requires either classification or segmentation labels.
+            1. C{[(LabelType.BOUNDINGBOX, LabelType.KEYPOINTS), LabelType.SEGMENTATION]}
+                means that the module requires either both bounding box I{and} keypoint
+                labels I{or} segmentation labels.
     """
 
     supported_labels: list[LabelType | tuple[LabelType, ...]] | None = None
 
-    def __init__(
-        self,
-        *,
-        node: BaseNode | None = None,
-        protocol: type[BaseProtocol] | None = None,
-    ):
+    def __init__(self, *, node: BaseNode | None = None):
         """Base class for all modules that are attached to a L{LuxonisNode}.
 
         @type node: L{BaseNode}
@@ -55,27 +54,28 @@ class BaseAttachedModule(
         @param protocol: Schema for validating inputs to the module.
         """
         super().__init__()
-        self.protocol = protocol
         self._node = node
         self._epoch = 0
 
-        self._labels = None
+        self._required_labels: tuple[LabelType, ...] | None = None
         if self._node and self.supported_labels and self.node.tasks:
             node_tasks = set(self.node.tasks)
-            for supported_labels in self.supported_labels:
-                if isinstance(supported_labels, LabelType):
-                    supported_labels = (supported_labels,)
-                if set(supported_labels) <= node_tasks:
-                    self._labels = supported_labels
+            for required_labels in self.supported_labels:
+                if isinstance(required_labels, LabelType):
+                    required_labels = (required_labels,)
+                if set(required_labels) <= node_tasks:
+                    self._required_labels = required_labels
                     break
             else:
                 raise ValueError(
-                    f"Module {self.module_name} supports labels {self.supported_labels}, "
-                    f"but is connected to node {self.node.node_name} which does not support any of them. "
-                    f"{self.node.node_name} supports {list(self.node.tasks.keys())}."
+                    f"Module {self.name} supports labels {self.supported_labels}, "
+                    f"but is connected to node {self.node.name} which does not support any of them. "
+                    f"{self.node.name} supports {list(self.node.tasks.keys())}."
                 )
-        # print(f"{self.module_name}, {self.supported_labels}, {self.node.tasks}")
-        # print(f"{self.module_name}, {self._labels}")
+
+    @property
+    def name(self) -> str:
+        return self.__class__.__name__
 
     @property
     def node(self) -> BaseNode:
@@ -92,10 +92,10 @@ class BaseAttachedModule(
         return self._node
 
     @property
-    def labels_dict(self) -> tuple[LabelType, ...]:
-        if self._labels is None:
-            raise ValueError(f"{self.module_name} does not require any labels.")
-        return self._labels
+    def required_labels(self) -> tuple[LabelType, ...]:
+        if self._required_labels is None:
+            raise ValueError(f"{self.name} does not require any labels.")
+        return self._required_labels
 
     @property
     def node_tasks(self) -> dict[LabelType, str]:
@@ -103,23 +103,87 @@ class BaseAttachedModule(
             raise ValueError("Node must have the `tasks` attribute specified.")
         return self.node.tasks
 
-    def get_label(self, labels: Labels) -> tuple[Tensor, LabelType]:
-        if len(self.labels_dict) > 1:
+    def get_label(
+        self, labels: Labels, label_type: LabelType | None = None
+    ) -> tuple[Tensor, LabelType]:
+        """Extracts a specific label from the labels dictionary.
+
+        If the label type is not provided, the first label that matches the
+        required label type is returned.
+
+        Example::
+            >>> # supported_labels = [LabelType.SEGMENTATION]
+            >>> labels = {"segmentation": ..., "boundingbox": ...}
+            >>> get_label(labels)
+            (..., LabelType.SEGMENTATION)  # returns the first matching label
+            >>> get_label(labels, LabelType.BOUNDINGBOX)
+            (..., LabelType.BOUNDINGBOX)  # returns the bounding box label
+            >>> get_label(labels, LabelType.CLASSIFICATION)
+            IncompatibleException: Label 'classification' is missing from the dataset.
+
+        @type labels: L{Labels}
+        @param labels: Labels from the dataset.
+        @type label_type: LabelType | None
+        @param label_type: Type of the label to extract.
+        @raises IncompatibleException: If the label is not found in the labels dictionary.
+        @raises NotImplementedError: If the module requires multiple labels. For such cases,
+            the `prepare` method should be overridden.
+
+        @rtype: tuple[Tensor, LabelType]
+        @return: Extracted label and its type.
+        """
+        if label_type is not None:
+            task_name = self.node.get_task_name(label_type)
+            if task_name not in labels:
+                raise IncompatibleException.from_missing_task(
+                    label_type.value, list(labels.keys()), self.name
+                )
+            return labels[task_name]
+
+        if len(self.required_labels) > 1:
             raise NotImplementedError(
-                f"{self.module_name} requires multiple labels, "
-                "the default `prepare` implementation does not support this."
+                f"{self.name} requires multiple labels. You must provide the "
+                "`label_type` argument to extract the desired label."
             )
         for label, label_type in labels.values():
-            if label_type == self.labels_dict[0]:
+            if label_type == self.required_labels[0]:
                 return label, label_type
         raise IncompatibleException.from_missing_task(
-            self.labels_dict[0].value, list(labels.keys()), self.module_name
+            self.required_labels[0].value, list(labels.keys()), self.name
         )
 
-    def get_input_tensors(self, inputs: Packet[Tensor]) -> list[Tensor]:
-        if self.protocol is not None:
-            return inputs[self.protocol.get_task()]
-        return inputs[self.node_tasks[self.labels_dict[0]]]
+    def get_input_tensors(
+        self, inputs: Packet[Tensor], task_type: LabelType | str | None = None
+    ) -> list[Tensor]:
+        """Extracts the input tensors from the packet.
+
+        @type inputs: L{Packet}[Tensor]
+        @param inputs: Output from the node this module is attached to.
+        @type task_type: LabelType | str | None
+        @param task_type: Type of the task to extract. Must be provided when the node
+            supports multiple tasks or if the module doesn't require any tasks.
+        @rtype: list[Tensor]
+        @return: Extracted input tensors
+        """
+        if task_type is not None:
+            if isinstance(task_type, LabelType):
+                if task_type not in self.node_tasks:
+                    raise ValueError(
+                        f"Task {task_type.value} is not supported by the node "
+                        f"{self.node.name}."
+                    )
+                return inputs[self.node_tasks[task_type]]
+            else:
+                if task_type not in inputs:
+                    raise ValueError(f"Task {task_type} is not present in the inputs.")
+                return inputs[task_type]
+
+        if len(self.required_labels) > 1:
+            raise NotImplementedError(
+                f"{self.name} requires multiple labels, "
+                "you must provide the `task_type` argument to extract the desired input."
+            )
+        return inputs[self.node_tasks[self.required_labels[0]]]
 
     def prepare(self, inputs: Packet[Tensor], labels: Labels) -> tuple[Unpack[Ts]]:
         """Prepares node outputs for the forward pass of the module.
@@ -146,19 +210,19 @@ class BaseAttachedModule(
         """
         if self.node.tasks is None:
             raise ValueError(
-                f"{self.node.node_name} must have the `tasks` attribute specified "
-                f"for {self.module_name} to make use of the default `prepare` method."
+                f"{self.node.name} must have the `tasks` attribute specified "
+                f"for {self.name} to make use of the default `prepare` method."
             )
         if self.supported_labels is None:
             raise ValueError(
-                f"{self.module_name} must have the `supported_labels` attribute "
+                f"{self.name} must have the `supported_labels` attribute "
                 "specified in order to use the default `prepare` method."
             )
         if len(self.supported_labels) > 1:
             if len(self.node.tasks) > 1:
                 raise NotImplementedError(
-                    f"{self.module_name} supports more than one label type"
-                    f"and is connected to {self.node.node_name} node "
+                    f"{self.name} supports more than one label type"
+                    f"and is connected to {self.node.name} node "
                     "which is a multi-task node. The default `prepare` "
                     "implementation cannot be used in this case."
                 )
@@ -173,40 +237,12 @@ class BaseAttachedModule(
                     x = x[0]
                 else:
                     logger.warning(
-                        f"Module {self.module_name} expects a single tensor as input, "
+                        f"Module {self.name} expects a single tensor as input, "
                         f"but got {len(x)} tensors. Using the last tensor. "
                         f"If this is not the desired behavior, please override the "
                         "`prepare` method of the attached module or the `wrap` "
-                        f"method of {self.node.node_name}."
+                        f"method of {self.node.name}."
                     )
                     x = x[-1]
 
         return x, label  # type: ignore
-
-    @property
-    def module_name(self) -> str:
-        return self.__class__.__name__
-
-    def validate(self, inputs: Packet[Tensor], labels: Labels) -> None:
-        """Validates that the inputs and labels are compatible with the module.
-
-        @type inputs: L{Packet}[Tensor]
-        @param inputs: Output from the node, inputs to the attached module.
-        @type labels: L{Labels}
-        @param labels: Labels from the dataset. @raises L{IncompatibleException}: If the
-            inputs are not compatible with the module.
-        """
-        if self.node.tasks is not None:
-            for task in self.node.tasks.values():
-                if task not in labels:
-                    raise IncompatibleException.from_missing_task(
-                        task, list(labels.keys()), self.module_name
-                    )
-
-        if self.protocol is not None:
-            try:
-                validate_packet(inputs, self.protocol)
-            except ValidationError as e:
-                raise IncompatibleException.from_validation_error(
-                    e, self.module_name
-                ) from e

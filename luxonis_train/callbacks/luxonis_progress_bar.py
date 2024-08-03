@@ -28,6 +28,7 @@ class LuxonisProgressBar(RichProgressBar):
     ) -> dict[str, int | str | float | dict[str, float]]:
         # NOTE: there might be a cleaner way of doing this
         items = super().get_metrics(trainer, pl_module)
+        items.pop("v_num", None)
         if trainer.training and pl_module.training_step_outputs:
             items["Loss"] = pl_module.training_step_outputs[-1]["loss"].item()
         return items

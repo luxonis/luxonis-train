@@ -5,10 +5,7 @@ from typing import cast
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.nodes.blocks import (
-    KeypointBlock,
-    LearnableMulAddConv,
-)
+from luxonis_train.nodes.blocks import KeypointBlock, LearnableMulAddConv
 from luxonis_train.utils.boxutils import (
     non_max_suppression,
     process_bbox_predictions,
@@ -177,8 +174,10 @@ class ImplicitKeypointBBoxHead(BaseNode):
         )
 
         return {
-            self.tasks[LabelType.BOUNDINGBOX]: [detection[:, :6] for detection in nms],
-            self.tasks[LabelType.KEYPOINTS]: [
+            self.get_task_name(LabelType.BOUNDINGBOX): [
+                detection[:, :6] for detection in nms
+            ],
+            self.get_task_name(LabelType.KEYPOINTS): [
                 detection[:, 6:].reshape(-1, self.n_keypoints, 3) for detection in nms
             ],
             "features": features,

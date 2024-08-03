@@ -2,10 +2,8 @@ from typing import Literal, cast
 
 import torch
 import torch.nn.functional as F
-from pydantic import Field
 from torch import Tensor, nn
 from torchvision.ops import box_convert
-from typing_extensions import Annotated
 
 from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
     get_area_factor,
@@ -19,22 +17,10 @@ from luxonis_train.utils.boxutils import (
     compute_iou_loss,
     dist2bbox,
 )
-from luxonis_train.utils.types import (
-    BaseProtocol,
-    IncompatibleException,
-    Labels,
-    LabelType,
-    Packet,
-)
+from luxonis_train.utils.types import IncompatibleException, Labels, LabelType, Packet
 
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
-
-
-class Protocol(BaseProtocol):
-    features: list[Tensor]
-    class_scores: Annotated[list[Tensor], Field(min_length=1, max_length=1)]
-    distributions: Annotated[list[Tensor], Field(min_length=1, max_length=1)]
 
 
 class EfficientKeypointBBoxLoss(
@@ -88,7 +74,7 @@ class EfficientKeypointBBoxLoss(
         @type kwargs: dict
         @param kwargs: Additional arguments to pass to L{BaseLoss}.
         """
-        super().__init__(protocol=Protocol, **kwargs)
+        super().__init__(**kwargs)
 
         if not isinstance(self.node, EfficientKeypointBBoxHead):
             raise IncompatibleException(
@@ -107,9 +93,9 @@ class EfficientKeypointBBoxLoss(
 
         self.b_cross_entropy = BCEWithLogitsLoss(pos_weight=torch.tensor([viz_pw]))
         self.sigmas = get_sigmas(
-            sigmas=sigmas, n_keypoints=self.n_kps, class_name=self.module_name
+            sigmas=sigmas, n_keypoints=self.n_kps, class_name=self.name
         )
-        self.area_factor = get_area_factor(area_factor, class_name=self.module_name)
+        self.area_factor = get_area_factor(area_factor, class_name=self.name)
 
         self.n_warmup_epochs = n_warmup_epochs
         self.atts_assigner = ATSSAssigner(topk=9, n_classes=self.n_classes)

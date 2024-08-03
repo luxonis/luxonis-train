@@ -1,10 +1,8 @@
 from typing import cast
 
 import torch
-from pydantic import Field
 from torch import Tensor
 from torchvision.ops import box_convert
-from typing_extensions import Annotated
 
 from luxonis_train.attached_modules.losses.keypoint_loss import KeypointLoss
 from luxonis_train.nodes import ImplicitKeypointBBoxHead
@@ -13,13 +11,7 @@ from luxonis_train.utils.boxutils import (
     match_to_anchor,
     process_bbox_predictions,
 )
-from luxonis_train.utils.types import (
-    BaseProtocol,
-    IncompatibleException,
-    Labels,
-    LabelType,
-    Packet,
-)
+from luxonis_train.utils.types import IncompatibleException, Labels, LabelType, Packet
 
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
@@ -99,7 +91,7 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
 
         if not isinstance(self.node, ImplicitKeypointBBoxHead):
             raise IncompatibleException(
-                f"Loss `{self.module_name}` is only "
+                f"Loss `{self.name}` is only "
                 "compatible with nodes of type `ImplicitKeypointBBoxHead`."
             )
         self.n_classes = self.node.n_classes
@@ -113,11 +105,6 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
             raise ValueError(
                 f"Balance list must have at least {self.num_heads} elements."
             )
-
-        class Protocol(BaseProtocol):
-            features: Annotated[list[Tensor], Field(min_length=self.num_heads)]
-
-        self.protocol = Protocol  # type: ignore
 
         self.min_objectness_iou = min_objectness_iou
         self.bbox_weight = bbox_loss_weight

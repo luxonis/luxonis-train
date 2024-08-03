@@ -1,11 +1,8 @@
 from copy import deepcopy
 
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor
-
-from luxonis_train.utils.types import (
-    LabelType,
-)
 
 from .base_visualizer import BaseVisualizer
 from .utils import Color, draw_keypoint_labels, draw_keypoints

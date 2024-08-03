@@ -5,11 +5,7 @@ from scipy.optimize import linear_sum_assignment
 from torch import Tensor
 from torchvision.ops import box_convert
 
-from luxonis_train.utils.types import (
-    Labels,
-    LabelType,
-    Packet,
-)
+from luxonis_train.utils.types import Labels, LabelType, Packet
 
 from .base_metric import BaseMetric
 
@@ -74,10 +70,8 @@ class ObjectKeypointSimilarity(
         self, outputs: Packet[Tensor], labels: Labels
     ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
         assert self.node.tasks is not None
-        kpts_labels = labels[self.node.tasks[LabelType.KEYPOINTS]][0]
-        bbox_labels = labels[self.node.tasks[LabelType.BOUNDINGBOX]][0]
-        # kpts_labels = labels["keypoints"][0]
-        # bbox_labels = labels["boundingbox"][0]
+        kpts_labels = self.get_label(labels, LabelType.KEYPOINTS)[0]
+        bbox_labels = self.get_label(labels, LabelType.BOUNDINGBOX)[0]
         num_keypoints = (kpts_labels.shape[1] - 2) // 3
         label = torch.zeros((len(bbox_labels), num_keypoints * 3 + 6))
         label[:, :2] = bbox_labels[:, :2]
@@ -90,7 +84,9 @@ class ObjectKeypointSimilarity(
         label_list_oks = []
         image_size = self.node.original_in_shape[1:]
 
-        for i, pred_kpt in enumerate(outputs[self.node.tasks[LabelType.KEYPOINTS]]):
+        for i, pred_kpt in enumerate(
+            outputs[self.node.get_task_name(LabelType.KEYPOINTS)]
+        ):
             output_list_oks.append({"keypoints": pred_kpt})
 
             curr_label = label[label[:, 0] == i].to(pred_kpt.device)
@@ -275,11 +271,14 @@ def get_sigmas(
 
 def get_area_factor(area_factor: float | None, class_name: str | None) -> float:
     """Set the default area factor if not defined."""
+    factor = 0.53
     if area_factor is None:
-        warn_msg = "Default area_factor of 0.53 is being used bbox area scaling."
+        warn_msg = (
+            f"Default area_factor of {factor} is being used for bbox area scaling."
+        )
         if class_name:
             warn_msg = f"[{class_name}] {warn_msg}"
         logger.warning(warn_msg)
-        return 0.53
+        return factor
     else:
         return area_factor
