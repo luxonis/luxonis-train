@@ -5,6 +5,7 @@ from typing import Annotated, Any, Literal
 from luxonis_ml.data import LabelType
 from luxonis_ml.utils import Environ, LuxonisConfig, LuxonisFileSystem, setup_logging
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from typing_extensions import Self
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ class ModelConfig(CustomBaseModel):
     outputs: list[str] = []
 
     @model_validator(mode="after")
-    def check_predefined_model(self):
+    def check_predefined_model(self) -> Self:
         from luxonis_train.utils.registry import MODELS
 
         if self.predefined_model:
@@ -85,7 +86,7 @@ class ModelConfig(CustomBaseModel):
         return self
 
     @model_validator(mode="after")
-    def check_graph(self):
+    def check_graph(self) -> Self:
         from luxonis_train.utils.general import is_acyclic
 
         graph = {node.alias or node.name: node.inputs for node in self.nodes}
@@ -104,7 +105,7 @@ class ModelConfig(CustomBaseModel):
         return self
 
     @model_validator(mode="after")
-    def check_unique_names(self):
+    def check_unique_names(self) -> Self:
         for section, objects in [
             ("nodes", self.nodes),
             ("losses", self.losses),
@@ -165,7 +166,7 @@ class PreprocessingConfig(CustomBaseModel):
     augmentations: list[AugmentationConfig] = []
 
     @model_validator(mode="after")
-    def check_normalize(self):
+    def check_normalize(self) -> Self:
         if self.normalize.active:
             self.augmentations.append(
                 AugmentationConfig(name="Normalize", params=self.normalize.params)
@@ -227,7 +228,7 @@ class TrainerConfig(CustomBaseModel):
     scheduler: SchedulerConfig = SchedulerConfig()
 
     @model_validator(mode="after")
-    def check_num_workes_platform(self):
+    def check_num_workes_platform(self) -> Self:
         if (
             sys.platform == "win32" or sys.platform == "darwin"
         ) and self.num_workers != 0:
@@ -238,7 +239,7 @@ class TrainerConfig(CustomBaseModel):
         return self
 
     @model_validator(mode="after")
-    def check_validation_interval(self):
+    def check_validation_interval(self) -> Self:
         if self.validation_interval > self.epochs:
             logger.warning(
                 "Setting `validation_interval` same as `epochs` otherwise no checkpoint would be generated."
@@ -272,7 +273,7 @@ class ExportConfig(CustomBaseModel):
     upload_url: str | None = None
 
     @model_validator(mode="after")
-    def check_values(self):
+    def check_values(self) -> Self:
         def pad_values(values: float | list[float] | None):
             if values is None:
                 return None
@@ -318,6 +319,17 @@ class Config(LuxonisConfig):
     archiver: ArchiveConfig = ArchiveConfig()
     tuner: TunerConfig | None = None
     ENVIRON: Environ = Field(Environ(), exclude=True)
+
+    @model_validator(mode="after")
+    def validate_num_workers(self) -> Self:
+        if self.loader.name == "LuxonisLoaderTorch":
+            if self.trainer.num_workers != 0:
+                logger.warning(
+                    "Setting `num_workers` to 0 because of "
+                    "compatibility with LuxonisDataset."
+                )
+                self.trainer.num_workers = 0
+        return self
 
     @model_validator(mode="before")
     @classmethod
