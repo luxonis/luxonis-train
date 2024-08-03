@@ -26,10 +26,7 @@ class BaseAttachedModule(
     override the `prepare` method.
 
     @type node: BaseNode
-    @ivar node: Reference to the node that this module is attached to.
-
-    @type protocol: type[BaseProtocol]
-    @ivar protocol: Schema for validating inputs to the module.
+    @param node: Reference to the node that this module is attached to.
 
     @type supported_labels: list[LabelType | tuple[LabelType, ...]] | None
     @ivar supported_labels: List of label types that the module supports.
@@ -57,13 +54,6 @@ class BaseAttachedModule(
     supported_labels: list[LabelType | tuple[LabelType, ...]] | None = None
 
     def __init__(self, *, node: BaseNode | None = None):
-        """Base class for all modules that are attached to a L{LuxonisNode}.
-
-        @type node: L{BaseNode}
-        @param node: Reference to the node that this module is attached to.
-        @type protocol: type[BaseProtocol]
-        @param protocol: Schema for validating inputs to the module.
-        """
         super().__init__()
         self._node = node
         self._epoch = 0
