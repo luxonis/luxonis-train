@@ -85,7 +85,7 @@ class BaseNode(
         two or three integers to specify a range of outputs or `"all"` to
         specify all outputs. Defaults to "all". Python indexing conventions apply.
 
-    @type tasks: dict[LabelType, str] | None
+    @type tasks: list[LabelType] | dict[LabelType, str] | None
     @ivar tasks: Dictionary of tasks that the node supports. Should be defined
         by the user as a class attribute. The key is the task type and the value
         is the name of the task. For example:
@@ -108,7 +108,8 @@ class BaseNode(
 
     Example::
         class MyNode(BaseNode):
-            tasks = {LabelType.CLASSIFICATION: "classification"}
+            # equivalent to `tasks = {LabelType.CLASSIFICATION: "classification"}`
+            tasks = [LabelType.CLASSIFICATION]
 
             def __init__(self, **kwargs):
                 super().__init__(**kwargs)
