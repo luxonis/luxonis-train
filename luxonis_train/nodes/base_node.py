@@ -63,16 +63,6 @@ class BaseNode(
     @param dataset_metadata: Metadata of the dataset.
         Some nodes won't function if not provided.
 
-    @type attach_index: AttachIndexType
-    @param attach_index: Index of previous output that this node attaches to.
-        Can be a single integer to specify a single output, a tuple of
-        two or three integers to specify a range of outputs or `"all"` to
-        specify all outputs. Defaults to "all". Python indexing conventions apply.
-
-    @type input_protocols: list[type[BaseModel]]
-    @param input_protocols: List of input protocols used to validate inputs to the node.
-        Defaults to [FeaturesProtocol].
-
     @type n_classes: int | None
     @param n_classes: Number of classes in the dataset. Provide only
         in case `dataset_metadata` is not provided. Defaults to None.
@@ -80,6 +70,66 @@ class BaseNode(
     @type in_sizes: Size | list[Size] | None
     @param in_sizes: List of input sizes for the node.
         Provide only in case the `input_shapes` were not provided.
+
+    @type _tasks: dict[LabelType, str] | None
+    @param _tasks: Dictionary of tasks that the node supports. Overrides the
+        class L{tasks} attribute. Shouldn't be provided by the user in most cases.
+
+    @type input_protocols: list[type[BaseModel]]
+    @ivar input_protocols: List of input protocols used to validate inputs to the node.
+        Defaults to [L{FeaturesProtocol}]. Protoco
+
+    @type attach_index: AttachIndexType
+    @ivar attach_index: Index of previous output that this node attaches to.
+        Can be a single integer to specify a single output, a tuple of
+        two or three integers to specify a range of outputs or `"all"` to
+        specify all outputs. Defaults to "all". Python indexing conventions apply.
+
+    @type tasks: dict[LabelType, str] | None
+    @ivar tasks: Dictionary of tasks that the node supports. Should be defined
+        by the user as a class attribute. The key is the task type and the value
+        is the name of the task. For example:
+        C{{LabelType.CLASSIFICATION: "classification"}}.
+        Only needs to be defined for head nodes.
+
+
+    When subclassing, the following methods should be implemented:
+        - L{forward}: Forward pass of the module.
+        - L{unwrap}: Optional. Unwraps the inputs from the input packet.
+          The default implementation expects a single input with `features` key.
+        - L{wrap}: Optional. Wraps the output of the forward pass
+          into a `Packet[Tensor]`. The default implementation expects wraps the output
+          of the forward pass into a packet with either "features" or the task name as the key.
+
+    Additionally, the following class attributes can be defined:
+        - L{input_protocols}: List of input protocols used to validate inputs to the node.
+        - L{attach_index}: Index of previous output that this node attaches to.
+        - L{tasks}: Dictionary of tasks that the node supports.
+
+    Example::
+        class MyNode(BaseNode):
+            tasks = {LabelType.CLASSIFICATION: "classification"}
+
+            def __init__(self, **kwargs):
+                super().__init__(**kwargs)
+                self.nn = nn.Sequential(
+                    nn.Linear(10, 10),
+                    nn.ReLU(),
+                    nn.Linear(10, 10),
+                )
+
+            # Roughly equivalent to the default implementation
+            def unwrap(self, inputs: list[Packet[Tensor]]) -> Tensor:
+                assert len(inputs) == 1
+                assert "features" in inputs[0]
+                return inputs[0]["features"]
+
+            def forward(self, inputs: Tensor) -> Tensor:
+                return self.nn(inputs)
+
+            # Equivalent to the default implementation
+            def wrap(output: Tensor) -> Packet[Tensor]:
+                return {self.task: [output]}
     """
 
     input_protocols: list[type[BaseModel]] = [FeaturesProtocol]
@@ -94,11 +144,11 @@ class BaseNode(
         dataset_metadata: DatasetMetadata | None = None,
         n_classes: int | None = None,
         in_sizes: Size | list[Size] | None = None,
-        tasks: dict[LabelType, str] | None = None,
+        _tasks: dict[LabelType, str] | None = None,
     ):
         super().__init__()
 
-        self.tasks = tasks or self.tasks
+        self.tasks = _tasks or self.tasks
 
         if getattr(self, "attach_index", None) is None:
             parameters = inspect.signature(self.forward).parameters

@@ -27,20 +27,31 @@ class BaseAttachedModule(
 
     @type node: BaseNode
     @ivar node: Reference to the node that this module is attached to.
+
     @type protocol: type[BaseProtocol]
     @ivar protocol: Schema for validating inputs to the module.
+
     @type supported_labels: list[LabelType | tuple[LabelType, ...]] | None
     @ivar supported_labels: List of label types that the module supports.
         Elements of the list can be either a single label type or a tuple of
         label types. In case of the latter, the module requires all of the
-        specified labels to be present.
+        specified labels in the tuple to be present.
 
         Example:
-            1. C{[LabelType.CLASSIFICATION, LabelType.SEGMENTATION]} means that the
-                module requires either classification or segmentation labels.
-            1. C{[(LabelType.BOUNDINGBOX, LabelType.KEYPOINTS), LabelType.SEGMENTATION]}
-                means that the module requires either both bounding box I{and} keypoint
-                labels I{or} segmentation labels.
+            - C{[LabelType.CLASSIFICATION, LabelType.SEGMENTATION]} means that the
+              module requires either classification or segmentation labels.
+            - C{[(LabelType.BOUNDINGBOX, LabelType.KEYPOINTS), LabelType.SEGMENTATION]}
+              means that the module requires either both bounding box I{and} keypoint
+              labels I{or} segmentation labels.
+
+    When subclassing, the following methods can be overridden:
+        - L{prepare}: Prepares node outputs for the forward pass of the module.
+          Override this method if the default implementation is not sufficient.
+
+    Additionally, the following attributes can be overridden:
+        - L{supported_labels}: List of label types that the module supports.
+          Used to determine which labels to extract from the dataset and to validate
+          compatibility with the node based on the node's tasks.
     """
 
     supported_labels: list[LabelType | tuple[LabelType, ...]] | None = None
