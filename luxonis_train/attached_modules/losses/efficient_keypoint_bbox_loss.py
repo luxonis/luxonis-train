@@ -41,6 +41,7 @@ class EfficientKeypointBBoxLoss(
     BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]
 ):
     node: EfficientKeypointBBoxHead
+    supported_labels = [(LabelType.BOUNDINGBOX, LabelType.KEYPOINTS)]
 
     class NodePacket(Packet[Tensor]):
         features: list[Tensor]
@@ -87,9 +88,7 @@ class EfficientKeypointBBoxLoss(
         @type kwargs: dict
         @param kwargs: Additional arguments to pass to L{BaseLoss}.
         """
-        super().__init__(
-            required_labels=[LabelType.BOUNDINGBOX], protocol=Protocol, **kwargs
-        )
+        super().__init__(protocol=Protocol, **kwargs)
 
         if not isinstance(self.node, EfficientKeypointBBoxHead):
             raise IncompatibleException(
@@ -106,15 +105,11 @@ class EfficientKeypointBBoxLoss(
         self.n_heads = self.node.n_heads
         self.n_kps = self.node.n_keypoints
 
-        self.b_cross_entropy = BCEWithLogitsLoss(
-            pos_weight=torch.tensor([viz_pw]), **kwargs
-        )
+        self.b_cross_entropy = BCEWithLogitsLoss(pos_weight=torch.tensor([viz_pw]))
         self.sigmas = get_sigmas(
-            sigmas=sigmas, n_keypoints=self.n_kps, class_name=self.__class__.__name__
+            sigmas=sigmas, n_keypoints=self.n_kps, class_name=self.module_name
         )
-        self.area_factor = get_area_factor(
-            area_factor, class_name=self.__class__.__name__
-        )
+        self.area_factor = get_area_factor(area_factor, class_name=self.module_name)
 
         self.n_warmup_epochs = n_warmup_epochs
         self.atts_assigner = ATSSAssigner(topk=9, n_classes=self.n_classes)
@@ -139,8 +134,8 @@ class EfficientKeypointBBoxLoss(
         batch_size = pred_scores.shape[0]
         device = pred_scores.device
 
-        target_bbox = labels["boundingbox"][0].to(device)
-        target_kpts = labels["keypoints"][0].to(device)
+        target_kpts = labels[self.node.tasks[LabelType.KEYPOINTS]][0]
+        target_bbox = labels[self.node.tasks[LabelType.BOUNDINGBOX]][0]
         n_kpts = (target_kpts.shape[1] - 2) // 3
 
         gt_bboxes_scale = torch.tensor(

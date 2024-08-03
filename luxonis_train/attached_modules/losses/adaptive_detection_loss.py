@@ -34,6 +34,7 @@ class Protocol(BaseProtocol):
 
 class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]):
     node: EfficientBBoxHead
+    supported_labels = [LabelType.BOUNDINGBOX]
 
     class NodePacket(Packet[Tensor]):
         features: list[Tensor]
@@ -67,9 +68,7 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         @type kwargs: dict
         @param kwargs: Additional arguments to pass to L{BaseLoss}.
         """
-        super().__init__(
-            required_labels=[LabelType.BOUNDINGBOX], protocol=Protocol, **kwargs
-        )
+        super().__init__(protocol=Protocol, **kwargs)
 
         if not isinstance(self.node, EfficientBBoxHead):
             raise IncompatibleException(
@@ -103,7 +102,7 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         batch_size = pred_scores.shape[0]
         device = pred_scores.device
 
-        target = labels[self.task][0].to(device)
+        target = labels[self.node.task][0].to(device)
         gt_bboxes_scale = torch.tensor(
             [
                 self.original_img_size[1],

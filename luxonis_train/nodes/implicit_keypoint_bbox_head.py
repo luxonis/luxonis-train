@@ -22,6 +22,11 @@ logger = logging.getLogger(__name__)
 
 
 class ImplicitKeypointBBoxHead(BaseNode):
+    tasks: dict[LabelType, str] = {
+        LabelType.KEYPOINTS: "keypoints",
+        LabelType.BOUNDINGBOX: "boundingbox",
+    }
+
     def __init__(
         self,
         n_keypoints: int | None = None,
@@ -57,7 +62,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
         @type max_det: int
         @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
         """
-        super().__init__(_task_type=LabelType.KEYPOINTS, **kwargs)
+        super().__init__(**kwargs)
 
         if anchors is None:
             logger.info("No anchors provided, generating them automatically.")
@@ -172,8 +177,8 @@ class ImplicitKeypointBBoxHead(BaseNode):
         )
 
         return {
-            "boundingbox": [detection[:, :6] for detection in nms],
-            "keypoints": [
+            self.tasks[LabelType.BOUNDINGBOX]: [detection[:, :6] for detection in nms],
+            self.tasks[LabelType.KEYPOINTS]: [
                 detection[:, 6:].reshape(-1, self.n_keypoints, 3) for detection in nms
             ],
             "features": features,

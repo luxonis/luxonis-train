@@ -1,12 +1,15 @@
 from typing import Literal
 
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor, nn
 
 from .base_loss import BaseLoss
 
 
 class BCEWithLogitsLoss(BaseLoss[Tensor, Tensor]):
+    supported_labels = [LabelType.SEGMENTATION, LabelType.CLASSIFICATION]
+
     def __init__(
         self,
         weight: list[float] | None = None,

@@ -33,6 +33,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
     Uses C{OKS} as IoU measure.
     """
 
+    supported_labels = [(LabelType.BOUNDINGBOX, LabelType.KEYPOINTS)]
+
     is_differentiable: bool = False
     higher_is_better: bool = True
     full_state_update: bool = True
@@ -77,11 +79,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         @type kwargs: Any
         @param kwargs: Additional arguments to pass to L{BaseMetric}.
         """
-        super().__init__(
-            protocol=Protocol,
-            required_labels=[LabelType.BOUNDINGBOX, LabelType.KEYPOINTS],
-            **kwargs,
-        )
+        super().__init__(protocol=Protocol, **kwargs)
 
         self.n_keypoints = self.node.n_keypoints
 
@@ -108,8 +106,10 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         self.add_state("groundtruth_keypoints", default=[], dist_reduce_fx=None)
 
     def prepare(self, outputs: Packet[Tensor], labels: Labels):
-        kpts = labels["keypoints"][0]
-        boxes = labels["boundingbox"][0]
+        assert self.node.tasks is not None
+        kpts = labels[self.node.tasks[LabelType.KEYPOINTS]][0]
+        boxes = labels[self.node.tasks[LabelType.BOUNDINGBOX]][0]
+
         nkpts = (kpts.shape[1] - 2) // 3
         label = torch.zeros((len(boxes), nkpts * 3 + 6))
         label[:, :2] = boxes[:, :2]
@@ -122,8 +122,9 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         label_list_kpt_map = []
         image_size = self.node.original_in_shape[1:]
 
-        output_kpts: list[Tensor] = outputs["keypoints"]
-        output_bboxes: list[Tensor] = outputs["boundingbox"]
+        assert self.node.tasks is not None
+        output_kpts: list[Tensor] = outputs[self.node.tasks[LabelType.KEYPOINTS]]
+        output_bboxes: list[Tensor] = outputs[self.node.tasks[LabelType.BOUNDINGBOX]]
         for i in range(len(output_kpts)):
             output_list_kpt_map.append(
                 {

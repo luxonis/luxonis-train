@@ -3,7 +3,7 @@ import logging
 import torch
 from torch import Tensor
 
-from luxonis_train.utils.types import Labels, LabelType, Packet, SegmentationProtocol
+from luxonis_train.utils.types import LabelType
 
 from .base_visualizer import BaseVisualizer
 from .utils import (
@@ -18,6 +18,8 @@ log_disable = False
 
 
 class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
+    supported_labels = [LabelType.SEGMENTATION]
+
     def __init__(
         self,
         colors: Color | list[Color] = "#5050FF",
@@ -32,20 +34,13 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         @type alpha: float
         @param alpha: Alpha value of the segmentation masks. Defaults to C{0.6}.
         """
-        super().__init__(
-            protocol=SegmentationProtocol,
-            required_labels=[LabelType.SEGMENTATION],
-            **kwargs,
-        )
+        super().__init__(**kwargs)
         if not isinstance(colors, list):
             colors = [colors]
 
         self.colors = colors
         self.background_class = background_class
         self.alpha = alpha
-
-    def prepare(self, output: Packet[Tensor], label: Labels) -> tuple[Tensor, Tensor]:
-        return output[self.node.task][0], label[self.task][0]
 
     @staticmethod
     def draw_predictions(

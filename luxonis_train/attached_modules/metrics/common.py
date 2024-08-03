@@ -1,6 +1,7 @@
 import logging
 
 import torchmetrics
+from luxonis_ml.data import LabelType
 from torch import Tensor
 
 from .base_metric import BaseMetric
@@ -13,7 +14,6 @@ class TorchMetricWrapper(BaseMetric):
         super().__init__(
             node=kwargs.pop("node", None),
             protocol=kwargs.pop("protocol", None),
-            required_labels=kwargs.pop("required_labels", None),
         )
         task = kwargs.get("task")
 
@@ -61,20 +61,25 @@ class TorchMetricWrapper(BaseMetric):
 
 
 class Accuracy(TorchMetricWrapper):
+    supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
     Metric = torchmetrics.Accuracy
 
 
 class F1Score(TorchMetricWrapper):
+    supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
     Metric = torchmetrics.F1Score
 
 
 class JaccardIndex(TorchMetricWrapper):
+    supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
     Metric = torchmetrics.JaccardIndex
 
 
 class Precision(TorchMetricWrapper):
+    supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
     Metric = torchmetrics.Precision
 
 
 class Recall(TorchMetricWrapper):
+    supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
     Metric = torchmetrics.Recall

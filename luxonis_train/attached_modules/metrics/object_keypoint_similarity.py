@@ -6,7 +6,6 @@ from torch import Tensor
 from torchvision.ops import box_convert
 
 from luxonis_train.utils.types import (
-    KeypointProtocol,
     Labels,
     LabelType,
     Packet,
@@ -30,6 +29,8 @@ class ObjectKeypointSimilarity(
     groundtruth_keypoints: list[Tensor]
     groundtruth_scales: list[Tensor]
 
+    supported_labels = [LabelType.KEYPOINTS]
+
     def __init__(
         self,
         n_keypoints: int | None = None,
@@ -52,9 +53,7 @@ class ObjectKeypointSimilarity(
         @param use_cocoeval_oks: Whether to use same OKS formula as in COCOeval or use
             the one from definition. Defaults to C{True}.
         """
-        super().__init__(
-            required_labels=[LabelType.KEYPOINTS], protocol=KeypointProtocol, **kwargs
-        )
+        super().__init__(**kwargs)
 
         if n_keypoints is None and self.node is None:
             raise ValueError(
@@ -74,8 +73,11 @@ class ObjectKeypointSimilarity(
     def prepare(
         self, outputs: Packet[Tensor], labels: Labels
     ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
-        kpts_labels = labels["keypoints"][0]
-        bbox_labels = labels["boundingbox"][0]
+        assert self.node.tasks is not None
+        kpts_labels = labels[self.node.tasks[LabelType.KEYPOINTS]][0]
+        bbox_labels = labels[self.node.tasks[LabelType.BOUNDINGBOX]][0]
+        # kpts_labels = labels["keypoints"][0]
+        # bbox_labels = labels["boundingbox"][0]
         num_keypoints = (kpts_labels.shape[1] - 2) // 3
         label = torch.zeros((len(bbox_labels), num_keypoints * 3 + 6))
         label[:, :2] = bbox_labels[:, :2]
@@ -88,7 +90,7 @@ class ObjectKeypointSimilarity(
         label_list_oks = []
         image_size = self.node.original_in_shape[1:]
 
-        for i, pred_kpt in enumerate(outputs["keypoints"]):
+        for i, pred_kpt in enumerate(outputs[self.node.tasks[LabelType.KEYPOINTS]]):
             output_list_oks.append({"keypoints": pred_kpt})
 
             curr_label = label[label[:, 0] == i].to(pred_kpt.device)

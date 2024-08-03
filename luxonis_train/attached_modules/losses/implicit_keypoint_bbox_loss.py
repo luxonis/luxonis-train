@@ -36,6 +36,7 @@ KeypointTargetType = tuple[
 
 class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
     node: ImplicitKeypointBBoxHead
+    supported_labels = [(LabelType.BOUNDINGBOX, LabelType.KEYPOINTS)]
 
     def __init__(
         self,
@@ -94,14 +95,11 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         @param balance: Balance for the different heads. Defaults to C{None}.
         """
 
-        super().__init__(
-            required_labels=[LabelType.BOUNDINGBOX, LabelType.KEYPOINTS],
-            **kwargs,
-        )
+        super().__init__(**kwargs)
 
         if not isinstance(self.node, ImplicitKeypointBBoxHead):
             raise IncompatibleException(
-                f"Loss `{self.__class__.__name__}` is only "
+                f"Loss `{self.module_name}` is only "
                 "compatible with nodes of type `ImplicitKeypointBBoxHead`."
             )
         self.n_classes = self.node.n_classes
@@ -131,20 +129,16 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
 
         self.bias = bias
 
-        self.b_cross_entropy = BCEWithLogitsLoss(
-            pos_weight=torch.tensor([obj_pw]), **kwargs
-        )
+        self.b_cross_entropy = BCEWithLogitsLoss(pos_weight=torch.tensor([obj_pw]))
         self.class_loss = SmoothBCEWithLogitsLoss(
             label_smoothing=label_smoothing,
             bce_pow=cls_pw,
-            **kwargs,
         )
         self.keypoint_loss = KeypointLoss(
             n_keypoints=self.n_keypoints,
             bce_power=viz_pw,
             sigmas=sigmas,
             area_factor=area_factor,
-            **kwargs,
         )
 
         self.positive_smooth_const = 1 - 0.5 * label_smoothing
@@ -172,8 +166,8 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         """
         predictions = outputs["features"]
 
-        kpts = labels["keypoints"][0]
-        boxes = labels["boundingbox"][0]
+        kpts = labels[self.node.tasks[LabelType.KEYPOINTS]][0]
+        boxes = labels[self.node.tasks[LabelType.BOUNDINGBOX]][0]
 
         nkpts = (kpts.shape[1] - 2) // 3
         targets = torch.zeros((len(boxes), nkpts * 3 + self.box_offset + 1))

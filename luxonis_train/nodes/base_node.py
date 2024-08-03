@@ -1,5 +1,6 @@
 import inspect
 from abc import ABC, abstractmethod
+from contextlib import suppress
 from typing import Generic, TypeVar
 
 from luxonis_ml.utils.registry import AutoRegisterMeta
@@ -68,8 +69,8 @@ class BaseNode(
         two or three integers to specify a range of outputs or `"all"` to
         specify all outputs. Defaults to "all". Python indexing conventions apply.
 
-    @type in_protocols: list[type[BaseModel]]
-    @param in_protocols: List of input protocols used to validate inputs to the node.
+    @type input_protocols: list[type[BaseModel]]
+    @param input_protocols: List of input protocols used to validate inputs to the node.
         Defaults to [FeaturesProtocol].
 
     @type n_classes: int | None
@@ -81,22 +82,25 @@ class BaseNode(
         Provide only in case the `input_shapes` were not provided.
     """
 
+    input_protocols: list[type[BaseModel]] = [FeaturesProtocol]
+    attach_index: AttachIndexType
+    tasks: dict[LabelType, str] | None = None
+
     def __init__(
         self,
         *,
         input_shapes: list[Packet[Size]] | None = None,
         original_in_shape: Size | None = None,
         dataset_metadata: DatasetMetadata | None = None,
-        attach_index: AttachIndexType | None = None,
-        in_protocols: list[type[BaseModel]] | None = None,
         n_classes: int | None = None,
         in_sizes: Size | list[Size] | None = None,
-        task: str | None = None,
-        _task_type: LabelType | None = None,
+        tasks: dict[LabelType, str] | None = None,
     ):
         super().__init__()
 
-        if attach_index is None:
+        self.tasks = tasks or self.tasks
+
+        if getattr(self, "attach_index", None) is None:
             parameters = inspect.signature(self.forward).parameters
             inputs_forward_type = parameters.get(
                 "inputs", parameters.get("input", parameters.get("x", None))
@@ -108,14 +112,6 @@ class BaseNode(
                 self.attach_index = -1
             else:
                 self.attach_index = "all"
-        else:
-            self.attach_index = attach_index
-
-        self.in_protocols = in_protocols or [FeaturesProtocol]
-        self._task_type = _task_type
-        if task is None and self._task_type is not None:
-            task = self._task_type.value
-        self._task = task
 
         self._input_shapes = input_shapes
         self._original_in_shape = original_in_shape
@@ -128,28 +124,37 @@ class BaseNode(
         self._epoch = 0
         self._in_sizes = in_sizes
 
-    def _non_set_error(self, name: str) -> ValueError:
-        return ValueError(
-            f"{self.__class__.__name__} is trying to access `{name}`, "
-            "but it was not set during initialization. "
-        )
+    @property
+    def node_name(self) -> str:
+        return self.__class__.__name__
 
     @property
     def task(self) -> str:
         """Getter for the task."""
-        if self._task is None:
-            raise self._non_set_error("task")
-        return self._task
+        if not self.tasks:
+            raise ValueError(f"{self.node_name} does not have any tasks defined.")
+        if len(self.tasks) > 1:
+            raise ValueError(
+                f"Node {self.node_name} has multiple tasks defined. "
+                "Use `tasks` attribute to specify the task."
+            )
+        return next(iter(self.tasks.values()))
 
     @property
     def n_classes(self) -> int:
         """Getter for the number of classes."""
-        return self.dataset_metadata.n_classes(self.task)
+        task = None
+        with suppress(ValueError):
+            task = self.task
+        return self.dataset_metadata.n_classes(task)
 
     @property
     def class_names(self) -> list[str]:
         """Getter for the class names."""
-        return self.dataset_metadata.class_names(self.task)
+        task = None
+        with suppress(ValueError):
+            task = self.task
+        return self.dataset_metadata.class_names(task)
 
     @property
     def input_shapes(self) -> list[Packet[Size]]:
@@ -209,7 +214,7 @@ class BaseNode(
         features = self.input_shapes[0].get("features")
         if features is None:
             raise IncompatibleException(
-                f"Feature field is missing in {self.__class__.__name__}. "
+                f"Feature field is missing in {self.node_name}. "
                 "The default implementation of `in_sizes` cannot be used."
             )
         shapes = self.get_attached(self.input_shapes[0]["features"])
@@ -323,12 +328,16 @@ class BaseNode(
                 raise IncompatibleException(
                     "Default `wrap` expects a single tensor or a list of tensors."
                 )
-        return {self._task or "features": outputs}
+        try:
+            task = self.task
+        except ValueError:
+            task = "features"
+        return {task: outputs}
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:
         """Combines the forward pass with the wrapping and unwrapping of the inputs.
 
-        Additionally validates the inputs against `in_protocols`.
+        Additionally validates the inputs against `input_protocols`.
 
         @type inputs: list[Packet[Tensor]]
         @param inputs: Inputs to the module.
@@ -344,21 +353,19 @@ class BaseNode(
         return self.wrap(outputs)
 
     def validate(self, data: list[Packet[Tensor]]) -> list[Packet[Tensor]]:
-        """Validates the inputs against `in_protocols`."""
-        if len(data) != len(self.in_protocols):
+        """Validates the inputs against `inpur_protocols`."""
+        if len(data) != len(self.input_protocols):
             raise IncompatibleException(
-                f"Node {self.__class__.__name__} expects {len(self.in_protocols)} inputs, "
+                f"Node {self.node_name} expects {len(self.input_protocols)} inputs, "
                 f"but got {len(data)} inputs instead."
             )
         try:
             return [
                 validate_packet(d, protocol)
-                for d, protocol in zip(data, self.in_protocols)
+                for d, protocol in zip(data, self.input_protocols)
             ]
         except ValidationError as e:
-            raise IncompatibleException.from_validation_error(
-                e, self.__class__.__name__
-            ) from e
+            raise IncompatibleException.from_validation_error(e, self.node_name) from e
 
     T = TypeVar("T", Tensor, Size)
 
@@ -418,3 +425,9 @@ class BaseNode(
                 return sizes[idx]
             case list(sizes):
                 return [size[idx] for size in sizes]
+
+    def _non_set_error(self, name: str) -> ValueError:
+        return ValueError(
+            f"{self.node_name} is trying to access `{name}`, "
+            "but it was not set during initialization. "
+        )

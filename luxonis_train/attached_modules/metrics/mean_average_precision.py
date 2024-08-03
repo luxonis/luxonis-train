@@ -2,12 +2,7 @@ import torchmetrics.detection as detection
 from torch import Tensor
 from torchvision.ops import box_convert
 
-from luxonis_train.utils.types import (
-    BBoxProtocol,
-    Labels,
-    LabelType,
-    Packet,
-)
+from luxonis_train.utils.types import Labels, LabelType, Packet
 
 from .base_metric import BaseMetric
 
@@ -20,12 +15,10 @@ class MeanAveragePrecision(BaseMetric):
     <https://lightning.ai/docs/torchmetrics/stable/detection/mean_average_precision.html>}.
     """
 
+    supported_labels = [LabelType.BOUNDINGBOX]
+
     def __init__(self, **kwargs):
-        super().__init__(
-            protocol=BBoxProtocol,
-            required_labels=[LabelType.BOUNDINGBOX],
-            **kwargs,
-        )
+        super().__init__(**kwargs)
         self.metric = detection.MeanAveragePrecision()
 
     def update(
@@ -38,9 +31,7 @@ class MeanAveragePrecision(BaseMetric):
     def prepare(
         self, outputs: Packet[Tensor], labels: Labels
     ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
-        label = labels["boundingbox"][
-            0
-        ]  # TODO: Think of a better way to deal with multi-task heads
+        label = labels[self.node.task][0]
         output_nms = self.get_input_tensors(outputs)
 
         image_size = self.node.original_in_shape[1:]

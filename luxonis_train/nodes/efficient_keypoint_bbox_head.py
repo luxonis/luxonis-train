@@ -15,6 +15,11 @@ from .efficient_bbox_head import EfficientBBoxHead
 
 
 class EfficientKeypointBBoxHead(EfficientBBoxHead):
+    tasks: dict[LabelType, str] = {
+        LabelType.KEYPOINTS: "keypoints",
+        LabelType.BOUNDINGBOX: "boundingbox",
+    }
+
     def __init__(
         self,
         n_keypoints: int | None = None,
@@ -51,7 +56,6 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             conf_thres=conf_thres,
             iou_thres=iou_thres,
             max_det=max_det,
-            _task_type=LabelType.KEYPOINTS,
             **kwargs,
         )
 
@@ -145,11 +149,13 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             (features, cls_tensor, reg_tensor, pred_kpt)
         )
         return {
-            "boundingbox": [detection[:, :6] for detection in detections],
+            self.tasks[LabelType.BOUNDINGBOX]: [
+                detection[:, :6] for detection in detections
+            ],
             "features": features,
             "class_scores": [cls_tensor],
             "distributions": [reg_tensor],
-            "keypoints": [
+            self.tasks[LabelType.KEYPOINTS]: [
                 detection[:, 6:].reshape(-1, self.n_keypoints, 3)
                 for detection in detections
             ],

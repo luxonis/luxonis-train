@@ -24,6 +24,9 @@ class EfficientBBoxHead(
     BaseNode[list[Tensor], tuple[list[Tensor], list[Tensor], list[Tensor]]]
 ):
     in_channels: list[int]
+    tasks: dict[LabelType, str] = {
+        LabelType.BOUNDINGBOX: "boundingbox",
+    }
 
     def __init__(
         self,
@@ -50,9 +53,7 @@ class EfficientBBoxHead(
         @type max_det: int
         @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
         """
-        super().__init__(
-            _task_type=kwargs.pop("_task_type", LabelType.BOUNDINGBOX), **kwargs
-        )
+        super().__init__(**kwargs)
 
         self.n_heads = n_heads
 
@@ -99,7 +100,7 @@ class EfficientBBoxHead(
                 conf, _ = out_cls.max(1, keepdim=True)
                 out = torch.cat([out_reg, conf, out_cls], dim=1)
                 outputs.append(out)
-            return {"boundingbox": outputs}
+            return {self.task: outputs}
 
         cls_tensor = torch.cat(
             [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))], dim=2
@@ -118,7 +119,7 @@ class EfficientBBoxHead(
         else:
             boxes = self._process_to_bbox((features, cls_tensor, reg_tensor))
             return {
-                "boundingbox": boxes,
+                self.task: boxes,
                 "features": features,
                 "class_scores": [cls_tensor],
                 "distributions": [reg_tensor],

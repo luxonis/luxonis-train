@@ -25,6 +25,8 @@ class Protocol(BaseProtocol):
 
 
 class KeypointLoss(BaseLoss[Tensor, Tensor]):
+    supported_labels = [LabelType.KEYPOINTS]
+
     def __init__(
         self,
         n_keypoints: int,
@@ -47,9 +49,7 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
             default one. Defaults to C{None}.
         """
 
-        super().__init__(
-            protocol=Protocol, required_labels=[LabelType.KEYPOINTS], **kwargs
-        )
+        super().__init__(protocol=Protocol, **kwargs)
         self.b_cross_entropy = BCEWithLogitsLoss(
             pos_weight=torch.tensor([bce_power]), **kwargs
         )

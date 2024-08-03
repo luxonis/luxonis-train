@@ -2,6 +2,7 @@ import logging
 import sys
 from typing import Annotated, Any, Literal
 
+from luxonis_ml.data import LabelType
 from luxonis_ml.utils import Environ, LuxonisConfig, LuxonisFileSystem, setup_logging
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -39,7 +40,7 @@ class ModelNodeConfig(CustomBaseModel):
     input_sources: list[str] = []  # From data loader
     params: dict[str, Any] = {}
     freezing: FreezingConfig = FreezingConfig()
-    task: str | None = None
+    task: str | dict[LabelType, str] | None = None
 
 
 class PredefinedModelConfig(CustomBaseModel):

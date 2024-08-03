@@ -3,7 +3,7 @@ import logging
 import torch
 from torch import Tensor
 
-from luxonis_train.utils.types import BBoxProtocol, LabelType
+from luxonis_train.utils.types import LabelType
 
 from .base_visualizer import BaseVisualizer
 from .utils import (
@@ -15,6 +15,8 @@ from .utils import (
 
 
 class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
+    supported_labels = [LabelType.BOUNDINGBOX]
+
     def __init__(
         self,
         labels: dict[int, str] | list[str] | None = None,
@@ -49,19 +51,17 @@ class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         @type font_size: int | None
         @param font_size: The font size to use for the labels. Defaults to C{None}.
         """
-        super().__init__(
-            required_labels=[LabelType.BOUNDINGBOX], protocol=BBoxProtocol, **kwargs
-        )
+        super().__init__(**kwargs)
         if isinstance(labels, list):
             labels = {i: label for i, label in enumerate(labels)}
 
-        self.labels = labels or {
+        self.bbox_labels = labels or {
             i: label for i, label in enumerate(self.node.class_names)
         }
         if colors is None:
-            colors = {label: get_color(i) for i, label in self.labels.items()}
+            colors = {label: get_color(i) for i, label in self.bbox_labels.items()}
         if isinstance(colors, list):
-            colors = {self.labels[i]: color for i, color in enumerate(colors)}
+            colors = {self.bbox_labels[i]: color for i, color in enumerate(colors)}
         self.colors = colors
         self.fill = fill
         self.width = width
@@ -180,7 +180,7 @@ class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
             label_canvas,
             targets,
             color_dict=self.colors,
-            label_dict=self.labels,
+            label_dict=self.bbox_labels,
             draw_labels=self.draw_labels,
             fill=self.fill,
             font=self.font,
@@ -190,7 +190,7 @@ class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         predictions_viz = self.draw_predictions(
             prediction_canvas,
             predictions,
-            label_dict=self.labels,
+            label_dict=self.bbox_labels,
             color_dict=self.colors,
             draw_labels=self.draw_labels,
             fill=self.fill,

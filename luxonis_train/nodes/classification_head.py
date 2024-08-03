@@ -7,6 +7,9 @@ from .base_node import BaseNode
 
 class ClassificationHead(BaseNode[Tensor, Tensor]):
     in_channels: int
+    tasks: dict[LabelType, str] = {
+        LabelType.CLASSIFICATION: "classification",
+    }
 
     def __init__(
         self,
@@ -19,7 +22,7 @@ class ClassificationHead(BaseNode[Tensor, Tensor]):
         @param dropout_rate: Dropout rate before last layer, range C{[0, 1]}. Defaults
             to C{0.2}.
         """
-        super().__init__(_task_type=LabelType.CLASSIFICATION, **kwargs)
+        super().__init__(**kwargs)
 
         self.head = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),

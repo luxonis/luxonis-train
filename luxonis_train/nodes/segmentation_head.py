@@ -9,7 +9,7 @@ from torch import Tensor
 
 from luxonis_train.nodes.blocks import UpBlock
 from luxonis_train.utils.general import infer_upscale_factor
-from luxonis_train.utils.types import LabelType, Packet
+from luxonis_train.utils.types import LabelType
 
 from .base_node import BaseNode
 
@@ -17,6 +17,9 @@ from .base_node import BaseNode
 class SegmentationHead(BaseNode[Tensor, Tensor]):
     in_height: int
     in_channels: int
+    tasks: dict[LabelType, str] = {
+        LabelType.SEGMENTATION: "segmentation",
+    }
 
     def __init__(self, **kwargs):
         """Basic segmentation FCN head.
@@ -26,7 +29,7 @@ class SegmentationHead(BaseNode[Tensor, Tensor]):
         @type kwargs: Any
         @param kwargs: Additional arguments to pass to L{BaseNode}.
         """
-        super().__init__(_task_type=LabelType.SEGMENTATION, **kwargs)
+        super().__init__(**kwargs)
 
         original_height = self.original_in_shape[1]
         num_up = infer_upscale_factor(self.in_height, original_height, strict=False)
@@ -43,9 +46,6 @@ class SegmentationHead(BaseNode[Tensor, Tensor]):
             *modules,
             nn.Conv2d(in_channels, self.n_classes, kernel_size=1),
         )
-
-    def wrap(self, output: Tensor) -> Packet[Tensor]:
-        return {"segmentation": [output]}
 
     def forward(self, inputs: Tensor) -> Tensor:
         return self.head(inputs)

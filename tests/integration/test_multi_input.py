@@ -26,7 +26,7 @@ class CustomMultiInputLoader(BaseLoaderTorch):
             "pointcloud": torch.Size([1000, 3]),
         }
 
-    def __getitem__(self, idx):
+    def __getitem__(self, _):
         # Fake data
         left = torch.rand(3, 224, 224, dtype=torch.float32)
         right = torch.rand(3, 224, 224, dtype=torch.float32)
@@ -106,20 +106,24 @@ class FusionNeck2(MultiInputTestBaseNode):
 
 
 class CustomSegHead1(MultiInputTestBaseNode):
+    tasks = {LabelType.SEGMENTATION: "segmentation"}
+
     def __init__(self, **kwargs):
         in_protocols = [FeaturesProtocol]
-        super().__init__(**kwargs, _task_type=LabelType.SEGMENTATION)
+        super().__init__(**kwargs)
         self.in_protocols = in_protocols
 
 
 class CustomSegHead2(MultiInputTestBaseNode):
+    tasks = {LabelType.SEGMENTATION: "segmentation"}
+
     def __init__(self, **kwargs):
         in_protocols = [
             FeaturesProtocol,
             FeaturesProtocol,
             FeaturesProtocol,
         ]
-        super().__init__(**kwargs, _task_type=LabelType.SEGMENTATION)
+        super().__init__(**kwargs)
         self.in_protocols = in_protocols
 
 
