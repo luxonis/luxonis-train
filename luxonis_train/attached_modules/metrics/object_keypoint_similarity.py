@@ -53,13 +53,12 @@ class ObjectKeypointSimilarity(
 
         if n_keypoints is None and self.node is None:
             raise ValueError(
-                f"Either `n_keypoints` or `node` must be provided "
-                f"to {self.__class__.__name__}."
+                f"Either `n_keypoints` or `node` must be provided to {self.name}."
             )
         self.n_keypoints = n_keypoints or self.node.n_keypoints
 
-        self.sigmas = get_sigmas(sigmas, self.n_keypoints, self.__class__.__name__)
-        self.area_factor = get_area_factor(area_factor, self.__class__.__name__)
+        self.sigmas = get_sigmas(sigmas, self.n_keypoints, self.name)
+        self.area_factor = get_area_factor(area_factor, self.name)
         self.use_cocoeval_oks = use_cocoeval_oks
 
         self.add_state("pred_keypoints", default=[], dist_reduce_fx=None)

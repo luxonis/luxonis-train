@@ -58,7 +58,7 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
 
         if not isinstance(self.node, EfficientBBoxHead):
             raise IncompatibleException(
-                f"Loss `{self.__class__.__name__}` is only "
+                f"Loss `{self.name}` is only "
                 "compatible with nodes of type `EfficientBBoxHead`."
             )
         self.iou_type: IoUType = iou_type

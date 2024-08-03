@@ -42,11 +42,9 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
             pos_weight=torch.tensor([bce_power]), **kwargs
         )
         self.sigmas = get_sigmas(
-            sigmas=sigmas, n_keypoints=n_keypoints, class_name=self.__class__.__name__
+            sigmas=sigmas, n_keypoints=n_keypoints, class_name=self.name
         )
-        self.area_factor = get_area_factor(
-            area_factor, class_name=self.__class__.__name__
-        )
+        self.area_factor = get_area_factor(area_factor, class_name=self.name)
 
     def prepare(self, inputs: Packet[Tensor], labels: Labels) -> tuple[Tensor, Tensor]:
         return torch.cat(inputs["keypoints"], dim=0), self.get_label(labels)[0]

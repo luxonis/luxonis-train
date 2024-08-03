@@ -78,7 +78,7 @@ class EfficientKeypointBBoxLoss(
 
         if not isinstance(self.node, EfficientKeypointBBoxHead):
             raise IncompatibleException(
-                f"Loss `{self.__class__.__name__}` is only "
+                f"Loss `{self.name}` is only "
                 "compatible with nodes of type `EfficientKeypointBBoxHead`."
             )
         self.iou_type: IoUType = iou_type

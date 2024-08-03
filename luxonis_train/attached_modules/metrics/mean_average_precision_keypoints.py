@@ -73,8 +73,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
         self.n_keypoints = self.node.n_keypoints
 
-        self.sigmas = get_sigmas(sigmas, self.n_keypoints, self.__class__.__name__)
-        self.area_factor = get_area_factor(area_factor, self.__class__.__name__)
+        self.sigmas = get_sigmas(sigmas, self.n_keypoints, self.name)
+        self.area_factor = get_area_factor(area_factor, self.name)
         self.max_dets = max_dets
 
         allowed_box_formats = ("xyxy", "xywh", "cxcywh")

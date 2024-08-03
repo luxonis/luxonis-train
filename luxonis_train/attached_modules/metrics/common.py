@@ -20,8 +20,7 @@ class TorchMetricWrapper(BaseMetric):
             else:
                 task = "binary"
             logger.warning(
-                f"Task type not specified for {self.__class__.__name__}, "
-                f"assuming {task}."
+                f"Task type not specified for {self.name}, assuming '{task}'."
             )
             kwargs["task"] = task
         self._task = task
