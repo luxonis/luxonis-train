@@ -4,6 +4,7 @@ from typing import Annotated, Any, Literal
 
 from luxonis_ml.utils import Environ, LuxonisConfig, LuxonisFileSystem, setup_logging
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from typing_extensions import Self
 
 logger = logging.getLogger(__name__)
 
@@ -317,6 +318,17 @@ class Config(LuxonisConfig):
     archiver: ArchiveConfig = ArchiveConfig()
     tuner: TunerConfig | None = None
     ENVIRON: Environ = Field(Environ(), exclude=True)
+
+    @model_validator(mode="after")
+    def validate_num_workers(self) -> Self:
+        if self.loader.name == "LuxonisLoaderTorch":
+            if self.trainer.num_workers != 0:
+                logger.warning(
+                    "Setting `num_workers` to 0 because of "
+                    "compatibility with LuxonisDataset."
+                )
+                self.trainer.num_workers = 0
+        return self
 
     @model_validator(mode="before")
     @classmethod
