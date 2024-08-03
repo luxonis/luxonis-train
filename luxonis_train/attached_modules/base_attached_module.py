@@ -165,6 +165,23 @@ class BaseAttachedModule(
             supports multiple tasks or if the module doesn't require any tasks.
         @rtype: list[Tensor]
         @return: Extracted input tensors
+
+        @raises ValueError: If the task type is not supported by the node or if the task
+            is not present in the inputs.
+
+        @raises NotImplementedError: If the module requires multiple labels.
+            For such cases, the `prepare` method should be overridden.
+
+        Example::
+            >>> # supported_labels = [LabelType.SEGMENTATION]
+            >>> # node.tasks = {LabelType.SEGMENTATION: "segmentation-task"}
+            >>> inputs = [{"segmentation-task": [seg_tensor]}, {"features": [feat_tensor]}]
+            >>> get_input_tensors(inputs)  # matches supported labels to node's tasks
+            [seg_tensor]
+            >>> get_input_tensors(inputs, "features")
+            [feat_tensor]
+            >>> get_input_tensors(inputs, LabelType.CLASSIFICATION)
+            ValueError: Task 'classification' is not supported by the node.
         """
         if task_type is not None:
             if isinstance(task_type, LabelType):
