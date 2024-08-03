@@ -128,9 +128,12 @@ class BaseNode(
             def forward(self, inputs: Tensor) -> Tensor:
                 return self.nn(inputs)
 
-            # Equivalent to the default implementation
+            # Roughly equivalent to the default implementation
             def wrap(output: Tensor) -> Packet[Tensor]:
-                return {self.task: [output]}
+                # The key of the main node output have to be the same as the
+                # default task name for it to be automatically recognized
+                # by the attached modules.
+                return {"classification": [output]}
     """
 
     input_protocols: list[type[BaseModel]] = [FeaturesProtocol]
@@ -202,7 +205,7 @@ class BaseNode(
 
         if task not in self._tasks:
             raise ValueError(
-                f"Node {self.name} does not have support {task.value} task."
+                f"Node {self.name} does not support the {task.value} task."
             )
         return self._tasks[task]
 
