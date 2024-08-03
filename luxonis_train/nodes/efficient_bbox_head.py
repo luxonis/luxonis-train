@@ -24,9 +24,7 @@ class EfficientBBoxHead(
     BaseNode[list[Tensor], tuple[list[Tensor], list[Tensor], list[Tensor]]]
 ):
     in_channels: list[int]
-    tasks: dict[LabelType, str] = {
-        LabelType.BOUNDINGBOX: "boundingbox",
-    }
+    tasks: list[LabelType] = [LabelType.BOUNDINGBOX]
 
     def __init__(
         self,

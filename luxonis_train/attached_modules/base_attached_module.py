@@ -71,7 +71,7 @@ class BaseAttachedModule(
                 raise ValueError(
                     f"Module {self.name} supports labels {self.supported_labels}, "
                     f"but is connected to node {self.node.name} which does not support any of them. "
-                    f"{self.node.name} supports {list(self.node.tasks.keys())}."
+                    f"{self.node.name} supports {list(self.node_tasks.keys())}."
                 )
 
     @property
@@ -100,9 +100,9 @@ class BaseAttachedModule(
 
     @property
     def node_tasks(self) -> dict[LabelType, str]:
-        if self.node.tasks is None:
+        if self.node._tasks is None:
             raise ValueError("Node must have the `tasks` attribute specified.")
-        return self.node.tasks
+        return self.node._tasks
 
     def get_label(
         self, labels: Labels, label_type: LabelType | None = None
@@ -226,7 +226,7 @@ class BaseAttachedModule(
         @raises NotImplementedError: If the module requires multiple labels.
         @raises IncompatibleException: If the inputs are not compatible with the module.
         """
-        if self.node.tasks is None:
+        if self.node._tasks is None:
             raise ValueError(
                 f"{self.node.name} must have the `tasks` attribute specified "
                 f"for {self.name} to make use of the default `prepare` method."
@@ -237,7 +237,7 @@ class BaseAttachedModule(
                 "specified in order to use the default `prepare` method."
             )
         if len(self.supported_labels) > 1:
-            if len(self.node.tasks) > 1:
+            if len(self.node._tasks) > 1:
                 raise NotImplementedError(
                     f"{self.name} supports more than one label type"
                     f"and is connected to {self.node.name} node "
@@ -245,7 +245,7 @@ class BaseAttachedModule(
                     "implementation cannot be used in this case."
                 )
             self.supported_labels = list(
-                set(self.supported_labels) & set(self.node.tasks)
+                set(self.supported_labels) & set(self.node._tasks)
             )
         x = self.get_input_tensors(inputs)
         label, label_type = self.get_label(labels)

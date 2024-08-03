@@ -15,10 +15,7 @@ from .efficient_bbox_head import EfficientBBoxHead
 
 
 class EfficientKeypointBBoxHead(EfficientBBoxHead):
-    tasks: dict[LabelType, str] = {
-        LabelType.KEYPOINTS: "keypoints",
-        LabelType.BOUNDINGBOX: "boundingbox",
-    }
+    tasks: list[LabelType] = [LabelType.KEYPOINTS, LabelType.BOUNDINGBOX]
 
     def __init__(
         self,

@@ -7,9 +7,7 @@ from .base_node import BaseNode
 
 class ClassificationHead(BaseNode[Tensor, Tensor]):
     in_channels: int
-    tasks: dict[LabelType, str] = {
-        LabelType.CLASSIFICATION: "classification",
-    }
+    tasks: list[LabelType] = [LabelType.CLASSIFICATION]
 
     def __init__(
         self,
@@ -33,7 +31,3 @@ class ClassificationHead(BaseNode[Tensor, Tensor]):
 
     def forward(self, inputs: Tensor) -> Tensor:
         return self.head(inputs)
-
-    #
-    # def wrap(self, output: Tensor) -> Packet[Tensor]:
-    #     return {sel: [output]}

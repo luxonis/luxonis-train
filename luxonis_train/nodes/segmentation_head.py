@@ -17,9 +17,7 @@ from .base_node import BaseNode
 class SegmentationHead(BaseNode[Tensor, Tensor]):
     in_height: int
     in_channels: int
-    tasks: dict[LabelType, str] = {
-        LabelType.SEGMENTATION: "segmentation",
-    }
+    tasks: list[LabelType] = [LabelType.SEGMENTATION]
 
     def __init__(self, **kwargs):
         """Basic segmentation FCN head.

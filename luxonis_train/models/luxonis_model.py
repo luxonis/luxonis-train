@@ -170,7 +170,7 @@ class LuxonisModel(pl.LightningModule):
 
                     node_cfg.task = {next(iter(Node.tasks)): node_cfg.task}
                 else:
-                    node_cfg.task = {**Node.tasks, **node_cfg.task}
+                    node_cfg.task = {**Node._process_tasks(Node.tasks), **node_cfg.task}
             nodes[node_name] = (Node, {**node_cfg.params, "_tasks": node_cfg.task})
 
             # Handle inputs for this node

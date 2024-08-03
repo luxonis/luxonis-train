@@ -134,7 +134,7 @@ class BaseNode(
 
     input_protocols: list[type[BaseModel]] = [FeaturesProtocol]
     attach_index: AttachIndexType
-    tasks: dict[LabelType, str] | None = None
+    tasks: list[LabelType] | dict[LabelType, str] | None = None
 
     def __init__(
         self,
@@ -148,7 +148,11 @@ class BaseNode(
     ):
         super().__init__()
 
-        self.tasks = _tasks or self.tasks
+        self._tasks = None
+        if _tasks is not None:
+            self._tasks = _tasks
+        elif self.tasks is not None:
+            self._tasks = self._process_tasks(self.tasks)
 
         if getattr(self, "attach_index", None) is None:
             parameters = inspect.signature(self.forward).parameters
@@ -174,14 +178,23 @@ class BaseNode(
         self._epoch = 0
         self._in_sizes = in_sizes
 
+    @staticmethod
+    def _process_tasks(
+        tasks: dict[LabelType, str] | list[LabelType],
+    ) -> dict[LabelType, str]:
+        if isinstance(tasks, dict):
+            return tasks
+        if isinstance(tasks, list):
+            return {task: task.value for task in tasks}
+
     def get_task_name(self, task: LabelType) -> str:
-        if self.tasks is None:
+        if self._tasks is None:
             raise ValueError(f"Node {self.name} does not have any tasks defined.")
-        if task not in self.tasks:
+        if task not in self._tasks:
             raise ValueError(
                 f"Node {self.name} does not have support {task.value} task."
             )
-        return self.tasks[task]
+        return self._tasks[task]
 
     @property
     def name(self) -> str:
@@ -190,14 +203,14 @@ class BaseNode(
     @property
     def task(self) -> str:
         """Getter for the task."""
-        if not self.tasks:
+        if not self._tasks:
             raise ValueError(f"{self.name} does not have any tasks defined.")
-        if len(self.tasks) > 1:
+        if len(self._tasks) > 1:
             raise ValueError(
                 f"Node {self.name} has multiple tasks defined. "
                 "Use `tasks` attribute to specify the task."
             )
-        return next(iter(self.tasks.values()))
+        return next(iter(self._tasks.values()))
 
     @property
     def n_classes(self) -> int:

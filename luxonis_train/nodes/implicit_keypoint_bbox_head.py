@@ -19,10 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class ImplicitKeypointBBoxHead(BaseNode):
-    tasks: dict[LabelType, str] = {
-        LabelType.KEYPOINTS: "keypoints",
-        LabelType.BOUNDINGBOX: "boundingbox",
-    }
+    tasks: list[LabelType] = [LabelType.KEYPOINTS, LabelType.BOUNDINGBOX]
 
     def __init__(
         self,
