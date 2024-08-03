@@ -5,10 +5,7 @@ from typing import Literal, cast
 
 import lightning.pytorch as pl
 import torch
-from lightning.pytorch.callbacks import (
-    ModelCheckpoint,
-    RichModelSummary,
-)
+from lightning.pytorch.callbacks import ModelCheckpoint, RichModelSummary
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
 from torch import Size, Tensor, nn
 
@@ -31,11 +28,7 @@ from luxonis_train.callbacks import (
 )
 from luxonis_train.nodes import BaseNode
 from luxonis_train.utils.config import AttachedModuleConfig, Config
-from luxonis_train.utils.general import (
-    DatasetMetadata,
-    to_shape_packet,
-    traverse_graph,
-)
+from luxonis_train.utils.general import DatasetMetadata, to_shape_packet, traverse_graph
 from luxonis_train.utils.registry import CALLBACKS, OPTIMIZERS, SCHEDULERS, Registry
 from luxonis_train.utils.tracker import LuxonisTrackerPL
 from luxonis_train.utils.types import Kwargs, Labels, Packet

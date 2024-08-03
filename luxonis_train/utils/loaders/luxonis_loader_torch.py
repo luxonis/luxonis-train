@@ -1,12 +1,7 @@
 from typing import Literal
 
 import numpy as np
-from luxonis_ml.data import (
-    BucketStorage,
-    BucketType,
-    LuxonisDataset,
-    LuxonisLoader,
-)
+from luxonis_ml.data import BucketStorage, BucketType, LuxonisDataset, LuxonisLoader
 from torch import Size, Tensor
 
 from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput
