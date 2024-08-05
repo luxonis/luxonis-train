@@ -377,6 +377,11 @@ class BaseNode(
         @rtype: ForwardInputT
         @return: Prepared inputs, ready to be passed to the L{forward} method.
         """
+        if len(inputs) > 1:
+            raise IncompatibleException(
+                f"Node {self.name} expects a single input, but got {len(inputs)} inputs instead."
+                "If the node expects multiple inputs, the `unwrap` method should be overridden."
+            )
         return self.get_attached(inputs[0]["features"])  # type: ignore
 
     @abstractmethod
