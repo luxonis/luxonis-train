@@ -53,6 +53,7 @@ class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         self.bbox_labels = labels or {
             i: label for i, label in enumerate(self.node.class_names)
         }
+
         if colors is None:
             colors = {label: get_color(i) for i, label in self.bbox_labels.items()}
         if isinstance(colors, list):

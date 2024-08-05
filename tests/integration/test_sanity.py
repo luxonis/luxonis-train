@@ -26,8 +26,6 @@ def test_sanity(config_file):
         "[]",
         "trainer.batch_size",
         "1",
-        "trainer.num_workers",
-        "0",
         "tracker.save_directory",
         str(TEST_OUTPUT),
     ]
@@ -90,8 +88,6 @@ def test_tuner():
             "4",
             "trainer.batch_size",
             "1",
-            "trainer.num_workers",
-            "0",
             "tracker.save_directory",
             str(TEST_OUTPUT),
         ],
