@@ -1,6 +1,5 @@
 import inspect
 from abc import ABC, abstractmethod
-from contextlib import suppress
 from typing import Generic, TypeVar
 
 from luxonis_ml.utils.registry import AutoRegisterMeta
@@ -224,21 +223,77 @@ class BaseNode(
             )
         return next(iter(self._tasks.values()))
 
+    def get_n_classes(self, task: LabelType) -> int:
+        """Gets the number of classes for a particular task.
+
+        @type task: LabelType
+        @param task: Task to get the number of classes for.
+        @rtype: int
+        @return: Number of classes for the task.
+        """
+        return self.dataset_metadata.n_classes(self.get_task_name(task))
+
+    def get_class_names(self, task: LabelType) -> list[str]:
+        """Gets the class names for a particular task.
+
+        @type task: LabelType
+        @param task: Task to get the class names for.
+        @rtype: list[str]
+        @return: Class names for the task.
+        """
+        return self.dataset_metadata.class_names(self.get_task_name(task))
+
     @property
     def n_classes(self) -> int:
         """Getter for the number of classes."""
-        task = None
-        with suppress(ValueError):
-            task = self.task
-        return self.dataset_metadata.n_classes(task)
+        if not self._tasks:
+            raise ValueError(
+                f"{self.name} does not have any tasks defined, "
+                "`BaseNode.n_classes` property cannot be used. "
+                "Either override the `tasks` class attribute, "
+                "pass the `n_classes` attribute to the constructor or call "
+                "the `BaseNode.dataset_metadata.n_classes` method manually."
+            )
+        elif len(self._tasks) == 1:
+            return self.dataset_metadata.n_classes(self.task)
+        else:
+            n_classes = [
+                self.dataset_metadata.n_classes(self.get_task_name(task))
+                for task in self._tasks
+            ]
+            if len(set(n_classes)) == 1:
+                return n_classes[0]
+            raise ValueError(
+                "Node defines multiple tasks but they have different number of classes. "
+                "This is likely an error, as the number of classes should be the same."
+                "If it is intended, use `BaseNode.get_n_classes` instead."
+            )
 
     @property
     def class_names(self) -> list[str]:
         """Getter for the class names."""
-        task = None
-        with suppress(ValueError):
-            task = self.task
-        return self.dataset_metadata.class_names(task)
+        if not self._tasks:
+            raise ValueError(
+                f"{self.name} does not have any tasks defined, "
+                "`BaseNode.class_names` property cannot be used. "
+                "Either override the `tasks` class attribute, "
+                "pass the `n_classes` attribute to the constructor or call "
+                "the `BaseNode.dataset_metadata.class_names` method manually."
+            )
+        elif len(self._tasks) == 1:
+            return self.dataset_metadata.class_names(self.task)
+        else:
+            class_names = [
+                self.dataset_metadata.class_names(self.get_task_name(task))
+                for task in self._tasks
+            ]
+            if all(set(names) == set(class_names[0]) for names in class_names):
+                return class_names[0]
+            raise ValueError(
+                "Node defines multiple tasks but they have different class names. "
+                "This is likely an error, as the class names should be the same. "
+                "If it is intended, use `BaseNode.get_class_names` instead."
+            )
 
     @property
     def input_shapes(self) -> list[Packet[Size]]:
