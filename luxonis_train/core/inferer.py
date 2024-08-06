@@ -15,7 +15,7 @@ class Inferer(Trainer):
         cfg: str | dict[str, Any] | Config | None = None,
         opts: list[str] | tuple[str, ...] | None = None,
         view: Literal["train", "test", "val"] = "val",
-        save_dir: Path | None = None,
+        save_dir: str | Path | None = None,
     ):
         opts = list(opts or [])
         opts += ["trainer.batch_size", "1"]
@@ -26,7 +26,7 @@ class Inferer(Trainer):
             self.loader = self.pytorch_loaders["test"]
         else:
             self.loader = self.pytorch_loaders["val"]
-        self.save_dir = save_dir
+        self.save_dir = Path(save_dir) if save_dir is not None else None
         if self.save_dir is not None:
             self.save_dir.mkdir(exist_ok=True, parents=True)
 
