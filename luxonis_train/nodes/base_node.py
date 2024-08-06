@@ -519,7 +519,7 @@ class BaseNode(
         return wrapped
 
     def validate(self, data: list[Packet[Tensor]]) -> list[Packet[Tensor]]:
-        """Validates the inputs against `inpur_protocols`."""
+        """Validates the inputs against `input_protocols`."""
         if len(data) != len(self.input_protocols):
             raise IncompatibleException(
                 f"Node {self.name} expects {len(self.input_protocols)} inputs, "
