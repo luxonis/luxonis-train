@@ -118,7 +118,7 @@ class BaseNode(
 
     @type input_protocols: list[type[BaseModel]]
     @ivar input_protocols: List of input protocols used to validate inputs to the node.
-        Defaults to [L{FeaturesProtocol}]. Protoco
+        Defaults to [L{FeaturesProtocol}].
 
     @type attach_index: AttachIndexType
     @ivar attach_index: Index of previous output that this node attaches to.
@@ -399,7 +399,23 @@ class BaseNode(
         """Wraps the output of the forward pass into a `Packet[Tensor]`.
 
         The default implementation expects a single tensor or a list of tensors
-        and wraps them into a Packet with `features` key.
+        and wraps them into a Packet with either the node task as a key
+        or "features" key if task is not defined.
+
+        Example::
+
+            >>> class FooNode(BaseNode):
+            ...     tasks = [LabelType.CLASSIFICATION]
+            ...
+            ... class BarNode(BaseNode):
+            ...     pass
+            ...
+            >>> node = FooNode()
+            >>> node.wrap(torch.rand(1, 10))
+            {"classification": [Tensor(1, 10)]}
+            >>> node = BarNode()
+            >>> node.wrap([torch.rand(1, 10), torch.rand(1, 10)])
+            {"features": [Tensor(1, 10), Tensor(1, 10)]}
 
         @type output: ForwardOutputT
         @param output: Output of the forward pass.
