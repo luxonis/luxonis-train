@@ -1,5 +1,6 @@
 from typing import Literal
 
+from luxonis_ml.data import LabelType
 from torch import Tensor
 from torchvision.ops import sigmoid_focal_loss
 
@@ -7,6 +8,8 @@ from luxonis_train.attached_modules.losses import BaseLoss
 
 
 class SigmoidFocalLoss(BaseLoss[Tensor, Tensor]):
+    supported_labels = [LabelType.SEGMENTATION, LabelType.CLASSIFICATION]
+
     def __init__(
         self,
         alpha: float = 0.25,

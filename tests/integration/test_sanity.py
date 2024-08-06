@@ -5,10 +5,12 @@ from pathlib import Path
 
 import pytest
 
+TEST_OUTPUT = Path("tests/test-output")
+
 
 @pytest.fixture(scope="function", autouse=True)
 def clear_output():
-    shutil.rmtree("output", ignore_errors=True)
+    shutil.rmtree(TEST_OUTPUT, ignore_errors=True)
 
 
 @pytest.mark.parametrize(
@@ -24,13 +26,15 @@ def test_sanity(config_file):
         "[]",
         "trainer.batch_size",
         "1",
+        "tracker.save_directory",
+        str(TEST_OUTPUT),
     ]
     result = subprocess.run(
         ["luxonis_train", "train", "--config", f"configs/{config_file}", *opts],
     )
     assert result.returncode == 0
 
-    opts += ["model.weights", str(list(Path("output").rglob("*.ckpt"))[0])]
+    opts += ["model.weights", str(list(TEST_OUTPUT.rglob("*.ckpt"))[0])]
     opts += ["exporter.onnx.opset_version", "11"]
 
     result = subprocess.run(
@@ -84,6 +88,8 @@ def test_tuner():
             "4",
             "trainer.batch_size",
             "1",
+            "tracker.save_directory",
+            str(TEST_OUTPUT),
         ],
     )
     assert result.returncode == 0

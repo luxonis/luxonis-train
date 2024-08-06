@@ -1,9 +1,7 @@
 import pytest
 import torch
 
-from luxonis_train.utils.loaders import (
-    collate_fn,
-)
+from luxonis_train.utils.loaders import collate_fn
 from luxonis_train.utils.types import LabelType
 
 

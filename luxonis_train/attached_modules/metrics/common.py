@@ -1,6 +1,7 @@
 import logging
 
 import torchmetrics
+from luxonis_ml.data import LabelType
 from torch import Tensor
 
 from .base_metric import BaseMetric
@@ -10,11 +11,7 @@ logger = logging.getLogger(__name__)
 
 class TorchMetricWrapper(BaseMetric):
     def __init__(self, **kwargs):
-        super().__init__(
-            node=kwargs.pop("node", None),
-            protocol=kwargs.pop("protocol", None),
-            required_labels=kwargs.pop("required_labels", None),
-        )
+        super().__init__(node=kwargs.pop("node", None))
         task = kwargs.get("task")
 
         if task is None:
@@ -23,8 +20,7 @@ class TorchMetricWrapper(BaseMetric):
             else:
                 task = "binary"
             logger.warning(
-                f"Task type not specified for {self.__class__.__name__}, "
-                f"assuming {task}."
+                f"Task type not specified for {self.name}, assuming '{task}'."
             )
             kwargs["task"] = task
         self._task = task
@@ -61,20 +57,25 @@ class TorchMetricWrapper(BaseMetric):
 
 
 class Accuracy(TorchMetricWrapper):
+    supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
     Metric = torchmetrics.Accuracy
 
 
 class F1Score(TorchMetricWrapper):
+    supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
     Metric = torchmetrics.F1Score
 
 
 class JaccardIndex(TorchMetricWrapper):
+    supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
     Metric = torchmetrics.JaccardIndex
 
 
 class Precision(TorchMetricWrapper):
+    supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
     Metric = torchmetrics.Precision
 
 
 class Recall(TorchMetricWrapper):
+    supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
     Metric = torchmetrics.Recall

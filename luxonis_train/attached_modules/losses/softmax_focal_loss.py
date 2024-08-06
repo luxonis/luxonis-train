@@ -3,6 +3,7 @@
 from typing import Literal
 
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor
 
 from luxonis_train.attached_modules.losses import BaseLoss
@@ -11,6 +12,8 @@ from .cross_entropy import CrossEntropyLoss
 
 
 class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
+    supported_labels = [LabelType.SEGMENTATION, LabelType.CLASSIFICATION]
+
     def __init__(
         self,
         alpha: float | list[float] = 0.25,

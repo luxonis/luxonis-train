@@ -2,10 +2,8 @@ from typing import Literal, cast
 
 import torch
 import torch.nn.functional as F
-from pydantic import Field
 from torch import Tensor, nn
 from torchvision.ops import box_convert
-from typing_extensions import Annotated
 
 from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
     get_area_factor,
@@ -19,28 +17,17 @@ from luxonis_train.utils.boxutils import (
     compute_iou_loss,
     dist2bbox,
 )
-from luxonis_train.utils.types import (
-    BaseProtocol,
-    IncompatibleException,
-    Labels,
-    LabelType,
-    Packet,
-)
+from luxonis_train.utils.types import IncompatibleException, Labels, LabelType, Packet
 
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
-
-
-class Protocol(BaseProtocol):
-    features: list[Tensor]
-    class_scores: Annotated[list[Tensor], Field(min_length=1, max_length=1)]
-    distributions: Annotated[list[Tensor], Field(min_length=1, max_length=1)]
 
 
 class EfficientKeypointBBoxLoss(
     BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]
 ):
     node: EfficientKeypointBBoxHead
+    supported_labels = [(LabelType.BOUNDINGBOX, LabelType.KEYPOINTS)]
 
     class NodePacket(Packet[Tensor]):
         features: list[Tensor]
@@ -87,13 +74,11 @@ class EfficientKeypointBBoxLoss(
         @type kwargs: dict
         @param kwargs: Additional arguments to pass to L{BaseLoss}.
         """
-        super().__init__(
-            required_labels=[LabelType.BOUNDINGBOX], protocol=Protocol, **kwargs
-        )
+        super().__init__(**kwargs)
 
         if not isinstance(self.node, EfficientKeypointBBoxHead):
             raise IncompatibleException(
-                f"Loss `{self.__class__.__name__}` is only "
+                f"Loss `{self.name}` is only "
                 "compatible with nodes of type `EfficientKeypointBBoxHead`."
             )
         self.iou_type: IoUType = iou_type
@@ -106,15 +91,11 @@ class EfficientKeypointBBoxLoss(
         self.n_heads = self.node.n_heads
         self.n_kps = self.node.n_keypoints
 
-        self.b_cross_entropy = BCEWithLogitsLoss(
-            pos_weight=torch.tensor([viz_pw]), **kwargs
-        )
+        self.b_cross_entropy = BCEWithLogitsLoss(pos_weight=torch.tensor([viz_pw]))
         self.sigmas = get_sigmas(
-            sigmas=sigmas, n_keypoints=self.n_kps, class_name=self.__class__.__name__
+            sigmas=sigmas, n_keypoints=self.n_kps, class_name=self.name
         )
-        self.area_factor = get_area_factor(
-            area_factor, class_name=self.__class__.__name__
-        )
+        self.area_factor = get_area_factor(area_factor, class_name=self.name)
 
         self.n_warmup_epochs = n_warmup_epochs
         self.atts_assigner = ATSSAssigner(topk=9, n_classes=self.n_classes)
@@ -131,16 +112,16 @@ class EfficientKeypointBBoxLoss(
     def prepare(
         self, outputs: Packet[Tensor], labels: Labels
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
-        feats = outputs["features"]
-        pred_scores = outputs["class_scores"][0]
-        pred_distri = outputs["distributions"][0]
-        pred_kpts = outputs["keypoints_raw"][0]
+        feats = self.get_input_tensors(outputs, "features")
+        pred_scores = self.get_input_tensors(outputs, "class_scores")[0]
+        pred_distri = self.get_input_tensors(outputs, "distributions")[0]
+        pred_kpts = self.get_input_tensors(outputs, "keypoints_raw")[0]
 
         batch_size = pred_scores.shape[0]
         device = pred_scores.device
 
-        target_bbox = labels["boundingbox"][0].to(device)
-        target_kpts = labels["keypoints"][0].to(device)
+        target_kpts = self.get_label(labels, LabelType.KEYPOINTS)[0]
+        target_bbox = self.get_label(labels, LabelType.BOUNDINGBOX)[0]
         n_kpts = (target_kpts.shape[1] - 2) // 3
 
         gt_bboxes_scale = torch.tensor(

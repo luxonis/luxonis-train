@@ -3,9 +3,7 @@ from typing import Any, Literal
 
 import cv2
 
-from luxonis_train.attached_modules.visualizers import (
-    get_unnormalized_images,
-)
+from luxonis_train.attached_modules.visualizers import get_unnormalized_images
 from luxonis_train.utils.config import Config
 
 from .trainer import Trainer

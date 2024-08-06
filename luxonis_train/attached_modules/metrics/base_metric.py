@@ -56,5 +56,4 @@ class BaseMetric(
         @param labels: The labels of the model. @raises L{IncompatibleException}: If the
             inputs are not compatible with the module.
         """
-        self.validate(outputs, labels)
         self.update(*self.prepare(outputs, labels))

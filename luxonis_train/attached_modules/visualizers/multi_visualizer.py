@@ -1,11 +1,7 @@
 from torch import Tensor
 
 from luxonis_train.utils.registry import VISUALIZERS
-from luxonis_train.utils.types import (
-    Kwargs,
-    Labels,
-    Packet,
-)
+from luxonis_train.utils.types import Kwargs, Labels, Packet
 
 from .base_visualizer import BaseVisualizer
 

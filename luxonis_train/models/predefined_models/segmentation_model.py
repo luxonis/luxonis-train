@@ -20,6 +20,7 @@ class SegmentationModel(BasePredefinedModel):
     head_params: Kwargs = field(default_factory=dict)
     loss_params: Kwargs = field(default_factory=dict)
     visualizer_params: Kwargs = field(default_factory=dict)
+    task_name: str | None = None
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
@@ -36,6 +37,7 @@ class SegmentationModel(BasePredefinedModel):
                 inputs=["segmentation_backbone"],
                 freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
+                task=self.task_name,
             ),
         ]
 

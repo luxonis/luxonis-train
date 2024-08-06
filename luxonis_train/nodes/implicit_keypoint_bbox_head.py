@@ -5,10 +5,7 @@ from typing import cast
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.nodes.blocks import (
-    KeypointBlock,
-    LearnableMulAddConv,
-)
+from luxonis_train.nodes.blocks import KeypointBlock, LearnableMulAddConv
 from luxonis_train.utils.boxutils import (
     non_max_suppression,
     process_bbox_predictions,
@@ -22,6 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 class ImplicitKeypointBBoxHead(BaseNode):
+    tasks: list[LabelType] = [LabelType.KEYPOINTS, LabelType.BOUNDINGBOX]
+
     def __init__(
         self,
         n_keypoints: int | None = None,
@@ -57,7 +56,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
         @type max_det: int
         @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
         """
-        super().__init__(_task_type=LabelType.KEYPOINTS, **kwargs)
+        super().__init__(**kwargs)
 
         if anchors is None:
             logger.info("No anchors provided, generating them automatically.")

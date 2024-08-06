@@ -24,10 +24,9 @@ arbitrarily as long as the two nodes are compatible with each other.
 
 Every node takes these parameters:
 
-| Key          | Type        | Default value | Description                                                                                                               |
-| ------------ | ----------- | ------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| attach_index | int \| None | None          | Index of previous output that the head attaches to. Each node has a sensible default. Usually should not be manually set. |
-| n_classes    | int \| None | None          | Number of classes in the dataset. Inferred from the dataset if not provided.                                              |
+| Key       | Type        | Default value | Description                                                                  |
+| --------- | ----------- | ------------- | ---------------------------------------------------------------------------- |
+| n_classes | int \| None | None          | Number of classes in the dataset. Inferred from the dataset if not provided. |
 
 Additional parameters for specific nodes are listed below.
 

@@ -12,19 +12,9 @@ from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
     get_area_factor,
     get_sigmas,
 )
-from luxonis_train.utils.types import (
-    BBoxProtocol,
-    KeypointProtocol,
-    Labels,
-    LabelType,
-    Packet,
-)
+from luxonis_train.utils.types import Labels, LabelType, Packet
 
 from .base_metric import BaseMetric
-
-
-class Protocol(KeypointProtocol, BBoxProtocol):
-    ...
 
 
 class MeanAveragePrecisionKeypoints(BaseMetric):
@@ -32,6 +22,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
     Uses C{OKS} as IoU measure.
     """
+
+    supported_labels = [(LabelType.BOUNDINGBOX, LabelType.KEYPOINTS)]
 
     is_differentiable: bool = False
     higher_is_better: bool = True
@@ -77,16 +69,12 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         @type kwargs: Any
         @param kwargs: Additional arguments to pass to L{BaseMetric}.
         """
-        super().__init__(
-            protocol=Protocol,
-            required_labels=[LabelType.BOUNDINGBOX, LabelType.KEYPOINTS],
-            **kwargs,
-        )
+        super().__init__(**kwargs)
 
         self.n_keypoints = self.node.n_keypoints
 
-        self.sigmas = get_sigmas(sigmas, self.n_keypoints, self.__class__.__name__)
-        self.area_factor = get_area_factor(area_factor, self.__class__.__name__)
+        self.sigmas = get_sigmas(sigmas, self.n_keypoints, self.name)
+        self.area_factor = get_area_factor(area_factor, self.name)
         self.max_dets = max_dets
 
         allowed_box_formats = ("xyxy", "xywh", "cxcywh")
@@ -108,8 +96,10 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         self.add_state("groundtruth_keypoints", default=[], dist_reduce_fx=None)
 
     def prepare(self, outputs: Packet[Tensor], labels: Labels):
-        kpts = labels["keypoints"][0]
-        boxes = labels["boundingbox"][0]
+        assert self.node.tasks is not None
+        kpts = self.get_label(labels, LabelType.KEYPOINTS)[0]
+        boxes = self.get_label(labels, LabelType.BOUNDINGBOX)[0]
+
         nkpts = (kpts.shape[1] - 2) // 3
         label = torch.zeros((len(boxes), nkpts * 3 + 6))
         label[:, :2] = boxes[:, :2]
@@ -122,8 +112,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         label_list_kpt_map = []
         image_size = self.node.original_in_shape[1:]
 
-        output_kpts: list[Tensor] = outputs["keypoints"]
-        output_bboxes: list[Tensor] = outputs["boundingbox"]
+        output_kpts = self.get_input_tensors(outputs, LabelType.KEYPOINTS)
+        output_bboxes = self.get_input_tensors(outputs, LabelType.BOUNDINGBOX)
         for i in range(len(output_kpts)):
             output_list_kpt_map.append(
                 {

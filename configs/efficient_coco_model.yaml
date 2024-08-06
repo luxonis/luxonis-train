@@ -1,0 +1,114 @@
+
+model:
+  name: coco_test
+  nodes:
+    - name: EfficientRep
+      params:
+        channels_list: [64, 128, 256, 512, 1024]
+        num_repeats: [1, 6, 12, 18, 6]
+        depth_mul: 0.33
+        width_mul: 0.33
+
+    - name: RepPANNeck
+      inputs:
+        - EfficientRep
+      params:
+        channels_list: [256, 128, 128, 256, 256, 512]
+        num_repeats: [12, 12, 12, 12]
+        depth_mul: 0.33
+        width_mul: 0.33
+
+    - name: EfficientKeypointBBoxHead
+      inputs:
+        - RepPANNeck
+      params:
+        conf_thres: 0.25
+        iou_thres: 0.45
+
+    - name: SegmentationHead
+      inputs:
+        - RepPANNeck
+
+    - name: EfficientBBoxHead
+      inputs:
+        - RepPANNeck
+      params:
+        conf_thres: 0.75
+        iou_thres: 0.45
+
+  losses:
+    - name: AdaptiveDetectionLoss
+      attached_to: EfficientBBoxHead
+    - name: BCEWithLogitsLoss
+      attached_to: SegmentationHead
+    - name: EfficientKeypointBBoxLoss
+      attached_to: EfficientKeypointBBoxHead
+
+  metrics:
+    - name: ObjectKeypointSimilarity
+      is_main_metric: true
+      attached_to: EfficientKeypointBBoxHead
+    - name: MeanAveragePrecisionKeypoints
+      attached_to: EfficientKeypointBBoxHead
+    - name: MeanAveragePrecision
+      attached_to: EfficientBBoxHead
+    - name: F1Score
+      attached_to: SegmentationHead
+      params:
+        task: binary
+    - name: JaccardIndex
+      attached_to: SegmentationHead
+      params:
+        task: binary
+
+  visualizers:
+    - name: MultiVisualizer
+      attached_to: EfficientKeypointBBoxHead
+      params:
+        visualizers:
+          - name: KeypointVisualizer
+            params:
+              nonvisible_color: blue
+          - name: BBoxVisualizer
+            params:
+              colors:
+                person: "#FF5055"
+    - name: SegmentationVisualizer
+      attached_to: SegmentationHead
+      params:
+        colors: "#FF5055"
+    - name: BBoxVisualizer
+      attached_to: EfficientBBoxHead
+
+tracker:
+  project_name: coco_test
+  save_directory: output
+  is_tensorboard: True
+
+loader:
+  params:
+    dataset_name: coco_test
+
+trainer:
+
+  num_sanity_val_steps: 1
+  batch_size: 4
+  accumulate_grad_batches: 1
+  epochs: 200
+  num_workers: 0
+  train_metrics_interval: -1
+  validation_interval: 10
+  num_log_images: 8
+  save_top_k: 3
+
+  preprocessing:
+    train_image_size: [&height 256, &width 320]
+    keep_aspect_ratio: False
+    train_rgb: True
+    normalize:
+      active: True
+
+  callbacks:
+    - name: ExportOnTrainEnd
+    - name: TestOnTrainEnd
+

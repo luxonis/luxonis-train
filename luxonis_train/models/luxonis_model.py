@@ -5,10 +5,7 @@ from typing import Literal, cast
 
 import lightning.pytorch as pl
 import torch
-from lightning.pytorch.callbacks import (
-    ModelCheckpoint,
-    RichModelSummary,
-)
+from lightning.pytorch.callbacks import ModelCheckpoint, RichModelSummary
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
 from torch import Size, Tensor, nn
 
@@ -31,11 +28,7 @@ from luxonis_train.callbacks import (
 )
 from luxonis_train.nodes import BaseNode
 from luxonis_train.utils.config import AttachedModuleConfig, Config
-from luxonis_train.utils.general import (
-    DatasetMetadata,
-    to_shape_packet,
-    traverse_graph,
-)
+from luxonis_train.utils.general import DatasetMetadata, to_shape_packet, traverse_graph
 from luxonis_train.utils.registry import CALLBACKS, OPTIMIZERS, SCHEDULERS, Registry
 from luxonis_train.utils.tracker import LuxonisTrackerPL
 from luxonis_train.utils.types import Kwargs, Labels, Packet
@@ -148,7 +141,7 @@ class LuxonisModel(pl.LightningModule):
 
         for node_cfg in self.cfg.model.nodes:
             node_name = node_cfg.name
-            Node = BaseNode.REGISTRY.get(node_name)
+            Node: type[BaseNode] = BaseNode.REGISTRY.get(node_name)
             node_name = node_cfg.alias or node_name
             if node_cfg.freezing.active:
                 epochs = self.cfg.trainer.epochs
@@ -159,7 +152,26 @@ class LuxonisModel(pl.LightningModule):
                 else:
                     unfreeze_after = int(node_cfg.freezing.unfreeze_after * epochs)
                 frozen_nodes.append((node_name, unfreeze_after))
-            nodes[node_name] = (Node, {**node_cfg.params, "task": node_cfg.task})
+
+            if node_cfg.task is not None:
+                if Node.tasks is None:
+                    raise ValueError(
+                        f"Cannot define tasks for node {node_name}."
+                        "This node doesn't specify any tasks."
+                    )
+                if isinstance(node_cfg.task, str):
+                    assert Node.tasks
+                    if len(Node.tasks) > 1:
+                        raise ValueError(
+                            f"Node {node_name} specifies multiple tasks, "
+                            "but only one task is specified in the config. "
+                            "Specify the tasks as a dictionary instead."
+                        )
+
+                    node_cfg.task = {next(iter(Node.tasks)): node_cfg.task}
+                else:
+                    node_cfg.task = {**Node._process_tasks(Node.tasks), **node_cfg.task}
+            nodes[node_name] = (Node, {**node_cfg.params, "_tasks": node_cfg.task})
 
             # Handle inputs for this node
             if node_cfg.input_sources:

@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Literal
 
 from luxonis_train.utils.config import (
     AttachedModuleConfig,
@@ -18,8 +19,13 @@ class KeypointDetectionModel(BasePredefinedModel):
     neck_params: Kwargs = field(default_factory=dict)
     head_params: Kwargs = field(default_factory=dict)
     loss_params: Kwargs = field(default_factory=dict)
+    head_type: Literal[
+        "ImplicitKeypointBBoxHead", "EfficientKeypointBBoxHead"
+    ] = "ImplicitKeypointBBoxHead"
     kpt_visualizer_params: Kwargs = field(default_factory=dict)
     bbox_visualizer_params: Kwargs = field(default_factory=dict)
+    bbox_task_name: str | None = None
+    kpt_task_name: str | None = None
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
@@ -42,15 +48,22 @@ class KeypointDetectionModel(BasePredefinedModel):
                 )
             )
 
+        task = {}
+        if self.bbox_task_name is not None:
+            task["bbox"] = self.bbox_task_name
+        if self.kpt_task_name is not None:
+            task["keypoints"] = self.kpt_task_name
+
         nodes.append(
             ModelNodeConfig(
-                name="ImplicitKeypointBBoxHead",
+                name=self.head_type,
                 alias="kpt_detection_head",
                 inputs=["kpt_detection_neck"]
                 if self.use_neck
                 else ["kpt_detection_backbone"],
                 freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
+                task=task,
             )
         )
         return nodes
@@ -59,7 +72,7 @@ class KeypointDetectionModel(BasePredefinedModel):
     def losses(self) -> list[LossModuleConfig]:
         return [
             LossModuleConfig(
-                name="ImplicitKeypointBBoxLoss",
+                name=self.head_type.replace("Head", "Loss"),
                 attached_to="kpt_detection_head",
                 params=self.loss_params,
                 weight=1.0,

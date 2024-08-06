@@ -4,7 +4,7 @@ from pathlib import Path
 import gdown
 import pytest
 import torchvision
-from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.data import LabelType, LuxonisDataset
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.utils import environ
 
@@ -34,6 +34,34 @@ def create_coco_dataset():
         gdown.download(url, output_zip, quiet=False)
 
     parser = LuxonisParser(output_zip, dataset_name=dataset_name, delete_existing=True)
+    parser.parse(random_split=True)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def create_coco_multitask_dataset():
+    url = "https://drive.google.com/uc?id=1XlvFK7aRmt8op6-hHkWVKIJQeDtOwoRT"
+    output_folder = "../data/"
+    output_zip = os.path.join(output_folder, "COCO_people_subset.zip")
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    if not os.path.exists(output_zip) and not os.path.exists(
+        os.path.join(output_folder, "COCO_people_subset")
+    ):
+        gdown.download(url, output_zip, quiet=False)
+
+    parser = LuxonisParser(
+        output_zip,
+        dataset_name="coco_test_multitask",
+        delete_existing=True,
+        task_mapping={
+            LabelType.KEYPOINTS: "keypoints-task",
+            LabelType.SEGMENTATION: "segmentation-task",
+            LabelType.CLASSIFICATION: "classification-task",
+            LabelType.BOUNDINGBOX: "boundingbox-task",
+        },
+    )
     parser.parse(random_split=True)
 
 

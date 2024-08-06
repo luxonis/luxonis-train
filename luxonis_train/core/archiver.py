@@ -1,7 +1,7 @@
 import os
 from logging import getLogger
 from pathlib import Path
-from typing import Any, List
+from typing import Any, Dict, List
 
 import onnx
 from luxonis_ml.nn_archive.archive_generator import ArchiveGenerator
@@ -15,6 +15,7 @@ from luxonis_train.nodes.enums.head_categorization import (
     ImplementedHeadsIsSoxtmaxed,
 )
 from luxonis_train.utils.config import Config
+from luxonis_train.utils.types import LabelType
 
 from .core import Core
 
@@ -239,7 +240,9 @@ class Archiver(Core):
 
         self.outputs.append({"name": name, "dtype": dtype})
 
-    def _get_classes(self, node_name: str, node_task: str | None) -> List[str]:
+    def _get_classes(
+        self, node_name: str, node_task: str | Dict[LabelType, str] | None
+    ) -> List[str]:
         if not node_task:
             match node_name:
                 case "ClassificationHead":
@@ -252,6 +255,12 @@ class Archiver(Core):
                     node_task = "keypoints"
                 case _:
                     raise ValueError("Node does not map to a default task.")
+
+        if not self.dataset_metadata._classes:
+            raise ValueError("Dataset metadata does not contain classes.")
+
+        if isinstance(node_task, dict):
+            node_task = list(node_task.values())[0]
 
         return self.dataset_metadata._classes.get(node_task, [])
 

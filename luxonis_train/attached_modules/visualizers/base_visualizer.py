@@ -62,5 +62,4 @@ class BaseVisualizer(
         inputs: Packet[Tensor],
         labels: Labels,
     ) -> Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]:
-        self.validate(inputs, labels)
         return self(label_canvas, prediction_canvas, *self.prepare(inputs, labels))

@@ -1,12 +1,13 @@
 from torch import Tensor, nn
 
-from luxonis_train.utils.types import LabelType, Packet
+from luxonis_train.utils.types import LabelType
 
 from .base_node import BaseNode
 
 
 class ClassificationHead(BaseNode[Tensor, Tensor]):
     in_channels: int
+    tasks: list[LabelType] = [LabelType.CLASSIFICATION]
 
     def __init__(
         self,
@@ -19,7 +20,7 @@ class ClassificationHead(BaseNode[Tensor, Tensor]):
         @param dropout_rate: Dropout rate before last layer, range C{[0, 1]}. Defaults
             to C{0.2}.
         """
-        super().__init__(_task_type=LabelType.CLASSIFICATION, **kwargs)
+        super().__init__(**kwargs)
 
         self.head = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
@@ -30,6 +31,3 @@ class ClassificationHead(BaseNode[Tensor, Tensor]):
 
     def forward(self, inputs: Tensor) -> Tensor:
         return self.head(inputs)
-
-    def wrap(self, output: Tensor) -> Packet[Tensor]:
-        return {"classification": [output]}

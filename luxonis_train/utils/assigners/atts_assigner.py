@@ -2,12 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
-from .utils import (
-    batch_iou,
-    bbox_iou,
-    candidates_in_gt,
-    fix_collisions,
-)
+from .utils import batch_iou, bbox_iou, candidates_in_gt, fix_collisions
 
 
 class ATSSAssigner(nn.Module):
