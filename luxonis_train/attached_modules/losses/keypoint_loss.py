@@ -1,7 +1,4 @@
-from typing import Annotated
-
 import torch
-from pydantic import Field
 from torch import Tensor
 
 from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
@@ -9,22 +6,15 @@ from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
     get_sigmas,
 )
 from luxonis_train.utils.boxutils import process_keypoints_predictions
-from luxonis_train.utils.types import (
-    BaseProtocol,
-    Labels,
-    LabelType,
-    Packet,
-)
+from luxonis_train.utils.types import Labels, LabelType, Packet
 
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
 
 
-class Protocol(BaseProtocol):
-    keypoints: Annotated[list[Tensor], Field(min_length=1, max_length=1)]
-
-
 class KeypointLoss(BaseLoss[Tensor, Tensor]):
+    supported_labels = [LabelType.KEYPOINTS]
+
     def __init__(
         self,
         n_keypoints: int,
@@ -47,18 +37,14 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
             default one. Defaults to C{None}.
         """
 
-        super().__init__(
-            protocol=Protocol, required_labels=[LabelType.KEYPOINTS], **kwargs
-        )
+        super().__init__(**kwargs)
         self.b_cross_entropy = BCEWithLogitsLoss(
             pos_weight=torch.tensor([bce_power]), **kwargs
         )
         self.sigmas = get_sigmas(
-            sigmas=sigmas, n_keypoints=n_keypoints, class_name=self.__class__.__name__
+            sigmas=sigmas, n_keypoints=n_keypoints, class_name=self.name
         )
-        self.area_factor = get_area_factor(
-            area_factor, class_name=self.__class__.__name__
-        )
+        self.area_factor = get_area_factor(area_factor, class_name=self.name)
 
     def prepare(self, inputs: Packet[Tensor], labels: Labels) -> tuple[Tensor, Tensor]:
         return torch.cat(inputs["keypoints"], dim=0), self.get_label(labels)[0]

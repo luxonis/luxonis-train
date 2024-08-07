@@ -180,7 +180,7 @@ def common(
     ] = None,
 ):
     if source:
-        exec(source.read_text())
+        exec(source.read_text(), globals(), globals())
 
 
 if __name__ == "__main__":

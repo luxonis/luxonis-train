@@ -49,5 +49,4 @@ class BaseLoss(
             Only the main loss is used for backpropagation.
         @raises IncompatibleException: If the inputs are not compatible with the module.
         """
-        self.validate(inputs, labels)
         return self(*self.prepare(inputs, labels))
