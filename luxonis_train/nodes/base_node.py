@@ -50,6 +50,47 @@ class BaseNode(
     The L{run} method combines the C{unwrap}, C{forward} and C{wrap} methods
     together with input validation.
 
+    When subclassing, the following methods should be implemented:
+        - L{forward}: Forward pass of the module.
+        - L{unwrap}: Optional. Unwraps the inputs from the input packet.
+          The default implementation expects a single input with `features` key.
+        - L{wrap}: Optional. Wraps the output of the forward pass
+          into a `Packet[Tensor]`. The default implementation expects wraps the output
+          of the forward pass into a packet with either "features" or the task name as the key.
+
+    Additionally, the following class attributes can be defined:
+        - L{input_protocols}: List of input protocols used to validate inputs to the node.
+        - L{attach_index}: Index of previous output that this node attaches to.
+        - L{tasks}: Dictionary of tasks that the node supports.
+
+    Example::
+        class MyNode(BaseNode):
+            # equivalent to `tasks = {LabelType.CLASSIFICATION: "classification"}`
+            tasks = [LabelType.CLASSIFICATION]
+
+            def __init__(self, **kwargs):
+                super().__init__(**kwargs)
+                self.nn = nn.Sequential(
+                    nn.Linear(10, 10),
+                    nn.ReLU(),
+                    nn.Linear(10, 10),
+                )
+
+            # Roughly equivalent to the default implementation
+            def unwrap(self, inputs: list[Packet[Tensor]]) -> Tensor:
+                assert len(inputs) == 1
+                assert "features" in inputs[0]
+                return inputs[0]["features"]
+
+            def forward(self, inputs: Tensor) -> Tensor:
+                return self.nn(inputs)
+
+            # Roughly equivalent to the default implementation
+            def wrap(output: Tensor) -> Packet[Tensor]:
+                # The key of the main node output have to be the same as the
+                # default task name for it to be automatically recognized
+                # by the attached modules.
+                return {"classification": [output]}
 
     @type input_shapes: list[Packet[Size]] | None
     @param input_shapes: List of input shapes for the module.
@@ -62,16 +103,6 @@ class BaseNode(
     @param dataset_metadata: Metadata of the dataset.
         Some nodes won't function if not provided.
 
-    @type attach_index: AttachIndexType
-    @param attach_index: Index of previous output that this node attaches to.
-        Can be a single integer to specify a single output, a tuple of
-        two or three integers to specify a range of outputs or `"all"` to
-        specify all outputs. Defaults to "all". Python indexing conventions apply.
-
-    @type in_protocols: list[type[BaseModel]]
-    @param in_protocols: List of input protocols used to validate inputs to the node.
-        Defaults to [FeaturesProtocol].
-
     @type n_classes: int | None
     @param n_classes: Number of classes in the dataset. Provide only
         in case `dataset_metadata` is not provided. Defaults to None.
@@ -79,7 +110,32 @@ class BaseNode(
     @type in_sizes: Size | list[Size] | None
     @param in_sizes: List of input sizes for the node.
         Provide only in case the `input_shapes` were not provided.
+
+    @type _tasks: dict[LabelType, str] | None
+    @param _tasks: Dictionary of tasks that the node supports. Overrides the
+        class L{tasks} attribute. Shouldn't be provided by the user in most cases.
+
+    @type input_protocols: list[type[BaseModel]]
+    @ivar input_protocols: List of input protocols used to validate inputs to the node.
+        Defaults to [L{FeaturesProtocol}].
+
+    @type attach_index: AttachIndexType
+    @ivar attach_index: Index of previous output that this node attaches to.
+        Can be a single integer to specify a single output, a tuple of
+        two or three integers to specify a range of outputs or `"all"` to
+        specify all outputs. Defaults to "all". Python indexing conventions apply.
+
+    @type tasks: list[LabelType] | dict[LabelType, str] | None
+    @ivar tasks: Dictionary of tasks that the node supports. Should be defined
+        by the user as a class attribute. The key is the task type and the value
+        is the name of the task. For example:
+        C{{LabelType.CLASSIFICATION: "classification"}}.
+        Only needs to be defined for head nodes.
     """
+
+    input_protocols: list[type[BaseModel]] = [FeaturesProtocol]
+    attach_index: AttachIndexType
+    tasks: list[LabelType] | dict[LabelType, str] | None = None
 
     def __init__(
         self,
@@ -87,16 +143,19 @@ class BaseNode(
         input_shapes: list[Packet[Size]] | None = None,
         original_in_shape: Size | None = None,
         dataset_metadata: DatasetMetadata | None = None,
-        attach_index: AttachIndexType | None = None,
-        in_protocols: list[type[BaseModel]] | None = None,
         n_classes: int | None = None,
         in_sizes: Size | list[Size] | None = None,
-        task: str | None = None,
-        _task_type: LabelType | None = None,
+        _tasks: dict[LabelType, str] | None = None,
     ):
         super().__init__()
 
-        if attach_index is None:
+        self._tasks = None
+        if _tasks is not None:
+            self._tasks = _tasks
+        elif self.tasks is not None:
+            self._tasks = self._process_tasks(self.tasks)
+
+        if getattr(self, "attach_index", None) is None:
             parameters = inspect.signature(self.forward).parameters
             inputs_forward_type = parameters.get(
                 "inputs", parameters.get("input", parameters.get("x", None))
@@ -108,14 +167,6 @@ class BaseNode(
                 self.attach_index = -1
             else:
                 self.attach_index = "all"
-        else:
-            self.attach_index = attach_index
-
-        self.in_protocols = in_protocols or [FeaturesProtocol]
-        self._task_type = _task_type
-        if task is None and self._task_type is not None:
-            task = self._task_type.value
-        self._task = task
 
         self._input_shapes = input_shapes
         self._original_in_shape = original_in_shape
@@ -128,28 +179,121 @@ class BaseNode(
         self._epoch = 0
         self._in_sizes = in_sizes
 
-    def _non_set_error(self, name: str) -> ValueError:
-        return ValueError(
-            f"{self.__class__.__name__} is trying to access `{name}`, "
-            "but it was not set during initialization. "
-        )
+    @staticmethod
+    def _process_tasks(
+        tasks: dict[LabelType, str] | list[LabelType],
+    ) -> dict[LabelType, str]:
+        if isinstance(tasks, dict):
+            return tasks
+        if isinstance(tasks, list):
+            return {task: task.value for task in tasks}
+
+    def get_task_name(self, task: LabelType) -> str:
+        """Gets the name of a task for a particular C{LabelType}.
+
+        @type task: LabelType
+        @param task: Task to get the name for.
+        @rtype: str
+        @return: Name of the task.
+        @raises ValueError: If the task is not supported by the node.
+        """
+        if not self._tasks:
+            raise ValueError(f"Node {self.name} does not have any tasks defined.")
+
+        if task not in self._tasks:
+            raise ValueError(
+                f"Node {self.name} does not support the {task.value} task."
+            )
+        return self._tasks[task]
+
+    @property
+    def name(self) -> str:
+        return self.__class__.__name__
 
     @property
     def task(self) -> str:
         """Getter for the task."""
-        if self._task is None:
-            raise self._non_set_error("task")
-        return self._task
+        if not self._tasks:
+            raise ValueError(f"{self.name} does not have any tasks defined.")
+
+        if len(self._tasks) > 1:
+            raise ValueError(
+                f"Node {self.name} has multiple tasks defined. "
+                "Use `get_task_name` method instead."
+            )
+        return next(iter(self._tasks.values()))
+
+    def get_n_classes(self, task: LabelType) -> int:
+        """Gets the number of classes for a particular task.
+
+        @type task: LabelType
+        @param task: Task to get the number of classes for.
+        @rtype: int
+        @return: Number of classes for the task.
+        """
+        return self.dataset_metadata.n_classes(self.get_task_name(task))
+
+    def get_class_names(self, task: LabelType) -> list[str]:
+        """Gets the class names for a particular task.
+
+        @type task: LabelType
+        @param task: Task to get the class names for.
+        @rtype: list[str]
+        @return: Class names for the task.
+        """
+        return self.dataset_metadata.class_names(self.get_task_name(task))
 
     @property
     def n_classes(self) -> int:
         """Getter for the number of classes."""
-        return self.dataset_metadata.n_classes(self.task)
+        if not self._tasks:
+            raise ValueError(
+                f"{self.name} does not have any tasks defined, "
+                "`BaseNode.n_classes` property cannot be used. "
+                "Either override the `tasks` class attribute, "
+                "pass the `n_classes` attribute to the constructor or call "
+                "the `BaseNode.dataset_metadata.n_classes` method manually."
+            )
+        elif len(self._tasks) == 1:
+            return self.dataset_metadata.n_classes(self.task)
+        else:
+            n_classes = [
+                self.dataset_metadata.n_classes(self.get_task_name(task))
+                for task in self._tasks
+            ]
+            if len(set(n_classes)) == 1:
+                return n_classes[0]
+            raise ValueError(
+                "Node defines multiple tasks but they have different number of classes. "
+                "This is likely an error, as the number of classes should be the same."
+                "If it is intended, use `BaseNode.get_n_classes` instead."
+            )
 
     @property
     def class_names(self) -> list[str]:
         """Getter for the class names."""
-        return self.dataset_metadata.class_names(self.task)
+        if not self._tasks:
+            raise ValueError(
+                f"{self.name} does not have any tasks defined, "
+                "`BaseNode.class_names` property cannot be used. "
+                "Either override the `tasks` class attribute, "
+                "pass the `n_classes` attribute to the constructor or call "
+                "the `BaseNode.dataset_metadata.class_names` method manually."
+            )
+        elif len(self._tasks) == 1:
+            return self.dataset_metadata.class_names(self.task)
+        else:
+            class_names = [
+                self.dataset_metadata.class_names(self.get_task_name(task))
+                for task in self._tasks
+            ]
+            if all(set(names) == set(class_names[0]) for names in class_names):
+                return class_names[0]
+            raise ValueError(
+                "Node defines multiple tasks but they have different class names. "
+                "This is likely an error, as the class names should be the same. "
+                "If it is intended, use `BaseNode.get_class_names` instead."
+            )
 
     @property
     def input_shapes(self) -> list[Packet[Size]]:
@@ -209,7 +353,7 @@ class BaseNode(
         features = self.input_shapes[0].get("features")
         if features is None:
             raise IncompatibleException(
-                f"Feature field is missing in {self.__class__.__name__}. "
+                f"Feature field is missing in {self.name}. "
                 "The default implementation of `in_sizes` cannot be used."
             )
         shapes = self.get_attached(self.input_shapes[0]["features"])
@@ -288,6 +432,11 @@ class BaseNode(
         @rtype: ForwardInputT
         @return: Prepared inputs, ready to be passed to the L{forward} method.
         """
+        if len(inputs) > 1:
+            raise IncompatibleException(
+                f"Node {self.name} expects a single input, but got {len(inputs)} inputs instead."
+                "If the node expects multiple inputs, the `unwrap` method should be overridden."
+            )
         return self.get_attached(inputs[0]["features"])  # type: ignore
 
     @abstractmethod
@@ -305,7 +454,23 @@ class BaseNode(
         """Wraps the output of the forward pass into a `Packet[Tensor]`.
 
         The default implementation expects a single tensor or a list of tensors
-        and wraps them into a Packet with `features` key.
+        and wraps them into a Packet with either the node task as a key
+        or "features" key if task is not defined.
+
+        Example::
+
+            >>> class FooNode(BaseNode):
+            ...     tasks = [LabelType.CLASSIFICATION]
+            ...
+            ... class BarNode(BaseNode):
+            ...     pass
+            ...
+            >>> node = FooNode()
+            >>> node.wrap(torch.rand(1, 10))
+            {"classification": [Tensor(1, 10)]}
+            >>> node = BarNode()
+            >>> node.wrap([torch.rand(1, 10), torch.rand(1, 10)])
+            {"features": [Tensor(1, 10), Tensor(1, 10)]}
 
         @type output: ForwardOutputT
         @param output: Output of the forward pass.
@@ -323,12 +488,16 @@ class BaseNode(
                 raise IncompatibleException(
                     "Default `wrap` expects a single tensor or a list of tensors."
                 )
-        return {self._task or "features": outputs}
+        try:
+            task = self.task
+        except ValueError:
+            task = "features"
+        return {task: outputs}
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:
         """Combines the forward pass with the wrapping and unwrapping of the inputs.
 
-        Additionally validates the inputs against `in_protocols`.
+        Additionally validates the inputs against `input_protocols`.
 
         @type inputs: list[Packet[Tensor]]
         @param inputs: Inputs to the module.
@@ -341,24 +510,28 @@ class BaseNode(
         """
         unwrapped = self.unwrap(self.validate(inputs))
         outputs = self(unwrapped)
-        return self.wrap(outputs)
+        wrapped = self.wrap(outputs)
+        str_tasks = [task.value for task in self._tasks] if self._tasks else []
+        for key in list(wrapped.keys()):
+            if key in str_tasks:
+                value = wrapped.pop(key)
+                wrapped[self.get_task_name(LabelType(key))] = value
+        return wrapped
 
     def validate(self, data: list[Packet[Tensor]]) -> list[Packet[Tensor]]:
-        """Validates the inputs against `in_protocols`."""
-        if len(data) != len(self.in_protocols):
+        """Validates the inputs against `input_protocols`."""
+        if len(data) != len(self.input_protocols):
             raise IncompatibleException(
-                f"Node {self.__class__.__name__} expects {len(self.in_protocols)} inputs, "
+                f"Node {self.name} expects {len(self.input_protocols)} inputs, "
                 f"but got {len(data)} inputs instead."
             )
         try:
             return [
                 validate_packet(d, protocol)
-                for d, protocol in zip(data, self.in_protocols)
+                for d, protocol in zip(data, self.input_protocols)
             ]
         except ValidationError as e:
-            raise IncompatibleException.from_validation_error(
-                e, self.__class__.__name__
-            ) from e
+            raise IncompatibleException.from_validation_error(e, self.name) from e
 
     T = TypeVar("T", Tensor, Size)
 
@@ -418,3 +591,9 @@ class BaseNode(
                 return sizes[idx]
             case list(sizes):
                 return [size[idx] for size in sizes]
+
+    def _non_set_error(self, name: str) -> ValueError:
+        return ValueError(
+            f"{self.name} is trying to access `{name}`, "
+            "but it was not set during initialization. "
+        )

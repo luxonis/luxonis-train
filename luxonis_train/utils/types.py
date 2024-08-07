@@ -37,7 +37,7 @@ class IncompatibleException(Exception):
     @classmethod
     def from_missing_task(cls, task: str, present_tasks: list[str], class_name: str):
         return cls(
-            f"{class_name} requires {task} label, but it was not found in "
+            f"{class_name} requires '{task}' label, but it was not found in "
             f"the label dictionary. Available labels: {present_tasks}."
         )
 
@@ -54,18 +54,6 @@ class BaseProtocol(BaseModel):
             "Protocol must have exactly one field for automatic task inference. "
             "Implement custom `prepare` method in your attached module."
         )
-
-
-class SegmentationProtocol(BaseProtocol):
-    segmentation: Annotated[list[Tensor], Field(min_length=1)]
-
-
-class KeypointProtocol(BaseProtocol):
-    keypoints: Annotated[list[Tensor], Field(min_length=1)]
-
-
-class BBoxProtocol(BaseProtocol):
-    boundingbox: Annotated[list[Tensor], Field(min_length=1)]
 
 
 class FeaturesProtocol(BaseProtocol):

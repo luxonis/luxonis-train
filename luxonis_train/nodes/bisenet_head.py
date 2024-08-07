@@ -18,6 +18,8 @@ class BiSeNetHead(BaseNode[Tensor, Tensor]):
     in_height: int
     in_channels: int
 
+    tasks: list[LabelType] = [LabelType.SEGMENTATION]
+
     def __init__(
         self,
         intermediate_channels: int = 64,
@@ -30,7 +32,7 @@ class BiSeNetHead(BaseNode[Tensor, Tensor]):
         @param intermediate_channels: How many intermediate channels to use.
             Defaults to C{64}.
         """
-        super().__init__(task=LabelType.SEGMENTATION, **kwargs)
+        super().__init__(**kwargs)
 
         original_height = self.original_in_shape[1]
         upscale_factor = 2 ** infer_upscale_factor(self.in_height, original_height)

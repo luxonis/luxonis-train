@@ -4,13 +4,12 @@ from pathlib import Path
 
 import pytest
 import torch
-from torch import Tensor
-from torch.nn.parameter import Parameter
+from torch import Tensor, nn
 
 from luxonis_train.core import Exporter, Inferer, Trainer
 from luxonis_train.nodes import BaseNode
 from luxonis_train.utils.loaders import BaseLoaderTorch
-from luxonis_train.utils.types import FeaturesProtocol, LabelType
+from luxonis_train.utils.types import FeaturesProtocol, LabelType, Packet
 
 
 class CustomMultiInputLoader(BaseLoaderTorch):
@@ -26,7 +25,7 @@ class CustomMultiInputLoader(BaseLoaderTorch):
             "pointcloud": torch.Size([1000, 3]),
         }
 
-    def __getitem__(self, idx):
+    def __getitem__(self, _):
         # Fake data
         left = torch.rand(3, 224, 224, dtype=torch.float32)
         right = torch.rand(3, 224, 224, dtype=torch.float32)
@@ -41,6 +40,7 @@ class CustomMultiInputLoader(BaseLoaderTorch):
 
         # Fake labels
         segmap = torch.zeros(1, 224, 224, dtype=torch.float32)
+        segmap[0, 100:150, 100:150] = 1
         labels = {
             "segmentation": (segmap, LabelType.SEGMENTATION),
         }
@@ -57,9 +57,9 @@ class CustomMultiInputLoader(BaseLoaderTorch):
 class MultiInputTestBaseNode(BaseNode):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.scalar = Parameter(torch.tensor(1.0), requires_grad=True)
+        self.scalar = nn.Parameter(torch.tensor(1.0), requires_grad=True)
 
-    def forward(self, inputs):
+    def forward(self, inputs: list[Tensor]):
         return [self.scalar * inp for inp in inputs]
 
     def unwrap(self, inputs: list[dict[str, list[Tensor]]]):
@@ -67,60 +67,56 @@ class MultiInputTestBaseNode(BaseNode):
 
 
 class FullBackbone(MultiInputTestBaseNode):
-    def __init__(self, **kwargs):
-        in_protocols = [FeaturesProtocol] * 4
-        super().__init__(**kwargs)
-        self.in_protocols = in_protocols
+    input_protocols = [FeaturesProtocol] * 4
 
 
 class RGBDBackbone(MultiInputTestBaseNode):
-    def __init__(self, **kwargs):
-        in_protocols = [FeaturesProtocol] * 3
-        super().__init__(**kwargs)
-        self.in_protocols = in_protocols
+    input_protocols = [FeaturesProtocol] * 3
 
 
 class PointcloudBackbone(MultiInputTestBaseNode):
-    def __init__(self, **kwargs):
-        in_protocols = [FeaturesProtocol]
-        super().__init__(**kwargs)
-        self.in_protocols = in_protocols
+    input_protocols = [FeaturesProtocol]
 
 
 class FusionNeck(MultiInputTestBaseNode):
-    def __init__(self, **kwargs):
-        in_protocols = [
-            FeaturesProtocol,
-            FeaturesProtocol,
-            FeaturesProtocol,
-        ]
-        super().__init__(**kwargs)
-        self.in_protocols = in_protocols
+    input_protocols = [FeaturesProtocol] * 3
 
 
 class FusionNeck2(MultiInputTestBaseNode):
-    def __init__(self, **kwargs):
-        in_protocols = [FeaturesProtocol, FeaturesProtocol, FeaturesProtocol]
-        super().__init__(**kwargs)
-        self.in_protocols = in_protocols
+    input_protocols = [FeaturesProtocol] * 3
 
 
 class CustomSegHead1(MultiInputTestBaseNode):
+    tasks = {LabelType.SEGMENTATION: "segmentation"}
+    input_protocols = [FeaturesProtocol]
+
     def __init__(self, **kwargs):
-        in_protocols = [FeaturesProtocol]
-        super().__init__(**kwargs, _task_type=LabelType.SEGMENTATION)
-        self.in_protocols = in_protocols
+        super().__init__(**kwargs)
+        self.conv = nn.Conv2d(1, 1, 3, padding=1)
+
+    def unwrap(self, inputs: list[Packet[Tensor]]) -> Tensor:
+        assert len(inputs) == 1
+        return inputs[0]["features"][-1]
+
+    def forward(self, inputs: Tensor):
+        return [self.conv(inputs)]
 
 
 class CustomSegHead2(MultiInputTestBaseNode):
+    tasks = {LabelType.SEGMENTATION: "segmentation"}
+    input_protocols = [FeaturesProtocol] * 3
+
     def __init__(self, **kwargs):
-        in_protocols = [
-            FeaturesProtocol,
-            FeaturesProtocol,
-            FeaturesProtocol,
-        ]
-        super().__init__(**kwargs, _task_type=LabelType.SEGMENTATION)
-        self.in_protocols = in_protocols
+        super().__init__(**kwargs)
+        self.conv = nn.Conv2d(1, 1, 3, padding=1)
+
+    def unwrap(self, inputs: list[Packet[Tensor]]):
+        return [packet["features"][-1] for packet in inputs]
+
+    def forward(self, inputs: list[Tensor]):
+        fn1, _, disp = inputs
+        x = fn1 + disp
+        return [self.conv(x)]
 
 
 @pytest.fixture(scope="function", autouse=True)

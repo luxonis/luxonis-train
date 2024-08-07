@@ -1,21 +1,16 @@
 from copy import deepcopy
 
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor
 
-from luxonis_train.utils.types import (
-    LabelType,
-)
-
 from .base_visualizer import BaseVisualizer
-from .utils import (
-    Color,
-    draw_keypoint_labels,
-    draw_keypoints,
-)
+from .utils import Color, draw_keypoint_labels, draw_keypoints
 
 
 class KeypointVisualizer(BaseVisualizer[list[Tensor], Tensor]):
+    supported_labels = [LabelType.KEYPOINTS]
+
     def __init__(
         self,
         visibility_threshold: float = 0.5,
@@ -40,7 +35,7 @@ class KeypointVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         @param nonvisible_color: Color of nonvisible keypoints. If C{None}, nonvisible
             keypoints are not drawn. Defaults to C{None}.
         """
-        super().__init__(required_labels=[LabelType.KEYPOINTS], **kwargs)
+        super().__init__(**kwargs)
         self.visibility_threshold = visibility_threshold
         self.connectivity = connectivity
         self.visible_color = visible_color

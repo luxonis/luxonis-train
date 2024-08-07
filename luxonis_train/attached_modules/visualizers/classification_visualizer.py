@@ -2,17 +2,16 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor
 
 from .base_visualizer import BaseVisualizer
-from .utils import (
-    figure_to_torch,
-    numpy_to_torch_img,
-    torch_img_to_numpy,
-)
+from .utils import figure_to_torch, numpy_to_torch_img, torch_img_to_numpy
 
 
 class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
+    supported_labels = [LabelType.CLASSIFICATION]
+
     def __init__(
         self,
         include_plot: bool = True,
