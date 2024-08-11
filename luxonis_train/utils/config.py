@@ -114,9 +114,15 @@ class ModelConfig(CustomBaseModel):
         ]:
             names = set()
             for obj in objects:
+                obj: AttachedModuleConfig
                 name = obj.alias or obj.name
                 if name in names:
-                    raise ValueError(f"Duplicate name `{name}` in `{section}` section.")
+                    if obj.alias is None:
+                        obj.alias = f"{name}_{obj.attached_to}"
+                    if obj.alias in names:
+                        raise ValueError(
+                            f"Duplicate name `{name}` in `{section}` section."
+                        )
                 names.add(name)
         return self
 
