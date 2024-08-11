@@ -7,6 +7,7 @@ import lightning.pytorch as pl
 import torch
 from lightning.pytorch.callbacks import ModelCheckpoint, RichModelSummary
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
+from luxonis_ml.data import LuxonisDataset
 from torch import Size, Tensor, nn
 
 import luxonis_train
@@ -16,6 +17,7 @@ from luxonis_train.attached_modules import (
     BaseMetric,
     BaseVisualizer,
 )
+from luxonis_train.attached_modules.metrics.common import TorchMetricWrapper
 from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
     get_unnormalized_images,
@@ -95,6 +97,8 @@ class LuxonisModel(pl.LightningModule):
         save_dir: str,
         input_shape: dict[str, Size],
         dataset_metadata: DatasetMetadata | None = None,
+        *,
+        _core: "luxonis_train.core.Core",
         **kwargs,
     ):
         """Constructs an instance of `LuxonisModel` from `Config`.
@@ -115,6 +119,7 @@ class LuxonisModel(pl.LightningModule):
         super().__init__(**kwargs)
 
         self._export: bool = False
+        self._core = _core
 
         self.cfg = cfg
         self.original_in_shape = input_shape
@@ -793,7 +798,24 @@ class LuxonisModel(pl.LightningModule):
         Module = registry.get(cfg.name)
         module_name = cfg.alias or cfg.name
         node_name = cfg.attached_to
-        module = Module(**cfg.params, node=self.nodes[node_name])
+        node: BaseNode = self.nodes[node_name]  # type: ignore
+        if issubclass(Module, TorchMetricWrapper):
+            if "task" not in cfg.params:
+                loader = self._core.loaders["train"]
+                dataset = getattr(loader, "dataset", None)
+                if isinstance(dataset, LuxonisDataset):
+                    n_classes = len(dataset.get_classes()[1][node.task])
+                    if n_classes == 1:
+                        cfg.params["task"] = "binary"
+                    else:
+                        cfg.params["task"] = "multiclass"
+                    logger.warning(
+                        f"Parameter 'task' not specified for `TorchMetric` based '{module_name}' metric. "
+                        f"Assuming task type based on the number of classes: {cfg.params['task']}. "
+                        "If this is incorrect, please specify the 'task' parameter in the config."
+                    )
+
+        module = Module(**cfg.params, node=node)
         storage[node_name][module_name] = module  # type: ignore
         return module_name, node_name
 
