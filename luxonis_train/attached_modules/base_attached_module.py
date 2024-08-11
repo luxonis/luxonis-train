@@ -133,6 +133,10 @@ class BaseAttachedModule(
         @rtype: tuple[Tensor, LabelType]
         @return: Extracted label and its type.
         """
+        if label_type is None:
+            if len(self.required_labels) == 1:
+                label_type = self.required_labels[0]
+
         if label_type is not None:
             task_name = self.node.get_task_name(label_type)
             if task_name not in labels:
