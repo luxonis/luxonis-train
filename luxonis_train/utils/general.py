@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 
 from luxonis_train.utils.boxutils import anchors_from_dataset
 from luxonis_train.utils.loaders import BaseLoaderTorch
-from luxonis_train.utils.types import LabelType, Packet
+from luxonis_train.utils.types import Packet
 
 
 # TODO: could be moved to luxonis-ml?
@@ -20,11 +20,8 @@ class DatasetMetadata:
     def __init__(
         self,
         *,
-        classes: dict[LabelType, list[str]] | None = None,
-        n_classes: int | None = None,
-        n_keypoints: int | None = None,
-        keypoint_names: list[str] | None = None,
-        connectivity: list[tuple[int, int]] | None = None,
+        classes: dict[str, list[str]] | None = None,
+        n_keypoints: dict[str, int] | None = None,
         loader: DataLoader | None = None,
     ):
         """An object containing metadata about the dataset. Used to infer the number of
@@ -45,21 +42,12 @@ class DatasetMetadata:
         @type loader: DataLoader | None
         @param loader: Dataset loader.
         """
-        if classes is None and n_classes is not None:
-            classes = {
-                LabelType(lbl): [str(i) for i in range(n_classes)]
-                for lbl in LabelType.__members__
-            }
-        self._classes = classes
-        self._keypoint_names = keypoint_names
-        self._connectivity = connectivity
-        self._n_keypoints = n_keypoints
-        if self._n_keypoints is None and self._keypoint_names is not None:
-            self._n_keypoints = len(self._keypoint_names)
+        self._classes = classes or {}
+        self._n_keypoints = n_keypoints or {}
         self._loader = loader
 
     @property
-    def classes(self) -> dict[LabelType, list[str]]:
+    def classes(self) -> dict[str, list[str]]:
         """Dictionary mapping label types to lists of class names.
 
         @type: dict[LabelType, list[str]]
@@ -95,6 +83,18 @@ class DatasetMetadata:
                     "The dataset contains different number of classes for different tasks."
                 )
         return n_classes
+
+    def n_keypoints(self, task: str | None) -> int:
+        if task is not None:
+            if task not in self._n_keypoints:
+                raise ValueError(f"Task '{task}' is not present in the dataset.")
+            return self._n_keypoints[task]
+        if len(self._n_keypoints) > 1:
+            raise ValueError(
+                "The dataset specifies multiple keypoint tasks, "
+                "please specify the 'task' argument to get the number of keypoints."
+            )
+        return next(iter(self._n_keypoints.values()))
 
     def class_names(self, task: str | None) -> list[str]:
         """Gets the class names for the specified task.
@@ -160,29 +160,9 @@ class DatasetMetadata:
         @return: Instance of L{DatasetMetadata} created from the provided dataset.
         """
         classes = loader.get_classes()
-        skeletons = loader.get_skeletons()
+        n_keypoints = loader.get_n_keypoints()
 
-        keypoint_names = None
-        connectivity = None
-
-        if skeletons is not None:
-            if len(skeletons) == 1:
-                task_name = next(iter(skeletons))
-                class_name = next(iter(skeletons[task_name]))
-                keypoint_names = skeletons[task_name][class_name]["labels"]
-                connectivity = skeletons[task_name][class_name]["edges"]
-
-            elif len(skeletons) > 1:
-                raise NotImplementedError(
-                    "The dataset defines multiclass keypoint detection. "
-                    "This is not yet supported."
-                )
-
-        return cls(
-            classes=classes,
-            keypoint_names=keypoint_names,
-            connectivity=connectivity,
-        )
+        return cls(classes=classes, n_keypoints=n_keypoints)
 
 
 def make_divisible(x: int | float, divisor: int) -> int:

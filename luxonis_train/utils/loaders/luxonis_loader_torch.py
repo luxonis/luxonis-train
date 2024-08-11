@@ -10,7 +10,7 @@ from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput
 class LuxonisLoaderTorch(BaseLoaderTorch):
     def __init__(
         self,
-        dataset_name: str | None = None,
+        dataset_name: str,
         team_id: str | None = None,
         bucket_type: Literal["internal", "external"] = "internal",
         bucket_storage: Literal["local", "s3", "gcs", "azure"] = "local",
@@ -54,5 +54,6 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         _, classes = self.dataset.get_classes()
         return {task: classes[task] for task in classes}
 
-    def get_skeletons(self) -> dict[str, dict] | None:
-        return self.dataset.get_skeletons()
+    def get_n_keypoints(self) -> dict[str, int]:
+        skeletons = self.dataset.get_skeletons()
+        return {task: len(skeletons[task][0]) for task in skeletons}
