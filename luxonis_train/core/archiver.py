@@ -1,7 +1,7 @@
 import os
 from logging import getLogger
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 
 import onnx
 from luxonis_ml.nn_archive.archive_generator import ArchiveGenerator
@@ -239,19 +239,21 @@ class Archiver(Core):
 
         self.outputs.append({"name": name, "dtype": dtype})
 
-    def _get_classes(self, head_family):
-        if head_family.startswith("Classification"):
-            return self.dataset_metadata._classes["class"]
-        elif head_family.startswith("Object"):
-            return self.dataset_metadata._classes["boundingbox"]
-        elif head_family.startswith("Segmentation"):
-            return self.dataset_metadata._classes["segmentation"]
-        elif head_family.startswith("Keypoint"):
-            return self.dataset_metadata._classes["keypoints"]
-        else:
-            raise ValueError(
-                f"No classes found for the specified head family ({head_family})"
-            )
+    def _get_classes(self, node_name: str, node_task: str | None) -> List[str]:
+        if not node_task:
+            match node_name:
+                case "ClassificationHead":
+                    node_task = "classification"
+                case "EfficientBBoxHead":
+                    node_task = "boundingbox"
+                case "SegmentationHead" | "BiSeNetHead":
+                    node_task = "segmentation"
+                case "ImplicitKeypointBBoxHead" | "EfficientKeypointBBoxHead":
+                    node_task = "keypoints"
+                case _:
+                    raise ValueError("Node does not map to a default task.")
+
+        return self.dataset_metadata._classes.get(node_task, [])
 
     def _get_head_specific_parameters(
         self, head_name, head_alias, executable_path
@@ -300,27 +302,25 @@ class Archiver(Core):
             raise ValueError("Unknown head name")
         return parameters
 
-    def _get_head_outputs(self, head_name) -> dict:
+    def _get_head_outputs(self, head_name) -> List[str]:
         """Get model outputs in a head-specific format.
 
         @type head_name: str
         @param head_name: Name of the head (e.g. 'EfficientBBoxHead').
         """
 
-        head_outputs = {}
         if head_name == "ClassificationHead":
-            head_outputs["predictions"] = self.outputs[0]["name"]
+            return [self.outputs[0]["name"]]
         elif head_name == "EfficientBBoxHead":
-            head_outputs["yolo_outputs"] = [output["name"] for output in self.outputs]
+            return [output["name"] for output in self.outputs]
         elif head_name in ["SegmentationHead", "BiSeNetHead"]:
-            head_outputs["predictions"] = self.outputs[0]["name"]
+            return [self.outputs[0]["name"]]
         elif head_name == "ImplicitKeypointBBoxHead":
-            head_outputs["predictions"] = self.outputs[0]["name"]
+            return [self.outputs[0]["name"]]
         elif head_name == "EfficientKeypointBBoxHead":
-            head_outputs["predictions"] = self.outputs[0]["name"]
+            return [self.outputs[0]["name"]]
         else:
             raise ValueError("Unknown head name")
-        return head_outputs
 
     def _get_heads(self, executable_path):
         """Get model heads.
@@ -336,16 +336,18 @@ class Archiver(Core):
             # node_inputs = node.inputs
             if node_alias in self.lightning_module.outputs:
                 if node_name in ImplementedHeads.__members__:
-                    head_family = getattr(ImplementedHeads, node_name).value
-                    classes = self._get_classes(head_family)
+                    parser = getattr(ImplementedHeads, node_name).value
+                    classes = self._get_classes(node_name, node.task)
                     head_outputs = self._get_head_outputs(node_name)
                     head_dict = {
-                        "family": head_family,
+                        "parser": parser,
+                        "metadata": {
+                            "classes": classes,
+                            "n_classes": len(classes),
+                        },
                         "outputs": head_outputs,
-                        "classes": classes,
-                        "n_classes": len(classes),
                     }
-                    head_dict.update(
+                    head_dict["metadata"].update(
                         self._get_head_specific_parameters(
                             node_name, node_alias, executable_path
                         )
