@@ -1,12 +1,6 @@
-import os
-import shutil
-from pathlib import Path
-
-import pytest
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.core import Exporter, Inferer, Trainer
 from luxonis_train.nodes import BaseNode
 from luxonis_train.utils.loaders import BaseLoaderTorch
 from luxonis_train.utils.types import FeaturesProtocol, LabelType, Packet
@@ -117,36 +111,3 @@ class CustomSegHead2(MultiInputTestBaseNode):
         fn1, _, disp = inputs
         x = fn1 + disp
         return [self.conv(x)]
-
-
-@pytest.fixture(scope="function", autouse=True)
-def clear_output():
-    shutil.rmtree("output", ignore_errors=True)
-
-
-@pytest.mark.parametrize(
-    "config_file", [path for path in os.listdir("configs") if "multi_input" in path]
-)
-def test_sanity(config_file):
-    # Test training
-    trainer = Trainer(f"configs/{config_file}")
-    trainer.train()
-    # Test evaluation
-    trainer.test(view="val")
-
-    # Test export
-    Exporter(f"configs/{config_file}").export("test_export_multi_input.onnx")
-    # Cleanup after exporter
-    assert os.path.exists("test_export_multi_input.onnx")
-    os.remove("test_export_multi_input.onnx")
-
-    # Test inference
-    Inferer(
-        f"configs/{config_file}",
-        opts=None,
-        view="train",
-        save_dir=Path("infer_save_dir"),
-    ).infer()
-    # Cleanup after inferer
-    assert os.path.exists("infer_save_dir")
-    shutil.rmtree("infer_save_dir")

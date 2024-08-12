@@ -147,3 +147,4 @@ models_venv/*
 
 # vscode settings
 .vscode
+tests/data
