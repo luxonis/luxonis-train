@@ -1,95 +1,79 @@
-import os
 import shutil
-import subprocess
 from pathlib import Path
 
 import pytest
+from luxonis_ml.data import LuxonisDataset
+from multi_input_modules import *
 
-TEST_OUTPUT = Path("tests/test-output")
+from luxonis_train.core import Exporter, Inferer, Trainer, Tuner
+from luxonis_train.utils.config import Config
+
+TEST_OUTPUT = Path("tests/integration/_test-output")
+INFER_PATH = Path("tests/integration/_infer_save_dir")
+ONNX_PATH = Path("tests/integration/_model.onnx")
+STUDY_PATH = Path("study_local.db")
+
+OPTS = {
+    "trainer.epochs": 1,
+    "trainer.batch_size": 1,
+    "trainer.validation_interval": 1,
+    "trainer.callbacks": "[]",
+    "tracker.save_directory": str(TEST_OUTPUT),
+    "n_trials": 4,
+}
 
 
 @pytest.fixture(scope="function", autouse=True)
 def clear_output():
+    Config.clear_instance()
+    yield
     shutil.rmtree(TEST_OUTPUT, ignore_errors=True)
+    STUDY_PATH.unlink(missing_ok=True)
+    ONNX_PATH.unlink(missing_ok=True)
+    shutil.rmtree(INFER_PATH, ignore_errors=True)
 
 
 @pytest.mark.parametrize(
-    "config_file", [path for path in os.listdir("configs") if "model" in path]
+    "config_file", [str(path) for path in Path("configs").glob("*model*")]
 )
-def test_sanity(config_file):
-    opts = [
-        "trainer.epochs",
-        "1",
-        "trainer.validation_interval",
-        "1",
-        "trainer.callbacks",
-        "[]",
-        "trainer.batch_size",
-        "1",
-        "tracker.save_directory",
-        str(TEST_OUTPUT),
-    ]
-    result = subprocess.run(
-        ["luxonis_train", "train", "--config", f"configs/{config_file}", *opts],
+def test_simple_models(config_file: str):
+    trainer = Trainer(
+        config_file,
+        opts=OPTS,
     )
-    assert result.returncode == 0
+    trainer.train()
+    trainer.test()
 
-    opts += ["model.weights", str(list(TEST_OUTPUT.rglob("*.ckpt"))[0])]
-    opts += ["exporter.onnx.opset_version", "11"]
+    Exporter(config_file).export("test_export.onnx")
 
-    result = subprocess.run(
-        ["luxonis_train", "export", "--config", f"configs/{config_file}", *opts],
-    )
 
-    assert result.returncode == 0
+def test_multi_input():
+    config_file = "configs/example_multi_input.yaml"
+    trainer = Trainer(config_file, opts=OPTS)
+    trainer.train()
+    trainer.test(view="val")
 
-    result = subprocess.run(
-        ["luxonis_train", "eval", "--config", f"configs/{config_file}", *opts],
-    )
+    assert not ONNX_PATH.exists()
+    Exporter(config_file).export(str(ONNX_PATH))
+    assert ONNX_PATH.exists()
 
-    assert result.returncode == 0
+    assert not INFER_PATH.exists()
+    Inferer(config_file, view="val", save_dir=INFER_PATH).infer()
+    assert INFER_PATH.exists()
 
-    save_dir = Path("sanity_infer_save_dir")
-    shutil.rmtree(save_dir, ignore_errors=True)
 
-    result = subprocess.run(
-        [
-            "luxonis_train",
-            "infer",
-            "--save-dir",
-            str(save_dir),
-            "--config",
-            f"configs/{config_file}",
-            *opts,
-        ],
-    )
-
-    assert result.returncode == 0
-    assert save_dir.exists()
-    assert len(list(save_dir.rglob("*.png"))) > 0
-    shutil.rmtree(save_dir, ignore_errors=True)
+def test_custom_tasks(parking_lot_dataset: LuxonisDataset):
+    config_file = "tests/configs/parking_lot_config.yaml"
+    Trainer(
+        config_file,
+        opts=OPTS
+        | {
+            "loader.params.dataset_name": parking_lot_dataset.dataset_name,
+        },
+    ).train()
 
 
 def test_tuner():
-    Path("study_local.db").unlink(missing_ok=True)
-    result = subprocess.run(
-        [
-            "luxonis_train",
-            "tune",
-            "--config",
-            "configs/example_tuning.yaml",
-            "trainer.epochs",
-            "1",
-            "trainer.validation_interval",
-            "1",
-            "trainer.callbacks",
-            "[]",
-            "tuner.n_trials",
-            "4",
-            "trainer.batch_size",
-            "1",
-            "tracker.save_directory",
-            str(TEST_OUTPUT),
-        ],
-    )
-    assert result.returncode == 0
+    tuner = Tuner("configs/example_tuning.yaml", opts=OPTS)
+    tuner.tune()
+    assert STUDY_PATH.exists()
