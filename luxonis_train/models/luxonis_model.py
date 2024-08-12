@@ -88,7 +88,6 @@ class LuxonisModel(pl.LightningModule):
     """
 
     _trainer: pl.Trainer
-    _core: "luxonis_train.core.Core"
     logger: LuxonisTrackerPL
 
     def __init__(
@@ -98,7 +97,7 @@ class LuxonisModel(pl.LightningModule):
         input_shape: dict[str, Size],
         dataset_metadata: DatasetMetadata | None = None,
         *,
-        _core: "luxonis_train.core.Core",
+        _core: "luxonis_train.core.Core | None" = None,
         **kwargs,
     ):
         """Constructs an instance of `LuxonisModel` from `Config`.
@@ -800,7 +799,7 @@ class LuxonisModel(pl.LightningModule):
         node_name = cfg.attached_to
         node: BaseNode = self.nodes[node_name]  # type: ignore
         if issubclass(Module, TorchMetricWrapper):
-            if "task" not in cfg.params:
+            if "task" not in cfg.params and self._core is not None:
                 loader = self._core.loaders["train"]
                 dataset = getattr(loader, "dataset", None)
                 if isinstance(dataset, LuxonisDataset):

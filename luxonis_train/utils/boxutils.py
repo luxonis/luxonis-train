@@ -710,6 +710,6 @@ def compute_iou_loss(
             raise ValueError(f"Unknown reduction type `{reduction}`")
     else:
         loss_iou = torch.tensor(0.0).to(pred_bboxes.device)
-        iou = torch.zeros([len(target_bboxes)]).to(pred_bboxes.device)
+        iou = torch.zeros([target_bboxes.shape[0]]).to(pred_bboxes.device)
 
     return loss_iou, iou.detach().clamp(0)

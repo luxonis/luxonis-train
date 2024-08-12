@@ -19,6 +19,7 @@ class TestOnTrainEnd(pl.Callback):
             if isinstance(callback, ModelCheckpoint)
         }
 
+        assert pl_module._core is not None
         trainer.test(pl_module, pl_module._core.pytorch_loaders["test"])
 
         # Restore the paths

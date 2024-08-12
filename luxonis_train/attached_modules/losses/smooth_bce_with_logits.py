@@ -67,5 +67,7 @@ class SmoothBCEWithLogitsLoss(BaseLoss[list[Tensor], Tensor]):
             self.negative_smooth_const,
             device=prediction.device,
         )
-        smoothed_target[torch.arange(len(target)), target] = self.positive_smooth_const
+        smoothed_target[
+            torch.arange(target.shape[0]), target
+        ] = self.positive_smooth_const
         return self.criterion.forward(prediction, smoothed_target)
