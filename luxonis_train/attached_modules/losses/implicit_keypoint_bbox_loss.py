@@ -167,7 +167,7 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         targets[:, self.box_offset + 2 :: 3] = kpts[:, 3::3]  # insert kp y coordinates
         targets[:, self.box_offset + 3 :: 3] = kpts[:, 4::3]  # insert kp visibility
 
-        n_targets = len(targets)
+        n_targets = targets.shape[0]
 
         class_targets: list[Tensor] = []
         box_targets: list[Tensor] = []

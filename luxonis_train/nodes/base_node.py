@@ -144,6 +144,7 @@ class BaseNode(
         original_in_shape: Size | None = None,
         dataset_metadata: DatasetMetadata | None = None,
         n_classes: int | None = None,
+        n_keypoints: int | None = None,
         in_sizes: Size | list[Size] | None = None,
         _tasks: dict[LabelType, str] | None = None,
     ):
@@ -170,11 +171,9 @@ class BaseNode(
 
         self._input_shapes = input_shapes
         self._original_in_shape = original_in_shape
-        if n_classes is not None:
-            if dataset_metadata is not None:
-                raise ValueError("Cannot set both `dataset_metadata` and `n_classes`.")
-            dataset_metadata = DatasetMetadata(n_classes=n_classes)
         self._dataset_metadata = dataset_metadata
+        self._n_classes = n_classes
+        self._n_keypoints = n_keypoints
         self._export = False
         self._epoch = 0
         self._in_sizes = in_sizes
@@ -244,8 +243,32 @@ class BaseNode(
         return self.dataset_metadata.class_names(self.get_task_name(task))
 
     @property
+    def n_keypoints(self) -> int:
+        """Getter for the number of keypoints."""
+        if self._n_keypoints is not None:
+            return self._n_keypoints
+
+        if self._tasks:
+            if LabelType.KEYPOINTS not in self._tasks:
+                raise (ValueError(f"{self.name} does not support keypoints."))
+            return self.dataset_metadata.n_keypoints(
+                self.get_task_name(LabelType.KEYPOINTS)
+            )
+
+        raise ValueError(
+            f"{self.name} does not have any tasks defined, "
+            "`BaseNode.n_keypoints` property cannot be used. "
+            "Either override the `tasks` class attribute, "
+            "pass the `n_keypoints` attribute to the constructor or call "
+            "the `BaseNode.dataset_metadata.get_n_keypoints` method manually."
+        )
+
+    @property
     def n_classes(self) -> int:
         """Getter for the number of classes."""
+        if self._n_classes is not None:
+            return self._n_classes
+
         if not self._tasks:
             raise ValueError(
                 f"{self.name} does not have any tasks defined, "
