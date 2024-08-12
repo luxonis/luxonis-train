@@ -40,7 +40,7 @@ from .luxonis_output import LuxonisOutput
 logger = getLogger(__name__)
 
 
-class LuxonisModel(pl.LightningModule):
+class LuxonisLightningModule(pl.LightningModule):
     """Class representing the entire model.
 
     This class keeps track of the model graph, nodes, and attached modules.
@@ -97,7 +97,7 @@ class LuxonisModel(pl.LightningModule):
         input_shape: dict[str, Size],
         dataset_metadata: DatasetMetadata | None = None,
         *,
-        _core: "luxonis_train.core.Core | None" = None,
+        _core: "luxonis_train.core.LuxonisModel | None" = None,
         **kwargs,
     ):
         """Constructs an instance of `LuxonisModel` from `Config`.
@@ -239,6 +239,13 @@ class LuxonisModel(pl.LightningModule):
         self.visualizers = self._to_module_dict(self.visualizers)  # type: ignore
 
         self.load_checkpoint(self.cfg.model.weights)
+
+    @property
+    def core(self) -> "luxonis_train.core.LuxonisModel":
+        """Returns the core model."""
+        if self._core is None:
+            raise ValueError("Core reference is not set.")
+        return self._core
 
     def _initiate_nodes(
         self,

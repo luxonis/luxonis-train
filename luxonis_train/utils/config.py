@@ -266,10 +266,9 @@ class BlobconverterExportConfig(CustomBaseModel):
 
 
 class ExportConfig(CustomBaseModel):
-    export_save_directory: str = "output_export"
+    model_name: str | None = None
     input_shape: list[int] | None = None
-    export_model_name: str = "model"
-    data_type: Literal["INT8", "FP16", "FP32"] = "FP16"
+    data_type: Literal["int8", "fp16", "fp32"] = "fp16"
     reverse_input_channels: bool = True
     scale_values: list[float] | None = None
     mean_values: list[float] | None = None

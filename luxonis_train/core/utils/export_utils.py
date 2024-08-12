@@ -1,0 +1,94 @@
+import logging
+
+from luxonis_train.utils.config import Config, ExportConfig
+
+logger = logging.getLogger(__name__)
+
+
+def try_onnx_simplify(onnx_path: str) -> None:
+    import onnx
+
+    try:
+        import onnxsim
+
+        logger.info("Simplifying ONNX model...")
+        model_onnx = onnx.load(onnx_path)
+        onnx_model, check = onnxsim.simplify(model_onnx)
+        if not check:
+            raise RuntimeError("ONNX simplify failed.")
+        onnx.save(onnx_model, onnx_path)
+        logger.info(f"ONNX model saved to {onnx_path}")
+
+    except ImportError:
+        logger.error("Failed to import `onnxsim`")
+        logger.warning(
+            "`onnxsim` not installed. Skipping ONNX model simplification. "
+            "Ensure `onnxsim` is installed in your environment."
+        )
+    except RuntimeError:
+        logger.error(
+            "Failed to simplify ONNX model. Proceeding without simplification."
+        )
+
+
+def get_preprocessing(
+    cfg: Config,
+) -> tuple[list[float] | None, list[float] | None, bool]:
+    normalize_params = cfg.trainer.preprocessing.normalize.params
+    if cfg.exporter.scale_values is not None:
+        scale_values = cfg.exporter.scale_values
+    else:
+        scale_values = normalize_params.get("std", None)
+        if scale_values:
+            scale_values = (
+                [i * 255 for i in scale_values]
+                if isinstance(scale_values, list)
+                else scale_values * 255
+            )
+
+    if cfg.exporter.mean_values is not None:
+        mean_values = cfg.exporter.mean_values
+    else:
+        mean_values = normalize_params.get("mean", None)
+        if mean_values:
+            mean_values = (
+                [i * 255 for i in mean_values]
+                if isinstance(mean_values, list)
+                else mean_values * 255
+            )
+    reverse_channels = cfg.exporter.reverse_input_channels
+
+    return scale_values, mean_values, reverse_channels
+
+
+def blobconverter_export(
+    cfg: ExportConfig,
+    scale_values: list[float] | None,
+    mean_values: list[float] | None,
+    reverse_channels: bool,
+    export_path: str,
+    onnx_path: str,
+) -> str:
+    import blobconverter
+
+    logger.info("Converting ONNX to .blob")
+
+    optimizer_params = []
+    if scale_values:
+        optimizer_params.append(f"--scale_values={scale_values}")
+    if mean_values:
+        optimizer_params.append(f"--mean_values={mean_values}")
+    if reverse_channels:
+        optimizer_params.append("--reverse_input_channels")
+
+    blob_path = blobconverter.from_onnx(
+        model=onnx_path,
+        optimizer_params=optimizer_params,
+        data_type=cfg.data_type,
+        shaves=cfg.blobconverter.shaves,
+        version=cfg.blobconverter.version,
+        use_cache=False,
+        output_dir=export_path,
+    )
+    logger.info(f".blob model saved to {blob_path}")
+    return blob_path

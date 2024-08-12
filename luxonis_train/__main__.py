@@ -5,7 +5,6 @@ from typing import Annotated, Optional
 
 import typer
 import yaml
-from luxonis_ml.data.__main__ import inspect as lxml_inspect
 from luxonis_ml.enums import SplitType
 
 app = typer.Typer(
@@ -49,35 +48,35 @@ def train(
     opts: OptsType = None,
 ):
     """Start training."""
-    from luxonis_train.core import Trainer
+    from luxonis_train.core import LuxonisModel
 
-    Trainer(config, opts, resume=resume).train()
+    LuxonisModel(config, opts).train(resume=resume)
 
 
 @app.command()
-def eval(
+def test(
     config: ConfigType = None, view: ViewType = SplitType.VAL, opts: OptsType = None
 ):
     """Evaluate model."""
-    from luxonis_train.core import Trainer
+    from luxonis_train.core import LuxonisModel
 
-    Trainer(config, opts).test(view=view.value)
+    LuxonisModel(config, opts).test(view=view.value)
 
 
 @app.command()
 def tune(config: ConfigType = None, opts: OptsType = None):
     """Start hyperparameter tuning."""
-    from luxonis_train.core import Tuner
+    from luxonis_train.core import LuxonisModel
 
-    Tuner(config, opts).tune()
+    LuxonisModel(config, opts).tune()
 
 
 @app.command()
 def export(config: ConfigType = None, opts: OptsType = None):
     """Export model."""
-    from luxonis_train.core import Exporter
+    from luxonis_train.core import LuxonisModel
 
-    Exporter(config, opts).export()
+    LuxonisModel(config, opts).export()
 
 
 @app.command()
@@ -88,9 +87,9 @@ def infer(
     opts: OptsType = None,
 ):
     """Run inference."""
-    from luxonis_train.core import Inferer
+    from luxonis_train.core import LuxonisModel
 
-    Inferer(config, opts, view=view.value, save_dir=save_dir).infer()
+    LuxonisModel(config, opts).infer(view=view.value, save_dir=save_dir)
 
 
 @app.command()
@@ -110,6 +109,7 @@ def inspect(
 ):
     """Inspect dataset."""
     from lightning.pytorch import seed_everything
+    from luxonis_ml.data.__main__ import inspect as lxml_inspect
 
     from luxonis_train.utils.config import Config
 
@@ -151,9 +151,9 @@ def archive(
     opts: OptsType = None,
 ):
     """Generate NN archive."""
-    from luxonis_train.core import Archiver
+    from luxonis_train.core import LuxonisModel
 
-    Archiver(str(config), opts).archive(executable)
+    LuxonisModel(str(config), opts).archive(executable)
 
 
 def version_callback(value: bool):

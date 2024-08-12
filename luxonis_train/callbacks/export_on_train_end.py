@@ -1,30 +1,20 @@
 import logging
-from pathlib import Path
-from typing import cast
 
 import lightning.pytorch as pl
 
-from luxonis_train.utils.config import Config
+import luxonis_train
 from luxonis_train.utils.registry import CALLBACKS
-from luxonis_train.utils.tracker import LuxonisTrackerPL
 
 logger = logging.getLogger(__name__)
 
 
 @CALLBACKS.register_module()
 class ExportOnTrainEnd(pl.Callback):
-    def __init__(self, upload_to_mlflow: bool = False):
-        """Callback that performs export on train end with best weights according to the
-        validation loss.
-
-        @type upload_to_mlflow: bool
-        @param upload_to_mlflow: If set to True, overrides the upload url in Exporter
-            with currently active MLFlow run (if present).
-        """
-        super().__init__()
-        self.upload_to_mlflow = upload_to_mlflow
-
-    def on_train_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
+    def on_train_end(
+        self,
+        _: pl.Trainer,
+        pl_module: "luxonis_train.models.LuxonisLightningModule",
+    ) -> None:
         """Exports the model on train end.
 
         @type trainer: L{pl.Trainer}
@@ -33,15 +23,8 @@ class ExportOnTrainEnd(pl.Callback):
         @param pl_module: Pytorch Lightning module.
         @raises RuntimeError: If no best model path is found.
         """
-        from luxonis_train.core.exporter import Exporter
-
-        model_checkpoint_callbacks = [
-            c
-            for c in trainer.callbacks  # type: ignore
-            if isinstance(c, pl.callbacks.ModelCheckpoint)  # type: ignore
-        ]
         # NOTE: assume that first checkpoint callback is based on val loss
-        best_model_path = model_checkpoint_callbacks[0].best_model_path
+        best_model_path = pl_module.core.get_best_metric_checkpoint_path()
         if not best_model_path:
             logger.error(
                 "No model checkpoint found. "
@@ -50,18 +33,4 @@ class ExportOnTrainEnd(pl.Callback):
                 "Skipping model export."
             )
             return
-        cfg: Config = pl_module.cfg
-        cfg.model.weights = best_model_path
-        if self.upload_to_mlflow:
-            if cfg.tracker.is_mlflow:
-                tracker = cast(LuxonisTrackerPL, trainer.logger)
-                new_upload_url = f"mlflow://{tracker.project_id}/{tracker.run_id}"
-                cfg.exporter.upload_url = new_upload_url
-            else:
-                logger.error(
-                    "`upload_to_mlflow` is set to True, "
-                    "but there is no MLFlow active run, skipping."
-                )
-        exporter = Exporter(cfg=cfg)
-        onnx_path = str(Path(best_model_path).parent.with_suffix(".onnx"))
-        exporter.export(onnx_path=onnx_path)
+        pl_module.core.export(best_model_path)
