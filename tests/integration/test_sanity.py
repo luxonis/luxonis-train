@@ -19,7 +19,7 @@ OPTS = {
     "trainer.validation_interval": 1,
     "trainer.callbacks": "[]",
     "tracker.save_directory": str(TEST_OUTPUT),
-    "n_trials": 4,
+    "tuner.n_trials": 4,
 }
 
 
