@@ -1,8 +1,5 @@
 # Example configuration for training a predefined segmentation model
 
-
-use_rich_text: True
-
 model:
   name: coco_segmentation
   predefined_model:
