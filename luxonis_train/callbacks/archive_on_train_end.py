@@ -5,6 +5,7 @@ from typing import cast
 
 import lightning.pytorch as pl
 
+import luxonis_train
 from luxonis_train.utils.config import Config
 from luxonis_train.utils.registry import CALLBACKS
 from luxonis_train.utils.tracker import LuxonisTrackerPL
@@ -23,7 +24,11 @@ class ArchiveOnTrainEnd(pl.Callback):
         super().__init__()
         self.upload_to_mlflow = upload_to_mlflow
 
-    def on_train_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
+    def on_train_end(
+        self,
+        trainer: pl.Trainer,
+        pl_module: "luxonis_train.models.LuxonisLightningModule",
+    ) -> None:
         """Archives the model on train end.
 
         @type trainer: L{pl.Trainer}
@@ -34,14 +39,7 @@ class ArchiveOnTrainEnd(pl.Callback):
         """
         from luxonis_train.core.archiver import Archiver
 
-        model_checkpoint_callbacks = [
-            c
-            for c in trainer.callbacks  # type: ignore
-            if isinstance(c, pl.callbacks.ModelCheckpoint)  # type: ignore
-        ]
-
-        # NOTE: assume that first checkpoint callback is based on val loss
-        best_model_path = model_checkpoint_callbacks[0].best_model_path
+        best_model_path = pl_module.core.get_min_loss_checkpoint_path()
         if not best_model_path:
             raise RuntimeError(
                 "No best model path found. "

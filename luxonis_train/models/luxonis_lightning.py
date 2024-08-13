@@ -728,8 +728,7 @@ class LuxonisLightningModule(pl.LightningModule):
         if self.frozen_nodes:
             callbacks.append(ModuleFreezer(self.frozen_nodes))
 
-        if self.cfg.use_rich_text:
-            callbacks.append(RichModelSummary(max_depth=2))
+        callbacks.append(RichModelSummary(max_depth=2))
 
         for callback in self.cfg.trainer.callbacks:
             if callback.active:
@@ -846,14 +845,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         logger.info(f"{stage} loss: {loss:.4f}")
 
-        if self.cfg.use_rich_text:
-            self._progress_bar.print_results(stage=stage, loss=loss, metrics=metrics)
-        else:
-            for node_name, node_metrics in metrics.items():
-                for metric_name, metric_value in node_metrics.items():
-                    logger.info(
-                        f"{stage} metric: {node_name}/{metric_name}: {metric_value:.4f}"
-                    )
+        self._progress_bar.print_results(stage=stage, loss=loss, metrics=metrics)
 
         if self.main_metric is not None:
             main_metric_node, main_metric_name = self.main_metric.split("/")

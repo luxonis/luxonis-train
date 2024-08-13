@@ -50,7 +50,7 @@ def train(
     """Start training."""
     from luxonis_train.core import LuxonisModel
 
-    LuxonisModel(config, opts).train(resume=resume)
+    LuxonisModel(config, opts).train(resume_weights=resume)
 
 
 @app.command()

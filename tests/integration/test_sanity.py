@@ -20,7 +20,6 @@ OPTS = {
     "trainer.callbacks": "[]",
     "tracker.save_directory": str(TEST_OUTPUT),
     "tuner.n_trials": 4,
-    "exporter.model_name": "test_export",
 }
 
 
@@ -42,7 +41,11 @@ def test_simple_models(config_file: str):
     model.train()
     model.test()
     model.export()
-    assert Path(model.run_save_dir, "export", "test_export.onnx").exists()
+    assert (
+        Path(model.run_save_dir, "export", model.cfg.model.name)
+        .with_suffix(".onnx")
+        .exists()
+    )
 
 
 def test_multi_input():

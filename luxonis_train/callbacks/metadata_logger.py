@@ -5,6 +5,7 @@ import lightning.pytorch as pl
 import pkg_resources
 import yaml
 
+import luxonis_train
 from luxonis_train.utils.config import Config
 from luxonis_train.utils.registry import CALLBACKS
 
@@ -23,7 +24,9 @@ class MetadataLogger(pl.Callback):
         super().__init__()
         self.hyperparams = hyperparams
 
-    def on_fit_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
+    def on_fit_start(
+        self, _: pl.Trainer, pl_module: "luxonis_train.models.LuxonisLightningModule"
+    ) -> None:
         cfg: Config = pl_module.cfg
 
         hparams = {key: cfg.get(key) for key in self.hyperparams}
@@ -37,12 +40,13 @@ class MetadataLogger(pl.Callback):
         if luxonis_train_hash:
             hparams["luxonis_train"] = luxonis_train_hash
 
-        trainer.logger.log_hyperparams(hparams)  # type: ignore
+        pl_module.logger.log_hyperparams(hparams)
         # also save metadata locally
         with open(osp.join(pl_module.save_dir, "metadata.yaml"), "w+") as f:
             yaml.dump(hparams, f, default_flow_style=False)
 
-    def _get_editable_package_git_hash(self, package_name: str) -> str | None:
+    @staticmethod
+    def _get_editable_package_git_hash(package_name: str) -> str | None:
         try:
             distribution = pkg_resources.get_distribution(package_name)
             package_location = osp.join(distribution.location, package_name)

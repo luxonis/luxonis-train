@@ -1,5 +1,6 @@
 import json
 import os
+import os.path as osp
 from collections import defaultdict
 from pathlib import Path
 
@@ -163,13 +164,13 @@ def create_coco_dataset():
     dataset_name = "coco_test"
     url = "https://drive.google.com/uc?id=1XlvFK7aRmt8op6-hHkWVKIJQeDtOwoRT"
     output_folder = "../data/"
-    output_zip = os.path.join(output_folder, "COCO_people_subset.zip")
+    output_zip = osp.join(output_folder, "COCO_people_subset.zip")
 
-    if not os.path.exists(output_folder):
+    if not osp.exists(output_folder):
         os.makedirs(output_folder)
 
-    if not os.path.exists(output_zip) and not os.path.exists(
-        os.path.join(output_folder, "COCO_people_subset")
+    if not osp.exists(output_zip) and not osp.exists(
+        osp.join(output_folder, "COCO_people_subset")
     ):
         gdown.download(url, output_zip, quiet=False)
 
@@ -181,7 +182,7 @@ def create_coco_dataset():
 def create_cifar10_dataset():
     dataset = LuxonisDataset("cifar10_test", delete_existing=True)
     output_folder = "../data/"
-    if not os.path.exists(output_folder):
+    if not osp.exists(output_folder):
         os.makedirs(output_folder)
     cifar10_torch = torchvision.datasets.CIFAR10(
         root=output_folder, train=False, download=True
@@ -203,7 +204,7 @@ def create_cifar10_dataset():
         for i, (image, label) in enumerate(cifar10_torch):  # type: ignore
             if i == 1000:
                 break
-            path = os.path.join(output_folder, f"cifar_{i}.png")
+            path = osp.join(output_folder, f"cifar_{i}.png")
             image.save(path)
             yield {
                 "file": path,

@@ -3,7 +3,7 @@ import sys
 from typing import Annotated, Any, Literal
 
 from luxonis_ml.data import LabelType
-from luxonis_ml.utils import Environ, LuxonisConfig, LuxonisFileSystem, setup_logging
+from luxonis_ml.utils import Environ, LuxonisConfig, LuxonisFileSystem
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing_extensions import Self
 
@@ -266,16 +266,15 @@ class BlobconverterExportConfig(CustomBaseModel):
 
 
 class ExportConfig(CustomBaseModel):
-    model_name: str | None = None
     input_shape: list[int] | None = None
     data_type: Literal["int8", "fp16", "fp32"] = "fp16"
+    upload: bool = True
     reverse_input_channels: bool = True
     scale_values: list[float] | None = None
     mean_values: list[float] | None = None
     output_names: list[str] | None = None
     onnx: OnnxExportConfig = OnnxExportConfig()
     blobconverter: BlobconverterExportConfig = BlobconverterExportConfig()
-    upload_url: str | None = None
 
     @model_validator(mode="after")
     def check_values(self) -> Self:
@@ -315,7 +314,6 @@ class TunerConfig(CustomBaseModel):
 
 
 class Config(LuxonisConfig):
-    use_rich_text: bool = True
     model: ModelConfig = ModelConfig()
     loader: LoaderConfig = LoaderConfig()
     tracker: TrackerConfig = TrackerConfig()
@@ -344,14 +342,6 @@ class Config(LuxonisConfig):
                 "Specifying `ENVIRON` section in config file is not recommended. "
                 "Please use environment variables or .env file instead."
             )
-        return data
-
-    @model_validator(mode="before")
-    @classmethod
-    def setup_logging(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            if data.get("use_rich_text", True):
-                setup_logging(use_rich=True)
         return data
 
     @classmethod

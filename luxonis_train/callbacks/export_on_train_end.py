@@ -33,4 +33,4 @@ class ExportOnTrainEnd(pl.Callback):
                 "Skipping model export."
             )
             return
-        pl_module.core.export(best_model_path)
+        pl_module.core.export(weights=best_model_path)
