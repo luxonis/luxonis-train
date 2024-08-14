@@ -88,6 +88,7 @@ class Archiver(Core):
                 name=input_name,
                 dtype=inputs_dict[input_name]["dtype"],
                 shape=inputs_dict[input_name]["shape"],
+                layout=inputs_dict[input_name]["layout"],
                 preprocessing=preprocessing,
             )
 
@@ -162,7 +163,13 @@ class Archiver(Core):
                     shape.append(d.dim_value)
                 else:
                     raise ValueError("Unsupported input dimension identifier type")
-            inputs_dict[input.name] = {"dtype": dtype, "shape": shape}
+            if shape[1] == 3:
+                layout = "NCHW"
+            elif shape[3] == 3:
+                layout = "NHWC"
+            else:
+                raise ValueError("Unknown input layout")
+            inputs_dict[input.name] = {"dtype": dtype, "shape": shape, "layout": layout}
         return inputs_dict
 
     def _add_input(
@@ -170,6 +177,7 @@ class Archiver(Core):
         name: str,
         dtype: str,
         shape: list,
+        layout: str,
         preprocessing: dict,
         input_type: str = "image",
     ) -> None:
@@ -183,6 +191,8 @@ class Archiver(Core):
         @param shape: Shape of the input data as a list of integers (e.g. [H,W], [H,W,C], [BS,H,W,C], ...).
         @type preprocessing: dict
         @param preprocessing: Preprocessing steps applied to the input data.
+        @type layout: str
+        @param layout: Lettercode interpretation of the input data dimensions (e.g., 'NCHW').
         @type input_type: str
         @param input_type: Type of input data (e.g., 'image').
         """
@@ -193,6 +203,7 @@ class Archiver(Core):
                 "dtype": dtype,
                 "input_type": input_type,
                 "shape": shape,
+                "layout": layout,
                 "preprocessing": preprocessing,
             }
         )
