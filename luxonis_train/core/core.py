@@ -52,8 +52,6 @@ class Core:
         else:
             self.cfg = Config.get_config(cfg, opts)
 
-        opts = opts or []
-
         if self.cfg.use_rich_text:
             rich.traceback.install(suppress=[pl, torch], show_locals=False)
 
