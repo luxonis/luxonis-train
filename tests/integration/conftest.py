@@ -14,6 +14,7 @@ from luxonis_ml.data.utils.data_utils import rgb_to_bool_masks
 from luxonis_ml.utils import LuxonisFileSystem, environ
 
 WORK_DIR = Path("tests", "data")
+WORK_DIR.mkdir(parents=True, exist_ok=True)
 
 environ.LUXONISML_BASE_PATH = WORK_DIR / "luxonisml"
 
