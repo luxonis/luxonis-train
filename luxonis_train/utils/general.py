@@ -12,8 +12,6 @@ from luxonis_train.utils.loaders import BaseLoaderTorch
 from luxonis_train.utils.types import Packet
 
 
-# TODO: could be moved to luxonis-ml?
-# TODO: support multiclass keypoints
 class DatasetMetadata:
     """Metadata about the dataset."""
 
@@ -28,17 +26,10 @@ class DatasetMetadata:
         classes, number of keypoints, I{etc.} instead of passing them as arguments to
         the model.
 
-        @type classes: dict[LabelType, list[str]] | None
-        @param classes: Dictionary mapping label types to lists of class names. If not
-            provided, will be inferred from the dataset loader.
-        @type n_classes: int | None
-        @param n_classes: Number of classes for each label type.
-        @type n_keypoints: int | None
-        @param n_keypoints: Number of keypoints in the dataset.
-        @type keypoint_names: list[str] | None
-        @param keypoint_names: List of keypoint names.
-        @type connectivity: list[tuple[int, int]] | None
-        @param connectivity: List of edges in the skeleton graph.
+        @type classes: dict[str, list[str]] | None
+        @param classes: Dictionary mapping tasks to lists of class names.
+        @type n_keypoints: dict[str, int] | None
+        @param n_keypoints: Dictionary mapping tasks to the number of keypoints.
         @type loader: DataLoader | None
         @param loader: Dataset loader.
         """
