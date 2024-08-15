@@ -45,7 +45,7 @@ class BaseLoaderTorch(
 
     @property
     @abstractmethod
-    def input_shape(self) -> dict[str, Size]:
+    def input_shapes(self) -> dict[str, Size]:
         """
         Shape of each loader group (sub-element), WITHOUT batch dimension.
         Examples:

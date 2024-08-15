@@ -35,7 +35,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         return len(self.base_loader)
 
     @property
-    def input_shape(self) -> dict[str, Size]:
+    def input_shapes(self) -> dict[str, Size]:
         img = self[0][0][self.image_source]
         return {self.image_source: img.shape}
 

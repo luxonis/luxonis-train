@@ -117,7 +117,7 @@ class EfficientBBoxHead(
         else:
             boxes = self._process_to_bbox((features, cls_tensor, reg_tensor))
             return {
-                self.task: boxes,
+                "boundingbox": boxes,
                 "features": features,
                 "class_scores": [cls_tensor],
                 "distributions": [reg_tensor],

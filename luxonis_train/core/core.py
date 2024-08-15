@@ -162,24 +162,26 @@ class LuxonisModel:
 
         self.cfg.save_data(osp.join(self.run_save_dir, "config.yaml"))
 
-        self.input_shape = self.loaders["train"].input_shape
+        self.input_shapes = self.loaders["train"].input_shapes
 
         self.lightning_module = LuxonisLightningModule(
             cfg=self.cfg,
             dataset_metadata=self.dataset_metadata,
             save_dir=self.run_save_dir,
-            input_shape=self.input_shape,
+            input_shapes=self.input_shapes,
             _core=self,
         )
 
     def _train(self, resume: str | None, *args, **kwargs):
+        status = "success"
         try:
             self.pl_trainer.fit(*args, ckpt_path=resume, **kwargs)
         except Exception:
-            logger.exception("Encountered exception during training.")
+            logger.exception("Encountered an exception during training.")
+            status = "failed"
         finally:
             self.tracker.upload_artifact(self.log_file, typ="logs")
-            self.tracker._finalize()
+            self.tracker._finalize(status)
 
     def train(
         self, new_thread: bool = False, resume_weights: str | None = None
@@ -305,12 +307,19 @@ class LuxonisModel:
                     "Ensure `blobconverter` is installed in your environment."
                 )
 
+        if len(self.input_shapes) > 1:
+            logger.error(
+                "Generating modelconverter config for a model "
+                "with multiple inputs is not implemented yet."
+            )
+            return
+
         modelconverter_config = {
             "input_model": onnx_save_path,
             "scale_values": scale_values,
             "mean_values": mean_values,
             "reverse_input_channels": reverse_channels,
-            "shape": list(self.input_shape),
+            "shape": [1, *next(iter(self.input_shapes.values()))],
             "outputs": [{"name": name} for name in output_names],
         }
 
@@ -416,7 +425,7 @@ class LuxonisModel:
                 cfg=cfg,
                 dataset_metadata=self.dataset_metadata,
                 save_dir=run_save_dir,
-                input_shape=self.loaders["train"].input_shape,
+                input_shapes=self.loaders["train"].input_shapes,
                 _core=self,
             )
             callbacks = [LuxonisProgressBar()]
