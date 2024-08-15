@@ -41,7 +41,7 @@ class DatasetMetadata:
     def classes(self) -> dict[str, list[str]]:
         """Dictionary mapping label types to lists of class names.
 
-        @type: dict[LabelType, list[str]]
+        @type: dict[str, list[str]]
         @raises ValueError: If classes were not provided during initialization.
         """
         if self._classes is None:
