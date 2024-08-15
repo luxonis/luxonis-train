@@ -10,6 +10,7 @@ from luxonis_ml.utils import LuxonisFileSystem
 
 from luxonis_train.models import LuxonisModel
 from luxonis_train.utils.config import Config
+from luxonis_train.utils.tracker import LuxonisTrackerPL
 
 from .core import Core
 
@@ -53,14 +54,15 @@ class Trainer(Core):
             dataset_metadata=self.dataset_metadata,
             save_dir=self.run_save_dir,
             input_shape=self.loaders["train"].input_shape,
+            _core=self,
         )
-        self.lightning_module._core = self
 
         def graceful_exit(signum: int, _):
             logger.info(f"{signal.Signals(signum).name} received, stopping training...")
             ckpt_path = osp.join(self.run_save_dir, "resume.ckpt")
             self.pl_trainer.save_checkpoint(ckpt_path)
-            self._upload_logs()
+            tracker = self._create_tracker(self._run_id)
+            self._upload_logs(tracker)
 
             if self.cfg.tracker.is_mlflow:
                 logger.info("Uploading checkpoint to MLFlow.")
@@ -72,14 +74,15 @@ class Trainer(Core):
                 fs.put_file(
                     local_path=ckpt_path,
                     remote_path="resume.ckpt",
-                    mlflow_instance=self.tracker.experiment.get("mlflow", None),
+                    mlflow_instance=tracker.experiment.get("mlflow"),
                 )
 
             exit(0)
 
         signal.signal(signal.SIGTERM, graceful_exit)
 
-    def _upload_logs(self) -> None:
+    def _upload_logs(self, tracker: LuxonisTrackerPL | None = None) -> None:
+        tracker = tracker or self.tracker
         if self.cfg.tracker.is_mlflow:
             logger.info("Uploading logs to MLFlow.")
             fs = LuxonisFileSystem(
@@ -90,7 +93,7 @@ class Trainer(Core):
             fs.put_file(
                 local_path=self.log_file,
                 remote_path="luxonis_train.log",
-                mlflow_instance=self.tracker.experiment.get("mlflow", None),
+                mlflow_instance=tracker.experiment.get("mlflow"),
             )
 
     def _trainer_fit(self, *args, **kwargs):
@@ -99,7 +102,7 @@ class Trainer(Core):
         except Exception:
             logger.exception("Encountered exception during training.")
         finally:
-            self._upload_logs()
+            self._upload_logs(self._create_tracker(self._run_id))
 
     def train(self, new_thread: bool = False) -> None:
         """Runs training.

@@ -84,6 +84,7 @@ class Exporter(Core):
             save_dir=self.run_save_dir,
             input_shape=self.input_shape,
             dataset_metadata=self.dataset_metadata,
+            _core=self,
         )
 
     def _get_modelconverter_config(self, onnx_path: str) -> dict[str, Any]:

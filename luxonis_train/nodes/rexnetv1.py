@@ -4,13 +4,10 @@ Source: U{https://github.com/clovaai/rexnet}
 @license: U{MIT<https://github.com/clovaai/rexnet/blob/master/LICENSE>}
 """
 
-
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.nodes.blocks import (
-    ConvModule,
-)
+from luxonis_train.nodes.blocks import ConvModule
 from luxonis_train.utils.general import make_divisible
 
 from .base_node import BaseNode

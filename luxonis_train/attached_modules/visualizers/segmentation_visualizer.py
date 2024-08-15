@@ -3,25 +3,23 @@ import logging
 import torch
 from torch import Tensor
 
-from luxonis_train.utils.types import Labels, LabelType, Packet, SegmentationProtocol
+from luxonis_train.utils.types import LabelType
 
 from .base_visualizer import BaseVisualizer
-from .utils import (
-    Color,
-    draw_segmentation_labels,
-    get_color,
-    seg_output_to_bool,
-)
+from .utils import Color, draw_segmentation_labels, get_color, seg_output_to_bool
 
 logger = logging.getLogger(__name__)
 log_disable = False
 
 
 class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
+    supported_labels = [LabelType.SEGMENTATION]
+
     def __init__(
         self,
         colors: Color | list[Color] = "#5050FF",
-        background_class: int | None = None,
+        background_class: int | None = 0,
+        background_color: Color = "#000000",
         alpha: float = 0.6,
         **kwargs,
     ):
@@ -29,23 +27,23 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
 
         @type colors: L{Color} | list[L{Color}]
         @param colors: Color of the segmentation masks. Defaults to C{"#5050FF"}.
+        @type background_class: int | None
+        @param background_class: Index of the background class. Defaults to C{0}.
+          If set, the background class will be drawn with the `background_color`.
+        @type background_color: L{Color} | None
+        @param background_color: Color of the background class.
+            Defaults to C{"#000000"}.
         @type alpha: float
         @param alpha: Alpha value of the segmentation masks. Defaults to C{0.6}.
         """
-        super().__init__(
-            protocol=SegmentationProtocol,
-            required_labels=[LabelType.SEGMENTATION],
-            **kwargs,
-        )
+        super().__init__(**kwargs)
         if not isinstance(colors, list):
             colors = [colors]
 
         self.colors = colors
         self.background_class = background_class
+        self.background_color = background_color
         self.alpha = alpha
-
-    def prepare(self, output: Packet[Tensor], label: Labels) -> tuple[Tensor, Tensor]:
-        return output[self.node.task][0], label[self.task][0]
 
     @staticmethod
     def draw_predictions(
@@ -53,10 +51,11 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         predictions: Tensor,
         colors: list[Color] | None = None,
         background_class: int | None = None,
+        background_color: Color = "#000000",
         **kwargs,
     ) -> Tensor:
         colors = SegmentationVisualizer._adjust_colors(
-            predictions, colors, background_class
+            predictions, colors, background_class, background_color
         )
         viz = torch.zeros_like(canvas)
         for i in range(len(canvas)):
@@ -73,10 +72,11 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         targets: Tensor,
         colors: list[Color] | None = None,
         background_class: int | None = None,
+        background_color: Color = "#000000",
         **kwargs,
     ) -> Tensor:
         colors = SegmentationVisualizer._adjust_colors(
-            targets, colors, background_class
+            targets, colors, background_class, background_color
         )
         viz = torch.zeros_like(canvas)
         for i in range(len(viz)):
@@ -118,6 +118,7 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
             colors=self.colors,
             alpha=self.alpha,
             background_class=self.background_class,
+            background_color=self.background_color,
             **kwargs,
         )
         predictions_vis = self.draw_predictions(
@@ -126,6 +127,7 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
             colors=self.colors,
             alpha=self.alpha,
             background_class=self.background_class,
+            background_color=self.background_color,
             **kwargs,
         )
         return targets_vis, predictions_vis
@@ -135,6 +137,7 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         data: Tensor,
         colors: list[Color] | None = None,
         background_class: int | None = None,
+        background_color: Color = "#000000",
     ) -> list[Color]:
         global log_disable
         n_classes = data.size(1)
@@ -152,5 +155,5 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         log_disable = True
         colors = [get_color(i) for i in range(data.size(1))]
         if background_class is not None:
-            colors[background_class] = "#000000"
+            colors[background_class] = background_color
         return colors

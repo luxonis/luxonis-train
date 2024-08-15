@@ -22,7 +22,7 @@ class Tuner(Core):
     def __init__(
         self,
         cfg: str | dict[str, Any] | Config | None = None,
-        opts: list[str] | tuple[str, ...] | None = None,
+        opts: list[str] | tuple[str, ...] | dict[str, Any] | None = None,
     ):
         """Main API which is used to perform hyperparameter tunning.
 
@@ -145,8 +145,8 @@ class Tuner(Core):
             dataset_metadata=self.dataset_metadata,
             save_dir=run_save_dir,
             input_shape=self.loaders["train"].input_shape,
+            _core=self,
         )
-        lightning_module._core = self
         callbacks: list[pl.Callback] = (
             [LuxonisProgressBar()] if self.cfg.use_rich_text else []
         )

@@ -97,7 +97,7 @@ class BaseLoaderTorch(
         ...
 
     @abstractmethod
-    def get_classes(self) -> dict[LabelType, list[str]]:
+    def get_classes(self) -> dict[str, list[str]]:
         """Gets classes according to computer vision task.
 
         @rtype: dict[LabelType, list[str]]
@@ -105,7 +105,7 @@ class BaseLoaderTorch(
         """
         pass
 
-    def get_skeletons(self) -> dict[str, dict] | None:
+    def get_n_keypoints(self) -> dict[str, int] | None:
         """Returns the dictionary defining the semantic skeleton for each class using
         keypoints.
 

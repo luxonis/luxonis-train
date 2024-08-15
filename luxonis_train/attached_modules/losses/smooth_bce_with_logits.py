@@ -1,6 +1,7 @@
 from typing import Literal
 
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor
 
 from .base_loss import BaseLoss
@@ -8,6 +9,8 @@ from .bce_with_logits import BCEWithLogitsLoss
 
 
 class SmoothBCEWithLogitsLoss(BaseLoss[list[Tensor], Tensor]):
+    supported_labels = [LabelType.SEGMENTATION, LabelType.CLASSIFICATION]
+
     def __init__(
         self,
         label_smoothing: float = 0.0,
@@ -40,7 +43,6 @@ class SmoothBCEWithLogitsLoss(BaseLoss[list[Tensor], Tensor]):
         self.negative_smooth_const = 1.0 - 0.5 * label_smoothing
         self.positive_smooth_const = 0.5 * label_smoothing
         self.criterion = BCEWithLogitsLoss(
-            node=self.node,
             pos_weight=torch.tensor(
                 [bce_pow],
             ),
@@ -65,5 +67,7 @@ class SmoothBCEWithLogitsLoss(BaseLoss[list[Tensor], Tensor]):
             self.negative_smooth_const,
             device=prediction.device,
         )
-        smoothed_target[torch.arange(len(target)), target] = self.positive_smooth_const
+        smoothed_target[
+            torch.arange(target.shape[0]), target
+        ] = self.positive_smooth_const
         return self.criterion.forward(prediction, smoothed_target)

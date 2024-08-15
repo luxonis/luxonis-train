@@ -15,9 +15,10 @@ from .efficient_bbox_head import EfficientBBoxHead
 
 
 class EfficientKeypointBBoxHead(EfficientBBoxHead):
+    tasks: list[LabelType] = [LabelType.KEYPOINTS, LabelType.BOUNDINGBOX]
+
     def __init__(
         self,
-        n_keypoints: int | None = None,
         n_heads: Literal[2, 3, 4] = 3,
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
@@ -28,10 +29,6 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
 
         Adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial
         Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
-
-        @param n_keypoints: Number of keypoints. If not defined, inferred
-            from the dataset metadata (if provided). Defaults to C{None}.
-        @type n_keypoints: int | None
 
         @param n_heads: Number of output heads. Defaults to C{3}.
             B{Note:} Should be same also on neck in most cases.
@@ -51,20 +48,10 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             conf_thres=conf_thres,
             iou_thres=iou_thres,
             max_det=max_det,
-            _task_type=LabelType.KEYPOINTS,
             **kwargs,
         )
 
-        n_keypoints = n_keypoints or self.dataset_metadata._n_keypoints
-
-        if n_keypoints is None:
-            raise ValueError(
-                "Number of keypoints must be specified either in the constructor or "
-                "in the dataset metadata."
-            )
-
-        self.n_keypoints = n_keypoints
-        self.nk = n_keypoints * 3
+        self.nk = self.n_keypoints * 3
 
         mid_ch = max(self.in_channels[0] // 4, self.nk)
         self.kpt_layers = nn.ModuleList(
@@ -146,13 +133,13 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         )
         return {
             "boundingbox": [detection[:, :6] for detection in detections],
-            "features": features,
-            "class_scores": [cls_tensor],
-            "distributions": [reg_tensor],
             "keypoints": [
                 detection[:, 6:].reshape(-1, self.n_keypoints, 3)
                 for detection in detections
             ],
+            "features": features,
+            "class_scores": [cls_tensor],
+            "distributions": [reg_tensor],
             "keypoints_raw": [kpt_tensor],
         }
 

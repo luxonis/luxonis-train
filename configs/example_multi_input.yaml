@@ -61,7 +61,7 @@ model:
       alias: loss_1
       attached_to: head_1
 
-    - name: BCEWithLogitsLoss
+    - name: CrossEntropyLoss
       alias: loss_2
       attached_to: head_2
 
@@ -79,12 +79,29 @@ model:
       params:
         task: binary
 
+  visualizers:
+    - name: SegmentationVisualizer
+      alias: seg_vis_1
+      attached_to: head_1
+      params:
+        colors: "#FF5055"
+
+    - name: SegmentationVisualizer
+      alias: seg_vis_2
+      attached_to: head_2
+      params:
+        colors: "#55AAFF"
+
+tracker:
+  project_name: multi_input_example
+  is_tensorboard: True
+
 trainer:
-  batch_size: 8
-  epochs: 3
+  batch_size: 1
+  epochs: 10
   num_workers: 4
-  validation_interval: 3
-  num_log_images: -1
+  validation_interval: 10
+  num_log_images: 4
 
   callbacks:
     - name: ExportOnTrainEnd

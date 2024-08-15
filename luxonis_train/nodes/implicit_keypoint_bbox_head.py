@@ -5,10 +5,7 @@ from typing import cast
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.nodes.blocks import (
-    KeypointBlock,
-    LearnableMulAddConv,
-)
+from luxonis_train.nodes.blocks import KeypointBlock, LearnableMulAddConv
 from luxonis_train.utils.boxutils import (
     non_max_suppression,
     process_bbox_predictions,
@@ -22,9 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 class ImplicitKeypointBBoxHead(BaseNode):
+    tasks: list[LabelType] = [LabelType.KEYPOINTS, LabelType.BOUNDINGBOX]
+
     def __init__(
         self,
-        n_keypoints: int | None = None,
         num_heads: int = 3,
         anchors: list[list[float]] | None = None,
         init_coco_biases: bool = True,
@@ -40,9 +38,6 @@ class ImplicitKeypointBBoxHead(BaseNode):
 
         TODO: more technical documentation
 
-        @type n_keypoints: int | None
-        @param n_keypoints: Number of keypoints. If not defined, inferred
-            from the dataset metadata (if provided). Defaults to C{None}.
         @type num_heads: int
         @param num_heads: Number of output heads. Defaults to C{3}.
             B{Note:} Should be same also on neck in most cases.
@@ -57,7 +52,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
         @type max_det: int
         @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
         """
-        super().__init__(_task_type=LabelType.KEYPOINTS, **kwargs)
+        super().__init__(**kwargs)
 
         if anchors is None:
             logger.info("No anchors provided, generating them automatically.")
@@ -68,14 +63,6 @@ class ImplicitKeypointBBoxHead(BaseNode):
         self.iou_thres = iou_thres
         self.max_det = max_det
 
-        n_keypoints = n_keypoints or self.dataset_metadata._n_keypoints
-
-        if n_keypoints is None:
-            raise ValueError(
-                "Number of keypoints must be specified either in the constructor or "
-                "in the dataset metadata."
-            )
-        self.n_keypoints = n_keypoints
         self.num_heads = num_heads
 
         self.box_offset = 5

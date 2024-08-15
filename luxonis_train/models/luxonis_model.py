@@ -5,11 +5,9 @@ from typing import Literal, cast
 
 import lightning.pytorch as pl
 import torch
-from lightning.pytorch.callbacks import (
-    ModelCheckpoint,
-    RichModelSummary,
-)
+from lightning.pytorch.callbacks import ModelCheckpoint, RichModelSummary
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
+from luxonis_ml.data import LuxonisDataset
 from torch import Size, Tensor, nn
 
 import luxonis_train
@@ -19,6 +17,7 @@ from luxonis_train.attached_modules import (
     BaseMetric,
     BaseVisualizer,
 )
+from luxonis_train.attached_modules.metrics.common import TorchMetricWrapper
 from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
     get_unnormalized_images,
@@ -31,11 +30,7 @@ from luxonis_train.callbacks import (
 )
 from luxonis_train.nodes import BaseNode
 from luxonis_train.utils.config import AttachedModuleConfig, Config
-from luxonis_train.utils.general import (
-    DatasetMetadata,
-    to_shape_packet,
-    traverse_graph,
-)
+from luxonis_train.utils.general import DatasetMetadata, to_shape_packet, traverse_graph
 from luxonis_train.utils.registry import CALLBACKS, OPTIMIZERS, SCHEDULERS, Registry
 from luxonis_train.utils.tracker import LuxonisTrackerPL
 from luxonis_train.utils.types import Kwargs, Labels, Packet
@@ -93,7 +88,6 @@ class LuxonisModel(pl.LightningModule):
     """
 
     _trainer: pl.Trainer
-    _core: "luxonis_train.core.Core"
     logger: LuxonisTrackerPL
 
     def __init__(
@@ -102,6 +96,8 @@ class LuxonisModel(pl.LightningModule):
         save_dir: str,
         input_shape: dict[str, Size],
         dataset_metadata: DatasetMetadata | None = None,
+        *,
+        _core: "luxonis_train.core.Core | None" = None,
         **kwargs,
     ):
         """Constructs an instance of `LuxonisModel` from `Config`.
@@ -122,6 +118,7 @@ class LuxonisModel(pl.LightningModule):
         super().__init__(**kwargs)
 
         self._export: bool = False
+        self._core = _core
 
         self.cfg = cfg
         self.original_in_shape = input_shape
@@ -148,7 +145,7 @@ class LuxonisModel(pl.LightningModule):
 
         for node_cfg in self.cfg.model.nodes:
             node_name = node_cfg.name
-            Node = BaseNode.REGISTRY.get(node_name)
+            Node: type[BaseNode] = BaseNode.REGISTRY.get(node_name)
             node_name = node_cfg.alias or node_name
             if node_cfg.freezing.active:
                 epochs = self.cfg.trainer.epochs
@@ -159,7 +156,26 @@ class LuxonisModel(pl.LightningModule):
                 else:
                     unfreeze_after = int(node_cfg.freezing.unfreeze_after * epochs)
                 frozen_nodes.append((node_name, unfreeze_after))
-            nodes[node_name] = (Node, {**node_cfg.params, "task": node_cfg.task})
+
+            if node_cfg.task is not None:
+                if Node.tasks is None:
+                    raise ValueError(
+                        f"Cannot define tasks for node {node_name}."
+                        "This node doesn't specify any tasks."
+                    )
+                if isinstance(node_cfg.task, str):
+                    assert Node.tasks
+                    if len(Node.tasks) > 1:
+                        raise ValueError(
+                            f"Node {node_name} specifies multiple tasks, "
+                            "but only one task is specified in the config. "
+                            "Specify the tasks as a dictionary instead."
+                        )
+
+                    node_cfg.task = {next(iter(Node.tasks)): node_cfg.task}
+                else:
+                    node_cfg.task = {**Node._process_tasks(Node.tasks), **node_cfg.task}
+            nodes[node_name] = (Node, {**node_cfg.params, "_tasks": node_cfg.task})
 
             # Handle inputs for this node
             if node_cfg.input_sources:
@@ -781,7 +797,24 @@ class LuxonisModel(pl.LightningModule):
         Module = registry.get(cfg.name)
         module_name = cfg.alias or cfg.name
         node_name = cfg.attached_to
-        module = Module(**cfg.params, node=self.nodes[node_name])
+        node: BaseNode = self.nodes[node_name]  # type: ignore
+        if issubclass(Module, TorchMetricWrapper):
+            if "task" not in cfg.params and self._core is not None:
+                loader = self._core.loaders["train"]
+                dataset = getattr(loader, "dataset", None)
+                if isinstance(dataset, LuxonisDataset):
+                    n_classes = len(dataset.get_classes()[1][node.task])
+                    if n_classes == 1:
+                        cfg.params["task"] = "binary"
+                    else:
+                        cfg.params["task"] = "multiclass"
+                    logger.warning(
+                        f"Parameter 'task' not specified for `TorchMetric` based '{module_name}' metric. "
+                        f"Assuming task type based on the number of classes: {cfg.params['task']}. "
+                        "If this is incorrect, please specify the 'task' parameter in the config."
+                    )
+
+        module = Module(**cfg.params, node=node)
         storage[node_name][module_name] = module  # type: ignore
         return module_name, node_name
 

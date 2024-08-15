@@ -1,10 +1,8 @@
 from typing import cast
 
 import torch
-from pydantic import Field
 from torch import Tensor
 from torchvision.ops import box_convert
-from typing_extensions import Annotated
 
 from luxonis_train.attached_modules.losses.keypoint_loss import KeypointLoss
 from luxonis_train.nodes import ImplicitKeypointBBoxHead
@@ -13,13 +11,7 @@ from luxonis_train.utils.boxutils import (
     match_to_anchor,
     process_bbox_predictions,
 )
-from luxonis_train.utils.types import (
-    BaseProtocol,
-    IncompatibleException,
-    Labels,
-    LabelType,
-    Packet,
-)
+from luxonis_train.utils.types import IncompatibleException, Labels, LabelType, Packet
 
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
@@ -36,6 +28,7 @@ KeypointTargetType = tuple[
 
 class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
     node: ImplicitKeypointBBoxHead
+    supported_labels = [(LabelType.BOUNDINGBOX, LabelType.KEYPOINTS)]
 
     def __init__(
         self,
@@ -94,14 +87,11 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         @param balance: Balance for the different heads. Defaults to C{None}.
         """
 
-        super().__init__(
-            required_labels=[LabelType.BOUNDINGBOX, LabelType.KEYPOINTS],
-            **kwargs,
-        )
+        super().__init__(**kwargs)
 
         if not isinstance(self.node, ImplicitKeypointBBoxHead):
             raise IncompatibleException(
-                f"Loss `{self.__class__.__name__}` is only "
+                f"Loss `{self.name}` is only "
                 "compatible with nodes of type `ImplicitKeypointBBoxHead`."
             )
         self.n_classes = self.node.n_classes
@@ -116,11 +106,6 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
                 f"Balance list must have at least {self.num_heads} elements."
             )
 
-        class Protocol(BaseProtocol):
-            features: Annotated[list[Tensor], Field(min_length=self.num_heads)]
-
-        self.protocol = Protocol  # type: ignore
-
         self.min_objectness_iou = min_objectness_iou
         self.bbox_weight = bbox_loss_weight
         self.class_weight = class_loss_weight
@@ -131,20 +116,16 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
 
         self.bias = bias
 
-        self.b_cross_entropy = BCEWithLogitsLoss(
-            pos_weight=torch.tensor([obj_pw]), **kwargs
-        )
+        self.b_cross_entropy = BCEWithLogitsLoss(pos_weight=torch.tensor([obj_pw]))
         self.class_loss = SmoothBCEWithLogitsLoss(
             label_smoothing=label_smoothing,
             bce_pow=cls_pw,
-            **kwargs,
         )
         self.keypoint_loss = KeypointLoss(
             n_keypoints=self.n_keypoints,
             bce_power=viz_pw,
             sigmas=sigmas,
             area_factor=area_factor,
-            **kwargs,
         )
 
         self.positive_smooth_const = 1 - 0.5 * label_smoothing
@@ -170,10 +151,10 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
             feature_width, n_classes + box_offset + n_keypoints * 3) to get a tensor of
             shape (n_targets, n_classes + box_offset + n_keypoints * 3).
         """
-        predictions = outputs["features"]
+        predictions = self.get_input_tensors(outputs, "features")
 
-        kpts = labels["keypoints"][0]
-        boxes = labels["boundingbox"][0]
+        kpts = self.get_label(labels, LabelType.KEYPOINTS)[0]
+        boxes = self.get_label(labels, LabelType.BOUNDINGBOX)[0]
 
         nkpts = (kpts.shape[1] - 2) // 3
         targets = torch.zeros((len(boxes), nkpts * 3 + self.box_offset + 1))
@@ -186,7 +167,7 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         targets[:, self.box_offset + 2 :: 3] = kpts[:, 3::3]  # insert kp y coordinates
         targets[:, self.box_offset + 3 :: 3] = kpts[:, 4::3]  # insert kp visibility
 
-        n_targets = len(targets)
+        n_targets = targets.shape[0]
 
         class_targets: list[Tensor] = []
         box_targets: list[Tensor] = []
