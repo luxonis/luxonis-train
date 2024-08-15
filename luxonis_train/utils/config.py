@@ -324,17 +324,6 @@ class Config(LuxonisConfig):
     tuner: TunerConfig | None = None
     ENVIRON: Environ = Field(Environ(), exclude=True)
 
-    @model_validator(mode="after")
-    def validate_num_workers(self) -> Self:
-        if self.loader.name == "LuxonisLoaderTorch":
-            if self.trainer.num_workers != 0:
-                logger.warning(
-                    "Setting `num_workers` to 0 because of "
-                    "compatibility with LuxonisDataset."
-                )
-                self.trainer.num_workers = 0
-        return self
-
     @model_validator(mode="before")
     @classmethod
     def check_environment(cls, data: Any) -> Any:
