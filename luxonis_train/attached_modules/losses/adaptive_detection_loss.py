@@ -118,7 +118,7 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
                 multiply_with_stride=True,
             )
             self.anchor_points_strided = self.anchor_points / self.stride_tensor
-            
+
         target = self._preprocess_target(target, batch_size)
         pred_bboxes = dist2bbox(pred_distri, self.anchor_points_strided)
 
