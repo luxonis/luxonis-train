@@ -56,6 +56,7 @@ def test_simple_models(config_file: str):
         .with_suffix(".onnx.tar.xz")
         .exists()
     )
+    del model
 
 
 def test_multi_input():
@@ -71,20 +72,26 @@ def test_multi_input():
     assert not INFER_PATH.exists()
     model.infer(view="val", save_dir=INFER_PATH)
     assert INFER_PATH.exists()
+    del model
 
 
 def test_custom_tasks(parking_lot_dataset: LuxonisDataset):
     config_file = "tests/configs/parking_lot_config.yaml"
-    LuxonisModel(
+    model = LuxonisModel(
         config_file,
         opts=OPTS
         | {
             "loader.params.dataset_name": parking_lot_dataset.dataset_name,
+            "trainer.batch_size": 2,
         },
-    ).train()
+    )
+    model.train()
+    assert model.archive().exists()
+    del model
 
 
 def test_tuner():
     model = LuxonisModel("configs/example_tuning.yaml", opts=OPTS)
     model.tune()
     assert STUDY_PATH.exists()
+    del model

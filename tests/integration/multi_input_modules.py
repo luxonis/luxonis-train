@@ -11,7 +11,7 @@ class CustomMultiInputLoader(BaseLoaderTorch):
         super().__init__(*args, **kwargs)
 
     @property
-    def input_shape(self):
+    def input_shapes(self):
         return {
             "left": torch.Size([3, 224, 224]),
             "right": torch.Size([3, 224, 224]),
