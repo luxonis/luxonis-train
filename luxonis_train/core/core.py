@@ -13,6 +13,8 @@ import torch.utils.data as torch_data
 import yaml
 from lightning.pytorch.utilities import rank_zero_only
 from luxonis_ml.data import Augmentations
+from luxonis_ml.nn_archive import ArchiveGenerator
+from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.utils import LuxonisFileSystem, reset_logging, setup_logging
 
 from luxonis_train.attached_modules.visualizers import get_unnormalized_images
@@ -172,6 +174,8 @@ class LuxonisModel:
             _core=self,
         )
 
+        self._exported_models: dict[str, Path] = {}
+
     def _train(self, resume: str | None, *args, **kwargs):
         status = "success"
         try:
@@ -268,11 +272,9 @@ class LuxonisModel:
             )
 
         export_save_dir = Path(self.run_save_dir, "export")
-        export_path = export_save_dir / self.cfg.model.name
+        export_save_dir.mkdir(parents=True, exist_ok=True)
 
-        if not export_save_dir.exists():
-            export_save_dir.mkdir(parents=True, exist_ok=True)
-
+        export_path = export_save_dir / (self.cfg.exporter.name or self.cfg.model.name)
         onnx_save_path = onnx_save_path or str(export_path.with_suffix(".onnx"))
 
         with replace_weights(self.lightning_module, weights):
@@ -281,12 +283,7 @@ class LuxonisModel:
             )
 
         try_onnx_simplify(onnx_save_path)
-
-        if self.cfg.exporter.upload:
-            self.tracker.upload_artifact(onnx_save_path, typ="export")
-
-            if weights is not None:
-                self.tracker.upload_artifact(weights, typ="export", name="weights")
+        self._exported_models["onnx"] = Path(onnx_save_path)
 
         scale_values, mean_values, reverse_channels = get_preprocessing(self.cfg)
 
@@ -300,6 +297,7 @@ class LuxonisModel:
                     str(export_save_dir),
                     onnx_save_path,
                 )
+                self._exported_models["blob"] = export_path.with_suffix(".blob")
             except ImportError:
                 logger.error("Failed to import `blobconverter`")
                 logger.warning(
@@ -323,16 +321,20 @@ class LuxonisModel:
             "outputs": [{"name": name} for name in output_names],
         }
 
+        for path in self._exported_models.values():
+            if self.cfg.exporter.upload_to_run:
+                self.tracker.upload_artifact(path, typ="export")
+            if self.cfg.exporter.upload_url is not None:
+                LuxonisFileSystem.upload(path, self.cfg.exporter.upload_url)
+
         with open(export_path.with_suffix(".yaml"), "w") as f:
             yaml.dump(modelconverter_config, f)
-            if self.cfg.exporter.upload:
+            if self.cfg.exporter.upload_to_run:
                 self.tracker.upload_artifact(f.name, name=f.name, typ="export")
+            if self.cfg.exporter.upload_url is not None:
+                LuxonisFileSystem.upload(f.name, self.cfg.exporter.upload_url)
 
-    def test(
-        self,
-        new_thread: bool = False,
-        view: str | None = None,
-    ) -> None:
+    def test(self, new_thread: bool = False, view: str | None = None) -> None:
         """Runs testing.
 
         @type new_thread: bool
@@ -531,6 +533,105 @@ class LuxonisModel:
                 ),
             )
             wandb_parent_tracker.log_hyperparams(study.best_params)
+
+    def archive(self, path: str | Path | None = None) -> Path:
+        """Generates an NN Archive out of a model executable.
+
+        @type path: str | Path | None
+        @param path: Path to the model executable. If not specified, the model will be
+            exported first.
+        @rtype: Path
+        @return: Path to the generated NN Archive.
+        """
+        from .utils.archive_utils import get_heads, get_inputs, get_outputs
+
+        archive_name = self.cfg.archiver.name or self.cfg.model.name
+        archive_save_directory = Path(self.run_save_dir, "archive")
+        archive_save_directory.mkdir(parents=True, exist_ok=True)
+        inputs = []
+        outputs = []
+        heads = []
+
+        if path is None:
+            if "onnx" not in self._exported_models:
+                logger.info("Exporting model to ONNX...")
+                self.export()
+            path = self._exported_models["onnx"]
+
+        path = Path(path)
+
+        executable_fname = path.name
+        archive_name += path.suffix
+
+        def _mult(lst: list[float | int]) -> list[float]:
+            return [round(x * 255.0, 5) for x in lst]
+
+        preprocessing = {  # TODO: keep preprocessing same for each input?
+            "mean": _mult(self.cfg.trainer.preprocessing.normalize.params["mean"]),
+            "scale": _mult(self.cfg.trainer.preprocessing.normalize.params["std"]),
+            "reverse_channels": self.cfg.trainer.preprocessing.train_rgb,
+            "interleaved_to_planar": False,  # TODO: make it modifiable?
+        }
+
+        inputs_dict = get_inputs(path)
+        for input_name in inputs_dict:
+            inputs.append(
+                {
+                    "name": input_name,
+                    "dtype": inputs_dict[input_name]["dtype"],
+                    "shape": inputs_dict[input_name]["shape"],
+                    "layout": inputs_dict[input_name]["layout"],
+                    "preprocessing": preprocessing,
+                    "input_type": "image",
+                }
+            )
+
+        outputs_dict = get_outputs(path)
+        for output_name in outputs_dict:
+            outputs.append(
+                {"name": output_name, "dtype": outputs_dict[output_name]["dtype"]}
+            )
+
+        heads_dict = get_heads(
+            self.cfg,
+            outputs,
+            self.loaders["train"].get_classes(),
+            self.lightning_module.nodes,  # type: ignore
+        )
+        for head_name in heads_dict:
+            heads.append(heads_dict[head_name])
+
+        model = {
+            "metadata": {
+                "name": self.cfg.model.name,
+                "path": executable_fname,
+            },
+            "inputs": inputs,
+            "outputs": outputs,
+            "heads": heads,
+        }
+
+        cfg_dict = {
+            "config_version": CONFIG_VERSION.__args__[0],  # type: ignore
+            "model": model,
+        }
+
+        archive_path = ArchiveGenerator(
+            archive_name=archive_name,
+            save_path=str(archive_save_directory),
+            cfg_dict=cfg_dict,
+            executables_paths=[str(path)],  # TODO: what if more executables?
+        ).make_archive()
+
+        logger.info(f"NN Archive saved to {archive_path}")
+
+        if self.cfg.archiver.upload_url is not None:
+            LuxonisFileSystem.upload(archive_path, self.cfg.archiver.upload_url)
+
+        if self.cfg.archiver.upload_to_run:
+            self.tracker.upload_artifact(archive_path, typ="archive")
+
+        return Path(archive_path)
 
     @rank_zero_only
     def get_status(self) -> tuple[int, int]:

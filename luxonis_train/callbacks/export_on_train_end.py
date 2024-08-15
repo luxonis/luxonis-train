@@ -23,7 +23,7 @@ class ExportOnTrainEnd(pl.Callback):
         @param pl_module: Pytorch Lightning module.
         @raises RuntimeError: If no best model path is found.
         """
-        # NOTE: assume that first checkpoint callback is based on val loss
+
         best_model_path = pl_module.core.get_best_metric_checkpoint_path()
         if not best_model_path:
             logger.error(
@@ -33,4 +33,5 @@ class ExportOnTrainEnd(pl.Callback):
                 "Skipping model export."
             )
             return
+
         pl_module.core.export(weights=best_model_path)

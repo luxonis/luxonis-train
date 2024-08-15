@@ -133,9 +133,7 @@ def inspect(
         lxml_inspect(
             name=cfg.loader.params["dataset_name"],
             view=view,
-            aug_config=Path(
-                f.name,
-            ),
+            aug_config=f.name,
         )
 
 

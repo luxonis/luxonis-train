@@ -46,6 +46,16 @@ def test_simple_models(config_file: str):
         .with_suffix(".onnx")
         .exists()
     )
+    model.archive()
+    assert (
+        Path(
+            model.run_save_dir,
+            "archive",
+            model.cfg.archiver.name or model.cfg.model.name,
+        )
+        .with_suffix(".onnx.tar.xz")
+        .exists()
+    )
 
 
 def test_multi_input():
