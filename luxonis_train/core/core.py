@@ -33,7 +33,7 @@ from .utils.export_utils import (
     try_onnx_simplify,
 )
 from .utils.infer_utils import render_visualizations
-from .utils.trainer_utils import create_trainer
+from .utils.train_utils import create_trainer
 
 logger = getLogger(__name__)
 
@@ -392,7 +392,7 @@ class LuxonisModel:
         import optuna
         from optuna.integration import PyTorchLightningPruningCallback
 
-        from .utils.tuner_utils import get_trial_params
+        from .utils.tune_utils import get_trial_params
 
         def _objective(trial: optuna.trial.Trial) -> float:
             """Objective function used to optimize Optuna study."""
