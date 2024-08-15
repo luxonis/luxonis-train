@@ -79,6 +79,12 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         self.class_loss_weight = class_loss_weight
         self.iou_loss_weight = iou_loss_weight
 
+        self.anchors = None
+        self.anchor_points = None
+        self.n_anchors_list = None
+        self.stride_tensor = None
+        self.gt_bboxes_scale = None
+
     def prepare(
         self, outputs: Packet[Tensor], labels: Labels
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
@@ -88,33 +94,33 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         batch_size = pred_scores.shape[0]
         device = pred_scores.device
 
-        target = self.get_label(labels)[0]
-        gt_bboxes_scale = torch.tensor(
-            [
-                self.original_img_size[1],
-                self.original_img_size[0],
-                self.original_img_size[1],
-                self.original_img_size[0],
-            ],
-            device=device,
-        )
-        (
-            anchors,
-            anchor_points,
-            n_anchors_list,
-            stride_tensor,
-        ) = anchors_for_fpn_features(
-            feats,
-            self.stride,
-            self.grid_cell_size,
-            self.grid_cell_offset,
-            multiply_with_stride=True,
-        )
+        target = labels[self.task][0].to(device)
+        if self.gt_bboxes_scale is None:
+            self.gt_bboxes_scale = torch.tensor(
+                [
+                    self.original_img_size[1],
+                    self.original_img_size[0],
+                    self.original_img_size[1],
+                    self.original_img_size[0],
+                ],
+                device=device,
+            )
+            (
+                self.anchors,
+                self.anchor_points,
+                self.n_anchors_list,
+                self.stride_tensor,
+            ) = anchors_for_fpn_features(
+                feats,
+                self.stride,
+                self.grid_cell_size,
+                self.grid_cell_offset,
+                multiply_with_stride=True,
+            )
+            self.anchor_points_strided = self.anchor_points / self.stride_tensor
 
-        anchor_points_strided = anchor_points / stride_tensor
-        pred_bboxes = dist2bbox(pred_distri, anchor_points_strided)
-
-        target = self._preprocess_target(target, batch_size, gt_bboxes_scale)
+        target = self._preprocess_target(target, batch_size)
+        pred_bboxes = dist2bbox(pred_distri, self.anchor_points_strided)
 
         gt_labels = target[:, :, :1]
         gt_xyxy = target[:, :, 1:]
@@ -128,12 +134,12 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
                 mask_positive,
                 _,
             ) = self.atts_assigner(
-                anchors,
-                n_anchors_list,
+                self.anchors,
+                self.n_anchors_list,
                 gt_labels,
                 gt_xyxy,
                 mask_gt,
-                pred_bboxes.detach() * stride_tensor,
+                pred_bboxes.detach() * self.stride_tensor,
             )
         else:
             # TODO: log change of assigner (once common Logger)
@@ -145,8 +151,8 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
                 _,
             ) = self.tal_assigner(
                 pred_scores.detach(),
-                pred_bboxes.detach() * stride_tensor,
-                anchor_points,
+                pred_bboxes.detach() * self.stride_tensor,
+                self.anchor_points,
                 gt_labels,
                 gt_xyxy,
                 mask_gt,
@@ -155,7 +161,7 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         return (
             pred_bboxes,
             pred_scores,
-            assigned_bboxes / stride_tensor,
+            assigned_bboxes / self.stride_tensor,
             assigned_labels,
             assigned_scores,
             mask_positive,
@@ -192,7 +198,7 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
 
         return loss, sub_losses
 
-    def _preprocess_target(self, target: Tensor, batch_size: int, scale_tensor: Tensor):
+    def _preprocess_target(self, target: Tensor, batch_size: int):
         """Preprocess target in shape [batch_size, N, 5] where N is maximum number of
         instances in one image."""
         sample_ids, counts = cast(
@@ -204,7 +210,7 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         for id, count in zip(sample_ids, counts):
             out_target[id, :count] = target[target[:, 0] == id][:, 1:]
 
-        scaled_target = out_target[:, :, 1:5] * scale_tensor
+        scaled_target = out_target[:, :, 1:5] * self.gt_bboxes_scale
         out_target[..., 1:] = box_convert(scaled_target, "xywh", "xyxy")
         return out_target
 
