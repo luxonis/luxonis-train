@@ -66,9 +66,9 @@ def get_preprocessing(
         scale_values = normalize_params.get("std", None)
         if scale_values:
             scale_values = (
-                [i * 255 for i in scale_values]
+                [round(i * 255, 5) for i in scale_values]
                 if isinstance(scale_values, list)
-                else scale_values * 255
+                else round(scale_values * 255, 5)
             )
 
     if cfg.exporter.mean_values is not None:
@@ -77,9 +77,9 @@ def get_preprocessing(
         mean_values = normalize_params.get("mean", None)
         if mean_values:
             mean_values = (
-                [i * 255 for i in mean_values]
+                [round(i * 255, 5) for i in mean_values]
                 if isinstance(mean_values, list)
-                else mean_values * 255
+                else round(mean_values * 255, 5)
             )
     reverse_channels = cfg.exporter.reverse_input_channels
 
