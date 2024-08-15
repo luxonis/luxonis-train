@@ -166,8 +166,8 @@ def infer_upscale_factor(
 ) -> int:
     """Infer the upscale factor from the input height and original height."""
     num_up = math.log2(orig_height) - math.log2(in_height)
-    if num_up.is_integer():
-        return int(num_up)
+    if abs(round(num_up) - num_up) < 1e-6:
+        return int(round(num_up))
     elif not strict:
         if warn:
             logging.getLogger(__name__).warning(
