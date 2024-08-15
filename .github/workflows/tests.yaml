@@ -49,7 +49,7 @@ jobs:
       id: google-auth
       uses: google-github-actions/auth@v2
       with:
-        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+        credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
         create_credentials_file: true
         export_environment_variables: true
         token_format: access_token
