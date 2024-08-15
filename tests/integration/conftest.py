@@ -182,9 +182,8 @@ def create_coco_dataset():
 @pytest.fixture(scope="session", autouse=True)
 def create_cifar10_dataset():
     dataset = LuxonisDataset("cifar10_test", delete_existing=True)
-    output_folder = "../data/"
-    if not osp.exists(output_folder):
-        os.makedirs(output_folder)
+    output_folder = "../data/cifar10"
+    os.makedirs(output_folder, exist_ok=True)
     cifar10_torch = torchvision.datasets.CIFAR10(
         root=output_folder, train=False, download=True
     )

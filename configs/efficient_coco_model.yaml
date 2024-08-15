@@ -95,7 +95,7 @@ trainer:
   batch_size: 4
   accumulate_grad_batches: 1
   epochs: 200
-  num_workers: 0
+  num_workers: 4
   train_metrics_interval: -1
   validation_interval: 10
   num_log_images: 8

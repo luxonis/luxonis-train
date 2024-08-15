@@ -1,4 +1,5 @@
 import shutil
+import sys
 from pathlib import Path
 
 import pytest
@@ -90,6 +91,7 @@ def test_custom_tasks(parking_lot_dataset: LuxonisDataset):
     del model
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Tuning not supported on Windows")
 def test_tuner():
     model = LuxonisModel("configs/example_tuning.yaml", opts=OPTS)
     model.tune()
