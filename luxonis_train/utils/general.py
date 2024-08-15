@@ -28,8 +28,8 @@ class DatasetMetadata:
         classes, number of keypoints, I{etc.} instead of passing them as arguments to
         the model.
 
-        @type classes: dict[LabelType, list[str]] | None
-        @param classes: Dictionary mapping label types to lists of class names. If not
+        @type classes: dict[str, list[str]] | None
+        @param classes: Dictionary mapping task names to lists of class names. If not
             provided, will be inferred from the dataset loader.
         @type n_classes: int | None
         @param n_classes: Number of classes for each label type.
@@ -42,6 +42,7 @@ class DatasetMetadata:
         @type loader: DataLoader | None
         @param loader: Dataset loader.
         """
+
         self._classes = classes or {}
         self._n_keypoints = n_keypoints or {}
         self._loader = loader
@@ -50,7 +51,7 @@ class DatasetMetadata:
     def classes(self) -> dict[str, list[str]]:
         """Dictionary mapping label types to lists of class names.
 
-        @type: dict[LabelType, list[str]]
+        @type: dict[str, list[str]]
         @raises ValueError: If classes were not provided during initialization.
         """
         if self._classes is None:
