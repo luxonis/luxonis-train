@@ -180,9 +180,10 @@ class LuxonisModel:
         status = "success"
         try:
             self.pl_trainer.fit(*args, ckpt_path=resume, **kwargs)
-        except Exception:
+        except Exception as e:
             logger.exception("Encountered an exception during training.")
             status = "failed"
+            raise e
         finally:
             self.tracker.upload_artifact(self.log_file, typ="logs")
             self.tracker._finalize(status)
