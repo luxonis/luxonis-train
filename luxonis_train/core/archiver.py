@@ -349,7 +349,10 @@ class Archiver(Core):
             if node_alias in self.lightning_module.outputs:
                 if node_name in ImplementedHeads.__members__:
                     parser = getattr(ImplementedHeads, node_name).value
-                    classes = self._get_classes(node_name, node.task)
+                    node_task: str | None = (
+                        list(node.task.values())[0] if node.task else None
+                    )
+                    classes = self._get_classes(node_name, node_task)
                     head_outputs = self._get_head_outputs(node_name)
                     head_dict = {
                         "parser": parser,
