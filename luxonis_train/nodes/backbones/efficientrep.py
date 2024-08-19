@@ -9,14 +9,13 @@ from typing import Literal
 
 from torch import Tensor, nn
 
+from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import (
     BlockRepeater,
     RepVGGBlock,
     SpatialPyramidPoolingBlock,
 )
 from luxonis_train.utils.general import make_divisible
-
-from .base_node import BaseNode
 
 logger = logging.getLogger(__name__)
 

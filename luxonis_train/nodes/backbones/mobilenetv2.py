@@ -6,7 +6,7 @@ TODO: source?
 import torchvision
 from torch import Tensor, nn
 
-from .base_node import BaseNode
+from luxonis_train.nodes.base_node import BaseNode
 
 
 class MobileNetV2(BaseNode[Tensor, list[Tensor]]):

@@ -10,10 +10,9 @@ from typing import Literal, cast
 
 from torch import Tensor, nn
 
+from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import RepDownBlock, RepUpBlock
 from luxonis_train.utils.general import make_divisible
-
-from .base_node import BaseNode
 
 
 class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):

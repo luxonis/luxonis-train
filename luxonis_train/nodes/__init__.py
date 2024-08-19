@@ -1,37 +1,4 @@
-from .base_node import BaseNode
-from .bisenet_head import BiSeNetHead
-from .classification_head import ClassificationHead
-from .contextspatial import ContextSpatial
-from .efficient_bbox_head import EfficientBBoxHead
-from .efficient_keypoint_bbox_head import EfficientKeypointBBoxHead
-from .efficientnet import EfficientNet
-from .efficientrep import EfficientRep
-from .implicit_keypoint_bbox_head import ImplicitKeypointBBoxHead
-from .micronet import MicroNet
-from .mobilenetv2 import MobileNetV2
-from .mobileone import MobileOne
-from .reppan_neck import RepPANNeck
-from .repvgg import RepVGG
-from .resnet import ResNet
-from .rexnetv1 import ReXNetV1_lite
-from .segmentation_head import SegmentationHead
-
-__all__ = [
-    "BiSeNetHead",
-    "ClassificationHead",
-    "ContextSpatial",
-    "EfficientBBoxHead",
-    "EfficientNet",
-    "EfficientRep",
-    "EfficientKeypointBBoxHead",
-    "ImplicitKeypointBBoxHead",
-    "BaseNode",
-    "MicroNet",
-    "MobileNetV2",
-    "MobileOne",
-    "ReXNetV1_lite",
-    "RepPANNeck",
-    "RepVGG",
-    "ResNet",
-    "SegmentationHead",
-]
+from .backbones import *
+from .base_node import *
+from .heads import *
+from .necks import *

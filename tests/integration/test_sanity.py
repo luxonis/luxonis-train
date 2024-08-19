@@ -35,9 +35,17 @@ def clear_output():
 
 
 @pytest.mark.parametrize(
-    "config_file", [str(path) for path in Path("configs").glob("*model*")]
+    "config_file",
+    [
+        "classification_model",
+        "segmentation_model",
+        "detection_model",
+        "keypoint_bbox_model",
+        "resnet_model",
+    ],
 )
 def test_simple_models(config_file: str):
+    config_file = f"configs/{config_file}.yaml"
     model = LuxonisModel(config_file, opts=OPTS)
     model.train()
     model.test()

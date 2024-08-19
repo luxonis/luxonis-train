@@ -7,14 +7,13 @@ Source: U{BiseNetV1<https://github.com/taveraantonio/BiseNetv1>}
 from torch import Tensor, nn
 from torch.nn import functional as F
 
+from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import (
     AttentionRefinmentBlock,
     ConvModule,
     FeatureFusionBlock,
 )
 from luxonis_train.utils.registry import NODES
-
-from .base_node import BaseNode
 
 
 class ContextSpatial(BaseNode[Tensor, list[Tensor]]):

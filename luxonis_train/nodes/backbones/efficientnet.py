@@ -7,7 +7,7 @@ Source: U{https://github.com/rwightman/gen-efficientnet-pytorch}
 import torch
 from torch import Tensor, nn
 
-from .base_node import BaseNode
+from luxonis_train.nodes.base_node import BaseNode
 
 
 class EfficientNet(BaseNode[Tensor, list[Tensor]]):

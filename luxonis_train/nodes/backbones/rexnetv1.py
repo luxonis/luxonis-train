@@ -7,10 +7,9 @@ Source: U{https://github.com/clovaai/rexnet}
 import torch
 from torch import Tensor, nn
 
+from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
 from luxonis_train.utils.general import make_divisible
-
-from .base_node import BaseNode
 
 
 class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
