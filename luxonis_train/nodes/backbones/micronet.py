@@ -4,9 +4,8 @@ import torch
 from torch import Tensor, nn
 
 from luxonis_train.nodes.activations import HSigmoid, HSwish
+from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
-
-from .base_node import BaseNode
 
 
 class MicroNet(BaseNode[Tensor, list[Tensor]]):

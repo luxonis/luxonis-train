@@ -8,7 +8,7 @@ from typing import Literal
 import torchvision
 from torch import Tensor, nn
 
-from .base_node import BaseNode
+from ..base_node import BaseNode
 
 
 class ResNet(BaseNode[Tensor, list[Tensor]]):

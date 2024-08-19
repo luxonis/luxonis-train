@@ -10,9 +10,8 @@ from typing import Literal
 import torch
 from torch import Tensor, nn
 
+from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule, SqueezeExciteBlock
-
-from .base_node import BaseNode
 
 
 class MobileOne(BaseNode[Tensor, list[Tensor]]):

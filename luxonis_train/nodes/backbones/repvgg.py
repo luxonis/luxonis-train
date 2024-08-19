@@ -6,7 +6,7 @@ from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks import RepVGGBlock
 
-from .base_node import BaseNode
+from ..base_node import BaseNode
 
 logger = logging.getLogger(__name__)
 

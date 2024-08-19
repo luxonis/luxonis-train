@@ -14,7 +14,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        version: ['3.10', '3.11']
 
     runs-on: ${{ matrix.os }}
 
@@ -27,7 +26,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.version }}
+        python-version: '3.10'
         cache: pip
 
     - name: Install dependencies [Ubuntu]

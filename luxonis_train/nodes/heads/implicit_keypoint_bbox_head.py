@@ -5,6 +5,7 @@ from typing import cast
 import torch
 from torch import Tensor, nn
 
+from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import KeypointBlock, LearnableMulAddConv
 from luxonis_train.utils.boxutils import (
     non_max_suppression,
@@ -12,8 +13,6 @@ from luxonis_train.utils.boxutils import (
     process_keypoints_predictions,
 )
 from luxonis_train.utils.types import LabelType, Packet
-
-from .base_node import BaseNode
 
 logger = logging.getLogger(__name__)
 

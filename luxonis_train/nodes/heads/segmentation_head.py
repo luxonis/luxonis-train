@@ -7,11 +7,10 @@ Adapted from: U{https://github.com/pytorch/vision/blob/main/torchvision/models/s
 import torch.nn as nn
 from torch import Tensor
 
+from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import UpBlock
 from luxonis_train.utils.general import infer_upscale_factor
 from luxonis_train.utils.types import LabelType
-
-from .base_node import BaseNode
 
 
 class SegmentationHead(BaseNode[Tensor, Tensor]):

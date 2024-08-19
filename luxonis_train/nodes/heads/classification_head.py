@@ -1,8 +1,7 @@
 from torch import Tensor, nn
 
+from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.utils.types import LabelType
-
-from .base_node import BaseNode
 
 
 class ClassificationHead(BaseNode[Tensor, Tensor]):
