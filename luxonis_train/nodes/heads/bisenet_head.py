@@ -7,11 +7,10 @@ License: NOT SPECIFIED.
 
 from torch import Tensor, nn
 
+from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
 from luxonis_train.utils.general import infer_upscale_factor
 from luxonis_train.utils.types import LabelType, Packet
-
-from .base_node import BaseNode
 
 
 class BiSeNetHead(BaseNode[Tensor, Tensor]):

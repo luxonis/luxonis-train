@@ -19,6 +19,8 @@ from luxonis_train.utils.types import (
 ForwardOutputT = TypeVar("ForwardOutputT")
 ForwardInputT = TypeVar("ForwardInputT")
 
+__all__ = ["BaseNode"]
+
 
 class BaseNode(
     nn.Module,

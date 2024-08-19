@@ -4,8 +4,9 @@ from typing import Literal
 import torch.utils.checkpoint as checkpoint
 from torch import Tensor, nn
 
+from luxonis_train.nodes.blocks import RepVGGBlock
+
 from ..base_node import BaseNode
-from ..blocks import RepVGGBlock
 
 logger = logging.getLogger(__name__)
 

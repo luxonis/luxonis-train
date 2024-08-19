@@ -9,6 +9,7 @@ from typing import Literal
 import torch
 from torch import Tensor, nn
 
+from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import EfficientDecoupledBlock
 from luxonis_train.utils.boxutils import (
     anchors_for_fpn_features,
@@ -16,8 +17,6 @@ from luxonis_train.utils.boxutils import (
     non_max_suppression,
 )
 from luxonis_train.utils.types import LabelType, Packet
-
-from .base_node import BaseNode
 
 
 class EfficientBBoxHead(
