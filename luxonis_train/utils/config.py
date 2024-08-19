@@ -3,18 +3,19 @@ import sys
 from typing import Annotated, Any, Literal
 
 from luxonis_ml.data import LabelType
-from luxonis_ml.utils import Environ, LuxonisConfig, LuxonisFileSystem, setup_logging
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from luxonis_ml.utils import (
+    BaseModelExtraForbid,
+    Environ,
+    LuxonisConfig,
+    LuxonisFileSystem,
+)
+from pydantic import Field, model_validator
 from typing_extensions import Self
 
 logger = logging.getLogger(__name__)
 
 
-class CustomBaseModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-
-class AttachedModuleConfig(CustomBaseModel):
+class AttachedModuleConfig(BaseModelExtraForbid):
     name: str
     attached_to: str
     alias: str | None = None
@@ -29,12 +30,12 @@ class MetricModuleConfig(AttachedModuleConfig):
     is_main_metric: bool = False
 
 
-class FreezingConfig(CustomBaseModel):
+class FreezingConfig(BaseModelExtraForbid):
     active: bool = False
     unfreeze_after: int | float | None = None
 
 
-class ModelNodeConfig(CustomBaseModel):
+class ModelNodeConfig(BaseModelExtraForbid):
     name: str
     alias: str | None = None
     inputs: list[str] = []  # From preceding nodes
@@ -44,7 +45,7 @@ class ModelNodeConfig(CustomBaseModel):
     task: str | dict[LabelType, str] | None = None
 
 
-class PredefinedModelConfig(CustomBaseModel):
+class PredefinedModelConfig(BaseModelExtraForbid):
     name: str
     params: dict[str, Any] = {}
     include_nodes: bool = True
@@ -53,7 +54,7 @@ class PredefinedModelConfig(CustomBaseModel):
     include_visualizers: bool = True
 
 
-class ModelConfig(CustomBaseModel):
+class ModelConfig(BaseModelExtraForbid):
     name: str = "model"
     predefined_model: PredefinedModelConfig | None = None
     weights: str | None = None
@@ -127,7 +128,7 @@ class ModelConfig(CustomBaseModel):
         return self
 
 
-class TrackerConfig(CustomBaseModel):
+class TrackerConfig(BaseModelExtraForbid):
     project_name: str | None = None
     project_id: str | None = None
     run_name: str | None = None
@@ -139,7 +140,7 @@ class TrackerConfig(CustomBaseModel):
     is_mlflow: bool = False
 
 
-class LoaderConfig(CustomBaseModel):
+class LoaderConfig(BaseModelExtraForbid):
     name: str = "LuxonisLoaderTorch"
     image_source: str = "image"
     train_view: str = "train"
@@ -148,7 +149,7 @@ class LoaderConfig(CustomBaseModel):
     params: dict[str, Any] = {}
 
 
-class NormalizeAugmentationConfig(CustomBaseModel):
+class NormalizeAugmentationConfig(BaseModelExtraForbid):
     active: bool = True
     params: dict[str, Any] = {
         "mean": [0.485, 0.456, 0.406],
@@ -156,13 +157,13 @@ class NormalizeAugmentationConfig(CustomBaseModel):
     }
 
 
-class AugmentationConfig(CustomBaseModel):
+class AugmentationConfig(BaseModelExtraForbid):
     name: str
     active: bool = True
     params: dict[str, Any] = {}
 
 
-class PreprocessingConfig(CustomBaseModel):
+class PreprocessingConfig(BaseModelExtraForbid):
     train_image_size: Annotated[
         list[int], Field(default=[256, 256], min_length=2, max_length=2)
     ] = [256, 256]
@@ -188,23 +189,23 @@ class PreprocessingConfig(CustomBaseModel):
         return [aug for aug in self.augmentations if aug.active]
 
 
-class CallbackConfig(CustomBaseModel):
+class CallbackConfig(BaseModelExtraForbid):
     name: str
     active: bool = True
     params: dict[str, Any] = {}
 
 
-class OptimizerConfig(CustomBaseModel):
+class OptimizerConfig(BaseModelExtraForbid):
     name: str = "Adam"
     params: dict[str, Any] = {}
 
 
-class SchedulerConfig(CustomBaseModel):
+class SchedulerConfig(BaseModelExtraForbid):
     name: str = "ConstantLR"
     params: dict[str, Any] = {}
 
 
-class TrainerConfig(CustomBaseModel):
+class TrainerConfig(BaseModelExtraForbid):
     preprocessing: PreprocessingConfig = PreprocessingConfig()
 
     accelerator: Literal["auto", "cpu", "gpu"] = "auto"
@@ -254,29 +255,33 @@ class TrainerConfig(CustomBaseModel):
         return self
 
 
-class OnnxExportConfig(CustomBaseModel):
+class OnnxExportConfig(BaseModelExtraForbid):
     opset_version: int = 12
     dynamic_axes: dict[str, Any] | None = None
 
 
-class BlobconverterExportConfig(CustomBaseModel):
+class BlobconverterExportConfig(BaseModelExtraForbid):
     active: bool = False
     shaves: int = 6
     version: Literal["2021.2", "2021.3", "2021.4", "2022.1", "2022.3_RVC3"] = "2022.1"
 
 
-class ExportConfig(CustomBaseModel):
-    export_save_directory: str = "output_export"
+class ArchiveConfig(BaseModelExtraForbid):
+    name: str | None = None
+    upload_to_run: bool = True
+    upload_url: str | None = None
+
+
+class ExportConfig(ArchiveConfig):
+    name: str | None = None
     input_shape: list[int] | None = None
-    export_model_name: str = "model"
-    data_type: Literal["INT8", "FP16", "FP32"] = "FP16"
+    data_type: Literal["int8", "fp16", "fp32"] = "fp16"
     reverse_input_channels: bool = True
     scale_values: list[float] | None = None
     mean_values: list[float] | None = None
     output_names: list[str] | None = None
     onnx: OnnxExportConfig = OnnxExportConfig()
     blobconverter: BlobconverterExportConfig = BlobconverterExportConfig()
-    upload_url: str | None = None
 
     @model_validator(mode="after")
     def check_values(self) -> Self:
@@ -291,18 +296,12 @@ class ExportConfig(CustomBaseModel):
         return self
 
 
-class ArchiveConfig(BaseModel):
-    archive_name: str = "nn_archive"
-    archive_save_directory: str = "output_archive"
-    upload_url: str | None = None
-
-
-class StorageConfig(CustomBaseModel):
+class StorageConfig(BaseModelExtraForbid):
     active: bool = True
     storage_type: Literal["local", "remote"] = "local"
 
 
-class TunerConfig(CustomBaseModel):
+class TunerConfig(BaseModelExtraForbid):
     study_name: str = "test-study"
     continue_existing_study: bool = True
     use_pruner: bool = True
@@ -316,7 +315,6 @@ class TunerConfig(CustomBaseModel):
 
 
 class Config(LuxonisConfig):
-    use_rich_text: bool = True
     model: ModelConfig = ModelConfig()
     loader: LoaderConfig = LoaderConfig()
     tracker: TrackerConfig = TrackerConfig()
@@ -334,14 +332,6 @@ class Config(LuxonisConfig):
                 "Specifying `ENVIRON` section in config file is not recommended. "
                 "Please use environment variables or .env file instead."
             )
-        return data
-
-    @model_validator(mode="before")
-    @classmethod
-    def setup_logging(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            if data.get("use_rich_text", True):
-                setup_logging(use_rich=True)
         return data
 
     @classmethod

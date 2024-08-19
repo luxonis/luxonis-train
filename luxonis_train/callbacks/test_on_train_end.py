@@ -10,7 +10,9 @@ class TestOnTrainEnd(pl.Callback):
     """Callback to perform a test run at the end of the training."""
 
     def on_train_end(
-        self, trainer: pl.Trainer, pl_module: "luxonis_train.models.LuxonisModel"
+        self,
+        trainer: pl.Trainer,
+        pl_module: "luxonis_train.models.LuxonisLightningModule",
     ) -> None:
         # `trainer.test` would delete the paths so we need to save them
         best_paths = {
@@ -19,8 +21,7 @@ class TestOnTrainEnd(pl.Callback):
             if isinstance(callback, ModelCheckpoint)
         }
 
-        assert pl_module._core is not None
-        trainer.test(pl_module, pl_module._core.pytorch_loaders["test"])
+        trainer.test(pl_module, pl_module.core.pytorch_loaders["test"])
 
         # Restore the paths
         for callback in trainer.callbacks:  # type: ignore

@@ -8,8 +8,6 @@ loader:
   # Needs to be set for visualizers and evaluators to work.
   image_source: left
 
-use_rich_text: True
-
 model:
   name: example_multi_input
   nodes:

@@ -29,16 +29,15 @@ You can create your own config or use/edit one of the examples.
 
 ## Top-level Options
 
-| Key           | Type                  | Default value | Description                                   |
-| ------------- | --------------------- | ------------- | --------------------------------------------- |
-| use_rich_text | bool                  | True          | whether to use rich text for console printing |
-| model         | [Model](#model)       |               | model section                                 |
-| dataset       | [dataset](#dataset)   |               | dataset section                               |
-| train         | [train](#train)       |               | train section                                 |
-| tracker       | [tracker](#tracker)   |               | tracker section                               |
-| trainer       | [trainer](#trainer)   |               | trainer section                               |
-| exporter      | [exporter](#exporter) |               | exporter section                              |
-| tuner         | [tuner](#tuner)       |               | tuner section                                 |
+| Key      | Type                  | Default value | Description      |
+| -------- | --------------------- | ------------- | ---------------- |
+| model    | [Model](#model)       |               | model section    |
+| dataset  | [dataset](#dataset)   |               | dataset section  |
+| train    | [train](#train)       |               | train section    |
+| tracker  | [tracker](#tracker)   |               | tracker section  |
+| trainer  | [trainer](#trainer)   |               | trainer section  |
+| exporter | [exporter](#exporter) |               | exporter section |
+| tuner    | [tuner](#tuner)       |               | tuner section    |
 
 ## Model
 
@@ -214,9 +213,9 @@ Here you can define configuration for exporting.
 | ---------------------- | --------------------------------- | --------------- | ----------------------------------------------------------------------------------------------- |
 | export_save_directory  | str                               | "output_export" | Where to save the exported files.                                                               |
 | input_shape            | list\[int\] \| None               | None            | Input shape of the model. If not provided, inferred from the dataset.                           |
-| export_model_name      | str                               | "model"         | Name of the exported model.                                                                     |
-| data_type              | Literal\["INT8", "FP16", "FP32"\] | "FP16"          | Data type of the exported model.                                                                |
+| data_type              | Literal\["INT8", "FP16", "FP32"\] | "FP16"          | Data type of the exported model. Only used for conversion to BLOB.                              |
 | reverse_input_channels | bool                              | True            | Whether to reverse the image channels in the exported model. Relevant for `.blob` export        |
+| upload                 | bool                              | True            | Whether to upload the files created during export to the current tracker.                       |
 | scale_values           | list\[float\] \| None             | None            | What scale values to use for input normalization. If not provided, inferred from augmentations. |
 | mean_values            | list\[float\] \| None             | None            | What mean values to use for input normalizations. If not provided, inferred from augmentations. |
 | upload_directory       | str \| None                       | None            | Where to upload the exported models.                                                            |
