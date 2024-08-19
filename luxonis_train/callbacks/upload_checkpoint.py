@@ -5,8 +5,8 @@ from typing import Any
 
 import lightning.pytorch as pl
 import torch
-from luxonis_ml.utils.filesystem import LuxonisFileSystem
 
+import luxonis_train
 from luxonis_train.utils.registry import CALLBACKS
 
 
@@ -14,16 +14,13 @@ from luxonis_train.utils.registry import CALLBACKS
 class UploadCheckpoint(pl.Callback):
     """Callback that uploads best checkpoint based on the validation loss."""
 
-    def __init__(self, upload_directory: str):
+    def __init__(self):
         """Constructs `UploadCheckpoint`.
 
         @type upload_directory: str
         @param upload_directory: Path used as upload directory
         """
         super().__init__()
-        self.fs = LuxonisFileSystem(
-            upload_directory, allow_active_mlflow_run=True, allow_local=False
-        )
         self.logger = logging.getLogger(__name__)
         self.last_logged_epoch = None
         self.last_best_checkpoints = set()
@@ -31,7 +28,7 @@ class UploadCheckpoint(pl.Callback):
     def on_save_checkpoint(
         self,
         trainer: pl.Trainer,
-        _: pl.LightningModule,
+        module: "luxonis_train.models.LuxonisLightningModule",
         checkpoint: dict[str, Any],
     ) -> None:
         # Log only once per epoch in case there are multiple ModelCheckpoint callbacks
@@ -44,22 +41,15 @@ class UploadCheckpoint(pl.Callback):
             ]
             for curr_best_checkpoint in checkpoint_paths:
                 if curr_best_checkpoint not in self.last_best_checkpoints:
-                    self.logger.info(
-                        f"Started checkpoint upload to {self.fs.full_path}..."
-                    )
+                    self.logger.info("Uploading checkpoint...")
                     temp_filename = (
                         Path(curr_best_checkpoint).parent.with_suffix(".ckpt").name
                     )
                     torch.save(checkpoint, temp_filename)
+                    module.logger.upload_artifact(temp_filename, typ="weights")
 
-                    self.fs.put_file(
-                        local_path=temp_filename,
-                        remote_path=temp_filename,
-                        mlflow_instance=trainer.logger.experiment.get(  # type: ignore
-                            "mlflow",
-                        ),
-                    )
                     os.remove(temp_filename)
+
                     self.logger.info("Checkpoint upload finished")
                     self.last_best_checkpoints.add(curr_best_checkpoint)
 

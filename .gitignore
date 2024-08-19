@@ -148,3 +148,8 @@ models_venv/*
 # vscode settings
 .vscode
 tests/data
+mlartifacts
+mlruns
+wandb
+tests/_data
+tests/integration/_test-output

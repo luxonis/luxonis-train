@@ -12,8 +12,6 @@ from luxonis_train.utils.loaders import BaseLoaderTorch
 from luxonis_train.utils.types import Packet
 
 
-# TODO: could be moved to luxonis-ml?
-# TODO: support multiclass keypoints
 class DatasetMetadata:
     """Metadata about the dataset."""
 
@@ -29,20 +27,12 @@ class DatasetMetadata:
         the model.
 
         @type classes: dict[str, list[str]] | None
-        @param classes: Dictionary mapping task names to lists of class names. If not
-            provided, will be inferred from the dataset loader.
-        @type n_classes: int | None
-        @param n_classes: Number of classes for each label type.
-        @type n_keypoints: int | None
-        @param n_keypoints: Number of keypoints in the dataset.
-        @type keypoint_names: list[str] | None
-        @param keypoint_names: List of keypoint names.
-        @type connectivity: list[tuple[int, int]] | None
-        @param connectivity: List of edges in the skeleton graph.
+        @param classes: Dictionary mapping tasks to lists of class names.
+        @type n_keypoints: dict[str, int] | None
+        @param n_keypoints: Dictionary mapping tasks to the number of keypoints.
         @type loader: DataLoader | None
         @param loader: Dataset loader.
         """
-
         self._classes = classes or {}
         self._n_keypoints = n_keypoints or {}
         self._loader = loader
@@ -176,8 +166,8 @@ def infer_upscale_factor(
 ) -> int:
     """Infer the upscale factor from the input height and original height."""
     num_up = math.log2(orig_height) - math.log2(in_height)
-    if num_up.is_integer():
-        return int(num_up)
+    if abs(round(num_up) - num_up) < 1e-6:
+        return int(round(num_up))
     elif not strict:
         if warn:
             logging.getLogger(__name__).warning(

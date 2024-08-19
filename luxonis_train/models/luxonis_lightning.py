@@ -22,12 +22,7 @@ from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
     get_unnormalized_images,
 )
-from luxonis_train.callbacks import (
-    DeviceStatsMonitor,
-    GPUStatsMonitor,
-    LuxonisProgressBar,
-    ModuleFreezer,
-)
+from luxonis_train.callbacks import LuxonisProgressBar, ModuleFreezer
 from luxonis_train.nodes import BaseNode
 from luxonis_train.utils.config import AttachedModuleConfig, Config
 from luxonis_train.utils.general import DatasetMetadata, to_shape_packet, traverse_graph
@@ -40,7 +35,7 @@ from .luxonis_output import LuxonisOutput
 logger = getLogger(__name__)
 
 
-class LuxonisModel(pl.LightningModule):
+class LuxonisLightningModule(pl.LightningModule):
     """Class representing the entire model.
 
     This class keeps track of the model graph, nodes, and attached modules.
@@ -94,10 +89,10 @@ class LuxonisModel(pl.LightningModule):
         self,
         cfg: Config,
         save_dir: str,
-        input_shape: dict[str, Size],
+        input_shapes: dict[str, Size],
         dataset_metadata: DatasetMetadata | None = None,
         *,
-        _core: "luxonis_train.core.Core | None" = None,
+        _core: "luxonis_train.core.LuxonisModel | None" = None,
         **kwargs,
     ):
         """Constructs an instance of `LuxonisModel` from `Config`.
@@ -106,9 +101,9 @@ class LuxonisModel(pl.LightningModule):
         @param cfg: Config object.
         @type save_dir: str
         @param save_dir: Directory to save checkpoints.
-        @type input_shape: dict[str, Size]
-        @param input_shape: Dictionary of input shapes. Keys are input names, values are
-            shapes.
+        @type input_shapes: dict[str, Size]
+        @param input_shapes: Dictionary of input shapes. Keys are input names, values
+            are shapes.
         @type dataset_metadata: L{DatasetMetadata} | None
         @param dataset_metadata: Dataset metadata.
         @type kwargs: Any
@@ -121,7 +116,7 @@ class LuxonisModel(pl.LightningModule):
         self._core = _core
 
         self.cfg = cfg
-        self.original_in_shape = input_shape
+        self.original_in_shapes = input_shapes
         self.image_source = cfg.loader.image_source
         self.dataset_metadata = dataset_metadata or DatasetMetadata()
         self.frozen_nodes: list[tuple[nn.Module, int]] = []
@@ -186,22 +181,22 @@ class LuxonisModel(pl.LightningModule):
                 # assume the node is the starting node and takes all inputs from the loader.
 
                 self.loader_input_shapes[node_name] = {
-                    k: Size(v) for k, v in input_shape.items()
+                    k: Size(v) for k, v in input_shapes.items()
                 }
-                self.node_input_sources[node_name] = list(input_shape.keys())
+                self.node_input_sources[node_name] = list(input_shapes.keys())
             else:
                 # For each input_source, check if the loader provides the required output.
                 # If yes, add the shape to the input_shapes dict. If not, raise an error.
                 self.loader_input_shapes[node_name] = {}
                 for input_source in node_cfg.input_sources:
-                    if input_source not in input_shape:
+                    if input_source not in input_shapes:
                         raise ValueError(
                             f"Node {node_name} requires input source {input_source}, "
                             "which is not provided by the loader."
                         )
 
                     self.loader_input_shapes[node_name][input_source] = Size(
-                        input_shape[input_source]
+                        input_shapes[input_source]
                     )
 
                 # Inputs (= preceding nodes) are handled in the _initiate_nodes method.
@@ -239,6 +234,13 @@ class LuxonisModel(pl.LightningModule):
         self.visualizers = self._to_module_dict(self.visualizers)  # type: ignore
 
         self.load_checkpoint(self.cfg.model.weights)
+
+    @property
+    def core(self) -> "luxonis_train.core.LuxonisModel":
+        """Returns the core model."""
+        if self._core is None:
+            raise ValueError("Core reference is not set.")
+        return self._core
 
     def _initiate_nodes(
         self,
@@ -285,7 +287,7 @@ class LuxonisModel(pl.LightningModule):
 
             node = Node(
                 input_shapes=node_input_shapes,
-                original_in_shape=self.original_in_shape[self.image_source],
+                original_in_shape=self.original_in_shapes[self.image_source],
                 dataset_metadata=self.dataset_metadata,
                 **node_kwargs,
             )
@@ -680,8 +682,6 @@ class LuxonisModel(pl.LightningModule):
         self.best_val_metric_checkpoints_path = f"{self.save_dir}/best_val_metric"
         model_name = self.cfg.model.name
 
-        user_callbacks = [c.name for c in self.cfg.trainer.callbacks]
-
         callbacks: list[pl.Callback] = [
             ModelCheckpoint(
                 monitor="val/loss",
@@ -691,18 +691,8 @@ class LuxonisModel(pl.LightningModule):
                 save_top_k=self.cfg.trainer.save_top_k,
                 mode="min",
             ),
+            RichModelSummary(max_depth=2),
         ]
-        if "DeviceStatsMonitor" not in user_callbacks:
-            callbacks.append(DeviceStatsMonitor(cpu_stats=True))
-
-        if "GPUStatsMonitor" not in user_callbacks:
-            if GPUStatsMonitor.is_available():
-                callbacks.append(GPUStatsMonitor())
-            else:
-                logger.warning(
-                    "GPUStatsMonitor is not available for this machine."
-                    "Verify that `nvidia-smi` is installed."
-                )
 
         if self.main_metric is not None:
             main_metric = self.main_metric.replace("/", "_")
@@ -720,9 +710,6 @@ class LuxonisModel(pl.LightningModule):
 
         if self.frozen_nodes:
             callbacks.append(ModuleFreezer(self.frozen_nodes))
-
-        if self.cfg.use_rich_text:
-            callbacks.append(RichModelSummary(max_depth=2))
 
         for callback in self.cfg.trainer.callbacks:
             if callback.active:
@@ -839,14 +826,7 @@ class LuxonisModel(pl.LightningModule):
 
         logger.info(f"{stage} loss: {loss:.4f}")
 
-        if self.cfg.use_rich_text:
-            self._progress_bar.print_results(stage=stage, loss=loss, metrics=metrics)
-        else:
-            for node_name, node_metrics in metrics.items():
-                for metric_name, metric_value in node_metrics.items():
-                    logger.info(
-                        f"{stage} metric: {node_name}/{metric_name}: {metric_value:.4f}"
-                    )
+        self._progress_bar.print_results(stage=stage, loss=loss, metrics=metrics)
 
         if self.main_metric is not None:
             main_metric_node, main_metric_name = self.main_metric.split("/")

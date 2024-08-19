@@ -1,8 +1,5 @@
 # Example configuration for exporting a predefined segmentation model
 
-
-use_rich_text: True
-
 model:
   name: coco_segmentation
   weights: null  # specify a path to the weights here

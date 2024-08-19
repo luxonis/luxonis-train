@@ -1,8 +1,5 @@
 # Example configuration for training a predefined keypoint-detection model
 
-
-use_rich_text: True
-
 model:
   name: coco_keypoints
   predefined_model:

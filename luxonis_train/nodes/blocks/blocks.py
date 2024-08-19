@@ -64,7 +64,7 @@ class EfficientDecoupledBlock(nn.Module):
 
         return out_feature, out_cls, out_reg
 
-    def _initialize_weights_and_biases(self, prior_prob: float):
+    def _initialize_weights_and_biases(self, prior_prob: float) -> None:
         data = [
             (self.class_branch[-1], -math.log((1 - prior_prob) / prior_prob)),
             (self.regression_branch[-1], 1.0),
@@ -290,7 +290,7 @@ class RepVGGBlock(nn.Module):
             activation=nn.Identity(),
         )
 
-    def forward(self, x: Tensor):
+    def forward(self, x: Tensor) -> Tensor:
         if hasattr(self, "rbr_reparam"):
             return self.nonlinearity(self.se(self.rbr_reparam(x)))
 
@@ -301,7 +301,7 @@ class RepVGGBlock(nn.Module):
 
         return self.nonlinearity(self.se(self.rbr_dense(x) + self.rbr_1x1(x) + id_out))
 
-    def reparametrize(self):
+    def reparametrize(self) -> None:
         if hasattr(self, "rbr_reparam"):
             return
 
@@ -325,7 +325,7 @@ class RepVGGBlock(nn.Module):
         if hasattr(self, "id_tensor"):
             self.__delattr__("id_tensor")
 
-    def _get_equivalent_kernel_bias(self):
+    def _get_equivalent_kernel_bias(self) -> tuple[Tensor, Tensor]:
         """Derives the equivalent kernel and bias in a DIFFERENTIABLE way."""
         kernel3x3, bias3x3 = self._fuse_bn_tensor(self.rbr_dense)
         kernel1x1, bias1x1 = self._fuse_bn_tensor(self.rbr_1x1)
@@ -406,7 +406,7 @@ class BlockRepeater(nn.Module):
             )
             in_channels = out_channels
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         for block in self.blocks:
             x = block(x)
         return x
@@ -432,7 +432,7 @@ class SpatialPyramidPoolingBlock(nn.Module):
             kernel_size=kernel_size, stride=1, padding=kernel_size // 2
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         x = self.conv1(x)
         # apply max-pooling at three different scales
         y1 = self.max_pool(x)
@@ -468,7 +468,7 @@ class AttentionRefinmentBlock(nn.Module):
             nn.Sigmoid(),
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         x = self.conv_3x3(x)
         attention = self.attention(x)
         out = x * attention
@@ -506,7 +506,7 @@ class FeatureFusionBlock(nn.Module):
             nn.Sigmoid(),
         )
 
-    def forward(self, x1, x2):
+    def forward(self, x1: Tensor, x2: Tensor) -> Tensor:
         fusion = torch.cat([x1, x2], dim=1)
         x = self.conv_1x1(fusion)
         attention = self.attention(x)
@@ -523,7 +523,7 @@ class LearnableAdd(nn.Module):
         self.implicit = nn.Parameter(torch.zeros(1, channel, 1, 1))
         nn.init.normal_(self.implicit, std=0.02)
 
-    def forward(self, x: Tensor):
+    def forward(self, x: Tensor) -> Tensor:
         return self.implicit.expand_as(x) + x
 
 
@@ -536,7 +536,7 @@ class LearnableMultiply(nn.Module):
         self.implicit = nn.Parameter(torch.ones(1, channel, 1, 1))
         nn.init.normal_(self.implicit, mean=1.0, std=0.02)
 
-    def forward(self, x: Tensor):
+    def forward(self, x: Tensor) -> Tensor:
         return self.implicit.expand_as(x) * x
 
 
@@ -589,7 +589,7 @@ class KeypointBlock(nn.Module):
 
         self.block = nn.Sequential(*layers)
 
-    def forward(self, x: Tensor):
+    def forward(self, x: Tensor) -> Tensor:
         out = self.block(x)
         return out
 
