@@ -128,10 +128,10 @@ class LuxonisModel:
                     if split == "train"
                     else self.val_augmentations
                 ),
-                splits={
-                    "train": self.cfg.loader.train_splits,
-                    "val": self.cfg.loader.val_splits,
-                    "test": self.cfg.loader.test_splits,
+                view={
+                    "train": self.cfg.loader.train_view,
+                    "val": self.cfg.loader.val_view,
+                    "test": self.cfg.loader.test_view,
                 }[split],
                 image_source=self.cfg.loader.image_source,
                 **self.cfg.loader.params,
@@ -141,7 +141,7 @@ class LuxonisModel:
 
         for name, loader in self.loaders.items():
             logger.info(
-                f"{name.capitalize()} loader - splits: {loader.splits}, size: {len(loader)}"
+                f"{name.capitalize()} loader - splits: {loader.view}, size: {len(loader)}"
             )
             if len(loader) == 0:
                 logger.warning(f"{name.capitalize()} loader is empty!")

@@ -25,11 +25,11 @@ class BaseLoaderTorch(
 
     def __init__(
         self,
-        splits: str | list[str],
+        view: str | list[str],
         augmentations: Augmentations | None = None,
         image_source: str | None = None,
     ):
-        self.splits = splits if isinstance(splits, list) else [splits]
+        self.view = view if isinstance(view, list) else [view]
         self.augmentations = augmentations
         self._image_source = image_source
 

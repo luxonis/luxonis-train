@@ -26,7 +26,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         )
         self.base_loader = LuxonisLoader(
             dataset=self.dataset,
-            view=self.splits,
+            view=self.view,
             stream=stream,
             augmentations=self.augmentations,
         )
