@@ -1,0 +1,27 @@
+# Example configuration for training a predefined segmentation model
+
+model:
+  name: parse_loader_test
+  predefined_model:
+    name: SegmentationModel
+    params:
+      backbone: MicroNet
+      task: multiclass
+
+loader:
+  params:
+    dataset_dir: gs://luxonis-test-bucket/luxonis-ml-test-data/D2_Tile.png-mask-semantic.zip
+    dataset_name: _parse_loader_test_dataset
+
+trainer:
+  preprocessing:
+    train_image_size: [&height 128, &width 128]
+    keep_aspect_ratio: False
+    normalize:
+      active: True
+
+  batch_size: 4
+  epochs: &epochs 1
+  num_workers: 4
+  validation_interval: 1
+  num_log_images: 8

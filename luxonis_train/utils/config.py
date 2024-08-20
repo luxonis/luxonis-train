@@ -3,6 +3,7 @@ import sys
 from typing import Annotated, Any, Literal, TypeAlias
 
 from luxonis_ml.data import LabelType
+from luxonis_ml.enums import DatasetType
 from luxonis_ml.utils import (
     BaseModelExtraForbid,
     Environ,
@@ -166,6 +167,20 @@ class LoaderConfig(BaseModelExtraForbid):
         if isinstance(splits, str):
             return [splits]
         return splits
+
+    @model_validator(mode="after")
+    def validate_params(self) -> Self:
+        dataset_type = self.params.get("dataset_type")
+        if dataset_type is None:
+            return self
+
+        if dataset_type not in DatasetType.__members__:
+            raise ValueError(
+                f"Dataset type '{dataset_type}' not supported."
+                f"Supported types are: {', '.join(DatasetType.__members__)}."
+            )
+        self.params["dataset_type"] = DatasetType(dataset_type.lower())
+        return self
 
 
 class NormalizeAugmentationConfig(BaseModelExtraForbid):

@@ -42,6 +42,8 @@ def clear_output():
         "detection_model",
         "keypoint_bbox_model",
         "resnet_model",
+        "coco_model",
+        "efficient_coco_model",
     ],
 )
 def test_simple_models(config_file: str):
@@ -96,6 +98,12 @@ def test_custom_tasks(parking_lot_dataset: LuxonisDataset):
     )
     model.train()
     assert model.archive().exists()
+    del model
+
+
+def test_parsing_loader():
+    model = LuxonisModel("tests/configs/segmentation_parse_loader.yaml")
+    model.train()
     del model
 
 
