@@ -25,11 +25,11 @@ class BaseLoaderTorch(
 
     def __init__(
         self,
-        view: str,
+        view: str | list[str],
         augmentations: Augmentations | None = None,
         image_source: str | None = None,
     ):
-        self.view = view
+        self.view = view if isinstance(view, list) else [view]
         self.augmentations = augmentations
         self._image_source = image_source
 
@@ -50,25 +50,25 @@ class BaseLoaderTorch(
         Shape of each loader group (sub-element), WITHOUT batch dimension.
         Examples:
 
-        1. Single image input:
+        1. Single image input::
             {
                 'image': torch.Size([3, 224, 224]),
             }
 
-        2. Image and segmentation input:
+        2. Image and segmentation input::
             {
                 'image': torch.Size([3, 224, 224]),
                 'segmentation': torch.Size([1, 224, 224]),
             }
 
-        3. Left image, right image and disparity input:
+        3. Left image, right image and disparity input::
             {
                 'left': torch.Size([3, 224, 224]),
                 'right': torch.Size([3, 224, 224]),
                 'disparity': torch.Size([1, 224, 224]),
             }
 
-        4. Image, keypoints, and point cloud input:
+        4. Image, keypoints, and point cloud input::
             {
                 'image': torch.Size([3, 224, 224]),
                 'keypoints': torch.Size([17, 2]),

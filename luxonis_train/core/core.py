@@ -3,7 +3,7 @@ import signal
 import threading
 from logging import getLogger
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -138,6 +138,14 @@ class LuxonisModel:
             )
             for view in ["train", "val", "test"]
         }
+
+        for name, loader in self.loaders.items():
+            logger.info(
+                f"{name.capitalize()} loader - splits: {loader.view}, size: {len(loader)}"
+            )
+            if len(loader) == 0:
+                logger.warning(f"{name.capitalize()} loader is empty!")
+
         sampler = None
         # TODO: implement weighted sampler
         if self.cfg.trainer.use_weighted_sampler:
@@ -335,18 +343,16 @@ class LuxonisModel:
             if self.cfg.exporter.upload_url is not None:
                 LuxonisFileSystem.upload(f.name, self.cfg.exporter.upload_url)
 
-    def test(self, new_thread: bool = False, view: str | None = None) -> None:
+    def test(
+        self, new_thread: bool = False, view: Literal["train", "test", "val"] = "val"
+    ) -> None:
         """Runs testing.
 
         @type new_thread: bool
-        @param new_thread: Runs testing in new thread if set to True.
-        @type view: str | None
-        @param view: Which split to run the tests on. If unset, the value in
-            C{loader.test_view} will be used. Valid values are: 'train', 'val', 'test'.
-            Defauls to None.
+        @param new_thread: Runs testing in a new thread if set to True.
+        @type view: Literal["train", "test", "val"]
+        @param view: Which view to run the testing on. Defauls to "val".
         """
-
-        view = view or self.cfg.loader.test_view
 
         if view not in self.pytorch_loaders:
             raise ValueError(
