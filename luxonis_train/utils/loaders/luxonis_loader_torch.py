@@ -78,7 +78,6 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         """
         super().__init__(view=view, augmentations=augmentations, **kwargs)
         if dataset_dir is not None:
-            logger.info(f"Parsing dataset from {dataset_dir}")
             self.dataset = self._parse_dataset(
                 dataset_dir, dataset_name, dataset_type, delete_existing
             )
@@ -134,14 +133,6 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         dataset_type: DatasetType | None,
         delete_existing: bool,
     ) -> LuxonisDataset:
-        if dataset_type is None:
-            logger.warning(
-                "Dataset type is not set. "
-                "Attempting to infer it from the directory structure. "
-                "If this fails, please set the dataset type manually."
-                f"Supported types are: {', '.join(DatasetType.__members__)}."
-            )
-
         if dataset_name is None:
             dataset_name = Path(dataset_dir).stem
             if dataset_type is not None:
@@ -153,9 +144,19 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             else:
                 logger.warning(
                     f"Dataset {dataset_name} already exists. "
-                    "The dataset will be generated again in case new data was added. "
+                    "The dataset will be generated again to ensure the latest data are used. "
                     "If you don't want to regenerate the dataset every time, set `delete_existing=False`'"
                 )
+
+        if dataset_type is None:
+            logger.warning(
+                "Dataset type is not set. "
+                "Attempting to infer it from the directory structure. "
+                "If this fails, please set the dataset type manually."
+                f"Supported types are: {', '.join(DatasetType.__members__)}."
+            )
+
+        logger.info(f"Parsing dataset from {dataset_dir} with name '{dataset_name}'")
 
         return cast(
             LuxonisDataset,
