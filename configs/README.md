@@ -132,9 +132,9 @@ To store and load the data we use LuxonisDataset and LuxonisLoader. For specific
 | team_id        | str \| None                              | None                | team under which you can find all datasets |
 | bucket_type    | Literal\["intenal", "external"\]         | internal            | type of underlying storage                 |
 | bucket_storage | Literal\["local", "s3", "gcc", "azure"\] | BucketStorage.LOCAL | underlying object storage for a bucket     |
-| train_splits   | str \| list\[str\]                       | train               | splits to use for training                 |
-| val_splits     | str \| list\[str\]                       | val                 | splits to use for validation               |
-| test_splits    | str \| list\[str\]                       | test                | splits to use for testing                  |
+| train_view     | str \| list\[str\]                       | train               | splits to use for training                 |
+| val_view       | str \| list\[str\]                       | val                 | splits to use for validation               |
+| test_view      | str \| list\[str\]                       | test                | splits to use for testing                  |
 
 ## Trainer
 
