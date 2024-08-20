@@ -173,6 +173,7 @@ class LoaderConfig(BaseModelExtraForbid):
         dataset_type = self.params.get("dataset_type")
         if dataset_type is None:
             return self
+        dataset_type = dataset_type.upper()
 
         if dataset_type not in DatasetType.__members__:
             raise ValueError(
