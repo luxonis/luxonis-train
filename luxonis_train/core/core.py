@@ -122,21 +122,21 @@ class LuxonisModel:
         )
 
         self.loaders = {
-            split: LOADERS.get(self.cfg.loader.name)(
+            view: LOADERS.get(self.cfg.loader.name)(
                 augmentations=(
                     self.train_augmentations
-                    if split == "train"
+                    if view == "train"
                     else self.val_augmentations
                 ),
                 view={
                     "train": self.cfg.loader.train_view,
                     "val": self.cfg.loader.val_view,
                     "test": self.cfg.loader.test_view,
-                }[split],
+                }[view],
                 image_source=self.cfg.loader.image_source,
                 **self.cfg.loader.params,
             )
-            for split in ["train", "val", "test"]
+            for view in ["train", "val", "test"]
         }
 
         for name, loader in self.loaders.items():
