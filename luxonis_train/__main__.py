@@ -1,11 +1,18 @@
 import tempfile
+from enum import Enum
 from importlib.metadata import version
 from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
 import yaml
-from luxonis_ml.enums import SplitType
+
+
+class _ViewType(str, Enum):
+    TRAIN = "train"
+    VAL = "val"
+    TEST = "test"
+
 
 app = typer.Typer(
     help="Luxonis Train CLI",
@@ -31,7 +38,7 @@ OptsType = Annotated[
     ),
 ]
 
-ViewType = Annotated[SplitType, typer.Option(help="Which dataset view to use.")]
+ViewType = Annotated[_ViewType, typer.Option(help="Which dataset view to use.")]
 
 SaveDirType = Annotated[
     Optional[Path],
@@ -55,7 +62,7 @@ def train(
 
 @app.command()
 def test(
-    config: ConfigType = None, view: ViewType = SplitType.VAL, opts: OptsType = None
+    config: ConfigType = None, view: ViewType = _ViewType.VAL, opts: OptsType = None
 ):
     """Evaluate model."""
     from luxonis_train.core import LuxonisModel
@@ -82,7 +89,7 @@ def export(config: ConfigType = None, opts: OptsType = None):
 @app.command()
 def infer(
     config: ConfigType = None,
-    view: ViewType = SplitType.VAL,
+    view: ViewType = _ViewType.VAL,
     save_dir: SaveDirType = None,
     opts: OptsType = None,
 ):
@@ -96,7 +103,7 @@ def infer(
 def inspect(
     config: ConfigType = None,
     view: Annotated[
-        SplitType,
+        str,
         typer.Option(
             ...,
             "--view",
@@ -132,7 +139,7 @@ def inspect(
 
         lxml_inspect(
             name=cfg.loader.params["dataset_name"],
-            view=view,
+            view=[view],
             aug_config=f.name,
         )
 

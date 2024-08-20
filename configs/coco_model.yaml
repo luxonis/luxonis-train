@@ -96,9 +96,9 @@ tracker:
   is_mlflow: False
 
 loader:
-  train_view: train
-  val_view: val
-  test_view: test
+  train_splits: train
+  val_splits: val
+  test_splits: test
 
   params:
     dataset_name: coco_test
