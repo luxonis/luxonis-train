@@ -153,3 +153,4 @@ mlruns
 wandb
 tests/_data
 tests/integration/_test-output
+data

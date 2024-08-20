@@ -164,6 +164,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 dataset_dir,
                 dataset_name=dataset_name,
                 dataset_type=dataset_type,
+                save_dir="data",
                 delete_existing=True,
             ).parse(),
         )
