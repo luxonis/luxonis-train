@@ -125,17 +125,16 @@ You can configure it like this:
 
 To store and load the data we use LuxonisDataset and LuxonisLoader. For specific config parameters refer to [LuxonisML](https://github.com/luxonis/luxonis-ml).
 
-| Key            | Type                                     | Default value       | Description                                    |
-| -------------- | ---------------------------------------- | ------------------- | ---------------------------------------------- |
-| name           | str \| None                              | None                | name of the dataset                            |
-| id             | str \| None                              | None                | id of the dataset                              |
-| team_id        | str \| None                              | None                | team under which you can find all datasets     |
-| bucket_type    | Literal\["intenal", "external"\]         | internal            | type of underlying storage                     |
-| bucket_storage | Literal\["local", "s3", "gcc", "azure"\] | BucketStorage.LOCAL | underlying object storage for a bucket         |
-| train_view     | str                                      | train               | view to use for training                       |
-| val_view       | str                                      | val                 | view to use for validation                     |
-| test_view      | str                                      | test                | view to use for testing                        |
-| json_mode      | bool                                     | False               | load using JSON annotations instead of MongoDB |
+| Key            | Type                                     | Default value       | Description                                |
+| -------------- | ---------------------------------------- | ------------------- | ------------------------------------------ |
+| name           | str \| None                              | None                | name of the dataset                        |
+| id             | str \| None                              | None                | id of the dataset                          |
+| team_id        | str \| None                              | None                | team under which you can find all datasets |
+| bucket_type    | Literal\["intenal", "external"\]         | internal            | type of underlying storage                 |
+| bucket_storage | Literal\["local", "s3", "gcc", "azure"\] | BucketStorage.LOCAL | underlying object storage for a bucket     |
+| train_view     | str \| list\[str\]                       | train               | splits to use for training                 |
+| val_view       | str \| list\[str\]                       | val                 | splits to use for validation               |
+| test_view      | str \| list\[str\]                       | test                | splits to use for testing                  |
 
 ## Trainer
 

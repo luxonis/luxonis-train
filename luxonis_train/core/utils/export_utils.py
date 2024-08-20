@@ -1,5 +1,6 @@
 import logging
 from contextlib import contextmanager
+from pathlib import Path
 
 import luxonis_train
 from luxonis_train.utils.config import Config, ExportConfig
@@ -9,12 +10,13 @@ logger = logging.getLogger(__name__)
 
 @contextmanager
 def replace_weights(
-    module: "luxonis_train.models.LuxonisLightningModule", weights: str | None = None
+    module: "luxonis_train.models.LuxonisLightningModule",
+    weights: str | Path | None = None,
 ):
     old_weights = None
     if weights is not None:
         old_weights = module.state_dict()
-        module.load_checkpoint(weights)
+        module.load_checkpoint(str(weights))
 
     yield
 

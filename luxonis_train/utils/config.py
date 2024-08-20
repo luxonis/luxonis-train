@@ -9,7 +9,7 @@ from luxonis_ml.utils import (
     LuxonisConfig,
     LuxonisFileSystem,
 )
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic.types import FilePath, NonNegativeFloat, NonNegativeInt, PositiveInt
 from typing_extensions import Self
 
@@ -155,10 +155,17 @@ class TrackerConfig(BaseModelExtraForbid):
 class LoaderConfig(BaseModelExtraForbid):
     name: str = "LuxonisLoaderTorch"
     image_source: str = "image"
-    train_view: str = "train"
-    val_view: str = "val"
-    test_view: str = "test"
+    train_view: list[str] = ["train"]
+    val_view: list[str] = ["val"]
+    test_view: list[str] = ["test"]
     params: Params = {}
+
+    @field_validator("train_view", "val_view", "test_view", mode="before")
+    @classmethod
+    def validate_splits(cls, splits: Any) -> list[Any]:
+        if isinstance(splits, str):
+            return [splits]
+        return splits
 
 
 class NormalizeAugmentationConfig(BaseModelExtraForbid):
