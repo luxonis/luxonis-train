@@ -1,5 +1,8 @@
+import json
 import shutil
 import sys
+import tarfile
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -13,6 +16,7 @@ TEST_OUTPUT = Path("tests/integration/_test-output")
 INFER_PATH = Path("tests/integration/_infer_save_dir")
 ONNX_PATH = Path("tests/integration/_model.onnx")
 STUDY_PATH = Path("study_local.db")
+WORK_DIR = Path("tests/integration/work_dir")
 
 OPTS = {
     "trainer.epochs": 1,
@@ -86,18 +90,31 @@ def test_multi_input():
     del model
 
 
-def test_custom_tasks(parking_lot_dataset: LuxonisDataset):
+def test_custom_tasks(parking_lot_dataset: LuxonisDataset, subtests):
     config_file = "tests/configs/parking_lot_config.yaml"
-    model = LuxonisModel(
-        config_file,
-        opts=OPTS
-        | {
-            "loader.params.dataset_name": parking_lot_dataset.dataset_name,
-            "trainer.batch_size": 2,
-        },
-    )
+    opts = deepcopy(OPTS) | {
+        "loader.params.dataset_name": parking_lot_dataset.dataset_name,
+        "trainer.batch_size": 2,
+    }
+    del opts["trainer.callbacks"]
+    model = LuxonisModel(config_file, opts=opts)
     model.train()
-    assert model.archive().exists()
+    archive_path = Path(model.run_save_dir, "archive", "parking_lot_model.onnx.tar.xz")
+    correct_archive_config = json.loads(
+        Path("tests/integration/parking_lot.json").read_text()
+    )
+
+    with subtests.test("test_archive"):
+        assert archive_path.exists()
+        with tarfile.open(archive_path) as tar:
+            extracted_cfg = tar.extractfile("config.json")
+
+            assert extracted_cfg is not None, "Config JSON not found in the archive."
+            generated_config = json.loads(extracted_cfg.read().decode())
+
+        del generated_config["model"]["heads"][1]["metadata"]["anchors"]
+        assert generated_config == correct_archive_config
+
     del model
 
 

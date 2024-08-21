@@ -213,12 +213,7 @@ trainer:
           p: 0.1
 
   callbacks:
-    - name: LearningRateMonitor
-      params:
-        logging_interval: step
-    - name: MetadataLogger
-      params:
-        hyperparams: ["trainer.epochs", trainer.batch_size]
     - name: ExportOnTrainEnd
     - name: TestOnTrainEnd
+    - name: ArchiveOnTrainEnd
 
