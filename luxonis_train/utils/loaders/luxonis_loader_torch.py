@@ -152,7 +152,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             logger.warning(
                 "Dataset type is not set. "
                 "Attempting to infer it from the directory structure. "
-                "If this fails, please set the dataset type manually."
+                "If this fails, please set the dataset type manually. "
                 f"Supported types are: {', '.join(DatasetType.__members__)}."
             )
 
