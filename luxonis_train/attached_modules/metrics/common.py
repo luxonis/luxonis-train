@@ -14,15 +14,26 @@ class TorchMetricWrapper(BaseMetric):
         super().__init__(node=kwargs.pop("node", None))
         task = kwargs.get("task")
 
-        if task is None:
-            if self.node.n_classes > 1:
-                task = "multiclass"
-            else:
-                task = "binary"
+        if self.node.n_classes > 1:
+            if task == "binary":
+                raise ValueError(
+                    f"Task type set to '{task}', but the dataset has more than 1 class. "
+                    f"Set the `task` parameter for {self.name} to either 'multiclass' or 'multilabel'."
+                )
+            task = "multiclass"
+        else:
+            if task == "multiclass":
+                raise ValueError(
+                    f"Task type set to '{task}', but the dataset has only 1 class. "
+                    f"Set the `task` parameter for {self.name} to 'binary'."
+                )
+            task = "binary"
+        if "task" not in kwargs:
             logger.warning(
-                f"Task type not specified for {self.name}, assuming '{task}'."
+                f"Task type not specified for {self.name}, assuming '{task}'. "
+                "If this is not correct, please set the `task` parameter explicitly."
             )
-            kwargs["task"] = task
+        kwargs["task"] = task
         self._task = task
 
         if self._task == "multiclass":

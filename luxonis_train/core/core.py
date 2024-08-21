@@ -22,7 +22,7 @@ from luxonis_train.callbacks import LuxonisProgressBar
 from luxonis_train.models import LuxonisLightningModule
 from luxonis_train.utils.config import Config
 from luxonis_train.utils.general import DatasetMetadata
-from luxonis_train.utils.loaders import collate_fn
+from luxonis_train.utils.loaders import BaseLoaderTorch, collate_fn
 from luxonis_train.utils.registry import LOADERS
 from luxonis_train.utils.tracker import LuxonisTrackerPL
 
@@ -121,8 +121,14 @@ class LuxonisModel:
             callbacks=LuxonisProgressBar(),
         )
 
-        self.loaders = {
-            view: LOADERS.get(self.cfg.loader.name)(
+        self.loaders: dict[str, BaseLoaderTorch] = {}
+        for view in ["train", "val", "test"]:
+            loader_name = self.cfg.loader.name
+            Loader = LOADERS.get(loader_name)
+            if loader_name == "LuxonisLoaderTorch" and view != "train":
+                self.cfg.loader.params["delete_existing"] = False
+
+            self.loaders[view] = Loader(
                 augmentations=(
                     self.train_augmentations
                     if view == "train"
@@ -136,8 +142,6 @@ class LuxonisModel:
                 image_source=self.cfg.loader.image_source,
                 **self.cfg.loader.params,
             )
-            for view in ["train", "val", "test"]
-        }
 
         for name, loader in self.loaders.items():
             logger.info(
