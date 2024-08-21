@@ -16,7 +16,6 @@ TEST_OUTPUT = Path("tests/integration/_test-output")
 INFER_PATH = Path("tests/integration/_infer_save_dir")
 ONNX_PATH = Path("tests/integration/_model.onnx")
 STUDY_PATH = Path("study_local.db")
-WORK_DIR = Path("tests/integration/work_dir")
 
 OPTS = {
     "trainer.epochs": 1,
@@ -28,10 +27,15 @@ OPTS = {
 }
 
 
-@pytest.fixture(scope="function", autouse=True)
-def clear_output():
-    Config.clear_instance()
+@pytest.fixture(scope="session", autouse=True)
+def manage_out_dir():
     shutil.rmtree(TEST_OUTPUT, ignore_errors=True)
+    TEST_OUTPUT.mkdir(exist_ok=True)
+
+
+@pytest.fixture(scope="function", autouse=True)
+def clear_files():
+    Config.clear_instance()
     yield
     STUDY_PATH.unlink(missing_ok=True)
     ONNX_PATH.unlink(missing_ok=True)
@@ -99,7 +103,9 @@ def test_custom_tasks(parking_lot_dataset: LuxonisDataset, subtests):
     del opts["trainer.callbacks"]
     model = LuxonisModel(config_file, opts=opts)
     model.train()
-    archive_path = Path(model.run_save_dir, "archive", "parking_lot_model.onnx.tar.xz")
+    archive_path = Path(
+        model.run_save_dir, "archive", model.cfg.model.name
+    ).with_suffix(".onnx.tar.xz")
     correct_archive_config = json.loads(
         Path("tests/integration/parking_lot.json").read_text()
     )
