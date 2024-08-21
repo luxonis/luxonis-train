@@ -3,3 +3,4 @@ gdown>=4.2.0
 pre-commit>=3.2.1
 opencv-stubs>=0.0.8
 pytest-cov>=4.1.0
+pytest-subtests>=0.12.1
