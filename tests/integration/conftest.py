@@ -165,7 +165,7 @@ def create_coco_dataset():
     output_zip = WORK_DIR / "COCO_people_subset.zip"
 
     if not output_zip.exists() and not (WORK_DIR / "COCO_people_subset").exists():
-        gdown.download(url, output_zip, quiet=False)
+        gdown.download(url, str(output_zip), quiet=False)
 
     parser = LuxonisParser(
         str(output_zip), dataset_name=dataset_name, delete_existing=True
