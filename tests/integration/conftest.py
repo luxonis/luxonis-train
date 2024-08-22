@@ -1,6 +1,4 @@
 import json
-import os
-import os.path as osp
 from collections import defaultdict
 from pathlib import Path
 
@@ -164,26 +162,22 @@ def parking_lot_dataset() -> LuxonisDataset:
 def create_coco_dataset():
     dataset_name = "coco_test"
     url = "https://drive.google.com/uc?id=1XlvFK7aRmt8op6-hHkWVKIJQeDtOwoRT"
-    output_folder = "../data/"
-    output_zip = osp.join(output_folder, "COCO_people_subset.zip")
+    output_zip = WORK_DIR / "COCO_people_subset.zip"
 
-    if not osp.exists(output_folder):
-        os.makedirs(output_folder)
+    if not output_zip.exists() and not (WORK_DIR / "COCO_people_subset").exists():
+        gdown.download(url, str(output_zip), quiet=False)
 
-    if not osp.exists(output_zip) and not osp.exists(
-        osp.join(output_folder, "COCO_people_subset")
-    ):
-        gdown.download(url, output_zip, quiet=False)
-
-    parser = LuxonisParser(output_zip, dataset_name=dataset_name, delete_existing=True)
+    parser = LuxonisParser(
+        str(output_zip), dataset_name=dataset_name, delete_existing=True
+    )
     parser.parse(random_split=True)
 
 
 @pytest.fixture(scope="session", autouse=True)
 def create_cifar10_dataset():
     dataset = LuxonisDataset("cifar10_test", delete_existing=True)
-    output_folder = "../data/cifar10"
-    os.makedirs(output_folder, exist_ok=True)
+    output_folder = WORK_DIR / "cifar10"
+    output_folder.mkdir(parents=True, exist_ok=True)
     cifar10_torch = torchvision.datasets.CIFAR10(
         root=output_folder, train=False, download=True
     )
@@ -204,7 +198,7 @@ def create_cifar10_dataset():
         for i, (image, label) in enumerate(cifar10_torch):  # type: ignore
             if i == 1000:
                 break
-            path = osp.join(output_folder, f"cifar_{i}.png")
+            path = output_folder / f"cifar_{i}.png"
             image.save(path)
             yield {
                 "file": path,
