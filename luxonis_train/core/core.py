@@ -561,7 +561,6 @@ class LuxonisModel:
         archive_save_directory.mkdir(parents=True, exist_ok=True)
         inputs = []
         outputs = []
-        heads = []
 
         if path is None:
             if "onnx" not in self._exported_models:
@@ -585,32 +584,33 @@ class LuxonisModel:
         }
 
         inputs_dict = get_inputs(path)
-        for input_name in inputs_dict:
+        for input_name, metadata in inputs_dict.items():
             inputs.append(
                 {
                     "name": input_name,
-                    "dtype": inputs_dict[input_name]["dtype"],
-                    "shape": inputs_dict[input_name]["shape"],
-                    "layout": inputs_dict[input_name]["layout"],
+                    "dtype": metadata["dtype"],
+                    "shape": metadata["shape"],
                     "preprocessing": preprocessing,
                     "input_type": "image",
                 }
             )
 
         outputs_dict = get_outputs(path)
-        for output_name in outputs_dict:
+        for output_name, metadata in outputs_dict.items():
             outputs.append(
-                {"name": output_name, "dtype": outputs_dict[output_name]["dtype"]}
+                {
+                    "name": output_name,
+                    "dtype": metadata["dtype"],
+                    "shape": metadata["shape"],
+                }
             )
 
-        heads_dict = get_heads(
+        heads = get_heads(
             self.cfg,
             outputs,
             self.loaders["train"].get_classes(),
             self.lightning_module.nodes,  # type: ignore
         )
-        for head_name in heads_dict:
-            heads.append(heads_dict[head_name])
 
         model = {
             "metadata": {

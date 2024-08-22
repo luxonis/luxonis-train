@@ -1,0 +1,351 @@
+{
+    "config_version": "1.0",
+    "model": {
+        "metadata": {
+            "name": "parking_lot_model",
+            "path": "parking_lot_model.onnx",
+            "precision": "float32"
+        },
+        "inputs": [
+            {
+                "name": "image",
+                "dtype": "float32",
+                "input_type": "image",
+                "shape": [
+                    1,
+                    3,
+                    256,
+                    320
+                ],
+                "layout": "NCHW",
+                "preprocessing": {
+                    "mean": [
+                        123.675,
+                        116.28,
+                        103.53
+                    ],
+                    "scale": [
+                        58.395,
+                        57.12,
+                        57.375
+                    ],
+                    "reverse_channels": true,
+                    "interleaved_to_planar": false
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "name": "any-vehicle-segmentation-head/vehicle_segmentation/0",
+                "dtype": "float32",
+                "shape": [
+                    1,
+                    1,
+                    256,
+                    320
+                ],
+                "layout": "NCHW"
+            },
+            {
+                "name": "bbox-head/boundingbox/0",
+                "dtype": "float32",
+                "shape": [
+                    1,
+                    7,
+                    32,
+                    40
+                ],
+                "layout": "NCHW"
+            },
+            {
+                "name": "bbox-head/boundingbox/1",
+                "dtype": "float32",
+                "shape": [
+                    1,
+                    7,
+                    16,
+                    20
+                ],
+                "layout": "NCHW"
+            },
+            {
+                "name": "bbox-head/boundingbox/2",
+                "dtype": "float32",
+                "shape": [
+                    1,
+                    7,
+                    8,
+                    10
+                ],
+                "layout": "NCHW"
+            },
+            {
+                "name": "brand-segmentation-head/brand_segmentation/0",
+                "dtype": "float32",
+                "shape": [
+                    1,
+                    23,
+                    256,
+                    320
+                ],
+                "layout": "NCHW"
+            },
+            {
+                "name": "car-detection-head/boxes_and_keypoints/0",
+                "dtype": "float32",
+                "shape": [
+                    1,
+                    66240,
+                    24
+                ],
+                "layout": "NCD"
+            },
+            {
+                "name": "color-segmentation-head/color_segmentation/0",
+                "dtype": "float32",
+                "shape": [
+                    1,
+                    4,
+                    256,
+                    320
+                ],
+                "layout": "NCHW"
+            },
+            {
+                "name": "context-brand-segmentation-head/brand_segmentation/0",
+                "dtype": "float32",
+                "shape": [
+                    1,
+                    23,
+                    256,
+                    320
+                ],
+                "layout": "NCHW"
+            },
+            {
+                "name": "motorbike-detection-head/outputs/0",
+                "dtype": "float32",
+                "shape": [
+                    1,
+                    14,
+                    32,
+                    40
+                ],
+                "layout": "NCHW"
+            },
+            {
+                "name": "motorbike-detection-head/outputs/1",
+                "dtype": "float32",
+                "shape": [
+                    1,
+                    14,
+                    16,
+                    20
+                ],
+                "layout": "NCHW"
+            },
+            {
+                "name": "motorbike-detection-head/outputs/2",
+                "dtype": "float32",
+                "shape": [
+                    1,
+                    14,
+                    8,
+                    10
+                ],
+                "layout": "NCDE"
+            },
+            {
+                "name": "vehicle-type-segmentation-head/vehicle_type_segmentation/0",
+                "dtype": "float32",
+                "shape": [
+                    1,
+                    3,
+                    256,
+                    320
+                ],
+                "layout": "NCHW"
+            }
+        ],
+        "heads": [
+            {
+                "parser": "YoloDetectionNetwork",
+                "metadata": {
+                    "postprocessor_path": null,
+                    "classes": [
+                        "motorbike",
+                        "car"
+                    ],
+                    "n_classes": 2,
+                    "iou_threshold": 0.45,
+                    "conf_threshold": 0.25,
+                    "max_det": 300,
+                    "anchors": null,
+                    "subtype": "yolov6"
+                },
+                "outputs": [
+                    "bbox-head/boundingbox/0",
+                    "bbox-head/boundingbox/1",
+                    "bbox-head/boundingbox/2"
+                ]
+            },
+            {
+                "parser": "YoloDetectionNetwork",
+                "metadata": {
+                    "postprocessor_path": null,
+                    "classes": [
+                        "car"
+                    ],
+                    "n_classes": 1,
+                    "iou_threshold": 0.45,
+                    "conf_threshold": 0.25,
+                    "max_det": 300,
+                    "subtype": "yolov7",
+                    "n_keypoints": 6
+                },
+                "outputs": [
+                    "car-detection-head/boxes_and_keypoints/0"
+                ]
+            },
+            {
+                "parser": "YoloDetectionNetwork",
+                "metadata": {
+                    "postprocessor_path": null,
+                    "classes": [
+                        "motorbike"
+                    ],
+                    "n_classes": 1,
+                    "iou_threshold": 0.45,
+                    "conf_threshold": 0.25,
+                    "max_det": 300,
+                    "anchors": null,
+                    "n_keypoints": 3
+                },
+                "outputs": [
+                    "motorbike-detection-head/outputs/0",
+                    "motorbike-detection-head/outputs/1",
+                    "motorbike-detection-head/outputs/2"
+                ]
+            },
+            {
+                "parser": "SegmentationParser",
+                "metadata": {
+                    "postprocessor_path": null,
+                    "classes": [
+                        "background",
+                        "chrysler",
+                        "bmw",
+                        "ducati",
+                        "dodge",
+                        "ferrari",
+                        "infiniti",
+                        "land-rover",
+                        "roll-royce",
+                        "saab",
+                        "Kawasaki",
+                        "moto",
+                        "truimph",
+                        "alfa-romeo",
+                        "harley",
+                        "honda",
+                        "jeep",
+                        "aprilia",
+                        "piaggio",
+                        "yamaha",
+                        "buick",
+                        "pontiac",
+                        "isuzu"
+                    ],
+                    "n_classes": 23,
+                    "is_softmax": false
+                },
+                "outputs": [
+                    "context-brand-segmentation-head/brand_segmentation/0"
+                ]
+            },
+            {
+                "parser": "SegmentationParser",
+                "metadata": {
+                    "postprocessor_path": null,
+                    "classes": [
+                        "background",
+                        "blue",
+                        "green",
+                        "red"
+                    ],
+                    "n_classes": 4,
+                    "is_softmax": false
+                },
+                "outputs": [
+                    "color-segmentation-head/color_segmentation/0"
+                ]
+            },
+            {
+                "parser": "SegmentationParser",
+                "metadata": {
+                    "postprocessor_path": null,
+                    "classes": [
+                        "vehicle"
+                    ],
+                    "n_classes": 1,
+                    "is_softmax": false
+                },
+                "outputs": [
+                    "any-vehicle-segmentation-head/vehicle_segmentation/0"
+                ]
+            },
+            {
+                "parser": "SegmentationParser",
+                "metadata": {
+                    "postprocessor_path": null,
+                    "classes": [
+                        "background",
+                        "chrysler",
+                        "bmw",
+                        "ducati",
+                        "dodge",
+                        "ferrari",
+                        "infiniti",
+                        "land-rover",
+                        "roll-royce",
+                        "saab",
+                        "Kawasaki",
+                        "moto",
+                        "truimph",
+                        "alfa-romeo",
+                        "harley",
+                        "honda",
+                        "jeep",
+                        "aprilia",
+                        "piaggio",
+                        "yamaha",
+                        "buick",
+                        "pontiac",
+                        "isuzu"
+                    ],
+                    "n_classes": 23,
+                    "is_softmax": false
+                },
+                "outputs": [
+                    "brand-segmentation-head/brand_segmentation/0"
+                ]
+            },
+            {
+                "parser": "SegmentationParser",
+                "metadata": {
+                    "postprocessor_path": null,
+                    "classes": [
+                        "background",
+                        "car",
+                        "motorbike"
+                    ],
+                    "n_classes": 3,
+                    "is_softmax": false
+                },
+                "outputs": [
+                    "vehicle-type-segmentation-head/vehicle_type_segmentation/0"
+                ]
+            }
+        ]
+    }
+}

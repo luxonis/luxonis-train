@@ -1,7 +1,14 @@
+import logging
+from collections import defaultdict
 from pathlib import Path
+from typing import TypedDict
 
 import onnx
-from luxonis_ml.nn_archive.config_building_blocks import ObjectDetectionSubtypeYOLO
+from luxonis_ml.nn_archive.config_building_blocks import (
+    DataType,
+    ObjectDetectionSubtypeYOLO,
+)
+from onnx.onnx_pb import TensorProto
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.enums.head_categorization import (
@@ -10,8 +17,15 @@ from luxonis_train.nodes.enums.head_categorization import (
 )
 from luxonis_train.utils.config import Config
 
+logger = logging.getLogger(__name__)
 
-def get_inputs(path: Path):
+
+class MetadataDict(TypedDict):
+    shape: list[int]
+    dtype: DataType
+
+
+def get_inputs(path: Path) -> dict[str, MetadataDict]:
     """Get inputs of a model executable.
 
     @type path: Path
@@ -19,43 +33,14 @@ def get_inputs(path: Path):
     """
 
     if path.suffix == ".onnx":
-        return _get_onnx_inputs(str(path))
+        return _get_onnx_inputs(path)
     else:
         raise NotImplementedError(
             f"Missing input reading function for {path.suffix} models."
         )
 
 
-def _get_onnx_inputs(path: str) -> dict:
-    """Get inputs of an ONNX model executable.
-
-    @type path: str
-    @param path: Path to model executable file.
-    """
-
-    inputs_dict = {}
-    model = onnx.load(path)
-    for input in model.graph.input:
-        tensor_type = input.type.tensor_type
-        dtype_idx = tensor_type.elem_type
-        dtype = str(onnx.helper.tensor_dtype_to_np_dtype(dtype_idx))
-        shape = []
-        for d in tensor_type.shape.dim:
-            if d.HasField("dim_value"):
-                shape.append(d.dim_value)
-            else:
-                raise ValueError("Unsupported input dimension identifier type")
-        if shape[1] == 3:
-            layout = "NCHW"
-        elif shape[3] == 3:
-            layout = "NHWC"
-        else:
-            raise ValueError("Unknown input layout")
-        inputs_dict[input.name] = {"dtype": dtype, "shape": shape, "layout": layout}
-    return inputs_dict
-
-
-def get_outputs(path: Path) -> dict:
+def get_outputs(path: Path) -> dict[str, MetadataDict]:
     """Get outputs of a model executable.
 
     @type path: Path
@@ -63,28 +48,59 @@ def get_outputs(path: Path) -> dict:
     """
 
     if path.suffix == ".onnx":
-        return _get_onnx_outputs(str(path))
+        return _get_onnx_outputs(path)
     else:
         raise NotImplementedError(
             f"Missing input reading function for {path.suffix} models."
         )
 
 
-def _get_onnx_outputs(path: str) -> dict:
-    """Get outputs of an ONNX model executable.
+def _from_onnx_dtype(dtype: int) -> DataType:
+    dtype_map = {
+        TensorProto.INT8: "int8",
+        TensorProto.INT32: "int32",
+        TensorProto.UINT8: "uint8",
+        TensorProto.FLOAT: "float32",
+        TensorProto.FLOAT16: "float16",
+    }
+    if dtype not in dtype_map:
+        raise ValueError(f"Unsupported ONNX data type: `{dtype}`")
 
-    @type executable_path: str
-    @param executable_path: Path to model executable file.
-    """
+    return DataType(dtype_map[dtype])
 
-    outputs_dict = {}
-    model = onnx.load(path)
+
+def _load_onnx_model(onnx_path: Path) -> onnx.ModelProto:
+    try:
+        return onnx.load(str(onnx_path))
+    except Exception as e:
+        raise ValueError(f"Failed to load ONNX model: `{onnx_path}`") from e
+
+
+def _get_onnx_outputs(onnx_path: Path) -> dict[str, MetadataDict]:
+    model = _load_onnx_model(onnx_path)
+    outputs: dict[str, MetadataDict] = defaultdict(dict)  # type: ignore
+
     for output in model.graph.output:
-        tensor_type = output.type.tensor_type
-        dtype_idx = tensor_type.elem_type
-        dtype = str(onnx.helper.tensor_dtype_to_np_dtype(dtype_idx))
-        outputs_dict[output.name] = {"dtype": dtype}
-    return outputs_dict
+        shape = [dim.dim_value for dim in output.type.tensor_type.shape.dim]
+        outputs[output.name]["shape"] = shape
+        outputs[output.name]["dtype"] = _from_onnx_dtype(
+            output.type.tensor_type.elem_type
+        )
+
+    return outputs
+
+
+def _get_onnx_inputs(onnx_path: Path) -> dict[str, MetadataDict]:
+    model = _load_onnx_model(onnx_path)
+
+    inputs: dict[str, MetadataDict] = defaultdict(dict)  # type: ignore
+
+    for inp in model.graph.input:
+        shape = [dim.dim_value for dim in inp.type.tensor_type.shape.dim]
+        inputs[inp.name]["shape"] = shape
+        inputs[inp.name]["dtype"] = _from_onnx_dtype(inp.type.tensor_type.elem_type)
+
+    return inputs
 
 
 def _get_classes(
@@ -150,24 +166,43 @@ def _get_head_specific_parameters(
     return parameters
 
 
-def _get_head_outputs(outputs: list[dict], head_name: str) -> list[str]:
+def _get_head_outputs(outputs: list[dict], head_name: str, head_type: str) -> list[str]:
     """Get model outputs in a head-specific format.
 
+    @type outputs: list[dict]
+    @param outputs: List of NN Archive outputs.
     @type head_name: str
-    @param head_name: Name of the head (e.g. 'EfficientBBoxHead').
+    @param head_name: Type of the head (e.g. 'EfficientBBoxHead') or its custom alias.
+    @type head_type: str
+    @param head_name: Type of the head (e.g. 'EfficientBBoxHead').
     @rtype: list[str]
     @return: List of output names.
     """
 
-    if head_name == "ClassificationHead":
+    output_names = []
+    for output in outputs:
+        name = output["name"].split("/")[0]
+        if name == head_name:
+            output_names.append(output["name"])
+
+    if output_names:
+        return output_names
+
+    # TODO: Fix this, will require refactoring custom ONNX output names
+    logger.error(
+        "ONNX model uses custom output names, trying to determine outputs based on the head type. "
+        "This will likely result in incorrect archive for multi-head models."
+    )
+
+    if head_type == "ClassificationHead":
         return [outputs[0]["name"]]
-    elif head_name == "EfficientBBoxHead":
+    elif head_type == "EfficientBBoxHead":
         return [output["name"] for output in outputs]
-    elif head_name in ["SegmentationHead", "BiSeNetHead"]:
+    elif head_type in ["SegmentationHead", "BiSeNetHead"]:
         return [outputs[0]["name"]]
-    elif head_name == "ImplicitKeypointBBoxHead":
+    elif head_type == "ImplicitKeypointBBoxHead":
         return [outputs[0]["name"]]
-    elif head_name == "EfficientKeypointBBoxHead":
+    elif head_type == "EfficientKeypointBBoxHead":
         return [outputs[0]["name"]]
     else:
         raise ValueError("Unknown head name")
@@ -178,7 +213,7 @@ def get_heads(
     outputs: list[dict],
     class_dict: dict[str, list[str]],
     nodes: dict[str, BaseNode],
-) -> dict[str, dict]:
+) -> list[dict]:
     """Get model heads.
 
     @type cfg: Config
@@ -190,7 +225,7 @@ def get_heads(
     @type nodes: dict[str, BaseNode]
     @param nodes: Dictionary of nodes.
     """
-    heads_dict = {}
+    heads = []
 
     for node in cfg.model.nodes:
         node_name = node.name
@@ -200,10 +235,10 @@ def get_heads(
                 parser = getattr(ImplementedHeads, node_name).value
                 task = node.task
                 if isinstance(task, dict):
-                    task = str(next(iter(task)))
+                    task = str(next(iter(task.values())))
 
                 classes = _get_classes(node_name, task, class_dict)
-                head_outputs = _get_head_outputs(outputs, node_name)
+                head_outputs = _get_head_outputs(outputs, node_alias, node_name)
                 head_dict = {
                     "parser": parser,
                     "metadata": {
@@ -215,5 +250,5 @@ def get_heads(
                 head_dict["metadata"].update(
                     _get_head_specific_parameters(nodes, node_name, node_alias)
                 )
-                heads_dict[node_name] = head_dict
-    return heads_dict
+                heads.append(head_dict)
+    return heads
