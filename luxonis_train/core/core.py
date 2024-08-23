@@ -158,6 +158,7 @@ class Core:
                 num_workers=self.cfg.trainer.num_workers,
                 collate_fn=collate_fn,
                 shuffle=view == "train",
+                pin_memory = self.cfg.trainer.pin_memory,
                 drop_last=(
                     self.cfg.trainer.skip_last_batch if view == "train" else False
                 ),

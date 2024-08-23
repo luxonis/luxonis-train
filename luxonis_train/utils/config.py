@@ -225,6 +225,7 @@ class TrainerConfig(CustomBaseModel):
     validation_interval: int = 1
     num_log_images: int = 4
     skip_last_batch: bool = True
+    pin_memory: bool = True
     log_sub_losses: bool = True
     save_top_k: int = 3
 
