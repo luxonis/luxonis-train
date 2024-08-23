@@ -2,7 +2,7 @@ import tempfile
 from importlib.metadata import version
 from pathlib import Path
 from typing import Annotated, Optional
-
+import cProfile
 import typer
 import yaml
 from luxonis_ml.data.__main__ import inspect as lxml_inspect
@@ -50,8 +50,12 @@ def train(
 ):
     """Start training."""
     from luxonis_train.core import Trainer
-
+    profile = cProfile.Profile()
+    profile.enable()
     Trainer(config, opts, resume=resume).train()
+    profile.disable()
+    profile.print_stats(sort='cumulative')
+    
 
 
 @app.command()
