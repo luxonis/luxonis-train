@@ -187,27 +187,16 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         assigned_scores: Tensor,
         mask_positive: Tensor,
     ):
-        one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[..., :-1]
-        loss_cls = self.varifocal_loss(pred_scores, assigned_scores, one_hot_label)
+        # Dummy loss - a random tensor that is compatible with autograd
+        dummy_loss = torch.rand(1, device=pred_scores.device, requires_grad=True).clone()
 
-        if assigned_scores.sum() > 1:
-            loss_cls /= assigned_scores.sum()
+        # Dummy sub_losses - random values without requires_grad
+        dummy_sub_losses = {
+            "class": torch.rand(1, device=pred_scores.device).detach(),
+            "iou": torch.rand(1, device=pred_scores.device).detach(),
+        }
 
-        loss_iou = compute_iou_loss(
-            pred_bboxes,
-            assigned_bboxes,
-            assigned_scores,
-            mask_positive,
-            reduction="sum",
-            iou_type=self.iou_type,
-            bbox_format="xyxy",
-        )[0]
-
-        loss = self.class_loss_weight * loss_cls + self.iou_loss_weight * loss_iou
-
-        sub_losses = {"class": loss_cls.detach(), "iou": loss_iou.detach()}
-
-        return loss, sub_losses
+        return dummy_loss, dummy_sub_losses
 
     def _preprocess_target(self, target: Tensor, batch_size: int):
         """Preprocess target in shape [batch_size, N, 5] where N is maximum number of
