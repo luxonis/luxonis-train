@@ -679,6 +679,8 @@ class LuxonisModel:
         @rtype: str
         @return: Path to best checkpoint with respect to minimal validation loss
         """
+        if not self.pl_trainer.checkpoint_callbacks:
+            return None
         return self.pl_trainer.checkpoint_callbacks[0].best_model_path  # type: ignore
 
     @rank_zero_only
@@ -688,4 +690,6 @@ class LuxonisModel:
         @rtype: str
         @return: Path to best checkpoint with respect to best validation metric
         """
+        if len(self.pl_trainer.checkpoint_callbacks) < 2:
+            return None
         return self.pl_trainer.checkpoint_callbacks[1].best_model_path  # type: ignore
