@@ -50,11 +50,11 @@ def train(
 ):
     """Start training."""
     from luxonis_train.core import Trainer
-    profile = cProfile.Profile()
-    profile.enable()
+    # profile = cProfile.Profile()
+    # profile.enable()
     Trainer(config, opts, resume=resume).train()
-    profile.disable()
-    profile.print_stats(sort='cumulative')
+    # profile.disable()
+    # profile.print_stats(sort='cumulative')
     
 
 
