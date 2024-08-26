@@ -640,52 +640,40 @@ def compute_iou_loss(
     target_scores: Tensor | None = None,
     mask_positive: Tensor | None = None,
     *,
-    iou_type: IoUType = "giou",
-    bbox_format: BBoxFormatType = "xyxy",
+    iou_type: str = "giou",
+    bbox_format: str = "xyxy",
     reduction: Literal["sum", "mean"] = "mean",
 ) -> tuple[Tensor, Tensor]:
-    """Computes an IoU loss between 2 sets of bounding boxes.
+    """Computes an IoU loss between 2 sets of bounding boxes."""
 
-    @type pred_bboxes: Tensor
-    @param pred_bboxes: Predicted bounding boxes.
-    @type target_bboxes: Tensor
-    @param target_bboxes: Target bounding boxes.
-    @type target_scores: Tensor | None
-    @param target_scores: Target scores. Defaults to None.
-    @type mask_positive: Tensor | None
-    @param mask_positive: Mask for positive samples. Defaults to None.
-    @type iou_type: L{IoUType}
-    @param iou_type: IoU type. Defaults to "giou".
-    @type bbox_format: L{BBoxFormatType}
-    @param bbox_format: BBox format. Defaults to "xyxy".
-    @type reduction: Literal["sum", "mean"]
-    @param reduction: Reduction type. Defaults to "mean".
-    @rtype: tuple[Tensor, Tensor]
-    @return: IoU loss and IoU values.
-    """
     device = pred_bboxes.device
     target_bboxes = target_bboxes.to(device)
-    if mask_positive is None or mask_positive.sum() > 0:
-        if target_scores is not None:
-            bbox_weight = torch.masked_select(
-                target_scores.sum(-1),
-                mask_positive
-                if mask_positive is not None
-                else torch.ones_like(target_scores.sum(-1)),
-            ).unsqueeze(-1)
-        else:
-            bbox_weight = torch.tensor(1.0)
 
+    if mask_positive is None or mask_positive.sum() > 0:
+        # Compute bbox_weight only when target_scores is provided
+        if target_scores is not None:
+            # Create mask for the valid positive boxes and apply it efficiently
+            if mask_positive is not None:
+                mask = mask_positive.unsqueeze(-1)
+            else:
+                mask = torch.ones_like(target_scores.sum(-1), dtype=torch.bool)
+            
+            # Compute bbox weight directly using masked target scores
+            bbox_weight = target_scores.sum(-1)[mask.squeeze()].unsqueeze(-1)
+        else:
+            bbox_weight = torch.tensor(1.0, device=device)
+
+        # Create a mask for bounding boxes and apply it
         if mask_positive is not None:
-            bbox_mask = mask_positive.unsqueeze(-1).repeat([1, 1, 4])
+            bbox_mask = mask_positive.unsqueeze(-1).expand_as(pred_bboxes)
         else:
             bbox_mask = torch.ones_like(pred_bboxes, dtype=torch.bool)
 
-        pred_bboxes_pos = torch.masked_select(pred_bboxes, bbox_mask).reshape([-1, 4])
-        target_bboxes_pos = torch.masked_select(target_bboxes, bbox_mask).reshape(
-            [-1, 4]
-        )
+        # Apply mask and reshape the positive bounding boxes
+        pred_bboxes_pos = pred_bboxes[bbox_mask].reshape([-1, 4])
+        target_bboxes_pos = target_bboxes[bbox_mask].reshape([-1, 4])
 
+        # Compute IoU between positive predicted and target bboxes
         iou = bbox_iou(
             pred_bboxes_pos,
             target_bboxes_pos,
@@ -693,23 +681,25 @@ def compute_iou_loss(
             bbox_format=bbox_format,
             element_wise=True,
         ).unsqueeze(-1)
+
+        # Calculate IoU loss using the weights
         loss_iou = (1 - iou) * bbox_weight
 
+        # Apply reduction
         if reduction == "mean":
             loss_iou = loss_iou.mean()
-
         elif reduction == "sum":
             if target_scores is None:
-                raise NotImplementedError(
-                    "Sum reduction is not supported when `target_scores` is None"
-                )
+                raise NotImplementedError("Sum reduction requires `target_scores`.")
             loss_iou = loss_iou.sum()
             if target_scores.sum() > 1:
                 loss_iou /= target_scores.sum()
         else:
             raise ValueError(f"Unknown reduction type `{reduction}`")
+
     else:
-        loss_iou = torch.tensor(0.0).to(pred_bboxes.device)
-        iou = torch.zeros([target_bboxes.shape[0]]).to(pred_bboxes.device)
+        # Fallback for empty or all-negative cases
+        loss_iou = torch.tensor(0.0, device=device)
+        iou = torch.zeros([target_bboxes.shape[0]], device=device)
 
     return loss_iou, iou.detach().clamp(0)

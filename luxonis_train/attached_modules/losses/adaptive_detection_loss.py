@@ -88,91 +88,80 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
     def prepare(
         self, outputs: Packet[Tensor], labels: Labels
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
-        # feats = self.get_input_tensors(outputs, "features")
+        feats = self.get_input_tensors(outputs, "features")
         pred_scores = self.get_input_tensors(outputs, "class_scores")[0]
-        # pred_distri = self.get_input_tensors(outputs, "distributions")[0]
+        pred_distri = self.get_input_tensors(outputs, "distributions")[0]
         batch_size = pred_scores.shape[0]
         device = pred_scores.device
 
-        # target = self.get_label(labels)[0]
-        # if self.gt_bboxes_scale is None:
-        #     self.gt_bboxes_scale = torch.tensor(
-        #         [
-        #             self.original_img_size[1],
-        #             self.original_img_size[0],
-        #             self.original_img_size[1],
-        #             self.original_img_size[0],
-        #         ],
-        #         device=device,
-        #     )
-        #     (
-        #         self.anchors,
-        #         self.anchor_points,
-        #         self.n_anchors_list,
-        #         self.stride_tensor,
-        #     ) = anchors_for_fpn_features(
-        #         feats,
-        #         self.stride,
-        #         self.grid_cell_size,
-        #         self.grid_cell_offset,
-        #         multiply_with_stride=True,
-        #     )
-        #     self.anchor_points_strided = self.anchor_points / self.stride_tensor
+        target = self.get_label(labels)[0]
+        if self.gt_bboxes_scale is None:
+            self.gt_bboxes_scale = torch.tensor(
+                [
+                    self.original_img_size[1],
+                    self.original_img_size[0],
+                    self.original_img_size[1],
+                    self.original_img_size[0],
+                ],
+                device=device,
+            )
+            (
+                self.anchors,
+                self.anchor_points,
+                self.n_anchors_list,
+                self.stride_tensor,
+            ) = anchors_for_fpn_features(
+                feats,
+                self.stride,
+                self.grid_cell_size,
+                self.grid_cell_offset,
+                multiply_with_stride=True,
+            )
+            self.anchor_points_strided = self.anchor_points / self.stride_tensor
 
-        # target = self._preprocess_target(target, batch_size)
-        # pred_bboxes = dist2bbox(pred_distri, self.anchor_points_strided)
+        target = self._preprocess_target(target, batch_size)
+        pred_bboxes = dist2bbox(pred_distri, self.anchor_points_strided)
 
-        # gt_labels = target[:, :, :1]
-        # gt_xyxy = target[:, :, 1:]
-        # mask_gt = (gt_xyxy.sum(-1, keepdim=True) > 0).float()
+        gt_labels = target[:, :, :1]
+        gt_xyxy = target[:, :, 1:]
+        mask_gt = (gt_xyxy.sum(-1, keepdim=True) > 0).float()
 
-        # if self._epoch < self.n_warmup_epochs:
-        #     (
-        #         assigned_labels,
-        #         assigned_bboxes,
-        #         assigned_scores,
-        #         mask_positive,
-        #         _,
-        #     ) = self.atts_assigner(
-        #         self.anchors,
-        #         self.n_anchors_list,
-        #         gt_labels,
-        #         gt_xyxy,
-        #         mask_gt,
-        #         pred_bboxes.detach() * self.stride_tensor,
-        #     )
-        # else:
-        #     # TODO: log change of assigner (once common Logger)
-        #     (
-        #         assigned_labels,
-        #         assigned_bboxes,
-        #         assigned_scores,
-        #         mask_positive,
-        #         _,
-        #     ) = self.tal_assigner(
-        #         pred_scores.detach(),
-        #         pred_bboxes.detach() * self.stride_tensor,
-        #         self.anchor_points,
-        #         gt_labels,
-        #         gt_xyxy,
-        #         mask_gt,
-        #     )
-
-        pred_bboxes = torch.rand((batch_size, 3549, 4), device = device, requires_grad=True) 
-        pred_scores = torch.full((batch_size, 3549, 80), 0.01, device=device, requires_grad=True)
-        assigned_bboxes = torch.rand((batch_size, 3549, 4), device = device, requires_grad=True) 
-        assigned_labels = torch.full((batch_size, 3549), 80, device = device)
-        mask_positive = torch.zeros((batch_size, 3549), dtype=torch.bool, device=device).view(-1).scatter_(0, torch.randperm(batch_size * 3549, device=device)[:2000], True).view(batch_size, 3549)
-        assigned_scores = torch.zeros((batch_size, 3549, 80), device=device, requires_grad=True).masked_scatter(
-            mask_positive.unsqueeze(-1).expand(-1, -1, 80), 
-            torch.full((mask_positive.sum(), 80), 0.83, device=device)
-        )
-
+        if self._epoch < self.n_warmup_epochs:
+            (
+                assigned_labels,
+                assigned_bboxes,
+                assigned_scores,
+                mask_positive,
+                _,
+            ) = self.atts_assigner(
+                self.anchors,
+                self.n_anchors_list,
+                gt_labels,
+                gt_xyxy,
+                mask_gt,
+                pred_bboxes.detach() * self.stride_tensor,
+            )
+        else:
+            # TODO: log change of assigner (once common Logger)
+            (
+                assigned_labels,
+                assigned_bboxes,
+                assigned_scores,
+                mask_positive,
+                _,
+            ) = self.tal_assigner(
+                pred_scores.detach(),
+                pred_bboxes.detach() * self.stride_tensor,
+                self.anchor_points,
+                gt_labels,
+                gt_xyxy,
+                mask_gt,
+            )
 
         return (
             pred_bboxes,
             pred_scores,
-            assigned_bboxes,
+            assigned_bboxes / self.stride_tensor,
             assigned_labels,
             assigned_scores,
             mask_positive,
@@ -187,16 +176,27 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         assigned_scores: Tensor,
         mask_positive: Tensor,
     ):
-        # Dummy loss - a random tensor that is compatible with autograd
-        dummy_loss = torch.rand(1, device=pred_scores.device, requires_grad=True).clone()
+        one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[..., :-1]
+        loss_cls = self.varifocal_loss(pred_scores, assigned_scores, one_hot_label)
 
-        # Dummy sub_losses - random values without requires_grad
-        dummy_sub_losses = {
-            "class": torch.rand(1, device=pred_scores.device).detach(),
-            "iou": torch.rand(1, device=pred_scores.device).detach(),
-        }
+        if assigned_scores.sum() > 1:
+            loss_cls /= assigned_scores.sum()
 
-        return dummy_loss, dummy_sub_losses
+        loss_iou = compute_iou_loss(
+            pred_bboxes,
+            assigned_bboxes,
+            assigned_scores,
+            mask_positive,
+            reduction="sum",
+            iou_type=self.iou_type,
+            bbox_format="xyxy",
+        )[0]
+
+        loss = self.class_loss_weight * loss_cls + self.iou_loss_weight * loss_iou
+
+        sub_losses = {"class": loss_cls.detach(), "iou": loss_iou.detach()}
+
+        return loss, sub_losses
 
     def _preprocess_target(self, target: Tensor, batch_size: int):
         """Preprocess target in shape [batch_size, N, 5] where N is maximum number of
