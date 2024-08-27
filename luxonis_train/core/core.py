@@ -18,7 +18,7 @@ from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.utils import LuxonisFileSystem, reset_logging, setup_logging
 
 from luxonis_train.attached_modules.visualizers import get_unnormalized_images
-from luxonis_train.callbacks import LuxonisProgressBar
+from luxonis_train.callbacks import LuxonisRichProgressBar, LuxonisTQDMProgressBar
 from luxonis_train.models import LuxonisLightningModule
 from luxonis_train.utils.config import Config
 from luxonis_train.utils.general import DatasetMetadata
@@ -118,7 +118,9 @@ class LuxonisModel:
             self.cfg,
             logger=self.tracker,
             deterministic=deterministic,
-            callbacks=LuxonisProgressBar(),
+            callbacks=LuxonisRichProgressBar()
+            if self.cfg.trainer.use_rich_progress_bar
+            else LuxonisTQDMProgressBar(),
         )
 
         self.loaders: dict[str, BaseLoaderTorch] = {}
@@ -441,7 +443,11 @@ class LuxonisModel:
                 input_shapes=self.loaders["train"].input_shapes,
                 _core=self,
             )
-            callbacks = [LuxonisProgressBar()]
+            callbacks = [
+                LuxonisRichProgressBar()
+                if cfg.trainer.use_rich_progress_bar
+                else LuxonisTQDMProgressBar()
+            ]
 
             pruner_callback = PyTorchLightningPruningCallback(trial, monitor="val/loss")
             callbacks.append(pruner_callback)

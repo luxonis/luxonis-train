@@ -11,7 +11,11 @@ from luxonis_train.utils.registry import CALLBACKS
 from .archive_on_train_end import ArchiveOnTrainEnd
 from .export_on_train_end import ExportOnTrainEnd
 from .gpu_stats_monitor import GPUStatsMonitor
-from .luxonis_progress_bar import LuxonisProgressBar
+from .luxonis_progress_bar import (
+    BaseLuxonisProgressBar,
+    LuxonisRichProgressBar,
+    LuxonisTQDMProgressBar,
+)
 from .metadata_logger import MetadataLogger
 from .module_freezer import ModuleFreezer
 from .test_on_train_end import TestOnTrainEnd
@@ -27,7 +31,9 @@ CALLBACKS.register_module(module=DeviceStatsMonitor)
 __all__ = [
     "ArchiveOnTrainEnd",
     "ExportOnTrainEnd",
-    "LuxonisProgressBar",
+    "LuxonisTQDMProgressBar",
+    "LuxonisRichProgressBar",
+    "BaseLuxonisProgressBar",
     "MetadataLogger",
     "ModuleFreezer",
     "TestOnTrainEnd",
