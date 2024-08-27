@@ -242,6 +242,7 @@ class SchedulerConfig(BaseModelExtraForbid):
 
 class TrainerConfig(BaseModelExtraForbid):
     preprocessing: PreprocessingConfig = PreprocessingConfig()
+    use_rich_progress_bar: bool = True
 
     accelerator: Literal["auto", "cpu", "gpu", "tpu"] = "auto"
     devices: int | list[int] | str = "auto"

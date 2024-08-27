@@ -22,7 +22,10 @@ from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
     get_unnormalized_images,
 )
-from luxonis_train.callbacks import LuxonisProgressBar, ModuleFreezer
+from luxonis_train.callbacks import (
+    BaseLuxonisProgressBar,
+    ModuleFreezer,
+)
 from luxonis_train.nodes import BaseNode
 from luxonis_train.utils.config import AttachedModuleConfig, Config
 from luxonis_train.utils.general import DatasetMetadata, to_shape_packet, traverse_graph
@@ -815,8 +818,8 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
     @property
-    def _progress_bar(self) -> LuxonisProgressBar:
-        return cast(LuxonisProgressBar, self._trainer.progress_bar_callback)
+    def _progress_bar(self) -> BaseLuxonisProgressBar:
+        return cast(BaseLuxonisProgressBar, self._trainer.progress_bar_callback)
 
     @rank_zero_only
     def _print_results(
