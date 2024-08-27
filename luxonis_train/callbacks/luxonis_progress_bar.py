@@ -44,7 +44,7 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
 
 @CALLBACKS.register_module()
 class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
-    """Custom rich text progress bar based on RichProgressBar from Pytorch Lightning."""
+    """Custom text progress bar based on TQDMProgressBar from Pytorch Lightning."""
 
     def __init__(self):
         super().__init__(leave=True)
