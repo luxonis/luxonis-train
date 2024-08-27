@@ -28,6 +28,17 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         loss: float,
         metrics: Mapping[str, Mapping[str, int | str | float]],
     ) -> None:
+        """Prints results to the console.
+
+        This includes the stage name, loss value, and tables with metrics.
+
+        @type stage: str
+        @param stage: Stage name.
+        @type loss: float
+        @param loss: Loss value.
+        @type metrics: Mapping[str, Mapping[str, int | str | float]]
+        @param metrics: Metrics in format {table_name: table}.
+        """
         pass
 
 
@@ -37,6 +48,12 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
 
     def __init__(self):
         super().__init__(leave=True)
+
+    def _rule(self, title: str | None = None) -> None:
+        if title is not None:
+            print(f"------{title}-----")
+        else:
+            print("-----------------")
 
     def _print_table(
         self,
@@ -56,7 +73,7 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         @type value_name: str
         @param value_name: Name of the value column. Defaults to C{"Value"}.
         """
-        print(f"------{title}-----")
+        self._rule(title)
         print(
             tabulate.tabulate(
                 table.items(),
@@ -73,21 +90,12 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         loss: float,
         metrics: Mapping[str, Mapping[str, int | str | float]],
     ) -> None:
-        """Prints results to the console using rich text.
-
-        @type stage: str
-        @param stage: Stage name.
-        @type loss: float
-        @param loss: Loss value.
-        @type metrics: Mapping[str, Mapping[str, int | str | float]]
-        @param metrics: Metrics in format {table_name: table}.
-        """
-        print(f"------{stage}-----")
+        self._rule(stage)
         print(f"Loss: {loss}")
         print("Metrics:")
         for table_name, table in metrics.items():
             self._print_table(table_name, table)
-        print("-----------------")
+        self._rule()
 
 
 @CALLBACKS.register_module()
@@ -144,15 +152,6 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         loss: float,
         metrics: Mapping[str, Mapping[str, int | str | float]],
     ) -> None:
-        """Prints results to the console using rich text.
-
-        @type stage: str
-        @param stage: Stage name.
-        @type loss: float
-        @param loss: Loss value.
-        @type metrics: Mapping[str, Mapping[str, int | str | float]]
-        @param metrics: Metrics in format {table_name: table}.
-        """
         self.console.rule(f"{stage}", style="bold magenta")
         self.console.print(f"[bold magenta]Loss:[/bold magenta] [white]{loss}[/white]")
         self.console.print("[bold magenta]Metrics:[/bold magenta]")
