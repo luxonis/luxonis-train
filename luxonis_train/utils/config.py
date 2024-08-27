@@ -91,7 +91,11 @@ class ModelConfig(BaseModelExtraForbid):
             name = metric.alias or metric.name
             logger.info(f"Setting '{name}' as main metric.")
         else:
-            logger.error("No metrics specified. This is likely unintended.")
+            logger.error(
+                "No metrics specified. "
+                "This is likely unintended unless "
+                "the configuration is not used for training."
+            )
         return self
 
     @model_validator(mode="after")
