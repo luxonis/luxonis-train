@@ -10,7 +10,6 @@ from luxonis_ml.data import LuxonisDataset
 from multi_input_modules import *
 
 from luxonis_train.core import LuxonisModel
-from luxonis_train.utils.config import Config
 
 TEST_OUTPUT = Path("tests/integration/_test-output")
 INFER_PATH = Path("tests/integration/_infer_save_dir")
@@ -35,7 +34,6 @@ def manage_out_dir():
 
 @pytest.fixture(scope="function", autouse=True)
 def clear_files():
-    Config.clear_instance()
     yield
     STUDY_PATH.unlink(missing_ok=True)
     ONNX_PATH.unlink(missing_ok=True)

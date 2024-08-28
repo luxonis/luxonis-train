@@ -268,7 +268,7 @@ class LuxonisModel:
             self.thread.start()
 
     def export(
-        self, onnx_save_path: str | None = None, *, weights: str | None = None
+        self, onnx_save_path: str | None = None, *, weights: str | Path | None = None
     ) -> None:
         """Runs export.
 
@@ -429,7 +429,6 @@ class LuxonisModel:
                 for a in cfg_copy.trainer.preprocessing.augmentations
                 if a.name != "Normalize"
             ]  # manually remove Normalize so it doesn't duplicate it when creating new cfg instance
-            Config.clear_instance()
             cfg = Config.get_config(cfg_copy.model_dump(), curr_params)
 
             child_tracker.log_hyperparams(curr_params)
