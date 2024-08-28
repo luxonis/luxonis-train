@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Literal, cast
+from typing import Literal
 
 import numpy as np
 from luxonis_ml.data import (
@@ -158,13 +158,10 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
 
         logger.info(f"Parsing dataset from {dataset_dir} with name '{dataset_name}'")
 
-        return cast(
-            LuxonisDataset,
-            LuxonisParser(
-                dataset_dir,
-                dataset_name=dataset_name,
-                dataset_type=dataset_type,
-                save_dir="data",
-                delete_existing=True,
-            ).parse(),
-        )
+        return LuxonisParser(
+            dataset_dir,
+            dataset_name=dataset_name,
+            dataset_type=dataset_type,
+            save_dir="data",
+            delete_existing=True,
+        ).parse()
