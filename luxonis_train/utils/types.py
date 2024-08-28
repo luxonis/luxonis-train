@@ -45,15 +45,7 @@ class IncompatibleException(Exception):
 class BaseProtocol(BaseModel):
     class Config:
         arbitrary_types_allowed = True
-
-    @classmethod
-    def get_task(cls) -> str:
-        if len(cls.__annotations__) == 1:
-            return list(cls.__annotations__)[0]
-        raise ValueError(
-            "Protocol must have exactly one field for automatic task inference. "
-            "Implement custom `prepare` method in your attached module."
-        )
+        extra = "forbid"
 
 
 class FeaturesProtocol(BaseProtocol):
