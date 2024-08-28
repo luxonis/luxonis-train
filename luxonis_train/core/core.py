@@ -167,6 +167,7 @@ class LuxonisModel:
                 drop_last=(
                     self.cfg.trainer.skip_last_batch if view == "train" else False
                 ),
+                pin_memory=self.cfg.trainer.pin_memory,
                 sampler=sampler if view == "train" else None,
             )
             for view in ["train", "val", "test"]
