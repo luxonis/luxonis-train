@@ -103,7 +103,7 @@ class BaseLoaderTorch(
         @rtype: dict[LabelType, list[str]]
         @return: A dictionary mapping tasks to their classes.
         """
-        pass
+        ...
 
     def get_n_keypoints(self) -> dict[str, int] | None:
         """Returns the dictionary defining the semantic skeleton for each class using

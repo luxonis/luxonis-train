@@ -18,7 +18,7 @@ from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.utils import LuxonisFileSystem, reset_logging, setup_logging
 
 from luxonis_train.attached_modules.visualizers import get_unnormalized_images
-from luxonis_train.callbacks import LuxonisProgressBar
+from luxonis_train.callbacks import LuxonisRichProgressBar, LuxonisTQDMProgressBar
 from luxonis_train.models import LuxonisLightningModule
 from luxonis_train.utils.config import Config
 from luxonis_train.utils.general import DatasetMetadata
@@ -118,7 +118,9 @@ class LuxonisModel:
             self.cfg,
             logger=self.tracker,
             deterministic=deterministic,
-            callbacks=LuxonisProgressBar(),
+            callbacks=LuxonisRichProgressBar()
+            if self.cfg.trainer.use_rich_progress_bar
+            else LuxonisTQDMProgressBar(),
         )
 
         self.loaders: dict[str, BaseLoaderTorch] = {}
@@ -266,7 +268,7 @@ class LuxonisModel:
             self.thread.start()
 
     def export(
-        self, onnx_save_path: str | None = None, *, weights: str | None = None
+        self, onnx_save_path: str | None = None, *, weights: str | Path | None = None
     ) -> None:
         """Runs export.
 
@@ -427,7 +429,6 @@ class LuxonisModel:
                 for a in cfg_copy.trainer.preprocessing.augmentations
                 if a.name != "Normalize"
             ]  # manually remove Normalize so it doesn't duplicate it when creating new cfg instance
-            Config.clear_instance()
             cfg = Config.get_config(cfg_copy.model_dump(), curr_params)
 
             child_tracker.log_hyperparams(curr_params)
@@ -441,7 +442,11 @@ class LuxonisModel:
                 input_shapes=self.loaders["train"].input_shapes,
                 _core=self,
             )
-            callbacks = [LuxonisProgressBar()]
+            callbacks = [
+                LuxonisRichProgressBar()
+                if cfg.trainer.use_rich_progress_bar
+                else LuxonisTQDMProgressBar()
+            ]
 
             pruner_callback = PyTorchLightningPruningCallback(trial, monitor="val/loss")
             callbacks.append(pruner_callback)
@@ -679,6 +684,8 @@ class LuxonisModel:
         @rtype: str
         @return: Path to best checkpoint with respect to minimal validation loss
         """
+        if not self.pl_trainer.checkpoint_callbacks:
+            return None
         return self.pl_trainer.checkpoint_callbacks[0].best_model_path  # type: ignore
 
     @rank_zero_only
@@ -688,4 +695,6 @@ class LuxonisModel:
         @rtype: str
         @return: Path to best checkpoint with respect to best validation metric
         """
+        if len(self.pl_trainer.checkpoint_callbacks) < 2:
+            return None
         return self.pl_trainer.checkpoint_callbacks[1].best_model_path  # type: ignore

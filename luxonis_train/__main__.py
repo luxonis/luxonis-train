@@ -6,6 +6,9 @@ from typing import Annotated, Optional
 
 import typer
 import yaml
+from luxonis_ml.utils import setup_logging
+
+setup_logging(use_rich=True)
 
 
 class _ViewType(str, Enum):
