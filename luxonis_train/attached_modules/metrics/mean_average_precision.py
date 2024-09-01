@@ -15,7 +15,7 @@ class MeanAveragePrecision(BaseMetric):
     <https://lightning.ai/docs/torchmetrics/stable/detection/mean_average_precision.html>}.
     """
 
-    supported_labels = [LabelType.BOUNDINGBOX]
+    supported_labels = [LabelType.BOUNDINGBOX, LabelType.OBOUNDINGBOX]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

@@ -80,6 +80,40 @@ class EfficientDecoupledBlock(nn.Module):
             module.weight = nn.Parameter(w, requires_grad=True)
 
 
+class EfficientOBBDecoupledBlock(EfficientDecoupledBlock):
+    def __init__(self, n_classes: int, in_channels: int):
+        """Efficient Decoupled block used for angle, class and regression predictions in
+        OBB (oriented bounding box) tasks.
+
+        @type n_classes: int
+        @param n_classes: Number of classes.
+        @type in_channels: int
+        @param in_channels: Number of input channels.
+        """
+        super().__init__(n_classes, in_channels)
+
+        self.angle_branch = nn.Sequential(
+            ConvModule(
+                in_channels=in_channels,
+                out_channels=in_channels,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                activation=nn.SiLU(),
+            ),
+            nn.Conv2d(in_channels=in_channels, out_channels=1, kernel_size=1),
+        )
+
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor, Tensor]:
+        out_feature = self.decoder(x)
+
+        out_cls = self.class_branch(out_feature)
+        out_reg = self.regression_branch(out_feature)
+        out_angle = self.angle_branch(out_feature)
+
+        return out_feature, out_cls, out_reg, out_angle
+
+
 class ConvModule(nn.Sequential):
     def __init__(
         self,

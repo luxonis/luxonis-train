@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-from luxonis_train.utils.boxutils import bbox_iou
+from luxonis_train.utils.boxutils import bbox_iou, probiou, xywhr2xyxyxyxy
 
 
 def candidates_in_gt(
@@ -28,6 +28,37 @@ def candidates_in_gt(
     bbox_delta = torch.cat([bbox_delta_lt, bbox_delta_rb], dim=-1)
     candidates = (bbox_delta.min(dim=-1)[0] > eps).to(gt_bboxes.dtype)
     return candidates
+
+
+def candidates_in_gt_obb(xy_centers, gt_bboxes):
+    """Select the positive anchor center in gt for rotated bounding boxes.
+
+    Args:
+        xy_centers (Tensor): shape(h*w, 2)
+        gt_bboxes (Tensor): shape(b, n_boxes, 5)
+
+    Returns:
+        (Tensor): shape(b, n_boxes, h*w)
+    """
+    # (b, n_boxes, 5) --> (b, n_boxes, 4, 2)
+    corners = xywhr2xyxyxyxy(gt_bboxes)
+    # (b, n_boxes, 1, 2)
+    a, b, _, d = corners.split(1, dim=-2)
+    ab = b - a
+    ad = d - a
+
+    # (b, n_boxes, h*w, 2)
+    ap = xy_centers - a
+    norm_ab = (ab * ab).sum(dim=-1)
+    norm_ad = (ad * ad).sum(dim=-1)
+    ap_dot_ab = (ap * ab).sum(dim=-1)
+    ap_dot_ad = (ap * ad).sum(dim=-1)
+    return (
+        (ap_dot_ab >= 0)
+        & (ap_dot_ab <= norm_ab)
+        & (ap_dot_ad >= 0)
+        & (ap_dot_ad <= norm_ad)
+    )  # is_in_box
 
 
 def fix_collisions(
@@ -69,5 +100,26 @@ def batch_iou(batch1: Tensor, batch2: Tensor) -> Tensor:
     """
     ious = torch.stack(
         [bbox_iou(batch1[i], batch2[i]) for i in range(batch1.size(0))], dim=0
+    )
+    return ious
+
+
+def batch_iou_obb(batch1: Tensor, batch2: Tensor) -> Tensor:
+    """Calculates IoU for each pair of oriented bboxes in the batch. Bboxes must be in
+    xcycwhr format.
+
+    @type batch1: Tensor
+    @param batch1: Tensor of shape C{[bs, N, 5]}
+    @type batch2: Tensor
+    @param batch2: Tensor of shape C{[bs, M, 5]}
+    @rtype: Tensor
+    @return: Per image box IoU of shape C{[bs, N]}
+    """
+    ious = torch.stack(
+        [
+            probiou(batch1[i], batch2[i]).squeeze(-1).clamp_(0)
+            for i in range(batch1.size(0))
+        ],
+        dim=0,
     )
     return ious

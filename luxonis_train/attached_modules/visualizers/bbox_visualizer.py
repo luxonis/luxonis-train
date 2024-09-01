@@ -10,7 +10,7 @@ from .utils import Color, draw_bounding_box_labels, draw_bounding_boxes, get_col
 
 
 class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
-    supported_labels = [LabelType.BOUNDINGBOX]
+    supported_labels = [LabelType.BOUNDINGBOX, LabelType.OBOUNDINGBOX]
 
     def __init__(
         self,

@@ -3,6 +3,7 @@
 import math
 from typing import Literal, TypeAlias
 
+import numpy as np
 import torch
 from scipy.cluster.vq import kmeans
 from torch import Tensor
@@ -144,6 +145,28 @@ def dist2bbox(
     return bbox
 
 
+def dist2rbbox(
+    distance: Tensor,
+    pred_angles: Tensor,
+    anchor_points: Tensor,
+) -> Tensor:
+    """Transform distance (ltrb) to a rotated bounding box in "cxcywh" format.
+
+    @type distance: Tensor
+    @param distance: Distance predictions
+    @type anchor_points: Tensor
+    @param anchor_points: Head's anchor points
+    @rtype: Tensor
+    @return: BBoxes in "cxcywh" format
+    """
+    lt, rb = torch.split(distance, 2, -1)
+    cos, sin = torch.cos(pred_angles), torch.sin(pred_angles)
+    xf, yf = ((rb - lt) / 2).split(1, dim=-1)
+    x, y = xf * cos - yf * sin, xf * sin + yf * cos
+    xy = torch.cat([x, y], dim=-1) + anchor_points
+    return torch.cat([xy, lt + rb], dim=-1)
+
+
 def bbox2dist(bbox: Tensor, anchor_points: Tensor, reg_max: float) -> Tensor:
     """Transform bbox(xyxy) to distance(ltrb).
 
@@ -161,6 +184,60 @@ def bbox2dist(bbox: Tensor, anchor_points: Tensor, reg_max: float) -> Tensor:
     rb = x2y2 - anchor_points
     dist = torch.cat([lt, rb], -1).clip(0, reg_max - 0.01)
     return dist
+
+
+def xywhr2xyxyxyxy(x):
+    """Convert batched Oriented Bounding Boxes (OBB) from [xywh, rotation] to [xy1, xy2,
+    xy3, xy4]. Rotation values should be in radians from 0 to pi/2.
+
+    Args:
+        x (numpy.ndarray | torch.Tensor): Boxes in [cx, cy, w, h, rotation] format of shape (n, 5) or (b, n, 5).
+
+    Returns:
+        (numpy.ndarray | torch.Tensor): Converted corner points of shape (n, 4, 2) or (b, n, 4, 2).
+    """
+    cos, sin, cat, stack = (
+        (torch.cos, torch.sin, torch.cat, torch.stack)
+        if isinstance(x, torch.Tensor)
+        else (np.cos, np.sin, np.concatenate, np.stack)
+    )
+
+    ctr = x[..., :2]
+    w, h, angle = (x[..., i : i + 1] for i in range(2, 5))
+    cos_value, sin_value = cos(angle), sin(angle)
+    vec1 = [w / 2 * cos_value, w / 2 * sin_value]
+    vec2 = [-h / 2 * sin_value, h / 2 * cos_value]
+    vec1 = cat(vec1, -1)
+    vec2 = cat(vec2, -1)
+    pt1 = ctr + vec1 + vec2
+    pt2 = ctr + vec1 - vec2
+    pt3 = ctr - vec1 - vec2
+    pt4 = ctr - vec1 + vec2
+    return stack([pt1, pt2, pt3, pt4], -2)
+
+
+def xywh2xyxy(x):
+    """Convert bounding box coordinates from (x, y, width, height) format to (x1, y1,
+    x2, y2) format where (x1, y1) is the top-left corner and (x2, y2) is the bottom-
+    right corner. Note: ops per 2 channels faster than per channel.
+
+    Args:
+        x (np.ndarray | torch.Tensor): The input bounding box coordinates in (x, y, width, height) format.
+
+    Returns:
+        y (np.ndarray | torch.Tensor): The bounding box coordinates in (x1, y1, x2, y2) format.
+    """
+    assert (
+        x.shape[-1] == 4
+    ), f"input shape last dimension expected 4 but input shape is {x.shape}"
+    y = (
+        torch.empty_like(x) if isinstance(x, torch.Tensor) else np.empty_like(x)
+    )  # faster than clone/copy
+    xy = x[..., :2]  # centers
+    wh = x[..., 2:] / 2  # half width-height
+    y[..., :2] = xy - wh  # top left xy
+    y[..., 2:] = xy + wh  # bottom right xy
+    return y
 
 
 def bbox_iou(
@@ -273,6 +350,78 @@ def bbox_iou(
         return iou.diag()
     else:
         return iou
+
+
+def probiou(obb1, obb2, CIoU=False, eps=1e-7):
+    """Calculate probabilistic IoU between oriented bounding boxes.
+
+    Implements the algorithm from https://arxiv.org/pdf/2106.06072v1.pdf.
+
+    Args:
+        obb1 (torch.Tensor): Ground truth OBBs, shape (N, 5), format xywhr.
+        obb2 (torch.Tensor): Predicted OBBs, shape (N, 5), format xywhr.
+        CIoU (bool, optional): If True, calculate CIoU. Defaults to False.
+        eps (float, optional): Small value to avoid division by zero. Defaults to 1e-7.
+
+    Returns:
+        (torch.Tensor): OBB similarities, shape (N,).
+
+    Note:
+        OBB format: [center_x, center_y, width, height, rotation_angle].
+        If CIoU is True, returns CIoU instead of IoU.
+    """
+    x1, y1 = obb1[..., :2].split(1, dim=-1)
+    x2, y2 = obb2[..., :2].split(1, dim=-1)
+    a1, b1, c1 = _get_covariance_matrix(obb1)
+    a2, b2, c2 = _get_covariance_matrix(obb2)
+
+    t1 = (
+        ((a1 + a2) * (y1 - y2).pow(2) + (b1 + b2) * (x1 - x2).pow(2))
+        / ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2) + eps)
+    ) * 0.25
+    t2 = (
+        ((c1 + c2) * (x2 - x1) * (y1 - y2))
+        / ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2) + eps)
+    ) * 0.5
+    t3 = (
+        ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2))
+        / (
+            4
+            * ((a1 * b1 - c1.pow(2)).clamp_(0) * (a2 * b2 - c2.pow(2)).clamp_(0)).sqrt()
+            + eps
+        )
+        + eps
+    ).log() * 0.5
+    bd = (t1 + t2 + t3).clamp(eps, 100.0)
+    hd = (1.0 - (-bd).exp() + eps).sqrt()
+    iou = 1 - hd
+    if CIoU:  # only include the wh aspect ratio part
+        w1, h1 = obb1[..., 2:4].split(1, dim=-1)
+        w2, h2 = obb2[..., 2:4].split(1, dim=-1)
+        v = (4 / math.pi**2) * ((w2 / h2).atan() - (w1 / h1).atan()).pow(2)
+        with torch.no_grad():
+            alpha = v / (v - iou + (1 + eps))
+        return iou - v * alpha  # CIoU
+    return iou
+
+
+def _get_covariance_matrix(boxes):
+    """Generating covariance matrix from obbs.
+
+    Args:
+        boxes (torch.Tensor): A tensor of shape (N, 5) representing rotated bounding boxes, with xywhr format.
+
+    Returns:
+        (torch.Tensor): Covariance matrices corresponding to original rotated bounding boxes.
+    """
+    # Gaussian bounding boxes, ignore the center points (the first two columns) because they are not needed here.
+    gbbs = torch.cat((boxes[:, 2:4].pow(2) / 12, boxes[:, 4:]), dim=-1)
+    a, b, c = gbbs.split(1, dim=-1)
+    cos = c.cos()
+    sin = c.sin()
+    cos2 = cos.pow(2)
+    sin2 = sin.pow(2)
+    return a * cos2 + b * sin2, a * sin2 + b * cos2, (a - b) * cos * sin
 
 
 def non_max_suppression(

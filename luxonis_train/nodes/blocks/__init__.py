@@ -3,6 +3,7 @@ from .blocks import (
     BlockRepeater,
     ConvModule,
     EfficientDecoupledBlock,
+    EfficientOBBDecoupledBlock,
     FeatureFusionBlock,
     KeypointBlock,
     LearnableAdd,
@@ -20,6 +21,7 @@ from .blocks import (
 __all__ = [
     "autopad",
     "EfficientDecoupledBlock",
+    "EfficientOBBDecoupledBlock",
     "ConvModule",
     "UpBlock",
     "RepDownBlock",
