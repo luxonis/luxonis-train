@@ -141,7 +141,11 @@ def collate_fn(
         if label_type in [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]:
             out_labels[task] = torch.stack(annos, 0), label_type
 
-        elif label_type in [LabelType.KEYPOINTS, LabelType.BOUNDINGBOX]:
+        elif label_type in [
+            LabelType.KEYPOINTS,
+            LabelType.BOUNDINGBOX,
+            LabelType.OBOUNDINGBOX,
+        ]:
             label_box: list[Tensor] = []
             for i, box in enumerate(annos):
                 l_box = torch.zeros((box.shape[0], box.shape[1] + 1))

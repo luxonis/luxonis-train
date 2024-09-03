@@ -13,6 +13,7 @@ from luxonis_train.utils.boxutils import (
     dist2rbbox,
     probiou,
     xywh2xyxy,
+    xyxyxyxy2xywhr,
 )
 from luxonis_train.utils.types import IncompatibleException, Labels, LabelType, Packet
 
@@ -217,6 +218,10 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
     def _preprocess_target(self, target: Tensor, batch_size: int):
         """Preprocess target in shape [batch_size, N, 6] where N is maximum number of
         instances in one image."""
+        idx_cls = target[:, :2]
+        xyxyxyxy = target[:, 2:]
+        cxcywhr = xyxyxyxy2xywhr(xyxyxyxy)
+        target = torch.cat([idx_cls, torch.tensor(cxcywhr)], dim=-1)
         sample_ids, counts = cast(
             tuple[Tensor, Tensor], torch.unique(target[:, 0].int(), return_counts=True)
         )
@@ -227,8 +232,11 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
             out_target[id, :count] = target[target[:, 0] == id][:, 1:]
 
         scaled_target = out_target[:, :, 1:5] * self.gt_bboxes_scale
+        scaled_target_angle = torch.cat(
+            [scaled_target, out_target[:, :, 5].transpose(0, 1).unsqueeze(0)], dim=-1
+        )
         # out_target[..., 1:] = box_convert(scaled_target, "xywh", "xyxy")
-        out_target[..., 1:] = scaled_target
+        out_target[..., 1:] = scaled_target_angle
         return out_target
 
 

@@ -14,11 +14,11 @@ loader:
     dataset_type: YOLOV6OBB
 
 trainer:
-  preprocessing:
-    train_image_size: [&height 256, &width 320]
-    keep_aspect_ratio: False
-    normalize:
-      active: True
+  # preprocessing:
+  #   train_image_size: [&height 256, &width 320]
+  #   keep_aspect_ratio: False
+  #   normalize:
+  #     active: True
 
   batch_size: 4
   epochs: &epochs 200
