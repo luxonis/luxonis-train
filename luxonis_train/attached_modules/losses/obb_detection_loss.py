@@ -144,8 +144,8 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
         )
 
         gt_labels = target[:, :, :1]
-        gt_cxcywh = target[:, :, 1:]
-        mask_gt = (gt_cxcywh.sum(-1, keepdim=True) > 0).float()
+        gt_cxcywhr = target[:, :, 1:]
+        mask_gt = (gt_cxcywhr.sum(-1, keepdim=True) > 0).float()
 
         # TODO: log change of assigner (once common Logger)
         (
@@ -159,7 +159,7 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
             pred_bboxes.detach() * self.stride_tensor,
             self.anchor_points,
             gt_labels,
-            gt_cxcywh,
+            gt_cxcywhr,
             mask_gt,
         )
 
@@ -221,7 +221,10 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
         idx_cls = target[:, :2]
         xyxyxyxy = target[:, 2:]
         cxcywhr = xyxyxyxy2xywhr(xyxyxyxy)
-        target = torch.cat([idx_cls, torch.tensor(cxcywhr)], dim=-1)
+        if isinstance(cxcywhr, Tensor):
+            target = torch.cat([idx_cls, cxcywhr.clone().detach()], dim=-1)
+        else:
+            target = torch.cat([idx_cls, torch.tensor(cxcywhr)], dim=-1)
         sample_ids, counts = cast(
             tuple[Tensor, Tensor], torch.unique(target[:, 0].int(), return_counts=True)
         )
@@ -286,6 +289,7 @@ class DFLoss(nn.Module):
         """
         target = target.clamp_(0, self.reg_max - 1 - 0.01)
         tl = target.long()  # target left
+        # tl = target  # target left
         tr = tl + 1  # target right
         wl = tr - target  # weight left
         wr = 1 - wl  # weight right
@@ -330,7 +334,8 @@ class RotatedBboxLoss(nn.Module):
             )
             loss_dfl = (
                 self.dfl_loss(
-                    pred_dist[fg_mask].view(-1, self.dfl_loss.reg_max),
+                    # pred_dist[fg_mask].view(-1, self.dfl_loss.reg_max),
+                    pred_dist[fg_mask],
                     target_ltrb[fg_mask],
                 )
                 * weight

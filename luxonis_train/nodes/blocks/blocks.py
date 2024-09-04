@@ -81,7 +81,7 @@ class EfficientDecoupledBlock(nn.Module):
 
 
 class EfficientOBBDecoupledBlock(EfficientDecoupledBlock):
-    def __init__(self, n_classes: int, in_channels: int):
+    def __init__(self, n_classes: int, in_channels: int, reg_max: int = 16):
         """Efficient Decoupled block used for angle, class and regression predictions in
         OBB (oriented bounding box) tasks.
 
@@ -89,8 +89,23 @@ class EfficientOBBDecoupledBlock(EfficientDecoupledBlock):
         @param n_classes: Number of classes.
         @type in_channels: int
         @param in_channels: Number of input channels.
+        @type reg_max: int
+        @param reg_max: Number of bins for predicting the distributions of bounding box
+            coordinates.
         """
         super().__init__(n_classes, in_channels)
+
+        self.regression_branch = nn.Sequential(
+            ConvModule(
+                in_channels=in_channels,
+                out_channels=in_channels,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                activation=nn.SiLU(),
+            ),
+            nn.Conv2d(in_channels=in_channels, out_channels=4 * reg_max, kernel_size=1),
+        )
 
         self.angle_branch = nn.Sequential(
             ConvModule(

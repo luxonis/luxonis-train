@@ -23,6 +23,7 @@ class EfficientOBBoxHead(EfficientBBoxHead):
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
+        reg_max: int = 16,
         **kwargs,
     ):
         """Head for object detection.
@@ -41,8 +42,13 @@ class EfficientOBBoxHead(EfficientBBoxHead):
 
         @type max_det: int
         @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
+
+        @type reg_max: int
+        @param reg_max: Number of bins for predicting the distributions of bounding box coordinates.
         """
         super().__init__(n_heads, conf_thres, iou_thres, max_det, **kwargs)
+
+        self.reg_max = reg_max
 
         self.heads = nn.ModuleList()
         for i in range(self.n_heads):
@@ -69,8 +75,8 @@ class EfficientOBBoxHead(EfficientBBoxHead):
 
             reg_distri_list.append(out_reg)
 
-            out_angle = (out_angle.sigmoid() - 0.25) * math.pi  # [-pi/4, 3pi/4]
-            # out_angle = out_angle.sigmoid() * math.pi / 2  # [0, pi/2]
+            # out_angle = (out_angle.sigmoid() - 0.25) * math.pi  # [-pi/4, 3pi/4]
+            out_angle = out_angle.sigmoid() * math.pi / 2  # [0, pi/2]
             angles_list.append(out_angle)
 
         return features, cls_score_list, reg_distri_list, angles_list
@@ -133,9 +139,37 @@ class EfficientOBBoxHead(EfficientBBoxHead):
             multiply_with_stride=False,
         )
 
-        pred_bboxes = dist2rbbox(reg_dist_list, angles_list, anchor_points)
+        # The following block below is implied for the distributed predictions of the regression
+        # branch (used in DFL)
+        # if self.use_dfl: # consider adding this as a parameter
+        proj = torch.arange(
+            self.reg_max, dtype=torch.float, device=reg_dist_list.device
+        )
+        b, a, c = reg_dist_list.shape  # batch, anchors, channels
+        reg_dist_tensor = (  # we get a tensor of the expected values (mean) of the regression predictions
+            reg_dist_list.view(b, a, 4, c // 4)
+            .softmax(3)
+            .matmul(proj.type(reg_dist_list.dtype))
+        )
+        # pred_bboxes = dist2rbbox(reg_dist_tensor, angles_list, anchor_points) # xywh
+        pred_bboxes = torch.cat(
+            (
+                dist2rbbox(reg_dist_tensor, angles_list, anchor_points),
+                angles_list,
+            ),
+            dim=-1,
+        )  # xywhr
 
-        pred_bboxes *= stride_tensor
+        # pred_bboxes = xywh2xyxy(pred_bboxes)
+        # pred_bboxes = xywhr2xyxyxyxy(
+        #     pred_bboxes
+        # )  # format: [xy1, xy2, xy3, xy4], shape: (b, n, 4, 2)
+
+        xy_strided = pred_bboxes[..., :2] * stride_tensor
+        pred_bboxes = torch.cat(
+            [xy_strided, pred_bboxes[..., 2:]], dim=-1
+        )  # xywhr with xy strided
+
         output_merged = torch.cat(
             [
                 pred_bboxes,
@@ -149,6 +183,7 @@ class EfficientOBBoxHead(EfficientBBoxHead):
             dim=-1,
         )
 
+        # NOTE: change non_max_suppression for obb
         return non_max_suppression(
             output_merged,
             n_classes=self.n_classes,

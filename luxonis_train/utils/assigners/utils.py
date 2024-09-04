@@ -2,7 +2,11 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-from luxonis_train.utils.boxutils import bbox_iou, probiou, xywhr2xyxyxyxy
+from luxonis_train.utils.boxutils import (
+    batch_probiou,
+    bbox_iou,
+    xywhr2xyxyxyxy,
+)
 
 
 def candidates_in_gt(
@@ -113,11 +117,11 @@ def batch_iou_obb(batch1: Tensor, batch2: Tensor) -> Tensor:
     @type batch2: Tensor
     @param batch2: Tensor of shape C{[bs, M, 5]}
     @rtype: Tensor
-    @return: Per image box IoU of shape C{[bs, N]}
+    @return: Per image box IoU of shape C{[bs, N, M]}
     """
     ious = torch.stack(
         [
-            probiou(batch1[i], batch2[i]).squeeze(-1).clamp_(0)
+            batch_probiou(batch1[i], batch2[i]).squeeze(-1).clamp_(0)
             for i in range(batch1.size(0))
         ],
         dim=0,

@@ -151,14 +151,14 @@ def dist2rbbox(
     pred_angles: Tensor,
     anchor_points: Tensor,
 ) -> Tensor:
-    """Transform distance (ltrb) to a rotated bounding box in "cxcywh" format.
+    """Transform distance (ltrb) to a rotated bounding box in "xcycwh" format.
 
     @type distance: Tensor
     @param distance: Distance predictions
     @type anchor_points: Tensor
     @param anchor_points: Head's anchor points
     @rtype: Tensor
-    @return: BBoxes in "cxcywh" format
+    @return: BBoxes in "xcycwh" format
     """
     lt, rb = torch.split(distance, 2, -1)
     cos, sin = torch.cos(pred_angles), torch.sin(pred_angles)
@@ -241,6 +241,30 @@ def xywhr2xyxyxyxy(x):
     pt3 = ctr - vec1 - vec2
     pt4 = ctr - vec1 + vec2
     return stack([pt1, pt2, pt3, pt4], -2)
+
+
+def xyxy2xywh(x):
+    """Convert bounding box coordinates from (x1, y1, x2, y2) format to (x, y, width,
+    height) format where (x1, y1) is the top-left corner and (x2, y2) is the bottom-
+    right corner.
+
+    Args:
+        x (np.ndarray | torch.Tensor): The input bounding box coordinates in (x1, y1, x2, y2) format.
+
+    Returns:
+        y (np.ndarray | torch.Tensor): The bounding box coordinates in (x, y, width, height) format.
+    """
+    assert (
+        x.shape[-1] == 4
+    ), f"input shape last dimension expected 4 but input shape is {x.shape}"
+    y = (
+        torch.empty_like(x) if isinstance(x, torch.Tensor) else np.empty_like(x)
+    )  # faster than clone/copy
+    y[..., 0] = (x[..., 0] + x[..., 2]) / 2  # x center
+    y[..., 1] = (x[..., 1] + x[..., 3]) / 2  # y center
+    y[..., 2] = x[..., 2] - x[..., 0]  # width
+    y[..., 3] = x[..., 3] - x[..., 1]  # height
+    return y
 
 
 def xywh2xyxy(x):
@@ -430,6 +454,48 @@ def probiou(obb1, obb2, CIoU=False, eps=1e-7):
             alpha = v / (v - iou + (1 + eps))
         return iou - v * alpha  # CIoU
     return iou
+
+
+def batch_probiou(obb1, obb2, eps=1e-7):
+    """
+    Calculate the prob IoU between oriented bounding boxes, https://arxiv.org/pdf/2106.06072v1.pdf.
+
+    Args:
+        obb1 (torch.Tensor | np.ndarray): A tensor of shape (N, 5) representing ground truth obbs, with xywhr format.
+        obb2 (torch.Tensor | np.ndarray): A tensor of shape (M, 5) representing predicted obbs, with xywhr format.
+        eps (float, optional): A small value to avoid division by zero. Defaults to 1e-7.
+
+    Returns:
+        (torch.Tensor): A tensor of shape (N, M) representing obb similarities.
+    """
+    obb1 = torch.from_numpy(obb1) if isinstance(obb1, np.ndarray) else obb1
+    obb2 = torch.from_numpy(obb2) if isinstance(obb2, np.ndarray) else obb2
+
+    x1, y1 = obb1[..., :2].split(1, dim=-1)
+    x2, y2 = (x.squeeze(-1)[None] for x in obb2[..., :2].split(1, dim=-1))
+    a1, b1, c1 = _get_covariance_matrix(obb1)
+    a2, b2, c2 = (x.squeeze(-1)[None] for x in _get_covariance_matrix(obb2))
+
+    t1 = (
+        ((a1 + a2) * (y1 - y2).pow(2) + (b1 + b2) * (x1 - x2).pow(2))
+        / ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2) + eps)
+    ) * 0.25
+    t2 = (
+        ((c1 + c2) * (x2 - x1) * (y1 - y2))
+        / ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2) + eps)
+    ) * 0.5
+    t3 = (
+        ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2))
+        / (
+            4
+            * ((a1 * b1 - c1.pow(2)).clamp_(0) * (a2 * b2 - c2.pow(2)).clamp_(0)).sqrt()
+            + eps
+        )
+        + eps
+    ).log() * 0.5
+    bd = (t1 + t2 + t3).clamp(eps, 100.0)
+    hd = (1.0 - (-bd).exp() + eps).sqrt()
+    return 1 - hd
 
 
 def _get_covariance_matrix(boxes):
