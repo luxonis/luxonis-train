@@ -134,16 +134,33 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
             )
             self.anchor_points_strided = self.anchor_points / self.stride_tensor
 
-        target = self._preprocess_target(target, batch_size)
+        target = self._preprocess_target(
+            target, batch_size
+        )  # [cls, x, y, w, h, r] unnormalized
+
+        proj = torch.arange(
+            self.reg_max, dtype=torch.float, device=self.pred_distri.device
+        )
+        b, a, c = self.pred_distri.shape  # batch, anchors, channels
+        pred_distri_tensor = (  # we get a tensor of the expected values (mean) of the regression predictions
+            self.pred_distri.view(b, a, 4, c // 4)
+            .softmax(3)
+            .matmul(proj.type(self.pred_distri.dtype))
+        )
         pred_bboxes = torch.cat(
             (
-                dist2rbbox(self.pred_distri, pred_angles, self.anchor_points_strided),
+                dist2rbbox(pred_distri_tensor, pred_angles, self.anchor_points_strided),
                 pred_angles,
             ),
             dim=-1,
-        )
+        )  # xywhr unnormalized
 
-        gt_labels = target[:, :, :1]
+        xy_strided = pred_bboxes[..., :2] * self.stride_tensor
+        pred_bboxes_strided = torch.cat(
+            [xy_strided, pred_bboxes[..., 2:]], dim=-1
+        )  # xywhr unnormalized with xy strided
+
+        gt_cls = target[:, :, :1]
         gt_cxcywhr = target[:, :, 1:]
         mask_gt = (gt_cxcywhr.sum(-1, keepdim=True) > 0).float()
 
@@ -156,13 +173,14 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
             _,
         ) = self.assigner(
             pred_scores.detach(),
-            pred_bboxes.detach() * self.stride_tensor,
+            pred_bboxes_strided.detach(),
             self.anchor_points,
-            gt_labels,
+            gt_cls,
             gt_cxcywhr,
             mask_gt,
         )
 
+        # NOTE: make assigned_bboxes_strided and retern it instead of assigned_bboxes
         return (
             pred_bboxes,
             pred_scores,

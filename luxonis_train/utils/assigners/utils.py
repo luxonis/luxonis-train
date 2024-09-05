@@ -44,15 +44,12 @@ def candidates_in_gt_obb(xy_centers, gt_bboxes):
     Returns:
         (Tensor): shape(b, n_boxes, h*w)
     """
-    # (b, n_boxes, 5) --> (b, n_boxes, 4, 2)
-    corners = xywhr2xyxyxyxy(gt_bboxes)
-    # (b, n_boxes, 1, 2)
-    a, b, _, d = corners.split(1, dim=-2)
+    corners = xywhr2xyxyxyxy(gt_bboxes)  # (b, n_boxes, 5) --> (b, n_boxes, 4, 2)
+    a, b, _, d = corners.split(1, dim=-2)  # (b, n_boxes, 1, 2)
     ab = b - a
     ad = d - a
 
-    # (b, n_boxes, h*w, 2)
-    ap = xy_centers - a
+    ap = xy_centers - a  # (b, n_boxes, h*w, 2)
     norm_ab = (ab * ab).sum(dim=-1)
     norm_ad = (ad * ad).sum(dim=-1)
     ap_dot_ab = (ap * ab).sum(dim=-1)

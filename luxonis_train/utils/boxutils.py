@@ -650,6 +650,173 @@ def non_max_suppression(
     return output
 
 
+def non_max_suppression_obb(
+    preds: Tensor,
+    n_classes: int,
+    conf_thres: float = 0.25,
+    iou_thres: float = 0.45,
+    keep_classes: list[int] | None = None,
+    agnostic: bool = False,
+    multi_label: bool = False,
+    max_det: int = 300,
+    predicts_objectness: bool = True,
+) -> list[Tensor]:
+    """Non-maximum suppression on model's predictions to keep only best instances for
+    oriented bounding boxes (obb).
+
+    @type preds: Tensor
+    @param preds: Model's prediction tensor of shape [bs, N, M]. Bounding boxes are in xywhr format.
+    @type n_classes: int
+    @param n_classes: Number of model's classes.
+    @type conf_thres: float
+    @param conf_thres: Boxes with confidence higher than this will be kept. Defaults to
+        0.25.
+    @type iou_thres: float
+    @param iou_thres: Boxes with IoU higher than this will be discarded. Defaults to
+        0.45.
+    @type keep_classes: list[int] | None
+    @param keep_classes: Subset of classes to keep, if None then keep all of them.
+        Defaults to None.
+    @type agnostic: bool
+    @param agnostic: Whether perform NMS per class or treat all classes the same.
+        Defaults to False.
+    @type multi_label: bool
+    @param multi_label: Whether one prediction can have multiple labels. Defaults to
+        False.
+    @type bbox_format: BBoxFormatType
+    @param bbox_format: Input bbox format. Defaults to "xyxy".
+    @type max_det: int
+    @param max_det: Number of maximum output detections. Defaults to 300.
+    @type predicts_objectness: bool
+    @param predicts_objectness: Whether head predicts objectness confidence. Defaults to
+        True.
+    @rtype: list[Tensor]
+    @return: list of kept detections for each image, boxes in "xywhr" format. Tensors
+        with shape [n_kept, M]
+    """
+    if not (0 <= conf_thres <= 1):
+        raise ValueError(
+            f"Confidence threshold must be in range [0,1] but set to {conf_thres}."
+        )
+    if not (0 <= iou_thres <= 1):
+        raise ValueError(
+            f"IoU threshold must be in range [0,1] but set to {iou_thres}."
+        )
+
+    multi_label &= n_classes > 1
+
+    candidate_mask = preds[..., 5] > conf_thres  # all True
+    if not predicts_objectness:
+        candidate_mask = torch.logical_and(
+            candidate_mask,
+            torch.max(preds[..., 6 : 6 + n_classes], dim=-1)[0] > conf_thres,
+        )
+
+    output = [torch.zeros((0, preds.size(-1)), device=preds.device)] * preds.size(0)
+
+    for i, x in enumerate(preds):
+        curr_out = x[candidate_mask[i]]
+
+        if curr_out.size(0) == 0:
+            continue
+
+        if predicts_objectness:
+            if n_classes == 1:
+                curr_out[:, 5 : 5 + n_classes] = curr_out[
+                    :, 4:5
+                ]  # not changed (non_max_suppression)
+            else:
+                curr_out[:, 5 : 5 + n_classes] *= curr_out[
+                    :, 4:5
+                ]  # not changed (non_max_suppression)
+
+        else:
+            curr_out[:, 6 : 6 + n_classes] *= curr_out[:, 5:6]
+
+        bboxes = curr_out[:, :5]
+        keep_mask = torch.zeros(bboxes.size(0)).bool()
+
+        if multi_label:
+            box_idx, class_idx = (
+                (curr_out[:, 6 : 6 + n_classes] > conf_thres).nonzero(as_tuple=False).T
+            )
+            keep_mask[box_idx] = True
+            curr_out = torch.cat(
+                (
+                    bboxes[keep_mask],
+                    curr_out[keep_mask, class_idx + 5, None],  # why 5?
+                    class_idx[:, None].float(),
+                ),
+                1,
+            )
+        else:
+            conf, class_idx = curr_out[:, 6 : 6 + n_classes].max(1, keepdim=True)
+            keep_mask[conf.view(-1) > conf_thres] = True
+            curr_out = torch.cat((bboxes, conf, class_idx.float()), 1)[keep_mask]
+
+        if keep_classes is not None:
+            curr_out = curr_out[
+                (
+                    curr_out[:, 6:7]
+                    == torch.tensor(keep_classes, device=curr_out.device)
+                ).any(1)
+            ]
+
+        if not curr_out.size(0):
+            continue
+
+        keep_indices = batched_nms_obb(
+            boxes=curr_out[:, :5],
+            scores=curr_out[:, 5],
+            idxs=curr_out[:, 6].int() * (0 if agnostic else 1),
+            iou_threshold=iou_thres,
+        )
+
+        keep_indices = keep_indices[:max_det]
+
+        output[i] = curr_out[keep_indices]
+
+    return output
+
+
+def batched_nms_obb(
+    boxes: Tensor,
+    scores: Tensor,
+    idxs: Tensor,
+    iou_threshold: float,
+) -> Tensor:
+    # Based on Detectron2 implementation, just manually call nms() on each class independently
+    keep_mask = torch.zeros_like(scores, dtype=torch.bool)
+    for class_id in torch.unique(idxs):
+        curr_indices = torch.where(idxs == class_id)[0]
+        curr_keep_indices = batched_nms_rotated(
+            boxes[curr_indices], scores[curr_indices], iou_threshold
+        )
+        keep_mask[curr_indices[curr_keep_indices]] = True
+    keep_indices = torch.where(keep_mask)[0]
+    return keep_indices[scores[keep_indices].sort(descending=True)[1]]
+
+
+def batched_nms_rotated(boxes, scores, threshold=0.45):
+    """NMS for oriented bounding boxes using probiou and fast-nms.
+
+    Args:
+        boxes (torch.Tensor): Rotated bounding boxes, shape (N, 5), format xywhr.
+        scores (torch.Tensor): Confidence scores, shape (N,).
+        threshold (float, optional): IoU threshold. Defaults to 0.45.
+
+    Returns:
+        (torch.Tensor): Indices of boxes to keep after NMS.
+    """
+    if len(boxes) == 0:
+        return np.empty((0,), dtype=np.int8)
+    sorted_idx = torch.argsort(scores, descending=True)
+    boxes = boxes[sorted_idx]
+    ious = batch_probiou(boxes, boxes).triu_(diagonal=1)
+    pick = torch.nonzero(ious.max(dim=0)[0] < threshold).squeeze_(-1)
+    return sorted_idx[pick]
+
+
 def anchors_from_dataset(
     loader: DataLoader,
     n_anchors: int = 9,

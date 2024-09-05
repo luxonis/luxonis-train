@@ -9,7 +9,7 @@ from luxonis_train.nodes.heads import EfficientBBoxHead
 from luxonis_train.utils.boxutils import (
     anchors_for_fpn_features,
     dist2rbbox,
-    non_max_suppression,
+    non_max_suppression_obb,
 )
 from luxonis_train.utils.types import LabelType, Packet
 
@@ -151,7 +151,6 @@ class EfficientOBBoxHead(EfficientBBoxHead):
             .softmax(3)
             .matmul(proj.type(reg_dist_list.dtype))
         )
-        # pred_bboxes = dist2rbbox(reg_dist_tensor, angles_list, anchor_points) # xywh
         pred_bboxes = torch.cat(
             (
                 dist2rbbox(reg_dist_tensor, angles_list, anchor_points),
@@ -159,11 +158,6 @@ class EfficientOBBoxHead(EfficientBBoxHead):
             ),
             dim=-1,
         )  # xywhr
-
-        # pred_bboxes = xywh2xyxy(pred_bboxes)
-        # pred_bboxes = xywhr2xyxyxyxy(
-        #     pred_bboxes
-        # )  # format: [xy1, xy2, xy3, xy4], shape: (b, n, 4, 2)
 
         xy_strided = pred_bboxes[..., :2] * stride_tensor
         pred_bboxes = torch.cat(
@@ -183,13 +177,14 @@ class EfficientOBBoxHead(EfficientBBoxHead):
             dim=-1,
         )
 
-        # NOTE: change non_max_suppression for obb
-        return non_max_suppression(
+        # pred = torch.rand((1, 1344, 15))
+        # pred[..., 5] = 1
+
+        return non_max_suppression_obb(
             output_merged,
             n_classes=self.n_classes,
             conf_thres=self.conf_thres,
             iou_thres=self.iou_thres,
-            bbox_format="cxcywh",
             max_det=self.max_det,
             predicts_objectness=False,
         )
