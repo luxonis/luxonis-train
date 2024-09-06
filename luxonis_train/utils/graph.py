@@ -1,8 +1,10 @@
 from copy import deepcopy
-from typing import Generator, TypeVar
+from typing import Iterator, TypeAlias, TypeVar
+
+Graph: TypeAlias = dict[str, list[str]]
 
 
-def is_acyclic(graph: dict[str, list[str]]) -> bool:
+def is_acyclic(graph: Graph) -> bool:
     """Tests if graph is acyclic.
 
     @type graph: dict[str, list[str]]
@@ -42,8 +44,8 @@ T = TypeVar("T")
 
 
 def traverse_graph(
-    graph: dict[str, list[str]], nodes: dict[str, T]
-) -> Generator[tuple[str, T, list[str], list[str]], None, None]:
+    graph: Graph, nodes: dict[str, T]
+) -> Iterator[tuple[str, T, list[str], list[str]]]:
     """Traverses the graph in topological order.
 
     @type graph: dict[str, list[str]]
@@ -51,14 +53,13 @@ def traverse_graph(
         names, values are inputs to the node (list of node names).
     @type nodes: dict[str, T]
     @param nodes: Dictionary mapping node names to node objects.
-    @rtype: Generator[tuple[str, T, list[str], list[str]], None, None]
-    @return: Generator of tuples containing node name, node object, node dependencies
-        and unprocessed nodes.
+    @rtype: Iterator[tuple[str, T, list[str], list[str]]]
+    @return: Iterator of tuples containing node name, node object, node dependencies and
+        unprocessed nodes.
     @raises RuntimeError: If the graph is malformed.
     """
-    unprocessed_nodes = sorted(
-        set(nodes.keys())
-    )  # sort the set to allow reproducibility
+    # sort the set to allow reproducibility
+    unprocessed_nodes = sorted(set(nodes.keys()))
     processed: set[str] = set()
 
     graph = deepcopy(graph)
@@ -69,9 +70,14 @@ def traverse_graph(
             if not node_dependencies or all(
                 dependency in processed for dependency in node_dependencies
             ):
-                yield node_name, nodes[node_name], node_dependencies, unprocessed_nodes
-                processed.add(node_name)
                 unprocessed_nodes.remove(node_name)
+                yield (
+                    node_name,
+                    nodes[node_name],
+                    node_dependencies,
+                    unprocessed_nodes.copy(),
+                )
+                processed.add(node_name)
 
         if unprocessed_nodes_copy == unprocessed_nodes:
             raise RuntimeError(
