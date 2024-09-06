@@ -2,6 +2,10 @@ from copy import deepcopy
 from typing import Iterator, TypeAlias, TypeVar
 
 Graph: TypeAlias = dict[str, list[str]]
+"""Graph in a format of a dictionary of predecessors.
+
+Keys are node names, values are inputs to the node (list of node names).
+"""
 
 
 def is_acyclic(graph: Graph) -> bool:

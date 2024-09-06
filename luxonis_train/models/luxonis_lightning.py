@@ -35,6 +35,7 @@ from luxonis_train.utils import (
     traverse_graph,
 )
 from luxonis_train.utils.config import AttachedModuleConfig, Config
+from luxonis_train.utils.graph import Graph
 from luxonis_train.utils.registry import CALLBACKS, OPTIMIZERS, SCHEDULERS, Registry
 
 from .luxonis_output import LuxonisOutput
@@ -127,7 +128,7 @@ class LuxonisLightningModule(pl.LightningModule):
         self.image_source = cfg.loader.image_source
         self.dataset_metadata = dataset_metadata or DatasetMetadata()
         self.frozen_nodes: list[tuple[nn.Module, int]] = []
-        self.graph: dict[str, list[str]] = {}
+        self.graph: Graph = {}
         self.loader_input_shapes: dict[str, dict[str, Size]] = {}
         self.node_input_sources: dict[str, list[str]] = defaultdict(list)
         self.loss_weights: dict[str, float] = {}
