@@ -1,6 +1,6 @@
 import torch
 
-from luxonis_train.utils.boxutils import (
+from luxonis_train.utils import (
     anchors_for_fpn_features,
     bbox2dist,
     bbox_iou,

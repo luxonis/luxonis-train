@@ -4,8 +4,8 @@ from torch import Tensor
 from typing_extensions import TypeVarTuple, Unpack
 
 from luxonis_train.attached_modules import BaseAttachedModule
+from luxonis_train.utils import Labels, Packet
 from luxonis_train.utils.registry import VISUALIZERS
-from luxonis_train.utils.types import Labels, Packet
 
 Ts = TypeVarTuple("Ts")
 

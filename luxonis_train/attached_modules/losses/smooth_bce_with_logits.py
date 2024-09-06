@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 
 import torch
 from luxonis_ml.data import LabelType
@@ -17,7 +17,7 @@ class SmoothBCEWithLogitsLoss(BaseLoss[list[Tensor], Tensor]):
         bce_pow: float = 1.0,
         weight: list[float] | None = None,
         reduction: Literal["mean", "sum", "none"] = "mean",
-        **kwargs,
+        **kwargs: Any,
     ):
         """BCE with logits loss and label smoothing.
 
@@ -36,12 +36,10 @@ class SmoothBCEWithLogitsLoss(BaseLoss[list[Tensor], Tensor]):
             C{reduce} are in the process of being deprecated, and in the meantime,
             specifying either of those two args will override C{reduction}. Defaults to
             C{'mean'}.
-        @type kwargs: dict
-        @param kwargs: Additional arguments to pass to L{BaseLoss}.
         """
         super().__init__(**kwargs)
-        self.negative_smooth_const = 1.0 - 0.5 * label_smoothing
-        self.positive_smooth_const = 0.5 * label_smoothing
+        self.positive_smooth_const = 1.0 - label_smoothing
+        self.negative_smooth_const = label_smoothing
         self.criterion = BCEWithLogitsLoss(
             pos_weight=torch.tensor(
                 [bce_pow],
@@ -50,24 +48,26 @@ class SmoothBCEWithLogitsLoss(BaseLoss[list[Tensor], Tensor]):
             reduction=reduction,
         )
 
-    def forward(self, predictions: list[Tensor], target: Tensor) -> Tensor:
+    def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
         """Computes the BCE loss with label smoothing.
 
-        @type predictions: list[Tensor]
-        @param predictions: List of tensors of shape (N, n_classes), containing the
-            predicted class scores.
+        @type predictions: Tensor
+        @param predictions: Network predictions of shape (N, C, H, W)
         @type target: Tensor
-        @param target: A tensor of shape (N,), containing the ground-truth class labels
+        @param target: A tensor of shape (N, C, H, W).
         @rtype: Tensor
         @return: A scalar tensor.
         """
-        prediction = predictions[0]
-        smoothed_target = torch.full_like(
-            prediction,
-            self.negative_smooth_const,
-            device=prediction.device,
-        )
-        smoothed_target[
-            torch.arange(target.shape[0]), target
-        ] = self.positive_smooth_const
-        return self.criterion.forward(prediction, smoothed_target)
+        if predictions.shape != target.shape:
+            raise RuntimeError(
+                f"Target tensor dimension ({target.shape}) and predictions tensor "
+                f"dimension ({predictions.shape}) should be the same."
+            )
+
+        if self.negative_smooth_const != 0.0:
+            target = (
+                target * self.positive_smooth_const
+                + (1 - target) * self.negative_smooth_const
+            )
+
+        return self.criterion(predictions, target)

@@ -19,7 +19,7 @@ from torchvision.utils import (
     draw_segmentation_masks,
 )
 
-from luxonis_train.utils.config import Config
+from luxonis_train.utils import Config
 
 Color = str | tuple[int, int, int]
 """Color type alias.

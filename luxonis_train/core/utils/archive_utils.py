@@ -15,7 +15,7 @@ from luxonis_train.nodes.enums.head_categorization import (
     ImplementedHeads,
     ImplementedHeadsIsSoxtmaxed,
 )
-from luxonis_train.utils.config import Config
+from luxonis_train.utils import Config
 
 logger = logging.getLogger(__name__)
 

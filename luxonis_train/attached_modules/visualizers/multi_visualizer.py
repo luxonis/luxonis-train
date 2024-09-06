@@ -29,10 +29,10 @@ class MultiVisualizer(BaseVisualizer[Packet[Tensor], Labels]):
             self.visualizers.append(visualizer)
 
     def prepare(
-        self, output: Packet[Tensor], label: Labels, idx: int = 0
+        self, inputs: Packet[Tensor], label: Labels, idx: int = 0
     ) -> tuple[Packet[Tensor], Labels]:
         self._idx = idx
-        return output, label
+        return inputs, label
 
     def forward(
         self,

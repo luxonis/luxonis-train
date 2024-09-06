@@ -1,9 +1,10 @@
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor, nn
 
+from luxonis_train.loaders import BaseLoaderTorch
 from luxonis_train.nodes import BaseNode
-from luxonis_train.utils.loaders import BaseLoaderTorch
-from luxonis_train.utils.types import FeaturesProtocol, LabelType, Packet
+from luxonis_train.utils import Packet
 
 
 class CustomMultiInputLoader(BaseLoaderTorch):
@@ -61,28 +62,27 @@ class MultiInputTestBaseNode(BaseNode):
 
 
 class FullBackbone(MultiInputTestBaseNode):
-    input_protocols = [FeaturesProtocol] * 4
+    ...
 
 
 class RGBDBackbone(MultiInputTestBaseNode):
-    input_protocols = [FeaturesProtocol] * 3
+    ...
 
 
 class PointcloudBackbone(MultiInputTestBaseNode):
-    input_protocols = [FeaturesProtocol]
+    ...
 
 
 class FusionNeck(MultiInputTestBaseNode):
-    input_protocols = [FeaturesProtocol] * 3
+    ...
 
 
 class FusionNeck2(MultiInputTestBaseNode):
-    input_protocols = [FeaturesProtocol] * 3
+    ...
 
 
 class CustomSegHead1(MultiInputTestBaseNode):
     tasks = {LabelType.SEGMENTATION: "segmentation"}
-    input_protocols = [FeaturesProtocol]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -98,7 +98,6 @@ class CustomSegHead1(MultiInputTestBaseNode):
 
 class CustomSegHead2(MultiInputTestBaseNode):
     tasks = {LabelType.SEGMENTATION: "segmentation"}
-    input_protocols = [FeaturesProtocol] * 3
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

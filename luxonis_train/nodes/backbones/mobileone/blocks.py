@@ -4,168 +4,10 @@ Source: U{<https://github.com/apple/ml-mobileone>}
 @license: U{Apple<https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
 """
 
-
-from typing import Literal
-
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule, SqueezeExciteBlock
-
-
-class MobileOne(BaseNode[Tensor, list[Tensor]]):
-    """Implementation of MobileOne backbone.
-
-    TODO: add more details
-    """
-
-    in_channels: int
-
-    VARIANTS_SETTINGS: dict[str, dict] = {
-        "s0": {"width_multipliers": (0.75, 1.0, 1.0, 2.0), "num_conv_branches": 4},
-        "s1": {"width_multipliers": (1.5, 1.5, 2.0, 2.5)},
-        "s2": {"width_multipliers": (1.5, 2.0, 2.5, 4.0)},
-        "s3": {"width_multipliers": (2.0, 2.5, 3.0, 4.0)},
-        "s4": {"width_multipliers": (3.0, 3.5, 3.5, 4.0), "use_se": True},
-    }
-
-    def __init__(self, variant: Literal["s0", "s1", "s2", "s3", "s4"] = "s0", **kwargs):
-        """Constructor for the MobileOne module.
-
-        @type variant: Literal["s0", "s1", "s2", "s3", "s4"]
-        @param variant: Specifies which variant of the MobileOne network to use. For
-            details, see TODO. Defaults to "s0".
-        """
-        super().__init__(**kwargs)
-
-        if variant not in MobileOne.VARIANTS_SETTINGS.keys():
-            raise ValueError(
-                f"MobileOne model variant should be in {list(MobileOne.VARIANTS_SETTINGS.keys())}"
-            )
-
-        variant_params = MobileOne.VARIANTS_SETTINGS[variant]
-        # TODO: make configurable
-        self.width_multipliers = variant_params["width_multipliers"]
-        self.num_conv_branches = variant_params.get("num_conv_branches", 1)
-        self.num_blocks_per_stage = [2, 8, 10, 1]
-        self.use_se = variant_params.get("use_se", False)
-
-        self.in_planes = min(64, int(64 * self.width_multipliers[0]))
-
-        self.stage0 = MobileOneBlock(
-            in_channels=self.in_channels,
-            out_channels=self.in_planes,
-            kernel_size=3,
-            stride=2,
-            padding=1,
-        )
-        self.cur_layer_idx = 1
-        self.stage1 = self._make_stage(
-            int(64 * self.width_multipliers[0]),
-            self.num_blocks_per_stage[0],
-            num_se_blocks=0,
-        )
-        self.stage2 = self._make_stage(
-            int(128 * self.width_multipliers[1]),
-            self.num_blocks_per_stage[1],
-            num_se_blocks=0,
-        )
-        self.stage3 = self._make_stage(
-            int(256 * self.width_multipliers[2]),
-            self.num_blocks_per_stage[2],
-            num_se_blocks=int(self.num_blocks_per_stage[2] // 2) if self.use_se else 0,
-        )
-        self.stage4 = self._make_stage(
-            int(512 * self.width_multipliers[3]),
-            self.num_blocks_per_stage[3],
-            num_se_blocks=self.num_blocks_per_stage[3] if self.use_se else 0,
-        )
-
-    def forward(self, inputs: Tensor) -> list[Tensor]:
-        outs = []
-        x = self.stage0(inputs)
-        outs.append(x)
-        x = self.stage1(x)
-        outs.append(x)
-        x = self.stage2(x)
-        outs.append(x)
-        x = self.stage3(x)
-        outs.append(x)
-        x = self.stage4(x)
-        outs.append(x)
-
-        return outs
-
-    def export_mode(self, export: bool = True) -> None:
-        """Sets the module to export mode.
-
-        Reparameterizes the model to obtain a plain CNN-like structure for inference.
-        TODO: add more details
-
-        @warning: The reparametrization is destructive and cannot be reversed!
-
-        @type export: bool
-        @param export: Whether to set the export mode to True or False. Defaults to True.
-        """
-        if export:
-            for module in self.modules():
-                if hasattr(module, "reparameterize"):
-                    module.reparameterize()
-
-    def _make_stage(self, planes: int, num_blocks: int, num_se_blocks: int):
-        """Build a stage of MobileOne model.
-
-        @type planes: int
-        @param planes: Number of output channels.
-        @type num_blocks: int
-        @param num_blocks: Number of blocks in this stage.
-        @type num_se_blocks: int
-        @param num_se_blocks: Number of SE blocks in this stage.
-        @rtype: nn.Sequential
-        @return: A stage of MobileOne model.
-        """
-        # Get strides for all layers
-        strides = [2] + [1] * (num_blocks - 1)
-        blocks = []
-        for ix, stride in enumerate(strides):
-            use_se = False
-            if num_se_blocks > num_blocks:
-                raise ValueError(
-                    "Number of SE blocks cannot " "exceed number of layers."
-                )
-            if ix >= (num_blocks - num_se_blocks):
-                use_se = True
-
-            # Depthwise conv
-            blocks.append(
-                MobileOneBlock(
-                    in_channels=self.in_planes,
-                    out_channels=self.in_planes,
-                    kernel_size=3,
-                    stride=stride,
-                    padding=1,
-                    groups=self.in_planes,
-                    use_se=use_se,
-                    num_conv_branches=self.num_conv_branches,
-                )
-            )
-            # Pointwise conv
-            blocks.append(
-                MobileOneBlock(
-                    in_channels=self.in_planes,
-                    out_channels=planes,
-                    kernel_size=1,
-                    stride=1,
-                    padding=0,
-                    groups=1,
-                    use_se=use_se,
-                    num_conv_branches=self.num_conv_branches,
-                )
-            )
-            self.in_planes = planes
-            self.cur_layer_idx += 1
-        return nn.Sequential(*blocks)
 
 
 class MobileOneBlock(nn.Module):
@@ -220,13 +62,14 @@ class MobileOneBlock(nn.Module):
         self.inference_mode = False
 
         # Check if SE-ReLU is requested
+        self.se: nn.Module
         if use_se:
             self.se = SqueezeExciteBlock(
                 in_channels=out_channels,
                 intermediate_channels=int(out_channels * 0.0625),
             )
         else:
-            self.se = nn.Identity()  # type: ignore
+            self.se = nn.Identity()
         self.activation = nn.ReLU()
 
         # Re-parameterizable skip connection
@@ -237,7 +80,7 @@ class MobileOneBlock(nn.Module):
         )
 
         # Re-parameterizable conv branches
-        rbr_conv = list()
+        rbr_conv: list[nn.Module] = []
         for _ in range(self.num_conv_branches):
             rbr_conv.append(
                 ConvModule(
@@ -315,10 +158,10 @@ class MobileOneBlock(nn.Module):
         # Delete un-used branches
         for para in self.parameters():
             para.detach_()
-        self.__delattr__("rbr_conv")
-        self.__delattr__("rbr_scale")
+        del self.rbr_conv
+        del self.rbr_scale
         if hasattr(self, "rbr_skip"):
-            self.__delattr__("rbr_skip")
+            del self.rbr_skip
 
         self.inference_mode = True
 
@@ -356,7 +199,7 @@ class MobileOneBlock(nn.Module):
         bias_final = bias_conv + bias_scale + bias_identity
         return kernel_final, bias_final
 
-    def _fuse_bn_tensor(self, branch) -> tuple[Tensor, Tensor]:
+    def _fuse_bn_tensor(self, branch: nn.Module) -> tuple[Tensor, Tensor]:
         """Method to fuse batchnorm layer with preceeding conv layer.
         Reference: U{https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py#L95}
 

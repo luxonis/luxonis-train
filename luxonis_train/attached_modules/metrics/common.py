@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import torchmetrics
 from luxonis_ml.data import LabelType
@@ -9,8 +10,10 @@ from .base_metric import BaseMetric
 logger = logging.getLogger(__name__)
 
 
-class TorchMetricWrapper(BaseMetric):
-    def __init__(self, **kwargs):
+class TorchMetricWrapper(BaseMetric[Tensor]):
+    Metric: type[torchmetrics.Metric]
+
+    def __init__(self, **kwargs: Any):
         super().__init__(node=kwargs.pop("node", None))
         task = kwargs.get("task")
 
@@ -38,27 +41,29 @@ class TorchMetricWrapper(BaseMetric):
 
         if self._task == "multiclass":
             if "num_classes" not in kwargs:
-                if self.node is None:
+                try:
+                    kwargs["num_classes"] = self.node.n_classes
+                except RuntimeError as e:
                     raise ValueError(
                         "Either `node` or `num_classes` must be provided to "
                         "multiclass torchmetrics."
-                    )
-                kwargs["num_classes"] = self.node.n_classes
-        elif self._task == "multilabel":
+                    ) from e
+        else:
             if "num_labels" not in kwargs:
-                if self.node is None:
+                try:
+                    kwargs["num_labels"] = self.node.n_classes
+                except RuntimeError as e:
                     raise ValueError(
                         "Either `node` or `num_labels` must be provided to "
                         "multilabel torchmetrics."
-                    )
-                kwargs["num_labels"] = self.node.n_classes
+                    ) from e
 
         self.metric = self.Metric(**kwargs)
 
-    def update(self, preds, target, *args, **kwargs) -> None:
+    def update(self, preds: Tensor, target: Tensor) -> None:
         if self._task in ["multiclass"]:
             target = target.argmax(dim=1)
-        self.metric.update(preds, target, *args, **kwargs)
+        self.metric.update(preds, target)
 
     def compute(self) -> Tensor:
         return self.metric.compute()

@@ -1,6 +1,7 @@
 from collections import defaultdict
 from collections.abc import Mapping
 from logging import getLogger
+from pathlib import Path
 from typing import Literal, cast
 
 import lightning.pytorch as pl
@@ -22,16 +23,19 @@ from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
     get_unnormalized_images,
 )
-from luxonis_train.callbacks import (
-    BaseLuxonisProgressBar,
-    ModuleFreezer,
-)
+from luxonis_train.callbacks import BaseLuxonisProgressBar, ModuleFreezer
 from luxonis_train.nodes import BaseNode
+from luxonis_train.utils import (
+    DatasetMetadata,
+    Kwargs,
+    Labels,
+    LuxonisTrackerPL,
+    Packet,
+    to_shape_packet,
+    traverse_graph,
+)
 from luxonis_train.utils.config import AttachedModuleConfig, Config
-from luxonis_train.utils.general import DatasetMetadata, to_shape_packet, traverse_graph
 from luxonis_train.utils.registry import CALLBACKS, OPTIMIZERS, SCHEDULERS, Registry
-from luxonis_train.utils.tracker import LuxonisTrackerPL
-from luxonis_train.utils.types import Kwargs, Labels, Packet
 
 from .luxonis_output import LuxonisOutput
 
@@ -723,7 +727,8 @@ class LuxonisLightningModule(pl.LightningModule):
     def configure_optimizers(
         self,
     ) -> tuple[
-        list[torch.optim.Optimizer], list[torch.optim.lr_scheduler._LRScheduler]
+        list[torch.optim.Optimizer],
+        list[torch.optim.lr_scheduler._LRScheduler],
     ]:
         """Configures model optimizers and schedulers."""
         cfg_optimizer = self.cfg.trainer.optimizer
@@ -739,7 +744,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         return [optimizer], [scheduler]
 
-    def load_checkpoint(self, path: str | None) -> None:
+    def load_checkpoint(self, path: str | Path | None) -> None:
         """Loads checkpoint weights from provided path.
 
         Loads the checkpoints gracefully, ignoring keys that are not found in the model
@@ -751,6 +756,7 @@ class LuxonisLightningModule(pl.LightningModule):
         if path is None:
             return
 
+        path = str(path)
         checkpoint = torch.load(path, map_location=self.device)
 
         if "state_dict" not in checkpoint:

@@ -1,9 +1,11 @@
+from typing import Any
+
 import lightning.pytorch as pl
 
-from luxonis_train.utils.config import Config
+from luxonis_train.utils import Config
 
 
-def create_trainer(cfg: Config, **kwargs) -> pl.Trainer:
+def create_trainer(cfg: Config, **kwargs: Any) -> pl.Trainer:
     """Creates Pytorch Lightning trainer.
 
     @type cfg: Config

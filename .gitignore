@@ -152,5 +152,5 @@ mlartifacts
 mlruns
 wandb
 tests/_data
-tests/integration/_test-output
+tests/integration/save-directory
 data

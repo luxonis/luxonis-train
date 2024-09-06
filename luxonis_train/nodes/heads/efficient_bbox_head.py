@@ -1,22 +1,20 @@
-"""Head for object detection.
-
-Adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial
-Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
-"""
-
-from typing import Literal
+import logging
+from typing import Any, Literal
 
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import EfficientDecoupledBlock
-from luxonis_train.utils.boxutils import (
+from luxonis_train.utils import (
+    Packet,
     anchors_for_fpn_features,
     dist2bbox,
     non_max_suppression,
 )
-from luxonis_train.utils.types import LabelType, Packet
+
+logger = logging.getLogger(__name__)
 
 
 class EfficientBBoxHead(
@@ -27,32 +25,30 @@ class EfficientBBoxHead(
 
     def __init__(
         self,
-        n_heads: Literal[2, 3, 4] = 3,
+        num_heads: Literal[2, 3, 4] = 3,
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
-        **kwargs,
+        **kwargs: Any,
     ):
         """Head for object detection.
 
-        TODO: add more documentation
-
-        @type n_heads: Literal[2,3,4]
-        @param n_heads: Number of output heads. Defaults to 3.
-          ***Note:*** Should be same also on neck in most cases.
-
+        Adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial
+        Applications <https://arxiv.org/pdf/2209.02976.pdf>}.
+        @type num_heads: Literal[2,3,4]
+        @param num_heads: Number of output heads. Defaults to 3. B{Note:} Should be same
+            also on neck in most cases.
         @type conf_thres: float
         @param conf_thres: Threshold for confidence. Defaults to C{0.25}.
-
         @type iou_thres: float
         @param iou_thres: Threshold for IoU. Defaults to C{0.45}.
-
         @type max_det: int
-        @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
+        @param max_det: Maximum number of detections retained after NMS. Defaults to
+            C{300}.
         """
         super().__init__(**kwargs)
 
-        self.n_heads = n_heads
+        self.num_heads = num_heads
 
         self.conf_thres = conf_thres
         self.iou_thres = iou_thres
@@ -63,7 +59,14 @@ class EfficientBBoxHead(
         self.grid_cell_size = 5.0
 
         self.heads = nn.ModuleList()
-        for i in range(self.n_heads):
+        if len(self.in_channels) < self.num_heads:
+            logger.warning(
+                f"Head '{self.name}' was set to use {self.num_heads} heads, "
+                f"but received only {len(self.in_channels)} inputs. "
+                f"Changing number of heads to {len(self.in_channels)}."
+            )
+            self.num_heads = len(self.in_channels)
+        for i in range(self.num_heads):
             curr_head = EfficientDecoupledBlock(
                 n_classes=self.n_classes,
                 in_channels=self.in_channels[i],
@@ -92,7 +95,7 @@ class EfficientBBoxHead(
         features, cls_score_list, reg_distri_list = output
 
         if self.export:
-            outputs = []
+            outputs: list[Tensor] = []
             for out_cls, out_reg in zip(cls_score_list, reg_distri_list, strict=True):
                 conf, _ = out_cls.max(1, keepdim=True)
                 out = torch.cat([out_reg, conf, out_cls], dim=1)
@@ -127,7 +130,7 @@ class EfficientBBoxHead(
         stride = torch.tensor(
             [
                 self.original_in_shape[1] / x[2]  # type: ignore
-                for x in self.in_sizes[: self.n_heads]
+                for x in self.in_sizes[: self.num_heads]
             ],
             dtype=torch.int,
         )

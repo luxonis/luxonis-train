@@ -122,7 +122,7 @@ class ModelConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_graph(self) -> Self:
-        from luxonis_train.utils.general import is_acyclic
+        from luxonis_train.utils import is_acyclic
 
         graph = {node.alias or node.name: node.inputs for node in self.nodes}
         if not is_acyclic(graph):
@@ -147,7 +147,7 @@ class ModelConfig(BaseModelExtraForbid):
             ("metrics", self.metrics),
             ("visualizers", self.visualizers),
         ]:
-            names = set()
+            names: set[str] = set()
             for obj in objects:
                 obj: AttachedModuleConfig
                 name = obj.alias or obj.name

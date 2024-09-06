@@ -1,21 +1,15 @@
-"""Implementation of the RepPANNeck module.
-
-Adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial
-Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
-It has the balance of feature fusion ability and hardware efficiency.
-"""
-
-
-from typing import Literal, cast
+from typing import Any, Literal
 
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import RepDownBlock, RepUpBlock
-from luxonis_train.utils.general import make_divisible
+from luxonis_train.utils import make_divisible
 
 
 class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
+    in_channels: list[int]
+
     def __init__(
         self,
         num_heads: Literal[2, 3, 4] = 3,
@@ -23,23 +17,27 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         num_repeats: list[int] | None = None,
         depth_mul: float = 0.33,
         width_mul: float = 0.25,
-        **kwargs,
+        **kwargs: Any,
     ):
-        """Constructor for the RepPANNeck module.
+        """Implementation of the RepPANNeck module.
+
+        Adapted from U{YOLOv6: A Single-Stage Object Detection Framework
+        for Industrial Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
+        It has the balance of feature fusion ability and hardware efficiency.
 
         @type num_heads: Literal[2,3,4]
-        @param num_heads: Number of output heads. Defaults to 3. ***Note: Should be same
-            also on head in most cases.***
+        @param num_heads: Number of output heads. Defaults to 3. B{Note: Should be same
+            also on head in most cases.}
         @type channels_list: list[int] | None
-        @param channels_list: List of number of channels for each block. Defaults to
-            C{[256, 128, 128, 256, 256, 512]}.
+        @param channels_list: List of number of channels for each block.
+            Defaults to C{[256, 128, 128, 256, 256, 512]}.
         @type num_repeats: list[int] | None
-        @param num_repeats: List of number of repeats of RepVGGBlock. Defaults to C{[12,
-            12, 12, 12]}.
+        @param num_repeats: List of number of repeats of RepVGGBlock.
+            Defaults to C{[12, 12, 12, 12]}.
         @type depth_mul: float
-        @param depth_mul: Depth multiplier. Defaults to 0.33.
+        @param depth_mul: Depth multiplier. Defaults to C{0.33}.
         @type width_mul: float
-        @param width_mul: Width multiplier. Defaults to 0.25.
+        @param width_mul: Width multiplier. Defaults to C{0.25}.
         """
 
         super().__init__(**kwargs)
@@ -57,9 +55,9 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
 
         self.up_blocks = nn.ModuleList()
 
-        in_channels = cast(list[int], self.in_channels)[-1]
+        in_channels = self.in_channels[-1]
         out_channels = channels_list[0]
-        in_channels_next = cast(list[int], self.in_channels)[-2]
+        in_channels_next = self.in_channels[-2]
         curr_num_repeats = num_repeats[0]
         up_out_channel_list = [in_channels]  # used in DownBlocks
 
@@ -78,7 +76,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
 
             in_channels = out_channels
             out_channels = channels_list[i]
-            in_channels_next = cast(list[int], self.in_channels)[-1 - (i + 1)]
+            in_channels_next = self.in_channels[-1 - (i + 1)]
             curr_num_repeats = num_repeats[i]
 
         self.down_blocks = nn.ModuleList()
@@ -110,17 +108,16 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
             curr_num_repeats = num_repeats_down_blocks[i]
 
     def forward(self, inputs: list[Tensor]) -> list[Tensor]:
-        x0 = inputs[-1]
-        up_block_outs = []
-        for i, up_block in enumerate(self.up_blocks):
-            conv_out, x0 = up_block(x0, inputs[-1 - (i + 1)])
+        x = inputs[-1]
+        up_block_outs: list[Tensor] = []
+        for up_block, input_ in zip(self.up_blocks, inputs[-2::-1], strict=False):
+            conv_out, x = up_block(x, input_)
             up_block_outs.append(conv_out)
-        up_block_outs.reverse()
 
-        outs = [x0]
-        for i, down_block in enumerate(self.down_blocks):
-            x0 = down_block(x0, up_block_outs[i])
-            outs.append(x0)
+        outs = [x]
+        for down_block, up_out in zip(self.down_blocks, reversed(up_block_outs)):
+            x = down_block(x, up_out)
+            outs.append(x)
         return outs
 
     def _fit_to_num_heads(
@@ -130,11 +127,11 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
 
         Also scales the numbers based on offset
         """
-        if self.num_heads == 3:
-            ...
-        elif self.num_heads == 2:
+        if self.num_heads == 2:
             channels_list = [channels_list[0], channels_list[4], channels_list[5]]
             num_repeats = [num_repeats[0], num_repeats[3]]
+        elif self.num_heads == 3:
+            return channels_list, num_repeats
         elif self.num_heads == 4:
             channels_list = [
                 channels_list[0],
@@ -158,6 +155,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         else:
             raise ValueError(
                 f"Specified number of heads ({self.num_heads}) not supported."
+                "The number of heads should be 2, 3 or 4."
             )
 
         return channels_list, num_repeats

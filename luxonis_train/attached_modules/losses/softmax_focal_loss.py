@@ -1,6 +1,4 @@
-# TODO: document
-
-from typing import Literal
+from typing import Any, Literal
 
 import torch
 from luxonis_ml.data import LabelType
@@ -11,6 +9,7 @@ from luxonis_train.attached_modules.losses import BaseLoss
 from .cross_entropy import CrossEntropyLoss
 
 
+# TODO: Make focal losses support multi-class tasks
 class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
     supported_labels = [LabelType.SEGMENTATION, LabelType.CLASSIFICATION]
 
@@ -19,9 +18,10 @@ class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
         alpha: float | list[float] = 0.25,
         gamma: float = 2.0,
         reduction: Literal["none", "mean", "sum"] = "mean",
-        **kwargs,
+        **kwargs: Any,
     ):
-        """Focal loss implementation for multi-class/multi-label tasks using Softmax.
+        """Focal loss implementation for binary classification and segmentation tasks
+        using Softmax.
 
         @type alpha: float | list[float]
         @param alpha: Weighting factor for the rare class. Defaults to C{0.25}.

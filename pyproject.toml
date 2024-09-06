@@ -54,3 +54,32 @@ ignore_missing_imports = true
 
 [tool.pyright]
 typeCheckingMode = "basic"
+reportMissingTypeStubs = "none"
+reportPrivateImportUsage = "none"
+reportPrivateUsage = "none"
+reportIncompatibleVariableOverride = "none"
+reportIncompatibleMethodOverride = "none"
+reportUnnecessaryIsInstance = "none"
+
+
+[tool.coverage.run]
+omit = [
+    "**/__main__.py",
+    "**/gpu_stats_monitor.py"
+]
+
+[tool.coverage.report]
+exclude_also = [
+    "def __repr__",
+    "def __rich_repr__",
+    "def __str__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "except ImportError",
+    "@abstractmethod",
+    "@overload",
+    "exit",
+    "cv2\\.imshow",
+    "cv2\\.waitKey",
+    "logger\\.",
+]

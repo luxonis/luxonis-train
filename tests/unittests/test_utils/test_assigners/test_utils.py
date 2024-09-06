@@ -1,10 +1,6 @@
 import torch
 
-from luxonis_train.utils.assigners.utils import (
-    batch_iou,
-    candidates_in_gt,
-    fix_collisions,
-)
+from luxonis_train.assigners.utils import batch_iou, candidates_in_gt, fix_collisions
 
 
 def test_fix_collisions():

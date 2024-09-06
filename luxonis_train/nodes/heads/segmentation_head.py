@@ -1,37 +1,31 @@
-"""Implementation of a basic segmentation head.
+from typing import Any
 
-Adapted from: U{https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py}
-@license: U{BSD-3 <https://github.com/pytorch/vision/blob/main/LICENSE>}
-"""
-
-import torch.nn as nn
-from torch import Tensor
+from luxonis_ml.data import LabelType
+from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import UpBlock
-from luxonis_train.utils.general import infer_upscale_factor
-from luxonis_train.utils.types import LabelType
+from luxonis_train.utils import infer_upscale_factor
 
 
 class SegmentationHead(BaseNode[Tensor, Tensor]):
     in_height: int
+    in_width: int
     in_channels: int
+
     tasks: list[LabelType] = [LabelType.SEGMENTATION]
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any):
         """Basic segmentation FCN head.
 
-        Note that it doesn't ensure that ouptut is same size as input.
-
-        @type kwargs: Any
-        @param kwargs: Additional arguments to pass to L{BaseNode}.
+        Adapted from: U{https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py}
+        @license: U{BSD-3 <https://github.com/pytorch/vision/blob/main/LICENSE>}
         """
         super().__init__(**kwargs)
+        h, w = self.original_in_shape[1:]
+        num_up = infer_upscale_factor((self.in_height, self.in_width), (h, w))
 
-        original_height = self.original_in_shape[1]
-        num_up = infer_upscale_factor(self.in_height, original_height, strict=False)
-
-        modules = []
+        modules: list[nn.Module] = []
         in_channels = self.in_channels
         for _ in range(int(num_up)):
             modules.append(

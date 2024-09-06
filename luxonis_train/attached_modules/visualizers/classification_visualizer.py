@@ -39,14 +39,14 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
         return self.node.class_names[idx]
 
     def _generate_plot(self, prediction: Tensor, width: int, height: int) -> Tensor:
-        prediction = prediction.softmax(-1).detach().cpu().numpy()
+        pred = prediction.softmax(-1).detach().cpu().numpy()
         fig, ax = plt.subplots(figsize=(width / 100, height / 100))
-        ax.bar(np.arange(len(prediction)), prediction)
-        ax.set_xticks(np.arange(len(prediction)))
+        ax.bar(np.arange(len(pred)), pred)
+        ax.set_xticks(np.arange(len(pred)))
         if self.node.class_names is not None:
             ax.set_xticklabels(self.node.class_names, rotation=90)
         else:
-            ax.set_xticklabels(np.arange(1, len(prediction) + 1))
+            ax.set_xticklabels(np.arange(1, len(pred) + 1))
         ax.set_ylim(0, 1)
         ax.set_xlabel("Class")
         ax.set_ylabel("Probability")

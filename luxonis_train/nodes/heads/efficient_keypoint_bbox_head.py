@@ -1,15 +1,16 @@
-from typing import Literal
+from typing import Any, Literal
 
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks import ConvModule
-from luxonis_train.utils.boxutils import (
+from luxonis_train.utils import (
+    Packet,
     anchors_for_fpn_features,
     dist2bbox,
     non_max_suppression,
 )
-from luxonis_train.utils.types import LabelType, Packet
 
 from .efficient_bbox_head import EfficientBBoxHead
 
@@ -19,20 +20,20 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
 
     def __init__(
         self,
-        n_heads: Literal[2, 3, 4] = 3,
+        num_heads: Literal[2, 3, 4] = 3,
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
-        **kwargs,
+        **kwargs: Any,
     ):
         """Head for object and keypoint detection.
 
         Adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial
         Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
 
-        @param n_heads: Number of output heads. Defaults to C{3}.
+        @param num_heads: Number of output heads. Defaults to C{3}.
             B{Note:} Should be same also on neck in most cases.
-        @type n_heads: int
+        @type num_heads: int
 
         @param conf_thres: Threshold for confidence. Defaults to C{0.25}.
         @type conf_thres: float
@@ -44,7 +45,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         @type max_det: int
         """
         super().__init__(
-            n_heads=n_heads,
+            num_heads=num_heads,
             conf_thres=conf_thres,
             iou_thres=iou_thres,
             max_det=max_det,
@@ -77,7 +78,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         )
 
         kpt_list: list[Tensor] = []
-        for i in range(self.n_heads):
+        for i in range(self.num_heads):
             kpt_pred = self.kpt_layers[i](inputs[i])
             kpt_list.append(kpt_pred)
 
@@ -89,12 +90,12 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         features, cls_score_list, reg_distri_list, kpt_list = output
         bs = features[0].shape[0]
         if self.export:
-            outputs = []
+            outputs: list[Tensor] = []
             for out_cls, out_reg, out_kpts in zip(
                 cls_score_list, reg_distri_list, kpt_list, strict=True
             ):
-                chunks = out_kpts.split(3, dim=1)
-                modified_chunks = []
+                chunks = torch.split(out_kpts, 3, dim=1)
+                modified_chunks: list[Tensor] = []
                 for chunk in chunks:
                     x = chunk[:, 0:1, :, :]
                     y = chunk[:, 1:2, :, :]
@@ -105,6 +106,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
                 out = torch.cat([out_reg, out_cls, out_kpts_modified], dim=1)
                 outputs.append(out)
             return {"outputs": outputs}
+
         cls_tensor = torch.cat(
             [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))], dim=2
         ).permute(0, 2, 1)
@@ -143,7 +145,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             "keypoints_raw": [kpt_tensor],
         }
 
-    def _dist2kpts(self, kpts):
+    def _dist2kpts(self, kpts: Tensor) -> Tensor:
         """Decodes keypoints."""
         y = kpts.clone()
 

@@ -210,6 +210,6 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
 | Key         | Type        | Default value | Description                                        |
 | ----------- | ----------- | ------------- | -------------------------------------------------- |
 | n_keypoints | int \| None | None          | Number of keypoints.                               |
-| n_heads     | int         | 3             | Number of output heads                             |
+| num_heads   | int         | 3             | Number of output heads                             |
 | conf_thres  | float       | 0.25          | confidence threshold for nms (used for evaluation) |
 | iou_thres   | float       | 0.45          | iou threshold for nms (used for evaluation)        |

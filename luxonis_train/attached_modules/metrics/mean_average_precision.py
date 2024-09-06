@@ -1,13 +1,18 @@
+from typing import Any
+
 import torchmetrics.detection as detection
+from luxonis_ml.data import LabelType
 from torch import Tensor
 from torchvision.ops import box_convert
 
-from luxonis_train.utils.types import Labels, LabelType, Packet
+from luxonis_train.utils import Labels, Packet
 
 from .base_metric import BaseMetric
 
 
-class MeanAveragePrecision(BaseMetric):
+class MeanAveragePrecision(
+    BaseMetric[list[dict[str, Tensor]], list[dict[str, Tensor]]]
+):
     """Compute the Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR) for object
     detection predictions.
 
@@ -17,7 +22,7 @@ class MeanAveragePrecision(BaseMetric):
 
     supported_labels = [LabelType.BOUNDINGBOX]
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
         self.metric = detection.MeanAveragePrecision()
 
@@ -29,10 +34,10 @@ class MeanAveragePrecision(BaseMetric):
         self.metric.update(outputs, labels)
 
     def prepare(
-        self, outputs: Packet[Tensor], labels: Labels
+        self, inputs: Packet[Tensor], labels: Labels
     ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
-        box_label = self.get_label(labels)[0]
-        output_nms = self.get_input_tensors(outputs)
+        box_label = self.get_label(labels)
+        output_nms = self.get_input_tensors(inputs)
 
         image_size = self.node.original_in_shape[1:]
 
@@ -59,11 +64,21 @@ class MeanAveragePrecision(BaseMetric):
         self.metric.reset()
 
     def compute(self) -> tuple[Tensor, dict[str, Tensor]]:
-        metric_dict = self.metric.compute()
+        metric_dict: dict[str, Tensor] = self.metric.compute()
 
         del metric_dict["classes"]
         del metric_dict["map_per_class"]
         del metric_dict["mar_100_per_class"]
+        for key in list(metric_dict.keys()):
+            if "map" in key:
+                map = metric_dict[key]
+                mar_key = key.replace("map", "mar")
+                if mar_key in metric_dict:
+                    mar = metric_dict[mar_key]
+                    metric_dict[key.replace("map", "f1")] = (
+                        2 * (map * mar) / (map + mar)
+                    )
+
         map = metric_dict.pop("map")
 
         return map, metric_dict

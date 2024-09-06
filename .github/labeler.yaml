@@ -1,0 +1,32 @@
+tests:
+  - changed-files:
+    - any-glob-to-any-file: 'tests/*'
+  - head-branch:
+    - 'test/*'
+    - 'tests/*'
+
+DevOps:
+  - changed-files:
+    - any-glob-to-any-file: '.github/*'
+
+CLI:
+  - changed-files:
+    - any-glob-to-any-file: '**/__main__.py'
+
+release:
+  - base-branch: 'main'
+
+enhancement:
+  - head-branch:
+    - 'feature/*'
+    - 'feat/*'
+    - 'enhancement/*'
+
+fix:
+  - head-branch:
+    - 'fix/*'
+    - 'bug/*'
+    - 'hotfix/*'
+    - 'issue/*'
+    - 'bugfix/*'
+    - 'patch/*'

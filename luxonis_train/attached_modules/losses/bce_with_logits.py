@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 
 import torch
 from luxonis_ml.data import LabelType
@@ -15,7 +15,7 @@ class BCEWithLogitsLoss(BaseLoss[Tensor, Tensor]):
         weight: list[float] | None = None,
         reduction: Literal["none", "mean", "sum"] = "mean",
         pos_weight: Tensor | None = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         """This loss combines a L{nn.Sigmoid} layer and the L{nn.BCELoss} in one single
         class. This version is more numerically stable than using a plain C{Sigmoid}
@@ -53,6 +53,15 @@ class BCEWithLogitsLoss(BaseLoss[Tensor, Tensor]):
         )
 
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
+        """Computes the BCE loss from logits.
+
+        @type predictions: Tensor
+        @param predictions: Network predictions of shape (N, C, H, W)
+        @type target: Tensor
+        @param target: A tensor of shape (N, C, H, W).
+        @rtype: Tensor
+        @return: A scalar tensor.
+        """
         if predictions.shape != target.shape:
             raise RuntimeError(
                 f"Target tensor dimension ({target.shape}) and preds tensor "

@@ -1,9 +1,8 @@
 import logging
 
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor
-
-from luxonis_train.utils.types import LabelType
 
 from .base_visualizer import BaseVisualizer
 from .utils import Color, draw_bounding_box_labels, draw_bounding_boxes, get_color

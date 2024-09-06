@@ -108,10 +108,9 @@ class ATSSAssigner(nn.Module):
         )
 
         # Soft label with IoU
-        if pred_bboxes is not None:
-            ious = batch_iou(gt_bboxes, pred_bboxes) * mask_pos
-            ious = ious.max(dim=-2)[0].unsqueeze(-1)
-            assigned_scores *= ious
+        ious = batch_iou(gt_bboxes, pred_bboxes) * mask_pos
+        ious = ious.max(dim=-2)[0].unsqueeze(-1)
+        assigned_scores *= ious
 
         out_mask_positive = mask_pos_sum.bool()
 
@@ -145,8 +144,8 @@ class ATSSAssigner(nn.Module):
         """
         mask_gt = mask_gt.repeat(1, 1, self.topk).bool()
         level_distances = torch.split(distances, n_level_bboxes, dim=-1)
-        is_in_topk_list = []
-        topk_idxs = []
+        is_in_topk_list: list[Tensor] = []
+        topk_idxs: list[Tensor] = []
         start_idx = 0
         for per_level_distances, per_level_boxes in zip(
             level_distances, n_level_bboxes
@@ -167,9 +166,7 @@ class ATSSAssigner(nn.Module):
             is_in_topk_list.append(is_in_topk.to(distances.dtype))
             start_idx = end_idx
 
-        is_in_topk_list = torch.cat(is_in_topk_list, dim=-1)
-        topk_idxs = torch.cat(topk_idxs, dim=-1)
-        return is_in_topk_list, topk_idxs
+        return torch.cat(is_in_topk_list, dim=-1), torch.cat(topk_idxs, dim=-1)
 
     def _get_positive_samples(
         self,

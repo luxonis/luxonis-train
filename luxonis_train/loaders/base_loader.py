@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
 
 import torch
-from luxonis_ml.data import Augmentations
+from luxonis_ml.data import Augmentations, LabelType
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor
 from torch.utils.data import Dataset
 
 from luxonis_train.utils.registry import LOADERS
-from luxonis_train.utils.types import Labels, LabelType
+from luxonis_train.utils.types import Labels
 
 LuxonisLoaderTorchOutput = tuple[dict[str, Tensor], Labels]
 """LuxonisLoaderTorchOutput is a tuple of source tensors and corresponding labels."""
@@ -38,6 +38,8 @@ class BaseLoaderTorch(
         """Name of the input image group.
 
         Example: 'image'
+
+        @type: str
         """
         if self._image_source is None:
             raise ValueError("image_source is not set")
@@ -47,38 +49,45 @@ class BaseLoaderTorch(
     @abstractmethod
     def input_shapes(self) -> dict[str, Size]:
         """
-        Shape of each loader group (sub-element), WITHOUT batch dimension.
+        Shape (c, h, w) of each loader group (sub-element), WITHOUT batch dimension.
         Examples:
 
-        1. Single image input::
-            {
-                'image': torch.Size([3, 224, 224]),
-            }
+            1. Single image input::
+                {
+                    'image': torch.Size([3, 224, 224]),
+                }
 
-        2. Image and segmentation input::
-            {
-                'image': torch.Size([3, 224, 224]),
-                'segmentation': torch.Size([1, 224, 224]),
-            }
+            2. Image and segmentation input::
+                {
+                    'image': torch.Size([3, 224, 224]),
+                    'segmentation': torch.Size([1, 224, 224]),
+                }
 
-        3. Left image, right image and disparity input::
-            {
-                'left': torch.Size([3, 224, 224]),
-                'right': torch.Size([3, 224, 224]),
-                'disparity': torch.Size([1, 224, 224]),
-            }
+            3. Left image, right image and disparity input::
+                {
+                    'left': torch.Size([3, 224, 224]),
+                    'right': torch.Size([3, 224, 224]),
+                    'disparity': torch.Size([1, 224, 224]),
+                }
 
-        4. Image, keypoints, and point cloud input::
-            {
-                'image': torch.Size([3, 224, 224]),
-                'keypoints': torch.Size([17, 2]),
-                'point_cloud': torch.Size([20000, 3]),
-            }
+            4. Image, keypoints, and point cloud input::
+                {
+                    'image': torch.Size([3, 224, 224]),
+                    'keypoints': torch.Size([17, 2]),
+                    'point_cloud': torch.Size([20000, 3]),
+                }
 
-        @rtype: dict[str, Size]
-        @return: A dictionary mapping group names to their shapes.
+        @type: dict[str, Size]
         """
         ...
+
+    @property
+    def input_shape(self) -> Size:
+        """Shape (c, h, w) of the input tensor, WITHOUT batch dimension.
+
+        @type: torch.Size
+        """
+        return self.input_shapes[self.image_source]
 
     @abstractmethod
     def __len__(self) -> int:
@@ -131,9 +140,8 @@ def collate_fn(
     inputs, labels = zip(*batch)
 
     out_inputs = {k: torch.stack([i[k] for i in inputs], 0) for k in inputs[0].keys()}
-    out_labels = {task: {} for task in labels[0].keys()}
 
-    out_labels = {}
+    out_labels: Labels = {}
 
     for task in labels[0].keys():
         label_type = labels[0][task][1]

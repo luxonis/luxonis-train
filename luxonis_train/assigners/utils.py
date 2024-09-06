@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-from luxonis_train.utils.boxutils import bbox_iou
+from luxonis_train.utils import bbox_iou
 
 
 def candidates_in_gt(

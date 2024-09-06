@@ -11,13 +11,14 @@ from multi_input_modules import *
 
 from luxonis_train.core import LuxonisModel
 
-TEST_OUTPUT = Path("tests/integration/_test-output")
-INFER_PATH = Path("tests/integration/_infer_save_dir")
+TEST_OUTPUT = Path("tests/integration/save-directory")
+INFER_PATH = Path("tests/integration/infer-save-directory")
 ONNX_PATH = Path("tests/integration/_model.onnx")
 STUDY_PATH = Path("study_local.db")
 
 OPTS = {
     "trainer.epochs": 1,
+    # "trainer.seed": 42,
     "trainer.batch_size": 1,
     "trainer.validation_interval": 1,
     "trainer.callbacks": "[]",
@@ -47,14 +48,20 @@ def clear_files():
         "segmentation_model",
         "detection_model",
         "keypoint_bbox_model",
-        "resnet_model",
-        "coco_model",
-        "efficient_coco_model",
     ],
 )
-def test_simple_models(config_file: str):
+def test_predefined_models(
+    config_file: str,
+    coco_dataset: LuxonisDataset,
+    cifar10_dataset: LuxonisDataset,
+):
     config_file = f"configs/{config_file}.yaml"
-    model = LuxonisModel(config_file, opts=OPTS)
+    opts = deepcopy(OPTS) | {
+        "loader.params.dataset_name": cifar10_dataset.dataset_name
+        if config_file == "classification_model"
+        else coco_dataset.dataset_name,
+    }
+    model = LuxonisModel(config_file, opts=opts)
     model.train()
     model.test()
     model.export()
@@ -73,7 +80,6 @@ def test_simple_models(config_file: str):
         .with_suffix(".onnx.tar.xz")
         .exists()
     )
-    del model
 
 
 def test_multi_input():
@@ -89,7 +95,6 @@ def test_multi_input():
     assert not INFER_PATH.exists()
     model.infer(view="val", save_dir=INFER_PATH)
     assert INFER_PATH.exists()
-    del model
 
 
 def test_custom_tasks(parking_lot_dataset: LuxonisDataset, subtests):
@@ -119,13 +124,10 @@ def test_custom_tasks(parking_lot_dataset: LuxonisDataset, subtests):
         del generated_config["model"]["heads"][1]["metadata"]["anchors"]
         assert generated_config == correct_archive_config
 
-    del model
-
 
 def test_parsing_loader():
     model = LuxonisModel("tests/configs/segmentation_parse_loader.yaml")
     model.train()
-    del model
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Tuning not supported on Windows")
@@ -133,4 +135,48 @@ def test_tuner():
     model = LuxonisModel("configs/example_tuning.yaml", opts=OPTS)
     model.tune()
     assert STUDY_PATH.exists()
-    del model
+
+
+def test_callbacks(coco_dataset: LuxonisDataset):
+    config_file = "tests/configs/parking_lot_config.yaml"
+    opts = deepcopy(OPTS)
+    del opts["trainer.callbacks"]
+    opts |= {
+        "trainer.use_rich_progress_bar": False,
+        "trainer.callbacks": [
+            {
+                "name": "MetadataLogger",
+                "params": {
+                    "hyperparams": ["trainer.epochs", "trainer.batch_size"],
+                },
+            },
+            {"name": "TestOnTrainEnd"},
+            {"name": "UploadCheckpoint"},
+            {
+                "name": "ExportOnTrainEnd",
+            },
+            {"name": "ArchiveOnTrainEnd"},
+        ],
+    }
+    opts["loader.params.dataset_name"] = coco_dataset.identifier
+    model = LuxonisModel(config_file, opts=opts)
+    model.train()
+
+
+def test_freezing(coco_dataset: LuxonisDataset):
+    config_file = "configs/segmentation_model.yaml"
+    opts = deepcopy(OPTS)
+    opts |= {
+        "model.predefined_model.params": {
+            "head_params": {
+                "freezing": {
+                    "active": True,
+                    "unfreeze_after": 2,
+                },
+            }
+        }
+    }
+    opts["trainer.epochs"] = 3
+    opts["loader.params.dataset_name"] = coco_dataset.identifier
+    model = LuxonisModel(config_file, opts=opts)
+    model.train()

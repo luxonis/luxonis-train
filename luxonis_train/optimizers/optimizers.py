@@ -1,4 +1,4 @@
-from torch import optim
+import torch.optim as optim
 
 from luxonis_train.utils.registry import OPTIMIZERS
 

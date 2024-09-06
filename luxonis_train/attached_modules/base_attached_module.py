@@ -1,13 +1,14 @@
 import logging
 from abc import ABC
-from typing import Generic
+from typing import Any, Generic
 
+from luxonis_ml.data import LabelType
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Tensor, nn
 from typing_extensions import TypeVarTuple, Unpack
 
 from luxonis_train.nodes import BaseNode
-from luxonis_train.utils.types import IncompatibleException, Labels, LabelType, Packet
+from luxonis_train.utils import IncompatibleException, Labels, Packet
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ class BaseAttachedModule(
 
     supported_labels: list[LabelType | tuple[LabelType, ...]] | None = None
 
-    def __init__(self, *, node: BaseNode | None = None):
+    def __init__(self, *, node: BaseNode[Any, Any] | None = None):
         super().__init__()
         self._node = node
         self._epoch = 0
@@ -68,10 +69,18 @@ class BaseAttachedModule(
                     self._required_labels = required_labels
                     break
             else:
+                module_supported = [
+                    label.value
+                    if isinstance(label, LabelType)
+                    else f"({' + '.join(label)})"
+                    for label in self.supported_labels
+                ]
+                module_supported = f"[{', '.join(module_supported)}]"
+                node_supported = [task.value for task in self.node.tasks]
                 raise ValueError(
-                    f"Module {self.name} supports labels {self.supported_labels}, "
-                    f"but is connected to node {self.node.name} which does not support any of them. "
-                    f"{self.node.name} supports {list(self.node_tasks.keys())}."
+                    f"Module '{self.name}' requires one of the following labels or combinations of labels: {module_supported}, "
+                    f"but is connected to node '{self.node.name}' which does not support any of them. "
+                    f"{self.node.name} supports {node_supported}."
                 )
 
     @property
@@ -79,7 +88,7 @@ class BaseAttachedModule(
         return self.__class__.__name__
 
     @property
-    def node(self) -> BaseNode:
+    def node(self) -> BaseNode[Any, Any]:
         """Reference to the node that this module is attached to.
 
         @type: L{BaseNode}
@@ -104,9 +113,7 @@ class BaseAttachedModule(
             raise ValueError("Node must have the `tasks` attribute specified.")
         return self.node._tasks
 
-    def get_label(
-        self, labels: Labels, label_type: LabelType | None = None
-    ) -> tuple[Tensor, LabelType]:
+    def get_label(self, labels: Labels, label_type: LabelType | None = None) -> Tensor:
         """Extracts a specific label from the labels dictionary.
 
         If the label type is not provided, the first label that matches the
@@ -114,11 +121,11 @@ class BaseAttachedModule(
 
         Example::
             >>> # supported_labels = [LabelType.SEGMENTATION]
-            >>> labels = {"segmentation": ..., "boundingbox": ...}
+            >>> labels = {"segmentation": seg_tensor, "boundingbox": bbox_tensor}
             >>> get_label(labels)
-            (..., LabelType.SEGMENTATION)  # returns the first matching label
+            seg_tensor  # returns the first matching label
             >>> get_label(labels, LabelType.BOUNDINGBOX)
-            (..., LabelType.BOUNDINGBOX)  # returns the bounding box label
+            bbox_tensor # returns the bounding box label
             >>> get_label(labels, LabelType.CLASSIFICATION)
             IncompatibleException: Label 'classification' is missing from the dataset.
 
@@ -130,9 +137,14 @@ class BaseAttachedModule(
         @raises NotImplementedError: If the module requires multiple labels. For such cases,
             the `prepare` method should be overridden.
 
-        @rtype: tuple[Tensor, LabelType]
-        @return: Extracted label and its type.
+        @rtype: Tensor
+        @return: Extracted label
         """
+        return self._get_label(labels, label_type)[0]
+
+    def _get_label(
+        self, labels: Labels, label_type: LabelType | None = None
+    ) -> tuple[Tensor, LabelType]:
         if label_type is None:
             if len(self.required_labels) == 1:
                 label_type = self.required_labels[0]
@@ -153,6 +165,7 @@ class BaseAttachedModule(
         for label, label_type in labels.values():
             if label_type == self.required_labels[0]:
                 return label, label_type
+
         raise IncompatibleException.from_missing_task(
             self.required_labels[0].value, list(labels.keys()), self.name
         )
@@ -252,19 +265,18 @@ class BaseAttachedModule(
                 set(self.supported_labels) & set(self.node._tasks)
             )
         x = self.get_input_tensors(inputs)
-        label, label_type = self.get_label(labels)
+        label, label_type = self._get_label(labels)
         if label_type in [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]:
-            if isinstance(x, list):
-                if len(x) == 1:
-                    x = x[0]
-                else:
-                    logger.warning(
-                        f"Module {self.name} expects a single tensor as input, "
-                        f"but got {len(x)} tensors. Using the last tensor. "
-                        f"If this is not the desired behavior, please override the "
-                        "`prepare` method of the attached module or the `wrap` "
-                        f"method of {self.node.name}."
-                    )
-                    x = x[-1]
+            if len(x) == 1:
+                x = x[0]
+            else:
+                logger.warning(
+                    f"Module {self.name} expects a single tensor as input, "
+                    f"but got {len(x)} tensors. Using the last tensor. "
+                    f"If this is not the desired behavior, please override the "
+                    "`prepare` method of the attached module or the `wrap` "
+                    f"method of {self.node.name}."
+                )
+                x = x[-1]
 
         return x, label  # type: ignore

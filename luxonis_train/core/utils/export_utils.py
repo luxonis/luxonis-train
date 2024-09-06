@@ -100,7 +100,7 @@ def blobconverter_export(
 
     logger.info("Converting ONNX to .blob")
 
-    optimizer_params = []
+    optimizer_params: list[str] = []
     if scale_values:
         optimizer_params.append(f"--scale_values={scale_values}")
     if mean_values:
@@ -111,7 +111,7 @@ def blobconverter_export(
     blob_path = blobconverter.from_onnx(
         model=onnx_path,
         optimizer_params=optimizer_params,
-        data_type=cfg.data_type,
+        data_type=cfg.data_type.upper(),
         shaves=cfg.blobconverter.shaves,
         version=cfg.blobconverter.version,
         use_cache=False,

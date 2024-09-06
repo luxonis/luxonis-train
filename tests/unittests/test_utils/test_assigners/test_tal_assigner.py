@@ -1,6 +1,6 @@
 import torch
 
-from luxonis_train.utils.assigners.tal_assigner import TaskAlignedAssigner
+from luxonis_train.assigners import TaskAlignedAssigner
 
 
 def test_init():

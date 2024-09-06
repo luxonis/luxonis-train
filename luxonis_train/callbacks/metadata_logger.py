@@ -6,7 +6,7 @@ import pkg_resources
 import yaml
 
 import luxonis_train
-from luxonis_train.utils.config import Config
+from luxonis_train.utils import Config
 from luxonis_train.utils.registry import CALLBACKS
 
 

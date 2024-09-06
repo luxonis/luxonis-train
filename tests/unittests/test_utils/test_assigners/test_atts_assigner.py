@@ -1,6 +1,6 @@
 import torch
 
-from luxonis_train.utils.assigners.atts_assigner import ATSSAssigner
+from luxonis_train.assigners import ATSSAssigner
 
 
 def test_init():

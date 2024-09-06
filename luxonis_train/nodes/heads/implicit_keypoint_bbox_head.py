@@ -1,24 +1,26 @@
 import logging
 import math
-from typing import cast
+from typing import Any, cast
 
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import KeypointBlock, LearnableMulAddConv
-from luxonis_train.utils.boxutils import (
+from luxonis_train.utils import (
+    Packet,
     non_max_suppression,
     process_bbox_predictions,
     process_keypoints_predictions,
 )
-from luxonis_train.utils.types import LabelType, Packet
 
 logger = logging.getLogger(__name__)
 
 
-class ImplicitKeypointBBoxHead(BaseNode):
-    tasks: list[LabelType] = [LabelType.KEYPOINTS, LabelType.BOUNDINGBOX]
+class ImplicitKeypointBBoxHead(BaseNode[list[Tensor], tuple[list[Tensor], Tensor]]):
+    tasks = [LabelType.KEYPOINTS, LabelType.BOUNDINGBOX]
+    in_channels: list[int]
 
     def __init__(
         self,
@@ -28,7 +30,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
-        **kwargs,
+        **kwargs: Any,
     ):
         """Head for object and keypoint detection.
 
@@ -53,16 +55,23 @@ class ImplicitKeypointBBoxHead(BaseNode):
         """
         super().__init__(**kwargs)
 
-        if anchors is None:
-            logger.info("No anchors provided, generating them automatically.")
-            anchors, recall = self.dataset_metadata.autogenerate_anchors(num_heads)
-            logger.info(f"Anchors generated. Best possible recall: {recall:.2f}")
-
         self.conf_thres = conf_thres
         self.iou_thres = iou_thres
         self.max_det = max_det
 
         self.num_heads = num_heads
+        if len(self.in_channels) < self.num_heads:
+            logger.warning(
+                f"Head '{self.name}' was set to use {self.num_heads} heads, "
+                f"but received only {len(self.in_channels)} inputs. "
+                f"Changing number of heads to {len(self.in_channels)}."
+            )
+            self.num_heads = len(self.in_channels)
+
+        if anchors is None:
+            logger.info("No anchors provided, generating them automatically.")
+            anchors, recall = self.dataset_metadata.autogenerate_anchors(self.num_heads)
+            logger.info(f"Anchors generated. Best possible recall: {recall:.2f}")
 
         self.box_offset = 5
         self.n_det_out = self.n_classes + self.box_offset
@@ -74,9 +83,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
         self.anchors = torch.tensor(anchors).float().view(self.num_heads, -1, 2)
         self.anchor_grid = self.anchors.clone().view(self.num_heads, 1, -1, 1, 1, 2)
 
-        self.channel_list, self.stride = self._fit_to_num_heads(
-            cast(list[int], self.in_channels)
-        )
+        self.channel_list, self.stride = self._fit_to_num_heads(self.in_channels)
 
         self.learnable_mul_add_conv = nn.ModuleList(
             LearnableMulAddConv(
@@ -139,8 +146,8 @@ class ImplicitKeypointBBoxHead(BaseNode):
 
         return features, torch.cat(predictions, dim=1)
 
-    def wrap(self, outputs: tuple[list[Tensor], Tensor]) -> Packet[Tensor]:
-        features, predictions = outputs
+    def wrap(self, output: tuple[list[Tensor], Tensor]) -> Packet[Tensor]:
+        features, predictions = output
 
         if self.export:
             return {"boxes_and_keypoints": [predictions]}
@@ -200,7 +207,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
         )
         return torch.cat((out_bbox_xy, out_bbox_wh, out_bbox[..., 4:]), dim=-1)
 
-    def _fit_to_num_heads(self, channel_list: list):
+    def _fit_to_num_heads(self, channel_list: list[int]) -> tuple[list[int], Tensor]:
         out_channel_list = channel_list[: self.num_heads]
         stride = torch.tensor(
             [

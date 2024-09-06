@@ -1,12 +1,10 @@
-"""This module contains various utility functions for working with bounding boxes."""
-
 import math
 from typing import Literal, TypeAlias
 
 import torch
+from luxonis_ml.data import LabelType
 from scipy.cluster.vq import kmeans
 from torch import Tensor
-from torch.utils.data import DataLoader
 from torchvision.ops import (
     batched_nms,
     box_convert,
@@ -15,23 +13,10 @@ from torchvision.ops import (
     generalized_box_iou,
 )
 
-from luxonis_train.utils.types import LabelType
+from luxonis_train.loaders import BaseLoaderTorch
 
 IoUType: TypeAlias = Literal["none", "giou", "diou", "ciou", "siou"]
 BBoxFormatType: TypeAlias = Literal["xyxy", "xywh", "cxcywh"]
-
-__all__ = [
-    "anchors_for_fpn_features",
-    "anchors_from_dataset",
-    "bbox2dist",
-    "bbox_iou",
-    "compute_iou_loss",
-    "dist2bbox",
-    "match_to_anchor",
-    "non_max_suppression",
-    "process_bbox_predictions",
-    "process_keypoints_predictions",
-]
 
 
 def match_to_anchor(
@@ -409,7 +394,7 @@ def non_max_suppression(
 
 
 def anchors_from_dataset(
-    loader: DataLoader,
+    loader: BaseLoaderTorch,
     n_anchors: int = 9,
     n_generations: int = 1000,
     ratio_threshold: float = 4.0,
@@ -432,18 +417,13 @@ def anchors_from_dataset(
     @return: Proposed anchors and the best possible recall.
     """
 
-    widths = []
-    inputs = None
-    for inp, labels in loader:
+    widths: list[Tensor] = []
+    for _, labels in loader:
         for tensor, label_type in labels.values():
             if label_type == LabelType.BOUNDINGBOX:
                 curr_wh = tensor[:, 4:]
                 widths.append(curr_wh)
-        inputs = inp
-    assert inputs is not None, "No inputs found in data loader"
-    _, _, h, w = inputs[
-        loader.dataset.image_source  # type: ignore
-    ].shape  # assuming all images are same size
+    _, h, w = loader.input_shape
     img_size = torch.tensor([w, h])
     wh = torch.vstack(widths) * img_size
 
@@ -592,26 +572,6 @@ def anchors_for_fpn_features(
         torch.cat(anchor_points).to(device),
         n_anchors_list,
         torch.cat(stride_tensor).to(device),
-    )
-
-
-def process_keypoints_predictions(keypoints: Tensor) -> tuple[Tensor, Tensor, Tensor]:
-    """Extracts x, y and visibility from keypoints predictions.
-
-    @type keypoints: Tensor
-    @param keypoints: Keypoints predictions. The last dimension must be divisible by 3
-        and is expected to be in format [x1, y1, v1, x2, y2, v2, ...].
-
-    @rtype: tuple[Tensor, Tensor, Tensor]
-    @return: x, y and visibility tensors.
-    """
-    x = keypoints[..., ::3] * 2.0 - 0.5
-    y = keypoints[..., 1::3] * 2.0 - 0.5
-    visibility = keypoints[..., 2::3]
-    return (
-        x,
-        y,
-        visibility,
     )
 
 

@@ -3,7 +3,7 @@ import signal
 import threading
 from logging import getLogger
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Mapping, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -19,12 +19,10 @@ from luxonis_ml.utils import LuxonisFileSystem, reset_logging, setup_logging
 
 from luxonis_train.attached_modules.visualizers import get_unnormalized_images
 from luxonis_train.callbacks import LuxonisRichProgressBar, LuxonisTQDMProgressBar
+from luxonis_train.loaders import BaseLoaderTorch, collate_fn
 from luxonis_train.models import LuxonisLightningModule
-from luxonis_train.utils.config import Config
-from luxonis_train.utils.general import DatasetMetadata
-from luxonis_train.utils.loaders import BaseLoaderTorch, collate_fn
+from luxonis_train.utils import Config, DatasetMetadata, LuxonisTrackerPL
 from luxonis_train.utils.registry import LOADERS
-from luxonis_train.utils.tracker import LuxonisTrackerPL
 
 from .utils.export_utils import (
     blobconverter_export,
@@ -174,7 +172,6 @@ class LuxonisModel:
         self.error_message = None
 
         self.dataset_metadata = DatasetMetadata.from_loader(self.loaders["train"])
-        self.dataset_metadata.set_loader(self.pytorch_loaders["train"])
 
         self.cfg.save_data(osp.join(self.run_save_dir, "config.yaml"))
 
@@ -224,7 +221,7 @@ class LuxonisModel:
                 LuxonisFileSystem.download(resume_weights, self.run_save_dir)
             )
 
-        def graceful_exit(signum: int, _):
+        def graceful_exit(signum: int, _):  # pragma: no cover
             logger.info(f"{signal.Signals(signum).name} received, stopping training...")
             ckpt_path = osp.join(self.run_save_dir, "resume.ckpt")
             self.pl_trainer.save_checkpoint(ckpt_path)
@@ -349,15 +346,33 @@ class LuxonisModel:
             if self.cfg.exporter.upload_url is not None:
                 LuxonisFileSystem.upload(f.name, self.cfg.exporter.upload_url)
 
+    @overload
+    def test(
+        self,
+        new_thread: Literal[False] = ...,
+        view: Literal["train", "test", "val"] = "val",
+    ) -> Mapping[str, float]:
+        ...
+
+    @overload
+    def test(
+        self,
+        new_thread: Literal[True] = ...,
+        view: Literal["train", "test", "val"] = "val",
+    ) -> None:
+        ...
+
     def test(
         self, new_thread: bool = False, view: Literal["train", "test", "val"] = "val"
-    ) -> None:
+    ) -> Mapping[str, float] | None:
         """Runs testing.
 
         @type new_thread: bool
         @param new_thread: Runs testing in a new thread if set to True.
         @type view: Literal["train", "test", "val"]
         @param view: Which view to run the testing on. Defauls to "val".
+        @rtype: Mapping[str, float] | None
+        @return: If new_thread is False, returns a dictionary test results.
         """
 
         if view not in self.pytorch_loaders:
@@ -367,7 +382,7 @@ class LuxonisModel:
         loader = self.pytorch_loaders[view]
 
         if not new_thread:
-            self.pl_trainer.test(self.lightning_module, loader)
+            return self.pl_trainer.test(self.lightning_module, loader)[0]
         else:
             self.thread = threading.Thread(
                 target=self.pl_trainer.test,
