@@ -137,7 +137,7 @@ def test_tuner():
     assert STUDY_PATH.exists()
 
 
-def test_callbacks(coco_dataset: LuxonisDataset):
+def test_callbacks(parking_lot_dataset: LuxonisDataset):
     config_file = "tests/configs/parking_lot_config.yaml"
     opts = deepcopy(OPTS)
     del opts["trainer.callbacks"]
@@ -158,7 +158,7 @@ def test_callbacks(coco_dataset: LuxonisDataset):
             {"name": "ArchiveOnTrainEnd"},
         ],
     }
-    opts["loader.params.dataset_name"] = coco_dataset.identifier
+    opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
     model = LuxonisModel(config_file, opts=opts)
     model.train()
 
