@@ -49,5 +49,5 @@ class MultiVisualizer(BaseVisualizer[Packet[Tensor], Labels]):
                     label_canvas = label_viz
                     prediction_canvas = prediction_viz
                 case _:
-                    raise NotImplementedError
+                    raise NotImplementedError("Unexpected return type from visualizer.")
         return label_canvas, prediction_canvas

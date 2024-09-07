@@ -1,6 +1,10 @@
 import json
+import multiprocessing as mp
+import os
+import shutil
 from collections import defaultdict
 from pathlib import Path
+from typing import Any
 
 import cv2
 import gdown
@@ -13,9 +17,25 @@ from luxonis_ml.data.utils.data_utils import rgb_to_bool_masks
 from luxonis_ml.utils import LuxonisFileSystem, environ
 
 WORK_DIR = Path("tests", "data")
-WORK_DIR.mkdir(parents=True, exist_ok=True)
 
-environ.LUXONISML_BASE_PATH = WORK_DIR / "luxonisml"
+
+@pytest.fixture(scope="session")
+def test_output_dir() -> Path:
+    return Path("tests/integration/save-directory")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup(test_output_dir: Path):
+    WORK_DIR.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(WORK_DIR / "luxonisml", ignore_errors=True)
+    shutil.rmtree(test_output_dir, ignore_errors=True)
+    environ.LUXONISML_BASE_PATH = WORK_DIR / "luxonisml"
+    test_output_dir.mkdir(exist_ok=True)
+
+
+@pytest.fixture
+def train_overfit() -> bool:
+    return bool(os.getenv("LUXONIS_TRAIN_OVERFIT"))
 
 
 @pytest.fixture(scope="session")
@@ -216,3 +236,39 @@ def cifar10_dataset() -> LuxonisDataset:
     dataset.add(CIFAR10_subset_generator())
     dataset.make_splits()
     return dataset
+
+
+@pytest.fixture
+def config(train_overfit: bool) -> dict[str, Any]:
+    if train_overfit:
+        epochs = 200
+    else:
+        epochs = 1
+
+    return {
+        "tracker": {
+            "save_directory": "tests/integration/save-directory",
+        },
+        "loader": {
+            "train_view": "val",
+            "params": {
+                "dataset_name": "_ParkingLot",
+            },
+        },
+        "trainer": {
+            "batch_size": 4,
+            "epochs": epochs,
+            "num_workers": mp.cpu_count(),
+            "validation_interval": epochs,
+            "save_top_k": 0,
+            "preprocessing": {
+                "train_image_size": [256, 320],
+                "keep_aspect_ratio": False,
+                "normalize": {"active": True},
+            },
+            "callbacks": [
+                {"name": "ExportOnTrainEnd"},
+                {"name": "ArchiveOnTrainEnd"},
+            ],
+        },
+    }

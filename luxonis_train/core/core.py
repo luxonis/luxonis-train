@@ -87,10 +87,8 @@ class LuxonisModel:
         # NOTE: overriding logger in pl so it uses our logger to log device info
         rank_zero_module.log = logger
 
-        deterministic = False
         if self.cfg.trainer.seed is not None:
             pl.seed_everything(self.cfg.trainer.seed, workers=True)
-            deterministic = True
 
         self.train_augmentations = Augmentations(
             image_size=self.cfg.trainer.preprocessing.train_image_size,
@@ -113,9 +111,8 @@ class LuxonisModel:
         )
 
         self.pl_trainer = create_trainer(
-            self.cfg,
+            self.cfg.trainer,
             logger=self.tracker,
-            deterministic=deterministic,
             callbacks=LuxonisRichProgressBar()
             if self.cfg.trainer.use_rich_progress_bar
             else LuxonisTQDMProgressBar(),
@@ -465,16 +462,12 @@ class LuxonisModel:
 
             pruner_callback = PyTorchLightningPruningCallback(trial, monitor="val/loss")
             callbacks.append(pruner_callback)
-            deterministic = False
-            if self.cfg.trainer.seed:
+
+            if self.cfg.trainer.seed is not None:
                 pl.seed_everything(cfg.trainer.seed, workers=True)
-                deterministic = True
 
             pl_trainer = create_trainer(
-                cfg,
-                logger=child_tracker,
-                callbacks=callbacks,
-                deterministic=deterministic,
+                cfg.trainer, logger=child_tracker, callbacks=callbacks
             )
 
             try:

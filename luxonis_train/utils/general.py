@@ -78,8 +78,8 @@ def infer_upscale_factor(
                 "Width and height upscale factors are not integers. "
                 f"Width: {wf}, height: {hf}."
             )
-        case _:
-            raise ValueError("Unexpected error.")
+
+    raise NotImplementedError(f"Unexpected case: {width_factor}, {height_factor}")
 
 
 def to_shape_packet(packet: Packet[Tensor]) -> Packet[Size]:

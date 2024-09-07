@@ -1,4 +1,3 @@
-import os
 from typing import Any
 
 import pytest
@@ -6,8 +5,6 @@ from luxonis_ml.data import LuxonisDataset
 
 from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
-
-LUXONIS_TRAIN_OVERFIT = os.getenv("LUXONIS_TRAIN_OVERFIT") or False
 
 
 def get_opts(backbone: str) -> dict[str, Any]:
@@ -46,6 +43,7 @@ def get_opts(backbone: str) -> dict[str, Any]:
                 {
                     "name": "EfficientKeypointBBoxLoss",
                     "attached_to": "EfficientKeypointBBoxHead",
+                    "params": {"area_factor": 0.5},
                 },
                 {
                     "name": "ImplicitKeypointBBoxLoss",
@@ -72,11 +70,15 @@ def get_opts(backbone: str) -> dict[str, Any]:
     }
 
 
-def train_and_test(config: dict[str, Any], opts: dict[str, Any]):
+def train_and_test(
+    config: dict[str, Any],
+    opts: dict[str, Any],
+    train_overfit: bool = False,
+):
     model = LuxonisModel(config, opts)
     model.train()
     results = model.test(view="val")
-    if LUXONIS_TRAIN_OVERFIT:
+    if train_overfit:
         for name, value in results.items():
             if "/map_50" in name or "/kpt_map_medium" in name:
                 assert value > 0.8, f"{name} = {value} (expected > 0.8)"
