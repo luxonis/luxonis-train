@@ -195,3 +195,8 @@ class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
             width=self.width,
         )
         return targets_viz, predictions_viz.to(targets_viz.device)
+
+
+class OBBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
+    def forward(self):
+        pass

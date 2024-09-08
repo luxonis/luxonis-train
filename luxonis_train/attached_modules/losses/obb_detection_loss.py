@@ -180,11 +180,15 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
             mask_gt,
         )
 
-        # NOTE: make assigned_bboxes_strided and retern it instead of assigned_bboxes
+        xy_unstrided = assigned_bboxes[..., :2] / self.stride_tensor
+        assigned_bboxes_unstrided = torch.cat(
+            [xy_unstrided, assigned_bboxes[..., 2:]], dim=-1
+        )  # xywhr unnormalized with xy strided
+
         return (
             pred_bboxes,
             pred_scores,
-            assigned_bboxes / self.stride_tensor,
+            assigned_bboxes_unstrided,
             assigned_labels,
             assigned_scores,
             mask_positive,
@@ -352,8 +356,7 @@ class RotatedBboxLoss(nn.Module):
             )
             loss_dfl = (
                 self.dfl_loss(
-                    # pred_dist[fg_mask].view(-1, self.dfl_loss.reg_max),
-                    pred_dist[fg_mask],
+                    pred_dist[fg_mask].view(-1, self.dfl_loss.reg_max),
                     target_ltrb[fg_mask],
                 )
                 * weight

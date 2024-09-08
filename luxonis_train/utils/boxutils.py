@@ -683,8 +683,6 @@ def non_max_suppression_obb(
     @type multi_label: bool
     @param multi_label: Whether one prediction can have multiple labels. Defaults to
         False.
-    @type bbox_format: BBoxFormatType
-    @param bbox_format: Input bbox format. Defaults to "xyxy".
     @type max_det: int
     @param max_det: Number of maximum output detections. Defaults to 300.
     @type predicts_objectness: bool
@@ -712,7 +710,10 @@ def non_max_suppression_obb(
             torch.max(preds[..., 6 : 6 + n_classes], dim=-1)[0] > conf_thres,
         )
 
-    output = [torch.zeros((0, preds.size(-1)), device=preds.device)] * preds.size(0)
+    # output = [torch.zeros((0, preds.size(-1)), device=preds.device)] * preds.size(0)
+    output = [torch.zeros((0, 7), device=preds.device)] * preds.size(
+        0
+    )  # [x, y, w, h, conf, cls_idx]
 
     for i, x in enumerate(preds):
         curr_out = x[candidate_mask[i]]

@@ -119,7 +119,7 @@ class EfficientOBBoxHead(EfficientBBoxHead):
                 (features, cls_tensor, reg_tensor, angle_tensor)
             )
             return {
-                "boundingbox": boxes,
+                "oboundingbox": boxes,
                 "features": features,
                 "class_scores": [cls_tensor],
                 "distributions": [reg_tensor],
@@ -182,6 +182,7 @@ class EfficientOBBoxHead(EfficientBBoxHead):
 
         return non_max_suppression_obb(
             output_merged,
+            # pred,  # for debugging
             n_classes=self.n_classes,
             conf_thres=self.conf_thres,
             iou_thres=self.iou_thres,

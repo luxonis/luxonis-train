@@ -70,8 +70,8 @@ class OBBDetectionModel(BasePredefinedModel):
     def metrics(self) -> list[MetricModuleConfig]:
         return [
             MetricModuleConfig(
-                name="MeanAveragePrecision",
-                alias="detection_map",
+                name="MeanAveragePrecisionOBB",
+                alias="detection_map_obb",
                 attached_to="detection_obb_head",
                 is_main_metric=True,
             ),
@@ -81,8 +81,8 @@ class OBBDetectionModel(BasePredefinedModel):
     def visualizers(self) -> list[AttachedModuleConfig]:
         return [
             AttachedModuleConfig(
-                name="BBoxVisualizer",
-                alias="detection_visualizer",
+                name="OBBoxVisualizer",
+                alias="detection_visualizer_obb",
                 attached_to="detection_obb_head",
                 params=self.visualizer_params,
             )
