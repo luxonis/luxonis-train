@@ -1,11 +1,11 @@
-# Example configuration for training a predefined segmentation model
+# DDRNet-23-slim model for segmentation
+# Refer to here for optimal hyperparameters for this model: https://github.com/Deci-AI/super-gradients/blob/4797c974c7c445d12e2575c468848d9c3e04becd/src/super_gradients/recipes/cityscapes_ddrnet.yaml#L4
 
 model:
   name: ddrnet_segmentation
   predefined_model:
     name: DDRNetSegmentationModel
     params:
-      backbone: DDRNet
       task: multiclass
       backbone_params:
         use_aux_heads: True # set to False to disable auxiliary heads (for export)

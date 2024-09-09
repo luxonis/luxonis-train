@@ -1,4 +1,5 @@
 from .contextspatial import ContextSpatial
+from .ddrnet import DDRNet
 from .efficientnet import EfficientNet
 from .efficientrep import EfficientRep
 from .micronet import MicroNet
@@ -7,7 +8,6 @@ from .mobileone import MobileOne
 from .repvgg import RepVGG
 from .resnet import ResNet
 from .rexnetv1 import ReXNetV1_lite
-from .ddrnet import DDRNet
 
 __all__ = [
     "ContextSpatial",

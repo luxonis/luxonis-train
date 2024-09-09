@@ -2,9 +2,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from luxonis_train.utils.config import (
-    AttachedModuleConfig,
     LossModuleConfig,
-    MetricModuleConfig,
     ModelNodeConfig,
 )
 from luxonis_train.utils.types import Kwargs

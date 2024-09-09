@@ -5,45 +5,126 @@ Original source: U{https://github.com/ydhongHIT/DDRNet}
 Paper: U{https://arxiv.org/pdf/2101.06085.pdf}
 @license: U{https://github.com/Deci-AI/super-gradients/blob/master/LICENSE.md}
 """
-from typing import Literal
 from abc import ABC
-from typing import Optional, Callable, Union, List, Tuple, Dict
+from typing import Dict, Type
 
-
-import torchvision
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 
 from ..base_node import BaseNode
 
-def ConvBN(in_channels: int, out_channels: int, kernel_size: int, bias=True, stride=1, padding=0, add_relu=False):
-    seq = [nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, bias=bias, stride=stride, padding=padding), nn.BatchNorm2d(out_channels)]
+
+def ConvBN(
+    in_channels: int,
+    out_channels: int,
+    kernel_size: int,
+    bias: bool = True,
+    stride: int = 1,
+    padding: int = 0,
+    add_relu: bool = False,
+) -> nn.Sequential:
+    """A convolutional layer followed by batch normalization.
+
+    @type in_channels: int
+    @param in_channels: Number of input channels.
+    @type out_channels: int
+    @param out_channels: Number of output channels.
+    @type kernel_size: int
+    @param kernel_size: Size of the convolutional kernel.
+    @type bias: bool
+    @param bias: Whether to include a bias term. Defaults to True.
+    @type stride: int
+    @param stride: Stride for the convolution. Defaults to 1.
+    @type padding: int
+    @param padding: Padding for the convolution. Defaults to 0.
+    @type add_relu: bool
+    @param add_relu: Whether to add a ReLU activation. Defaults to False.
+    @return: A sequential layer with Conv2D, BatchNorm, and optional ReLU.
+    """
+    seq: list[nn.Module] = [
+        nn.Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size=kernel_size,
+            bias=bias,
+            stride=stride,
+            padding=padding,
+        ),
+        nn.BatchNorm2d(out_channels),
+    ]
+
     if add_relu:
         seq.append(nn.ReLU(inplace=True))
+
     return nn.Sequential(*seq)
 
 
-def _make_layer(block, in_planes, planes, num_blocks, stride=1, expansion=1):
-    layers = []
-    layers.append(block(in_planes, planes, stride, final_relu=num_blocks > 1, expansion=expansion))
+def _make_layer(
+    block: Type[nn.Module],
+    in_planes: int,
+    planes: int,
+    num_blocks: int,
+    stride: int = 1,
+    expansion: int = 1,
+) -> nn.Sequential:
+    """Creates a sequential layer consisting of a series of blocks.
+
+    @type block: Type[nn.Module]
+    @param block: The block class to be used.
+    @type in_planes: int
+    @param in_planes: Number of input channels.
+    @type planes: int
+    @param planes: Number of output channels.
+    @type num_blocks: int
+    @param num_blocks: Number of blocks in the layer.
+    @type stride: int
+    @param stride: Stride for the first block. Defaults to 1.
+    @type expansion: int
+    @param expansion: Expansion factor for the block. Defaults to 1.
+    @return: A sequential container of the blocks.
+    """
+    layers: list[nn.Module] = []
+
+    layers.append(
+        block(in_planes, planes, stride, final_relu=num_blocks > 1, expansion=expansion)
+    )
+
     in_planes = planes * expansion
+
     if num_blocks > 1:
         for i in range(1, num_blocks):
-            if i == (num_blocks - 1):
-                layers.append(block(in_planes, planes, stride=1, final_relu=False, expansion=expansion))
-            else:
-                layers.append(block(in_planes, planes, stride=1, final_relu=True, expansion=expansion))
+            final_relu = i != (num_blocks - 1)
+            layers.append(
+                block(
+                    in_planes,
+                    planes,
+                    stride=1,
+                    final_relu=final_relu,
+                    expansion=expansion,
+                )
+            )
 
     return nn.Sequential(*layers)
 
-def drop_path(x, drop_prob: float = 0.0, scale_by_keep: bool = True):
-    """
-    Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
-    """
 
+def drop_path(x: Tensor, drop_prob: float = 0.0, scale_by_keep: bool = True) -> Tensor:
+    """Drop paths (Stochastic Depth) per sample when applied in the main path of
+    residual blocks.
+
+    @type x: Tensor
+    @param x: Input tensor.
+    @type drop_prob: float
+    @param drop_prob: Probability of dropping a path. Defaults to 0.0.
+    @type scale_by_keep: bool
+    @param scale_by_keep: Whether to scale the output by the keep probability. Defaults
+        to True.
+    @return: Tensor with dropped paths based on the provided drop probability.
+    """
     keep_prob = 1 - drop_prob
-    shape = (x.shape[0],) + (1,) * (x.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
+    shape = (x.shape[0],) + (1,) * (
+        x.ndim - 1
+    )  # Supports tensors of different dimensions
     random_tensor = x.new_empty(shape).bernoulli_(keep_prob)
     if keep_prob > 0.0 and scale_by_keep:
         random_tensor.div_(keep_prob)
@@ -51,50 +132,81 @@ def drop_path(x, drop_prob: float = 0.0, scale_by_keep: bool = True):
 
 
 class DropPath(nn.Module):
-    """
-    Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks).
+    """Drop paths (Stochastic Depth) per sample, when applied in the main path of
+    residual blocks.
 
-    Intended usage of this block is the following:
+    Intended usage of this block is as follows:
 
     >>> class ResNetBlock(nn.Module):
-    >>>   def __init__(self, ..., drop_path_rate:float):
+    >>>   def __init__(self, ..., drop_path_rate: float):
     >>>     self.drop_path = DropPath(drop_path_rate)
     >>>
     >>>   def forward(self, x):
     >>>     return x + self.drop_path(self.conv_bn_act(x))
 
-    Code taken from TIMM (https://github.com/rwightman/pytorch-image-models)
-    Apache License 2.0
+    Code taken from TIMM (https://github.com/rwightman/pytorch-image-models), Apache License 2.0.
     """
 
     def __init__(self, drop_prob: float = 0.0, scale_by_keep: bool = True):
-        """
+        """Initializes the DropPath module.
 
-        :param drop_prob: Probability of zeroing out individual vector (channel dimension) of each feature map
-        :param scale_by_keep: Whether to scale the output by the keep probability. Enable by default and helps to
-                              keep output mean & std in the same range as w/o drop path.
+        @type drop_prob: float
+        @param drop_prob: Probability of zeroing out individual vectors (channel
+            dimension) of each feature map. Defaults to 0.0.
+        @type scale_by_keep: bool
+        @param scale_by_keep: Whether to scale the output by the keep probability.
+            Enabled by default to maintain output mean & std in the same range as
+            without DropPath. Defaults to True.
         """
-        super(DropPath, self).__init__()
+        super().__init__()
         self.drop_prob = drop_prob
         self.scale_by_keep = scale_by_keep
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         if self.drop_prob == 0.0 or not self.training:
             return x
-
         return drop_path(x, self.drop_prob, self.scale_by_keep)
 
-    def extra_repr(self):
-        return f"drop_prob={round(self.drop_prob,3):0.3f}"
+    def extra_repr(self) -> str:
+        return f"drop_prob={round(self.drop_prob, 3):0.3f}"
 
 
 class BasicResNetBlock(nn.Module):
-    def __init__(self, in_planes, planes, stride=1, expansion=1, final_relu=True, droppath_prob=0.0):
-        super(BasicResNetBlock, self).__init__()
+    def __init__(
+        self,
+        in_planes: int,
+        planes: int,
+        stride: int = 1,
+        expansion: int = 1,
+        final_relu: bool = True,
+        droppath_prob: float = 0.0,
+    ):
+        """A basic residual block for ResNet.
+
+        @type in_planes: int
+        @param in_planes: Number of input channels.
+        @type planes: int
+        @param planes: Number of output channels.
+        @type stride: int
+        @param stride: Stride for the convolutional layers. Defaults to 1.
+        @type expansion: int
+        @param expansion: Expansion factor for the output channels. Defaults to 1.
+        @type final_relu: bool
+        @param final_relu: Whether to apply a ReLU activation after the residual
+            addition. Defaults to True.
+        @type droppath_prob: float
+        @param droppath_prob: Drop path probability for stochastic depth. Defaults to
+            0.0.
+        """
+        super().__init__()
         self.expansion = expansion
-        self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.conv1 = nn.Conv2d(
+            in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False
+        )
         self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv2 = nn.Conv2d(
+            planes, planes, kernel_size=3, stride=1, padding=1, bias=False
+        )
         self.bn2 = nn.BatchNorm2d(planes)
         self.final_relu = final_relu
 
@@ -102,10 +214,17 @@ class BasicResNetBlock(nn.Module):
         self.shortcut = nn.Sequential()
         if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = nn.Sequential(
-                nn.Conv2d(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False), nn.BatchNorm2d(self.expansion * planes)
+                nn.Conv2d(
+                    in_planes,
+                    self.expansion * planes,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False,
+                ),
+                nn.BatchNorm2d(self.expansion * planes),
             )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         out = F.relu(self.bn1(self.conv1(x)))
         out = self.bn2(self.conv2(out))
         out = self.drop_path(out)
@@ -114,15 +233,45 @@ class BasicResNetBlock(nn.Module):
             out = F.relu(out)
         return out
 
+
 class Bottleneck(nn.Module):
-    def __init__(self, in_planes, planes, stride=1, expansion=4, final_relu=True, droppath_prob=0.0):
-        super(Bottleneck, self).__init__()
+    def __init__(
+        self,
+        in_planes: int,
+        planes: int,
+        stride: int = 1,
+        expansion: int = 4,
+        final_relu: bool = True,
+        droppath_prob: float = 0.0,
+    ):
+        """A bottleneck block for ResNet.
+
+        @type in_planes: int
+        @param in_planes: Number of input channels.
+        @type planes: int
+        @param planes: Number of intermediate channels.
+        @type stride: int
+        @param stride: Stride for the second convolutional layer. Defaults to 1.
+        @type expansion: int
+        @param expansion: Expansion factor for the output channels. Defaults to 4.
+        @type final_relu: bool
+        @param final_relu: Whether to apply a ReLU activation after the residual
+            addition. Defaults to True.
+        @type droppath_prob: float
+        @param droppath_prob: Drop path probability for stochastic depth. Defaults to
+            0.0.
+        """
+        super().__init__()
         self.expansion = expansion
         self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.conv2 = nn.Conv2d(
+            planes, planes, kernel_size=3, stride=stride, padding=1, bias=False
+        )
         self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = nn.Conv2d(planes, self.expansion * planes, kernel_size=1, bias=False)
+        self.conv3 = nn.Conv2d(
+            planes, self.expansion * planes, kernel_size=1, bias=False
+        )
         self.bn3 = nn.BatchNorm2d(self.expansion * planes)
         self.final_relu = final_relu
 
@@ -130,16 +279,22 @@ class Bottleneck(nn.Module):
         self.shortcut = nn.Sequential()
         if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = nn.Sequential(
-                nn.Conv2d(in_planes, self.expansion * planes, kernel_size=1, stride=stride, bias=False), nn.BatchNorm2d(self.expansion * planes)
+                nn.Conv2d(
+                    in_planes,
+                    self.expansion * planes,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False,
+                ),
+                nn.BatchNorm2d(self.expansion * planes),
             )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         out = F.relu(self.bn1(self.conv1(x)))
         out = F.relu(self.bn2(self.conv2(out)))
         out = self.bn3(self.conv3(out))
 
         out = self.drop_path(out)
-
         out += self.shortcut(x)
 
         if self.final_relu:
@@ -149,30 +304,40 @@ class Bottleneck(nn.Module):
 
 
 class DAPPMBranch(nn.Module):
-    def __init__(self, kernel_size: int, stride: int, in_planes: int, branch_planes: int, inter_mode: str = "bilinear"):
-        """
-        A DAPPM branch
-        :param kernel_size: the kernel size for the average pooling
-                when stride=0 this parameter is omitted and AdaptiveAvgPool2d over all the input is performed
-        :param stride: stride for the average pooling
-                when stride=0: an AdaptiveAvgPool2d over all the input is performed (output is 1x1)
-                when stride=1: no average pooling is performed
-                when stride>1: average polling is performed (scaling the input down and up again)
-        :param in_planes:
-        :param branch_planes: width after the the first convolution
-        :param inter_mode: interpolation mode for upscaling
-        """
+    def __init__(
+        self,
+        kernel_size: int,
+        stride: int,
+        in_planes: int,
+        branch_planes: int,
+        inter_mode: str = "bilinear",
+    ):
+        """A DAPPM branch.
 
+        @type kernel_size: int
+        @param kernel_size: The kernel size for the average pooling. When stride=0, this
+            parameter is omitted, and AdaptiveAvgPool2d over all the input is performed.
+        @type stride: int
+        @param stride: Stride for the average pooling. When stride=0, an
+            AdaptiveAvgPool2d over all the input is performed (output is 1x1). When
+            stride=1, no average pooling is performed. When stride>1, average pooling is
+            performed (scaling the input down and up again).
+        @type in_planes: int
+        @param in_planes: Number of input channels.
+        @type branch_planes: int
+        @param branch_planes: Width after the first convolution.
+        @type inter_mode: str
+        @param inter_mode: Interpolation mode for upscaling. Defaults to "bilinear".
+        """
         super().__init__()
+
         down_list = []
         if stride == 0:
-            # when stride is 0 average pool all the input to 1x1
             down_list.append(nn.AdaptiveAvgPool2d((1, 1)))
-        elif stride == 1:
-            # when stride id 1 no average pooling is used
-            pass
-        else:
-            down_list.append(nn.AvgPool2d(kernel_size=kernel_size, stride=stride, padding=stride))
+        elif stride > 1:
+            down_list.append(
+                nn.AvgPool2d(kernel_size=kernel_size, stride=stride, padding=stride)
+            )
 
         down_list.append(nn.BatchNorm2d(in_planes))
         down_list.append(nn.ReLU(inplace=True))
@@ -185,16 +350,20 @@ class DAPPMBranch(nn.Module):
             self.process = nn.Sequential(
                 nn.BatchNorm2d(branch_planes),
                 nn.ReLU(inplace=True),
-                nn.Conv2d(branch_planes, branch_planes, kernel_size=3, padding=1, bias=False),
+                nn.Conv2d(
+                    branch_planes, branch_planes, kernel_size=3, padding=1, bias=False
+                ),
             )
 
-    def forward(self, x):
-        """
-        All branches of the DAPPM but the first one receive the output of the previous branch as a second input
-        :param x: in branch 0 - the original input of the DAPPM. in other branches - a list containing the original
-        input and the output of the previous branch.
-        """
+    def forward(self, x: Tensor) -> Tensor:
+        """Process input through the DAPPM branch.
 
+        @type x: Tensor or list[Tensor]
+        @param x: In branch 0 - the original input of the DAPPM. In other branches - a list containing the original
+                  input and the output of the previous branch.
+
+        @return: Processed output tensor.
+        """
         if isinstance(x, list):
             output_of_prev_branch = x[1]
             x = x[0]
@@ -213,18 +382,58 @@ class DAPPMBranch(nn.Module):
 
 
 class DAPPM(nn.Module):
-    def __init__(self, in_planes: int, branch_planes: int, out_planes: int, kernel_sizes: list, strides: list, inter_mode: str = "bilinear"):
+    def __init__(
+        self,
+        in_planes: int,
+        branch_planes: int,
+        out_planes: int,
+        kernel_sizes: list[int],
+        strides: list[int],
+        inter_mode: str = "bilinear",
+    ):
+        """DAPPM (Dynamic Attention Pyramid Pooling Module).
+
+        @type in_planes: int
+        @param in_planes: Number of input channels.
+        @type branch_planes: int
+        @param branch_planes: Width after the first convolution in each branch.
+        @type out_planes: int
+        @param out_planes: Number of output channels.
+        @type kernel_sizes: list[int]
+        @param kernel_sizes: List of kernel sizes for each branch.
+        @type strides: list[int]
+        @param strides: List of strides for each branch.
+        @type inter_mode: str
+        @param inter_mode: Interpolation mode for upscaling. Defaults to "bilinear".
+        """
         super().__init__()
 
-        assert len(kernel_sizes) == len(strides), "len of kernel_sizes and strides must be the same"
-        self.branches = nn.ModuleList()
-        for kernel_size, stride in zip(kernel_sizes, strides):
-            self.branches.append(DAPPMBranch(kernel_size=kernel_size, stride=stride, in_planes=in_planes, branch_planes=branch_planes, inter_mode=inter_mode))
+        assert len(kernel_sizes) == len(
+            strides
+        ), "len of kernel_sizes and strides must be the same"
+
+        self.branches = nn.ModuleList(
+            [
+                DAPPMBranch(
+                    kernel_size=kernel_size,
+                    stride=stride,
+                    in_planes=in_planes,
+                    branch_planes=branch_planes,
+                    inter_mode=inter_mode,
+                )
+                for kernel_size, stride in zip(kernel_sizes, strides)
+            ]
+        )
 
         self.compression = nn.Sequential(
             nn.BatchNorm2d(branch_planes * len(self.branches)),
             nn.ReLU(inplace=True),
-            nn.Conv2d(branch_planes * len(self.branches), out_planes, kernel_size=1, bias=False),
+            nn.Conv2d(
+                branch_planes * len(self.branches),
+                out_planes,
+                kernel_size=1,
+                bias=False,
+            ),
         )
         self.shortcut = nn.Sequential(
             nn.BatchNorm2d(in_planes),
@@ -232,124 +441,270 @@ class DAPPM(nn.Module):
             nn.Conv2d(in_planes, out_planes, kernel_size=1, bias=False),
         )
 
-    def forward(self, x):
-        x_list = []
-        for i, branch in enumerate(self.branches):
-            if i == 0:
-                x_list.append(branch(x))
-            else:
-                x_list.append(branch([x, x_list[i - 1]]))
+    def forward(self, x: Tensor) -> Tensor:
+        """Forward pass through the DAPPM module.
 
-        out = self.compression(torch.cat(x_list, 1)) + self.shortcut(x)
+        @type x: Tensor
+        @param x: Input tensor.
+        @return: Output tensor after processing through all branches and compression.
+        """
+        x_list = [self.branches[0](x)]
+
+        for i in range(1, len(self.branches)):
+            x_list.append(self.branches[i]([x, x_list[i - 1]]))
+
+        out = self.compression(torch.cat(x_list, dim=1)) + self.shortcut(x)
         return out
 
 
 class UpscaleOnline(nn.Module):
-    """
-    In some cases the required scale/size for the scaling is known only when the input is received.
-    This class support such cases. only the interpolation mode is set in advance.
+    """Upscale tensor to a specified size during the forward pass.
+
+    This class supports cases where the required scale/size is only known when the input
+    is received. Only the interpolation mode is set in advance.
     """
 
-    def __init__(self, mode="bilinear"):
+    def __init__(self, mode: str = "bilinear"):
+        """Initialize UpscaleOnline with the interpolation mode.
+
+        @type mode: str
+        @param mode: Interpolation mode for resizing. Defaults to "bilinear".
+        """
         super().__init__()
         self.mode = mode
 
-    def forward(self, x, output_height: int, output_width: int):
+    def forward(self, x: Tensor, output_height: int, output_width: int) -> Tensor:
+        """Upscale the input tensor to the specified height and width.
+
+        @type x: Tensor
+        @param x: Input tensor to be upscaled.
+        @type output_height: int
+        @param output_height: Desired height of the output tensor.
+        @type output_width: int
+        @param output_width: Desired width of the output tensor.
+        @return: Upscaled tensor.
+        """
         return F.interpolate(x, size=[output_height, output_width], mode=self.mode)
 
 
 class DDRBackBoneBase(nn.Module, ABC):
-    """A base class defining functions that must be supported by DDRBackBones"""
+    """Base class defining functions that must be supported by DDRBackBones."""
 
-    def validate_backbone_attributes(self):
-        expected_attributes = ["stem", "layer1", "layer2", "layer3", "layer4", "input_channels"]
+    def validate_backbone_attributes(self) -> None:
+        """Validate the existence of required backbone attributes.
+
+        Ensures that the following attributes are present: "stem", "layer1", "layer2",
+        "layer3", "layer4", "input_channels".
+        """
+        expected_attributes = [
+            "stem",
+            "layer1",
+            "layer2",
+            "layer3",
+            "layer4",
+            "input_channels",
+        ]
         for attribute in expected_attributes:
-            assert hasattr(self, attribute), f"Invalid backbone - attribute '{attribute}' is missing"
+            assert hasattr(
+                self, attribute
+            ), f"Invalid backbone - attribute '{attribute}' is missing"
 
-    def get_backbone_output_number_of_channels(self):
-        """Return a dictionary of the shapes of each output of the backbone to determine the in_channels of the
-        skip and compress layers"""
+    def get_backbone_output_number_of_channels(self) -> dict[str, int]:
+        """Determine the number of output channels for each layer of the backbone.
+
+        Returns a dictionary with keys "layer2", "layer3", "layer4" and their respective
+        number of output channels.
+
+        @return: Dictionary of output channel counts for each layer.
+        """
         output_shapes = {}
         x = torch.randn(1, self.input_channels, 320, 320)
         x = self.stem(x)
         x = self.layer1(x)
         x = self.layer2(x)
         output_shapes["layer2"] = x.shape[1]
+
         for layer in self.layer3:
             x = layer(x)
         output_shapes["layer3"] = x.shape[1]
+
         x = self.layer4(x)
         output_shapes["layer4"] = x.shape[1]
+
         return output_shapes
 
 
 class BasicDDRBackBone(DDRBackBoneBase):
-    def __init__(self, block: nn.Module.__class__, width: int, layers: list, input_channels: int, layer3_repeats: int = 1):
+    def __init__(
+        self,
+        block: Type[nn.Module],
+        width: int,
+        layers: list[int],
+        input_channels: int,
+        layer3_repeats: int = 1,
+    ):
+        """Initialize the BasicDDRBackBone with specified parameters.
+
+        @type block: Type[nn.Module]
+        @param block: The block class to use for layers.
+        @type width: int
+        @param width: Width of the feature maps.
+        @type layers: list[int]
+        @param layers: Number of blocks in each layer.
+        @type input_channels: int
+        @param input_channels: Number of input channels.
+        @type layer3_repeats: int
+        @param layer3_repeats: Number of repeats for layer3. Defaults to 1.
+        """
         super().__init__()
         self.input_channels = input_channels
+
         self.stem = nn.Sequential(
-            ConvBN(in_channels=input_channels, out_channels=width, kernel_size=3, stride=2, padding=1, add_relu=True),
-            ConvBN(in_channels=width, out_channels=width, kernel_size=3, stride=2, padding=1, add_relu=True),
+            ConvBN(
+                in_channels=input_channels,
+                out_channels=width,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                add_relu=True,
+            ),
+            ConvBN(
+                in_channels=width,
+                out_channels=width,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                add_relu=True,
+            ),
         )
-        self.layer1 = _make_layer(block=block, in_planes=width, planes=width, num_blocks=layers[0])
-        self.layer2 = _make_layer(block=block, in_planes=width, planes=width * 2, num_blocks=layers[1], stride=2)
+
+        self.layer1 = _make_layer(
+            block=block,
+            in_planes=width,
+            planes=width,
+            num_blocks=layers[0],
+        )
+
+        self.layer2 = _make_layer(
+            block=block,
+            in_planes=width,
+            planes=width * 2,
+            num_blocks=layers[1],
+            stride=2,
+        )
+
         self.layer3 = nn.ModuleList(
-            [_make_layer(block=block, in_planes=width * 2, planes=width * 4, num_blocks=layers[2], stride=2)]
-            + [_make_layer(block=block, in_planes=width * 4, planes=width * 4, num_blocks=layers[2], stride=1) for _ in range(layer3_repeats - 1)]
+            [
+                _make_layer(
+                    block=block,
+                    in_planes=width * 2,
+                    planes=width * 4,
+                    num_blocks=layers[2],
+                    stride=2,
+                )
+            ]
+            + [
+                _make_layer(
+                    block=block,
+                    in_planes=width * 4,
+                    planes=width * 4,
+                    num_blocks=layers[2],
+                    stride=1,
+                )
+                for _ in range(layer3_repeats - 1)
+            ]
         )
-        self.layer4 = _make_layer(block=block, in_planes=width * 4, planes=width * 8, num_blocks=layers[3], stride=2)
 
-    def replace_input_channels(self, in_channels: int, compute_new_weights_fn: Optional[Callable[[nn.Module, int], nn.Module]] = None):
-        from super_gradients.modules.weight_replacement_utils import replace_conv2d_input_channels
-
-        self.stem[0][0] = replace_conv2d_input_channels(conv=self.stem[0][0], in_channels=in_channels, fn=compute_new_weights_fn)
-        self.input_channels = self.get_input_channels()
-
-    def get_input_channels(self) -> int:
-        return self.stem[0][0].in_channels
+        self.layer4 = _make_layer(
+            block=block,
+            in_planes=width * 4,
+            planes=width * 8,
+            num_blocks=layers[3],
+            stride=2,
+        )
 
 
 class DDRNet(BaseNode[Tensor, list[Tensor]]):
     def __init__(
         self,
-        #backbone: DDRBackBoneBase.__class__,
         use_aux_heads: bool = True,
-        upscale_module: nn.Module = UpscaleOnline(),
+        upscale_module: nn.Module = None,
         highres_planes: int = 64,
         spp_width: int = 128,
-        #head_width: int,
         ssp_inter_mode: str = "bilinear",
         segmentation_inter_mode: str = "bilinear",
-        block: nn.Module.__class__ = BasicResNetBlock,
-        skip_block: nn.Module.__class__ = BasicResNetBlock,
-        layer5_block: nn.Module.__class__ = Bottleneck,
+        block: Type[nn.Module] = BasicResNetBlock,
+        skip_block: Type[nn.Module] = BasicResNetBlock,
+        layer5_block: Type[nn.Module] = Bottleneck,
         layer5_bottleneck_expansion: int = 2,
-        #classification_mode=False,
-        spp_kernel_sizes: list = [1, 5, 9, 17, 0],
-        spp_strides: list = [1, 2, 4, 8, 0],
+        spp_kernel_sizes: list[int] = None,
+        spp_strides: list[int] = None,
         layer3_repeats: int = 1,
         planes: int = 32,
-        layers: list = [2, 2, 2, 2, 1, 2, 2, 1],
+        layers: list[int] = None,
         input_channels: int = 3,
         **kwargs,
     ):
+        """Initialize the DDRNet with specified parameters.
+
+        @type use_aux_heads: bool
+        @param use_aux_heads: Whether to use auxiliary heads. Defaults to True.
+        @type upscale_module: nn.Module
+        @param upscale_module: Module for upscaling (e.g., bilinear interpolation).
+            Defaults to UpscaleOnline().
+        @type highres_planes: int
+        @param highres_planes: Number of channels in the high resolution net. Defaults
+            to 64.
+        @type spp_width: int
+        @param spp_width: Width of the branches in the SPP block. Defaults to 128.
+        @type ssp_inter_mode: str
+        @param ssp_inter_mode: Interpolation mode for the SPP block. Defaults to
+            "bilinear".
+        @type segmentation_inter_mode: str
+        @param segmentation_inter_mode: Interpolation mode for the segmentation head.
+            Defaults to "bilinear".
+        @type block: Type[nn.Module]
+        @param block: Type of block to use in the backbone. Defaults to
+            BasicResNetBlock.
+        @type skip_block: Type[nn.Module]
+        @param skip_block: Type of block for skip connections. Defaults to
+            BasicResNetBlock.
+        @type layer5_block: Type[nn.Module]
+        @param layer5_block: Type of block for layer5 and layer5_skip. Defaults to
+            Bottleneck.
+        @type layer5_bottleneck_expansion: int
+        @param layer5_bottleneck_expansion: Expansion factor for Bottleneck block in
+            layer5. Defaults to 2.
+        @type spp_kernel_sizes: list[int]
+        @param spp_kernel_sizes: Kernel sizes for the SPP module pooling. Defaults to
+            [1, 5, 9, 17, 0].
+        @type spp_strides: list[int]
+        @param spp_strides: Strides for the SPP module pooling. Defaults to [1, 2, 4, 8,
+            0].
+        @type layer3_repeats: int
+        @param layer3_repeats: Number of times to repeat the 3rd stage. Defaults to 1.
+        @type planes: int
+        @param planes: Base number of channels. Defaults to 32.
+        @type layers: list[int]
+        @param layers: Number of blocks in each layer of the backbone. Defaults to [2,
+            2, 2, 2, 1, 2, 2, 1].
+        @type input_channels: int
+        @param input_channels: Number of input channels. Defaults to 3.
+        @type kwargs: Any
+        @param kwargs: Additional arguments to pass to L{BaseNode}.
         """
 
-        :param upscale_module: upscale to use in the backbone (DAPPM and Segmentation head are using bilinear interpolation)
-        :param highres_planes: number of channels in the high resolution net
-        :param ssp_inter_mode: the interpolation used in the SPP block
-        :param segmentation_inter_mode: the interpolation used in the segmentation head
-        :param skip_block: allows specifying a different block (from 'block') for the skip layer
-        :param layer5_block: type of block to use in layer5 and layer5_skip
-        :param layer5_bottleneck_expansion: determines the expansion rate for Bottleneck block
-        :param spp_kernel_sizes: list of kernel sizes for the spp module pooling
-        :param spp_strides: list of strides for the spp module pooling
-        :param layer3_repeats: number of times to repeat the 3rd stage of ddr model, including the paths interchange
-         modules.
-        """
+        if upscale_module is None:
+            upscale_module = UpscaleOnline()
+        if spp_kernel_sizes is None:
+            spp_kernel_sizes = [1, 5, 9, 17, 0]
+        if spp_strides is None:
+            spp_strides = [1, 2, 4, 8, 0]
+        if layers is None:
+            layers = [2, 2, 2, 2, 1, 2, 2, 1]
 
         super().__init__(**kwargs)
-        #self.use_aux_heads = use_aux_heads
+
         self._use_aux_heads = use_aux_heads
         self.upscale = upscale_module
         self.ssp_inter_mode = ssp_inter_mode
@@ -357,7 +712,6 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self.block = block
         self.skip_block = skip_block
         self.relu = nn.ReLU(inplace=False)
-        #self.classification_mode = classification_mode
         self.layer3_repeats = layer3_repeats
         self.planes = planes
         self.layers = layers
@@ -374,11 +728,29 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self._backbone.validate_backbone_attributes()
         out_chan_backbone = self._backbone.get_backbone_output_number_of_channels()
 
-        # Repeat r-times layer4
-        self.compression3, self.down3, self.layer3_skip = nn.ModuleList(), nn.ModuleList(), nn.ModuleList()
+        # Define layers for layer 3
+        self.compression3 = nn.ModuleList()
+        self.down3 = nn.ModuleList()
+        self.layer3_skip = nn.ModuleList()
         for i in range(layer3_repeats):
-            self.compression3.append(ConvBN(in_channels=out_chan_backbone["layer3"], out_channels=highres_planes, kernel_size=1, bias=False))
-            self.down3.append(ConvBN(in_channels=highres_planes, out_channels=out_chan_backbone["layer3"], kernel_size=3, stride=2, padding=1, bias=False))
+            self.compression3.append(
+                ConvBN(
+                    in_channels=out_chan_backbone["layer3"],
+                    out_channels=highres_planes,
+                    kernel_size=1,
+                    bias=False,
+                )
+            )
+            self.down3.append(
+                ConvBN(
+                    in_channels=highres_planes,
+                    out_channels=out_chan_backbone["layer3"],
+                    kernel_size=3,
+                    stride=2,
+                    padding=1,
+                    bias=False,
+                )
+            )
             self.layer3_skip.append(
                 _make_layer(
                     in_planes=out_chan_backbone["layer2"] if i == 0 else highres_planes,
@@ -388,17 +760,46 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                 )
             )
 
-        self.compression4 = ConvBN(in_channels=out_chan_backbone["layer4"], out_channels=highres_planes, kernel_size=1, bias=False)
+        self.compression4 = ConvBN(
+            in_channels=out_chan_backbone["layer4"],
+            out_channels=highres_planes,
+            kernel_size=1,
+            bias=False,
+        )
 
         self.down4 = nn.Sequential(
-            ConvBN(in_channels=highres_planes, out_channels=highres_planes * 2, kernel_size=3, stride=2, padding=1, bias=False, add_relu=True),
-            ConvBN(in_channels=highres_planes * 2, out_channels=out_chan_backbone["layer4"], kernel_size=3, stride=2, padding=1, bias=False),
-        )
-        self.layer4_skip = _make_layer(block=skip_block, in_planes=highres_planes, planes=highres_planes, num_blocks=self.additional_layers[2])
-        self.layer5_skip = _make_layer(
-            block=layer5_block, in_planes=highres_planes, planes=highres_planes, num_blocks=self.additional_layers[3], expansion=layer5_bottleneck_expansion
+            ConvBN(
+                in_channels=highres_planes,
+                out_channels=highres_planes * 2,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                bias=False,
+                add_relu=True,
+            ),
+            ConvBN(
+                in_channels=highres_planes * 2,
+                out_channels=out_chan_backbone["layer4"],
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                bias=False,
+            ),
         )
 
+        self.layer4_skip = _make_layer(
+            block=skip_block,
+            in_planes=highres_planes,
+            planes=highres_planes,
+            num_blocks=self.additional_layers[2],
+        )
+        self.layer5_skip = _make_layer(
+            block=layer5_block,
+            in_planes=highres_planes,
+            planes=highres_planes,
+            num_blocks=self.additional_layers[3],
+            expansion=layer5_bottleneck_expansion,
+        )
 
         self.layer5 = _make_layer(
             block=layer5_block,
@@ -420,14 +821,11 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
 
         self.highres_planes = highres_planes
         self.layer5_bottleneck_expansion = layer5_bottleneck_expansion
-        #self.head_width = head_width
         self.init_params()
 
     @property
     def backbone(self):
-        """
-        Create a fake backbone module to load backbone pre-trained weights.
-        """
+        """Create a fake backbone module to load backbone pre-trained weights."""
         return nn.Sequential(
             Dict(
                 [
@@ -438,13 +836,12 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                     ("down4", self.down4),
                     ("layer3_skip", self.layer3_skip),
                     ("layer4_skip", self.layer4_skip),
-                    ("layer4_skip", self.layer4_skip),
                     ("layer5_skip", self.layer5_skip),
                 ]
             )
         )
 
-    def forward(self, x: Tensor) -> List[Tensor]:
+    def forward(self, x: Tensor) -> list[Tensor]:
         width_output = x.shape[-1] // 8
         height_output = x.shape[-2] // 8
 
@@ -459,9 +856,11 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             out_layer3_skip = self.layer3_skip[i](self.relu(x_skip))
 
             x = out_layer3 + self.down3[i](self.relu(out_layer3_skip))
-            x_skip = out_layer3_skip + self.upscale(self.compression3[i](self.relu(out_layer3)), height_output, width_output)
+            x_skip = out_layer3_skip + self.upscale(
+                self.compression3[i](self.relu(out_layer3)), height_output, width_output
+            )
 
-        # save for auxiliary head
+        # Save for auxiliary head
         if self._use_aux_heads:
             x_extra = x_skip
 
@@ -469,18 +868,15 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         out_layer4_skip = self.layer4_skip(self.relu(x_skip))
 
         x = out_layer4 + self.down4(self.relu(out_layer4_skip))
-        x_skip = out_layer4_skip + self.upscale(self.compression4(self.relu(out_layer4)), height_output, width_output)
+        x_skip = out_layer4_skip + self.upscale(
+            self.compression4(self.relu(out_layer4)), height_output, width_output
+        )
 
         out_layer5_skip = self.layer5_skip(self.relu(x_skip))
 
-        # if self.classification_mode:
-        #     x_skip = self.high_to_low_fusion(self.relu(out_layer5_skip))
-        #     x = self.layer5(self.relu(x))
-        #     x = self.average_pool(x + x_skip)
-        #     x = self.fc(x.squeeze())
-        #     return x
-        # else:
-        x = self.upscale(self.spp(self.layer5(self.relu(x))), height_output, width_output)
+        x = self.upscale(
+            self.spp(self.layer5(self.relu(x))), height_output, width_output
+        )
 
         x = x + out_layer5_skip
 
@@ -498,32 +894,3 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
-
-    @property
-    def use_aux_heads(self):
-        return self._use_aux_heads
-
-    @use_aux_heads.setter
-    def use_aux_heads(self, use_aux: bool):
-        """
-        public setter for self._use_aux_heads, called every time an assignment to self.use_aux_heads is applied.
-        if use_aux is False, `_remove_auxiliary_heads` is called to delete auxiliary and detail heads.
-        if use_aux is True, and self._use_aux_heads was already set to False a ValueError is raised, recreating
-            aux and detail heads outside init method is not allowed, and the module should be recreated.
-        """
-        if use_aux is True and self._use_aux_heads is False:
-            raise ValueError(
-                "Cant turn use_aux_heads from False to True. Try initiating the module again with"
-                " `use_aux_heads=True` or initiating the auxiliary heads modules manually."
-            )
-        if not use_aux:
-            self._remove_auxiliary_heads()
-        self._use_aux_heads = use_aux
-
-    def prep_model_for_conversion(self, input_size: Union[tuple, list] = None, **kwargs):
-        # set to false and delete auxiliary and detail heads modules.
-        self.use_aux_heads = False
-
-    def _remove_auxiliary_heads(self):
-        if hasattr(self, "seghead_extra"):
-            del self.seghead_extra
