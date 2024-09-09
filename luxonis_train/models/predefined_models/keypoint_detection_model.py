@@ -21,7 +21,7 @@ class KeypointDetectionModel(BasePredefinedModel):
     loss_params: Kwargs = field(default_factory=dict)
     head_type: Literal[
         "ImplicitKeypointBBoxHead", "EfficientKeypointBBoxHead"
-    ] = "ImplicitKeypointBBoxHead"
+    ] = "EfficientKeypointBBoxHead"
     kpt_visualizer_params: Kwargs = field(default_factory=dict)
     bbox_visualizer_params: Kwargs = field(default_factory=dict)
     bbox_task_name: str | None = None
