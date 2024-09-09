@@ -60,7 +60,7 @@ jobs:
           curl -L "https://raw.githubusercontent.com/luxonis/python-api-analyzer-to-json/main/gen-docs.py" -o "gen-docs.py"
 
       - name: Build docs
-        run: python gen-docs.py luxonis_ml
+        run: python gen-docs.py luxonis_train
 
   tests:
     needs:
