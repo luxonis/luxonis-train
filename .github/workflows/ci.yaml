@@ -4,8 +4,8 @@ on:
   pull_request:
     branches: [ dev, main ]
     paths:
-      - 'luxonis_train/**/**.py'
-      - 'tests/**/**.py'
+      - 'luxonis_train/**'
+      - 'tests/**'
       - .github/workflows/ci.yaml
 
 permissions:
@@ -63,6 +63,9 @@ jobs:
         run: python gen-docs.py luxonis_ml
 
   tests:
+    needs:
+      - pre-commit
+      - docs
     strategy:
       fail-fast: false
       matrix:
@@ -101,26 +104,40 @@ jobs:
         PYTORCH_MPS_HIGH_WATERMARK_RATIO: 0.0
       with:
         emoji: false
-        custom-arguments: --cov luxonis_train --cov-report json --junit-xml pytest.xml
-
-    - name: Generate coverage report
-      if: matrix.os == 'ubuntu-latest'
-      uses: orgoro/coverage@v3.1
-      with:
-        coverageFile: coverage.xml
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Update Coverage Badge
-      uses: we-cli/coverage-badge-action@main
-
-    - name: Push changes
-      if: matrix.os == 'ubuntu-latest'
-      uses: ad-m/github-push-action@master
-      with:
-        branch: ${{ github.head_ref }}
+        custom-arguments: --cov luxonis_train --cov-report xml --junit-xml pytest.xml
 
     - name: Create Test Report
       uses: EnricoMi/publish-unit-test-result-action@v2
       if: matrix.os == 'ubuntu-latest'
       with:
         files: pytest.xml
+
+    - name: Generate coverage badge
+      uses: tj-actions/coverage-badge-py@v2
+      if: matrix.os == 'ubuntu-latest'
+      with:
+        output: media/coverage_badge.svg
+
+    - name: Generate coverage report
+      uses: orgoro/coverage@v3.1
+      if: matrix.os == 'ubuntu-latest'
+      with:
+        coverageFile: coverage.xml
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Commit coverage badge
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        git config --global user.name 'GitHub Actions'
+        git config --global user.email 'actions@github.com'
+        git diff --quiet media/coverage_badge.svg || {
+          git add media/coverage_badge.svg
+          git commit -m "[Automated] Updated coverage badge"
+        }
+
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      if: matrix.os == 'ubuntu-latest'
+      with:
+        branch: ${{ github.head_ref }}
+
