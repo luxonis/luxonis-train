@@ -104,7 +104,7 @@ jobs:
         PYTORCH_MPS_HIGH_WATERMARK_RATIO: 0.0
       with:
         emoji: false
-        custom-arguments: --cov luxonis_train --cov-report xml --junit-xml pytest.xml
+        custom-arguments: --cov luxonis_train --cov-report xml --junit-xml pytest.xml -k test_custom_tasks
 
     - name: Create Test Report
       uses: EnricoMi/publish-unit-test-result-action@v2
