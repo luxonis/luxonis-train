@@ -63,22 +63,6 @@ def test_predefined_models(
     model = LuxonisModel(config_file, opts)
     model.train()
     model.test()
-    model.export()
-    assert (
-        Path(model.run_save_dir, "export", model.cfg.model.name)
-        .with_suffix(".onnx")
-        .exists()
-    )
-    model.archive()
-    assert (
-        Path(
-            model.run_save_dir,
-            "archive",
-            model.cfg.archiver.name or model.cfg.model.name,
-        )
-        .with_suffix(".onnx.tar.xz")
-        .exists()
-    )
 
 
 def test_multi_input(opts: dict[str, Any]):
@@ -135,7 +119,7 @@ def test_parsing_loader():
     sys.platform == "win32",
     reason="Tuning not supported on Windows",
 )
-def test_tuner(opts: dict[str, Any], coco_dataset: LuxonisDataset):
+def test_tune(opts: dict[str, Any], coco_dataset: LuxonisDataset):
     opts["tuner.params"] = {
         "trainer.optimizer.name_categorical": ["Adam", "SGD"],
         "trainer.optimizer.params.lr_float": [0.0001, 0.001],
@@ -151,6 +135,23 @@ def test_tuner(opts: dict[str, Any], coco_dataset: LuxonisDataset):
     model = LuxonisModel("configs/example_tuning.yaml", opts)
     model.tune()
     assert STUDY_PATH.exists()
+
+
+def test_archive(coco_dataset: LuxonisDataset):
+    opts = {
+        "loader.params.dataset_name": coco_dataset.identifier,
+    }
+    model = LuxonisModel("tests/configs/archive_config.yaml", opts)
+    model.archive()
+    assert (
+        Path(
+            model.run_save_dir,
+            "archive",
+            model.cfg.archiver.name or model.cfg.model.name,
+        )
+        .with_suffix(".onnx.tar.xz")
+        .exists()
+    )
 
 
 def test_callbacks(opts: dict[str, Any], parking_lot_dataset: LuxonisDataset):

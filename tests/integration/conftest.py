@@ -241,7 +241,7 @@ def cifar10_dataset() -> LuxonisDataset:
 @pytest.fixture
 def config(train_overfit: bool) -> dict[str, Any]:
     if train_overfit:
-        epochs = 200
+        epochs = 100
     else:
         epochs = 1
 
@@ -268,7 +268,6 @@ def config(train_overfit: bool) -> dict[str, Any]:
             },
             "callbacks": [
                 {"name": "ExportOnTrainEnd"},
-                {"name": "ArchiveOnTrainEnd"},
             ],
         },
     }

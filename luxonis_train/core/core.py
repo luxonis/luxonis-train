@@ -78,6 +78,7 @@ class LuxonisModel:
             self.cfg.tracker.save_directory, self.tracker.run_name
         )
         self.log_file = osp.join(self.run_save_dir, "luxonis_train.log")
+        self.error_message = None
 
         # NOTE: to add the file handler (we only get the save dir now,
         # but we want to use the logger before)
@@ -89,6 +90,14 @@ class LuxonisModel:
 
         if self.cfg.trainer.seed is not None:
             pl.seed_everything(self.cfg.trainer.seed, workers=True)
+
+        self.pl_trainer = create_trainer(
+            self.cfg.trainer,
+            logger=self.tracker,
+            callbacks=LuxonisRichProgressBar()
+            if self.cfg.trainer.use_rich_progress_bar
+            else LuxonisTQDMProgressBar(),
+        )
 
         self.train_augmentations = Augmentations(
             image_size=self.cfg.trainer.preprocessing.train_image_size,
@@ -108,14 +117,6 @@ class LuxonisModel:
             train_rgb=self.cfg.trainer.preprocessing.train_rgb,
             keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
             only_normalize=True,
-        )
-
-        self.pl_trainer = create_trainer(
-            self.cfg.trainer,
-            logger=self.tracker,
-            callbacks=LuxonisRichProgressBar()
-            if self.cfg.trainer.use_rich_progress_bar
-            else LuxonisTQDMProgressBar(),
         )
 
         self.loaders: dict[str, BaseLoaderTorch] = {}
@@ -166,7 +167,6 @@ class LuxonisModel:
             )
             for view in ["train", "val", "test"]
         }
-        self.error_message = None
 
         self.dataset_metadata = DatasetMetadata.from_loader(self.loaders["train"])
 

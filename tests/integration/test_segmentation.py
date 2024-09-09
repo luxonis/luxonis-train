@@ -81,6 +81,7 @@ def get_opts(backbone: str) -> dict[str, Any]:
                 },
             ],
             "metrics": [],
+            "visualizers": [],
         }
     }
     aliases = [head["alias"] for head in opts["model"]["nodes"][1:]]
@@ -98,6 +99,12 @@ def get_opts(backbone: str) -> dict[str, Any]:
                     "attached_to": alias,
                 },
             ]
+        )
+        opts["model"]["visualizers"].append(
+            {
+                "name": "SegmentationVisualizer",
+                "attached_to": alias,
+            }
         )
     return opts
 

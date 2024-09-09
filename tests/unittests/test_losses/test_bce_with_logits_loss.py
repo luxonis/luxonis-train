@@ -1,4 +1,3 @@
-import pytest
 import torch
 
 from luxonis_train.attached_modules.losses import BCEWithLogitsLoss
@@ -55,7 +54,3 @@ def test_weights():
     loss_weight = loss_fn_weight.forward(predictions, targets)
     loss_no_weight = loss_fn_no_weight.forward(predictions, targets)
     assert loss_weight != loss_no_weight
-
-
-if __name__ == "__main__":
-    pytest.main()
