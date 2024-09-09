@@ -7,6 +7,7 @@ from .mobileone import MobileOne
 from .repvgg import RepVGG
 from .resnet import ResNet
 from .rexnetv1 import ReXNetV1_lite
+from .ddrnet import DDRNet
 
 __all__ = [
     "ContextSpatial",
@@ -18,4 +19,5 @@ __all__ = [
     "ReXNetV1_lite",
     "RepVGG",
     "ResNet",
+    "DDRNet",
 ]

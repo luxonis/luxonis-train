@@ -3,6 +3,7 @@ from .classification_model import ClassificationModel
 from .detection_model import DetectionModel
 from .keypoint_detection_model import KeypointDetectionModel
 from .segmentation_model import SegmentationModel
+from .ddrnet_segmentation_model import DDRNetSegmentationModel
 
 __all__ = [
     "BasePredefinedModel",
@@ -10,4 +11,5 @@ __all__ = [
     "DetectionModel",
     "KeypointDetectionModel",
     "ClassificationModel",
+    "DDRNetSegmentationModel",
 ]
