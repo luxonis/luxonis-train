@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.utils import environ
 
 from luxonis_train.core import LuxonisModel
 
@@ -110,6 +111,10 @@ def test_custom_tasks(
         assert generated_config == correct_archive_config
 
 
+@pytest.mark.skipif(
+    environ.GOOGLE_APPLICATION_CREDENTIALS is None,
+    reason="GCP credentials not set",
+)
 def test_parsing_loader():
     model = LuxonisModel("tests/configs/segmentation_parse_loader.yaml")
     model.train()

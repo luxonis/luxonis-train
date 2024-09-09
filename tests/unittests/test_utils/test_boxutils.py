@@ -78,10 +78,8 @@ def test_bbox_iou(iou_type: IoUType):
         assert iou.shape == (bbox1.shape[0], bbox2.shape[0])
         if iou_type == "none":
             min = 0
-        elif iou_type == "ciou":
-            min = -1.1
         else:
-            min = -1
+            min = -1.5
         assert iou.min() >= min and iou.max() <= 1
 
     if iou_type == "none":

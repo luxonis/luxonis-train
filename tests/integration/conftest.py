@@ -269,5 +269,6 @@ def config(train_overfit: bool) -> dict[str, Any]:
             "callbacks": [
                 {"name": "ExportOnTrainEnd"},
             ],
+            "matmul_precision": "medium",
         },
     }
