@@ -6,19 +6,10 @@ model:
   predefined_model:
     name: DDRNetSegmentationModel
     params:
+      num_classes: 80
       task: multiclass
       backbone_params:
         use_aux_heads: True # set to False to disable auxiliary heads (for export)
-       
-      head_params:
-        in_planes: 128
-        num_classes: 80 # number of classes
-        attach_index: 0
-      aux_head_params: # ignored if use_aux_heads is False
-        in_planes: 64
-        num_classes: 80 # number of classes
-        attach_index: 1
-
 
 loader:
   params:

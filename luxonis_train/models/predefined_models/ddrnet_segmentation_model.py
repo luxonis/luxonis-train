@@ -13,6 +13,9 @@ from .segmentation_model import SegmentationModel
 @dataclass
 class DDRNetSegmentationModel(SegmentationModel):
     backbone: str = "DDRNet"
+    num_classes: int = 1
+    highres_planes: int = 64
+    layer5_bottleneck_expansion: int = 2
     task: Literal["binary", "multiclass"] = "binary"
     backbone_params: Kwargs = field(default_factory=dict)
     head_params: Kwargs = field(default_factory=dict)
@@ -23,6 +26,21 @@ class DDRNetSegmentationModel(SegmentationModel):
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
+        self.backbone_params.update({"highres_planes": self.highres_planes})
+        self.backbone_params.update(
+            {"layer5_bottleneck_expansion": self.layer5_bottleneck_expansion}
+        )
+
+        self.head_params.update(
+            {"in_planes": self.highres_planes * self.layer5_bottleneck_expansion}
+        )
+        self.head_params.update({"num_classes": self.num_classes})
+        self.head_params.update({"attach_index": 0})
+
+        self.aux_head_params.update({"in_planes": self.highres_planes})
+        self.aux_head_params.update({"num_classes": self.num_classes})
+        self.aux_head_params.update({"attach_index": 1})
+
         node_list = [
             ModelNodeConfig(
                 name=self.backbone,
