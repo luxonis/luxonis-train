@@ -52,7 +52,7 @@ def parking_lot_dataset() -> LuxonisDataset:
     def generator():
         filenames: dict[int, Path] = {}
         for base_path in [kpt_mask_path, mask_brand_path, mask_color_path]:
-            for sequence_path in base_path.glob("sequence.*"):
+            for sequence_path in sorted(list(base_path.glob("sequence.*"))):
                 frame_data = sequence_path / "step0.frame_data.json"
                 with open(frame_data) as f:
                     data = json.load(f)["captures"][0]
