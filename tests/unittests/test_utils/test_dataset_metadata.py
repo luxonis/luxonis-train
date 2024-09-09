@@ -21,7 +21,7 @@ def test_n_classes(metadata):
     with pytest.raises(ValueError):
         metadata.n_classes("segmentation")
     metadata._classes["segmentation"] = ["car", "person", "tree"]
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         metadata.n_classes()
 
 
@@ -32,7 +32,7 @@ def test_n_keypoints(metadata):
     with pytest.raises(ValueError):
         metadata.n_keypoints("segmentation")
     metadata._n_keypoints["segmentation"] = 1
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         metadata.n_keypoints()
 
 
@@ -43,11 +43,11 @@ def test_class_names(metadata):
     with pytest.raises(ValueError):
         metadata.classes("segmentation")
     metadata._classes["segmentation"] = ["car", "person", "tree"]
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         metadata.classes()
 
 
 def test_no_loader():
     metadata = DatasetMetadata()
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         metadata.autogenerate_anchors(3)
