@@ -336,7 +336,7 @@ M3 = MicroNetVariant(
 
 def get_variant(variant: Literal["M1", "M2", "M3"]) -> MicroNetVariant:
     variants = {"M1": M1, "M2": M2, "M3": M3}
-    if variant not in variants:
+    if variant not in variants:  # pragma: no cover
         raise ValueError(
             "MicroNet model variant should be in "
             f"{list(variants.keys())}, got {variant}."

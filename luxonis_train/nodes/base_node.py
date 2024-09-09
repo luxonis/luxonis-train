@@ -353,7 +353,12 @@ class BaseNode(
 
     @property
     def input_shapes(self) -> list[Packet[Size]]:
-        """Getter for the input shapes."""
+        """Getter for the input shapes.
+
+        @type: list[Packet[Size]]
+        @raises RuntimeError: If the C{input_shapes} were not set during initialization.
+        """
+
         if self._input_shapes is None:
             raise self._non_set_error("input_shapes")
         return self._input_shapes
@@ -363,7 +368,8 @@ class BaseNode(
         """Getter for the original input shape as [N, H, W].
 
         @type: Size
-        @raises ValueError: If the C{original_in_shape} is C{None}.
+        @raises RuntimeError: If the C{original_in_shape} were not set during
+            initialization.
         """
         if self._original_in_shape is None:
             raise self._non_set_error("original_in_shape")
@@ -374,10 +380,11 @@ class BaseNode(
         """Getter for the dataset metadata.
 
         @type: L{DatasetMetadata}
-        @raises ValueError: If the C{dataset_metadata} is C{None}.
+        @raises RuntimeError: If the C{dataset_metadata} were not set during
+            initialization.
         """
         if self._dataset_metadata is None:
-            raise ValueError(
+            raise RuntimeError(
                 f"{self._non_set_error('dataset_metadata')}"
                 "Either provide `dataset_metadata` or `n_classes`."
             )
@@ -404,7 +411,7 @@ class BaseNode(
             >>> in_sizes = [Size(64, 128, 128), Size(3, 224, 224)]
 
         @type: Size | list[Size]
-        @raises IncompatibleException: If the C{input_shapes} are too complicated for
+        @raises RuntimeError: If the C{input_shapes} are too complicated for
             the default implementation.
         """
         if self._in_sizes is not None:
@@ -412,7 +419,7 @@ class BaseNode(
 
         features = self.input_shapes[0].get("features")
         if features is None:
-            raise IncompatibleException(
+            raise RuntimeError(
                 f"Feature field is missing in {self.name}. "
                 "The default implementation of `in_sizes` cannot be used."
             )
@@ -428,8 +435,8 @@ class BaseNode(
         otherwise returns a single value.
 
         @type: int | list[int]
-        @raises IncompatibleException: If the C{input_shapes} are too complicated for
-            the default implementation.
+        @raises RuntimeError: If the C{input_shapes} are too complicated for the default
+            implementation of C{in_sizes}.
         """
         return self._get_nth_size(-3)
 
@@ -441,8 +448,8 @@ class BaseNode(
         sufficiently simple. Otherwise the `input_shapes` should be used directly.
 
         @type: int | list[int]
-        @raises IncompatibleException: If the C{input_shapes} are too complicated for
-            the default implementation.
+        @raises RuntimeError: If the C{input_shapes} are too complicated for
+            the default implementation of C{in_sizes}.
         """
         return self._get_nth_size(-2)
 
@@ -454,8 +461,8 @@ class BaseNode(
         sufficiently simple. Otherwise the `input_shapes` should be used directly.
 
         @type: int | list[int]
-        @raises IncompatibleException: If the C{input_shapes} are too complicated for
-            the default implementation.
+        @raises RuntimeError: If the C{input_shapes} are too complicated for
+            the default implementation of C{in_sizes}.
         """
         return self._get_nth_size(-1)
 
@@ -488,9 +495,11 @@ class BaseNode(
         @param inputs: Inputs to the node.
         @rtype: ForwardInputT
         @return: Prepared inputs, ready to be passed to the L{forward} method.
+        @raises RuntimeError: If the number of inputs is not equal to 1. In such cases
+            the method has to be overridden.
         """
         if len(inputs) > 1:
-            raise IncompatibleException(
+            raise RuntimeError(
                 f"Node {self.name} expects a single input, but got {len(inputs)} inputs instead."
                 "If the node expects multiple inputs, the `unwrap` method should be overridden."
             )
@@ -534,6 +543,9 @@ class BaseNode(
 
         @rtype: L{Packet}[Tensor]
         @return: Wrapped output.
+
+        @raises RuntimeError: If the output is not a tensor or a list of tensors.
+            In such cases the method has to be overridden.
         """
 
         if isinstance(output, Tensor):
@@ -543,7 +555,7 @@ class BaseNode(
         ):
             outputs = list(output)
         else:
-            raise IncompatibleException(
+            raise RuntimeError(
                 "Default `wrap` expects a single tensor or a list of tensors."
             )
         try:
@@ -562,7 +574,7 @@ class BaseNode(
         @return: Outputs of the module as a dictionary of list of tensors:
             `{"features": [Tensor, ...], "segmentation": [Tensor]}`
 
-        @raises IncompatibleException: If the inputs are not compatible with the node.
+        @raises RuntimeError: If default L{wrap} or L{unwrap} methods are not sufficient.
         """
         unwrapped = self.unwrap(inputs)
         outputs = self(unwrapped)
@@ -579,18 +591,16 @@ class BaseNode(
     def get_attached(self, lst: list[T]) -> list[T] | T:
         """Gets the attached elements from a list.
 
-        This method is used to get the attached elements from a list based on
-        the `attach_index` attribute.
+        This method is used to get the attached elements from a list based on the
+        C{attach_index} attribute.
 
         @type lst: list[T]
-        @param lst: List to get the attached elements from. Can be either
-            a list of tensors or a list of sizes.
-
+        @param lst: List to get the attached elements from. Can be either a list of
+            tensors or a list of sizes.
         @rtype: list[T] | T
-        @return: Attached elements. If `attach_index` is set to `"all"` or is a slice,
+        @return: Attached elements. If C{attach_index} is set to C{"all"} or is a slice,
             returns a list of attached elements.
-
-        @raises ValueError: If the `attach_index` is invalid.
+        @raises ValueError: If the C{attach_index} is invalid.
         """
 
         def _normalize_index(index: int) -> int:
@@ -633,8 +643,8 @@ class BaseNode(
             case list(sizes):
                 return [size[idx] for size in sizes]
 
-    def _non_set_error(self, name: str) -> ValueError:
-        return ValueError(
+    def _non_set_error(self, name: str) -> RuntimeError:
+        return RuntimeError(
             f"{self.name} is trying to access `{name}`, "
             "but it was not set during initialization. "
         )

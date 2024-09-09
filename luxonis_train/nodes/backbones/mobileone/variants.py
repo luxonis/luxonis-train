@@ -29,7 +29,7 @@ def get_variant(variant: Literal["s0", "s1", "s2", "s3", "s4"]) -> MobileOneVari
             use_se=True,
         ),
     }
-    if variant not in variants:
+    if variant not in variants:  # pragma: no cover
         raise ValueError(
             "MobileOne model variant should be in "
             f"{list(variants.keys())}, got {variant}."

@@ -36,7 +36,7 @@ def get_variant(variant: VariantLiteral) -> EfficientRepVariant:
     variants["medium"] = variants["m"]
     variants["large"] = variants["l"]
 
-    if variant not in variants:
+    if variant not in variants:  # pragma: no cover
         raise ValueError(
             f"EfficientRep variant should be one of "
             f"{list(variants.keys())}, got '{variant}'."

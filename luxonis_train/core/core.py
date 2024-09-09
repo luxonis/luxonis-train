@@ -16,6 +16,7 @@ from luxonis_ml.data import Augmentations
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.utils import LuxonisFileSystem, reset_logging, setup_logging
+from typeguard import typechecked
 
 from luxonis_train.attached_modules.visualizers import get_unnormalized_images
 from luxonis_train.callbacks import LuxonisRichProgressBar, LuxonisTQDMProgressBar
@@ -188,7 +189,7 @@ class LuxonisModel:
         status = "success"
         try:
             self.pl_trainer.fit(*args, ckpt_path=resume, **kwargs)
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             logger.exception("Encountered an exception during training.")
             status = "failed"
             raise e
@@ -242,7 +243,7 @@ class LuxonisModel:
             logger.info("Training finished")
             logger.info(f"Checkpoints saved in: {self.run_save_dir}")
 
-        else:
+        else:  # pragma: no cover
             # Every time exception happens in the Thread, this hook will activate
             def thread_exception_hook(args):
                 self.error_message = str(args.exc_value)
@@ -333,14 +334,14 @@ class LuxonisModel:
         for path in self._exported_models.values():
             if self.cfg.exporter.upload_to_run:
                 self.tracker.upload_artifact(path, typ="export")
-            if self.cfg.exporter.upload_url is not None:
+            if self.cfg.exporter.upload_url is not None:  # pragma: no cover
                 LuxonisFileSystem.upload(path, self.cfg.exporter.upload_url)
 
         with open(export_path.with_suffix(".yaml"), "w") as f:
             yaml.dump(modelconverter_config, f)
             if self.cfg.exporter.upload_to_run:
                 self.tracker.upload_artifact(f.name, name=f.name, typ="export")
-            if self.cfg.exporter.upload_url is not None:
+            if self.cfg.exporter.upload_url is not None:  # pragma: no cover
                 LuxonisFileSystem.upload(f.name, self.cfg.exporter.upload_url)
 
     @overload
@@ -359,8 +360,9 @@ class LuxonisModel:
     ) -> None:
         ...
 
+    @typechecked
     def test(
-        self, new_thread: bool = False, view: Literal["train", "test", "val"] = "val"
+        self, new_thread: bool = False, view: Literal["train", "val", "test"] = "val"
     ) -> Mapping[str, float] | None:
         """Runs testing.
 
@@ -372,15 +374,11 @@ class LuxonisModel:
         @return: If new_thread is False, returns a dictionary test results.
         """
 
-        if view not in self.pytorch_loaders:
-            raise ValueError(
-                f"View {view} is not valid. Valid views are: 'train', 'val', 'test'."
-            )
         loader = self.pytorch_loaders[view]
 
         if not new_thread:
             return self.pl_trainer.test(self.lightning_module, loader)[0]
-        else:
+        else:  # pragma: no cover
             self.thread = threading.Thread(
                 target=self.pl_trainer.test,
                 args=(self.lightning_module, loader),
@@ -388,7 +386,12 @@ class LuxonisModel:
             )
             self.thread.start()
 
-    def infer(self, view: str = "val", save_dir: str | Path | None = None) -> None:
+    @typechecked
+    def infer(
+        self,
+        view: Literal["train", "val", "test"] = "val",
+        save_dir: str | Path | None = None,
+    ) -> None:
         """Runs inference.
 
         @type view: str
@@ -400,10 +403,6 @@ class LuxonisModel:
         """
         self.lightning_module.eval()
 
-        if view not in self.pytorch_loaders:
-            raise ValueError(
-                f"View {view} is not valid. Valid views are: 'train', 'val', 'test'."
-            )
         for inputs, labels in self.pytorch_loaders[view]:
             images = get_unnormalized_images(self.cfg, inputs)
             outputs = self.lightning_module.forward(
@@ -436,11 +435,13 @@ class LuxonisModel:
             curr_params["model.predefined_model"] = None
 
             cfg_copy = self.cfg.model_copy(deep=True)
+            # manually remove Normalize so it doesn't
+            # get duplicated when creating new cfg instance
             cfg_copy.trainer.preprocessing.augmentations = [
                 a
                 for a in cfg_copy.trainer.preprocessing.augmentations
                 if a.name != "Normalize"
-            ]  # manually remove Normalize so it doesn't duplicate it when creating new cfg instance
+            ]
             cfg = Config.get_config(cfg_copy.model_dump(), curr_params)
 
             child_tracker.log_hyperparams(curr_params)
@@ -482,7 +483,7 @@ class LuxonisModel:
             except optuna.TrialPruned as e:
                 logger.info(e)
 
-            if "val/loss" not in pl_trainer.callback_metrics:
+            if "val/loss" not in pl_trainer.callback_metrics:  # pragma: no cover
                 raise ValueError(
                     "No validation loss found. "
                     "This can happen if `TestOnTrainEnd` callback is used."
@@ -506,7 +507,7 @@ class LuxonisModel:
             is_sweep=False,
             **tracker_params,
         )
-        if self.parent_tracker.is_mlflow:
+        if self.parent_tracker.is_mlflow:  # pragma: no cover
             # Experiment needs to be interacted with to create actual MLFlow run
             self.parent_tracker.experiment["mlflow"].active_run()
 
@@ -522,7 +523,7 @@ class LuxonisModel:
         if cfg_tuner.storage.active:
             if cfg_tuner.storage.storage_type == "local":
                 storage = "sqlite:///study_local.db"
-            else:
+            else:  # pragma: no cover
                 storage = "postgresql://{}:{}@{}:{}/{}".format(
                     self.cfg.ENVIRON.POSTGRES_USER,
                     self.cfg.ENVIRON.POSTGRES_PASSWORD,
@@ -547,7 +548,7 @@ class LuxonisModel:
 
         self.parent_tracker.log_hyperparams(study.best_params)
 
-        if self.cfg.tracker.is_wandb:
+        if self.cfg.tracker.is_wandb:  # pragma: no cover
             # If wandb used then init parent tracker separately at the end
             wandb_parent_tracker = LuxonisTrackerPL(
                 rank=rank_zero_only.rank,
@@ -649,7 +650,7 @@ class LuxonisModel:
 
         logger.info(f"NN Archive saved to {archive_path}")
 
-        if self.cfg.archiver.upload_url is not None:
+        if self.cfg.archiver.upload_url is not None:  # pragma: no cover
             LuxonisFileSystem.upload(archive_path, self.cfg.archiver.upload_url)
 
         if self.cfg.archiver.upload_to_run:

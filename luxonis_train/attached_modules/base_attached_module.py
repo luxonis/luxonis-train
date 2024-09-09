@@ -135,12 +135,12 @@ class BaseAttachedModule(
         @param labels: Labels from the dataset.
         @type label_type: LabelType | None
         @param label_type: Type of the label to extract.
-        @raises IncompatibleException: If the label is not found in the labels dictionary.
-        @raises NotImplementedError: If the module requires multiple labels. For such cases,
-            the `prepare` method should be overridden.
 
         @rtype: Tensor
         @return: Extracted label
+
+        @raises ValueError: If the module requires multiple labels and the C{label_type} is not provided.
+        @raises IncompatibleException: If the label is not found in the labels dictionary.
         """
         return self._get_label(labels, label_type)[0]
 
@@ -188,10 +188,10 @@ class BaseAttachedModule(
         @rtype: list[Tensor]
         @return: Extracted input tensors
 
-        @raises ValueError: If the task type is not supported by the node or if the task
-            is not present in the inputs.
+        @raises IncompatibleException: If the task type is not supported by the node.
+        @raises IncompatibleException: If the task is not present in the inputs.
 
-        @raises NotImplementedError: If the module requires multiple labels.
+        @raises ValueError: If the module requires multiple labels.
             For such cases, the `prepare` method should be overridden.
         """
         if task_type is not None:
@@ -236,8 +236,12 @@ class BaseAttachedModule(
 
                 >>> loss.forward(*loss.prepare(outputs, labels))
 
-        @raises NotImplementedError: If the module requires multiple labels.
-        @raises IncompatibleException: If the inputs are not compatible with the module.
+        @raises RuntimeError: If the module requires multiple labels and
+            is connected to a multi-task node. In this case, the default
+            implementation cannot be used and the C{prepare} method should be overridden.
+
+        @raises RuntimeError: If the C{tasks} attribute is not set on the node.
+        @raises RuntimeError: If the C{supported_labels} attribute is not set on the module.
         """
         if self.node._tasks is None:
             raise RuntimeError(

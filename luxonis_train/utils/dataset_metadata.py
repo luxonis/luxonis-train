@@ -34,10 +34,9 @@ class DatasetMetadata:
         @param task: Task to get the number of classes for.
         @rtype: int
         @return: Number of classes for the specified label type.
-        @raises ValueError: If the dataset loader was not provided during
-            initialization.
-        @raises ValueError: If the dataset contains different number of classes for
-            different label types.
+        @raises ValueError: If the C{task} is not present in the dataset.
+        @raises RuntimeError: If the C{task} was not provided and the dataset contains
+            different number of classes for different label types.
         """
         if task is not None:
             if task not in self._classes:
@@ -46,7 +45,7 @@ class DatasetMetadata:
         n_classes = len(list(self._classes.values())[0])
         for classes in self._classes.values():
             if len(classes) != n_classes:
-                raise ValueError(
+                raise RuntimeError(
                     "The dataset contains different number of classes for different tasks."
                     "Please specify the 'task' argument to get the number of classes."
                 )
@@ -59,8 +58,9 @@ class DatasetMetadata:
         @param task: Task to get the number of keypoints for.
         @rtype: int
         @return: Number of keypoints for the specified label type.
-        @raises ValueError: If the dataset loader was not provided during initialization
-            or if the dataset does not contain the specified task.
+        @raises ValueError: If the C{task} is not present in the dataset.
+        @raises RuntimeError: If the C{task} was not provided and the dataset contains
+            different number of keypoints for different label types.
         """
         if task is not None:
             if task not in self._n_keypoints:
@@ -69,7 +69,7 @@ class DatasetMetadata:
         n_keypoints = next(iter(self._n_keypoints.values()))
         for n in self._n_keypoints.values():
             if n != n_keypoints:
-                raise ValueError(
+                raise RuntimeError(
                     "The dataset contains different number of keypoints for different tasks."
                     "Please specify the 'task' argument to get the number of keypoints."
                 )
@@ -82,10 +82,9 @@ class DatasetMetadata:
         @param task: Task to get the class names for.
         @rtype: list[str]
         @return: List of class names for the specified label type.
-        @raises ValueError: If the dataset loader was not provided during
-            initialization.
-        @raises ValueError: If the dataset contains different class names for different
-            label types.
+        @raises ValueError: If the C{task} is not present in the dataset.
+        @raises RuntimeError: If the C{task} was not provided and the dataset contains
+            different class names for different label types.
         """
         if task is not None:
             if task not in self._classes:
@@ -94,7 +93,7 @@ class DatasetMetadata:
         class_names = list(self._classes.values())[0]
         for classes in self._classes.values():
             if classes != class_names:
-                raise ValueError(
+                raise RuntimeError(
                     "The dataset contains different class names for different tasks."
                 )
         return class_names
@@ -106,11 +105,11 @@ class DatasetMetadata:
         @param num_heads: Number of heads to generate anchors for.
         @rtype: tuple[list[list[float]], float]
         @return: List of anchors in [-1,6] format and recall of the anchors.
-        @raises ValueError: If the dataset loader was not provided during
+        @raises RuntimeError: If the dataset loader was not provided during
             initialization.
         """
         if self._loader is None:
-            raise ValueError(
+            raise RuntimeError(
                 "Cannot generate anchors without a dataset loader. "
                 "Please provide a dataset loader to the constructor "
                 "or call `set_loader` method."

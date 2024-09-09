@@ -23,7 +23,7 @@ def get_variant(variant: Literal["A0", "A1", "A2"]) -> RepVGGVariant:
             width_multiplier=(1.5, 1.5, 1.5, 2.75),
         ),
     }
-    if variant not in variants:
+    if variant not in variants:  # pragma: no cover
         raise ValueError(
             f"RepVGG variant should be one of "
             f"{list(variants.keys())}, got '{variant}'."
