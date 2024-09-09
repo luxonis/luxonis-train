@@ -31,22 +31,30 @@ class MetadataLogger(pl.Callback):
 
         hparams = {key: cfg.get(key) for key in self.hyperparams}
 
-        # try to get luxonis-ml and luxonis-train git commit hashes (if installed as editable)
         luxonis_ml_hash = self._get_editable_package_git_hash("luxonis_ml")
-        if luxonis_ml_hash:
+        if luxonis_ml_hash:  # pragma: no cover
             hparams["luxonis_ml"] = luxonis_ml_hash
 
         luxonis_train_hash = self._get_editable_package_git_hash("luxonis_train")
-        if luxonis_train_hash:
+        if luxonis_train_hash:  # pragma: no cover
             hparams["luxonis_train"] = luxonis_train_hash
 
         pl_module.logger.log_hyperparams(hparams)
-        # also save metadata locally
-        with open(osp.join(pl_module.save_dir, "metadata.yaml"), "w+") as f:
+        with open(osp.join(pl_module.save_dir, "metadata.yaml"), "w") as f:
             yaml.dump(hparams, f, default_flow_style=False)
 
     @staticmethod
-    def _get_editable_package_git_hash(package_name: str) -> str | None:
+    def _get_editable_package_git_hash(
+        package_name: str,
+    ) -> str | None:  # pragma: no cover
+        """Get git hash of an editable package.
+
+        @type package_name: str
+        @param package_name: Name of the package.
+        @rtype: str or None
+        @return: Git hash of the package or None if the package is not installed in
+            editable mode.
+        """
         try:
             distribution = pkg_resources.get_distribution(package_name)
             package_location = osp.join(distribution.location, package_name)

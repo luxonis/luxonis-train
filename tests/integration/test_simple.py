@@ -131,8 +131,23 @@ def test_parsing_loader():
     model.train()
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="Tuning not supported on Windows")
-def test_tuner(opts: dict[str, Any]):
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Tuning not supported on Windows",
+)
+def test_tuner(opts: dict[str, Any], coco_dataset: LuxonisDataset):
+    opts["tuner.params"] = {
+        "trainer.optimizer.name_categorical": ["Adam", "SGD"],
+        "trainer.optimizer.params.lr_float": [0.0001, 0.001],
+        "trainer.batch_size_int": [4, 16, 4],
+        "trainer.preprocessing.augmentations_subset": [
+            ["Defocus", "Sharpen", "Flip", "Normalize", "invalid"],
+            2,
+        ],
+        "model.losses.0.weight_uniform": [0.1, 0.9],
+        "model.nodes.0.freezing.unfreeze_after_loguniform": [0.1, 0.9],
+    }
+    opts["loader.params.dataset_name"] = coco_dataset.identifier
     model = LuxonisModel("configs/example_tuning.yaml", opts)
     model.tune()
     assert STUDY_PATH.exists()
@@ -158,8 +173,14 @@ def test_callbacks(opts: dict[str, Any], parking_lot_dataset: LuxonisDataset):
             {
                 "name": "ExportOnTrainEnd",
             },
-            {"name": "ArchiveOnTrainEnd"},
+            {
+                "name": "ArchiveOnTrainEnd",
+                "params": {"preferred_checkpoint": "loss"},
+            },
         ],
+        "exporter.scale_values": [0.5, 0.5, 0.5],
+        "exporter.mean_values": [0.5, 0.5, 0.5],
+        "exporter.blobconverter.active": True,
     }
     opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
     model = LuxonisModel(config_file, opts)

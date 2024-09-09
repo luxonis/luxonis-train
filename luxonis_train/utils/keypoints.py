@@ -16,14 +16,14 @@ def process_keypoints_predictions(keypoints: Tensor) -> tuple[Tensor, Tensor, Te
     @rtype: tuple[Tensor, Tensor, Tensor]
     @return: x, y and visibility tensors.
     """
-    x = keypoints[..., ::3] * 2.0 - 0.5
-    y = keypoints[..., 1::3] * 2.0 - 0.5
+    x = keypoints[..., ::3]
+    y = keypoints[..., 1::3]
     visibility = keypoints[..., 2::3]
     return x, y, visibility
 
 
 def get_sigmas(
-    sigmas: list[float] | None, n_keypoints: int, caller_name: str | None
+    sigmas: list[float] | None, n_keypoints: int, caller_name: str | None = None
 ) -> Tensor:
     """Validate or create sigma values for each keypoint.
 

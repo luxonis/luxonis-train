@@ -163,8 +163,21 @@ def bbox_iou(
     @param bbox2: Second set of bboxes [M, 4].
     @type bbox_format: BBoxFormatType
     @param bbox_format: Input bbox format. Defaults to "xyxy".
-    @type iou_type: IoUType
+    @type iou_type: Literal["none", "giou", "diou", "ciou", "siou"]
     @param iou_type: IoU type. Defaults to "none".
+        Possible values are:
+            - "none": standard IoU
+            - "giou": Generalized IoU
+            - "diou": Distance IoU
+            - "ciou": Complete IoU. Introduced in U{
+                Enhancing Geometric Factors in Model Learning and
+                Inference for Object Detection and Instance
+                Segmentation<https://arxiv.org/pdf/2005.03572.pdf>}.
+                Implementation adapted from torchvision C{complete_box_iou}
+                with improved stability.
+            - "siou": Soft IoU. Introduced in U{
+                SIoU Loss: More Powerful Learning for Bounding Box
+                Regression<https://arxiv.org/pdf/2205.12740.pdf>}.
     @type element_wise: bool
     @param element_wise: If True returns element wise IoUs. Defaults to False.
     @rtype: Tensor
@@ -182,9 +195,6 @@ def bbox_iou(
     elif iou_type == "diou":
         iou = distance_box_iou(bbox1, bbox2)
     elif iou_type == "ciou":
-        # CIoU from `Enhancing Geometric Factors in Model Learning and Inference for
-        # Object Detection and Instance Segmentation`, https://arxiv.org/pdf/2005.03572.pdf.
-        # Implementation adapted from torchvision complete_box_iou with added eps for stability
         eps = 1e-7
 
         iou = bbox_iou(bbox1, bbox2, iou_type="none")
@@ -203,9 +213,6 @@ def bbox_iou(
         iou = diou - alpha * v
 
     elif iou_type == "siou":
-        # SIoU from `SIoU Loss: More Powerful Learning for Bounding Box Regression`,
-        # https://arxiv.org/pdf/2205.12740.pdf
-
         eps = 1e-7
         bbox1_xywh = box_convert(bbox1, in_fmt="xyxy", out_fmt="xywh")
         w1, h1 = bbox1_xywh[:, 2], bbox1_xywh[:, 3]

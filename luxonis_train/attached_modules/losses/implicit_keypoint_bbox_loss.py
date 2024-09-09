@@ -32,6 +32,7 @@ KeypointTargetType = tuple[
 logger = logging.getLogger(__name__)
 
 
+# TODO: BROKEN!
 class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
     node: ImplicitKeypointBBoxHead
     supported_labels = [(LabelType.BOUNDINGBOX, LabelType.KEYPOINTS)]

@@ -273,7 +273,7 @@ class BaseNode(
         @rtype: list[str]
         @return: Class names for the task.
         """
-        return self.dataset_metadata.class_names(self.get_task_name(task))
+        return self.dataset_metadata.classes(self.get_task_name(task))
 
     @property
     def n_keypoints(self) -> int:
@@ -337,10 +337,10 @@ class BaseNode(
                 "the `BaseNode.dataset_metadata.class_names` method manually."
             )
         elif len(self._tasks) == 1:
-            return self.dataset_metadata.class_names(self.task)
+            return self.dataset_metadata.classes(self.task)
         else:
             class_names = [
-                self.dataset_metadata.class_names(self.get_task_name(task))
+                self.dataset_metadata.classes(self.get_task_name(task))
                 for task in self._tasks
             ]
             if all(set(names) == set(class_names[0]) for names in class_names):
