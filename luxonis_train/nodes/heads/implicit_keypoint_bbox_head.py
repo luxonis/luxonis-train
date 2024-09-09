@@ -176,10 +176,10 @@ class ImplicitKeypointBBoxHead(BaseNode[list[Tensor], tuple[list[Tensor], Tensor
         self, feat: Tensor, anchor_grid: Tensor, grid: Tensor, stride: Tensor
     ) -> Tensor:
         batch_size = feat.shape[0]
-        x_bbox = feat[..., : self.box_offset + self.n_classes]
-        x_keypoints = feat[..., self.box_offset + self.n_classes :]
+        bbox = feat[..., : self.box_offset + self.n_classes]
+        keypoints = feat[..., self.box_offset + self.n_classes :]
 
-        box_cxcy, box_wh, box_tail = process_bbox_predictions(x_bbox, anchor_grid)
+        box_cxcy, box_wh, box_tail = process_bbox_predictions(bbox, anchor_grid)
         grid = grid.to(box_cxcy.device)
         stride = stride.to(box_cxcy.device)
         box_cxcy = (box_cxcy + grid) * stride
@@ -187,7 +187,7 @@ class ImplicitKeypointBBoxHead(BaseNode[list[Tensor], tuple[list[Tensor], Tensor
 
         grid_x = grid[..., 0:1]
         grid_y = grid[..., 1:2]
-        kpt_x, kpt_y, kpt_vis = process_keypoints_predictions(x_keypoints)
+        kpt_x, kpt_y, kpt_vis = process_keypoints_predictions(keypoints)
         kpt_x = (kpt_x + grid_x) * stride
         kpt_y = (kpt_y + grid_y) * stride
         kpt_vis_sig = kpt_vis.sigmoid()
