@@ -1,6 +1,6 @@
 import logging
 from abc import ABC
-from typing import Any, Generic
+from typing import Generic
 
 from luxonis_ml.data import LabelType
 from luxonis_ml.utils.registry import AutoRegisterMeta
@@ -54,7 +54,7 @@ class BaseAttachedModule(
 
     supported_labels: list[LabelType | tuple[LabelType, ...]] | None = None
 
-    def __init__(self, *, node: BaseNode[Any, Any] | None = None):
+    def __init__(self, *, node: BaseNode | None = None):
         super().__init__()
         self._node = node
         self._epoch = 0
@@ -96,7 +96,7 @@ class BaseAttachedModule(
         return self.__class__.__name__
 
     @property
-    def node(self) -> BaseNode[Any, Any]:
+    def node(self) -> BaseNode:
         """Reference to the node that this module is attached to.
 
         @type: L{BaseNode}
