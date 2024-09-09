@@ -9,7 +9,6 @@ from torch import Tensor
 from .base_loss import BaseLoss
 
 logger = getLogger(__name__)
-was_logged = False
 
 
 class CrossEntropyLoss(BaseLoss[Tensor, Tensor]):
@@ -34,19 +33,19 @@ class CrossEntropyLoss(BaseLoss[Tensor, Tensor]):
             reduction=reduction,
             label_smoothing=label_smoothing,
         )
+        self._was_logged = False
 
     def forward(self, preds: Tensor, target: Tensor) -> Tensor:
-        global was_logged
         if preds.ndim == target.ndim:
             ch_dim = 1 if preds.ndim > 1 else 0
             if preds.shape[ch_dim] == 1:
-                if not was_logged:
+                if not self._was_logged:
                     logger.warning(
                         "`CrossEntropyLoss` expects at least 2 classes. "
                         "Attempting to fix by adding a dummy channel. "
                         "If you want to be sure, use `BCEWithLogitsLoss` instead."
                     )
-                    was_logged = True
+                    self._was_logged = True
                 preds = torch.cat([torch.zeros_like(preds), preds], dim=ch_dim)
                 if target.shape[ch_dim] == 1:
                     target = torch.cat([1 - target, target], dim=ch_dim)
