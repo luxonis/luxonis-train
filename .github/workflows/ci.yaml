@@ -82,7 +82,7 @@ jobs:
         cache: pip
 
     - name: Install dependencies
-      run: pip install .[dev]
+      run: pip install -e .[dev]
 
     - uses: jakebailey/pyright-action@v2
       with:
