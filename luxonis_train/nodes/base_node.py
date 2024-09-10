@@ -566,7 +566,7 @@ class BaseNode(
             )
         try:
             task = self.task
-        except ValueError:
+        except RuntimeError:
             task = "features"
         return {task: outputs}
 
