@@ -227,7 +227,7 @@ class LuxonisModel:
                 ckpt_path, typ="checkpoints", name="resume.ckpt"
             )
             self.tracker._finalize(status="failed")
-            exit(0)
+            exit()
 
         signal.signal(signal.SIGTERM, graceful_exit)
 
