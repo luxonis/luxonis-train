@@ -12,52 +12,8 @@ import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 
-from ..base_node import BaseNode
-
-
-def ConvBN(
-    in_channels: int,
-    out_channels: int,
-    kernel_size: int,
-    bias: bool = True,
-    stride: int = 1,
-    padding: int = 0,
-    add_relu: bool = False,
-) -> nn.Sequential:
-    """A convolutional layer followed by batch normalization.
-
-    @type in_channels: int
-    @param in_channels: Number of input channels.
-    @type out_channels: int
-    @param out_channels: Number of output channels.
-    @type kernel_size: int
-    @param kernel_size: Size of the convolutional kernel.
-    @type bias: bool
-    @param bias: Whether to include a bias term. Defaults to True.
-    @type stride: int
-    @param stride: Stride for the convolution. Defaults to 1.
-    @type padding: int
-    @param padding: Padding for the convolution. Defaults to 0.
-    @type add_relu: bool
-    @param add_relu: Whether to add a ReLU activation. Defaults to False.
-    @return: A sequential layer with Conv2D, BatchNorm, and optional ReLU.
-    """
-    seq: list[nn.Module] = [
-        nn.Conv2d(
-            in_channels,
-            out_channels,
-            kernel_size=kernel_size,
-            bias=bias,
-            stride=stride,
-            padding=padding,
-        ),
-        nn.BatchNorm2d(out_channels),
-    ]
-
-    if add_relu:
-        seq.append(nn.ReLU(inplace=True))
-
-    return nn.Sequential(*seq)
+from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.nodes.blocks import ConvModule
 
 
 def _make_layer(
@@ -560,21 +516,23 @@ class BasicDDRBackBone(DDRBackBoneBase):
         self.input_channels = input_channels
 
         self.stem = nn.Sequential(
-            ConvBN(
+            ConvModule(
                 in_channels=input_channels,
                 out_channels=width,
                 kernel_size=3,
                 stride=2,
                 padding=1,
-                add_relu=True,
+                bias=True,
+                activation=nn.ReLU(inplace=True),
             ),
-            ConvBN(
+            ConvModule(
                 in_channels=width,
                 out_channels=width,
                 kernel_size=3,
                 stride=2,
                 padding=1,
-                add_relu=True,
+                bias=True,
+                activation=nn.ReLU(inplace=True),
             ),
         )
 
@@ -734,21 +692,23 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self.layer3_skip = nn.ModuleList()
         for i in range(layer3_repeats):
             self.compression3.append(
-                ConvBN(
+                ConvModule(
                     in_channels=out_chan_backbone["layer3"],
                     out_channels=highres_planes,
                     kernel_size=1,
                     bias=False,
+                    activation=nn.Identity(),
                 )
             )
             self.down3.append(
-                ConvBN(
+                ConvModule(
                     in_channels=highres_planes,
                     out_channels=out_chan_backbone["layer3"],
                     kernel_size=3,
                     stride=2,
                     padding=1,
                     bias=False,
+                    activation=nn.Identity(),
                 )
             )
             self.layer3_skip.append(
@@ -760,30 +720,32 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                 )
             )
 
-        self.compression4 = ConvBN(
+        self.compression4 = ConvModule(
             in_channels=out_chan_backbone["layer4"],
             out_channels=highres_planes,
             kernel_size=1,
             bias=False,
+            activation=nn.Identity(),
         )
 
         self.down4 = nn.Sequential(
-            ConvBN(
+            ConvModule(
                 in_channels=highres_planes,
                 out_channels=highres_planes * 2,
                 kernel_size=3,
                 stride=2,
                 padding=1,
                 bias=False,
-                add_relu=True,
+                activation=nn.ReLU(inplace=True),
             ),
-            ConvBN(
+            ConvModule(
                 in_channels=highres_planes * 2,
                 out_channels=out_chan_backbone["layer4"],
                 kernel_size=3,
                 stride=2,
                 padding=1,
                 bias=False,
+                activation=nn.Identity(),
             ),
         )
 
