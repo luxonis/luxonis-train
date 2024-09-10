@@ -29,10 +29,10 @@ class MultiVisualizer(BaseVisualizer[Packet[Tensor], Labels]):
             self.visualizers.append(visualizer)
 
     def prepare(
-        self, output: Packet[Tensor], label: Labels, idx: int = 0
+        self, inputs: Packet[Tensor], label: Labels, idx: int = 0
     ) -> tuple[Packet[Tensor], Labels]:
         self._idx = idx
-        return output, label
+        return inputs, label
 
     def forward(
         self,
@@ -49,5 +49,5 @@ class MultiVisualizer(BaseVisualizer[Packet[Tensor], Labels]):
                     label_canvas = label_viz
                     prediction_canvas = prediction_viz
                 case _:
-                    raise NotImplementedError
+                    raise NotImplementedError("Unexpected return type from visualizer.")
         return label_canvas, prediction_canvas

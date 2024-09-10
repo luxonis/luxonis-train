@@ -1,0 +1,29 @@
+
+model:
+  name: archive_test
+  nodes:
+    - name: EfficientRep
+
+    - name: EfficientBBoxHead
+      inputs:
+        - EfficientRep
+
+    - name: EfficientKeypointBBoxHead
+      inputs:
+        - EfficientRep
+
+    - name: ImplicitKeypointBBoxHead
+      inputs:
+        - EfficientRep
+
+    - name: SegmentationHead
+      inputs:
+        - EfficientRep
+
+    - name: BiSeNetHead
+      inputs:
+        - EfficientRep
+
+    - name: ClassificationHead
+      inputs:
+        - EfficientRep

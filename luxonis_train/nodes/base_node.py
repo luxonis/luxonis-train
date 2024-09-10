@@ -1,25 +1,26 @@
 import inspect
+import logging
 from abc import ABC, abstractmethod
+from contextlib import suppress
 from typing import Generic, TypeVar
 
+from luxonis_ml.data import LabelType
 from luxonis_ml.utils.registry import AutoRegisterMeta
-from pydantic import BaseModel, ValidationError
 from torch import Size, Tensor, nn
+from typeguard import TypeCheckError, check_type
 
-from luxonis_train.utils.general import DatasetMetadata, validate_packet
-from luxonis_train.utils.registry import NODES
-from luxonis_train.utils.types import (
+from luxonis_train.utils import (
     AttachIndexType,
-    FeaturesProtocol,
+    DatasetMetadata,
     IncompatibleException,
-    LabelType,
     Packet,
 )
+from luxonis_train.utils.registry import NODES
 
 ForwardOutputT = TypeVar("ForwardOutputT")
 ForwardInputT = TypeVar("ForwardInputT")
 
-__all__ = ["BaseNode"]
+logger = logging.getLogger(__name__)
 
 
 class BaseNode(
@@ -41,13 +42,10 @@ class BaseNode(
     of lists of tensors. Each key in the dictionary represents a different output
     from the previous node. Input to the node is a list of L{Packet}s, output is a single L{Packet}.
 
-    Each node can define a list of L{BaseProtocol}s that the inputs must conform to.
-    L{BaseProtocol} is a pydantic model that defines the structure of the input.
-    When the node is called, the inputs are validated against the protocols and
-    then sent to the L{unwrap} method. The C{unwrap} method should return a valid
-    input to the L{forward} method. Outputs of the C{forward} method are then
-    send to L{weap} method, which wraps the output into a C{Packet}, which is the
-    output of the node.
+    When the node is called, the inputs are sent to the L{unwrap} method.
+    The C{unwrap} method should return a valid input to the L{forward} method.
+    Outputs of the C{forward} method are then send to L{wrap} method,
+    which wraps the output into a C{Packet}. The wrapped C{Packet} is the final output of the node.
 
     The L{run} method combines the C{unwrap}, C{forward} and C{wrap} methods
     together with input validation.
@@ -55,13 +53,12 @@ class BaseNode(
     When subclassing, the following methods should be implemented:
         - L{forward}: Forward pass of the module.
         - L{unwrap}: Optional. Unwraps the inputs from the input packet.
-          The default implementation expects a single input with `features` key.
+            The default implementation expects a single input with `features` key.
         - L{wrap}: Optional. Wraps the output of the forward pass
-          into a `Packet[Tensor]`. The default implementation expects wraps the output
-          of the forward pass into a packet with either "features" or the task name as the key.
+            into a `Packet[Tensor]`. The default implementation expects wraps the output
+            of the forward pass into a packet with either "features" or the task name as the key.
 
     Additionally, the following class attributes can be defined:
-        - L{input_protocols}: List of input protocols used to validate inputs to the node.
         - L{attach_index}: Index of previous output that this node attaches to.
         - L{tasks}: Dictionary of tasks that the node supports.
 
@@ -94,32 +91,6 @@ class BaseNode(
                 # by the attached modules.
                 return {"classification": [output]}
 
-    @type input_shapes: list[Packet[Size]] | None
-    @param input_shapes: List of input shapes for the module.
-
-    @type original_in_shape: Size | None
-    @param original_in_shape: Original input shape of the model. Some
-        nodes won't function if not provided.
-
-    @type dataset_metadata: L{DatasetMetadata} | None
-    @param dataset_metadata: Metadata of the dataset.
-        Some nodes won't function if not provided.
-
-    @type n_classes: int | None
-    @param n_classes: Number of classes in the dataset. Provide only
-        in case `dataset_metadata` is not provided. Defaults to None.
-
-    @type in_sizes: Size | list[Size] | None
-    @param in_sizes: List of input sizes for the node.
-        Provide only in case the `input_shapes` were not provided.
-
-    @type _tasks: dict[LabelType, str] | None
-    @param _tasks: Dictionary of tasks that the node supports. Overrides the
-        class L{tasks} attribute. Shouldn't be provided by the user in most cases.
-
-    @type input_protocols: list[type[BaseModel]]
-    @ivar input_protocols: List of input protocols used to validate inputs to the node.
-        Defaults to [L{FeaturesProtocol}].
 
     @type attach_index: AttachIndexType
     @ivar attach_index: Index of previous output that this node attaches to.
@@ -135,7 +106,6 @@ class BaseNode(
         Only needs to be defined for head nodes.
     """
 
-    input_protocols: list[type[BaseModel]] = [FeaturesProtocol]
     attach_index: AttachIndexType
     tasks: list[LabelType] | dict[LabelType, str] | None = None
 
@@ -148,10 +118,50 @@ class BaseNode(
         n_classes: int | None = None,
         n_keypoints: int | None = None,
         in_sizes: Size | list[Size] | None = None,
+        attach_index: AttachIndexType | None = None,
         _tasks: dict[LabelType, str] | None = None,
     ):
+        """Constructor for the BaseNode.
+
+        @type input_shapes: list[Packet[Size]] | None
+        @param input_shapes: List of input shapes for the module.
+
+        @type original_in_shape: Size | None
+        @param original_in_shape: Original input shape of the model. Some
+            nodes won't function if not provided.
+
+        @type dataset_metadata: L{DatasetMetadata} | None
+        @param dataset_metadata: Metadata of the dataset.
+            Some nodes won't function if not provided.
+
+        @type n_classes: int | None
+        @param n_classes: Number of classes in the dataset. Provide only
+            in case `dataset_metadata` is not provided. Defaults to None.
+
+        @type in_sizes: Size | list[Size] | None
+        @param in_sizes: List of input sizes for the node.
+            Provide only in case the `input_shapes` were not provided.
+
+        @type attach_index: AttachIndexType
+        @param attach_index: Index of previous output that this node attaches to.
+            Can be a single integer to specify a single output, a tuple of
+            two or three integers to specify a range of outputs or `"all"` to
+            specify all outputs. Defaults to "all". Python indexing conventions apply. If provided as a constructor argument, overrides the class attribute.
+
+
+        @type _tasks: dict[LabelType, str] | None
+        @param _tasks: Dictionary of tasks that the node supports. Overrides the
+            class L{tasks} attribute. Shouldn't be provided by the user in most cases.
+        """
         super().__init__()
 
+        if attach_index is not None:
+            logger.warning(
+                f"Node {self.name} overrides `attach_index` "
+                f"by setting it to '{attach_index}'. "
+                "Make sure this is intended."
+            )
+            self.attach_index = attach_index
         self._tasks = None
         if _tasks is not None:
             self._tasks = _tasks
@@ -180,14 +190,35 @@ class BaseNode(
         self._epoch = 0
         self._in_sizes = in_sizes
 
+        self._check_type_overrides()
+
     @staticmethod
     def _process_tasks(
         tasks: dict[LabelType, str] | list[LabelType],
     ) -> dict[LabelType, str]:
         if isinstance(tasks, dict):
             return tasks
-        if isinstance(tasks, list):
+        else:
             return {task: task.value for task in tasks}
+
+    def _check_type_overrides(self) -> None:
+        properties = []
+        for name, value in inspect.getmembers(self.__class__):
+            if isinstance(value, property):
+                properties.append(name)
+        for name, typ in self.__annotations__.items():
+            if name in properties:
+                with suppress(ValueError):
+                    value = getattr(self, name)
+                    try:
+                        check_type(value, typ)
+                    except TypeCheckError as e:
+                        raise IncompatibleException(
+                            f"Node '{self.name}' specifies the type of the property `{name}` as `{typ}`, "
+                            f"but received `{type(value)}`. "
+                            f"This may indicate that the '{self.name}' node is "
+                            "not compatible with its predecessor."
+                        ) from e
 
     def get_task_name(self, task: LabelType) -> str:
         """Gets the name of a task for a particular C{LabelType}.
@@ -213,12 +244,18 @@ class BaseNode(
 
     @property
     def task(self) -> str:
-        """Getter for the task."""
+        """Getter for the task.
+
+        @type: str
+        @raises RuntimeError: If the node doesn't define any tasks.
+        @raises RuntimeError: If the node defines more than one task. In that case, use
+            the L{get_task_name} method.
+        """
         if not self._tasks:
-            raise ValueError(f"{self.name} does not have any tasks defined.")
+            raise RuntimeError(f"{self.name} does not have any tasks defined.")
 
         if len(self._tasks) > 1:
-            raise ValueError(
+            raise RuntimeError(
                 f"Node {self.name} has multiple tasks defined. "
                 "Use `get_task_name` method instead."
             )
@@ -242,7 +279,7 @@ class BaseNode(
         @rtype: list[str]
         @return: Class names for the task.
         """
-        return self.dataset_metadata.class_names(self.get_task_name(task))
+        return self.dataset_metadata.classes(self.get_task_name(task))
 
     @property
     def n_keypoints(self) -> int:
@@ -306,10 +343,10 @@ class BaseNode(
                 "the `BaseNode.dataset_metadata.class_names` method manually."
             )
         elif len(self._tasks) == 1:
-            return self.dataset_metadata.class_names(self.task)
+            return self.dataset_metadata.classes(self.task)
         else:
             class_names = [
-                self.dataset_metadata.class_names(self.get_task_name(task))
+                self.dataset_metadata.classes(self.get_task_name(task))
                 for task in self._tasks
             ]
             if all(set(names) == set(class_names[0]) for names in class_names):
@@ -322,14 +359,24 @@ class BaseNode(
 
     @property
     def input_shapes(self) -> list[Packet[Size]]:
-        """Getter for the input shapes."""
+        """Getter for the input shapes.
+
+        @type: list[Packet[Size]]
+        @raises RuntimeError: If the C{input_shapes} were not set during initialization.
+        """
+
         if self._input_shapes is None:
             raise self._non_set_error("input_shapes")
         return self._input_shapes
 
     @property
     def original_in_shape(self) -> Size:
-        """Getter for the original input shape."""
+        """Getter for the original input shape as [N, H, W].
+
+        @type: Size
+        @raises RuntimeError: If the C{original_in_shape} were not set during
+            initialization.
+        """
         if self._original_in_shape is None:
             raise self._non_set_error("original_in_shape")
         return self._original_in_shape
@@ -339,10 +386,11 @@ class BaseNode(
         """Getter for the dataset metadata.
 
         @type: L{DatasetMetadata}
-        @raises ValueError: If the C{dataset_metadata} is C{None}.
+        @raises RuntimeError: If the C{dataset_metadata} were not set during
+            initialization.
         """
         if self._dataset_metadata is None:
-            raise ValueError(
+            raise RuntimeError(
                 f"{self._non_set_error('dataset_metadata')}"
                 "Either provide `dataset_metadata` or `n_classes`."
             )
@@ -369,7 +417,7 @@ class BaseNode(
             >>> in_sizes = [Size(64, 128, 128), Size(3, 224, 224)]
 
         @type: Size | list[Size]
-        @raises IncompatibleException: If the C{input_shapes} are too complicated for
+        @raises RuntimeError: If the C{input_shapes} are too complicated for
             the default implementation.
         """
         if self._in_sizes is not None:
@@ -377,14 +425,11 @@ class BaseNode(
 
         features = self.input_shapes[0].get("features")
         if features is None:
-            raise IncompatibleException(
+            raise RuntimeError(
                 f"Feature field is missing in {self.name}. "
                 "The default implementation of `in_sizes` cannot be used."
             )
-        shapes = self.get_attached(self.input_shapes[0]["features"])
-        if isinstance(shapes, list) and len(shapes) == 1:
-            return shapes[0]
-        return shapes
+        return self.get_attached(self.input_shapes[0]["features"])
 
     @property
     def in_channels(self) -> int | list[int]:
@@ -396,8 +441,8 @@ class BaseNode(
         otherwise returns a single value.
 
         @type: int | list[int]
-        @raises IncompatibleException: If the C{input_shapes} are too complicated for
-            the default implementation.
+        @raises RuntimeError: If the C{input_shapes} are too complicated for the default
+            implementation of C{in_sizes}.
         """
         return self._get_nth_size(-3)
 
@@ -409,8 +454,8 @@ class BaseNode(
         sufficiently simple. Otherwise the `input_shapes` should be used directly.
 
         @type: int | list[int]
-        @raises IncompatibleException: If the C{input_shapes} are too complicated for
-            the default implementation.
+        @raises RuntimeError: If the C{input_shapes} are too complicated for
+            the default implementation of C{in_sizes}.
         """
         return self._get_nth_size(-2)
 
@@ -422,8 +467,8 @@ class BaseNode(
         sufficiently simple. Otherwise the `input_shapes` should be used directly.
 
         @type: int | list[int]
-        @raises IncompatibleException: If the C{input_shapes} are too complicated for
-            the default implementation.
+        @raises RuntimeError: If the C{input_shapes} are too complicated for
+            the default implementation of C{in_sizes}.
         """
         return self._get_nth_size(-1)
 
@@ -456,9 +501,11 @@ class BaseNode(
         @param inputs: Inputs to the node.
         @rtype: ForwardInputT
         @return: Prepared inputs, ready to be passed to the L{forward} method.
+        @raises RuntimeError: If the number of inputs is not equal to 1. In such cases
+            the method has to be overridden.
         """
         if len(inputs) > 1:
-            raise IncompatibleException(
+            raise RuntimeError(
                 f"Node {self.name} expects a single input, but got {len(inputs)} inputs instead."
                 "If the node expects multiple inputs, the `unwrap` method should be overridden."
             )
@@ -502,17 +549,21 @@ class BaseNode(
 
         @rtype: L{Packet}[Tensor]
         @return: Wrapped output.
+
+        @raises RuntimeError: If the output is not a tensor or a list of tensors.
+            In such cases the method has to be overridden.
         """
 
-        match output:
-            case Tensor() as out:
-                outputs = [out]
-            case list(tensors) if all(isinstance(t, Tensor) for t in tensors):
-                outputs = tensors
-            case _:
-                raise IncompatibleException(
-                    "Default `wrap` expects a single tensor or a list of tensors."
-                )
+        if isinstance(output, Tensor):
+            outputs = [output]
+        elif isinstance(output, (list, tuple)) and all(
+            isinstance(t, Tensor) for t in output
+        ):
+            outputs = list(output)
+        else:
+            raise RuntimeError(
+                "Default `wrap` expects a single tensor or a list of tensors."
+            )
         try:
             task = self.task
         except ValueError:
@@ -522,8 +573,6 @@ class BaseNode(
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:
         """Combines the forward pass with the wrapping and unwrapping of the inputs.
 
-        Additionally validates the inputs against `input_protocols`.
-
         @type inputs: list[Packet[Tensor]]
         @param inputs: Inputs to the module.
 
@@ -531,9 +580,9 @@ class BaseNode(
         @return: Outputs of the module as a dictionary of list of tensors:
             `{"features": [Tensor, ...], "segmentation": [Tensor]}`
 
-        @raises IncompatibleException: If the inputs are not compatible with the node.
+        @raises RuntimeError: If default L{wrap} or L{unwrap} methods are not sufficient.
         """
-        unwrapped = self.unwrap(self.validate(inputs))
+        unwrapped = self.unwrap(inputs)
         outputs = self(unwrapped)
         wrapped = self.wrap(outputs)
         str_tasks = [task.value for task in self._tasks] if self._tasks else []
@@ -543,38 +592,21 @@ class BaseNode(
                 wrapped[self.get_task_name(LabelType(key))] = value
         return wrapped
 
-    def validate(self, data: list[Packet[Tensor]]) -> list[Packet[Tensor]]:
-        """Validates the inputs against `input_protocols`."""
-        if len(data) != len(self.input_protocols):
-            raise IncompatibleException(
-                f"Node {self.name} expects {len(self.input_protocols)} inputs, "
-                f"but got {len(data)} inputs instead."
-            )
-        try:
-            return [
-                validate_packet(d, protocol)
-                for d, protocol in zip(data, self.input_protocols)
-            ]
-        except ValidationError as e:
-            raise IncompatibleException.from_validation_error(e, self.name) from e
-
     T = TypeVar("T", Tensor, Size)
 
     def get_attached(self, lst: list[T]) -> list[T] | T:
         """Gets the attached elements from a list.
 
-        This method is used to get the attached elements from a list based on
-        the `attach_index` attribute.
+        This method is used to get the attached elements from a list based on the
+        C{attach_index} attribute.
 
         @type lst: list[T]
-        @param lst: List to get the attached elements from. Can be either
-            a list of tensors or a list of sizes.
-
+        @param lst: List to get the attached elements from. Can be either a list of
+            tensors or a list of sizes.
         @rtype: list[T] | T
-        @return: Attached elements. If `attach_index` is set to `"all"` or is a slice,
+        @return: Attached elements. If C{attach_index} is set to C{"all"} or is a slice,
             returns a list of attached elements.
-
-        @raises ValueError: If the `attach_index` is invalid.
+        @raises ValueError: If the C{attach_index} is invalid.
         """
 
         def _normalize_index(index: int) -> int:
@@ -617,8 +649,8 @@ class BaseNode(
             case list(sizes):
                 return [size[idx] for size in sizes]
 
-    def _non_set_error(self, name: str) -> ValueError:
-        return ValueError(
+    def _non_set_error(self, name: str) -> RuntimeError:
+        return RuntimeError(
             f"{self.name} is trying to access `{name}`, "
             "but it was not set during initialization. "
         )

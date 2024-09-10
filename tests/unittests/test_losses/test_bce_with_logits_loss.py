@@ -57,5 +57,7 @@ def test_weights():
     assert loss_weight != loss_no_weight
 
 
-if __name__ == "__main__":
-    pytest.main()
+def test_invalid():
+    loss_fn = BCEWithLogitsLoss()
+    with pytest.raises(RuntimeError):
+        loss_fn.forward(torch.rand(10, 10), torch.rand(15, 15))

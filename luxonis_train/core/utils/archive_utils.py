@@ -15,7 +15,7 @@ from luxonis_train.nodes.enums.head_categorization import (
     ImplementedHeads,
     ImplementedHeadsIsSoxtmaxed,
 )
-from luxonis_train.utils.config import Config
+from luxonis_train.utils import Config
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ def _from_onnx_dtype(dtype: int) -> DataType:
         TensorProto.FLOAT: "float32",
         TensorProto.FLOAT16: "float16",
     }
-    if dtype not in dtype_map:
+    if dtype not in dtype_map:  # pragma: no cover
         raise ValueError(f"Unsupported ONNX data type: `{dtype}`")
 
     return DataType(dtype_map[dtype])
@@ -72,7 +72,7 @@ def _from_onnx_dtype(dtype: int) -> DataType:
 def _load_onnx_model(onnx_path: Path) -> onnx.ModelProto:
     try:
         return onnx.load(str(onnx_path))
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         raise ValueError(f"Failed to load ONNX model: `{onnx_path}`") from e
 
 
@@ -116,7 +116,7 @@ def _get_classes(
                 node_task = "segmentation"
             case "ImplicitKeypointBBoxHead" | "EfficientKeypointBBoxHead":
                 node_task = "keypoints"
-            case _:
+            case _:  # pragma: no cover
                 raise ValueError("Node does not map to a default task.")
 
     return classes.get(node_task, [])
@@ -161,7 +161,7 @@ def _get_head_specific_parameters(
         parameters["conf_threshold"] = head_node.conf_thres
         parameters["max_det"] = head_node.max_det
         parameters["n_keypoints"] = head_node.n_keypoints
-    else:
+    else:  # pragma: no cover
         raise ValueError("Unknown head name")
     return parameters
 

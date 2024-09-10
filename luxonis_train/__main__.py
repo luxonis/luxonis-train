@@ -115,13 +115,26 @@ def inspect(
             case_sensitive=False,
         ),
     ] = "train",  # type: ignore
+    size_multiplier: Annotated[
+        float,
+        typer.Option(
+            ...,
+            "--size-multiplier",
+            "-s",
+            help=(
+                "Multiplier for the image size. "
+                "By default the images are shown in their original size."
+            ),
+            show_default=False,
+        ),
+    ] = 1.0,
     opts: OptsType = None,
 ):
     """Inspect dataset."""
     from lightning.pytorch import seed_everything
     from luxonis_ml.data.__main__ import inspect as lxml_inspect
 
-    from luxonis_train.utils.config import Config
+    from luxonis_train.utils import Config
 
     cfg = Config.get_config(config, opts)
     if cfg.trainer.seed is not None:
@@ -144,6 +157,7 @@ def inspect(
             name=cfg.loader.params["dataset_name"],
             view=[view],
             aug_config=f.name,
+            size_multiplier=size_multiplier,
         )
 
 

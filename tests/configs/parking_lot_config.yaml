@@ -3,54 +3,26 @@ model:
   name: parking_lot_model
   nodes:
 
-    - name: ReXNetV1_lite
-      alias: rexnet-detection-backbone
-
     - name: EfficientRep
-      alias: efficient-detection-backbone
-      params:
-        channels_list: [64, 128, 256, 512, 1024]
-        num_repeats: [1, 6, 12, 18, 6]
-        depth_mul: 0.33
-        width_mul: 0.33
+      alias: backbone
 
     - name: RepPANNeck
-      alias: efficient-detection-neck
+      alias: neck
       inputs:
-        - efficient-detection-backbone
-      params:
-        channels_list: [256, 128, 128, 256, 256, 512]
-        num_repeats: [12, 12, 12, 12]
-        depth_mul: 0.33
-        width_mul: 0.33
-
-    - name: MicroNet
-      alias: color-segmentation-backbone
-
-    - name: MobileOne
-      alias: brand-segmentation-backbone
-
-    - name: MobileNetV2
-      alias: vehicle-type-segmentation-backbone
-
-    - name: ContextSpatial
-      alias: context-brand-segmentation-backbone
+        - backbone
 
     - name: EfficientBBoxHead
       alias: bbox-head
       inputs:
-        - efficient-detection-neck
+        - neck
 
     - name: ImplicitKeypointBBoxHead
       alias: car-detection-head
       inputs:
-        - rexnet-detection-backbone
+        - neck
       task:
         keypoints: car-keypoints
         boundingbox: car-boundingbox
-      params:
-        conf_thres: 0.25
-        iou_thres: 0.45
 
     - name: EfficientKeypointBBoxHead
       alias: motorbike-detection-head
@@ -58,40 +30,31 @@ model:
         keypoints: motorbike-keypoints
         boundingbox: motorbike-boundingbox
       inputs:
-        - efficient-detection-neck
-      params:
-        conf_thres: 0.25
-        iou_thres: 0.45
-
-    - name: BiSeNetHead
-      alias: context-brand-segmentation-head
-      task: brand_segmentation
-      inputs:
-        - context-brand-segmentation-backbone
+        - neck
 
     - name: SegmentationHead
       alias: color-segmentation-head
-      task: color_segmentation
+      task: color-segmentation
       inputs:
-        - color-segmentation-backbone
+        - neck
 
     - name: SegmentationHead
       alias: any-vehicle-segmentation-head
-      task: vehicle_segmentation
+      task: vehicle-segmentation
       inputs:
-        - vehicle-type-segmentation-backbone
+        - neck
 
     - name: BiSeNetHead
       alias: brand-segmentation-head
-      task: brand_segmentation
+      task: brand-segmentation
       inputs:
-        - brand-segmentation-backbone
+        - neck
 
     - name: BiSeNetHead
       alias: vehicle-type-segmentation-head
-      task: vehicle_type_segmentation
+      task: vehicle_type-segmentation
       inputs:
-        - vehicle-type-segmentation-backbone
+        - neck
 
   losses:
     - name: AdaptiveDetectionLoss
@@ -101,11 +64,7 @@ model:
     - name: CrossEntropyLoss
       attached_to: vehicle-type-segmentation-head
     - name: CrossEntropyLoss
-      attached_to: context-brand-segmentation-head
-    - name: CrossEntropyLoss
       attached_to: color-segmentation-head
-    - name: SoftmaxFocalLoss
-      attached_to: brand-segmentation-head
     - name: ImplicitKeypointBBoxLoss
       attached_to: car-detection-head
     - name: EfficientKeypointBBoxLoss
@@ -127,8 +86,6 @@ model:
       attached_to: vehicle-type-segmentation-head
     - name: Precision
       attached_to: brand-segmentation-head
-    - name: Recall
-      attached_to: context-brand-segmentation-head
 
   visualizers:
     - name: MultiVisualizer
@@ -160,9 +117,6 @@ model:
     - name: SegmentationVisualizer
       alias: vehicle-segmentation-visualizer
       attached_to: any-vehicle-segmentation-head
-    - name: SegmentationVisualizer
-      alias: context-brand-segmentation-visualizer
-      attached_to: context-brand-segmentation-head
     - name: SegmentationVisualizer
       alias: brand-segmentation-visualizer
       attached_to: brand-segmentation-head
@@ -214,6 +168,5 @@ trainer:
 
   callbacks:
     - name: ExportOnTrainEnd
-    - name: TestOnTrainEnd
     - name: ArchiveOnTrainEnd
 

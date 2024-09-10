@@ -3,7 +3,7 @@ import signal
 import threading
 from logging import getLogger
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Mapping, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -16,15 +16,14 @@ from luxonis_ml.data import Augmentations
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.utils import LuxonisFileSystem, reset_logging, setup_logging
+from typeguard import typechecked
 
 from luxonis_train.attached_modules.visualizers import get_unnormalized_images
 from luxonis_train.callbacks import LuxonisRichProgressBar, LuxonisTQDMProgressBar
+from luxonis_train.loaders import BaseLoaderTorch, collate_fn
 from luxonis_train.models import LuxonisLightningModule
-from luxonis_train.utils.config import Config
-from luxonis_train.utils.general import DatasetMetadata
-from luxonis_train.utils.loaders import BaseLoaderTorch, collate_fn
+from luxonis_train.utils import Config, DatasetMetadata, LuxonisTrackerPL
 from luxonis_train.utils.registry import LOADERS
-from luxonis_train.utils.tracker import LuxonisTrackerPL
 
 from .utils.export_utils import (
     blobconverter_export,
@@ -80,6 +79,7 @@ class LuxonisModel:
             self.cfg.tracker.save_directory, self.tracker.run_name
         )
         self.log_file = osp.join(self.run_save_dir, "luxonis_train.log")
+        self.error_message = None
 
         # NOTE: to add the file handler (we only get the save dir now,
         # but we want to use the logger before)
@@ -89,10 +89,16 @@ class LuxonisModel:
         # NOTE: overriding logger in pl so it uses our logger to log device info
         rank_zero_module.log = logger
 
-        deterministic = False
         if self.cfg.trainer.seed is not None:
             pl.seed_everything(self.cfg.trainer.seed, workers=True)
-            deterministic = True
+
+        self.pl_trainer = create_trainer(
+            self.cfg.trainer,
+            logger=self.tracker,
+            callbacks=LuxonisRichProgressBar()
+            if self.cfg.trainer.use_rich_progress_bar
+            else LuxonisTQDMProgressBar(),
+        )
 
         self.train_augmentations = Augmentations(
             image_size=self.cfg.trainer.preprocessing.train_image_size,
@@ -112,15 +118,6 @@ class LuxonisModel:
             train_rgb=self.cfg.trainer.preprocessing.train_rgb,
             keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
             only_normalize=True,
-        )
-
-        self.pl_trainer = create_trainer(
-            self.cfg,
-            logger=self.tracker,
-            deterministic=deterministic,
-            callbacks=LuxonisRichProgressBar()
-            if self.cfg.trainer.use_rich_progress_bar
-            else LuxonisTQDMProgressBar(),
         )
 
         self.loaders: dict[str, BaseLoaderTorch] = {}
@@ -172,10 +169,8 @@ class LuxonisModel:
             )
             for view in ["train", "val", "test"]
         }
-        self.error_message = None
 
         self.dataset_metadata = DatasetMetadata.from_loader(self.loaders["train"])
-        self.dataset_metadata.set_loader(self.pytorch_loaders["train"])
 
         self.cfg.save_data(osp.join(self.run_save_dir, "config.yaml"))
 
@@ -195,7 +190,7 @@ class LuxonisModel:
         status = "success"
         try:
             self.pl_trainer.fit(*args, ckpt_path=resume, **kwargs)
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             logger.exception("Encountered an exception during training.")
             status = "failed"
             raise e
@@ -225,7 +220,7 @@ class LuxonisModel:
                 LuxonisFileSystem.download(resume_weights, self.run_save_dir)
             )
 
-        def graceful_exit(signum: int, _):
+        def graceful_exit(signum: int, _):  # pragma: no cover
             logger.info(f"{signal.Signals(signum).name} received, stopping training...")
             ckpt_path = osp.join(self.run_save_dir, "resume.ckpt")
             self.pl_trainer.save_checkpoint(ckpt_path)
@@ -233,7 +228,7 @@ class LuxonisModel:
                 ckpt_path, typ="checkpoints", name="resume.ckpt"
             )
             self.tracker._finalize(status="failed")
-            exit(0)
+            exit()
 
         signal.signal(signal.SIGTERM, graceful_exit)
 
@@ -249,7 +244,7 @@ class LuxonisModel:
             logger.info("Training finished")
             logger.info(f"Checkpoints saved in: {self.run_save_dir}")
 
-        else:
+        else:  # pragma: no cover
             # Every time exception happens in the Thread, this hook will activate
             def thread_exception_hook(args):
                 self.error_message = str(args.exc_value)
@@ -340,36 +335,51 @@ class LuxonisModel:
         for path in self._exported_models.values():
             if self.cfg.exporter.upload_to_run:
                 self.tracker.upload_artifact(path, typ="export")
-            if self.cfg.exporter.upload_url is not None:
+            if self.cfg.exporter.upload_url is not None:  # pragma: no cover
                 LuxonisFileSystem.upload(path, self.cfg.exporter.upload_url)
 
         with open(export_path.with_suffix(".yaml"), "w") as f:
             yaml.dump(modelconverter_config, f)
             if self.cfg.exporter.upload_to_run:
                 self.tracker.upload_artifact(f.name, name=f.name, typ="export")
-            if self.cfg.exporter.upload_url is not None:
+            if self.cfg.exporter.upload_url is not None:  # pragma: no cover
                 LuxonisFileSystem.upload(f.name, self.cfg.exporter.upload_url)
 
+    @overload
     def test(
-        self, new_thread: bool = False, view: Literal["train", "test", "val"] = "val"
+        self,
+        new_thread: Literal[False] = ...,
+        view: Literal["train", "test", "val"] = "val",
+    ) -> Mapping[str, float]:
+        ...
+
+    @overload
+    def test(
+        self,
+        new_thread: Literal[True] = ...,
+        view: Literal["train", "test", "val"] = "val",
     ) -> None:
+        ...
+
+    @typechecked
+    def test(
+        self, new_thread: bool = False, view: Literal["train", "val", "test"] = "val"
+    ) -> Mapping[str, float] | None:
         """Runs testing.
 
         @type new_thread: bool
         @param new_thread: Runs testing in a new thread if set to True.
         @type view: Literal["train", "test", "val"]
         @param view: Which view to run the testing on. Defauls to "val".
+        @rtype: Mapping[str, float] | None
+        @return: If new_thread is False, returns a dictionary test results.
         """
 
-        if view not in self.pytorch_loaders:
-            raise ValueError(
-                f"View {view} is not valid. Valid views are: 'train', 'val', 'test'."
-            )
         loader = self.pytorch_loaders[view]
 
         if not new_thread:
-            self.pl_trainer.test(self.lightning_module, loader)
-        else:
+            return self.pl_trainer.test(self.lightning_module, loader)[0]
+        else:  # pragma: no cover
             self.thread = threading.Thread(
                 target=self.pl_trainer.test,
                 args=(self.lightning_module, loader),
@@ -377,7 +387,12 @@ class LuxonisModel:
             )
             self.thread.start()
 
-    def infer(self, view: str = "val", save_dir: str | Path | None = None) -> None:
+    @typechecked
+    def infer(
+        self,
+        view: Literal["train", "val", "test"] = "val",
+        save_dir: str | Path | None = None,
+    ) -> None:
         """Runs inference.
 
         @type view: str
@@ -389,10 +404,6 @@ class LuxonisModel:
         """
         self.lightning_module.eval()
 
-        if view not in self.pytorch_loaders:
-            raise ValueError(
-                f"View {view} is not valid. Valid views are: 'train', 'val', 'test'."
-            )
         for inputs, labels in self.pytorch_loaders[view]:
             images = get_unnormalized_images(self.cfg, inputs)
             outputs = self.lightning_module.forward(
@@ -425,11 +436,13 @@ class LuxonisModel:
             curr_params["model.predefined_model"] = None
 
             cfg_copy = self.cfg.model_copy(deep=True)
+            # manually remove Normalize so it doesn't
+            # get duplicated when creating new cfg instance
             cfg_copy.trainer.preprocessing.augmentations = [
                 a
                 for a in cfg_copy.trainer.preprocessing.augmentations
                 if a.name != "Normalize"
-            ]  # manually remove Normalize so it doesn't duplicate it when creating new cfg instance
+            ]
             cfg = Config.get_config(cfg_copy.model_dump(), curr_params)
 
             child_tracker.log_hyperparams(curr_params)
@@ -451,16 +464,12 @@ class LuxonisModel:
 
             pruner_callback = PyTorchLightningPruningCallback(trial, monitor="val/loss")
             callbacks.append(pruner_callback)
-            deterministic = False
-            if self.cfg.trainer.seed:
+
+            if self.cfg.trainer.seed is not None:
                 pl.seed_everything(cfg.trainer.seed, workers=True)
-                deterministic = True
 
             pl_trainer = create_trainer(
-                cfg,
-                logger=child_tracker,
-                callbacks=callbacks,
-                deterministic=deterministic,
+                cfg.trainer, logger=child_tracker, callbacks=callbacks
             )
 
             try:
@@ -475,7 +484,7 @@ class LuxonisModel:
             except optuna.TrialPruned as e:
                 logger.info(e)
 
-            if "val/loss" not in pl_trainer.callback_metrics:
+            if "val/loss" not in pl_trainer.callback_metrics:  # pragma: no cover
                 raise ValueError(
                     "No validation loss found. "
                     "This can happen if `TestOnTrainEnd` callback is used."
@@ -499,7 +508,7 @@ class LuxonisModel:
             is_sweep=False,
             **tracker_params,
         )
-        if self.parent_tracker.is_mlflow:
+        if self.parent_tracker.is_mlflow:  # pragma: no cover
             # Experiment needs to be interacted with to create actual MLFlow run
             self.parent_tracker.experiment["mlflow"].active_run()
 
@@ -515,7 +524,7 @@ class LuxonisModel:
         if cfg_tuner.storage.active:
             if cfg_tuner.storage.storage_type == "local":
                 storage = "sqlite:///study_local.db"
-            else:
+            else:  # pragma: no cover
                 storage = "postgresql://{}:{}@{}:{}/{}".format(
                     self.cfg.ENVIRON.POSTGRES_USER,
                     self.cfg.ENVIRON.POSTGRES_PASSWORD,
@@ -540,7 +549,7 @@ class LuxonisModel:
 
         self.parent_tracker.log_hyperparams(study.best_params)
 
-        if self.cfg.tracker.is_wandb:
+        if self.cfg.tracker.is_wandb:  # pragma: no cover
             # If wandb used then init parent tracker separately at the end
             wandb_parent_tracker = LuxonisTrackerPL(
                 rank=rank_zero_only.rank,
@@ -642,7 +651,7 @@ class LuxonisModel:
 
         logger.info(f"NN Archive saved to {archive_path}")
 
-        if self.cfg.archiver.upload_url is not None:
+        if self.cfg.archiver.upload_url is not None:  # pragma: no cover
             LuxonisFileSystem.upload(archive_path, self.cfg.archiver.upload_url)
 
         if self.cfg.archiver.upload_to_run:

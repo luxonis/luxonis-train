@@ -42,7 +42,7 @@ def try_onnx_simplify(onnx_path: str) -> None:
         model_onnx = onnx.load(onnx_path)
         onnx_model, check = onnxsim.simplify(model_onnx)
         if not check:
-            raise RuntimeError("ONNX simplify failed.")
+            raise RuntimeError("ONNX simplify failed.")  # pragma: no cover
         onnx.save(onnx_model, onnx_path)
         logger.info(f"ONNX model saved to {onnx_path}")
 
@@ -52,7 +52,7 @@ def try_onnx_simplify(onnx_path: str) -> None:
             "`onnxsim` not installed. Skipping ONNX model simplification. "
             "Ensure `onnxsim` is installed in your environment."
         )
-    except RuntimeError:
+    except RuntimeError:  # pragma: no cover
         logger.error(
             "Failed to simplify ONNX model. Proceeding without simplification."
         )
@@ -100,7 +100,7 @@ def blobconverter_export(
 
     logger.info("Converting ONNX to .blob")
 
-    optimizer_params = []
+    optimizer_params: list[str] = []
     if scale_values:
         optimizer_params.append(f"--scale_values={scale_values}")
     if mean_values:
@@ -111,7 +111,7 @@ def blobconverter_export(
     blob_path = blobconverter.from_onnx(
         model=onnx_path,
         optimizer_params=optimizer_params,
-        data_type=cfg.data_type,
+        data_type=cfg.data_type.upper(),
         shaves=cfg.blobconverter.shaves,
         version=cfg.blobconverter.version,
         use_cache=False,

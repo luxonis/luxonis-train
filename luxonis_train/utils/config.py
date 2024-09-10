@@ -91,10 +91,11 @@ class ModelConfig(BaseModelExtraForbid):
             name = metric.alias or metric.name
             logger.info(f"Setting '{name}' as main metric.")
         else:
-            logger.error(
+            logger.warning(
+                "[Ignore if using predefined model] "
                 "No metrics specified. "
                 "This is likely unintended unless "
-                "the configuration is not used for training."
+                "the configuration is not used for training. "
             )
         return self
 
@@ -122,7 +123,7 @@ class ModelConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_graph(self) -> Self:
-        from luxonis_train.utils.general import is_acyclic
+        from luxonis_train.utils import is_acyclic
 
         graph = {node.alias or node.name: node.inputs for node in self.nodes}
         if not is_acyclic(graph):
@@ -147,7 +148,7 @@ class ModelConfig(BaseModelExtraForbid):
             ("metrics", self.metrics),
             ("visualizers", self.visualizers),
         ]:
-            names = set()
+            names: set[str] = set()
             for obj in objects:
                 obj: AttachedModuleConfig
                 name = obj.alias or obj.name
@@ -274,6 +275,7 @@ class TrainerConfig(BaseModelExtraForbid):
     verbose: bool = True
 
     seed: int | None = None
+    deterministic: bool | Literal["warn"] | None = None
     batch_size: PositiveInt = 32
     accumulate_grad_batches: PositiveInt = 1
     use_weighted_sampler: bool = False
@@ -291,6 +293,17 @@ class TrainerConfig(BaseModelExtraForbid):
 
     optimizer: OptimizerConfig = OptimizerConfig()
     scheduler: SchedulerConfig = SchedulerConfig()
+
+    @model_validator(mode="after")
+    def validate_deterministic(self) -> Self:
+        if self.seed is not None and self.deterministic is None:
+            logger.warning(
+                "Setting `trainer.deterministic` to True because `trainer.seed` is set."
+                "This can cause certain layers to fail. "
+                "In such cases, set `trainer.deterministic` to `'warn'`."
+            )
+            self.deterministic = True
+        return self
 
     @model_validator(mode="after")
     def check_num_workes_platform(self) -> Self:

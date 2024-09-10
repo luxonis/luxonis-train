@@ -1,23 +1,24 @@
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import torch
 import torch.nn.functional as F
+from luxonis_ml.data import LabelType
 from torch import Tensor, nn
 from torchvision.ops import box_convert
 
-from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
-    get_area_factor,
-    get_sigmas,
-)
+from luxonis_train.assigners import ATSSAssigner, TaskAlignedAssigner
 from luxonis_train.nodes import EfficientKeypointBBoxHead
-from luxonis_train.utils.assigners import ATSSAssigner, TaskAlignedAssigner
-from luxonis_train.utils.boxutils import (
-    IoUType,
+from luxonis_train.utils import (
+    IncompatibleException,
+    Labels,
+    Packet,
     anchors_for_fpn_features,
     compute_iou_loss,
     dist2bbox,
+    get_sigmas,
+    get_with_default,
 )
-from luxonis_train.utils.types import IncompatibleException, Labels, LabelType, Packet
+from luxonis_train.utils.boundingbox import IoUType
 
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
@@ -46,7 +47,7 @@ class EfficientKeypointBBoxLoss(
         vis_kpts_loss_weight: float = 1.0,
         sigmas: list[float] | None = None,
         area_factor: float | None = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         """BBox loss adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
         <https://arxiv.org/pdf/2209.02976.pdf>}. It combines IoU based bbox regression loss and varifocal loss
@@ -55,7 +56,7 @@ class EfficientKeypointBBoxLoss(
 
         @type n_warmup_epochs: int
         @param n_warmup_epochs: Number of epochs where ATSS assigner is used, after that we switch to TAL assigner.
-        @type iou_type: L{IoUType}
+        @type iou_type: Literal["none", "giou", "diou", "ciou", "siou"]
         @param iou_type: IoU type used for bbox regression loss.
         @type reduction: Literal["sum", "mean"]
         @param reduction: Reduction type for loss.
@@ -71,8 +72,6 @@ class EfficientKeypointBBoxLoss(
         @param sigmas: Sigmas used in KeypointLoss for OKS metric. If None then use COCO ones if possible or default ones. Defaults to C{None}.
         @type area_factor: float | None
         @param area_factor: Factor by which we multiply bbox area which is used in KeypointLoss. If None then use default one. Defaults to C{None}.
-        @type kwargs: dict
-        @param kwargs: Additional arguments to pass to L{BaseLoss}.
         """
         super().__init__(**kwargs)
 
@@ -88,14 +87,15 @@ class EfficientKeypointBBoxLoss(
         self.grid_cell_size = self.node.grid_cell_size
         self.grid_cell_offset = self.node.grid_cell_offset
         self.original_img_size = self.node.original_in_shape[1:]
-        self.n_heads = self.node.n_heads
         self.n_kps = self.node.n_keypoints
 
         self.b_cross_entropy = BCEWithLogitsLoss(pos_weight=torch.tensor([viz_pw]))
         self.sigmas = get_sigmas(
-            sigmas=sigmas, n_keypoints=self.n_kps, class_name=self.name
+            sigmas=sigmas, n_keypoints=self.n_kps, caller_name=self.name
         )
-        self.area_factor = get_area_factor(area_factor, class_name=self.name)
+        self.area_factor = get_with_default(
+            area_factor, "bbox area scaling", self.name, default=0.53
+        )
 
         self.n_warmup_epochs = n_warmup_epochs
         self.atts_assigner = ATSSAssigner(topk=9, n_classes=self.n_classes)
@@ -110,18 +110,18 @@ class EfficientKeypointBBoxLoss(
         self.vis_kpts_loss_weight = vis_kpts_loss_weight
 
     def prepare(
-        self, outputs: Packet[Tensor], labels: Labels
+        self, inputs: Packet[Tensor], labels: Labels
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
-        feats = self.get_input_tensors(outputs, "features")
-        pred_scores = self.get_input_tensors(outputs, "class_scores")[0]
-        pred_distri = self.get_input_tensors(outputs, "distributions")[0]
-        pred_kpts = self.get_input_tensors(outputs, "keypoints_raw")[0]
+        feats = self.get_input_tensors(inputs, "features")
+        pred_scores = self.get_input_tensors(inputs, "class_scores")[0]
+        pred_distri = self.get_input_tensors(inputs, "distributions")[0]
+        pred_kpts = self.get_input_tensors(inputs, "keypoints_raw")[0]
 
         batch_size = pred_scores.shape[0]
         device = pred_scores.device
 
-        target_kpts = self.get_label(labels, LabelType.KEYPOINTS)[0]
-        target_bbox = self.get_label(labels, LabelType.BOUNDINGBOX)[0]
+        target_kpts = self.get_label(labels, LabelType.KEYPOINTS)
+        target_bbox = self.get_label(labels, LabelType.BOUNDINGBOX)
         n_kpts = (target_kpts.shape[1] - 2) // 3
 
         gt_bboxes_scale = torch.tensor(

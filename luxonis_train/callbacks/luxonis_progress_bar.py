@@ -14,7 +14,6 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
     def get_metrics(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
     ) -> dict[str, int | str | float | dict[str, float]]:
-        # NOTE: there might be a cleaner way of doing this
         items = super().get_metrics(trainer, pl_module)
         items.pop("v_num", None)
         if trainer.training and pl_module.training_step_outputs:
@@ -107,7 +106,7 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
 
     @property
     def console(self) -> Console:
-        if self._console is None:
+        if self._console is None:  # pragma: no cover
             raise RuntimeError(
                 "Console is not initialized for the `LuxonisRichProgressBar`. "
                 "Consider setting `tracker.use_rich_progress_bar` to `False` in the configuration."
@@ -140,10 +139,7 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         rich_table.add_column(key_name, style="magenta")
         rich_table.add_column(value_name, style="white")
         for name, value in table.items():
-            if isinstance(value, float):
-                rich_table.add_row(name, f"{value:.5f}")
-            else:
-                rich_table.add_row(name, str(value))
+            rich_table.add_row(name, f"{value:.5f}")
         self.console.print(rich_table)
 
     def print_results(

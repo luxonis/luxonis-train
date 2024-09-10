@@ -1,9 +1,14 @@
 import json
+import multiprocessing as mp
+import os
+import shutil
 from collections import defaultdict
 from pathlib import Path
+from typing import Any
 
 import cv2
 import gdown
+import numpy as np
 import pytest
 import torchvision
 from luxonis_ml.data import LuxonisDataset
@@ -12,15 +17,34 @@ from luxonis_ml.data.utils.data_utils import rgb_to_bool_masks
 from luxonis_ml.utils import LuxonisFileSystem, environ
 
 WORK_DIR = Path("tests", "data")
-WORK_DIR.mkdir(parents=True, exist_ok=True)
 
-environ.LUXONISML_BASE_PATH = WORK_DIR / "luxonisml"
+
+@pytest.fixture(scope="session")
+def test_output_dir() -> Path:
+    return Path("tests/integration/save-directory")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup(test_output_dir: Path):
+    WORK_DIR.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(WORK_DIR / "luxonisml", ignore_errors=True)
+    shutil.rmtree(test_output_dir, ignore_errors=True)
+    environ.LUXONISML_BASE_PATH = WORK_DIR / "luxonisml"
+    test_output_dir.mkdir(exist_ok=True)
 
 
 @pytest.fixture
+def train_overfit() -> bool:
+    return bool(os.getenv("LUXONIS_TRAIN_OVERFIT"))
+
+
+@pytest.fixture(scope="session")
 def parking_lot_dataset() -> LuxonisDataset:
     url = "gs://luxonis-test-bucket/luxonis-ml-test-data/D1_ParkingSlotTest"
-    base_path = LuxonisFileSystem.download(url, WORK_DIR)
+    base_path = WORK_DIR / "D1_ParkingSlotTest"
+    if not base_path.exists():
+        base_path = LuxonisFileSystem.download(url, WORK_DIR)
+
     mask_brand_path = base_path / "mask_brand"
     mask_color_path = base_path / "mask_color"
     kpt_mask_path = base_path / "keypoints_mask_vehicle"
@@ -28,7 +52,7 @@ def parking_lot_dataset() -> LuxonisDataset:
     def generator():
         filenames: dict[int, Path] = {}
         for base_path in [kpt_mask_path, mask_brand_path, mask_color_path]:
-            for sequence_path in list(sorted(base_path.glob("sequence.*"))):
+            for sequence_path in sorted(list(base_path.glob("sequence.*"))):
                 frame_data = sequence_path / "step0.frame_data.json"
                 with open(frame_data) as f:
                     data = json.load(f)["captures"][0]
@@ -122,11 +146,11 @@ def parking_lot_dataset() -> LuxonisDataset:
                     for inst in vehicle_type_segmentation["instances"]
                 }
                 if base_path == kpt_mask_path:
-                    task = "vehicle_type_segmentation"
+                    task = "vehicle_type-segmentation"
                 elif base_path == mask_brand_path:
-                    task = "brand_segmentation"
+                    task = "brand-segmentation"
                 else:
-                    task = "color_segmentation"
+                    task = "color-segmentation"
                 for class_, mask_ in rgb_to_bool_masks(
                     mask, classes, add_background_class=True
                 ):
@@ -145,21 +169,22 @@ def parking_lot_dataset() -> LuxonisDataset:
                         "annotation": {
                             "type": "mask",
                             "class": "vehicle",
-                            "task": "vehicle_segmentation",
+                            "task": "vehicle-segmentation",
                             "mask": mask.astype(bool)[..., 0]
                             | mask.astype(bool)[..., 1]
                             | mask.astype(bool)[..., 2],
                         },
                     }
 
-    dataset = LuxonisDataset("__D1ParkingSLot-test", delete_existing=True)
+    dataset = LuxonisDataset("_ParkingLot", delete_existing=True)
     dataset.add(generator())
+    np.random.seed(42)
     dataset.make_splits()
     return dataset
 
 
-@pytest.fixture(scope="session", autouse=True)
-def create_coco_dataset():
+@pytest.fixture(scope="session")
+def coco_dataset() -> LuxonisDataset:
     dataset_name = "coco_test"
     url = "https://drive.google.com/uc?id=1XlvFK7aRmt8op6-hHkWVKIJQeDtOwoRT"
     output_zip = WORK_DIR / "COCO_people_subset.zip"
@@ -170,11 +195,11 @@ def create_coco_dataset():
     parser = LuxonisParser(
         str(output_zip), dataset_name=dataset_name, delete_existing=True
     )
-    parser.parse(random_split=True)
+    return parser.parse(random_split=True)
 
 
-@pytest.fixture(scope="session", autouse=True)
-def create_cifar10_dataset():
+@pytest.fixture(scope="session")
+def cifar10_dataset() -> LuxonisDataset:
     dataset = LuxonisDataset("cifar10_test", delete_existing=True)
     output_folder = WORK_DIR / "cifar10"
     output_folder.mkdir(parents=True, exist_ok=True)
@@ -210,3 +235,40 @@ def create_cifar10_dataset():
 
     dataset.add(CIFAR10_subset_generator())
     dataset.make_splits()
+    return dataset
+
+
+@pytest.fixture
+def config(train_overfit: bool) -> dict[str, Any]:
+    if train_overfit:
+        epochs = 100
+    else:
+        epochs = 1
+
+    return {
+        "tracker": {
+            "save_directory": "tests/integration/save-directory",
+        },
+        "loader": {
+            "train_view": "val",
+            "params": {
+                "dataset_name": "_ParkingLot",
+            },
+        },
+        "trainer": {
+            "batch_size": 4,
+            "epochs": epochs,
+            "num_workers": mp.cpu_count(),
+            "validation_interval": epochs,
+            "save_top_k": 0,
+            "preprocessing": {
+                "train_image_size": [256, 320],
+                "keep_aspect_ratio": False,
+                "normalize": {"active": True},
+            },
+            "callbacks": [
+                {"name": "ExportOnTrainEnd"},
+            ],
+            "matmul_precision": "medium",
+        },
+    }

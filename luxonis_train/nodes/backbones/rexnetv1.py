@@ -1,15 +1,11 @@
-"""Implementation of the ReXNetV1 backbone.
-
-Source: U{https://github.com/clovaai/rexnet}
-@license: U{MIT<https://github.com/clovaai/rexnet/blob/master/LICENSE>}
-"""
+from typing import Any
 
 import torch
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
-from luxonis_train.utils.general import make_divisible
+from luxonis_train.utils import make_divisible
 
 
 class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
@@ -21,10 +17,33 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
         final_ch: int = 164,
         multiplier: float = 1.0,
         kernel_sizes: int | list[int] = 3,
-        **kwargs,
+        out_indices: list[int] | None = None,
+        **kwargs: Any,
     ):
-        """ReXNetV1_lite backbone.
+        """ReXNetV1 (Rank Expansion Networks) backbone, lite version.
 
+        ReXNet proposes a new approach to designing lightweight CNN architectures by:
+
+            - Studying proper channel dimension expansion at the layer level using rank analysis
+            - Searching for effective channel configurations across the entire network
+            - Parameterizing channel dimensions as a linear function of network depth
+
+        Key aspects:
+
+            - Uses inverted bottleneck blocks similar to MobileNetV2
+            - Employs a linear parameterization of channel dimensions across blocks
+            - Replaces ReLU6 with SiLU (Swish-1) activation in certain layers
+            - Incorporates Squeeze-and-Excitation modules
+
+        ReXNet achieves state-of-the-art performance among lightweight models on ImageNet
+        classification and transfers well to tasks like object detection and fine-grained classification.
+
+        Source: U{https://github.com/clovaai/rexnet}
+
+        @license: U{MIT
+            <https://github.com/clovaai/rexnet/blob/master/LICENSE>}
+        @copyright: 2021-present NAVER Corp.
+        @see U{Rethinking Channel Dimensions for Efficient Model Design <https://arxiv.org/abs/2007.00992>}
         @type fix_head_stem: bool
         @param fix_head_stem: Whether to multiply head stem. Defaults to False.
         @type divisible_value: int
@@ -37,30 +56,30 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
         @param multiplier: Channel dimension multiplier. Defaults to 1.0.
         @type kernel_sizes: int | list[int]
         @param kernel_sizes: Kernel size for each block. Defaults to 3.
+        @param out_indices: list[int] | None
+        @param out_indices: Indices of the output layers. Defaults to [1, 4, 10, 17].
         """
         super().__init__(**kwargs)
 
-        self.out_indices = [1, 4, 10, 17]
-        self.channels = [16, 48, 112, 184]
         layers = [1, 2, 2, 3, 3, 5]
         strides = [1, 2, 2, 2, 1, 2]
+
+        self.num_convblocks = sum(layers)
+        self.out_indices = out_indices or [1, 4, 10, 17]
 
         kernel_sizes = (
             [kernel_sizes] * 6 if isinstance(kernel_sizes, int) else kernel_sizes
         )
 
-        strides = sum(
-            [
-                [element] + [1] * (layers[idx] - 1)
-                for idx, element in enumerate(strides)
-            ],
-            [],
-        )
+        strides = [
+            s if i == 0 else 1
+            for layer, s in zip(layers, strides)
+            for i in range(layer)
+        ]
         ts = [1] * layers[0] + [6] * sum(layers[1:])
-        kernel_sizes = sum(
-            [[element] * layers[idx] for idx, element in enumerate(kernel_sizes)], []
-        )
-        self.num_convblocks = sum(layers[:])
+        kernel_sizes = [
+            ks for ks, layer in zip(kernel_sizes, layers) for _ in range(layer)
+        ]
 
         features: list[nn.Module] = []
         inplanes = input_ch / multiplier if multiplier < 1.0 else input_ch
@@ -69,8 +88,8 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
             int(round(first_channel * multiplier)), divisible_value
         )
 
-        in_channels_group = []
-        channels_group = []
+        in_channels_group: list[int] = []
+        channels_group: list[int] = []
 
         features.append(
             ConvModule(
@@ -121,12 +140,12 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
         )
         self.features = nn.Sequential(*features)
 
-    def forward(self, x: Tensor) -> list[Tensor]:
-        outs = []
+    def forward(self, inputs: Tensor) -> list[Tensor]:
+        outs: list[Tensor] = []
         for i, module in enumerate(self.features):
-            x = module(x)
+            inputs = module(inputs)
             if i in self.out_indices:
-                outs.append(x)
+                outs.append(inputs)
         return outs
 
 
@@ -138,14 +157,12 @@ class LinearBottleneck(nn.Module):
         t: int,
         kernel_size: int = 3,
         stride: int = 1,
-        **kwargs,
     ):
-        super(LinearBottleneck, self).__init__(**kwargs)
-        self.conv_shortcut = None
+        super().__init__()
         self.use_shortcut = stride == 1 and in_channels <= channels
         self.in_channels = in_channels
         self.out_channels = channels
-        out = []
+        out: list[nn.Module] = []
         if t != 1:
             dw_channels = in_channels * t
             out.append(

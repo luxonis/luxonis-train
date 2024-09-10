@@ -3,8 +3,7 @@ from pprint import pformat
 
 from torch import Tensor
 
-from luxonis_train.utils.general import to_shape_packet
-from luxonis_train.utils.types import Packet
+from luxonis_train.utils import Packet, to_shape_packet
 
 
 @dataclass

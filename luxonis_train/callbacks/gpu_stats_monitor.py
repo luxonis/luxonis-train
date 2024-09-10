@@ -27,11 +27,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pytorch_lightning as pl
 import torch
-from lightning.pytorch.accelerators import CUDAAccelerator  # type: ignore
-from pytorch_lightning.utilities import rank_zero_only
-from pytorch_lightning.utilities.exceptions import (
-    MisconfigurationException,  # type: ignore
+from lightning.pytorch.accelerators.cuda import CUDAAccelerator
+from lightning_fabric.utilities.exceptions import (
+    MisconfigurationException,  # noqa: F401
 )
+from pytorch_lightning.utilities import rank_zero_only
 from pytorch_lightning.utilities.parsing import AttributeDict
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 
@@ -40,49 +40,6 @@ from luxonis_train.utils.registry import CALLBACKS
 
 @CALLBACKS.register_module()
 class GPUStatsMonitor(pl.Callback):
-    """Automatically monitors and logs GPU stats during training stage.
-    C{GPUStatsMonitor} is a callback and in order to use it you need to assign a logger
-    in the C{Trainer}.
-
-    Args:
-        memory_utilization: Set to C{True} to monitor used, free and percentage of memory
-            utilization at the start and end of each step. Default: C{True}.
-        gpu_utilization: Set to C{True} to monitor percentage of GPU utilization
-            at the start and end of each step. Default: C{True}.
-        intra_step_time: Set to C{True} to monitor the time of each step. Default: {False}.
-        inter_step_time: Set to C{True} to monitor the time between the end of one step
-            and the start of the next step. Default: C{False}.
-        fan_speed: Set to C{True} to monitor percentage of fan speed. Default: C{False}.
-        temperature: Set to C{True} to monitor the memory and gpu temperature in degree Celsius.
-            Default: C{False}.
-
-    Raises:
-        MisconfigurationException:
-            If NVIDIA driver is not installed, not running on GPUs, or C{Trainer} has no logger.
-
-    Example::
-
-        >>> from pytorch_lightning import Trainer
-        >>> from pytorch_lightning.callbacks import GPUStatsMonitor
-        >>> gpu_stats = GPUStatsMonitor() # doctest: +SKIP
-        >>> trainer = Trainer(callbacks=[gpu_stats]) # doctest: +SKIP
-
-    GPU stats are mainly based on C{nvidia-smi --query-gpu} command. The description of the queries is as follows:
-
-    - **fan.speed** – The fan speed value is the percent of maximum speed that the device's fan is currently
-      intended to run at. It ranges from 0 to 100 %. Note: The reported speed is the intended fan speed.
-      If the fan is physically blocked and unable to spin, this output will not match the actual fan speed.
-      Many parts do not report fan speeds because they rely on cooling via fans in the surrounding enclosure.
-    - **memory.used** – Total memory allocated by active contexts.
-    - **memory.free** – Total free memory.
-    - **utilization.gpu** – Percent of time over the past sample period during which one or more kernels was
-      executing on the GPU. The sample period may be between 1 second and 1/6 second depending on the product.
-    - **utilization.memory** – Percent of time over the past sample period during which global (device) memory was
-      being read or written. The sample period may be between 1 second and 1/6 second depending on the product.
-    - **temperature.gpu** – Core GPU temperature, in degrees C.
-    - **temperature.memory** – HBM memory temperature, in degrees C.
-    """
-
     def __init__(
         self,
         memory_utilization: bool = True,
@@ -92,6 +49,40 @@ class GPUStatsMonitor(pl.Callback):
         fan_speed: bool = False,
         temperature: bool = False,
     ):
+        """Automatically monitors and logs GPU stats during training stage.
+        C{GPUStatsMonitor} is a callback and in order to use it you need to assign a
+        logger in the C{Trainer}.
+
+        GPU stats are mainly based on C{nvidia-smi --query-gpu} command. The description of the queries is as follows:
+
+            - C{fan.speed} – The fan speed value is the percent of maximum speed that the device's fan is currently
+              intended to run at. It ranges from 0 to 100 %. Note: The reported speed is the intended fan speed.
+              If the fan is physically blocked and unable to spin, this output will not match the actual fan speed.
+              Many parts do not report fan speeds because they rely on cooling via fans in the surrounding enclosure.
+            - C{memory.used} – Total memory allocated by active contexts.
+            - C{memory.free} – Total free memory.
+            - C{utilization.gpu} – Percent of time over the past sample period during which one or more kernels was
+              executing on the GPU. The sample period may be between 1 second and 1/6 second depending on the product.
+            - C{utilization.memory} – Percent of time over the past sample period during which global (device) memory was
+              being read or written. The sample period may be between 1 second and 1/6 second depending on the product.
+            - C{temperature.gpu} – Core GPU temperature, in degrees C.
+            - C{temperature.memory} – HBM memory temperature, in degrees C.
+
+        @type memory_utilization: bool
+        @param memory_utilization: Set to C{True} to monitor used, free and percentage of memory utilization at the start and end of each step. Defaults to C{True}.
+        @type gpu_utilization: bool
+        @param gpu_utilization: Set to C{True} to monitor percentage of GPU utilization at the start and end of each step. Defaults to C{True}.
+        @type intra_step_time: bool
+        @param intra_step_time: Set to C{True} to monitor the time of each step. Defaults to {False}.
+        @type inter_step_time: bool
+        @param inter_step_time: Set to C{True} to monitor the time between the end of one step and the start of the next step. Defaults to C{False}.
+        @type fan_speed: bool
+        @param fan_speed: Set to C{True} to monitor percentage of fan speed. Defaults to C{False}.
+        @type temperature: bool
+        @param temperature: Set to C{True} to monitor the memory and gpu temperature in degree Celsius. Defaults to C{False}.
+        @raises MisconfigurationException: If NVIDIA driver is not installed, not running on GPUs, or C{Trainer} has no logger.
+        """
+
         super().__init__()
 
         if shutil.which("nvidia-smi") is None:

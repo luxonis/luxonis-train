@@ -1,9 +1,11 @@
+from typing import Any
+
 import lightning.pytorch as pl
 
-from luxonis_train.utils.config import Config
+from luxonis_train.utils.config import TrainerConfig
 
 
-def create_trainer(cfg: Config, **kwargs) -> pl.Trainer:
+def create_trainer(cfg: TrainerConfig, **kwargs: Any) -> pl.Trainer:
     """Creates Pytorch Lightning trainer.
 
     @type cfg: Config
@@ -13,13 +15,14 @@ def create_trainer(cfg: Config, **kwargs) -> pl.Trainer:
     @return: Pytorch Lightning trainer.
     """
     return pl.Trainer(
-        accelerator=cfg.trainer.accelerator,
-        devices=cfg.trainer.devices,
-        strategy=cfg.trainer.strategy,
-        max_epochs=cfg.trainer.epochs,
-        accumulate_grad_batches=cfg.trainer.accumulate_grad_batches,
-        check_val_every_n_epoch=cfg.trainer.validation_interval,
-        num_sanity_val_steps=cfg.trainer.num_sanity_val_steps,
-        profiler=cfg.trainer.profiler,
+        accelerator=cfg.accelerator,
+        devices=cfg.devices,
+        strategy=cfg.strategy,
+        max_epochs=cfg.epochs,
+        accumulate_grad_batches=cfg.accumulate_grad_batches,
+        check_val_every_n_epoch=cfg.validation_interval,
+        num_sanity_val_steps=cfg.num_sanity_val_steps,
+        profiler=cfg.profiler,
+        deterministic=cfg.deterministic,
         **kwargs,
     )

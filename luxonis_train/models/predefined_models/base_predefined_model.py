@@ -1,4 +1,4 @@
-from abc import ABC, abstractproperty
+from abc import ABC, abstractmethod
 
 from luxonis_ml.utils.registry import AutoRegisterMeta
 
@@ -17,19 +17,23 @@ class BasePredefinedModel(
     registry=MODELS,
     register=False,
 ):
-    @abstractproperty
+    @property
+    @abstractmethod
     def nodes(self) -> list[ModelNodeConfig]:
         ...
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def losses(self) -> list[LossModuleConfig]:
         ...
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def metrics(self) -> list[MetricModuleConfig]:
         ...
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def visualizers(self) -> list[AttachedModuleConfig]:
         ...
 

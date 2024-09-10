@@ -48,9 +48,37 @@ select = ["E4", "E7", "E9", "F", "W", "B", "I"]
 [tool.docformatter]
 black = true
 
-[tool.mypy]
-python_version = "3.10"
-ignore_missing_imports = true
-
 [tool.pyright]
 typeCheckingMode = "basic"
+reportMissingTypeStubs = "none"
+reportPrivateImportUsage = "none"
+reportPrivateUsage = "none"
+reportIncompatibleVariableOverride = "none"
+reportIncompatibleMethodOverride = "none"
+reportUnnecessaryIsInstance = "none"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=luxonis_train --cov-report=term --cov-report=html --cov-report=xml --disable-warnings"
+
+[tool.coverage.run]
+omit = [
+    "**/__main__.py",
+    "**/gpu_stats_monitor.py"
+]
+
+[tool.coverage.report]
+exclude_also = [
+    "def __repr__",
+    "def __rich_repr__",
+    "def __str__",
+    "assert",
+    "raise NotImplementedError",
+    "except ImportError",
+    "@abstractmethod",
+    "@overload",
+    "exit\\(\\)",
+    "cv2\\.imshow",
+    "cv2\\.waitKey",
+    "logger\\.",
+]

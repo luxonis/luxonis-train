@@ -43,16 +43,24 @@ To verify that your documentation is formatted correctly, follow these steps:
 ## Tests
 
 We use [pytest](https://docs.pytest.org/en/stable/) for testing.
-The tests are located in the `tests` directory. You can run the tests locally with:
+The tests are located in the `tests` directory. You can run the tests locally by running:
 
 ```bash
-pytest tests --cov=luxonis_train
+pytest
 ```
 
-This command will run all tests and print a coverage report. The coverage report
-is only informational for now, but we may enforce a minimum coverage in the future.
+in the root directory.
 
-**If a new feature is added, a new test should be added to cover it.**
+This command will run all tests and print a coverage report.
+
+> \[!TIP\]
+> It will also generate an HTML coverage report in the `htmlcov` directory
+> if you want to inspect the coverage in more detail, open `htmlcov/index.html` in a browser.
+
+> \[!IMPORTANT\]
+> If a new feature is added, a new test should be added to cover it.
+> The minimum overall test coverage for a PR to be merged is 90%.
+> The minimum coverage for new files is 80%.
 
 ## GitHub Actions
 
@@ -72,9 +80,5 @@ Successful tests are required for merging a PR.
 1. Make changes in a new branch.
 1. Test your changes locally.
 1. Commit (pre-commit hook will run).
-1. Push to your branch and create a pull request. Always request a review from:
-   - [Martin Kozlovský](https://github.com/kozlov721)
-   - [Matija Teršek](https://github.com/tersekmatija)
-   - [Conor Simmons](https://github.com/conorsim)
-1. Any other relevant team members can be added as reviewers as well.
+1. Push to your branch and create a pull request.
 1. The team will review and merge your PR.

@@ -1,17 +1,20 @@
+from typing import Any
+
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor
 
-from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
-    get_area_factor,
+from luxonis_train.utils import (
     get_sigmas,
+    get_with_default,
+    process_keypoints_predictions,
 )
-from luxonis_train.utils.boxutils import process_keypoints_predictions
-from luxonis_train.utils.types import Labels, LabelType, Packet
 
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
 
 
+# TODO: Make it work on its own
 class KeypointLoss(BaseLoss[Tensor, Tensor]):
     supported_labels = [LabelType.KEYPOINTS]
 
@@ -21,7 +24,9 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         bce_power: float = 1.0,
         sigmas: list[float] | None = None,
         area_factor: float | None = None,
-        **kwargs,
+        regression_loss_weight: float = 1.0,
+        visibility_loss_weight: float = 1.0,
+        **kwargs: Any,
     ):
         """Keypoint based loss that is computed from OKS-based regression and visibility
         loss.
@@ -35,19 +40,22 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         @type area_factor: float | None
         @param area_factor: Factor by which we multiply bbox area. If None then use
             default one. Defaults to C{None}.
+        @type regression_loss_weight: float
+        @param regression_loss_weight: Weight of regression loss. Defaults to C{1.0}.
+        @type visibility_loss_weight: float
+        @param visibility_loss_weight: Weight of visibility loss. Defaults to C{1.0}.
         """
 
         super().__init__(**kwargs)
         self.b_cross_entropy = BCEWithLogitsLoss(
             pos_weight=torch.tensor([bce_power]), **kwargs
         )
-        self.sigmas = get_sigmas(
-            sigmas=sigmas, n_keypoints=n_keypoints, class_name=self.name
+        self.sigmas = get_sigmas(sigmas, n_keypoints, caller_name=self.name)
+        self.area_factor = get_with_default(
+            area_factor, "bbox area scaling", self.name, default=0.53
         )
-        self.area_factor = get_area_factor(area_factor, class_name=self.name)
-
-    def prepare(self, inputs: Packet[Tensor], labels: Labels) -> tuple[Tensor, Tensor]:
-        return torch.cat(inputs["keypoints"], dim=0), self.get_label(labels)[0]
+        self.regression_loss_weight = regression_loss_weight
+        self.visibility_loss_weight = visibility_loss_weight
 
     def forward(
         self, prediction: Tensor, target: Tensor, area: Tensor
@@ -65,29 +73,34 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         @return: A tuple containing the total loss tensor of shape C{[1,]} and a
             dictionary with the regression loss and visibility loss tensors.
         """
-        device = prediction.device
-        sigmas = self.sigmas.to(device)
+        sigmas = self.sigmas.to(prediction.device)
 
         pred_x, pred_y, pred_v = process_keypoints_predictions(prediction)
-        gt_x = target[:, 0::3]
-        gt_y = target[:, 1::3]
-        gt_v = (target[:, 2::3] > 0).float()
+        target_x = target[:, 0::3]
+        target_y = target[:, 1::3]
+        target_visibility = (target[:, 2::3] > 0).float()
 
-        visibility_loss = self.b_cross_entropy.forward(pred_v, gt_v)
+        visibility_loss = (
+            self.b_cross_entropy.forward(pred_v, target_visibility)
+            * self.visibility_loss_weight
+        )
         scales = area * self.area_factor
 
-        d = (gt_x - pred_x) ** 2 + (gt_y - pred_y) ** 2
-        e = d / (2 * sigmas**2) / (scales.view(-1, 1) + 1e-9) / 2
-
-        regression_loss_unreduced = 1 - torch.exp(-e)
-        regression_loss_reduced = (regression_loss_unreduced * gt_v).sum(dim=1) / (
-            gt_v.sum(dim=1) + 1e-9
+        distance = (target_x - pred_x) ** 2 + (target_y - pred_y) ** 2
+        normalized_distance = (
+            distance / (2 * sigmas**2) / (scales.view(-1, 1) + 1e-9) / 2
         )
-        regression_loss = regression_loss_reduced.mean()
+
+        regression_loss = 1 - torch.exp(-normalized_distance)
+        regression_loss = (regression_loss * target_visibility).sum(dim=1) / (
+            target_visibility.sum(dim=1) + 1e-9
+        )
+        regression_loss = regression_loss.mean()
+        regression_loss *= self.regression_loss_weight
 
         total_loss = regression_loss + visibility_loss
 
         return total_loss, {
-            "regression": regression_loss,
-            "visibility": visibility_loss,
+            "kpt_regression": regression_loss,
+            "kpt_visibility": visibility_loss,
         }

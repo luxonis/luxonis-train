@@ -1,13 +1,14 @@
+import pytest
 import torch
 
-from luxonis_train.utils.boxutils import (
+from luxonis_train.utils.boundingbox import (
+    IoUType,
     anchors_for_fpn_features,
     bbox2dist,
     bbox_iou,
     compute_iou_loss,
     dist2bbox,
     process_bbox_predictions,
-    process_keypoints_predictions,
 )
 
 
@@ -44,6 +45,8 @@ def test_dist2bbox():
     bbox = dist2bbox(distance, anchor_points)
 
     assert bbox.shape == distance.shape
+    with pytest.raises(ValueError):
+        dist2bbox(distance, anchor_points, out_format="invalid")  # type: ignore
 
 
 def test_bbox2dist():
@@ -56,15 +59,32 @@ def test_bbox2dist():
     assert distance.shape == bbox.shape
 
 
-def test_bbox_iou():
+@pytest.mark.parametrize("iou_type", ["none", "giou", "diou", "ciou", "siou"])
+def test_bbox_iou(iou_type: IoUType):
     for format in ["xyxy", "cxcywh", "xywh"]:
         bbox1 = generate_random_bboxes(5, 640, 640, format)
-        bbox2 = generate_random_bboxes(8, 640, 640, format)
+        if iou_type == "siou":
+            bbox2 = generate_random_bboxes(5, 640, 640, format)
+        else:
+            bbox2 = generate_random_bboxes(8, 640, 640, format)
 
-        iou = bbox_iou(bbox1, bbox2)
+        iou = bbox_iou(
+            bbox1,
+            bbox2,
+            bbox_format=format,  # type: ignore
+            iou_type=iou_type,
+        )
 
-        assert iou.shape == (5, 8)
-        assert iou.min() >= 0 and iou.max() <= 1
+        assert iou.shape == (bbox1.shape[0], bbox2.shape[0])
+        if iou_type == "none":
+            min = 0
+        else:
+            min = -1.5
+        assert iou.min() >= min and iou.max() <= 1
+
+    if iou_type == "none":
+        with pytest.raises(ValueError):
+            bbox_iou(bbox1, bbox2, iou_type="invalid")  # type: ignore
 
 
 def test_compute_iou_loss():
@@ -91,14 +111,6 @@ def test_process_bbox_predictions():
     assert out_bbox_xy.shape == (10, 2)
     assert out_bbox_wh.shape == (10, 2)
     assert out_bbox_tail.shape == (10, 4)
-
-
-def test_process_keypoints_predictions():
-    keypoints = torch.rand(10, 15)  # 5 keypoints * 3 (x, y, visibility)
-
-    x, y, visibility = process_keypoints_predictions(keypoints)
-
-    assert x.shape == y.shape == visibility.shape == (10, 5)
 
 
 def test_anchors_for_fpn_features():

@@ -1,17 +1,21 @@
-from typing import cast
+import logging
+from typing import Any, cast
 
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor
 from torchvision.ops import box_convert
 
 from luxonis_train.attached_modules.losses.keypoint_loss import KeypointLoss
 from luxonis_train.nodes import ImplicitKeypointBBoxHead
-from luxonis_train.utils.boxutils import (
+from luxonis_train.utils import (
+    IncompatibleException,
+    Labels,
+    Packet,
     compute_iou_loss,
     match_to_anchor,
     process_bbox_predictions,
 )
-from luxonis_train.utils.types import IncompatibleException, Labels, LabelType, Packet
 
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
@@ -25,7 +29,10 @@ KeypointTargetType = tuple[
     list[Tensor],
 ]
 
+logger = logging.getLogger(__name__)
 
+
+# TODO: BROKEN!
 class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
     node: ImplicitKeypointBBoxHead
     supported_labels = [(LabelType.BOUNDINGBOX, LabelType.KEYPOINTS)]
@@ -47,7 +54,7 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         anchor_threshold: float = 4.0,
         bias: float = 0.5,
         balance: list[float] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         """Joint loss for keypoint and box predictions for cases where the keypoints and
         boxes are inherently linked.
@@ -102,16 +109,16 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         self.anchors = self.node.anchors
         self.balance = balance or [4.0, 1.0, 0.4]
         if len(self.balance) < self.num_heads:
-            raise ValueError(
+            logger.warning(
                 f"Balance list must have at least {self.num_heads} elements."
+                "Filling the rest with 1.0."
             )
+            self.balance += [1.0] * (self.num_heads - len(self.balance))
 
         self.min_objectness_iou = min_objectness_iou
         self.bbox_weight = bbox_loss_weight
         self.class_weight = class_loss_weight
         self.objectness_weight = objectness_loss_weight
-        self.kpt_visibility_weight = keypoint_visibility_loss_weight
-        self.keypoint_regression_loss_weight = keypoint_regression_loss_weight
         self.anchor_threshold = anchor_threshold
 
         self.bias = bias
@@ -126,6 +133,8 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
             bce_power=viz_pw,
             sigmas=sigmas,
             area_factor=area_factor,
+            regression_loss_weight=keypoint_regression_loss_weight,
+            visibility_loss_weight=keypoint_visibility_loss_weight,
         )
 
         self.positive_smooth_const = 1 - 0.5 * label_smoothing
@@ -153,19 +162,20 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         """
         predictions = self.get_input_tensors(outputs, "features")
 
-        kpts = self.get_label(labels, LabelType.KEYPOINTS)[0]
-        boxes = self.get_label(labels, LabelType.BOUNDINGBOX)[0]
+        kpt_label = self.get_label(labels, LabelType.KEYPOINTS)
+        bbox_label = self.get_label(labels, LabelType.BOUNDINGBOX)
 
-        nkpts = (kpts.shape[1] - 2) // 3
-        targets = torch.zeros((len(boxes), nkpts * 3 + self.box_offset + 1))
-        targets[:, :2] = boxes[:, :2]
+        targets = torch.zeros(
+            (kpt_label.shape[0], self.n_keypoints * 3 + self.box_offset + 1)
+        )
+        targets[:, :2] = kpt_label[:, :2]
         targets[:, 2 : self.box_offset + 1] = box_convert(
-            boxes[:, 2:], "xywh", "cxcywh"
+            bbox_label[:, 2:], "xywh", "cxcywh"
         )
 
-        targets[:, self.box_offset + 1 :: 3] = kpts[:, 2::3]  # insert kp x coordinates
-        targets[:, self.box_offset + 2 :: 3] = kpts[:, 3::3]  # insert kp y coordinates
-        targets[:, self.box_offset + 3 :: 3] = kpts[:, 4::3]  # insert kp visibility
+        # insert keypoints
+        for i in range(1, 4):
+            targets[:, self.box_offset + i :: 3] = kpt_label[:, i + 1 :: 3]
 
         n_targets = targets.shape[0]
 
@@ -280,13 +290,8 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
                     kpt_target.to(device),
                     area.to(device),
                 )
-
-                sub_losses["kpt_regression"] += (
-                    kpt_sublosses["regression"] * self.keypoint_regression_loss_weight
-                )
-                sub_losses["kpt_visibility"] += (
-                    kpt_sublosses["visibility"] * self.kpt_visibility_weight
-                )
+                for name, kpt_subloss in kpt_sublosses.items():
+                    sub_losses[name] += kpt_subloss
 
                 obj_targets[index] = (self.min_objectness_iou) + (
                     1 - self.min_objectness_iou
@@ -295,11 +300,9 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
                 if self.n_classes > 1:
                     sub_losses["class"] += (
                         self.class_loss.forward(
-                            [
-                                pred_subset[
-                                    :,
-                                    self.box_offset : self.box_offset + self.n_classes,
-                                ]
+                            pred_subset[
+                                :,
+                                self.box_offset : self.box_offset + self.n_classes,
                             ],
                             class_target,
                         )
