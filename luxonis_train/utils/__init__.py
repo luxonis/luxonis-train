@@ -36,7 +36,6 @@ __all__ = [
     "to_shape_packet",
     "get_with_default",
     "LuxonisTrackerPL",
-    "registry",
     "match_to_anchor",
     "dist2bbox",
     "bbox2dist",
