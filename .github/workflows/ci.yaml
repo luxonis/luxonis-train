@@ -87,9 +87,9 @@ jobs:
     - uses: jakebailey/pyright-action@v2
       with:
         level: warning
-        working-directory: luxonis_train
         warnings: true
         python-version: '3.10'
+        project: pyproject.toml
 
   tests:
     needs:
