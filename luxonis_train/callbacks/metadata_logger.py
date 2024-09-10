@@ -57,6 +57,8 @@ class MetadataLogger(pl.Callback):
         """
         try:
             distribution = pkg_resources.get_distribution(package_name)
+            if distribution.location is None:
+                return None
             package_location = osp.join(distribution.location, package_name)
 
             # remove any additional folders in path (e.g. "/src")

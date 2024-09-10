@@ -180,7 +180,7 @@ def archive(
 
 def version_callback(value: bool):
     if value:
-        typer.echo(f"LuxonisTrain Version: {version(__package__)}")
+        typer.echo(f"LuxonisTrain Version: {version('luxonis_train')}")
         raise typer.Exit()
 
 
