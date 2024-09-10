@@ -18,7 +18,7 @@ from luxonis_train.attached_modules import (
     BaseMetric,
     BaseVisualizer,
 )
-from luxonis_train.attached_modules.metrics.common import TorchMetricWrapper
+from luxonis_train.attached_modules.metrics.torchmetrics import TorchMetricWrapper
 from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
     get_unnormalized_images,
