@@ -47,7 +47,7 @@ def clear_files():
         "segmentation_model",
         "detection_model",
         "keypoint_bbox_model",
-        "ddrnet_segmentation_model"
+        "ddrnet_segmentation_model",
     ],
 )
 def test_predefined_models(
