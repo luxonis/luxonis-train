@@ -10,6 +10,7 @@ import torch.nn as nn
 from torch import Tensor
 
 from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.nodes.blocks import ConvModule
 from luxonis_train.utils.types import LabelType
 
 
@@ -48,35 +49,46 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
         """
         self.attach_index = attach_index
         super().__init__(**kwargs)
+        self.scale_factor = scale_factor
 
         if inter_mode == "pixel_shuffle":
             assert (
                 inter_planes % (scale_factor**2) == 0
             ), "When using pixel_shuffle, inter_planes must be a multiple of scale_factor^2."
 
-        self.bn1 = nn.BatchNorm2d(in_planes)
-        self.conv1 = nn.Conv2d(
-            in_planes, inter_planes, kernel_size=3, padding=1, bias=False
+        self.conv1 = ConvModule(
+            in_planes,
+            inter_planes,
+            kernel_size=3,
+            padding=1,
+            bias=False,
+            activation=nn.ReLU(inplace=True),
         )
-        self.bn2 = nn.BatchNorm2d(inter_planes)
-        self.relu = nn.ReLU(inplace=True)
 
         if inter_mode == "pixel_shuffle":
-            self.conv2 = nn.Conv2d(
-                inter_planes, inter_planes, kernel_size=1, padding=0, bias=True
+            self.conv2 = ConvModule(
+                inter_planes,
+                inter_planes,
+                kernel_size=1,
+                padding=0,
+                bias=True,
+                activation=nn.Identity(),
             )
             self.upscale = nn.PixelShuffle(scale_factor)
         else:
-            self.conv2 = nn.Conv2d(
-                inter_planes, num_classes, kernel_size=1, padding=0, bias=True
+            self.conv2 = ConvModule(
+                inter_planes,
+                num_classes,
+                kernel_size=1,
+                padding=0,
+                bias=True,
+                activation=nn.Identity(),
             )
             self.upscale = nn.Upsample(scale_factor=scale_factor, mode=inter_mode)
 
-        self.scale_factor = scale_factor
-
     def forward(self, x: Tensor) -> Tensor:
-        x = self.conv1(self.relu(self.bn1(x)))
-        out = self.conv2(self.relu(self.bn2(x)))
+        x = self.conv1(x)
+        out = self.conv2(x)
         out = self.upscale(out)
 
         return out

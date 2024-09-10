@@ -16,13 +16,7 @@ class DDRNetSegmentationModel(SegmentationModel):
     num_classes: int = 1
     highres_planes: int = 64
     layer5_bottleneck_expansion: int = 2
-    task: Literal["binary", "multiclass"] = "binary"
-    backbone_params: Kwargs = field(default_factory=dict)
-    head_params: Kwargs = field(default_factory=dict)
     aux_head_params: Kwargs = field(default_factory=dict)
-    loss_params: Kwargs = field(default_factory=dict)
-    visualizer_params: Kwargs = field(default_factory=dict)
-    task_name: str | None = None
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
