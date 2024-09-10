@@ -244,12 +244,18 @@ class BaseNode(
 
     @property
     def task(self) -> str:
-        """Getter for the task."""
+        """Getter for the task.
+
+        @type: str
+        @raises RuntimeError: If the node doesn't define any tasks.
+        @raises RuntimeError: If the node defines more than one task. In that case, use
+            the L{get_task_name} method.
+        """
         if not self._tasks:
-            raise ValueError(f"{self.name} does not have any tasks defined.")
+            raise RuntimeError(f"{self.name} does not have any tasks defined.")
 
         if len(self._tasks) > 1:
-            raise ValueError(
+            raise RuntimeError(
                 f"Node {self.name} has multiple tasks defined. "
                 "Use `get_task_name` method instead."
             )

@@ -1,9 +1,10 @@
 import pytest
 import torch
+from luxonis_ml.data import LabelType
 from torch import Size, Tensor
 
 from luxonis_train.nodes import AttachIndexType, BaseNode
-from luxonis_train.utils import Packet
+from luxonis_train.utils import DatasetMetadata, Packet
 from luxonis_train.utils.exceptions import IncompatibleException
 
 
@@ -95,3 +96,59 @@ def test_check_type_override():
 
     with pytest.raises(IncompatibleException):
         DummyNode(input_shapes=[{"features": [Size((3, 224, 224)) for _ in range(3)]}])
+
+
+def test_tasks():
+    class DummyHead(DummyNode):
+        tasks = [LabelType.CLASSIFICATION]
+
+    class DummyMultiHead(DummyNode):
+        tasks = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
+
+    dummy_head = DummyHead()
+    dummy_node = DummyNode()
+    dummy_multi_head = DummyMultiHead(n_keypoints=4)
+    assert dummy_head.get_task_name(LabelType.CLASSIFICATION) == "classification"
+    assert dummy_head.task == "classification"
+    with pytest.raises(ValueError):
+        dummy_head.get_task_name(LabelType.SEGMENTATION)
+
+    with pytest.raises(ValueError):
+        dummy_node.get_task_name(LabelType.SEGMENTATION)
+
+    with pytest.raises(RuntimeError):
+        _ = dummy_node.task
+
+    with pytest.raises(RuntimeError):
+        _ = dummy_multi_head.task
+
+    metadata = DatasetMetadata(
+        classes={
+            "segmentation": ["car", "person", "dog"],
+            "classification": ["car-class", "person-class"],
+        },
+        n_keypoints={"color-segmentation": 0, "detection": 0},
+    )
+
+    dummy_multi_head._dataset_metadata = metadata
+    assert dummy_multi_head.get_class_names(LabelType.SEGMENTATION) == [
+        "car",
+        "person",
+        "dog",
+    ]
+    assert dummy_multi_head.get_class_names(LabelType.CLASSIFICATION) == [
+        "car-class",
+        "person-class",
+    ]
+    assert dummy_multi_head.get_n_classes(LabelType.SEGMENTATION) == 3
+    assert dummy_multi_head.get_n_classes(LabelType.CLASSIFICATION) == 2
+    assert dummy_multi_head.n_keypoints == 4
+    with pytest.raises(ValueError):
+        _ = dummy_head.n_keypoints
+    with pytest.raises(ValueError):
+        _ = dummy_node.n_keypoints
+
+    dummy_head = DummyHead(n_classes=5)
+    assert dummy_head.n_classes == 5
+    with pytest.raises(ValueError):
+        _ = dummy_multi_head.n_classes
