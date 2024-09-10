@@ -1,7 +1,7 @@
 from typing import Any
 
 import torch
-from torch import Tensor
+from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 
@@ -36,7 +36,7 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
         """
         super().__init__(**kwargs)
 
-        self.backbone = torch.hub.load(  # type: ignore
+        self.backbone: nn.Module = torch.hub.load(  # type: ignore
             "rwightman/gen-efficientnet-pytorch",
             "efficientnet_lite0",
             pretrained=download_weights,
