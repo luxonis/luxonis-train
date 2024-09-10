@@ -132,7 +132,9 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
                 self.grid_cell_offset,
                 multiply_with_stride=True,
             )
-            self.anchor_points_strided = self.anchor_points / self.stride_tensor
+            self.anchor_points_strided = (
+                self.anchor_points / self.stride_tensor
+            )  # NOTE: check later for dimenstions
 
         target = self._preprocess_target(
             target, batch_size
@@ -180,7 +182,9 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
             mask_gt,
         )
 
-        xy_unstrided = assigned_bboxes[..., :2] / self.stride_tensor
+        xy_unstrided = (
+            assigned_bboxes[..., :2] / self.stride_tensor
+        )  # NOTE: check for dimensions during training
         assigned_bboxes_unstrided = torch.cat(
             [xy_unstrided, assigned_bboxes[..., 2:]], dim=-1
         )  # xywhr unnormalized with xy strided
@@ -258,7 +262,9 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
 
         scaled_target = out_target[:, :, 1:5] * self.gt_bboxes_scale
         scaled_target_angle = torch.cat(
-            [scaled_target, out_target[:, :, 5].transpose(0, 1).unsqueeze(0)], dim=-1
+            # [scaled_target, out_target[:, :, 5].transpose(0, 1).unsqueeze(0)], dim=-1
+            [scaled_target, out_target[:, :, 5].unsqueeze(-1)],
+            dim=-1,
         )
         # out_target[..., 1:] = box_convert(scaled_target, "xywh", "xyxy")
         out_target[..., 1:] = scaled_target_angle

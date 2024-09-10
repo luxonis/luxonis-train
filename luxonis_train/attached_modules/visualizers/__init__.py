@@ -3,6 +3,7 @@ from .bbox_visualizer import BBoxVisualizer
 from .classification_visualizer import ClassificationVisualizer
 from .keypoint_visualizer import KeypointVisualizer
 from .multi_visualizer import MultiVisualizer
+from .obbox_visualizer import OBBoxVisualizer
 from .segmentation_visualizer import SegmentationVisualizer
 from .utils import (
     combine_visualizations,
@@ -18,6 +19,7 @@ from .utils import (
 
 __all__ = [
     "BBoxVisualizer",
+    "OBBoxVisualizer",
     "BaseVisualizer",
     "ClassificationVisualizer",
     "KeypointVisualizer",

@@ -1,9 +1,8 @@
 import numpy as np
 import torch
 from torch import Tensor
-from torchvision.ops import box_convert
 
-from luxonis_train.utils.boxutils import batch_probiou
+from luxonis_train.utils.boxutils import batch_probiou, xyxyxyxy2xywhr
 from luxonis_train.utils.types import Labels, LabelType, Packet
 
 from .base_metric import BaseMetric
@@ -29,145 +28,123 @@ class MeanAveragePrecisionOBB(BaseMetric):
         self.ap_class_index = []  # index of class for each AP score. Shape: (nc,)
         self.nc = 0  # number of classes
 
-        self.stats = dict(tp=[], conf=[], pred_cls=[], target_cls=[], target_img=[])
+        self.stats = dict(tp=[], conf=[], pred_cls=[], target_cls=[])
+
+        self.iouv = torch.linspace(
+            0.5, 0.95, 10
+        )  # IoU thresholds from 0.50 to 0.95 in spaces of 0.05 mAP@0.5:0.95
 
     def update(
         self,
-        preds: list[dict[str, Tensor]],  # outputs
-        batch: list[dict[str, Tensor]],  # labels
+        outputs: list[Tensor],  # preds
+        labels: Tensor,  # batch
     ):
-        """Metrics."""
-        for si, pred in enumerate(preds):
-            self.seen += 1
-            npr = len(pred)
-            stat = dict(
-                conf=torch.zeros(0, device=self.device),
-                pred_cls=torch.zeros(0, device=self.device),
-                tp=torch.zeros(npr, self.niou, dtype=torch.bool, device=self.device),
+        """Update metrics without erasing stats from the previous batch, i.e. the
+        metrics are calculated cumulatively.
+
+        preds: [x1, y1, x2, y2, conf, cls_idx, r] unnormalized (not in [0, 1] range) [Tensor(n_bboxes, 7)]
+        batch: [cls_idx, x1, y1, x2, y2, r] unnormalized (not in [0, 1] range) [Tensor(n_bboxes, 6)]
+        """
+        for si, output in enumerate(outputs):
+            self.stats["conf"].append(output[:, 4])
+            self.stats["pred_cls"].append(output[:, 5])
+            self.stats["target_cls"].append(labels[si][:, 0])
+            gt_cls = labels[si][:, :1]  # cls_idx
+            gt_bboxes = labels[si][:, 1:]  # [x1, y1, x2, y2, r]
+            self.stats["tp"].append(
+                self._process_batch(
+                    detections=output, gt_bboxes=gt_bboxes, gt_cls=gt_cls
+                )
             )
-            pbatch = self._prepare_batch(si, batch)
-            cls, bbox = pbatch.pop("cls"), pbatch.pop("bbox")
-            nl = len(cls)
-            stat["target_cls"] = cls
-            stat["target_img"] = cls.unique()
-            if npr == 0:
-                if nl:
-                    for k in self.stats.keys():
-                        self.stats[k].append(stat[k])
-                    if self.args.plots:
-                        self.confusion_matrix.process_batch(
-                            detections=None, gt_bboxes=bbox, gt_cls=cls
-                        )
-                continue
 
-            # Predictions
-            if self.args.single_cls:
-                pred[:, 5] = 0
-            predn = self._prepare_pred(pred, pbatch)
-            stat["conf"] = predn[:, 4]
-            stat["pred_cls"] = predn[:, 5]
+        results = self._process(
+            torch.cat(self.stats["tp"]).cpu().numpy(),
+            torch.cat(self.stats["conf"]).cpu().numpy(),
+            torch.cat(self.stats["pred_cls"]).cpu().numpy(),
+            torch.cat(self.stats["target_cls"]).cpu().numpy(),
+        )
 
-            # Evaluate
-            if nl:
-                stat["tp"] = self._process_batch(predn, bbox, cls)
-                if self.args.plots:
-                    self.confusion_matrix.process_batch(predn, bbox, cls)
-            for k in self.stats.keys():
-                self.stats[k].append(stat[k])
-
-            # # Save
-            # if self.args.save_json:
-            #     self.pred_to_json(predn, batch["im_file"][si])
-            # if self.args.save_txt:
-            #     self.save_one_txt(
-            #         predn,
-            #         self.args.save_conf,
-            #         pbatch["ori_shape"],
-            #         self.save_dir / "labels" / f'{Path(batch["im_file"][si]).stem}.txt',
-            #     )
+        self._update_metrics(results)
 
     def prepare(
         self, outputs: Packet[Tensor], labels: Labels
-    ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
-        box_label = self.get_label(labels)[0]
+    ) -> tuple[list[Tensor], list[Tensor]]:
+        # outputs_nms: [x, y, w, h, r, conf, cls_idx] unnormalized (not in [0, 1] range) [Tensor(n_bboxes, 7)]
+        # obb_labels: [img_id, cls_idx, x1, y1, x2, y2, x3, y3, x4, y4] normalized (in [0, 1] range) [Tensor(n_bboxes, 10)]
+
+        # preds: [xc, yc, w, h, conf, cls_idx, r] unnormalized (not in [0, 1] range) [Tensor(n_bboxes, 7)]
+        # batch: [cls_idx, xc, yc, w, h, r] unnormalized (not in [0, 1] range) [Tensor(n_bboxes, 6)]
+
+        obb_labels = self.get_label(labels)[0]
         output_nms = self.get_input_tensors(outputs)
+        pred_scores = self.get_input_tensors(outputs, "class_scores")[
+            0
+        ]  # needed for batch size and device
 
-        image_size = self.node.original_in_shape[1:]
+        # device = pred_scores.device
+        batch_size = pred_scores.shape[0]
+        img_size = self.node.original_in_shape[1:]
 
-        output_list: list[dict[str, Tensor]] = []
-        label_list: list[dict[str, Tensor]] = []
+        output_labels = []
         for i in range(len(output_nms)):
-            output_list.append(
-                {
-                    "boxes": output_nms[i][:, :4],
-                    "scores": output_nms[i][:, 4],
-                    "labels": output_nms[i][:, 5].int(),
-                }
+            output_nms[i][..., [0, 1, 2, 3, 4, 5, 6]] = output_nms[i][
+                ..., [0, 1, 2, 3, 5, 6, 4]
+            ]  # move angle to the end
+            # output_list.append(output_nms[i])
+
+            curr_label = obb_labels[obb_labels[:, 0] == i]
+            output_labels.append(
+                self._preprocess_target(curr_label, batch_size, img_size)
             )
 
-            curr_label = box_label[box_label[:, 0] == i]
-            curr_bboxs = box_convert(curr_label[:, 2:], "xywh", "xyxy")
-            curr_bboxs[:, 0::2] *= image_size[1]
-            curr_bboxs[:, 1::2] *= image_size[0]
-            label_list.append({"boxes": curr_bboxs, "labels": curr_label[:, 1].int()})
+        return output_nms, output_labels
 
-        return output_list, label_list
-
-    def _prepare_batch(self, si, batch):
-        """Prepares and returns a batch for OBB validation."""
-        idx = batch["batch_idx"] == si
-        cls = batch["cls"][idx].squeeze(-1)
-        bbox = batch["bboxes"][idx]
-        ori_shape = batch["ori_shape"][si]
-        imgsz = batch["img"].shape[2:]
-        ratio_pad = batch["ratio_pad"][si]
-        if len(cls):
-            bbox[..., :4].mul_(
-                torch.tensor(imgsz, device=self.device)[[1, 0, 1, 0]]
-            )  # target boxes
-            # ops.scale_boxes(
-            #     imgsz, bbox, ori_shape, ratio_pad=ratio_pad, xywh=True
-            # )  # native-space labels
-        return {
-            "cls": cls,
-            "bbox": bbox,
-            "ori_shape": ori_shape,
-            "imgsz": imgsz,
-            "ratio_pad": ratio_pad,
-        }
-
-    def _prepare_pred(self, pred, pbatch):
-        """Prepares and returns a batch for OBB validation with scaled and padded
-        bounding boxes."""
-        predn = pred.clone()
-        # ops.scale_boxes(
-        #     pbatch["imgsz"],
-        #     predn[:, :4],
-        #     pbatch["ori_shape"],
-        #     ratio_pad=pbatch["ratio_pad"],
-        #     xywh=True,
-        # )  # native-space pred
-        return predn
+    def _preprocess_target(self, target: Tensor, batch_size: int, img_size):
+        """Preprocess target in shape [batch_size, N, 6] where N is maximum number of
+        instances in one image."""
+        cls_idx = target[:, 1].unsqueeze(-1)
+        xyxyxyxy = target[:, 2:]
+        xyxyxyxy[:, 0::2] *= img_size[1]  # scale x
+        xyxyxyxy[:, 1::2] *= img_size[0]  # scale y
+        xcycwhr = xyxyxyxy2xywhr(xyxyxyxy)
+        if isinstance(xcycwhr, np.ndarray):
+            xcycwhr = torch.tensor(xcycwhr)
+        out_target = torch.cat([cls_idx, xcycwhr], dim=-1)
+        return out_target
 
     def reset(self) -> None:
-        self.metric.reset()
+        self.p = []
+        self.r = []
+        self.f1 = []
+        self.all_ap = []
+        self.ap_class_index = []
 
-    def compute(self) -> tuple[Tensor, dict[str, Tensor]]:
-        pass
-        # metric_dict = self.metric.compute()
+    def compute(
+        self,
+    ) -> tuple[Tensor, dict[str, Tensor]]:  # NOTE: change to the appropriate types
+        """Process predicted results for object detection and update metrics."""
+        results = self._process(
+            torch.cat(self.stats["tp"]).cpu().numpy(),
+            torch.cat(self.stats["conf"]).cpu().numpy(),
+            torch.cat(self.stats["pred_cls"]).cpu().numpy(),
+            torch.cat(self.stats["target_cls"]).cpu().numpy(),
+        )
 
-        # del metric_dict["classes"]
-        # del metric_dict["map_per_class"]
-        # del metric_dict["mar_100_per_class"]
-        # map = metric_dict.pop("map")
+        metrics = {
+            "p": torch.tensor(np.mean(results[0])),
+            "r": torch.tensor(np.mean(results[1])),
+            "f1": torch.tensor(np.mean(results[2])),
+            "all_ap": torch.tensor(np.mean(results[3])),
+            "ap_class_index": torch.tensor(np.mean(results[4])),
+        }
 
-        # mat = self._process_batch()
+        map = torch.tensor(MeanAveragePrecisionOBB.map(results[5]))  # all_ap
 
-        # return map, metric_dict
+        return map, metrics
 
     def _process_batch(self, detections, gt_bboxes, gt_cls):
-        """Perform computation of the correct prediction matrix for a batch of
-        detections and ground truth bounding boxes.
+        """Perform computation of the correct prediction matrix for a batch of # "fp":
+        torch.from_numpy(results[1]), detections and ground truth bounding boxes.
 
         Args:
             detections (torch.Tensor): A tensor of shape (N, 7) representing the detected bounding boxes and associated
@@ -192,7 +169,8 @@ class MeanAveragePrecisionOBB(BaseMetric):
             This method relies on `batch_probiou` to calculate IoU between detections and ground truth bounding boxes.
         """
         iou = batch_probiou(
-            gt_bboxes, torch.cat([detections[:, :4], detections[:, -1:]], dim=-1)
+            gt_bboxes,
+            torch.cat([detections[:, :4], detections[:, -1:]], dim=-1),
         )
         return self.match_predictions(detections[:, 5], gt_cls, iou)
 
@@ -248,7 +226,7 @@ class MeanAveragePrecisionOBB(BaseMetric):
                     correct[matches[:, 1].astype(int), i] = True
         return torch.tensor(correct, dtype=torch.bool, device=pred_classes.device)
 
-    def update_metric(self, results):
+    def _update_metrics(self, results):
         """Updates the evaluation metrics of the model with a new set of results.
 
         Args:
@@ -263,20 +241,26 @@ class MeanAveragePrecisionOBB(BaseMetric):
             Updates the class attributes `self.p`, `self.r`, `self.f1`, `self.all_ap`, and `self.ap_class_index` based
             on the values provided in the `results` tuple.
         """
-        (
-            self.p,
-            self.r,
-            self.f1,
-            self.all_ap,
-            self.ap_class_index,
-            self.p_curve,
-            self.r_curve,
-            self.f1_curve,
-            self.px,
-            self.prec_values,
-        ) = results
+        # The following logic impies averaging AP over all classes
+        self.p = torch.tensor(np.mean(results[0]))
+        self.r = torch.tensor(np.mean(results[1]))
+        self.f1 = torch.tensor(np.mean(results[2]))
+        self.all_ap = torch.tensor(np.mean(results[3]))
+        self.ap_class_index = torch.tensor(np.mean(results[4]))
+        # (
+        #     self.p,
+        #     self.r,
+        #     self.f1,
+        #     self.all_ap,
+        #     self.ap_class_index,
+        #     _,  # self.p_curve,
+        #     _,  # self.r_curve,
+        #     _,  # self.f1_curve,
+        #     _,  # self.px,
+        #     _,  # self.prec_values,
+        # ) = results
 
-    def process(self, tp, conf, pred_cls, target_cls):
+    def _process(self, tp, conf, pred_cls, target_cls) -> tuple[np.ndarray, ...]:
         """Process predicted results for object detection and update metrics."""
         results = MeanAveragePrecisionOBB.ap_per_class(
             tp,
@@ -286,10 +270,9 @@ class MeanAveragePrecisionOBB(BaseMetric):
             # plot=self.plot,
             # save_dir=self.save_dir,
             # names=self.names,
-            on_plot=self.on_plot,
+            # on_plot=self.on_plot,
         )[2:]
-        self.box.nc = len(self.names)
-        self.box.update(results)
+        return results
 
     @staticmethod
     def ap_per_class(
@@ -297,12 +280,12 @@ class MeanAveragePrecisionOBB(BaseMetric):
         conf,
         pred_cls,
         target_cls,
-        plot=False,
-        on_plot=None,
+        # plot=False,
+        # on_plot=None,
         # save_dir=Path(),
         # names={},
         eps=1e-16,
-        prefix="",
+        # prefix="",
     ):
         """Computes the average precision per class for object detection evaluation.
 
@@ -374,72 +357,90 @@ class MeanAveragePrecisionOBB(BaseMetric):
             )  # p at pr_score
 
             # AP from recall-precision curve
-            # for j in range(tp.shape[1]):
-            #     ap[ci, j], mpre, mrec = compute_ap(recall[:, j], precision[:, j])
-            #     if plot and j == 0:
-            #         prec_values.append(np.interp(x, mrec, mpre))  # precision at mAP@0.5
+            for j in range(tp.shape[1]):
+                ap[ci, j], mpre, mrec = MeanAveragePrecisionOBB.compute_ap(
+                    recall[:, j], precision[:, j]
+                )
+                # if plot and j == 0:
+                #     prec_values.append(np.interp(x, mrec, mpre))  # precision at mAP@0.5
 
         prec_values = np.array(prec_values)  # (nc, 1000)
 
         # Compute F1 (harmonic mean of precision and recall)
-        # f1_curve = 2 * p_curve * r_curve / (p_curve + r_curve + eps)
-        # names = [
-        #     v for k, v in names.items() if k in unique_classes
-        # ]  # list: only classes that have data
-        # names = dict(enumerate(names))  # to dict
-        # if plot:
-        #     plot_pr_curve(
-        #         x,
-        #         prec_values,
-        #         ap,
-        #         save_dir / f"{prefix}PR_curve.png",
-        #         names,
-        #         on_plot=on_plot,
-        #     )
-        #     plot_mc_curve(
-        #         x,
-        #         f1_curve,
-        #         save_dir / f"{prefix}F1_curve.png",
-        #         names,
-        #         ylabel="F1",
-        #         on_plot=on_plot,
-        #     )
-        #     plot_mc_curve(
-        #         x,
-        #         p_curve,
-        #         save_dir / f"{prefix}P_curve.png",
-        #         names,
-        #         ylabel="Precision",
-        #         on_plot=on_plot,
-        #     )
-        #     plot_mc_curve(
-        #         x,
-        #         r_curve,
-        #         save_dir / f"{prefix}R_curve.png",
-        #         names,
-        #         ylabel="Recall",
-        #         on_plot=on_plot,
-        #     )
+        f1_curve = 2 * p_curve * r_curve / (p_curve + r_curve + eps)
 
-        # i = smooth(f1_curve.mean(0), 0.1).argmax()  # max F1 index
-        # p, r, f1 = (
-        #     p_curve[:, i],
-        #     r_curve[:, i],
-        #     f1_curve[:, i],
-        # )  # max-F1 precision, recall, F1 values
-        # tp = (r * nt).round()  # true positives
-        # fp = (tp / (p + eps) - tp).round()  # false positives
+        i = MeanAveragePrecisionOBB.smooth(
+            f1_curve.mean(0), 0.1
+        ).argmax()  # max F1 index
+        p, r, f1 = (
+            p_curve[:, i],
+            r_curve[:, i],
+            f1_curve[:, i],
+        )  # max-F1 precision, recall, F1 values
+        tp = (r * nt).round()  # true positives
+        fp = (tp / (p + eps) - tp).round()  # false positives
         return (
-            # tp,
-            # fp,
-            # p,
-            # r,
-            # f1,
+            tp,
+            fp,
+            p,
+            r,
+            f1,
             ap,
             unique_classes.astype(int),
             p_curve,
             r_curve,
-            # f1_curve,
+            f1_curve,
             x,
             prec_values,
         )
+
+    @staticmethod
+    def compute_ap(recall, precision):
+        """Compute the average precision (AP) given the recall and precision curves.
+
+        Args:
+            recall (list): The recall curve.
+            precision (list): The precision curve.
+
+        Returns:
+            (float): Average precision.
+            (np.ndarray): Precision envelope curve.
+            (np.ndarray): Modified recall curve with sentinel values added at the beginning and end.
+        """
+        # Append sentinel values to beginning and end
+        mrec = np.concatenate(([0.0], recall, [1.0]))
+        mpre = np.concatenate(([1.0], precision, [0.0]))
+
+        # Compute the precision envelope
+        mpre = np.flip(np.maximum.accumulate(np.flip(mpre)))
+
+        # Integrate area under curve
+        method = "interp"  # methods: 'continuous', 'interp'
+        if method == "interp":
+            x = np.linspace(0, 1, 101)  # 101-point interp (COCO)
+            ap = np.trapz(np.interp(x, mrec, mpre), x)  # integrate
+        else:  # 'continuous'
+            i = np.where(mrec[1:] != mrec[:-1])[
+                0
+            ]  # points where x-axis (recall) changes
+            ap = np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1])  # area under curve
+
+        return ap, mpre, mrec
+
+    @staticmethod
+    def smooth(y, f=0.05):
+        """Box filter of fraction f."""
+        nf = round(len(y) * f * 2) // 2 + 1  # number of filter elements (must be odd)
+        p = np.ones(nf // 2)  # ones padding
+        yp = np.concatenate((p * y[0], y, p * y[-1]), 0)  # y padded
+        return np.convolve(yp, np.ones(nf) / nf, mode="valid")  # y-smoothed
+
+    @staticmethod
+    def map(all_ap):
+        """
+        Returns the mean Average Precision (mAP) over IoU thresholds of 0.5 - 0.95 in steps of 0.05.
+
+        Returns:
+            (float): The mAP over IoU thresholds of 0.5 - 0.95 in steps of 0.05.
+        """
+        return all_ap.mean() if len(all_ap) else 0.0

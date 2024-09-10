@@ -6,11 +6,11 @@ from torch import Tensor
 from luxonis_train.utils.types import LabelType
 
 from .base_visualizer import BaseVisualizer
-from .utils import Color, draw_bounding_box_labels, draw_bounding_boxes, get_color
+from .utils import Color, draw_obounding_box, get_color
 
 
-class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
-    supported_labels = [LabelType.BOUNDINGBOX]
+class OBBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
+    supported_labels = [LabelType.OBOUNDINGBOX]
 
     def __init__(
         self,
@@ -95,7 +95,7 @@ class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
 
             *_, H, W = canvas.shape
             width = width or max(1, int(min(H, W) / 100))
-            viz[i] = draw_bounding_box_labels(
+            viz[i] = draw_obounding_box(
                 canvas[i].clone(),
                 target[:, 2:],
                 width=width,
@@ -137,9 +137,9 @@ class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
             *_, H, W = canvas.shape
             width = width or max(1, int(min(H, W) / 100))
             try:
-                viz[i] = draw_bounding_boxes(
+                viz[i] = draw_obounding_box(
                     canvas[i].clone(),
-                    prediction[:, :4],
+                    prediction[:, :5],
                     width=width,
                     labels=cls_labels,
                     colors=cls_colors,

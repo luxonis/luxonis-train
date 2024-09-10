@@ -1,6 +1,7 @@
 import colorsys
 import io
-from typing import Literal
+import warnings
+from typing import List, Literal, Optional, Tuple, Union
 
 import cv2
 import matplotlib.pyplot as plt
@@ -10,15 +11,21 @@ import torch
 import torchvision.transforms.functional as F
 import torchvision.transforms.functional as TF
 from matplotlib.figure import Figure
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from torch import Tensor
 from torchvision.ops import box_convert
 from torchvision.utils import (
+    _log_api_usage_once,
+    _parse_colors,
     draw_bounding_boxes,
     draw_keypoints,
     draw_segmentation_masks,
 )
 
+from luxonis_train.utils.boxutils import (
+    xywhr2xyxyxyxy,
+    xyxyxyxy2xywhr,
+)
 from luxonis_train.utils.config import Config
 
 Color = str | tuple[int, int, int]
@@ -142,6 +149,149 @@ def draw_bounding_box_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
     bboxs[:, 0::2] *= W
     bboxs[:, 1::2] *= H
     return draw_bounding_boxes(img, bboxs, **kwargs)
+
+
+def draw_obounding_box(img: Tensor, obbox: Tensor | np.ndarray, **kwargs) -> Tensor:
+    """Draws oriented bounding box (obb) labels on an image.
+
+    @type img: Tensor
+    @param img: Image to draw on.
+    @type obbox: Tensor
+    @param obbox: Oriented bounding box. The shape should be (n_instances, 8) or
+        (n_instances, 5), where the last dimension is (x1, y1, x2, y2, x3, y3, x4, y4)
+        or (xc, yc, w, h, r).
+    @type kwargs: dict
+    @param kwargs: Additional arguments to pass to L{draw_obounding_boxes}.
+    @rtype: Tensor
+    @return: Image with bounding box labels drawn on.
+    """
+    _, H, W = img.shape
+    # bboxs = box_convert(label, "xywh", "xyxy")
+    # The conversion below is needed for fitting a rectangle to the 4 label points, which can form
+    # a polygon sometimes
+    if obbox.shape[-1] > 5:
+        obbox = xyxyxyxy2xywhr(obbox)  # xywhr
+    bboxs_2 = xywhr2xyxyxyxy(obbox)  # shape: (bs, 4, 2)
+    if isinstance(bboxs_2, np.ndarray):
+        bboxs_2 = torch.tensor(bboxs_2)
+    if bboxs_2.numel() == 0:
+        raise ValueError
+    bboxs = bboxs_2.view(bboxs_2.size(0), -1)  # x1y1x2y2x3y3x4y4
+    bboxs[:, 0::2] *= W
+    bboxs[:, 1::2] *= H
+    return draw_obounding_boxes(img, bboxs, **kwargs)
+
+
+def draw_obounding_boxes(
+    image: torch.Tensor,
+    boxes: torch.Tensor,
+    labels: Optional[List[str]] = None,
+    colors: Optional[
+        Union[List[Union[str, Tuple[int, int, int]]], str, Tuple[int, int, int]]
+    ] = None,
+    fill: Optional[bool] = False,
+    width: int = 1,
+    font: Optional[str] = None,
+    font_size: Optional[int] = None,
+) -> torch.Tensor:
+    """Draws oriented bounding boxes (obb) on given RGB image. The image values should
+    be uint8 in [0, 255] or float in [0, 1]. If fill is True, Resulting Tensor should be
+    saved as PNG image.
+
+    Args:
+        image (Tensor): Tensor of shape (C, H, W) and dtype uint8 or float.
+        boxes (Tensor): Tensor of size (N, 8) containing bounding boxes in (x1, y1, x2, y2, x3, y3, x4, y4)
+            format. Note that the boxes are absolute coordinates with respect to the image. In other words: `0 <= x < W` and
+            `0 <= y < H`.
+        labels (List[str]): List containing the labels of bounding boxes.
+        colors (color or list of colors, optional): List containing the colors
+            of the boxes or single color for all boxes. The color can be represented as
+            PIL strings e.g. "red" or "#FF00FF", or as RGB tuples e.g. ``(240, 10, 157)``.
+            By default, random colors are generated for boxes.
+        fill (bool): If `True` fills the bounding box with specified color.
+        width (int): Width of bounding box.
+        font (str): A filename containing a TrueType font. If the file is not found in this filename, the loader may
+            also search in other directories, such as the `fonts/` directory on Windows or `/Library/Fonts/`,
+            `/System/Library/Fonts/` and `~/Library/Fonts/` on macOS.
+        font_size (int): The requested font size in points.
+
+    Returns:
+        img (Tensor[C, H, W]): Image Tensor of dtype uint8 with bounding boxes plotted.
+    """
+    import torchvision.transforms.v2.functional as F  # noqa
+
+    if not torch.jit.is_scripting() and not torch.jit.is_tracing():
+        _log_api_usage_once(draw_obounding_boxes)
+    if not isinstance(image, torch.Tensor):
+        raise TypeError(f"Tensor expected, got {type(image)}")
+    elif not (image.dtype == torch.uint8 or image.is_floating_point()):
+        raise ValueError(f"The image dtype must be uint8 or float, got {image.dtype}")
+    elif image.dim() != 3:
+        raise ValueError("Pass individual images, not batches")
+    elif image.size(0) not in {1, 3}:
+        raise ValueError("Only grayscale and RGB images are supported")
+    # elif (boxes[:, 0] > boxes[:, 2]).any() or (boxes[:, 1] > boxes[:, 3]).any():
+    #     raise ValueError(
+    #         "Boxes need to be in (xmin, ymin, xmax, ymax) format. Use torchvision.ops.box_convert to convert them"
+    #     )
+
+    num_boxes = boxes.shape[0]
+
+    if num_boxes == 0:
+        warnings.warn("boxes doesn't contain any box. No box was drawn")
+        return image
+
+    if labels is None:
+        labels: Union[List[str], List[None]] = [None] * num_boxes  # type: ignore[no-redef]
+    elif len(labels) != num_boxes:
+        raise ValueError(
+            f"Number of boxes ({num_boxes}) and labels ({len(labels)}) mismatch. Please specify labels for each box."
+        )
+
+    colors = _parse_colors(colors, num_objects=num_boxes)
+
+    if font is None:
+        if font_size is not None:
+            warnings.warn(
+                "Argument 'font_size' will be ignored since 'font' is not set."
+            )
+        txt_font = ImageFont.load_default()
+    else:
+        txt_font = ImageFont.truetype(font=font, size=font_size or 10)
+
+    # Handle Grayscale images
+    if image.size(0) == 1:
+        image = torch.tile(image, (3, 1, 1))
+
+    original_dtype = image.dtype
+    if original_dtype.is_floating_point:
+        image = F.to_dtype(image, dtype=torch.uint8, scale=True)
+
+    img_to_draw = F.to_pil_image(image)
+    img_boxes = boxes.to(torch.int64).tolist()
+
+    if fill:
+        draw = ImageDraw.Draw(img_to_draw, "RGBA")
+    else:
+        draw = ImageDraw.Draw(img_to_draw)
+
+    for bbox, color, label in zip(img_boxes, colors, labels):  # type: ignore[arg-type]
+        if fill:
+            fill_color = color + (100,)
+            draw.polygon(bbox, width=width, outline=color, fill=fill_color)
+        else:
+            draw.polygon(bbox, width=width, outline=color)
+
+        if label is not None:
+            margin = width + 1
+            draw.text(
+                (bbox[0] + margin, bbox[1] + margin), label, fill=color, font=txt_font
+            )
+
+    out = F.pil_to_tensor(img_to_draw)
+    if original_dtype.is_floating_point:
+        out = F.to_dtype(out, dtype=original_dtype, scale=True)
+    return out
 
 
 def draw_keypoint_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:

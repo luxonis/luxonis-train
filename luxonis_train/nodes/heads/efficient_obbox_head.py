@@ -130,7 +130,7 @@ class EfficientOBBoxHead(EfficientBBoxHead):
         self, output: tuple[list[Tensor], Tensor, Tensor, Tensor]
     ) -> list[Tensor]:
         """Performs post-processing of the output and returns bboxs after NMS."""
-        features, cls_score_list, reg_dist_list, angles_list = output
+        features, cls_score_tensor, reg_dist_tensor, angles_tensor = output
         _, anchor_points, _, stride_tensor = anchors_for_fpn_features(
             features,
             self.stride,
@@ -143,18 +143,18 @@ class EfficientOBBoxHead(EfficientBBoxHead):
         # branch (used in DFL)
         # if self.use_dfl: # consider adding this as a parameter
         proj = torch.arange(
-            self.reg_max, dtype=torch.float, device=reg_dist_list.device
+            self.reg_max, dtype=torch.float, device=reg_dist_tensor.device
         )
-        b, a, c = reg_dist_list.shape  # batch, anchors, channels
-        reg_dist_tensor = (  # we get a tensor of the expected values (mean) of the regression predictions
-            reg_dist_list.view(b, a, 4, c // 4)
+        b, a, c = reg_dist_tensor.shape  # batch, anchors, channels
+        reg_dist_mean_tensor = (  # we get a tensor of the expected values (mean) of the regression predictions
+            reg_dist_tensor.view(b, a, 4, c // 4)
             .softmax(3)
-            .matmul(proj.type(reg_dist_list.dtype))
+            .matmul(proj.type(reg_dist_tensor.dtype))
         )
         pred_bboxes = torch.cat(
             (
-                dist2rbbox(reg_dist_tensor, angles_list, anchor_points),
-                angles_list,
+                dist2rbbox(reg_dist_mean_tensor, angles_tensor, anchor_points),
+                angles_tensor,
             ),
             dim=-1,
         )  # xywhr
@@ -172,12 +172,12 @@ class EfficientOBBoxHead(EfficientBBoxHead):
                     dtype=pred_bboxes.dtype,
                     device=pred_bboxes.device,
                 ),
-                cls_score_list,
+                cls_score_tensor,
             ],
             dim=-1,
         )
 
-        # pred = torch.rand((1, 1344, 15))
+        # pred = torch.rand((2, 1344, 15), device=pred_bboxes.device)
         # pred[..., 5] = 1
 
         return non_max_suppression_obb(
