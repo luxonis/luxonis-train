@@ -285,6 +285,7 @@ class TrainerConfig(BaseModelExtraForbid):
     validation_interval: Literal[-1] | PositiveInt = 1
     num_log_images: NonNegativeInt = 4
     skip_last_batch: bool = True
+    pin_memory: bool = True
     log_sub_losses: bool = True
     save_top_k: Literal[-1] | NonNegativeInt = 3
 
