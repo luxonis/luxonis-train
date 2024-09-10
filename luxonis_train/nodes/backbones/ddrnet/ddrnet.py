@@ -5,18 +5,21 @@ Original source: U{https://github.com/ydhongHIT/DDRNet}
 Paper: U{https://arxiv.org/pdf/2101.06085.pdf}
 @license: U{https://github.com/Deci-AI/super-gradients/blob/master/LICENSE.md}
 """
-from abc import ABC
 from typing import Dict, Type
 
-import torch
 from torch import Tensor, nn
-from torch.nn import functional as F
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
-from luxonis_train.nodes.heads import DDRNetSegmentationHead
 
-from .blocks import BasicResNetBlock, Bottleneck, UpscaleOnline, BasicDDRBackBone, DAPPM, _make_layer
+from .blocks import (
+    DAPPM,
+    BasicDDRBackBone,
+    BasicResNetBlock,
+    Bottleneck,
+    UpscaleOnline,
+    _make_layer,
+)
 
 
 class DDRNet(BaseNode[Tensor, list[Tensor]]):
@@ -113,7 +116,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self.backbone_layers, self.additional_layers = self.layers[:4], self.layers[4:]
         self.input_channels = input_channels
 
-        self._backbone: DDRBackBoneBase = BasicDDRBackBone(
+        self._backbone = BasicDDRBackBone(
             block=self.block,
             width=self.planes,
             layers=self.backbone_layers,

@@ -5,14 +5,12 @@ Original source: U{https://github.com/ydhongHIT/DDRNet}
 Paper: U{https://arxiv.org/pdf/2101.06085.pdf}
 @license: U{https://github.com/Deci-AI/super-gradients/blob/master/LICENSE.md}
 """
-from abc import ABC
-from typing import Dict, Type
+from typing import Type
 
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 
-from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
 
 
@@ -371,6 +369,7 @@ class UpscaleOnline(nn.Module):
         """
         return F.interpolate(x, size=[output_height, output_width], mode=self.mode)
 
+
 class BasicDDRBackBone(nn.Module):
     def __init__(
         self,
@@ -505,6 +504,7 @@ class BasicDDRBackBone(nn.Module):
 
         return output_shapes
 
+
 def _make_layer(
     block: Type[nn.Module],
     in_planes: int,
@@ -567,9 +567,7 @@ def drop_path(x: Tensor, drop_prob: float = 0.0, scale_by_keep: bool = True) -> 
     @return: Tensor with dropped paths based on the provided drop probability.
     """
     keep_prob = 1 - drop_prob
-    shape = (x.shape[0],) + (1,) * (
-        x.ndim - 1
-    )
+    shape = (x.shape[0],) + (1,) * (x.ndim - 1)
     random_tensor = x.new_empty(shape).bernoulli_(keep_prob)
     if keep_prob > 0.0 and scale_by_keep:
         random_tensor.div_(keep_prob)
