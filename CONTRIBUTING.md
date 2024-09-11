@@ -1,17 +1,30 @@
-# Contributing to LuxonisTrain
+# Contributing to LuxonisTrain<a name="contributing-to-luxonistrain"></a>
 
 **This guide is intended for our internal development team.**
 It outlines our workflow and standards for contributing to this project.
 
-## Table of Contents
+## Table Of Contents
 
+- [Requirements](#requirements)
 - [Pre-commit Hooks](#pre-commit-hooks)
 - [Documentation](#documentation)
+- [Type Checking](#type-checking)
   - [Editor Support](#editor-support)
 - [Tests](#tests)
 - [GitHub Actions](#github-actions)
 - [Making and Reviewing Changes](#making-and-reviewing-changes)
-- [Notes](#notes)
+
+## Requirements
+
+Install the development dependencies by running `pip install -r requirements-dev.txt` or installing the package with the `dev` extra:
+
+```bash
+pip install -e .[dev]
+```
+
+> \[!NOTE\]
+> This will install the package in editable mode (`-e`),
+> so you can make changes to the code and run them immediately.
 
 ## Pre-commit Hooks
 
@@ -34,6 +47,14 @@ To verify that your documentation is formatted correctly, follow these steps:
    - **NOTE:** If the script fails, it might not give the specific error message. In that case, you can run
      the script for each file individually until you find the one that is causing the error.
 
+## Type Checking
+
+The codebase is type-checked using [pyright](https://github.com/microsoft/pyright) `v1.1.380`. To run type checking, use the following command in the root project directory:
+
+```bash
+pyright --warnings --level warning --pythonversion 3.10 luxonis_train
+```
+
 ### Editor Support
 
 - **PyCharm** - built in support for generating `epytext` docstrings
@@ -43,19 +64,13 @@ To verify that your documentation is formatted correctly, follow these steps:
 ## Tests
 
 We use [pytest](https://docs.pytest.org/en/stable/) for testing.
-The tests are located in the `tests` directory. You can run the tests locally by running:
-
-```bash
-pytest
-```
-
-in the root directory.
+The tests are located in the `tests` directory. You can run the tests locally by running `pytest` in the root directory.
 
 This command will run all tests and print a coverage report.
 
 > \[!TIP\]
-> It will also generate an HTML coverage report in the `htmlcov` directory
-> if you want to inspect the coverage in more detail, open `htmlcov/index.html` in a browser.
+> This will also generate an HTML coverage report in the `htmlcov` directory.
+> If you want to inspect the coverage in more detail, open `htmlcov/index.html` in a browser.
 
 > \[!IMPORTANT\]
 > If a new feature is added, a new test should be added to cover it.
@@ -65,17 +80,18 @@ This command will run all tests and print a coverage report.
 ## GitHub Actions
 
 Our GitHub Actions workflow is run when a new PR is opened.
-It first checks that the pre-commit hook passes and that the documentation builds successfully.
-The tests are run only if the pre-commit hook and documentation build pass.
-Successful tests are required for merging a PR.
 
-1. Checks and tests are run automatically when you open a pull request.
-1. For the tests to run, the [pre-commit](#pre-commit-hooks) hook must pass and
-   the [documentation](#documentation) must be built successfully.
-1. Review the GitHub Actions output if your PR fails.
-1. Fix any issues to ensure that all checks and tests pass.
+1. First, the [pre-commit](#pre-commit-hooks) hooks must pass and the [documentation](#documentation) must be built successfully.
+1. Next, the [type checking](#type-checking) is run.
+1. If all previous checks pass, the [tests](#tests) are run.
 
-## Making and Reviewing Changes
+> \[!TIP\]
+> Review the GitHub Actions output if your PR fails.
+
+> \[!IMPORTANT\]
+> Successfull completion of all the workflow checks is required for merging a PR.
+
+## Making and Submitting Changes
 
 1. Make changes in a new branch.
 1. Test your changes locally.

@@ -406,7 +406,7 @@ class BaseNode(
         In case `in_sizes` were provided during initialization, they are returned
         directly.
 
-        Example:
+        Example::
 
             >>> input_shapes = [{"features": [Size(64, 128, 128), Size(3, 224, 224)]}]
             >>> attach_index = -1
