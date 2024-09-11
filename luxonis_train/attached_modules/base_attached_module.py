@@ -232,7 +232,7 @@ class BaseAttachedModule(
 
         @rtype: tuple[Unpack[Ts]]
         @return: Prepared inputs. Should allow the following usage with the
-            L{forward} method:
+            L{forward} method::
 
                 >>> loss.forward(*loss.prepare(outputs, labels))
 

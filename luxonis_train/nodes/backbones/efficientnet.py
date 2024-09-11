@@ -21,7 +21,7 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
 
         Source: U{https://github.com/rwightman/gen-efficientnet-pytorch}
 
-        @license: U{Apache-2.0
+        @license: U{Apache License, Version 2.0
             <https://github.com/rwightman/gen-efficientnet-pytorch/blob/master/LICENSE>}
 
         @see: U{https://paperswithcode.com/method/efficientnet}

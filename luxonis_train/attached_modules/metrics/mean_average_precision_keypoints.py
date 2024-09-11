@@ -52,7 +52,7 @@ class MeanAveragePrecisionKeypoints(
         Adapted from: U{https://github.com/Lightning-AI/torchmetrics/blob/v1.0.1/src/
         torchmetrics/detection/mean_ap.py}.
 
-        @license: Apache-2.0 License
+        @license: Apache License, Version 2.0
 
         @type num_keypoints: int
         @param num_keypoints: Number of keypoints.
