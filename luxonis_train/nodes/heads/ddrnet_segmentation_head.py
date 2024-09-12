@@ -1,9 +1,13 @@
+import logging
+
 import torch.nn as nn
 from torch import Tensor
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
 from luxonis_train.utils.types import LabelType
+
+logger = logging.getLogger(__name__)
 
 
 class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
@@ -85,3 +89,18 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
         out = self.upscale(out)
 
         return out
+
+    def set_export_mode(self, mode: bool = True) -> None:
+        """Sets the module to export mode.
+
+        Replaces the forward method with an identity function when in export mode.
+
+        @warning: The replacement is destructive and cannot be undone.
+        @type mode: bool
+        @param mode: Whether to set the export mode to True or False. Defaults to True.
+        """
+        super().set_export_mode(mode)
+        if self.export and self.attach_index != 0:
+            logger.info("Removing the auxiliary head.")
+
+            self.forward = lambda x: x
