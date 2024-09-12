@@ -3,6 +3,7 @@ from typing import TypeVar
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch import Tensor, nn
 
 from luxonis_train.nodes.activations import HSigmoid
@@ -708,3 +709,228 @@ def autopad(kernel_size: T, padding: T | None = None) -> T:
     if isinstance(kernel_size, int):
         return kernel_size // 2
     return tuple(x // 2 for x in kernel_size)
+
+
+class BasicResNetBlock(nn.Module):
+    def __init__(
+        self,
+        in_planes: int,
+        planes: int,
+        stride: int = 1,
+        expansion: int = 1,
+        final_relu: bool = True,
+        droppath_prob: float = 0.0,
+    ):
+        """A basic residual block for ResNet.
+
+        @type in_planes: int
+        @param in_planes: Number of input channels.
+        @type planes: int
+        @param planes: Number of output channels.
+        @type stride: int
+        @param stride: Stride for the convolutional layers. Defaults to 1.
+        @type expansion: int
+        @param expansion: Expansion factor for the output channels. Defaults to 1.
+        @type final_relu: bool
+        @param final_relu: Whether to apply a ReLU activation after the residual
+            addition. Defaults to True.
+        @type droppath_prob: float
+        @param droppath_prob: Drop path probability for stochastic depth. Defaults to
+            0.0.
+        """
+        super().__init__()
+        self.expansion = expansion
+        self.conv1 = nn.Conv2d(
+            in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False
+        )
+        self.bn1 = nn.BatchNorm2d(planes)
+        self.conv2 = nn.Conv2d(
+            planes, planes, kernel_size=3, stride=1, padding=1, bias=False
+        )
+        self.bn2 = nn.BatchNorm2d(planes)
+        self.final_relu = final_relu
+
+        self.drop_path = DropPath(drop_prob=droppath_prob)
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_planes != self.expansion * planes:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(
+                    in_planes,
+                    self.expansion * planes,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False,
+                ),
+                nn.BatchNorm2d(self.expansion * planes),
+            )
+
+    def forward(self, x: Tensor) -> Tensor:
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out = self.drop_path(out)
+        out += self.shortcut(x)
+        if self.final_relu:
+            out = F.relu(out)
+        return out
+
+
+class Bottleneck(nn.Module):
+    def __init__(
+        self,
+        in_planes: int,
+        planes: int,
+        stride: int = 1,
+        expansion: int = 4,
+        final_relu: bool = True,
+        droppath_prob: float = 0.0,
+    ):
+        """A bottleneck block for ResNet.
+
+        @type in_planes: int
+        @param in_planes: Number of input channels.
+        @type planes: int
+        @param planes: Number of intermediate channels.
+        @type stride: int
+        @param stride: Stride for the second convolutional layer. Defaults to 1.
+        @type expansion: int
+        @param expansion: Expansion factor for the output channels. Defaults to 4.
+        @type final_relu: bool
+        @param final_relu: Whether to apply a ReLU activation after the residual
+            addition. Defaults to True.
+        @type droppath_prob: float
+        @param droppath_prob: Drop path probability for stochastic depth. Defaults to
+            0.0.
+        """
+        super().__init__()
+        self.expansion = expansion
+        self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(planes)
+        self.conv2 = nn.Conv2d(
+            planes, planes, kernel_size=3, stride=stride, padding=1, bias=False
+        )
+        self.bn2 = nn.BatchNorm2d(planes)
+        self.conv3 = nn.Conv2d(
+            planes, self.expansion * planes, kernel_size=1, bias=False
+        )
+        self.bn3 = nn.BatchNorm2d(self.expansion * planes)
+        self.final_relu = final_relu
+
+        self.drop_path = DropPath(drop_prob=droppath_prob)
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_planes != self.expansion * planes:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(
+                    in_planes,
+                    self.expansion * planes,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False,
+                ),
+                nn.BatchNorm2d(self.expansion * planes),
+            )
+
+    def forward(self, x: Tensor) -> Tensor:
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = F.relu(self.bn2(self.conv2(out)))
+        out = self.bn3(self.conv3(out))
+
+        out = self.drop_path(out)
+        out += self.shortcut(x)
+
+        if self.final_relu:
+            out = F.relu(out)
+
+        return out
+
+
+class UpscaleOnline(nn.Module):
+    """Upscale tensor to a specified size during the forward pass.
+
+    This class supports cases where the required scale/size is only known when the input
+    is received. Only the interpolation mode is set in advance.
+    """
+
+    def __init__(self, mode: str = "bilinear"):
+        """Initialize UpscaleOnline with the interpolation mode.
+
+        @type mode: str
+        @param mode: Interpolation mode for resizing. Defaults to "bilinear".
+        """
+        super().__init__()
+        self.mode = mode
+
+    def forward(self, x: Tensor, output_height: int, output_width: int) -> Tensor:
+        """Upscale the input tensor to the specified height and width.
+
+        @type x: Tensor
+        @param x: Input tensor to be upscaled.
+        @type output_height: int
+        @param output_height: Desired height of the output tensor.
+        @type output_width: int
+        @param output_width: Desired width of the output tensor.
+        @return: Upscaled tensor.
+        """
+        return F.interpolate(x, size=[output_height, output_width], mode=self.mode)
+
+
+class DropPath(nn.Module):
+    """Drop paths (Stochastic Depth) per sample, when applied in the main path of
+    residual blocks.
+
+    Intended usage of this block is as follows:
+
+    >>> class ResNetBlock(nn.Module):
+    >>>   def __init__(self, ..., drop_path_rate: float):
+    >>>     self.drop_path = DropPath(drop_path_rate)
+    >>>
+    >>>   def forward(self, x):
+    >>>     return x + self.drop_path(self.conv_bn_act(x))
+
+    @see U{Original code (TIMM) <https://github.com/rwightman/pytorch-image-models>}
+    @license: U{Apache License 2.0 <https://github.com/huggingface/pytorch-image-models?tab=Apache-2.0-1-ov-file#readme>}
+    """
+
+    def __init__(self, drop_prob: float = 0.0, scale_by_keep: bool = True):
+        """Initializes the DropPath module.
+
+        @type drop_prob: float
+        @param drop_prob: Probability of zeroing out individual vectors (channel
+            dimension) of each feature map. Defaults to 0.0.
+        @type scale_by_keep: bool
+        @param scale_by_keep: Whether to scale the output by the keep probability.
+            Enabled by default to maintain output mean & std in the same range as
+            without DropPath. Defaults to True.
+        """
+        super().__init__()
+        self.drop_prob = drop_prob
+        self.scale_by_keep = scale_by_keep
+
+    def drop_path(
+        self, x: Tensor, drop_prob: float = 0.0, scale_by_keep: bool = True
+    ) -> Tensor:
+        """Drop paths (Stochastic Depth) per sample when applied in the main path of
+        residual blocks.
+
+        @type x: Tensor
+        @param x: Input tensor.
+        @type drop_prob: float
+        @param drop_prob: Probability of dropping a path. Defaults to 0.0.
+        @type scale_by_keep: bool
+        @param scale_by_keep: Whether to scale the output by the keep probability.
+            Defaults to True.
+        @return: Tensor with dropped paths based on the provided drop probability.
+        """
+        keep_prob = 1 - drop_prob
+        shape = (x.shape[0],) + (1,) * (x.ndim - 1)
+        random_tensor = x.new_empty(shape).bernoulli_(keep_prob)
+        if keep_prob > 0.0 and scale_by_keep:
+            random_tensor.div_(keep_prob)
+        return x * random_tensor
+
+    def forward(self, x: Tensor) -> Tensor:
+        if self.drop_prob == 0.0 or not self.training:
+            return x
+        return self.drop_path(x, self.drop_prob, self.scale_by_keep)
+
+    def extra_repr(self) -> str:
+        return f"drop_prob={round(self.drop_prob, 3):0.3f}"

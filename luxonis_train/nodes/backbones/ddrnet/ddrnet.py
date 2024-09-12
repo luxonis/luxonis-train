@@ -1,23 +1,18 @@
-"""DDRNet backbone.
-
-Adapted from: U{https://github.com/Deci-AI/super-gradients/blob/master/src/super_gradients/training/models/segmentation_models/ddrnet.py}
-Original source: U{https://github.com/ydhongHIT/DDRNet}
-Paper: U{https://arxiv.org/pdf/2101.06085.pdf}
-@license: U{https://github.com/Deci-AI/super-gradients/blob/master/LICENSE.md}
-"""
 from typing import Dict, Type
 
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.nodes.blocks import (
+    BasicResNetBlock,
+    Bottleneck,
+    ConvModule,
+    UpscaleOnline,
+)
 
 from .blocks import (
     DAPPM,
     BasicDDRBackBone,
-    BasicResNetBlock,
-    Bottleneck,
-    UpscaleOnline,
     _make_layer,
 )
 
@@ -40,11 +35,16 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         layer3_repeats: int = 1,
         planes: int = 32,
         layers: list[int] = None,
-        input_channels: int = 3,
         **kwargs,
     ):
-        """Initialize the DDRNet with specified parameters.
+        """DDRNet backbone.
 
+        @see: U{Adapted from <https://github.com/Deci-AI/super-gradients/blob/master/src
+            /super_gradients/training/models/segmentation_models/ddrnet.py>}
+        @see: U{Original code <https://github.com/ydhongHIT/DDRNet>}
+        @see: U{Paper <https://arxiv.org/pdf/2101.06085.pdf>}
+        @license: U{Apache License, Version 2.0 <https://github.com/Deci-AI/super-
+            gradients/blob/master/LICENSE.md>}
         @type use_aux_heads: bool
         @param use_aux_heads: Whether to use auxiliary heads. Defaults to True.
         @type upscale_module: nn.Module
@@ -86,8 +86,6 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         @type layers: list[int]
         @param layers: Number of blocks in each layer of the backbone. Defaults to [2,
             2, 2, 2, 1, 2, 2, 1].
-        @type input_channels: int
-        @param input_channels: Number of input channels. Defaults to 3.
         @type kwargs: Any
         @param kwargs: Additional arguments to pass to L{BaseNode}.
         """
@@ -114,13 +112,12 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self.planes = planes
         self.layers = layers
         self.backbone_layers, self.additional_layers = self.layers[:4], self.layers[4:]
-        self.input_channels = input_channels
 
         self._backbone = BasicDDRBackBone(
             block=self.block,
             width=self.planes,
             layers=self.backbone_layers,
-            input_channels=self.input_channels,
+            input_channels=self.in_channels,
             layer3_repeats=self.layer3_repeats,
         )
         self._backbone.validate_backbone_attributes()
@@ -243,11 +240,11 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             )
         )
 
-    def forward(self, x: Tensor) -> list[Tensor]:
-        width_output = x.shape[-1] // 8
-        height_output = x.shape[-2] // 8
+    def forward(self, inputs: Tensor) -> list[Tensor]:
+        width_output = inputs.shape[-1] // 8
+        height_output = inputs.shape[-2] // 8
 
-        x = self._backbone.stem(x)
+        x = self._backbone.stem(inputs)
         x = self._backbone.layer1(x)
         x = self._backbone.layer2(self.relu(x))
 
