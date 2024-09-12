@@ -1,6 +1,5 @@
 [project]
 name = "luxonis-train"
-version = "0.0.1"
 description = "Luxonis training framework for seamless training of various neural networks."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -8,7 +7,7 @@ license = { file = "LICENSE" }
 authors = [{ name = "Luxonis", email = "support@luxonis.com" }]
 maintainers = [{ name = "Luxonis", email = "support@luxonis.com" }]
 keywords = ["ml", "training", "luxonis", "oak"]
-dynamic = ["dependencies", "optional-dependencies"]
+dynamic = ["dependencies", "optional-dependencies", "version"]
 classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Development Status :: 3 - Alpha",
@@ -35,6 +34,7 @@ where = ["."]
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
 optional-dependencies = { dev = { file = ["requirements-dev.txt"] } }
+version = {attr = "luxonis_train.__version__"}
 
 [tool.ruff]
 target-version = "py310"
