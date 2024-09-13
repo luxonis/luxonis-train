@@ -267,7 +267,7 @@ class LuxonisLightningModule(pl.LightningModule):
     @property
     def core(self) -> "luxonis_train.core.LuxonisModel":
         """Returns the core model."""
-        if self._core is None:
+        if self._core is None:  # pragma: no cover
             raise ValueError("Core reference is not set.")
         return self._core
 
@@ -461,7 +461,7 @@ class LuxonisLightningModule(pl.LightningModule):
                         computed_submetrics = {metric_name: metric_value}
                     case dict(submetrics):
                         computed_submetrics = submetrics
-                    case unknown:
+                    case unknown:  # pragma: no cover
                         raise ValueError(
                             f"Metric {metric_name} returned unexpected value of "
                             f"type {type(unknown)}."
