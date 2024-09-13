@@ -283,7 +283,11 @@ class BaseNode(
 
     @property
     def n_keypoints(self) -> int:
-        """Getter for the number of keypoints."""
+        """Getter for the number of keypoints.
+
+        @type: int
+        @raises ValueError: If the number of keypoints cannot be determined.
+        """
         if self._n_keypoints is not None:
             return self._n_keypoints
 
@@ -304,7 +308,13 @@ class BaseNode(
 
     @property
     def n_classes(self) -> int:
-        """Getter for the number of classes."""
+        """Getter for the number of classes.
+
+        @type: int
+        @raises ValueError: If the number of classes cannot be determined.
+        @raises ValueError: If the number of classes is different for different tasks.
+            In that case, use the L{get_n_classes} method.
+        """
         if self._n_classes is not None:
             return self._n_classes
 
@@ -333,7 +343,11 @@ class BaseNode(
 
     @property
     def class_names(self) -> list[str]:
-        """Getter for the class names."""
+        """Getter for the class names.
+
+        @type: list[str]
+        @raises ValueError: If the class names cannot be determined.
+        """
         if not self._tasks:
             raise ValueError(
                 f"{self.name} does not have any tasks defined, "
