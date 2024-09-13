@@ -54,8 +54,6 @@ class MeanAveragePrecisionKeypoints(
 
         @license: Apache License, Version 2.0
 
-        @type num_keypoints: int
-        @param num_keypoints: Number of keypoints.
         @type sigmas: list[float] | None
         @param sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then
             use COCO if possible otherwise defaults. Defaults to C{None}.
@@ -67,8 +65,6 @@ class MeanAveragePrecisionKeypoints(
         @param box_format: Input bbox format.
         """
         super().__init__(**kwargs)
-
-        self.n_keypoints = self.node.n_keypoints
 
         self.sigmas = get_sigmas(sigmas, self.n_keypoints, caller_name=self.name)
         self.area_factor = get_with_default(
@@ -111,7 +107,7 @@ class MeanAveragePrecisionKeypoints(
 
         output_list_kpt_map: list[dict[str, Tensor]] = []
         label_list_kpt_map: list[dict[str, Tensor]] = []
-        image_size = self.node.original_in_shape[1:]
+        image_size = self.original_in_shape[1:]
 
         output_kpts = self.get_input_tensors(inputs, LabelType.KEYPOINTS)
         output_bboxes = self.get_input_tensors(inputs, LabelType.BOUNDINGBOX)

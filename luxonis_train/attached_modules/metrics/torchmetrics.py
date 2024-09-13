@@ -17,7 +17,7 @@ class TorchMetricWrapper(BaseMetric[Tensor]):
         super().__init__(node=kwargs.pop("node", None))
         task = kwargs.get("task")
 
-        if self.node.n_classes > 1:
+        if self.n_classes > 1:
             if task == "binary":
                 raise ValueError(
                     f"Task type set to '{task}', but the dataset has more than 1 class. "
@@ -42,7 +42,7 @@ class TorchMetricWrapper(BaseMetric[Tensor]):
         if self._task == "multiclass":
             if "num_classes" not in kwargs:
                 try:
-                    kwargs["num_classes"] = self.node.n_classes
+                    kwargs["num_classes"] = self.n_classes
                 except RuntimeError as e:
                     raise ValueError(
                         "Either `node` or `num_classes` must be provided to "
@@ -51,7 +51,7 @@ class TorchMetricWrapper(BaseMetric[Tensor]):
         else:
             if "num_labels" not in kwargs:
                 try:
-                    kwargs["num_labels"] = self.node.n_classes
+                    kwargs["num_labels"] = self.n_classes
                 except RuntimeError as e:
                     raise ValueError(
                         "Either `node` or `num_labels` must be provided to "

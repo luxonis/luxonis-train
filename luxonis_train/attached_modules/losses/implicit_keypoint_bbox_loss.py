@@ -9,7 +9,6 @@ from torchvision.ops import box_convert
 from luxonis_train.attached_modules.losses.keypoint_loss import KeypointLoss
 from luxonis_train.nodes import ImplicitKeypointBBoxHead
 from luxonis_train.utils import (
-    IncompatibleException,
     Labels,
     Packet,
     compute_iou_loss,
@@ -96,13 +95,6 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
 
         super().__init__(**kwargs)
 
-        if not isinstance(self.node, ImplicitKeypointBBoxHead):
-            raise IncompatibleException(
-                f"Loss `{self.name}` is only "
-                "compatible with nodes of type `ImplicitKeypointBBoxHead`."
-            )
-        self.n_classes = self.node.n_classes
-        self.n_keypoints = self.node.n_keypoints
         self.n_anchors = self.node.n_anchors
         self.num_heads = self.node.num_heads
         self.box_offset = self.node.box_offset

@@ -50,7 +50,7 @@ class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
             labels = {i: label for i, label in enumerate(labels)}
 
         self.bbox_labels = labels or {
-            i: label for i, label in enumerate(self.node.class_names)
+            i: label for i, label in enumerate(self.class_names)
         }
 
         if colors is None:

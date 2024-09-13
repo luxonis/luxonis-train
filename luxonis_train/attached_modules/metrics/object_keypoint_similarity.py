@@ -39,8 +39,6 @@ class ObjectKeypointSimilarity(
     ) -> None:
         """Object Keypoint Similarity metric for evaluating keypoint predictions.
 
-        @type n_keypoints: int
-        @param n_keypoints: Number of keypoints.
         @type sigmas: list[float] | None
         @param sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then
             use COCO if possible otherwise defaults. Defaults to C{None}.
@@ -52,12 +50,6 @@ class ObjectKeypointSimilarity(
             the one from definition. Defaults to C{True}.
         """
         super().__init__(**kwargs)
-
-        if n_keypoints is None and self._node is None:
-            raise ValueError(
-                f"Either `n_keypoints` or `node` must be provided to {self.name}."
-            )
-        self.n_keypoints = n_keypoints or self.node.n_keypoints
 
         self.sigmas = get_sigmas(sigmas, self.n_keypoints, caller_name=self.name)
         self.area_factor = get_with_default(
@@ -72,7 +64,6 @@ class ObjectKeypointSimilarity(
     def prepare(
         self, inputs: Packet[Tensor], labels: Labels
     ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
-        assert self.node.tasks is not None
         kpts_labels = self.get_label(labels, LabelType.KEYPOINTS)
         bbox_labels = self.get_label(labels, LabelType.BOUNDINGBOX)
         num_keypoints = (kpts_labels.shape[1] - 2) // 3
@@ -85,7 +76,7 @@ class ObjectKeypointSimilarity(
 
         output_list_oks = []
         label_list_oks = []
-        image_size = self.node.original_in_shape[1:]
+        image_size = self.original_in_shape[1:]
 
         for i, pred_kpt in enumerate(
             self.get_input_tensors(inputs, LabelType.KEYPOINTS)
