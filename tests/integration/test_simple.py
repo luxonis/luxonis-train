@@ -144,8 +144,9 @@ def test_tune(opts: dict[str, Any], coco_dataset: LuxonisDataset):
     assert STUDY_PATH.exists()
 
 
-def test_archive(coco_dataset: LuxonisDataset):
+def test_archive(test_output_dir: Path, coco_dataset: LuxonisDataset):
     opts = {
+        "tracker.save_directory": str(test_output_dir),
         "loader.params.dataset_name": coco_dataset.identifier,
     }
     model = LuxonisModel("tests/configs/archive_config.yaml", opts)

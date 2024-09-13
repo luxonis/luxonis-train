@@ -27,3 +27,17 @@ model:
     - name: ClassificationHead
       inputs:
         - EfficientRep
+
+exporter:
+  output_names:
+    - seg0
+    - class0
+    - bbox0
+    - bbox1
+    - bbox2
+    - effkpt0
+    - effkpt1
+    - effkpt2
+    - impl
+    - seg1
+
