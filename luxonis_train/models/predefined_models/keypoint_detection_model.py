@@ -50,7 +50,7 @@ class KeypointDetectionModel(BasePredefinedModel):
 
         task = {}
         if self.bbox_task_name is not None:
-            task["bbox"] = self.bbox_task_name
+            task["boundingbox"] = self.bbox_task_name
         if self.kpt_task_name is not None:
             task["keypoints"] = self.kpt_task_name
 
