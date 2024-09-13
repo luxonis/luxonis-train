@@ -102,8 +102,8 @@ T = TypeVar("T")
 def get_with_default(
     value: T | None, action_name: str, caller_name: str | None = None, *, default: T
 ) -> T:
-    """Returns value if it is not None, otherwise returns the default valueand log an
-    info.
+    """Returns value if it is not C{None}, otherwise returns the default value and log
+    an info.
 
     @type value: T | None
     @param value: Value to return.

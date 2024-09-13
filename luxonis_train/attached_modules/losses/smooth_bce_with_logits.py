@@ -52,9 +52,9 @@ class SmoothBCEWithLogitsLoss(BaseLoss[list[Tensor], Tensor]):
         """Computes the BCE loss with label smoothing.
 
         @type predictions: Tensor
-        @param predictions: Network predictions of shape (N, C, H, W)
+        @param predictions: Network predictions of shape (N, C, ...)
         @type target: Tensor
-        @param target: A tensor of shape (N, C, H, W).
+        @param target: A tensor of the same shape as predictions.
         @rtype: Tensor
         @return: A scalar tensor.
         """
