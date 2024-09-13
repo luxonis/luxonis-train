@@ -280,7 +280,7 @@ class TrainerConfig(BaseModelExtraForbid):
     epochs: PositiveInt = 100
     num_workers: NonNegativeInt = 4
     train_metrics_interval: Literal[-1] | PositiveInt = -1
-    validation_interval: Literal[-1] | PositiveInt = 1
+    validation_interval: Literal[-1] | PositiveInt = 5
     num_log_images: NonNegativeInt = 4
     skip_last_batch: bool = True
     pin_memory: bool = True
