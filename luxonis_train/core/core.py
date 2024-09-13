@@ -158,7 +158,7 @@ class LuxonisModel:
             view: torch_data.DataLoader(
                 self.loaders[view],
                 batch_size=self.cfg.trainer.batch_size,
-                num_workers=self.cfg.trainer.num_workers,
+                num_workers=self.cfg.trainer.n_workers,
                 collate_fn=collate_fn,
                 shuffle=view == "train",
                 drop_last=(

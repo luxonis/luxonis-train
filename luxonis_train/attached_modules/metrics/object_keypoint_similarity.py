@@ -66,8 +66,8 @@ class ObjectKeypointSimilarity(
     ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
         kpts_labels = self.get_label(labels, LabelType.KEYPOINTS)
         bbox_labels = self.get_label(labels, LabelType.BOUNDINGBOX)
-        num_keypoints = (kpts_labels.shape[1] - 2) // 3
-        label = torch.zeros((len(bbox_labels), num_keypoints * 3 + 6))
+        n_keypoints = (kpts_labels.shape[1] - 2) // 3
+        label = torch.zeros((len(bbox_labels), n_keypoints * 3 + 6))
         label[:, :2] = bbox_labels[:, :2]
         label[:, 2:6] = box_convert(bbox_labels[:, 2:], "xywh", "xyxy")
         label[:, 6::3] = kpts_labels[:, 2::3]  # insert kp x coordinates

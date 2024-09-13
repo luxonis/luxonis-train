@@ -98,11 +98,11 @@ class DatasetMetadata:
                 )
         return class_names
 
-    def autogenerate_anchors(self, num_heads: int) -> tuple[list[list[float]], float]:
+    def autogenerate_anchors(self, n_heads: int) -> tuple[list[list[float]], float]:
         """Automatically generates anchors for the provided dataset.
 
-        @type num_heads: int
-        @param num_heads: Number of heads to generate anchors for.
+        @type n_heads: int
+        @param n_heads: Number of heads to generate anchors for.
         @rtype: tuple[list[list[float]], float]
         @return: List of anchors in [-1,6] format and recall of the anchors.
         @raises RuntimeError: If the dataset loader was not provided during
@@ -116,7 +116,7 @@ class DatasetMetadata:
             )
 
         proposed_anchors, recall = anchors_from_dataset(
-            self._loader, n_anchors=num_heads * 3
+            self._loader, n_anchors=n_heads * 3
         )
         return proposed_anchors.reshape(-1, 6).tolist(), recall
 

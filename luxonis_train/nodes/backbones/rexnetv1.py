@@ -64,7 +64,7 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
         layers = [1, 2, 2, 3, 3, 5]
         strides = [1, 2, 2, 2, 1, 2]
 
-        self.num_convblocks = sum(layers)
+        self.n_convblocks = sum(layers)
         self.out_indices = out_indices or [1, 4, 10, 17]
 
         kernel_sizes = (
@@ -102,7 +102,7 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
             )
         )
 
-        for i in range(self.num_convblocks):
+        for i in range(self.n_convblocks):
             inplanes_divisible = make_divisible(
                 int(round(inplanes * multiplier)), divisible_value
             )
@@ -111,7 +111,7 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
                 channels_group.append(inplanes_divisible)
             else:
                 in_channels_group.append(inplanes_divisible)
-                inplanes += final_ch / (self.num_convblocks - 1 * 1.0)
+                inplanes += final_ch / (self.n_convblocks - 1 * 1.0)
                 inplanes_divisible = make_divisible(
                     int(round(inplanes * multiplier)), divisible_value
                 )

@@ -20,7 +20,7 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
     def __init__(
         self,
         variant: Literal["A0", "A1", "A2"] = "A0",
-        num_blocks: tuple[int, int, int, int] | None = None,
+        n_blocks: tuple[int, int, int, int] | None = None,
         width_multiplier: tuple[float, float, float, float] | None = None,
         override_groups_map: dict[int, int] | None = None,
         use_se: bool = False,
@@ -52,15 +52,15 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
         @param use_se: Whether to use Squeeze-and-Excitation blocks.
         @type use_checkpoint: bool
         @param use_checkpoint: Whether to use checkpointing.
-        @type num_blocks: tuple[int, int, int, int] | None
-        @param num_blocks: Number of blocks in each stage.
+        @type n_blocks: tuple[int, int, int, int] | None
+        @param n_blocks: Number of blocks in each stage.
         @type width_multiplier: tuple[float, float, float, float] | None
         @param width_multiplier: Width multiplier for each stage.
         """
         super().__init__(**kwargs)
         var = get_variant(variant)
 
-        num_blocks = num_blocks or var.num_blocks
+        n_blocks = n_blocks or var.n_blocks
         width_multiplier = width_multiplier or var.width_multiplier
         override_groups_map = defaultdict(lambda: 1, override_groups_map or {})
         self.use_se = use_se
@@ -81,7 +81,7 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
                 for i in range(4)
                 for block in self._make_stage(
                     int(2**i * 64 * width_multiplier[i]),
-                    num_blocks[i],
+                    n_blocks[i],
                     stride=2,
                     groups=override_groups_map[i],
                 )
@@ -101,15 +101,15 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
         return outputs
 
     def _make_stage(
-        self, planes: int, num_blocks: int, stride: int, groups: int
+        self, channels: int, n_blocks: int, stride: int, groups: int
     ) -> nn.ModuleList:
-        strides = [stride] + [1] * (num_blocks - 1)
+        strides = [stride] + [1] * (n_blocks - 1)
         blocks: list[nn.Module] = []
         for stride in strides:
             blocks.append(
                 RepVGGBlock(
                     in_channels=self.in_planes,
-                    out_channels=planes,
+                    out_channels=channels,
                     kernel_size=3,
                     stride=stride,
                     padding=1,
@@ -117,7 +117,7 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
                     use_se=self.use_se,
                 )
             )
-            self.in_planes = planes
+            self.in_planes = channels
         return nn.ModuleList(blocks)
 
     def set_export_mode(self, mode: bool = True) -> None:

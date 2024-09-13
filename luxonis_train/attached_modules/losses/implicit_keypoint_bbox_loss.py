@@ -96,16 +96,16 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         super().__init__(**kwargs)
 
         self.n_anchors = self.node.n_anchors
-        self.num_heads = self.node.num_heads
+        self.n_heads = self.node.n_heads
         self.box_offset = self.node.box_offset
         self.anchors = self.node.anchors
         self.balance = balance or [4.0, 1.0, 0.4]
-        if len(self.balance) < self.num_heads:
+        if len(self.balance) < self.n_heads:
             logger.warning(
-                f"Balance list must have at least {self.num_heads} elements."
+                f"Balance list must have at least {self.n_heads} elements."
                 "Filling the rest with 1.0."
             )
-            self.balance += [1.0] * (self.num_heads - len(self.balance))
+            self.balance += [1.0] * (self.n_heads - len(self.balance))
 
         self.min_objectness_iou = min_objectness_iou
         self.bbox_weight = bbox_loss_weight
@@ -192,7 +192,7 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
             * self.bias
         )
 
-        for i in range(self.num_heads):
+        for i in range(self.n_heads):
             anchor = self.anchors[i]
             feature_height, feature_width = predictions[i].shape[2:4]
             scaled_targets, xy_shifts = match_to_anchor(

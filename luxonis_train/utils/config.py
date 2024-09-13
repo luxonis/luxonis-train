@@ -269,7 +269,7 @@ class TrainerConfig(BaseModelExtraForbid):
     accelerator: Literal["auto", "cpu", "gpu", "tpu"] = "auto"
     devices: int | list[int] | str = "auto"
     strategy: Literal["auto", "ddp"] = "auto"
-    num_sanity_val_steps: int = 2
+    n_sanity_val_steps: Annotated[int, Field(alias="num_sanity_val_steps")] = 2
     profiler: Literal["simple", "advanced"] | None = None
     matmul_precision: Literal["medium", "high", "highest"] | None = None
     verbose: bool = True
@@ -280,10 +280,10 @@ class TrainerConfig(BaseModelExtraForbid):
     accumulate_grad_batches: PositiveInt = 1
     use_weighted_sampler: bool = False
     epochs: PositiveInt = 100
-    num_workers: NonNegativeInt = 4
+    n_workers: Annotated[NonNegativeInt, Field(alias="num_workers")] = 4
     train_metrics_interval: Literal[-1] | PositiveInt = -1
     validation_interval: Literal[-1] | PositiveInt = 1
-    num_log_images: NonNegativeInt = 4
+    n_log_images: Annotated[NonNegativeInt, Field(alias="num_log_images")] = 4
     skip_last_batch: bool = True
     pin_memory: bool = True
     log_sub_losses: bool = True
@@ -306,13 +306,13 @@ class TrainerConfig(BaseModelExtraForbid):
         return self
 
     @model_validator(mode="after")
-    def check_num_workes_platform(self) -> Self:
+    def check_n_workes_platform(self) -> Self:
         if (
             sys.platform == "win32" or sys.platform == "darwin"
-        ) and self.num_workers != 0:
-            self.num_workers = 0
+        ) and self.n_workers != 0:
+            self.n_workers = 0
             logger.warning(
-                "Setting `num_workers` to 0 because of platform compatibility."
+                "Setting `n_workers` to 0 because of platform compatibility."
             )
         return self
 

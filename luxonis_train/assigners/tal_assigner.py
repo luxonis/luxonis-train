@@ -177,7 +177,7 @@ class TaskAlignedAssigner(nn.Module):
         @rtype: Tensor
         @return: Mask of selected anchors of shape [bs, n_max_boxes, n_anchors]
         """
-        num_anchors = metrics.shape[-1]
+        n_anchors = metrics.shape[-1]
         topk_metrics, topk_idxs = torch.topk(
             metrics, self.topk, dim=-1, largest=largest
         )
@@ -186,7 +186,7 @@ class TaskAlignedAssigner(nn.Module):
                 [1, 1, self.topk]
             )
         topk_idxs = torch.where(topk_mask, topk_idxs, torch.zeros_like(topk_idxs))
-        is_in_topk = F.one_hot(topk_idxs, num_anchors).sum(dim=-2)
+        is_in_topk = F.one_hot(topk_idxs, n_anchors).sum(dim=-2)
         is_in_topk = torch.where(
             is_in_topk > 1, torch.zeros_like(is_in_topk), is_in_topk
         )

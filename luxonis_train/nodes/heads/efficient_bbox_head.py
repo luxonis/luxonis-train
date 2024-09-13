@@ -25,7 +25,7 @@ class EfficientBBoxHead(
 
     def __init__(
         self,
-        num_heads: Literal[2, 3, 4] = 3,
+        n_heads: Literal[2, 3, 4] = 3,
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
@@ -35,8 +35,8 @@ class EfficientBBoxHead(
 
         Adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial
         Applications <https://arxiv.org/pdf/2209.02976.pdf>}.
-        @type num_heads: Literal[2,3,4]
-        @param num_heads: Number of output heads. Defaults to 3. B{Note:} Should be same
+        @type n_heads: Literal[2,3,4]
+        @param n_heads: Number of output heads. Defaults to 3. B{Note:} Should be same
             also on neck in most cases.
         @type conf_thres: float
         @param conf_thres: Threshold for confidence. Defaults to C{0.25}.
@@ -48,25 +48,25 @@ class EfficientBBoxHead(
         """
         super().__init__(**kwargs)
 
-        self.num_heads = num_heads
+        self.n_heads = n_heads
 
         self.conf_thres = conf_thres
         self.iou_thres = iou_thres
         self.max_det = max_det
 
-        self.stride = self._fit_stride_to_num_heads()
+        self.stride = self._fit_stride_to_n_heads()
         self.grid_cell_offset = 0.5
         self.grid_cell_size = 5.0
 
         self.heads = nn.ModuleList()
-        if len(self.in_channels) < self.num_heads:
+        if len(self.in_channels) < self.n_heads:
             logger.warning(
-                f"Head '{self.name}' was set to use {self.num_heads} heads, "
+                f"Head '{self.name}' was set to use {self.n_heads} heads, "
                 f"but received only {len(self.in_channels)} inputs. "
                 f"Changing number of heads to {len(self.in_channels)}."
             )
-            self.num_heads = len(self.in_channels)
-        for i in range(self.num_heads):
+            self.n_heads = len(self.in_channels)
+        for i in range(self.n_heads):
             curr_head = EfficientDecoupledBlock(
                 n_classes=self.n_classes,
                 in_channels=self.in_channels[i],
@@ -125,12 +125,12 @@ class EfficientBBoxHead(
                 "distributions": [reg_tensor],
             }
 
-    def _fit_stride_to_num_heads(self):
+    def _fit_stride_to_n_heads(self):
         """Returns correct stride for number of heads and attach index."""
         stride = torch.tensor(
             [
                 self.original_in_shape[1] / x[2]  # type: ignore
-                for x in self.in_sizes[: self.num_heads]
+                for x in self.in_sizes[: self.n_heads]
             ],
             dtype=torch.int,
         )

@@ -4,22 +4,22 @@ from pydantic import BaseModel
 
 
 class RepVGGVariant(BaseModel):
-    num_blocks: tuple[int, int, int, int]
+    n_blocks: tuple[int, int, int, int]
     width_multiplier: tuple[float, float, float, float]
 
 
 def get_variant(variant: Literal["A0", "A1", "A2"]) -> RepVGGVariant:
     variants = {
         "A0": RepVGGVariant(
-            num_blocks=(2, 4, 14, 1),
+            n_blocks=(2, 4, 14, 1),
             width_multiplier=(0.75, 0.75, 0.75, 2.5),
         ),
         "A1": RepVGGVariant(
-            num_blocks=(2, 4, 14, 1),
+            n_blocks=(2, 4, 14, 1),
             width_multiplier=(1, 1, 1, 2.5),
         ),
         "A2": RepVGGVariant(
-            num_blocks=(2, 4, 14, 1),
+            n_blocks=(2, 4, 14, 1),
             width_multiplier=(1.5, 1.5, 1.5, 2.75),
         ),
     }

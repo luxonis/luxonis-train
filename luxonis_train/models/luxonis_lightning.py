@@ -625,7 +625,7 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> dict[str, Tensor]:
         inputs, labels = batch
         images = None
-        if self._logged_images < self.cfg.trainer.num_log_images:
+        if self._logged_images < self.cfg.trainer.n_log_images:
             images = get_unnormalized_images(self.cfg, inputs)
         outputs = self.forward(
             inputs,
@@ -643,7 +643,7 @@ class LuxonisLightningModule(pl.LightningModule):
             for viz_name, viz_batch in visualizations.items():
                 logged_images = self._logged_images
                 for viz in viz_batch:
-                    if logged_images >= self.cfg.trainer.num_log_images:
+                    if logged_images >= self.cfg.trainer.n_log_images:
                         break
                     self.logger.log_image(
                         f"{mode}/visualizations/{node_name}/{viz_name}/{logged_images}",

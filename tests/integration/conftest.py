@@ -258,7 +258,7 @@ def config(train_overfit: bool) -> dict[str, Any]:
         "trainer": {
             "batch_size": 4,
             "epochs": epochs,
-            "num_workers": mp.cpu_count(),
+            "n_workers": mp.cpu_count(),
             "validation_interval": epochs,
             "save_top_k": 0,
             "preprocessing": {

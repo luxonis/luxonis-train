@@ -20,7 +20,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
 
     def __init__(
         self,
-        num_heads: Literal[2, 3, 4] = 3,
+        n_heads: Literal[2, 3, 4] = 3,
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
@@ -31,9 +31,9 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         Adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial
         Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
 
-        @param num_heads: Number of output heads. Defaults to C{3}.
+        @param n_heads: Number of output heads. Defaults to C{3}.
             B{Note:} Should be same also on neck in most cases.
-        @type num_heads: int
+        @type n_heads: int
 
         @param conf_thres: Threshold for confidence. Defaults to C{0.25}.
         @type conf_thres: float
@@ -45,7 +45,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         @type max_det: int
         """
         super().__init__(
-            num_heads=num_heads,
+            n_heads=n_heads,
             conf_thres=conf_thres,
             iou_thres=iou_thres,
             max_det=max_det,
@@ -78,7 +78,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         )
 
         kpt_list: list[Tensor] = []
-        for i in range(self.num_heads):
+        for i in range(self.n_heads):
             kpt_pred = self.kpt_layers[i](inputs[i])
             kpt_list.append(kpt_pred)
 

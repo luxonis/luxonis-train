@@ -413,8 +413,8 @@ def anchors_from_dataset(
     @type loader: L{torch.utils.data.DataLoader}
     @param loader: Data loader.
     @type n_anchors: int
-    @param n_anchors: Number of anchors, this is normally num_heads * 3 which generates
-        3 anchors per layer. Defaults to 9.
+    @param n_anchors: Number of anchors, this is normally n_heads * 3 which generates 3
+        anchors per layer. Defaults to 9.
     @type n_generations: int
     @param n_generations: Number of iterations for anchor improvement with genetic
         algorithm. Defaults to 1000.

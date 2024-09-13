@@ -24,7 +24,7 @@ class ImplicitKeypointBBoxHead(BaseNode[list[Tensor], tuple[list[Tensor], Tensor
 
     def __init__(
         self,
-        num_heads: int = 3,
+        n_heads: int = 3,
         anchors: list[list[float]] | None = None,
         init_coco_biases: bool = True,
         conf_thres: float = 0.25,
@@ -39,8 +39,8 @@ class ImplicitKeypointBBoxHead(BaseNode[list[Tensor], tuple[list[Tensor], Tensor
 
         TODO: more technical documentation
 
-        @type num_heads: int
-        @param num_heads: Number of output heads. Defaults to C{3}.
+        @type n_heads: int
+        @param n_heads: Number of output heads. Defaults to C{3}.
             B{Note:} Should be same also on neck in most cases.
         @type anchors: list[list[float]] | None
         @param anchors: Anchors used for object detection.
@@ -59,18 +59,18 @@ class ImplicitKeypointBBoxHead(BaseNode[list[Tensor], tuple[list[Tensor], Tensor
         self.iou_thres = iou_thres
         self.max_det = max_det
 
-        self.num_heads = num_heads
-        if len(self.in_channels) < self.num_heads:
+        self.n_heads = n_heads
+        if len(self.in_channels) < self.n_heads:
             logger.warning(
-                f"Head '{self.name}' was set to use {self.num_heads} heads, "
+                f"Head '{self.name}' was set to use {self.n_heads} heads, "
                 f"but received only {len(self.in_channels)} inputs. "
                 f"Changing number of heads to {len(self.in_channels)}."
             )
-            self.num_heads = len(self.in_channels)
+            self.n_heads = len(self.in_channels)
 
         if anchors is None:
             logger.info("No anchors provided, generating them automatically.")
-            anchors, recall = self.dataset_metadata.autogenerate_anchors(self.num_heads)
+            anchors, recall = self.dataset_metadata.autogenerate_anchors(self.n_heads)
             logger.info(f"Anchors generated. Best possible recall: {recall:.2f}")
 
         self.box_offset = 5
@@ -80,10 +80,10 @@ class ImplicitKeypointBBoxHead(BaseNode[list[Tensor], tuple[list[Tensor], Tensor
         self.n_anchors = len(anchors[0]) // 2
         self.grid: list[Tensor] = []
 
-        self.anchors = torch.tensor(anchors).float().view(self.num_heads, -1, 2)
-        self.anchor_grid = self.anchors.clone().view(self.num_heads, 1, -1, 1, 1, 2)
+        self.anchors = torch.tensor(anchors).float().view(self.n_heads, -1, 2)
+        self.anchor_grid = self.anchors.clone().view(self.n_heads, 1, -1, 1, 1, 2)
 
-        self.channel_list, self.stride = self._fit_to_num_heads(self.in_channels)
+        self.channel_list, self.stride = self._fit_to_n_heads(self.in_channels)
 
         self.learnable_mul_add_conv = nn.ModuleList(
             LearnableMulAddConv(
@@ -115,7 +115,7 @@ class ImplicitKeypointBBoxHead(BaseNode[list[Tensor], tuple[list[Tensor], Tensor
 
         self.anchor_grid = self.anchor_grid.to(inputs[0].device)
 
-        for i in range(self.num_heads):
+        for i in range(self.n_heads):
             feat = cast(
                 Tensor,
                 torch.cat(
@@ -207,12 +207,12 @@ class ImplicitKeypointBBoxHead(BaseNode[list[Tensor], tuple[list[Tensor], Tensor
         )
         return torch.cat((out_bbox_xy, out_bbox_wh, out_bbox[..., 4:]), dim=-1)
 
-    def _fit_to_num_heads(self, channel_list: list[int]) -> tuple[list[int], Tensor]:
-        out_channel_list = channel_list[: self.num_heads]
+    def _fit_to_n_heads(self, channel_list: list[int]) -> tuple[list[int], Tensor]:
+        out_channel_list = channel_list[: self.n_heads]
         stride = torch.tensor(
             [
                 self.original_in_shape[1] / h
-                for h in cast(list[int], self.in_height)[: self.num_heads]
+                for h in cast(list[int], self.in_height)[: self.n_heads]
             ],
             dtype=torch.int,
         )

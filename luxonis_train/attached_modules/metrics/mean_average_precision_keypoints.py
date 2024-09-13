@@ -294,7 +294,7 @@ class MeanAveragePrecisionKeypoints(
                 else:
                     area_stat = image_box[2] * image_box[3] * self.area_factor
 
-                num_keypoints = len(
+                n_keypoints = len(
                     [i for i in range(2, len(image_kpt), 3) if image_kpt[i] != 0]
                 )  # number of annotated keypoints
                 annotation = {
@@ -307,7 +307,7 @@ class MeanAveragePrecisionKeypoints(
                         crowds[image_id][k].cpu().tolist() if crowds is not None else 0
                     ),
                     "keypoints": image_kpt,
-                    "num_keypoints": num_keypoints,
+                    "num_keypoints": n_keypoints,
                 }
 
                 if scores is not None:

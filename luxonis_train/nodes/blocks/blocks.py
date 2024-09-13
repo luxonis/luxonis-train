@@ -378,7 +378,7 @@ class BlockRepeater(nn.Module):
         block: type[nn.Module],
         in_channels: int,
         out_channels: int,
-        num_blocks: int = 1,
+        n_blocks: int = 1,
     ):
         """Module which repeats the block n times. First block accepts in_channels and
         outputs out_channels while subsequent blocks accept out_channels and output
@@ -390,14 +390,14 @@ class BlockRepeater(nn.Module):
         @param in_channels: Number of input channels.
         @type out_channels: int
         @param out_channels: Number of output channels.
-        @type num_blocks: int
-        @param num_blocks: Number of blocks to repeat. Defaults to C{1}.
+        @type n_blocks: int
+        @param n_blocks: Number of blocks to repeat. Defaults to C{1}.
         """
         super().__init__()
 
         in_channels = in_channels
         self.blocks = nn.ModuleList()
-        for _ in range(num_blocks):
+        for _ in range(n_blocks):
             self.blocks.append(
                 block(in_channels=in_channels, out_channels=out_channels)
             )
@@ -597,7 +597,7 @@ class RepUpBlock(nn.Module):
         in_channels: int,
         in_channels_next: int,
         out_channels: int,
-        num_repeats: int,
+        n_repeats: int,
     ):
         """UpBlock used in RepPAN neck.
 
@@ -608,8 +608,8 @@ class RepUpBlock(nn.Module):
             concat.
         @type out_channels: int
         @param out_channels: Number of output channels.
-        @type num_repeats: int
-        @param num_repeats: Number of RepVGGBlock repeats.
+        @type n_repeats: int
+        @param n_repeats: Number of RepVGGBlock repeats.
         """
 
         super().__init__()
@@ -631,7 +631,7 @@ class RepUpBlock(nn.Module):
             block=RepVGGBlock,
             in_channels=in_channels_next + out_channels,
             out_channels=out_channels,
-            num_blocks=num_repeats,
+            n_blocks=n_repeats,
         )
 
     def forward(self, x0: Tensor, x1: Tensor) -> tuple[Tensor, Tensor]:
@@ -649,7 +649,7 @@ class RepDownBlock(nn.Module):
         downsample_out_channels: int,
         in_channels_next: int,
         out_channels: int,
-        num_repeats: int,
+        n_repeats: int,
     ):
         """DownBlock used in RepPAN neck.
 
@@ -662,8 +662,8 @@ class RepDownBlock(nn.Module):
             concat.
         @type out_channels: int
         @param out_channels: Number of output channels.
-        @type num_repeats: int
-        @param num_repeats: Number of RepVGGBlock repeats.
+        @type n_repeats: int
+        @param n_repeats: Number of RepVGGBlock repeats.
         """
         super().__init__()
 
@@ -678,7 +678,7 @@ class RepDownBlock(nn.Module):
             block=RepVGGBlock,
             in_channels=downsample_out_channels + in_channels_next,
             out_channels=out_channels,
-            num_blocks=num_repeats,
+            n_blocks=n_repeats,
         )
 
     def forward(self, x0: Tensor, x1: Tensor) -> Tensor:
