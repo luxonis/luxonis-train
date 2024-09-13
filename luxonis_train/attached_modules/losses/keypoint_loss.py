@@ -28,22 +28,25 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
         visibility_loss_weight: float = 1.0,
         **kwargs: Any,
     ):
-        """Keypoint based loss that is computed from OKS-based regression and visibility
-        loss.
+        """Keypoint based loss that is computed from OKS-based
+        regression and visibility loss.
 
         @type n_keypoints: int
         @param n_keypoints: Number of keypoints.
         @type bce_power: float
-        @param bce_power: Power used for BCE visibility loss. Defaults to C{1.0}.
-        @param sigmas: Sigmas used for OKS. If None then use COCO ones if possible or
-            default ones. Defaults to C{None}.
+        @param bce_power: Power used for BCE visibility loss. Defaults
+            to C{1.0}.
+        @param sigmas: Sigmas used for OKS. If None then use COCO ones
+            if possible or default ones. Defaults to C{None}.
         @type area_factor: float | None
-        @param area_factor: Factor by which we multiply bbox area. If None then use
-            default one. Defaults to C{None}.
+        @param area_factor: Factor by which we multiply bbox area. If
+            None then use default one. Defaults to C{None}.
         @type regression_loss_weight: float
-        @param regression_loss_weight: Weight of regression loss. Defaults to C{1.0}.
+        @param regression_loss_weight: Weight of regression loss.
+            Defaults to C{1.0}.
         @type visibility_loss_weight: float
-        @param visibility_loss_weight: Weight of visibility loss. Defaults to C{1.0}.
+        @param visibility_loss_weight: Weight of visibility loss.
+            Defaults to C{1.0}.
         """
 
         super().__init__(**kwargs)
@@ -60,18 +63,21 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
     def forward(
         self, prediction: Tensor, target: Tensor, area: Tensor
     ) -> tuple[Tensor, dict[str, Tensor]]:
-        """Computes the keypoint loss and visibility loss for a given prediction and
-        target.
+        """Computes the keypoint loss and visibility loss for a given
+        prediction and target.
 
         @type prediction: Tensor
-        @param prediction: Predicted tensor of shape C{[n_detections, n_keypoints * 3]}.
+        @param prediction: Predicted tensor of shape C{[n_detections,
+            n_keypoints * 3]}.
         @type target: Tensor
-        @param target: Target tensor of shape C{[n_detections, n_keypoints * 3]}.
+        @param target: Target tensor of shape C{[n_detections,
+            n_keypoints * 3]}.
         @type area: Tensor
         @param area: Area tensor of shape C{[n_detections]}.
         @rtype: tuple[Tensor, dict[str, Tensor]]
-        @return: A tuple containing the total loss tensor of shape C{[1,]} and a
-            dictionary with the regression loss and visibility loss tensors.
+        @return: A tuple containing the total loss tensor of shape
+            C{[1,]} and a dictionary with the regression loss and
+            visibility loss tensors.
         """
         sigmas = self.sigmas.to(prediction.device)
 

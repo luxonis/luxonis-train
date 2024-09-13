@@ -19,7 +19,10 @@ from luxonis_ml.utils import LuxonisFileSystem, reset_logging, setup_logging
 from typeguard import typechecked
 
 from luxonis_train.attached_modules.visualizers import get_unnormalized_images
-from luxonis_train.callbacks import LuxonisRichProgressBar, LuxonisTQDMProgressBar
+from luxonis_train.callbacks import (
+    LuxonisRichProgressBar,
+    LuxonisTQDMProgressBar,
+)
 from luxonis_train.loaders import BaseLoaderTorch, collate_fn
 from luxonis_train.models import LuxonisLightningModule
 from luxonis_train.utils import Config, DatasetMetadata, LuxonisTrackerPL
@@ -40,8 +43,8 @@ logger = getLogger(__name__)
 class LuxonisModel:
     """Common logic of the core components.
 
-    This class contains common logic of the core components (trainer, evaluator,
-    exporter, etc.).
+    This class contains common logic of the core components (trainer,
+    evaluator, exporter, etc.).
     """
 
     def __init__(
@@ -152,7 +155,9 @@ class LuxonisModel:
         sampler = None
         # TODO: implement weighted sampler
         if self.cfg.trainer.use_weighted_sampler:
-            raise NotImplementedError("Weighted sampler is not implemented yet.")
+            raise NotImplementedError(
+                "Weighted sampler is not implemented yet."
+            )
 
         self.pytorch_loaders = {
             view: torch_data.DataLoader(
@@ -162,7 +167,9 @@ class LuxonisModel:
                 collate_fn=collate_fn,
                 shuffle=view == "train",
                 drop_last=(
-                    self.cfg.trainer.skip_last_batch if view == "train" else False
+                    self.cfg.trainer.skip_last_batch
+                    if view == "train"
+                    else False
                 ),
                 pin_memory=self.cfg.trainer.pin_memory,
                 sampler=sampler if view == "train" else None,
@@ -170,7 +177,9 @@ class LuxonisModel:
             for view in ["train", "val", "test"]
         }
 
-        self.dataset_metadata = DatasetMetadata.from_loader(self.loaders["train"])
+        self.dataset_metadata = DatasetMetadata.from_loader(
+            self.loaders["train"]
+        )
 
         self.cfg.save_data(osp.join(self.run_save_dir, "config.yaml"))
 
@@ -206,14 +215,17 @@ class LuxonisModel:
         @type new_thread: bool
         @param new_thread: Runs training in new thread if set to True.
         @type resume_weights: str | None
-        @param resume_weights: Path to checkpoint to resume training from.
+        @param resume_weights: Path to the checkpoint from which to to
+            resume the training.
         """
 
         if self.cfg.trainer.matmul_precision is not None:
             logger.info(
                 f"Setting matmul precision to {self.cfg.trainer.matmul_precision}"
             )
-            torch.set_float32_matmul_precision(self.cfg.trainer.matmul_precision)
+            torch.set_float32_matmul_precision(
+                self.cfg.trainer.matmul_precision
+            )
 
         if resume_weights is not None:
             resume_weights = str(
@@ -221,7 +233,9 @@ class LuxonisModel:
             )
 
         def graceful_exit(signum: int, _):  # pragma: no cover
-            logger.info(f"{signal.Signals(signum).name} received, stopping training...")
+            logger.info(
+                f"{signal.Signals(signum).name} received, stopping training..."
+            )
             ckpt_path = osp.join(self.run_save_dir, "resume.ckpt")
             self.pl_trainer.save_checkpoint(ckpt_path)
             self.tracker.upload_artifact(
@@ -264,7 +278,10 @@ class LuxonisModel:
             self.thread.start()
 
     def export(
-        self, onnx_save_path: str | None = None, *, weights: str | Path | None = None
+        self,
+        onnx_save_path: str | None = None,
+        *,
+        weights: str | Path | None = None,
     ) -> None:
         """Runs export.
 
@@ -285,8 +302,12 @@ class LuxonisModel:
         export_save_dir = Path(self.run_save_dir, "export")
         export_save_dir.mkdir(parents=True, exist_ok=True)
 
-        export_path = export_save_dir / (self.cfg.exporter.name or self.cfg.model.name)
-        onnx_save_path = onnx_save_path or str(export_path.with_suffix(".onnx"))
+        export_path = export_save_dir / (
+            self.cfg.exporter.name or self.cfg.model.name
+        )
+        onnx_save_path = onnx_save_path or str(
+            export_path.with_suffix(".onnx")
+        )
 
         with replace_weights(self.lightning_module, weights):
             output_names = self.lightning_module.export_onnx(
@@ -296,7 +317,9 @@ class LuxonisModel:
         try_onnx_simplify(onnx_save_path)
         self._exported_models["onnx"] = Path(onnx_save_path)
 
-        scale_values, mean_values, reverse_channels = get_preprocessing(self.cfg)
+        scale_values, mean_values, reverse_channels = get_preprocessing(
+            self.cfg
+        )
 
         if self.cfg.exporter.blobconverter.active:
             try:
@@ -308,7 +331,9 @@ class LuxonisModel:
                     str(export_save_dir),
                     onnx_save_path,
                 )
-                self._exported_models["blob"] = export_path.with_suffix(".blob")
+                self._exported_models["blob"] = export_path.with_suffix(
+                    ".blob"
+                )
             except ImportError:
                 logger.error("Failed to import `blobconverter`")
                 logger.warning(
@@ -350,20 +375,20 @@ class LuxonisModel:
         self,
         new_thread: Literal[False] = ...,
         view: Literal["train", "test", "val"] = "val",
-    ) -> Mapping[str, float]:
-        ...
+    ) -> Mapping[str, float]: ...
 
     @overload
     def test(
         self,
         new_thread: Literal[True] = ...,
         view: Literal["train", "test", "val"] = "val",
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @typechecked
     def test(
-        self, new_thread: bool = False, view: Literal["train", "val", "test"] = "val"
+        self,
+        new_thread: bool = False,
+        view: Literal["train", "val", "test"] = "val",
     ) -> Mapping[str, float] | None:
         """Runs testing.
 
@@ -372,7 +397,8 @@ class LuxonisModel:
         @type view: Literal["train", "test", "val"]
         @param view: Which view to run the testing on. Defauls to "val".
         @rtype: Mapping[str, float] | None
-        @return: If new_thread is False, returns a dictionary test results.
+        @return: If new_thread is False, returns a dictionary test
+            results.
         """
 
         loader = self.pytorch_loaders[view]
@@ -396,11 +422,12 @@ class LuxonisModel:
         """Runs inference.
 
         @type view: str
-        @param view: Which split to run the inference on. Valid values are: 'train',
-            'val', 'test'. Defaults to "val".
+        @param view: Which split to run the inference on. Valid values
+            are: 'train', 'val', 'test'. Defaults to "val".
         @type save_dir: str | Path | None
-        @param save_dir: Directory where to save the visualizations. If not specified,
-            visualizations will be rendered on the screen.
+        @param save_dir: Directory where to save the visualizations. If
+            not specified, visualizations will be rendered on the
+            screen.
         """
         self.lightning_module.eval()
 
@@ -429,10 +456,14 @@ class LuxonisModel:
                 **tracker_params,
             )
 
-            run_save_dir = osp.join(cfg_tracker.save_directory, child_tracker.run_name)
+            run_save_dir = osp.join(
+                cfg_tracker.save_directory, child_tracker.run_name
+            )
 
             assert self.cfg.tuner is not None
-            curr_params = get_trial_params(all_augs, self.cfg.tuner.params, trial)
+            curr_params = get_trial_params(
+                all_augs, self.cfg.tuner.params, trial
+            )
             curr_params["model.predefined_model"] = None
 
             cfg_copy = self.cfg.model_copy(deep=True)
@@ -462,7 +493,9 @@ class LuxonisModel:
                 else LuxonisTQDMProgressBar()
             ]
 
-            pruner_callback = PyTorchLightningPruningCallback(trial, monitor="val/loss")
+            pruner_callback = PyTorchLightningPruningCallback(
+                trial, monitor="val/loss"
+            )
             callbacks.append(pruner_callback)
 
             if self.cfg.trainer.seed is not None:
@@ -484,7 +517,9 @@ class LuxonisModel:
             except optuna.TrialPruned as e:
                 logger.info(e)
 
-            if "val/loss" not in pl_trainer.callback_metrics:  # pragma: no cover
+            if (
+                "val/loss" not in pl_trainer.callback_metrics
+            ):  # pragma: no cover
                 raise ValueError(
                     "No validation loss found. "
                     "This can happen if `TestOnTrainEnd` callback is used."
@@ -494,9 +529,13 @@ class LuxonisModel:
 
         cfg_tuner = self.cfg.tuner
         if cfg_tuner is None:
-            raise ValueError("You have to specify the `tuner` section in config.")
+            raise ValueError(
+                "You have to specify the `tuner` section in config."
+            )
 
-        all_augs = [a.name for a in self.cfg.trainer.preprocessing.augmentations]
+        all_augs = [
+            a.name for a in self.cfg.trainer.preprocessing.augmentations
+        ]
         rank = rank_zero_only.rank
         cfg_tracker = self.cfg.tracker
         tracker_params = cfg_tracker.model_dump()
@@ -564,8 +603,8 @@ class LuxonisModel:
         """Generates an NN Archive out of a model executable.
 
         @type path: str | Path | None
-        @param path: Path to the model executable. If not specified, the model will be
-            exported first.
+        @param path: Path to the model executable. If not specified, the
+            model will be exported first.
         @rtype: Path
         @return: Path to the generated NN Archive.
         """
@@ -592,8 +631,12 @@ class LuxonisModel:
             return [round(x * 255.0, 5) for x in lst]
 
         preprocessing = {  # TODO: keep preprocessing same for each input?
-            "mean": _mult(self.cfg.trainer.preprocessing.normalize.params["mean"]),
-            "scale": _mult(self.cfg.trainer.preprocessing.normalize.params["std"]),
+            "mean": _mult(
+                self.cfg.trainer.preprocessing.normalize.params["mean"]
+            ),
+            "scale": _mult(
+                self.cfg.trainer.preprocessing.normalize.params["std"]
+            ),
             "reverse_channels": self.cfg.trainer.preprocessing.train_rgb,
             "interleaved_to_planar": False,  # TODO: make it modifiable?
         }
@@ -652,7 +695,9 @@ class LuxonisModel:
         logger.info(f"NN Archive saved to {archive_path}")
 
         if self.cfg.archiver.upload_url is not None:  # pragma: no cover
-            LuxonisFileSystem.upload(archive_path, self.cfg.archiver.upload_url)
+            LuxonisFileSystem.upload(
+                archive_path, self.cfg.archiver.upload_url
+            )
 
         if self.cfg.archiver.upload_to_run:
             self.tracker.upload_artifact(archive_path, typ="archive")
@@ -664,14 +709,15 @@ class LuxonisModel:
         """Get current status of training.
 
         @rtype: tuple[int, int]
-        @return: First element is current epoch, second element is total number of
-            epochs.
+        @return: First element is current epoch, second element is total
+            number of epochs.
         """
         return self.lightning_module.get_status()
 
     @rank_zero_only
     def get_status_percentage(self) -> float:
-        """Return percentage of current training, takes into account early stopping.
+        """Return percentage of current training, takes into account
+        early stopping.
 
         @rtype: float
         @return: Percentage of current training in range 0-100.
@@ -680,7 +726,8 @@ class LuxonisModel:
 
     @rank_zero_only
     def get_error_message(self) -> str | None:
-        """Return error message if one occurs while running in thread, otherwise None.
+        """Return error message if one occurs while running in thread,
+        otherwise None.
 
         @rtype: str | None
         @return: Error message
@@ -689,10 +736,12 @@ class LuxonisModel:
 
     @rank_zero_only
     def get_min_loss_checkpoint_path(self) -> str | None:
-        """Return best checkpoint path with respect to minimal validation loss.
+        """Return best checkpoint path with respect to minimal
+        validation loss.
 
         @rtype: str
-        @return: Path to best checkpoint with respect to minimal validation loss
+        @return: Path to best checkpoint with respect to minimal
+            validation loss
         """
         if not self.pl_trainer.checkpoint_callbacks:
             return None
@@ -700,10 +749,12 @@ class LuxonisModel:
 
     @rank_zero_only
     def get_best_metric_checkpoint_path(self) -> str | None:
-        """Return best checkpoint path with respect to best validation metric.
+        """Return best checkpoint path with respect to best validation
+        metric.
 
         @rtype: str
-        @return: Path to best checkpoint with respect to best validation metric
+        @return: Path to best checkpoint with respect to best validation
+            metric
         """
         if len(self.pl_trainer.checkpoint_callbacks) < 2:
             return None

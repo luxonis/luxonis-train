@@ -76,7 +76,9 @@ def parking_lot_dataset() -> LuxonisDataset:
                 for bbox_annotation in annotations.get(
                     "BoundingBox2DAnnotation", defaultdict(list)
                 )["values"]:
-                    class_ = bbox_annotation["labelName"].split("-")[-1].lower()
+                    class_ = (
+                        bbox_annotation["labelName"].split("-")[-1].lower()
+                    )
                     if class_ == "motorbiek":
                         class_ = "motorbike"
                     x, y = bbox_annotation["origin"]
@@ -137,7 +139,10 @@ def parking_lot_dataset() -> LuxonisDataset:
                 ]
                 mask = cv2.cvtColor(
                     cv2.imread(
-                        str(sequence_path / vehicle_type_segmentation["filename"])
+                        str(
+                            sequence_path
+                            / vehicle_type_segmentation["filename"]
+                        )
                     ),
                     cv2.COLOR_BGR2RGB,
                 )
@@ -189,7 +194,10 @@ def coco_dataset() -> LuxonisDataset:
     url = "https://drive.google.com/uc?id=1XlvFK7aRmt8op6-hHkWVKIJQeDtOwoRT"
     output_zip = WORK_DIR / "COCO_people_subset.zip"
 
-    if not output_zip.exists() and not (WORK_DIR / "COCO_people_subset").exists():
+    if (
+        not output_zip.exists()
+        and not (WORK_DIR / "COCO_people_subset").exists()
+    ):
         gdown.download(url, str(output_zip), quiet=False)
 
     parser = LuxonisParser(

@@ -41,7 +41,9 @@ OptsType = Annotated[
     ),
 ]
 
-ViewType = Annotated[_ViewType, typer.Option(help="Which dataset view to use.")]
+ViewType = Annotated[
+    _ViewType, typer.Option(help="Which dataset view to use.")
+]
 
 SaveDirType = Annotated[
     Optional[Path],
@@ -53,7 +55,8 @@ SaveDirType = Annotated[
 def train(
     config: ConfigType = None,
     resume: Annotated[
-        Optional[str], typer.Option(help="Resume training from this checkpoint.")
+        Optional[str],
+        typer.Option(help="Resume training from this checkpoint."),
     ] = None,
     opts: OptsType = None,
 ):
@@ -65,7 +68,9 @@ def train(
 
 @app.command()
 def test(
-    config: ConfigType = None, view: ViewType = _ViewType.VAL, opts: OptsType = None
+    config: ConfigType = None,
+    view: ViewType = _ViewType.VAL,
+    opts: OptsType = None,
 ):
     """Evaluate model."""
     from luxonis_train.core import LuxonisModel
@@ -189,7 +194,9 @@ def common(
     _: Annotated[
         bool,
         typer.Option(
-            "--version", callback=version_callback, help="Show version and exit."
+            "--version",
+            callback=version_callback,
+            help="Show version and exit.",
         ),
     ] = False,
     source: Annotated[

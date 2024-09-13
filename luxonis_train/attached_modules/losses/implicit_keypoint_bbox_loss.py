@@ -55,8 +55,8 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         balance: list[float] | None = None,
         **kwargs: Any,
     ):
-        """Joint loss for keypoint and box predictions for cases where the keypoints and
-        boxes are inherently linked.
+        """Joint loss for keypoint and box predictions for cases where
+        the keypoints and boxes are inherently linked.
 
         Based on U{YOLO-Pose: Enhancing YOLO for Multi Person Pose Estimation Using Object
         Keypoint Similarity Loss<https://arxiv.org/ftp/arxiv/papers/2204/2204.06806.pdf>}.
@@ -115,7 +115,9 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
 
         self.bias = bias
 
-        self.b_cross_entropy = BCEWithLogitsLoss(pos_weight=torch.tensor([obj_pw]))
+        self.b_cross_entropy = BCEWithLogitsLoss(
+            pos_weight=torch.tensor([obj_pw])
+        )
         self.class_loss = SmoothBCEWithLogitsLoss(
             label_smoothing=label_smoothing,
             bce_pow=cls_pw,
@@ -135,22 +137,27 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
     def prepare(
         self, outputs: Packet[Tensor], labels: Labels
     ) -> tuple[list[Tensor], KeypointTargetType]:
-        """Prepares the labels to be in the correct format for loss calculation.
+        """Prepares the labels to be in the correct format for loss
+        calculation.
 
         @type outputs: Packet[Tensor]
         @param outputs: Output from the forward pass.
         @type labels: L{Labels}
         @param labels: Dictionary containing the labels.
-        @rtype: tuple[list[Tensor], tuple[list[Tensor], list[Tensor], list[Tensor],
-            list[tuple[Tensor, Tensor, Tensor, Tensor]], list[Tensor]]]
-        @return: Tuple containing the original output and the postprocessed labels. The
-            processed labels are a tuple containing the class targets, box targets,
-            keypoint targets, indices and anchors. Indicies are a tuple containing
-            vectors of indices for batch, anchor, feature y and feature x dimensions,
-            respectively. They are all of shape (n_targets,). The indices are used to
-            index the output tensors of shape (batch_size, n_anchors, feature_height,
-            feature_width, n_classes + box_offset + n_keypoints * 3) to get a tensor of
-            shape (n_targets, n_classes + box_offset + n_keypoints * 3).
+        @rtype: tuple[list[Tensor], tuple[list[Tensor], list[Tensor],
+            list[Tensor], list[tuple[Tensor, Tensor, Tensor, Tensor]],
+            list[Tensor]]]
+        @return: Tuple containing the original output and the
+            postprocessed labels. The processed labels are a tuple
+            containing the class targets, box targets, keypoint targets,
+            indices and anchors. Indicies are a tuple containing vectors
+            of indices for batch, anchor, feature y and feature x
+            dimensions, respectively. They are all of shape
+            (n_targets,). The indices are used to index the output
+            tensors of shape (batch_size, n_anchors, feature_height,
+            feature_width, n_classes + box_offset + n_keypoints * 3) to
+            get a tensor of shape (n_targets, n_classes + box_offset +
+            n_keypoints * 3).
         """
         predictions = self.get_input_tensors(outputs, "features")
 
@@ -178,16 +185,21 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         anchors: list[Tensor] = []
 
         anchor_indices = (
-            torch.arange(self.n_anchors, device=targets.device, dtype=torch.float32)
+            torch.arange(
+                self.n_anchors, device=targets.device, dtype=torch.float32
+            )
             .reshape(self.n_anchors, 1)
             .repeat(1, n_targets)
             .unsqueeze(-1)
         )
-        targets = torch.cat((targets.repeat(self.n_anchors, 1, 1), anchor_indices), 2)
+        targets = torch.cat(
+            (targets.repeat(self.n_anchors, 1, 1), anchor_indices), 2
+        )
 
         xy_deltas = (
             torch.tensor(
-                [[0, 0], [1, 0], [0, 1], [-1, 0], [0, -1]], device=targets.device
+                [[0, 0], [1, 0], [0, 1], [-1, 0], [0, -1]],
+                device=targets.device,
             ).float()
             * self.bias
         )
@@ -253,9 +265,15 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
             "kpt_regression": torch.tensor(0.0, device=device),
         }
 
-        for pred, class_target, box_target, kpt_target, index, anchor, balance in zip(
-            predictions, *targets, self.balance
-        ):
+        for (
+            pred,
+            class_target,
+            box_target,
+            kpt_target,
+            index,
+            anchor,
+            balance,
+        ) in zip(predictions, *targets, self.balance):
             obj_targets = torch.zeros_like(pred[..., 0], device=device)
             n_targets = len(class_target)
 
@@ -294,7 +312,8 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
                         self.class_loss.forward(
                             pred_subset[
                                 :,
-                                self.box_offset : self.box_offset + self.n_classes,
+                                self.box_offset : self.box_offset
+                                + self.n_classes,
                             ],
                             class_target,
                         )
@@ -310,7 +329,9 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         loss = cast(Tensor, sum(sub_losses.values())).reshape([])
         return loss, {name: loss.detach() for name, loss in sub_losses.items()}
 
-    def _create_keypoint_target(self, scaled_targets: Tensor, box_xy_deltas: Tensor):
+    def _create_keypoint_target(
+        self, scaled_targets: Tensor, box_xy_deltas: Tensor
+    ):
         keypoint_target = scaled_targets[:, self.box_offset + 1 : -1]
         for j in range(self.n_keypoints):
             idx = 3 * j

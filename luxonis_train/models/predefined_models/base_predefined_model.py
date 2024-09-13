@@ -19,23 +19,19 @@ class BasePredefinedModel(
 ):
     @property
     @abstractmethod
-    def nodes(self) -> list[ModelNodeConfig]:
-        ...
+    def nodes(self) -> list[ModelNodeConfig]: ...
 
     @property
     @abstractmethod
-    def losses(self) -> list[LossModuleConfig]:
-        ...
+    def losses(self) -> list[LossModuleConfig]: ...
 
     @property
     @abstractmethod
-    def metrics(self) -> list[MetricModuleConfig]:
-        ...
+    def metrics(self) -> list[MetricModuleConfig]: ...
 
     @property
     @abstractmethod
-    def visualizers(self) -> list[AttachedModuleConfig]:
-        ...
+    def visualizers(self) -> list[AttachedModuleConfig]: ...
 
     def generate_model(
         self,

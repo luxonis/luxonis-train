@@ -99,8 +99,12 @@ class ContextPath(nn.Module):
         super().__init__()
         self.backbone = backbone
 
-        self.up16 = nn.Upsample(scale_factor=2.0, mode="bilinear", align_corners=True)
-        self.up32 = nn.Upsample(scale_factor=2.0, mode="bilinear", align_corners=True)
+        self.up16 = nn.Upsample(
+            scale_factor=2.0, mode="bilinear", align_corners=True
+        )
+        self.up32 = nn.Upsample(
+            scale_factor=2.0, mode="bilinear", align_corners=True
+        )
 
         self.refine16 = ConvModule(128, 128, 3, 1, 1)
         self.refine32 = ConvModule(128, 128, 3, 1, 1)

@@ -10,7 +10,8 @@ from luxonis_train.utils.registry import LOADERS
 from luxonis_train.utils.types import Labels
 
 LuxonisLoaderTorchOutput = tuple[dict[str, Tensor], Labels]
-"""LuxonisLoaderTorchOutput is a tuple of source tensors and corresponding labels."""
+"""LuxonisLoaderTorchOutput is a tuple of source tensors and
+corresponding labels."""
 
 
 class BaseLoaderTorch(
@@ -20,8 +21,8 @@ class BaseLoaderTorch(
     register=False,
     registry=LOADERS,
 ):
-    """Base abstract loader class that enforces LuxonisLoaderTorchOutput output label
-    structure."""
+    """Base abstract loader class that enforces LuxonisLoaderTorchOutput
+    output label structure."""
 
     def __init__(
         self,
@@ -115,11 +116,12 @@ class BaseLoaderTorch(
         ...
 
     def get_n_keypoints(self) -> dict[str, int] | None:
-        """Returns the dictionary defining the semantic skeleton for each class using
-        keypoints.
+        """Returns the dictionary defining the semantic skeleton for
+        each class using keypoints.
 
         @rtype: Dict[str, Dict]
-        @return: A dictionary mapping classes to their skeleton definitions.
+        @return: A dictionary mapping classes to their skeleton
+            definitions.
         """
         return None
 
@@ -130,16 +132,19 @@ def collate_fn(
     """Default collate function used for training.
 
     @type batch: list[LuxonisLoaderTorchOutput]
-    @param batch: List of loader outputs (dict of Tensors) and labels (dict of Tensors)
-        in the LuxonisLoaderTorchOutput format.
+    @param batch: List of loader outputs (dict of Tensors) and labels
+        (dict of Tensors) in the LuxonisLoaderTorchOutput format.
     @rtype: tuple[dict[str, Tensor], dict[LabelType, Tensor]]
-    @return: Tuple of inputs and annotations in the format expected by the model.
+    @return: Tuple of inputs and annotations in the format expected by
+        the model.
     """
     inputs: tuple[dict[str, Tensor], ...]
     labels: tuple[Labels, ...]
     inputs, labels = zip(*batch)
 
-    out_inputs = {k: torch.stack([i[k] for i in inputs], 0) for k in inputs[0].keys()}
+    out_inputs = {
+        k: torch.stack([i[k] for i in inputs], 0) for k in inputs[0].keys()
+    }
 
     out_labels: Labels = {}
 

@@ -11,7 +11,12 @@ from luxonis_ml.utils import (
     LuxonisFileSystem,
 )
 from pydantic import Field, field_validator, model_validator
-from pydantic.types import FilePath, NonNegativeFloat, NonNegativeInt, PositiveInt
+from pydantic.types import (
+    FilePath,
+    NonNegativeFloat,
+    NonNegativeInt,
+    PositiveInt,
+)
 from typing_extensions import Self
 
 logger = logging.getLogger(__name__)
@@ -104,7 +109,9 @@ class ModelConfig(BaseModelExtraForbid):
         from luxonis_train.utils.registry import MODELS
 
         if self.predefined_model:
-            logger.info(f"Using predefined model: `{self.predefined_model.name}`")
+            logger.info(
+                f"Using predefined model: `{self.predefined_model.name}`"
+            )
             model = MODELS.get(self.predefined_model.name)(
                 **self.predefined_model.params
             )
@@ -130,7 +137,9 @@ class ModelConfig(BaseModelExtraForbid):
             raise ValueError("Model graph is not acyclic.")
         if not self.outputs:
             outputs: list[str] = []  # nodes which are not inputs to any nodes
-            inputs = set(node_name for node in self.nodes for node_name in node.inputs)
+            inputs = set(
+                node_name for node in self.nodes for node_name in node.inputs
+            )
             for node in self.nodes:
                 name = node.alias or node.name
                 if name not in inputs:
@@ -233,7 +242,9 @@ class PreprocessingConfig(BaseModelExtraForbid):
     def check_normalize(self) -> Self:
         if self.normalize.active:
             self.augmentations.append(
-                AugmentationConfig(name="Normalize", params=self.normalize.params)
+                AugmentationConfig(
+                    name="Normalize", params=self.normalize.params
+                )
             )
         return self
 
@@ -334,7 +345,9 @@ class OnnxExportConfig(BaseModelExtraForbid):
 class BlobconverterExportConfig(BaseModelExtraForbid):
     active: bool = False
     shaves: int = 6
-    version: Literal["2021.2", "2021.3", "2021.4", "2022.1", "2022.3_RVC3"] = "2022.1"
+    version: Literal["2021.2", "2021.3", "2021.4", "2022.1", "2022.3_RVC3"] = (
+        "2022.1"
+    )
 
 
 class ArchiveConfig(BaseModelExtraForbid):
@@ -416,7 +429,9 @@ class Config(LuxonisConfig):
             return instance
         fs = LuxonisFileSystem(cfg)
         if fs.is_mlflow:
-            logger.info("Setting `project_id` and `run_id` to config's MLFlow run")
+            logger.info(
+                "Setting `project_id` and `run_id` to config's MLFlow run"
+            )
             instance.tracker.project_id = fs.experiment_id
             instance.tracker.run_id = fs.run_id
         return instance

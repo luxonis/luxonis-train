@@ -47,9 +47,11 @@ class MobileOneBlock(nn.Module):
         @type groups: int
         @param groups: Group number. Defaults to 1.
         @type use_se: bool
-        @param use_se: Whether to use SE-ReLU activations. Defaults to False.
+        @param use_se: Whether to use SE-ReLU activations. Defaults to
+            False.
         @type n_conv_branches: int
-        @param n_conv_branches: Number of linear conv branches. Defaults to 1.
+        @param n_conv_branches: Number of linear conv branches. Defaults
+            to 1.
         """
         super().__init__()
 
@@ -61,7 +63,6 @@ class MobileOneBlock(nn.Module):
         self.n_conv_branches = n_conv_branches
         self.inference_mode = False
 
-        # Check if SE-ReLU is requested
         self.se: nn.Module
         if use_se:
             self.se = SqueezeExciteBlock(
@@ -108,9 +109,9 @@ class MobileOneBlock(nn.Module):
                 activation=nn.Identity(),
             )
 
-    def forward(self, inputs: Tensor):
+    def forward(self, inputs: Tensor) -> Tensor:
         """Apply forward pass."""
-        # Inference mode forward pass.
+
         if self.inference_mode:
             return self.activation(self.se(self.reparam_conv(inputs)))
 
@@ -179,13 +180,17 @@ class MobileOneBlock(nn.Module):
             kernel_scale, bias_scale = self._fuse_bn_tensor(self.rbr_scale)
             # Pad scale branch kernel to match conv branch kernel size.
             pad = self.kernel_size // 2
-            kernel_scale = torch.nn.functional.pad(kernel_scale, [pad, pad, pad, pad])
+            kernel_scale = torch.nn.functional.pad(
+                kernel_scale, [pad, pad, pad, pad]
+            )
 
         # get weights and bias of skip branch
         kernel_identity = torch.zeros(())
         bias_identity = torch.zeros(())
         if self.rbr_skip is not None:
-            kernel_identity, bias_identity = self._fuse_bn_tensor(self.rbr_skip)
+            kernel_identity, bias_identity = self._fuse_bn_tensor(
+                self.rbr_skip
+            )
 
         # get weights and bias of conv branches
         kernel_conv = torch.zeros(())
@@ -217,13 +222,21 @@ class MobileOneBlock(nn.Module):
             if not hasattr(self, "id_tensor"):
                 input_dim = self.in_channels // self.groups
                 kernel_value = torch.zeros(
-                    (self.in_channels, input_dim, self.kernel_size, self.kernel_size),
+                    (
+                        self.in_channels,
+                        input_dim,
+                        self.kernel_size,
+                        self.kernel_size,
+                    ),
                     dtype=branch.weight.dtype,
                     device=branch.weight.device,
                 )
                 for i in range(self.in_channels):
                     kernel_value[
-                        i, i % input_dim, self.kernel_size // 2, self.kernel_size // 2
+                        i,
+                        i % input_dim,
+                        self.kernel_size // 2,
+                        self.kernel_size // 2,
                     ] = 1
                 self.id_tensor = kernel_value
             kernel = self.id_tensor

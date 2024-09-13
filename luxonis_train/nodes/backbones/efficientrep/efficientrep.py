@@ -62,8 +62,12 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
 
         channels_list = channels_list or [64, 128, 256, 512, 1024]
         n_repeats = n_repeats or [1, 6, 12, 18, 6]
-        channels_list = [make_divisible(i * width_mul, 8) for i in channels_list]
-        n_repeats = [(max(round(i * depth_mul), 1) if i > 1 else i) for i in n_repeats]
+        channels_list = [
+            make_divisible(i * width_mul, 8) for i in channels_list
+        ]
+        n_repeats = [
+            (max(round(i * depth_mul), 1) if i > 1 else i) for i in n_repeats
+        ]
 
         self.repvgg_encoder = RepVGGBlock(
             in_channels=self.in_channels,
@@ -102,7 +106,8 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         """Reparametrizes instances of L{RepVGGBlock} in the network.
 
         @type mode: bool
-        @param mode: Whether to set the export mode. Defaults to C{True}.
+        @param mode: Whether to set the export mode. Defaults to
+            C{True}.
         """
         super().set_export_mode(mode)
         if self.export:

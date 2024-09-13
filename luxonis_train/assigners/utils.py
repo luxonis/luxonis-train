@@ -20,7 +20,9 @@ def candidates_in_gt(
     @return: Mask for anchors inside any GT bbox
     """
     n_anchors = anchor_centers.size(0)
-    anchor_centers = anchor_centers.unsqueeze(0).repeat(gt_bboxes.size(0), 1, 1)
+    anchor_centers = anchor_centers.unsqueeze(0).repeat(
+        gt_bboxes.size(0), 1, 1
+    )
     gt_bboxes_lt = gt_bboxes[:, :2].unsqueeze(1).repeat(1, n_anchors, 1)
     gt_bboxes_rb = gt_bboxes[:, 2:].unsqueeze(1).repeat(1, n_anchors, 1)
     bbox_delta_lt = anchor_centers - gt_bboxes_lt
@@ -33,12 +35,15 @@ def candidates_in_gt(
 def fix_collisions(
     mask_pos: Tensor, overlaps: Tensor, n_max_boxes: int
 ) -> tuple[Tensor, Tensor, Tensor]:
-    """If an anchor is assigned to multiple GTs, the one with highest IoU is selected.
+    """If an anchor is assigned to multiple GTs, the one with highest
+    IoU is selected.
 
     @type mask_pos: Tensor
-    @param mask_pos: Mask of assigned anchors [bs, n_max_boxes, n_anchors]
+    @param mask_pos: Mask of assigned anchors [bs, n_max_boxes,
+        n_anchors]
     @type overlaps: Tensor
-    @param overlaps: IoUs between GTs and anchors [bx, n_max_boxes, n_anchors]
+    @param overlaps: IoUs between GTs and anchors [bx, n_max_boxes,
+        n_anchors]
     @type n_max_boxes: int
     @param n_max_boxes: Number of maximum boxes per image
     @rtype: tuple[Tensor, Tensor, Tensor]
@@ -46,7 +51,9 @@ def fix_collisions(
     """
     mask_pos_sum = mask_pos.sum(dim=-2)
     if mask_pos_sum.max() > 1:
-        mask_multi_gts = (mask_pos_sum.unsqueeze(1) > 1).repeat([1, n_max_boxes, 1])
+        mask_multi_gts = (mask_pos_sum.unsqueeze(1) > 1).repeat(
+            [1, n_max_boxes, 1]
+        )
         max_overlaps_idx = overlaps.argmax(dim=1)
         is_max_overlaps = F.one_hot(max_overlaps_idx, n_max_boxes)
         is_max_overlaps = is_max_overlaps.permute(0, 2, 1).to(overlaps.dtype)
@@ -57,8 +64,8 @@ def fix_collisions(
 
 
 def batch_iou(batch1: Tensor, batch2: Tensor) -> Tensor:
-    """Calculates IoU for each pair of bboxes in the batch. Bboxes must be in xyxy
-    format.
+    """Calculates IoU for each pair of bboxes in the batch. Bboxes must
+    be in xyxy format.
 
     @type batch1: Tensor
     @param batch1: Tensor of shape C{[bs, N, 4]}

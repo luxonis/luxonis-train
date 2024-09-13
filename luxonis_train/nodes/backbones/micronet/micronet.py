@@ -17,14 +17,15 @@ class MicroNet(BaseNode[Tensor, list[Tensor]]):
     ):
         """MicroNet backbone.
 
-        This class creates the full MicroNet architecture based on the specified
-        variant. It consists of a stem layer followed by multiple MicroBlocks.
+        This class creates the full MicroNet architecture based on the
+        specified variant. It consists of a stem layer followed by
+        multiple MicroBlocks.
 
         @type variant: Literal["M1", "M2", "M3"]
         @param variant: Model variant to use. Defaults to "M1".
         @type out_indices: list[int] | None
-        @param out_indices: Indices of the output layers. If provided, overrides the
-            variant value.
+        @param out_indices: Indices of the output layers. If provided,
+            overrides the variant value.
         """
         super().__init__(**kwargs)
 

@@ -23,8 +23,8 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
         """Visualizer for classification tasks.
 
         @type include_plot: bool
-        @param include_plot: Whether to include a plot of the class probabilities in the
-            visualization. Defaults to C{True}.
+        @param include_plot: Whether to include a plot of the class
+            probabilities in the visualization. Defaults to C{True}.
         """
         super().__init__(**kwargs)
         self.include_plot = include_plot
@@ -38,7 +38,9 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
             return str(idx)
         return self.class_names[idx]
 
-    def _generate_plot(self, prediction: Tensor, width: int, height: int) -> Tensor:
+    def _generate_plot(
+        self, prediction: Tensor, width: int, height: int
+    ) -> Tensor:
         pred = prediction.softmax(-1).detach().cpu().numpy()
         fig, ax = plt.subplots(figsize=(width / 100, height / 100))
         ax.bar(np.arange(len(pred)), pred)
@@ -88,7 +90,9 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
             overlay[i] = numpy_to_torch_img(arr)
             if self.include_plot:
                 plots[i] = self._generate_plot(
-                    prediction, prediction_canvas.shape[3], prediction_canvas.shape[2]
+                    prediction,
+                    prediction_canvas.shape[3],
+                    prediction_canvas.shape[2],
                 )
 
         if self.include_plot:

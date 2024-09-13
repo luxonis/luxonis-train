@@ -10,7 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 def make_divisible(x: int | float, divisor: int) -> int:
-    """Upward revision the value x to make it evenly divisible by the divisor.
+    """Upward revision the value x to make it evenly divisible by the
+    divisor.
 
     Equivalent to M{ceil(x / divisor) * divisor}.
 
@@ -27,16 +28,20 @@ def make_divisible(x: int | float, divisor: int) -> int:
 def infer_upscale_factor(
     in_size: tuple[int, int] | int, orig_size: tuple[int, int] | int
 ) -> int:
-    """Infer the upscale factor from the input shape and the original shape.
+    """Infer the upscale factor from the input shape and the original
+    shape.
 
     @type in_size: tuple[int, int] | int
-    @param in_size: Input shape as a tuple of (height, width) or just one of them.
+    @param in_size: Input shape as a tuple of (height, width) or just
+        one of them.
     @type orig_size: tuple[int, int] | int
-    @param orig_size: Original shape as a tuple of (height, width) or just one of them.
+    @param orig_size: Original shape as a tuple of (height, width) or
+        just one of them.
     @rtype: int
     @return: Upscale factor.
-    @raise ValueError: If the C{in_size} cannot be upscaled to the C{orig_size}. This
-        can happen if the upscale factors are not integers or are different.
+    @raise ValueError: If the C{in_size} cannot be upscaled to the
+        C{orig_size}. This can happen if the upscale factors are not
+        integers or are different.
     """
 
     def _infer_upscale_factor(in_size: int, orig_size: int) -> int | float:
@@ -79,11 +84,14 @@ def infer_upscale_factor(
                 f"Width: {wf}, height: {hf}."
             )
 
-    raise NotImplementedError(f"Unexpected case: {width_factor}, {height_factor}")
+    raise NotImplementedError(
+        f"Unexpected case: {width_factor}, {height_factor}"
+    )
 
 
 def to_shape_packet(packet: Packet[Tensor]) -> Packet[Size]:
-    """Converts a packet of tensors to a packet of shapes. Used for debugging purposes.
+    """Converts a packet of tensors to a packet of shapes. Used for
+    debugging purposes.
 
     @type packet: Packet[Tensor]
     @param packet: Packet of tensors.
@@ -100,16 +108,20 @@ T = TypeVar("T")
 
 
 def get_with_default(
-    value: T | None, action_name: str, caller_name: str | None = None, *, default: T
+    value: T | None,
+    action_name: str,
+    caller_name: str | None = None,
+    *,
+    default: T,
 ) -> T:
-    """Returns value if it is not C{None}, otherwise returns the default value and log
-    an info.
+    """Returns value if it is not C{None}, otherwise returns the default
+    value and log an info.
 
     @type value: T | None
     @param value: Value to return.
     @type action_name: str
-    @param action_name: Name of the action for which the default value is being used.
-        Used for logging.
+    @param action_name: Name of the action for which the default value
+        is being used. Used for logging.
     @type caller_name: str | None
     @param caller_name: Name of the caller function. Used for logging.
     @type default: T

@@ -3,7 +3,11 @@ from collections.abc import Mapping
 
 import lightning.pytorch as pl
 import tabulate
-from lightning.pytorch.callbacks import ProgressBar, RichProgressBar, TQDMProgressBar
+from lightning.pytorch.callbacks import (
+    ProgressBar,
+    RichProgressBar,
+    TQDMProgressBar,
+)
 from rich.console import Console
 from rich.table import Table
 
@@ -29,7 +33,8 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
     ) -> None:
         """Prints results to the console.
 
-        This includes the stage name, loss value, and tables with metrics.
+        This includes the stage name, loss value, and tables with
+        metrics.
 
         @type stage: str
         @param stage: Stage name.
@@ -38,12 +43,13 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         @type metrics: Mapping[str, Mapping[str, int | str | float]]
         @param metrics: Metrics in format {table_name: table}.
         """
-        pass
+        ...
 
 
 @CALLBACKS.register_module()
 class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
-    """Custom text progress bar based on TQDMProgressBar from Pytorch Lightning."""
+    """Custom text progress bar based on TQDMProgressBar from Pytorch
+    Lightning."""
 
     def __init__(self):
         super().__init__(leave=True)
@@ -70,7 +76,8 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         @type key_name: str
         @param key_name: Name of the key column. Defaults to C{"Name"}.
         @type value_name: str
-        @param value_name: Name of the value column. Defaults to C{"Value"}.
+        @param value_name: Name of the value column. Defaults to
+            C{"Value"}.
         """
         self._rule(title)
         print(
@@ -99,7 +106,8 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
 
 @CALLBACKS.register_module()
 class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
-    """Custom rich text progress bar based on RichProgressBar from Pytorch Lightning."""
+    """Custom rich text progress bar based on RichProgressBar from
+    Pytorch Lightning."""
 
     def __init__(self):
         super().__init__(leave=True)
@@ -129,7 +137,8 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         @type key_name: str
         @param key_name: Name of the key column. Defaults to C{"Name"}.
         @type value_name: str
-        @param value_name: Name of the value column. Defaults to C{"Value"}.
+        @param value_name: Name of the value column. Defaults to
+            C{"Value"}.
         """
         rich_table = Table(
             title=title,
@@ -149,7 +158,9 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         metrics: Mapping[str, Mapping[str, int | str | float]],
     ) -> None:
         self.console.rule(f"{stage}", style="bold magenta")
-        self.console.print(f"[bold magenta]Loss:[/bold magenta] [white]{loss}[/white]")
+        self.console.print(
+            f"[bold magenta]Loss:[/bold magenta] [white]{loss}[/white]"
+        )
         self.console.print("[bold magenta]Metrics:[/bold magenta]")
         for table_name, table in metrics.items():
             self.print_table(table_name, table)

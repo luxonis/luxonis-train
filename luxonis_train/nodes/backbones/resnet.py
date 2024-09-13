@@ -15,7 +15,11 @@ class ResNet(BaseNode[Tensor, list[Tensor]]):
         zero_init_residual: bool = False,
         groups: int = 1,
         width_per_group: int = 64,
-        replace_stride_with_dilation: tuple[bool, bool, bool] = (False, False, False),
+        replace_stride_with_dilation: tuple[bool, bool, bool] = (
+            False,
+            False,
+            False,
+        ),
         **kwargs: Any,
     ):
         """ResNet backbone.

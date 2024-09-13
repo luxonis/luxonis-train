@@ -12,8 +12,8 @@ logger = getLogger(__name__)
 
 
 class CrossEntropyLoss(BaseLoss[Tensor, Tensor]):
-    """This criterion computes the cross entropy loss between input logits and
-    target."""
+    """This criterion computes the cross entropy loss between input
+    logits and target."""
 
     supported_labels = [LabelType.SEGMENTATION, LabelType.CLASSIFICATION]
 

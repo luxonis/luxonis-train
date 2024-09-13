@@ -230,7 +230,9 @@ class BaseNode(
         @raises ValueError: If the task is not supported by the node.
         """
         if not self._tasks:
-            raise ValueError(f"Node {self.name} does not have any tasks defined.")
+            raise ValueError(
+                f"Node {self.name} does not have any tasks defined."
+            )
 
         if task not in self._tasks:
             raise ValueError(
@@ -248,8 +250,8 @@ class BaseNode(
 
         @type: str
         @raises RuntimeError: If the node doesn't define any tasks.
-        @raises RuntimeError: If the node defines more than one task. In that case, use
-            the L{get_task_name} method.
+        @raises RuntimeError: If the node defines more than one task. In
+            that case, use the L{get_task_name} method.
         """
         if not self._tasks:
             raise RuntimeError(f"{self.name} does not have any tasks defined.")
@@ -286,7 +288,8 @@ class BaseNode(
         """Getter for the number of keypoints.
 
         @type: int
-        @raises ValueError: If the number of keypoints cannot be determined.
+        @raises ValueError: If the number of keypoints cannot be
+            determined.
         """
         if self._n_keypoints is not None:
             return self._n_keypoints
@@ -311,9 +314,11 @@ class BaseNode(
         """Getter for the number of classes.
 
         @type: int
-        @raises ValueError: If the number of classes cannot be determined.
-        @raises ValueError: If the number of classes is different for different tasks.
-            In that case, use the L{get_n_classes} method.
+        @raises ValueError: If the number of classes cannot be
+            determined.
+        @raises ValueError: If the number of classes is different for
+            different tasks. In that case, use the L{get_n_classes}
+            method.
         """
         if self._n_classes is not None:
             return self._n_classes
@@ -376,7 +381,8 @@ class BaseNode(
         """Getter for the input shapes.
 
         @type: list[Packet[Size]]
-        @raises RuntimeError: If the C{input_shapes} were not set during initialization.
+        @raises RuntimeError: If the C{input_shapes} were not set during
+            initialization.
         """
 
         if self._input_shapes is None:
@@ -388,8 +394,8 @@ class BaseNode(
         """Getter for the original input shape as [N, H, W].
 
         @type: Size
-        @raises RuntimeError: If the C{original_in_shape} were not set during
-            initialization.
+        @raises RuntimeError: If the C{original_in_shape} were not set
+            during initialization.
         """
         if self._original_in_shape is None:
             raise self._non_set_error("original_in_shape")
@@ -400,8 +406,8 @@ class BaseNode(
         """Getter for the dataset metadata.
 
         @type: L{DatasetMetadata}
-        @raises RuntimeError: If the C{dataset_metadata} were not set during
-            initialization.
+        @raises RuntimeError: If the C{dataset_metadata} were not set
+            during initialization.
         """
         if self._dataset_metadata is None:
             raise RuntimeError(
@@ -449,14 +455,15 @@ class BaseNode(
     def in_channels(self) -> int | list[int]:
         """Simplified getter for the number of input channels.
 
-        Should work out of the box for most cases where the C{input_shapes} are
-        sufficiently simple. Otherwise the C{input_shapes} should be used directly. If
-        C{attach_index} is set to "all" or is a slice, returns a list of input channels,
+        Should work out of the box for most cases where the
+        C{input_shapes} are sufficiently simple. Otherwise the
+        C{input_shapes} should be used directly. If C{attach_index} is
+        set to "all" or is a slice, returns a list of input channels,
         otherwise returns a single value.
 
         @type: int | list[int]
-        @raises RuntimeError: If the C{input_shapes} are too complicated for the default
-            implementation of C{in_sizes}.
+        @raises RuntimeError: If the C{input_shapes} are too complicated
+            for the default implementation of C{in_sizes}.
         """
         return self._get_nth_size(-3)
 
@@ -502,21 +509,22 @@ class BaseNode(
     def unwrap(self, inputs: list[Packet[Tensor]]) -> ForwardInputT:
         """Prepares inputs for the forward pass.
 
-        Unwraps the inputs from the C{list[Packet[Tensor]]} input so they can be passed
-        to the forward call. The default implementation expects a single input with
-        C{features} key and returns the tensor or tensors at the C{attach_index}
-        position.
+        Unwraps the inputs from the C{list[Packet[Tensor]]} input so
+        they can be passed to the forward call. The default
+        implementation expects a single input with C{features} key and
+        returns the tensor or tensors at the C{attach_index} position.
 
-        For most cases the default implementation should be sufficient. Exceptions are
-        modules with multiple inputs or producing more complex outputs. This is
-        typically the case for output nodes.
+        For most cases the default implementation should be sufficient.
+        Exceptions are modules with multiple inputs or producing more
+        complex outputs. This is typically the case for output nodes.
 
         @type inputs: list[Packet[Tensor]]
         @param inputs: Inputs to the node.
         @rtype: ForwardInputT
-        @return: Prepared inputs, ready to be passed to the L{forward} method.
-        @raises RuntimeError: If the number of inputs is not equal to 1. In such cases
-            the method has to be overridden.
+        @return: Prepared inputs, ready to be passed to the L{forward}
+            method.
+        @raises RuntimeError: If the number of inputs is not equal to 1.
+            In such cases the method has to be overridden.
         """
         if len(inputs) > 1:
             raise RuntimeError(
@@ -585,7 +593,8 @@ class BaseNode(
         return {task: outputs}
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:
-        """Combines the forward pass with the wrapping and unwrapping of the inputs.
+        """Combines the forward pass with the wrapping and unwrapping of
+        the inputs.
 
         @type inputs: list[Packet[Tensor]]
         @param inputs: Inputs to the module.
@@ -611,15 +620,15 @@ class BaseNode(
     def get_attached(self, lst: list[T]) -> list[T] | T:
         """Gets the attached elements from a list.
 
-        This method is used to get the attached elements from a list based on the
-        C{attach_index} attribute.
+        This method is used to get the attached elements from a list
+        based on the C{attach_index} attribute.
 
         @type lst: list[T]
-        @param lst: List to get the attached elements from. Can be either a list of
-            tensors or a list of sizes.
+        @param lst: List to get the attached elements from. Can be
+            either a list of tensors or a list of sizes.
         @rtype: list[T] | T
-        @return: Attached elements. If C{attach_index} is set to C{"all"} or is a slice,
-            returns a list of attached elements.
+        @return: Attached elements. If C{attach_index} is set to
+            C{"all"} or is a slice, returns a list of attached elements.
         @raises ValueError: If the C{attach_index} is invalid.
         """
 
@@ -654,7 +663,9 @@ class BaseNode(
             case (int(i), int(j), int(k)):
                 return lst[i:j:k]
             case _:
-                raise ValueError(f"Invalid attach index: `{self.attach_index}`")
+                raise ValueError(
+                    f"Invalid attach index: `{self.attach_index}`"
+                )
 
     def _get_nth_size(self, idx: int) -> int | list[int]:
         match self.in_sizes:

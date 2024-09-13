@@ -49,9 +49,9 @@ class GPUStatsMonitor(pl.Callback):
         fan_speed: bool = False,
         temperature: bool = False,
     ):
-        """Automatically monitors and logs GPU stats during training stage.
-        C{GPUStatsMonitor} is a callback and in order to use it you need to assign a
-        logger in the C{Trainer}.
+        """Automatically monitors and logs GPU stats during training
+        stage. C{GPUStatsMonitor} is a callback and in order to use it
+        you need to assign a logger in the C{Trainer}.
 
         GPU stats are mainly based on C{nvidia-smi --query-gpu} command. The description of the queries is as follows:
 
@@ -158,7 +158,9 @@ class GPUStatsMonitor(pl.Callback):
 
         gpu_stat_keys = self._get_gpu_stat_keys()
         gpu_stats = self._get_gpu_stats([k for k, _ in gpu_stat_keys])
-        logs = self._parse_gpu_stats(self._device_ids, gpu_stats, gpu_stat_keys)
+        logs = self._parse_gpu_stats(
+            self._device_ids, gpu_stats, gpu_stat_keys
+        )
 
         if self._log_stats.inter_step_time and self._snap_inter_step_time:
             # First log at beginning of second step
@@ -184,9 +186,13 @@ class GPUStatsMonitor(pl.Callback):
         if not trainer._logger_connector.should_update_logs:
             return
 
-        gpu_stat_keys = self._get_gpu_stat_keys() + self._get_gpu_device_stat_keys()
+        gpu_stat_keys = (
+            self._get_gpu_stat_keys() + self._get_gpu_device_stat_keys()
+        )
         gpu_stats = self._get_gpu_stats([k for k, _ in gpu_stat_keys])
-        logs = self._parse_gpu_stats(self._device_ids, gpu_stats, gpu_stat_keys)
+        logs = self._parse_gpu_stats(
+            self._device_ids, gpu_stats, gpu_stat_keys
+        )
 
         if self._log_stats.intra_step_time and self._snap_intra_step_time:
             logs["batch_time/intra_step (ms)"] = (
@@ -204,7 +210,9 @@ class GPUStatsMonitor(pl.Callback):
         cuda_visible_devices: List[str] = os.getenv(
             "CUDA_VISIBLE_DEVICES", default=default
         ).split(",")
-        return [cuda_visible_devices[device_id].strip() for device_id in device_ids]
+        return [
+            cuda_visible_devices[device_id].strip() for device_id in device_ids
+        ]
 
     def _get_gpu_stats(self, queries: List[str]) -> List[List[float]]:
         if not queries:
@@ -242,7 +250,9 @@ class GPUStatsMonitor(pl.Callback):
 
     @staticmethod
     def _parse_gpu_stats(
-        device_ids: List[int], stats: List[List[float]], keys: List[Tuple[str, str]]
+        device_ids: List[int],
+        stats: List[List[float]],
+        keys: List[Tuple[str, str]],
     ) -> Dict[str, float]:
         """Parse the gpu stats into a loggable dict."""
         logs = {}
@@ -279,6 +289,8 @@ class GPUStatsMonitor(pl.Callback):
             stat_keys.append(("fan.speed", "%"))
 
         if self._log_stats.temperature:
-            stat_keys.extend([("temperature.gpu", "°C"), ("temperature.memory", "°C")])
+            stat_keys.extend(
+                [("temperature.gpu", "°C"), ("temperature.memory", "°C")]
+            )
 
         return stat_keys

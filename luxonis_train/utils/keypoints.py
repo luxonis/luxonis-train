@@ -6,7 +6,9 @@ from torch import Tensor
 logger = logging.getLogger(__name__)
 
 
-def process_keypoints_predictions(keypoints: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+def process_keypoints_predictions(
+    keypoints: Tensor,
+) -> tuple[Tensor, Tensor, Tensor]:
     """Extracts x, y and visibility from keypoints predictions.
 
     @type keypoints: Tensor
@@ -23,13 +25,15 @@ def process_keypoints_predictions(keypoints: Tensor) -> tuple[Tensor, Tensor, Te
 
 
 def get_sigmas(
-    sigmas: list[float] | None, n_keypoints: int, caller_name: str | None = None
+    sigmas: list[float] | None,
+    n_keypoints: int,
+    caller_name: str | None = None,
 ) -> Tensor:
     """Validate or create sigma values for each keypoint.
 
     @type sigmas: list[float] | None
-    @param sigmas: List of sigmas for each keypoint. If C{None}, then default sigmas are
-        used.
+    @param sigmas: List of sigmas for each keypoint. If C{None}, then
+        default sigmas are used.
     @type n_keypoints: int
     @param n_keypoints: Number of keypoints.
     @type caller_name: str | None

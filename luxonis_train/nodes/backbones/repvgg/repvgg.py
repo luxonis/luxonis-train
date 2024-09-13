@@ -124,7 +124,8 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
         """Reparametrizes instances of L{RepVGGBlock} in the network.
 
         @type mode: bool
-        @param mode: Whether to set the export mode. Defaults to C{True}.
+        @param mode: Whether to set the export mode. Defaults to
+            C{True}.
         """
         super().set_export_mode(mode)
         if self.export:

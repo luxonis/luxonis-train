@@ -23,7 +23,9 @@ from .base_loss import BaseLoss
 logger = logging.getLogger(__name__)
 
 
-class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]):
+class AdaptiveDetectionLoss(
+    BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]
+):
     node: EfficientBBoxHead
     supported_labels = [LabelType.BOUNDINGBOX]
 
@@ -131,8 +133,12 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         assigned_scores: Tensor,
         mask_positive: Tensor,
     ):
-        one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[..., :-1]
-        loss_cls = self.varifocal_loss(pred_scores, assigned_scores, one_hot_label)
+        one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[
+            ..., :-1
+        ]
+        loss_cls = self.varifocal_loss(
+            pred_scores, assigned_scores, one_hot_label
+        )
 
         if assigned_scores.sum() > 1:
             loss_cls /= assigned_scores.sum()
@@ -147,7 +153,9 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
             bbox_format="xyxy",
         )[0]
 
-        loss = self.class_loss_weight * loss_cls + self.iou_loss_weight * loss_iou
+        loss = (
+            self.class_loss_weight * loss_cls + self.iou_loss_weight * loss_iou
+        )
 
         sub_losses = {"class": loss_cls.detach(), "iou": loss_iou.detach()}
 
@@ -176,7 +184,9 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
                 self.grid_cell_offset,
                 multiply_with_stride=True,
             )
-            self.anchor_points_strided = self.anchor_points / self.stride_tensor
+            self.anchor_points_strided = (
+                self.anchor_points / self.stride_tensor
+            )
 
     def _run_assigner(
         self,
@@ -206,11 +216,14 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
                 mask_gt,
             )
 
-    def _preprocess_bbox_target(self, target: Tensor, batch_size: int) -> Tensor:
-        """Preprocess target in shape [batch_size, N, 5] where N is maximum number of
-        instances in one image."""
+    def _preprocess_bbox_target(
+        self, target: Tensor, batch_size: int
+    ) -> Tensor:
+        """Preprocess target in shape [batch_size, N, 5] where N is the
+        maximum number of instances in one image."""
         sample_ids, counts = cast(
-            tuple[Tensor, Tensor], torch.unique(target[:, 0].int(), return_counts=True)
+            tuple[Tensor, Tensor],
+            torch.unique(target[:, 0].int(), return_counts=True),
         )
         c_max = int(counts.max()) if counts.numel() > 0 else 0
         out_target = torch.zeros(batch_size, c_max, 5, device=target.device)
@@ -254,7 +267,8 @@ class VarifocalLoss(nn.Module):
         self, pred_score: Tensor, target_score: Tensor, label: Tensor
     ) -> Tensor:
         weight = (
-            self.alpha * pred_score.pow(self.gamma) * (1 - label) + target_score * label
+            self.alpha * pred_score.pow(self.gamma) * (1 - label)
+            + target_score * label
         )
         ce_loss = F.binary_cross_entropy(
             pred_score.float(), target_score.float(), reduction="none"

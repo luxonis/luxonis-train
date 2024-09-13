@@ -73,7 +73,9 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             **kwargs,
         )
 
-        self.b_cross_entropy = BCEWithLogitsLoss(pos_weight=torch.tensor([viz_pw]))
+        self.b_cross_entropy = BCEWithLogitsLoss(
+            pos_weight=torch.tensor([viz_pw])
+        )
         self.sigmas = get_sigmas(
             sigmas=sigmas,
             n_keypoints=self.n_keypoints,
@@ -87,7 +89,9 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
 
     def prepare(
         self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
+    ) -> tuple[
+        Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor
+    ]:
         feats = self.get_input_tensors(inputs, "features")
         pred_scores = self.get_input_tensors(inputs, "class_scores")[0]
         pred_distri = self.get_input_tensors(inputs, "distributions")[0]
@@ -148,9 +152,11 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         assigned_bboxes = assigned_bboxes / self.stride_tensor
 
         area = (
-            assigned_bboxes[mask_positive][:, 0] - assigned_bboxes[mask_positive][:, 2]
+            assigned_bboxes[mask_positive][:, 0]
+            - assigned_bboxes[mask_positive][:, 2]
         ) * (
-            assigned_bboxes[mask_positive][:, 1] - assigned_bboxes[mask_positive][:, 3]
+            assigned_bboxes[mask_positive][:, 1]
+            - assigned_bboxes[mask_positive][:, 3]
         )
 
         return (
@@ -189,8 +195,12 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         ).mean()
         visibility_loss = self.b_cross_entropy.forward(pred_kpts[..., 2], mask)
 
-        one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[..., :-1]
-        loss_cls = self.varifocal_loss(pred_scores, assigned_scores, one_hot_label)
+        one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[
+            ..., :-1
+        ]
+        loss_cls = self.varifocal_loss(
+            pred_scores, assigned_scores, one_hot_label
+        )
 
         if assigned_scores.sum() > 1:
             loss_cls /= assigned_scores.sum()
@@ -224,27 +234,29 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
     def _preprocess_kpts_target(
         self, kpts_target: Tensor, batch_size: int, scale_tensor: Tensor
     ) -> Tensor:
-        """Preprocesses the target keypoints in shape [batch_size, N, n_keypoints, 3]
-        where N is the maximum number of keypoints in one image."""
+        """Preprocesses the target keypoints in shape [batch_size, N,
+        n_keypoints, 3] where N is the maximum number of keypoints in
+        one image."""
 
         _, counts = torch.unique(kpts_target[:, 0].int(), return_counts=True)
         max_kpts = int(counts.max()) if counts.numel() > 0 else 0
         batched_keypoints = torch.zeros(
-            (batch_size, max_kpts, self.n_keypoints, 3), device=kpts_target.device
+            (batch_size, max_kpts, self.n_keypoints, 3),
+            device=kpts_target.device,
         )
         for i in range(batch_size):
             keypoints_i = kpts_target[kpts_target[:, 0] == i]
             scaled_keypoints_i = keypoints_i[:, 2:].clone()
-            batched_keypoints[i, : keypoints_i.shape[0]] = scaled_keypoints_i.view(
-                -1, self.n_keypoints, 3
+            batched_keypoints[i, : keypoints_i.shape[0]] = (
+                scaled_keypoints_i.view(-1, self.n_keypoints, 3)
             )
             batched_keypoints[i, :, :, :2] *= scale_tensor[:2]
 
         return batched_keypoints
 
     def dist2kpts_noscale(self, anchor_points: Tensor, kpts: Tensor) -> Tensor:
-        """Adjusts and scales predicted keypoints relative to anchor points without
-        considering image stride."""
+        """Adjusts and scales predicted keypoints relative to anchor
+        points without considering image stride."""
         adj_kpts = kpts.clone()
         scale = 2.0
         x_adj = anchor_points[:, [0]] - 0.5

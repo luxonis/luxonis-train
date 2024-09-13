@@ -66,9 +66,10 @@ class TaskAlignedAssigner(nn.Module):
         @type mask_gt: Tensor
         @param mask_gt: Mask for valid GTs [bs, n_max_boxes, 1]
         @rtype: tuple[Tensor, Tensor, Tensor, Tensor, Tensor]
-        @return: Assigned labels of shape [bs, n_anchors], assigned bboxes of shape [bs,
-            n_anchors, 4], assigned scores of shape [bs, n_anchors, n_classes] and
-            output mask of shape [bs, n_anchors]
+        @return: Assigned labels of shape [bs, n_anchors], assigned
+            bboxes of shape [bs, n_anchors, 4], assigned scores of shape
+            [bs, n_anchors, n_classes] and output mask of shape [bs,
+            n_anchors]
         """
         self.bs = pred_scores.size(0)
         self.n_max_boxes = gt_bboxes.size(1)
@@ -76,7 +77,9 @@ class TaskAlignedAssigner(nn.Module):
         if self.n_max_boxes == 0:
             device = gt_bboxes.device
             return (
-                torch.full_like(pred_scores[..., 0], self.n_classes).to(device),
+                torch.full_like(pred_scores[..., 0], self.n_classes).to(
+                    device
+                ),
                 torch.zeros_like(pred_bboxes).to(device),
                 torch.zeros_like(pred_scores).to(device),
                 torch.zeros_like(pred_scores[..., 0]).to(device),
@@ -105,7 +108,11 @@ class TaskAlignedAssigner(nn.Module):
         )
 
         # Generate final targets based on masks
-        assigned_labels, assigned_bboxes, assigned_scores = self._get_final_assignments(
+        (
+            assigned_labels,
+            assigned_bboxes,
+            assigned_scores,
+        ) = self._get_final_assignments(
             gt_labels, gt_bboxes, assigned_gt_idx, mask_pos_sum
         )
 
@@ -137,7 +144,8 @@ class TaskAlignedAssigner(nn.Module):
         gt_labels: Tensor,
         gt_bboxes: Tensor,
     ):
-        """Calculates anchor alignment metric and IoU between GTs and predicted bboxes.
+        """Calculates anchor alignment metric and IoU between GTs and
+        predicted bboxes.
 
         @type pred_scores: Tensor
         @param pred_scores: Predicted scores [bs, n_anchors, 1]
@@ -151,7 +159,9 @@ class TaskAlignedAssigner(nn.Module):
         pred_scores = pred_scores.permute(0, 2, 1)
         gt_labels = gt_labels.to(torch.long)
         ind = torch.zeros([2, self.bs, self.n_max_boxes], dtype=torch.long)
-        ind[0] = torch.arange(end=self.bs).view(-1, 1).repeat(1, self.n_max_boxes)
+        ind[0] = (
+            torch.arange(end=self.bs).view(-1, 1).repeat(1, self.n_max_boxes)
+        )
         ind[1] = gt_labels.squeeze(-1)
         bbox_scores = pred_scores[ind[0], ind[1]]
 
@@ -169,23 +179,29 @@ class TaskAlignedAssigner(nn.Module):
         """Selects k anchors based on provided metrics tensor.
 
         @type metrics: Tensor
-        @param metrics: Metrics tensor of shape [bs, n_max_boxes, n_anchors]
+        @param metrics: Metrics tensor of shape [bs, n_max_boxes,
+            n_anchors]
         @type largest: bool
-        @param largest: Flag if should keep largest topK. Defaults to True.
+        @param largest: Flag if should keep largest topK. Defaults to
+            True.
         @type topk_mask: Tensor
-        @param topk_mask: Mask for valid GTs of shape [bs, n_max_boxes, topk]
+        @param topk_mask: Mask for valid GTs of shape [bs, n_max_boxes,
+            topk]
         @rtype: Tensor
-        @return: Mask of selected anchors of shape [bs, n_max_boxes, n_anchors]
+        @return: Mask of selected anchors of shape [bs, n_max_boxes,
+            n_anchors]
         """
         n_anchors = metrics.shape[-1]
         topk_metrics, topk_idxs = torch.topk(
             metrics, self.topk, dim=-1, largest=largest
         )
         if topk_mask is None:
-            topk_mask = (topk_metrics.max(dim=-1, keepdim=True)[0] > self.eps).tile(
-                [1, 1, self.topk]
-            )
-        topk_idxs = torch.where(topk_mask, topk_idxs, torch.zeros_like(topk_idxs))
+            topk_mask = (
+                topk_metrics.max(dim=-1, keepdim=True)[0] > self.eps
+            ).tile([1, 1, self.topk])
+        topk_idxs = torch.where(
+            topk_mask, topk_idxs, torch.zeros_like(topk_idxs)
+        )
         is_in_topk = F.one_hot(topk_idxs, n_anchors).sum(dim=-2)
         is_in_topk = torch.where(
             is_in_topk > 1, torch.zeros_like(is_in_topk), is_in_topk
@@ -210,8 +226,9 @@ class TaskAlignedAssigner(nn.Module):
         @type mask_pos_sum: Tensor
         @param mask_pos_sum: Mask of matched GTs [bs, n_anchors]
         @rtype: tuple[Tensor, Tensor, Tensor]
-        @return: Assigned labels of shape [bs, n_anchors], assigned bboxes of shape [bs,
-            n_anchors, 4], assigned scores of shape [bs, n_anchors, n_classes].
+        @return: Assigned labels of shape [bs, n_anchors], assigned
+            bboxes of shape [bs, n_anchors, 4], assigned scores of shape
+            [bs, n_anchors, n_classes].
         """
         # assigned target labels
         batch_ind = torch.arange(
@@ -228,7 +245,9 @@ class TaskAlignedAssigner(nn.Module):
         assigned_scores = F.one_hot(assigned_labels, self.n_classes)
         mask_pos_scores = mask_pos_sum[:, :, None].repeat(1, 1, self.n_classes)
         assigned_scores = torch.where(
-            mask_pos_scores > 0, assigned_scores, torch.full_like(assigned_scores, 0)
+            mask_pos_scores > 0,
+            assigned_scores,
+            torch.full_like(assigned_scores, 0),
         )
 
         assigned_labels = torch.where(

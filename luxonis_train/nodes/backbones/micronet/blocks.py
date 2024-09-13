@@ -58,7 +58,9 @@ class MicroBlock(nn.Module):
         use_dy1, use_dy2, use_dy3 = use_dynamic_shift
         group1, group2 = groups_2
         reduction = 8 * reduction_factor
-        intermediate_channels = in_channels * expansion_ratios[0] * expansion_ratios[1]
+        intermediate_channels = (
+            in_channels * expansion_ratios[0] * expansion_ratios[1]
+        )
 
         if groups_1[0] == 0:
             self.layers = self._create_lite_block(
@@ -229,7 +231,9 @@ class MicroBlock(nn.Module):
             if use_dy1 > 0
             else nn.ReLU6(True),
             ChannelShuffle(groups_1[1]),
-            DepthSpatialSepConv(intermediate_channels, (1, 1), kernel_size, stride),
+            DepthSpatialSepConv(
+                intermediate_channels, (1, 1), kernel_size, stride
+            ),
             DYShiftMax(
                 intermediate_channels,
                 intermediate_channels,
@@ -268,7 +272,9 @@ class MicroBlock(nn.Module):
             if use_dy3 > 0
             else nn.Sequential(),
             ChannelShuffle(group2),
-            ChannelShuffle(out_channels // 2) if use_dy3 != 0 else nn.Sequential(),
+            ChannelShuffle(out_channels // 2)
+            if use_dy3 != 0
+            else nn.Sequential(),
         )
 
     def forward(self, inputs: Tensor) -> Tensor:
@@ -282,11 +288,12 @@ class ChannelShuffle(nn.Module):
     def __init__(self, groups: int):
         """Shuffle the channels of the input tensor.
 
-        This operation is used to mix information between groups after grouped
-        convolutions.
+        This operation is used to mix information between groups after
+        grouped convolutions.
 
         @type groups: int
-        @param groups: Number of groups to divide the channels into before shuffling.
+        @param groups: Number of groups to divide the channels into
+            before shuffling.
         """
 
         super().__init__()
@@ -315,25 +322,32 @@ class DYShiftMax(nn.Module):
     ):
         """Dynamic Shift-Max activation function.
 
-        This module implements the Dynamic Shift-Max operation, which adaptively fuses
-        and selects channel information based on the input.
+        This module implements the Dynamic Shift-Max operation, which
+        adaptively fuses and selects channel information based on the
+        input.
 
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type out_channels: int
         @param out_channels: Number of output channels.
         @type init_a: tuple[float, float]
-        @param init_a: Initial values for the 'a' parameters. Defaults to (0.0, 0.0).
+        @param init_a: Initial values for the 'a' parameters. Defaults
+            to (0.0, 0.0).
         @type init_b: tuple[float, float]
-        @param init_b: Initial values for the 'b' parameters. Defaults to (0.0, 0.0).
+        @param init_b: Initial values for the 'b' parameters. Defaults
+            to (0.0, 0.0).
         @type use_relu: bool
-        @param use_relu: Whether to use ReLU activation. Defaults to True.
+        @param use_relu: Whether to use ReLU activation. Defaults to
+            True.
         @type groups: int
-        @param groups: Number of groups for channel shuffling. Defaults to 6.
+        @param groups: Number of groups for channel shuffling. Defaults
+            to 6.
         @type reduction: int
-        @param reduction: Reduction factor for the squeeze operation. Defaults to 4.
+        @param reduction: Reduction factor for the squeeze operation.
+            Defaults to 4.
         @type expansion: bool
-        @param expansion: Whether to use expansion in grouping. Defaults to False.
+        @param expansion: Whether to use expansion in grouping. Defaults
+            to False.
         """
         super().__init__()
         self.exp: Literal[2, 4] = 4 if use_relu else 2
@@ -360,7 +374,9 @@ class DYShiftMax(nn.Module):
         index = index.view(1, groups, channels_per_group, 1, 1)
         index_groups = torch.split(index, [1, groups - 1], dim=1)
         index_groups = torch.cat([index_groups[1], index_groups[0]], dim=1)
-        index_splits = torch.split(index_groups, [1, channels_per_group - 1], dim=2)
+        index_splits = torch.split(
+            index_groups, [1, channels_per_group - 1], dim=2
+        )
         index_splits = torch.cat([index_splits[1], index_splits[0]], dim=2)
         self.index = index_splits.view(in_channels).long()
 
@@ -411,7 +427,11 @@ class DYShiftMax(nn.Module):
 
 class SpatialSepConvSF(nn.Module):
     def __init__(
-        self, in_channels: int, outs: tuple[int, int], kernel_size: int, stride: int
+        self,
+        in_channels: int,
+        outs: tuple[int, int],
+        kernel_size: int,
+        stride: int,
     ):
         super().__init__()
         out_channels1, out_channels2 = outs
@@ -443,7 +463,9 @@ class SpatialSepConvSF(nn.Module):
 
 
 class Stem(nn.Module):
-    def __init__(self, in_channels: int, stride: int, outs: tuple[int, int] = (4, 4)):
+    def __init__(
+        self, in_channels: int, stride: int, outs: tuple[int, int] = (4, 4)
+    ):
         super().__init__()
         self.stem = nn.Sequential(
             SpatialSepConvSF(in_channels, outs, 3, stride), nn.ReLU6(True)
@@ -455,7 +477,11 @@ class Stem(nn.Module):
 
 class DepthSpatialSepConv(nn.Module):
     def __init__(
-        self, in_channels: int, expand: tuple[int, int], kernel_size: int, stride: int
+        self,
+        in_channels: int,
+        expand: tuple[int, int],
+        kernel_size: int,
+        stride: int,
     ):
         super().__init__()
         exp1, exp2 = expand

@@ -15,10 +15,14 @@ from luxonis_train.utils.boundingbox import (
 def generate_random_bboxes(
     n_bboxes: int, max_width: int, max_height: int, format: str = "xyxy"
 ):
-    x1y1 = torch.rand(n_bboxes, 2) * torch.tensor([max_width - 1, max_height - 1])
+    x1y1 = torch.rand(n_bboxes, 2) * torch.tensor(
+        [max_width - 1, max_height - 1]
+    )
 
     wh = (
-        torch.rand(n_bboxes, 2) * (torch.tensor([max_width, max_height]) - 1 - x1y1) + 1
+        torch.rand(n_bboxes, 2)
+        * (torch.tensor([max_width, max_height]) - 1 - x1y1)
+        + 1
     )
 
     if format == "xyxy":
@@ -30,7 +34,9 @@ def generate_random_bboxes(
         cxcy = x1y1 + wh / 2
         bboxes = torch.cat((cxcy, wh), dim=1)
     else:
-        raise ValueError("Unsupported format. Choose from 'xyxy', 'xywh', 'cxcywh'.")
+        raise ValueError(
+            "Unsupported format. Choose from 'xyxy', 'xywh', 'cxcywh'."
+        )
 
     return bboxes
 
@@ -87,7 +93,9 @@ def test_compute_iou_loss():
     pred_bboxes = generate_random_bboxes(8, 640, 640, "xyxy")
     target_bboxes = generate_random_bboxes(8, 640, 640, "xyxy")
 
-    loss_iou, iou = compute_iou_loss(pred_bboxes, target_bboxes, iou_type="giou")
+    loss_iou, iou = compute_iou_loss(
+        pred_bboxes, target_bboxes, iou_type="giou"
+    )
 
     assert isinstance(loss_iou, torch.Tensor)
     assert isinstance(iou, torch.Tensor)
@@ -113,9 +121,12 @@ def test_anchors_for_fpn_features():
     features = [torch.rand(1, 256, 14, 14), torch.rand(1, 256, 28, 28)]
     strides = torch.tensor([8, 16])
 
-    anchors, anchor_points, n_anchors_list, stride_tensor = anchors_for_fpn_features(
-        features, strides
-    )
+    (
+        anchors,
+        anchor_points,
+        n_anchors_list,
+        stride_tensor,
+    ) = anchors_for_fpn_features(features, strides)
 
     assert isinstance(anchors, torch.Tensor)
     assert isinstance(anchor_points, torch.Tensor)

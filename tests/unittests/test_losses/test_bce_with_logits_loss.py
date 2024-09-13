@@ -16,7 +16,9 @@ def test_forward_pass():
             predictions = torch.full([bs, n_cl], 1.5)  # logit
             loss_fn = BCEWithLogitsLoss()
 
-            loss = loss_fn.forward(predictions, targets)  # -log(sigmoid(1.5)) = 0.2014
+            loss = loss_fn.forward(
+                predictions, targets
+            )  # -log(sigmoid(1.5)) = 0.2014
 
             assert isinstance(loss, torch.Tensor)
             assert loss.shape == torch.Size([])

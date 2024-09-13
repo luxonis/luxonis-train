@@ -37,28 +37,35 @@ class ObjectKeypointSimilarity(
         use_cocoeval_oks: bool = True,
         **kwargs: Any,
     ) -> None:
-        """Object Keypoint Similarity metric for evaluating keypoint predictions.
+        """Object Keypoint Similarity metric for evaluating keypoint
+        predictions.
 
         @type sigmas: list[float] | None
-        @param sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then
-            use COCO if possible otherwise defaults. Defaults to C{None}.
+        @param sigmas: Sigma for each keypoint to weigh its importance,
+            if C{None}, then use COCO if possible otherwise defaults.
+            Defaults to C{None}.
         @type area_factor: float | None
-        @param area_factor: Factor by which we multiply bbox area. If None then use
-            default one. Defaults to C{None}.
+        @param area_factor: Factor by which we multiply bbox area. If
+            None then use default one. Defaults to C{None}.
         @type use_cocoeval_oks: bool
-        @param use_cocoeval_oks: Whether to use same OKS formula as in COCOeval or use
-            the one from definition. Defaults to C{True}.
+        @param use_cocoeval_oks: Whether to use same OKS formula as in
+            COCOeval or use the one from definition. Defaults to
+            C{True}.
         """
         super().__init__(**kwargs)
 
-        self.sigmas = get_sigmas(sigmas, self.n_keypoints, caller_name=self.name)
+        self.sigmas = get_sigmas(
+            sigmas, self.n_keypoints, caller_name=self.name
+        )
         self.area_factor = get_with_default(
             area_factor, "bbox area scaling", self.name, default=0.53
         )
         self.use_cocoeval_oks = use_cocoeval_oks
 
         self.add_state("pred_keypoints", default=[], dist_reduce_fx=None)
-        self.add_state("groundtruth_keypoints", default=[], dist_reduce_fx=None)
+        self.add_state(
+            "groundtruth_keypoints", default=[], dist_reduce_fx=None
+        )
         self.add_state("groundtruth_scales", default=[], dist_reduce_fx=None)
 
     def prepare(
@@ -92,8 +99,12 @@ class ObjectKeypointSimilarity(
             curr_kpts[:, 1::3] *= image_size[0]
             curr_bboxs_widths = curr_bboxs[:, 2] - curr_bboxs[:, 0]
             curr_bboxs_heights = curr_bboxs[:, 3] - curr_bboxs[:, 1]
-            curr_scales = curr_bboxs_widths * curr_bboxs_heights * self.area_factor
-            label_list_oks.append({"keypoints": curr_kpts, "scales": curr_scales})
+            curr_scales = (
+                curr_bboxs_widths * curr_bboxs_heights * self.area_factor
+            )
+            label_list_oks.append(
+                {"keypoints": curr_kpts, "scales": curr_scales}
+            )
 
         return output_list_oks, label_list_oks
 
@@ -139,10 +150,14 @@ class ObjectKeypointSimilarity(
         image_mean_oks = torch.zeros(len(self.groundtruth_keypoints))
         for i, (pred_kpts, gt_kpts, gt_scales) in enumerate(
             zip(
-                self.pred_keypoints, self.groundtruth_keypoints, self.groundtruth_scales
+                self.pred_keypoints,
+                self.groundtruth_keypoints,
+                self.groundtruth_scales,
             )
         ):
-            gt_kpts = torch.reshape(gt_kpts, (-1, self.n_keypoints, 3))  # [N, K, 3]
+            gt_kpts = torch.reshape(
+                gt_kpts, (-1, self.n_keypoints, 3)
+            )  # [N, K, 3]
 
             image_ious = compute_oks(
                 pred_kpts,
@@ -154,7 +169,9 @@ class ObjectKeypointSimilarity(
             gt_indices, pred_indices = linear_sum_assignment(
                 image_ious.cpu().numpy(), maximize=True
             )
-            matched_ious = [image_ious[n, m] for n, m in zip(gt_indices, pred_indices)]
+            matched_ious = [
+                image_ious[n, m] for n, m in zip(gt_indices, pred_indices)
+            ]
             image_mean_oks[i] = torch.tensor(matched_ious).mean()
 
         final_oks = image_mean_oks.nanmean()
@@ -163,7 +180,8 @@ class ObjectKeypointSimilarity(
 
     @staticmethod
     def _fix_empty_tensors(input_tensor: Tensor) -> Tensor:
-        """Empty tensors can cause problems in DDP mode, this methods corrects them."""
+        """Empty tensors can cause problems in DDP mode, this methods
+        corrects them."""
         if input_tensor.numel() == 0 and input_tensor.ndim == 1:
             return input_tensor.unsqueeze(0)
         return input_tensor
@@ -176,7 +194,8 @@ def compute_oks(
     sigmas: Tensor,
     use_cocoeval_oks: bool,
 ) -> Tensor:
-    """Compute Object Keypoint Similarity between every GT and prediction.
+    """Compute Object Keypoint Similarity between every GT and
+    prediction.
 
     @type pred: Tensor[N, K, 3]
     @param pred: Predicted keypoints.
@@ -185,11 +204,11 @@ def compute_oks(
     @type scales: Tensor[M]
     @param scales: Scales of the bounding boxes.
     @type sigmas: Tensor
-    @param sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then use
-        same weights for all.
+    @param sigmas: Sigma for each keypoint to weigh its importance, if
+        C{None}, then use same weights for all.
     @type use_cocoeval_oks: bool
-    @param use_cocoeval_oks: Whether to use same OKS formula as in COCOeval or use the
-        one from definition.
+    @param use_cocoeval_oks: Whether to use same OKS formula as in
+        COCOeval or use the one from definition.
     @rtype: Tensor
     @return: Object Keypoint Similarity every pred and gt [M, N]
     """

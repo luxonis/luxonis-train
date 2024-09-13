@@ -15,8 +15,9 @@ class MetadataLogger(pl.Callback):
     def __init__(self, hyperparams: list[str]):
         """Callback that logs training metadata.
 
-        Metadata include all defined hyperparameters together with git hashes of
-        luxonis-ml and luxonis-train packages. Also stores this information locally.
+        Metadata include all defined hyperparameters together with git
+        hashes of luxonis-ml and luxonis-train packages. Also stores
+        this information locally.
 
         @type hyperparams: list[str]
         @param hyperparams: List of hyperparameters to log.
@@ -25,7 +26,9 @@ class MetadataLogger(pl.Callback):
         self.hyperparams = hyperparams
 
     def on_fit_start(
-        self, _: pl.Trainer, pl_module: "luxonis_train.models.LuxonisLightningModule"
+        self,
+        _: pl.Trainer,
+        pl_module: "luxonis_train.models.LuxonisLightningModule",
     ) -> None:
         cfg: Config = pl_module.cfg
 
@@ -35,7 +38,9 @@ class MetadataLogger(pl.Callback):
         if luxonis_ml_hash:  # pragma: no cover
             hparams["luxonis_ml"] = luxonis_ml_hash
 
-        luxonis_train_hash = self._get_editable_package_git_hash("luxonis_train")
+        luxonis_train_hash = self._get_editable_package_git_hash(
+            "luxonis_train"
+        )
         if luxonis_train_hash:  # pragma: no cover
             hparams["luxonis_train"] = luxonis_train_hash
 
@@ -52,8 +57,8 @@ class MetadataLogger(pl.Callback):
         @type package_name: str
         @param package_name: Name of the package.
         @rtype: str or None
-        @return: Git hash of the package or None if the package is not installed in
-            editable mode.
+        @return: Git hash of the package or None if the package is not
+            installed in editable mode.
         """
         try:
             distribution = pkg_resources.get_distribution(package_name)

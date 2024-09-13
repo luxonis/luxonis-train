@@ -10,7 +10,8 @@ from luxonis_train.nodes.activations import HSigmoid
 
 class EfficientDecoupledBlock(nn.Module):
     def __init__(self, n_classes: int, in_channels: int):
-        """Efficient Decoupled block used for class and regression predictions.
+        """Efficient Decoupled block used for class and regression
+        predictions.
 
         @type n_classes: int
         @param n_classes: Number of classes.
@@ -36,7 +37,9 @@ class EfficientDecoupledBlock(nn.Module):
                 padding=1,
                 activation=nn.SiLU(),
             ),
-            nn.Conv2d(in_channels=in_channels, out_channels=n_classes, kernel_size=1),
+            nn.Conv2d(
+                in_channels=in_channels, out_channels=n_classes, kernel_size=1
+            ),
         )
         self.regression_branch = nn.Sequential(
             ConvModule(
@@ -149,7 +152,10 @@ class UpBlock(nn.Sequential):
 
         super().__init__(
             nn.ConvTranspose2d(
-                in_channels, out_channels, kernel_size=kernel_size, stride=stride
+                in_channels,
+                out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
             ),
             ConvModule(out_channels, out_channels, kernel_size=3, padding=1),
         )
@@ -296,7 +302,9 @@ class RepVGGBlock(nn.Module):
         else:
             id_out = self.rbr_identity(x)
 
-        return self.nonlinearity(self.se(self.rbr_dense(x) + self.rbr_1x1(x) + id_out))
+        return self.nonlinearity(
+            self.se(self.rbr_dense(x) + self.rbr_1x1(x) + id_out)
+        )
 
     def reparametrize(self) -> None:
         if hasattr(self, "rbr_reparam"):
@@ -323,7 +331,8 @@ class RepVGGBlock(nn.Module):
             del self.id_tensor
 
     def _get_equivalent_kernel_bias(self) -> tuple[Tensor, Tensor]:
-        """Derives the equivalent kernel and bias in a DIFFERENTIABLE way."""
+        """Derives the equivalent kernel and bias in a DIFFERENTIABLE
+        way."""
         kernel3x3, bias3x3 = self._fuse_bn_tensor(self.rbr_dense)
         kernel1x1, bias1x1 = self._fuse_bn_tensor(self.rbr_1x1)
         kernelid, biasid = self._fuse_bn_tensor(self.rbr_identity)
@@ -340,7 +349,9 @@ class RepVGGBlock(nn.Module):
         else:
             return torch.nn.functional.pad(kernel1x1, [1, 1, 1, 1])
 
-    def _fuse_bn_tensor(self, branch: nn.Module | None) -> tuple[Tensor, Tensor]:
+    def _fuse_bn_tensor(
+        self, branch: nn.Module | None
+    ) -> tuple[Tensor, Tensor]:
         if branch is None:
             return torch.tensor(0), torch.tensor(0)
         if isinstance(branch, nn.Sequential):
@@ -380,9 +391,9 @@ class BlockRepeater(nn.Module):
         out_channels: int,
         n_blocks: int = 1,
     ):
-        """Module which repeats the block n times. First block accepts in_channels and
-        outputs out_channels while subsequent blocks accept out_channels and output
-        out_channels.
+        """Module which repeats the block n times. First block accepts
+        in_channels and outputs out_channels while subsequent blocks
+        accept out_channels and output out_channels.
 
         @type block: L{nn.Module}
         @param block: Block to repeat.
@@ -410,8 +421,11 @@ class BlockRepeater(nn.Module):
 
 
 class SpatialPyramidPoolingBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, kernel_size: int = 5):
-        """Spatial Pyramid Pooling block with ReLU activation on three different scales.
+    def __init__(
+        self, in_channels: int, out_channels: int, kernel_size: int = 5
+    ):
+        """Spatial Pyramid Pooling block with ReLU activation on three
+        different scales.
 
         @type in_channels: int
         @param in_channels: Number of input channels.
@@ -473,7 +487,9 @@ class AttentionRefinmentBlock(nn.Module):
 
 
 class FeatureFusionBlock(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, reduction: int = 1):
+    def __init__(
+        self, in_channels: int, out_channels: int, reduction: int = 1
+    ):
         """Feature Fusion block adapted from: U{https://github.com/taveraantonio/BiseNetv1}.
 
         @type in_channels: int
@@ -604,8 +620,8 @@ class RepUpBlock(nn.Module):
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input which is used in
-            concat.
+        @param in_channels_next: Number of input channels of next input
+            which is used in concat.
         @type out_channels: int
         @param out_channels: Number of output channels.
         @type n_repeats: int
@@ -656,10 +672,11 @@ class RepDownBlock(nn.Module):
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type downsample_out_channels: int
-        @param downsample_out_channels: Number of output channels after downsample.
+        @param downsample_out_channels: Number of output channels after
+            downsample.
         @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input which is used in
-            concat.
+        @param in_channels_next: Number of input channels of next input
+            which is used in concat.
         @type out_channels: int
         @param out_channels: Number of output channels.
         @type n_repeats: int

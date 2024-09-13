@@ -49,9 +49,10 @@ class ATSSAssigner(nn.Module):
         @type pred_bboxes: Tensor
         @param pred_bboxes: Predicted bboxes of shape [bs, n_anchors, 4]
         @rtype: tuple[Tensor, Tensor, Tensor, Tensor, Tensor]
-        @return: Assigned labels of shape [bs, n_anchors], assigned bboxes of shape [bs,
-            n_anchors, 4], assigned scores of shape [bs, n_anchors, n_classes] and
-            output positive mask of shape [bs, n_anchors].
+        @return: Assigned labels of shape [bs, n_anchors], assigned
+            bboxes of shape [bs, n_anchors, 4], assigned scores of shape
+            [bs, n_anchors, n_classes] and output positive mask of shape
+            [bs, n_anchors].
         """
 
         self.n_anchors = anchor_bboxes.size(0)
@@ -61,9 +62,13 @@ class ATSSAssigner(nn.Module):
         if self.n_max_boxes == 0:
             device = gt_bboxes.device
             return (
-                torch.full([self.bs, self.n_anchors], self.n_classes).to(device),
+                torch.full([self.bs, self.n_anchors], self.n_classes).to(
+                    device
+                ),
                 torch.zeros([self.bs, self.n_anchors, 4]).to(device),
-                torch.zeros([self.bs, self.n_anchors, self.n_classes]).to(device),
+                torch.zeros([self.bs, self.n_anchors, self.n_classes]).to(
+                    device
+                ),
                 torch.zeros([self.bs, self.n_anchors]).to(device),
                 torch.zeros([self.bs, self.n_anchors]).to(device),
             )
@@ -78,7 +83,10 @@ class ATSSAssigner(nn.Module):
         gt_centers = self._get_bbox_center(gt_bboxes_flat)
         anchor_centers = self._get_bbox_center(anchor_bboxes)
         distances = (
-            (gt_centers[:, None, :] - anchor_centers[None, :, :]).pow(2).sum(-1).sqrt()
+            (gt_centers[:, None, :] - anchor_centers[None, :, :])
+            .pow(2)
+            .sum(-1)
+            .sqrt()
         )
         distances = distances.reshape([self.bs, -1, self.n_anchors])
 
@@ -103,7 +111,11 @@ class ATSSAssigner(nn.Module):
         )
 
         # Generate final assignments based on masks
-        assigned_labels, assigned_bboxes, assigned_scores = self._get_final_assignments(
+        (
+            assigned_labels,
+            assigned_bboxes,
+            assigned_scores,
+        ) = self._get_final_assignments(
             gt_labels, gt_bboxes, assigned_gt_idx, mask_pos_sum
         )
 
@@ -140,7 +152,8 @@ class ATSSAssigner(nn.Module):
         @type mask_gt: Tensor
         @param mask_gt: Mask for valid GT per image.
         @rtype: tuple[Tensor, Tensor]
-        @return: Mask of selected anchors and indices of selected anchors.
+        @return: Mask of selected anchors and indices of selected
+            anchors.
         """
         mask_gt = mask_gt.repeat(1, 1, self.topk).bool()
         level_distances = torch.split(distances, n_level_bboxes, dim=-1)
@@ -157,9 +170,13 @@ class ATSSAssigner(nn.Module):
             )
             topk_idxs.append(per_level_topk_idxs + start_idx)
             per_level_topk_idxs = torch.where(
-                mask_gt, per_level_topk_idxs, torch.zeros_like(per_level_topk_idxs)
+                mask_gt,
+                per_level_topk_idxs,
+                torch.zeros_like(per_level_topk_idxs),
             )
-            is_in_topk = F.one_hot(per_level_topk_idxs, per_level_boxes).sum(dim=-2)
+            is_in_topk = F.one_hot(per_level_topk_idxs, per_level_boxes).sum(
+                dim=-2
+            )
             is_in_topk = torch.where(
                 is_in_topk > 1, torch.zeros_like(is_in_topk), is_in_topk
             )
@@ -174,14 +191,18 @@ class ATSSAssigner(nn.Module):
         topk_idxs: Tensor,
         overlaps: Tensor,
     ) -> Tensor:
-        """Computes threshold and returns mask for samples over threshold.
+        """Computes threshold and returns mask for samples over
+        threshold.
 
         @type is_in_topk: Tensor
-        @param is_in_topk: Mask of selected anchors [bx, n_max_boxes, n_anchors]
+        @param is_in_topk: Mask of selected anchors [bx, n_max_boxes,
+            n_anchors]
         @type topk_idxs: Tensor
-        @param topk_idxs: Indices of selected anchors [bx, n_max_boxes, topK * n_levels]
+        @param topk_idxs: Indices of selected anchors [bx, n_max_boxes,
+            topK * n_levels]
         @type overlaps: Tensor
-        @param overlaps: IoUs between GTs and anchors [bx, n_max_boxes, n_anchors]
+        @param overlaps: IoUs between GTs and anchors [bx, n_max_boxes,
+            n_anchors]
         @rtype: Tensor
         @return: Mask of positive samples [bx, n_max_boxes, n_anchors]
         """
@@ -196,14 +217,17 @@ class ATSSAssigner(nn.Module):
         assist_idxs = assist_idxs[:, None]
         flatten_idxs = topk_idxs + assist_idxs
         candidate_overlaps = _candidate_overlaps.reshape(-1)[flatten_idxs]
-        candidate_overlaps = candidate_overlaps.reshape([self.bs, self.n_max_boxes, -1])
+        candidate_overlaps = candidate_overlaps.reshape(
+            [self.bs, self.n_max_boxes, -1]
+        )
 
         overlaps_mean_per_gt = candidate_overlaps.mean(dim=-1, keepdim=True)
         overlaps_std_per_gt = candidate_overlaps.std(dim=-1, keepdim=True)
         overlaps_thr_per_gt = overlaps_mean_per_gt + overlaps_std_per_gt
 
         is_pos = torch.where(
-            _candidate_overlaps > overlaps_thr_per_gt.repeat([1, 1, self.n_anchors]),
+            _candidate_overlaps
+            > overlaps_thr_per_gt.repeat([1, 1, self.n_anchors]),
             is_in_topk,
             torch.zeros_like(is_in_topk),
         )
@@ -227,15 +251,18 @@ class ATSSAssigner(nn.Module):
         @type mask_pos_sum: Tensor
         @param mask_pos_sum: Mask of matched GTs [bs, n_anchors]
         @rtype: tuple[Tensor, Tensor, Tensor]
-        @return: Assigned labels of shape [bs, n_anchors], assigned bboxes of shape [bs,
-            n_anchors, 4], assigned scores of shape [bs, n_anchors, n_classes].
+        @return: Assigned labels of shape [bs, n_anchors], assigned
+            bboxes of shape [bs, n_anchors, 4], assigned scores of shape
+            [bs, n_anchors, n_classes].
         """
         # assigned target labels
         batch_idx = torch.arange(
             self.bs, dtype=gt_labels.dtype, device=gt_labels.device
         )
         batch_idx = batch_idx[..., None]
-        assigned_gt_idx = (assigned_gt_idx + batch_idx * self.n_max_boxes).long()
+        assigned_gt_idx = (
+            assigned_gt_idx + batch_idx * self.n_max_boxes
+        ).long()
         assigned_labels = gt_labels.flatten()[assigned_gt_idx.flatten()]
         assigned_labels = assigned_labels.reshape([self.bs, self.n_anchors])
         assigned_labels = torch.where(
@@ -249,7 +276,9 @@ class ATSSAssigner(nn.Module):
         assigned_bboxes = assigned_bboxes.reshape([self.bs, self.n_anchors, 4])
 
         # assigned target scores
-        assigned_scores = F.one_hot(assigned_labels.long(), self.n_classes + 1).float()
+        assigned_scores = F.one_hot(
+            assigned_labels.long(), self.n_classes + 1
+        ).float()
         assigned_scores = assigned_scores[:, :, : self.n_classes]
 
         return assigned_labels, assigned_bboxes, assigned_scores

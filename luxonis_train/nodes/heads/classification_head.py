@@ -13,12 +13,12 @@ class ClassificationHead(BaseNode[Tensor, Tensor]):
     def __init__(self, dropout_rate: float = 0.2, **kwargs: Any):
         """Simple classification head.
 
-        Consists of a global average pooling layer followed by a dropout layer and a
-        single linear layer.
+        Consists of a global average pooling layer followed by a dropout
+        layer and a single linear layer.
 
         @type dropout_rate: float
-        @param dropout_rate: Dropout rate before last layer, range C{[0, 1]}. Defaults
-            to C{0.2}.
+        @param dropout_rate: Dropout rate before last layer, range C{[0,
+            1]}. Defaults to C{0.2}.
         """
         super().__init__(**kwargs)
 

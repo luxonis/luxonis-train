@@ -33,18 +33,20 @@ class EfficientBBoxHead(
     ):
         """Head for object detection.
 
-        Adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial
-        Applications <https://arxiv.org/pdf/2209.02976.pdf>}.
+        Adapted from U{YOLOv6: A Single-Stage Object Detection Framework
+        for Industrial Applications
+        <https://arxiv.org/pdf/2209.02976.pdf>}.
         @type n_heads: Literal[2,3,4]
-        @param n_heads: Number of output heads. Defaults to 3. B{Note:} Should be same
-            also on neck in most cases.
+        @param n_heads: Number of output heads. Defaults to 3. B{Note:}
+            Should be same also on neck in most cases.
         @type conf_thres: float
-        @param conf_thres: Threshold for confidence. Defaults to C{0.25}.
+        @param conf_thres: Threshold for confidence. Defaults to
+            C{0.25}.
         @type iou_thres: float
         @param iou_thres: Threshold for IoU. Defaults to C{0.45}.
         @type max_det: int
-        @param max_det: Maximum number of detections retained after NMS. Defaults to
-            C{300}.
+        @param max_det: Maximum number of detections retained after NMS.
+            Defaults to C{300}.
         """
         super().__init__(**kwargs)
 
@@ -96,17 +98,24 @@ class EfficientBBoxHead(
 
         if self.export:
             outputs: list[Tensor] = []
-            for out_cls, out_reg in zip(cls_score_list, reg_distri_list, strict=True):
+            for out_cls, out_reg in zip(
+                cls_score_list, reg_distri_list, strict=True
+            ):
                 conf, _ = out_cls.max(1, keepdim=True)
                 out = torch.cat([out_reg, conf, out_cls], dim=1)
                 outputs.append(out)
             return {self.task: outputs}
 
         cls_tensor = torch.cat(
-            [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))], dim=2
+            [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))],
+            dim=2,
         ).permute(0, 2, 1)
         reg_tensor = torch.cat(
-            [reg_distri_list[i].flatten(2) for i in range(len(reg_distri_list))], dim=2
+            [
+                reg_distri_list[i].flatten(2)
+                for i in range(len(reg_distri_list))
+            ],
+            dim=2,
         ).permute(0, 2, 1)
 
         if self.training:
@@ -126,7 +135,8 @@ class EfficientBBoxHead(
             }
 
     def _fit_stride_to_n_heads(self):
-        """Returns correct stride for number of heads and attach index."""
+        """Returns correct stride for number of heads and attach
+        index."""
         stride = torch.tensor(
             [
                 self.original_in_shape[1] / x[2]  # type: ignore
@@ -139,7 +149,8 @@ class EfficientBBoxHead(
     def _process_to_bbox(
         self, output: tuple[list[Tensor], Tensor, Tensor]
     ) -> list[Tensor]:
-        """Performs post-processing of the output and returns bboxs after NMS."""
+        """Performs post-processing of the output and returns bboxs
+        after NMS."""
         features, cls_score_list, reg_dist_list = output
         _, anchor_points, _, stride_tensor = anchors_for_fpn_features(
             features,
@@ -149,7 +160,9 @@ class EfficientBBoxHead(
             multiply_with_stride=False,
         )
 
-        pred_bboxes = dist2bbox(reg_dist_list, anchor_points, out_format="xyxy")
+        pred_bboxes = dist2bbox(
+            reg_dist_list, anchor_points, out_format="xyxy"
+        )
 
         pred_bboxes *= stride_tensor
         output_merged = torch.cat(

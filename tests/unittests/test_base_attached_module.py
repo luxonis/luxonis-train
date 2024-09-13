@@ -6,29 +6,25 @@ from luxonis_train.utils.exceptions import IncompatibleException
 
 
 class DummyBackbone(BaseNode):
-    def forward(self, _):
-        ...
+    def forward(self, _): ...
 
 
 class DummySegmentationHead(BaseNode):
     tasks = [LabelType.SEGMENTATION]
 
-    def forward(self, _):
-        ...
+    def forward(self, _): ...
 
 
 class DummyBBoxHead(BaseNode):
     tasks = [LabelType.BOUNDINGBOX]
 
-    def forward(self, _):
-        ...
+    def forward(self, _): ...
 
 
 class DummyDetectionHead(BaseNode):
     tasks = [LabelType.BOUNDINGBOX, LabelType.KEYPOINTS]
 
-    def forward(self, _):
-        ...
+    def forward(self, _): ...
 
 
 class DummyLoss(BaseLoss):
@@ -37,13 +33,11 @@ class DummyLoss(BaseLoss):
         (LabelType.KEYPOINTS, LabelType.BOUNDINGBOX),
     ]
 
-    def forward(self, _):
-        ...
+    def forward(self, _): ...
 
 
 class NoLabelLoss(BaseLoss):
-    def forward(self, _):
-        ...
+    def forward(self, _): ...
 
 
 @pytest.fixture
@@ -72,7 +66,9 @@ def test_valid_properties():
     assert loss.node_tasks == {LabelType.SEGMENTATION: "segmentation"}
     assert loss.required_labels == [LabelType.SEGMENTATION]
     assert no_labels_loss.node == head
-    assert no_labels_loss.node_tasks == {LabelType.SEGMENTATION: "segmentation"}
+    assert no_labels_loss.node_tasks == {
+        LabelType.SEGMENTATION: "segmentation"
+    }
     assert no_labels_loss.required_labels == []
 
 
@@ -116,7 +112,9 @@ def test_input_tensors(inputs):
     seg_head = DummySegmentationHead()
     seg_loss = DummyLoss(node=seg_head)
     assert seg_loss.get_input_tensors(inputs) == ["segmentation"]
-    assert seg_loss.get_input_tensors(inputs, "segmentation") == ["segmentation"]
+    assert seg_loss.get_input_tensors(inputs, "segmentation") == [
+        "segmentation"
+    ]
     assert seg_loss.get_input_tensors(inputs, LabelType.SEGMENTATION) == [
         "segmentation"
     ]
@@ -140,7 +138,10 @@ def test_prepare(inputs, labels):
 
     assert seg_loss.prepare(inputs, labels) == ("segmentation", "segmentation")
     inputs["segmentation"].append("segmentation2")
-    assert seg_loss.prepare(inputs, labels) == ("segmentation2", "segmentation")
+    assert seg_loss.prepare(inputs, labels) == (
+        "segmentation2",
+        "segmentation",
+    )
 
     with pytest.raises(RuntimeError):
         NoLabelLoss(node=backbone).prepare(inputs, labels)

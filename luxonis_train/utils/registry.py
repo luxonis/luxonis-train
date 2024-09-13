@@ -1,5 +1,5 @@
-"""This module implements a metaclass for automatic registration of classes."""
-
+"""This module implements a metaclass for automatic registration of
+classes."""
 
 import lightning.pytorch as pl
 from luxonis_ml.utils.registry import Registry
@@ -11,16 +11,24 @@ import luxonis_train as lt
 CALLBACKS: Registry[type[pl.Callback]] = Registry(name="callbacks")
 """Registry for all callbacks."""
 
-LOADERS: Registry[type["lt.loaders.BaseLoaderTorch"]] = Registry(name="loaders")
+LOADERS: Registry[type["lt.loaders.BaseLoaderTorch"]] = Registry(
+    name="loaders"
+)
 """Registry for all loaders."""
 
-LOSSES: Registry[type["lt.attached_modules.BaseLoss"]] = Registry(name="losses")
+LOSSES: Registry[type["lt.attached_modules.BaseLoss"]] = Registry(
+    name="losses"
+)
 """Registry for all losses."""
 
-METRICS: Registry[type["lt.attached_modules.BaseMetric"]] = Registry(name="metrics")
+METRICS: Registry[type["lt.attached_modules.BaseMetric"]] = Registry(
+    name="metrics"
+)
 """Registry for all metrics."""
 
-MODELS: Registry[type["lt.models.BasePredefinedModel"]] = Registry(name="models")
+MODELS: Registry[type["lt.models.BasePredefinedModel"]] = Registry(
+    name="models"
+)
 """Registry for all models."""
 
 NODES: Registry[type["lt.nodes.BaseNode"]] = Registry(name="nodes")
@@ -32,5 +40,7 @@ OPTIMIZERS: Registry[type[Optimizer]] = Registry(name="optimizers")
 SCHEDULERS: Registry[type[_LRScheduler]] = Registry(name="schedulers")
 """Registry for all schedulers."""
 
-VISUALIZERS: Registry[type["lt.visualizers.BaseVisualizer"]] = Registry("visualizers")
+VISUALIZERS: Registry[type["lt.visualizers.BaseVisualizer"]] = Registry(
+    "visualizers"
+)
 """Registry for all visualizers."""

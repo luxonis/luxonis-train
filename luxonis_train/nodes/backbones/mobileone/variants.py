@@ -9,7 +9,9 @@ class MobileOneVariant(BaseModel):
     use_se: bool = False
 
 
-def get_variant(variant: Literal["s0", "s1", "s2", "s3", "s4"]) -> MobileOneVariant:
+def get_variant(
+    variant: Literal["s0", "s1", "s2", "s3", "s4"],
+) -> MobileOneVariant:
     variants = {
         "s0": MobileOneVariant(
             width_multipliers=(0.75, 1.0, 1.0, 2.0),

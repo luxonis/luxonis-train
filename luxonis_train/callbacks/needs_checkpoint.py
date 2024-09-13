@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 
 class NeedsCheckpoint(pl.Callback):
     def __init__(
-        self, preferred_checkpoint: Literal["metric", "loss"] = "metric", **kwargs
+        self,
+        preferred_checkpoint: Literal["metric", "loss"] = "metric",
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.preferred_checkpoint = preferred_checkpoint

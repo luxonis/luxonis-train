@@ -6,7 +6,8 @@ from luxonis_ml.tracker import LuxonisTracker
 
 
 class LuxonisTrackerPL(LuxonisTracker, Logger):
-    """Implementation of LuxonisTracker that is compatible with PytorchLightning."""
+    """Implementation of LuxonisTracker that is compatible with
+    PytorchLightning."""
 
     def __init__(self, *, _auto_finalize: bool = True, **kwargs: Any):
         """

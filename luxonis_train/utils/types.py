@@ -7,15 +7,15 @@ Kwargs = dict[str, Any]
 """Kwargs is a dictionary containing keyword arguments."""
 
 Labels = dict[str, tuple[Tensor, LabelType]]
-"""Labels is a dictionary containing a tuple of tensors and their corresponding label
-type."""
+"""Labels is a dictionary containing a tuple of tensors and their
+corresponding label type."""
 
 AttachIndexType = Literal["all"] | int | tuple[int, int] | tuple[int, int, int]
-"""AttachIndexType is used to specify to which output of the prevoius node does the
-current node attach to.
+"""AttachIndexType is used to specify to which output of the prevoius
+node does the current node attach to.
 
-It can be either "all" (all outputs), an index of the output or a tuple of indices of
-the output (specifying a range of outputs).
+It can be either "all" (all outputs), an index of the output or a tuple
+of indices of the output (specifying a range of outputs).
 """
 
 T = TypeVar("T", Tensor, Size)

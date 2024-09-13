@@ -4,7 +4,9 @@ from luxonis_train.assigners import TaskAlignedAssigner
 
 
 def test_init():
-    assigner = TaskAlignedAssigner(n_classes=80, topk=13, alpha=1.0, beta=6.0, eps=1e-9)
+    assigner = TaskAlignedAssigner(
+        n_classes=80, topk=13, alpha=1.0, beta=6.0, eps=1e-9
+    )
     assert assigner.n_classes == 80
     assert assigner.topk == 13
     assert assigner.alpha == 1.0
@@ -119,7 +121,11 @@ def test_get_final_assignments():
     assigner.bs = batch_size  # Set batch size
     assigner.n_max_boxes = gt_bboxes.size(1)
 
-    assigned_labels, assigned_bboxes, assigned_scores = assigner._get_final_assignments(
+    (
+        assigned_labels,
+        assigned_bboxes,
+        assigned_scores,
+    ) = assigner._get_final_assignments(
         gt_labels, gt_bboxes, assigned_gt_idx, mask_pos_sum
     )
 

@@ -47,9 +47,15 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         n_repeats = n_repeats or [12, 12, 12, 12]
         channels_list = channels_list or [256, 128, 128, 256, 256, 512]
 
-        channels_list = [make_divisible(ch * width_mul, 8) for ch in channels_list]
-        n_repeats = [(max(round(i * depth_mul), 1) if i > 1 else i) for i in n_repeats]
-        channels_list, n_repeats = self._fit_to_n_heads(channels_list, n_repeats)
+        channels_list = [
+            make_divisible(ch * width_mul, 8) for ch in channels_list
+        ]
+        n_repeats = [
+            (max(round(i * depth_mul), 1) if i > 1 else i) for i in n_repeats
+        ]
+        channels_list, n_repeats = self._fit_to_n_heads(
+            channels_list, n_repeats
+        )
 
         self.up_blocks = nn.ModuleList()
 
@@ -108,12 +114,16 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
     def forward(self, inputs: list[Tensor]) -> list[Tensor]:
         x = inputs[-1]
         up_block_outs: list[Tensor] = []
-        for up_block, input_ in zip(self.up_blocks, inputs[-2::-1], strict=False):
+        for up_block, input_ in zip(
+            self.up_blocks, inputs[-2::-1], strict=False
+        ):
             conv_out, x = up_block(x, input_)
             up_block_outs.append(conv_out)
 
         outs = [x]
-        for down_block, up_out in zip(self.down_blocks, reversed(up_block_outs)):
+        for down_block, up_out in zip(
+            self.down_blocks, reversed(up_block_outs)
+        ):
             x = down_block(x, up_out)
             outs.append(x)
         return outs
@@ -121,7 +131,8 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
     def _fit_to_n_heads(
         self, channels_list: list[int], n_repeats: list[int]
     ) -> tuple[list[int], list[int]]:
-        """Fits channels_list and n_repeats to n_heads by removing or adding items.
+        """Fits channels_list and n_repeats to n_heads by removing or
+        adding items.
 
         Also scales the numbers based on offset
         """

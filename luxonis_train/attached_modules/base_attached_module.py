@@ -17,7 +17,11 @@ Ts = TypeVarTuple("Ts")
 
 
 class BaseAttachedModule(
-    nn.Module, Generic[Unpack[Ts]], ABC, metaclass=AutoRegisterMeta, register=False
+    nn.Module,
+    Generic[Unpack[Ts]],
+    ABC,
+    metaclass=AutoRegisterMeta,
+    register=False,
 ):
     """Base class for all modules that are attached to a L{LuxonisNode}.
 
@@ -102,7 +106,8 @@ class BaseAttachedModule(
         """Reference to the node that this module is attached to.
 
         @type: L{BaseNode}
-        @raises RuntimeError: If the node was not provided during initialization.
+        @raises RuntimeError: If the node was not provided during
+            initialization.
         """
         if self._node is None:
             raise RuntimeError(
@@ -116,7 +121,8 @@ class BaseAttachedModule(
         """Getter for the number of keypoints.
 
         @type: int
-        @raises ValueError: If the number of keypoints cannot be determined.
+        @raises ValueError: If the number of keypoints cannot be
+            determined.
         """
         return self.node.n_keypoints
 
@@ -125,9 +131,11 @@ class BaseAttachedModule(
         """Getter for the number of classes.
 
         @type: int
-        @raises ValueError: If the number of classes cannot be determined.
-        @raises ValueError: If the number of classes is different for different tasks.
-            In that case, use the C{node.get_n_classes} method.
+        @raises ValueError: If the number of classes cannot be
+            determined.
+        @raises ValueError: If the number of classes is different for
+            different tasks. In that case, use the C{node.get_n_classes}
+            method.
         """
         return self.node.n_classes
 
@@ -156,10 +164,14 @@ class BaseAttachedModule(
         @raises RuntimeError: If the node does not have the `tasks` attribute set.
         """
         if self.node._tasks is None:
-            raise RuntimeError("Node must have the `tasks` attribute specified.")
+            raise RuntimeError(
+                "Node must have the `tasks` attribute specified."
+            )
         return self.node._tasks
 
-    def get_label(self, labels: Labels, label_type: LabelType | None = None) -> Tensor:
+    def get_label(
+        self, labels: Labels, label_type: LabelType | None = None
+    ) -> Tensor:
         """Extracts a specific label from the labels dictionary.
 
         If the label type is not provided, the first label that matches the
@@ -260,7 +272,9 @@ class BaseAttachedModule(
             )
         return inputs[self.node_tasks[self.required_labels[0]]]
 
-    def prepare(self, inputs: Packet[Tensor], labels: Labels) -> tuple[Unpack[Ts]]:
+    def prepare(
+        self, inputs: Packet[Tensor], labels: Labels
+    ) -> tuple[Unpack[Ts]]:
         """Prepares node outputs for the forward pass of the module.
 
         This default implementation selects the output and label based on
