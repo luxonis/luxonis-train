@@ -125,5 +125,5 @@ def get_with_default(
     if caller_name:
         msg = f"[{caller_name}] {msg}"
 
-    logger.info(msg)
+    logger.info(msg, stacklevel=2)
     return default
