@@ -126,7 +126,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         Also scales the numbers based on offset
         """
         if self.n_heads == 2:
-            channels_list = [channels_list[0], channels_list[4], channels_list[5]]
+            channels_list = [channels_list[i] for i in [0, 4, 5]]
             n_repeats = [n_repeats[0], n_repeats[3]]
         elif self.n_heads == 3:
             return channels_list, n_repeats
@@ -142,14 +142,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
                 channels_list[4],
                 channels_list[5],
             ]
-            n_repeats = [
-                n_repeats[0],
-                n_repeats[1],
-                n_repeats[1],
-                n_repeats[2],
-                n_repeats[2],
-                n_repeats[3],
-            ]
+            n_repeats = [n_repeats[i] for i in [0, 1, 1, 2, 2, 3]]
         else:
             raise ValueError(
                 f"Specified number of heads ({self.n_heads}) not supported."
