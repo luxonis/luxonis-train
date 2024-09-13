@@ -321,7 +321,7 @@ def combine_visualizations(
         keep_size: Literal["larger", "smaller", "first", "second"] = "larger",
         resize_along: Literal["width", "height", "exact"] = "height",
         keep_aspect_ratio: bool = True,
-    ):
+    ) -> tuple[Tensor, Tensor]:
         """Resizes two images so they have the same size.
 
         Resizes two images so they can be concateneted together. It's possible to
