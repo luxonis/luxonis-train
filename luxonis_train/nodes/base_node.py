@@ -208,7 +208,7 @@ class BaseNode(
                 properties.append(name)
         for name, typ in self.__annotations__.items():
             if name in properties:
-                with suppress(ValueError):
+                with suppress(RuntimeError):
                     value = getattr(self, name)
                     try:
                         check_type(value, typ)
@@ -227,16 +227,15 @@ class BaseNode(
         @param task: Task to get the name for.
         @rtype: str
         @return: Name of the task.
+        @raises RuntimeError: If the node does not define any tasks.
         @raises ValueError: If the task is not supported by the node.
         """
         if not self._tasks:
-            raise ValueError(
-                f"Node {self.name} does not have any tasks defined."
-            )
+            raise RuntimeError(f"Node '{self.name}' does not define any task.")
 
         if task not in self._tasks:
             raise ValueError(
-                f"Node {self.name} does not support the {task.value} task."
+                f"Node '{self.name}' does not support the '{task.value}' task."
             )
         return self._tasks[task]
 
@@ -249,17 +248,17 @@ class BaseNode(
         """Getter for the task.
 
         @type: str
-        @raises RuntimeError: If the node doesn't define any tasks.
-        @raises RuntimeError: If the node defines more than one task. In
-            that case, use the L{get_task_name} method.
+        @raises RuntimeError: If the node doesn't define any task.
+        @raises ValueError: If the node defines more than one task. In
+            that case, use the L{get_task_name} method instead.
         """
         if not self._tasks:
-            raise RuntimeError(f"{self.name} does not have any tasks defined.")
+            raise RuntimeError(f"{self.name} does not define any task.")
 
         if len(self._tasks) > 1:
-            raise RuntimeError(
+            raise ValueError(
                 f"Node {self.name} has multiple tasks defined. "
-                "Use `get_task_name` method instead."
+                "Use the `get_task_name` method instead."
             )
         return next(iter(self._tasks.values()))
 
@@ -288,20 +287,20 @@ class BaseNode(
         """Getter for the number of keypoints.
 
         @type: int
-        @raises ValueError: If the number of keypoints cannot be
-            determined.
+        @raises ValueError: If the node does not support keypoints.
+        @raises RuntimeError: If the node doesn't define any task.
         """
         if self._n_keypoints is not None:
             return self._n_keypoints
 
         if self._tasks:
             if LabelType.KEYPOINTS not in self._tasks:
-                raise (ValueError(f"{self.name} does not support keypoints."))
+                raise ValueError(f"{self.name} does not support keypoints.")
             return self.dataset_metadata.n_keypoints(
                 self.get_task_name(LabelType.KEYPOINTS)
             )
 
-        raise ValueError(
+        raise RuntimeError(
             f"{self.name} does not have any tasks defined, "
             "`BaseNode.n_keypoints` property cannot be used. "
             "Either override the `tasks` class attribute, "
@@ -314,8 +313,7 @@ class BaseNode(
         """Getter for the number of classes.
 
         @type: int
-        @raises ValueError: If the number of classes cannot be
-            determined.
+        @raises RuntimeError: If the node doesn't define any task.
         @raises ValueError: If the number of classes is different for
             different tasks. In that case, use the L{get_n_classes}
             method.
@@ -324,7 +322,7 @@ class BaseNode(
             return self._n_classes
 
         if not self._tasks:
-            raise ValueError(
+            raise RuntimeError(
                 f"{self.name} does not have any tasks defined, "
                 "`BaseNode.n_classes` property cannot be used. "
                 "Either override the `tasks` class attribute, "
@@ -351,10 +349,13 @@ class BaseNode(
         """Getter for the class names.
 
         @type: list[str]
-        @raises ValueError: If the class names cannot be determined.
+        @raises RuntimeError: If the node doesn't define any task.
+        @raises ValueError: If the class names are different for
+            different tasks. In that case, use the L{get_class_names}
+            method.
         """
         if not self._tasks:
-            raise ValueError(
+            raise RuntimeError(
                 f"{self.name} does not have any tasks defined, "
                 "`BaseNode.class_names` property cannot be used. "
                 "Either override the `tasks` class attribute, "
@@ -523,12 +524,12 @@ class BaseNode(
         @rtype: ForwardInputT
         @return: Prepared inputs, ready to be passed to the L{forward}
             method.
-        @raises RuntimeError: If the number of inputs is not equal to 1.
+        @raises ValueError: If the number of inputs is not equal to 1.
             In such cases the method has to be overridden.
         """
         if len(inputs) > 1:
-            raise RuntimeError(
-                f"Node {self.name} expects a single input, but got {len(inputs)} inputs instead."
+            raise ValueError(
+                f"Node {self.name} expects a single input, but got {len(inputs)} inputs instead. "
                 "If the node expects multiple inputs, the `unwrap` method should be overridden."
             )
         return self.get_attached(inputs[0]["features"])  # type: ignore
@@ -537,9 +538,9 @@ class BaseNode(
     def forward(self, inputs: ForwardInputT) -> ForwardOutputT:
         """Forward pass of the module.
 
-        @type inputs: ForwardInputT
+        @type inputs: L{ForwardInputT}
         @param inputs: Inputs to the module.
-        @rtype: ForwardOutputT
+        @rtype: L{ForwardOutputT}
         @return: Result of the forward pass.
         """
         ...
@@ -572,8 +573,8 @@ class BaseNode(
         @rtype: L{Packet}[Tensor]
         @return: Wrapped output.
 
-        @raises RuntimeError: If the output is not a tensor or a list of tensors.
-            In such cases the method has to be overridden.
+        @raises ValueError: If the C{output} argument is not a tensor or a list of tensors.
+            In such cases the L{wrap} method should be overridden.
         """
 
         if isinstance(output, Tensor):
@@ -583,7 +584,7 @@ class BaseNode(
         ):
             outputs = list(output)
         else:
-            raise RuntimeError(
+            raise ValueError(
                 "Default `wrap` expects a single tensor or a list of tensors."
             )
         try:
@@ -676,6 +677,6 @@ class BaseNode(
 
     def _non_set_error(self, name: str) -> RuntimeError:
         return RuntimeError(
-            f"{self.name} is trying to access `{name}`, "
+            f"'{self.name}' node is trying to access `{name}`, "
             "but it was not set during initialization. "
         )

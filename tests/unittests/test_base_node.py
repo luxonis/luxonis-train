@@ -70,9 +70,9 @@ def test_invalid(packet: Packet[Tensor]):
         _ = node.original_in_shape
     with pytest.raises(RuntimeError):
         _ = node.dataset_metadata
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         node.unwrap([packet, packet])
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         node.wrap({"inp": torch.rand(3, 224, 224)})
 
 
@@ -119,13 +119,13 @@ def test_tasks():
     with pytest.raises(ValueError):
         dummy_head.get_task_name(LabelType.SEGMENTATION)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         dummy_node.get_task_name(LabelType.SEGMENTATION)
 
     with pytest.raises(RuntimeError):
         _ = dummy_node.task
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         _ = dummy_multi_head.task
 
     metadata = DatasetMetadata(
@@ -151,7 +151,7 @@ def test_tasks():
     assert dummy_multi_head.n_keypoints == 4
     with pytest.raises(ValueError):
         _ = dummy_head.n_keypoints
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         _ = dummy_node.n_keypoints
 
     dummy_head = DummyHead(n_classes=5)

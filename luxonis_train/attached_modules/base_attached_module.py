@@ -121,8 +121,8 @@ class BaseAttachedModule(
         """Getter for the number of keypoints.
 
         @type: int
-        @raises ValueError: If the number of keypoints cannot be
-            determined.
+        @raises ValueError: If the node does not support keypoints.
+        @raises RuntimeError: If the node doesn't define any task.
         """
         return self.node.n_keypoints
 
@@ -131,10 +131,9 @@ class BaseAttachedModule(
         """Getter for the number of classes.
 
         @type: int
-        @raises ValueError: If the number of classes cannot be
-            determined.
+        @raises RuntimeError: If the node doesn't define any task.
         @raises ValueError: If the number of classes is different for
-            different tasks. In that case, use the C{node.get_n_classes}
+            different tasks. In that case, use the L{get_n_classes}
             method.
         """
         return self.node.n_classes
@@ -152,7 +151,10 @@ class BaseAttachedModule(
         """Getter for the class names.
 
         @type: list[str]
-        @raises ValueError: If the class names cannot be determined.
+        @raises RuntimeError: If the node doesn't define any task.
+        @raises ValueError: If the class names are different for
+            different tasks. In that case, use the L{get_class_names}
+            method.
         """
         return self.node.class_names
 
