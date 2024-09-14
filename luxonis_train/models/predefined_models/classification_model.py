@@ -15,7 +15,7 @@ from .base_predefined_model import BasePredefinedModel
 @dataclass
 class ClassificationModel(BasePredefinedModel):
     backbone: str = "MicroNet"
-    task: Literal["multiclass", "multilabel"] = "multilabel"
+    task: Literal["multiclass", "multilabel"] = "multiclass"
     backbone_params: Kwargs = field(default_factory=dict)
     head_params: Kwargs = field(default_factory=dict)
     loss_params: Kwargs = field(default_factory=dict)
