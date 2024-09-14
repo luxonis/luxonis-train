@@ -66,10 +66,10 @@ pyright --warnings --level warning --pythonversion 3.10 luxonis_train
 We use [pytest](https://docs.pytest.org/en/stable/) for testing.
 The tests are located in the `tests` directory. You can run the tests locally by running `pytest` in the root directory.
 
-This command will run all tests and print a coverage report.
+This command will run all tests generate HTML coverage report.
 
 > \[!TIP\]
-> This will also generate an HTML coverage report in the `htmlcov` directory.
+> The coverage report will be saved to `htmlcov` directory.
 > If you want to inspect the coverage in more detail, open `htmlcov/index.html` in a browser.
 
 > \[!IMPORTANT\]
