@@ -40,4 +40,6 @@ trainer:
       weight_decay: 0.0005
 
   scheduler:
-    name: PolynomialLR
+    name: CosineAnnealingLR
+    params:
+      T_max: *epochs
