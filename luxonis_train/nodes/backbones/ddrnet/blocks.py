@@ -51,7 +51,9 @@ class DAPPMBranch(nn.Module):
 
         down_list.append(nn.BatchNorm2d(in_channels))
         down_list.append(nn.ReLU(inplace=True))
-        down_list.append(nn.Conv2d(in_channels, branch_channels, kernel_size=1, bias=False))
+        down_list.append(
+            nn.Conv2d(in_channels, branch_channels, kernel_size=1, bias=False)
+        )
 
         self.down_scale = nn.Sequential(*down_list)
         self.up_scale = UpscaleOnline(inter_mode)
@@ -61,7 +63,11 @@ class DAPPMBranch(nn.Module):
                 nn.BatchNorm2d(branch_channels),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(
-                    branch_channels, branch_channels, kernel_size=3, padding=1, bias=False
+                    branch_channels,
+                    branch_channels,
+                    kernel_size=3,
+                    padding=1,
+                    bias=False,
                 ),
             )
 
@@ -329,7 +335,13 @@ def _make_layer(
     layers: list[nn.Module] = []
 
     layers.append(
-        block(in_channels, channels, stride, final_relu=num_blocks > 1, expansion=expansion)
+        block(
+            in_channels,
+            channels,
+            stride,
+            final_relu=num_blocks > 1,
+            expansion=expansion,
+        )
     )
 
     in_channels = channels * expansion

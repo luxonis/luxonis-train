@@ -150,7 +150,9 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             )
             self.layer3_skip.append(
                 _make_layer(
-                    in_channels=out_chan_backbone["layer2"] if i == 0 else highres_channels,
+                    in_channels=out_chan_backbone["layer2"]
+                    if i == 0
+                    else highres_channels,
                     channels=highres_channels,
                     block=skip_block,
                     num_blocks=self.additional_layers[1],
