@@ -1,6 +1,7 @@
 import logging
 
 import torch.nn as nn
+import torch
 from torch import Tensor
 
 from luxonis_train.nodes.base_node import BaseNode
@@ -98,7 +99,7 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
         @param mode: Whether to set the export mode to True or False. Defaults to True.
         """
         super().set_export_mode(mode)
-        if self.export and self.attach_index != 0:
+        if self.export and self.attach_index != -1:
             logger.info("Removing the auxiliary head.")
 
-            self.forward = lambda x: x
+            self.forward = lambda x: torch.tensor([])
