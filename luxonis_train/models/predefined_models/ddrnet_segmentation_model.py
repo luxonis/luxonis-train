@@ -12,17 +12,10 @@ from .segmentation_model import SegmentationModel
 @dataclass
 class DDRNetSegmentationModel(SegmentationModel):
     backbone: str = "DDRNet"
-    highres_planes: int = 64
-    layer5_bottleneck_expansion: int = 2
     aux_head_params: Kwargs = field(default_factory=dict)
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
-        self.backbone_params.update({"highres_planes": self.highres_planes})
-        self.backbone_params.update(
-            {"layer5_bottleneck_expansion": self.layer5_bottleneck_expansion}
-        )
-
         self.head_params.update({"attach_index": -1})
 
         self.aux_head_params.update({"attach_index": -2})
