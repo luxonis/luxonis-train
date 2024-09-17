@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Literal, Type
 
 from torch import Tensor, nn
 
@@ -15,14 +15,17 @@ from .blocks import (
     BasicDDRBackBone,
     _make_layer,
 )
+from .variants import get_variant
 
 
 class DDRNet(BaseNode[Tensor, list[Tensor]]):
     def __init__(
         self,
+        variant: Literal["23-slim", "23"] = "23-slim",
+        channels: int | None = None,
+        highres_channels: int | None = None,
         use_aux_heads: bool = True,
         upscale_module: nn.Module = None,
-        highres_channels: int = 64,
         spp_width: int = 128,
         ssp_inter_mode: str = "bilinear",
         segmentation_inter_mode: str = "bilinear",
@@ -33,7 +36,6 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         spp_kernel_sizes: list[int] = None,
         spp_strides: list[int] = None,
         layer3_repeats: int = 1,
-        channels: int = 32,
         layers: list[int] = None,
         **kwargs,
     ):
@@ -45,14 +47,21 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         @see: U{Paper <https://arxiv.org/pdf/2101.06085.pdf>}
         @license: U{Apache License, Version 2.0 <https://github.com/Deci-AI/super-
             gradients/blob/master/LICENSE.md>}
+        @type variant: Literal["23-slim", "23"]
+        @param variant: DDRNet variant. Defaults to "23-slim".
+            The variant determines the number of channels and highres_channels.
+            The following variants are available:
+                - "23-slim" (default): channels=32, highres_channels=64
+                - "23": channels=64, highres_channels=128
+        @type channels: int | None
+        @param channels: Base number of channels. If provided, overrides the variant values.
+        @type highres_channels: int | None
+        @param highres_channels: Number of channels in the high resolution net. If provided, overrides the variant values.
         @type use_aux_heads: bool
         @param use_aux_heads: Whether to use auxiliary heads. Defaults to True.
         @type upscale_module: nn.Module
         @param upscale_module: Module for upscaling (e.g., bilinear interpolation).
             Defaults to UpscaleOnline().
-        @type highres_channels: int
-        @param highres_channels: Number of channels in the high resolution net. Defaults
-            to 64.
         @type spp_width: int
         @param spp_width: Width of the branches in the SPP block. Defaults to 128.
         @type ssp_inter_mode: str
@@ -81,8 +90,6 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             0].
         @type layer3_repeats: int
         @param layer3_repeats: Number of times to repeat the 3rd stage. Defaults to 1.
-        @type channels: int
-        @param channels: Base number of channels. Defaults to 32.
         @type layers: list[int]
         @param layers: Number of blocks in each layer of the backbone. Defaults to [2,
             2, 2, 2, 1, 2, 2, 1].
@@ -100,6 +107,11 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             layers = [2, 2, 2, 2, 1, 2, 2, 1]
 
         super().__init__(**kwargs)
+
+        var = get_variant(variant)
+
+        channels = channels or var.channels
+        highres_channels = highres_channels or var.highres_channels
 
         self._use_aux_heads = use_aux_heads
         self.upscale = upscale_module

@@ -1,7 +1,7 @@
 import logging
 
-import torch.nn as nn
 import torch
+import torch.nn as nn
 from torch import Tensor
 
 from luxonis_train.nodes.base_node import BaseNode
