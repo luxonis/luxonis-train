@@ -18,8 +18,8 @@ class DAPPMBranch(nn.Module):
         self,
         kernel_size: int,
         stride: int,
-        in_planes: int,
-        branch_planes: int,
+        in_channels: int,
+        branch_channels: int,
         inter_mode: str = "bilinear",
     ):
         """A DAPPM branch.
@@ -32,10 +32,10 @@ class DAPPMBranch(nn.Module):
             AdaptiveAvgPool2d over all the input is performed (output is 1x1). When
             stride=1, no average pooling is performed. When stride>1, average pooling is
             performed (scaling the input down and up again).
-        @type in_planes: int
-        @param in_planes: Number of input channels.
-        @type branch_planes: int
-        @param branch_planes: Width after the first convolution.
+        @type in_channels: int
+        @param in_channels: Number of input channels.
+        @type branch_channels: int
+        @param branch_channels: Width after the first convolution.
         @type inter_mode: str
         @param inter_mode: Interpolation mode for upscaling. Defaults to "bilinear".
         """
@@ -49,19 +49,19 @@ class DAPPMBranch(nn.Module):
                 nn.AvgPool2d(kernel_size=kernel_size, stride=stride, padding=stride)
             )
 
-        down_list.append(nn.BatchNorm2d(in_planes))
+        down_list.append(nn.BatchNorm2d(in_channels))
         down_list.append(nn.ReLU(inplace=True))
-        down_list.append(nn.Conv2d(in_planes, branch_planes, kernel_size=1, bias=False))
+        down_list.append(nn.Conv2d(in_channels, branch_channels, kernel_size=1, bias=False))
 
         self.down_scale = nn.Sequential(*down_list)
         self.up_scale = UpscaleOnline(inter_mode)
 
         if stride != 1:
             self.process = nn.Sequential(
-                nn.BatchNorm2d(branch_planes),
+                nn.BatchNorm2d(branch_channels),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(
-                    branch_planes, branch_planes, kernel_size=3, padding=1, bias=False
+                    branch_channels, branch_channels, kernel_size=3, padding=1, bias=False
                 ),
             )
 
@@ -94,21 +94,21 @@ class DAPPMBranch(nn.Module):
 class DAPPM(nn.Module):
     def __init__(
         self,
-        in_planes: int,
-        branch_planes: int,
-        out_planes: int,
+        in_channels: int,
+        branch_channels: int,
+        out_channels: int,
         kernel_sizes: list[int],
         strides: list[int],
         inter_mode: str = "bilinear",
     ):
         """DAPPM (Dynamic Attention Pyramid Pooling Module).
 
-        @type in_planes: int
-        @param in_planes: Number of input channels.
-        @type branch_planes: int
-        @param branch_planes: Width after the first convolution in each branch.
-        @type out_planes: int
-        @param out_planes: Number of output channels.
+        @type in_channels: int
+        @param in_channels: Number of input channels.
+        @type branch_channels: int
+        @param branch_channels: Width after the first convolution in each branch.
+        @type out_channels: int
+        @param out_channels: Number of output channels.
         @type kernel_sizes: list[int]
         @param kernel_sizes: List of kernel sizes for each branch.
         @type strides: list[int]
@@ -127,8 +127,8 @@ class DAPPM(nn.Module):
                 DAPPMBranch(
                     kernel_size=kernel_size,
                     stride=stride,
-                    in_planes=in_planes,
-                    branch_planes=branch_planes,
+                    in_channels=in_channels,
+                    branch_channels=branch_channels,
                     inter_mode=inter_mode,
                 )
                 for kernel_size, stride in zip(kernel_sizes, strides)
@@ -136,19 +136,19 @@ class DAPPM(nn.Module):
         )
 
         self.compression = nn.Sequential(
-            nn.BatchNorm2d(branch_planes * len(self.branches)),
+            nn.BatchNorm2d(branch_channels * len(self.branches)),
             nn.ReLU(inplace=True),
             nn.Conv2d(
-                branch_planes * len(self.branches),
-                out_planes,
+                branch_channels * len(self.branches),
+                out_channels,
                 kernel_size=1,
                 bias=False,
             ),
         )
         self.shortcut = nn.Sequential(
-            nn.BatchNorm2d(in_planes),
+            nn.BatchNorm2d(in_channels),
             nn.ReLU(inplace=True),
-            nn.Conv2d(in_planes, out_planes, kernel_size=1, bias=False),
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
         )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -215,15 +215,15 @@ class BasicDDRBackBone(nn.Module):
 
         self.layer1 = _make_layer(
             block=block,
-            in_planes=width,
-            planes=width,
+            in_channels=width,
+            channels=width,
             num_blocks=layers[0],
         )
 
         self.layer2 = _make_layer(
             block=block,
-            in_planes=width,
-            planes=width * 2,
+            in_channels=width,
+            channels=width * 2,
             num_blocks=layers[1],
             stride=2,
         )
@@ -232,8 +232,8 @@ class BasicDDRBackBone(nn.Module):
             [
                 _make_layer(
                     block=block,
-                    in_planes=width * 2,
-                    planes=width * 4,
+                    in_channels=width * 2,
+                    channels=width * 4,
                     num_blocks=layers[2],
                     stride=2,
                 )
@@ -241,8 +241,8 @@ class BasicDDRBackBone(nn.Module):
             + [
                 _make_layer(
                     block=block,
-                    in_planes=width * 4,
-                    planes=width * 4,
+                    in_channels=width * 4,
+                    channels=width * 4,
                     num_blocks=layers[2],
                     stride=1,
                 )
@@ -252,8 +252,8 @@ class BasicDDRBackBone(nn.Module):
 
         self.layer4 = _make_layer(
             block=block,
-            in_planes=width * 4,
-            planes=width * 8,
+            in_channels=width * 4,
+            channels=width * 8,
             num_blocks=layers[3],
             stride=2,
         )
@@ -304,8 +304,8 @@ class BasicDDRBackBone(nn.Module):
 
 def _make_layer(
     block: Type[nn.Module],
-    in_planes: int,
-    planes: int,
+    in_channels: int,
+    channels: int,
     num_blocks: int,
     stride: int = 1,
     expansion: int = 1,
@@ -314,10 +314,10 @@ def _make_layer(
 
     @type block: Type[nn.Module]
     @param block: The block class to be used.
-    @type in_planes: int
-    @param in_planes: Number of input channels.
-    @type planes: int
-    @param planes: Number of output channels.
+    @type in_channels: int
+    @param in_channels: Number of input channels.
+    @type channels: int
+    @param channels: Number of output channels.
     @type num_blocks: int
     @param num_blocks: Number of blocks in the layer.
     @type stride: int
@@ -329,18 +329,18 @@ def _make_layer(
     layers: list[nn.Module] = []
 
     layers.append(
-        block(in_planes, planes, stride, final_relu=num_blocks > 1, expansion=expansion)
+        block(in_channels, channels, stride, final_relu=num_blocks > 1, expansion=expansion)
     )
 
-    in_planes = planes * expansion
+    in_channels = channels * expansion
 
     if num_blocks > 1:
         for i in range(1, num_blocks):
             final_relu = i != (num_blocks - 1)
             layers.append(
                 block(
-                    in_planes,
-                    planes,
+                    in_channels,
+                    channels,
                     stride=1,
                     final_relu=final_relu,
                     expansion=expansion,

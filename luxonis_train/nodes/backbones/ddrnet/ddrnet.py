@@ -22,7 +22,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self,
         use_aux_heads: bool = True,
         upscale_module: nn.Module = None,
-        highres_planes: int = 64,
+        highres_channels: int = 64,
         spp_width: int = 128,
         ssp_inter_mode: str = "bilinear",
         segmentation_inter_mode: str = "bilinear",
@@ -33,7 +33,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         spp_kernel_sizes: list[int] = None,
         spp_strides: list[int] = None,
         layer3_repeats: int = 1,
-        planes: int = 32,
+        channels: int = 32,
         layers: list[int] = None,
         **kwargs,
     ):
@@ -50,8 +50,8 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         @type upscale_module: nn.Module
         @param upscale_module: Module for upscaling (e.g., bilinear interpolation).
             Defaults to UpscaleOnline().
-        @type highres_planes: int
-        @param highres_planes: Number of channels in the high resolution net. Defaults
+        @type highres_channels: int
+        @param highres_channels: Number of channels in the high resolution net. Defaults
             to 64.
         @type spp_width: int
         @param spp_width: Width of the branches in the SPP block. Defaults to 128.
@@ -81,8 +81,8 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             0].
         @type layer3_repeats: int
         @param layer3_repeats: Number of times to repeat the 3rd stage. Defaults to 1.
-        @type planes: int
-        @param planes: Base number of channels. Defaults to 32.
+        @type channels: int
+        @param channels: Base number of channels. Defaults to 32.
         @type layers: list[int]
         @param layers: Number of blocks in each layer of the backbone. Defaults to [2,
             2, 2, 2, 1, 2, 2, 1].
@@ -109,13 +109,13 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self.skip_block = skip_block
         self.relu = nn.ReLU(inplace=False)
         self.layer3_repeats = layer3_repeats
-        self.planes = planes
+        self.channels = channels
         self.layers = layers
         self.backbone_layers, self.additional_layers = self.layers[:4], self.layers[4:]
 
         self._backbone = BasicDDRBackBone(
             block=self.block,
-            width=self.planes,
+            width=self.channels,
             layers=self.backbone_layers,
             input_channels=self.in_channels,
             layer3_repeats=self.layer3_repeats,
@@ -131,7 +131,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             self.compression3.append(
                 ConvModule(
                     in_channels=out_chan_backbone["layer3"],
-                    out_channels=highres_planes,
+                    out_channels=highres_channels,
                     kernel_size=1,
                     bias=False,
                     activation=nn.Identity(),
@@ -139,7 +139,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             )
             self.down3.append(
                 ConvModule(
-                    in_channels=highres_planes,
+                    in_channels=highres_channels,
                     out_channels=out_chan_backbone["layer3"],
                     kernel_size=3,
                     stride=2,
@@ -150,8 +150,8 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             )
             self.layer3_skip.append(
                 _make_layer(
-                    in_planes=out_chan_backbone["layer2"] if i == 0 else highres_planes,
-                    planes=highres_planes,
+                    in_channels=out_chan_backbone["layer2"] if i == 0 else highres_channels,
+                    channels=highres_channels,
                     block=skip_block,
                     num_blocks=self.additional_layers[1],
                 )
@@ -159,7 +159,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
 
         self.compression4 = ConvModule(
             in_channels=out_chan_backbone["layer4"],
-            out_channels=highres_planes,
+            out_channels=highres_channels,
             kernel_size=1,
             bias=False,
             activation=nn.Identity(),
@@ -167,8 +167,8 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
 
         self.down4 = nn.Sequential(
             ConvModule(
-                in_channels=highres_planes,
-                out_channels=highres_planes * 2,
+                in_channels=highres_channels,
+                out_channels=highres_channels * 2,
                 kernel_size=3,
                 stride=2,
                 padding=1,
@@ -176,7 +176,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                 activation=nn.ReLU(inplace=True),
             ),
             ConvModule(
-                in_channels=highres_planes * 2,
+                in_channels=highres_channels * 2,
                 out_channels=out_chan_backbone["layer4"],
                 kernel_size=3,
                 stride=2,
@@ -188,37 +188,37 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
 
         self.layer4_skip = _make_layer(
             block=skip_block,
-            in_planes=highres_planes,
-            planes=highres_planes,
+            in_channels=highres_channels,
+            channels=highres_channels,
             num_blocks=self.additional_layers[2],
         )
         self.layer5_skip = _make_layer(
             block=layer5_block,
-            in_planes=highres_planes,
-            planes=highres_planes,
+            in_channels=highres_channels,
+            channels=highres_channels,
             num_blocks=self.additional_layers[3],
             expansion=layer5_bottleneck_expansion,
         )
 
         self.layer5 = _make_layer(
             block=layer5_block,
-            in_planes=out_chan_backbone["layer4"],
-            planes=out_chan_backbone["layer4"],
+            in_channels=out_chan_backbone["layer4"],
+            channels=out_chan_backbone["layer4"],
             num_blocks=self.additional_layers[0],
             stride=2,
             expansion=layer5_bottleneck_expansion,
         )
 
         self.spp = DAPPM(
-            in_planes=out_chan_backbone["layer4"] * layer5_bottleneck_expansion,
-            branch_planes=spp_width,
-            out_planes=highres_planes * layer5_bottleneck_expansion,
+            in_channels=out_chan_backbone["layer4"] * layer5_bottleneck_expansion,
+            branch_channels=spp_width,
+            out_channels=highres_channels * layer5_bottleneck_expansion,
             inter_mode=self.ssp_inter_mode,
             kernel_sizes=spp_kernel_sizes,
             strides=spp_strides,
         )
 
-        self.highres_planes = highres_planes
+        self.highres_channels = highres_channels
         self.layer5_bottleneck_expansion = layer5_bottleneck_expansion
         self.init_params()
 
