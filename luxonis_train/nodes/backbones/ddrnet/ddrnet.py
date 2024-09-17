@@ -1,4 +1,4 @@
-from typing import Dict, Type
+from typing import Type
 
 from torch import Tensor, nn
 
@@ -223,24 +223,6 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self.highres_channels = highres_channels
         self.layer5_bottleneck_expansion = layer5_bottleneck_expansion
         self.init_params()
-
-    @property
-    def backbone(self):
-        """Create a fake backbone module to load backbone pre-trained weights."""
-        return nn.Sequential(
-            Dict(
-                [
-                    ("_backbone", self._backbone),
-                    ("compression3", self.compression3),
-                    ("compression4", self.compression4),
-                    ("down3", self.down3),
-                    ("down4", self.down4),
-                    ("layer3_skip", self.layer3_skip),
-                    ("layer4_skip", self.layer4_skip),
-                    ("layer5_skip", self.layer5_skip),
-                ]
-            )
-        )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         width_output = inputs.shape[-1] // 8
