@@ -9,11 +9,11 @@ from .base_metric import BaseMetric
 
 
 class MeanAveragePrecisionOBB(BaseMetric):
-    """Compute the Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR) for
-    oriented object detection predictions.
+    """Compute the Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR) for object
+    detection predictions using oriented bounding boxes.
 
-    Adapted from U{Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)
-    <https://lightning.ai/docs/torchmetrics/stable/detection/mean_average_precision.html>}.
+    Partially adapted from U{YOLOv8 OBBMetrics
+    <https://github.com/ultralytics/ultralytics/blob/ba438aea5ae4d0e7c28d59ed8408955d16ca71ec/ultralytics/utils/metrics.py#L1223>}.
     """
 
     supported_labels = [LabelType.OBOUNDINGBOX]
@@ -37,13 +37,17 @@ class MeanAveragePrecisionOBB(BaseMetric):
     def update(
         self,
         outputs: list[Tensor],  # preds
-        labels: Tensor,  # batch
+        labels: list[Tensor],  # batch
     ):
         """Update metrics without erasing stats from the previous batch, i.e. the
         metrics are calculated cumulatively.
 
-        preds: [x1, y1, x2, y2, conf, cls_idx, r] unnormalized (not in [0, 1] range) [Tensor(n_bboxes, 7)]
-        batch: [cls_idx, x1, y1, x2, y2, r] unnormalized (not in [0, 1] range) [Tensor(n_bboxes, 6)]
+        @type outputs: list[Tensor]
+        @param outputs: Network predictions [x1, y1, x2, y2, conf, cls_idx, r]
+            unnormalized (not in [0, 1] range) [Tensor(n_bboxes, 7)]
+        @type labels: list[Tensor]
+        @param labels: [cls_idx, x1, y1, x2, y2, r] unnormalized (not in [0, 1] range)
+            [Tensor(n_bboxes, 6)]
         """
         for si, output in enumerate(outputs):
             self.stats["conf"].append(output[:, 4])
@@ -71,17 +75,12 @@ class MeanAveragePrecisionOBB(BaseMetric):
     ) -> tuple[list[Tensor], list[Tensor]]:
         # outputs_nms: [x, y, w, h, r, conf, cls_idx] unnormalized (not in [0, 1] range) [Tensor(n_bboxes, 7)]
         # obb_labels: [img_id, cls_idx, x1, y1, x2, y2, x3, y3, x4, y4] normalized (in [0, 1] range) [Tensor(n_bboxes, 10)]
-
-        # preds: [xc, yc, w, h, conf, cls_idx, r] unnormalized (not in [0, 1] range) [Tensor(n_bboxes, 7)]
-        # batch: [cls_idx, xc, yc, w, h, r] unnormalized (not in [0, 1] range) [Tensor(n_bboxes, 6)]
-
         obb_labels = self.get_label(labels)[0]
         output_nms = self.get_input_tensors(outputs)
         pred_scores = self.get_input_tensors(outputs, "class_scores")[
             0
-        ]  # needed for batch size and device
+        ]  # needed for batch size
 
-        # device = pred_scores.device
         batch_size = pred_scores.shape[0]
         img_size = self.node.original_in_shape[1:]
 
@@ -90,7 +89,6 @@ class MeanAveragePrecisionOBB(BaseMetric):
             output_nms[i][..., [0, 1, 2, 3, 4, 5, 6]] = output_nms[i][
                 ..., [0, 1, 2, 3, 5, 6, 4]
             ]  # move angle to the end
-            # output_list.append(output_nms[i])
 
             curr_label = obb_labels[obb_labels[:, 0] == i]
             output_labels.append(
@@ -99,7 +97,7 @@ class MeanAveragePrecisionOBB(BaseMetric):
 
         return output_nms, output_labels
 
-    def _preprocess_target(self, target: Tensor, batch_size: int, img_size):
+    def _preprocess_target(self, target: Tensor, batch_size: int, img_size) -> Tensor:
         """Preprocess target in shape [batch_size, N, 6] where N is maximum number of
         instances in one image."""
         cls_idx = target[:, 1].unsqueeze(-1)
@@ -121,7 +119,7 @@ class MeanAveragePrecisionOBB(BaseMetric):
 
     def compute(
         self,
-    ) -> tuple[Tensor, dict[str, Tensor]]:  # NOTE: change to the appropriate types
+    ) -> tuple[Tensor, dict[str, Tensor]]:
         """Process predicted results for object detection and update metrics."""
         results = self._process(
             torch.cat(self.stats["tp"]).cpu().numpy(),
@@ -142,20 +140,23 @@ class MeanAveragePrecisionOBB(BaseMetric):
 
         return map, metrics
 
-    def _process_batch(self, detections, gt_bboxes, gt_cls):
+    def _process_batch(
+        self, detections: Tensor, gt_bboxes: Tensor, gt_cls: Tensor
+    ) -> Tensor:
         """Perform computation of the correct prediction matrix for a batch of # "fp":
         torch.from_numpy(results[1]), detections and ground truth bounding boxes.
 
-        Args:
-            detections (torch.Tensor): A tensor of shape (N, 7) representing the detected bounding boxes and associated
-                data. Each detection is represented as (x1, y1, x2, y2, conf, class, angle).
-            gt_bboxes (torch.Tensor): A tensor of shape (M, 5) representing the ground truth bounding boxes. Each box is
-                represented as (x1, y1, x2, y2, angle).
-            gt_cls (torch.Tensor): A tensor of shape (M,) representing class labels for the ground truth bounding boxes.
-
-        Returns:
-            (torch.Tensor): The correct prediction matrix with shape (N, 10), which includes 10 IoU (Intersection over
-                Union) levels for each detection, indicating the accuracy of predictions compared to the ground truth.
+        @type detections: Tensor
+        @param detections: A tensor of shape (N, 7) representing the detected bounding boxes and associated
+            data. Each detection is represented as (x1, y1, x2, y2, conf, class, angle).
+        @type gt_bboxes: Tensor
+        @param gt_bboxes: A tensor of shape (M, 5) representing the ground truth bounding boxes. Each box is
+            represented as (x1, y1, x2, y2, angle).
+        @type gt_cls: Tensor
+        @param gt_cls: A tensor of shape (M,) representing class labels for the ground truth bounding boxes.
+        @rtype: Tensor
+        @return: The correct prediction matrix with shape (N, 10), which includes 10 IoU (Intersection over
+            Union) levels for each detection, indicating the accuracy of predictions compared to the ground truth.
 
         Example:
             ```python
@@ -174,18 +175,27 @@ class MeanAveragePrecisionOBB(BaseMetric):
         )
         return self.match_predictions(detections[:, 5], gt_cls, iou)
 
-    def match_predictions(self, pred_classes, true_classes, iou, use_scipy=False):
+    def match_predictions(
+        self,
+        pred_classes: Tensor,
+        true_classes: Tensor,
+        iou: Tensor,
+        use_scipy: bool = False,
+    ) -> Tensor:
         """Matches predictions to ground truth objects (pred_classes, true_classes)
         using IoU.
 
-        Args:
-            pred_classes (torch.Tensor): Predicted class indices of shape(N,).
-            true_classes (torch.Tensor): Target class indices of shape(M,).
-            iou (torch.Tensor): An NxM tensor containing the pairwise IoU values for predictions and ground of truth
-            use_scipy (bool): Whether to use scipy for matching (more precise).
-
-        Returns:
-            (torch.Tensor): Correct tensor of shape(N,10) for 10 IoU thresholds.
+        @type pred_classes: Tensor
+        @param pred_classes: Predicted class indices of shape(N,).
+        @type true_classes: Tensor
+        @param true_classes: Target class indices of shape(M,).
+        @type iou: Tensor
+        @param iou: An NxM tensor containing the pairwise IoU values for predictions and
+            ground of truth
+        @type use_scipy: bool
+        @param use_scipy: Whether to use scipy for matching (more precise).
+        @rtype: Tensor
+        @return: Correct tensor of shape(N,10) for 10 IoU thresholds.
         """
         # Dx10 matrix, where D - detections, 10 - IoU thresholds
         correct = np.zeros((pred_classes.shape[0], self.iouv.shape[0])).astype(bool)
@@ -226,16 +236,16 @@ class MeanAveragePrecisionOBB(BaseMetric):
                     correct[matches[:, 1].astype(int), i] = True
         return torch.tensor(correct, dtype=torch.bool, device=pred_classes.device)
 
-    def _update_metrics(self, results):
+    def _update_metrics(self, results: tuple[np.ndarray, ...]):
         """Updates the evaluation metrics of the model with a new set of results.
 
-        Args:
-            results (tuple): A tuple containing the following evaluation metrics:
-                - p (list): Precision for each class. Shape: (nc,).
-                - r (list): Recall for each class. Shape: (nc,).
-                - f1 (list): F1 score for each class. Shape: (nc,).
-                - all_ap (list): AP scores for all classes and all IoU thresholds. Shape: (nc, 10).
-                - ap_class_index (list): Index of class for each AP score. Shape: (nc,).
+        @type results: tuple[np.ndarray, ...]
+        @param results: A tuple containing the following evaluation metrics:
+            - p (list): Precision for each class. Shape: (nc,).
+            - r (list): Recall for each class. Shape: (nc,).
+            - f1 (list): F1 score for each class. Shape: (nc,).
+            - all_ap (list): AP scores for all classes and all IoU thresholds. Shape: (nc, 10).
+            - ap_class_index (list): Index of class for each AP score. Shape: (nc,).
 
         Side Effects:
             Updates the class attributes `self.p`, `self.r`, `self.f1`, `self.all_ap`, and `self.ap_class_index` based
@@ -260,7 +270,13 @@ class MeanAveragePrecisionOBB(BaseMetric):
         #     _,  # self.prec_values,
         # ) = results
 
-    def _process(self, tp, conf, pred_cls, target_cls) -> tuple[np.ndarray, ...]:
+    def _process(
+        self,
+        tp: np.ndarray,
+        conf: np.ndarray,
+        pred_cls: np.ndarray,
+        target_cls: np.ndarray,
+    ) -> tuple[np.ndarray, ...]:
         """Process predicted results for object detection and update metrics."""
         results = MeanAveragePrecisionOBB.ap_per_class(
             tp,
@@ -276,17 +292,17 @@ class MeanAveragePrecisionOBB(BaseMetric):
 
     @staticmethod
     def ap_per_class(
-        tp,
-        conf,
-        pred_cls,
-        target_cls,
+        tp: np.ndarray,
+        conf: np.ndarray,
+        pred_cls: np.ndarray,
+        target_cls: np.ndarray,
         # plot=False,
         # on_plot=None,
         # save_dir=Path(),
         # names={},
-        eps=1e-16,
+        eps: float = 1e-16,
         # prefix="",
-    ):
+    ) -> tuple[np.ndarray, ...]:
         """Computes the average precision per class for object detection evaluation.
 
         Args:
@@ -395,7 +411,9 @@ class MeanAveragePrecisionOBB(BaseMetric):
         )
 
     @staticmethod
-    def compute_ap(recall, precision):
+    def compute_ap(
+        recall: list[float], precision: list[float]
+    ) -> tuple[float, np.ndarray, np.ndarray]:
         """Compute the average precision (AP) given the recall and precision curves.
 
         Args:
@@ -428,7 +446,7 @@ class MeanAveragePrecisionOBB(BaseMetric):
         return ap, mpre, mrec
 
     @staticmethod
-    def smooth(y, f=0.05):
+    def smooth(y: np.ndarray, f: float = 0.05) -> np.ndarray:
         """Box filter of fraction f."""
         nf = round(len(y) * f * 2) // 2 + 1  # number of filter elements (must be odd)
         p = np.ones(nf // 2)  # ones padding
@@ -436,7 +454,7 @@ class MeanAveragePrecisionOBB(BaseMetric):
         return np.convolve(yp, np.ones(nf) / nf, mode="valid")  # y-smoothed
 
     @staticmethod
-    def map(all_ap):
+    def map(all_ap: np.ndarray) -> float:
         """
         Returns the mean Average Precision (mAP) over IoU thresholds of 0.5 - 0.95 in steps of 0.05.
 

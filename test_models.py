@@ -15,6 +15,7 @@ OPTS = {
 
 def main():
     config_file = "obb_detection_model"
+    # config_file = "detection_model"
     config_file = f"configs/{config_file}.yaml"
     # model = LuxonisModel(config_file, opts=OPTS)
     model = LuxonisModel(config_file)

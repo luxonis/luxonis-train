@@ -187,7 +187,7 @@ def bbox2dist(bbox: Tensor, anchor_points: Tensor, reg_max: float) -> Tensor:
     return dist
 
 
-def xyxyxyxy2xywhr(x):
+def xyxyxyxy2xywhr(x: Tensor) -> Tensor | np.ndarray:
     """Convert batched Oriented Bounding Boxes (OBB) from [xy1, xy2, xy3, xy4] to [xywh,
     rotation]. Rotation values are returned in radians from 0 to pi/2.
 
@@ -213,7 +213,7 @@ def xyxyxyxy2xywhr(x):
     )
 
 
-def xywhr2xyxyxyxy(x):
+def xywhr2xyxyxyxy(x: Tensor) -> Tensor | np.ndarray:
     """Convert batched Oriented Bounding Boxes (OBB) from [xywh, rotation] to [xy1, xy2,
     xy3, xy4]. Rotation values should be in radians from 0 to pi/2.
 
@@ -243,7 +243,7 @@ def xywhr2xyxyxyxy(x):
     return stack([pt1, pt2, pt3, pt4], -2)
 
 
-def xyxy2xywh(x):
+def xyxy2xywh(x: Tensor) -> Tensor:
     """Convert bounding box coordinates from (x1, y1, x2, y2) format to (x, y, width,
     height) format where (x1, y1) is the top-left corner and (x2, y2) is the bottom-
     right corner.
@@ -267,7 +267,7 @@ def xyxy2xywh(x):
     return y
 
 
-def xywh2xyxy(x):
+def xywh2xyxy(x: Tensor) -> Tensor:
     """Convert bounding box coordinates from (x, y, width, height) format to (x1, y1,
     x2, y2) format where (x1, y1) is the top-left corner and (x2, y2) is the bottom-
     right corner. Note: ops per 2 channels faster than per channel.
@@ -403,7 +403,9 @@ def bbox_iou(
         return iou
 
 
-def probiou(obb1, obb2, CIoU=False, eps=1e-7):
+def probiou(
+    obb1: Tensor, obb2: Tensor, CIoU: bool = False, eps: float = 1e-7
+) -> Tensor:
     """Calculate probabilistic IoU between oriented bounding boxes.
 
     Implements the algorithm from https://arxiv.org/pdf/2106.06072v1.pdf.
@@ -456,7 +458,7 @@ def probiou(obb1, obb2, CIoU=False, eps=1e-7):
     return iou
 
 
-def batch_probiou(obb1, obb2, eps=1e-7):
+def batch_probiou(obb1: Tensor, obb2: Tensor, eps: float = 1e-7) -> Tensor:
     """
     Calculate the prob IoU between oriented bounding boxes, https://arxiv.org/pdf/2106.06072v1.pdf.
 
@@ -498,14 +500,14 @@ def batch_probiou(obb1, obb2, eps=1e-7):
     return 1 - hd
 
 
-def _get_covariance_matrix(boxes):
+def _get_covariance_matrix(boxes: Tensor) -> tuple[Tensor, ...]:
     """Generating covariance matrix from obbs.
 
     Args:
         boxes (torch.Tensor): A tensor of shape (N, 5) representing rotated bounding boxes, with xywhr format.
 
     Returns:
-        (torch.Tensor): Covariance matrices corresponding to original rotated bounding boxes.
+        tuple(torch.Tensor): Covariance matrices corresponding to original rotated bounding boxes.
     """
     # Gaussian bounding boxes, ignore the center points (the first two columns) because they are not needed here.
     gbbs = torch.cat((boxes[:, 2:4].pow(2) / 12, boxes[:, 4:]), dim=-1)
@@ -798,7 +800,9 @@ def batched_nms_obb(
     return keep_indices[scores[keep_indices].sort(descending=True)[1]]
 
 
-def batched_nms_rotated(boxes, scores, threshold=0.45):
+def batched_nms_rotated(
+    boxes: Tensor, scores: Tensor, threshold: float = 0.45
+) -> Tensor:
     """NMS for oriented bounding boxes using probiou and fast-nms.
 
     Args:

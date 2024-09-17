@@ -23,9 +23,9 @@ class OBBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         font_size: int | None = None,
         **kwargs,
     ):
-        """Visualizer for bounding box predictions.
+        """Visualizer for oriented bounding box predictions.
 
-        Creates a visualization of the bounding box predictions and labels.
+        Creates a visualization of the oriented bounding box predictions and labels.
 
         @type labels: dict[int, str] | list[str] | None
         @param labels: Either a dictionary mapping class indices to names, or a list of
@@ -159,16 +159,16 @@ class OBBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         predictions: list[Tensor],
         targets: Tensor,
     ) -> tuple[Tensor, Tensor]:
-        """Creates a visualization of the bounding box predictions and labels.
+        """Creates a visualization of the oriented bounding box predictions and labels.
 
         @type label_canvas: Tensor
         @param label_canvas: The canvas containing the labels.
         @type prediction_canvas: Tensor
         @param prediction_canvas: The canvas containing the predictions.
-        @type prediction: Tensor
-        @param prediction: The predicted bounding boxes. The shape should be [N, 6],
-            where N is the number of bounding boxes and the last dimension is [x1, y1,
-            x2, y2, class, conf].
+        @type predictions: Tensor
+        @param predictions: The predicted bounding boxes. The shape should be [N, 7],
+            where N is the number of bounding boxes and the last dimension is [xc, yc,
+            w, h, conf, class]. # NOTE: check it
         @type targets: Tensor
         @param targets: The target bounding boxes.
         """

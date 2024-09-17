@@ -166,7 +166,6 @@ def draw_obounding_box(img: Tensor, obbox: Tensor | np.ndarray, **kwargs) -> Ten
     @return: Image with bounding box labels drawn on.
     """
     _, H, W = img.shape
-    # bboxs = box_convert(label, "xywh", "xyxy")
     # The conversion below is needed for fitting a rectangle to the 4 label points, which can form
     # a polygon sometimes
     if obbox.shape[-1] > 5:

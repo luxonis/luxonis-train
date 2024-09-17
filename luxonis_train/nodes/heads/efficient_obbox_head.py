@@ -26,7 +26,7 @@ class EfficientOBBoxHead(EfficientBBoxHead):
         reg_max: int = 16,
         **kwargs,
     ):
-        """Head for object detection.
+        """Head for object detection using oriented bounding boxes.
 
         TODO: add more documentation
 

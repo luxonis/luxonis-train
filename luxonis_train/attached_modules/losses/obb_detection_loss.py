@@ -40,13 +40,10 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
         reg_max: int = 16,
         **kwargs,
     ):
-        """BBox loss adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
-        <https://arxiv.org/pdf/2209.02976.pdf>}. It combines IoU based bbox regression loss and varifocal loss
-        for classification.
-        Code is adapted from U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models}.
+        """OBBox (oriented bounding box) loss partially adapted from U{YOLOv8:
+        https://github.com/ultralytics/ultralytics/blob/ba438aea5ae4d0e7c28d59ed8408955d16ca71ec/ultralytics/utils/loss.py#L610
+        }. It combines IoU based bbox regression, varifocal, and dfl losses.
 
-        @type n_warmup_epochs: int
-        @param n_warmup_epochs: Number of epochs where ATSS assigner is used, after that we switch to TAL assigner.
         @type iou_type: L{IoUType}
         @param iou_type: IoU type used for bbox regression loss.
         @type reduction: Literal["sum", "mean"]
@@ -55,6 +52,10 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
         @param class_loss_weight: Weight of classification loss.
         @type iou_loss_weight: float
         @param iou_loss_weight: Weight of IoU loss.
+        @type dfl_loss_weight: float
+        @param dfl_loss_weight: Weight of DFL loss.
+        @type reg_max: int
+        @param reg_max: Number of bins for predicting the distributions of bounding box coordinates.
         @type kwargs: dict
         @param kwargs: Additional arguments to pass to L{BaseLoss}.
         """
@@ -82,12 +83,6 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
         # Class loss
         self.varifocal_loss = VarifocalLoss()
         # self.bce = nn.BCEWithLogitsLoss(reduction="none")
-
-        # self.n_warmup_epochs = n_warmup_epochs
-        # self.atts_assigner = ATSSAssigner(topk=9, n_classes=self.n_classes)
-        # self.tal_assigner = TaskAlignedAssigner(
-        #     topk=13, n_classes=self.n_classes, alpha=1.0, beta=6.0
-        # )
 
         self.class_loss_weight = class_loss_weight
         self.iou_loss_weight = iou_loss_weight
@@ -132,9 +127,7 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
                 self.grid_cell_offset,
                 multiply_with_stride=True,
             )
-            self.anchor_points_strided = (
-                self.anchor_points / self.stride_tensor
-            )  # NOTE: check later for dimenstions
+            self.anchor_points_strided = self.anchor_points / self.stride_tensor
 
         target = self._preprocess_target(
             target, batch_size
@@ -182,9 +175,7 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
             mask_gt,
         )
 
-        xy_unstrided = (
-            assigned_bboxes[..., :2] / self.stride_tensor
-        )  # NOTE: check for dimensions during training
+        xy_unstrided = assigned_bboxes[..., :2] / self.stride_tensor
         assigned_bboxes_unstrided = torch.cat(
             [xy_unstrided, assigned_bboxes[..., 2:]], dim=-1
         )  # xywhr unnormalized with xy strided
@@ -211,6 +202,7 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
 
         # CLS loss
         loss_cls = self.varifocal_loss(pred_scores, assigned_scores, one_hot_label)
+        # loss_cls = self.bce(pred_scores, assigned_scores)
         if assigned_scores.sum() > 1:
             loss_cls /= assigned_scores.sum()
 
@@ -266,7 +258,6 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
             [scaled_target, out_target[:, :, 5].unsqueeze(-1)],
             dim=-1,
         )
-        # out_target[..., 1:] = box_convert(scaled_target, "xywh", "xyxy")
         out_target[..., 1:] = scaled_target_angle
         return out_target
 
@@ -302,7 +293,12 @@ class VarifocalLoss(nn.Module):
 
 
 class DFLoss(nn.Module):
-    """Criterion class for computing DFL losses during training."""
+    """Criterion class for computing DFL losses during training.
+
+    @type reg_max: int
+    @param reg_max: Number of bins for predicting the distributions of bounding box
+        coordinates.
+    """
 
     def __init__(self, reg_max=16) -> None:
         """Initialize the DFL module."""
@@ -330,7 +326,12 @@ class DFLoss(nn.Module):
 
 
 class RotatedBboxLoss(nn.Module):
-    """Criterion class for computing training losses during training."""
+    """Criterion class for computing training losses during training.
+
+    @type reg_max: int
+    @param reg_max: Number of bins for predicting the distributions of bounding box
+        coordinates.
+    """
 
     def __init__(self, reg_max):
         """Initialize the BboxLoss module with regularization maximum and DFL
