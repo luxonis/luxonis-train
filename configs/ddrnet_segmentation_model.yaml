@@ -6,7 +6,6 @@ model:
   predefined_model:
     name: DDRNetSegmentationModel
     params:
-      n_classes: 80
       task: multiclass
       backbone_params:
         use_aux_heads: True # set to False to disable auxiliary heads (for export)

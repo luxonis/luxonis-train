@@ -280,7 +280,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         x = x + out_layer5_skip
 
         if self._use_aux_heads:
-            return [x, x_extra]
+            return [x_extra, x]
         else:
             return [x]
 

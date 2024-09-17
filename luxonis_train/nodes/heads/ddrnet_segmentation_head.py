@@ -5,22 +5,20 @@ from torch import Tensor
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.utils.general import infer_upscale_factor
 from luxonis_train.utils.types import LabelType
 
 logger = logging.getLogger(__name__)
 
 
 class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
-    in_height: int
-    n_classes: int
+    attach_index: int = -1
+
     tasks: list[LabelType] = [LabelType.SEGMENTATION]
-    attach_index: int = 0
 
     def __init__(
         self,
-        in_planes: int = 128,
         inter_planes: int = 64,
-        scale_factor: int = 8,
         inter_mode: str = "bilinear",
         **kwargs,
     ):
@@ -32,19 +30,19 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
         @see: U{Paper <https://arxiv.org/pdf/2101.06085.pdf>}
         @license: U{Apache License, Version 2.0 <https://github.com/Deci-AI/super-
             gradients/blob/master/LICENSE.md>}
-        @type in_planes: int
-        @param in_planes: Width of input. Defaults to 128.
         @type inter_planes: int
         @param inter_planes: Width of internal conv. Must be a multiple of
             scale_factor^2 when inter_mode is pixel_shuffle. Defaults to 64.
-        @type scale_factor: int
-        @param scale_factor: Scaling factor. Defaults to 8.
         @type inter_mode: str
         @param inter_mode: Upsampling method. One of nearest, linear, bilinear, bicubic,
             trilinear, area or pixel_shuffle. If pixel_shuffle is set, nn.PixelShuffle
             is used for scaling. Defaults to "bilinear".
         """
         super().__init__(**kwargs)
+        model_in_h, model_in_w = self.original_in_shape[1:]
+        scale_factor = 2 ** infer_upscale_factor(
+            (self.in_height, self.in_width), (model_in_h, model_in_w)
+        )
         self.scale_factor = scale_factor
 
         if inter_mode == "pixel_shuffle":
@@ -54,7 +52,7 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
                 )
 
         self.conv1 = ConvModule(
-            in_planes,
+            self.in_channels,
             inter_planes,
             kernel_size=3,
             padding=1,
