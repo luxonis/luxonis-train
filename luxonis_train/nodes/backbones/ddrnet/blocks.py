@@ -65,7 +65,7 @@ class DAPPMBranch(nn.Module):
                 ),
             )
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor | list[Tensor]) -> Tensor:
         """Process input through the DAPPM branch.
 
         @type x: Tensor or list[Tensor]
