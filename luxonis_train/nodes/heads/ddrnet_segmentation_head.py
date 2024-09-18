@@ -75,7 +75,10 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
         x = self.conv1(x)
         x = self.relu(self.bn2(x))
         x = self.conv2(x)
-        return self.upscale(x)
+        x = self.upscale(x)
+        if self.export:
+            return x.argmax(dim=1)
+        return x
 
     def set_export_mode(self, mode: bool = True) -> None:
         """Sets the module to export mode.
