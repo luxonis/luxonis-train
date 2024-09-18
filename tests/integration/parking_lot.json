@@ -190,7 +190,7 @@
                 ]
             },
             {
-                "parser": "YOLO",
+                "parser": "YoloDetectionNetwork",
                 "metadata": {
                     "postprocessor_path": null,
                     "classes": [
