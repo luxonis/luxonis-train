@@ -5,7 +5,6 @@ import torch.nn as nn
 from torch import Tensor
 
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.nodes.blocks import ConvModule
 from luxonis_train.utils.general import infer_upscale_factor
 from luxonis_train.utils.types import LabelType
 
@@ -46,48 +45,37 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
         )
         self.scale_factor = scale_factor
 
-        if inter_mode == "pixel_shuffle":
-            if inter_channels % (scale_factor**2) != 0:
-                raise ValueError(
-                    "When using pixel_shuffle, inter_channels must be a multiple of scale_factor^2."
-                )
+        if inter_mode == "pixel_shuffle" and inter_channels % (scale_factor**2) != 0:
+            raise ValueError(
+                "For pixel_shuffle, inter_channels must be a multiple of scale_factor^2."
+            )
 
-        self.conv1 = ConvModule(
-            self.in_channels,
+        self.bn1 = nn.BatchNorm2d(self.in_channels)
+        self.conv1 = nn.Conv2d(
+            self.in_channels, inter_channels, kernel_size=3, padding=1, bias=False
+        )
+        self.bn2 = nn.BatchNorm2d(inter_channels)
+        self.relu = nn.ReLU(inplace=True)
+
+        self.conv2 = nn.Conv2d(
             inter_channels,
-            kernel_size=3,
-            padding=1,
-            bias=False,
-            activation=nn.ReLU(inplace=True),
+            inter_channels if inter_mode == "pixel_shuffle" else self.n_classes,
+            kernel_size=1,
+            padding=0,
+            bias=True,
+        )
+        self.upscale = (
+            nn.PixelShuffle(scale_factor)
+            if inter_mode == "pixel_shuffle"
+            else nn.Upsample(scale_factor=scale_factor, mode=inter_mode)
         )
 
-        if inter_mode == "pixel_shuffle":
-            self.conv2 = ConvModule(
-                inter_channels,
-                inter_channels,
-                kernel_size=1,
-                padding=0,
-                bias=True,
-                activation=nn.Identity(),
-            )
-            self.upscale = nn.PixelShuffle(scale_factor)
-        else:
-            self.conv2 = ConvModule(
-                inter_channels,
-                self.n_classes,
-                kernel_size=1,
-                padding=0,
-                bias=True,
-                activation=nn.Identity(),
-            )
-            self.upscale = nn.Upsample(scale_factor=scale_factor, mode=inter_mode)
-
     def forward(self, inputs: Tensor) -> Tensor:
-        x = self.conv1(inputs)
-        out = self.conv2(x)
-        out = self.upscale(out)
-
-        return out
+        x = self.relu(self.bn1(inputs))
+        x = self.conv1(x)
+        x = self.relu(self.bn2(x))
+        x = self.conv2(x)
+        return self.upscale(x)
 
     def set_export_mode(self, mode: bool = True) -> None:
         """Sets the module to export mode.
