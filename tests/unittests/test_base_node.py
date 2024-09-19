@@ -9,8 +9,7 @@ from luxonis_train.utils.exceptions import IncompatibleException
 
 
 class DummyNode(BaseNode, register=False):
-    def forward(self, _):
-        ...
+    def forward(self, _): ...
 
 
 @pytest.fixture
@@ -35,7 +34,9 @@ def packet() -> Packet[Tensor]:
         ((1, -1), [2, 3, 4]),
     ],
 )
-def test_attach_index(attach_index: AttachIndexType, expected: list[int] | int):
+def test_attach_index(
+    attach_index: AttachIndexType, expected: list[int] | int
+):
     lst = [1, 2, 3, 4, 5]
 
     class DummyBaseNode:
@@ -69,9 +70,9 @@ def test_invalid(packet: Packet[Tensor]):
         _ = node.original_in_shape
     with pytest.raises(RuntimeError):
         _ = node.dataset_metadata
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         node.unwrap([packet, packet])
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         node.wrap({"inp": torch.rand(3, 224, 224)})
 
 
@@ -91,11 +92,14 @@ def test_check_type_override():
     class DummyNode(BaseNode, register=False):
         in_channels: int
 
-        def forward(self, _):
-            ...
+        def forward(self, _): ...
 
     with pytest.raises(IncompatibleException):
-        DummyNode(input_shapes=[{"features": [Size((3, 224, 224)) for _ in range(3)]}])
+        DummyNode(
+            input_shapes=[
+                {"features": [Size((3, 224, 224)) for _ in range(3)]}
+            ]
+        )
 
 
 def test_tasks():
@@ -108,18 +112,20 @@ def test_tasks():
     dummy_head = DummyHead()
     dummy_node = DummyNode()
     dummy_multi_head = DummyMultiHead(n_keypoints=4)
-    assert dummy_head.get_task_name(LabelType.CLASSIFICATION) == "classification"
+    assert (
+        dummy_head.get_task_name(LabelType.CLASSIFICATION) == "classification"
+    )
     assert dummy_head.task == "classification"
     with pytest.raises(ValueError):
         dummy_head.get_task_name(LabelType.SEGMENTATION)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         dummy_node.get_task_name(LabelType.SEGMENTATION)
 
     with pytest.raises(RuntimeError):
         _ = dummy_node.task
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         _ = dummy_multi_head.task
 
     metadata = DatasetMetadata(
@@ -145,7 +151,7 @@ def test_tasks():
     assert dummy_multi_head.n_keypoints == 4
     with pytest.raises(ValueError):
         _ = dummy_head.n_keypoints
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         _ = dummy_node.n_keypoints
 
     dummy_head = DummyHead(n_classes=5)

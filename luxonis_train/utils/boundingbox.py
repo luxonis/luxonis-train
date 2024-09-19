@@ -239,7 +239,9 @@ def bbox_iou(
         sin_alpha_1 = torch.abs(s_cw) / sigma
         sin_alpha_2 = torch.abs(s_ch) / sigma
         threshold = pow(2, 0.5) / 2
-        sin_alpha = torch.where(sin_alpha_1 > threshold, sin_alpha_2, sin_alpha_1)
+        sin_alpha = torch.where(
+            sin_alpha_1 > threshold, sin_alpha_2, sin_alpha_1
+        )
         angle_cost = torch.cos(torch.arcsin(sin_alpha) * 2 - math.pi / 2)
 
         # distance cost
@@ -279,7 +281,8 @@ def non_max_suppression(
     max_det: int = 300,
     predicts_objectness: bool = True,
 ) -> list[Tensor]:
-    """Non-maximum suppression on model's predictions to keep only best instances.
+    """Non-maximum suppression on model's predictions to keep only best
+    instances.
 
     @type preds: Tensor
     @param preds: Model's prediction tensor of shape [bs, N, M].
@@ -332,7 +335,9 @@ def non_max_suppression(
             torch.max(preds[..., 5 : 5 + n_classes], dim=-1)[0] > conf_thres,
         )
 
-    output = [torch.zeros((0, preds.size(-1)), device=preds.device)] * preds.size(0)
+    output = [
+        torch.zeros((0, preds.size(-1)), device=preds.device)
+    ] * preds.size(0)
 
     for i, x in enumerate(preds):
         curr_out = x[candidate_mask[i]]
@@ -355,7 +360,9 @@ def non_max_suppression(
 
         if multi_label:
             box_idx, class_idx = (
-                (curr_out[:, 5 : 5 + n_classes] > conf_thres).nonzero(as_tuple=False).T
+                (curr_out[:, 5 : 5 + n_classes] > conf_thres)
+                .nonzero(as_tuple=False)
+                .T
             )
             keep_mask[box_idx] = True
             curr_out = torch.cat(
@@ -367,9 +374,13 @@ def non_max_suppression(
                 1,
             )
         else:
-            conf, class_idx = curr_out[:, 5 : 5 + n_classes].max(1, keepdim=True)
+            conf, class_idx = curr_out[:, 5 : 5 + n_classes].max(
+                1, keepdim=True
+            )
             keep_mask[conf.view(-1) > conf_thres] = True
-            curr_out = torch.cat((bboxes, conf, class_idx.float()), 1)[keep_mask]
+            curr_out = torch.cat((bboxes, conf, class_idx.float()), 1)[
+                keep_mask
+            ]
 
         if has_additional:
             curr_out = torch.hstack(
@@ -406,20 +417,21 @@ def anchors_from_dataset(
     n_generations: int = 1000,
     ratio_threshold: float = 4.0,
 ) -> tuple[Tensor, float]:
-    """Generates anchors based on bounding box annotations present in provided data
-    loader. It uses K-Means for initial proposals which are then refined with genetic
-    algorithm.
+    """Generates anchors based on bounding box annotations present in
+    provided data loader. It uses K-Means for initial proposals which
+    are then refined with genetic algorithm.
 
     @type loader: L{torch.utils.data.DataLoader}
     @param loader: Data loader.
     @type n_anchors: int
-    @param n_anchors: Number of anchors, this is normally num_heads * 3 which generates
-        3 anchors per layer. Defaults to 9.
+    @param n_anchors: Number of anchors, this is normally n_heads * 3
+        which generates 3 anchors per layer. Defaults to 9.
     @type n_generations: int
-    @param n_generations: Number of iterations for anchor improvement with genetic
-        algorithm. Defaults to 1000.
+    @param n_generations: Number of iterations for anchor improvement
+        with genetic algorithm. Defaults to 1000.
     @type ratio_threshold: float
-    @param ratio_threshold: Minimum threshold for ratio. Defaults to 4.0.
+    @param ratio_threshold: Minimum threshold for ratio. Defaults to
+        4.0.
     @rtype: tuple[Tensor, float]
     @return: Proposed anchors and the best possible recall.
     """
@@ -450,7 +462,8 @@ def anchors_from_dataset(
     except Exception:
         print("Fallback to random anchor init")
         proposed_anchors = (
-            torch.sort(torch.rand(n_anchors * 2))[0].reshape(n_anchors, 2) * img_size
+            torch.sort(torch.rand(n_anchors * 2))[0].reshape(n_anchors, 2)
+            * img_size
         )
 
     proposed_anchors = proposed_anchors[
@@ -458,7 +471,8 @@ def anchors_from_dataset(
     ]  # sort small to large
 
     def calc_best_anchor_ratio(anchors: Tensor, wh: Tensor) -> Tensor:
-        """Calculate how well most suitable anchor box matches each target bbox."""
+        """Calculate how well most suitable anchor box matches each
+        target bbox."""
         symmetric_size_ratios = torch.min(
             wh[:, None] / anchors[None], anchors[None] / wh[:, None]
         )
@@ -467,17 +481,20 @@ def anchors_from_dataset(
         return best_anchor_ratio
 
     def calc_best_possible_recall(anchors: Tensor, wh: Tensor) -> Tensor:
-        """Calculate best possible recall if every bbox is matched to an appropriate
-        anchor."""
+        """Calculate best possible recall if every bbox is matched to an
+        appropriate anchor."""
         best_anchor_ratio = calc_best_anchor_ratio(anchors, wh)
-        best_possible_recall = (best_anchor_ratio > 1 / ratio_threshold).float().mean()
+        best_possible_recall = (
+            (best_anchor_ratio > 1 / ratio_threshold).float().mean()
+        )
         return best_possible_recall
 
     def anchor_fitness(anchors: Tensor, wh: Tensor) -> Tensor:
         """Fitness function used for anchor evolve."""
         best_anchor_ratio = calc_best_anchor_ratio(anchors, wh)
         return (
-            best_anchor_ratio * (best_anchor_ratio > 1 / ratio_threshold).float()
+            best_anchor_ratio
+            * (best_anchor_ratio > 1 / ratio_threshold).float()
         ).mean()
 
     # Genetic algorithm
@@ -495,7 +512,9 @@ def anchors_from_dataset(
             + mutation_noise_mean
         ).clip(0.3, 3.0)
 
-        mutated_anchors = (proposed_anchors.clone() * anchor_mutation).clip(min=2.0)
+        mutated_anchors = (proposed_anchors.clone() * anchor_mutation).clip(
+            min=2.0
+        )
         mutated_fitness = anchor_fitness(mutated_anchors, wh)
         if mutated_fitness > best_fitness:
             best_fitness = mutated_fitness
@@ -516,20 +535,22 @@ def anchors_for_fpn_features(
     grid_cell_offset: float = 0.5,
     multiply_with_stride: bool = False,
 ) -> tuple[Tensor, Tensor, list[int], Tensor]:
-    """Generates anchor boxes, points and strides based on FPN feature shapes and
-    strides.
+    """Generates anchor boxes, points and strides based on FPN feature
+    shapes and strides.
 
     @type features: list[Tensor]
     @param features: List of FPN features.
     @type strides: Tensor
     @param strides: Strides of FPN features.
     @type grid_cell_size: float
-    @param grid_cell_size: Cell size in respect to input image size. Defaults to 5.0.
+    @param grid_cell_size: Cell size in respect to input image size.
+        Defaults to 5.0.
     @type grid_cell_offset: float
-    @param grid_cell_offset: Percent grid cell center's offset. Defaults to 0.5.
+    @param grid_cell_offset: Percent grid cell center's offset. Defaults
+        to 0.5.
     @type multiply_with_stride: bool
-    @param multiply_with_stride: Whether to multiply per FPN values with its stride.
-        Defaults to False.
+    @param multiply_with_stride: Whether to multiply per FPN values with
+        its stride. Defaults to False.
     @rtype: tuple[Tensor, Tensor, list[int], Tensor]
     @return: BBox anchors, center anchors, number of anchors, strides
     """
@@ -563,7 +584,9 @@ def anchors_for_fpn_features(
         anchors.append(anchor)
 
         anchor_point = (
-            torch.stack([shift_x, shift_y], dim=-1).reshape(-1, 2).to(feature.dtype)
+            torch.stack([shift_x, shift_y], dim=-1)
+            .reshape(-1, 2)
+            .to(feature.dtype)
         )
         anchor_points.append(anchor_point)
 
@@ -592,7 +615,8 @@ def process_bbox_predictions(
     @type anchor: Tensor
     @param anchor: Anchor boxes
     @rtype: tuple[Tensor, Tensor, Tensor]
-    @return: xy and wh predictions and tail. The tail is anything after xywh.
+    @return: xy and wh predictions and tail. The tail is anything after
+        xywh.
     """
     out_bbox = bbox.sigmoid()
     out_bbox_xy = out_bbox[..., 0:2] * 2.0 - 0.5
@@ -648,10 +672,12 @@ def compute_iou_loss(
         else:
             bbox_mask = torch.ones_like(pred_bboxes, dtype=torch.bool)
 
-        pred_bboxes_pos = torch.masked_select(pred_bboxes, bbox_mask).reshape([-1, 4])
-        target_bboxes_pos = torch.masked_select(target_bboxes, bbox_mask).reshape(
+        pred_bboxes_pos = torch.masked_select(pred_bboxes, bbox_mask).reshape(
             [-1, 4]
         )
+        target_bboxes_pos = torch.masked_select(
+            target_bboxes, bbox_mask
+        ).reshape([-1, 4])
 
         iou = bbox_iou(
             pred_bboxes_pos,

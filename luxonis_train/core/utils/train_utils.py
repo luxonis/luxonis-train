@@ -21,7 +21,7 @@ def create_trainer(cfg: TrainerConfig, **kwargs: Any) -> pl.Trainer:
         max_epochs=cfg.epochs,
         accumulate_grad_batches=cfg.accumulate_grad_batches,
         check_val_every_n_epoch=cfg.validation_interval,
-        num_sanity_val_steps=cfg.num_sanity_val_steps,
+        num_sanity_val_steps=cfg.n_sanity_val_steps,
         profiler=cfg.profiler,
         deterministic=cfg.deterministic,
         **kwargs,

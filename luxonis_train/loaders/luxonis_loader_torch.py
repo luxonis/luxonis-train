@@ -156,7 +156,9 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 f"Supported types are: {', '.join(DatasetType.__members__)}."
             )
 
-        logger.info(f"Parsing dataset from {dataset_dir} with name '{dataset_name}'")
+        logger.info(
+            f"Parsing dataset from {dataset_dir} with name '{dataset_name}'"
+        )
 
         return LuxonisParser(
             dataset_dir,

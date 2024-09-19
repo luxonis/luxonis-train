@@ -12,8 +12,9 @@ def is_acyclic(graph: Graph) -> bool:
     """Tests if graph is acyclic.
 
     @type graph: dict[str, list[str]]
-    @param graph: Graph in a format of a dictionary of predecessors. Keys are node
-        names, values are inputs to the node (list of node names).
+    @param graph: Graph in a format of a dictionary of predecessors.
+        Keys are node names, values are inputs to the node (list of node
+        names).
     @rtype: bool
     @return: True if graph is acyclic, False otherwise.
     """
@@ -53,13 +54,14 @@ def traverse_graph(
     """Traverses the graph in topological order.
 
     @type graph: dict[str, list[str]]
-    @param graph: Graph in a format of a dictionary of predecessors. Keys are node
-        names, values are inputs to the node (list of node names).
+    @param graph: Graph in a format of a dictionary of predecessors.
+        Keys are node names, values are inputs to the node (list of node
+        names).
     @type nodes: dict[str, T]
     @param nodes: Dictionary mapping node names to node objects.
     @rtype: Iterator[tuple[str, T, list[str], list[str]]]
-    @return: Iterator of tuples containing node name, node object, node dependencies and
-        unprocessed nodes.
+    @return: Iterator of tuples containing node name, node object, node
+        dependencies and unprocessed nodes.
     @raises RuntimeError: If the graph is malformed.
     """
     # sort the set to allow reproducibility

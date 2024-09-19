@@ -17,8 +17,9 @@ class BaseVisualizer(
 ):
     """A base class for all visualizers.
 
-    This class defines the basic interface for all visualizers. It utilizes automatic
-    registration of defined subclasses to the L{VISUALIZERS} registry.
+    This class defines the basic interface for all visualizers. It
+    utilizes automatic registration of defined subclasses to the
+    L{VISUALIZERS} registry.
     """
 
     @abstractmethod
@@ -27,7 +28,12 @@ class BaseVisualizer(
         label_canvas: Tensor,
         prediction_canvas: Tensor,
         *args: Unpack[Ts],
-    ) -> Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]] | list[Tensor]:
+    ) -> (
+        Tensor
+        | tuple[Tensor, Tensor]
+        | tuple[Tensor, list[Tensor]]
+        | list[Tensor]
+    ):
         """Forward pass of the visualizer.
 
         Takes an image and the prepared inputs from the `prepare` method and
@@ -62,4 +68,6 @@ class BaseVisualizer(
         inputs: Packet[Tensor],
         labels: Labels,
     ) -> Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]:
-        return self(label_canvas, prediction_canvas, *self.prepare(inputs, labels))
+        return self(
+            label_canvas, prediction_canvas, *self.prepare(inputs, labels)
+        )

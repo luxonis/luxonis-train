@@ -25,7 +25,12 @@ def test_forward():
     pred_bboxes = torch.rand(bs, n_anchors, 4)
 
     labels, bboxes, scores, mask, assigned_gt_idx = assigner.forward(
-        anchor_bboxes, n_level_bboxes, gt_labels, gt_bboxes, mask_gt, pred_bboxes
+        anchor_bboxes,
+        n_level_bboxes,
+        gt_labels,
+        gt_bboxes,
+        mask_gt,
+        pred_bboxes,
     )
 
     assert labels.shape == (bs, n_anchors)
@@ -59,7 +64,11 @@ def test_select_topk_candidates():
     )
 
     assert is_in_topk.shape == (batch_size, n_max_boxes, n_anchors)
-    assert topk_idxs.shape == (batch_size, n_max_boxes, topk * len(n_level_bboxes))
+    assert topk_idxs.shape == (
+        batch_size,
+        n_max_boxes,
+        topk * len(n_level_bboxes),
+    )
 
 
 def test_get_positive_samples():
@@ -97,7 +106,11 @@ def test_get_final_assignments():
     assigned_gt_idx = torch.randint(0, n_max_boxes, (batch_size, n_anchors))
     mask_pos_sum = torch.randint(0, 2, (batch_size, n_anchors))
 
-    assigned_labels, assigned_bboxes, assigned_scores = assigner._get_final_assignments(
+    (
+        assigned_labels,
+        assigned_bboxes,
+        assigned_scores,
+    ) = assigner._get_final_assignments(
         gt_labels, gt_bboxes, assigned_gt_idx, mask_pos_sum
     )
 

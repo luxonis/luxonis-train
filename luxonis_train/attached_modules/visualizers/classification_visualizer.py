@@ -23,8 +23,8 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
         """Visualizer for classification tasks.
 
         @type include_plot: bool
-        @param include_plot: Whether to include a plot of the class probabilities in the
-            visualization. Defaults to C{True}.
+        @param include_plot: Whether to include a plot of the class
+            probabilities in the visualization. Defaults to C{True}.
         """
         super().__init__(**kwargs)
         self.include_plot = include_plot
@@ -34,17 +34,19 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
 
     def _get_class_name(self, pred: Tensor) -> str:
         idx = int((pred.argmax()).item())
-        if self.node.class_names is None:
+        if self.class_names is None:
             return str(idx)
-        return self.node.class_names[idx]
+        return self.class_names[idx]
 
-    def _generate_plot(self, prediction: Tensor, width: int, height: int) -> Tensor:
+    def _generate_plot(
+        self, prediction: Tensor, width: int, height: int
+    ) -> Tensor:
         pred = prediction.softmax(-1).detach().cpu().numpy()
         fig, ax = plt.subplots(figsize=(width / 100, height / 100))
         ax.bar(np.arange(len(pred)), pred)
         ax.set_xticks(np.arange(len(pred)))
-        if self.node.class_names is not None:
-            ax.set_xticklabels(self.node.class_names, rotation=90)
+        if self.class_names is not None:
+            ax.set_xticklabels(self.class_names, rotation=90)
         else:
             ax.set_xticklabels(np.arange(1, len(pred) + 1))
         ax.set_ylim(0, 1)
@@ -88,7 +90,9 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
             overlay[i] = numpy_to_torch_img(arr)
             if self.include_plot:
                 plots[i] = self._generate_plot(
-                    prediction, prediction_canvas.shape[3], prediction_canvas.shape[2]
+                    prediction,
+                    prediction_canvas.shape[3],
+                    prediction_canvas.shape[2],
                 )
 
         if self.include_plot:

@@ -5,15 +5,17 @@ from pydantic import BaseModel
 
 class MobileOneVariant(BaseModel):
     width_multipliers: tuple[float, float, float, float]
-    num_conv_branches: int = 1
+    n_conv_branches: int = 1
     use_se: bool = False
 
 
-def get_variant(variant: Literal["s0", "s1", "s2", "s3", "s4"]) -> MobileOneVariant:
+def get_variant(
+    variant: Literal["s0", "s1", "s2", "s3", "s4"],
+) -> MobileOneVariant:
     variants = {
         "s0": MobileOneVariant(
             width_multipliers=(0.75, 1.0, 1.0, 2.0),
-            num_conv_branches=4,
+            n_conv_branches=4,
         ),
         "s1": MobileOneVariant(
             width_multipliers=(1.5, 1.5, 2.0, 2.5),

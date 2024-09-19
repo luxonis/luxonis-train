@@ -98,7 +98,9 @@ def _get_onnx_inputs(onnx_path: Path) -> dict[str, MetadataDict]:
     for inp in model.graph.input:
         shape = [dim.dim_value for dim in inp.type.tensor_type.shape.dim]
         inputs[inp.name]["shape"] = shape
-        inputs[inp.name]["dtype"] = _from_onnx_dtype(inp.type.tensor_type.elem_type)
+        inputs[inp.name]["dtype"] = _from_onnx_dtype(
+            inp.type.tensor_type.elem_type
+        )
 
     return inputs
 
@@ -137,7 +139,9 @@ def _get_head_specific_parameters(
 
     parameters = {}
     if head_name == "ClassificationHead":
-        parameters["is_softmax"] = getattr(ImplementedHeadsIsSoxtmaxed, head_name).value
+        parameters["is_softmax"] = getattr(
+            ImplementedHeadsIsSoxtmaxed, head_name
+        ).value
     elif head_name == "EfficientBBoxHead":
         parameters["subtype"] = ObjectDetectionSubtypeYOLO.YOLOv6.value
         head_node = nodes[head_alias]
@@ -145,7 +149,9 @@ def _get_head_specific_parameters(
         parameters["conf_threshold"] = head_node.conf_thres
         parameters["max_det"] = head_node.max_det
     elif head_name in ["SegmentationHead", "BiSeNetHead"]:
-        parameters["is_softmax"] = getattr(ImplementedHeadsIsSoxtmaxed, head_name).value
+        parameters["is_softmax"] = getattr(
+            ImplementedHeadsIsSoxtmaxed, head_name
+        ).value
     elif head_name == "ImplicitKeypointBBoxHead":
         parameters["subtype"] = ObjectDetectionSubtypeYOLO.YOLOv7.value
         head_node = nodes[head_alias]
@@ -166,13 +172,16 @@ def _get_head_specific_parameters(
     return parameters
 
 
-def _get_head_outputs(outputs: list[dict], head_name: str, head_type: str) -> list[str]:
+def _get_head_outputs(
+    outputs: list[dict], head_name: str, head_type: str
+) -> list[str]:
     """Get model outputs in a head-specific format.
 
     @type outputs: list[dict]
     @param outputs: List of NN Archive outputs.
     @type head_name: str
-    @param head_name: Type of the head (e.g. 'EfficientBBoxHead') or its custom alias.
+    @param head_name: Type of the head (e.g. 'EfficientBBoxHead') or its
+        custom alias.
     @type head_type: str
     @param head_name: Type of the head (e.g. 'EfficientBBoxHead').
     @rtype: list[str]
@@ -238,7 +247,9 @@ def get_heads(
                     task = str(next(iter(task.values())))
 
                 classes = _get_classes(node_name, task, class_dict)
-                head_outputs = _get_head_outputs(outputs, node_alias, node_name)
+                head_outputs = _get_head_outputs(
+                    outputs, node_alias, node_name
+                )
                 head_dict = {
                     "parser": parser,
                     "metadata": {

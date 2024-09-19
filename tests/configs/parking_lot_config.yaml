@@ -138,16 +138,16 @@ trainer:
   devices: auto
   strategy: auto
 
-  num_sanity_val_steps: 1
+  n_sanity_val_steps: 1
   profiler: null
   verbose: True
   batch_size: 2
   accumulate_grad_batches: 1
   epochs: 200
-  num_workers: 8
+  n_workers: 8
   train_metrics_interval: -1
   validation_interval: 10
-  num_log_images: 8
+  n_log_images: 8
   skip_last_batch: True
   log_sub_losses: True
   save_top_k: 3

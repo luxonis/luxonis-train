@@ -19,8 +19,9 @@ class BaseMetric(
 ):
     """A base class for all metrics.
 
-    This class defines the basic interface for all metrics. It utilizes automatic
-    registration of defined subclasses to a L{METRICS} registry.
+    This class defines the basic interface for all metrics. It utilizes
+    automatic registration of defined subclasses to a L{METRICS}
+    registry.
     """
 
     @abstractmethod
@@ -33,7 +34,9 @@ class BaseMetric(
         ...
 
     @abstractmethod
-    def compute(self) -> Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]:
+    def compute(
+        self,
+    ) -> Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]:
         """Computes the metric.
 
         @rtype: Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]
@@ -48,12 +51,14 @@ class BaseMetric(
     def run_update(self, outputs: Packet[Tensor], labels: Labels) -> None:
         """Calls the metric's update method.
 
-        Validates and prepares the inputs, then calls the metric's update method.
+        Validates and prepares the inputs, then calls the metric's
+        update method.
 
         @type outputs: Packet[Tensor]
         @param outputs: The outputs of the model.
         @type labels: Labels
-        @param labels: The labels of the model. @raises L{IncompatibleException}: If the
-            inputs are not compatible with the module.
+        @param labels: The labels of the model. @raises
+            L{IncompatibleException}: If the inputs are not compatible
+            with the module.
         """
         self.update(*self.prepare(outputs, labels))

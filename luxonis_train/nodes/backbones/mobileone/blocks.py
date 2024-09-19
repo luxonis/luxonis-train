@@ -28,7 +28,7 @@ class MobileOneBlock(nn.Module):
         padding: int = 0,
         groups: int = 1,
         use_se: bool = False,
-        num_conv_branches: int = 1,
+        n_conv_branches: int = 1,
     ):
         """Construct a MobileOneBlock module.
 
@@ -47,9 +47,11 @@ class MobileOneBlock(nn.Module):
         @type groups: int
         @param groups: Group number. Defaults to 1.
         @type use_se: bool
-        @param use_se: Whether to use SE-ReLU activations. Defaults to False.
-        @type num_conv_branches: int
-        @param num_conv_branches: Number of linear conv branches. Defaults to 1.
+        @param use_se: Whether to use SE-ReLU activations. Defaults to
+            False.
+        @type n_conv_branches: int
+        @param n_conv_branches: Number of linear conv branches. Defaults
+            to 1.
         """
         super().__init__()
 
@@ -58,10 +60,9 @@ class MobileOneBlock(nn.Module):
         self.kernel_size = kernel_size
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.num_conv_branches = num_conv_branches
+        self.n_conv_branches = n_conv_branches
         self.inference_mode = False
 
-        # Check if SE-ReLU is requested
         self.se: nn.Module
         if use_se:
             self.se = SqueezeExciteBlock(
@@ -81,7 +82,7 @@ class MobileOneBlock(nn.Module):
 
         # Re-parameterizable conv branches
         rbr_conv: list[nn.Module] = []
-        for _ in range(self.num_conv_branches):
+        for _ in range(self.n_conv_branches):
             rbr_conv.append(
                 ConvModule(
                     in_channels=self.in_channels,
@@ -108,9 +109,9 @@ class MobileOneBlock(nn.Module):
                 activation=nn.Identity(),
             )
 
-    def forward(self, inputs: Tensor):
+    def forward(self, inputs: Tensor) -> Tensor:
         """Apply forward pass."""
-        # Inference mode forward pass.
+
         if self.inference_mode:
             return self.activation(self.se(self.reparam_conv(inputs)))
 
@@ -127,7 +128,7 @@ class MobileOneBlock(nn.Module):
 
         # Other branches
         out = scale_out + identity_out
-        for ix in range(self.num_conv_branches):
+        for ix in range(self.n_conv_branches):
             out += self.rbr_conv[ix](inputs)
 
         return self.activation(self.se(out))
@@ -179,18 +180,22 @@ class MobileOneBlock(nn.Module):
             kernel_scale, bias_scale = self._fuse_bn_tensor(self.rbr_scale)
             # Pad scale branch kernel to match conv branch kernel size.
             pad = self.kernel_size // 2
-            kernel_scale = torch.nn.functional.pad(kernel_scale, [pad, pad, pad, pad])
+            kernel_scale = torch.nn.functional.pad(
+                kernel_scale, [pad, pad, pad, pad]
+            )
 
         # get weights and bias of skip branch
         kernel_identity = torch.zeros(())
         bias_identity = torch.zeros(())
         if self.rbr_skip is not None:
-            kernel_identity, bias_identity = self._fuse_bn_tensor(self.rbr_skip)
+            kernel_identity, bias_identity = self._fuse_bn_tensor(
+                self.rbr_skip
+            )
 
         # get weights and bias of conv branches
         kernel_conv = torch.zeros(())
         bias_conv = torch.zeros(())
-        for ix in range(self.num_conv_branches):
+        for ix in range(self.n_conv_branches):
             _kernel, _bias = self._fuse_bn_tensor(self.rbr_conv[ix])
             kernel_conv = kernel_conv + _kernel
             bias_conv = bias_conv + _bias
@@ -217,13 +222,21 @@ class MobileOneBlock(nn.Module):
             if not hasattr(self, "id_tensor"):
                 input_dim = self.in_channels // self.groups
                 kernel_value = torch.zeros(
-                    (self.in_channels, input_dim, self.kernel_size, self.kernel_size),
+                    (
+                        self.in_channels,
+                        input_dim,
+                        self.kernel_size,
+                        self.kernel_size,
+                    ),
                     dtype=branch.weight.dtype,
                     device=branch.weight.device,
                 )
                 for i in range(self.in_channels):
                     kernel_value[
-                        i, i % input_dim, self.kernel_size // 2, self.kernel_size // 2
+                        i,
+                        i % input_dim,
+                        self.kernel_size // 2,
+                        self.kernel_size // 2,
                     ] = 1
                 self.id_tensor = kernel_value
             kernel = self.id_tensor

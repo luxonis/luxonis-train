@@ -1,10 +1,11 @@
 import logging
 from abc import ABC
+from contextlib import suppress
 from typing import Generic
 
 from luxonis_ml.data import LabelType
 from luxonis_ml.utils.registry import AutoRegisterMeta
-from torch import Tensor, nn
+from torch import Size, Tensor, nn
 from typing_extensions import TypeVarTuple, Unpack
 
 from luxonis_train.nodes import BaseNode
@@ -16,7 +17,11 @@ Ts = TypeVarTuple("Ts")
 
 
 class BaseAttachedModule(
-    nn.Module, Generic[Unpack[Ts]], ABC, metaclass=AutoRegisterMeta, register=False
+    nn.Module,
+    Generic[Unpack[Ts]],
+    ABC,
+    metaclass=AutoRegisterMeta,
+    register=False,
 ):
     """Base class for all modules that are attached to a L{LuxonisNode}.
 
@@ -90,6 +95,7 @@ class BaseAttachedModule(
                     f"but is connected to node '{self.node.name}' which does not support any of them. "
                     f"{self.node.name} supports {node_supported}."
                 )
+        self._check_node_type_override()
 
     @property
     def name(self) -> str:
@@ -100,7 +106,8 @@ class BaseAttachedModule(
         """Reference to the node that this module is attached to.
 
         @type: L{BaseNode}
-        @raises RuntimeError: If the node was not provided during initialization.
+        @raises RuntimeError: If the node was not provided during
+            initialization.
         """
         if self._node is None:
             raise RuntimeError(
@@ -110,12 +117,63 @@ class BaseAttachedModule(
         return self._node
 
     @property
+    def n_keypoints(self) -> int:
+        """Getter for the number of keypoints.
+
+        @type: int
+        @raises ValueError: If the node does not support keypoints.
+        @raises RuntimeError: If the node doesn't define any task.
+        """
+        return self.node.n_keypoints
+
+    @property
+    def n_classes(self) -> int:
+        """Getter for the number of classes.
+
+        @type: int
+        @raises RuntimeError: If the node doesn't define any task.
+        @raises ValueError: If the number of classes is different for
+            different tasks. In that case, use the L{get_n_classes}
+            method.
+        """
+        return self.node.n_classes
+
+    @property
+    def original_in_shape(self) -> Size:
+        """Getter for the original input shape as [N, H, W].
+
+        @type: Size
+        """
+        return self.node.original_in_shape
+
+    @property
+    def class_names(self) -> list[str]:
+        """Getter for the class names.
+
+        @type: list[str]
+        @raises RuntimeError: If the node doesn't define any task.
+        @raises ValueError: If the class names are different for
+            different tasks. In that case, use the L{get_class_names}
+            method.
+        """
+        return self.node.class_names
+
+    @property
     def node_tasks(self) -> dict[LabelType, str]:
+        """Getter for the tasks of the attached node.
+
+        @type: dict[LabelType, str]
+        @raises RuntimeError: If the node does not have the `tasks` attribute set.
+        """
         if self.node._tasks is None:
-            raise RuntimeError("Node must have the `tasks` attribute specified.")
+            raise RuntimeError(
+                "Node must have the `tasks` attribute specified."
+            )
         return self.node._tasks
 
-    def get_label(self, labels: Labels, label_type: LabelType | None = None) -> Tensor:
+    def get_label(
+        self, labels: Labels, label_type: LabelType | None = None
+    ) -> Tensor:
         """Extracts a specific label from the labels dictionary.
 
         If the label type is not provided, the first label that matches the
@@ -216,7 +274,9 @@ class BaseAttachedModule(
             )
         return inputs[self.node_tasks[self.required_labels[0]]]
 
-    def prepare(self, inputs: Packet[Tensor], labels: Labels) -> tuple[Unpack[Ts]]:
+    def prepare(
+        self, inputs: Packet[Tensor], labels: Labels
+    ) -> tuple[Unpack[Ts]]:
         """Prepares node outputs for the forward pass of the module.
 
         This default implementation selects the output and label based on
@@ -254,7 +314,7 @@ class BaseAttachedModule(
                 "specified in order to use the default `prepare` method."
             )
         if len(self.supported_labels) > 1:
-            if len(self.node._tasks) > 1:
+            if len(self.node_tasks) > 1:
                 raise RuntimeError(
                     f"{self.name} supports more than one label type"
                     f"and is connected to {self.node.name} node "
@@ -262,7 +322,7 @@ class BaseAttachedModule(
                     "implementation cannot be used in this case."
                 )
             self.supported_labels = list(
-                set(self.supported_labels) & set(self.node._tasks)
+                set(self.supported_labels) & set(self.node_tasks)
             )
         x = self.get_input_tensors(inputs)
         label, label_type = self._get_label(labels)
@@ -280,3 +340,15 @@ class BaseAttachedModule(
                 x = x[-1]
 
         return x, label  # type: ignore
+
+    def _check_node_type_override(self) -> None:
+        if "node" not in self.__annotations__:
+            return
+
+        node_type = self.__annotations__["node"]
+        with suppress(RuntimeError):
+            if not isinstance(self.node, node_type):
+                raise IncompatibleException(
+                    f"Module '{self.name}' is attached to the '{self.node.name}' node, "
+                    f"but '{self.name}' is only compatible with nodes of type '{node_type.__name__}'."
+                )

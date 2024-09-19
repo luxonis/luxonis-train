@@ -1,4 +1,4 @@
-name: Tests
+name: CI
 
 on:
   pull_request:
@@ -134,7 +134,7 @@ jobs:
         PYTORCH_MPS_HIGH_WATERMARK_RATIO: 0.0
       with:
         emoji: false
-        custom-arguments: --junit-xml pytest.xml
+        custom-arguments: --junit-xml pytest.xml --cov luxonis_train --cov-report xml
 
     - name: Create Test Report
       uses: EnricoMi/publish-unit-test-result-action@v2

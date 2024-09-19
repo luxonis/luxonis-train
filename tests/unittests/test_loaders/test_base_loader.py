@@ -75,7 +75,12 @@ def test_collate_fn(
 
     with subtests.test("segmentation"):
         assert "segmentation" in annotations
-        assert annotations["segmentation"][0].shape == (batch_size, 1, 224, 224)
+        assert annotations["segmentation"][0].shape == (
+            batch_size,
+            1,
+            224,
+            224,
+        )
         assert annotations["segmentation"][0].dtype == torch.int64
 
     with subtests.test("keypoints"):

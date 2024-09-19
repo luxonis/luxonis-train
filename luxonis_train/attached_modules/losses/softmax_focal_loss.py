@@ -23,11 +23,12 @@ class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
         reduction: Literal["none", "mean", "sum"] = "mean",
         **kwargs: Any,
     ):
-        """Focal loss implementation for binary classification and segmentation tasks
-        using Softmax.
+        """Focal loss implementation for binary classification and
+        segmentation tasks using Softmax.
 
         @type alpha: float
-        @param alpha: Weighting factor for the rare class. Defaults to C{0.25}.
+        @param alpha: Weighting factor for the rare class. Defaults to
+            C{0.25}.
         @type gamma: float
         @param gamma: Focusing parameter. Defaults to C{2.0}.
         @type reduction: Literal["none", "mean", "sum"]

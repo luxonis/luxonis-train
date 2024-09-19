@@ -23,7 +23,7 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         self,
         variant: VariantLiteral = "nano",
         channels_list: list[int] | None = None,
-        num_repeats: list[int] | None = None,
+        n_repeats: list[int] | None = None,
         depth_mul: float | None = None,
         width_mul: float | None = None,
         **kwargs: Any,
@@ -46,8 +46,8 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         @type channels_list: list[int] | None
         @param channels_list: List of number of channels for each block. If unspecified,
             defaults to [64, 128, 256, 512, 1024].
-        @type num_repeats: list[int] | None
-        @param num_repeats: List of number of repeats of RepVGGBlock. If unspecified,
+        @type n_repeats: list[int] | None
+        @param n_repeats: List of number of repeats of RepVGGBlock. If unspecified,
             defaults to [1, 6, 12, 18, 6].
         @type depth_mul: float
         @param depth_mul: Depth multiplier. If provided, overrides the variant value.
@@ -61,10 +61,12 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         width_mul = width_mul or var.width_multiplier
 
         channels_list = channels_list or [64, 128, 256, 512, 1024]
-        num_repeats = num_repeats or [1, 6, 12, 18, 6]
-        channels_list = [make_divisible(i * width_mul, 8) for i in channels_list]
-        num_repeats = [
-            (max(round(i * depth_mul), 1) if i > 1 else i) for i in num_repeats
+        n_repeats = n_repeats or [1, 6, 12, 18, 6]
+        channels_list = [
+            make_divisible(i * width_mul, 8) for i in channels_list
+        ]
+        n_repeats = [
+            (max(round(i * depth_mul), 1) if i > 1 else i) for i in n_repeats
         ]
 
         self.repvgg_encoder = RepVGGBlock(
@@ -87,7 +89,7 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
                     block=RepVGGBlock,
                     in_channels=channels_list[i + 1],
                     out_channels=channels_list[i + 1],
-                    num_blocks=num_repeats[i + 1],
+                    n_blocks=n_repeats[i + 1],
                 ),
             )
             self.blocks.append(curr_block)
@@ -104,7 +106,8 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         """Reparametrizes instances of L{RepVGGBlock} in the network.
 
         @type mode: bool
-        @param mode: Whether to set the export mode. Defaults to C{True}.
+        @param mode: Whether to set the export mode. Defaults to
+            C{True}.
         """
         super().set_export_mode(mode)
         if self.export:

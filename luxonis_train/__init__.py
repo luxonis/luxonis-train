@@ -1,3 +1,6 @@
+__version__ = "0.0.1"
+
+
 from .attached_modules import *
 from .core import *
 from .loaders import *

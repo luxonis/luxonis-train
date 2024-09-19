@@ -1,4 +1,5 @@
 import logging
+from contextlib import suppress
 from typing import Any
 
 import torchmetrics
@@ -16,47 +17,63 @@ class TorchMetricWrapper(BaseMetric[Tensor]):
     def __init__(self, **kwargs: Any):
         super().__init__(node=kwargs.pop("node", None))
         task = kwargs.get("task")
+        if task is None:
+            if "num_classes" in kwargs:
+                if kwargs["num_classes"] == 1:
+                    task = "binary"
+                else:
+                    task = "multiclass"
+            elif "num_labels" in kwargs:
+                task = "multilabel"
+            else:
+                with suppress(RuntimeError, ValueError):
+                    if self.n_classes == 1:
+                        task = "binary"
+                    else:
+                        task = "multiclass"
 
-        if self.node.n_classes > 1:
-            if task == "binary":
-                raise ValueError(
-                    f"Task type set to '{task}', but the dataset has more than 1 class. "
-                    f"Set the `task` parameter for {self.name} to either 'multiclass' or 'multilabel'."
-                )
-            task = "multiclass"
-        else:
-            if task == "multiclass":
-                raise ValueError(
-                    f"Task type set to '{task}', but the dataset has only 1 class. "
-                    f"Set the `task` parameter for {self.name} to 'binary'."
-                )
-            task = "binary"
-        if "task" not in kwargs:
-            logger.warning(
-                f"Task type not specified for {self.name}, assuming '{task}'. "
-                "If this is not correct, please set the `task` parameter explicitly."
+        if task is None:
+            raise ValueError(
+                f"'{self.name}' does not have the 'task' parameter set. "
+                "and it is not possible to infer it from the other arguments. "
+                "You can either set the 'task' parameter explicitly, provide either 'num_classes' or 'num_labels' argument, "
+                "or use this metric with a node. "
+                "The 'task' can be one of 'binary', 'multiclass', or 'multilabel'. "
             )
-        kwargs["task"] = task
         self._task = task
+        kwargs["task"] = task
 
-        if self._task == "multiclass":
-            if "num_classes" not in kwargs:
-                try:
-                    kwargs["num_classes"] = self.node.n_classes
-                except RuntimeError as e:
-                    raise ValueError(
-                        "Either `node` or `num_classes` must be provided to "
-                        "multiclass torchmetrics."
-                    ) from e
-        else:
-            if "num_labels" not in kwargs:
-                try:
-                    kwargs["num_labels"] = self.node.n_classes
-                except RuntimeError as e:
-                    raise ValueError(
-                        "Either `node` or `num_labels` must be provided to "
-                        "multilabel torchmetrics."
-                    ) from e
+        n_classes: int | None = kwargs.get(
+            "num_classes", kwargs.get("num_labels")
+        )
+
+        if n_classes is None:
+            with suppress(RuntimeError, ValueError):
+                n_classes = self.n_classes
+
+        if n_classes is None and task != "binary":
+            arg_name = "num_classes" if task == "multiclass" else "num_labels"
+            raise ValueError(
+                f"'{self.name}' metric does not have the '{arg_name}' parameter set "
+                "and it is not possible to infer it from the other arguments. "
+                "You can either set the '{arg_name}' parameter explicitly, or use this metric with a node."
+            )
+
+        if task == "binary" and n_classes is not None and n_classes > 1:
+            raise ValueError(
+                f"Task type set to '{task}', but the dataset has more than 1 class. "
+                f"Set the `task` argument of '{self.name}' to either 'multiclass' or 'multilabel'."
+            )
+        elif task != "binary" and n_classes == 1:
+            raise ValueError(
+                f"Task type set to '{task}', but the dataset has only 1 class. "
+                f"Set the `task` argument of '{self.name}' to 'binary'."
+            )
+
+        if task == "multiclass":
+            kwargs["num_classes"] = n_classes
+        elif task == "multilabel":
+            kwargs["num_labels"] = n_classes
 
         self.metric = self.Metric(**kwargs)
 

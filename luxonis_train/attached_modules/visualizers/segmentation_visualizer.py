@@ -5,7 +5,12 @@ from luxonis_ml.data import LabelType
 from torch import Tensor
 
 from .base_visualizer import BaseVisualizer
-from .utils import Color, draw_segmentation_labels, get_color, seg_output_to_bool
+from .utils import (
+    Color,
+    draw_segmentation_labels,
+    get_color,
+    seg_output_to_bool,
+)
 
 logger = logging.getLogger(__name__)
 log_disable = False
@@ -97,7 +102,8 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         targets: Tensor,
         **kwargs,
     ) -> tuple[Tensor, Tensor]:
-        """Creates a visualization of the segmentation predictions and labels.
+        """Creates a visualization of the segmentation predictions and
+        labels.
 
         @type label_canvas: Tensor
         @param label_canvas: The canvas to draw the labels on.
@@ -145,7 +151,9 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
 
         if not log_disable:
             if colors is None:
-                logger.warning("No colors provided. Using random colors instead.")
+                logger.warning(
+                    "No colors provided. Using random colors instead."
+                )
             elif data.size(1) != len(colors):
                 logger.warning(
                     f"Number of colors ({len(colors)}) does not match number of "

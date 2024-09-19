@@ -64,11 +64,13 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
         layers = [1, 2, 2, 3, 3, 5]
         strides = [1, 2, 2, 2, 1, 2]
 
-        self.num_convblocks = sum(layers)
+        self.n_convblocks = sum(layers)
         self.out_indices = out_indices or [1, 4, 10, 17]
 
         kernel_sizes = (
-            [kernel_sizes] * 6 if isinstance(kernel_sizes, int) else kernel_sizes
+            [kernel_sizes] * 6
+            if isinstance(kernel_sizes, int)
+            else kernel_sizes
         )
 
         strides = [
@@ -83,7 +85,9 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
 
         features: list[nn.Module] = []
         inplanes = input_ch / multiplier if multiplier < 1.0 else input_ch
-        first_channel = 32 / multiplier if multiplier < 1.0 or fix_head_stem else 32
+        first_channel = (
+            32 / multiplier if multiplier < 1.0 or fix_head_stem else 32
+        )
         first_channel = make_divisible(
             int(round(first_channel * multiplier)), divisible_value
         )
@@ -102,7 +106,7 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
             )
         )
 
-        for i in range(self.num_convblocks):
+        for i in range(self.n_convblocks):
             inplanes_divisible = make_divisible(
                 int(round(inplanes * multiplier)), divisible_value
             )
@@ -111,7 +115,7 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
                 channels_group.append(inplanes_divisible)
             else:
                 in_channels_group.append(inplanes_divisible)
-                inplanes += final_ch / (self.num_convblocks - 1 * 1.0)
+                inplanes += final_ch / (self.n_convblocks - 1 * 1.0)
                 inplanes_divisible = make_divisible(
                     int(round(inplanes * multiplier)), divisible_value
                 )
@@ -119,7 +123,12 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
 
         assert channels_group
         for in_c, c, t, k, s in zip(
-            in_channels_group, channels_group, ts, kernel_sizes, strides, strict=True
+            in_channels_group,
+            channels_group,
+            ts,
+            kernel_sizes,
+            strides,
+            strict=True,
         ):
             features.append(
                 LinearBottleneck(
@@ -128,7 +137,9 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
             )
 
         pen_channels = (
-            int(1280 * multiplier) if multiplier > 1 and not fix_head_stem else 1280
+            int(1280 * multiplier)
+            if multiplier > 1 and not fix_head_stem
+            else 1280
         )
         features.append(
             ConvModule(

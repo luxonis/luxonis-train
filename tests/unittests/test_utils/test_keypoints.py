@@ -1,7 +1,10 @@
 import pytest
 import torch
 
-from luxonis_train.utils.keypoints import get_sigmas, process_keypoints_predictions
+from luxonis_train.utils.keypoints import (
+    get_sigmas,
+    process_keypoints_predictions,
+)
 
 
 def test_get_sigmas():

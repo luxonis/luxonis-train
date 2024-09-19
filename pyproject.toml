@@ -1,6 +1,5 @@
 [project]
 name = "luxonis-train"
-version = "0.0.1"
 description = "Luxonis training framework for seamless training of various neural networks."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -8,7 +7,7 @@ license = { file = "LICENSE" }
 authors = [{ name = "Luxonis", email = "support@luxonis.com" }]
 maintainers = [{ name = "Luxonis", email = "support@luxonis.com" }]
 keywords = ["ml", "training", "luxonis", "oak"]
-dynamic = ["dependencies", "optional-dependencies"]
+dynamic = ["dependencies", "optional-dependencies", "version"]
 classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Development Status :: 3 - Alpha",
@@ -35,10 +34,11 @@ where = ["."]
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
 optional-dependencies = { dev = { file = ["requirements-dev.txt"] } }
+version = {attr = "luxonis_train.__version__"}
 
 [tool.ruff]
 target-version = "py310"
-line-length = 88
+line-length = 79
 indent-width = 4
 
 [tool.ruff.lint]
@@ -47,6 +47,8 @@ select = ["E4", "E7", "E9", "F", "W", "B", "I"]
 
 [tool.docformatter]
 black = true
+wrap-summaries = 72
+wrap-descriptions = 72
 
 [tool.pyright]
 typeCheckingMode = "basic"
@@ -59,7 +61,11 @@ reportUnnecessaryIsInstance = "none"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov=luxonis_train --cov-report=term --cov-report=html --cov-report=xml --disable-warnings"
+addopts = "--disable-warnings"
+markers = [
+    "unit: mark a test as a unit test",
+    "integration: mark a test as an integration test",
+]
 
 [tool.coverage.run]
 omit = [

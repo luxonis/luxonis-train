@@ -13,10 +13,11 @@ from .base_metric import BaseMetric
 class MeanAveragePrecision(
     BaseMetric[list[dict[str, Tensor]], list[dict[str, Tensor]]]
 ):
-    """Compute the Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR) for object
-    detection predictions.
+    """Compute the Mean-Average-Precision (mAP) and Mean-Average-Recall
+    (mAR) for object detection predictions.
 
-    Adapted from U{Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)
+    Adapted from U{Mean-Average-Precision (mAP) and Mean-Average-Recall
+    (mAR)
     <https://lightning.ai/docs/torchmetrics/stable/detection/mean_average_precision.html>}.
     """
 
@@ -39,7 +40,7 @@ class MeanAveragePrecision(
         box_label = self.get_label(labels)
         output_nms = self.get_input_tensors(inputs)
 
-        image_size = self.node.original_in_shape[1:]
+        image_size = self.original_in_shape[1:]
 
         output_list: list[dict[str, Tensor]] = []
         label_list: list[dict[str, Tensor]] = []
@@ -56,7 +57,9 @@ class MeanAveragePrecision(
             curr_bboxs = box_convert(curr_label[:, 2:], "xywh", "xyxy")
             curr_bboxs[:, 0::2] *= image_size[1]
             curr_bboxs[:, 1::2] *= image_size[0]
-            label_list.append({"boxes": curr_bboxs, "labels": curr_label[:, 1].int()})
+            label_list.append(
+                {"boxes": curr_bboxs, "labels": curr_label[:, 1].int()}
+            )
 
         return output_list, label_list
 

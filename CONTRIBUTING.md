@@ -1,11 +1,11 @@
-# Contributing to LuxonisTrain<a name="contributing-to-luxonistrain"></a>
+# Contributing to LuxonisTrain
 
 **This guide is intended for our internal development team.**
 It outlines our workflow and standards for contributing to this project.
 
 ## Table Of Contents
 
-- [Requirements](#requirements)
+- [Pre-requisites](#pre-requisites)
 - [Pre-commit Hooks](#pre-commit-hooks)
 - [Documentation](#documentation)
 - [Type Checking](#type-checking)
@@ -14,9 +14,16 @@ It outlines our workflow and standards for contributing to this project.
 - [GitHub Actions](#github-actions)
 - [Making and Reviewing Changes](#making-and-reviewing-changes)
 
-## Requirements
+## Pre-requisites
 
-Install the development dependencies by running `pip install -r requirements-dev.txt` or installing the package with the `dev` extra:
+Clone the repository and navigate to the root directory:
+
+```bash
+git clone git@github.com:luxonis/luxonis-train.git
+cd luxonis-train
+```
+
+Install the development dependencies by running `pip install -r requirements-dev.txt` or install the package with the `dev` extra flag:
 
 ```bash
 pip install -e .[dev]
@@ -30,11 +37,11 @@ pip install -e .[dev]
 
 We use pre-commit hooks to ensure code quality and consistency:
 
-1. Install pre-commit (see [pre-commit.com](https://pre-commit.com/#install)).
+1. Install `pre-commit` (see [pre-commit.com](https://pre-commit.com/#install)).
 1. Clone the repository and run `pre-commit install` in the root directory.
-1. The pre-commit hook will now run automatically on `git commit`.
+1. The `pre-commit` hook will now run automatically on `git commit`.
    - If the hook fails, it will print an error message and abort the commit.
-   - It will also modify the files in-place to fix any issues it can.
+   - Some hooks will also modify the files in-place to fix found issues.
 
 ## Documentation
 
@@ -42,10 +49,19 @@ We use the [Epytext](https://epydoc.sourceforge.net/epytext.html) markup languag
 To verify that your documentation is formatted correctly, follow these steps:
 
 1. Download [`get-docs.py`](https://github.com/luxonis/python-api-analyzer-to-json/blob/main/gen-docs.py) script
-1. Run `python3 get-docs.py luxonis_ml` in the root directory.
+1. Run `python3 get-docs.py luxonis_train` in the root directory.
    - If the script runs successfully and produces `docs.json` file, your documentation is formatted correctly.
-   - **NOTE:** If the script fails, it might not give the specific error message. In that case, you can run
-     the script for each file individually until you find the one that is causing the error.
+
+> \[!NOTE\]
+> If the script fails, it might not give a specific error message.
+> In that case, you can run the script for each file individually
+> until you find the one that is causing the error.
+
+**Editor Support:**
+
+- **PyCharm** - built in support for generating `epytext` docstrings
+- **Visual Studio Code** - [AI Docify](https://marketplace.visualstudio.com/items?itemName=AIC.docify) extension offers support for `epytext`
+- **NeoVim** - [vim-python-docstring](https://github.com/pixelneo/vim-python-docstring) supports `epytext` style
 
 ## Type Checking
 
@@ -55,22 +71,29 @@ The codebase is type-checked using [pyright](https://github.com/microsoft/pyrigh
 pyright --warnings --level warning --pythonversion 3.10 luxonis_train
 ```
 
-### Editor Support
+**Editor Support:**
 
-- **PyCharm** - built in support for generating `epytext` docstrings
-- **Visual Studie Code** - [AI Docify](https://marketplace.visualstudio.com/items?itemName=AIC.docify) extension offers support for `epytext`
-- **NeoVim** - [vim-python-docstring](https://github.com/pixelneo/vim-python-docstring) supports `epytext` style
+- **PyCharm** - [Pyright](https://plugins.jetbrains.com/plugin/24145-pyright) extension
+- **Visual Studio Code** - [Pyright](https://marketplace.visualstudio.com/items?itemName=ms-pyright.pyright) extension
+- **NeoVim** - [LSP-Config](https://github.com/neovim/nvim-lspconfig) plugin with the [pyright configuration](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#pyright)
 
 ## Tests
 
 We use [pytest](https://docs.pytest.org/en/stable/) for testing.
-The tests are located in the `tests` directory. You can run the tests locally by running `pytest` in the root directory.
+The tests are located in the `tests` directory. To run the tests with coverage, use the following command:
 
-This command will run all tests and print a coverage report.
+```bash
+pytest --cov=luxonis_train --cov-report=html
+```
+
+This command will run all tests and generate HTML coverage report.
 
 > \[!TIP\]
-> This will also generate an HTML coverage report in the `htmlcov` directory.
+> The coverage report will be saved to `htmlcov` directory.
 > If you want to inspect the coverage in more detail, open `htmlcov/index.html` in a browser.
+
+> \[!TIP\]
+> You can choose to run only the unit-tests or only the integration tests by adding `-m unit` or `-m integration` to the `pytest` command.
 
 > \[!IMPORTANT\]
 > If a new feature is added, a new test should be added to cover it.
@@ -89,12 +112,12 @@ Our GitHub Actions workflow is run when a new PR is opened.
 > Review the GitHub Actions output if your PR fails.
 
 > \[!IMPORTANT\]
-> Successfull completion of all the workflow checks is required for merging a PR.
+> Successful completion of all the workflow checks is required for merging a PR.
 
 ## Making and Submitting Changes
 
 1. Make changes in a new branch.
 1. Test your changes locally.
-1. Commit (pre-commit hook will run).
-1. Push to your branch and create a pull request.
+1. Commit your changes (pre-commit hooks will run).
+1. Push your branch and create a pull request.
 1. The team will review and merge your PR.

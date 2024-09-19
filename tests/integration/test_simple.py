@@ -59,7 +59,7 @@ def test_predefined_models(
     config_file = f"configs/{config_file}.yaml"
     opts |= {
         "loader.params.dataset_name": cifar10_dataset.dataset_name
-        if config_file == "classification_model"
+        if "classification_model" in config_file
         else coco_dataset.dataset_name,
     }
     model = LuxonisModel(config_file, opts)
@@ -105,7 +105,9 @@ def test_custom_tasks(
         with tarfile.open(archive_path) as tar:
             extracted_cfg = tar.extractfile("config.json")
 
-            assert extracted_cfg is not None, "Config JSON not found in the archive."
+            assert (
+                extracted_cfg is not None
+            ), "Config JSON not found in the archive."
             generated_config = json.loads(extracted_cfg.read().decode())
 
         del generated_config["model"]["heads"][1]["metadata"]["anchors"]
@@ -143,8 +145,9 @@ def test_tune(opts: dict[str, Any], coco_dataset: LuxonisDataset):
     assert STUDY_PATH.exists()
 
 
-def test_archive(coco_dataset: LuxonisDataset):
+def test_archive(test_output_dir: Path, coco_dataset: LuxonisDataset):
     opts = {
+        "tracker.save_directory": str(test_output_dir),
         "loader.params.dataset_name": coco_dataset.identifier,
     }
     model = LuxonisModel("tests/configs/archive_config.yaml", opts)

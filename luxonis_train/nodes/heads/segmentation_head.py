@@ -23,11 +23,11 @@ class SegmentationHead(BaseNode[Tensor, Tensor]):
         """
         super().__init__(**kwargs)
         h, w = self.original_in_shape[1:]
-        num_up = infer_upscale_factor((self.in_height, self.in_width), (h, w))
+        n_up = infer_upscale_factor((self.in_height, self.in_width), (h, w))
 
         modules: list[nn.Module] = []
         in_channels = self.in_channels
-        for _ in range(int(num_up)):
+        for _ in range(int(n_up)):
             modules.append(
                 UpBlock(in_channels=in_channels, out_channels=in_channels // 2)
             )
