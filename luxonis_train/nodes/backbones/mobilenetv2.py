@@ -1,44 +1,51 @@
-"""MobileNetV2 backbone.
-
-TODO: source?
-"""
+from typing import Any
 
 import torchvision
-from torch import Tensor, nn
+from torch import Tensor
 
 from luxonis_train.nodes.base_node import BaseNode
 
 
 class MobileNetV2(BaseNode[Tensor, list[Tensor]]):
-    """Implementation of the MobileNetV2 backbone.
+    def __init__(
+        self,
+        download_weights: bool = False,
+        out_indices: list[int] | None = None,
+        **kwargs: Any,
+    ):
+        """MobileNetV2 backbone.
 
-    TODO: add more info
-    """
+        This class implements the MobileNetV2 model as described in:
+        U{MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/pdf/1801.04381v4>} by Sandler I{et al.}
 
-    def __init__(self, download_weights: bool = False, **kwargs):
-        """Constructor of the MobileNetV2 backbone.
+        The network consists of an initial fully convolutional layer, followed by
+        19 bottleneck residual blocks, and a final 1x1 convolution. It can be used
+        as a feature extractor for tasks like image classification, object detection,
+        and semantic segmentation.
+
+        Key features:
+            - Inverted residual structure with linear bottlenecks
+            - Depth-wise separable convolutions for efficiency
+            - Configurable width multiplier and input resolution
 
         @type download_weights: bool
         @param download_weights: If True download weights from imagenet. Defaults to
             False.
-        @type kwargs: Any
-        @param kwargs: Additional arguments to pass to L{BaseNode}.
+        @type out_indices: list[int] | None
+        @param out_indices: Indices of the output layers. Defaults to [3, 6, 13, 18].
         """
         super().__init__(**kwargs)
 
-        mobilenet_v2 = torchvision.models.mobilenet_v2(
+        self.backbone = torchvision.models.mobilenet_v2(
             weights="DEFAULT" if download_weights else None
         )
-        mobilenet_v2.classifier = nn.Identity()
-        self.out_indices = [3, 6, 13, 18]
-        self.channels = [24, 32, 96, 1280]
-        self.backbone = mobilenet_v2
+        self.out_indices = out_indices or [3, 6, 13, 18]
 
-    def forward(self, x: Tensor) -> list[Tensor]:
-        outs = []
-        for i, module in enumerate(self.backbone.features):
-            x = module(x)
+    def forward(self, inputs: Tensor) -> list[Tensor]:
+        outs: list[Tensor] = []
+        for i, layer in enumerate(self.backbone.features):
+            inputs = layer(inputs)
             if i in self.out_indices:
-                outs.append(x)
+                outs.append(inputs)
 
         return outs

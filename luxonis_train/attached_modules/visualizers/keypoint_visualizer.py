@@ -22,18 +22,20 @@ class KeypointVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         """Visualizer for keypoints.
 
         @type visibility_threshold: float
-        @param visibility_threshold: Threshold for visibility of keypoints. If the
-            visibility of a keypoint is below this threshold, it is considered as not
-            visible. Defaults to C{0.5}.
+        @param visibility_threshold: Threshold for visibility of
+            keypoints. If the visibility of a keypoint is below this
+            threshold, it is considered as not visible. Defaults to
+            C{0.5}.
         @type connectivity: list[tuple[int, int]] | None
-        @param connectivity: List of tuples of keypoint indices that define the
-            connections in the skeleton. Defaults to C{None}.
+        @param connectivity: List of tuples of keypoint indices that
+            define the connections in the skeleton. Defaults to C{None}.
         @type visible_color: L{Color}
-        @param visible_color: Color of visible keypoints. Either a string or a tuple of
-            RGB values. Defaults to C{"red"}.
+        @param visible_color: Color of visible keypoints. Either a
+            string or a tuple of RGB values. Defaults to C{"red"}.
         @type nonvisible_color: L{Color} | None
-        @param nonvisible_color: Color of nonvisible keypoints. If C{None}, nonvisible
-            keypoints are not drawn. Defaults to C{None}.
+        @param nonvisible_color: Color of nonvisible keypoints. If
+            C{None}, nonvisible keypoints are not drawn. Defaults to
+            C{None}.
         """
         super().__init__(**kwargs)
         self.visibility_threshold = visibility_threshold
@@ -62,7 +64,9 @@ class KeypointVisualizer(BaseVisualizer[list[Tensor], Tensor]):
             if nonvisible_color is not None:
                 _kwargs = deepcopy(kwargs)
                 _kwargs["colors"] = nonvisible_color
-                nonvisible_kpts = prediction[..., :2] * mask.unsqueeze(-1).float()
+                nonvisible_kpts = (
+                    prediction[..., :2] * mask.unsqueeze(-1).float()
+                )
                 viz[i] = draw_keypoints(
                     viz[i].clone(),
                     nonvisible_kpts[..., :2],

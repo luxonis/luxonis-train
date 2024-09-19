@@ -1,15 +1,16 @@
-from typing import Literal
+from typing import Any, Literal
 
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks import ConvModule
-from luxonis_train.utils.boxutils import (
+from luxonis_train.utils import (
+    Packet,
     anchors_for_fpn_features,
     dist2bbox,
     non_max_suppression,
 )
-from luxonis_train.utils.types import LabelType, Packet
 
 from .efficient_bbox_head import EfficientBBoxHead
 
@@ -23,7 +24,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
-        **kwargs,
+        **kwargs: Any,
     ):
         """Head for object and keypoint detection.
 
@@ -68,7 +69,12 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
     ) -> tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]]:
         features, cls_score_list, reg_distri_list = super().forward(inputs)
 
-        _, self.anchor_points, _, self.stride_tensor = anchors_for_fpn_features(
+        (
+            _,
+            self.anchor_points,
+            _,
+            self.stride_tensor,
+        ) = anchors_for_fpn_features(
             features,
             self.stride,
             self.grid_cell_size,
@@ -84,17 +90,18 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         return features, cls_score_list, reg_distri_list, kpt_list
 
     def wrap(
-        self, output: tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]]
+        self,
+        output: tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]],
     ) -> Packet[Tensor]:
         features, cls_score_list, reg_distri_list, kpt_list = output
         bs = features[0].shape[0]
         if self.export:
-            outputs = []
+            outputs: list[Tensor] = []
             for out_cls, out_reg, out_kpts in zip(
                 cls_score_list, reg_distri_list, kpt_list, strict=True
             ):
-                chunks = out_kpts.split(3, dim=1)
-                modified_chunks = []
+                chunks = torch.split(out_kpts, 3, dim=1)
+                modified_chunks: list[Tensor] = []
                 for chunk in chunks:
                     x = chunk[:, 0:1, :, :]
                     y = chunk[:, 1:2, :, :]
@@ -105,11 +112,17 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
                 out = torch.cat([out_reg, out_cls, out_kpts_modified], dim=1)
                 outputs.append(out)
             return {"outputs": outputs}
+
         cls_tensor = torch.cat(
-            [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))], dim=2
+            [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))],
+            dim=2,
         ).permute(0, 2, 1)
         reg_tensor = torch.cat(
-            [reg_distri_list[i].flatten(2) for i in range(len(reg_distri_list))], dim=2
+            [
+                reg_distri_list[i].flatten(2)
+                for i in range(len(reg_distri_list))
+            ],
+            dim=2,
         ).permute(0, 2, 1)
         kpt_tensor = torch.cat(
             [
@@ -143,7 +156,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             "keypoints_raw": [kpt_tensor],
         }
 
-    def _dist2kpts(self, kpts):
+    def _dist2kpts(self, kpts: Tensor) -> Tensor:
         """Decodes keypoints."""
         y = kpts.clone()
 
@@ -154,8 +167,12 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         anchor_points_x = anchor_points_transposed[0].view(1, -1, 1)
         anchor_points_y = anchor_points_transposed[1].view(1, -1, 1)
 
-        y[:, :, 0::3] = (y[:, :, 0::3] * 2.0 + (anchor_points_x - 0.5)) * stride_tensor
-        y[:, :, 1::3] = (y[:, :, 1::3] * 2.0 + (anchor_points_y - 0.5)) * stride_tensor
+        y[:, :, 0::3] = (
+            y[:, :, 0::3] * 2.0 + (anchor_points_x - 0.5)
+        ) * stride_tensor
+        y[:, :, 1::3] = (
+            y[:, :, 1::3] * 2.0 + (anchor_points_y - 0.5)
+        ) * stride_tensor
         y[:, :, 2::3] = y[:, :, 2::3].sigmoid()
 
         return y
@@ -163,10 +180,13 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
     def _process_to_bbox_and_kps(
         self, output: tuple[list[Tensor], Tensor, Tensor, Tensor]
     ) -> list[Tensor]:
-        """Performs post-processing of the output and returns bboxs after NMS."""
+        """Performs post-processing of the output and returns bboxs
+        after NMS."""
         features, cls_score_list, reg_dist_list, keypoints = output
 
-        pred_bboxes = dist2bbox(reg_dist_list, self.anchor_points, out_format="xyxy")
+        pred_bboxes = dist2bbox(
+            reg_dist_list, self.anchor_points, out_format="xyxy"
+        )
 
         pred_bboxes *= self.stride_tensor
         output_merged = torch.cat(

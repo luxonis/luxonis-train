@@ -22,6 +22,6 @@ trainer:
 
   batch_size: 4
   epochs: &epochs 1
-  num_workers: 4
+  n_workers: 4
   validation_interval: 1
-  num_log_images: 8
+  n_log_images: 8

@@ -27,4 +27,6 @@ class TestOnTrainEnd(pl.Callback):
         for callback in trainer.callbacks:  # type: ignore
             if isinstance(callback, ModelCheckpoint):
                 if hash(callback.monitor) in best_paths:
-                    callback.best_model_path = best_paths[hash(callback.monitor)]
+                    callback.best_model_path = best_paths[
+                        hash(callback.monitor)
+                    ]

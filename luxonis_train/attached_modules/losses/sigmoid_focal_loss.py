@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 
 from luxonis_ml.data import LabelType
 from torch import Tensor
@@ -15,7 +15,7 @@ class SigmoidFocalLoss(BaseLoss[Tensor, Tensor]):
         alpha: float = 0.25,
         gamma: float = 2.0,
         reduction: Literal["none", "mean", "sum"] = "mean",
-        **kwargs,
+        **kwargs: Any,
     ):
         """Focal loss from U{Focal Loss for Dense Object Detection
         <https://arxiv.org/abs/1708.02002>}.
@@ -37,7 +37,11 @@ class SigmoidFocalLoss(BaseLoss[Tensor, Tensor]):
 
     def forward(self, preds: Tensor, target: Tensor) -> Tensor:
         loss = sigmoid_focal_loss(
-            preds, target, alpha=self.alpha, gamma=self.gamma, reduction=self.reduction
+            preds,
+            target,
+            alpha=self.alpha,
+            gamma=self.gamma,
+            reduction=self.reduction,
         )
 
         return loss

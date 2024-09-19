@@ -77,7 +77,7 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 | Key           | Type        | Default value               | Description                                         |
 | ------------- | ----------- | --------------------------- | --------------------------------------------------- |
 | channels_list | List\[int\] | \[64, 128, 256, 512, 1024\] | List of number of channels for each block           |
-| num_repeats   | List\[int\] | \[1, 6, 12, 18, 6\]         | List of number of repeats of RepVGGBlock            |
+| n_repeats     | List\[int\] | \[1, 6, 12, 18, 6\]         | List of number of repeats of RepVGGBlock            |
 | in_channels   | int         | 3                           | Number of input channels, should be 3 in most cases |
 | depth_mul     | int         | 0.33                        | Depth multiplier                                    |
 | width_mul     | int         | 0.25                        | Width multiplier                                    |
@@ -145,9 +145,9 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
 | Key           | Type             | Default value                                           | Description                               |
 | ------------- | ---------------- | ------------------------------------------------------- | ----------------------------------------- |
-| num_heads     | Literal\[2,3,4\] | 3 ***Note:** Should be same also on head in most cases* | Number of output heads                    |
+| n_heads       | Literal\[2,3,4\] | 3 ***Note:** Should be same also on head in most cases* | Number of output heads                    |
 | channels_list | List\[int\]      | \[256, 128, 128, 256, 256, 512\]                        | List of number of channels for each block |
-| num_repeats   | List\[int\]      | \[12, 12, 12, 12\]                                      | List of number of repeats of RepVGGBlock  |
+| n_repeats     | List\[int\]      | \[12, 12, 12, 12\]                                      | List of number of repeats of RepVGGBlock  |
 | depth_mul     | int              | 0.33                                                    | Depth multiplier                          |
 | width_mul     | int              | 0.25                                                    | Width multiplier                          |
 
@@ -182,7 +182,7 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
 | Key        | Type  | Default value | Description                                        |
 | ---------- | ----- | ------------- | -------------------------------------------------- |
-| num_heads  | bool  | 3             | Number of output heads                             |
+| n_heads    | bool  | 3             | Number of output heads                             |
 | conf_thres | float | 0.25          | confidence threshold for nms (used for evaluation) |
 | iou_thres  | float | 0.45          | iou threshold for nms (used for evaluation)        |
 
@@ -195,7 +195,7 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
 | Key              | Type                        | Default value | Description                                                                                                |
 | ---------------- | --------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------- |
 | n_keypoints      | int \| None                 | None          | Number of keypoints.                                                                                       |
-| num_heads        | int                         | 3             | Number of output heads                                                                                     |
+| n_heads          | int                         | 3             | Number of output heads                                                                                     |
 | anchors          | List\[List\[int\]\] \| None | None          | Anchors used for object detection. If set to `None`, the anchors are computed at runtime from the dataset. |
 | init_coco_biases | bool                        | True          | Whether to use COCO bias and weight initialization                                                         |
 | conf_thres       | float                       | 0.25          | confidence threshold for nms (used for evaluation)                                                         |

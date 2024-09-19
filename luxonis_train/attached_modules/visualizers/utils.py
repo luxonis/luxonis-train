@@ -22,11 +22,7 @@ from torchvision.utils import (
     draw_segmentation_masks,
 )
 
-from luxonis_train.utils.boxutils import (
-    xywhr2xyxyxyxy,
-    xyxyxyxy2xywhr,
-)
-from luxonis_train.utils.config import Config
+from luxonis_train.utils import Config, xywhr2xyxyxyxy, xyxyxyxy2xywhr
 
 Color = str | tuple[int, int, int]
 """Color type alias.
@@ -51,13 +47,14 @@ def figure_to_torch(fig: Figure, width: int, height: int) -> Tensor:
 def torch_img_to_numpy(
     img: Tensor, reverse_colors: bool = False
 ) -> npt.NDArray[np.uint8]:
-    """Converts a torch image (CHW) to a numpy array (HWC). Optionally also converts
-    colors.
+    """Converts a torch image (CHW) to a numpy array (HWC). Optionally
+    also converts colors.
 
     @type img: Tensor
     @param img: Torch image (CHW)
     @type reverse_colors: bool
-    @param reverse_colors: Whether to reverse colors (RGB to BGR). Defaults to False.
+    @param reverse_colors: Whether to reverse colors (RGB to BGR).
+        Defaults to False.
     @rtype: npt.NDArray[np.uint8]
     @return: Numpy image (HWC)
     """
@@ -136,8 +133,8 @@ def draw_bounding_box_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
     @type img: Tensor
     @param img: Image to draw on.
     @type label: Tensor
-    @param label: Bounding box label. The shape should be (n_instances, 4), where the
-        last dimension is (x, y, w, h).
+    @param label: Bounding box label. The shape should be (n_instances,
+        4), where the last dimension is (x, y, w, h).
     @type kwargs: dict
     @param kwargs: Additional arguments to pass to
         L{torchvision.utils.draw_bounding_boxes}.
@@ -151,17 +148,20 @@ def draw_bounding_box_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
     return draw_bounding_boxes(img, bboxs, **kwargs)
 
 
-def draw_obounding_box(img: Tensor, obbox: Tensor | np.ndarray, **kwargs) -> Tensor:
+def draw_obounding_box(
+    img: Tensor, obbox: Tensor | np.ndarray, **kwargs
+) -> Tensor:
     """Draws oriented bounding box (obb) labels on an image.
 
     @type img: Tensor
     @param img: Image to draw on.
     @type obbox: Tensor
-    @param obbox: Oriented bounding box. The shape should be (n_instances, 8) or
-        (n_instances, 5), where the last dimension is (x1, y1, x2, y2, x3, y3, x4, y4)
-        or (xc, yc, w, h, r).
+    @param obbox: Oriented bounding box. The shape should be
+        (n_instances, 8) or (n_instances, 5), where the last dimension
+        is (x1, y1, x2, y2, x3, y3, x4, y4) or (xc, yc, w, h, r).
     @type kwargs: dict
-    @param kwargs: Additional arguments to pass to L{draw_obounding_boxes}.
+    @param kwargs: Additional arguments to pass to
+        L{draw_obounding_boxes}.
     @rtype: Tensor
     @return: Image with bounding box labels drawn on.
     """
@@ -186,16 +186,18 @@ def draw_obounding_boxes(
     boxes: torch.Tensor,
     labels: Optional[List[str]] = None,
     colors: Optional[
-        Union[List[Union[str, Tuple[int, int, int]]], str, Tuple[int, int, int]]
+        Union[
+            List[Union[str, Tuple[int, int, int]]], str, Tuple[int, int, int]
+        ]
     ] = None,
     fill: Optional[bool] = False,
     width: int = 1,
     font: Optional[str] = None,
     font_size: Optional[int] = None,
 ) -> torch.Tensor:
-    """Draws oriented bounding boxes (obb) on given RGB image. The image values should
-    be uint8 in [0, 255] or float in [0, 1]. If fill is True, Resulting Tensor should be
-    saved as PNG image.
+    """Draws oriented bounding boxes (obb) on given RGB image. The image
+    values should be uint8 in [0, 255] or float in [0, 1]. If fill is
+    True, Resulting Tensor should be saved as PNG image.
 
     Args:
         image (Tensor): Tensor of shape (C, H, W) and dtype uint8 or float.
@@ -224,7 +226,9 @@ def draw_obounding_boxes(
     if not isinstance(image, torch.Tensor):
         raise TypeError(f"Tensor expected, got {type(image)}")
     elif not (image.dtype == torch.uint8 or image.is_floating_point()):
-        raise ValueError(f"The image dtype must be uint8 or float, got {image.dtype}")
+        raise ValueError(
+            f"The image dtype must be uint8 or float, got {image.dtype}"
+        )
     elif image.dim() != 3:
         raise ValueError("Pass individual images, not batches")
     elif image.size(0) not in {1, 3}:
@@ -284,7 +288,10 @@ def draw_obounding_boxes(
         if label is not None:
             margin = width + 1
             draw.text(
-                (bbox[0] + margin, bbox[1] + margin), label, fill=color, font=txt_font
+                (bbox[0] + margin, bbox[1] + margin),
+                label,
+                fill=color,
+                font=txt_font,
             )
 
     out = F.pil_to_tensor(img_to_draw)
@@ -299,10 +306,11 @@ def draw_keypoint_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
     @type img: Tensor
     @param img: Image to draw on.
     @type label: Tensor
-    @param label: Keypoint label. The shape should be (n_instances, 3), where the last
-        dimension is (x, y, visibility).
+    @param label: Keypoint label. The shape should be (n_instances, 3),
+        where the last dimension is (x, y, visibility).
     @type kwargs: dict
-    @param kwargs: Additional arguments to pass to L{torchvision.utils.draw_keypoints}.
+    @param kwargs: Additional arguments to pass to
+        L{torchvision.utils.draw_keypoints}.
     @rtype: Tensor
     @return: Image with keypoint labels drawn on.
     """
@@ -340,7 +348,8 @@ def unnormalize(
     std: list[float] | float | None = None,
     to_uint8: bool = False,
 ) -> Tensor:
-    """Unnormalizes an image back to original values, optionally converts it to uint8.
+    """Unnormalizes an image back to original values, optionally
+    converts it to uint8.
 
     @type img: Tensor
     @param img: Image to unnormalize.
@@ -453,9 +462,12 @@ def get_color(seed: int) -> Color:
 #
 #  TEST:
 def combine_visualizations(
-    visualization: Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]],
+    visualization: Tensor
+    | tuple[Tensor, Tensor]
+    | tuple[Tensor, list[Tensor]],
 ) -> Tensor:
-    """Default way of combining multiple visualizations into one final image."""
+    """Default way of combining multiple visualizations into one final
+    image."""
 
     def resize_to_match(
         fst: Tensor,
@@ -464,7 +476,7 @@ def combine_visualizations(
         keep_size: Literal["larger", "smaller", "first", "second"] = "larger",
         resize_along: Literal["width", "height", "exact"] = "height",
         keep_aspect_ratio: bool = True,
-    ):
+    ) -> tuple[Tensor, Tensor]:
         """Resizes two images so they have the same size.
 
         Resizes two images so they can be concateneted together. It's possible to
@@ -560,7 +572,9 @@ def combine_visualizations(
         case Tensor() as viz:
             return viz
         case (Tensor(data=viz_labels), Tensor(data=viz_predictions)):
-            viz_labels, viz_predictions = resize_to_match(viz_labels, viz_predictions)
+            viz_labels, viz_predictions = resize_to_match(
+                viz_labels, viz_predictions
+            )
             return torch.cat([viz_labels, viz_predictions], dim=-1)
 
         case (Tensor(data=_), [*viz]) if isinstance(viz, list) and all(

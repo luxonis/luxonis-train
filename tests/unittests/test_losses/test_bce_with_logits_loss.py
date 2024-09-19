@@ -16,7 +16,9 @@ def test_forward_pass():
             predictions = torch.full([bs, n_cl], 1.5)  # logit
             loss_fn = BCEWithLogitsLoss()
 
-            loss = loss_fn.forward(predictions, targets)  # -log(sigmoid(1.5)) = 0.2014
+            loss = loss_fn.forward(
+                predictions, targets
+            )  # -log(sigmoid(1.5)) = 0.2014
 
             assert isinstance(loss, torch.Tensor)
             assert loss.shape == torch.Size([])
@@ -57,5 +59,7 @@ def test_weights():
     assert loss_weight != loss_no_weight
 
 
-if __name__ == "__main__":
-    pytest.main()
+def test_invalid():
+    loss_fn = BCEWithLogitsLoss()
+    with pytest.raises(RuntimeError):
+        loss_fn.forward(torch.rand(10, 10), torch.rand(15, 15))

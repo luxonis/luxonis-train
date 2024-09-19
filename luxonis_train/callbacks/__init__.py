@@ -1,9 +1,13 @@
 from lightning.pytorch.callbacks import (
     DeviceStatsMonitor,
     EarlyStopping,
+    GradientAccumulationScheduler,
     LearningRateMonitor,
     ModelCheckpoint,
+    ModelPruning,
     RichModelSummary,
+    StochasticWeightAveraging,
+    Timer,
 )
 
 from luxonis_train.utils.registry import CALLBACKS
@@ -26,6 +30,10 @@ CALLBACKS.register_module(module=LearningRateMonitor)
 CALLBACKS.register_module(module=ModelCheckpoint)
 CALLBACKS.register_module(module=RichModelSummary)
 CALLBACKS.register_module(module=DeviceStatsMonitor)
+CALLBACKS.register_module(module=GradientAccumulationScheduler)
+CALLBACKS.register_module(module=StochasticWeightAveraging)
+CALLBACKS.register_module(module=Timer)
+CALLBACKS.register_module(module=ModelPruning)
 
 
 __all__ = [
