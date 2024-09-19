@@ -6,8 +6,6 @@ Paper: U{https://arxiv.org/pdf/2101.06085.pdf}
 @license: U{https://github.com/Deci-AI/super-gradients/blob/master/LICENSE.md}
 """
 
-from typing import Type
-
 import torch
 from torch import Tensor, nn
 
@@ -184,36 +182,36 @@ class DAPPM(nn.Module):
         return out
 
 
-class BasicDDRBackBone(nn.Module):
+class BasicDDRBackbone(nn.Module):
     def __init__(
         self,
-        block: Type[nn.Module],
-        width: int,
+        block: type[nn.Module],
+        stem_channels: int,
         layers: list[int],
-        input_channels: int,
+        in_channels: int,
         layer3_repeats: int = 1,
     ):
         """Initialize the BasicDDRBackBone with specified parameters.
 
         @type block: Type[nn.Module]
         @param block: The block class to use for layers.
-        @type width: int
-        @param width: Width of the feature maps.
+        @type stem_channels: int
+        @param stem_channels: Number of output channels in the stem layer.
         @type layers: list[int]
         @param layers: Number of blocks in each layer.
-        @type input_channels: int
-        @param input_channels: Number of input channels.
+        @type in_channels: int
+        @param in_channels: Number of input channels.
         @type layer3_repeats: int
         @param layer3_repeats: Number of repeats for layer3. Defaults to
             1.
         """
         super().__init__()
-        self.input_channels = input_channels
+        self.input_channels = in_channels
 
         self.stem = nn.Sequential(
             ConvModule(
-                in_channels=input_channels,
-                out_channels=width,
+                in_channels=in_channels,
+                out_channels=stem_channels,
                 kernel_size=3,
                 stride=2,
                 padding=1,
@@ -221,8 +219,8 @@ class BasicDDRBackBone(nn.Module):
                 activation=nn.ReLU(inplace=True),
             ),
             ConvModule(
-                in_channels=width,
-                out_channels=width,
+                in_channels=stem_channels,
+                out_channels=stem_channels,
                 kernel_size=3,
                 stride=2,
                 padding=1,
@@ -231,36 +229,36 @@ class BasicDDRBackBone(nn.Module):
             ),
         )
 
-        self.layer1 = _make_layer(
+        self.layer1 = make_layer(
             block=block,
-            in_channels=width,
-            channels=width,
+            in_channels=stem_channels,
+            channels=stem_channels,
             num_blocks=layers[0],
         )
 
-        self.layer2 = _make_layer(
+        self.layer2 = make_layer(
             block=block,
-            in_channels=width,
-            channels=width * 2,
+            in_channels=stem_channels,
+            channels=stem_channels * 2,
             num_blocks=layers[1],
             stride=2,
         )
 
         self.layer3 = nn.ModuleList(
             [
-                _make_layer(
+                make_layer(
                     block=block,
-                    in_channels=width * 2,
-                    channels=width * 4,
+                    in_channels=stem_channels * 2,
+                    channels=stem_channels * 4,
                     num_blocks=layers[2],
                     stride=2,
                 )
             ]
             + [
-                _make_layer(
+                make_layer(
                     block=block,
-                    in_channels=width * 4,
-                    channels=width * 4,
+                    in_channels=stem_channels * 4,
+                    channels=stem_channels * 4,
                     num_blocks=layers[2],
                     stride=1,
                 )
@@ -268,32 +266,13 @@ class BasicDDRBackBone(nn.Module):
             ]
         )
 
-        self.layer4 = _make_layer(
+        self.layer4 = make_layer(
             block=block,
-            in_channels=width * 4,
-            channels=width * 8,
+            in_channels=stem_channels * 4,
+            channels=stem_channels * 8,
             num_blocks=layers[3],
             stride=2,
         )
-
-    def validate_backbone_attributes(self) -> None:
-        """Validate the existence of required backbone attributes.
-
-        Ensures that the following attributes are present: "stem", "layer1", "layer2",
-        "layer3", "layer4", "input_channels".
-        """
-        expected_attributes = [
-            "stem",
-            "layer1",
-            "layer2",
-            "layer3",
-            "layer4",
-            "input_channels",
-        ]
-        for attribute in expected_attributes:
-            assert hasattr(
-                self, attribute
-            ), f"Invalid backbone - attribute '{attribute}' is missing"
 
     def get_backbone_output_number_of_channels(self) -> dict[str, int]:
         """Determine the number of output channels for each layer of the
@@ -321,8 +300,8 @@ class BasicDDRBackBone(nn.Module):
         return output_shapes
 
 
-def _make_layer(
-    block: Type[nn.Module],
+def make_layer(
+    block: type[nn.Module],
     in_channels: int,
     channels: int,
     num_blocks: int,

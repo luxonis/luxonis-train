@@ -10,33 +10,32 @@ from luxonis_train.nodes.blocks import (
     UpscaleOnline,
 )
 
-from .blocks import (
-    DAPPM,
-    BasicDDRBackBone,
-    _make_layer,
-)
+from .blocks import DAPPM, BasicDDRBackbone, make_layer
 from .variants import get_variant
 
 
 class DDRNet(BaseNode[Tensor, list[Tensor]]):
+    in_channels: int
+
     def __init__(
         self,
         variant: Literal["23-slim", "23"] = "23-slim",
         channels: int | None = None,
         highres_channels: int | None = None,
         use_aux_heads: bool = True,
-        upscale_module: nn.Module = None,
+        upscale_module: nn.Module | None = None,
         spp_width: int = 128,
         ssp_inter_mode: str = "bilinear",
         segmentation_inter_mode: str = "bilinear",
+        # TODO: nn.Module registry
         block: Type[nn.Module] = BasicResNetBlock,
         skip_block: Type[nn.Module] = BasicResNetBlock,
         layer5_block: Type[nn.Module] = Bottleneck,
         layer5_bottleneck_expansion: int = 2,
-        spp_kernel_sizes: list[int] = None,
-        spp_strides: list[int] = None,
+        spp_kernel_sizes: list[int] | None = None,
+        spp_strides: list[int] | None = None,
         layer3_repeats: int = 1,
-        layers: list[int] = None,
+        layers: list[int] | None = None,
         **kwargs,
     ):
         """DDRNet backbone.
@@ -96,17 +95,12 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         @type kwargs: Any
         @param kwargs: Additional arguments to pass to L{BaseNode}.
         """
-
-        if upscale_module is None:
-            upscale_module = UpscaleOnline()
-        if spp_kernel_sizes is None:
-            spp_kernel_sizes = [1, 5, 9, 17, 0]
-        if spp_strides is None:
-            spp_strides = [1, 2, 4, 8, 0]
-        if layers is None:
-            layers = [2, 2, 2, 2, 1, 2, 2, 1]
-
         super().__init__(**kwargs)
+
+        upscale_module = upscale_module or UpscaleOnline()
+        spp_kernel_sizes = spp_kernel_sizes or [1, 5, 9, 17, 0]
+        spp_strides = spp_strides or [1, 2, 4, 8, 0]
+        layers = layers or [2, 2, 2, 2, 1, 2, 2, 1]
 
         var = get_variant(variant)
 
@@ -117,8 +111,6 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self.upscale = upscale_module
         self.ssp_inter_mode = ssp_inter_mode
         self.segmentation_inter_mode = segmentation_inter_mode
-        self.block = block
-        self.skip_block = skip_block
         self.relu = nn.ReLU(inplace=False)
         self.layer3_repeats = layer3_repeats
         self.channels = channels
@@ -128,14 +120,13 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             self.layers[4:],
         )
 
-        self._backbone = BasicDDRBackBone(
-            block=self.block,
-            width=self.channels,
+        self._backbone = BasicDDRBackbone(
+            block=block,
+            stem_channels=self.channels,
             layers=self.backbone_layers,
-            input_channels=self.in_channels,
+            in_channels=self.in_channels,
             layer3_repeats=self.layer3_repeats,
         )
-        self._backbone.validate_backbone_attributes()
         out_chan_backbone = (
             self._backbone.get_backbone_output_number_of_channels()
         )
@@ -166,7 +157,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                 )
             )
             self.layer3_skip.append(
-                _make_layer(
+                make_layer(
                     in_channels=out_chan_backbone["layer2"]
                     if i == 0
                     else highres_channels,
@@ -205,13 +196,13 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             ),
         )
 
-        self.layer4_skip = _make_layer(
+        self.layer4_skip = make_layer(
             block=skip_block,
             in_channels=highres_channels,
             channels=highres_channels,
             num_blocks=self.additional_layers[2],
         )
-        self.layer5_skip = _make_layer(
+        self.layer5_skip = make_layer(
             block=layer5_block,
             in_channels=highres_channels,
             channels=highres_channels,
@@ -219,7 +210,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             expansion=layer5_bottleneck_expansion,
         )
 
-        self.layer5 = _make_layer(
+        self.layer5 = make_layer(
             block=layer5_block,
             in_channels=out_chan_backbone["layer4"],
             channels=out_chan_backbone["layer4"],

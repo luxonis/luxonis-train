@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
     attach_index: int = -1
+    in_height: int
+    in_width: int
+    in_channels: int
 
     tasks: list[LabelType] = [LabelType.SEGMENTATION]
 
@@ -104,4 +107,4 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
         if self.export and self.attach_index != -1:
             logger.info("Removing the auxiliary head.")
 
-            self.forward = lambda x: torch.tensor([])
+            self.forward = lambda inputs: torch.tensor([])
