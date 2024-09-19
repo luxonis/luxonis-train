@@ -45,21 +45,30 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
         )
         self.scale_factor = scale_factor
 
-        if inter_mode == "pixel_shuffle" and inter_channels % (scale_factor**2) != 0:
+        if (
+            inter_mode == "pixel_shuffle"
+            and inter_channels % (scale_factor**2) != 0
+        ):
             raise ValueError(
                 "For pixel_shuffle, inter_channels must be a multiple of scale_factor^2."
             )
 
         self.bn1 = nn.BatchNorm2d(self.in_channels)
         self.conv1 = nn.Conv2d(
-            self.in_channels, inter_channels, kernel_size=3, padding=1, bias=False
+            self.in_channels,
+            inter_channels,
+            kernel_size=3,
+            padding=1,
+            bias=False,
         )
         self.bn2 = nn.BatchNorm2d(inter_channels)
         self.relu = nn.ReLU(inplace=True)
 
         self.conv2 = nn.Conv2d(
             inter_channels,
-            inter_channels if inter_mode == "pixel_shuffle" else self.n_classes,
+            inter_channels
+            if inter_mode == "pixel_shuffle"
+            else self.n_classes,
             kernel_size=1,
             padding=0,
             bias=True,
@@ -83,11 +92,13 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
     def set_export_mode(self, mode: bool = True) -> None:
         """Sets the module to export mode.
 
-        Replaces the forward method with an identity function when in export mode.
+        Replaces the forward method with an identity function when in
+        export mode.
 
         @warning: The replacement is destructive and cannot be undone.
         @type mode: bool
-        @param mode: Whether to set the export mode to True or False. Defaults to True.
+        @param mode: Whether to set the export mode to True or False.
+            Defaults to True.
         """
         super().set_export_mode(mode)
         if self.export and self.attach_index != -1:

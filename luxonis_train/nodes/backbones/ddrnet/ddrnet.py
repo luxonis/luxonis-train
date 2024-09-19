@@ -123,7 +123,10 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self.layer3_repeats = layer3_repeats
         self.channels = channels
         self.layers = layers
-        self.backbone_layers, self.additional_layers = self.layers[:4], self.layers[4:]
+        self.backbone_layers, self.additional_layers = (
+            self.layers[:4],
+            self.layers[4:],
+        )
 
         self._backbone = BasicDDRBackBone(
             block=self.block,
@@ -133,7 +136,9 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             layer3_repeats=self.layer3_repeats,
         )
         self._backbone.validate_backbone_attributes()
-        out_chan_backbone = self._backbone.get_backbone_output_number_of_channels()
+        out_chan_backbone = (
+            self._backbone.get_backbone_output_number_of_channels()
+        )
 
         # Define layers for layer 3
         self.compression3 = nn.ModuleList()
@@ -224,7 +229,8 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         )
 
         self.spp = DAPPM(
-            in_channels=out_chan_backbone["layer4"] * layer5_bottleneck_expansion,
+            in_channels=out_chan_backbone["layer4"]
+            * layer5_bottleneck_expansion,
             branch_channels=spp_width,
             out_channels=highres_channels * layer5_bottleneck_expansion,
             inter_mode=self.ssp_inter_mode,
@@ -252,7 +258,9 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
 
             x = out_layer3 + self.down3[i](self.relu(out_layer3_skip))
             x_skip = out_layer3_skip + self.upscale(
-                self.compression3[i](self.relu(out_layer3)), height_output, width_output
+                self.compression3[i](self.relu(out_layer3)),
+                height_output,
+                width_output,
             )
 
         # Save for auxiliary head
@@ -264,7 +272,9 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
 
         x = out_layer4 + self.down4(self.relu(out_layer4_skip))
         x_skip = out_layer4_skip + self.upscale(
-            self.compression4(self.relu(out_layer4)), height_output, width_output
+            self.compression4(self.relu(out_layer4)),
+            height_output,
+            width_output,
         )
 
         out_layer5_skip = self.layer5_skip(self.relu(x_skip))
@@ -283,7 +293,9 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
     def init_params(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+                nn.init.kaiming_normal_(
+                    m.weight, mode="fan_out", nonlinearity="relu"
+                )
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):

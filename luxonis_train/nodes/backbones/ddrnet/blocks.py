@@ -5,6 +5,7 @@ Original source: U{https://github.com/ydhongHIT/DDRNet}
 Paper: U{https://arxiv.org/pdf/2101.06085.pdf}
 @license: U{https://github.com/Deci-AI/super-gradients/blob/master/LICENSE.md}
 """
+
 from typing import Type
 
 import torch
@@ -25,19 +26,22 @@ class DAPPMBranch(nn.Module):
         """A DAPPM branch.
 
         @type kernel_size: int
-        @param kernel_size: The kernel size for the average pooling. When stride=0, this
-            parameter is omitted, and AdaptiveAvgPool2d over all the input is performed.
+        @param kernel_size: The kernel size for the average pooling.
+            When stride=0, this parameter is omitted, and
+            AdaptiveAvgPool2d over all the input is performed.
         @type stride: int
         @param stride: Stride for the average pooling. When stride=0, an
-            AdaptiveAvgPool2d over all the input is performed (output is 1x1). When
-            stride=1, no average pooling is performed. When stride>1, average pooling is
-            performed (scaling the input down and up again).
+            AdaptiveAvgPool2d over all the input is performed (output is
+            1x1). When stride=1, no average pooling is performed. When
+            stride>1, average pooling is performed (scaling the input
+            down and up again).
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type branch_channels: int
         @param branch_channels: Width after the first convolution.
         @type inter_mode: str
-        @param inter_mode: Interpolation mode for upscaling. Defaults to "bilinear".
+        @param inter_mode: Interpolation mode for upscaling. Defaults to
+            "bilinear".
         """
         super().__init__()
 
@@ -46,7 +50,9 @@ class DAPPMBranch(nn.Module):
             down_list.append(nn.AdaptiveAvgPool2d((1, 1)))
         elif stride > 1:
             down_list.append(
-                nn.AvgPool2d(kernel_size=kernel_size, stride=stride, padding=stride)
+                nn.AvgPool2d(
+                    kernel_size=kernel_size, stride=stride, padding=stride
+                )
             )
 
         down_list.append(nn.BatchNorm2d(in_channels))
@@ -89,7 +95,9 @@ class DAPPMBranch(nn.Module):
         in_width = x.shape[-1]
         in_height = x.shape[-2]
         out = self.down_scale(x)
-        out = self.up_scale(out, output_height=in_height, output_width=in_width)
+        out = self.up_scale(
+            out, output_height=in_height, output_width=in_width
+        )
 
         if output_of_prev_branch is not None:
             out = self.process(out + output_of_prev_branch)
@@ -112,7 +120,8 @@ class DAPPM(nn.Module):
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type branch_channels: int
-        @param branch_channels: Width after the first convolution in each branch.
+        @param branch_channels: Width after the first convolution in
+            each branch.
         @type out_channels: int
         @param out_channels: Number of output channels.
         @type kernel_sizes: list[int]
@@ -120,7 +129,8 @@ class DAPPM(nn.Module):
         @type strides: list[int]
         @param strides: List of strides for each branch.
         @type inter_mode: str
-        @param inter_mode: Interpolation mode for upscaling. Defaults to "bilinear".
+        @param inter_mode: Interpolation mode for upscaling. Defaults to
+            "bilinear".
         """
         super().__init__()
 
@@ -162,7 +172,8 @@ class DAPPM(nn.Module):
 
         @type x: Tensor
         @param x: Input tensor.
-        @return: Output tensor after processing through all branches and compression.
+        @return: Output tensor after processing through all branches and
+            compression.
         """
         x_list = [self.branches[0](x)]
 
@@ -193,7 +204,8 @@ class BasicDDRBackBone(nn.Module):
         @type input_channels: int
         @param input_channels: Number of input channels.
         @type layer3_repeats: int
-        @param layer3_repeats: Number of repeats for layer3. Defaults to 1.
+        @param layer3_repeats: Number of repeats for layer3. Defaults to
+            1.
         """
         super().__init__()
         self.input_channels = input_channels
@@ -284,10 +296,11 @@ class BasicDDRBackBone(nn.Module):
             ), f"Invalid backbone - attribute '{attribute}' is missing"
 
     def get_backbone_output_number_of_channels(self) -> dict[str, int]:
-        """Determine the number of output channels for each layer of the backbone.
+        """Determine the number of output channels for each layer of the
+        backbone.
 
-        Returns a dictionary with keys "layer2", "layer3", "layer4" and their respective
-        number of output channels.
+        Returns a dictionary with keys "layer2", "layer3", "layer4" and
+        their respective number of output channels.
 
         @return: Dictionary of output channel counts for each layer.
         """

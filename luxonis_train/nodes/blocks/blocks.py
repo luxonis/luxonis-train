@@ -758,7 +758,12 @@ class BasicResNetBlock(nn.Module):
         super().__init__()
         self.expansion = expansion
         self.conv1 = nn.Conv2d(
-            in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False
+            in_planes,
+            planes,
+            kernel_size=3,
+            stride=stride,
+            padding=1,
+            bias=False,
         )
         self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(
@@ -863,20 +868,24 @@ class Bottleneck(nn.Module):
 class UpscaleOnline(nn.Module):
     """Upscale tensor to a specified size during the forward pass.
 
-    This class supports cases where the required scale/size is only known when the input
-    is received. Only the interpolation mode is set in advance.
+    This class supports cases where the required scale/size is only
+    known when the input is received. Only the interpolation mode is set
+    in advance.
     """
 
     def __init__(self, mode: str = "bilinear"):
         """Initialize UpscaleOnline with the interpolation mode.
 
         @type mode: str
-        @param mode: Interpolation mode for resizing. Defaults to "bilinear".
+        @param mode: Interpolation mode for resizing. Defaults to
+            "bilinear".
         """
         super().__init__()
         self.mode = mode
 
-    def forward(self, x: Tensor, output_height: int, output_width: int) -> Tensor:
+    def forward(
+        self, x: Tensor, output_height: int, output_width: int
+    ) -> Tensor:
         """Upscale the input tensor to the specified height and width.
 
         @type x: Tensor
@@ -887,12 +896,14 @@ class UpscaleOnline(nn.Module):
         @param output_width: Desired width of the output tensor.
         @return: Upscaled tensor.
         """
-        return F.interpolate(x, size=[output_height, output_width], mode=self.mode)
+        return F.interpolate(
+            x, size=[output_height, output_width], mode=self.mode
+        )
 
 
 class DropPath(nn.Module):
-    """Drop paths (Stochastic Depth) per sample, when applied in the main path of
-    residual blocks.
+    """Drop paths (Stochastic Depth) per sample, when applied in the
+    main path of residual blocks.
 
     Intended usage of this block is as follows:
 
@@ -911,12 +922,12 @@ class DropPath(nn.Module):
         """Initializes the DropPath module.
 
         @type drop_prob: float
-        @param drop_prob: Probability of zeroing out individual vectors (channel
-            dimension) of each feature map. Defaults to 0.0.
+        @param drop_prob: Probability of zeroing out individual vectors
+            (channel dimension) of each feature map. Defaults to 0.0.
         @type scale_by_keep: bool
-        @param scale_by_keep: Whether to scale the output by the keep probability.
-            Enabled by default to maintain output mean & std in the same range as
-            without DropPath. Defaults to True.
+        @param scale_by_keep: Whether to scale the output by the keep
+            probability. Enabled by default to maintain output mean &
+            std in the same range as without DropPath. Defaults to True.
         """
         super().__init__()
         self.drop_prob = drop_prob
@@ -925,17 +936,19 @@ class DropPath(nn.Module):
     def drop_path(
         self, x: Tensor, drop_prob: float = 0.0, scale_by_keep: bool = True
     ) -> Tensor:
-        """Drop paths (Stochastic Depth) per sample when applied in the main path of
-        residual blocks.
+        """Drop paths (Stochastic Depth) per sample when applied in the
+        main path of residual blocks.
 
         @type x: Tensor
         @param x: Input tensor.
         @type drop_prob: float
-        @param drop_prob: Probability of dropping a path. Defaults to 0.0.
+        @param drop_prob: Probability of dropping a path. Defaults to
+            0.0.
         @type scale_by_keep: bool
-        @param scale_by_keep: Whether to scale the output by the keep probability.
-            Defaults to True.
-        @return: Tensor with dropped paths based on the provided drop probability.
+        @param scale_by_keep: Whether to scale the output by the keep
+            probability. Defaults to True.
+        @return: Tensor with dropped paths based on the provided drop
+            probability.
         """
         keep_prob = 1 - drop_prob
         shape = (x.shape[0],) + (1,) * (x.ndim - 1)
