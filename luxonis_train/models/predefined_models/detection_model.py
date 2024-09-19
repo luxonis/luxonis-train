@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 
+from luxonis_train.utils import Kwargs
 from luxonis_train.utils.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
     ModelNodeConfig,
 )
-from luxonis_train.utils.types import Kwargs
 
 from .base_predefined_model import BasePredefinedModel
 
@@ -47,7 +47,9 @@ class DetectionModel(BasePredefinedModel):
                 name="EfficientBBoxHead",
                 alias="detection_head",
                 freezing=self.head_params.pop("freezing", {}),
-                inputs=["detection_neck"] if self.use_neck else ["detection_backbone"],
+                inputs=["detection_neck"]
+                if self.use_neck
+                else ["detection_backbone"],
                 params=self.head_params,
                 task=self.task_name,
             )

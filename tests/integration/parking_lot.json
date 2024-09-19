@@ -36,7 +36,7 @@
         ],
         "outputs": [
             {
-                "name": "any-vehicle-segmentation-head/vehicle_segmentation/0",
+                "name": "any-vehicle-segmentation-head/vehicle-segmentation/0",
                 "dtype": "float32",
                 "shape": [
                     1,
@@ -80,7 +80,7 @@
                 "layout": "NCHW"
             },
             {
-                "name": "brand-segmentation-head/brand_segmentation/0",
+                "name": "brand-segmentation-head/brand-segmentation/0",
                 "dtype": "float32",
                 "shape": [
                     1,
@@ -95,28 +95,17 @@
                 "dtype": "float32",
                 "shape": [
                     1,
-                    66240,
+                    5040,
                     24
                 ],
                 "layout": "NCD"
             },
             {
-                "name": "color-segmentation-head/color_segmentation/0",
+                "name": "color-segmentation-head/color-segmentation/0",
                 "dtype": "float32",
                 "shape": [
                     1,
                     4,
-                    256,
-                    320
-                ],
-                "layout": "NCHW"
-            },
-            {
-                "name": "context-brand-segmentation-head/brand_segmentation/0",
-                "dtype": "float32",
-                "shape": [
-                    1,
-                    23,
                     256,
                     320
                 ],
@@ -156,7 +145,7 @@
                 "layout": "NCDE"
             },
             {
-                "name": "vehicle-type-segmentation-head/vehicle_type_segmentation/0",
+                "name": "vehicle-type-segmentation-head/vehicle_type-segmentation/0",
                 "dtype": "float32",
                 "shape": [
                     1,
@@ -233,42 +222,6 @@
                     "postprocessor_path": null,
                     "classes": [
                         "background",
-                        "chrysler",
-                        "bmw",
-                        "ducati",
-                        "dodge",
-                        "ferrari",
-                        "infiniti",
-                        "land-rover",
-                        "roll-royce",
-                        "saab",
-                        "Kawasaki",
-                        "moto",
-                        "truimph",
-                        "alfa-romeo",
-                        "harley",
-                        "honda",
-                        "jeep",
-                        "aprilia",
-                        "piaggio",
-                        "yamaha",
-                        "buick",
-                        "pontiac",
-                        "isuzu"
-                    ],
-                    "n_classes": 23,
-                    "is_softmax": false
-                },
-                "outputs": [
-                    "context-brand-segmentation-head/brand_segmentation/0"
-                ]
-            },
-            {
-                "parser": "SegmentationParser",
-                "metadata": {
-                    "postprocessor_path": null,
-                    "classes": [
-                        "background",
                         "blue",
                         "green",
                         "red"
@@ -277,7 +230,7 @@
                     "is_softmax": false
                 },
                 "outputs": [
-                    "color-segmentation-head/color_segmentation/0"
+                    "color-segmentation-head/color-segmentation/0"
                 ]
             },
             {
@@ -291,7 +244,7 @@
                     "is_softmax": false
                 },
                 "outputs": [
-                    "any-vehicle-segmentation-head/vehicle_segmentation/0"
+                    "any-vehicle-segmentation-head/vehicle-segmentation/0"
                 ]
             },
             {
@@ -327,7 +280,7 @@
                     "is_softmax": false
                 },
                 "outputs": [
-                    "brand-segmentation-head/brand_segmentation/0"
+                    "brand-segmentation-head/brand-segmentation/0"
                 ]
             },
             {
@@ -343,7 +296,7 @@
                     "is_softmax": false
                 },
                 "outputs": [
-                    "vehicle-type-segmentation-head/vehicle_type_segmentation/0"
+                    "vehicle-type-segmentation-head/vehicle_type-segmentation/0"
                 ]
             }
         ]

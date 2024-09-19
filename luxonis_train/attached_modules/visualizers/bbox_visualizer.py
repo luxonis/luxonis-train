@@ -1,12 +1,16 @@
 import logging
 
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor
 
-from luxonis_train.utils.types import LabelType
-
 from .base_visualizer import BaseVisualizer
-from .utils import Color, draw_bounding_box_labels, draw_bounding_boxes, get_color
+from .utils import (
+    Color,
+    draw_bounding_box_labels,
+    draw_bounding_boxes,
+    get_color,
+)
 
 
 class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
@@ -25,39 +29,50 @@ class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
     ):
         """Visualizer for bounding box predictions.
 
-        Creates a visualization of the bounding box predictions and labels.
+        Creates a visualization of the bounding box predictions and
+        labels.
 
         @type labels: dict[int, str] | list[str] | None
-        @param labels: Either a dictionary mapping class indices to names, or a list of
-            names. If list is provided, the label mapping is done by index. By default,
-            no labels are drawn.
+        @param labels: Either a dictionary mapping class indices to
+            names, or a list of names. If list is provided, the label
+            mapping is done by index. By default, no labels are drawn.
         @type draw_labels: bool
-        @param draw_labels: Whether or not to draw labels. Defaults to C{True}.
+        @param draw_labels: Whether or not to draw labels. Defaults to
+            C{True}.
         @type colors: dict[int, Color] | list[Color] | None
-        @param colors: Either a dictionary mapping class indices to colors, or a list of
-            colors. If list is provided, the color mapping is done by index. By default,
-            random colors are used.
+        @param colors: Either a dictionary mapping class indices to
+            colors, or a list of colors. If list is provided, the color
+            mapping is done by index. By default, random colors are
+            used.
         @type fill: bool
-        @param fill: Whether or not to fill the bounding boxes. Defaults to C{False}.
+        @param fill: Whether or not to fill the bounding boxes. Defaults
+            to C{False}.
         @type width: int | None
-        @param width: The width of the bounding box lines. Defaults to C{1}.
+        @param width: The width of the bounding box lines. Defaults to
+            C{1}.
         @type font: str | None
-        @param font: A filename containing a TrueType font. Defaults to C{None}.
+        @param font: A filename containing a TrueType font. Defaults to
+            C{None}.
         @type font_size: int | None
-        @param font_size: The font size to use for the labels. Defaults to C{None}.
+        @param font_size: The font size to use for the labels. Defaults
+            to C{None}.
         """
         super().__init__(**kwargs)
         if isinstance(labels, list):
             labels = {i: label for i, label in enumerate(labels)}
 
         self.bbox_labels = labels or {
-            i: label for i, label in enumerate(self.node.class_names)
+            i: label for i, label in enumerate(self.class_names)
         }
 
         if colors is None:
-            colors = {label: get_color(i) for i, label in self.bbox_labels.items()}
+            colors = {
+                label: get_color(i) for i, label in self.bbox_labels.items()
+            }
         if isinstance(colors, list):
-            colors = {self.bbox_labels[i]: color for i, color in enumerate(colors)}
+            colors = {
+                self.bbox_labels[i]: color for i, color in enumerate(colors)
+            }
         self.colors = colors
         self.fill = fill
         self.width = width
@@ -159,16 +174,17 @@ class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         predictions: list[Tensor],
         targets: Tensor,
     ) -> tuple[Tensor, Tensor]:
-        """Creates a visualization of the bounding box predictions and labels.
+        """Creates a visualization of the bounding box predictions and
+        labels.
 
         @type label_canvas: Tensor
         @param label_canvas: The canvas containing the labels.
         @type prediction_canvas: Tensor
         @param prediction_canvas: The canvas containing the predictions.
         @type prediction: Tensor
-        @param prediction: The predicted bounding boxes. The shape should be [N, 6],
-            where N is the number of bounding boxes and the last dimension is [x1, y1,
-            x2, y2, class, conf].
+        @param prediction: The predicted bounding boxes. The shape
+            should be [N, 6], where N is the number of bounding boxes
+            and the last dimension is [x1, y1, x2, y2, class, conf].
         @type targets: Tensor
         @param targets: The target bounding boxes.
         """

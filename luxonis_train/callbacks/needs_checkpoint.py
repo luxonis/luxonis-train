@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 
 class NeedsCheckpoint(pl.Callback):
     def __init__(
-        self, preferred_checkpoint: Literal["metric", "loss"] = "metric", **kwargs
+        self,
+        preferred_checkpoint: Literal["metric", "loss"] = "metric",
+        **kwargs,
     ):
         super().__init__(**kwargs)
         self.preferred_checkpoint = preferred_checkpoint
@@ -40,7 +42,8 @@ class NeedsCheckpoint(pl.Callback):
                 )
             return path
 
-    def _get_other_type(self, checkpoint_type: str) -> str:
+    @staticmethod
+    def _get_other_type(checkpoint_type: str) -> str:
         if checkpoint_type == "loss":
             return "metric"
         return "loss"

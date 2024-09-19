@@ -41,7 +41,9 @@ OptsType = Annotated[
     ),
 ]
 
-ViewType = Annotated[_ViewType, typer.Option(help="Which dataset view to use.")]
+ViewType = Annotated[
+    _ViewType, typer.Option(help="Which dataset view to use.")
+]
 
 SaveDirType = Annotated[
     Optional[Path],
@@ -53,7 +55,8 @@ SaveDirType = Annotated[
 def train(
     config: ConfigType = None,
     resume: Annotated[
-        Optional[str], typer.Option(help="Resume training from this checkpoint.")
+        Optional[str],
+        typer.Option(help="Resume training from this checkpoint."),
     ] = None,
     opts: OptsType = None,
 ):
@@ -65,7 +68,9 @@ def train(
 
 @app.command()
 def test(
-    config: ConfigType = None, view: ViewType = _ViewType.VAL, opts: OptsType = None
+    config: ConfigType = None,
+    view: ViewType = _ViewType.VAL,
+    opts: OptsType = None,
 ):
     """Evaluate model."""
     from luxonis_train.core import LuxonisModel
@@ -115,13 +120,26 @@ def inspect(
             case_sensitive=False,
         ),
     ] = "train",  # type: ignore
+    size_multiplier: Annotated[
+        float,
+        typer.Option(
+            ...,
+            "--size-multiplier",
+            "-s",
+            help=(
+                "Multiplier for the image size. "
+                "By default the images are shown in their original size."
+            ),
+            show_default=False,
+        ),
+    ] = 1.0,
     opts: OptsType = None,
 ):
     """Inspect dataset."""
     from lightning.pytorch import seed_everything
     from luxonis_ml.data.__main__ import inspect as lxml_inspect
 
-    from luxonis_train.utils.config import Config
+    from luxonis_train.utils import Config
 
     cfg = Config.get_config(config, opts)
     if cfg.trainer.seed is not None:
@@ -144,6 +162,7 @@ def inspect(
             name=cfg.loader.params["dataset_name"],
             view=[view],
             aug_config=f.name,
+            size_multiplier=size_multiplier,
         )
 
 
@@ -166,7 +185,7 @@ def archive(
 
 def version_callback(value: bool):
     if value:
-        typer.echo(f"LuxonisTrain Version: {version(__package__)}")
+        typer.echo(f"LuxonisTrain Version: {version('luxonis_train')}")
         raise typer.Exit()
 
 
@@ -175,7 +194,9 @@ def common(
     _: Annotated[
         bool,
         typer.Option(
-            "--version", callback=version_callback, help="Show version and exit."
+            "--version",
+            callback=version_callback,
+            help="Show version and exit.",
         ),
     ] = False,
     source: Annotated[

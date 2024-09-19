@@ -1,12 +1,11 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.8
+    rev: v0.6.4
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
         types_or: [python, pyi, jupyter]
       - id: ruff-format
-        args: [--line-length, '88']
         types_or: [python, pyi, jupyter]
 
   - repo: https://github.com/PyCQA/docformatter
@@ -14,7 +13,7 @@ repos:
     hooks:
       - id: docformatter
         additional_dependencies: [tomli]
-        args: [--in-place, --black, --style=epytext]
+        args: [--in-place, --style=epytext]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
@@ -28,4 +27,3 @@ repos:
       - id: mdformat
         additional_dependencies:
           - mdformat-gfm
-          - mdformat-toc

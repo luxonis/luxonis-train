@@ -13,7 +13,8 @@ class ModuleFreezer(BaseFinetuning):
         """Callback that freezes parts of the model.
 
         @type frozen_modules: list[tuple[nn.Module, int]]
-        @param frozen_modules: List of tuples of modules and epochs to freeze until.
+        @param frozen_modules: List of tuples of modules and epochs to
+            freeze until.
         """
         super().__init__()
         self.frozen_modules = frozen_modules

@@ -1,31 +1,39 @@
-from typing import Literal, cast
+import logging
+from typing import Any, Literal, cast
 
 import torch
 import torch.nn.functional as F
+from luxonis_ml.data import LabelType
 from torch import Tensor, nn
 from torchvision.ops import box_convert
 
+from luxonis_train.assigners import ATSSAssigner, TaskAlignedAssigner
 from luxonis_train.nodes import EfficientBBoxHead
-from luxonis_train.utils.assigners import ATSSAssigner, TaskAlignedAssigner
-from luxonis_train.utils.boxutils import (
-    IoUType,
+from luxonis_train.utils import (
+    Labels,
+    Packet,
     anchors_for_fpn_features,
     compute_iou_loss,
     dist2bbox,
 )
-from luxonis_train.utils.types import IncompatibleException, Labels, LabelType, Packet
+from luxonis_train.utils.boundingbox import IoUType
 
 from .base_loss import BaseLoss
 
+logger = logging.getLogger(__name__)
 
-class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]):
+
+class AdaptiveDetectionLoss(
+    BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]
+):
     node: EfficientBBoxHead
     supported_labels = [LabelType.BOUNDINGBOX]
 
-    class NodePacket(Packet[Tensor]):
-        features: list[Tensor]
-        class_scores: Tensor
-        distributions: Tensor
+    anchors: Tensor
+    anchor_points: Tensor
+    n_anchors_list: list[int]
+    stride_tensor: Tensor
+    gt_bboxes_scale: Tensor
 
     def __init__(
         self,
@@ -34,7 +42,7 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         reduction: Literal["sum", "mean"] = "mean",
         class_loss_weight: float = 1.0,
         iou_loss_weight: float = 2.5,
-        **kwargs,
+        **kwargs: Any,
     ):
         """BBox loss adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
         <https://arxiv.org/pdf/2209.02976.pdf>}. It combines IoU based bbox regression loss and varifocal loss
@@ -51,23 +59,15 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         @param class_loss_weight: Weight of classification loss.
         @type iou_loss_weight: float
         @param iou_loss_weight: Weight of IoU loss.
-        @type kwargs: dict
-        @param kwargs: Additional arguments to pass to L{BaseLoss}.
         """
         super().__init__(**kwargs)
 
-        if not isinstance(self.node, EfficientBBoxHead):
-            raise IncompatibleException(
-                f"Loss `{self.name}` is only "
-                "compatible with nodes of type `EfficientBBoxHead`."
-            )
         self.iou_type: IoUType = iou_type
         self.reduction = reduction
-        self.n_classes = self.node.n_classes
         self.stride = self.node.stride
         self.grid_cell_size = self.node.grid_cell_size
         self.grid_cell_offset = self.node.grid_cell_offset
-        self.original_img_size = self.node.original_in_shape[1:]
+        self.original_img_size = self.original_in_shape[1:]
 
         self.n_warmup_epochs = n_warmup_epochs
         self.atts_assigner = ATSSAssigner(topk=9, n_classes=self.n_classes)
@@ -79,84 +79,41 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         self.class_loss_weight = class_loss_weight
         self.iou_loss_weight = iou_loss_weight
 
-        self.anchors = None
-        self.anchor_points = None
-        self.n_anchors_list = None
-        self.stride_tensor = None
-        self.gt_bboxes_scale = None
+        self._logged_assigner_change = False
 
     def prepare(
-        self, outputs: Packet[Tensor], labels: Labels
+        self, inputs: Packet[Tensor], labels: Labels
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
-        feats = self.get_input_tensors(outputs, "features")
-        pred_scores = self.get_input_tensors(outputs, "class_scores")[0]
-        pred_distri = self.get_input_tensors(outputs, "distributions")[0]
+        feats = self.get_input_tensors(inputs, "features")
+        pred_scores = self.get_input_tensors(inputs, "class_scores")[0]
+        pred_distri = self.get_input_tensors(inputs, "distributions")[0]
+
+        target = self.get_label(labels)
+
         batch_size = pred_scores.shape[0]
-        device = pred_scores.device
 
-        target = self.get_label(labels)[0]
-        if self.gt_bboxes_scale is None:
-            self.gt_bboxes_scale = torch.tensor(
-                [
-                    self.original_img_size[1],
-                    self.original_img_size[0],
-                    self.original_img_size[1],
-                    self.original_img_size[0],
-                ],
-                device=device,
-            )
-            (
-                self.anchors,
-                self.anchor_points,
-                self.n_anchors_list,
-                self.stride_tensor,
-            ) = anchors_for_fpn_features(
-                feats,
-                self.stride,
-                self.grid_cell_size,
-                self.grid_cell_offset,
-                multiply_with_stride=True,
-            )
-            self.anchor_points_strided = self.anchor_points / self.stride_tensor
+        self._init_parameters(feats)
 
-        target = self._preprocess_target(target, batch_size)
+        target = self._preprocess_bbox_target(target, batch_size)
         pred_bboxes = dist2bbox(pred_distri, self.anchor_points_strided)
 
         gt_labels = target[:, :, :1]
         gt_xyxy = target[:, :, 1:]
         mask_gt = (gt_xyxy.sum(-1, keepdim=True) > 0).float()
 
-        if self._epoch < self.n_warmup_epochs:
-            (
-                assigned_labels,
-                assigned_bboxes,
-                assigned_scores,
-                mask_positive,
-                _,
-            ) = self.atts_assigner(
-                self.anchors,
-                self.n_anchors_list,
-                gt_labels,
-                gt_xyxy,
-                mask_gt,
-                pred_bboxes.detach() * self.stride_tensor,
-            )
-        else:
-            # TODO: log change of assigner (once common Logger)
-            (
-                assigned_labels,
-                assigned_bboxes,
-                assigned_scores,
-                mask_positive,
-                _,
-            ) = self.tal_assigner(
-                pred_scores.detach(),
-                pred_bboxes.detach() * self.stride_tensor,
-                self.anchor_points,
-                gt_labels,
-                gt_xyxy,
-                mask_gt,
-            )
+        (
+            assigned_labels,
+            assigned_bboxes,
+            assigned_scores,
+            mask_positive,
+            _,
+        ) = self._run_assigner(
+            gt_labels,
+            gt_xyxy,
+            mask_gt,
+            pred_bboxes,
+            pred_scores,
+        )
 
         return (
             pred_bboxes,
@@ -176,8 +133,12 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         assigned_scores: Tensor,
         mask_positive: Tensor,
     ):
-        one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[..., :-1]
-        loss_cls = self.varifocal_loss(pred_scores, assigned_scores, one_hot_label)
+        one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[
+            ..., :-1
+        ]
+        loss_cls = self.varifocal_loss(
+            pred_scores, assigned_scores, one_hot_label
+        )
 
         if assigned_scores.sum() > 1:
             loss_cls /= assigned_scores.sum()
@@ -192,17 +153,77 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
             bbox_format="xyxy",
         )[0]
 
-        loss = self.class_loss_weight * loss_cls + self.iou_loss_weight * loss_iou
+        loss = (
+            self.class_loss_weight * loss_cls + self.iou_loss_weight * loss_iou
+        )
 
         sub_losses = {"class": loss_cls.detach(), "iou": loss_iou.detach()}
 
         return loss, sub_losses
 
-    def _preprocess_target(self, target: Tensor, batch_size: int):
-        """Preprocess target in shape [batch_size, N, 5] where N is maximum number of
-        instances in one image."""
+    def _init_parameters(self, features: list[Tensor]):
+        if not hasattr(self, "gt_bboxes_scale"):
+            self.gt_bboxes_scale = torch.tensor(
+                [
+                    self.original_img_size[1],
+                    self.original_img_size[0],
+                    self.original_img_size[1],
+                    self.original_img_size[0],
+                ],
+                device=features[0].device,
+            )
+            (
+                self.anchors,
+                self.anchor_points,
+                self.n_anchors_list,
+                self.stride_tensor,
+            ) = anchors_for_fpn_features(
+                features,
+                self.stride,
+                self.grid_cell_size,
+                self.grid_cell_offset,
+                multiply_with_stride=True,
+            )
+            self.anchor_points_strided = (
+                self.anchor_points / self.stride_tensor
+            )
+
+    def _run_assigner(
+        self,
+        gt_labels: Tensor,
+        gt_xyxy: Tensor,
+        mask_gt: Tensor,
+        pred_bboxes: Tensor,
+        pred_scores: Tensor,
+    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
+        if self._epoch < self.n_warmup_epochs:
+            return self.atts_assigner(
+                self.anchors,
+                self.n_anchors_list,
+                gt_labels,
+                gt_xyxy,
+                mask_gt,
+                pred_bboxes.detach() * self.stride_tensor,
+            )
+        else:
+            self._log_assigner_change()
+            return self.tal_assigner(
+                pred_scores.detach(),
+                pred_bboxes.detach() * self.stride_tensor,
+                self.anchor_points,
+                gt_labels,
+                gt_xyxy,
+                mask_gt,
+            )
+
+    def _preprocess_bbox_target(
+        self, target: Tensor, batch_size: int
+    ) -> Tensor:
+        """Preprocess target in shape [batch_size, N, 5] where N is the
+        maximum number of instances in one image."""
         sample_ids, counts = cast(
-            tuple[Tensor, Tensor], torch.unique(target[:, 0].int(), return_counts=True)
+            tuple[Tensor, Tensor],
+            torch.unique(target[:, 0].int(), return_counts=True),
         )
         c_max = int(counts.max()) if counts.numel() > 0 else 0
         out_target = torch.zeros(batch_size, c_max, 5, device=target.device)
@@ -213,6 +234,16 @@ class AdaptiveDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Ten
         scaled_target = out_target[:, :, 1:5] * self.gt_bboxes_scale
         out_target[..., 1:] = box_convert(scaled_target, "xywh", "xyxy")
         return out_target
+
+    def _log_assigner_change(self):
+        if self._logged_assigner_change:
+            return
+
+        logger.info(
+            f"Switching to Task Aligned Assigner after {self.n_warmup_epochs} warmup epochs.",
+            stacklevel=2,
+        )
+        self._logged_assigner_change = True
 
 
 class VarifocalLoss(nn.Module):
@@ -236,7 +267,8 @@ class VarifocalLoss(nn.Module):
         self, pred_score: Tensor, target_score: Tensor, label: Tensor
     ) -> Tensor:
         weight = (
-            self.alpha * pred_score.pow(self.gamma) * (1 - label) + target_score * label
+            self.alpha * pred_score.pow(self.gamma) * (1 - label)
+            + target_score * label
         )
         ce_loss = F.binary_cross_entropy(
             pred_score.float(), target_score.float(), reduction="none"
