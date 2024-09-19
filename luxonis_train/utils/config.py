@@ -83,28 +83,6 @@ class ModelConfig(BaseModelExtraForbid):
     outputs: list[str] = []
 
     @model_validator(mode="after")
-    def check_main_metric(self) -> Self:
-        for metric in self.metrics:
-            if metric.is_main_metric:
-                logger.info(f"Main metric: `{metric.name}`")
-                return self
-
-        logger.warning("No main metric specified.")
-        if self.metrics:
-            metric = self.metrics[0]
-            metric.is_main_metric = True
-            name = metric.alias or metric.name
-            logger.info(f"Setting '{name}' as main metric.")
-        else:
-            logger.warning(
-                "[Ignore if using predefined model] "
-                "No metrics specified. "
-                "This is likely unintended unless "
-                "the configuration is not used for training. "
-            )
-        return self
-
-    @model_validator(mode="after")
     def check_predefined_model(self) -> Self:
         from luxonis_train.utils.registry import MODELS
 
@@ -126,6 +104,27 @@ class ModelConfig(BaseModelExtraForbid):
             self.metrics += metrics
             self.visualizers += visualizers
 
+        return self
+
+    @model_validator(mode="after")
+    def check_main_metric(self) -> Self:
+        for metric in self.metrics:
+            if metric.is_main_metric:
+                logger.info(f"Main metric: `{metric.name}`")
+                return self
+
+        logger.warning("No main metric specified.")
+        if self.metrics:
+            metric = self.metrics[0]
+            metric.is_main_metric = True
+            name = metric.alias or metric.name
+            logger.info(f"Setting '{name}' as main metric.")
+        else:
+            logger.error(
+                "No metrics specified. "
+                "This is likely unintended unless "
+                "the configuration is not used for training."
+            )
         return self
 
     @model_validator(mode="after")
