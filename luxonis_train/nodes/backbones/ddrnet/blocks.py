@@ -129,12 +129,16 @@ class DAPPM(nn.Module):
         @type inter_mode: str
         @param inter_mode: Interpolation mode for upscaling. Defaults to
             "bilinear".
+
+        @raises ValueError: If the lengths of `kernel_sizes` and `strides`
+            are not the same.
         """
         super().__init__()
 
-        assert len(kernel_sizes) == len(
-            strides
-        ), "len of kernel_sizes and strides must be the same"
+        if len(kernel_sizes) != len(strides):  # pragma: no cover
+            raise ValueError(
+                "The lenghts of `kernel_sizes` and `strides` must be the same"
+            )
 
         self.branches = nn.ModuleList(
             [
