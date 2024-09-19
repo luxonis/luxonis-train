@@ -61,7 +61,7 @@ reportUnnecessaryIsInstance = "none"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov=luxonis_train --cov-report=html --disable-warnings"
+addopts = "--disable-warnings"
 markers = [
     "unit: mark a test as a unit test",
     "integration: mark a test as an integration test",
