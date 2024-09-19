@@ -124,7 +124,7 @@ class ModelConfig(BaseModelExtraForbid):
                 "[Ignore if using predefined model] "
                 "No metrics specified. "
                 "This is likely unintended unless "
-                "the configuration is not used for training. "
+                "the configuration is not used for training."
             )
         return self
 
