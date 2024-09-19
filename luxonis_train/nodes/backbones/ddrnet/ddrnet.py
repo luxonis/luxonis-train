@@ -1,4 +1,4 @@
-from typing import Literal, Type
+from typing import Literal
 
 from torch import Tensor, nn
 
@@ -28,9 +28,9 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         ssp_inter_mode: str = "bilinear",
         segmentation_inter_mode: str = "bilinear",
         # TODO: nn.Module registry
-        block: Type[nn.Module] = BasicResNetBlock,
-        skip_block: Type[nn.Module] = BasicResNetBlock,
-        layer5_block: Type[nn.Module] = Bottleneck,
+        block: type[nn.Module] = BasicResNetBlock,
+        skip_block: type[nn.Module] = BasicResNetBlock,
+        layer5_block: type[nn.Module] = Bottleneck,
         layer5_bottleneck_expansion: int = 2,
         spp_kernel_sizes: list[int] | None = None,
         spp_strides: list[int] | None = None,
@@ -69,14 +69,14 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         @type segmentation_inter_mode: str
         @param segmentation_inter_mode: Interpolation mode for the segmentation head.
             Defaults to "bilinear".
-        @type block: Type[nn.Module]
-        @param block: Type of block to use in the backbone. Defaults to
+        @type block: type[nn.Module]
+        @param block: type of block to use in the backbone. Defaults to
             BasicResNetBlock.
-        @type skip_block: Type[nn.Module]
-        @param skip_block: Type of block for skip connections. Defaults to
+        @type skip_block: type[nn.Module]
+        @param skip_block: type of block for skip connections. Defaults to
             BasicResNetBlock.
-        @type layer5_block: Type[nn.Module]
-        @param layer5_block: Type of block for layer5 and layer5_skip. Defaults to
+        @type layer5_block: type[nn.Module]
+        @param layer5_block: type of block for layer5 and layer5_skip. Defaults to
             Bottleneck.
         @type layer5_bottleneck_expansion: int
         @param layer5_bottleneck_expansion: Expansion factor for Bottleneck block in
