@@ -25,7 +25,7 @@ class ExportOnTrainEnd(NeedsCheckpoint):
         @param pl_module: Pytorch Lightning module.
         """
         path = self.get_checkpoint(pl_module)
-        if path is None:
+        if path is None:  # pragma: no cover
             logger.warning("Skipping model export.")
             return
 

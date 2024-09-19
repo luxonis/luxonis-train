@@ -1,34 +1,38 @@
 import logging
 import math
-from typing import cast
+from typing import Any, cast
 
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import KeypointBlock, LearnableMulAddConv
-from luxonis_train.utils.boxutils import (
+from luxonis_train.utils import (
+    Packet,
     non_max_suppression,
     process_bbox_predictions,
     process_keypoints_predictions,
 )
-from luxonis_train.utils.types import LabelType, Packet
 
 logger = logging.getLogger(__name__)
 
 
-class ImplicitKeypointBBoxHead(BaseNode):
-    tasks: list[LabelType] = [LabelType.KEYPOINTS, LabelType.BOUNDINGBOX]
+class ImplicitKeypointBBoxHead(
+    BaseNode[list[Tensor], tuple[list[Tensor], Tensor]]
+):
+    tasks = [LabelType.KEYPOINTS, LabelType.BOUNDINGBOX]
+    in_channels: list[int]
 
     def __init__(
         self,
-        num_heads: int = 3,
+        n_heads: int = 3,
         anchors: list[list[float]] | None = None,
         init_coco_biases: bool = True,
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
-        **kwargs,
+        **kwargs: Any,
     ):
         """Head for object and keypoint detection.
 
@@ -37,8 +41,8 @@ class ImplicitKeypointBBoxHead(BaseNode):
 
         TODO: more technical documentation
 
-        @type num_heads: int
-        @param num_heads: Number of output heads. Defaults to C{3}.
+        @type n_heads: int
+        @param n_heads: Number of output heads. Defaults to C{3}.
             B{Note:} Should be same also on neck in most cases.
         @type anchors: list[list[float]] | None
         @param anchors: Anchors used for object detection.
@@ -53,16 +57,27 @@ class ImplicitKeypointBBoxHead(BaseNode):
         """
         super().__init__(**kwargs)
 
-        if anchors is None:
-            logger.info("No anchors provided, generating them automatically.")
-            anchors, recall = self.dataset_metadata.autogenerate_anchors(num_heads)
-            logger.info(f"Anchors generated. Best possible recall: {recall:.2f}")
-
         self.conf_thres = conf_thres
         self.iou_thres = iou_thres
         self.max_det = max_det
 
-        self.num_heads = num_heads
+        self.n_heads = n_heads
+        if len(self.in_channels) < self.n_heads:
+            logger.warning(
+                f"Head '{self.name}' was set to use {self.n_heads} heads, "
+                f"but received only {len(self.in_channels)} inputs. "
+                f"Changing number of heads to {len(self.in_channels)}."
+            )
+            self.n_heads = len(self.in_channels)
+
+        if anchors is None:
+            logger.info("No anchors provided, generating them automatically.")
+            anchors, recall = self.dataset_metadata.autogenerate_anchors(
+                self.n_heads
+            )
+            logger.info(
+                f"Anchors generated. Best possible recall: {recall:.2f}"
+            )
 
         self.box_offset = 5
         self.n_det_out = self.n_classes + self.box_offset
@@ -71,12 +86,12 @@ class ImplicitKeypointBBoxHead(BaseNode):
         self.n_anchors = len(anchors[0]) // 2
         self.grid: list[Tensor] = []
 
-        self.anchors = torch.tensor(anchors).float().view(self.num_heads, -1, 2)
-        self.anchor_grid = self.anchors.clone().view(self.num_heads, 1, -1, 1, 1, 2)
-
-        self.channel_list, self.stride = self._fit_to_num_heads(
-            cast(list[int], self.in_channels)
+        self.anchors = torch.tensor(anchors).float().view(self.n_heads, -1, 2)
+        self.anchor_grid = self.anchors.clone().view(
+            self.n_heads, 1, -1, 1, 1, 2
         )
+
+        self.channel_list, self.stride = self._fit_to_n_heads(self.in_channels)
 
         self.learnable_mul_add_conv = nn.ModuleList(
             LearnableMulAddConv(
@@ -108,7 +123,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
 
         self.anchor_grid = self.anchor_grid.to(inputs[0].device)
 
-        for i in range(self.num_heads):
+        for i in range(self.n_heads):
             feat = cast(
                 Tensor,
                 torch.cat(
@@ -123,11 +138,17 @@ class ImplicitKeypointBBoxHead(BaseNode):
             batch_size, _, feature_height, feature_width = feat.shape
             if i >= len(self.grid):
                 self.grid.append(
-                    self._construct_grid(feature_width, feature_height).to(feat.device)
+                    self._construct_grid(feature_width, feature_height).to(
+                        feat.device
+                    )
                 )
 
             feat = feat.reshape(
-                batch_size, self.n_anchors, self.n_out, feature_height, feature_width
+                batch_size,
+                self.n_anchors,
+                self.n_out,
+                feature_height,
+                feature_width,
             ).permute(0, 1, 3, 4, 2)
 
             features.append(feat)
@@ -139,8 +160,8 @@ class ImplicitKeypointBBoxHead(BaseNode):
 
         return features, torch.cat(predictions, dim=1)
 
-    def wrap(self, outputs: tuple[list[Tensor], Tensor]) -> Packet[Tensor]:
-        features, predictions = outputs
+    def wrap(self, output: tuple[list[Tensor], Tensor]) -> Packet[Tensor]:
+        features, predictions = output
 
         if self.export:
             return {"boxes_and_keypoints": [predictions]}
@@ -160,7 +181,8 @@ class ImplicitKeypointBBoxHead(BaseNode):
         return {
             "boundingbox": [detection[:, :6] for detection in nms],
             "keypoints": [
-                detection[:, 6:].reshape(-1, self.n_keypoints, 3) for detection in nms
+                detection[:, 6:].reshape(-1, self.n_keypoints, 3)
+                for detection in nms
             ],
             "features": features,
         }
@@ -169,10 +191,12 @@ class ImplicitKeypointBBoxHead(BaseNode):
         self, feat: Tensor, anchor_grid: Tensor, grid: Tensor, stride: Tensor
     ) -> Tensor:
         batch_size = feat.shape[0]
-        x_bbox = feat[..., : self.box_offset + self.n_classes]
-        x_keypoints = feat[..., self.box_offset + self.n_classes :]
+        bbox = feat[..., : self.box_offset + self.n_classes]
+        keypoints = feat[..., self.box_offset + self.n_classes :]
 
-        box_cxcy, box_wh, box_tail = process_bbox_predictions(x_bbox, anchor_grid)
+        box_cxcy, box_wh, box_tail = process_bbox_predictions(
+            bbox, anchor_grid
+        )
         grid = grid.to(box_cxcy.device)
         stride = stride.to(box_cxcy.device)
         box_cxcy = (box_cxcy + grid) * stride
@@ -180,7 +204,7 @@ class ImplicitKeypointBBoxHead(BaseNode):
 
         grid_x = grid[..., 0:1]
         grid_y = grid[..., 1:2]
-        kpt_x, kpt_y, kpt_vis = process_keypoints_predictions(x_keypoints)
+        kpt_x, kpt_y, kpt_vis = process_keypoints_predictions(keypoints)
         kpt_x = (kpt_x + grid_x) * stride
         kpt_y = (kpt_y + grid_y) * stride
         kpt_vis_sig = kpt_vis.sigmoid()
@@ -200,12 +224,14 @@ class ImplicitKeypointBBoxHead(BaseNode):
         )
         return torch.cat((out_bbox_xy, out_bbox_wh, out_bbox[..., 4:]), dim=-1)
 
-    def _fit_to_num_heads(self, channel_list: list):
-        out_channel_list = channel_list[: self.num_heads]
+    def _fit_to_n_heads(
+        self, channel_list: list[int]
+    ) -> tuple[list[int], Tensor]:
+        out_channel_list = channel_list[: self.n_heads]
         stride = torch.tensor(
             [
                 self.original_in_shape[1] / h
-                for h in cast(list[int], self.in_height)[: self.num_heads]
+                for h in cast(list[int], self.in_height)[: self.n_heads]
             ],
             dtype=torch.int,
         )
@@ -214,11 +240,15 @@ class ImplicitKeypointBBoxHead(BaseNode):
     def _initialize_weights_and_biases(self, class_freq: Tensor | None = None):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+                nn.init.kaiming_normal_(
+                    m.weight, mode="fan_out", nonlinearity="relu"
+                )
             elif isinstance(m, nn.BatchNorm2d):
                 m.eps = 1e-3
                 m.momentum = 0.03
-            elif isinstance(m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6)):
+            elif isinstance(
+                m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6)
+            ):
                 m.inplace = True
 
         for mi, s in zip(self.learnable_mul_add_conv, self.stride):
@@ -233,7 +263,8 @@ class ImplicitKeypointBBoxHead(BaseNode):
 
     def _construct_grid(self, feature_width: int, feature_height: int):
         grid_y, grid_x = torch.meshgrid(
-            [torch.arange(feature_height), torch.arange(feature_width)], indexing="ij"
+            [torch.arange(feature_height), torch.arange(feature_width)],
+            indexing="ij",
         )
         return (
             torch.stack((grid_x, grid_y), 2)

@@ -1,3 +1,3 @@
-from .activations import HSigmoid, HSwish
+from .activations import HSigmoid
 
-__all__ = ["HSigmoid", "HSwish"]
+__all__ = ["HSigmoid"]

@@ -12,7 +12,8 @@ from luxonis_train.utils.registry import CALLBACKS
 
 @CALLBACKS.register_module()
 class UploadCheckpoint(pl.Callback):
-    """Callback that uploads best checkpoint based on the validation loss."""
+    """Callback that uploads best checkpoint based on the validation
+    loss."""
 
     def __init__(self):
         """Constructs `UploadCheckpoint`.
@@ -43,7 +44,9 @@ class UploadCheckpoint(pl.Callback):
                 if curr_best_checkpoint not in self.last_best_checkpoints:
                     self.logger.info("Uploading checkpoint...")
                     temp_filename = (
-                        Path(curr_best_checkpoint).parent.with_suffix(".ckpt").name
+                        Path(curr_best_checkpoint)
+                        .parent.with_suffix(".ckpt")
+                        .name
                     )
                     torch.save(checkpoint, temp_filename)
                     module.logger.upload_artifact(temp_filename, typ="weights")

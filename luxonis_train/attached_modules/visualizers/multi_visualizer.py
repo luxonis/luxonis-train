@@ -7,7 +7,8 @@ from .base_visualizer import BaseVisualizer
 
 
 class MultiVisualizer(BaseVisualizer[Packet[Tensor], Labels]):
-    """Special type of visualizer that combines multiple visualizers together.
+    """Special type of visualizer that combines multiple visualizers
+    together.
 
     All the visualizers are applied in the order they are provided and they all draw on
     the same canvas.
@@ -25,14 +26,16 @@ class MultiVisualizer(BaseVisualizer[Packet[Tensor], Labels]):
         self.visualizers = []
         for item in visualizers:
             visualizer_params = item.get("params", {})
-            visualizer = VISUALIZERS.get(item["name"])(**visualizer_params, **kwargs)
+            visualizer = VISUALIZERS.get(item["name"])(
+                **visualizer_params, **kwargs
+            )
             self.visualizers.append(visualizer)
 
     def prepare(
-        self, output: Packet[Tensor], label: Labels, idx: int = 0
+        self, inputs: Packet[Tensor], label: Labels, idx: int = 0
     ) -> tuple[Packet[Tensor], Labels]:
         self._idx = idx
-        return output, label
+        return inputs, label
 
     def forward(
         self,
@@ -42,12 +45,16 @@ class MultiVisualizer(BaseVisualizer[Packet[Tensor], Labels]):
         labels: Labels,
     ) -> tuple[Tensor, Tensor]:
         for visualizer in self.visualizers:
-            match visualizer.run(label_canvas, prediction_canvas, outputs, labels):
+            match visualizer.run(
+                label_canvas, prediction_canvas, outputs, labels
+            ):
                 case Tensor() as prediction_viz:
                     prediction_canvas = prediction_viz
                 case (Tensor(data=label_viz), Tensor(data=prediction_viz)):
                     label_canvas = label_viz
                     prediction_canvas = prediction_viz
                 case _:
-                    raise NotImplementedError
+                    raise NotImplementedError(
+                        "Unexpected return type from visualizer."
+                    )
         return label_canvas, prediction_canvas

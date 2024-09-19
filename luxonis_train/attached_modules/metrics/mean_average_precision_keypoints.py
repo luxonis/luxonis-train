@@ -3,21 +3,20 @@ import io
 from typing import Any, Literal
 
 import torch
+from luxonis_ml.data import LabelType
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from torch import Tensor
 from torchvision.ops import box_convert
 
-from luxonis_train.attached_modules.metrics.object_keypoint_similarity import (
-    get_area_factor,
-    get_sigmas,
-)
-from luxonis_train.utils.types import Labels, LabelType, Packet
+from luxonis_train.utils import Labels, Packet, get_sigmas, get_with_default
 
 from .base_metric import BaseMetric
 
 
-class MeanAveragePrecisionKeypoints(BaseMetric):
+class MeanAveragePrecisionKeypoints(
+    BaseMetric[list[dict[str, Tensor]], list[dict[str, Tensor]]]
+):
     """Mean Average Precision metric for keypoints.
 
     Uses C{OKS} as IoU measure.
@@ -48,15 +47,14 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         box_format: Literal["xyxy", "xywh", "cxcywh"] = "xyxy",
         **kwargs,
     ):
-        """Implementation of the mean average precision metric for keypoint detections.
+        """Implementation of the mean average precision metric for
+        keypoint detections.
 
         Adapted from: U{https://github.com/Lightning-AI/torchmetrics/blob/v1.0.1/src/
         torchmetrics/detection/mean_ap.py}.
 
-        @license: Apache-2.0 License
+        @license: Apache License, Version 2.0
 
-        @type num_keypoints: int
-        @param num_keypoints: Number of keypoints.
         @type sigmas: list[float] | None
         @param sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then
             use COCO if possible otherwise defaults. Defaults to C{None}.
@@ -66,15 +64,15 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         @param max_dets: Maximum number of detections to be considered per image. Defaults to C{20}.
         @type box_format: Literal["xyxy", "xywh", "cxcywh"]
         @param box_format: Input bbox format.
-        @type kwargs: Any
-        @param kwargs: Additional arguments to pass to L{BaseMetric}.
         """
         super().__init__(**kwargs)
 
-        self.n_keypoints = self.node.n_keypoints
-
-        self.sigmas = get_sigmas(sigmas, self.n_keypoints, self.name)
-        self.area_factor = get_area_factor(area_factor, self.name)
+        self.sigmas = get_sigmas(
+            sigmas, self.n_keypoints, caller_name=self.name
+        )
+        self.area_factor = get_with_default(
+            area_factor, "bbox area scaling", self.name, default=0.53
+        )
         self.max_dets = max_dets
 
         allowed_box_formats = ("xyxy", "xywh", "cxcywh")
@@ -93,12 +91,16 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         self.add_state("groundtruth_labels", default=[], dist_reduce_fx=None)
         self.add_state("groundtruth_area", default=[], dist_reduce_fx=None)
         self.add_state("groundtruth_crowds", default=[], dist_reduce_fx=None)
-        self.add_state("groundtruth_keypoints", default=[], dist_reduce_fx=None)
+        self.add_state(
+            "groundtruth_keypoints", default=[], dist_reduce_fx=None
+        )
 
-    def prepare(self, outputs: Packet[Tensor], labels: Labels):
+    def prepare(
+        self, inputs: Packet[Tensor], labels: Labels
+    ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
         assert self.node.tasks is not None
-        kpts = self.get_label(labels, LabelType.KEYPOINTS)[0]
-        boxes = self.get_label(labels, LabelType.BOUNDINGBOX)[0]
+        kpts = self.get_label(labels, LabelType.KEYPOINTS)
+        boxes = self.get_label(labels, LabelType.BOUNDINGBOX)
 
         nkpts = (kpts.shape[1] - 2) // 3
         label = torch.zeros((len(boxes), nkpts * 3 + 6))
@@ -108,19 +110,21 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         label[:, 7::3] = kpts[:, 3::3]  # y
         label[:, 8::3] = kpts[:, 4::3]  # visiblity
 
-        output_list_kpt_map = []
-        label_list_kpt_map = []
-        image_size = self.node.original_in_shape[1:]
+        output_list_kpt_map: list[dict[str, Tensor]] = []
+        label_list_kpt_map: list[dict[str, Tensor]] = []
+        image_size = self.original_in_shape[1:]
 
-        output_kpts = self.get_input_tensors(outputs, LabelType.KEYPOINTS)
-        output_bboxes = self.get_input_tensors(outputs, LabelType.BOUNDINGBOX)
+        output_kpts = self.get_input_tensors(inputs, LabelType.KEYPOINTS)
+        output_bboxes = self.get_input_tensors(inputs, LabelType.BOUNDINGBOX)
         for i in range(len(output_kpts)):
             output_list_kpt_map.append(
                 {
                     "boxes": output_bboxes[i][:, :4],
                     "scores": output_bboxes[i][:, 4],
                     "labels": output_bboxes[i][:, 5].int(),
-                    "keypoints": output_kpts[i].reshape(-1, self.n_keypoints * 3),
+                    "keypoints": output_kpts[i].reshape(
+                        -1, self.n_keypoints * 3
+                    ),
                 }
             )
 
@@ -223,7 +227,9 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
             coco_target.createIndex()
             coco_preds.createIndex()
 
-            self.coco_eval = COCOeval(coco_target, coco_preds, iouType="keypoints")
+            self.coco_eval = COCOeval(
+                coco_target, coco_preds, iouType="keypoints"
+            )
             self.coco_eval.params.kpt_oks_sigmas = self.sigmas.cpu().numpy()
             self.coco_eval.params.maxDets = [self.max_dets]
 
@@ -254,20 +260,24 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         crowds: list[Tensor] | None = None,
         area: list[Tensor] | None = None,
     ) -> dict[str, list[dict[str, Any]]]:
-        """Transforms and returns all cached targets or predictions in COCO format.
+        """Transforms and returns all cached targets or predictions in
+        COCO format.
 
-        Format is defined at U{https://cocodataset.org/#format-data}.
+        Format is defined at U{
+        https://cocodataset.org/#format-data}.
         """
-        images = []
-        annotations = []
-        annotation_id = 1  # has to start with 1, otherwise COCOEval results are wrong
+        images: list[dict[str, int]] = []
+        annotations: list[dict[str, Any]] = []
+        annotation_id = (
+            1  # has to start with 1, otherwise COCOEval results are wrong
+        )
 
         for image_id, (image_boxes, image_kpts, image_labels) in enumerate(
             zip(boxes, keypoints, labels)
         ):
-            image_boxes_list = image_boxes.cpu().tolist()
-            image_kpts_list = image_kpts.cpu().tolist()
-            image_labels_list = image_labels.cpu().tolist()
+            image_boxes_list: list[list[float]] = image_boxes.cpu().tolist()
+            image_kpts_list: list[list[float]] = image_kpts.cpu().tolist()
+            image_labels_list: list[int] = image_labels.cpu().tolist()
 
             images.append({"id": image_id})
 
@@ -297,8 +307,12 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
                 else:
                     area_stat = image_box[2] * image_box[3] * self.area_factor
 
-                num_keypoints = len(
-                    [i for i in range(2, len(image_kpt), 3) if image_kpt[i] != 0]
+                n_keypoints = len(
+                    [
+                        i
+                        for i in range(2, len(image_kpt), 3)
+                        if image_kpt[i] != 0
+                    ]
                 )  # number of annotated keypoints
                 annotation = {
                     "id": annotation_id,
@@ -307,14 +321,18 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
                     "area": area_stat,
                     "category_id": image_label,
                     "iscrowd": (
-                        crowds[image_id][k].cpu().tolist() if crowds is not None else 0
+                        crowds[image_id][k].cpu().tolist()
+                        if crowds is not None
+                        else 0
                     ),
                     "keypoints": image_kpt,
-                    "num_keypoints": num_keypoints,
+                    "num_keypoints": n_keypoints,
                 }
 
                 if scores is not None:
                     score = scores[image_id][k].cpu().tolist()
+                    # `tolist` returns a number for scalar tensors,
+                    # the name is misleading
                     if not isinstance(score, float):
                         raise ValueError(
                             f"Invalid input score of sample {image_id}, element {k}"
@@ -325,9 +343,15 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
                 annotation_id += 1
 
         classes = [{"id": i, "name": str(i)} for i in self._get_classes()]
-        return {"images": images, "annotations": annotations, "categories": classes}
+        return {
+            "images": images,
+            "annotations": annotations,
+            "categories": classes,
+        }
 
-    def _get_safe_item_values(self, item: dict[str, Tensor]) -> tuple[Tensor, Tensor]:
+    def _get_safe_item_values(
+        self, item: dict[str, Tensor]
+    ) -> tuple[Tensor, Tensor]:
         """Convert and return the boxes."""
         boxes = self._fix_empty_tensors(item["boxes"])
         if boxes.numel() > 0:
@@ -336,7 +360,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         return boxes, keypoints
 
     def _get_classes(self) -> list[int]:
-        """Return a list of unique classes found in ground truth and detection data."""
+        """Return a list of unique classes found in ground truth and
+        detection data."""
         if len(self.pred_labels) > 0 or len(self.groundtruth_labels) > 0:
             return (
                 torch.cat(self.pred_labels + self.groundtruth_labels)
@@ -348,7 +373,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
     @staticmethod
     def _fix_empty_tensors(input_tensor: Tensor) -> Tensor:
-        """Empty tensors can cause problems in DDP mode, this methods corrects them."""
+        """Empty tensors can cause problems in DDP mode, this methods
+        corrects them."""
         if input_tensor.numel() == 0 and input_tensor.ndim == 1:
             return input_tensor.unsqueeze(0)
         return input_tensor
