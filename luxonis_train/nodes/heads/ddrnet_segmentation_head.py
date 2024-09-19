@@ -95,8 +95,7 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
     def set_export_mode(self, mode: bool = True) -> None:
         """Sets the module to export mode.
 
-        Replaces the forward method with an identity function when in
-        export mode.
+        Replaces the forward method with a constant empty tensor.
 
         @warning: The replacement is destructive and cannot be undone.
         @type mode: bool

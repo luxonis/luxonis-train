@@ -908,11 +908,11 @@ class DropPath(nn.Module):
     Intended usage of this block is as follows:
 
     >>> class ResNetBlock(nn.Module):
-    >>>   def __init__(self, ..., drop_path_rate: float):
-    >>>     self.drop_path = DropPath(drop_path_rate)
-    >>>
-    >>>   def forward(self, x):
-    >>>     return x + self.drop_path(self.conv_bn_act(x))
+    ...   def __init__(self, ..., drop_path_rate: float):
+    ...     self.drop_path = DropPath(drop_path_rate)
+
+    ...   def forward(self, x):
+    ...     return x + self.drop_path(self.conv_bn_act(x))
 
     @see U{Original code (TIMM) <https://github.com/rwightman/pytorch-image-models>}
     @license: U{Apache License 2.0 <https://github.com/huggingface/pytorch-image-models?tab=Apache-2.0-1-ov-file#readme>}
