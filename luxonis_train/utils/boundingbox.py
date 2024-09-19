@@ -136,7 +136,8 @@ def dist2rbbox(
     pred_angles: Tensor,
     anchor_points: Tensor,
 ) -> Tensor:
-    """Transform distance (ltrb) to a rotated bounding box in "xcycwh" format.
+    """Transform distance (ltrb) to a rotated bounding box in "xcycwh"
+    format.
 
     @type distance: Tensor
     @param distance: Distance predictions
@@ -173,8 +174,9 @@ def bbox2dist(bbox: Tensor, anchor_points: Tensor, reg_max: float) -> Tensor:
 
 
 def xyxyxyxy2xywhr(x: Tensor) -> Tensor | np.ndarray:
-    """Convert batched Oriented Bounding Boxes (OBB) from [xy1, xy2, xy3, xy4] to [xywh,
-    rotation]. Rotation values are returned in radians from 0 to pi/2.
+    """Convert batched Oriented Bounding Boxes (OBB) from [xy1, xy2,
+    xy3, xy4] to [xywh, rotation]. Rotation values are returned in
+    radians from 0 to pi/2.
 
     Args:
         x (numpy.ndarray | torch.Tensor): Input box corners [xy1, xy2, xy3, xy4] of shape (n, 8).
@@ -199,8 +201,9 @@ def xyxyxyxy2xywhr(x: Tensor) -> Tensor | np.ndarray:
 
 
 def xywhr2xyxyxyxy(x: Tensor) -> Tensor | np.ndarray:
-    """Convert batched Oriented Bounding Boxes (OBB) from [xywh, rotation] to [xy1, xy2,
-    xy3, xy4]. Rotation values should be in radians from 0 to pi/2.
+    """Convert batched Oriented Bounding Boxes (OBB) from [xywh,
+    rotation] to [xy1, xy2, xy3, xy4]. Rotation values should be in
+    radians from 0 to pi/2.
 
     Args:
         x (numpy.ndarray | torch.Tensor): Boxes in [cx, cy, w, h, rotation] format of shape (n, 5) or (b, n, 5).
@@ -229,9 +232,9 @@ def xywhr2xyxyxyxy(x: Tensor) -> Tensor | np.ndarray:
 
 
 def xyxy2xywh(x: Tensor) -> Tensor:
-    """Convert bounding box coordinates from (x1, y1, x2, y2) format to (x, y, width,
-    height) format where (x1, y1) is the top-left corner and (x2, y2) is the bottom-
-    right corner.
+    """Convert bounding box coordinates from (x1, y1, x2, y2) format to
+    (x, y, width, height) format where (x1, y1) is the top-left corner
+    and (x2, y2) is the bottom- right corner.
 
     Args:
         x (np.ndarray | torch.Tensor): The input bounding box coordinates in (x1, y1, x2, y2) format.
@@ -243,7 +246,9 @@ def xyxy2xywh(x: Tensor) -> Tensor:
         x.shape[-1] == 4
     ), f"input shape last dimension expected 4 but input shape is {x.shape}"
     y = (
-        torch.empty_like(x) if isinstance(x, torch.Tensor) else np.empty_like(x)
+        torch.empty_like(x)
+        if isinstance(x, torch.Tensor)
+        else np.empty_like(x)
     )  # faster than clone/copy
     y[..., 0] = (x[..., 0] + x[..., 2]) / 2  # x center
     y[..., 1] = (x[..., 1] + x[..., 3]) / 2  # y center
@@ -253,9 +258,10 @@ def xyxy2xywh(x: Tensor) -> Tensor:
 
 
 def xywh2xyxy(x: Tensor) -> Tensor:
-    """Convert bounding box coordinates from (x, y, width, height) format to (x1, y1,
-    x2, y2) format where (x1, y1) is the top-left corner and (x2, y2) is the bottom-
-    right corner. Note: ops per 2 channels faster than per channel.
+    """Convert bounding box coordinates from (x, y, width, height)
+    format to (x1, y1, x2, y2) format where (x1, y1) is the top-left
+    corner and (x2, y2) is the bottom- right corner. Note: ops per 2
+    channels faster than per channel.
 
     Args:
         x (np.ndarray | torch.Tensor): The input bounding box coordinates in (x, y, width, height) format.
@@ -267,7 +273,9 @@ def xywh2xyxy(x: Tensor) -> Tensor:
         x.shape[-1] == 4
     ), f"input shape last dimension expected 4 but input shape is {x.shape}"
     y = (
-        torch.empty_like(x) if isinstance(x, torch.Tensor) else np.empty_like(x)
+        torch.empty_like(x)
+        if isinstance(x, torch.Tensor)
+        else np.empty_like(x)
     )  # faster than clone/copy
     xy = x[..., :2]  # centers
     wh = x[..., 2:] / 2  # half width-height
@@ -434,7 +442,10 @@ def probiou(
         ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2))
         / (
             4
-            * ((a1 * b1 - c1.pow(2)).clamp_(0) * (a2 * b2 - c2.pow(2)).clamp_(0)).sqrt()
+            * (
+                (a1 * b1 - c1.pow(2)).clamp_(0)
+                * (a2 * b2 - c2.pow(2)).clamp_(0)
+            ).sqrt()
             + eps
         )
         + eps
@@ -484,7 +495,10 @@ def batch_probiou(obb1: Tensor, obb2: Tensor, eps: float = 1e-7) -> Tensor:
         ((a1 + a2) * (b1 + b2) - (c1 + c2).pow(2))
         / (
             4
-            * ((a1 * b1 - c1.pow(2)).clamp_(0) * (a2 * b2 - c2.pow(2)).clamp_(0)).sqrt()
+            * (
+                (a1 * b1 - c1.pow(2)).clamp_(0)
+                * (a2 * b2 - c2.pow(2)).clamp_(0)
+            ).sqrt()
             + eps
         )
         + eps
@@ -666,8 +680,8 @@ def non_max_suppression_obb(
     max_det: int = 300,
     predicts_objectness: bool = True,
 ) -> list[Tensor]:
-    """Non-maximum suppression on model's predictions to keep only best instances for
-    oriented bounding boxes (obb).
+    """Non-maximum suppression on model's predictions to keep only best
+    instances for oriented bounding boxes (obb).
 
     @type preds: Tensor
     @param preds: Model's prediction tensor of shape [bs, N, M]. Bounding boxes are in xywhr format.
@@ -744,7 +758,9 @@ def non_max_suppression_obb(
 
         if multi_label:
             box_idx, class_idx = (
-                (curr_out[:, 6 : 6 + n_classes] > conf_thres).nonzero(as_tuple=False).T
+                (curr_out[:, 6 : 6 + n_classes] > conf_thres)
+                .nonzero(as_tuple=False)
+                .T
             )
             keep_mask[box_idx] = True
             curr_out = torch.cat(
@@ -756,9 +772,13 @@ def non_max_suppression_obb(
                 1,
             )
         else:
-            conf, class_idx = curr_out[:, 6 : 6 + n_classes].max(1, keepdim=True)
+            conf, class_idx = curr_out[:, 6 : 6 + n_classes].max(
+                1, keepdim=True
+            )
             keep_mask[conf.view(-1) > conf_thres] = True
-            curr_out = torch.cat((bboxes, conf, class_idx.float()), 1)[keep_mask]
+            curr_out = torch.cat((bboxes, conf, class_idx.float()), 1)[
+                keep_mask
+            ]
 
         if keep_classes is not None:
             curr_out = curr_out[

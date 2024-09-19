@@ -82,7 +82,8 @@ class EfficientOBBoxHead(EfficientBBoxHead):
         return features, cls_score_list, reg_distri_list, angles_list
 
     def wrap(
-        self, output: tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]]
+        self,
+        output: tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]],
     ) -> Packet[Tensor]:
         features, cls_score_list, reg_distri_list, angles_list = output
 
@@ -100,10 +101,15 @@ class EfficientOBBoxHead(EfficientBBoxHead):
             [angles_list[i].flatten(2) for i in range(len(angles_list))], dim=2
         ).permute(0, 2, 1)
         cls_tensor = torch.cat(
-            [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))], dim=2
+            [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))],
+            dim=2,
         ).permute(0, 2, 1)
         reg_tensor = torch.cat(
-            [reg_distri_list[i].flatten(2) for i in range(len(reg_distri_list))], dim=2
+            [
+                reg_distri_list[i].flatten(2)
+                for i in range(len(reg_distri_list))
+            ],
+            dim=2,
         ).permute(0, 2, 1)
 
         if self.training:
@@ -129,7 +135,8 @@ class EfficientOBBoxHead(EfficientBBoxHead):
     def _process_to_bbox(
         self, output: tuple[list[Tensor], Tensor, Tensor, Tensor]
     ) -> list[Tensor]:
-        """Performs post-processing of the output and returns bboxs after NMS."""
+        """Performs post-processing of the output and returns bboxs
+        after NMS."""
         features, cls_score_tensor, reg_dist_tensor, angles_tensor = output
         _, anchor_points, _, stride_tensor = anchors_for_fpn_features(
             features,

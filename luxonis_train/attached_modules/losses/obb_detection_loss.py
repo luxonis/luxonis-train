@@ -15,12 +15,19 @@ from luxonis_train.utils.boxutils import (
     xywh2xyxy,
     xyxyxyxy2xywhr,
 )
-from luxonis_train.utils.types import IncompatibleException, Labels, LabelType, Packet
+from luxonis_train.utils.types import (
+    IncompatibleException,
+    Labels,
+    LabelType,
+    Packet,
+)
 
 from .base_loss import BaseLoss
 
 
-class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]):
+class OBBDetectionLoss(
+    BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]
+):
     node: EfficientOBBoxHead
     supported_labels = [LabelType.OBOUNDINGBOX]
 
@@ -127,7 +134,9 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
                 self.grid_cell_offset,
                 multiply_with_stride=True,
             )
-            self.anchor_points_strided = self.anchor_points / self.stride_tensor
+            self.anchor_points_strided = (
+                self.anchor_points / self.stride_tensor
+            )
 
         target = self._preprocess_target(
             target, batch_size
@@ -144,7 +153,9 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
         )
         pred_bboxes = torch.cat(
             (
-                dist2rbbox(pred_distri_tensor, pred_angles, self.anchor_points_strided),
+                dist2rbbox(
+                    pred_distri_tensor, pred_angles, self.anchor_points_strided
+                ),
                 pred_angles,
             ),
             dim=-1,
@@ -198,10 +209,14 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
         assigned_scores: Tensor,
         mask_positive: Tensor,
     ):
-        one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[..., :-1]
+        one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[
+            ..., :-1
+        ]
 
         # CLS loss
-        loss_cls = self.varifocal_loss(pred_scores, assigned_scores, one_hot_label)
+        loss_cls = self.varifocal_loss(
+            pred_scores, assigned_scores, one_hot_label
+        )
         # loss_cls = self.bce(pred_scores, assigned_scores)
         if assigned_scores.sum() > 1:
             loss_cls /= assigned_scores.sum()
@@ -234,8 +249,8 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
         return loss, sub_losses
 
     def _preprocess_target(self, target: Tensor, batch_size: int):
-        """Preprocess target in shape [batch_size, N, 6] where N is maximum number of
-        instances in one image."""
+        """Preprocess target in shape [batch_size, N, 6] where N is
+        maximum number of instances in one image."""
         idx_cls = target[:, :2]
         xyxyxyxy = target[:, 2:]
         cxcywhr = xyxyxyxy2xywhr(xyxyxyxy)
@@ -244,7 +259,8 @@ class OBBDetectionLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor])
         else:
             target = torch.cat([idx_cls, torch.tensor(cxcywhr)], dim=-1)
         sample_ids, counts = cast(
-            tuple[Tensor, Tensor], torch.unique(target[:, 0].int(), return_counts=True)
+            tuple[Tensor, Tensor],
+            torch.unique(target[:, 0].int(), return_counts=True),
         )
         c_max = int(counts.max()) if counts.numel() > 0 else 0
         out_target = torch.zeros(batch_size, c_max, 6, device=target.device)
@@ -283,7 +299,8 @@ class VarifocalLoss(nn.Module):
         self, pred_score: Tensor, target_score: Tensor, label: Tensor
     ) -> Tensor:
         weight = (
-            self.alpha * pred_score.pow(self.gamma) * (1 - label) + target_score * label
+            self.alpha * pred_score.pow(self.gamma) * (1 - label)
+            + target_score * label
         )
         ce_loss = F.binary_cross_entropy(
             pred_score.float(), target_score.float(), reduction="none"
@@ -296,8 +313,8 @@ class DFLoss(nn.Module):
     """Criterion class for computing DFL losses during training.
 
     @type reg_max: int
-    @param reg_max: Number of bins for predicting the distributions of bounding box
-        coordinates.
+    @param reg_max: Number of bins for predicting the distributions of
+        bounding box coordinates.
     """
 
     def __init__(self, reg_max=16) -> None:
@@ -318,9 +335,13 @@ class DFLoss(nn.Module):
         wl = tr - target  # weight left
         wr = 1 - wl  # weight right
         return (
-            F.cross_entropy(pred_dist, tl.view(-1), reduction="none").view(tl.shape)
+            F.cross_entropy(pred_dist, tl.view(-1), reduction="none").view(
+                tl.shape
+            )
             * wl
-            + F.cross_entropy(pred_dist, tr.view(-1), reduction="none").view(tl.shape)
+            + F.cross_entropy(pred_dist, tr.view(-1), reduction="none").view(
+                tl.shape
+            )
             * wr
         ).mean(-1, keepdim=True)
 
@@ -329,13 +350,13 @@ class RotatedBboxLoss(nn.Module):
     """Criterion class for computing training losses during training.
 
     @type reg_max: int
-    @param reg_max: Number of bins for predicting the distributions of bounding box
-        coordinates.
+    @param reg_max: Number of bins for predicting the distributions of
+        bounding box coordinates.
     """
 
     def __init__(self, reg_max):
-        """Initialize the BboxLoss module with regularization maximum and DFL
-        settings."""
+        """Initialize the BboxLoss module with regularization maximum
+        and DFL settings."""
         super().__init__()
         self.dfl_loss = DFLoss(reg_max) if reg_max > 1 else None
 

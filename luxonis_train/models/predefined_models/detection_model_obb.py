@@ -47,7 +47,9 @@ class OBBDetectionModel(BasePredefinedModel):
                 name="EfficientOBBoxHead",
                 alias="detection_obb_head",
                 freezing=self.head_params.pop("freezing", {}),
-                inputs=["detection_neck"] if self.use_neck else ["detection_backbone"],
+                inputs=["detection_neck"]
+                if self.use_neck
+                else ["detection_backbone"],
                 params=self.head_params,
                 task=self.task_name,
             )

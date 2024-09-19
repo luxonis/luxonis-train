@@ -25,26 +25,33 @@ class OBBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
     ):
         """Visualizer for oriented bounding box predictions.
 
-        Creates a visualization of the oriented bounding box predictions and labels.
+        Creates a visualization of the oriented bounding box predictions
+        and labels.
 
         @type labels: dict[int, str] | list[str] | None
-        @param labels: Either a dictionary mapping class indices to names, or a list of
-            names. If list is provided, the label mapping is done by index. By default,
-            no labels are drawn.
+        @param labels: Either a dictionary mapping class indices to
+            names, or a list of names. If list is provided, the label
+            mapping is done by index. By default, no labels are drawn.
         @type draw_labels: bool
-        @param draw_labels: Whether or not to draw labels. Defaults to C{True}.
+        @param draw_labels: Whether or not to draw labels. Defaults to
+            C{True}.
         @type colors: dict[int, Color] | list[Color] | None
-        @param colors: Either a dictionary mapping class indices to colors, or a list of
-            colors. If list is provided, the color mapping is done by index. By default,
-            random colors are used.
+        @param colors: Either a dictionary mapping class indices to
+            colors, or a list of colors. If list is provided, the color
+            mapping is done by index. By default, random colors are
+            used.
         @type fill: bool
-        @param fill: Whether or not to fill the bounding boxes. Defaults to C{False}.
+        @param fill: Whether or not to fill the bounding boxes. Defaults
+            to C{False}.
         @type width: int | None
-        @param width: The width of the bounding box lines. Defaults to C{1}.
+        @param width: The width of the bounding box lines. Defaults to
+            C{1}.
         @type font: str | None
-        @param font: A filename containing a TrueType font. Defaults to C{None}.
+        @param font: A filename containing a TrueType font. Defaults to
+            C{None}.
         @type font_size: int | None
-        @param font_size: The font size to use for the labels. Defaults to C{None}.
+        @param font_size: The font size to use for the labels. Defaults
+            to C{None}.
         """
         super().__init__(**kwargs)
         if isinstance(labels, list):
@@ -55,9 +62,13 @@ class OBBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         }
 
         if colors is None:
-            colors = {label: get_color(i) for i, label in self.bbox_labels.items()}
+            colors = {
+                label: get_color(i) for i, label in self.bbox_labels.items()
+            }
         if isinstance(colors, list):
-            colors = {self.bbox_labels[i]: color for i, color in enumerate(colors)}
+            colors = {
+                self.bbox_labels[i]: color for i, color in enumerate(colors)
+            }
         self.colors = colors
         self.fill = fill
         self.width = width
@@ -159,16 +170,18 @@ class OBBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         predictions: list[Tensor],
         targets: Tensor,
     ) -> tuple[Tensor, Tensor]:
-        """Creates a visualization of the oriented bounding box predictions and labels.
+        """Creates a visualization of the oriented bounding box
+        predictions and labels.
 
         @type label_canvas: Tensor
         @param label_canvas: The canvas containing the labels.
         @type prediction_canvas: Tensor
         @param prediction_canvas: The canvas containing the predictions.
         @type predictions: Tensor
-        @param predictions: The predicted bounding boxes. The shape should be [N, 7],
-            where N is the number of bounding boxes and the last dimension is [xc, yc,
-            w, h, conf, class]. # NOTE: check it
+        @param predictions: The predicted bounding boxes. The shape
+            should be [N, 7], where N is the number of bounding boxes
+            and the last dimension is [xc, yc, w, h, conf, class]. #
+            NOTE: check it
         @type targets: Tensor
         @param targets: The target bounding boxes.
         """

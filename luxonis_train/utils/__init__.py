@@ -1,6 +1,7 @@
 from .boundingbox import (
     anchors_for_fpn_features,
     anchors_from_dataset,
+    batch_probiou,
     bbox2dist,
     bbox_iou,
     compute_iou_loss,
@@ -8,6 +9,8 @@ from .boundingbox import (
     match_to_anchor,
     non_max_suppression,
     process_bbox_predictions,
+    xywhr2xyxyxyxy,
+    xyxyxyxy2xywhr,
 )
 from .config import Config
 from .dataset_metadata import DatasetMetadata
@@ -40,6 +43,9 @@ __all__ = [
     "dist2bbox",
     "bbox2dist",
     "bbox_iou",
+    "batch_probiou",
+    "xywhr2xyxyxyxy",
+    "xyxyxyxy2xywhr",
     "non_max_suppression",
     "anchors_from_dataset",
     "anchors_for_fpn_features",
