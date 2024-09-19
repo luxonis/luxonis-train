@@ -61,17 +61,23 @@ def get_trial_params(
             case "int", [int(low), int(high), *tail]:
                 step = tail[0] if tail else 1
                 if not isinstance(step, int):
-                    raise ValueError(f"Step for int type must be int, but got {step}")
+                    raise ValueError(
+                        f"Step for int type must be int, but got {step}"
+                    )
                 new_value = trial.suggest_int(key_name, low, high, step=step)
             case "loguniform", [float(low), float(high)]:
                 new_value = trial.suggest_loguniform(key_name, low, high)
             case "uniform", [float(low), float(high)]:
                 new_value = trial.suggest_uniform(key_name, low, high)
             case _, _:
-                raise KeyError(f"Combination of {key_type} and {value} not supported")
+                raise KeyError(
+                    f"Combination of {key_type} and {value} not supported"
+                )
 
         new_params[key_name] = new_value
 
     if len(new_params) == 0:
-        raise ValueError("No paramteres to tune. Specify them under `tuner.params`.")
+        raise ValueError(
+            "No paramteres to tune. Specify them under `tuner.params`."
+        )
     return new_params

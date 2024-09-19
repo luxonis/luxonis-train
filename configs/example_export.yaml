@@ -22,9 +22,9 @@ trainer:
 
   batch_size: 4
   epochs: &epochs 200
-  num_workers: 4
+  n_workers: 4
   validation_interval: 10
-  num_log_images: 8
+  n_log_images: 8
 
   optimizer:
     name: SGD
