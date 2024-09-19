@@ -1,9 +1,9 @@
 import numpy as np
 import torch
+from luxonis_ml.data import LabelType
 from torch import Tensor
 
-from luxonis_train.utils.boxutils import batch_probiou, xyxyxyxy2xywhr
-from luxonis_train.utils.types import Labels, LabelType, Packet
+from luxonis_train.utils import Labels, Packet, batch_probiou, xyxyxyxy2xywhr
 
 from .base_metric import BaseMetric
 
@@ -152,6 +152,13 @@ class MeanAveragePrecisionOBB(BaseMetric):
         batch of # "fp": torch.from_numpy(results[1]), detections and
         ground truth bounding boxes.
 
+        Example:
+
+            >>> detections = torch.rand(100, 7)  # 100 sample detections
+            >>> gt_bboxes = torch.rand(50, 5)  # 50 sample ground truth boxes
+            >>> gt_cls = torch.randint(0, 5, (50,))  # 50 ground truth class labels
+            >>> correct_matrix = OBBValidator._process_batch(detections, gt_bboxes, gt_cls)
+
         @type detections: Tensor
         @param detections: A tensor of shape (N, 7) representing the detected bounding boxes and associated
             data. Each detection is represented as (x1, y1, x2, y2, conf, class, angle).
@@ -164,16 +171,7 @@ class MeanAveragePrecisionOBB(BaseMetric):
         @return: The correct prediction matrix with shape (N, 10), which includes 10 IoU (Intersection over
             Union) levels for each detection, indicating the accuracy of predictions compared to the ground truth.
 
-        Example:
-            ```python
-            detections = torch.rand(100, 7)  # 100 sample detections
-            gt_bboxes = torch.rand(50, 5)  # 50 sample ground truth boxes
-            gt_cls = torch.randint(0, 5, (50,))  # 50 ground truth class labels
-            correct_matrix = OBBValidator._process_batch(detections, gt_bboxes, gt_cls)
-            ```
-
-        Note:
-            This method relies on `batch_probiou` to calculate IoU between detections and ground truth bounding boxes.
+        @note: This method relies on C{batch_probiou} to calculate IoU between detections and ground truth bounding boxes.
         """
         iou = batch_probiou(
             gt_bboxes,

@@ -2,12 +2,15 @@ from typing import Literal, cast
 
 import torch
 import torch.nn.functional as F
+from luxonis_ml.data import LabelType
 from torch import Tensor, nn
 
+from luxonis_train.assigners import RotatedTaskAlignedAssigner
 from luxonis_train.nodes.heads import EfficientOBBoxHead
-from luxonis_train.utils.assigners import RotatedTaskAlignedAssigner
-from luxonis_train.utils.boxutils import (
-    IoUType,
+from luxonis_train.utils import (
+    IncompatibleException,
+    Labels,
+    Packet,
     anchors_for_fpn_features,
     bbox2dist,
     dist2rbbox,
@@ -15,12 +18,7 @@ from luxonis_train.utils.boxutils import (
     xywh2xyxy,
     xyxyxyxy2xywhr,
 )
-from luxonis_train.utils.types import (
-    IncompatibleException,
-    Labels,
-    LabelType,
-    Packet,
-)
+from luxonis_train.utils.boundingbox import IoUType
 
 from .base_loss import BaseLoss
 
@@ -75,7 +73,6 @@ class OBBDetectionLoss(
             )
         self.iou_type: IoUType = iou_type
         self.reduction = reduction
-        self.n_classes = self.node.n_classes
         self.stride = self.node.stride
         self.grid_cell_size = self.node.grid_cell_size
         self.grid_cell_offset = self.node.grid_cell_offset
@@ -347,16 +344,14 @@ class DFLoss(nn.Module):
 
 
 class RotatedBboxLoss(nn.Module):
-    """Criterion class for computing training losses during training.
-
-    @type reg_max: int
-    @param reg_max: Number of bins for predicting the distributions of
-        bounding box coordinates.
-    """
-
     def __init__(self, reg_max):
-        """Initialize the BboxLoss module with regularization maximum
-        and DFL settings."""
+        """Criterion class for computing training losses during
+        training.
+
+        @type reg_max: int
+        @param reg_max: Number of bins for predicting the distributions
+            of bounding box coordinates.
+        """
         super().__init__()
         self.dfl_loss = DFLoss(reg_max) if reg_max > 1 else None
 

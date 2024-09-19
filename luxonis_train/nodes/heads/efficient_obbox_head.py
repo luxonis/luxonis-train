@@ -6,7 +6,7 @@ from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks import EfficientOBBDecoupledBlock
 from luxonis_train.nodes.heads import EfficientBBoxHead
-from luxonis_train.utils.boxutils import (
+from luxonis_train.utils import (
     anchors_for_fpn_features,
     dist2rbbox,
     non_max_suppression_obb,
