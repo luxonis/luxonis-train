@@ -44,6 +44,7 @@ class DAPPMBranch(nn.Module):
         super().__init__()
 
         down_list = []
+        down_list.append(nn.BatchNorm2d(in_channels))
         if stride == 0:
             down_list.append(nn.AdaptiveAvgPool2d((1, 1)))
         elif stride > 1:
@@ -53,7 +54,6 @@ class DAPPMBranch(nn.Module):
                 )
             )
 
-        down_list.append(nn.BatchNorm2d(in_channels))
         down_list.append(nn.ReLU(inplace=True))
         down_list.append(
             nn.Conv2d(in_channels, branch_channels, kernel_size=1, bias=False)
