@@ -33,10 +33,7 @@ where = ["."]
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
-[tool.setuptools.dynamic.optional-dependencies]
-dev = { file = ["requirements-dev.txt"] }
-config = { file = ["requirements-config.txt"] }
-
+optional-dependencies = { dev = { file = ["requirements-dev.txt"] } }
 version = {attr = "luxonis_train.__version__"}
 
 [tool.ruff]

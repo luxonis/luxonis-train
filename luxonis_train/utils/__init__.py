@@ -17,7 +17,7 @@ from .general import (
     make_divisible,
     to_shape_packet,
 )
-from .graph import is_acyclic, traverse_graph
+from .graph import traverse_graph
 from .keypoints import get_sigmas, process_keypoints_predictions
 from .tracker import LuxonisTrackerPL
 from .types import AttachIndexType, Kwargs, Labels, Packet
@@ -45,6 +45,5 @@ __all__ = [
     "compute_iou_loss",
     "process_keypoints_predictions",
     "get_sigmas",
-    "is_acyclic",
     "traverse_graph",
 ]

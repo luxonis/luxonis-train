@@ -6,8 +6,8 @@ from luxonis_train.config import (
     LossModuleConfig,
     MetricModuleConfig,
     ModelNodeConfig,
+    Params,
 )
-from luxonis_train.utils import Kwargs
 
 from .base_predefined_model import BasePredefinedModel
 
@@ -15,15 +15,15 @@ from .base_predefined_model import BasePredefinedModel
 @dataclass
 class KeypointDetectionModel(BasePredefinedModel):
     use_neck: bool = True
-    backbone_params: Kwargs = field(default_factory=dict)
-    neck_params: Kwargs = field(default_factory=dict)
-    head_params: Kwargs = field(default_factory=dict)
-    loss_params: Kwargs = field(default_factory=dict)
+    backbone_params: Params = field(default_factory=dict)
+    neck_params: Params = field(default_factory=dict)
+    head_params: Params = field(default_factory=dict)
+    loss_params: Params = field(default_factory=dict)
     head_type: Literal[
         "ImplicitKeypointBBoxHead", "EfficientKeypointBBoxHead"
     ] = "EfficientKeypointBBoxHead"
-    kpt_visualizer_params: Kwargs = field(default_factory=dict)
-    bbox_visualizer_params: Kwargs = field(default_factory=dict)
+    kpt_visualizer_params: Params = field(default_factory=dict)
+    bbox_visualizer_params: Params = field(default_factory=dict)
     bbox_task_name: str | None = None
     kpt_task_name: str | None = None
 

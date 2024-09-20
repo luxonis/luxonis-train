@@ -84,7 +84,7 @@ class ModelConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_predefined_model(self) -> Self:
-        from luxonis_train.utils.registry import MODELS
+        from .predefined_models.base_predefined_model import MODELS
 
         if self.predefined_model:
             logger.info(
@@ -130,8 +130,6 @@ class ModelConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_graph(self) -> Self:
-        from luxonis_train.utils import is_acyclic
-
         graph = {node.alias or node.name: node.inputs for node in self.nodes}
         if not is_acyclic(graph):
             raise ValueError("Model graph is not acyclic.")
@@ -448,3 +446,40 @@ class Config(LuxonisConfig):
             instance.tracker.project_id = fs.experiment_id
             instance.tracker.run_id = fs.run_id
         return instance
+
+
+def is_acyclic(graph: dict[str, list[str]]) -> bool:
+    """Tests if graph is acyclic.
+
+    @type graph: dict[str, list[str]]
+    @param graph: Graph in a format of a dictionary of predecessors.
+        Keys are node names, values are inputs to the node (list of node
+        names).
+    @rtype: bool
+    @return: True if graph is acyclic, False otherwise.
+    """
+    graph = graph.copy()
+
+    def dfs(node: str, visited: set[str], recursion_stack: set[str]):
+        visited.add(node)
+        recursion_stack.add(node)
+
+        for predecessor in graph.get(node, []):
+            if predecessor in recursion_stack:
+                return True
+            if predecessor not in visited:
+                if dfs(predecessor, visited, recursion_stack):
+                    return True
+
+        recursion_stack.remove(node)
+        return False
+
+    visited: set[str] = set()
+    recursion_stack: set[str] = set()
+
+    for node in graph.keys():
+        if node not in visited:
+            if dfs(node, visited, recursion_stack):
+                return False
+
+    return True
