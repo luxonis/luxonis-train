@@ -158,7 +158,7 @@
         ],
         "heads": [
             {
-                "parser": "YoloDetectionNetwork",
+                "parser": "YOLO",
                 "metadata": {
                     "postprocessor_path": null,
                     "classes": [

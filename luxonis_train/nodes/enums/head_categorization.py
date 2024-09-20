@@ -5,7 +5,7 @@ class ImplementedHeads(Enum):
     """Task categorization for the implemented heads."""
 
     ClassificationHead = "ClassificationParser"
-    EfficientBBoxHead = "YoloDetectionNetwork"
+    EfficientBBoxHead = "YOLO"
     ImplicitKeypointBBoxHead = "YoloDetectionNetwork"
     EfficientKeypointBBoxHead = "YoloDetectionNetwork"
     SegmentationHead = "SegmentationParser"
