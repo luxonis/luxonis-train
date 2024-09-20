@@ -60,6 +60,6 @@ class BaseVisualizer(
         label_canvas: Tensor,
         prediction_canvas: Tensor,
         inputs: Packet[Tensor],
-        labels: Labels,
+        labels: Labels | None,
     ) -> Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]:
         return self(label_canvas, prediction_canvas, *self.prepare(inputs, labels))

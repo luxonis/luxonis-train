@@ -5,8 +5,10 @@ from logging import getLogger
 from pathlib import Path
 from typing import Any, Literal
 
+import cv2
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
+import numpy as np
 import rich.traceback
 import torch
 import torch.utils.data as torch_data
@@ -16,9 +18,11 @@ from luxonis_ml.data import Augmentations
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.utils import LuxonisFileSystem, reset_logging, setup_logging
+from torch.utils.data import DataLoader
 
 from luxonis_train.attached_modules.visualizers import get_unnormalized_images
 from luxonis_train.callbacks import LuxonisRichProgressBar, LuxonisTQDMProgressBar
+from luxonis_train.core.utils.infer_utils import InferAugmentations, InferDataset
 from luxonis_train.models import LuxonisLightningModule
 from luxonis_train.utils.config import Config
 from luxonis_train.utils.general import DatasetMetadata
@@ -103,7 +107,19 @@ class LuxonisModel:
             train_rgb=self.cfg.trainer.preprocessing.train_rgb,
             keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
         )
+
         self.val_augmentations = Augmentations(
+            image_size=self.cfg.trainer.preprocessing.train_image_size,
+            augmentations=[
+                i.model_dump()
+                for i in self.cfg.trainer.preprocessing.get_active_augmentations()
+            ],
+            train_rgb=self.cfg.trainer.preprocessing.train_rgb,
+            keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
+            only_normalize=True,
+        )
+
+        self.infer_augmentations = InferAugmentations(
             image_size=self.cfg.trainer.preprocessing.train_image_size,
             augmentations=[
                 i.model_dump()
@@ -377,28 +393,73 @@ class LuxonisModel:
             )
             self.thread.start()
 
-    def infer(self, view: str = "val", save_dir: str | Path | None = None) -> None:
+    def infer(
+        self,
+        view: str | None = "val",
+        img_src_path: str | None = None,
+        save_dir: str | Path | None = None,
+        batch_size: int = 1,
+    ) -> None:
         """Runs inference.
 
-        @type view: str
+        @type view: str | None
         @param view: Which split to run the inference on. Valid values are: 'train',
             'val', 'test'. Defaults to "val".
+        @type img_src: str | None
+        @param img_src: Path to an image or a dir with images (.pnd, .jpg, .jpeg, .bmp,
+            .tiff)
         @type save_dir: str | Path | None
         @param save_dir: Directory where to save the visualizations. If not specified,
             visualizations will be rendered on the screen.
+        @type batch_size: int
+        @param batch_size: batch size to use for inference.
         """
         self.lightning_module.eval()
 
-        if view not in self.pytorch_loaders:
-            raise ValueError(
-                f"View {view} is not valid. Valid views are: 'train', 'val', 'test'."
-            )
-        for inputs, labels in self.pytorch_loaders[view]:
-            images = get_unnormalized_images(self.cfg, inputs)
-            outputs = self.lightning_module.forward(
-                inputs, labels, images=images, compute_visualizations=True
-            )
-            render_visualizations(outputs.visualizations, save_dir)
+        if img_src_path is not None:
+            if Path(img_src_path).is_file():
+                img = cv2.cvtColor(cv2.imread(str(img_src_path)), cv2.COLOR_BGR2RGB)
+                img_aug = self.infer_augmentations([img])
+                img_aug = np.transpose(img_aug, (2, 0, 1))  # HWC to CHW
+                img_tensor = torch.Tensor(img_aug)
+                img_tensor = img_tensor.unsqueeze(0)
+                img_dict = {"image": img_tensor}
+                image = get_unnormalized_images(self.cfg, img_dict)
+                outputs = self.lightning_module.forward(
+                    img_dict, images=image, compute_visualizations=True
+                )
+                render_visualizations(outputs.visualizations, save_dir)
+                return
+
+            elif Path(img_src_path).is_dir():
+                infer_dataset = InferDataset(img_src_path, self.infer_augmentations)
+                infer_loader = DataLoader(infer_dataset, batch_size=batch_size)
+                for idx, inputs in enumerate(infer_loader):
+                    images = get_unnormalized_images(self.cfg, inputs)
+                    outputs = self.lightning_module.forward(
+                        inputs, images=images, compute_visualizations=True
+                    )
+                    render_visualizations(outputs.visualizations, save_dir, img_idx=idx)
+                return
+
+            else:
+                raise ValueError(
+                    f"Path {img_src_path} is not valid. It has to either point to a dir with images or an image file."
+                )
+
+        elif view is not None:
+            if view not in self.pytorch_loaders:
+                raise ValueError(
+                    f"View {view} is not valid. Valid views are: 'train', 'val', 'test'."
+                )
+            for inputs, labels in self.pytorch_loaders[view]:
+                images = get_unnormalized_images(self.cfg, inputs)
+                outputs = self.lightning_module.forward(
+                    inputs, labels, images=images, compute_visualizations=True
+                )
+                render_visualizations(outputs.visualizations, save_dir)
+        else:
+            raise ValueError("Either 'veiw' or 'img_src_path' has to be defined.")
 
     def tune(self) -> None:
         """Runs Optuna tunning of hyperparameters."""

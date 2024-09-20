@@ -207,7 +207,9 @@ class BaseAttachedModule(
             )
         return inputs[self.node_tasks[self.required_labels[0]]]
 
-    def prepare(self, inputs: Packet[Tensor], labels: Labels) -> tuple[Unpack[Ts]]:
+    def prepare(
+        self, inputs: Packet[Tensor], labels: Labels | None
+    ) -> tuple[Unpack[Ts]]:
         """Prepares node outputs for the forward pass of the module.
 
         This default implementation selects the output and label based on
@@ -252,19 +254,23 @@ class BaseAttachedModule(
                 set(self.supported_labels) & set(self.node._tasks)
             )
         x = self.get_input_tensors(inputs)
-        label, label_type = self.get_label(labels)
-        if label_type in [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]:
-            if isinstance(x, list):
-                if len(x) == 1:
-                    x = x[0]
-                else:
-                    logger.warning(
-                        f"Module {self.name} expects a single tensor as input, "
-                        f"but got {len(x)} tensors. Using the last tensor. "
-                        f"If this is not the desired behavior, please override the "
-                        "`prepare` method of the attached module or the `wrap` "
-                        f"method of {self.node.name}."
-                    )
-                    x = x[-1]
+        # NOTE: Check the logic below, if x needs to be modified withoud fulfilling the condition
+        if labels is not None:
+            label, label_type = self.get_label(labels)
+            if label_type in [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]:
+                if isinstance(x, list):
+                    if len(x) == 1:
+                        x = x[0]
+                    else:
+                        logger.warning(
+                            f"Module {self.name} expects a single tensor as input, "
+                            f"but got {len(x)} tensors. Using the last tensor. "
+                            f"If this is not the desired behavior, please override the "
+                            "`prepare` method of the attached module or the `wrap` "
+                            f"method of {self.node.name}."
+                        )
+                        x = x[-1]
+        else:
+            label = None
 
         return x, label  # type: ignore
