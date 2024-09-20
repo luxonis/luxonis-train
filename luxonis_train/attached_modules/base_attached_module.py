@@ -328,7 +328,10 @@ class BaseAttachedModule(
         # NOTE: Check the logic below, if x needs to be modified withoud fulfilling the condition
         if labels is not None:
             label, label_type = self.get_label(labels)
-            if label_type in [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]:
+            if label_type in [
+                LabelType.CLASSIFICATION,
+                LabelType.SEGMENTATION,
+            ]:
                 if isinstance(x, list):
                     if len(x) == 1:
                         x = x[0]

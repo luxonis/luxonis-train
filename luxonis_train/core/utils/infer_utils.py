@@ -33,7 +33,8 @@ def render_visualizations(
                     name = name.replace("/", "_")
                     if img_idx is not None:
                         cv2.imwrite(
-                            str(save_dir / f"{name}_{i}_{img_idx}.png"), viz_arr
+                            str(save_dir / f"{name}_{i}_{img_idx}.png"),
+                            viz_arr,
                         )  # img_idx the number of an image in a dir for the inference method
                         i += 1
                     else:
@@ -48,13 +49,16 @@ def render_visualizations(
 
 
 class InferDataset(Dataset):
-    def __init__(self, image_dir: str, augmentations: Optional[Callable] = None):
+    def __init__(
+        self, image_dir: str, augmentations: Optional[Callable] = None
+    ):
         """Dataset for using with the infernce method.
 
         @type image_dir: str
         @param image_dir: Path to the directory with images.
         @type augmentations: Callable | Optional
-        @param augmentations: Optional transform to be applied on a sample image.
+        @param augmentations: Optional transform to be applied on a
+            sample image.
         """
         self.image_dir = image_dir
         self.image_filenames = [
@@ -97,7 +101,11 @@ class InferAugmentations(Augmentations):
         only_normalize: bool = True,
     ):
         super().__init__(
-            image_size, augmentations, train_rgb, keep_aspect_ratio, only_normalize
+            image_size,
+            augmentations,
+            train_rgb,
+            keep_aspect_ratio,
+            only_normalize,
         )
 
         (
@@ -107,7 +115,9 @@ class InferAugmentations(Augmentations):
             self.resize_transform,
         ) = self._parse_cfg(
             image_size=image_size,
-            augmentations=[a for a in augmentations if a["name"] == "Normalize"]
+            augmentations=[
+                a for a in augmentations if a["name"] == "Normalize"
+            ]
             if only_normalize
             else augmentations,
             keep_aspect_ratio=keep_aspect_ratio,
@@ -119,18 +129,20 @@ class InferAugmentations(Augmentations):
         augmentations: list[dict[str, Any]],
         keep_aspect_ratio: bool = True,
     ) -> tuple[BatchCompose, A.Compose, A.Compose, A.Compose]:
-        """Parses provided config and returns Albumentations BatchedCompose object and
-        Compose object for default transforms.
+        """Parses provided config and returns Albumentations
+        BatchedCompose object and Compose object for default transforms.
 
         @type image_size: List[int]
         @param image_size: Desired image size [H,W]
         @type augmentations: List[Dict[str, Any]]
-        @param augmentations: List of augmentations to use and their params
+        @param augmentations: List of augmentations to use and their
+            params
         @type keep_aspect_ratio: bool
-        @param keep_aspect_ratio: Whether should use resize that keeps aspect ratio of
-            original image.
+        @param keep_aspect_ratio: Whether should use resize that keeps
+            aspect ratio of original image.
         @rtype: Tuple[BatchCompose, A.Compose, A.Compose, A.Compose]
-        @return: Objects for batched, spatial, pixel and resize transforms
+        @return: Objects for batched, spatial, pixel and resize
+            transforms
         """
 
         # NOTE: Always perform Resize
@@ -146,14 +158,18 @@ class InferAugmentations(Augmentations):
         batched_augs = []
         if augmentations:
             for aug in augmentations:
-                curr_aug = AUGMENTATIONS.get(aug["name"])(**aug.get("params", {}))
+                curr_aug = AUGMENTATIONS.get(aug["name"])(
+                    **aug.get("params", {})
+                )
                 if isinstance(curr_aug, A.ImageOnlyTransform):
                     pixel_augs.append(curr_aug)
                 elif isinstance(curr_aug, A.DualTransform):
                     spatial_augs.append(curr_aug)
                 elif isinstance(curr_aug, BatchBasedTransform):
                     self.is_batched = True
-                    self.aug_batch_size = max(self.aug_batch_size, curr_aug.batch_size)
+                    self.aug_batch_size = max(
+                        self.aug_batch_size, curr_aug.batch_size
+                    )
                     batched_augs.append(curr_aug)
 
         batch_transform = BatchCompose(
@@ -174,7 +190,12 @@ class InferAugmentations(Augmentations):
             [resize],
         )
 
-        return batch_transform, spatial_transform, pixel_transform, resize_transform
+        return (
+            batch_transform,
+            spatial_transform,
+            pixel_transform,
+            resize_transform,
+        )
 
     def __call__(
         self,
@@ -183,7 +204,8 @@ class InferAugmentations(Augmentations):
         """Performs augmentations on provided data.
 
         @type data: np.ndarray
-        @param data: Data with list of input images and their annotations
+        @param data: Data with list of input images and their
+            annotations
         @rtype: np.ndarray
         @return: Output image
         """
@@ -199,7 +221,9 @@ class InferAugmentations(Augmentations):
         }
 
         transformed = self.batch_transform(force_apply=False, **transform_args)
-        transformed = {key: np.array(value[0]) for key, value in transformed.items()}
+        transformed = {
+            key: np.array(value[0]) for key, value in transformed.items()
+        }
 
         arg_names = [
             "image",
