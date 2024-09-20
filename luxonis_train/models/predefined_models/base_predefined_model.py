@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from luxonis_ml.utils.registry import AutoRegisterMeta
 
-from luxonis_train.utils.config import (
+from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,

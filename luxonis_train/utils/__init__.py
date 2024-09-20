@@ -9,7 +9,6 @@ from .boundingbox import (
     non_max_suppression,
     process_bbox_predictions,
 )
-from .config import Config
 from .dataset_metadata import DatasetMetadata
 from .exceptions import IncompatibleException
 from .general import (
@@ -24,7 +23,6 @@ from .tracker import LuxonisTrackerPL
 from .types import AttachIndexType, Kwargs, Labels, Packet
 
 __all__ = [
-    "Config",
     "AttachIndexType",
     "Kwargs",
     "Labels",

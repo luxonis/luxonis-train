@@ -1,0 +1,1 @@
+luxonis-ml[all]@git+https://github.com/luxonis/luxonis-ml.git@dev

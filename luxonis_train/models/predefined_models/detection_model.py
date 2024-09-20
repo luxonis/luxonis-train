@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 
-from luxonis_train.utils import Kwargs
-from luxonis_train.utils.config import (
+from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
     ModelNodeConfig,
 )
+from luxonis_train.utils import Kwargs
 
 from .base_predefined_model import BasePredefinedModel
 

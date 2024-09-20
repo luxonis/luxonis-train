@@ -10,12 +10,12 @@ from luxonis_ml.nn_archive.config_building_blocks import (
 )
 from onnx.onnx_pb import TensorProto
 
+from luxonis_train.config import Config
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.enums.head_categorization import (
     ImplementedHeads,
     ImplementedHeadsIsSoxtmaxed,
 )
-from luxonis_train.utils import Config
 
 logger = logging.getLogger(__name__)
 

@@ -1,9 +1,6 @@
 from dataclasses import dataclass, field
 
-from luxonis_train.utils.config import (
-    LossModuleConfig,
-    ModelNodeConfig,
-)
+from luxonis_train.config import LossModuleConfig, ModelNodeConfig
 from luxonis_train.utils.types import Kwargs
 
 from .segmentation_model import SegmentationModel
