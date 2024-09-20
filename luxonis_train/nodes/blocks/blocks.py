@@ -166,7 +166,7 @@ class UpBlock(nn.Sequential):
 
         layers = []
 
-        if upsample_mode == "transpose":
+        if upsample_mode == "conv_transpose":
             layers.append(
                 nn.ConvTranspose2d(
                     in_channels,
