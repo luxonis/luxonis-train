@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
 from typing import Literal
 
+from luxonis_train.utils import Kwargs
 from luxonis_train.utils.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
     ModelNodeConfig,
 )
-from luxonis_train.utils.types import Kwargs
 
 from .base_predefined_model import BasePredefinedModel
 
@@ -15,7 +15,7 @@ from .base_predefined_model import BasePredefinedModel
 @dataclass
 class ClassificationModel(BasePredefinedModel):
     backbone: str = "MicroNet"
-    task: Literal["multiclass", "multilabel"] = "multilabel"
+    task: Literal["multiclass", "multilabel"] = "multiclass"
     backbone_params: Kwargs = field(default_factory=dict)
     head_params: Kwargs = field(default_factory=dict)
     loss_params: Kwargs = field(default_factory=dict)

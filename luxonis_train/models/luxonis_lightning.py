@@ -1,6 +1,7 @@
 from collections import defaultdict
 from collections.abc import Mapping
 from logging import getLogger
+from pathlib import Path
 from typing import Literal, cast
 
 import lightning.pytorch as pl
@@ -17,21 +18,32 @@ from luxonis_train.attached_modules import (
     BaseMetric,
     BaseVisualizer,
 )
-from luxonis_train.attached_modules.metrics.common import TorchMetricWrapper
+from luxonis_train.attached_modules.metrics.torchmetrics import (
+    TorchMetricWrapper,
+)
 from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
     get_unnormalized_images,
 )
-from luxonis_train.callbacks import (
-    BaseLuxonisProgressBar,
-    ModuleFreezer,
-)
+from luxonis_train.callbacks import BaseLuxonisProgressBar, ModuleFreezer
 from luxonis_train.nodes import BaseNode
+from luxonis_train.utils import (
+    DatasetMetadata,
+    Kwargs,
+    Labels,
+    LuxonisTrackerPL,
+    Packet,
+    to_shape_packet,
+    traverse_graph,
+)
 from luxonis_train.utils.config import AttachedModuleConfig, Config
-from luxonis_train.utils.general import DatasetMetadata, to_shape_packet, traverse_graph
-from luxonis_train.utils.registry import CALLBACKS, OPTIMIZERS, SCHEDULERS, Registry
-from luxonis_train.utils.tracker import LuxonisTrackerPL
-from luxonis_train.utils.types import Kwargs, Labels, Packet
+from luxonis_train.utils.graph import Graph
+from luxonis_train.utils.registry import (
+    CALLBACKS,
+    OPTIMIZERS,
+    SCHEDULERS,
+    Registry,
+)
 
 from .luxonis_output import LuxonisOutput
 
@@ -105,13 +117,13 @@ class LuxonisLightningModule(pl.LightningModule):
         @type save_dir: str
         @param save_dir: Directory to save checkpoints.
         @type input_shapes: dict[str, Size]
-        @param input_shapes: Dictionary of input shapes. Keys are input names, values
-            are shapes.
+        @param input_shapes: Dictionary of input shapes. Keys are input
+            names, values are shapes.
         @type dataset_metadata: L{DatasetMetadata} | None
         @param dataset_metadata: Dataset metadata.
         @type kwargs: Any
-        @param kwargs: Additional arguments to pass to the L{LightningModule}
-            constructor.
+        @param kwargs: Additional arguments to pass to the
+            L{LightningModule} constructor.
         """
         super().__init__(**kwargs)
 
@@ -123,18 +135,24 @@ class LuxonisLightningModule(pl.LightningModule):
         self.image_source = cfg.loader.image_source
         self.dataset_metadata = dataset_metadata or DatasetMetadata()
         self.frozen_nodes: list[tuple[nn.Module, int]] = []
-        self.graph: dict[str, list[str]] = {}
+        self.graph: Graph = {}
         self.loader_input_shapes: dict[str, dict[str, Size]] = {}
         self.node_input_sources: dict[str, list[str]] = defaultdict(list)
         self.loss_weights: dict[str, float] = {}
         self.main_metric: str | None = None
         self.save_dir = save_dir
         self.test_step_outputs: list[Mapping[str, Tensor | float | int]] = []
-        self.training_step_outputs: list[Mapping[str, Tensor | float | int]] = []
-        self.validation_step_outputs: list[Mapping[str, Tensor | float | int]] = []
+        self.training_step_outputs: list[
+            Mapping[str, Tensor | float | int]
+        ] = []
+        self.validation_step_outputs: list[
+            Mapping[str, Tensor | float | int]
+        ] = []
         self.losses: dict[str, dict[str, BaseLoss]] = defaultdict(dict)
         self.metrics: dict[str, dict[str, BaseMetric]] = defaultdict(dict)
-        self.visualizers: dict[str, dict[str, BaseVisualizer]] = defaultdict(dict)
+        self.visualizers: dict[str, dict[str, BaseVisualizer]] = defaultdict(
+            dict
+        )
 
         self._logged_images = 0
 
@@ -152,7 +170,9 @@ class LuxonisLightningModule(pl.LightningModule):
                 elif isinstance(node_cfg.freezing.unfreeze_after, int):
                     unfreeze_after = node_cfg.freezing.unfreeze_after
                 else:
-                    unfreeze_after = int(node_cfg.freezing.unfreeze_after * epochs)
+                    unfreeze_after = int(
+                        node_cfg.freezing.unfreeze_after * epochs
+                    )
                 frozen_nodes.append((node_name, unfreeze_after))
 
             if node_cfg.task is not None:
@@ -172,8 +192,14 @@ class LuxonisLightningModule(pl.LightningModule):
 
                     node_cfg.task = {next(iter(Node.tasks)): node_cfg.task}
                 else:
-                    node_cfg.task = {**Node._process_tasks(Node.tasks), **node_cfg.task}
-            nodes[node_name] = (Node, {**node_cfg.params, "_tasks": node_cfg.task})
+                    node_cfg.task = {
+                        **Node._process_tasks(Node.tasks),
+                        **node_cfg.task,
+                    }
+            nodes[node_name] = (
+                Node,
+                {**node_cfg.params, "_tasks": node_cfg.task},
+            )
 
             # Handle inputs for this node
             if node_cfg.input_sources:
@@ -241,7 +267,7 @@ class LuxonisLightningModule(pl.LightningModule):
     @property
     def core(self) -> "luxonis_train.core.LuxonisModel":
         """Returns the core model."""
-        if self._core is None:
+        if self._core is None:  # pragma: no cover
             raise ValueError("Core reference is not set.")
         return self._core
 
@@ -251,12 +277,12 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> nn.ModuleDict:
         """Initializes all the nodes in the model.
 
-        Traverses the graph and initiates each node using outputs of the preceding
-        nodes.
+        Traverses the graph and initiates each node using outputs of the
+        preceding nodes.
 
         @type nodes: dict[str, tuple[type[LuxonisNode], Kwargs]]
-        @param nodes: Dictionary of nodes to be initiated. Keys are node names, values
-            are tuples of node class and node kwargs.
+        @param nodes: Dictionary of nodes to be initiated. Keys are node
+            names, values are tuples of node class and node kwargs.
         @rtype: L{nn.ModuleDict}[str, L{LuxonisNode}]
         @return: Dictionary of initiated nodes.
         """
@@ -268,9 +294,10 @@ class LuxonisLightningModule(pl.LightningModule):
             for source_name, shape in shapes.items()
         }
 
-        for node_name, (Node, node_kwargs), node_input_names, _ in traverse_graph(
-            self.graph, nodes
-        ):
+        for node_name, (
+            Node,
+            node_kwargs,
+        ), node_input_names, _ in traverse_graph(self.graph, nodes):
             node_dummy_inputs: list[Packet[Tensor]] = []
             """List of dummy input packets for the node.
 
@@ -313,23 +340,27 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> LuxonisOutput:
         """Forward pass of the model.
 
-        Traverses the graph and step-by-step computes the outputs of each node. Each
-        next node is computed only when all of its predecessors are computed. Once the
-        outputs are not needed anymore, they are removed from the memory.
+        Traverses the graph and step-by-step computes the outputs of
+        each node. Each next node is computed only when all of its
+        predecessors are computed. Once the outputs are not needed
+        anymore, they are removed from the memory.
 
         @type inputs: L{Tensor}
         @param inputs: Input tensor.
         @type task_labels: L{TaskLabels} | None
         @param task_labels: Labels dictionary. Defaults to C{None}.
         @type images: L{Tensor} | None
-        @param images: Canvas tensor for visualizers. Defaults to C{None}.
+        @param images: Canvas tensor for visualizers. Defaults to
+            C{None}.
         @type compute_loss: bool
-        @param compute_loss: Whether to compute losses. Defaults to C{True}.
+        @param compute_loss: Whether to compute losses. Defaults to
+            C{True}.
         @type compute_metrics: bool
-        @param compute_metrics: Whether to update metrics. Defaults to C{True}.
+        @param compute_metrics: Whether to update metrics. Defaults to
+            C{True}.
         @type compute_visualizations: bool
-        @param compute_visualizations: Whether to compute visualizations. Defaults to
-            C{False}.
+        @param compute_visualizations: Whether to compute
+            visualizations. Defaults to C{False}.
         @rtype: L{LuxonisOutput}
         @return: Output of the model.
         """
@@ -353,11 +384,19 @@ class LuxonisLightningModule(pl.LightningModule):
             outputs = node.run(node_inputs)
             computed[node_name] = outputs
 
-            if compute_loss and node_name in self.losses and labels is not None:
+            if (
+                compute_loss
+                and node_name in self.losses
+                and labels is not None
+            ):
                 for loss_name, loss in self.losses[node_name].items():
                     losses[node_name][loss_name] = loss.run(outputs, labels)
 
-            if compute_metrics and node_name in self.metrics and labels is not None:
+            if (
+                compute_metrics
+                and node_name in self.metrics
+                and labels is not None
+            ):
                 for metric in self.metrics[node_name].values():
                     metric.run_update(outputs, labels)
 
@@ -367,7 +406,9 @@ class LuxonisLightningModule(pl.LightningModule):
                 and images is not None
                 # and labels is not None
             ):
-                for viz_name, visualizer in self.visualizers[node_name].items():
+                for viz_name, visualizer in self.visualizers[
+                    node_name
+                ].items():
                     viz = combine_visualizations(
                         visualizer.run(
                             images,
@@ -420,7 +461,7 @@ class LuxonisLightningModule(pl.LightningModule):
                         computed_submetrics = {metric_name: metric_value}
                     case dict(submetrics):
                         computed_submetrics = submetrics
-                    case unknown:
+                    case unknown:  # pragma: no cover
                         raise ValueError(
                             f"Metric {metric_name} returned unexpected value of "
                             f"type {type(unknown)}."
@@ -435,7 +476,8 @@ class LuxonisLightningModule(pl.LightningModule):
         @type save_path: str
         @param save_path: Path where the exported model will be saved.
         @type kwargs: Any
-        @param kwargs: Additional arguments for the L{torch.onnx.export} method.
+        @param kwargs: Additional arguments for the L{torch.onnx.export}
+            method.
         @rtype: list[str]
         @return: List of output names.
         """
@@ -448,7 +490,8 @@ class LuxonisLightningModule(pl.LightningModule):
         }
 
         inputs_deep_clone = {
-            k: torch.zeros(elem.shape).to(self.device) for k, elem in inputs.items()
+            k: torch.zeros(elem.shape).to(self.device)
+            for k, elem in inputs.items()
         }
 
         inputs_for_onnx = {"inputs": inputs_deep_clone}
@@ -519,22 +562,26 @@ class LuxonisLightningModule(pl.LightningModule):
 
     def process_losses(
         self,
-        losses_dict: dict[str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]],
+        losses_dict: dict[
+            str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]
+        ],
     ) -> tuple[Tensor, dict[str, Tensor]]:
         """Processes individual losses from the model run.
 
-        Goes over the computed losses and computes the final loss as a weighted sum of
-        all the losses.
+        Goes over the computed losses and computes the final loss as a
+        weighted sum of all the losses.
 
-        @type losses_dict: dict[str, dict[str, Tensor | tuple[Tensor, dict[str,
-            Tensor]]]]
-        @param losses_dict: Dictionary of computed losses. Each node can have multiple
-            losses attached. The first key identifies the node, the second key
-            identifies the specific loss. Values are either single tensors or tuples of
-            tensors and sublosses.
+        @type losses_dict: dict[str, dict[str, Tensor | tuple[Tensor,
+            dict[str, Tensor]]]]
+        @param losses_dict: Dictionary of computed losses. Each node can
+            have multiple losses attached. The first key identifies the
+            node, the second key identifies the specific loss. Values
+            are either single tensors or tuples of tensors and
+            sublosses.
         @rtype: tuple[Tensor, dict[str, Tensor]]
-        @return: Tuple of final loss and dictionary of processed sublosses. The
-            dictionary is in a format of {loss_name: loss_value}.
+        @return: Tuple of final loss and dictionary of processed
+            sublosses. The dictionary is in a format of {loss_name:
+            loss_value}.
         """
         final_loss = torch.zeros(1, device=self.device)
         training_step_output: dict[str, Tensor] = {}
@@ -548,9 +595,9 @@ class LuxonisLightningModule(pl.LightningModule):
 
                 loss *= self.loss_weights[loss_name]
                 final_loss += loss
-                training_step_output[
-                    f"loss/{node_name}/{loss_name}"
-                ] = loss.detach().cpu()
+                training_step_output[f"loss/{node_name}/{loss_name}"] = (
+                    loss.detach().cpu()
+                )
                 if self.cfg.trainer.log_sub_losses and sublosses:
                     for subloss_name, subloss_value in sublosses.items():
                         training_step_output[
@@ -559,10 +606,14 @@ class LuxonisLightningModule(pl.LightningModule):
         training_step_output["loss"] = final_loss.detach().cpu()
         return final_loss, training_step_output
 
-    def training_step(self, train_batch: tuple[dict[str, Tensor], Labels]) -> Tensor:
+    def training_step(
+        self, train_batch: tuple[dict[str, Tensor], Labels]
+    ) -> Tensor:
         """Performs one step of training with provided batch."""
         outputs = self.forward(*train_batch)
-        assert outputs.losses, "Losses are empty, check if you have defined any loss"
+        assert (
+            outputs.losses
+        ), "Losses are empty, check if you have defined any loss"
 
         loss, training_step_output = self.process_losses(outputs.losses)
         self.training_step_outputs.append(training_step_output)
@@ -605,7 +656,8 @@ class LuxonisLightningModule(pl.LightningModule):
         return self.current_epoch, self.cfg.trainer.epochs
 
     def get_status_percentage(self) -> float:
-        """Returns percentage of current training, takes into account early stopping."""
+        """Returns percentage of current training, takes into account
+        early stopping."""
         if self._trainer.early_stopping_callback:
             # model haven't yet stop from early stopping callback
             if self._trainer.early_stopping_callback.stopped_epoch == 0:
@@ -616,11 +668,13 @@ class LuxonisLightningModule(pl.LightningModule):
             return (self.current_epoch / self.cfg.trainer.epochs) * 100
 
     def _evaluation_step(
-        self, mode: Literal["test", "val"], batch: tuple[dict[str, Tensor], Labels]
+        self,
+        mode: Literal["test", "val"],
+        batch: tuple[dict[str, Tensor], Labels],
     ) -> dict[str, Tensor]:
         inputs, labels = batch
         images = None
-        if self._logged_images < self.cfg.trainer.num_log_images:
+        if self._logged_images < self.cfg.trainer.n_log_images:
             images = get_unnormalized_images(self.cfg, inputs)
         outputs = self.forward(
             inputs,
@@ -638,7 +692,7 @@ class LuxonisLightningModule(pl.LightningModule):
             for viz_name, viz_batch in visualizations.items():
                 logged_images = self._logged_images
                 for viz in viz_batch:
-                    if logged_images >= self.cfg.trainer.num_log_images:
+                    if logged_images >= self.cfg.trainer.n_log_images:
                         break
                     self.logger.log_image(
                         f"{mode}/visualizations/{node_name}/{viz_name}/{logged_images}",
@@ -662,7 +716,9 @@ class LuxonisLightningModule(pl.LightningModule):
         logger.info("Metrics computed.")
         for node_name, metrics in computed_metrics.items():
             for metric_name, metric_value in metrics.items():
-                metric_results[node_name][metric_name] = metric_value.cpu().item()
+                metric_results[node_name][metric_name] = (
+                    metric_value.cpu().item()
+                )
                 self.log(
                     f"{mode}/metric/{node_name}/{metric_name}",
                     metric_value,
@@ -682,7 +738,9 @@ class LuxonisLightningModule(pl.LightningModule):
     def configure_callbacks(self) -> list[pl.Callback]:
         """Configures Pytorch Lightning callbacks."""
         self.min_val_loss_checkpoints_path = f"{self.save_dir}/min_val_loss"
-        self.best_val_metric_checkpoints_path = f"{self.save_dir}/best_val_metric"
+        self.best_val_metric_checkpoints_path = (
+            f"{self.save_dir}/best_val_metric"
+        )
         model_name = self.cfg.model.name
 
         callbacks: list[pl.Callback] = [
@@ -716,14 +774,17 @@ class LuxonisLightningModule(pl.LightningModule):
 
         for callback in self.cfg.trainer.callbacks:
             if callback.active:
-                callbacks.append(CALLBACKS.get(callback.name)(**callback.params))
+                callbacks.append(
+                    CALLBACKS.get(callback.name)(**callback.params)
+                )
 
         return callbacks
 
     def configure_optimizers(
         self,
     ) -> tuple[
-        list[torch.optim.Optimizer], list[torch.optim.lr_scheduler._LRScheduler]
+        list[torch.optim.Optimizer],
+        list[torch.optim.lr_scheduler._LRScheduler],
     ]:
         """Configures model optimizers and schedulers."""
         cfg_optimizer = self.cfg.trainer.optimizer
@@ -739,18 +800,20 @@ class LuxonisLightningModule(pl.LightningModule):
 
         return [optimizer], [scheduler]
 
-    def load_checkpoint(self, path: str | None) -> None:
+    def load_checkpoint(self, path: str | Path | None) -> None:
         """Loads checkpoint weights from provided path.
 
-        Loads the checkpoints gracefully, ignoring keys that are not found in the model
-        state dict or in the checkpoint.
+        Loads the checkpoints gracefully, ignoring keys that are not
+        found in the model state dict or in the checkpoint.
 
         @type path: str | None
-        @param path: Path to the checkpoint. If C{None}, no checkpoint will be loaded.
+        @param path: Path to the checkpoint. If C{None}, no checkpoint
+            will be loaded.
         """
         if path is None:
             return
 
+        path = str(path)
         checkpoint = torch.load(path, map_location=self.device)
 
         if "state_dict" not in checkpoint:
@@ -809,7 +872,9 @@ class LuxonisLightningModule(pl.LightningModule):
         return module_name, node_name
 
     @staticmethod
-    def _to_module_dict(modules: dict[str, dict[str, nn.Module]]) -> nn.ModuleDict:
+    def _to_module_dict(
+        modules: dict[str, dict[str, nn.Module]],
+    ) -> nn.ModuleDict:
         return nn.ModuleDict(
             {
                 node_name: nn.ModuleDict(node_modules)
@@ -819,7 +884,9 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @property
     def _progress_bar(self) -> BaseLuxonisProgressBar:
-        return cast(BaseLuxonisProgressBar, self._trainer.progress_bar_callback)
+        return cast(
+            BaseLuxonisProgressBar, self._trainer.progress_bar_callback
+        )
 
     @rank_zero_only
     def _print_results(
@@ -829,16 +896,20 @@ class LuxonisLightningModule(pl.LightningModule):
 
         logger.info(f"{stage} loss: {loss:.4f}")
 
-        self._progress_bar.print_results(stage=stage, loss=loss, metrics=metrics)
+        self._progress_bar.print_results(
+            stage=stage, loss=loss, metrics=metrics
+        )
 
         if self.main_metric is not None:
             main_metric_node, main_metric_name = self.main_metric.split("/")
             main_metric = metrics[main_metric_node][main_metric_name]
-            logger.info(f"{stage} main metric ({self.main_metric}): {main_metric:.4f}")
+            logger.info(
+                f"{stage} main metric ({self.main_metric}): {main_metric:.4f}"
+            )
 
     def _is_train_eval_epoch(self) -> bool:
-        """Checks if train eval should be performed on current epoch based on configured
-        train_metrics_interval."""
+        """Checks if train eval should be performed on current epoch
+        based on configured train_metrics_interval."""
         train_metrics_interval = self.cfg.trainer.train_metrics_interval
         # add +1 to current_epoch because starting epoch is at 0
         return (

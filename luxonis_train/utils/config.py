@@ -10,8 +10,13 @@ from luxonis_ml.utils import (
     LuxonisConfig,
     LuxonisFileSystem,
 )
-from pydantic import Field, field_validator, model_validator
-from pydantic.types import FilePath, NonNegativeFloat, NonNegativeInt, PositiveInt
+from pydantic import AliasChoices, Field, field_validator, model_validator
+from pydantic.types import (
+    FilePath,
+    NonNegativeFloat,
+    NonNegativeInt,
+    PositiveInt,
+)
 from typing_extensions import Self
 
 logger = logging.getLogger(__name__)
@@ -82,7 +87,9 @@ class ModelConfig(BaseModelExtraForbid):
         from luxonis_train.utils.registry import MODELS
 
         if self.predefined_model:
-            logger.info(f"Using predefined model: `{self.predefined_model.name}`")
+            logger.info(
+                f"Using predefined model: `{self.predefined_model.name}`"
+            )
             model = MODELS.get(self.predefined_model.name)(
                 **self.predefined_model.params
             )
@@ -113,7 +120,8 @@ class ModelConfig(BaseModelExtraForbid):
             name = metric.alias or metric.name
             logger.info(f"Setting '{name}' as main metric.")
         else:
-            logger.error(
+            logger.warning(
+                "[Ignore if using predefined model] "
                 "No metrics specified. "
                 "This is likely unintended unless "
                 "the configuration is not used for training."
@@ -122,14 +130,16 @@ class ModelConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_graph(self) -> Self:
-        from luxonis_train.utils.general import is_acyclic
+        from luxonis_train.utils import is_acyclic
 
         graph = {node.alias or node.name: node.inputs for node in self.nodes}
         if not is_acyclic(graph):
             raise ValueError("Model graph is not acyclic.")
         if not self.outputs:
             outputs: list[str] = []  # nodes which are not inputs to any nodes
-            inputs = set(node_name for node in self.nodes for node_name in node.inputs)
+            inputs = set(
+                node_name for node in self.nodes for node_name in node.inputs
+            )
             for node in self.nodes:
                 name = node.alias or node.name
                 if name not in inputs:
@@ -147,7 +157,7 @@ class ModelConfig(BaseModelExtraForbid):
             ("metrics", self.metrics),
             ("visualizers", self.visualizers),
         ]:
-            names = set()
+            names: set[str] = set()
             for obj in objects:
                 obj: AttachedModuleConfig
                 name = obj.alias or obj.name
@@ -232,7 +242,9 @@ class PreprocessingConfig(BaseModelExtraForbid):
     def check_normalize(self) -> Self:
         if self.normalize.active:
             self.augmentations.append(
-                AugmentationConfig(name="Normalize", params=self.normalize.params)
+                AugmentationConfig(
+                    name="Normalize", params=self.normalize.params
+                )
             )
         return self
 
@@ -268,20 +280,34 @@ class TrainerConfig(BaseModelExtraForbid):
     accelerator: Literal["auto", "cpu", "gpu", "tpu"] = "auto"
     devices: int | list[int] | str = "auto"
     strategy: Literal["auto", "ddp"] = "auto"
-    num_sanity_val_steps: int = 2
+    n_sanity_val_steps: Annotated[
+        int,
+        Field(
+            validation_alias=AliasChoices(
+                "n_sanity_val_steps", "num_sanity_val_steps"
+            )
+        ),
+    ] = 2
     profiler: Literal["simple", "advanced"] | None = None
     matmul_precision: Literal["medium", "high", "highest"] | None = None
     verbose: bool = True
 
     seed: int | None = None
+    deterministic: bool | Literal["warn"] | None = None
     batch_size: PositiveInt = 32
     accumulate_grad_batches: PositiveInt = 1
     use_weighted_sampler: bool = False
     epochs: PositiveInt = 100
-    num_workers: NonNegativeInt = 4
+    n_workers: Annotated[
+        NonNegativeInt,
+        Field(validation_alias=AliasChoices("n_workers", "num_workers")),
+    ] = 4
     train_metrics_interval: Literal[-1] | PositiveInt = -1
     validation_interval: Literal[-1] | PositiveInt = 5
-    num_log_images: NonNegativeInt = 4
+    n_log_images: Annotated[
+        NonNegativeInt,
+        Field(validation_alias=AliasChoices("n_log_images", "num_log_images")),
+    ] = 4
     skip_last_batch: bool = True
     pin_memory: bool = True
     log_sub_losses: bool = True
@@ -293,13 +319,24 @@ class TrainerConfig(BaseModelExtraForbid):
     scheduler: SchedulerConfig = SchedulerConfig()
 
     @model_validator(mode="after")
-    def check_num_workes_platform(self) -> Self:
+    def validate_deterministic(self) -> Self:
+        if self.seed is not None and self.deterministic is None:
+            logger.warning(
+                "Setting `trainer.deterministic` to True because `trainer.seed` is set."
+                "This can cause certain layers to fail. "
+                "In such cases, set `trainer.deterministic` to `'warn'`."
+            )
+            self.deterministic = True
+        return self
+
+    @model_validator(mode="after")
+    def check_n_workes_platform(self) -> Self:
         if (
             sys.platform == "win32" or sys.platform == "darwin"
-        ) and self.num_workers != 0:
-            self.num_workers = 0
+        ) and self.n_workers != 0:
+            self.n_workers = 0
             logger.warning(
-                "Setting `num_workers` to 0 because of platform compatibility."
+                "Setting `n_workers` to 0 because of platform compatibility."
             )
         return self
 
@@ -321,7 +358,9 @@ class OnnxExportConfig(BaseModelExtraForbid):
 class BlobconverterExportConfig(BaseModelExtraForbid):
     active: bool = False
     shaves: int = 6
-    version: Literal["2021.2", "2021.3", "2021.4", "2022.1", "2022.3_RVC3"] = "2022.1"
+    version: Literal["2021.2", "2021.3", "2021.4", "2022.1", "2022.3_RVC3"] = (
+        "2022.1"
+    )
 
 
 class ArchiveConfig(BaseModelExtraForbid):
@@ -403,7 +442,9 @@ class Config(LuxonisConfig):
             return instance
         fs = LuxonisFileSystem(cfg)
         if fs.is_mlflow:
-            logger.info("Setting `project_id` and `run_id` to config's MLFlow run")
+            logger.info(
+                "Setting `project_id` and `run_id` to config's MLFlow run"
+            )
             instance.tracker.project_id = fs.experiment_id
             instance.tracker.run_id = fs.run_id
         return instance

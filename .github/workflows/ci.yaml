@@ -1,0 +1,175 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ dev, main ]
+    paths:
+      - 'luxonis_train/**'
+      - 'tests/**'
+      - .github/workflows/ci.yaml
+      - '!**/*.md'
+      - '!luxonis_train/__main__.py'
+
+permissions:
+  pull-requests: write
+  contents: write
+  checks: write
+
+jobs:
+  assigner:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto-assign
+        uses: toshimaru/auto-author-assign@v2.1.1
+
+  labeler:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Labeler
+        uses: actions/labeler@v5
+        with:
+          configuration-path: .github/labeler.yaml
+
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.head_ref }}
+
+    - name: Run pre-commit
+      uses: pre-commit/action@v3.0.1
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y pandoc
+          pip install pydoctor
+          curl -L "https://raw.githubusercontent.com/luxonis/python-api-analyzer-to-json/main/gen-docs.py" -o "gen-docs.py"
+
+      - name: Build docs
+        run: python gen-docs.py luxonis_train
+
+  type-check:
+    needs:
+      - pre-commit
+      - docs
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.head_ref }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: pip
+
+    - name: Install dependencies
+      run: pip install -e .[dev]
+
+    - name: Type check
+      uses: jakebailey/pyright-action@v2
+      with:
+        version: '1.1.380'
+        level: warning
+        warnings: true
+        python-version: '3.10'
+        project: pyproject.toml
+
+  tests:
+    needs:
+      - type-check
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.head_ref }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: pip
+
+    - name: Install dependencies
+      run: pip install -e .[dev]
+
+    - name: Authenticate to Google Cloud
+      id: google-auth
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+        create_credentials_file: true
+        export_environment_variables: true
+        token_format: access_token
+
+    - name: Run pytest
+      uses: pavelzw/pytest-action@v2
+      env:
+        LUXONISML_BUCKET: luxonis-test-bucket
+        PYTORCH_MPS_HIGH_WATERMARK_RATIO: 0.0
+      with:
+        emoji: false
+        custom-arguments: --junit-xml pytest.xml --cov luxonis_train --cov-report xml
+
+    - name: Create Test Report
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      if: matrix.os == 'ubuntu-latest'
+      with:
+        files: pytest.xml
+
+    - name: Generate coverage badge
+      uses: tj-actions/coverage-badge-py@v2
+      if: matrix.os == 'ubuntu-latest'
+      with:
+        output: media/coverage_badge.svg
+
+    - name: Generate coverage report
+      uses: orgoro/coverage@v3.2
+      if: matrix.os == 'ubuntu-latest'
+      with:
+        coverageFile: coverage.xml
+        token: ${{ secrets.GITHUB_TOKEN }}
+        thresholdAll: 0.9
+        thresholdNew: 0.8
+
+    - name: Commit coverage badge
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        git config --global user.name 'GitHub Actions'
+        git config --global user.email 'actions@github.com'
+        git diff --quiet media/coverage_badge.svg || {
+          git add media/coverage_badge.svg
+          git commit -m "[Automated] Updated coverage badge"
+        }
+
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      if: matrix.os == 'ubuntu-latest'
+      with:
+        branch: ${{ github.head_ref }}
+
