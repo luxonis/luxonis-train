@@ -1,5 +1,6 @@
 import logging
 import sys
+import warnings
 from typing import Annotated, Any, Literal, TypeAlias
 
 from luxonis_ml.data import LabelType
@@ -81,6 +82,44 @@ class ModelConfig(BaseModelExtraForbid):
     metrics: list[MetricModuleConfig] = []
     visualizers: list[AttachedModuleConfig] = []
     outputs: list[str] = []
+
+    @field_validator("nodes", mode="before")
+    @classmethod
+    def validate_nodes(cls, nodes: Any) -> Any:
+        logged_general_warning = False
+        if not isinstance(nodes, list):
+            return nodes
+        names = []
+        last_body_index: int | None = None
+        for i, node in enumerate(nodes):
+            name = node.get("alias", node.get("name"))
+            if name is None:
+                raise ValueError(
+                    f"Node {i} does not specify the `name` field."
+                )
+            if "Head" in name and last_body_index is None:
+                last_body_index = i - 1
+            names.append(name)
+            if i > 0 and "inputs" not in node:
+                if last_body_index is not None:
+                    prev_name = names[last_body_index]
+                else:
+                    prev_name = names[i - 1]
+
+                if not logged_general_warning:
+                    logger.warning(
+                        f"Field `inputs` not specified for node '{name}'. "
+                        "Assuming the model follows a linear multi-head topology "
+                        "(backbone -> (neck?) -> head1, head2, ...). "
+                        "If this is incorrect, please specify the `inputs` field explicitly."
+                    )
+                    logged_general_warning = True
+
+                logger.warning(
+                    f"Setting `inputs` of '{name}' to '{prev_name}'. "
+                )
+                node["inputs"] = [prev_name]
+        return nodes
 
     @model_validator(mode="after")
     def check_predefined_model(self) -> Self:
@@ -168,6 +207,30 @@ class ModelConfig(BaseModelExtraForbid):
                         )
                 names.add(name)
         return self
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_attached_modules(cls, data: Params) -> Params:
+        if "nodes" not in data:
+            return data
+        for section in ["losses", "metrics", "visualizers"]:
+            if section not in data:
+                data[section] = []
+            else:
+                warnings.warn(
+                    f"Field `model.{section}` is deprecated. "
+                    f"Please specify `{section}`under "
+                    "the node they are attached to."
+                )
+            for node in data["nodes"]:
+                if section in node:
+                    cfg = node.pop(section)
+                    if not isinstance(cfg, list):
+                        cfg = [cfg]
+                    for c in cfg:
+                        c["attached_to"] = node.get("alias", node.get("name"))
+                    data[section] += cfg
+        return data
 
 
 class TrackerConfig(BaseModelExtraForbid):

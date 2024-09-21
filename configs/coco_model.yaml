@@ -26,10 +26,47 @@ model:
       params:
         conf_thres: 0.25
         iou_thres: 0.45
+      losses:
+        name: ImplicitKeypointBBoxLoss
+        params:
+          keypoint_regression_loss_weight: 0.5
+          keypoint_visibility_loss_weight: 0.7
+          bbox_loss_weight: 0.05
+          objectness_loss_weight: 0.2
+      metrics:
+        - name: ObjectKeypointSimilarity
+          is_main_metric: true
+        - name: MeanAveragePrecisionKeypoints
+
+      visualizers:
+        name: MultiVisualizer
+        attached_to: ImplicitKeypointBBoxHead
+        params:
+          visualizers:
+            - name: KeypointVisualizer
+              params:
+                nonvisible_color: blue
+            - name: BBoxVisualizer
+              params:
+                colors:
+                  person: "#FF5055"
 
     - name: SegmentationHead
       inputs:
         - RepPANNeck
+      losses:
+        name: BCEWithLogitsLoss
+      metrics:
+        - name: F1Score
+          params:
+            task: binary
+        - name: JaccardIndex
+          params:
+            task: binary
+      visualizers:
+        name: SegmentationVisualizer
+        params:
+          colors: "#FF5055"
 
     - name: EfficientBBoxHead
       inputs:
@@ -37,55 +74,12 @@ model:
       params:
         conf_thres: 0.75
         iou_thres: 0.45
-
-  losses:
-    - name: AdaptiveDetectionLoss
-      attached_to: EfficientBBoxHead
-    - name: BCEWithLogitsLoss
-      attached_to: SegmentationHead
-    - name: ImplicitKeypointBBoxLoss
-      attached_to: ImplicitKeypointBBoxHead
-      params:
-        keypoint_regression_loss_weight: 0.5
-        keypoint_visibility_loss_weight: 0.7
-        bbox_loss_weight: 0.05
-        objectness_loss_weight: 0.2
-
-  metrics:
-    - name: ObjectKeypointSimilarity
-      is_main_metric: true
-      attached_to: ImplicitKeypointBBoxHead
-    - name: MeanAveragePrecisionKeypoints
-      attached_to: ImplicitKeypointBBoxHead
-    - name: MeanAveragePrecision
-      attached_to: EfficientBBoxHead
-    - name: F1Score
-      attached_to: SegmentationHead
-      params:
-        task: binary
-    - name: JaccardIndex
-      attached_to: SegmentationHead
-      params:
-        task: binary
-
-  visualizers:
-    - name: MultiVisualizer
-      attached_to: ImplicitKeypointBBoxHead
-      params:
-        visualizers:
-          - name: KeypointVisualizer
-            params:
-              nonvisible_color: blue
-          - name: BBoxVisualizer
-            params:
-              colors:
-                person: "#FF5055"
-    - name: SegmentationVisualizer
-      attached_to: SegmentationHead
-      params:
-        colors: "#FF5055"
-    - name: BBoxVisualizer
-      attached_to: EfficientBBoxHead
+      losses:
+        name: AdaptiveDetectionLoss
+      metrics:
+        name: MeanAveragePrecision
+      visualizers:
+        name: BBoxVisualizer
 
 tracker:
   project_name: coco_test
