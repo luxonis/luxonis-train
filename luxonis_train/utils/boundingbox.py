@@ -173,18 +173,18 @@ def bbox2dist(bbox: Tensor, anchor_points: Tensor, reg_max: float) -> Tensor:
     return dist
 
 
-def xyxyxyxy2xywhr(x: Tensor) -> Tensor | np.ndarray:
+def xyxyxyxy2xywhr(x: np.ndarray | Tensor) -> np.ndarray | Tensor:
     """Convert batched Oriented Bounding Boxes (OBB) from [xy1, xy2,
     xy3, xy4] to [xywh, rotation]. Rotation values are returned in
     radians from 0 to pi/2.
 
-    Args:
-        x (numpy.ndarray | torch.Tensor): Input box corners [xy1, xy2, xy3, xy4] of shape (n, 8).
-
-    Returns:
-        (numpy.ndarray | torch.Tensor): Converted data in [cx, cy, w, h, rotation] format of shape (n, 5).
+    @type x: np.ndarray | Tensor
+    @param x: Input box corners [xy1, xy2, xy3, xy4] of shape (n, 8).
+    @rtype: np.ndarray | Tensor
+    @return: Converted data in [cx, cy, w, h, rotation] format of shape
+        (n, 5).
     """
-    is_torch = isinstance(x, torch.Tensor)
+    is_torch = isinstance(x, Tensor)
     points = x.cpu().numpy() if is_torch else x
     points = points.reshape(len(x), -1, 2)
     rboxes = []
@@ -200,20 +200,20 @@ def xyxyxyxy2xywhr(x: Tensor) -> Tensor | np.ndarray:
     )
 
 
-def xywhr2xyxyxyxy(x: Tensor) -> Tensor | np.ndarray:
+def xywhr2xyxyxyxy(x: Tensor) -> np.ndarray | Tensor:
     """Convert batched Oriented Bounding Boxes (OBB) from [xywh,
     rotation] to [xy1, xy2, xy3, xy4]. Rotation values should be in
     radians from 0 to pi/2.
 
-    Args:
-        x (numpy.ndarray | torch.Tensor): Boxes in [cx, cy, w, h, rotation] format of shape (n, 5) or (b, n, 5).
-
-    Returns:
-        (numpy.ndarray | torch.Tensor): Converted corner points of shape (n, 4, 2) or (b, n, 4, 2).
+    @type x: Tensor
+    @param x: Boxes in [cx, cy, w, h, rotation] format of shape (n, 5)
+        or (b, n, 5).
+    @rtype: numpy.ndarray | Tensor
+    @return: Converted corner points of shape (n, 4, 2) or (b, n, 4, 2).
     """
     cos, sin, cat, stack = (
         (torch.cos, torch.sin, torch.cat, torch.stack)
-        if isinstance(x, torch.Tensor)
+        if isinstance(x, Tensor)
         else (np.cos, np.sin, np.concatenate, np.stack)
     )
 
@@ -234,21 +234,20 @@ def xywhr2xyxyxyxy(x: Tensor) -> Tensor | np.ndarray:
 def xyxy2xywh(x: Tensor) -> Tensor:
     """Convert bounding box coordinates from (x1, y1, x2, y2) format to
     (x, y, width, height) format where (x1, y1) is the top-left corner
-    and (x2, y2) is the bottom- right corner.
+    and (x2, y2) is the bottom-right corner.
 
-    Args:
-        x (np.ndarray | torch.Tensor): The input bounding box coordinates in (x1, y1, x2, y2) format.
-
-    Returns:
-        y (np.ndarray | torch.Tensor): The bounding box coordinates in (x, y, width, height) format.
+    @type x: Tensor
+    @param x: The input bounding box coordinates in (x1, y1, x2, y2)
+        format.
+    @rtype: Tensor
+    @return: The bounding box coordinates in (x, y, width, height)
+        format.
     """
     assert (
         x.shape[-1] == 4
     ), f"input shape last dimension expected 4 but input shape is {x.shape}"
     y = (
-        torch.empty_like(x)
-        if isinstance(x, torch.Tensor)
-        else np.empty_like(x)
+        torch.empty_like(x) if isinstance(x, Tensor) else np.empty_like(x)
     )  # faster than clone/copy
     y[..., 0] = (x[..., 0] + x[..., 2]) / 2  # x center
     y[..., 1] = (x[..., 1] + x[..., 3]) / 2  # y center
@@ -260,22 +259,20 @@ def xyxy2xywh(x: Tensor) -> Tensor:
 def xywh2xyxy(x: Tensor) -> Tensor:
     """Convert bounding box coordinates from (x, y, width, height)
     format to (x1, y1, x2, y2) format where (x1, y1) is the top-left
-    corner and (x2, y2) is the bottom- right corner. Note: ops per 2
+    corner and (x2, y2) is the bottom-right corner. Note: ops per 2
     channels faster than per channel.
 
-    Args:
-        x (np.ndarray | torch.Tensor): The input bounding box coordinates in (x, y, width, height) format.
-
-    Returns:
-        y (np.ndarray | torch.Tensor): The bounding box coordinates in (x1, y1, x2, y2) format.
+    @type x: Tensor
+    @param x: The input bounding box coordinates in (x, y, width,
+        height) format.
+    @rtype: Tensor
+    @return: The bounding box coordinates in (x1, y1, x2, y2) format.
     """
     assert (
         x.shape[-1] == 4
     ), f"input shape last dimension expected 4 but input shape is {x.shape}"
     y = (
-        torch.empty_like(x)
-        if isinstance(x, torch.Tensor)
-        else np.empty_like(x)
+        torch.empty_like(x) if isinstance(x, Tensor) else np.empty_like(x)
     )  # faster than clone/copy
     xy = x[..., :2]  # centers
     wh = x[..., 2:] / 2  # half width-height
@@ -410,20 +407,21 @@ def probiou(
 ) -> Tensor:
     """Calculate probabilistic IoU between oriented bounding boxes.
 
-    Implements the algorithm from https://arxiv.org/pdf/2106.06072v1.pdf.
+    Implements the algorithm from
+    https://arxiv.org/pdf/2106.06072v1.pdf.
 
-    Args:
-        obb1 (torch.Tensor): Ground truth OBBs, shape (N, 5), format xywhr.
-        obb2 (torch.Tensor): Predicted OBBs, shape (N, 5), format xywhr.
-        CIoU (bool, optional): If True, calculate CIoU. Defaults to False.
-        eps (float, optional): Small value to avoid division by zero. Defaults to 1e-7.
-
-    Returns:
-        (torch.Tensor): OBB similarities, shape (N,).
-
-    Note:
-        OBB format: [center_x, center_y, width, height, rotation_angle].
-        If CIoU is True, returns CIoU instead of IoU.
+    @type obb1: Tensor
+    @param obb1: Ground truth OBBs, shape (N, 5), format xywhr.
+    @type obb2: Tensor
+    @param obb2: Predicted OBBs, shape (N, 5), format xywhr.
+    @type CIoU: bool
+    @param CIoU: If True, calculate CIoU. Defaults to False.
+    @type eps: float
+    @param eps: Small value to avoid division by zero. Defaults to 1e-7.
+    @rtype: Tensor
+    @return: OBB similarities, shape (N,).
+    @note: OBB format: [center_x, center_y, width, height,
+        rotation_angle]. If CIoU is True, returns CIoU instead of IoU.
     """
     x1, y1 = obb1[..., :2].split(1, dim=-1)
     x2, y2 = obb2[..., :2].split(1, dim=-1)
@@ -464,16 +462,18 @@ def probiou(
 
 
 def batch_probiou(obb1: Tensor, obb2: Tensor, eps: float = 1e-7) -> Tensor:
-    """
-    Calculate the prob IoU between oriented bounding boxes, https://arxiv.org/pdf/2106.06072v1.pdf.
+    """Calculate the probabilistic IoU between oriented bounding boxes,
+    https://arxiv.org/pdf/2106.06072v1.pdf.
 
-    Args:
-        obb1 (torch.Tensor | np.ndarray): A tensor of shape (N, 5) representing ground truth obbs, with xywhr format.
-        obb2 (torch.Tensor | np.ndarray): A tensor of shape (M, 5) representing predicted obbs, with xywhr format.
-        eps (float, optional): A small value to avoid division by zero. Defaults to 1e-7.
+    @type obb1: Tensor
+    @param obb1: A tensor of shape (N, 5) representing ground truth OBBs, with xywhr format.
+    @type obb2: Tensor
+    @param obb2: A tensor of shape (M, 5) representing predicted OBBs, with xywhr format.
+    @type eps: float
+    @param eps: A small value to avoid division by zero. Defaults to 1e-7.
 
-    Returns:
-        (torch.Tensor): A tensor of shape (N, M) representing obb similarities.
+    @rtype: Tensor
+    @return: A tensor of shape (N, M) representing OBB similarities.
     """
     obb1 = torch.from_numpy(obb1) if isinstance(obb1, np.ndarray) else obb1
     obb2 = torch.from_numpy(obb2) if isinstance(obb2, np.ndarray) else obb2
@@ -509,13 +509,14 @@ def batch_probiou(obb1: Tensor, obb2: Tensor, eps: float = 1e-7) -> Tensor:
 
 
 def _get_covariance_matrix(boxes: Tensor) -> tuple[Tensor, ...]:
-    """Generating covariance matrix from obbs.
+    """Generate covariance matrix from OBBs.
 
-    Args:
-        boxes (torch.Tensor): A tensor of shape (N, 5) representing rotated bounding boxes, with xywhr format.
-
-    Returns:
-        tuple(torch.Tensor): Covariance matrices corresponding to original rotated bounding boxes.
+    @type boxes: Tensor
+    @param boxes: A tensor of shape (N, 5) representing rotated bounding
+        boxes, with xywhr format.
+    @rtype: tuple(Tensor)
+    @return: Covariance matrices corresponding to original rotated
+        bounding boxes.
     """
     # Gaussian bounding boxes, ignore the center points (the first two columns) because they are not needed here.
     gbbs = torch.cat((boxes[:, 2:4].pow(2) / 12, boxes[:, 4:]), dim=-1)
@@ -825,16 +826,17 @@ def batched_nms_obb(
 
 def batched_nms_rotated(
     boxes: Tensor, scores: Tensor, threshold: float = 0.45
-) -> Tensor:
-    """NMS for oriented bounding boxes using probiou and fast-nms.
+) -> Tensor | np.ndarray:
+    """NMS for oriented bounding boxes using Probiou and Fast-NMS.
 
-    Args:
-        boxes (torch.Tensor): Rotated bounding boxes, shape (N, 5), format xywhr.
-        scores (torch.Tensor): Confidence scores, shape (N,).
-        threshold (float, optional): IoU threshold. Defaults to 0.45.
-
-    Returns:
-        (torch.Tensor): Indices of boxes to keep after NMS.
+    @type boxes: Tensor
+    @param boxes: Rotated bounding boxes, shape (N, 5), format xywhr.
+    @type scores: Tensor
+    @param scores: Confidence scores, shape (N,).
+    @type threshold: float
+    @param threshold: IoU threshold. Defaults to 0.45.
+    @rtype: Tensor | np.ndarray
+    @return: Indices of boxes to keep after NMS.
     """
     if len(boxes) == 0:
         return np.empty((0,), dtype=np.int8)

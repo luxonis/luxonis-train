@@ -32,16 +32,16 @@ def candidates_in_gt(
     return candidates
 
 
-def candidates_in_gt_obb(xy_centers, gt_bboxes):
-    """Select the positive anchor center in gt for rotated bounding
-    boxes.
+def candidates_in_gt_obb(xy_centers: Tensor, gt_bboxes: Tensor) -> Tensor:
+    """Select the positive anchor center in ground truth for rotated
+    bounding boxes.
 
-    Args:
-        xy_centers (Tensor): shape(h*w, 2)
-        gt_bboxes (Tensor): shape(b, n_boxes, 5)
-
-    Returns:
-        (Tensor): shape(b, n_boxes, h*w)
+    @type xy_centers: Tensor
+    @param xy_centers: Shape (h*w, 2).
+    @type gt_bboxes: Tensor
+    @param gt_bboxes: Shape (b, n_boxes, 5).
+    @rtype: Tensor
+    @return: Shape (b, n_boxes, h*w).
     """
     corners = xywhr2xyxyxyxy(
         gt_bboxes

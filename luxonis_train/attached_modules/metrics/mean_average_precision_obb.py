@@ -259,9 +259,8 @@ class MeanAveragePrecisionOBB(BaseMetric):
             - all_ap (list): AP scores for all classes and all IoU thresholds. Shape: (nc, 10).
             - ap_class_index (list): Index of class for each AP score. Shape: (nc,).
 
-        Side Effects:
-            Updates the class attributes `self.p`, `self.r`, `self.f1`, `self.all_ap`, and `self.ap_class_index` based
-            on the values provided in the `results` tuple.
+        @note: Updates the class attributes `self.p`, `self.r`, `self.f1`, `self.all_ap`,
+            and `self.ap_class_index` based on the values provided in the `results` tuple.
         """
         # The following logic impies averaging AP over all classes
         self.p = torch.tensor(np.mean(results[0]))
@@ -269,18 +268,6 @@ class MeanAveragePrecisionOBB(BaseMetric):
         self.f1 = torch.tensor(np.mean(results[2]))
         self.all_ap = torch.tensor(np.mean(results[3]))
         self.ap_class_index = torch.tensor(np.mean(results[4]))
-        # (
-        #     self.p,
-        #     self.r,
-        #     self.f1,
-        #     self.all_ap,
-        #     self.ap_class_index,
-        #     _,  # self.p_curve,
-        #     _,  # self.r_curve,
-        #     _,  # self.f1_curve,
-        #     _,  # self.px,
-        #     _,  # self.prec_values,
-        # ) = results
 
     def _process(
         self,
@@ -296,10 +283,6 @@ class MeanAveragePrecisionOBB(BaseMetric):
             conf,
             pred_cls,
             target_cls,
-            # plot=self.plot,
-            # save_dir=self.save_dir,
-            # names=self.names,
-            # on_plot=self.on_plot,
         )[2:]
         return results
 
@@ -309,42 +292,36 @@ class MeanAveragePrecisionOBB(BaseMetric):
         conf: np.ndarray,
         pred_cls: np.ndarray,
         target_cls: np.ndarray,
-        # plot=False,
-        # on_plot=None,
-        # save_dir=Path(),
-        # names={},
         eps: float = 1e-16,
-        # prefix="",
     ) -> tuple[np.ndarray, ...]:
-        """Computes the average precision per class for object detection
+        """Compute the average precision per class for object detection
         evaluation.
 
-        Args:
-            tp (np.ndarray): Binary array indicating whether the detection is correct (True) or not (False).
-            conf (np.ndarray): Array of confidence scores of the detections.
-            pred_cls (np.ndarray): Array of predicted classes of the detections.
-            target_cls (np.ndarray): Array of true classes of the detections.
-            plot (bool, optional): Whether to plot PR curves or not. Defaults to False.
-            on_plot (func, optional): A callback to pass plots path and data when they are rendered. Defaults to None.
-            save_dir (Path, optional): Directory to save the PR curves. Defaults to an empty path.
-            names (dict, optional): Dict of class names to plot PR curves. Defaults to an empty tuple.
-            eps (float, optional): A small value to avoid division by zero. Defaults to 1e-16.
-            prefix (str, optional): A prefix string for saving the plot files. Defaults to an empty string.
+        @type tp: np.ndarray
+        @param tp: Binary array indicating whether the detection is correct (True) or not (False).
+        @type conf: np.ndarray
+        @param conf: Array of confidence scores of the detections.
+        @type pred_cls: np.ndarray
+        @param pred_cls: Array of predicted classes of the detections.
+        @type target_cls: np.ndarray
+        @param target_cls: Array of true classes of the detections.
+        @type eps: float
+        @param eps: A small value to avoid division by zero. Defaults to 1e-16.
 
-        Returns:
-            (tuple): A tuple of six arrays and one array of unique classes, where:
-                tp (np.ndarray): True positive counts at threshold given by max F1 metric for each class.Shape: (nc,).
-                fp (np.ndarray): False positive counts at threshold given by max F1 metric for each class. Shape: (nc,).
-                p (np.ndarray): Precision values at threshold given by max F1 metric for each class. Shape: (nc,).
-                r (np.ndarray): Recall values at threshold given by max F1 metric for each class. Shape: (nc,).
-                f1 (np.ndarray): F1-score values at threshold given by max F1 metric for each class. Shape: (nc,).
-                ap (np.ndarray): Average precision for each class at different IoU thresholds. Shape: (nc, 10).
-                unique_classes (np.ndarray): An array of unique classes that have data. Shape: (nc,).
-                p_curve (np.ndarray): Precision curves for each class. Shape: (nc, 1000).
-                r_curve (np.ndarray): Recall curves for each class. Shape: (nc, 1000).
-                f1_curve (np.ndarray): F1-score curves for each class. Shape: (nc, 1000).
-                x (np.ndarray): X-axis values for the curves. Shape: (1000,).
-                prec_values: Precision values at mAP@0.5 for each class. Shape: (nc, 1000).
+        @rtype: tuple[np.ndarray, ...]
+        @return: A tuple of six arrays and one array of unique classes, where:
+            - tp (np.ndarray): True positive counts at threshold given by max F1 metric for each class. Shape: (nc,).
+            - fp (np.ndarray): False positive counts at threshold given by max F1 metric for each class. Shape: (nc,).
+            - p (np.ndarray): Precision values at threshold given by max F1 metric for each class. Shape: (nc,).
+            - r (np.ndarray): Recall values at threshold given by max F1 metric for each class. Shape: (nc,).
+            - f1 (np.ndarray): F1-score values at threshold given by max F1 metric for each class. Shape: (nc,).
+            - ap (np.ndarray): Average precision for each class at different IoU thresholds. Shape: (nc, 10).
+            - unique_classes (np.ndarray): An array of unique classes that have data. Shape: (nc,).
+            - p_curve (np.ndarray): Precision curves for each class. Shape: (nc, 1000).
+            - r_curve (np.ndarray): Recall curves for each class. Shape: (nc, 1000).
+            - f1_curve (np.ndarray): F1-score curves for each class. Shape: (nc, 1000).
+            - x (np.ndarray): X-axis values for the curves. Shape: (1000,).
+            - prec_values: Precision values at mAP@0.5 for each class. Shape: (nc, 1000).
         """
         # Sort by objectness
         i = np.argsort(-conf)
@@ -391,8 +368,6 @@ class MeanAveragePrecisionOBB(BaseMetric):
                 ap[ci, j], mpre, mrec = MeanAveragePrecisionOBB.compute_ap(
                     recall[:, j], precision[:, j]
                 )
-                # if plot and j == 0:
-                #     prec_values.append(np.interp(x, mrec, mpre))  # precision at mAP@0.5
 
         prec_values = np.array(prec_values)  # (nc, 1000)
 
@@ -428,17 +403,19 @@ class MeanAveragePrecisionOBB(BaseMetric):
     def compute_ap(
         recall: list[float], precision: list[float]
     ) -> tuple[float, np.ndarray, np.ndarray]:
-        """Compute the average precision (AP) given the recall and
-        precision curves.
+        """Compute average precision (AP) given recall and precision
+        curves.
 
-        Args:
-            recall (list): The recall curve.
-            precision (list): The precision curve.
+        @type recall: list[float]
+        @param recall: The recall curve.
+        @type precision: list
+        @param precision: The precision curve.
 
-        Returns:
-            (float): Average precision.
-            (np.ndarray): Precision envelope curve.
-            (np.ndarray): Modified recall curve with sentinel values added at the beginning and end.
+        @rtype: tuple[float, np.ndarray, np.ndarray]
+        @return: A tuple containing:
+            - (float): Average precision.
+            - (np.ndarray): Precision envelope curve.
+            - (np.ndarray): Modified recall curve with sentinel values added at the beginning and end.
         """
         # Append sentinel values to beginning and end
         mrec = np.concatenate(([0.0], recall, [1.0]))
@@ -474,10 +451,12 @@ class MeanAveragePrecisionOBB(BaseMetric):
 
     @staticmethod
     def map(all_ap: np.ndarray) -> float:
-        """
-        Returns the mean Average Precision (mAP) over IoU thresholds of 0.5 - 0.95 in steps of 0.05.
+        """Return mean Average Precision (mAP) over IoU thresholds of 0.5 - 0.95 in steps of 0.05.
 
-        Returns:
-            (float): The mAP over IoU thresholds of 0.5 - 0.95 in steps of 0.05.
+        @type all_ap: np.ndarray
+        @param all_ap: Average Precission for all classes.
+
+        @rtype: float
+        @return: mAP over IoU thresholds of 0.5 - 0.95 in steps of 0.05.
         """
         return all_ap.mean() if len(all_ap) else 0.0
