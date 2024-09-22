@@ -1,11 +1,12 @@
 import logging
-from typing import Any
+from typing import Any, Literal
 
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import (
     BlockRepeater,
+    CSPStackRepBlock,
     RepVGGBlock,
     SpatialPyramidPoolingBlock,
 )
@@ -26,9 +27,12 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         n_repeats: list[int] | None = None,
         depth_mul: float | None = None,
         width_mul: float | None = None,
+        block: Literal["RepBlock", "CSPStackRepBlock"] | None = None,
+        csp_e: float | None = None,
         **kwargs: Any,
     ):
-        """Implementation of the EfficientRep backbone.
+        """Implementation of the EfficientRep backbone. Supports the
+        version with RepBlock and CSPStackRepBlock (for larger networks)
 
         Adapted from U{YOLOv6: A Single-Stage Object Detection Framework
         for Industrial Applications
@@ -36,13 +40,13 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
 
         @type variant: Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]
         @param variant: EfficientRep variant. Defaults to "nano".
-            The variant determines the depth and width multipliers.
+            The variant determines the depth and width multipliers, block used and intermediate channel scaling factor.
             The depth multiplier determines the number of blocks in each stage and the width multiplier determines the number of channels.
             The following variants are available:
-                - "n" or "nano" (default): depth_multiplier=0.33, width_multiplier=0.25
-                - "s" or "small": depth_multiplier=0.33, width_multiplier=0.50
-                - "m" or "medium": depth_multiplier=0.60, width_multiplier=0.75
-                - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0
+                - "n" or "nano" (default): depth_multiplier=0.33, width_multiplier=0.25, block=RepBlock, e=None
+                - "s" or "small": depth_multiplier=0.33, width_multiplier=0.50, block=RepBlock, e=None
+                - "m" or "medium": depth_multiplier=0.60, width_multiplier=0.75, block=CSPStackRepBlock, e=2/3
+                - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0, block=CSPStackRepBlock, e=1/2
         @type channels_list: list[int] | None
         @param channels_list: List of number of channels for each block. If unspecified,
             defaults to [64, 128, 256, 512, 1024].
@@ -53,12 +57,19 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         @param depth_mul: Depth multiplier. If provided, overrides the variant value.
         @type width_mul: float
         @param width_mul: Width multiplier. If provided, overrides the variant value.
+        @type block: Literal["RepBlock", "CSPStackRepBlock"] | None
+        @param block: Base block used when building the backbone. If provided, overrides the variant value.
+        @tpe csp_e: float | None
+        @param csp_e: Factor that controls number of intermediate channels if block="CSPStackRepBlock". If provided,
+            overrides the variant value.
         """
         super().__init__(**kwargs)
 
         var = get_variant(variant)
         depth_mul = depth_mul or var.depth_multiplier
         width_mul = width_mul or var.width_multiplier
+        block = block or var.block
+        csp_e = csp_e or var.csp_e or 0.5
 
         channels_list = channels_list or [64, 128, 256, 512, 1024]
         n_repeats = n_repeats or [1, 6, 12, 18, 6]
@@ -85,11 +96,20 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
                     kernel_size=3,
                     stride=2,
                 ),
-                BlockRepeater(
-                    block=RepVGGBlock,
-                    in_channels=channels_list[i + 1],
-                    out_channels=channels_list[i + 1],
-                    n_blocks=n_repeats[i + 1],
+                (
+                    BlockRepeater(
+                        block=RepVGGBlock,
+                        in_channels=channels_list[i + 1],
+                        out_channels=channels_list[i + 1],
+                        n_blocks=n_repeats[i + 1],
+                    )
+                    if block == "RepBlock"
+                    else CSPStackRepBlock(
+                        in_channels=channels_list[i + 1],
+                        out_channels=channels_list[i + 1],
+                        n_blocks=n_repeats[i + 1],
+                        e=csp_e,
+                    )
                 ),
             )
             self.blocks.append(curr_block)
