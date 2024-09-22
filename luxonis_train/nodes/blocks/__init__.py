@@ -1,7 +1,10 @@
 from .blocks import (
     AttentionRefinmentBlock,
+    BasicResNetBlock,
     BlockRepeater,
+    Bottleneck,
     ConvModule,
+    DropPath,
     EfficientDecoupledBlock,
     EfficientOBBDecoupledBlock,
     FeatureFusionBlock,
@@ -15,6 +18,7 @@ from .blocks import (
     SpatialPyramidPoolingBlock,
     SqueezeExciteBlock,
     UpBlock,
+    UpscaleOnline,
     autopad,
 )
 
@@ -36,4 +40,8 @@ __all__ = [
     "LearnableMulAddConv",
     "KeypointBlock",
     "RepUpBlock",
+    "BasicResNetBlock",
+    "Bottleneck",
+    "UpscaleOnline",
+    "DropPath",
 ]

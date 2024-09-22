@@ -120,7 +120,8 @@ class ModelConfig(BaseModelExtraForbid):
             name = metric.alias or metric.name
             logger.info(f"Setting '{name}' as main metric.")
         else:
-            logger.error(
+            logger.warning(
+                "[Ignore if using predefined model] "
                 "No metrics specified. "
                 "This is likely unintended unless "
                 "the configuration is not used for training."
