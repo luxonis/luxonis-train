@@ -1,5 +1,5 @@
 import math
-from typing import TypeVar
+from typing import Literal, TypeVar
 
 import numpy as np
 import torch
@@ -138,8 +138,12 @@ class UpBlock(nn.Sequential):
         out_channels: int,
         kernel_size: int = 2,
         stride: int = 2,
+        upsample_mode: Literal["upsample", "conv_transpose"] = "upsample",
+        inter_mode: str = "bilinear",
+        align_corners: bool = False,
     ):
-        """Upsampling with ConvTranspose2D (similar to U-Net Up block).
+        """Upsampling with ConvTranspose2D or Upsample (based on the
+        mode).
 
         @type in_channels: int
         @param in_channels: Number of input channels.
@@ -149,17 +153,47 @@ class UpBlock(nn.Sequential):
         @param kernel_size: Kernel size. Defaults to C{2}.
         @type stride: int
         @param stride: Stride. Defaults to C{2}.
+        @type upsample_mode: Literal["upsample", "conv_transpose"]
+        @param upsample_mode: Upsampling method, either 'conv_transpose'
+            (for ConvTranspose2D) or 'upsample' (for nn.Upsample).
+        @type inter_mode: str
+        @param inter_mode: Interpolation mode used for nn.Upsample
+            (e.g., 'bilinear', 'nearest').
+        @type align_corners: bool
+        @param align_corners: Align corners option for upsampling
+            methods that support it. Defaults to False.
         """
 
-        super().__init__(
-            nn.ConvTranspose2d(
-                in_channels,
-                out_channels,
-                kernel_size=kernel_size,
-                stride=stride,
-            ),
-            ConvModule(out_channels, out_channels, kernel_size=3, padding=1),
+        layers = []
+
+        if upsample_mode == "conv_transpose":
+            layers.append(
+                nn.ConvTranspose2d(
+                    in_channels,
+                    out_channels,
+                    kernel_size=kernel_size,
+                    stride=stride,
+                )
+            )
+        elif upsample_mode == "upsample":
+            layers.append(
+                nn.Upsample(
+                    scale_factor=stride,
+                    mode=inter_mode,
+                    align_corners=align_corners,
+                )
+            )
+            layers.append(nn.Conv2d(in_channels, out_channels, kernel_size=1))
+        else:
+            raise ValueError(
+                "Unsupported upsample mode. Choose either 'conv_transpose' or 'upsample'."
+            )
+
+        layers.append(
+            ConvModule(out_channels, out_channels, kernel_size=3, padding=1)
         )
+
+        super().__init__(*layers)
 
 
 class SqueezeExciteBlock(nn.Module):
