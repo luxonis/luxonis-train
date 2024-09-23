@@ -57,7 +57,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         @param depth_mul: Depth multiplier. Defaults to C{0.33}.
         @type width_mul: float
         @param width_mul: Width multiplier. Defaults to C{0.25}.
-                @type block: Literal["RepBlock", "CSPStackRepBlock"] | None
+        @type block: Literal["RepBlock", "CSPStackRepBlock"] | None
         @param block: Base block used when building the backbone. If provided, overrides the variant value.
         @tpe csp_e: float | None
         @param csp_e: Factor that controls number of intermediate channels if block="CSPStackRepBlock". If provided,
