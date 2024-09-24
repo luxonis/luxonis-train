@@ -3,8 +3,9 @@ from contextlib import suppress
 from typing import Any
 
 import torchmetrics
-from luxonis_ml.data import LabelType
 from torch import Tensor
+
+from luxonis_train.enums import TaskType
 
 from .base_metric import BaseMetric
 
@@ -90,25 +91,40 @@ class TorchMetricWrapper(BaseMetric[Tensor]):
 
 
 class Accuracy(TorchMetricWrapper):
-    supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
+    supported_tasks: list[TaskType] = [
+        TaskType.CLASSIFICATION,
+        TaskType.SEGMENTATION,
+    ]
     Metric = torchmetrics.Accuracy
 
 
 class F1Score(TorchMetricWrapper):
-    supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
+    supported_tasks: list[TaskType] = [
+        TaskType.CLASSIFICATION,
+        TaskType.SEGMENTATION,
+    ]
     Metric = torchmetrics.F1Score
 
 
 class JaccardIndex(TorchMetricWrapper):
-    supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
+    supported_tasks: list[TaskType] = [
+        TaskType.CLASSIFICATION,
+        TaskType.SEGMENTATION,
+    ]
     Metric = torchmetrics.JaccardIndex
 
 
 class Precision(TorchMetricWrapper):
-    supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
+    supported_tasks: list[TaskType] = [
+        TaskType.CLASSIFICATION,
+        TaskType.SEGMENTATION,
+    ]
     Metric = torchmetrics.Precision
 
 
 class Recall(TorchMetricWrapper):
-    supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
+    supported_tasks: list[TaskType] = [
+        TaskType.CLASSIFICATION,
+        TaskType.SEGMENTATION,
+    ]
     Metric = torchmetrics.Recall

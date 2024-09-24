@@ -2,11 +2,11 @@ import logging
 from typing import Any, cast
 
 import torch
-from luxonis_ml.data import LabelType
 from torch import Tensor
 from torchvision.ops import box_convert
 
 from luxonis_train.attached_modules.losses.keypoint_loss import KeypointLoss
+from luxonis_train.enums import TaskType
 from luxonis_train.nodes import ImplicitKeypointBBoxHead
 from luxonis_train.utils import (
     Labels,
@@ -34,7 +34,9 @@ logger = logging.getLogger(__name__)
 # TODO: BROKEN!
 class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
     node: ImplicitKeypointBBoxHead
-    supported_labels = [(LabelType.BOUNDINGBOX, LabelType.KEYPOINTS)]
+    supported_tasks: list[tuple[TaskType, ...]] = [
+        (TaskType.BOUNDINGBOX, TaskType.KEYPOINTS)
+    ]
 
     def __init__(
         self,
@@ -161,8 +163,8 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         """
         predictions = self.get_input_tensors(outputs, "features")
 
-        kpt_label = self.get_label(labels, LabelType.KEYPOINTS)
-        bbox_label = self.get_label(labels, LabelType.BOUNDINGBOX)
+        kpt_label = self.get_label(labels, TaskType.KEYPOINTS)
+        bbox_label = self.get_label(labels, TaskType.BOUNDINGBOX)
 
         targets = torch.zeros(
             (kpt_label.shape[0], self.n_keypoints * 3 + self.box_offset + 1)

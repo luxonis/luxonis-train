@@ -4,11 +4,11 @@ from abc import ABC, abstractmethod
 from contextlib import suppress
 from typing import Generic, TypeVar
 
-from luxonis_ml.data import LabelType
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
 from typeguard import TypeCheckError, check_type
 
+from luxonis_train.enums import TaskType
 from luxonis_train.utils import (
     AttachIndexType,
     DatasetMetadata,
@@ -64,8 +64,8 @@ class BaseNode(
 
     Example::
         class MyNode(BaseNode):
-            # equivalent to `tasks = {LabelType.CLASSIFICATION: "classification"}`
-            tasks = [LabelType.CLASSIFICATION]
+            # equivalent to `tasks = {TaskType.CLASSIFICATION: "classification"}`
+            tasks = [TaskType.CLASSIFICATION]
 
             def __init__(self, **kwargs):
                 super().__init__(**kwargs)
@@ -98,16 +98,16 @@ class BaseNode(
         two or three integers to specify a range of outputs or `"all"` to
         specify all outputs. Defaults to "all". Python indexing conventions apply.
 
-    @type tasks: list[LabelType] | dict[LabelType, str] | None
+    @type tasks: list[TaskType] | dict[TaskType, str] | None
     @ivar tasks: Dictionary of tasks that the node supports. Should be defined
         by the user as a class attribute. The key is the task type and the value
         is the name of the task. For example:
-        C{{LabelType.CLASSIFICATION: "classification"}}.
+        C{{TaskType.CLASSIFICATION: "classification"}}.
         Only needs to be defined for head nodes.
     """
 
     attach_index: AttachIndexType
-    tasks: list[LabelType] | dict[LabelType, str] | None = None
+    tasks: list[TaskType] | dict[TaskType, str] | None = None
 
     def __init__(
         self,
@@ -119,7 +119,7 @@ class BaseNode(
         n_keypoints: int | None = None,
         in_sizes: Size | list[Size] | None = None,
         attach_index: AttachIndexType | None = None,
-        _tasks: dict[LabelType, str] | None = None,
+        _tasks: dict[TaskType, str] | None = None,
     ):
         """Constructor for the BaseNode.
 
@@ -149,7 +149,7 @@ class BaseNode(
             specify all outputs. Defaults to "all". Python indexing conventions apply. If provided as a constructor argument, overrides the class attribute.
 
 
-        @type _tasks: dict[LabelType, str] | None
+        @type _tasks: dict[TaskType, str] | None
         @param _tasks: Dictionary of tasks that the node supports. Overrides the
             class L{tasks} attribute. Shouldn't be provided by the user in most cases.
         """
@@ -194,8 +194,8 @@ class BaseNode(
 
     @staticmethod
     def _process_tasks(
-        tasks: dict[LabelType, str] | list[LabelType],
-    ) -> dict[LabelType, str]:
+        tasks: dict[TaskType, str] | list[TaskType],
+    ) -> dict[TaskType, str]:
         if isinstance(tasks, dict):
             return tasks
         else:
@@ -220,10 +220,10 @@ class BaseNode(
                             "not compatible with its predecessor."
                         ) from e
 
-    def get_task_name(self, task: LabelType) -> str:
-        """Gets the name of a task for a particular C{LabelType}.
+    def get_task_name(self, task: TaskType) -> str:
+        """Gets the name of a task for a particular C{TaskType}.
 
-        @type task: LabelType
+        @type task: TaskType
         @param task: Task to get the name for.
         @rtype: str
         @return: Name of the task.
@@ -262,20 +262,20 @@ class BaseNode(
             )
         return next(iter(self._tasks.values()))
 
-    def get_n_classes(self, task: LabelType) -> int:
+    def get_n_classes(self, task: TaskType) -> int:
         """Gets the number of classes for a particular task.
 
-        @type task: LabelType
+        @type task: TaskType
         @param task: Task to get the number of classes for.
         @rtype: int
         @return: Number of classes for the task.
         """
         return self.dataset_metadata.n_classes(self.get_task_name(task))
 
-    def get_class_names(self, task: LabelType) -> list[str]:
+    def get_class_names(self, task: TaskType) -> list[str]:
         """Gets the class names for a particular task.
 
-        @type task: LabelType
+        @type task: TaskType
         @param task: Task to get the class names for.
         @rtype: list[str]
         @return: Class names for the task.
@@ -294,10 +294,10 @@ class BaseNode(
             return self._n_keypoints
 
         if self._tasks:
-            if LabelType.KEYPOINTS not in self._tasks:
+            if TaskType.KEYPOINTS not in self._tasks:
                 raise ValueError(f"{self.name} does not support keypoints.")
             return self.dataset_metadata.n_keypoints(
-                self.get_task_name(LabelType.KEYPOINTS)
+                self.get_task_name(TaskType.KEYPOINTS)
             )
 
         raise RuntimeError(
@@ -555,7 +555,7 @@ class BaseNode(
         Example::
 
             >>> class FooNode(BaseNode):
-            ...     tasks = [LabelType.CLASSIFICATION]
+            ...     tasks = [TaskType.CLASSIFICATION]
             ...
             ... class BarNode(BaseNode):
             ...     pass
@@ -613,7 +613,7 @@ class BaseNode(
         for key in list(wrapped.keys()):
             if key in str_tasks:
                 value = wrapped.pop(key)
-                wrapped[self.get_task_name(LabelType(key))] = value
+                wrapped[self.get_task_name(TaskType(key))] = value
         return wrapped
 
     T = TypeVar("T", Tensor, Size)

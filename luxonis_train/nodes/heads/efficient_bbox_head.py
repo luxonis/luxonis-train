@@ -2,9 +2,9 @@ import logging
 from typing import Any, Literal
 
 import torch
-from luxonis_ml.data import LabelType
 from torch import Tensor, nn
 
+from luxonis_train.enums import TaskType
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import EfficientDecoupledBlock
 from luxonis_train.utils import (
@@ -21,7 +21,7 @@ class EfficientBBoxHead(
     BaseNode[list[Tensor], tuple[list[Tensor], list[Tensor], list[Tensor]]]
 ):
     in_channels: list[int]
-    tasks: list[LabelType] = [LabelType.BOUNDINGBOX]
+    tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
 
     def __init__(
         self,

@@ -1,14 +1,15 @@
 from typing import Any, Literal, TypeVar
 
-from luxonis_ml.data import LabelType
 from torch import Size, Tensor
+
+from luxonis_train.enums import TaskType
 
 Kwargs = dict[str, Any]
 """Kwargs is a dictionary containing keyword arguments."""
 
-Labels = dict[str, tuple[Tensor, LabelType]]
+Labels = dict[str, tuple[Tensor, TaskType]]
 """Labels is a dictionary containing a tuple of tensors and their
-corresponding label type."""
+corresponding task type."""
 
 AttachIndexType = Literal["all"] | int | tuple[int, int] | tuple[int, int, int]
 """AttachIndexType is used to specify to which output of the prevoius

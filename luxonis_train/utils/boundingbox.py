@@ -2,7 +2,6 @@ import math
 from typing import Literal, TypeAlias
 
 import torch
-from luxonis_ml.data import LabelType
 from scipy.cluster.vq import kmeans
 from torch import Tensor
 from torchvision.ops import (
@@ -13,6 +12,7 @@ from torchvision.ops import (
     generalized_box_iou,
 )
 
+from luxonis_train.enums import TaskType
 from luxonis_train.loaders import BaseLoaderTorch
 
 IoUType: TypeAlias = Literal["none", "giou", "diou", "ciou", "siou"]
@@ -438,8 +438,8 @@ def anchors_from_dataset(
 
     widths: list[Tensor] = []
     for _, labels in loader:
-        for tensor, label_type in labels.values():
-            if label_type == LabelType.BOUNDINGBOX:
+        for tensor, task_type in labels.values():
+            if task_type == TaskType.BOUNDINGBOX:
                 curr_wh = tensor[:, 4:]
                 widths.append(curr_wh)
     _, h, w = loader.input_shape
