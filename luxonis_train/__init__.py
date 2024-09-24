@@ -14,8 +14,9 @@ try:
     from .optimizers import *
     from .schedulers import *
     from .utils import *
-except ImportError:
-    logger.warning(
+except ImportError as e:
+    logger.error(
         "Failed to import submodules. "
-        "Some functionality of `luxonis-train` may be unavailable."
+        "Some functionality of `luxonis-train` may be unavailable. "
+        f"Error: {e}"
     )
