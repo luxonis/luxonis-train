@@ -1,10 +1,6 @@
 from dataclasses import dataclass, field
 
-from luxonis_train.utils.config import (
-    LossModuleConfig,
-    ModelNodeConfig,
-)
-from luxonis_train.utils.types import Kwargs
+from luxonis_train.config import LossModuleConfig, ModelNodeConfig, Params
 
 from .segmentation_model import SegmentationModel
 
@@ -12,7 +8,7 @@ from .segmentation_model import SegmentationModel
 @dataclass
 class DDRNetSegmentationModel(SegmentationModel):
     backbone: str = "DDRNet"
-    aux_head_params: Kwargs = field(default_factory=dict)
+    aux_head_params: Params = field(default_factory=dict)
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:

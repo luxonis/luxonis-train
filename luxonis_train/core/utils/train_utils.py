@@ -2,7 +2,7 @@ from typing import Any
 
 import lightning.pytorch as pl
 
-from luxonis_train.utils.config import TrainerConfig
+from luxonis_train.config import TrainerConfig
 
 
 def create_trainer(cfg: TrainerConfig, **kwargs: Any) -> pl.Trainer:

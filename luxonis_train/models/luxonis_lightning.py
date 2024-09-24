@@ -26,6 +26,7 @@ from luxonis_train.attached_modules.visualizers import (
     get_unnormalized_images,
 )
 from luxonis_train.callbacks import BaseLuxonisProgressBar, ModuleFreezer
+from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.nodes import BaseNode
 from luxonis_train.utils import (
     DatasetMetadata,
@@ -36,7 +37,6 @@ from luxonis_train.utils import (
     to_shape_packet,
     traverse_graph,
 )
-from luxonis_train.utils.config import AttachedModuleConfig, Config
 from luxonis_train.utils.graph import Graph
 from luxonis_train.utils.registry import (
     CALLBACKS,

@@ -3,9 +3,9 @@ import math
 from typing import Any, cast
 
 import torch
-from luxonis_ml.data import LabelType
 from torch import Tensor, nn
 
+from luxonis_train.enums import TaskType
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import KeypointBlock, LearnableMulAddConv
 from luxonis_train.utils import (
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class ImplicitKeypointBBoxHead(
     BaseNode[list[Tensor], tuple[list[Tensor], Tensor]]
 ):
-    tasks = [LabelType.KEYPOINTS, LabelType.BOUNDINGBOX]
+    tasks = [TaskType.KEYPOINTS, TaskType.BOUNDINGBOX]
     in_channels: list[int]
 
     def __init__(

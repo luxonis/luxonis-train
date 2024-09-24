@@ -23,9 +23,10 @@ from luxonis_train.callbacks import (
     LuxonisRichProgressBar,
     LuxonisTQDMProgressBar,
 )
+from luxonis_train.config import Config
 from luxonis_train.loaders import BaseLoaderTorch, collate_fn
 from luxonis_train.models import LuxonisLightningModule
-from luxonis_train.utils import Config, DatasetMetadata, LuxonisTrackerPL
+from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
 from luxonis_train.utils.registry import LOADERS
 
 from .utils.export_utils import (

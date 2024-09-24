@@ -1,8 +1,8 @@
 import pytest
 import torch
-from luxonis_ml.data import LabelType
 from torch import Size, Tensor
 
+from luxonis_train.enums import TaskType
 from luxonis_train.nodes import AttachIndexType, BaseNode
 from luxonis_train.utils import DatasetMetadata, Packet
 from luxonis_train.utils.exceptions import IncompatibleException
@@ -104,23 +104,23 @@ def test_check_type_override():
 
 def test_tasks():
     class DummyHead(DummyNode):
-        tasks = [LabelType.CLASSIFICATION]
+        tasks = [TaskType.CLASSIFICATION]
 
     class DummyMultiHead(DummyNode):
-        tasks = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
+        tasks = [TaskType.CLASSIFICATION, TaskType.SEGMENTATION]
 
     dummy_head = DummyHead()
     dummy_node = DummyNode()
     dummy_multi_head = DummyMultiHead(n_keypoints=4)
     assert (
-        dummy_head.get_task_name(LabelType.CLASSIFICATION) == "classification"
+        dummy_head.get_task_name(TaskType.CLASSIFICATION) == "classification"
     )
     assert dummy_head.task == "classification"
     with pytest.raises(ValueError):
-        dummy_head.get_task_name(LabelType.SEGMENTATION)
+        dummy_head.get_task_name(TaskType.SEGMENTATION)
 
     with pytest.raises(RuntimeError):
-        dummy_node.get_task_name(LabelType.SEGMENTATION)
+        dummy_node.get_task_name(TaskType.SEGMENTATION)
 
     with pytest.raises(RuntimeError):
         _ = dummy_node.task
@@ -137,17 +137,17 @@ def test_tasks():
     )
 
     dummy_multi_head._dataset_metadata = metadata
-    assert dummy_multi_head.get_class_names(LabelType.SEGMENTATION) == [
+    assert dummy_multi_head.get_class_names(TaskType.SEGMENTATION) == [
         "car",
         "person",
         "dog",
     ]
-    assert dummy_multi_head.get_class_names(LabelType.CLASSIFICATION) == [
+    assert dummy_multi_head.get_class_names(TaskType.CLASSIFICATION) == [
         "car-class",
         "person-class",
     ]
-    assert dummy_multi_head.get_n_classes(LabelType.SEGMENTATION) == 3
-    assert dummy_multi_head.get_n_classes(LabelType.CLASSIFICATION) == 2
+    assert dummy_multi_head.get_n_classes(TaskType.SEGMENTATION) == 3
+    assert dummy_multi_head.get_n_classes(TaskType.CLASSIFICATION) == 2
     assert dummy_multi_head.n_keypoints == 4
     with pytest.raises(ValueError):
         _ = dummy_head.n_keypoints

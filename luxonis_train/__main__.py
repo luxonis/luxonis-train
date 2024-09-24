@@ -139,7 +139,7 @@ def inspect(
     from lightning.pytorch import seed_everything
     from luxonis_ml.data.__main__ import inspect as lxml_inspect
 
-    from luxonis_train.utils import Config
+    from luxonis_train.config import Config
 
     cfg = Config.get_config(config, opts)
     if cfg.trainer.seed is not None:

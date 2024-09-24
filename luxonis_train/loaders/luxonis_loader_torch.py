@@ -15,6 +15,8 @@ from luxonis_ml.enums import DatasetType
 from torch import Size, Tensor
 from typeguard import typechecked
 
+from luxonis_train.enums import TaskType
+
 from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput
 
 logger = logging.getLogger(__name__)
@@ -112,9 +114,9 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
 
         img = np.transpose(img, (2, 0, 1))  # HWC to CHW
         tensor_img = Tensor(img)
-        tensor_labels = {}
+        tensor_labels: dict[str, tuple[Tensor, TaskType]] = {}
         for task, (array, label_type) in labels.items():
-            tensor_labels[task] = (Tensor(array), label_type)
+            tensor_labels[task] = (Tensor(array), TaskType(label_type.value))
 
         return {self.image_source: tensor_img}, tensor_labels
 
