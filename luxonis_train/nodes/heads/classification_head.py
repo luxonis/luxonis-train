@@ -2,13 +2,13 @@ from typing import Any
 
 from torch import Tensor, nn
 
+from luxonis_train.enums import TaskType
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.utils.types import LabelType
 
 
 class ClassificationHead(BaseNode[Tensor, Tensor]):
     in_channels: int
-    tasks: list[LabelType] = [LabelType.CLASSIFICATION]
+    tasks: list[TaskType] = [TaskType.CLASSIFICATION]
 
     def __init__(self, dropout_rate: float = 0.2, **kwargs: Any):
         """Simple classification head.

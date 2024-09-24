@@ -2,15 +2,16 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from luxonis_ml.data import LabelType
 from torch import Tensor
+
+from luxonis_train.enums import TaskType
 
 from .base_visualizer import BaseVisualizer
 from .utils import figure_to_torch, numpy_to_torch_img, torch_img_to_numpy
 
 
 class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
-    supported_labels = [LabelType.CLASSIFICATION]
+    supported_tasks: list[TaskType] = [TaskType.CLASSIFICATION]
 
     def __init__(
         self,

@@ -1,6 +1,7 @@
 import pytest
 
-from luxonis_train.utils.graph import Graph, is_acyclic, traverse_graph
+from luxonis_train.config.config import is_acyclic
+from luxonis_train.utils.graph import Graph, traverse_graph
 
 
 @pytest.mark.parametrize(

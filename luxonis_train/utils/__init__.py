@@ -9,7 +9,6 @@ from .boundingbox import (
     non_max_suppression,
     process_bbox_predictions,
 )
-from .config import Config
 from .dataset_metadata import DatasetMetadata
 from .exceptions import IncompatibleException
 from .general import (
@@ -18,13 +17,12 @@ from .general import (
     make_divisible,
     to_shape_packet,
 )
-from .graph import is_acyclic, traverse_graph
+from .graph import traverse_graph
 from .keypoints import get_sigmas, process_keypoints_predictions
 from .tracker import LuxonisTrackerPL
 from .types import AttachIndexType, Kwargs, Labels, Packet
 
 __all__ = [
-    "Config",
     "AttachIndexType",
     "Kwargs",
     "Labels",
@@ -47,6 +45,5 @@ __all__ = [
     "compute_iou_loss",
     "process_keypoints_predictions",
     "get_sigmas",
-    "is_acyclic",
     "traverse_graph",
 ]

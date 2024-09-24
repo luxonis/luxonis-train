@@ -1,8 +1,8 @@
 import pytest
 import torch
-from luxonis_ml.data import LabelType
 from torch import Size
 
+from luxonis_train.enums import TaskType
 from luxonis_train.loaders import collate_fn
 
 
@@ -42,19 +42,19 @@ def test_collate_fn(
         labels = {
             "classification": (
                 torch.randint(0, 2, (2,), dtype=torch.int64),
-                LabelType.CLASSIFICATION,
+                TaskType.CLASSIFICATION,
             ),
             "segmentation": (
                 torch.randint(0, 2, (1, 224, 224), dtype=torch.int64),
-                LabelType.SEGMENTATION,
+                TaskType.SEGMENTATION,
             ),
             "keypoints": (
                 torch.rand(1, 52, dtype=torch.float32),
-                LabelType.KEYPOINTS,
+                TaskType.KEYPOINTS,
             ),
             "boundingbox": (
                 torch.rand(1, 5, dtype=torch.float32),
-                LabelType.BOUNDINGBOX,
+                TaskType.BOUNDINGBOX,
             ),
         }
 

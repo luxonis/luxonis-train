@@ -2,10 +2,10 @@ from typing import Any, Literal
 
 import torch
 import torch.nn.functional as F
-from luxonis_ml.data import LabelType
 from torch import Tensor
 
 from luxonis_train.attached_modules.losses import AdaptiveDetectionLoss
+from luxonis_train.enums import TaskType
 from luxonis_train.nodes import EfficientKeypointBBoxHead
 from luxonis_train.utils import (
     Labels,
@@ -22,7 +22,9 @@ from .bce_with_logits import BCEWithLogitsLoss
 
 class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
     node: EfficientKeypointBBoxHead
-    supported_labels = [(LabelType.BOUNDINGBOX, LabelType.KEYPOINTS)]
+    supported_tasks: list[tuple[TaskType, ...]] = [
+        (TaskType.BOUNDINGBOX, TaskType.KEYPOINTS)
+    ]
 
     gt_kpts_scale: Tensor
 
@@ -97,8 +99,8 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         pred_distri = self.get_input_tensors(inputs, "distributions")[0]
         pred_kpts = self.get_input_tensors(inputs, "keypoints_raw")[0]
 
-        target_kpts = self.get_label(labels, LabelType.KEYPOINTS)
-        target_bbox = self.get_label(labels, LabelType.BOUNDINGBOX)
+        target_kpts = self.get_label(labels, TaskType.KEYPOINTS)
+        target_bbox = self.get_label(labels, TaskType.BOUNDINGBOX)
 
         batch_size = pred_scores.shape[0]
         n_kpts = (target_kpts.shape[1] - 2) // 3

@@ -1,17 +1,13 @@
 from abc import ABC, abstractmethod
 
-import torch
-from luxonis_ml.data import Augmentations, LabelType
+from luxonis_ml.data import Augmentations
 from luxonis_ml.utils.registry import AutoRegisterMeta
-from torch import Size, Tensor
+from torch import Size
 from torch.utils.data import Dataset
 
 from luxonis_train.utils.registry import LOADERS
-from luxonis_train.utils.types import Labels
 
-LuxonisLoaderTorchOutput = tuple[dict[str, Tensor], Labels]
-"""LuxonisLoaderTorchOutput is a tuple of source tensors and
-corresponding labels."""
+from .utils import LuxonisLoaderTorchOutput
 
 
 class BaseLoaderTorch(
@@ -124,43 +120,3 @@ class BaseLoaderTorch(
             definitions.
         """
         return None
-
-
-def collate_fn(
-    batch: list[LuxonisLoaderTorchOutput],
-) -> tuple[dict[str, Tensor], Labels]:
-    """Default collate function used for training.
-
-    @type batch: list[LuxonisLoaderTorchOutput]
-    @param batch: List of loader outputs (dict of Tensors) and labels
-        (dict of Tensors) in the LuxonisLoaderTorchOutput format.
-    @rtype: tuple[dict[str, Tensor], dict[LabelType, Tensor]]
-    @return: Tuple of inputs and annotations in the format expected by
-        the model.
-    """
-    inputs: tuple[dict[str, Tensor], ...]
-    labels: tuple[Labels, ...]
-    inputs, labels = zip(*batch)
-
-    out_inputs = {
-        k: torch.stack([i[k] for i in inputs], 0) for k in inputs[0].keys()
-    }
-
-    out_labels: Labels = {}
-
-    for task in labels[0].keys():
-        label_type = labels[0][task][1]
-        annos = [label[task][0] for label in labels]
-        if label_type in [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]:
-            out_labels[task] = torch.stack(annos, 0), label_type
-
-        elif label_type in [LabelType.KEYPOINTS, LabelType.BOUNDINGBOX]:
-            label_box: list[Tensor] = []
-            for i, box in enumerate(annos):
-                l_box = torch.zeros((box.shape[0], box.shape[1] + 1))
-                l_box[:, 0] = i  # add target image index for build_targets()
-                l_box[:, 1:] = box
-                label_box.append(l_box)
-            out_labels[task] = torch.cat(label_box, 0), label_type
-
-    return out_inputs, out_labels

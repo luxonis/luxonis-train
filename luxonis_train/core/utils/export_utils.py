@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import luxonis_train
-from luxonis_train.utils.config import Config, ExportConfig
+from luxonis_train.config import Config, ExportConfig
 
 logger = logging.getLogger(__name__)
 

@@ -26,11 +26,6 @@ METRICS: Registry[type["lt.attached_modules.BaseMetric"]] = Registry(
 )
 """Registry for all metrics."""
 
-MODELS: Registry[type["lt.models.BasePredefinedModel"]] = Registry(
-    name="models"
-)
-"""Registry for all models."""
-
 NODES: Registry[type["lt.nodes.BaseNode"]] = Registry(name="nodes")
 """Registry for all nodes."""
 

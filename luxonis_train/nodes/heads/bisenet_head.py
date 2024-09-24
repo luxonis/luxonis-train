@@ -1,8 +1,8 @@
 from typing import Any
 
-from luxonis_ml.data import LabelType
 from torch import Tensor, nn
 
+from luxonis_train.enums import TaskType
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
 from luxonis_train.utils import infer_upscale_factor
@@ -13,7 +13,7 @@ class BiSeNetHead(BaseNode[Tensor, Tensor]):
     in_width: int
     in_channels: int
 
-    tasks: list[LabelType] = [LabelType.SEGMENTATION]
+    tasks: list[TaskType] = [TaskType.SEGMENTATION]
 
     def __init__(self, intermediate_channels: int = 64, **kwargs: Any):
         """BiSeNet segmentation head.

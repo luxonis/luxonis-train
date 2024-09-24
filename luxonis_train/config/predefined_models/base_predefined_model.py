@@ -1,14 +1,16 @@
 from abc import ABC, abstractmethod
 
-from luxonis_ml.utils.registry import AutoRegisterMeta
+from luxonis_ml.utils.registry import AutoRegisterMeta, Registry
 
-from luxonis_train.utils.config import (
+from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
     ModelNodeConfig,
 )
-from luxonis_train.utils.registry import MODELS
+
+MODELS: Registry[type["BasePredefinedModel"]] = Registry(name="models")
+"""Registry for all models."""
 
 
 class BasePredefinedModel(

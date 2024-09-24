@@ -1,9 +1,9 @@
 from typing import Any, Literal
 
 import torch
-from luxonis_ml.data import LabelType
 from torch import Tensor, nn
 
+from luxonis_train.enums import TaskType
 from luxonis_train.nodes.blocks import ConvModule
 from luxonis_train.utils import (
     Packet,
@@ -16,7 +16,7 @@ from .efficient_bbox_head import EfficientBBoxHead
 
 
 class EfficientKeypointBBoxHead(EfficientBBoxHead):
-    tasks: list[LabelType] = [LabelType.KEYPOINTS, LabelType.BOUNDINGBOX]
+    tasks: list[TaskType] = [TaskType.KEYPOINTS, TaskType.BOUNDINGBOX]
 
     def __init__(
         self,

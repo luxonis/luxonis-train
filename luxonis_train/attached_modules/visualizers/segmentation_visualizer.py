@@ -1,8 +1,9 @@
 import logging
 
 import torch
-from luxonis_ml.data import LabelType
 from torch import Tensor
+
+from luxonis_train.enums import TaskType
 
 from .base_visualizer import BaseVisualizer
 from .utils import (
@@ -17,7 +18,7 @@ log_disable = False
 
 
 class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
-    supported_labels = [LabelType.SEGMENTATION]
+    supported_tasks: list[TaskType] = [TaskType.SEGMENTATION]
 
     def __init__(
         self,

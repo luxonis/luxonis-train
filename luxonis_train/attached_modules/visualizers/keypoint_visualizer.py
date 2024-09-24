@@ -1,15 +1,16 @@
 from copy import deepcopy
 
 import torch
-from luxonis_ml.data import LabelType
 from torch import Tensor
+
+from luxonis_train.enums import TaskType
 
 from .base_visualizer import BaseVisualizer
 from .utils import Color, draw_keypoint_labels, draw_keypoints
 
 
 class KeypointVisualizer(BaseVisualizer[list[Tensor], Tensor]):
-    supported_labels = [LabelType.KEYPOINTS]
+    supported_tasks: list[TaskType] = [TaskType.KEYPOINTS]
 
     def __init__(
         self,

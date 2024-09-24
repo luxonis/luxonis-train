@@ -33,7 +33,7 @@ In addition, the following class attributes can be overriden:
 | Key          | Type                                                                | Default value | Description                                                                                                                                   |
 | ------------ | ------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | attach_index | int \| "all" \| Tuple\[int, int\] \| Tuple\[int, int, int\] \| None | None          | Index of previous output that the head attaches to. Each node has a sensible default. Usually should not be manually set in most cases.       |
-| tasks        | List\[LabelType\] \| Dict\[LabelType, str\] \| None                 | None          | Tasks supported by the node. Should be overriden for head nodes. Either a list of tasks or a dictionary mapping tasks to their default names. |
+| tasks        | List\[TaskType\] \| Dict\[TaskType, str\] \| None                   | None          | Tasks supported by the node. Should be overriden for head nodes. Either a list of tasks or a dictionary mapping tasks to their default names. |
 
 Additional parameters for specific nodes are listed below.
 
