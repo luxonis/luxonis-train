@@ -1,9 +1,9 @@
 from typing import Any
 
 import torch
-from luxonis_ml.data import LabelType
 from torch import Tensor
 
+from luxonis_train.enums import TaskType
 from luxonis_train.utils import (
     get_sigmas,
     get_with_default,
@@ -16,7 +16,7 @@ from .bce_with_logits import BCEWithLogitsLoss
 
 # TODO: Make it work on its own
 class KeypointLoss(BaseLoss[Tensor, Tensor]):
-    supported_labels = [LabelType.KEYPOINTS]
+    supported_tasks: list[TaskType] = [TaskType.KEYPOINTS]
 
     def __init__(
         self,

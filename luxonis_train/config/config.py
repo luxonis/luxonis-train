@@ -3,7 +3,6 @@ import sys
 import warnings
 from typing import Annotated, Any, Literal, TypeAlias
 
-from luxonis_ml.data import LabelType
 from luxonis_ml.enums import DatasetType
 from luxonis_ml.utils import (
     BaseModelExtraForbid,
@@ -19,6 +18,8 @@ from pydantic.types import (
     PositiveInt,
 )
 from typing_extensions import Self
+
+from luxonis_train.enums import TaskType
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ class ModelNodeConfig(BaseModelExtraForbid):
     inputs: list[str] = []  # From preceding nodes
     input_sources: list[str] = []  # From data loader
     freezing: FreezingConfig = FreezingConfig()
-    task: str | dict[LabelType, str] | None = None
+    task: str | dict[TaskType, str] | None = None
     params: Params = {}
 
 

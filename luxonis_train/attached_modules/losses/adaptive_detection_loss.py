@@ -3,11 +3,11 @@ from typing import Any, Literal, cast
 
 import torch
 import torch.nn.functional as F
-from luxonis_ml.data import LabelType
 from torch import Tensor, nn
 from torchvision.ops import box_convert
 
 from luxonis_train.assigners import ATSSAssigner, TaskAlignedAssigner
+from luxonis_train.enums import TaskType
 from luxonis_train.nodes import EfficientBBoxHead
 from luxonis_train.utils import (
     Labels,
@@ -27,7 +27,7 @@ class AdaptiveDetectionLoss(
     BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]
 ):
     node: EfficientBBoxHead
-    supported_labels = [LabelType.BOUNDINGBOX]
+    supported_tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
 
     anchors: Tensor
     anchor_points: Tensor

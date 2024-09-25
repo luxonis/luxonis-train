@@ -1,5 +1,6 @@
-from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput, collate_fn
+from .base_loader import BaseLoaderTorch
 from .luxonis_loader_torch import LuxonisLoaderTorch
+from .utils import LuxonisLoaderTorchOutput, collate_fn
 
 __all__ = [
     "LuxonisLoaderTorch",

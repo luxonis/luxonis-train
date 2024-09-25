@@ -1,21 +1,24 @@
 import pytest
 import torchmetrics
-from luxonis_ml.data import LabelType
 
 from luxonis_train.attached_modules.metrics.torchmetrics import (
     TorchMetricWrapper,
 )
+from luxonis_train.enums import TaskType
 from luxonis_train.nodes import BaseNode
 
 
 def test_torchmetrics():
     class DummyNode(BaseNode):
-        tasks = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
+        tasks = [TaskType.CLASSIFICATION, TaskType.SEGMENTATION]
 
         def forward(self, _): ...
 
     class DummyMetric(TorchMetricWrapper):
-        supported_labels = [LabelType.CLASSIFICATION, LabelType.SEGMENTATION]
+        supported_tasks: list[TaskType] = [
+            TaskType.CLASSIFICATION,
+            TaskType.SEGMENTATION,
+        ]
         Metric = torchmetrics.Accuracy
 
     node_1_class = DummyNode(n_classes=1)

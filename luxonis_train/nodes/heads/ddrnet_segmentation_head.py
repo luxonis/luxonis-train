@@ -4,9 +4,9 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from luxonis_train.enums import TaskType
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.utils.general import infer_upscale_factor
-from luxonis_train.utils.types import LabelType
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
     in_width: int
     in_channels: int
 
-    tasks: list[LabelType] = [LabelType.SEGMENTATION]
+    tasks: list[TaskType] = [TaskType.SEGMENTATION]
 
     def __init__(
         self,

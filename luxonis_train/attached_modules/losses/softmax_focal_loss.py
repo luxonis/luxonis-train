@@ -2,10 +2,10 @@ import logging
 from typing import Any, Literal
 
 import torch
-from luxonis_ml.data import LabelType
 from torch import Tensor
 
 from luxonis_train.attached_modules.losses import BaseLoss
+from luxonis_train.enums import TaskType
 
 from .cross_entropy import CrossEntropyLoss
 
@@ -14,7 +14,10 @@ logger = logging.getLogger(__name__)
 
 # TODO: Add support for multi-class tasks
 class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
-    supported_labels = [LabelType.SEGMENTATION, LabelType.CLASSIFICATION]
+    supported_tasks: list[TaskType] = [
+        TaskType.SEGMENTATION,
+        TaskType.CLASSIFICATION,
+    ]
 
     def __init__(
         self,

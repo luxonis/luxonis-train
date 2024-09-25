@@ -2,12 +2,17 @@ import logging
 from typing import Any
 
 import torch
-from luxonis_ml.data import LabelType
 from scipy.optimize import linear_sum_assignment
 from torch import Tensor
 from torchvision.ops import box_convert
 
-from luxonis_train.utils import Labels, Packet, get_sigmas, get_with_default
+from luxonis_train.enums import TaskType
+from luxonis_train.utils import (
+    Labels,
+    Packet,
+    get_sigmas,
+    get_with_default,
+)
 
 from .base_metric import BaseMetric
 
@@ -27,7 +32,7 @@ class ObjectKeypointSimilarity(
     groundtruth_keypoints: list[Tensor]
     groundtruth_scales: list[Tensor]
 
-    supported_labels = [LabelType.KEYPOINTS]
+    supported_tasks: list[TaskType] = [TaskType.KEYPOINTS]
 
     def __init__(
         self,
@@ -71,8 +76,8 @@ class ObjectKeypointSimilarity(
     def prepare(
         self, inputs: Packet[Tensor], labels: Labels
     ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
-        kpts_labels = self.get_label(labels, LabelType.KEYPOINTS)
-        bbox_labels = self.get_label(labels, LabelType.BOUNDINGBOX)
+        kpts_labels = self.get_label(labels, TaskType.KEYPOINTS)
+        bbox_labels = self.get_label(labels, TaskType.BOUNDINGBOX)
         n_keypoints = (kpts_labels.shape[1] - 2) // 3
         label = torch.zeros((len(bbox_labels), n_keypoints * 3 + 6))
         label[:, :2] = bbox_labels[:, :2]
@@ -86,7 +91,7 @@ class ObjectKeypointSimilarity(
         image_size = self.original_in_shape[1:]
 
         for i, pred_kpt in enumerate(
-            self.get_input_tensors(inputs, LabelType.KEYPOINTS)
+            self.get_input_tensors(inputs, TaskType.KEYPOINTS)
         ):
             output_list_oks.append({"keypoints": pred_kpt})
 

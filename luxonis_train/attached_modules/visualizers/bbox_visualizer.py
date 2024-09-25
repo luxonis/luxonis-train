@@ -1,8 +1,9 @@
 import logging
 
 import torch
-from luxonis_ml.data import LabelType
 from torch import Tensor
+
+from luxonis_train.enums import TaskType
 
 from .base_visualizer import BaseVisualizer
 from .utils import (
@@ -14,7 +15,7 @@ from .utils import (
 
 
 class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
-    supported_labels = [LabelType.BOUNDINGBOX]
+    supported_tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
 
     def __init__(
         self,

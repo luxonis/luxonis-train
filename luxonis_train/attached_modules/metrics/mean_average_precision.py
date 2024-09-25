@@ -1,10 +1,10 @@
 from typing import Any
 
 import torchmetrics.detection as detection
-from luxonis_ml.data import LabelType
 from torch import Tensor
 from torchvision.ops import box_convert
 
+from luxonis_train.enums import TaskType
 from luxonis_train.utils import Labels, Packet
 
 from .base_metric import BaseMetric
@@ -21,7 +21,7 @@ class MeanAveragePrecision(
     <https://lightning.ai/docs/torchmetrics/stable/detection/mean_average_precision.html>}.
     """
 
-    supported_labels = [LabelType.BOUNDINGBOX]
+    supported_tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)

@@ -1,9 +1,6 @@
 __version__ = "0.0.1"
 
-import logging
-
-logger = logging.getLogger(__name__)
-
+import warnings
 
 try:
     from .attached_modules import *
@@ -14,8 +11,10 @@ try:
     from .optimizers import *
     from .schedulers import *
     from .utils import *
-except ImportError:
-    logger.warning(
+except ImportError as e:
+    warnings.warn(
         "Failed to import submodules. "
-        "Some functionality of `luxonis-train` may be unavailable."
+        "Some functionality of `luxonis-train` may be unavailable. "
+        f"Error: `{e}`",
+        stacklevel=2,
     )

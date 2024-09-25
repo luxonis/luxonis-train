@@ -1,7 +1,7 @@
 import pytest
-from luxonis_ml.data import LabelType
 
 from luxonis_train import BaseLoss, BaseNode
+from luxonis_train.enums import TaskType
 from luxonis_train.utils.exceptions import IncompatibleException
 
 
@@ -10,27 +10,27 @@ class DummyBackbone(BaseNode):
 
 
 class DummySegmentationHead(BaseNode):
-    tasks = [LabelType.SEGMENTATION]
+    tasks = [TaskType.SEGMENTATION]
 
     def forward(self, _): ...
 
 
 class DummyBBoxHead(BaseNode):
-    tasks = [LabelType.BOUNDINGBOX]
+    tasks = [TaskType.BOUNDINGBOX]
 
     def forward(self, _): ...
 
 
 class DummyDetectionHead(BaseNode):
-    tasks = [LabelType.BOUNDINGBOX, LabelType.KEYPOINTS]
+    tasks = [TaskType.BOUNDINGBOX, TaskType.KEYPOINTS]
 
     def forward(self, _): ...
 
 
 class DummyLoss(BaseLoss):
-    supported_labels = [
-        LabelType.SEGMENTATION,
-        (LabelType.KEYPOINTS, LabelType.BOUNDINGBOX),
+    supported_tasks = [
+        TaskType.SEGMENTATION,
+        (TaskType.KEYPOINTS, TaskType.BOUNDINGBOX),
     ]
 
     def forward(self, _): ...
@@ -43,10 +43,10 @@ class NoLabelLoss(BaseLoss):
 @pytest.fixture
 def labels():
     return {
-        "segmentation": ("segmentation", LabelType.SEGMENTATION),
-        "keypoints": ("keypoints", LabelType.KEYPOINTS),
-        "boundingbox": ("boundingbox", LabelType.BOUNDINGBOX),
-        "classification": ("classification", LabelType.CLASSIFICATION),
+        "segmentation": ("segmentation", TaskType.SEGMENTATION),
+        "keypoints": ("keypoints", TaskType.KEYPOINTS),
+        "boundingbox": ("boundingbox", TaskType.BOUNDINGBOX),
+        "classification": ("classification", TaskType.CLASSIFICATION),
     }
 
 
@@ -63,12 +63,10 @@ def test_valid_properties():
     loss = DummyLoss(node=head)
     no_labels_loss = NoLabelLoss(node=head)
     assert loss.node == head
-    assert loss.node_tasks == {LabelType.SEGMENTATION: "segmentation"}
-    assert loss.required_labels == [LabelType.SEGMENTATION]
+    assert loss.node_tasks == {TaskType.SEGMENTATION: "segmentation"}
+    assert loss.required_labels == [TaskType.SEGMENTATION]
     assert no_labels_loss.node == head
-    assert no_labels_loss.node_tasks == {
-        LabelType.SEGMENTATION: "segmentation"
-    }
+    assert no_labels_loss.node_tasks == {TaskType.SEGMENTATION: "segmentation"}
     assert no_labels_loss.required_labels == []
 
 
@@ -89,23 +87,23 @@ def test_get_label(labels):
     det_head = DummyDetectionHead()
     seg_loss = DummyLoss(node=seg_head)
     assert seg_loss.get_label(labels) == "segmentation"
-    assert seg_loss.get_label(labels, LabelType.SEGMENTATION) == "segmentation"
+    assert seg_loss.get_label(labels, TaskType.SEGMENTATION) == "segmentation"
 
     del labels["segmentation"]
-    labels["segmentation-task"] = ("segmentation", LabelType.SEGMENTATION)
+    labels["segmentation-task"] = ("segmentation", TaskType.SEGMENTATION)
 
     with pytest.raises(IncompatibleException):
         seg_loss.get_label(labels)
 
     det_loss = DummyLoss(node=det_head)
-    assert det_loss.get_label(labels, LabelType.KEYPOINTS) == "keypoints"
-    assert det_loss.get_label(labels, LabelType.BOUNDINGBOX) == "boundingbox"
+    assert det_loss.get_label(labels, TaskType.KEYPOINTS) == "keypoints"
+    assert det_loss.get_label(labels, TaskType.BOUNDINGBOX) == "boundingbox"
 
     with pytest.raises(ValueError):
         det_loss.get_label(labels)
 
     with pytest.raises(ValueError):
-        det_loss.get_label(labels, LabelType.SEGMENTATION)
+        det_loss.get_label(labels, TaskType.SEGMENTATION)
 
 
 def test_input_tensors(inputs):
@@ -115,12 +113,12 @@ def test_input_tensors(inputs):
     assert seg_loss.get_input_tensors(inputs, "segmentation") == [
         "segmentation"
     ]
-    assert seg_loss.get_input_tensors(inputs, LabelType.SEGMENTATION) == [
+    assert seg_loss.get_input_tensors(inputs, TaskType.SEGMENTATION) == [
         "segmentation"
     ]
 
     with pytest.raises(IncompatibleException):
-        seg_loss.get_input_tensors(inputs, LabelType.KEYPOINTS)
+        seg_loss.get_input_tensors(inputs, TaskType.KEYPOINTS)
     with pytest.raises(IncompatibleException):
         seg_loss.get_input_tensors(inputs, "keypoints")
 

@@ -3,13 +3,18 @@ import io
 from typing import Any, Literal
 
 import torch
-from luxonis_ml.data import LabelType
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from torch import Tensor
 from torchvision.ops import box_convert
 
-from luxonis_train.utils import Labels, Packet, get_sigmas, get_with_default
+from luxonis_train.enums import TaskType
+from luxonis_train.utils import (
+    Labels,
+    Packet,
+    get_sigmas,
+    get_with_default,
+)
 
 from .base_metric import BaseMetric
 
@@ -22,7 +27,9 @@ class MeanAveragePrecisionKeypoints(
     Uses C{OKS} as IoU measure.
     """
 
-    supported_labels = [(LabelType.BOUNDINGBOX, LabelType.KEYPOINTS)]
+    supported_tasks: list[tuple[TaskType, ...]] = [
+        (TaskType.BOUNDINGBOX, TaskType.KEYPOINTS)
+    ]
 
     is_differentiable: bool = False
     higher_is_better: bool = True
@@ -99,8 +106,8 @@ class MeanAveragePrecisionKeypoints(
         self, inputs: Packet[Tensor], labels: Labels
     ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
         assert self.node.tasks is not None
-        kpts = self.get_label(labels, LabelType.KEYPOINTS)
-        boxes = self.get_label(labels, LabelType.BOUNDINGBOX)
+        kpts = self.get_label(labels, TaskType.KEYPOINTS)
+        boxes = self.get_label(labels, TaskType.BOUNDINGBOX)
 
         nkpts = (kpts.shape[1] - 2) // 3
         label = torch.zeros((len(boxes), nkpts * 3 + 6))
@@ -114,8 +121,8 @@ class MeanAveragePrecisionKeypoints(
         label_list_kpt_map: list[dict[str, Tensor]] = []
         image_size = self.original_in_shape[1:]
 
-        output_kpts = self.get_input_tensors(inputs, LabelType.KEYPOINTS)
-        output_bboxes = self.get_input_tensors(inputs, LabelType.BOUNDINGBOX)
+        output_kpts = self.get_input_tensors(inputs, TaskType.KEYPOINTS)
+        output_bboxes = self.get_input_tensors(inputs, TaskType.BOUNDINGBOX)
         for i in range(len(output_kpts)):
             output_list_kpt_map.append(
                 {

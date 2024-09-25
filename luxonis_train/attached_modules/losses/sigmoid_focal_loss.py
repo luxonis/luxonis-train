@@ -1,14 +1,17 @@
 from typing import Any, Literal
 
-from luxonis_ml.data import LabelType
 from torch import Tensor
 from torchvision.ops import sigmoid_focal_loss
 
 from luxonis_train.attached_modules.losses import BaseLoss
+from luxonis_train.enums import TaskType
 
 
 class SigmoidFocalLoss(BaseLoss[Tensor, Tensor]):
-    supported_labels = [LabelType.SEGMENTATION, LabelType.CLASSIFICATION]
+    supported_tasks: list[TaskType] = [
+        TaskType.SEGMENTATION,
+        TaskType.CLASSIFICATION,
+    ]
 
     def __init__(
         self,

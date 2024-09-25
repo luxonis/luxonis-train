@@ -3,8 +3,9 @@ from typing import Any, Literal
 
 import torch
 import torch.nn as nn
-from luxonis_ml.data import LabelType
 from torch import Tensor
+
+from luxonis_train.enums import TaskType
 
 from .base_loss import BaseLoss
 
@@ -15,7 +16,10 @@ class CrossEntropyLoss(BaseLoss[Tensor, Tensor]):
     """This criterion computes the cross entropy loss between input
     logits and target."""
 
-    supported_labels = [LabelType.SEGMENTATION, LabelType.CLASSIFICATION]
+    supported_tasks: list[TaskType] = [
+        TaskType.SEGMENTATION,
+        TaskType.CLASSIFICATION,
+    ]
 
     def __init__(
         self,

@@ -35,12 +35,12 @@ class DatasetMetadata:
         @type task: str | None
         @param task: Task to get the number of classes for.
         @rtype: int
-        @return: Number of classes for the specified label type.
+        @return: Number of classes for the specified task type.
         @raises ValueError: If the C{task} is not present in the
             dataset.
         @raises RuntimeError: If the C{task} was not provided and the
             dataset contains different number of classes for different
-            label types.
+            task types.
         """
         if task is not None:
             if task not in self._classes:
@@ -63,12 +63,12 @@ class DatasetMetadata:
         @type task: str | None
         @param task: Task to get the number of keypoints for.
         @rtype: int
-        @return: Number of keypoints for the specified label type.
+        @return: Number of keypoints for the specified task type.
         @raises ValueError: If the C{task} is not present in the
             dataset.
         @raises RuntimeError: If the C{task} was not provided and the
             dataset contains different number of keypoints for different
-            label types.
+            task types.
         """
         if task is not None:
             if task not in self._n_keypoints:
@@ -91,7 +91,7 @@ class DatasetMetadata:
         @type task: str | None
         @param task: Task to get the class names for.
         @rtype: list[str]
-        @return: List of class names for the specified label type.
+        @return: List of class names for the specified task type.
         @raises ValueError: If the C{task} is not present in the
             dataset.
         @raises RuntimeError: If the C{task} was not provided and the
