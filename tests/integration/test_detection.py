@@ -78,7 +78,7 @@ def train_and_test(
     model = LuxonisModel(config, opts)
     model.train()
     results = model.test(view="val")
-    if train_overfit:
+    if train_overfit:  # pragma: no cover
         for name, value in results.items():
             if "/map_50" in name or "/kpt_map_medium" in name:
                 assert value > 0.8, f"{name} = {value} (expected > 0.8)"

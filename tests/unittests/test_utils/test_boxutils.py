@@ -1,3 +1,5 @@
+from typing import Literal
+
 import pytest
 import torch
 
@@ -13,7 +15,10 @@ from luxonis_train.utils.boundingbox import (
 
 
 def generate_random_bboxes(
-    n_bboxes: int, max_width: int, max_height: int, format: str = "xyxy"
+    n_bboxes: int,
+    max_width: int,
+    max_height: int,
+    format: Literal["xyxy", "xywh", "cxcywh"],
 ):
     x1y1 = torch.rand(n_bboxes, 2) * torch.tensor(
         [max_width - 1, max_height - 1]
@@ -33,10 +38,6 @@ def generate_random_bboxes(
     elif format == "cxcywh":
         cxcy = x1y1 + wh / 2
         bboxes = torch.cat((cxcy, wh), dim=1)
-    else:
-        raise ValueError(
-            "Unsupported format. Choose from 'xyxy', 'xywh', 'cxcywh'."
-        )
 
     return bboxes
 
