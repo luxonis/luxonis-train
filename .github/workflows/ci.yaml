@@ -128,48 +128,19 @@ jobs:
         token_format: access_token
 
     - name: Run pytest
-      uses: pavelzw/pytest-action@v2
       env:
         LUXONISML_BUCKET: luxonis-test-bucket
-        PYTORCH_MPS_HIGH_WATERMARK_RATIO: 0.0
+      run: pytest --cov --junitxml=junit.xml -o junit_family=legacy
+
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/test-results-action@v1
       with:
-        emoji: false
-        custom-arguments: --junit-xml pytest.xml --cov luxonis_train --cov-report xml
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
 
-    - name: Create Test Report
-      uses: EnricoMi/publish-unit-test-result-action@v2
-      if: matrix.os == 'ubuntu-latest'
+    - name: Upload coverage results to Codecov
+      uses: codecov/codecov-action@v4
       with:
-        files: pytest.xml
-
-    - name: Generate coverage badge
-      uses: tj-actions/coverage-badge-py@v2
-      if: matrix.os == 'ubuntu-latest'
-      with:
-        output: media/coverage_badge.svg
-
-    - name: Generate coverage report
-      uses: orgoro/coverage@v3.2
-      if: matrix.os == 'ubuntu-latest'
-      with:
-        coverageFile: coverage.xml
-        token: ${{ secrets.GITHUB_TOKEN }}
-        thresholdAll: 0.9
-        thresholdNew: 0.8
-
-    - name: Commit coverage badge
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        git config --global user.name 'GitHub Actions'
-        git config --global user.email 'actions@github.com'
-        git diff --quiet media/coverage_badge.svg || {
-          git add media/coverage_badge.svg
-          git commit -m "[Automated] Updated coverage badge"
-        }
-
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      if: matrix.os == 'ubuntu-latest'
-      with:
-        branch: ${{ github.head_ref }}
-
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
