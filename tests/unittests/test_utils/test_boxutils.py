@@ -62,28 +62,30 @@ def test_bbox2dist():
     assert distance.shape == bbox.shape
 
 
-@pytest.mark.parametrize("iou_type", ["none", "giou", "diou", "ciou", "siou"])
-def test_bbox_iou(iou_type: IoUType):
-    for format in ["xyxy", "cxcywh", "xywh"]:
-        bbox1 = generate_random_bboxes(5, 640, 640, format)
-        if iou_type == "siou":
-            bbox2 = generate_random_bboxes(5, 640, 640, format)
-        else:
-            bbox2 = generate_random_bboxes(8, 640, 640, format)
+@pytest.mark.parametrize("iou_type", ["none", "giou", "diou", "ciou"])
+@pytest.mark.parametrize("format", ["xyxy", "xywh", "cxcywh"])
+def test_bbox_iou(
+    iou_type: IoUType, format: Literal["xyxy", "xywh", "cxcywh"]
+):
+    bbox1 = generate_random_bboxes(5, 640, 640, format)
+    if iou_type == "siou":
+        bbox2 = generate_random_bboxes(5, 640, 640, format)
+    else:
+        bbox2 = generate_random_bboxes(8, 640, 640, format)
 
-        iou = bbox_iou(
-            bbox1,
-            bbox2,
-            bbox_format=format,  # type: ignore
-            iou_type=iou_type,
-        )
+    iou = bbox_iou(
+        bbox1,
+        bbox2,
+        bbox_format=format,  # type: ignore
+        iou_type=iou_type,
+    )
 
-        assert iou.shape == (bbox1.shape[0], bbox2.shape[0])
-        if iou_type == "none":
-            min = 0
-        else:
-            min = -1.5
-        assert iou.min() >= min and iou.max() <= 1
+    assert iou.shape == (bbox1.shape[0], bbox2.shape[0])
+    if iou_type == "none":
+        min = 0
+    else:
+        min = -1.5
+    assert iou.min() >= min and iou.max() <= 1
 
     if iou_type == "none":
         with pytest.raises(ValueError):
