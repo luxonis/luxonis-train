@@ -76,7 +76,7 @@ def test_invalid(packet: Packet[Tensor]):
         node.wrap({"inp": torch.rand(3, 224, 224)})
 
 
-def tets_in_sizes():
+def test_in_sizes():
     node = DummyNode(
         input_shapes=[{"features": [Size((3, 224, 224)) for _ in range(3)]}]
     )

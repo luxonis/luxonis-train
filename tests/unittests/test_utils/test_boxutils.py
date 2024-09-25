@@ -1,3 +1,5 @@
+from typing import Literal
+
 import pytest
 import torch
 
@@ -13,7 +15,10 @@ from luxonis_train.utils.boundingbox import (
 
 
 def generate_random_bboxes(
-    n_bboxes: int, max_width: int, max_height: int, format: str = "xyxy"
+    n_bboxes: int,
+    max_width: int,
+    max_height: int,
+    format: Literal["xyxy", "xywh", "cxcywh"],
 ):
     x1y1 = torch.rand(n_bboxes, 2) * torch.tensor(
         [max_width - 1, max_height - 1]
@@ -33,10 +38,6 @@ def generate_random_bboxes(
     elif format == "cxcywh":
         cxcy = x1y1 + wh / 2
         bboxes = torch.cat((cxcy, wh), dim=1)
-    else:
-        raise ValueError(
-            "Unsupported format. Choose from 'xyxy', 'xywh', 'cxcywh'."
-        )
 
     return bboxes
 
@@ -62,27 +63,29 @@ def test_bbox2dist():
 
 
 @pytest.mark.parametrize("iou_type", ["none", "giou", "diou", "ciou", "siou"])
-def test_bbox_iou(iou_type: IoUType):
-    for format in ["xyxy", "cxcywh", "xywh"]:
-        bbox1 = generate_random_bboxes(5, 640, 640, format)
-        if iou_type == "siou":
-            bbox2 = generate_random_bboxes(5, 640, 640, format)
-        else:
-            bbox2 = generate_random_bboxes(8, 640, 640, format)
+@pytest.mark.parametrize("format", ["xyxy", "xywh", "cxcywh"])
+def test_bbox_iou(
+    iou_type: IoUType, format: Literal["xyxy", "xywh", "cxcywh"]
+):
+    bbox1 = generate_random_bboxes(5, 640, 640, format)
+    if iou_type == "siou":
+        bbox2 = generate_random_bboxes(5, 640, 640, format)
+    else:
+        bbox2 = generate_random_bboxes(8, 640, 640, format)
 
-        iou = bbox_iou(
-            bbox1,
-            bbox2,
-            bbox_format=format,  # type: ignore
-            iou_type=iou_type,
-        )
+    iou = bbox_iou(
+        bbox1,
+        bbox2,
+        bbox_format=format,  # type: ignore
+        iou_type=iou_type,
+    )
 
-        assert iou.shape == (bbox1.shape[0], bbox2.shape[0])
-        if iou_type == "none":
-            min = 0
-        else:
-            min = -1.5
-        assert iou.min() >= min and iou.max() <= 1
+    assert iou.shape == (bbox1.shape[0], bbox2.shape[0])
+    if iou_type == "none":
+        min = 0
+    else:
+        min = -1.5
+    assert iou.min() >= min and iou.max() <= 1
 
     if iou_type == "none":
         with pytest.raises(ValueError):

@@ -248,7 +248,7 @@ def cifar10_dataset() -> LuxonisDataset:
 
 @pytest.fixture
 def config(train_overfit: bool) -> dict[str, Any]:
-    if train_overfit:
+    if train_overfit:  # pragma: no cover
         epochs = 100
     else:
         epochs = 1

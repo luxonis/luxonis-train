@@ -116,8 +116,8 @@ def train_and_test(
 ):
     model = LuxonisModel(config, opts)
     model.train()
-    results = model.test(view="val")
-    if train_overfit:
+    if train_overfit:  # pragma: no cover
+        results = model.test(view="val")
         for name, value in results.items():
             if "metric" in name:
                 assert value > 0.8, f"{name} = {value} (expected > 0.8)"

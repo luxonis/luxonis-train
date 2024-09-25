@@ -20,7 +20,7 @@ class CustomMultiInputLoader(BaseLoaderTorch):
             "pointcloud": torch.Size([1000, 3]),
         }
 
-    def __getitem__(self, _):
+    def __getitem__(self, _):  # pragma: no cover
         # Fake data
         left = torch.rand(3, 224, 224, dtype=torch.float32)
         right = torch.rand(3, 224, 224, dtype=torch.float32)
