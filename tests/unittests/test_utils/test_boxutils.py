@@ -62,7 +62,7 @@ def test_bbox2dist():
     assert distance.shape == bbox.shape
 
 
-@pytest.mark.parametrize("iou_type", ["none", "giou", "diou", "ciou"])
+@pytest.mark.parametrize("iou_type", ["none", "giou", "diou", "ciou", "siou"])
 @pytest.mark.parametrize("format", ["xyxy", "xywh", "cxcywh"])
 def test_bbox_iou(
     iou_type: IoUType, format: Literal["xyxy", "xywh", "cxcywh"]
