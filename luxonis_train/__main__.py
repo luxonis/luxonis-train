@@ -2,7 +2,7 @@ import tempfile
 from enum import Enum
 from importlib.metadata import version
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Optional, Union
 
 import typer
 import yaml
@@ -48,6 +48,11 @@ ViewType = Annotated[
 SaveDirType = Annotated[
     Optional[Path],
     typer.Option(help="Where to save the inference results."),
+]
+
+ImgPathType = Annotated[
+    Optional[str],
+    typer.Option(help="Path to an image file or a directory containing images for inference.")
 ]
 
 
@@ -99,12 +104,13 @@ def infer(
     config: ConfigType = None,
     view: ViewType = _ViewType.VAL,
     save_dir: SaveDirType = None,
+    img_path: ImgPathType = None,
     opts: OptsType = None,
 ):
     """Run inference."""
     from luxonis_train.core import LuxonisModel
 
-    LuxonisModel(config, opts).infer(view=view.value, save_dir=save_dir)
+    LuxonisModel(config, opts).infer(view=view.value, save_dir=save_dir, img_path=img_path)
 
 
 @app.command()
