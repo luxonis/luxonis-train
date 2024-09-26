@@ -35,35 +35,31 @@ def render_visualizations(
             exit()
 
 
-def process_single_image(
-    model, img_path: Path, view: str, save_dir: str | Path | None
+def process_images(
+    model, img_paths: list[Path], view: str, save_dir: str | Path | None
 ) -> None:
-    """Handles the inference on a single image."""
-    img = cv2.cvtColor(cv2.imread(str(img_path)), cv2.COLOR_BGR2RGB)
-    img, _ = model.val_augmentations([(img, {})])
-    labels = create_dummy_labels(model, view, img.shape)
-    inputs = {
-        "image": torch.tensor(img).unsqueeze(0).permute(0, 3, 1, 2).float()
-    }
-    images = get_unnormalized_images(model.cfg, inputs)
-
-    outputs = model.lightning_module.forward(
-        inputs, labels, images=images, compute_visualizations=True
+    """Handles inference on one or more images."""
+    first_image = cv2.cvtColor(
+        cv2.imread(str(img_paths[0])), cv2.COLOR_BGR2RGB
     )
-    render_visualizations(outputs.visualizations, save_dir)
+    labels = create_dummy_labels(model, view, first_image.shape)
+    for img_path in img_paths:
+        img = cv2.cvtColor(cv2.imread(str(img_path)), cv2.COLOR_BGR2RGB)
+        img, _ = (
+            model.train_augmentations([(img, {})])
+            if view == "train"
+            else model.val_augmentations([(img, {})])
+        )
 
+        inputs = {
+            "image": torch.tensor(img).unsqueeze(0).permute(0, 3, 1, 2).float()
+        }
+        images = get_unnormalized_images(model.cfg, inputs)
 
-def process_directory_images(
-    model, dir_path: Path, view: str, save_dir: str | Path | None
-) -> None:
-    """Handles inference for multiple images in a directory."""
-    image_files = [
-        f
-        for f in dir_path.iterdir()
-        if f.suffix.lower() in {".png", ".jpg", ".jpeg"}
-    ]
-    for image_file in image_files:
-        process_single_image(model, image_file, view, save_dir)
+        outputs = model.lightning_module.forward(
+            inputs, labels, images=images, compute_visualizations=True
+        )
+        render_visualizations(outputs.visualizations, save_dir)
 
 
 def process_dataset_images(

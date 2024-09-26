@@ -36,8 +36,7 @@ from .utils.export_utils import (
 )
 from .utils.infer_utils import (
     process_dataset_images,
-    process_directory_images,
-    process_single_image,
+    process_images,
 )
 from .utils.train_utils import create_trainer
 
@@ -442,9 +441,14 @@ class LuxonisModel:
         if img_path:
             img_path_obj = Path(img_path)
             if img_path_obj.is_file():
-                process_single_image(self, img_path_obj, view, save_dir)
+                process_images(self, [img_path_obj], view, save_dir)
             elif img_path_obj.is_dir():
-                process_directory_images(self, img_path_obj, view, save_dir)
+                image_files = [
+                    f
+                    for f in img_path_obj.iterdir()
+                    if f.suffix.lower() in {".png", ".jpg", ".jpeg"}
+                ]
+                process_images(self, image_files, view, save_dir)
         else:
             process_dataset_images(self, view, save_dir)
 
