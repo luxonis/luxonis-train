@@ -18,7 +18,6 @@ from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.utils import LuxonisFileSystem, reset_logging, setup_logging
 from typeguard import typechecked
 
-from luxonis_train.attached_modules.visualizers import get_unnormalized_images
 from luxonis_train.callbacks import (
     LuxonisRichProgressBar,
     LuxonisTQDMProgressBar,
@@ -35,7 +34,10 @@ from .utils.export_utils import (
     replace_weights,
     try_onnx_simplify,
 )
-from .utils.infer_utils import render_visualizations
+from .utils.infer_utils import (
+    process_dataset_images,
+    process_images,
+)
 from .utils.train_utils import create_trainer
 
 logger = getLogger(__name__)
@@ -419,6 +421,7 @@ class LuxonisModel:
         self,
         view: Literal["train", "val", "test"] = "val",
         save_dir: str | Path | None = None,
+        img_path: str | None = None,
     ) -> None:
         """Runs inference.
 
@@ -429,15 +432,25 @@ class LuxonisModel:
         @param save_dir: Directory where to save the visualizations. If
             not specified, visualizations will be rendered on the
             screen.
+        @type img_path: str | None
+        @param img_path: Path to the image file or directory for inference.
+            If None, defaults to using dataset images.
         """
         self.lightning_module.eval()
 
-        for inputs, labels in self.pytorch_loaders[view]:
-            images = get_unnormalized_images(self.cfg, inputs)
-            outputs = self.lightning_module.forward(
-                inputs, labels, images=images, compute_visualizations=True
-            )
-            render_visualizations(outputs.visualizations, save_dir)
+        if img_path:
+            img_path_obj = Path(img_path)
+            if img_path_obj.is_file():
+                process_images(self, [img_path_obj], view, save_dir)
+            elif img_path_obj.is_dir():
+                image_files = [
+                    f
+                    for f in img_path_obj.iterdir()
+                    if f.suffix.lower() in {".png", ".jpg", ".jpeg"}
+                ]
+                process_images(self, image_files, view, save_dir)
+        else:
+            process_dataset_images(self, view, save_dir)
 
     def tune(self) -> None:
         """Runs Optuna tunning of hyperparameters."""
