@@ -2,7 +2,7 @@ import tempfile
 from enum import Enum
 from importlib.metadata import version
 from pathlib import Path
-from typing import Annotated, Optional, Union
+from typing import Annotated
 
 import typer
 import yaml
@@ -25,7 +25,7 @@ app = typer.Typer(
 
 
 ConfigType = Annotated[
-    Optional[str],
+    str | None,
     typer.Option(
         help="Path to the configuration file.",
         show_default=False,
@@ -34,7 +34,7 @@ ConfigType = Annotated[
 ]
 
 OptsType = Annotated[
-    Optional[list[str]],
+    list[str] | None,
     typer.Argument(
         help="A list of optional CLI overrides of the config file.",
         show_default=False,
@@ -46,13 +46,15 @@ ViewType = Annotated[
 ]
 
 SaveDirType = Annotated[
-    Optional[Path],
+    Path | None,
     typer.Option(help="Where to save the inference results."),
 ]
 
 ImgPathType = Annotated[
-    Optional[str],
-    typer.Option(help="Path to an image file or a directory containing images for inference.")
+    str | None,
+    typer.Option(
+        help="Path to an image file or a directory containing images for inference."
+    ),
 ]
 
 
@@ -60,7 +62,7 @@ ImgPathType = Annotated[
 def train(
     config: ConfigType = None,
     resume: Annotated[
-        Optional[str],
+        str | None,
         typer.Option(help="Resume training from this checkpoint."),
     ] = None,
     opts: OptsType = None,
@@ -110,7 +112,9 @@ def infer(
     """Run inference."""
     from luxonis_train.core import LuxonisModel
 
-    LuxonisModel(config, opts).infer(view=view.value, save_dir=save_dir, img_path=img_path)
+    LuxonisModel(config, opts).infer(
+        view=view.value, save_dir=save_dir, img_path=img_path
+    )
 
 
 @app.command()
@@ -206,7 +210,7 @@ def common(
         ),
     ] = False,
     source: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option(
             help="Path to a python file with custom components. "
             "Will be sourced before running the command.",
