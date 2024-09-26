@@ -1,12 +1,17 @@
 from pathlib import Path
 
 import cv2
+import torch
 from torch import Tensor
+
+from luxonis_train.attached_modules.visualizers import get_unnormalized_images
+from luxonis_train.enums import TaskType
 
 
 def render_visualizations(
     visualizations: dict[str, dict[str, Tensor]], save_dir: str | Path | None
 ) -> None:
+    """Render or save visualizations."""
     save_dir = Path(save_dir) if save_dir is not None else None
     if save_dir is not None:
         save_dir.mkdir(exist_ok=True, parents=True)
@@ -28,3 +33,66 @@ def render_visualizations(
     if save_dir is None:
         if cv2.waitKey(0) == ord("q"):
             exit()
+
+
+def process_images(
+    model, img_paths: list[Path], view: str, save_dir: str | Path | None
+) -> None:
+    """Handles inference on one or more images."""
+    first_image = cv2.cvtColor(
+        cv2.imread(str(img_paths[0])), cv2.COLOR_BGR2RGB
+    )
+    labels = create_dummy_labels(model, view, first_image.shape)
+    for img_path in img_paths:
+        img = cv2.cvtColor(cv2.imread(str(img_path)), cv2.COLOR_BGR2RGB)
+        img, _ = (
+            model.train_augmentations([(img, {})])
+            if view == "train"
+            else model.val_augmentations([(img, {})])
+        )
+
+        inputs = {
+            "image": torch.tensor(img).unsqueeze(0).permute(0, 3, 1, 2).float()
+        }
+        images = get_unnormalized_images(model.cfg, inputs)
+
+        outputs = model.lightning_module.forward(
+            inputs, labels, images=images, compute_visualizations=True
+        )
+        render_visualizations(outputs.visualizations, save_dir)
+
+
+def process_dataset_images(
+    model, view: str, save_dir: str | Path | None
+) -> None:
+    """Handles the inference on dataset images."""
+    for inputs, labels in model.pytorch_loaders[view]:
+        images = get_unnormalized_images(model.cfg, inputs)
+        outputs = model.lightning_module.forward(
+            inputs, labels, images=images, compute_visualizations=True
+        )
+        render_visualizations(outputs.visualizations, save_dir)
+
+
+def create_dummy_labels(model, view: str, img_shape: tuple) -> dict:
+    """Prepares the labels for different tasks (classification,
+    keypoints, etc.)."""
+    tasks = list(model.loaders["train"].get_classes().keys())
+    h, w, _ = img_shape
+    labels = {}
+    nk = model.loaders[view].get_n_keypoints()["keypoints"]
+
+    for task in tasks:
+        if task == "classification":
+            labels[task] = [-1, TaskType.CLASSIFICATION]
+        elif task == "keypoints":
+            labels[task] = [torch.zeros((1, nk * 3 + 2)), TaskType.KEYPOINTS]
+        elif task == "segmentation":
+            labels[task] = [torch.zeros((1, h, w)), TaskType.SEGMENTATION]
+        elif task == "boundingbox":
+            labels[task] = [
+                torch.tensor([[-1, 0, 0, 0, 0, 0]]),
+                TaskType.BOUNDINGBOX,
+            ]
+
+    return labels
