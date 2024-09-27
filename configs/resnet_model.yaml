@@ -8,26 +8,21 @@ model:
         download_weights: True
 
     - name: ClassificationHead
-      inputs:
-        - ResNet
 
-  losses:
-    - name: CrossEntropyLoss
-      attached_to: ClassificationHead
+      losses:
+        name: CrossEntropyLoss
 
-  metrics:
-    - name: Accuracy
-      is_main_metric: true
-      attached_to: ClassificationHead
+      metrics:
+        name: Accuracy
+        is_main_metric: true
 
-  visualizers:
-    - name: ClassificationVisualizer
-      attached_to: ClassificationHead
-      params:
-        font_scale: 0.5
-        color: [255, 0, 0]
-        thickness: 2
-        include_plot: True
+      visualizers:
+        name: ClassificationVisualizer
+        params:
+          font_scale: 0.5
+          color: [255, 0, 0]
+          thickness: 2
+          include_plot: True
 
 loader:
   params:
