@@ -514,14 +514,6 @@ class BaseNode(
         """Getter for the remove_on_export attribute."""
         return self._remove_on_export
 
-    def set_remove_on_export_mode(self, mode: bool = True) -> None:
-        """Sets the remove_on_export flag.
-
-        @type mode: bool
-        @param mode: Value to set remove_on_export to. Defaults to True.
-        """
-        self._remove_on_export = mode
-
     def unwrap(self, inputs: list[Packet[Tensor]]) -> ForwardInputT:
         """Prepares inputs for the forward pass.
 
