@@ -70,7 +70,7 @@ def get_opts_backbone(backbone: str) -> dict[str, Any]:
     }
 
 
-def get_opts_variant(variant: str):
+def get_opts_variant(variant: str) -> dict[str, Any]:
     return {
         "model": {
             "nodes": [
