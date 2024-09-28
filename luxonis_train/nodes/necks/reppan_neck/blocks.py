@@ -229,12 +229,6 @@ class RepDownBlock(PANDownBlockBase):
     def encode_block(self) -> nn.Module:
         return self._encode_block
 
-    def forward(self, x0: Tensor, x1: Tensor) -> Tensor:
-        x = self.downsample(x0)
-        x = torch.cat([x, x1], dim=1)
-        x = self.encode_block(x)
-        return x
-
 
 class CSPDownBlock(PANDownBlockBase):
     def __init__(
@@ -279,9 +273,3 @@ class CSPDownBlock(PANDownBlockBase):
     @property
     def encode_block(self) -> nn.Module:
         return self._encode_block
-
-    def forward(self, x0: Tensor, x1: Tensor) -> Tensor:
-        x = self.downsample(x0)
-        x = torch.cat([x, x1], dim=1)
-        x = self.encode_block(x)
-        return x
