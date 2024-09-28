@@ -118,6 +118,7 @@ class BaseNode(
         n_classes: int | None = None,
         n_keypoints: int | None = None,
         in_sizes: Size | list[Size] | None = None,
+        remove_on_export: bool = False,
         attach_index: AttachIndexType | None = None,
         _tasks: dict[TaskType, str] | None = None,
     ):
@@ -187,6 +188,7 @@ class BaseNode(
         self._n_classes = n_classes
         self._n_keypoints = n_keypoints
         self._export = False
+        self._remove_on_export = remove_on_export
         self._epoch = 0
         self._in_sizes = in_sizes
 
@@ -506,6 +508,11 @@ class BaseNode(
         @param mode: Value to set the export mode to. Defaults to True.
         """
         self._export = mode
+
+    @property
+    def remove_on_export(self) -> bool:
+        """Getter for the remove_on_export attribute."""
+        return self._remove_on_export
 
     def unwrap(self, inputs: list[Packet[Tensor]]) -> ForwardInputT:
         """Prepares inputs for the forward pass.

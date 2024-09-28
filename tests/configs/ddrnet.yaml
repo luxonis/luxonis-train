@@ -1,0 +1,50 @@
+model:
+  name: ddrnet_segmentation
+  nodes:
+    - name: DDRNet
+    - name: DDRNetSegmentationHead
+      inputs: ["DDRNet"]
+      alias: "segmentation_head"
+      params:
+        attach_index: -1
+    - name: DDRNetSegmentationHead
+      inputs: ["DDRNet"]
+      alias: "aux_segmentation_head"
+      params:
+        attach_index: -2
+      remove_on_export: true
+
+  losses:
+    - attached_to: segmentation_head
+      name: CrossEntropyLoss
+    - attached_to: aux_segmentation_head
+      name: CrossEntropyLoss
+trainer:
+  preprocessing:
+    train_image_size: 
+      - &height 128
+      - &width 128
+    keep_aspect_ratio: False
+    normalize:
+      active: True
+
+  batch_size: 2
+  epochs: &epochs 1
+  num_workers: 8
+  validation_interval: 10
+  num_log_images: 8
+
+  callbacks:
+    - name: ExportOnTrainEnd
+
+  optimizer:
+    name: SGD
+    params:
+      lr: 0.01
+      momentum: 0.9
+      weight_decay: 0.0005
+
+  scheduler:
+    name: CosineAnnealingLR
+    params:
+      T_max: *epochs

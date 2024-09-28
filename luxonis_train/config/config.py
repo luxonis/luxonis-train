@@ -61,6 +61,7 @@ class ModelNodeConfig(BaseModelExtraForbid):
     inputs: list[str] = []  # From preceding nodes
     input_sources: list[str] = []  # From data loader
     freezing: FreezingConfig = FreezingConfig()
+    remove_on_export: bool = False
     task: str | dict[TaskType, str] | None = None
     params: Params = {}
 

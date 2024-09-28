@@ -198,7 +198,11 @@ class LuxonisLightningModule(pl.LightningModule):
                     }
             nodes[node_name] = (
                 Node,
-                {**node_cfg.params, "_tasks": node_cfg.task},
+                {
+                    **node_cfg.params,
+                    "_tasks": node_cfg.task,
+                    "remove_on_export": node_cfg.remove_on_export,
+                },
             )
 
             # Handle inputs for this node
@@ -373,6 +377,8 @@ class LuxonisLightningModule(pl.LightningModule):
         for node_name, node, input_names, unprocessed in traverse_graph(
             self.graph, cast(dict[str, BaseNode], self.nodes)
         ):
+            if node.export and node.remove_on_export:
+                continue
             input_names += self.node_input_sources[node_name]
 
             node_inputs: list[Packet[Tensor]] = []
