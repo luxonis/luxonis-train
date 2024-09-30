@@ -113,7 +113,7 @@ class ConvModule(nn.Sequential):
         @type bias: bool
         @param bias: Whether to use bias. Defaults to False.
         @type activation: L{nn.Module} | None
-        @param activation: Activation function. Defaults to None.
+        @param activation: Activation function. If None then nn.ReLU.
         """
         super().__init__(
             nn.Conv2d(
@@ -441,18 +441,110 @@ class BlockRepeater(nn.Module):
         """
         super().__init__()
 
-        in_channels = in_channels
         self.blocks = nn.ModuleList()
-        for _ in range(n_blocks):
+        self.blocks.append(
+            block(in_channels=in_channels, out_channels=out_channels)
+        )
+        for _ in range(n_blocks - 1):
             self.blocks.append(
-                block(in_channels=in_channels, out_channels=out_channels)
+                block(in_channels=out_channels, out_channels=out_channels)
             )
-            in_channels = out_channels
 
     def forward(self, x: Tensor) -> Tensor:
         for block in self.blocks:
             x = block(x)
         return x
+
+
+class CSPStackRepBlock(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        n_blocks: int = 1,
+        e: float = 0.5,
+    ):
+        super().__init__()
+        """Module composed of three 1x1 conv layers and a stack of sub-
+        blocks consisting of two RepVGG blocks with a residual
+        connection.
+
+        @type in_channels: int
+        @param in_channels: Number of input channels.
+        @type out_channels: int
+        @param out_channels: Number of output channels.
+        @type n_blocks: int
+        @param n_blocks: Number of blocks to repeat. Defaults to C{1}.
+        @type e: float
+        @param e: Factor for number of intermediate channels. Defaults
+            to C{0.5}.
+        """
+        intermediate_channels = int(out_channels * e)
+        self.conv_1 = ConvModule(
+            in_channels=in_channels,
+            out_channels=intermediate_channels,
+            kernel_size=1,
+            padding=autopad(1, None),
+        )
+        self.conv_2 = ConvModule(
+            in_channels=in_channels,
+            out_channels=intermediate_channels,
+            kernel_size=1,
+            padding=autopad(1, None),
+        )
+        self.conv_3 = ConvModule(
+            in_channels=intermediate_channels * 2,
+            out_channels=out_channels,
+            kernel_size=1,
+            padding=autopad(1, None),
+        )
+        self.rep_stack = BlockRepeater(
+            block=BottleRep,
+            in_channels=intermediate_channels,
+            out_channels=intermediate_channels,
+            n_blocks=n_blocks // 2,
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        out_1 = self.conv_1(x)
+        out_1 = self.rep_stack(out_1)
+        out_2 = self.conv_2(x)
+        out = torch.cat((out_1, out_2), dim=1)
+        return self.conv_3(out)
+
+
+class BottleRep(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        block: type[nn.Module] = RepVGGBlock,
+        weight: bool = True,
+    ):
+        super().__init__()
+        """RepVGG bottleneck module.
+
+        @type in_channels: int
+        @param in_channels: Number of input channels.
+        @type out_channels: int
+        @param out_channels: Number of output channels.
+        @type block: L{nn.Module}
+        @param block: Block to use. Defaults to C{RepVGGBlock}.
+        @type weight: bool
+        @param weight: If using learnable or static shortcut weight.
+            Defaults to C{True}.
+        """
+        self.conv_1 = block(in_channels=in_channels, out_channels=out_channels)
+        self.conv_2 = block(
+            in_channels=out_channels, out_channels=out_channels
+        )
+        self.shortcut = in_channels == out_channels
+        self.alpha = nn.Parameter(torch.ones(1)) if weight else 1.0
+
+    def forward(self, x: Tensor) -> Tensor:
+        out = self.conv_1(x)
+        out = self.conv_2(out)
+        return out + self.alpha * x if self.shortcut else out
 
 
 class SpatialPyramidPoolingBlock(nn.Module):
@@ -640,104 +732,6 @@ class KeypointBlock(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         out = self.block(x)
         return out
-
-
-class RepUpBlock(nn.Module):
-    def __init__(
-        self,
-        in_channels: int,
-        in_channels_next: int,
-        out_channels: int,
-        n_repeats: int,
-    ):
-        """UpBlock used in RepPAN neck.
-
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input
-            which is used in concat.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of RepVGGBlock repeats.
-        """
-
-        super().__init__()
-
-        self.conv = ConvModule(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=1,
-            stride=1,
-        )
-        self.upsample = torch.nn.ConvTranspose2d(
-            in_channels=out_channels,
-            out_channels=out_channels,
-            kernel_size=2,
-            stride=2,
-            bias=True,
-        )
-        self.rep_block = BlockRepeater(
-            block=RepVGGBlock,
-            in_channels=in_channels_next + out_channels,
-            out_channels=out_channels,
-            n_blocks=n_repeats,
-        )
-
-    def forward(self, x0: Tensor, x1: Tensor) -> tuple[Tensor, Tensor]:
-        conv_out = self.conv(x0)
-        upsample_out = self.upsample(conv_out)
-        concat_out = torch.cat([upsample_out, x1], dim=1)
-        out = self.rep_block(concat_out)
-        return conv_out, out
-
-
-class RepDownBlock(nn.Module):
-    def __init__(
-        self,
-        in_channels: int,
-        downsample_out_channels: int,
-        in_channels_next: int,
-        out_channels: int,
-        n_repeats: int,
-    ):
-        """DownBlock used in RepPAN neck.
-
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type downsample_out_channels: int
-        @param downsample_out_channels: Number of output channels after
-            downsample.
-        @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input
-            which is used in concat.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of RepVGGBlock repeats.
-        """
-        super().__init__()
-
-        self.downsample = ConvModule(
-            in_channels=in_channels,
-            out_channels=downsample_out_channels,
-            kernel_size=3,
-            stride=2,
-            padding=3 // 2,
-        )
-        self.rep_block = BlockRepeater(
-            block=RepVGGBlock,
-            in_channels=downsample_out_channels + in_channels_next,
-            out_channels=out_channels,
-            n_blocks=n_repeats,
-        )
-
-    def forward(self, x0: Tensor, x1: Tensor) -> Tensor:
-        x = self.downsample(x0)
-        x = torch.cat([x, x1], dim=1)
-        x = self.rep_block(x)
-        return x
 
 
 T = TypeVar("T", int, tuple[int, ...])

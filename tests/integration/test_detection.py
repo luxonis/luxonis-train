@@ -7,7 +7,7 @@ from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
 
 
-def get_opts(backbone: str) -> dict[str, Any]:
+def get_opts_backbone(backbone: str) -> dict[str, Any]:
     return {
         "model": {
             "nodes": [
@@ -70,6 +70,42 @@ def get_opts(backbone: str) -> dict[str, Any]:
     }
 
 
+def get_opts_variant(variant: str) -> dict[str, Any]:
+    return {
+        "model": {
+            "nodes": [
+                {
+                    "name": "EfficientRep",
+                    "alias": "backbone",
+                    "params": {"variant": variant},
+                },
+                {
+                    "name": "RepPANNeck",
+                    "alias": "neck",
+                    "inputs": ["backbone"],
+                    "params": {"variant": variant},
+                },
+                {
+                    "name": "EfficientBBoxHead",
+                    "inputs": ["neck"],
+                },
+            ],
+            "losses": [
+                {
+                    "name": "AdaptiveDetectionLoss",
+                    "attached_to": "EfficientBBoxHead",
+                },
+            ],
+            "metrics": [
+                {
+                    "name": "MeanAveragePrecision",
+                    "attached_to": "EfficientBBoxHead",
+                },
+            ],
+        }
+    }
+
+
 def train_and_test(
     config: dict[str, Any],
     opts: dict[str, Any],
@@ -90,6 +126,17 @@ def test_backbones(
     config: dict[str, Any],
     parking_lot_dataset: LuxonisDataset,
 ):
-    opts = get_opts(backbone)
+    opts = get_opts_backbone(backbone)
+    opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
+    train_and_test(config, opts)
+
+
+@pytest.mark.parametrize("variant", ["n", "s", "m", "l"])
+def test_variants(
+    variant: str,
+    config: dict[str, Any],
+    parking_lot_dataset: LuxonisDataset,
+):
+    opts = get_opts_variant(variant)
     opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
     train_and_test(config, opts)
