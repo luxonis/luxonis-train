@@ -7,34 +7,34 @@ VariantLiteral: TypeAlias = Literal[
 ]
 
 
-class EfficientRepVariant(BaseModel):
+class RepPANNeckVariant(BaseModel):
     depth_multiplier: float
     width_multiplier: float
     block: Literal["RepBlock", "CSPStackRepBlock"]
     csp_e: float | None
 
 
-def get_variant(variant: VariantLiteral) -> EfficientRepVariant:
+def get_variant(variant: VariantLiteral) -> RepPANNeckVariant:
     variants = {
-        "n": EfficientRepVariant(
+        "n": RepPANNeckVariant(
             depth_multiplier=0.33,
             width_multiplier=0.25,
             block="RepBlock",
             csp_e=None,
         ),
-        "s": EfficientRepVariant(
+        "s": RepPANNeckVariant(
             depth_multiplier=0.33,
             width_multiplier=0.50,
             block="RepBlock",
             csp_e=None,
         ),
-        "m": EfficientRepVariant(
+        "m": RepPANNeckVariant(
             depth_multiplier=0.60,
             width_multiplier=0.75,
             block="CSPStackRepBlock",
             csp_e=2 / 3,
         ),
-        "l": EfficientRepVariant(
+        "l": RepPANNeckVariant(
             depth_multiplier=1.0,
             width_multiplier=1.0,
             block="CSPStackRepBlock",
