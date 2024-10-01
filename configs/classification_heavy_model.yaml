@@ -13,13 +13,13 @@ loader:
 
 trainer:
   preprocessing:
-    train_image_size: [&height 384, &width 512]
+    train_image_size: [384, 512]
     keep_aspect_ratio: True
     normalize:
       active: True
 
   batch_size: 8
-  epochs: &epochs 200
+  epochs: 200
   n_workers: 4
   validation_interval: 10
   n_log_images: 8
