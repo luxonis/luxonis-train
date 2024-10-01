@@ -43,11 +43,14 @@ def clear_files():
 @pytest.mark.parametrize(
     "config_file",
     [
-        "classification_model",
-        "segmentation_model",
-        "detection_model",
-        "keypoint_bbox_model",
-        "ddrnet_segmentation_model",
+        "classification_heavy_model",
+        "classification_light_model",
+        "segmentation_heavy_model",
+        "segmentation_light_model",
+        "detection_heavy_model",
+        "detection_light_model",
+        "keypoint_bbox_heavy_model",
+        "keypoint_bbox_light_model",
     ],
 )
 def test_predefined_models(
@@ -58,17 +61,21 @@ def test_predefined_models(
 ):
     config_file = f"configs/{config_file}.yaml"
     opts |= {
-        "loader.params.dataset_name": cifar10_dataset.dataset_name
-        if "classification_model" in config_file
-        else coco_dataset.dataset_name,
+        "loader.params.dataset_name": (
+            cifar10_dataset.dataset_name
+            if "classification" in config_file
+            else coco_dataset.dataset_name
+        ),
     }
+    opts["trainer.epochs"] = 10
+    del opts["trainer.callbacks"]
     model = LuxonisModel(config_file, opts)
     model.train()
     model.test()
 
 
 def test_multi_input(opts: dict[str, Any]):
-    config_file = "configs/example_multi_input.yaml"
+    config_file = "tests/configs/multi_input.yaml"
     model = LuxonisModel(config_file, opts)
     model.train()
     model.test(view="val")
@@ -139,6 +146,7 @@ def test_tune(opts: dict[str, Any], coco_dataset: LuxonisDataset):
         "model.losses.0.weight_uniform": [0.1, 0.9],
         "model.nodes.0.freezing.unfreeze_after_loguniform": [0.1, 0.9],
     }
+    opts["trainer.epochs"] = 10
     opts["loader.params.dataset_name"] = coco_dataset.identifier
     model = LuxonisModel("configs/example_tuning.yaml", opts)
     model.tune()
@@ -198,7 +206,7 @@ def test_callbacks(opts: dict[str, Any], parking_lot_dataset: LuxonisDataset):
 
 
 def test_freezing(opts: dict[str, Any], coco_dataset: LuxonisDataset):
-    config_file = "configs/segmentation_model.yaml"
+    config_file = "configs/segmentation_light_model.yaml"
     opts = deepcopy(opts)
     opts |= {
         "model.predefined_model.params": {
@@ -211,6 +219,7 @@ def test_freezing(opts: dict[str, Any], coco_dataset: LuxonisDataset):
         }
     }
     opts["trainer.epochs"] = 3
+    del opts["trainer.callbacks"]
     opts["loader.params.dataset_name"] = coco_dataset.identifier
     model = LuxonisModel(config_file, opts)
     model.train()

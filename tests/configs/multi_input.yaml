@@ -1,0 +1,114 @@
+loader:
+
+  # Yields "left", "right", "disparity", and "pointcloud" inputs.
+  # See implementation in `tests/integration/test_multi_input.py`.
+  name: CustomMultiInputLoader
+
+  # Name of the key in the batch that contains image-like data.
+  # Needs to be set for visualizers and evaluators to work.
+  image_source: left
+
+model:
+  name: example_multi_input
+  nodes:
+    - name: FullBackbone
+      alias: full_backbone
+
+    - name: RGBDBackbone
+      alias: rgbd_backbone
+      input_sources:
+        - left
+        - right
+        - disparity
+
+    - name: PointcloudBackbone
+      alias: pointcloud_backbone
+      input_sources:
+        - pointcloud
+
+    - name: FusionNeck
+      alias: fusion_neck
+      inputs:
+        - rgbd_backbone
+        - pointcloud_backbone
+      input_sources:
+        - disparity
+
+    - name: FusionNeck2
+      alias: fusion_neck_2
+      inputs:
+        - rgbd_backbone
+        - pointcloud_backbone
+        - full_backbone
+
+    - name: CustomSegHead1
+      alias: head_1
+      inputs:
+        - fusion_neck
+
+    - name: CustomSegHead2
+      alias: head_2
+      inputs:
+        - fusion_neck
+        - fusion_neck_2
+      input_sources:
+        - disparity
+
+  losses:
+    - name: BCEWithLogitsLoss
+      alias: loss_1
+      attached_to: head_1
+
+    - name: CrossEntropyLoss
+      alias: loss_2
+      attached_to: head_2
+
+  metrics:
+    - name: JaccardIndex
+      alias: jaccard_index_1
+      attached_to: head_1
+      is_main_metric: True
+      params:
+        task: binary
+
+    - name: JaccardIndex
+      alias: jaccard_index_2
+      attached_to: head_2
+      params:
+        task: binary
+
+  visualizers:
+    - name: SegmentationVisualizer
+      alias: seg_vis_1
+      attached_to: head_1
+      params:
+        colors: "#FF5055"
+
+    - name: SegmentationVisualizer
+      alias: seg_vis_2
+      attached_to: head_2
+      params:
+        colors: "#55AAFF"
+
+tracker:
+  project_name: multi_input_example
+  is_tensorboard: True
+
+trainer:
+  batch_size: 1
+  epochs: 10
+  n_workers: 4
+  validation_interval: 10
+  n_log_images: 4
+
+  callbacks:
+    - name: ExportOnTrainEnd
+
+  optimizer:
+    name: Adam
+    params:
+      lr: 0.01
+
+exporter:
+  onnx:
+    opset_version: 11
