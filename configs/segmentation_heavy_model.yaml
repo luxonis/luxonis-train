@@ -4,12 +4,10 @@
 model:
   name: ddrnet_segmentation
   predefined_model:
-    name: DDRNetSegmentationModel
+    name: SegmentationModel
     params:
-      task: binary
-      backbone_params:
-        use_aux_heads: True # set to False to disable auxiliary heads (for export)
-        variant: '23-slim'
+      variant: "heavy"
+
 
 loader:
   params:
@@ -17,8 +15,8 @@ loader:
 
 trainer:
   preprocessing:
-    train_image_size: [&height 256, &width 320]
-    keep_aspect_ratio: False
+    train_image_size: [&height 384, &width 512]
+    keep_aspect_ratio: True
     normalize:
       active: True
 

@@ -14,12 +14,20 @@ from .base_predefined_model import BasePredefinedModel
 @dataclass
 class DetectionModel(BasePredefinedModel):
     use_neck: bool = True
+    variant: str | None = None
     backbone_params: Params = field(default_factory=dict)
     neck_params: Params = field(default_factory=dict)
     head_params: Params = field(default_factory=dict)
     loss_params: Params = field(default_factory=dict)
     visualizer_params: Params = field(default_factory=dict)
     task_name: str | None = None
+
+    def __post_init__(self):
+        if self.variant == "heavy":
+            self.backbone_params.setdefault("variant", "l")
+        elif self.variant == "light":
+            self.backbone_params.setdefault("variant", "n")
+        self.loss_params.setdefault("n_warmup_epochs", 0)
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:

@@ -14,7 +14,7 @@ from .base_predefined_model import BasePredefinedModel
 
 @dataclass
 class ClassificationModel(BasePredefinedModel):
-    backbone: str = "MicroNet"
+    variant: str | None = None
     task: Literal["multiclass", "multilabel"] = "multiclass"
     backbone_params: Params = field(default_factory=dict)
     head_params: Params = field(default_factory=dict)
@@ -22,11 +22,17 @@ class ClassificationModel(BasePredefinedModel):
     visualizer_params: Params = field(default_factory=dict)
     task_name: str | None = None
 
+    def __post_init__(self):
+        if self.variant == "heavy":
+            self.backbone_params.setdefault("variant", "101")
+        elif self.variant == "light":
+            self.backbone_params.setdefault("variant", "18")
+
     @property
     def nodes(self) -> list[ModelNodeConfig]:
         return [
             ModelNodeConfig(
-                name=self.backbone,
+                name="ResNet",
                 alias="classification_backbone",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,

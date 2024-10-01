@@ -5,7 +5,7 @@ model:
   predefined_model:
     name: ClassificationModel
     params:
-      backbone: MicroNet
+      variant: "light"
       visualizer_params:
         font_scale: 0.5
         color: [255, 0, 0]
@@ -18,8 +18,8 @@ loader:
 
 trainer:
   preprocessing:
-    train_image_size: [&height 128, &width 128]
-    keep_aspect_ratio: False
+    train_image_size: [&height 384, &width 512]
+    keep_aspect_ratio: True
     normalize:
       active: True
 
@@ -34,9 +34,9 @@ trainer:
     - name: TestOnTrainEnd
 
   optimizer:
-    name: SGD
+    name: Adam
     params:
-      lr: 0.02
+      lr: 0.003
 
   scheduler:
     name: ConstantLR

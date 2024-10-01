@@ -1,14 +1,19 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from luxonis_train.config import LossModuleConfig, ModelNodeConfig, Params
+from luxonis_train.config import LossModuleConfig, ModelNodeConfig
 
 from .segmentation_model import SegmentationModel
 
 
 @dataclass
 class DDRNetSegmentationModel(SegmentationModel):
-    backbone: str = "DDRNet"
-    aux_head_params: Params = field(default_factory=dict)
+    variant: str | None = None
+
+    def __post_init__(self):
+        if self.variant == "heavy":
+            self.backbone_params.setdefault("variant", "23")
+        elif self.variant == "light":
+            self.backbone_params.setdefault("variant", "23-slim")
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
@@ -18,7 +23,7 @@ class DDRNetSegmentationModel(SegmentationModel):
 
         node_list = [
             ModelNodeConfig(
-                name=self.backbone,
+                name="DDRNet",
                 alias="ddrnet_backbone",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
@@ -32,7 +37,7 @@ class DDRNetSegmentationModel(SegmentationModel):
                 task=self.task_name,
             ),
         ]
-        if self.backbone_params.get("use_aux_heads", False):
+        if self.backbone_params.get("use_aux_heads", True):
             node_list.append(
                 ModelNodeConfig(
                     name="DDRNetSegmentationHead",

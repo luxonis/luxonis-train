@@ -1,0 +1,45 @@
+# Example configuration for training a predefined keypoint-detection model
+
+model:
+  name: coco_keypoints
+  predefined_model:
+    name: KeypointDetectionModel
+    params:
+      variant: heavy
+
+loader:
+  params:
+    dataset_name: coco_test
+
+trainer:
+  preprocessing:
+    train_image_size: [&height 384, &width 512]
+    keep_aspect_ratio: True
+    normalize:
+      active: True
+
+  batch_size: 4
+  epochs: &epochs 200
+  n_workers: 4
+  validation_interval: 10
+  n_log_images: 8
+
+  callbacks:
+    - name: ExportOnTrainEnd
+    - name: TestOnTrainEnd
+
+  optimizer:
+    name: SGD
+    params:
+      lr: 0.006              
+      momentum: 0.937    
+      weight_decay: 0.0005   
+      dampening: 0.0       
+      nesterov: false     
+
+  scheduler:
+    name: CosineAnnealingLR
+    params:
+      T_max: *epochs    
+      eta_min: 0.00001 
+      last_epoch: -1    

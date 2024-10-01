@@ -1,0 +1,42 @@
+# DDRNet-23-slim model for segmentation
+# Refer to here for optimal hyperparameters for this model: https://github.com/Deci-AI/super-gradients/blob/4797c974c7c445d12e2575c468848d9c3e04becd/src/super_gradients/recipes/cityscapes_ddrnet.yaml#L4
+
+model:
+  name: ddrnet_segmentation
+  predefined_model:
+    name: SegmentationModel
+    params:
+      variant: "light"
+
+loader:
+  params:
+    dataset_name: coco_test
+
+trainer:
+  preprocessing:
+    train_image_size: [&height 384, &width 512]
+    keep_aspect_ratio: True
+    normalize:
+      active: True
+
+  batch_size: 4
+  epochs: &epochs 500
+  num_workers: 4
+  validation_interval: 10
+  num_log_images: 8
+
+  callbacks:
+    - name: TestOnTrainEnd
+    - name: ExportOnTrainEnd
+
+  optimizer:
+    name: SGD
+    params:
+      lr: 0.01
+      momentum: 0.9
+      weight_decay: 0.0005
+
+  scheduler:
+    name: CosineAnnealingLR
+    params:
+      T_max: *epochs
