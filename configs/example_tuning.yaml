@@ -1,12 +1,12 @@
-# Example configuration for tuning a predefined segmentation model
+# Example configuration for tuning a predefined light segmentation model
+
 
 model:
-  name: coco_segmentation
+  name: segmentation_light
   predefined_model:
     name: SegmentationModel
     params:
-      backbone: MicroNet
-      task: binary
+      variant: light
 
 loader:
   params:
@@ -38,7 +38,12 @@ trainer:
       T_max: *epochs
       eta_min: 0
 
+
 tuner:
+  study_name: seg_study
+  n_trials: 10
+  storage:
+    storage_type: local
   params:
     trainer.optimizer.name_categorical: ["Adam", "SGD"]
     trainer.optimizer.params.lr_float: [0.0001, 0.001]

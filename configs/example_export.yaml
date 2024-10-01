@@ -1,8 +1,8 @@
-# Example configuration for exporting a predefined segmentation model
+# Example configuration for exporting a predefined light detection model
 
 model:
-  name: coco_segmentation
-  weights: null  # specify a path to the weights here
+  name: detection_light
+  weights: null  # TODO: Specify a path to the weights here
   predefined_model:
     name: DetectionModel
     params:

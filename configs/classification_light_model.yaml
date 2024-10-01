@@ -1,11 +1,11 @@
 # Example configuration for training a predefined light classification model
 
 model:
-  name: segmentation_light
+  name: classification_light
   predefined_model:
     name: ClassificationModel
     params:
-      variant: "light"
+      variant: light
 
 loader:
   params:

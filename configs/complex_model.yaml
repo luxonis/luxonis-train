@@ -2,29 +2,21 @@
 
 
 model:
-  name: coco_test
+  name: complex_model
   nodes:
     - name: EfficientRep
-      params:
-        variant: "n"
 
     - name: RepPANNeck
       inputs:
         - EfficientRep
 
-    - name: ImplicitKeypointBBoxHead
+    - name: EfficientKeypointBBoxHead
       inputs:
         - RepPANNeck
-      params:
-        conf_thres: 0.25
-        iou_thres: 0.45
+
       losses:
-        name: ImplicitKeypointBBoxLoss
-        params:
-          keypoint_regression_loss_weight: 0.5
-          keypoint_visibility_loss_weight: 0.7
-          bbox_loss_weight: 0.05
-          objectness_loss_weight: 0.2
+        name: EfficientKeypointBboxLoss
+
       metrics:
         - name: ObjectKeypointSimilarity
           is_main_metric: true
@@ -32,7 +24,6 @@ model:
 
       visualizers:
         name: MultiVisualizer
-        attached_to: ImplicitKeypointBBoxHead
         params:
           visualizers:
             - name: KeypointVisualizer
@@ -78,7 +69,6 @@ tracker:
   save_directory: output
   is_tensorboard: True
   is_wandb: False
-  wandb_entity: luxonis
   is_mlflow: False
 
 loader:

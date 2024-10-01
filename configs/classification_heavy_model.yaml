@@ -1,11 +1,11 @@
 # Example configuration for training a predefined heavy classification model
 
 model:
-  name: segmentation_light
+  name: classification_light
   predefined_model:
     name: ClassificationModel
     params:
-      variant: "heavy"
+      variant: heavy
 
 loader:
   params:
