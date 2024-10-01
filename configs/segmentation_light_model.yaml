@@ -32,12 +32,13 @@ trainer:
   optimizer:
     name: SGD
     params:
-      lr: 0.01
+      lr: 0.02
       momentum: 0.9
       weight_decay: 0.0005
       nesterov: true
-      
+
   scheduler:
     name: CosineAnnealingLR
     params:
       T_max: *epochs
+      eta_min: 0.0002 
