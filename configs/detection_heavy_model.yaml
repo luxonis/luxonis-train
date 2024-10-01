@@ -1,7 +1,7 @@
 # Example configuration for training a predefined heavy detection model
 
 model:
-  name: coco_detection
+  name: detection_heavy
   predefined_model:
     name: DetectionModel
     params:

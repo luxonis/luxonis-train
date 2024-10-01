@@ -1,7 +1,7 @@
 # Example configuration for training a predefined heavy classification model
 
 model:
-  name: cifar10_classification
+  name: segmentation_light
   predefined_model:
     name: ClassificationModel
     params:

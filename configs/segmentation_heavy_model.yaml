@@ -1,8 +1,7 @@
-# DDRNet-23-slim model for segmentation
-# Refer to here for optimal hyperparameters for this model: https://github.com/Deci-AI/super-gradients/blob/4797c974c7c445d12e2575c468848d9c3e04becd/src/super_gradients/recipes/cityscapes_ddrnet.yaml#L4
+# Example configuration for training a predefined heavy segmentation model
 
 model:
-  name: ddrnet_segmentation
+  name: segmentation_heavy
   predefined_model:
     name: SegmentationModel
     params:

@@ -1,7 +1,7 @@
 # Example configuration for training a predefined light segmentation model
 
 model:
-  name: ddrnet_segmentation
+  name: segmentation_light
   predefined_model:
     name: SegmentationModel
     params:
