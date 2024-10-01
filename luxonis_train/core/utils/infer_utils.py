@@ -10,6 +10,20 @@ from torch import Tensor
 from luxonis_train.attached_modules.visualizers import get_unnormalized_images
 from luxonis_train.enums import TaskType
 
+IMAGE_FORMATS = {
+    ".bmp",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".tif",
+    ".tiff",
+    ".dng",
+    ".webp",
+    ".mpo",
+    ".pfm",
+}
+VIDEO_FORMATS = {".mp4", ".mov", ".avi", ".mkv"}
+
 
 def render_visualizations(
     visualizations: dict[str, dict[str, Tensor]],

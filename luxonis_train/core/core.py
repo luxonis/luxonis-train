@@ -35,6 +35,8 @@ from .utils.export_utils import (
     try_onnx_simplify,
 )
 from .utils.infer_utils import (
+    IMAGE_FORMATS,
+    VIDEO_FORMATS,
     process_dataset_images,
     process_images,
     process_video,
@@ -42,20 +44,6 @@ from .utils.infer_utils import (
 from .utils.train_utils import create_trainer
 
 logger = getLogger(__name__)
-
-IMAGE_FORMATS = {
-    ".bmp",
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".tif",
-    ".tiff",
-    ".dng",
-    ".webp",
-    ".mpo",
-    ".pfm",
-}
-VIDEO_FORMATS = {".mp4", ".mov", ".avi", ".mkv"}
 
 
 class LuxonisModel:
