@@ -47,26 +47,24 @@ class DetectionModel(BasePredefinedModel):
         self,
         variant: VariantLiteral = "light",
         use_neck: bool = True,
+        backbone: str | None = None,
         backbone_params: Params | None = None,
         neck_params: Params | None = None,
         head_params: Params | None = None,
         loss_params: Params | None = None,
-        task_name: str | None = None,
         visualizer_params: Params | None = None,
-        backbone: str | None = None,
+        task_name: str | None = None,
     ):
-        self.variant = variant
-        self.use_neck = use_neck
-
         var_config = get_variant(variant)
 
+        self.use_neck = use_neck
         self.backbone_params = backbone_params or var_config.backbone_params
+        self.backbone = backbone or var_config.backbone
         self.neck_params = neck_params or {}
         self.head_params = head_params or {}
         self.loss_params = loss_params or {"n_warmup_epochs": 0}
         self.visualizer_params = visualizer_params or {}
         self.task_name = task_name or "boundingbox"
-        self.backbone = backbone or var_config.backbone
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:

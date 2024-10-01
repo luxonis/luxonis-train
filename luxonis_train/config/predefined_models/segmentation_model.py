@@ -46,19 +46,18 @@ class SegmentationModel(BasePredefinedModel):
     def __init__(
         self,
         variant: VariantLiteral = "light",
-        task: Literal["binary", "multiclass"] = "binary",
+        backbone: str | None = None,
         backbone_params: Params | None = None,
         head_params: Params | None = None,
         aux_head_params: Params | None = None,
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
+        task: Literal["binary", "multiclass"] = "binary",
         task_name: str | None = None,
-        backbone: str | None = None,
     ):
-        self.variant = variant
-
         var_config = get_variant(variant)
 
+        self.backbone = backbone or var_config.backbone
         self.backbone_params = backbone_params or var_config.backbone_params
         self.head_params = head_params or {}
         self.aux_head_params = aux_head_params or {}
@@ -66,16 +65,17 @@ class SegmentationModel(BasePredefinedModel):
         self.visualizer_params = visualizer_params or {}
         self.task = task
         self.task_name = task_name or "segmentation"
-        self.backbone = backbone or var_config.backbone
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
         """Defines the model nodes, including backbone and head."""
         self.head_params.update({"attach_index": -1})
         self.aux_head_params.update({"attach_index": -2})
-        self.aux_head_params.update(
-            {"remove_on_export": True}
-        ) if "remove_on_export" not in self.aux_head_params else None
+        (
+            self.aux_head_params.update({"remove_on_export": True})
+            if "remove_on_export" not in self.aux_head_params
+            else None
+        )
 
         node_list = [
             ModelNodeConfig(
@@ -111,9 +111,11 @@ class SegmentationModel(BasePredefinedModel):
         """Defines the loss module for the segmentation task."""
         loss_list = [
             LossModuleConfig(
-                name="BCEWithLogitsLoss"
-                if self.task == "binary"
-                else "CrossEntropyLoss",
+                name=(
+                    "BCEWithLogitsLoss"
+                    if self.task == "binary"
+                    else "CrossEntropyLoss"
+                ),
                 alias="segmentation_loss",
                 attached_to="segmentation_head",
                 params=self.loss_params,
@@ -123,9 +125,11 @@ class SegmentationModel(BasePredefinedModel):
         if self.backbone_params.get("use_aux_heads", False):
             loss_list.append(
                 LossModuleConfig(
-                    name="BCEWithLogitsLoss"
-                    if self.task == "binary"
-                    else "CrossEntropyLoss",
+                    name=(
+                        "BCEWithLogitsLoss"
+                        if self.task == "binary"
+                        else "CrossEntropyLoss"
+                    ),
                     alias="aux_segmentation_loss",
                     attached_to="aux_segmentation_head",
                     params=self.loss_params,

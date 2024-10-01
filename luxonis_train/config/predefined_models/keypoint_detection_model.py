@@ -47,34 +47,32 @@ class KeypointDetectionModel(BasePredefinedModel):
         self,
         variant: VariantLiteral = "light",
         use_neck: bool = True,
+        backbone: str | None = None,
         backbone_params: Params | None = None,
         neck_params: Params | None = None,
-        head_params: Params | None = None,
-        loss_params: Params | None = None,
-        head_type: Literal[
+        head: Literal[
             "ImplicitKeypointBBoxHead", "EfficientKeypointBBoxHead"
         ] = "EfficientKeypointBBoxHead",
+        head_params: Params | None = None,
+        loss_params: Params | None = None,
         kpt_visualizer_params: Params | None = None,
         bbox_visualizer_params: Params | None = None,
         bbox_task_name: str | None = None,
         kpt_task_name: str | None = None,
-        backbone: str | None = None,
     ):
-        self.variant = variant
-        self.use_neck = use_neck
-
         var_config = get_variant(variant)
 
+        self.use_neck = use_neck
+        self.backbone = backbone or var_config.backbone
         self.backbone_params = backbone_params or var_config.backbone_params
         self.neck_params = neck_params or {}
+        self.head = head
         self.head_params = head_params or {}
         self.loss_params = loss_params or {"n_warmup_epochs": 0}
         self.kpt_visualizer_params = kpt_visualizer_params or {}
         self.bbox_visualizer_params = bbox_visualizer_params or {}
         self.bbox_task_name = bbox_task_name
         self.kpt_task_name = kpt_task_name
-        self.head_type = head_type
-        self.backbone = backbone or var_config.backbone
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
@@ -107,11 +105,13 @@ class KeypointDetectionModel(BasePredefinedModel):
 
         nodes.append(
             ModelNodeConfig(
-                name=self.head_type,
+                name=self.head,
                 alias="kpt_detection_head",
-                inputs=["kpt_detection_neck"]
-                if self.use_neck
-                else ["kpt_detection_backbone"],
+                inputs=(
+                    ["kpt_detection_neck"]
+                    if self.use_neck
+                    else ["kpt_detection_backbone"]
+                ),
                 freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
                 task=task,
@@ -124,7 +124,7 @@ class KeypointDetectionModel(BasePredefinedModel):
         """Defines the loss module for the keypoint detection task."""
         return [
             LossModuleConfig(
-                name=self.head_type.replace("Head", "Loss"),
+                name=self.head.replace("Head", "Loss"),
                 attached_to="kpt_detection_head",
                 params=self.loss_params,
                 weight=1.0,
