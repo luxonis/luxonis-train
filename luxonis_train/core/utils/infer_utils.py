@@ -87,7 +87,7 @@ def process_video(
     show: bool = False,
 ) -> None:
     """Handles inference on a video."""
-    cap = cv2.VideoCapture(filename=str(video_path))
+    cap = cv2.VideoCapture(filename=str(video_path))  # type: ignore
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     progress_bar = tqdm.tqdm(
         total=total_frames, position=0, leave=True, desc="Processing video"
@@ -121,7 +121,7 @@ def process_video(
                         fourcc=cv2.VideoWriter_fourcc(*"mp4v"),
                         fps=cap.get(cv2.CAP_PROP_FPS),
                         frameSize=(viz_arrs[0].shape[1], viz_arrs[0].shape[0]),
-                    )
+                    )  # type: ignore
                 for viz_arr in viz_arrs:
                     out_writers[name].write(viz_arr)
 
