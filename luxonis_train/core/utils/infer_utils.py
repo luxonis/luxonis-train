@@ -15,7 +15,7 @@ def render_visualizations(
     visualizations: dict[str, dict[str, Tensor]],
     save_dir: str | Path | None,
     show: bool = True,
-) -> None:
+) -> dict[str, list[np.ndarray]]:
     """Render or save visualizations."""
     save_dir = Path(save_dir) if save_dir is not None else None
     if save_dir is not None:
