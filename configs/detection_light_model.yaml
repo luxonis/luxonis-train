@@ -18,7 +18,7 @@ trainer:
     normalize:
       active: True
 
-  batch_size: 4
+  batch_size: 8
   epochs: &epochs 200
   n_workers: 4
   validation_interval: 10
@@ -31,7 +31,7 @@ trainer:
   optimizer:
     name: SGD
     params:
-      lr: 0.01              
+      lr: 0.006              
       momentum: 0.937    
       weight_decay: 0.0005   
       dampening: 0.0       

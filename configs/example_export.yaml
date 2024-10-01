@@ -4,10 +4,8 @@ model:
   name: coco_segmentation
   weights: null  # specify a path to the weights here
   predefined_model:
-    name: SegmentationModel
-    params:
-      backbone: MicroNet
-      task: binary
+    name: DetectionModel
+    variant: light
 
 loader:
   params:
@@ -15,12 +13,12 @@ loader:
 
 trainer:
   preprocessing:
-    train_image_size: [&height 256, &width 320]
-    keep_aspect_ratio: False
+    train_image_size: [&height 384, &width 512]
+    keep_aspect_ratio: True
     normalize:
       active: True
 
-  batch_size: 4
+  batch_size: 8
   epochs: &epochs 200
   n_workers: 4
   validation_interval: 10

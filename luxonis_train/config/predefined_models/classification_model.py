@@ -19,8 +19,15 @@ class ClassificationModel(BasePredefinedModel):
     backbone_params: Params = field(default_factory=dict)
     head_params: Params = field(default_factory=dict)
     loss_params: Params = field(default_factory=dict)
-    visualizer_params: Params = field(default_factory=dict)
     task_name: str | None = None
+    visualizer_params: Params = field(
+        default_factory=lambda: {
+            "font_scale": 0.5,
+            "color": [255, 0, 0],
+            "thickness": 2,
+            "include_plot": True,
+        }
+    )
 
     def __post_init__(self):
         if self.variant == "heavy":

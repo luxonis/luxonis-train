@@ -18,7 +18,7 @@ trainer:
     normalize:
       active: True
 
-  batch_size: 4
+  batch_size: 8
   epochs: &epochs 200
   n_workers: 4
   validation_interval: 10

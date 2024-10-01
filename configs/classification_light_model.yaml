@@ -6,11 +6,6 @@ model:
     name: ClassificationModel
     params:
       variant: "light"
-      visualizer_params:
-        font_scale: 0.5
-        color: [255, 0, 0]
-        thickness: 2
-        include_plot: True
 
 loader:
   params:
@@ -23,7 +18,7 @@ trainer:
     normalize:
       active: True
 
-  batch_size: 4
+  batch_size: 8
   epochs: &epochs 200
   n_workers: 4
   validation_interval: 10
