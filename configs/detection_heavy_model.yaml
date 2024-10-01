@@ -5,7 +5,7 @@ model:
   predefined_model:
     name: DetectionModel
     params:
-      variant: light
+      variant: heavy
 
 loader:
   params:
