@@ -1,4 +1,4 @@
-# Example configuration for training a predefined keypoint-detection model
+# Example configuration for training a predefined light keypoint-detection model
 
 model:
   name: coco_keypoints

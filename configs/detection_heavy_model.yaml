@@ -1,4 +1,4 @@
-# Example configuration for training a predefined detection model
+# Example configuration for training a predefined heavy detection model
 
 model:
   name: coco_detection

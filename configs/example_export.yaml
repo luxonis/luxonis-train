@@ -5,7 +5,8 @@ model:
   weights: null  # specify a path to the weights here
   predefined_model:
     name: DetectionModel
-    variant: light
+    params:
+      variant: light
 
 loader:
   params:
@@ -31,6 +32,7 @@ trainer:
     name: ConstantLR
 
 exporter:
+  output_names: [output1_yolov6r2, output2_yolov6r2, output3_yolov6r2]
   onnx:
     opset_version: 11
   blobconverter:

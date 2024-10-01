@@ -1,5 +1,6 @@
-from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, TypeAlias
+
+from pydantic import BaseModel
 
 from luxonis_train.config import (
     AttachedModuleConfig,
@@ -11,35 +12,66 @@ from luxonis_train.config import (
 
 from .base_predefined_model import BasePredefinedModel
 
+VariantLiteral: TypeAlias = Literal["lite", "heavy"]
 
-@dataclass
+
+class ClassificationVariant(BaseModel):
+    backbone: str
+    backbone_params: Params
+
+
+def get_variant(variant: VariantLiteral) -> ClassificationVariant:
+    """Returns the specific variant configuration for the
+    ClassificationModel."""
+    variants = {
+        "light": ClassificationVariant(
+            backbone="ResNet",
+            backbone_params={"variant": "18"},
+        ),
+        "heavy": ClassificationVariant(
+            backbone="ResNet",
+            backbone_params={"variant": "101"},
+        ),
+    }
+
+    if variant not in variants:
+        raise ValueError(
+            f"Classification variant should be one of {list(variants.keys())}, got '{variant}'."
+        )
+
+    return variants[variant]
+
+
 class ClassificationModel(BasePredefinedModel):
-    variant: str | None = None
-    task: Literal["multiclass", "multilabel"] = "multiclass"
-    backbone_params: Params = field(default_factory=dict)
-    head_params: Params = field(default_factory=dict)
-    loss_params: Params = field(default_factory=dict)
-    task_name: str | None = None
-    visualizer_params: Params = field(
-        default_factory=lambda: {
-            "font_scale": 0.5,
-            "color": [255, 0, 0],
-            "thickness": 2,
-            "include_plot": True,
-        }
-    )
+    def __init__(
+        self,
+        variant: VariantLiteral = "light",
+        task: Literal["multiclass", "multilabel"] = "multiclass",
+        backbone_params: Params | None = None,
+        head_params: Params | None = None,
+        loss_params: Params | None = None,
+        task_name: str | None = None,
+        visualizer_params: Params | None = None,
+        backbone: str | None = None,
+    ):
+        self.variant = variant
 
-    def __post_init__(self):
-        if self.variant == "heavy":
-            self.backbone_params.setdefault("variant", "101")
-        elif self.variant == "light":
-            self.backbone_params.setdefault("variant", "18")
+        var_config = get_variant(variant)
+
+        self.backbone_params = backbone_params or var_config.backbone_params
+        self.head_params = head_params or {}
+        self.loss_params = loss_params or {}
+        self.visualizer_params = visualizer_params or {}
+        self.task = task
+        self.task_name = task_name or "classification"
+        self.backbone = backbone or var_config.backbone
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
+        """Defines the model nodes, including backbone and head."""
         return [
             ModelNodeConfig(
-                name="ResNet",
+                name=self.backbone,
                 alias="classification_backbone",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
@@ -56,6 +88,7 @@ class ClassificationModel(BasePredefinedModel):
 
     @property
     def losses(self) -> list[LossModuleConfig]:
+        """Defines the loss module for the classification task."""
         return [
             LossModuleConfig(
                 name="CrossEntropyLoss",
@@ -68,6 +101,7 @@ class ClassificationModel(BasePredefinedModel):
 
     @property
     def metrics(self) -> list[MetricModuleConfig]:
+        """Defines the metrics used for evaluation."""
         return [
             MetricModuleConfig(
                 name="F1Score",
@@ -92,6 +126,7 @@ class ClassificationModel(BasePredefinedModel):
 
     @property
     def visualizers(self) -> list[AttachedModuleConfig]:
+        """Defines the visualizer used for the classification task."""
         return [
             AttachedModuleConfig(
                 name="ClassificationVisualizer",

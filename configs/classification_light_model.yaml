@@ -1,4 +1,4 @@
-# Example configuration for training a predefined segmentation model
+# Example configuration for training a predefined light classification model
 
 model:
   name: cifar10_classification

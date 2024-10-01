@@ -1,5 +1,6 @@
-from dataclasses import dataclass, field
 from typing import Literal
+
+from pydantic import BaseModel
 
 from luxonis_train.config import (
     AttachedModuleConfig,
@@ -11,26 +12,67 @@ from luxonis_train.config import (
 
 from .base_predefined_model import BasePredefinedModel
 
+VariantLiteral = Literal["light", "heavy"]
 
-@dataclass
+
+class SegmentationVariant(BaseModel):
+    backbone: str
+    backbone_params: Params
+
+
+def get_variant(variant: VariantLiteral) -> SegmentationVariant:
+    """Returns the specific variant configuration for the
+    SegmentationModel."""
+    variants = {
+        "light": SegmentationVariant(
+            backbone="DDRNet",
+            backbone_params={
+                "variant": "23-slim"
+            },  # light version uses '23-slim'
+        ),
+        "heavy": SegmentationVariant(
+            backbone="DDRNet",
+            backbone_params={"variant": "23"},  # heavy version uses '23'
+        ),
+    }
+
+    if variant not in variants:
+        raise ValueError(
+            f"Segmentation variant should be one of {list(variants.keys())}, got '{variant}'."
+        )
+
+    return variants[variant]
+
+
 class SegmentationModel(BasePredefinedModel):
-    variant: str | None = None
-    task: Literal["binary", "multiclass"] = "binary"
-    backbone_params: Params = field(default_factory=dict)
-    head_params: Params = field(default_factory=dict)
-    aux_head_params: Params = field(default_factory=dict)
-    loss_params: Params = field(default_factory=dict)
-    visualizer_params: Params = field(default_factory=dict)
-    task_name: str | None = None
+    def __init__(
+        self,
+        variant: VariantLiteral = "light",
+        task: Literal["binary", "multiclass"] = "binary",
+        backbone_params: Params | None = None,
+        head_params: Params | None = None,
+        aux_head_params: Params | None = None,
+        loss_params: Params | None = None,
+        visualizer_params: Params | None = None,
+        task_name: str | None = None,
+        backbone: str | None = None,
+    ):
+        self.variant = variant
 
-    def __post_init__(self):
-        if self.variant == "heavy":
-            self.backbone_params.setdefault("variant", "23")
-        elif self.variant == "light":
-            self.backbone_params.setdefault("variant", "23-slim")
+        var_config = get_variant(variant)
+
+        self.backbone_params = backbone_params or var_config.backbone_params
+        self.head_params = head_params or {}
+        self.aux_head_params = aux_head_params or {}
+        self.loss_params = loss_params or {}
+        self.visualizer_params = visualizer_params or {}
+        self.task = task
+        self.task_name = task_name or "segmentation"
+        self.backbone = backbone or var_config.backbone
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
+        """Defines the model nodes, including backbone and head."""
         self.head_params.update({"attach_index": -1})
         self.aux_head_params.update({"attach_index": -2})
         self.aux_head_params.update(
@@ -39,7 +81,7 @@ class SegmentationModel(BasePredefinedModel):
 
         node_list = [
             ModelNodeConfig(
-                name="DDRNet",
+                name=self.backbone,
                 alias="ddrnet_backbone",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
@@ -68,6 +110,7 @@ class SegmentationModel(BasePredefinedModel):
 
     @property
     def losses(self) -> list[LossModuleConfig]:
+        """Defines the loss module for the segmentation task."""
         loss_list = [
             LossModuleConfig(
                 name="BCEWithLogitsLoss"
@@ -95,6 +138,7 @@ class SegmentationModel(BasePredefinedModel):
 
     @property
     def metrics(self) -> list[MetricModuleConfig]:
+        """Defines the metrics used for evaluation."""
         return [
             MetricModuleConfig(
                 name="JaccardIndex",
@@ -113,6 +157,7 @@ class SegmentationModel(BasePredefinedModel):
 
     @property
     def visualizers(self) -> list[AttachedModuleConfig]:
+        """Defines the visualizer used for the segmentation task."""
         return [
             AttachedModuleConfig(
                 name="SegmentationVisualizer",
