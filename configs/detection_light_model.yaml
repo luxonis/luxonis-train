@@ -16,7 +16,7 @@ loader:
 
 trainer:
   preprocessing:
-    train_image_size: [&height 128, &width 128]
+    train_image_size: [&height 384, &width 512]
     keep_aspect_ratio: True
     normalize:
       active: True
