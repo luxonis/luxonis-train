@@ -35,7 +35,7 @@ trainer:
       momentum: 0.937    
       weight_decay: 0.0005   
       dampening: 0.0       
-      nesterov: false     
+      nesterov: true     
 
   scheduler:
     name: CosineAnnealingLR

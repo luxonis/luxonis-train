@@ -35,11 +35,11 @@ trainer:
       momentum: 0.937    
       weight_decay: 0.0005   
       dampening: 0.0       
-      nesterov: false     
+      nesterov: true     
 
   scheduler:
     name: CosineAnnealingLR
     params:
       T_max: *epochs     
-      eta_min: 0.00001 
+      eta_min: 0.0001 
       last_epoch: -1        
