@@ -88,7 +88,6 @@ def process_video(
         model, view, (int(cap.get(4)), int(cap.get(3)), 3)
     )
 
-    counter = 0
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
