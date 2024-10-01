@@ -298,10 +298,15 @@ class LuxonisLightningModule(pl.LightningModule):
             for source_name, shape in shapes.items()
         }
 
-        for node_name, (
-            Node,
-            node_kwargs,
-        ), node_input_names, _ in traverse_graph(self.graph, nodes):
+        for (
+            node_name,
+            (
+                Node,
+                node_kwargs,
+            ),
+            node_input_names,
+            _,
+        ) in traverse_graph(self.graph, nodes):
             node_dummy_inputs: list[Packet[Tensor]] = []
             """List of dummy input packets for the node.
 
@@ -529,6 +534,14 @@ class LuxonisLightningModule(pl.LightningModule):
             f"{node_name}/{output_name}/{i}"
             for node_name, output_name, i in output_order
         ]
+
+        if not self.cfg.exporter.output_names:
+            idx = 1
+            # Set to output names required by DAI
+            for i, output_name in enumerate(output_names):
+                if output_name.startswith("EfficientBBoxHead"):
+                    output_names[i] = f"output{idx}_yolov6r2"
+                    idx += 1
 
         old_forward = self.forward
 
