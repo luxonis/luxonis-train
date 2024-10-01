@@ -115,12 +115,12 @@ def process_video(
             for name, viz_arrs in rendered_visualizations.items():
                 if name not in out_writers:
                     out_writers[name] = cv2.VideoWriter(
-                        filename=str(
+                        filename=str(  # type: ignore
                             save_dir / f"{name.replace('/', '-')}.mp4"
                         ),
-                        fourcc=cv2.VideoWriter_fourcc(*"mp4v"),
-                        fps=cap.get(cv2.CAP_PROP_FPS),
-                        frameSize=(viz_arrs[0].shape[1], viz_arrs[0].shape[0]),
+                        fourcc=cv2.VideoWriter_fourcc(*"mp4v"),  # type: ignore
+                        fps=cap.get(cv2.CAP_PROP_FPS),  # type: ignore
+                        frameSize=(viz_arrs[0].shape[1], viz_arrs[0].shape[0]),  # type: ignore
                     )  # type: ignore
                 for viz_arr in viz_arrs:
                     out_writers[name].write(viz_arr)
