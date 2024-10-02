@@ -44,14 +44,14 @@ See an example configuration file using this predefined model [here](../../../co
 | Key               | Type                              | Default value | Description                                                                                      |
 | ----------------- | --------------------------------- | ------------- | ------------------------------------------------------------------------------------------------ |
 | variant           | Literal\["light", "heavy"\]       | "light"       | Defines the variant of the model. "light" uses DDRNet-23-slim, "heavy" uses DDRNet-23.           |
-| task              | Literal\["binary", "multiclass"\] | "binary"      | Type of the task of the model.                                                                   |
-| task_name         | str \| None                       | None          | Custom task name for the head.                                                                   |
 | backbone          | str                               | "DDRNet"      | Name of the node to be used as a backbone.                                                       |
 | backbone_params   | dict                              | {}            | Additional parameters for the backbone. If not provided, variant-specific defaults will be used. |
 | head_params       | dict                              | {}            | Additional parameters for the head.                                                              |
 | aux_head_params   | dict                              | {}            | Additional parameters for auxiliary heads.                                                       |
 | loss_params       | dict                              | {}            | Additional parameters for the loss.                                                              |
 | visualizer_params | dict                              | {}            | Additional parameters for the visualizer.                                                        |
+| task              | Literal\["binary", "multiclass"\] | "binary"      | Type of the task of the model.                                                                   |
+| task_name         | str \| None                       | None          | Custom task name for the head.                                                                   |
 
 ## DetectionModel
 
@@ -75,12 +75,14 @@ See an example configuration file using this predefined model [here](../../../co
 | Key               | Type                        | Default value  | Description                                                                                 |
 | ----------------- | --------------------------- | -------------- | ------------------------------------------------------------------------------------------- |
 | variant           | Literal\["light", "heavy"\] | "light"        | Defines the variant of the model. "light" uses EfficientRep-N, "heavy" uses EfficientRep-L. |
+| use_neck          | bool                        | True           | Whether to include the neck in the model.                                                   |
 | backbone          | str                         | "EfficientRep" | Name of the node to be used as a backbone.                                                  |
 | backbone_params   | dict                        | {}             | Additional parameters to the backbone.                                                      |
 | neck_params       | dict                        | {}             | Additional parameters to the neck.                                                          |
 | head_params       | dict                        | {}             | Additional parameters to the head.                                                          |
 | loss_params       | dict                        | {}             | Additional parameters to the loss.                                                          |
 | visualizer_params | dict                        | {}             | Additional parameters to the visualizer.                                                    |
+| task_name         | str \| None                 | None           | Custom task name for the head.                                                              |
 
 ## KeypointDetectionModel
 
@@ -94,10 +96,8 @@ See an example configuration file using this predefined model [here](../../../co
 | ------------------------------------------------------------------------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [EfficientRep](../../nodes/README.md#efficientrep)                                                      | kpt_detection_backbone | Backbone of the model.. Available variants: "light" (EfficientRep-N) and "heavy" (EfficientRep-L).                                                   |
 | [RepPANNeck](../../nodes/README.md#reppanneck)                                                          | kpt_detection_neck     | Neck of the model.                                                                                                                                   |
-| [ImplicitKeypointBBoxHead](../../nodes/README.md#implicitkeypointbboxhead)                              | kpt_detection_head     | Possible head of the model, changes depending on the value of `head_type` argument.                                                                  |
-| [EfficientKeypointBBoxHead](../../nodes/README.md#efficientkeypointbboxhead)                            | kpt_detection_head     | Possible head of the model, changes depending on the value of `head_type` argument                                                                   |
-| [ImplicitKeypointBBoxLoss](../../attached_modules/losses/README.md#implicitkeypointbboxloss)            | kpt_detection_loss     | Loss of the model if the `head_type` is set to "ImplicitKeypointBBoxHead"                                                                            |
-| [EfficientKeypointBBoxLoss](../../attached_modules/losses/README.md#efficientkeypointbboxloss)          | kpt_detection_loss     | Loss of the model if `head_type` is set to "EfficientKeypointBBoxHead".                                                                              |
+| [EfficientKeypointBBoxHead](../../nodes/README.md#efficientkeypointbboxhead)                            | kpt_detection_head     | Head of the model.                                                                                                                                   |
+| [EfficientKeypointBBoxLoss](../../attached_modules/losses/README.md#efficientkeypointbboxloss)          | kpt_detection_loss     | Loss of the model.                                                                                                                                   |
 | [ObjectKeypointSimilarity](../../attached_modules/metrics/README.md#objectkeypointsimilarity)           | kpt_detection_oks      | Main metric of the model.                                                                                                                            |
 | [MeanAveragePrecisionKeypoints](../../attached_modules/metrics/README.md#meanaverageprecisionkeypoints) | kpt_detection_map      | Secondary metric of the model.                                                                                                                       |
 | [BBoxVisualizer](../../attached_modules/visualizers/README.md#bboxvisualizer)                           |                        | Visualizer for bounding boxes. Combined with keypoint visualizer in [MultiVisualizer](../../attached_modules/visualizers/README.md#multivisualizer). |
@@ -105,20 +105,19 @@ See an example configuration file using this predefined model [here](../../../co
 
 **Params**
 
-| Key                    | Type                        | Default value               | Description                                                                                 |
-| ---------------------- | --------------------------- | --------------------------- | ------------------------------------------------------------------------------------------- |
-| variant                | Literal\["light", "heavy"\] | "light"                     | Defines the variant of the model. "light" uses EfficientRep-N, "heavy" uses EfficientRep-L. |
-| backbone               | str                         | "EfficientRep"              | Name of the node to be used as a backbone.                                                  |
-| use_neck               | bool                        | True                        | Whether to include the neck in the model.                                                   |
-| backbone_params        | dict                        | {}                          | Additional parameters to the backbone.                                                      |
-| neck_params            | dict                        | {}                          | Additional parameters to the neck.                                                          |
-| head_params            | dict                        | {}                          | Additional parameters to the head.                                                          |
-| head_type              | str                         | "EfficientKeypointBBoxHead" | Type of the head.                                                                           |
-| loss_params            | dict                        | {}                          | Additional parameters to the loss.                                                          |
-| kpt_visualizer_params  | dict                        | {}                          | Additional parameters to the keypoint visualizer.                                           |
-| bbox_visualizer_params | dict                        | {}                          | Additional parameters to the bbox visualizer.                                               |
-| bbox_task_name         | str \| None                 | None                        | Custom task name for the detection head.                                                    |
-| kpt_task_name          | str \| None                 | None                        | Custom task name for the keypoint head.                                                     |
+| Key                    | Type                        | Default value  | Description                                                                                 |
+| ---------------------- | --------------------------- | -------------- | ------------------------------------------------------------------------------------------- |
+| variant                | Literal\["light", "heavy"\] | "light"        | Defines the variant of the model. "light" uses EfficientRep-N, "heavy" uses EfficientRep-L. |
+| use_neck               | bool                        | True           | Whether to include the neck in the model.                                                   |
+| backbone               | str                         | "EfficientRep" | Name of the node to be used as a backbone.                                                  |
+| backbone_params        | dict                        | {}             | Additional parameters to the backbone.                                                      |
+| neck_params            | dict                        | {}             | Additional parameters to the neck.                                                          |
+| head_params            | dict                        | {}             | Additional parameters to the head.                                                          |
+| loss_params            | dict                        | {}             | Additional parameters to the loss.                                                          |
+| kpt_visualizer_params  | dict                        | {}             | Additional parameters to the keypoint visualizer.                                           |
+| bbox_visualizer_params | dict                        | {}             | Additional parameters to the bbox visualizer.                                               |
+| bbox_task_name         | str \| None                 | None           | Custom task name for the detection head.                                                    |
+| kpt_task_name          | str \| None                 | None           | Custom task name for the keypoint head.                                                     |
 
 ## ClassificationModel
 
@@ -143,9 +142,9 @@ See an example configuration file using this predefined model [here](../../../co
 | ----------------- | ------------------------------------- | ------------- | ----------------------------------------------------------------------------------- |
 | variant           | Literal\["light", "heavy"\]           | "light"       | Defines the variant of the model.  "light" uses ResNet-18, "heavy" uses ResNet-101. |
 | backbone          | str                                   | "ResNet"      | Name of the node to be used as a backbone.                                          |
-| task              | Literal\["multiclass", "multilabel"\] | "multiclass"  | Type of the task of the model.                                                      |
-| task_name         | str \| None                           | None          | Custom task name for the head.                                                      |
 | backbone_params   | dict                                  | {}            | Additional parameters to the backbone.                                              |
 | head_params       | dict                                  | {}            | Additional parameters to the head.                                                  |
 | loss_params       | dict                                  | {}            | Additional parameters to the loss.                                                  |
 | visualizer_params | dict                                  | {}            | Additional parameters to the visualizer.                                            |
+| task              | Literal\["multiclass", "multilabel"\] | "multiclass"  | Type of the task of the model.                                                      |
+| task_name         | str \| None                           | None          | Custom task name for the head.                                                      |

@@ -50,9 +50,6 @@ class KeypointDetectionModel(BasePredefinedModel):
         backbone: str | None = None,
         backbone_params: Params | None = None,
         neck_params: Params | None = None,
-        head: Literal[
-            "ImplicitKeypointBBoxHead", "EfficientKeypointBBoxHead"
-        ] = "EfficientKeypointBBoxHead",
         head_params: Params | None = None,
         loss_params: Params | None = None,
         kpt_visualizer_params: Params | None = None,
@@ -70,7 +67,6 @@ class KeypointDetectionModel(BasePredefinedModel):
             else var_config.backbone_params
         ) or {}
         self.neck_params = neck_params or {}
-        self.head = head
         self.head_params = head_params or {}
         self.loss_params = loss_params or {"n_warmup_epochs": 0}
         self.kpt_visualizer_params = kpt_visualizer_params or {}
@@ -109,7 +105,7 @@ class KeypointDetectionModel(BasePredefinedModel):
 
         nodes.append(
             ModelNodeConfig(
-                name=self.head,
+                name="EfficientKeypointBBoxHead",
                 alias="kpt_detection_head",
                 inputs=(
                     ["kpt_detection_neck"]
@@ -128,7 +124,7 @@ class KeypointDetectionModel(BasePredefinedModel):
         """Defines the loss module for the keypoint detection task."""
         return [
             LossModuleConfig(
-                name=self.head.replace("Head", "Loss"),
+                name="EfficientKeypointBBoxLoss",
                 attached_to="kpt_detection_head",
                 params=self.loss_params,
                 weight=1.0,
