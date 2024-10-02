@@ -50,10 +50,10 @@ SaveDirType = Annotated[
     typer.Option(help="Where to save the inference results."),
 ]
 
-ImgPathType = Annotated[
+SourcePathType = Annotated[
     str | None,
     typer.Option(
-        help="Path to an image file or a directory containing images for inference."
+        help="Path to an image file, a directory containing images or a video file for inference.",
     ),
 ]
 
@@ -106,14 +106,14 @@ def infer(
     config: ConfigType = None,
     view: ViewType = _ViewType.VAL,
     save_dir: SaveDirType = None,
-    img_path: ImgPathType = None,
+    source_path: SourcePathType = None,
     opts: OptsType = None,
 ):
     """Run inference."""
     from luxonis_train.core import LuxonisModel
 
     LuxonisModel(config, opts).infer(
-        view=view.value, save_dir=save_dir, img_path=img_path
+        view=view.value, save_dir=save_dir, source_path=source_path
     )
 
 
