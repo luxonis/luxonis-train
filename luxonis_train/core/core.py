@@ -35,8 +35,11 @@ from .utils.export_utils import (
     try_onnx_simplify,
 )
 from .utils.infer_utils import (
+    IMAGE_FORMATS,
+    VIDEO_FORMATS,
     process_dataset_images,
     process_images,
+    process_video,
 )
 from .utils.train_utils import create_trainer
 
@@ -421,7 +424,7 @@ class LuxonisModel:
         self,
         view: Literal["train", "val", "test"] = "val",
         save_dir: str | Path | None = None,
-        img_path: str | None = None,
+        source_path: str | None = None,
     ) -> None:
         """Runs inference.
 
@@ -432,23 +435,29 @@ class LuxonisModel:
         @param save_dir: Directory where to save the visualizations. If
             not specified, visualizations will be rendered on the
             screen.
-        @type img_path: str | None
-        @param img_path: Path to the image file or directory for inference.
+        @type source_path: str | None
+        @param source_path: Path to the image file, video file or directory.
             If None, defaults to using dataset images.
         """
         self.lightning_module.eval()
 
-        if img_path:
-            img_path_obj = Path(img_path)
-            if img_path_obj.is_file():
-                process_images(self, [img_path_obj], view, save_dir)
-            elif img_path_obj.is_dir():
+        if source_path:
+            source_path_obj = Path(source_path)
+            if source_path_obj.suffix.lower() in VIDEO_FORMATS:
+                process_video(self, source_path_obj, view, save_dir)
+            elif source_path_obj.is_file():
+                process_images(self, [source_path_obj], view, save_dir)
+            elif source_path_obj.is_dir():
                 image_files = [
                     f
-                    for f in img_path_obj.iterdir()
-                    if f.suffix.lower() in {".png", ".jpg", ".jpeg"}
+                    for f in source_path_obj.iterdir()
+                    if f.suffix.lower() in IMAGE_FORMATS
                 ]
                 process_images(self, image_files, view, save_dir)
+            else:
+                raise ValueError(
+                    f"Source path {source_path} is not a valid file or directory."
+                )
         else:
             process_dataset_images(self, view, save_dir)
 
