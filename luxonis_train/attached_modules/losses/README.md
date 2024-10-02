@@ -10,7 +10,6 @@ List of all the available loss functions.
 - [SigmoidFocalLoss](#sigmoidfocalloss)
 - [SoftmaxFocalLoss](#softmaxfocalloss)
 - [AdaptiveDetectionLoss](#adaptivedetectionloss)
-- [ImplicitKeypointBBoxLoss](#implicitkeypointbboxloss)
 - [EfficientKeypointBBoxLoss](#efficientkeypointbboxloss)
 
 ## CrossEntropyLoss
@@ -31,11 +30,11 @@ Adapted from [here](https://pytorch.org/docs/stable/generated/torch.nn.BCEWithLo
 
 **Params**
 
-| Key          | Type                             | Default value | Description                                                                                                                                                                                                                                               |
-| ------------ | -------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| weight       | list\[float\] \| None            | None          | A manual rescaling weight given to each class. If given, has to be a list of the same length as there are classes.                                                                                                                                        |
-| ignore_index | int                              | -100          | Specifies a target value that is ignored and does not contribute to the input gradient. When `size_average` is `True`, the loss is averaged over non-ignored targets. Note that `ignore_index` is only applicable when the target contains class indices. |
-| reduction    | Literal\["none", "mean", "sum"\] | "mean"        | Specifies the reduction to apply to the output.                                                                                                                                                                                                           |
+| Key        | Type                             | Default value | Description                                                                                                        |
+| ---------- | -------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------ |
+| weight     | list\[float\] \| None            | None          | A manual rescaling weight given to each class. If given, has to be a list of the same length as there are classes. |
+| reduction  | Literal\["none", "mean", "sum"\] | "mean"        | Specifies the reduction to apply to the output.                                                                    |
+| pos_weight | Tensor \| None                   | None          | A weight of positive examples to be broadcasted with target.                                                       |
 
 ## SmoothBCEWithLogitsLoss
 
@@ -83,40 +82,19 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 | class_loss_weight | float                                             | 1.0           | Weight used for the classification part of the loss.                                |
 | iou_loss_weight   | float                                             | 2.5           | Weight used for the IoU part of the loss.                                           |
 
-## ImplicitKeypointBBoxLoss
-
-Adapted from [YOLO-Pose: Enhancing YOLO for Multi Person Pose Estimation Using Object
-Keypoint Similarity Loss](https://arxiv.org/ftp/arxiv/papers/2204/2204.06806.pdf).
-
-**Params**
-
-| Key                             | Type          | Default value     | Description                                                                                |
-| ------------------------------- | ------------- | ----------------- | ------------------------------------------------------------------------------------------ |
-| cls_pw                          | float         | 1.0               | Power for the [SmoothBCEWithLogitsLoss](#smoothbcewithlogitsloss) for classification loss. |
-| obj_pw                          | float         | 1.0               | Power for [BCEWithLogitsLoss](#bcewithlogitsloss) for objectness loss.                     |
-| viz_pw                          | float         | 1.0               | Power for [BCEWithLogitsLoss](#bcewithlogitsloss) for keypoint visibility.                 |
-| label_smoothing                 | float         | 0.0               | Smoothing for [SmothBCEWithLogitsLoss](#smoothbcewithlogitsloss) for classification loss.  |
-| min_objectness_iou              | float         | 0.0               | Minimum objectness IoU.                                                                    |
-| bbox_loss_weight                | float         | 0.05              | Weight for bbox detection sub-loss.                                                        |
-| keypoint_regression_loss_weight | float         | 0.5               | Weight for OKS sub-loss.                                                                   |
-| keypoint_visibility_loss_weight | float         | 0.6               | Weight for keypoint visibility sub-loss.                                                   |
-| class_loss_weight               | float         | 0.6               | Weight for classification sub-loss.                                                        |
-| objectness_loss_weight          | float         | 0.7               | Weight for objectness sub-loss.                                                            |
-| anchor_threshold                | float         | 4.0               | Threshold for matching anchors to targets.                                                 |
-| bias                            | float         | 0.5               | Bias for matchinf anchors to targets.                                                      |
-| balance                         | list\[float\] | \[4.0, 1.0, 0.4\] | Balance for objectness loss.                                                               |
-
 ## EfficientKeypointBBoxLoss
 
 Adapted from [YOLO-Pose: Enhancing YOLO for Multi Person Pose Estimation Using Object
 Keypoint Similarity Loss](https://arxiv.org/ftp/arxiv/papers/2204/2204.06806.pdf).
 
-| Key                   | Type                                              | Default value | Description                                                                         |
-| --------------------- | ------------------------------------------------- | ------------- | ----------------------------------------------------------------------------------- |
-| viz_pw                | float                                             | 1.0           | Power for [BCEWithLogitsLoss](#bcewithlogitsloss) for keypoint visibility.          |
-| n_warmup_epochs       | int                                               | 4             | Number of epochs where ATSS assigner is used, after that we switch to TAL assigner. |
-| iou_type              | Literal\["none", "giou", "diou", "ciou", "siou"\] | "giou"        | IoU type used for bbox regression sub-loss                                          |
-| class_loss_weight     | float                                             | 1.0           | Weight used for the classification sub-loss.                                        |
-| iou_loss_weight       | float                                             | 2.5           | Weight used for the IoU sub-loss.                                                   |
-| regr_kpts_loss_weight | float                                             | 1.5           | Weight used for the OKS sub-loss.                                                   |
-| vis_kpts_loss_weight  | float                                             | 1.0           | Weight used for the keypoint visibility sub-loss.                                   |
+| Key                   | Type                                              | Default value | Description                                                                                         |
+| --------------------- | ------------------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------- |
+| n_warmup_epochs       | int                                               | 4             | Number of epochs where ATSS assigner is used, after that we switch to TAL assigner.                 |
+| iou_type              | Literal\["none", "giou", "diou", "ciou", "siou"\] | "giou"        | IoU type used for bbox regression sub-loss                                                          |
+| reduction             | Literal\["mean", "sum"\]                          | "mean"        | Specifies the reduction to apply to the output.                                                     |
+| class_loss_weight     | float                                             | 1.0           | Weight used for the classification sub-loss.                                                        |
+| iou_loss_weight       | float                                             | 2.5           | Weight used for the IoU sub-loss.                                                                   |
+| regr_kpts_loss_weight | float                                             | 1.5           | Weight used for the OKS sub-loss.                                                                   |
+| vis_kpts_loss_weight  | float                                             | 1.0           | Weight used for the keypoint visibility sub-loss.                                                   |
+| sigmas                | list\[float\] \\ None                             | None          | Sigmas used in KeypointLoss for OKS metric. If None then use COCO ones if possible or default ones. |
+| area_factor           | float \| None                                     | None          | Factor by which we multiply bbox area which is used in KeypointLoss. If None then use default one.  |

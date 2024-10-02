@@ -24,13 +24,13 @@ List of supported callbacks from `lightning.pytorch`.
 
 ## ExportOnTrainEnd
 
-Performs export on train end with best weights according to the validation loss.
+Performs export on train end with best weights.
 
 **Params**
 
-| Key              | Type | Default value | Description                                                                            |
-| ---------------- | ---- | ------------- | -------------------------------------------------------------------------------------- |
-| upload_to_mlflow | bool | False         | If set to True, overrides the upload url in exporter with currently active MLFlow run. |
+| Key                  | Type                        | Default value | Description                                                                                                 |
+| -------------------- | --------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------- |
+| preferred_checkpoint | Literal\["metric", "loss"\] | metric        | Which checkpoint should we use. If preferred is not available then try to use the other one if its present. |
 
 ## LuxonisProgressBar
 
@@ -54,8 +54,4 @@ Callback to perform a test run at the end of the training.
 
 ## UploadCheckpoint
 
-Callback that uploads currently best checkpoint (based on validation loss) to specified cloud directory after every validation epoch.
-
-| Key              | Type | Default value | Description                                                                                                                   |
-| ---------------- | ---- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| upload_directory | str  | /             | Path to cloud directory where checkpoints should be uploaded to. If you want to use current mlflow run set it to `mlflow://`. |
+Callback that uploads currently best checkpoint (based on validation loss) to the tracker location - where all other logs are stored.
