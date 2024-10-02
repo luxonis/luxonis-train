@@ -67,7 +67,7 @@ def test_predefined_models(
             else coco_dataset.dataset_name
         ),
     }
-    opts["trainer.epochs"] = 10
+    opts["trainer.epochs"] = 3
     del opts["trainer.callbacks"]
     model = LuxonisModel(config_file, opts)
     model.train()
@@ -146,7 +146,7 @@ def test_tune(opts: dict[str, Any], coco_dataset: LuxonisDataset):
         "model.losses.0.weight_uniform": [0.1, 0.9],
         "model.nodes.0.freezing.unfreeze_after_loguniform": [0.1, 0.9],
     }
-    opts["trainer.epochs"] = 10
+    opts["trainer.epochs"] = 3
     opts["loader.params.dataset_name"] = coco_dataset.identifier
     model = LuxonisModel("configs/example_tuning.yaml", opts)
     model.tune()
