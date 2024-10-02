@@ -57,7 +57,11 @@ class ClassificationModel(BasePredefinedModel):
         var_config = get_variant(variant)
 
         self.backbone = backbone or var_config.backbone
-        self.backbone_params = backbone_params or var_config.backbone_params
+        self.backbone_params = (
+            backbone_params
+            if backbone is not None or backbone_params is not None
+            else var_config.backbone_params
+        ) or {}
         self.head_params = head_params or {}
         self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}

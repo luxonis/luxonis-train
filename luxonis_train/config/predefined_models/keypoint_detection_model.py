@@ -64,7 +64,11 @@ class KeypointDetectionModel(BasePredefinedModel):
 
         self.use_neck = use_neck
         self.backbone = backbone or var_config.backbone
-        self.backbone_params = backbone_params or var_config.backbone_params
+        self.backbone_params = (
+            backbone_params
+            if backbone is not None or backbone_params is not None
+            else var_config.backbone_params
+        ) or {}
         self.neck_params = neck_params or {}
         self.head = head
         self.head_params = head_params or {}
