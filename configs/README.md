@@ -14,7 +14,7 @@ You can create your own config or use/edit one of the examples.
     - [Metrics](#metrics)
     - [Visualizers](#visualizers)
 - [Tracker](#tracker)
-- [Dataset](#dataset)
+- [Loader](#loader)
 - [Trainer](#train)
   - [Preprocessing](#preprocessing)
   - [Optimizer](#optimizer)
@@ -31,13 +31,13 @@ You can create your own config or use/edit one of the examples.
 
 | Key      | Type                  | Default value | Description      |
 | -------- | --------------------- | ------------- | ---------------- |
-| model    | [Model](#model)       |               | model section    |
-| dataset  | [dataset](#dataset)   |               | dataset section  |
-| train    | [train](#train)       |               | train section    |
-| tracker  | [tracker](#tracker)   |               | tracker section  |
-| trainer  | [trainer](#trainer)   |               | trainer section  |
-| exporter | [exporter](#exporter) |               | exporter section |
-| tuner    | [tuner](#tuner)       |               | tuner section    |
+| model    | [Model](#model)       |               | Model section    |
+| loader   | [loader](#loader)     |               | Loader section   |
+| train    | [train](#train)       |               | Train section    |
+| tracker  | [tracker](#tracker)   |               | Tracker section  |
+| trainer  | [trainer](#trainer)   |               | Trainer section  |
+| exporter | [exporter](#exporter) |               | Exporter section |
+| tuner    | [tuner](#tuner)       |               | Tuner section    |
 
 ## Model
 
@@ -45,15 +45,15 @@ This is the most important block, that **must be always defined by the user**. T
 
 | Key              | Type | Default value | Description                                                |
 | ---------------- | ---- | ------------- | ---------------------------------------------------------- |
-| name             | str  |               | name of the model                                          |
-| weights          | path | None          | path to weights to load                                    |
-| predefined_model | str  | None          | name of a predefined model to use                          |
-| params           | dict | {}            | parameters for the predefined model                        |
-| nodes            | list | \[\]          | list of nodes (see [nodes](#nodes)                         |
-| losses           | list | \[\]          | list of losses (see [losses](#losses)                      |
-| metrics          | list | \[\]          | list of metrics (see [metrics](#metrics)                   |
-| visualziers      | list | \[\]          | list of visualizers (see [visualizers](#visualizers)       |
-| outputs          | list | \[\]          | list of outputs nodes, inferred from nodes if not provided |
+| name             | str  | "model"       | Name of the model                                          |
+| weights          | path | None          | Path to weights to load                                    |
+| predefined_model | str  | None          | Name of a predefined model to use                          |
+| params           | dict | {}            | Parameters for the predefined model                        |
+| nodes            | list | \[\]          | List of nodes (see [nodes](#nodes)                         |
+| losses           | list | \[\]          | lList of losses (see [losses](#losses)                     |
+| metrics          | list | \[\]          | List of metrics (see [metrics](#metrics)                   |
+| visualziers      | list | \[\]          | List of visualizers (see [visualizers](#visualizers)       |
+| outputs          | list | \[\]          | List of outputs nodes, inferred from nodes if not provided |
 
 ### Nodes
 
@@ -61,12 +61,13 @@ For list of all nodes, see [nodes](../luxonis_train/nodes/README.md).
 
 | Key                     | Type                 | Default value | Description                                                                                                                                 |
 | ----------------------- | -------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| name                    | str                  |               | name of the node                                                                                                                            |
-| alias                   | str                  | None          | custom name for the node                                                                                                                    |
-| params                  | dict                 | {}            | parameters for the node                                                                                                                     |
-| inputs                  | list                 | \[\]          | list of input nodes for this node, if empty, the node is understood to be an input node of the model                                        |
+| name                    | str                  |               | Name of the node                                                                                                                            |
+| alias                   | str                  | None          | Custom name for the node                                                                                                                    |
+| params                  | dict                 | {}            | Parameters for the node                                                                                                                     |
+| inputs                  | list                 | \[\]          | List of input nodes for this node, if empty, the node is understood to be an input node of the model                                        |
 | freezing.active         | bool                 | False         | whether to freeze the modules so the weights are not updated                                                                                |
-| freezing.unfreeze_after | int \| float \| None | None          | after how many epochs should the modules be unfrozen, can be `int` for a specific number of epochs or `float` for a portion of the training |
+| freezing.unfreeze_after | int \| float \| None | None          | After how many epochs should the modules be unfrozen, can be `int` for a specific number of epochs or `float` for a portion of the training |
+| remove_on_export        | bool                 | False         | Whether the node should be removed when exporting                                                                                           |
 
 ### Attached Modules
 
@@ -74,10 +75,10 @@ Modules that are attached to a node. This include losses, metrics and visualzier
 
 | Key         | Type | Default value | Description                                 |
 | ----------- | ---- | ------------- | ------------------------------------------- |
-| name        | str  |               | name of the module                          |
+| name        | str  |               | Name of the module                          |
 | attached_to | str  |               | Name of the node the module is attached to. |
-| alias       | str  | None          | custom name for the module                  |
-| params      | dict | {}            | parameters of the module                    |
+| alias       | str  | None          | Custom name for the module                  |
+| params      | dict | {}            | Parameters of the module                    |
 
 #### Losses
 
@@ -86,7 +87,7 @@ You can see the list of all currently supported loss functions and their paramet
 
 | Key    | Type  | Default value | Description                              |
 | ------ | ----- | ------------- | ---------------------------------------- |
-| weight | float | 1.0           | weight of the loss used in the final sum |
+| weight | float | 1.0           | Weight of the loss used in the final sum |
 
 #### Metrics
 
@@ -121,20 +122,30 @@ You can configure it like this:
 | wandb_entity   | str \| None | None          | Name of WandB entity.                                      |
 | is_mlflow      | bool        | False         | Whether to use MLFlow.                                     |
 
-## Dataset
+## Loader
+
+This section controls the data loading process and parameters regarding the dataset.
 
 To store and load the data we use LuxonisDataset and LuxonisLoader. For specific config parameters refer to [LuxonisML](https://github.com/luxonis/luxonis-ml).
 
-| Key            | Type                                     | Default value       | Description                                |
-| -------------- | ---------------------------------------- | ------------------- | ------------------------------------------ |
-| name           | str \| None                              | None                | name of the dataset                        |
-| id             | str \| None                              | None                | id of the dataset                          |
-| team_id        | str \| None                              | None                | team under which you can find all datasets |
-| bucket_type    | Literal\["intenal", "external"\]         | internal            | type of underlying storage                 |
-| bucket_storage | Literal\["local", "s3", "gcc", "azure"\] | BucketStorage.LOCAL | underlying object storage for a bucket     |
-| train_view     | str \| list\[str\]                       | train               | splits to use for training                 |
-| val_view       | str \| list\[str\]                       | val                 | splits to use for validation               |
-| test_view      | str \| list\[str\]                       | test                | splits to use for testing                  |
+| Key          | Type               | Default value      | Description                      |
+| ------------ | ------------------ | ------------------ | -------------------------------- |
+| name         | str                | LuxonisLoaderTorch | Name of the Loader               |
+| image_source | str                | image              | Name of the input image group    |
+| train_view   | str \| list\[str\] | train              | splits to use for training       |
+| val_view     | str \| list\[str\] | val                | splits to use for validation     |
+| test_view    | str \| list\[str\] | test               | splits to use for testing        |
+| params       | Dict\[str, Any\]   | {}                 | Additional parameters for loader |
+
+### LuxonisLoaderTorch
+
+By default LuxonisLoaderTorch which can either use an existing LuxonisDataset or create a new one if it can be parsed automatically by LuxonisParser (check [LuxonisML](https://github.com/luxonis/luxonis-ml) `data` subpackage for more info).
+
+In most cases you want to change one of the parameters below. You can check all the parameters in `LuxonisLoaderTorch` class itself.
+
+| dataset_name             | str | None                              | None                | Name of an existing LuxonisDataset.                          |
+| dataset_dir        | str | None                              | None                | Location of the data from which new LuxonisDataset will be created |
+| dataset_type    | DatasetType | None         | None            | Can specify exact format of the data. If None and new dataset needs to be created then it will be infered automatically.                 |
 
 ## Trainer
 
@@ -142,15 +153,16 @@ Here you can change everything related to actual training of the model.
 
 | Key                     | Type                                           | Default value | Description                                                                                                                                      |
 | ----------------------- | ---------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| seed                    | int                                            | None          | seed for reproducibility                                                                                                                         |
-| batch_size              | int                                            | 32            | batch size used for training                                                                                                                     |
-| accumulate_grad_batches | int                                            | 1             | number of batches for gradient accumulation                                                                                                      |
-| use_weighted_sampler    | bool                                           | False         | bool if use WeightedRandomSampler for training, only works with classification tasks                                                             |
-| epochs                  | int                                            | 100           | number of training epochs                                                                                                                        |
-| n_workers               | int                                            | 2             | number of workers for data loading                                                                                                               |
-| validation_interval     | int                                            | 1             | frequency of computing metrics on validation data                                                                                                |
-| n_log_images            | int                                            | 4             | maximum number of images to visualize and log                                                                                                    |
-| skip_last_batch         | bool                                           | True          | whether to skip last batch while training                                                                                                        |
+| seed                    | int                                            | None          | Seed for reproducibility                                                                                                                         |
+| deterministic           | bool \| "warn" \| None                         | None          | Whether pytorch should use deterministic backend                                                                                                 |
+| batch_size              | int                                            | 32            | Batch size used for training                                                                                                                     |
+| accumulate_grad_batches | int                                            | 1             | Number of batches for gradient accumulation                                                                                                      |
+| use_weighted_sampler    | bool                                           | False         | Bool if use WeightedRandomSampler for training, only works with classification tasks                                                             |
+| epochs                  | int                                            | 100           | Number of training epochs                                                                                                                        |
+| n_workers               | int                                            | 4             | Number of workers for data loading                                                                                                               |
+| validation_interval     | int                                            | 5             | Frequency of computing metrics on validation data                                                                                                |
+| n_log_images            | int                                            | 4             | Maximum number of images to visualize and log                                                                                                    |
+| skip_last_batch         | bool                                           | True          | Whether to skip last batch while training                                                                                                        |
 | accelerator             | Literal\["auto", "cpu", "gpu"\]                | "auto"        | What accelerator to use for training.                                                                                                            |
 | devices                 | int \| list\[int\] \| str                      | "auto"        | Either specify how many devices to use (int), list specific devices, or use "auto" for automatic configuration based on the selected accelerator |
 | matmul_precision        | Literal\["medium", "high", "highest"\] \| None | None          | Sets the internal precision of float32 matrix multiplications.                                                                                   |
@@ -158,19 +170,23 @@ Here you can change everything related to actual training of the model.
 | n_sanity_val_steps      | int                                            | 2             | Number of sanity validation steps performed before training.                                                                                     |
 | profiler                | Literal\["simple", "advanced"\] \| None        | None          | PL profiler for GPU/CPU/RAM utilization analysis                                                                                                 |
 | verbose                 | bool                                           | True          | Print all intermediate results to console.                                                                                                       |
+| pin_memory              | bool                                           | True          | Whether to pin memory in the DataLoader                                                                                                          |
+| save_top_k              | -1 \| NonNegativeInt                           | 3             | Save top K checkpoints based on validation loss when training.                                                                                   |
 
 ### Preprocessing
 
-We use [Albumentations](https://albumentations.ai/docs/) library for `augmentations`. [Here](https://albumentations.ai/docs/api_reference/full_reference/#pixel-level-transforms) you can see a list of all pixel level augmentations supported, and [here](https://albumentations.ai/docs/api_reference/full_reference/#spatial-level-transforms) you see all spatial level transformations. In config you can specify any augmentation from this lists and their params. Additionaly we support `Mosaic4` batch augmentation and letterbox resizing if `keep_aspect_ratio: True`.
+We use [Albumentations](https://albumentations.ai/docs/) library for `augmentations`. [Here](https://albumentations.ai/docs/api_reference/full_reference/#pixel-level-transforms) you can see a list of all pixel level augmentations supported, and [here](https://albumentations.ai/docs/api_reference/full_reference/#spatial-level-transforms) you see all spatial level transformations. In config you can specify any augmentation from this lists and their params.
+
+Additionaly we support `Mosaic4` and `MixUp` batch augmentations and letterbox resizing if `keep_aspect_ratio: True`.
 
 | Key               | Type                                                                                                                                          | Default value | Description                                                                                                                                                             |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| train_image_size  | list\[int\]                                                                                                                                   | \[256, 256\]  | image size used for training \[height, width\]                                                                                                                          |
-| keep_aspect_ratio | bool                                                                                                                                          | True          | bool if keep aspect ration while resizing                                                                                                                               |
-| train_rgb         | bool                                                                                                                                          | True          | bool if train on rgb or bgr                                                                                                                                             |
-| normalize.active  | bool                                                                                                                                          | True          | bool if use normalization                                                                                                                                               |
-| normalize.params  | dict                                                                                                                                          | {}            | params for normalization, see [documentation](https://albumentations.ai/docs/api_reference/augmentations/transforms/#albumentations.augmentations.transforms.Normalize) |
-| augmentations     | list\[{"name": Name of the augmentation, "active": Bool if aug is active, by default set to True, "params": Parameters of the augmentation}\] | \[\]          | list of Albumentations augmentations                                                                                                                                    |
+| train_image_size  | list\[int\]                                                                                                                                   | \[256, 256\]  | Image size used for training \[height, width\]                                                                                                                          |
+| keep_aspect_ratio | bool                                                                                                                                          | True          | Bool if keep aspect ration while resizing                                                                                                                               |
+| train_rgb         | bool                                                                                                                                          | True          | Bool if train on rgb or bgr                                                                                                                                             |
+| normalize.active  | bool                                                                                                                                          | True          | Bool if use normalization                                                                                                                                               |
+| normalize.params  | dict                                                                                                                                          | {}            | Params for normalization, see [documentation](https://albumentations.ai/docs/api_reference/augmentations/transforms/#albumentations.augmentations.transforms.Normalize) |
+| augmentations     | list\[{"name": Name of the augmentation, "active": Bool if aug is active, by default set to True, "params": Parameters of the augmentation}\] | \[\]          | List of Albumentations augmentations                                                                                                                                    |
 
 ### Optimizer
 
@@ -179,7 +195,7 @@ List of all optimizers can be found [here](https://pytorch.org/docs/stable/optim
 
 | Key    | Type | Default value | Description                  |
 | ------ | ---- | ------------- | ---------------------------- |
-| name   | str  |               | Name of the optimizer.       |
+| name   | str  | "Adam"        | Name of the optimizer.       |
 | params | dict | {}            | Parameters of the optimizer. |
 
 ### Scheduler
@@ -189,7 +205,7 @@ List of all optimizers can be found [here](https://pytorch.org/docs/stable/optim
 
 | Key    | Type | Default value | Description                  |
 | ------ | ---- | ------------- | ---------------------------- |
-| name   | str  |               | Name of the scheduler.       |
+| name   | str  | "ConstantLR"  | Name of the scheduler.       |
 | params | dict | {}            | Parameters of the scheduler. |
 
 ### Callbacks
@@ -201,22 +217,23 @@ Each callback is a dictionary with the following fields:
 | Key    | Type | Default value | Description                 |
 | ------ | ---- | ------------- | --------------------------- |
 | name   | str  |               | Name of the callback.       |
+| active | bool | True          | Whether calback is active.  |
 | params | dict | {}            | Parameters of the callback. |
 
 ## Exporter
 
 Here you can define configuration for exporting.
 
-| Key                    | Type                              | Default value   | Description                                                                                     |
-| ---------------------- | --------------------------------- | --------------- | ----------------------------------------------------------------------------------------------- |
-| export_save_directory  | str                               | "output_export" | Where to save the exported files.                                                               |
-| input_shape            | list\[int\] \| None               | None            | Input shape of the model. If not provided, inferred from the dataset.                           |
-| data_type              | Literal\["INT8", "FP16", "FP32"\] | "FP16"          | Data type of the exported model. Only used for conversion to BLOB.                              |
-| reverse_input_channels | bool                              | True            | Whether to reverse the image channels in the exported model. Relevant for `.blob` export        |
-| upload                 | bool                              | True            | Whether to upload the files created during export to the current tracker.                       |
-| scale_values           | list\[float\] \| None             | None            | What scale values to use for input normalization. If not provided, inferred from augmentations. |
-| mean_values            | list\[float\] \| None             | None            | What mean values to use for input normalizations. If not provided, inferred from augmentations. |
-| upload_directory       | str \| None                       | None            | Where to upload the exported models.                                                            |
+| Key                    | Type                              | Default value | Description                                                                                     |
+| ---------------------- | --------------------------------- | ------------- | ----------------------------------------------------------------------------------------------- |
+| name                   | str \| None                       | None          | Name of the exported model.                                                                     |
+| input_shape            | list\[int\] \| None               | None          | Input shape of the model. If not provided, inferred from the dataset.                           |
+| data_type              | Literal\["INT8", "FP16", "FP32"\] | "FP16"        | Data type of the exported model. Only used for conversion to BLOB.                              |
+| reverse_input_channels | bool                              | True          | Whether to reverse the image channels in the exported model. Relevant for `.blob` export        |
+| scale_values           | list\[float\] \| None             | None          | What scale values to use for input normalization. If not provided, inferred from augmentations. |
+| mean_values            | list\[float\] \| None             | None          | What mean values to use for input normalizations. If not provided, inferred from augmentations. |
+| upload_to_run          | bool                              | True          | Whether to upload the exported files to tracked run as artifact.                                |
+| upload_url             | str \| None                       | None          | Exported model will be uploaded to this url if specified.                                       |
 
 ### ONNX
 
@@ -239,13 +256,14 @@ Option specific for ONNX export.
 
 Here you can specify options for tuning.
 
-| Key        | Type              | Default value | Description                                                                                                                                                                                                                                                                                                                |
-| ---------- | ----------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| study_name | str               | "test-study"  | Name of the study.                                                                                                                                                                                                                                                                                                         |
-| use_pruner | bool              | True          | Whether to use the MedianPruner.                                                                                                                                                                                                                                                                                           |
-| n_trials   | int \| None       | 15            | Number of trials for each process. `None` represents no limit in terms of numbner of trials.                                                                                                                                                                                                                               |
-| timeout    | int \| None       | None          | Stop study after the given number of seconds.                                                                                                                                                                                                                                                                              |
-| params     | dict\[str, list\] | {}            | Which parameters to tune. The keys should be in the format `key1.key2.key3_<type>`. Type can be one of `[categorical, float, int, longuniform, uniform, subset]`. For more information about the types, visit [Optuna documentation](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.trial.Trial.html). |
+| Key                    | Type              | Default value | Description                                                                                                                                                                                                                                                                                                                |
+| ---------------------- | ----------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| study_name             | str               | "test-study"  | Name of the study.                                                                                                                                                                                                                                                                                                         |
+| continue_exising_study | bool              | True          | Whether to continue an existing study with this name.                                                                                                                                                                                                                                                                      |
+| use_pruner             | bool              | True          | Whether to use the MedianPruner.                                                                                                                                                                                                                                                                                           |
+| n_trials               | int \| None       | 15            | Number of trials for each process. `None` represents no limit in terms of numbner of trials.                                                                                                                                                                                                                               |
+| timeout                | int \| None       | None          | Stop study after the given number of seconds.                                                                                                                                                                                                                                                                              |
+| params                 | dict\[str, list\] | {}            | Which parameters to tune. The keys should be in the format `key1.key2.key3_<type>`. Type can be one of `[categorical, float, int, longuniform, uniform, subset]`. For more information about the types, visit [Optuna documentation](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.trial.Trial.html). |
 
 **Note**: "subset" sampling is currently only supported for augmentations. You can specify a set of augmentations defined in `trainer` to choose from and every run subset of random N augmentations will be active (`is_active` parameter will be True for chosen ones and False for the rest in the set).
 
