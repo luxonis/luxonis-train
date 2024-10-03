@@ -75,11 +75,8 @@ class SegmentationModel(BasePredefinedModel):
         """Defines the model nodes, including backbone and head."""
         self.head_params.update({"attach_index": -1})
         self.aux_head_params.update({"attach_index": -2})
-        (
-            self.aux_head_params.update({"remove_on_export": True})
-            if "remove_on_export" not in self.aux_head_params
-            else None
-        )
+        if "remove_on_export" not in self.head_params:
+            self.head_params["remove_on_export"] = True
 
         node_list = [
             ModelNodeConfig(
