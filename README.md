@@ -13,7 +13,7 @@
 
 Luxonis training framework (`luxonis-train`) is intended for training deep learning models that can run fast on OAK products.
 
-**The project is in an alpha state - please report any feedback.**
+**The project is in a beta state and might be unstable or contain bugs - please report any feedback.**
 
 ## Table Of Contents
 
