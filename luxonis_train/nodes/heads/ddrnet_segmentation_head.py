@@ -91,19 +91,3 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
         if self.export:
             return x.argmax(dim=1).to(dtype=torch.int32)
         return x
-
-    def set_export_mode(self, mode: bool = True) -> None:
-        """Sets the module to export mode.
-
-        Replaces the forward method with a constant empty tensor.
-
-        @warning: The replacement is destructive and cannot be undone.
-        @type mode: bool
-        @param mode: Whether to set the export mode to True or False.
-            Defaults to True.
-        """
-        super().set_export_mode(mode)
-        if self.export and self.attach_index != -1:
-            logger.info("Removing the auxiliary head.")
-
-            self.forward = lambda inputs: torch.tensor([])
