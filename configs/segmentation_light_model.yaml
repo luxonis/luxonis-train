@@ -40,4 +40,4 @@ trainer:
     name: CosineAnnealingLR
     params:
       T_max: *epochs
-      eta_min: 0.0002 
+      eta_min: 0.0002
