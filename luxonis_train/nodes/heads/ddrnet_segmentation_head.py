@@ -83,13 +83,13 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
         )
 
     def forward(self, inputs: Tensor) -> Tensor:
-        x = self.relu(self.bn1(inputs))
+        x: Tensor = self.relu(self.bn1(inputs))
         x = self.conv1(x)
         x = self.relu(self.bn2(x))
         x = self.conv2(x)
         x = self.upscale(x)
         if self.export:
-            return x.argmax(dim=1)
+            return x.argmax(dim=1).to(dtype=torch.int32)
         return x
 
     def set_export_mode(self, mode: bool = True) -> None:
