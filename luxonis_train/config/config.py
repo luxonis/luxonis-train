@@ -365,7 +365,6 @@ class TrainerConfig(BaseModelExtraForbid):
         NonNegativeInt,
         Field(validation_alias=AliasChoices("n_workers", "num_workers")),
     ] = 4
-    train_metrics_interval: Literal[-1] | PositiveInt = -1
     validation_interval: Literal[-1] | PositiveInt = 5
     n_log_images: Annotated[
         NonNegativeInt,

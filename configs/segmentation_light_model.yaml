@@ -1,10 +1,9 @@
-# Example configuration for exporting a predefined light detection model
+# Example configuration for training a predefined light segmentation model
 
 model:
-  name: detection_light
-  weights: null  # TODO: Specify a path to the weights here
+  name: segmentation_light
   predefined_model:
-    name: DetectionModel
+    name: SegmentationModel
     params:
       variant: light
 
@@ -21,17 +20,20 @@ trainer:
 
   batch_size: 8
   epochs: &epochs 200
-  n_workers: 4
+  num_workers: 4
   validation_interval: 10
-  n_log_images: 8
+  num_log_images: 8
+
+  callbacks:
+    - name: TestOnTrainEnd
+    - name: ExportOnTrainEnd
 
   optimizer:
     name: SGD
     params:
       lr: 0.02
-      momentum: 0.937
+      momentum: 0.9
       weight_decay: 0.0005
-      dampening: 0.0
       nesterov: true
 
   scheduler:
@@ -39,12 +41,3 @@ trainer:
     params:
       T_max: *epochs
       eta_min: 0.0002
-      last_epoch: -1
-
-exporter:
-  output_names: [output1_yolov6r2, output2_yolov6r2, output3_yolov6r2]
-  onnx:
-    opset_version: 11
-  blobconverter:
-    active: True
-    shaves: 8

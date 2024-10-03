@@ -298,10 +298,15 @@ class LuxonisLightningModule(pl.LightningModule):
             for source_name, shape in shapes.items()
         }
 
-        for node_name, (
-            Node,
-            node_kwargs,
-        ), node_input_names, _ in traverse_graph(self.graph, nodes):
+        for (
+            node_name,
+            (
+                Node,
+                node_kwargs,
+            ),
+            node_input_names,
+            _,
+        ) in traverse_graph(self.graph, nodes):
             node_dummy_inputs: list[Packet[Tensor]] = []
             """List of dummy input packets for the node.
 
@@ -912,16 +917,6 @@ class LuxonisLightningModule(pl.LightningModule):
             logger.info(
                 f"{stage} main metric ({self.main_metric}): {main_metric:.4f}"
             )
-
-    def _is_train_eval_epoch(self) -> bool:
-        """Checks if train eval should be performed on current epoch
-        based on configured train_metrics_interval."""
-        train_metrics_interval = self.cfg.trainer.train_metrics_interval
-        # add +1 to current_epoch because starting epoch is at 0
-        return (
-            train_metrics_interval != -1
-            and (self.current_epoch + 1) % train_metrics_interval == 0
-        )
 
     def _average_losses(
         self, step_outputs: list[Mapping[str, Tensor | float | int]]
