@@ -1,7 +1,7 @@
 # Example configuration for training a predefined heavy classification model
 
 model:
-  name: classification_light
+  name: classification_heavy
   predefined_model:
     name: ClassificationModel
     params:
