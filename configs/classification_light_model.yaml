@@ -1,25 +1,25 @@
-# Example configuration for training a predefined detection model
+# Example configuration for training a predefined light classification model
 
 model:
-  name: coco_detection
+  name: classification_light
   predefined_model:
-    name: DetectionModel
+    name: ClassificationModel
     params:
-      use_neck: True
+      variant: light
 
 loader:
   params:
-    dataset_name: coco_test
+    dataset_name: cifar10_test
 
 trainer:
   preprocessing:
-    train_image_size: [&height 256, &width 320]
-    keep_aspect_ratio: False
+    train_image_size: [384, 512]
+    keep_aspect_ratio: True
     normalize:
       active: True
 
-  batch_size: 4
-  epochs: &epochs 200
+  batch_size: 8
+  epochs: 200
   n_workers: 4
   validation_interval: 10
   n_log_images: 8
@@ -29,9 +29,9 @@ trainer:
     - name: TestOnTrainEnd
 
   optimizer:
-    name: SGD
+    name: Adam
     params:
-      lr: 0.02
+      lr: 0.003
 
   scheduler:
     name: ConstantLR

@@ -1,0 +1,42 @@
+# Example configuration for training a predefined heavy segmentation model
+
+model:
+  name: segmentation_heavy
+  predefined_model:
+    name: SegmentationModel
+    params:
+      variant: heavy
+
+loader:
+  params:
+    dataset_name: coco_test
+
+trainer:
+  preprocessing:
+    train_image_size: [384, 512]
+    keep_aspect_ratio: True
+    normalize:
+      active: True
+
+  batch_size: 8
+  epochs: &epochs 200
+  num_workers: 4
+  validation_interval: 10
+  num_log_images: 8
+
+  callbacks:
+    - name: TestOnTrainEnd
+    - name: ExportOnTrainEnd
+
+  optimizer:
+    name: SGD
+    params:
+      lr: 0.01
+      momentum: 0.9
+      weight_decay: 0.0005
+      nesterov: true
+
+  scheduler:
+    name: CosineAnnealingLR
+    params:
+      T_max: *epochs

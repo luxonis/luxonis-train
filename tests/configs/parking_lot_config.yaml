@@ -145,7 +145,6 @@ trainer:
   accumulate_grad_batches: 1
   epochs: 200
   n_workers: 8
-  train_metrics_interval: -1
   validation_interval: 10
   n_log_images: 8
   skip_last_batch: True

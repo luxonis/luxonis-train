@@ -235,7 +235,7 @@ def get_heads(
     @param nodes: Dictionary of nodes.
     """
     heads = []
-
+    head_names = set()
     for node in cfg.model.nodes:
         node_name = node.name
         node_alias = node.alias or node_name
@@ -250,7 +250,13 @@ def get_heads(
                 head_outputs = _get_head_outputs(
                     outputs, node_alias, node_name
                 )
+                if node_alias in head_names:
+                    curr_head_name = f"{node_alias}_{len(head_names)}"  # add suffix if name is already present
+                else:
+                    curr_head_name = node_alias
+                head_names.add(curr_head_name)
                 head_dict = {
+                    "name": curr_head_name,
                     "parser": parser,
                     "metadata": {
                         "classes": classes,
