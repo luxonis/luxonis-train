@@ -1,32 +1,37 @@
 # Nodes
 
 Nodes are the basic building structures of the model. They can be connected together
-arbitrarily as long as the two nodes are compatible with each other.
+arbitrarily as long as the two nodes are compatible with each other. We've grouped together nodes that are similar so it's easier to build an architecture that makes sense.
 
 ## Table Of Contents
 
-- [ResNet](#resnet)
-- [MicroNet](#micronet)
-- [RepVGG](#repvgg)
-- [EfficientRep](#efficientrep)
-- [RexNetV1_lite](#rexnetv1_lite)
-- [MobileOne](#mobileone)
-- [MobileNetV2](#mobilenetv2)
-- [EfficientNet](#efficientnet)
-- [ContextSpatial](#contextspatial)
-- [RepPANNeck](#reppanneck)
-- [ClassificationHead](#classificationhead)
-- [SegmentationHead](#segmentationhead)
-- [BiSeNetHead](#bisenethead)
-- [EfficientBBoxHead](#efficientbboxhead)
-- [ImplicitKeypointBBoxHead](#implicitkeypointbboxhead)
-- [EfficientKeypointBBoxHead](#efficientkeypointbboxhead)
+- [Backbones](#backbones)
+  - [ResNet](#resnet)
+  - [MicroNet](#micronet)
+  - [RepVGG](#repvgg)
+  - [EfficientRep](#efficientrep)
+  - [RexNetV1_lite](#rexnetv1_lite)
+  - [MobileOne](#mobileone)
+  - [MobileNetV2](#mobilenetv2)
+  - [EfficientNet](#efficientnet)
+  - [ContextSpatial](#contextspatial)
+  - [DDRNet](#ddrnet)
+- [Necks](#necks)
+  - [RepPANNeck](#reppanneck)
+- [Heads](#heads)
+  - [ClassificationHead](#classificationhead)
+  - [SegmentationHead](#segmentationhead)
+  - [BiSeNetHead](#bisenethead)
+  - [EfficientBBoxHead](#efficientbboxhead)
+  - [EfficientKeypointBBoxHead](#efficientkeypointbboxhead)
+  - [DDRNetSegmentationHead](#ddrnetsegmentationhead)
 
 Every node takes these parameters:
 
-| Key       | Type        | Default value | Description                                                                  |
-| --------- | ----------- | ------------- | ---------------------------------------------------------------------------- |
-| n_classes | int \| None | None          | Number of classes in the dataset. Inferred from the dataset if not provided. |
+| Key              | Type        | Default value | Description                                                                  |
+| ---------------- | ----------- | ------------- | ---------------------------------------------------------------------------- |
+| n_classes        | int \| None | None          | Number of classes in the dataset. Inferred from the dataset if not provided. |
+| remove_on_export | bool        | False         | Whether node should be removed when exporting the whole model.               |
 
 In addition, the following class attributes can be overriden:
 
@@ -37,7 +42,9 @@ In addition, the following class attributes can be overriden:
 
 Additional parameters for specific nodes are listed below.
 
-## ResNet
+## Backbones
+
+### ResNet
 
 Adapted from [here](https://pytorch.org/vision/main/models/resnet.html).
 
@@ -48,7 +55,7 @@ Adapted from [here](https://pytorch.org/vision/main/models/resnet.html).
 | variant          | Literal\["18", "34", "50", "101", "152"\] | "18"          | Variant of the network.                |
 | download_weights | bool                                      | False         | If True download weights from imagenet |
 
-## MicroNet
+### MicroNet
 
 Adapted from [here](https://github.com/liyunsheng13/micronet).
 
@@ -58,7 +65,7 @@ Adapted from [here](https://github.com/liyunsheng13/micronet).
 | ------- | --------------------------- | ------------- | ----------------------- |
 | variant | Literal\["M1", "M2", "M3"\] | "M1"          | Variant of the network. |
 
-## RepVGG
+### RepVGG
 
 Adapted from [here](https://github.com/DingXiaoH/RepVGG).
 
@@ -68,7 +75,7 @@ Adapted from [here](https://github.com/DingXiaoH/RepVGG).
 | ------- | --------------------------- | ------------- | ----------------------- |
 | variant | Literal\["A0", "A1", "A2"\] | "A0"          | Variant of the network. |
 
-## EfficientRep
+### EfficientRep
 
 Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
@@ -84,22 +91,22 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 | block         | Literal\["RepBlock", "CSPStackRepBlock"\]                         | "RepBlock"                  | Base block used                                                 |
 | csp_e         | float                                                             | 0.5                         | Factor for intermediate channels when block=="CSPStackRepBlock" |
 
-## RexNetV1_lite
+### RexNetV1_lite
 
 Adapted from ([here](https://github.com/clovaai/rexnet).
 
 **Params**
 
-| Key             | Type  | Default value | Description                    |
-| --------------- | ----- | ------------- | ------------------------------ |
-| fix_head_stem   | bool  | False         | Whether to multiply head stem  |
-| divisible_value | int   | 8             | Divisor used                   |
-| input_ch        | int   | 16            | tarting channel dimension      |
-| final_ch        | int   | 164           | Final channel dimension        |
-| multiplier      | float | 1.0           | Channel dimension multiplier   |
-| kernel_conf     | str   | '333333'      | Kernel sizes encoded as string |
+| Key             | Type               | Default value | Description                   |
+| --------------- | ------------------ | ------------- | ----------------------------- |
+| fix_head_stem   | bool               | False         | Whether to multiply head stem |
+| divisible_value | int                | 8             | Divisor used                  |
+| input_ch        | int                | 16            | tarting channel dimension     |
+| final_ch        | int                | 164           | Final channel dimension       |
+| multiplier      | float              | 1.0           | Channel dimension multiplier  |
+| kernel_sizes    | int \| list\[int\] | 3             | Kernel sizes                  |
 
-## MobileOne
+### MobileOne
 
 Adapted from [here](https://github.com/apple/ml-mobileone).
 
@@ -109,7 +116,7 @@ Adapted from [here](https://github.com/apple/ml-mobileone).
 | ------- | --------------------------------------- | ------------- | ----------------------- |
 | variant | Literal\["s0", "s1", "s2", "s3", "s4"\] | "s0"          | Variant of the network. |
 
-## MobileNetV2
+### MobileNetV2
 
 Adapted from [here](https://pytorch.org/vision/main/models/generated/torchvision.models.mobilenet_v2.html).
 
@@ -119,7 +126,7 @@ Adapted from [here](https://pytorch.org/vision/main/models/generated/torchvision
 | ---------------- | ---- | ------------- | -------------------------------------- |
 | download_weights | bool | False         | If True download weights from imagenet |
 
-## EfficientNet
+### EfficientNet
 
 Adapted from [here](https://github.com/rwightman/gen-efficientnet-pytorch).
 
@@ -129,7 +136,7 @@ Adapted from [here](https://github.com/rwightman/gen-efficientnet-pytorch).
 | ---------------- | ---- | ------------- | --------------------------------------- |
 | download_weights | bool | False         | If True download weights from imagenet. |
 
-## ContextSpatial
+### ContextSpatial
 
 Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 
@@ -139,7 +146,18 @@ Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 | ---------------- | ---- | ------------- | ------------- |
 | context_backbone | str  | "MobileNetV2" | Backbone used |
 
-## RepPANNeck
+### DDRNet
+
+Adapted from [here](https://github.com/ydhongHIT/DDRNet)
+**Params**
+
+| Key     | Type                       | Default value | Description             |
+| ------- | -------------------------- | ------------- | ----------------------- |
+| variant | Literal\["23-slim", "23"\] | "23-slim"     | Variant of the network. |
+
+## Neck
+
+### RepPANNeck
 
 Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
@@ -156,7 +174,9 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 | block         | Literal\["RepBlock", "CSPStackRepBlock"\]                         | "RepBlock"                                              | Base block used                                                 |
 | csp_e         | float                                                             | 0.5                                                     | Factor for intermediate channels when block=="CSPStackRepBlock" |
 
-## ClassificationHead
+## Heads
+
+### ClassificationHead
 
 **Params**
 
@@ -164,22 +184,21 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 | ---------- | ----- | ------------- | --------------------------------------------- |
 | fc_dropout | float | 0.2           | Dropout rate before last layer, range \[0,1\] |
 
-## SegmentationHead
+### SegmentationHead
 
 Adapted from [here](https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py).
 
-## BiSeNetHead
+### BiSeNetHead
 
 Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 
 **Params**
 
-| Key            | Type | Default value | Description                                    |
-| -------------- | ---- | ------------- | ---------------------------------------------- |
-| upscale_factor | int  | 8             | Factor used for upscaling input                |
-| is_aux         | bool | False         | Either use 256 for intermediate channels or 64 |
+| Key                   | Type | Default value | Description                            |
+| --------------------- | ---- | ------------- | -------------------------------------- |
+| intermediate_channels | int  | 64            | How many intermediate channels to use. |
 
-## EfficientBBoxHead
+### EfficientBBoxHead
 
 Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
@@ -188,25 +207,10 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 | Key        | Type  | Default value | Description                                        |
 | ---------- | ----- | ------------- | -------------------------------------------------- |
 | n_heads    | bool  | 3             | Number of output heads                             |
-| conf_thres | float | 0.25          | confidence threshold for nms (used for evaluation) |
-| iou_thres  | float | 0.45          | iou threshold for nms (used for evaluation)        |
+| conf_thres | float | 0.25          | Confidence threshold for nms (used for evaluation) |
+| iou_thres  | float | 0.45          | Iou threshold for nms (used for evaluation)        |
 
-## ImplicitKeypointBBoxHead
-
-Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
-
-**Params**
-
-| Key              | Type                        | Default value | Description                                                                                                |
-| ---------------- | --------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------- |
-| n_keypoints      | int \| None                 | None          | Number of keypoints.                                                                                       |
-| n_heads          | int                         | 3             | Number of output heads                                                                                     |
-| anchors          | List\[List\[int\]\] \| None | None          | Anchors used for object detection. If set to `None`, the anchors are computed at runtime from the dataset. |
-| init_coco_biases | bool                        | True          | Whether to use COCO bias and weight initialization                                                         |
-| conf_thres       | float                       | 0.25          | confidence threshold for nms (used for evaluation)                                                         |
-| iou_thres        | float                       | 0.45          | iou threshold for nms (used for evaluation)                                                                |
-
-## EfficientKeypointBBoxHead
+### EfficientKeypointBBoxHead
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
 
@@ -216,5 +220,16 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
 | ----------- | ----------- | ------------- | -------------------------------------------------- |
 | n_keypoints | int \| None | None          | Number of keypoints.                               |
 | n_heads     | int         | 3             | Number of output heads                             |
-| conf_thres  | float       | 0.25          | confidence threshold for nms (used for evaluation) |
-| iou_thres   | float       | 0.45          | iou threshold for nms (used for evaluation)        |
+| conf_thres  | float       | 0.25          | Confidence threshold for nms (used for evaluation) |
+| iou_thres   | float       | 0.45          | Iou threshold for nms (used for evaluation)        |
+
+### DDRNetSegmentationHead
+
+Adapted from [here](https://github.com/ydhongHIT/DDRNet).
+
+**Params**
+
+| Key            | Type | Default value | Description                                                                                    |
+| -------------- | ---- | ------------- | ---------------------------------------------------------------------------------------------- |
+| inter_channels | int  | 64            | Width of internal conv. Must be a multiple of scale_factor^2 when inter_mode is pixel_shuffle. |
+| inter_mode     | str  | "bilinear     | Upsampling method.                                                                             |

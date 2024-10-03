@@ -1,5 +1,5 @@
 {
-    "config_version": "1.0",
+    "config_version": "1.1",
     "model": {
         "metadata": {
             "name": "parking_lot_model",
@@ -158,6 +158,7 @@
         ],
         "heads": [
             {
+                "name": "bbox-head",
                 "parser": "YOLO",
                 "metadata": {
                     "postprocessor_path": null,
@@ -179,6 +180,7 @@
                 ]
             },
             {
+                "name": "car-detection-head",
                 "parser": "YoloDetectionNetwork",
                 "metadata": {
                     "postprocessor_path": null,
@@ -197,6 +199,7 @@
                 ]
             },
             {
+                "name": "motorbike-detection-head",
                 "parser": "YoloDetectionNetwork",
                 "metadata": {
                     "postprocessor_path": null,
@@ -217,6 +220,7 @@
                 ]
             },
             {
+                "name": "color-segmentation-head",
                 "parser": "SegmentationParser",
                 "metadata": {
                     "postprocessor_path": null,
@@ -234,6 +238,7 @@
                 ]
             },
             {
+                "name": "any-vehicle-segmentation-head",
                 "parser": "SegmentationParser",
                 "metadata": {
                     "postprocessor_path": null,
@@ -248,6 +253,7 @@
                 ]
             },
             {
+                "name": "brand-segmentation-head",
                 "parser": "SegmentationParser",
                 "metadata": {
                     "postprocessor_path": null,
@@ -284,6 +290,7 @@
                 ]
             },
             {
+                "name": "vehicle-type-segmentation-head",
                 "parser": "SegmentationParser",
                 "metadata": {
                     "postprocessor_path": null,
