@@ -1,10 +1,9 @@
-# Example configuration for exporting a predefined light detection model
+# Example configuration for training a predefined light keypoint-detection model
 
 model:
-  name: detection_light
-  weights: null  # TODO: Specify a path to the weights here
+  name: keypoint_detection_light
   predefined_model:
-    name: DetectionModel
+    name: KeypointDetectionModel
     params:
       variant: light
 
@@ -25,10 +24,14 @@ trainer:
   validation_interval: 10
   n_log_images: 8
 
+  callbacks:
+    - name: ExportOnTrainEnd
+    - name: TestOnTrainEnd
+
   optimizer:
     name: SGD
     params:
-      lr: 0.02
+      lr: 0.006
       momentum: 0.937
       weight_decay: 0.0005
       dampening: 0.0
@@ -38,13 +41,5 @@ trainer:
     name: CosineAnnealingLR
     params:
       T_max: *epochs
-      eta_min: 0.0002
+      eta_min: 0.00001
       last_epoch: -1
-
-exporter:
-  output_names: [output1_yolov6r2, output2_yolov6r2, output3_yolov6r2]
-  onnx:
-    opset_version: 11
-  blobconverter:
-    active: True
-    shaves: 8
