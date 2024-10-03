@@ -10,7 +10,7 @@ keywords = ["ml", "training", "luxonis", "oak"]
 dynamic = ["dependencies", "optional-dependencies", "version"]
 classifiers = [
   "License :: OSI Approved :: Apache Software License",
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Programming Language :: Python :: 3.10",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Scientific/Engineering :: Image Processing",
