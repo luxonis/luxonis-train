@@ -128,7 +128,7 @@ Registered components can be then referenced in the config file. Custom componen
 - Optimizer - [Optimizer from torch.optim](https://pytorch.org/docs/stable/optim.html#torch.optim.Optimizer)
 - Scheduler - [LRScheduler from torch.optim.lr_scheduler](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate)
 
-Here is an example of how to create a custom components:
+Here is an example of how to create custom components:
 
 ```python
 from torch.optim import Optimizer
@@ -168,8 +168,8 @@ Local use is supported by default. In addition, we also integrate some cloud ser
 You have these options how to set up the environment variables:
 
 - Using standard environment variables
-- Specifying the variables in a `.env` file. If a variable is both in the environment and present in `.env` file, the exported variable takes precedense.
-- Specifying the variables in the [ENVIRON](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#environ) section of the config file. Note that this is not a recommended way. Variables defined in config take precedense over environment and `.env` variables.
+- Specifying the variables in a `.env` file. If a variable is both in the environment and present in `.env` file, the exported variable takes precedence.
+- Specifying the variables in the [ENVIRON](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#environ) section of the config file. Note that this is not a recommended way. Variables defined in config take precedence over environment and `.env` variables.
 
 ### S3
 
@@ -191,13 +191,13 @@ MLFLOW_S3_ENDPOINT_URL=**********
 MLFLOW_TRACKING_URI=**********
 ```
 
-### WanDB
+### WandB
 
-If you are using WanDB for logging, you have to sign in first in your environment.
+If you are using WandB for logging, you have to sign in first in your environment.
 
 ### POSTGRESS
 
-There is an option for remote storage for [Tuning](#tuning). We use POSTGRES and to connect to the database you need to specify the folowing env variables:
+There is an option for remote storage for [Tuning](#tuning). We use POSTGRES and to connect to the database you need to specify the following env variables:
 
 ```bash
 POSTGRES_USER=**********
