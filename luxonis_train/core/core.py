@@ -704,7 +704,7 @@ class LuxonisModel:
         }
 
         cfg_dict = {
-            "config_version": CONFIG_VERSION.__args__[0],  # type: ignore
+            "config_version": CONFIG_VERSION.__args__[-1],  # type: ignore
             "model": model,
         }
 
