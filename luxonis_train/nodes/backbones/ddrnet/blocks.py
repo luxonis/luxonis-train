@@ -24,15 +24,14 @@ class DAPPMBranch(nn.Module):
         """A DAPPM branch.
 
         @type kernel_size: int
-        @param kernel_size: The kernel size for the average pooling.
-            When stride=0, this parameter is omitted, and
-            AdaptiveAvgPool2d over all the input is performed.
+        @param kernel_size: The kernel size. When stride=0, this
+            parameter is omitted, and AdaptiveAvgPool2d over all the
+            input is performed.
         @type stride: int
-        @param stride: Stride for the average pooling. When stride=0, an
+        @param stride: Stride for the first convolution. When stride=0,
             AdaptiveAvgPool2d over all the input is performed (output is
-            1x1). When stride=1, no average pooling is performed. When
-            stride>1, average pooling is performed (scaling the input
-            down and up again).
+            1x1). When stride=1, nothing is performed. When stride>1, a
+            convolution with stride=stride is performed.
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type branch_channels: int
@@ -49,8 +48,14 @@ class DAPPMBranch(nn.Module):
             down_list.append(nn.AdaptiveAvgPool2d((1, 1)))
         elif stride > 1:
             down_list.append(
-                nn.AvgPool2d(
-                    kernel_size=kernel_size, stride=stride, padding=stride
+                nn.Conv2d(
+                    in_channels=in_channels,
+                    out_channels=in_channels,
+                    kernel_size=kernel_size,
+                    stride=stride,
+                    padding=stride,
+                    groups=in_channels,
+                    bias=False,
                 )
             )
 
