@@ -264,7 +264,22 @@ losses:
   - name: CustomLoss
     params:  # additional parameters
       k_steps: 12
+```
 
+The files containing the custom components must be sourced before the training script is run. To do that in CLI, you can use the `--source` argument:
+
+```bash
+luxonis_train --source custom_components.py train --config config.yaml
+```
+
+You can also run the training from a python script:
+
+```python
+from custom_components import *
+from luxonis_train import LuxonisModel
+
+model = LuxonisModel("config.yaml")
+model.train()
 ```
 
 For `LuxonisTrain` to recognize the custom components, they need to be imported before the main training script is run.

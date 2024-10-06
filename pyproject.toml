@@ -47,6 +47,7 @@ select = ["E4", "E7", "E9", "F", "W", "B", "I"]
 
 [tool.docformatter]
 black = true
+style = "epytext"
 wrap-summaries = 72
 wrap-descriptions = 72
 
