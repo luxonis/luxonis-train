@@ -233,9 +233,9 @@ Registered components can be then referenced in the config file. Custom componen
 - Loss - [BaseLoss](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/base_loss.py)
 - Metric - [BaseMetric](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/base_metric.py)
 - Visualizer - [BaseVisualizer](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/base_visualizer.py)
-- Callback - [Callback from lightning.pytorch.callbacks](https://lightning.ai/docs/pytorch/stable/extensions/callbacks.html), requires manual registration to the `CALLBACKS` registry
-- Optimizer - [Optimizer from torch.optim](https://pytorch.org/docs/stable/optim.html#torch.optim.Optimizer), requires manual registration to the `OPTIMIZERS` registry
-- Scheduler - [LRScheduler fro torch.optim.lr_scheduler](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate), requires manual registration to the `SCHEDULERS` registry
+- Callback - [lightning.pytorch.callbacks.Callback](https://lightning.ai/docs/pytorch/stable/extensions/callbacks.html), requires manual registration to the `CALLBACKS` registry
+- Optimizer - [torch.optim.Optimizer](https://pytorch.org/docs/stable/optim.html#torch.optim.Optimizer), requires manual registration to the `OPTIMIZERS` registry
+- Scheduler - [torch.optim.lr_scheduler.LRScheduler](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate), requires manual registration to the `SCHEDULERS` registry
 
 Here is an example of how to create custom loss and optimizer:
 
