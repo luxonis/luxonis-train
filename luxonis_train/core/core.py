@@ -291,10 +291,12 @@ class LuxonisModel:
     ) -> None:
         """Runs export.
 
-        @type onnx_path: str | None
-        @param onnx_path: Path to .onnx model. If not specified, model will be saved
+        @type onnx_save_path: str | None
+        @param onnx_save_path: Path to .onnx model. If not specified, model will be saved
             to export directory with name specified in config file.
 
+        @type weights: str | Path | None
+        @param weights: Path to the checkpoint from which to export the model.
         @raises RuntimeError: If `onnxsim` fails to simplify the model.
         """
 
