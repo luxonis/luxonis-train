@@ -42,18 +42,109 @@ The entire configuration is specified in a `yaml` file. This includes the model
 structure, used losses, metrics, optimizers etc. For specific instructions and example
 configuration files, see [Configuration](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md).
 
-### Data Preparation
+## Data Loading
 
-This library requires data to be in the Luxonis Dataset Format.
+LuxonisTrain supports several ways of loading data:
 
-For instructions on how to create a dataset in the LDF, follow the
-[examples](https://github.com/luxonis/luxonis-ml/tree/main/examples) in
-the [luxonis-ml](https://github.com/luxonis/luxonis-ml) repository.
+- from an existing dataset in the Luxonis Dataset Format
+- from a directory in one of the supported formats (_e.g._ COCO, VOC, _etc._)
+- using a custom loader
 
 To inspect dataset images by split (train, val, test), use the command:
 
 ```bash
 luxonis_train data inspect --config <config.yaml> --view <train/val/test>
+```
+
+### Luxonis Dataset Format
+
+The default loader used with `LuxonisTrain` is `LuxonisLoaderTorch`. It can either load data from an already created dataset in the `LuxonisDataFormat` or create a new dataset automatically from a set of supported formats.
+
+For instructions on how to create a dataset in the LDF, follow the
+[examples](https://github.com/luxonis/luxonis-ml/tree/main/examples) in
+the [luxonis-ml](https://github.com/luxonis/luxonis-ml) repository.
+
+To use the Luxonis Dataset Loader, specify the following in the config file:
+
+```yaml
+
+loader:
+  params:
+    # name of the created dataset
+    dataset_name: dataset_name
+    # one of local (default), s3, gcs
+    bucket_storage: local
+```
+
+### Parsing from Directory
+
+The supported formats are:
+
+- COCO - We support COCO JSON format in two variants:
+  - [RoboFlow](https://roboflow.com/formats/coco-json)
+  - [FiveOne](https://docs.voxel51.com/user_guide/export_datasets.html#cocodetectiondataset-export)
+- [Pascal VOC XML](https://roboflow.com/formats/pascal-voc-xml)
+- [YOLO Darknet TXT](https://roboflow.com/formats/yolo-darknet-txt)
+- [YOLOv4 PyTorch TXT](https://roboflow.com/formats/yolov4-pytorch-txt)
+- [MT YOLOv6](https://roboflow.com/formats/mt-yolov6)
+- [CreateML JSON](https://roboflow.com/formats/createml-json)
+- [TensorFlow Object Detection CSV](https://roboflow.com/formats/tensorflow-object-detection-csv)
+- Classification Directory - A directory with subdirectories for each class
+  ```plaintext
+  dataset_dir/
+  ├── train/
+  │   ├── class1/
+  │   │   ├── img1.jpg
+  │   │   ├── img2.jpg
+  │   │   └── ...
+  │   ├── class2/
+  │   └── ...
+  ├── valid/
+  └── test/
+  ```
+- Segmentation Mask Directory - A directory with images and corresponding masks.
+  ```plaintext
+  dataset_dir/
+  ├── train/
+  │   ├── img1.jpg
+  │   ├── img1_mask.png
+  │   ├── ...
+  │   └── _classes.csv
+  ├── valid/
+  └── test/
+  ```
+  The masks are stored as grayscale PNG images where each pixel value corresponds to a class.
+  The mapping from pixel values to class is defined in the `_classes.csv` file.
+  ```csv
+  Pixel Value, Class
+  0, background
+  1, class1
+  2, class2
+  3, class3
+  ```
+
+To use a directory loader, specify the following in the config file:
+
+```yaml
+
+loader:
+  params:
+    dataset_dir: path/to/dataset
+    # one of voc, darknet, yolov4, yolov6, createml, tfcsv, clsdir, segmask
+    dataset_type: coco
+```
+
+### Custom Loader
+
+To learn how to implement and use a custom loader, see [customization](#customizations).
+
+The loader can be referenced in the configuration file using its class name:
+
+```yaml
+loader:
+  name: CustomLoader
+  params:
+    # additional parameters to be passed to the loade constructor
 ```
 
 ## Training
@@ -72,12 +163,12 @@ luxonis_train train --config config.yaml trainer.batch_size 8 trainer.epochs 10
 
 where key and value are space separated and sub-keys are dot (`.`) separated. If the configuration field is a list, then key/sub-key should be a number (e.g. `trainer.preprocessing.augmentations.0.name RotateCustom`).
 
-## Evaluating
+## Testing
 
-To evaluate the model on a specific dataset split (train, test, or val), use the following command:
+To test the model on a specific dataset view (train, test, or val), use the following command:
 
 ```bash
-luxonis_train eval --config <config.yaml> --view <train/test/val>
+luxonis_train test --config <config.yaml> --view <train/test/val>
 ```
 
 ## Tuning
@@ -97,19 +188,36 @@ You can see an example tuning configuration [here](https://github.com/luxonis/lu
 
 We support export to `ONNX`, and `DepthAI .blob format` which is used for OAK cameras. By default, we export to `ONNX` format.
 
-To use the exporter, you have to specify the [exporter](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#exporter) section in the config file.
-
-Once you have the config file ready you can export the model using
-
-```bash
-luxonis_train export --config config.yaml
-```
+To configure the exporter, you can specify the [exporter](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#exporter) section in the config file.
 
 You can see an example export configuration [here](https://github.com/luxonis/luxonis-train/blob/main/configs/example_export.yaml).
+
+To export the model, run
+
+```bash
+luxonis_train export --config config.yaml model.weights path/to/weights.ckpt
+```
+
+The export process can be run automatically at the end of the training by using the `ExportOnTrainEnd` callback.
+
+To learn about callbacks, see [callbacks](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/callbacks/README.md).
+
+## NN Archive Support
+
+The models can also be exported to our custom NN Archive format.
+
+```bash
+luxonis_train archive --executable path/to/exported_model.onnx --config config.yaml
+```
+
+This will create a `.tar.gz` file which can be used with the [DepthAI](https://github.com/luxonis/depthai) API.
+
+The archive can be created automatically at the end of the training by using the `ArchiveOnTrainEnd` callback.
 
 ## Customizations
 
 We provide a registry interface through which you can create new
+[loaders](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/loaders/README.md),
 [nodes](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/nodes/README.md),
 [losses](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/README.md),
 [metrics](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/README.md),
@@ -120,15 +228,16 @@ and [schedulers](https://github.com/luxonis/luxonis-train/blob/main/configs/READ
 
 Registered components can be then referenced in the config file. Custom components need to inherit from their respective base classes:
 
+- Loader - [BaseLoader](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/loaders/base_loader.py)
 - Node - [BaseNode](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/models/nodes/base_node.py)
 - Loss - [BaseLoss](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/base_loss.py)
 - Metric - [BaseMetric](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/base_metric.py)
 - Visualizer - [BaseVisualizer](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/base_visualizer.py)
-- Callback - [Callback from lightning.pytorch.callbacks](lightning.pytorch.callbacks)
-- Optimizer - [Optimizer from torch.optim](https://pytorch.org/docs/stable/optim.html#torch.optim.Optimizer)
-- Scheduler - [LRScheduler from torch.optim.lr_scheduler](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate)
+- Callback - [Callback from lightning.pytorch.callbacks](https://lightning.ai/docs/pytorch/stable/extensions/callbacks.html), requires manual registration to the `CALLBACKS` registry
+- Optimizer - [Optimizer from torch.optim](https://pytorch.org/docs/stable/optim.html#torch.optim.Optimizer), requires manual registration to the `OPTIMIZERS` registry
+- Scheduler - [LRScheduler fro torch.optim.lr_scheduler](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate), requires manual registration to the `SCHEDULERS` registry
 
-Here is an example of how to create custom components:
+Here is an example of how to create custom loss and optimizer:
 
 ```python
 from torch.optim import Optimizer
@@ -141,7 +250,6 @@ class CustomOptimizer(Optimizer):
 
 # Subclasses of BaseNode, LuxonisLoss, LuxonisMetric
 # and BaseVisualizer are registered automatically.
-
 class CustomLoss(BaseLoss):
     # This class is automatically registered under `CustomLoss` name.
     def __init__(self, k_steps: int, **kwargs):
@@ -149,7 +257,7 @@ class CustomLoss(BaseLoss):
         ...
 ```
 
-And then in the config you reference this `CustomOptimizer` and `CustomLoss` by their names:
+In the configuration file you reference the `CustomOptimizer` and `CustomLoss` by their names:
 
 ```yaml
 losses:
@@ -157,6 +265,24 @@ losses:
     params:  # additional parameters
       k_steps: 12
 
+```
+
+For `LuxonisTrain` to recognize the custom components, they need to be imported before the main training script is run.
+
+If you're using the CLI, you can import the custom components by specifying the `--source` flag:
+
+```bash
+luxonis_train --source custom_components.py train --config config.yaml
+```
+
+Otherwise, you can import the custom components in your custom main script:
+
+```python
+from custom_components import *
+from luxonis_train import LuxonisModel
+
+model = LuxonisModel("config.yaml")
+model.train()
 ```
 
 For more information on how to define custom components, consult the respective in-source documentation.
