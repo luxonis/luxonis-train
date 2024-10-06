@@ -50,12 +50,6 @@ LuxonisTrain supports several ways of loading data:
 - from a directory in one of the supported formats (_e.g._ COCO, VOC, _etc._)
 - using a custom loader
 
-To inspect dataset images by split (train, val, test), use the command:
-
-```bash
-luxonis_train data inspect --config <config.yaml> --view <train/val/test>
-```
-
 ### Luxonis Dataset Format
 
 The default loader used with `LuxonisTrain` is `LuxonisLoaderTorch`. It can either load data from an already created dataset in the `LuxonisDataFormat` or create a new dataset automatically from a set of supported formats.
@@ -147,6 +141,12 @@ loader:
     # additional parameters to be passed to the loade constructor
 ```
 
+To inspect the loader output, use the `luxonis_train inspect` command:
+
+```bash
+luxonis_train inspect --config <config.yaml> --view <train/val/test>
+```
+
 ## Training
 
 Once you've created your `config.yaml` file you can train the model using this command:
@@ -165,7 +165,7 @@ where key and value are space separated and sub-keys are dot (`.`) separated. If
 
 ## Testing
 
-To test the model on a specific dataset view (train, test, or val), use the following command:
+To test the model on a specific dataset view (`train`, `test`, or `val`), use the following command:
 
 ```bash
 luxonis_train test --config <config.yaml> --view <train/test/val>
@@ -312,41 +312,31 @@ You have these options how to set up the environment variables:
 - Specifying the variables in a `.env` file. If a variable is both in the environment and present in `.env` file, the exported variable takes precedence.
 - Specifying the variables in the [ENVIRON](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#environ) section of the config file. Note that this is not a recommended way. Variables defined in config take precedence over environment and `.env` variables.
 
-### S3
+The following storage services are supported:
 
-If you are working with LuxonisDataset that is hosted on S3, you need to specify these env variables:
+- AWS S3, requires the following environment variables:
+  - `AWS_ACCESS_KEY_ID`
+  - `AWS_SECRET_ACCESS_KEY`
+  - `AWS_S3_ENDPOINT_URL`
+- Google Cloud Storage, requires the following environment variables:
+  - `GOOGLE_APPLICATION_CREDENTIALS`
 
-```bash
-AWS_ACCESS_KEY_ID=**********
-AWS_SECRET_ACCESS_KEY=**********
-AWS_S3_ENDPOINT_URL=**********
-```
+For logging and tracking, we support:
 
-### MLFlow
+- MLFlow, requires the following environment variables:
+  - `MLFLOW_S3_BUCKET`
+  - `MLFLOW_S3_ENDPOINT_URL`
+  - `MLFLOW_TRACKING_URI`
+- WandB, requires the following environment variables:
+  - `WANDB_API_KEY`
 
-If you want to use MLFlow for logging and storing artifacts you also need to specify MLFlow-related env variables like this:
+There is an option for remote `POSTGRESS` storage for [Tuning](#tuning). To connect to the database you need to specify the following env variables:
 
-```bash
-MLFLOW_S3_BUCKET=**********
-MLFLOW_S3_ENDPOINT_URL=**********
-MLFLOW_TRACKING_URI=**********
-```
-
-### WandB
-
-If you are using WandB for logging, you have to sign in first in your environment.
-
-### POSTGRESS
-
-There is an option for remote storage for [Tuning](#tuning). We use POSTGRES and to connect to the database you need to specify the following env variables:
-
-```bash
-POSTGRES_USER=**********
-POSTGRES_PASSWORD=**********
-POSTGRES_HOST=**********
-POSTGRES_PORT=**********
-POSTGRES_DB=**********
-```
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `POSTGRES_HOST`
+- `POSTGRES_PORT`
+- `POSTGRES_DB`
 
 ## Contributing
 
