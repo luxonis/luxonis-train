@@ -15,12 +15,12 @@
 
 ## 🌟 Overview
 
-Luxonis Training Framework (`LuxonisTrain`) is a flexible and easy-to-use tool for training deep learning models. It is built on top of PyTorch Lightning and provides a simple interface for training, testing, and exporting models.
+Luxonis Training Framework (`LuxonisTrain`) is a flexible and easy-to-use tool for training deep learning models. It is built on top of `PyTorch Lightning` and provides a simple interface for training, testing, and exporting models.
 
-- **No Code Approach:** No coding skills required to use `LuxonisTrain`. All you need to do is to define a simple configuration file in a user-friendly `YAML` format.
+- **No Code Approach:** No coding skills are required to use `LuxonisTrain`. All you need to do is to define a simple configuration file in a user-friendly `YAML` format.
 - **Simplicity:** You can jump right in using our set of predefined configuration files for most common computer vision tasks.
 - **Extensibility:** Define your custom components using an easy-to-use Python API that does the heavy lifting for you.
-- **Built for the Edge:** `LuxonisTrain` was built with edge devices in mind, deploying neural models was never this easy!
+- **Built for the Edge:** `LuxonisTrain` was built with edge devices in mind, focusing on optimal architectures to run with limited compute.
 
 > \[!WARNING\]
 > **The project is in a beta state and might be unstable or contain bugs - please report any feedback.**
@@ -32,20 +32,20 @@ Luxonis Training Framework (`LuxonisTrain`) is a flexible and easy-to-use tool f
 - [📝 Usage](#usage)
   - [💻 CLI](#cli)
 - [⚙️ Configuration](#configuration)
-- [🚀 Data Loading](#data-loading)
-  - [📂 Parsing from Directory](#parsing-from-directory)
-  - [💾 Luxonis Dataset](#luxonis-dataset-format)
-  - [🔧 Custom Loader](#custom-loader)
+- [💾 Data](#data-loading)
+  - [📂 Data Directory](#data-directory)
+  - [🚀 `LuxonisDataset`](#luxonis-dataset)
 - [🏋️‍♂️Training](#training)
 - [✍ Testing](#testing)
-- [🔬 Tuning](#tuning)
+- [🧠 Inference](#inference)
 - [🤖 Exporting](#exporting)
 - [🗂️ NN Archive](#nn-archive)
-- [🐍 Usage in Scripts](#usage-in-scripts)
+- [🔬 Tuning](#tuning)
 - [🎨 Customizations](#customizations)
-- [👉 Tutorials and Examples](#tutorials)
+- [📚 Tutorials and Examples](#tutorials)
 - [🔑 Credentials](#credentials)
 - [🤝 Contributing](#contributing)
+- [📄 License](#license)
 
 <a name="installation"></a>
 
@@ -182,7 +182,6 @@ To use a directory loader, you need to specify the `dataset_dir` parameter in th
       - **example:** `roboflow://team-roboflow/coco-128/2/coco`
 
 ```yaml
-
 loader:
   params:
     # Optional, the dataset will be created under this name.
@@ -322,7 +321,7 @@ To learn more about callbacks, see [Callbacks](https://github.com/luxonis/luxoni
 
 <a name="inference"></a>
 
-## ✍ Inference
+## 🧠 Inference
 
 You can use the `infer` command to run inference on a dataset, image directory, or a video file.
 
@@ -463,32 +462,6 @@ from luxonis_train import LuxonisModel
 model = LuxonisModel("configs/example_tuning.yaml")
 model.tune()
 ```
-
-<a name="usage-in-scripts"></a>
-
-## 🐍 Usage in Scripts
-
-On top of the CLI, you can also use the `LuxonisModel` class to run the training from a Python script.
-
-```python
-from luxonis_train import LuxonisModel
-
-model = LuxonisModel("config.yaml")
-model.train()
-results = model.test()
-model.export()
-model.archive()
-```
-
-The above code will run the training, testing, exporting, and archiving in sequence.
-
-> \[!NOTE\]
-> Using callbacks is preferred over manual exporting, testing and archiving.
-
-Upon completion, the results will be by default stored under the `output` directory.
-
-> \[!NOTE\]
-> The output directory can be changed by specifying the `tracker.save_directory` parameter in the config file.
 
 <a name="customizations"></a>
 
