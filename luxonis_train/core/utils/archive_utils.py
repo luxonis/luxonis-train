@@ -116,7 +116,7 @@ def _get_classes(
                 node_task = "boundingbox"
             case "SegmentationHead" | "BiSeNetHead":
                 node_task = "segmentation"
-            case "ImplicitKeypointBBoxHead" | "EfficientKeypointBBoxHead":
+            case "EfficientKeypointBBoxHead":
                 node_task = "keypoints"
             case _:  # pragma: no cover
                 raise ValueError("Node does not map to a default task.")
@@ -152,14 +152,6 @@ def _get_head_specific_parameters(
         parameters["is_softmax"] = getattr(
             ImplementedHeadsIsSoxtmaxed, head_name
         ).value
-    elif head_name == "ImplicitKeypointBBoxHead":
-        parameters["subtype"] = ObjectDetectionSubtypeYOLO.YOLOv7.value
-        head_node = nodes[head_alias]
-        parameters["iou_threshold"] = head_node.iou_thres
-        parameters["conf_threshold"] = head_node.conf_thres
-        parameters["max_det"] = head_node.max_det
-        parameters["n_keypoints"] = head_node.n_keypoints
-        parameters["anchors"] = head_node.anchors.tolist()
     elif head_name == "EfficientKeypointBBoxHead":
         # or appropriate subtype
         head_node = nodes[head_alias]
@@ -209,8 +201,6 @@ def _get_head_outputs(
     elif head_type == "EfficientBBoxHead":
         return [output["name"] for output in outputs]
     elif head_type in ["SegmentationHead", "BiSeNetHead"]:
-        return [outputs[0]["name"]]
-    elif head_type == "ImplicitKeypointBBoxHead":
         return [outputs[0]["name"]]
     elif head_type == "EfficientKeypointBBoxHead":
         return [outputs[0]["name"]]

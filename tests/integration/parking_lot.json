@@ -91,16 +91,6 @@
                 "layout": "NCHW"
             },
             {
-                "name": "car-detection-head/boxes_and_keypoints/0",
-                "dtype": "float32",
-                "shape": [
-                    1,
-                    5040,
-                    24
-                ],
-                "layout": "NCD"
-            },
-            {
                 "name": "color-segmentation-head/color-segmentation/0",
                 "dtype": "float32",
                 "shape": [
@@ -177,25 +167,6 @@
                     "bbox-head/boundingbox/0",
                     "bbox-head/boundingbox/1",
                     "bbox-head/boundingbox/2"
-                ]
-            },
-            {
-                "name": "car-detection-head",
-                "parser": "YoloDetectionNetwork",
-                "metadata": {
-                    "postprocessor_path": null,
-                    "classes": [
-                        "car"
-                    ],
-                    "n_classes": 1,
-                    "iou_threshold": 0.45,
-                    "conf_threshold": 0.25,
-                    "max_det": 300,
-                    "subtype": "yolov7",
-                    "n_keypoints": 6
-                },
-                "outputs": [
-                    "car-detection-head/boxes_and_keypoints/0"
                 ]
             },
             {
