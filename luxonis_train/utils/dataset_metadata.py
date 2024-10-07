@@ -1,5 +1,4 @@
 from luxonis_train.loaders import BaseLoaderTorch
-from luxonis_train.utils import anchors_from_dataset
 
 
 class DatasetMetadata:
@@ -111,31 +110,6 @@ class DatasetMetadata:
                     "The dataset contains different class names for different tasks."
                 )
         return class_names
-
-    def autogenerate_anchors(
-        self, n_heads: int
-    ) -> tuple[list[list[float]], float]:
-        """Automatically generates anchors for the provided dataset.
-
-        @type n_heads: int
-        @param n_heads: Number of heads to generate anchors for.
-        @rtype: tuple[list[list[float]], float]
-        @return: List of anchors in [-1,6] format and recall of the
-            anchors.
-        @raises RuntimeError: If the dataset loader was not provided
-            during initialization.
-        """
-        if self._loader is None:
-            raise RuntimeError(
-                "Cannot generate anchors without a dataset loader. "
-                "Please provide a dataset loader to the constructor "
-                "or call `set_loader` method."
-            )
-
-        proposed_anchors, recall = anchors_from_dataset(
-            self._loader, n_anchors=n_heads * 3
-        )
-        return proposed_anchors.reshape(-1, 6).tolist(), recall
 
     @classmethod
     def from_loader(cls, loader: BaseLoaderTorch) -> "DatasetMetadata":
