@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -22,7 +23,15 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
     def __init__(
         self,
         inter_channels: int = 64,
-        inter_mode: str = "bilinear",
+        inter_mode: Literal[
+            "nearest",
+            "linear",
+            "bilinear",
+            "bicubic",
+            "trilinear",
+            "area",
+            "pixel_shuffle",
+        ] = "bilinear",
         **kwargs,
     ):
         """DDRNet segmentation head.
