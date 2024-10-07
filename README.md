@@ -11,23 +11,34 @@
 ![Docs](https://github.com/luxonis/luxonis-train/actions/workflows/docs.yaml/badge.svg)
 [![codecov](https://codecov.io/gh/luxonis/luxonis-train/graph/badge.svg?token=647MTHBYD5)](https://codecov.io/gh/luxonis/luxonis-train)
 
-Luxonis training framework (`luxonis-train`) is intended for training deep learning models that can run fast on OAK products.
+Luxonis Training Framework (`luxonis-train`) is intended to be a flexible and easy-to-use tool for training deep learning models. It is built on top of PyTorch Lightning and provides a simple interface for training, testing, and exporting models.
 
-**The project is in a beta state and might be unstable or contain bugs - please report any feedback.**
+It is made to be easily customizable and extendable, allowing you to create custom loaders, losses, metrics, visualizers, and more.
+
+> \[!WARNING\]
+> **The project is in a beta state and might be unstable or contain bugs - please report any feedback.**
 
 ## Table Of Contents
 
 - [Installation](#installation)
+- [Usage](#usage)
+- [Data Loading](#data-loading)
+  - [Luxonis Dataset Format](#luxonis-dataset-format)
+  - [Parsing from Directory](#parsing-from-directory)
+  - [Custom Loader](#custom-loader)
 - [Training](#training)
-- [Customizations](#customizations)
+- [Testing](#testing)
 - [Tuning](#tuning)
 - [Exporting](#exporting)
+- [`NN Archive` Support](#nn-archive-support)
+- [Usage in Scripts](#usage-in-scripts)
+- [Customizations](#customizations)
 - [Credentials](#credentials)
 - [Contributing](#contributing)
 
 ## Installation
 
-`luxonis-train` is hosted on PyPi and can be installed with `pip` as:
+`luxonis-train` is hosted on PyPI and can be installed with `pip` as:
 
 ```bash
 pip install luxonis-train
@@ -44,7 +55,7 @@ configuration files, see [Configuration](https://github.com/luxonis/luxonis-trai
 
 ## Data Loading
 
-LuxonisTrain supports several ways of loading data:
+`LuxonisTrain` supports several ways of loading data:
 
 - from an existing dataset in the Luxonis Dataset Format
 - from a directory in one of the supported formats (_e.g._ COCO, VOC, _etc._)
@@ -56,12 +67,11 @@ The default loader used with `LuxonisTrain` is `LuxonisLoaderTorch`. It can eith
 
 For instructions on how to create a dataset in the LDF, follow the
 [examples](https://github.com/luxonis/luxonis-ml/tree/main/examples) in
-the [luxonis-ml](https://github.com/luxonis/luxonis-ml) repository.
+the [`luxonis-ml`](https://github.com/luxonis/luxonis-ml) repository.
 
-To use the Luxonis Dataset Loader, specify the following in the config file:
+To use the default loader with LDF, specify the following in the config file:
 
 ```yaml
-
 loader:
   params:
     # name of the created dataset
@@ -161,7 +171,7 @@ If you wish to manually override some config parameters you can do this by provi
 luxonis_train train --config config.yaml trainer.batch_size 8 trainer.epochs 10
 ```
 
-where key and value are space separated and sub-keys are dot (`.`) separated. If the configuration field is a list, then key/sub-key should be a number (e.g. `trainer.preprocessing.augmentations.0.name RotateCustom`).
+Where key and value are space separated and sub-keys are dot (`.`) separated. If the configuration field is a list, then key/sub-key should be a number (e.g. `trainer.preprocessing.augmentations.0.name RotateCustom`).
 
 ## Testing
 
@@ -173,10 +183,10 @@ luxonis_train test --config <config.yaml> --view <train/test/val>
 
 ## Tuning
 
-To improve training performance you can use `Tuner` for hyperparameter optimization.
+You can use `Tuner` for hyperparameter optimization to increase the model's performance. The tuning is powered by [`Optuna`](https://optuna.org/).
 To use tuning, you have to specify [tuner](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#tuner) section in the config file.
 
-To start the tuning, run
+Start the tuning process by running:
 
 ```bash
 luxonis_train tune --config config.yaml
@@ -186,7 +196,7 @@ You can see an example tuning configuration [here](https://github.com/luxonis/lu
 
 ## Exporting
 
-We support export to `ONNX`, and `DepthAI .blob format` which is used for OAK cameras. By default, we export to `ONNX` format.
+We support export to `ONNX`, and `BLOB` format which is used for OAK cameras. By default, we export to `ONNX` format.
 
 To configure the exporter, you can specify the [exporter](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#exporter) section in the config file.
 
@@ -202,15 +212,15 @@ The export process can be run automatically at the end of the training by using 
 
 To learn about callbacks, see [callbacks](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/callbacks/README.md).
 
-## NN Archive Support
+## `NN Archive` Support
 
-The models can also be exported to our custom NN Archive format.
+The models can also be exported to our custom `NN Archive` format.
 
 ```bash
 luxonis_train archive --executable path/to/exported_model.onnx --config config.yaml
 ```
 
-This will create a `.tar.gz` file which can be used with the [DepthAI](https://github.com/luxonis/depthai) API.
+This will create a `.tar.gz` file which can be used with the [`DepthAI`](https://github.com/luxonis/depthai) API.
 
 The archive can be created automatically at the end of the training by using the `ArchiveOnTrainEnd` callback.
 
@@ -242,14 +252,14 @@ and [schedulers](https://github.com/luxonis/luxonis-train/blob/main/configs/READ
 
 Registered components can be then referenced in the config file. Custom components need to inherit from their respective base classes:
 
-- Loader - [BaseLoader](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/loaders/base_loader.py)
-- Node - [BaseNode](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/models/nodes/base_node.py)
-- Loss - [BaseLoss](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/base_loss.py)
-- Metric - [BaseMetric](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/base_metric.py)
-- Visualizer - [BaseVisualizer](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/base_visualizer.py)
-- Callback - [lightning.pytorch.callbacks.Callback](https://lightning.ai/docs/pytorch/stable/extensions/callbacks.html), requires manual registration to the `CALLBACKS` registry
-- Optimizer - [torch.optim.Optimizer](https://pytorch.org/docs/stable/optim.html#torch.optim.Optimizer), requires manual registration to the `OPTIMIZERS` registry
-- Scheduler - [torch.optim.lr_scheduler.LRScheduler](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate), requires manual registration to the `SCHEDULERS` registry
+- Loader - [`BaseLoader`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/loaders/base_loader.py)
+- Node - [`BaseNode`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/models/nodes/base_node.py)
+- Loss - [`BaseLoss`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/base_loss.py)
+- Metric - [`BaseMetric`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/base_metric.py)
+- Visualizer - [`BaseVisualizer`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/base_visualizer.py)
+- Callback - [`lightning.pytorch.callbacks.Callback`](https://lightning.ai/docs/pytorch/stable/extensions/callbacks.html), requires manual registration to the `CALLBACKS` registry
+- Optimizer - [`torch.optim.Optimizer`](https://pytorch.org/docs/stable/optim.html#torch.optim.Optimizer), requires manual registration to the `OPTIMIZERS` registry
+- Scheduler - [`torch.optim.lr_scheduler.LRScheduler`](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate), requires manual registration to the `SCHEDULERS` registry
 
 Here is an example of how to create custom loss and optimizer:
 
@@ -337,11 +347,11 @@ The following storage services are supported:
 
 For logging and tracking, we support:
 
-- MLFlow, requires the following environment variables:
+- `MLFlow`, requires the following environment variables:
   - `MLFLOW_S3_BUCKET`
   - `MLFLOW_S3_ENDPOINT_URL`
   - `MLFLOW_TRACKING_URI`
-- WandB, requires the following environment variables:
+- `WandB`, requires the following environment variables:
   - `WANDB_API_KEY`
 
 There is an option for remote `POSTGRESS` storage for [Tuning](#tuning). To connect to the database you need to specify the following env variables:

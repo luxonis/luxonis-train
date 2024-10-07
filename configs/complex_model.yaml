@@ -15,7 +15,7 @@ model:
         - RepPANNeck
 
       losses:
-        name: EfficientKeypointBboxLoss
+        - name: EfficientKeypointBboxLoss
 
       metrics:
         - name: ObjectKeypointSimilarity
@@ -23,22 +23,22 @@ model:
         - name: MeanAveragePrecisionKeypoints
 
       visualizers:
-        name: MultiVisualizer
-        params:
-          visualizers:
-            - name: KeypointVisualizer
-              params:
-                nonvisible_color: blue
-            - name: BBoxVisualizer
-              params:
-                colors:
-                  person: "#FF5055"
+        - name: MultiVisualizer
+          params:
+            visualizers:
+              - name: KeypointVisualizer
+                params:
+                  nonvisible_color: blue
+              - name: BBoxVisualizer
+                params:
+                  colors:
+                    person: "#FF5055"
 
     - name: SegmentationHead
       inputs:
         - RepPANNeck
       losses:
-        name: BCEWithLogitsLoss
+        - name: BCEWithLogitsLoss
       metrics:
         - name: F1Score
           params:
@@ -47,9 +47,9 @@ model:
           params:
             task: binary
       visualizers:
-        name: SegmentationVisualizer
-        params:
-          colors: "#FF5055"
+        - name: SegmentationVisualizer
+          params:
+            colors: "#FF5055"
 
     - name: EfficientBBoxHead
       inputs:
@@ -58,11 +58,11 @@ model:
         conf_thres: 0.75
         iou_thres: 0.45
       losses:
-        name: AdaptiveDetectionLoss
+        - name: AdaptiveDetectionLoss
       metrics:
-        name: MeanAveragePrecision
+        - name: MeanAveragePrecision
       visualizers:
-        name: BBoxVisualizer
+        - name: BBoxVisualizer
 
 tracker:
   project_name: coco_test
