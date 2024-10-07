@@ -25,16 +25,19 @@ class ArchiveOnTrainEnd(NeedsCheckpoint):
         @param pl_module: Pytorch Lightning module.
         """
 
-        path = self.get_checkpoint(pl_module)
-        if path is None:  # pragma: no cover
-            logger.warning("Skipping model archiving.")
-            return
-
         onnx_path = pl_module.core._exported_models.get("onnx")
         if onnx_path is None:  # pragma: no cover
+            checkpoint = self.get_checkpoint(pl_module)
+            if checkpoint is None:
+                logger.warning("Skipping model archiving.")
+                return
+            logger.info("Model executable not found, creating one.")
+            pl_module.core.export(weights=checkpoint)
+            onnx_path = pl_module.core._exported_models.get("onnx")
+
+        if onnx_path is None:  # pragma: no cover
             logger.error(
-                "Model executable not found. "
-                "Make sure to run exporter callback before archiver callback. "
+                "Model executable not found and couldn't be created. "
                 "Skipping model archiving."
             )
             return
