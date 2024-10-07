@@ -640,6 +640,7 @@ class LuxonisModel:
         outputs = []
 
         if path is None:
+            logger.warning("No model executable specified for archiving.")
             if "onnx" not in self._exported_models:
                 logger.info("Exporting model to ONNX...")
                 self.export()
