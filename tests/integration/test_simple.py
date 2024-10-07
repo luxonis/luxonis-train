@@ -89,7 +89,7 @@ def test_multi_input(opts: dict[str, Any], infer_path: Path):
     model.export(str(ONNX_PATH))
     assert ONNX_PATH.exists()
 
-    assert not infer_path.exists()
+    assert len(list(infer_path.iterdir())) == 0
     model.infer(view="val", save_dir=infer_path)
     assert infer_path.exists()
 
