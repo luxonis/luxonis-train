@@ -31,7 +31,7 @@ class ArchiveOnTrainEnd(NeedsCheckpoint):
             if checkpoint is None:
                 logger.warning("Skipping model archiving.")
                 return
-            logger.info("Model executable not found, creating one.")
+            logger.info("Exported model not found. Exporting to ONNX...")
             pl_module.core.export(weights=checkpoint)
             onnx_path = pl_module.core._exported_models.get("onnx")
 
