@@ -33,6 +33,7 @@ It is made to be easily customizable and extendable, allowing you to create cust
 - [`NN Archive` Support](#nn-archive-support)
 - [Usage in Scripts](#usage-in-scripts)
 - [Customizations](#customizations)
+- [Tutorials and Examples](#tutorials-and-examples)
 - [Credentials](#credentials)
 - [Contributing](#contributing)
 
@@ -325,6 +326,10 @@ model.train()
 ```
 
 For more information on how to define custom components, consult the respective in-source documentation.
+
+## Tutorials and Examples
+
+We are actively working on providing examples and tutorials for different parts of the library which will help you to start more easily. The tutorials can be found [here](https://github.com/luxonis/depthai-ml-training/tree/master) and will be updated regularly.
 
 ## Credentials
 
