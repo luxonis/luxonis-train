@@ -50,8 +50,8 @@ class MobileOneBlock(nn.Module):
         @param use_se: Whether to use SE-ReLU activations. Defaults to
             False.
         @type n_conv_branches: int
-        @param n_conv_branches: Number of linear conv branches. Defaults
-            to 1.
+        @param n_conv_branches: Number of convolutional branches.
+            Defaults to 1.
         """
         super().__init__()
 
@@ -168,8 +168,8 @@ class MobileOneBlock(nn.Module):
 
     def _get_kernel_bias(self) -> tuple[Tensor, Tensor]:
         """Method to obtain re-parameterized kernel and bias.
-        Reference: U{https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py#L83}
 
+        @see: U{https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py#L83}
         @rtype: tuple[Tensor, Tensor]
         @return: Tuple of (kernel, bias) after re-parameterization.
         """
@@ -205,8 +205,10 @@ class MobileOneBlock(nn.Module):
         return kernel_final, bias_final
 
     def _fuse_bn_tensor(self, branch: nn.Module) -> tuple[Tensor, Tensor]:
-        """Method to fuse batchnorm layer with preceeding conv layer.
-        Reference: U{https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py#L95}
+        """Method to fuse batch normalization layer with preceding
+        convolutional layer.
+
+        @see: U{https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py#L95}
 
         @rtype: tuple[Tensor, Tensor]
         @return: Tuple of (kernel, bias) after fusing batchnorm.

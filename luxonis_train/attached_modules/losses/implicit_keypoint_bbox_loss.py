@@ -82,7 +82,8 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         @type sigmas: list[float] | None
         @param sigmas: Sigmas used in KeypointLoss for OKS metric. If None then use COCO ones if possible or default ones. Defaults to C{None}.
         @type area_factor: float | None
-        @param area_factor: Factor by which we multiply bbox area which is used in KeypointLoss. If None then use default one. Defaults to C{None}.
+        @param area_factor: Factor by which we multiply the bounding box area which is used in the keypoint loss.
+            If not set, the default value of C{0.53} is used.
         @type class_loss_weight: float
         @param class_loss_weight: Weight for the class loss. Defaults to C{0.6}.
         @type objectness_loss_weight: float
@@ -152,14 +153,14 @@ class ImplicitKeypointBBoxLoss(BaseLoss[list[Tensor], KeypointTargetType]):
         @return: Tuple containing the original output and the
             postprocessed labels. The processed labels are a tuple
             containing the class targets, box targets, keypoint targets,
-            indices and anchors. Indicies are a tuple containing vectors
+            indices and anchors. Indices are a tuple containing vectors
             of indices for batch, anchor, feature y and feature x
-            dimensions, respectively. They are all of shape
-            (n_targets,). The indices are used to index the output
-            tensors of shape (batch_size, n_anchors, feature_height,
-            feature_width, n_classes + box_offset + n_keypoints * 3) to
-            get a tensor of shape (n_targets, n_classes + box_offset +
-            n_keypoints * 3).
+            dimensions, respectively. They are all of the shape
+            C{(n_targets,)}. The indices are used to index the output
+            tensors of shape C{(batch_size, n_anchors, feature_height,
+            feature_width, n_classes + box_offset + n_keypoints * 3)} to
+            get a tensor of shape C{(n_targets, n_classes + box_offset +
+            n_keypoints * 3)}.
         """
         predictions = self.get_input_tensors(outputs, "features")
 

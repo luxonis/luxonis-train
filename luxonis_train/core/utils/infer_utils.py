@@ -7,7 +7,7 @@ import torch
 import tqdm
 from torch import Tensor
 
-from luxonis_train.attached_modules.visualizers import get_unnormalized_images
+from luxonis_train.attached_modules.visualizers import get_denormalized_images
 from luxonis_train.enums import TaskType
 
 IMAGE_FORMATS = {
@@ -71,7 +71,7 @@ def prepare_and_infer_image(model, img: np.ndarray, labels: dict, view: str):
     inputs = {
         "image": torch.tensor(img).unsqueeze(0).permute(0, 3, 1, 2).float()
     }
-    images = get_unnormalized_images(model.cfg, inputs)
+    images = get_denormalized_images(model.cfg, inputs)
 
     outputs = model.lightning_module.forward(
         inputs, labels, images=images, compute_visualizations=True
@@ -154,7 +154,7 @@ def process_dataset_images(
 ) -> None:
     """Handles the inference on dataset images."""
     for inputs, labels in model.pytorch_loaders[view]:
-        images = get_unnormalized_images(model.cfg, inputs)
+        images = get_denormalized_images(model.cfg, inputs)
         outputs = model.lightning_module.forward(
             inputs, labels, images=images, compute_visualizations=True
         )

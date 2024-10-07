@@ -40,7 +40,7 @@ class KeypointLoss(BaseLoss[Tensor, Tensor]):
             if possible or default ones. Defaults to C{None}.
         @type area_factor: float | None
         @param area_factor: Factor by which we multiply bbox area. If
-            None then use default one. Defaults to C{None}.
+            not set, the default factor of C{0.53} is used.
         @type regression_loss_weight: float
         @param regression_loss_weight: Weight of regression loss.
             Defaults to C{1.0}.

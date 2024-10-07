@@ -64,8 +64,8 @@ def fix_collisions(
 
 
 def batch_iou(batch1: Tensor, batch2: Tensor) -> Tensor:
-    """Calculates IoU for each pair of bboxes in the batch. Bboxes must
-    be in xyxy format.
+    """Calculates IoU for each pair of bounding boxes in the batch.
+    Bounding boxes must be in the "xyxy" format.
 
     @type batch1: Tensor
     @param batch1: Tensor of shape C{[bs, N, 4]}

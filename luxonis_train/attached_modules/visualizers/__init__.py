@@ -6,14 +6,14 @@ from .multi_visualizer import MultiVisualizer
 from .segmentation_visualizer import SegmentationVisualizer
 from .utils import (
     combine_visualizations,
+    denormalize,
     draw_bounding_box_labels,
     draw_keypoint_labels,
     draw_segmentation_labels,
     get_color,
-    get_unnormalized_images,
+    get_denormalized_images,
     preprocess_images,
     seg_output_to_bool,
-    unnormalize,
 )
 
 __all__ = [
@@ -28,8 +28,8 @@ __all__ = [
     "draw_keypoint_labels",
     "draw_segmentation_labels",
     "get_color",
-    "get_unnormalized_images",
+    "get_denormalized_images",
     "preprocess_images",
     "seg_output_to_bool",
-    "unnormalize",
+    "denormalize",
 ]

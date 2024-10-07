@@ -1,9 +1,10 @@
 import os.path as osp
 import signal
 import threading
+from collections.abc import Mapping
 from logging import getLogger
 from pathlib import Path
-from typing import Any, Literal, Mapping, overload
+from typing import Any, Literal, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -464,7 +465,7 @@ class LuxonisModel:
             process_dataset_images(self, view, save_dir)
 
     def tune(self) -> None:
-        """Runs Optuna tunning of hyperparameters."""
+        """Runs Optuna tuning of hyperparameters."""
         import optuna
         from optuna.integration import PyTorchLightningPruningCallback
 
@@ -734,8 +735,8 @@ class LuxonisModel:
         """Get current status of training.
 
         @rtype: tuple[int, int]
-        @return: First element is current epoch, second element is total
-            number of epochs.
+        @return: First element is the current epoch, second element is
+            the total number of epochs.
         """
         return self.lightning_module.get_status()
 
@@ -765,7 +766,7 @@ class LuxonisModel:
         validation loss.
 
         @rtype: str
-        @return: Path to best checkpoint with respect to minimal
+        @return: Path to the best checkpoint with respect to minimal
             validation loss
         """
         if not self.pl_trainer.checkpoint_callbacks:
@@ -778,8 +779,8 @@ class LuxonisModel:
         metric.
 
         @rtype: str
-        @return: Path to best checkpoint with respect to best validation
-            metric
+        @return: Path to the best checkpoint with respect to best
+            validation metric
         """
         if len(self.pl_trainer.checkpoint_callbacks) < 2:
             return None

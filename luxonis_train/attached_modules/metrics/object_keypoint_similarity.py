@@ -50,8 +50,8 @@ class ObjectKeypointSimilarity(
             if C{None}, then use COCO if possible otherwise defaults.
             Defaults to C{None}.
         @type area_factor: float | None
-        @param area_factor: Factor by which we multiply bbox area. If
-            None then use default one. Defaults to C{None}.
+        @param area_factor: Factor by which we multiply the bounding box
+            area. If not set, the default factor of C{0.53} is used.
         @type use_cocoeval_oks: bool
         @param use_cocoeval_oks: Whether to use same OKS formula as in
             COCOeval or use the one from definition. Defaults to
@@ -125,7 +125,7 @@ class ObjectKeypointSimilarity(
 
                 - keypoints (FloatTensor): Tensor of shape (N, 3*K) and in format
                   [x, y, vis, x, y, vis, ...] where `x` an `y`
-                  are unnormalized keypoint coordinates and `vis` is keypoint visibility.
+                  are absolute keypoint coordinates and `vis` is keypoint visibility.
         @type target: list[dict[str, Tensor]]
         @param target: A list consisting of dictionaries each containing key-values for
             a single image.
@@ -133,11 +133,11 @@ class ObjectKeypointSimilarity(
 
                 - keypoints (FloatTensor): Tensor of shape (N, 3*K) and in format
                   [x, y, vis, x, y, vis, ...] where `x` an `y`
-                  are unnormalized keypoint coordinates and `vis` is keypoint visibility.
+                  are absolute keypoint coordinates and `vis` is keypoint visibility.
                 - scales (FloatTensor): Tensor of shape (N) where each value
                   corresponds to scale of the bounding box.
                   Scale of one bounding box is defined as sqrt(width*height) where
-                  width and height are unnormalized.
+                  width and height are not normalized.
         """
         for item in preds:
             keypoints = self._fix_empty_tensors(item["keypoints"])
@@ -205,7 +205,7 @@ def compute_oks(
     @type pred: Tensor[N, K, 3]
     @param pred: Predicted keypoints.
     @type gt: Tensor[M, K, 3]
-    @param gt: Groundtruth keypoints.
+    @param gt: Ground truth keypoints.
     @type scales: Tensor[M]
     @param scales: Scales of the bounding boxes.
     @type sigmas: Tensor
