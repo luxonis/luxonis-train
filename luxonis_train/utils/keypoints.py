@@ -6,24 +6,6 @@ from torch import Tensor
 logger = logging.getLogger(__name__)
 
 
-def process_keypoints_predictions(
-    keypoints: Tensor,
-) -> tuple[Tensor, Tensor, Tensor]:
-    """Extracts x, y and visibility from keypoints predictions.
-
-    @type keypoints: Tensor
-    @param keypoints: Keypoints predictions. The last dimension must be divisible by 3
-        and is expected to be in format [x1, y1, v1, x2, y2, v2, ...].
-
-    @rtype: tuple[Tensor, Tensor, Tensor]
-    @return: x, y and visibility tensors.
-    """
-    x = keypoints[..., ::3]
-    y = keypoints[..., 1::3]
-    visibility = keypoints[..., 2::3]
-    return x, y, visibility
-
-
 def get_sigmas(
     sigmas: list[float] | None,
     n_keypoints: int,
