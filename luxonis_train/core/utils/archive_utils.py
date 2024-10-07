@@ -200,7 +200,8 @@ def _get_head_outputs(
     # TODO: Fix this, will require refactoring custom ONNX output names
     logger.error(
         "ONNX model uses custom output names, trying to determine outputs based on the head type. "
-        "This will likely result in incorrect archive for multi-head models."
+        "This will likely result in incorrect archive for multi-head models. "
+        "You can ignore this error if your model has only one head."
     )
 
     if head_type == "ClassificationHead":
