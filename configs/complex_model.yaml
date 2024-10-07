@@ -131,6 +131,7 @@ trainer:
         mode: min
         verbose: true
     - name: ExportOnTrainEnd
+    - name: ArchiveOnTrainEnd
     - name: TestOnTrainEnd
 
   optimizer:
