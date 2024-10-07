@@ -37,9 +37,9 @@ from .utils.export_utils import (
 from .utils.infer_utils import (
     IMAGE_FORMATS,
     VIDEO_FORMATS,
-    process_dataset_images,
-    process_images,
-    process_video,
+    infer_from_dataset,
+    infer_from_directory,
+    infer_from_video,
 )
 from .utils.train_utils import create_trainer
 
@@ -426,7 +426,7 @@ class LuxonisModel:
         self,
         view: Literal["train", "val", "test"] = "val",
         save_dir: str | Path | None = None,
-        source_path: str | None = None,
+        source_path: str | Path | None = None,
     ) -> None:
         """Runs inference.
 
@@ -437,31 +437,45 @@ class LuxonisModel:
         @param save_dir: Directory where to save the visualizations. If
             not specified, visualizations will be rendered on the
             screen.
-        @type source_path: str | None
+        @type source_path: str | Path | None
         @param source_path: Path to the image file, video file or directory.
-            If None, defaults to using dataset images.
+            If C{None}, defaults to using dataset images.
         """
         self.lightning_module.eval()
+        if self.cfg.model.weights is None:
+            logger.error(
+                "Model weights are not specified. This is likely a mistake. "
+                "Specify the path to the model checkpoint either by "
+                "setting `model.weights` in the config file, or by specifying "
+                "the path in the `luxonis_train infer` command like this: "
+                "`luxonis_train infer --config path/to/config.yaml model.weights path/to/checkpoint.ckpt`"
+            )
 
-        if source_path:
-            source_path_obj = Path(source_path)
-            if source_path_obj.suffix.lower() in VIDEO_FORMATS:
-                process_video(self, source_path_obj, view, save_dir)
-            elif source_path_obj.is_file():
-                process_images(self, [source_path_obj], view, save_dir)
-            elif source_path_obj.is_dir():
-                image_files = [
+        if save_dir is not None:
+            save_dir = Path(save_dir)
+            save_dir.mkdir(parents=True, exist_ok=True)
+
+        if source_path is not None:
+            source_path = Path(source_path)
+            if source_path.suffix.lower() in VIDEO_FORMATS:
+                infer_from_video(
+                    self, video_path=source_path, save_dir=save_dir
+                )
+            elif source_path.is_file():
+                infer_from_directory(self, [source_path], save_dir)
+            elif source_path.is_dir():
+                image_files = (
                     f
-                    for f in source_path_obj.iterdir()
+                    for f in source_path.iterdir()
                     if f.suffix.lower() in IMAGE_FORMATS
-                ]
-                process_images(self, image_files, view, save_dir)
+                )
+                infer_from_directory(self, image_files, save_dir)
             else:
                 raise ValueError(
                     f"Source path {source_path} is not a valid file or directory."
                 )
         else:
-            process_dataset_images(self, view, save_dir)
+            infer_from_dataset(self, view, save_dir)
 
     def tune(self) -> None:
         """Runs Optuna tunning of hyperparameters."""

@@ -42,8 +42,8 @@ class MultiVisualizer(BaseVisualizer[Packet[Tensor], Labels]):
         label_canvas: Tensor,
         prediction_canvas: Tensor,
         outputs: Packet[Tensor],
-        labels: Labels,
-    ) -> tuple[Tensor, Tensor]:
+        labels: Labels | None,
+    ) -> tuple[Tensor, Tensor] | Tensor:
         for visualizer in self.visualizers:
             match visualizer.run(
                 label_canvas, prediction_canvas, outputs, labels
@@ -57,4 +57,6 @@ class MultiVisualizer(BaseVisualizer[Packet[Tensor], Labels]):
                     raise NotImplementedError(
                         "Unexpected return type from visualizer."
                     )
+        if labels is None:
+            return prediction_canvas
         return label_canvas, prediction_canvas

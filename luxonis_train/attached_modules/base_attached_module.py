@@ -275,7 +275,7 @@ class BaseAttachedModule(
         return inputs[self.node_tasks[self.required_labels[0]]]
 
     def prepare(
-        self, inputs: Packet[Tensor], labels: Labels
+        self, inputs: Packet[Tensor], labels: Labels | None
     ) -> tuple[Unpack[Ts]]:
         """Prepares node outputs for the forward pass of the module.
 
@@ -287,8 +287,9 @@ class BaseAttachedModule(
 
         @type inputs: L{Packet}[Tensor]
         @param inputs: Output from the node, inputs to the attached module.
-        @type labels: L{Labels}
-        @param labels: Labels from the dataset.
+        @type labels: L{Labels | None}
+        @param labels: Labels from the dataset. If not provided, empty labels are used.
+            This is useful in visualizers for working with standalone images.
 
         @rtype: tuple[Unpack[Ts]]
         @return: Prepared inputs. Should allow the following usage with the
@@ -325,6 +326,8 @@ class BaseAttachedModule(
                 set(self.supported_tasks) & set(self.node_tasks)
             )
         x = self.get_input_tensors(inputs)
+        if labels is None:
+            return x, None  # type: ignore
         label, task_type = self._get_label(labels)
         if task_type in [TaskType.CLASSIFICATION, TaskType.SEGMENTATION]:
             if len(x) == 1:

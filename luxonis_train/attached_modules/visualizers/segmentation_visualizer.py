@@ -4,6 +4,7 @@ import torch
 from torch import Tensor
 
 from luxonis_train.enums import TaskType
+from luxonis_train.utils import Labels, Packet
 
 from .base_visualizer import BaseVisualizer
 from .utils import (
@@ -95,14 +96,22 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
 
         return viz
 
+    def prepare(
+        self, inputs: Packet[Tensor], labels: Labels | None
+    ) -> tuple[Tensor, Tensor]:
+        predictions, targets = super().prepare(inputs, labels)
+        if isinstance(predictions, list):
+            predictions = predictions[0]
+        return predictions, targets
+
     def forward(
         self,
         label_canvas: Tensor,
         prediction_canvas: Tensor,
         predictions: Tensor,
-        targets: Tensor,
+        targets: Tensor | None,
         **kwargs,
-    ) -> tuple[Tensor, Tensor]:
+    ) -> tuple[Tensor, Tensor] | Tensor:
         """Creates a visualization of the segmentation predictions and
         labels.
 
@@ -118,18 +127,21 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         @return: A tuple of the label and prediction visualizations.
         """
 
-        targets_vis = self.draw_targets(
-            label_canvas,
-            targets,
+        predictions_vis = self.draw_predictions(
+            prediction_canvas,
+            predictions,
             colors=self.colors,
             alpha=self.alpha,
             background_class=self.background_class,
             background_color=self.background_color,
             **kwargs,
         )
-        predictions_vis = self.draw_predictions(
-            prediction_canvas,
-            predictions,
+        if targets is None:
+            return predictions_vis
+
+        targets_vis = self.draw_targets(
+            label_canvas,
+            targets,
             colors=self.colors,
             alpha=self.alpha,
             background_class=self.background_class,

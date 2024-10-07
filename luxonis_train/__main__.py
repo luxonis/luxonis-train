@@ -113,7 +113,9 @@ def infer(
     from luxonis_train.core import LuxonisModel
 
     LuxonisModel(config, opts).infer(
-        view=view.value, save_dir=save_dir, source_path=source_path
+        view=view.value,
+        save_dir=save_dir,
+        source_path=source_path,
     )
 
 
