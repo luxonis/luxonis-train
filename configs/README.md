@@ -1,6 +1,6 @@
 # Configuration
 
-The configuration is defined in a YAML file, which you must provide.
+The configuration is defined in a `YAML` file, which you must provide.
 The configuration file consists of a few major blocks that are described below.
 You can create your own config or use/edit one of the examples.
 
@@ -18,9 +18,9 @@ You can create your own config or use/edit one of the examples.
 - [Trainer](#trainer)
   - [Preprocessing](#preprocessing)
     - [Augmentations](#augmentations)
+  - [Callbacks](#callbacks)
   - [Optimizer](#optimizer)
   - [Scheduler](#scheduler)
-  - [Callbacks](#callbacks)
 - [Exporter](#exporter)
   - [`ONNX`](#onnx)
   - [Blob](#blob)
@@ -105,6 +105,27 @@ You can see the list of all currently supported visualizers and their parameters
 | `alias`  | `str`  | `None`        | Custom name for the visualizer           |
 | `params` | `dict` | `{}`          | Additional parameters for the visualizer |
 
+**Example:**
+
+```yaml
+name: "SegmentationHead"
+inputs:
+  - "RepPANNeck"
+losses:
+  - name: "BCEWithLogitsLoss"
+metrics:
+  - name: "F1Score"
+    params:
+      task: "binary"
+  - name: "JaccardIndex"
+    params:
+      task: "binary"
+visualizers:
+  - name: "SegmentationVisualizer"
+    params:
+      colors: "#FF5055"
+```
+
 ## Tracker
 
 This library uses [`LuxonisTrackerPL`](https://github.com/luxonis/luxonis-ml/blob/b2399335efa914ef142b1b1a5db52ad90985c539/src/luxonis_ml/ops/tracker.py#L152).
@@ -121,6 +142,17 @@ You can configure it like this:
 | `is_wandb`       | `bool`        | `False`       | Whether to use `WandB`                                     |
 | `wandb_entity`   | `str \| None` | `None`        | Name of `WandB` entity                                     |
 | `is_mlflow`      | `bool`        | `False`       | Whether to use `MLFlow`                                    |
+
+**Example:**
+
+```yaml
+tracker:
+  project_name: "project_name"
+  save_directory: "output"
+  is_tensorboard: true
+  is_wandb: false
+  is_mlflow: false
+```
 
 ## Loader
 
@@ -148,6 +180,23 @@ In most cases you want to set one of the parameters below. You can check all the
 | `dataset_name` | `str` | `None`        | Name of an existing `LuxonisDataset`                                 |
 | `dataset_dir`  | `str` | `None`        | Location of the data from which new `LuxonisDataset` will be created |
 
+**Example:**
+
+```yaml
+loader:
+  # using default loader with an existing dataset
+  params:
+    dataset_name: "dataset_name"
+```
+
+```yaml
+loader:
+  # using default loader with a directory
+  params:
+    dataset_name: "dataset_name"
+    dataset_dir: "path/to/dataset"
+```
+
 ## Trainer
 
 Here you can change everything related to actual training of the model.
@@ -174,11 +223,34 @@ Here you can change everything related to actual training of the model.
 | `pin_memory`              | `bool`                                         | `True`        | Whether to pin memory in the `DataLoader`                                                                                                        |
 | `save_top_k`              | `-1 \| NonNegativeInt`                         | `3`           | Save top K checkpoints based on validation loss when training                                                                                    |
 
+**Example:**
+
+```yaml
+
+trainer:
+  accelerator: "auto"
+  devices: "auto"
+  strategy: "auto"
+
+  n_sanity_val_steps: 1
+  profiler: null
+  verbose: true
+  batch_size: 8
+  accumulate_grad_batches: 1
+  epochs: 200
+  n_workers: 8
+  validation_interval: 10
+  n_log_images: 8
+  skip_last_batch: true
+  log_sub_losses: true
+  save_top_k: 3
+```
+
 ### Preprocessing
 
 We use [`Albumentations`](https://albumentations.ai/docs/) library for `augmentations`. [Here](https://albumentations.ai/docs/api_reference/full_reference/#pixel-level-transforms) you can see a list of all pixel level augmentations supported, and [here](https://albumentations.ai/docs/api_reference/full_reference/#spatial-level-transforms) you see all spatial level transformations. In the configuration you can specify any augmentation from these lists and their parameters.
 
-Additionally, we support `Mosaic4` and `MixUp` batch augmentations and letterbox resizing if `keep_aspect_ratio: True`.
+Additionally, we support `Mosaic4` and `MixUp` batch augmentations and letterbox resizing if `keep_aspect_ratio: true`.
 
 | Key                 | Type         | Default value | Description                                                                                                                                                             |
 | ------------------- | ------------ | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -191,11 +263,73 @@ Additionally, we support `Mosaic4` and `MixUp` batch augmentations and letterbox
 
 #### Augmentations
 
-| Key      | Type   | Default value            | Description                        |
-| -------- | ------ | ------------------------ | ---------------------------------- |
-| `name`   | `str`  | Name of the augmentation |                                    |
-| `active` | `bool` | `True`                   | Whether the augmentation is active |
-| `params` | `dict` | `{}`                     | Parameters of the augmentation     |
+| Key      | Type   | Default value | Description                        |
+| -------- | ------ | ------------- | ---------------------------------- |
+| `name`   | `str`  | -             | Name of the augmentation           |
+| `active` | `bool` | `True`        | Whether the augmentation is active |
+| `params` | `dict` | `{}`          | Parameters of the augmentation     |
+
+**Example:**
+
+```yaml
+
+trainer:
+  preprocessing:
+    # using YAML capture to reuse the image size
+    train_image_size: [&height 384, &width 384]
+    keep_aspect_ratio: true
+    train_rgb: true
+    normalize:
+      active: true
+    augmentations:
+      - name: "Defocus"
+        params:
+          p: 0.1
+      - name: "Sharpen"
+        params:
+          p: 0.1
+      - name: "Flip"
+      - name: "RandomRotate90"
+      - name: "Mosaic4"
+        params:
+          out_width: *width
+          out_height: *height
+
+```
+
+### Callbacks
+
+Callbacks sections contain a list of callbacks.
+More information on callbacks and a list of available ones can be found [here](../luxonis_train/callbacks/README.md)
+Each callback is a dictionary with the following fields:
+
+| Key      | Type   | Default value | Description                |
+| -------- | ------ | ------------- | -------------------------- |
+| `name`   | `str`  | -             | Name of the callback       |
+| `active` | `bool` | `True`        | Whether callback is active |
+| `params` | `dict` | `{}`          | Parameters of the callback |
+
+**Example:**
+
+```yaml
+
+trainer:
+  callbacks:
+    - name: "LearningRateMonitor"
+      params:
+        logging_interval: "step"
+    - name: MetadataLogger
+      params:
+        hyperparams: ["trainer.epochs", "trainer.batch_size"]
+    - name: "EarlyStopping"
+      params:
+        patience: 3
+        monitor: "val/loss"
+        mode: "min"
+        verbose: true
+    - name: "ExportOnTrainEnd"
+    - name: "TestOnTrainEnd"
+```
 
 ### Optimizer
 
@@ -207,6 +341,18 @@ List of all optimizers can be found [here](https://pytorch.org/docs/stable/optim
 | `name`   | `str`  | `"Adam"`      | Name of the optimizer       |
 | `params` | `dict` | `{}`          | Parameters of the optimizer |
 
+**Example:**
+
+```yaml
+optimizer:
+  name: "SGD"
+  params:
+    lr: 0.02
+    momentum: 0.937
+    nesterov: true
+    weight_decay: 0.0005
+```
+
 ### Scheduler
 
 What scheduler to use for training.
@@ -217,17 +363,16 @@ List of all optimizers can be found [here](https://pytorch.org/docs/stable/optim
 | `name`   | `str`  | `"ConstantLR"` | Name of the scheduler       |
 | `params` | `dict` | `{}`           | Parameters of the scheduler |
 
-### Callbacks
+**Example:**
 
-Callbacks sections contain a list of callbacks.
-More information on callbacks and a list of available ones can be found [here](../luxonis_train/callbacks/README.md)
-Each callback is a dictionary with the following fields:
-
-| Key      | Type   | Default value        | Description                |
-| -------- | ------ | -------------------- | -------------------------- |
-| `name`   | `str`  | Name of the callback |                            |
-| `active` | `bool` | `True`               | Whether callback is active |
-| `params` | `dict` | `{}`                 | Parameters of the callback |
+```yaml
+trainer:
+  scheduler:
+    name: "CosineAnnealingLR"
+    params:
+      T_max: *epochs
+      eta_min: 0
+```
 
 ## Exporter
 
@@ -238,11 +383,12 @@ Here you can define configuration for exporting.
 | `name`                   | `str \| None`                     | `None`        | Name of the exported model                                                                     |
 | `input_shape`            | `list\[int\] \| None`             | `None`        | Input shape of the model. If not provided, inferred from the dataset                           |
 | `data_type`              | `Literal["INT8", "FP16", "FP32"]` | `"FP16"`      | Data type of the exported model. Only used for conversion to BLOB                              |
-| `reverse_input_channels` | `bool`                            | `True`        | Whether to reverse the image channels in the exported model. Relevant for `.blob` export       |
+| `reverse_input_channels` | `bool`                            | `True`        | Whether to reverse the image channels in the exported model. Relevant for `BLOB` export        |
 | `scale_values`           | `list[float] \| None`             | `None`        | What scale values to use for input normalization. If not provided, inferred from augmentations |
 | `mean_values`            | `list[float] \| None`             | `None`        | What mean values to use for input normalization. If not provided, inferred from augmentations  |
 | `upload_to_run`          | `bool`                            | `True`        | Whether to upload the exported files to tracked run as artifact                                |
 | `upload_url`             | `str \| None`                     | `None`        | Exported model will be uploaded to this URL if specified                                       |
+| `output_names`           | `list[str] \| None`               | `None`        | Optional list of output names to override the default ones                                     |
 
 ### `ONNX`
 
@@ -261,6 +407,18 @@ Option specific for `ONNX` export.
 | `shaves`  | `int`                                                            | `6`           | How many shaves                          |
 | `version` | `Literal["2021.2", "2021.3", "2021.4", "2022.1", "2022.3_RVC3"]` | `"2022.1"`    | `OpenVINO` version to use for conversion |
 
+**Example:**
+
+```yaml
+exporter:
+  output_names: ["output1", "output2"]
+  onnx:
+    opset_version: 11
+  blobconverter:
+    active: true
+    shaves: 8
+```
+
 ## Tuner
 
 Here you can specify options for tuning.
@@ -274,18 +432,10 @@ Here you can specify options for tuning.
 | `timeout`                | `int \| None`     | `None`         | Stop study after the given number of seconds                                                                                                                                                                                                                                                                                |
 | `params`                 | `dict[str, list]` | `{}`           | Which parameters to tune. The keys should be in the format `key1.key2.key3_<type>`. Type can be one of `[categorical, float, int, longuniform, uniform, subset]`. For more information about the types, visit [`Optuna` documentation](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.trial.Trial.html) |
 
-**Note**: "subset" sampling is currently only supported for augmentations. You can specify a set of augmentations defined in `trainer` to choose from and every run subset of random N augmentations will be active (`is_active` parameter will be True for chosen ones and False for the rest in the set).
-
-Example of parameters for tuner block:
-
-```yaml
-tuner:
-  params:
-    trainer.optimizer.name_categorical: ["Adam", "SGD"]
-    trainer.optimizer.params.lr_float: [0.0001, 0.001]
-    trainer.batch_size_int: [4, 16, 4]
-    trainer.preprocessing.augmentations_subset: [["Defocus", "Sharpen", "Flip"], 2]
-```
+> \[!NOTE\]
+> `"subset"` sampling is currently only supported for augmentations.
+> You can specify a set of augmentations defined in `trainer` to choose from.
+> Every run, only a subset of random $N$ augmentations will be active (`is_active` parameter will be `True` for chosen ones and `False` for the rest in the set).
 
 ### Storage
 
@@ -294,14 +444,31 @@ tuner:
 | `active`       | `bool`                       | `True`        | Whether to use storage to make the study persistent |
 | `storage_type` | `Literal["local", "remote"]` | `"local"`     | Type of the storage                                 |
 
+**Example:**
+
+```yaml
+t uner:
+  study_name: "seg_study"
+  n_trials: 10
+  storage:
+    storage_type: "local"
+  params:
+    trainer.optimizer.name_categorical: ["Adam", "SGD"]
+    trainer.optimizer.params.lr_float: [0.0001, 0.001]
+    trainer.batch_size_int: [4, 16, 4]
+    # each run will have 2 of the following augmentations active
+    trainer.preprocessing.augmentations_subset: [["Defocus", "Sharpen", "Flip"], 2]
+```
+
 ## ENVIRON
 
 A special section of the config file where you can specify environment variables.
 For more info on the variables, see [Credentials](../README.md#credentials).
 
-**NOTE**
-
-This is not a recommended way due to possible leakage of secrets. This section is intended for testing purposes only.
+> \[!WARNING\]
+> This is not a recommended way due to possible leakage of secrets!
+> This section is intended for testing purposes only!
+> Use environment variables or `.env` files instead.
 
 | Key                        | Type                                                       | Default value    |
 | -------------------------- | ---------------------------------------------------------- | ---------------- |
