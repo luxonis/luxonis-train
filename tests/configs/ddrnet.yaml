@@ -21,12 +21,12 @@ model:
       name: CrossEntropyLoss
 trainer:
   preprocessing:
-    train_image_size: 
-      - &height 128
-      - &width 128
-    keep_aspect_ratio: False
+    train_image_size:
+      - 128
+      - 128
+    keep_aspect_ratio: false
     normalize:
-      active: True
+      active: true
 
   batch_size: 2
   epochs: &epochs 1

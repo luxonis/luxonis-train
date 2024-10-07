@@ -67,9 +67,9 @@ model:
 tracker:
   project_name: coco_test
   save_directory: output
-  is_tensorboard: True
-  is_wandb: False
-  is_mlflow: False
+  is_tensorboard: true
+  is_wandb: false
+  is_mlflow: false
 
 loader:
   train_view: train
@@ -86,23 +86,23 @@ trainer:
 
   n_sanity_val_steps: 1
   profiler: null
-  verbose: True
+  verbose: true
   batch_size: 8
   accumulate_grad_batches: 1
   epochs: &epochs 200
   n_workers: 8
   validation_interval: 10
   n_log_images: 8
-  skip_last_batch: True
-  log_sub_losses: True
+  skip_last_batch: true
+  log_sub_losses: true
   save_top_k: 3
 
   preprocessing:
     train_image_size: [&height 384, &width 384]
-    keep_aspect_ratio: True
-    train_rgb: True
+    keep_aspect_ratio: true
+    train_rgb: true
     normalize:
-      active: True
+      active: true
     augmentations:
       - name: Defocus
         params:
@@ -138,7 +138,7 @@ trainer:
     params:
       lr: 0.02
       momentum: 0.937
-      nesterov: True
+      nesterov: true
       weight_decay: 0.0005
 
   scheduler:
