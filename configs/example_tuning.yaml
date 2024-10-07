@@ -2,9 +2,9 @@
 
 
 model:
-  name: segmentation_light
+  name: detection_light
   predefined_model:
-    name: SegmentationModel
+    name: DetectionModel
     params:
       variant: light
 
