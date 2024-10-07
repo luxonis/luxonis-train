@@ -12,10 +12,6 @@ model:
       inputs:
         - EfficientRep
 
-    - name: ImplicitKeypointBBoxHead
-      inputs:
-        - EfficientRep
-
     - name: SegmentationHead
       inputs:
         - EfficientRep

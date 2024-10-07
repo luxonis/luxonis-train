@@ -30,7 +30,7 @@ It is made to be easily customizable and extendable, allowing you to create cust
 - [Testing](#testing)
 - [Tuning](#tuning)
 - [Exporting](#exporting)
-- [`NN Archive` Support](#nn-archive-support)
+- [NN Archive Support](#nn-archive-support)
 - [Usage in Scripts](#usage-in-scripts)
 - [Customizations](#customizations)
 - [Tutorials and Examples](#tutorials-and-examples)
@@ -85,16 +85,16 @@ loader:
 
 The supported formats are:
 
-- COCO - We support COCO JSON format in two variants:
-  - [RoboFlow](https://roboflow.com/formats/coco-json)
-  - [FiveOne](https://docs.voxel51.com/user_guide/export_datasets.html#cocodetectiondataset-export)
-- [Pascal VOC XML](https://roboflow.com/formats/pascal-voc-xml)
-- [YOLO Darknet TXT](https://roboflow.com/formats/yolo-darknet-txt)
-- [YOLOv4 PyTorch TXT](https://roboflow.com/formats/yolov4-pytorch-txt)
-- [MT YOLOv6](https://roboflow.com/formats/mt-yolov6)
-- [CreateML JSON](https://roboflow.com/formats/createml-json)
-- [TensorFlow Object Detection CSV](https://roboflow.com/formats/tensorflow-object-detection-csv)
-- Classification Directory - A directory with subdirectories for each class
+- `COCO` - We support COCO JSON format in two variants:
+  - [`RoboFlow`](https://roboflow.com/formats/coco-json)
+  - [`FiveOne`](https://docs.voxel51.com/user_guide/export_datasets.html#cocodetectiondataset-export)
+- [`Pascal VOC XML`](https://roboflow.com/formats/pascal-voc-xml)
+- [`YOLO Darknet TXT`](https://roboflow.com/formats/yolo-darknet-txt)
+- [`YOLOv4 PyTorch TXT`](https://roboflow.com/formats/yolov4-pytorch-txt)
+- [`MT YOLOv6`](https://roboflow.com/formats/mt-yolov6)
+- [`CreateML JSON`](https://roboflow.com/formats/createml-json)
+- [`TensorFlow Object Detection CSV`](https://roboflow.com/formats/tensorflow-object-detection-csv)
+- `Classification Directory` - A directory with subdirectories for each class
   ```plaintext
   dataset_dir/
   ├── train/
@@ -107,7 +107,7 @@ The supported formats are:
   ├── valid/
   └── test/
   ```
-- Segmentation Mask Directory - A directory with images and corresponding masks.
+- `Segmentation Mask Directory` - A directory with images and corresponding masks.
   ```plaintext
   dataset_dir/
   ├── train/
@@ -134,8 +134,13 @@ To use a directory loader, specify the following in the config file:
 
 loader:
   params:
+    # optional, the dataset will be created under this name
+    # if not specified, the name of the dataset will be
+    # the same as the name of the dataset directory
+    dataset_name: dataset_name
     dataset_dir: path/to/dataset
     # one of voc, darknet, yolov4, yolov6, createml, tfcsv, clsdir, segmask
+    # if not specified, the loader will try to guess the correct format
     dataset_type: coco
 ```
 
@@ -143,13 +148,13 @@ loader:
 
 To learn how to implement and use a custom loader, see [customization](#customizations).
 
-The loader can be referenced in the configuration file using its class name:
+Custom loader can be referenced in the configuration file using its class name:
 
 ```yaml
 loader:
   name: CustomLoader
+  # additional parameters to be passed to the loade constructor
   params:
-    # additional parameters to be passed to the loade constructor
 ```
 
 To inspect the loader output, use the `luxonis_train inspect` command:
@@ -163,13 +168,13 @@ luxonis_train inspect --config <config.yaml> --view <train/val/test>
 Once you've created your `config.yaml` file you can train the model using this command:
 
 ```bash
-luxonis_train train --config config.yaml
+luxonis_train train --config configs/detection_light_model.yaml
 ```
 
 If you wish to manually override some config parameters you can do this by providing the key-value pairs. Example of this is:
 
 ```bash
-luxonis_train train --config config.yaml trainer.batch_size 8 trainer.epochs 10
+luxonis_train train --config configs/detection_light_model.yaml trainer.batch_size 8 trainer.epochs 10
 ```
 
 Where key and value are space separated and sub-keys are dot (`.`) separated. If the configuration field is a list, then key/sub-key should be a number (e.g. `trainer.preprocessing.augmentations.0.name RotateCustom`).
@@ -179,7 +184,7 @@ Where key and value are space separated and sub-keys are dot (`.`) separated. If
 To test the model on a specific dataset view (`train`, `test`, or `val`), use the following command:
 
 ```bash
-luxonis_train test --config <config.yaml> --view <train/test/val>
+luxonis_train test --config configs/detection_light_model.yaml --view val
 ```
 
 ## Tuning
@@ -190,7 +195,7 @@ To use tuning, you have to specify [tuner](https://github.com/luxonis/luxonis-tr
 Start the tuning process by running:
 
 ```bash
-luxonis_train tune --config config.yaml
+luxonis_train tune --config configs/example_tuning.yaml
 ```
 
 You can see an example tuning configuration [here](https://github.com/luxonis/luxonis-train/blob/main/configs/example_tuning.yaml).
@@ -206,14 +211,14 @@ You can see an example export configuration [here](https://github.com/luxonis/lu
 To export the model, run
 
 ```bash
-luxonis_train export --config config.yaml model.weights path/to/weights.ckpt
+luxonis_train export --config configs/example_export.yaml model.weights path/to/weights.ckpt
 ```
 
 The export process can be run automatically at the end of the training by using the `ExportOnTrainEnd` callback.
 
 To learn about callbacks, see [callbacks](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/callbacks/README.md).
 
-## `NN Archive` Support
+## NN Archive Support
 
 The models can also be exported to our custom `NN Archive` format.
 

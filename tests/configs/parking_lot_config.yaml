@@ -16,14 +16,6 @@ model:
       inputs:
         - neck
 
-    - name: ImplicitKeypointBBoxHead
-      alias: car-detection-head
-      inputs:
-        - neck
-      task:
-        keypoints: car-keypoints
-        boundingbox: car-boundingbox
-
     - name: EfficientKeypointBBoxHead
       alias: motorbike-detection-head
       task:
@@ -65,8 +57,6 @@ model:
       attached_to: vehicle-type-segmentation-head
     - name: CrossEntropyLoss
       attached_to: color-segmentation-head
-    - name: ImplicitKeypointBBoxLoss
-      attached_to: car-detection-head
     - name: EfficientKeypointBBoxLoss
       attached_to: motorbike-detection-head
 
