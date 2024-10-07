@@ -45,9 +45,3 @@ def test_class_names(metadata):
     metadata._classes["segmentation"] = ["car", "person", "tree"]
     with pytest.raises(RuntimeError):
         metadata.classes()
-
-
-def test_no_loader():
-    metadata = DatasetMetadata()
-    with pytest.raises(RuntimeError):
-        metadata.autogenerate_anchors(3)

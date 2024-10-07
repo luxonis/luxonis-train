@@ -3,7 +3,6 @@ from .classification_head import ClassificationHead
 from .ddrnet_segmentation_head import DDRNetSegmentationHead
 from .efficient_bbox_head import EfficientBBoxHead
 from .efficient_keypoint_bbox_head import EfficientKeypointBBoxHead
-from .implicit_keypoint_bbox_head import ImplicitKeypointBBoxHead
 from .segmentation_head import SegmentationHead
 
 __all__ = [
@@ -11,7 +10,6 @@ __all__ = [
     "ClassificationHead",
     "EfficientBBoxHead",
     "EfficientKeypointBBoxHead",
-    "ImplicitKeypointBBoxHead",
     "SegmentationHead",
     "DDRNetSegmentationHead",
 ]

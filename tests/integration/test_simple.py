@@ -122,7 +122,6 @@ def test_custom_tasks(
             ), "Config JSON not found in the archive."
             generated_config = json.loads(extracted_cfg.read().decode())
 
-        del generated_config["model"]["heads"][1]["metadata"]["anchors"]
         assert generated_config == correct_archive_config
 
 
