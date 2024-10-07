@@ -179,11 +179,11 @@ def inspect(
 @app.command()
 def archive(
     executable: Annotated[
-        str,
+        str | None,
         typer.Option(
             help="Path to the model file.", show_default=False, metavar="FILE"
         ),
-    ],
+    ] = None,
     config: ConfigType = None,
     opts: OptsType = None,
 ):
