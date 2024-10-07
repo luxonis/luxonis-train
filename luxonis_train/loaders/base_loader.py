@@ -34,7 +34,7 @@ class BaseLoaderTorch(
     def image_source(self) -> str:
         """Name of the input image group.
 
-        Example: 'image'
+        Example: C{"image"}
 
         @type: str
         """

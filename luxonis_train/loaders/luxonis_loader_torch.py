@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -136,9 +135,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         delete_existing: bool,
     ) -> LuxonisDataset:
         if dataset_name is None:
-            dataset_name = Path(dataset_dir).stem
-            if dataset_type is not None:
-                dataset_name += f"_{dataset_type.value}"
+            dataset_name = dataset_dir.split("/")[-1]
 
         if LuxonisDataset.exists(dataset_name):
             if not delete_existing:
