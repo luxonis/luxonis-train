@@ -1,13 +1,10 @@
 from .boundingbox import (
     anchors_for_fpn_features,
-    anchors_from_dataset,
     bbox2dist,
     bbox_iou,
     compute_iou_loss,
     dist2bbox,
-    match_to_anchor,
     non_max_suppression,
-    process_bbox_predictions,
 )
 from .dataset_metadata import DatasetMetadata
 from .exceptions import IncompatibleException
@@ -18,7 +15,7 @@ from .general import (
     to_shape_packet,
 )
 from .graph import traverse_graph
-from .keypoints import get_sigmas, process_keypoints_predictions
+from .keypoints import get_sigmas
 from .tracker import LuxonisTrackerPL
 from .types import AttachIndexType, Kwargs, Labels, Packet
 
@@ -34,16 +31,12 @@ __all__ = [
     "to_shape_packet",
     "get_with_default",
     "LuxonisTrackerPL",
-    "match_to_anchor",
     "dist2bbox",
     "bbox2dist",
     "bbox_iou",
     "non_max_suppression",
-    "anchors_from_dataset",
     "anchors_for_fpn_features",
-    "process_bbox_predictions",
     "compute_iou_loss",
-    "process_keypoints_predictions",
     "get_sigmas",
     "traverse_graph",
 ]

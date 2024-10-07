@@ -26,14 +26,6 @@ def get_opts_backbone(backbone: str) -> dict[str, Any]:
                     },
                     "inputs": [backbone],
                 },
-                {
-                    "name": "ImplicitKeypointBBoxHead",
-                    "task": {
-                        "keypoints": "car-keypoints",
-                        "boundingbox": "car-boundingbox",
-                    },
-                    "inputs": [backbone],
-                },
             ],
             "losses": [
                 {
@@ -45,10 +37,6 @@ def get_opts_backbone(backbone: str) -> dict[str, Any]:
                     "attached_to": "EfficientKeypointBBoxHead",
                     "params": {"area_factor": 0.5},
                 },
-                {
-                    "name": "ImplicitKeypointBBoxLoss",
-                    "attached_to": "ImplicitKeypointBBoxHead",
-                },
             ],
             "metrics": [
                 {
@@ -59,11 +47,6 @@ def get_opts_backbone(backbone: str) -> dict[str, Any]:
                     "name": "MeanAveragePrecisionKeypoints",
                     "alias": "EfficientKeypointBBoxHead-MaP",
                     "attached_to": "EfficientKeypointBBoxHead",
-                },
-                {
-                    "name": "MeanAveragePrecisionKeypoints",
-                    "alias": "ImplicitKeypointBBoxHead-MaP",
-                    "attached_to": "ImplicitKeypointBBoxHead",
                 },
             ],
         }
