@@ -3,7 +3,7 @@ classes."""
 
 import lightning.pytorch as pl
 from luxonis_ml.utils.registry import Registry
-from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.lr_scheduler import LRScheduler
 from torch.optim.optimizer import Optimizer
 
 import luxonis_train as lt
@@ -32,7 +32,7 @@ NODES: Registry[type["lt.nodes.BaseNode"]] = Registry(name="nodes")
 OPTIMIZERS: Registry[type[Optimizer]] = Registry(name="optimizers")
 """Registry for all optimizers."""
 
-SCHEDULERS: Registry[type[_LRScheduler]] = Registry(name="schedulers")
+SCHEDULERS: Registry[type[LRScheduler]] = Registry(name="schedulers")
 """Registry for all schedulers."""
 
 VISUALIZERS: Registry[type["lt.visualizers.BaseVisualizer"]] = Registry(
