@@ -29,8 +29,7 @@ See an example configuration file using this predefined model [here](../../../co
 
 **Components:**
 
-| Name                                                                                            | Alias                          | Function                                                                                            |
-| ----------------------------------------------------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Name    | Alias  | Function     |---- | ----- | --------------------- |
 | [`DDRNet`](../../nodes/README.md#ddrnet)                                                        | `"segmentation_backbone"`      | Backbone of the model. Available variants: `"light"` (`DDRNet-23-slim`) and `"heavy"` (`DDRNet-23`) |
 | [`SegmentationHead`](../../nodes/README.md#segmentationhead)                                    | `"segmentation_head"`          | Head of the model                                                                                   |
 | [`BCEWithLogitsLoss`](../../attached_modules/losses/README.md#bcewithlogitsloss)                | `"segmentation_loss"`          | Loss of the model when the task is set to `"binary"`                                                |

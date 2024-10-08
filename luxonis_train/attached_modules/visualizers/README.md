@@ -15,14 +15,15 @@ Visualizer for bounding boxes.
 
 **Parameters:**
 
-| Key         | Type                                                                                  | Default value | Description                                                                                                                                                             |
-| ----------- | ------------------------------------------------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `labels`    | `dict[int, str] \| list[str] \| None`                                                 | `None`        | Either a dictionary mapping class indices to names, or a list of names. If list is provided, the label mapping is done by index. By default, no labels are drawn        |
-| `colors`    | `dict[int, tuple[int, int, int] \| str] \| list[tuple[int, int, int] \| str] \| None` | `None`        | Colors to use for the bounding boxes. Either a dictionary mapping class names to colors, or a list of colors. Color can be either a tuple of RGB values or a hex string |
-| `fill`      | `bool`                                                                                | `False`       | Whether to fill the bounding boxes                                                                                                                                      |
-| `width`     | `int`                                                                                 | `1`           | The width of the bounding box lines                                                                                                                                     |
-| `font`      | `str \| None`                                                                         | `None`        | A filename containing a `TrueType` font                                                                                                                                 |
-| `font_size` | `int \| None`                                                                         | `None`        | Font size used for the labels                                                                                                                                           |
+| Key           | Type                                                                                  | Default value | Description                                                                                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `labels`      | `dict[int, str] \| list[str] \| None`                                                 | `None`        | Either a dictionary mapping class indices to names, or a list of names. If list is provided, the label mapping is done by index. By default, no labels are drawn        |
+| `draw_labels` | `bool`                                                                                | `True`        | Whether to draw labels                                                                                                                                                  |
+| `colors`      | `dict[int, tuple[int, int, int] \| str] \| list[tuple[int, int, int] \| str] \| None` | `None`        | Colors to use for the bounding boxes. Either a dictionary mapping class names to colors, or a list of colors. Color can be either a tuple of RGB values or a hex string |
+| `fill`        | `bool`                                                                                | `False`       | Whether to fill the bounding boxes                                                                                                                                      |
+| `width`       | `int`                                                                                 | `1`           | The width of the bounding box lines                                                                                                                                     |
+| `font`        | `str \| None`                                                                         | `None`        | A filename containing a `TrueType` font                                                                                                                                 |
+| `font_size`   | `int \| None`                                                                         | `None`        | Font size used for the labels                                                                                                                                           |
 
 **Example:**
 
@@ -47,10 +48,12 @@ Visualizer for bounding boxes.
 
 **Parameters:**
 
-| Key     | Type                          | Default value | Description                           |
-| ------- | ----------------------------- | ------------- | ------------------------------------- |
-| `color` | `str \| tuple[int, int, int]` | `"#5050FF"`   | Color of the segmentation masks       |
-| `alpha` | `float`                       | `0.6`         | Alpha value of the segmentation masks |
+| Key                | Type                          | Default value | Description                           |
+| ------------------ | ----------------------------- | ------------- | ------------------------------------- |
+| `color`            | `str \| tuple[int, int, int]` | `"#5050FF"`   | Color of the segmentation masks       |
+| `background_class` | `int \| None`                 | `0`           | Class index of the background class   |
+| `backgruond_color` | `str \| tuple[int, int, int]` | `"#000000"`   | Color of the background class         |
+| `alpha`            | `float`                       | `0.6`         | Alpha value of the segmentation masks |
 
 **Example:**
 
