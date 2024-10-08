@@ -86,12 +86,13 @@ def train(
 def test(
     config: ConfigType = None,
     view: ViewType = _ViewType.VAL,
+    weights: WeightsType = None,
     opts: OptsType = None,
 ):
     """Evaluate model."""
     from luxonis_train.core import LuxonisModel
 
-    LuxonisModel(config, opts).test(view=view.value)
+    LuxonisModel(config, opts).test(view=view.value, weights=weights)
 
 
 @app.command()
