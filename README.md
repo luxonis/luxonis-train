@@ -78,9 +78,9 @@ Get started with `LuxonisTrain` in just a few steps:
 - [📝 Usage](#usage)
   - [💻 CLI](#cli)
 - [⚙️ Configuration](#configuration)
-- [💾 Data Preparation](#data-preparation)
+- [🗃️ Data Preparation](#data-preparation)
   - [📂 Data Directory](#data-directory)
-  - [💾 `LuxonisDataset`](#luxonisdataset)
+  - [💾 `LuxonisDataset`](#luxonis-dataset)
 - [🏋️‍♂️Training](#training)
 - [✍ Testing](#testing)
 - [🧠 Inference](#inference)
@@ -201,7 +201,7 @@ You can find them in the `configs` directory.
 
 <a name="data-preparation"></a>
 
-## 🚀 Data Preparation
+## 🗃️ Data Preparation
 
 `LuxonisTrain` supports several ways of loading data:
 
