@@ -94,16 +94,9 @@ class KeypointVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         label_canvas: Tensor,
         prediction_canvas: Tensor,
         predictions: list[Tensor],
-        targets: Tensor,
+        targets: Tensor | None,
         **kwargs,
-    ) -> tuple[Tensor, Tensor]:
-        target_viz = self.draw_targets(
-            label_canvas,
-            targets,
-            colors=self.visible_color,
-            connectivity=self.connectivity,
-            **kwargs,
-        )
+    ) -> tuple[Tensor, Tensor] | Tensor:
         pred_viz = self.draw_predictions(
             prediction_canvas,
             predictions,
@@ -111,6 +104,16 @@ class KeypointVisualizer(BaseVisualizer[list[Tensor], Tensor]):
             colors=self.visible_color,
             nonvisible_color=self.nonvisible_color,
             visibility_threshold=self.visibility_threshold,
+            **kwargs,
+        )
+        if targets is None:
+            return pred_viz
+
+        target_viz = self.draw_targets(
+            label_canvas,
+            targets,
+            colors=self.visible_color,
+            connectivity=self.connectivity,
             **kwargs,
         )
         return target_viz, pred_viz

@@ -498,7 +498,7 @@ class Config(LuxonisConfig):
         cls,
         cfg: str | dict[str, Any] | None = None,
         overrides: dict[str, Any] | list[str] | tuple[str, ...] | None = None,
-    ):
+    ) -> "Config":
         instance = super().get_config(cfg, overrides)
         if not isinstance(cfg, str):
             return instance

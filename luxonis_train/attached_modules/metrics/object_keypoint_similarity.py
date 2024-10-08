@@ -36,7 +36,6 @@ class ObjectKeypointSimilarity(
 
     def __init__(
         self,
-        n_keypoints: int | None = None,
         sigmas: list[float] | None = None,
         area_factor: float | None = None,
         use_cocoeval_oks: bool = True,

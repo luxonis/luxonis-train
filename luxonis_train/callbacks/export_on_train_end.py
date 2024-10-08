@@ -24,9 +24,9 @@ class ExportOnTrainEnd(NeedsCheckpoint):
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-        path = self.get_checkpoint(pl_module)
-        if path is None:  # pragma: no cover
+        checkpoint = self.get_checkpoint(pl_module)
+        if checkpoint is None:  # pragma: no cover
             logger.warning("Skipping model export.")
             return
 
-        pl_module.core.export(weights=self.get_checkpoint(pl_module))
+        pl_module.core.export(weights=checkpoint)

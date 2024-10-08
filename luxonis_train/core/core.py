@@ -38,9 +38,9 @@ from .utils.export_utils import (
 from .utils.infer_utils import (
     IMAGE_FORMATS,
     VIDEO_FORMATS,
-    process_dataset_images,
-    process_images,
-    process_video,
+    infer_from_dataset,
+    infer_from_directory,
+    infer_from_video,
 )
 from .utils.train_utils import create_trainer
 
@@ -286,19 +286,22 @@ class LuxonisModel:
 
     def export(
         self,
-        onnx_save_path: str | None = None,
-        *,
+        onnx_save_path: str | Path | None = None,
         weights: str | Path | None = None,
     ) -> None:
         """Runs export.
 
-        @type onnx_save_path: str | None
-        @param onnx_save_path: Path to .onnx model. If not specified, model will be saved
-            to export directory with name specified in config file.
-
+        @type onnx_save_path: str | Path | None
+        @param onnx_save_path: Path to where the exported ONNX model will be saved.
+            If not specified, model will be saved to the export directory
+            with the name specified in config file.
         @type weights: str | Path | None
-        @param weights: Path to the checkpoint from which to export the model.
-        @raises RuntimeError: If `onnxsim` fails to simplify the model.
+        @param weights: Path to the checkpoint from which to load weights.
+            If not specified, the value of `model.weights` from the
+            configuration file will be used. The current weights of the
+            model will be temporarily replaced with the weights from the
+            specified checkpoint.
+        @raises RuntimeError: If C{onnxsim} fails to simplify the model.
         """
 
         weights = weights or self.cfg.model.weights
@@ -314,8 +317,8 @@ class LuxonisModel:
         export_path = export_save_dir / (
             self.cfg.exporter.name or self.cfg.model.name
         )
-        onnx_save_path = onnx_save_path or str(
-            export_path.with_suffix(".onnx")
+        onnx_save_path = str(
+            onnx_save_path or export_path.with_suffix(".onnx")
         )
 
         with replace_weights(self.lightning_module, weights):
@@ -384,6 +387,7 @@ class LuxonisModel:
         self,
         new_thread: Literal[False] = ...,
         view: Literal["train", "test", "val"] = "val",
+        weights: str | Path | None = ...,
     ) -> Mapping[str, float]: ...
 
     @overload
@@ -391,6 +395,7 @@ class LuxonisModel:
         self,
         new_thread: Literal[True] = ...,
         view: Literal["train", "test", "val"] = "val",
+        weights: str | Path | None = ...,
     ) -> None: ...
 
     @typechecked
@@ -398,6 +403,7 @@ class LuxonisModel:
         self,
         new_thread: bool = False,
         view: Literal["train", "val", "test"] = "val",
+        weights: str | Path | None = None,
     ) -> Mapping[str, float] | None:
         """Runs testing.
 
@@ -408,61 +414,83 @@ class LuxonisModel:
         @rtype: Mapping[str, float] | None
         @return: If new_thread is False, returns a dictionary test
             results.
+        @type weights: str | Path | None
+        @param weights: Path to the checkpoint from which to load weights.
+            If not specified, the value of `model.weights` from the
+            configuration file will be used. The current weights of the
+            model will be temporarily replaced with the weights from the
+            specified checkpoint.
         """
 
+        weights = weights or self.cfg.model.weights
         loader = self.pytorch_loaders[view]
 
-        if not new_thread:
-            return self.pl_trainer.test(self.lightning_module, loader)[0]
-        else:  # pragma: no cover
-            self.thread = threading.Thread(
-                target=self.pl_trainer.test,
-                args=(self.lightning_module, loader),
-                daemon=True,
-            )
-            self.thread.start()
+        with replace_weights(self.lightning_module, weights):
+            if not new_thread:
+                return self.pl_trainer.test(self.lightning_module, loader)[0]
+            else:  # pragma: no cover
+                self.thread = threading.Thread(
+                    target=self.pl_trainer.test,
+                    args=(self.lightning_module, loader),
+                    daemon=True,
+                )
+                self.thread.start()
 
     @typechecked
     def infer(
         self,
         view: Literal["train", "val", "test"] = "val",
         save_dir: str | Path | None = None,
-        source_path: str | None = None,
+        source_path: str | Path | None = None,
+        weights: str | Path | None = None,
     ) -> None:
         """Runs inference.
 
         @type view: str
         @param view: Which split to run the inference on. Valid values
-            are: 'train', 'val', 'test'. Defaults to "val".
+            are: C{"train"}, C{"val"}, C{"test"}. Defaults to C{"val"}.
         @type save_dir: str | Path | None
         @param save_dir: Directory where to save the visualizations. If
             not specified, visualizations will be rendered on the
             screen.
-        @type source_path: str | None
+        @type source_path: str | Path | None
         @param source_path: Path to the image file, video file or directory.
             If None, defaults to using dataset images.
+        @type weights: str | Path | None
+        @param weights: Path to the checkpoint from which to load weights.
+            If not specified, the value of `model.weights` from the
+            configuration file will be used. The current weights of the
+            model will be temporarily replaced with the weights from the
+            specified checkpoint.
         """
         self.lightning_module.eval()
+        weights = weights or self.cfg.model.weights
 
-        if source_path:
-            source_path_obj = Path(source_path)
-            if source_path_obj.suffix.lower() in VIDEO_FORMATS:
-                process_video(self, source_path_obj, view, save_dir)
-            elif source_path_obj.is_file():
-                process_images(self, [source_path_obj], view, save_dir)
-            elif source_path_obj.is_dir():
-                image_files = [
-                    f
-                    for f in source_path_obj.iterdir()
-                    if f.suffix.lower() in IMAGE_FORMATS
-                ]
-                process_images(self, image_files, view, save_dir)
+        with replace_weights(self.lightning_module, weights):
+            if save_dir is not None:
+                save_dir = Path(save_dir)
+                save_dir.mkdir(parents=True, exist_ok=True)
+            if source_path is not None:
+                source_path = Path(source_path)
+                if source_path.suffix.lower() in VIDEO_FORMATS:
+                    infer_from_video(
+                        self, video_path=source_path, save_dir=save_dir
+                    )
+                elif source_path.is_file():
+                    infer_from_directory(self, [source_path], save_dir)
+                elif source_path.is_dir():
+                    image_files = (
+                        f
+                        for f in source_path.iterdir()
+                        if f.suffix.lower() in IMAGE_FORMATS
+                    )
+                    infer_from_directory(self, image_files, save_dir)
+                else:
+                    raise ValueError(
+                        f"Source path {source_path} is not a valid file or directory."
+                    )
             else:
-                raise ValueError(
-                    f"Source path {source_path} is not a valid file or directory."
-                )
-        else:
-            process_dataset_images(self, view, save_dir)
+                infer_from_dataset(self, view, save_dir)
 
     def tune(self) -> None:
         """Runs Optuna tuning of hyperparameters."""
@@ -625,15 +653,30 @@ class LuxonisModel:
             )
             wandb_parent_tracker.log_hyperparams(study.best_params)
 
-    def archive(self, path: str | Path | None = None) -> Path:
+    def archive(
+        self,
+        path: str | Path | None = None,
+        weights: str | Path | None = None,
+    ) -> Path:
         """Generates an NN Archive out of a model executable.
 
         @type path: str | Path | None
         @param path: Path to the model executable. If not specified, the
             model will be exported first.
+        @type weights: str | Path | None
+        @param weights: Path to the checkpoint from which to load weights.
+            If not specified, the value of `model.weights` from the
+            configuration file will be used. The current weights of the
+            model will be temporarily replaced with the weights from the
+            specified checkpoint.
         @rtype: Path
         @return: Path to the generated NN Archive.
         """
+        weights = weights or self.cfg.model.weights
+        with replace_weights(self.lightning_module, weights):
+            return self._archive(path)
+
+    def _archive(self, path: str | Path | None = None) -> Path:
         from .utils.archive_utils import get_heads, get_inputs, get_outputs
 
         archive_name = self.cfg.archiver.name or self.cfg.model.name
@@ -643,6 +686,7 @@ class LuxonisModel:
         outputs = []
 
         if path is None:
+            logger.warning("No model executable specified for archiving.")
             if "onnx" not in self._exported_models:
                 logger.info("Exporting model to ONNX...")
                 self.export()

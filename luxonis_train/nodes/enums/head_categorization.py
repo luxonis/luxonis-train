@@ -6,7 +6,6 @@ class ImplementedHeads(Enum):
 
     ClassificationHead = "ClassificationParser"
     EfficientBBoxHead = "YOLO"
-    ImplicitKeypointBBoxHead = "YoloDetectionNetwork"
     EfficientKeypointBBoxHead = "YoloDetectionNetwork"
     SegmentationHead = "SegmentationParser"
     BiSeNetHead = "SegmentationParser"
@@ -17,7 +16,6 @@ class ImplementedHeadsIsSoxtmaxed(Enum):
 
     ClassificationHead = False
     EfficientBBoxHead = None
-    ImplicitKeypointBBoxHead = None
     EfficientKeypointBBoxHead = None
     SegmentationHead = False
     BiSeNetHead = False

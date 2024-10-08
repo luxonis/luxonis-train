@@ -6,8 +6,9 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+import cv2
 import pytest
-from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.data import LuxonisDataset, LuxonisLoader
 from luxonis_ml.utils import environ
 
 from luxonis_train.core import LuxonisModel
@@ -17,6 +18,14 @@ from .multi_input_modules import *
 INFER_PATH = Path("tests/integration/infer-save-directory")
 ONNX_PATH = Path("tests/integration/_model.onnx")
 STUDY_PATH = Path("study_local.db")
+
+
+@pytest.fixture
+def infer_path() -> Path:
+    if INFER_PATH.exists():
+        shutil.rmtree(INFER_PATH)
+    INFER_PATH.mkdir()
+    return INFER_PATH
 
 
 @pytest.fixture
@@ -33,11 +42,9 @@ def opts(test_output_dir: Path) -> dict[str, Any]:
 
 @pytest.fixture(scope="function", autouse=True)
 def clear_files():
-    # todo
     yield
     STUDY_PATH.unlink(missing_ok=True)
     ONNX_PATH.unlink(missing_ok=True)
-    shutil.rmtree(INFER_PATH, ignore_errors=True)
 
 
 @pytest.mark.parametrize(
@@ -72,7 +79,7 @@ def test_predefined_models(
     model.test()
 
 
-def test_multi_input(opts: dict[str, Any]):
+def test_multi_input(opts: dict[str, Any], infer_path: Path):
     config_file = "tests/configs/multi_input.yaml"
     model = LuxonisModel(config_file, opts)
     model.train()
@@ -82,9 +89,9 @@ def test_multi_input(opts: dict[str, Any]):
     model.export(str(ONNX_PATH))
     assert ONNX_PATH.exists()
 
-    assert not INFER_PATH.exists()
-    model.infer(view="val", save_dir=INFER_PATH)
-    assert INFER_PATH.exists()
+    assert len(list(infer_path.iterdir())) == 0
+    model.infer(view="val", save_dir=infer_path)
+    assert infer_path.exists()
 
 
 def test_custom_tasks(
@@ -115,7 +122,6 @@ def test_custom_tasks(
             ), "Config JSON not found in the archive."
             generated_config = json.loads(extracted_cfg.read().decode())
 
-        del generated_config["model"]["heads"][1]["metadata"]["anchors"]
         assert generated_config == correct_archive_config
 
 
@@ -148,6 +154,46 @@ def test_tune(opts: dict[str, Any], coco_dataset: LuxonisDataset):
     model = LuxonisModel("configs/example_tuning.yaml", opts)
     model.tune()
     assert STUDY_PATH.exists()
+
+
+def test_infer(coco_dataset: LuxonisDataset, infer_path: Path):
+    loader = LuxonisLoader(coco_dataset)
+    img_dir = Path("tests/data/img_dir")
+    video_writer = cv2.VideoWriter(
+        "tests/data/video.avi",  # type: ignore
+        cv2.VideoWriter_fourcc(*"XVID"),
+        1,
+        (256, 256),
+    )
+    if img_dir.exists():
+        shutil.rmtree(img_dir)
+    img_dir.mkdir()
+    for i, (img, _) in enumerate(loader):
+        img = cv2.resize(img, (256, 256))
+        cv2.imwrite(str(img_dir / f"{i}.jpg"), img)
+        video_writer.write(img)
+    video_writer.release()
+
+    opts = {
+        "loader.params.dataset_name": coco_dataset.identifier,
+        "trainer.preprocessing.augmentations": [],
+    }
+    model = LuxonisModel("configs/complex_model.yaml", opts)
+
+    model.infer(source_path=img_dir / "0.jpg", save_dir=infer_path)
+    assert len(list(infer_path.glob("*.png"))) == 3
+
+    model.infer(source_path=img_dir, save_dir=infer_path)
+    assert len(list(infer_path.glob("*.png"))) == len(loader) * 3
+
+    model.infer(source_path="tests/data/video.avi", save_dir=infer_path)
+    assert len(list(infer_path.glob("*.mp4"))) == 3
+
+    model.infer(save_dir=infer_path, view="train")
+    assert len(list(infer_path.glob("*.png"))) == len(loader) * 3 * 2
+
+    with pytest.raises(ValueError):
+        model.infer(source_path="tests/data/invalid.jpg", save_dir=infer_path)
 
 
 def test_archive(test_output_dir: Path, coco_dataset: LuxonisDataset):
@@ -187,6 +233,10 @@ def test_callbacks(opts: dict[str, Any], parking_lot_dataset: LuxonisDataset):
             {"name": "UploadCheckpoint"},
             {
                 "name": "ExportOnTrainEnd",
+            },
+            {
+                "name": "ExportOnTrainEnd",
+                "params": {"preferred_checkpoint": "loss"},
             },
             {
                 "name": "ArchiveOnTrainEnd",

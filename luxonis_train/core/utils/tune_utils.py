@@ -12,7 +12,7 @@ def _augs_to_indices(all_augs: list[str], aug_names: list[str]) -> list[int]:
     aug_indices = []
     for aug_name in aug_names:
         if aug_name == "Normalize":
-            logger.warn(
+            logger.warning(
                 f"'{aug_name}' should be tuned directly by adding '...normalize.active_categorical' to the tuner params, skipping."
             )
             continue
@@ -20,7 +20,7 @@ def _augs_to_indices(all_augs: list[str], aug_names: list[str]) -> list[int]:
             index = all_augs.index(aug_name)
             aug_indices.append(index)
         except ValueError:
-            logger.warn(
+            logger.warning(
                 f"Augmentation '{aug_name}' not found under trainer augemntations, skipping."
             )
             continue

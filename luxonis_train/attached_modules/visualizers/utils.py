@@ -232,11 +232,7 @@ def get_denormalized_images(cfg: Config, inputs: dict[str, Tensor]) -> Tensor:
     if cfg.trainer.preprocessing.normalize.active:
         mean = normalize_params.get("mean", [0.485, 0.456, 0.406])
         std = normalize_params.get("std", [0.229, 0.224, 0.225])
-    return preprocess_images(
-        images,
-        mean=mean,
-        std=std,
-    )
+    return preprocess_images(images, mean=mean, std=std)
 
 
 def number_to_hsl(seed: int) -> tuple[float, float, float]:

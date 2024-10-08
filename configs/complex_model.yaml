@@ -15,7 +15,7 @@ model:
         - RepPANNeck
 
       losses:
-        - name: EfficientKeypointBboxLoss
+        - name: EfficientKeypointBBoxLoss
 
       metrics:
         - name: ObjectKeypointSimilarity
@@ -131,6 +131,7 @@ trainer:
         mode: min
         verbose: true
     - name: ExportOnTrainEnd
+    - name: ArchiveOnTrainEnd
     - name: TestOnTrainEnd
 
   optimizer:

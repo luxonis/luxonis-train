@@ -16,14 +16,6 @@ model:
       inputs:
         - neck
 
-    - name: ImplicitKeypointBBoxHead
-      alias: car-detection-head
-      inputs:
-        - neck
-      task:
-        keypoints: car-keypoints
-        boundingbox: car-boundingbox
-
     - name: EfficientKeypointBBoxHead
       alias: motorbike-detection-head
       task:
@@ -65,14 +57,10 @@ model:
       attached_to: vehicle-type-segmentation-head
     - name: CrossEntropyLoss
       attached_to: color-segmentation-head
-    - name: ImplicitKeypointBBoxLoss
-      attached_to: car-detection-head
     - name: EfficientKeypointBBoxLoss
       attached_to: motorbike-detection-head
 
   metrics:
-    - name: ObjectKeypointSimilarity
-      attached_to: car-detection-head
     - name: MeanAveragePrecisionKeypoints
       attached_to: motorbike-detection-head
     - name: MeanAveragePrecision
@@ -88,16 +76,6 @@ model:
       attached_to: brand-segmentation-head
 
   visualizers:
-    - name: MultiVisualizer
-      alias: multi-visualizer-car
-      attached_to: car-detection-head
-      params:
-        visualizers:
-          - name: KeypointVisualizer
-            params:
-              nonvisible_color: blue
-          - name: BBoxVisualizer
-
     - name: MultiVisualizer
       alias: multi-visualizer-motorbike
       attached_to: motorbike-detection-head

@@ -2,7 +2,6 @@ import math
 from typing import Literal, TypeAlias
 
 import torch
-from scipy.cluster.vq import kmeans
 from torch import Tensor
 from torchvision.ops import (
     batched_nms,
@@ -12,94 +11,8 @@ from torchvision.ops import (
     generalized_box_iou,
 )
 
-from luxonis_train.enums import TaskType
-from luxonis_train.loaders import BaseLoaderTorch
-
 IoUType: TypeAlias = Literal["none", "giou", "diou", "ciou", "siou"]
 BBoxFormatType: TypeAlias = Literal["xyxy", "xywh", "cxcywh"]
-
-
-def match_to_anchor(
-    targets: Tensor,
-    anchor: Tensor,
-    xy_shifts: Tensor,
-    scale_width: int,
-    scale_height: int,
-    n_keypoints: int,
-    anchor_threshold: float,
-    bias: float,
-    box_offset: int = 5,
-) -> tuple[Tensor, Tensor]:
-    """Matches targets to anchors.
-
-        1. Scales the targets to the size of the feature map
-        2. Matches the targets to the anchor, filtering out targets whose aspect
-            ratio is too far from the anchor's aspect ratio.
-
-    @type targets: Tensor
-    @param targets: Targets in xyxy format
-    @type anchor: Tensor
-    @param anchor: Anchor boxes
-    @type xy_shifts: Tensor
-    @param xy_shifts: Shifts in x and y direction
-    @type scale_width: int
-    @param scale_width: Width of the feature map
-    @type scale_height: int
-    @param scale_height: Height of the feature map
-    @type n_keypoints: int
-    @param n_keypoints: Number of keypoints
-    @type anchor_threshold: float
-    @param anchor_threshold: Threshold for anchor filtering
-    @type bias: float
-    @param bias: Bias for anchor filtering
-    @type box_offset: int
-    @param box_offset: Offset for box. Defaults to 5.
-
-    @rtype: tuple[Tensor, Tensor]
-    @return: Scaled targets and shifts.
-    """
-
-    # The boxes and keypoints need to be scaled to the size of the features
-    # First two indices are batch index and class label,
-    # last index is anchor index. Those are not scaled.
-    scale_length = 3 * n_keypoints + box_offset + 2
-    scales = torch.ones(scale_length, device=targets.device)
-
-    # Scale box and keypoint coordinates, but not visibility
-    for i in range(n_keypoints):
-        scales[box_offset + 1 + 3 * i] = scale_width
-        scales[box_offset + 2 + 3 * i] = scale_height
-
-    scales[2 : box_offset + 1] = torch.tensor(
-        [scale_width, scale_height, scale_width, scale_height]
-    )
-
-    scaled_targets = targets * scales
-
-    if targets.size(1) == 0:
-        return targets[0], torch.zeros(1, device=targets.device)
-
-    wh_to_anchor_ratio = scaled_targets[:, :, 4:6] / anchor.unsqueeze(1)
-    ratio_mask = (
-        torch.max(wh_to_anchor_ratio, 1.0 / wh_to_anchor_ratio).max(2)[0]
-        < anchor_threshold
-    )
-
-    filtered_targets = scaled_targets[ratio_mask]
-
-    box_xy = filtered_targets[:, 2:4]
-    box_wh = torch.tensor([scale_width, scale_height]) - box_xy
-
-    def decimal_part(x: Tensor) -> Tensor:
-        return x % 1.0
-
-    x, y = ((decimal_part(box_xy) < bias) & (box_xy > 1.0)).T
-    w, h = ((decimal_part(box_wh) < bias) & (box_wh > 1.0)).T
-    mask = torch.stack((torch.ones_like(x), x, y, w, h))
-    final_targets = filtered_targets.repeat((len(xy_shifts), 1, 1))[mask]
-
-    shifts = xy_shifts.unsqueeze(1).repeat((1, len(box_xy), 1))[mask]
-    return final_targets, shifts
 
 
 def dist2bbox(
@@ -411,123 +324,6 @@ def non_max_suppression(
     return output
 
 
-def anchors_from_dataset(
-    loader: BaseLoaderTorch,
-    n_anchors: int = 9,
-    n_generations: int = 1000,
-    ratio_threshold: float = 4.0,
-) -> tuple[Tensor, float]:
-    """Generates anchors based on bounding box annotations present in
-    provided data loader. It uses K-Means for initial proposals which
-    are then refined with genetic algorithm.
-
-    @type loader: L{torch.utils.data.DataLoader}
-    @param loader: Data loader.
-    @type n_anchors: int
-    @param n_anchors: Number of anchors, this is normally n_heads * 3
-        which generates 3 anchors per layer. Defaults to 9.
-    @type n_generations: int
-    @param n_generations: Number of iterations for anchor improvement
-        with genetic algorithm. Defaults to 1000.
-    @type ratio_threshold: float
-    @param ratio_threshold: Minimum threshold for ratio. Defaults to
-        4.0.
-    @rtype: tuple[Tensor, float]
-    @return: Proposed anchors and the best possible recall.
-    """
-
-    widths: list[Tensor] = []
-    for _, labels in loader:
-        for tensor, task_type in labels.values():
-            if task_type == TaskType.BOUNDINGBOX:
-                curr_wh = tensor[:, 4:]
-                widths.append(curr_wh)
-    _, h, w = loader.input_shape
-    img_size = torch.tensor([w, h])
-    wh = torch.vstack(widths) * img_size
-
-    # filter out small objects (w or h < 2 pixels)
-    wh = wh[(wh >= 2).any(1)]
-
-    try:
-        assert n_anchors <= len(
-            wh
-        ), "More requested anchors than number of bounding boxes."
-        std = wh.std(0)
-        proposed_anchors = kmeans(wh / std, n_anchors, iter=30)
-        proposed_anchors = torch.tensor(proposed_anchors[0]) * std
-        assert n_anchors == len(
-            proposed_anchors
-        ), "KMeans returned insufficient number of points"
-    except Exception:
-        print("Fallback to random anchor init")
-        proposed_anchors = (
-            torch.sort(torch.rand(n_anchors * 2))[0].reshape(n_anchors, 2)
-            * img_size
-        )
-
-    proposed_anchors = proposed_anchors[
-        torch.argsort(proposed_anchors.prod(1))
-    ]  # sort small to large
-
-    def calc_best_anchor_ratio(anchors: Tensor, wh: Tensor) -> Tensor:
-        """Calculate how well most suitable anchor box matches each
-        target bbox."""
-        symmetric_size_ratios = torch.min(
-            wh[:, None] / anchors[None], anchors[None] / wh[:, None]
-        )
-        worst_side_size_ratio = symmetric_size_ratios.min(-1).values
-        best_anchor_ratio = worst_side_size_ratio.max(-1).values
-        return best_anchor_ratio
-
-    def calc_best_possible_recall(anchors: Tensor, wh: Tensor) -> Tensor:
-        """Calculate the best possible recall if every bbox is matched
-        to an appropriate anchor."""
-        best_anchor_ratio = calc_best_anchor_ratio(anchors, wh)
-        best_possible_recall = (
-            (best_anchor_ratio > 1 / ratio_threshold).float().mean()
-        )
-        return best_possible_recall
-
-    def anchor_fitness(anchors: Tensor, wh: Tensor) -> Tensor:
-        """Fitness function used for anchor evolve."""
-        best_anchor_ratio = calc_best_anchor_ratio(anchors, wh)
-        return (
-            best_anchor_ratio
-            * (best_anchor_ratio > 1 / ratio_threshold).float()
-        ).mean()
-
-    # Genetic algorithm
-    best_fitness = anchor_fitness(proposed_anchors, wh)
-    anchor_shape = proposed_anchors.shape
-    mutation_probability = 0.9
-    mutation_noise_mean = 1
-    mutation_noise_std = 0.1
-    for _ in range(n_generations):
-        anchor_mutation = torch.ones(anchor_shape)
-        anchor_mutation = (
-            (torch.rand(anchor_shape) < mutation_probability)
-            * torch.randn(anchor_shape)
-            * mutation_noise_std
-            + mutation_noise_mean
-        ).clip(0.3, 3.0)
-
-        mutated_anchors = (proposed_anchors.clone() * anchor_mutation).clip(
-            min=2.0
-        )
-        mutated_fitness = anchor_fitness(mutated_anchors, wh)
-        if mutated_fitness > best_fitness:
-            best_fitness = mutated_fitness
-            proposed_anchors = mutated_anchors.clone()
-
-    proposed_anchors = proposed_anchors[
-        torch.argsort(proposed_anchors.prod(1))
-    ]  # sort small to large
-    recall = calc_best_possible_recall(proposed_anchors, wh)
-
-    return proposed_anchors, recall.item()
-
-
 def anchors_for_fpn_features(
     features: list[Tensor],
     strides: Tensor,
@@ -603,26 +399,6 @@ def anchors_for_fpn_features(
         n_anchors_list,
         torch.cat(stride_tensor).to(device),
     )
-
-
-def process_bbox_predictions(
-    bbox: Tensor, anchor: Tensor
-) -> tuple[Tensor, Tensor, Tensor]:
-    """Transforms bbox predictions to correct format.
-
-    @type bbox: Tensor
-    @param bbox: Bbox predictions
-    @type anchor: Tensor
-    @param anchor: Anchor boxes
-    @rtype: tuple[Tensor, Tensor, Tensor]
-    @return: xy and wh predictions and tail. The tail is anything after
-        xywh.
-    """
-    out_bbox = bbox.sigmoid()
-    out_bbox_xy = out_bbox[..., 0:2] * 2.0 - 0.5
-    out_bbox_wh = (out_bbox[..., 2:4] * 2) ** 2 * anchor
-    out_bbox_tail = out_bbox[..., 4:]
-    return out_bbox_xy, out_bbox_wh, out_bbox_tail
 
 
 def compute_iou_loss(
