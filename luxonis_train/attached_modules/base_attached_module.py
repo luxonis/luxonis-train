@@ -287,7 +287,7 @@ class BaseAttachedModule(
 
         @type inputs: L{Packet}[Tensor]
         @param inputs: Output from the node, inputs to the attached module.
-        @type labels: L{Labels | None}
+        @type labels: L{Labels} | None
         @param labels: Labels from the dataset. If not provided, empty labels are used.
             This is useful in visualizers for working with standalone images.
 
