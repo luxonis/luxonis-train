@@ -25,7 +25,7 @@
 - **Edge Optimized**: Focus on models optimized for deployment on edge devices with limited compute resources.
 
 > \[!WARNING\]
-> **🚧 The project is in a beta state and might be unstable or contain bugs - please report any feedback.**
+> **The project is in a beta state and might be unstable or contain bugs - please report any feedback.**
 
 <a name="quick-start"></a>
 
@@ -33,65 +33,67 @@
 
 Get started with `LuxonisTrain` in just a few steps:
 
-1. Install `LuxonisTrain`
+1. **Install `LuxonisTrain`**
 
-```bash
-pip install luxonis-train
-```
+   ```bash
+   pip install luxonis-train
+   ```
 
-This will create the `luxonis_train` executable in your `PATH`.
+   This will create the `luxonis_train` executable in your `PATH`.
 
-1. Use the provided `configs/detection_light_model.yaml` configuration file to train a lightweight object detection model.
+1. **Use the provided `configs/detection_light_model.yaml` configuration file**
+
    You can download the file by executing the following command:
 
-```bash
-wget https://raw.githubusercontent.com/luxonis/luxonis-train/main/configs/detection_light_model.yaml
-```
+   ```bash
+   wget https://raw.githubusercontent.com/luxonis/luxonis-train/main/configs/detection_light_model.yaml
+   ```
 
-1. Find a suitable dataset for your task. We'll use a sample COCO dataset from `RoboFlow` for this example.
+1. **Find a suitable dataset for your task**
+   
+   We will use a sample COCO dataset from `RoboFlow` in this example.
 
-1. Start Training
+1. **Start training**
 
-```bash
-luxonis_train train                   \
-  --config detection_light_model.yaml \
-  loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco"
-```
+   ```bash
+   luxonis_train train                   \
+     --config detection_light_model.yaml \
+     loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco"
+   ```
 
-1. Monitor Progress with `TensorBoard`
+1. **Monitor progress with `TensorBoard`**
 
-```bash
-tensorboard --logdir output/tensorboard_logs
-```
+   ```bash
+   tensorboard --logdir output/tensorboard_logs
+   ```
 
-1. Open the provided URL in your browser to visualize the training progress.
+   Open the provided URL in your browser to visualize the training progress
 
 ## 📜 Table Of Contents
 
-- [🌟 Overview](#overview)
-  - [✨ Key Features](#key-features)
-- [🛠️ Installation](#installation)
-- [📝 Usage](#usage)
-  - [💻 CLI](#cli)
-- [⚙️ Configuration](#configuration)
-- [💾 Data](#data-loading)
-  - [📂 Data Directory](#data-directory)
-  - [🚀 `LuxonisDataset`](#luxonis-dataset)
-- [🏋️‍♂️Training](#training)
-- [✍ Testing](#testing)
-- [🧠 Inference](#inference)
-- [🤖 Exporting](#exporting)
-- [🗂️ NN Archive](#nn-archive)
-- [🔬 Tuning](#tuning)
-- [🎨 Customizations](#customizations)
-- [📚 Tutorials and Examples](#tutorials)
-- [🔑 Credentials](#credentials)
-- [🤝 Contributing](#contributing)
-- [📄 License](#license)
+- [🌟 Overview](#-overview)
+  - [✨ Key Features](#-key-features)
+- [🚀 Quick Start](#-quick-start)
+- [🛠️ Installation](#-installation)
+- [📝 Usage](#-usage)
+  - [💻 CLI](#-cli)
+- [⚙️ Configuration](#-configuration)
+- [💾 Data Preparation](#-data-preparation)
+  - [📂 Data Directory](#-data-directory)
+  - [💾 `LuxonisDataset`](#-luxonisdataset)
+- [🏋️‍♂️Training](#-training)
+- [✍ Testing](#-testing)
+- [🧠 Inference](#-inference)
+- [🤖 Exporting](#-exporting)
+- [🗂️ NN Archive](#-nn-archive)
+- [🔬 Tuning](#-tuning)
+- [🎨 Customizations](#-customizations)
+- [📚 Tutorials and Examples](#-tutorials-and-examples)
+- [🔑 Credentials](#-credentials)
+- [🤝 Contributing](#-contributing)
 
-<a name="installation"></a>
 
-### 🛠️ Installation
+## 🛠️ Installation
 
 `LuxonisTrain` requires **Python 3.10** or higher. We recommend using a virtual environment to manage dependencies.
 
@@ -103,14 +105,10 @@ pip install luxonis-train
 
 This will also install the `luxonis_train` CLI. For more information on how to use it, see [CLI Usage](#cli).
 
-<a name="usage"></a>
-
 ## 📝 Usage
 
 You can use `LuxonisTrain` either from the **command line** or via the **Python API**.
 We will demonstrate both ways in the following sections.
-
-<a name="cli"></a>
 
 ### 💻 CLI
 
@@ -133,8 +131,6 @@ luxonis_train <command> --help
 ```
 
 Specific usage examples can be found in the respective sections below.
-
-<a name="configuration"></a>
 
 ## ⚙️ Configuration
 
@@ -196,8 +192,6 @@ For an extensive list of all the available options, see [Configuration](https://
 We provide a set of predefined configuration files for the most common computer vision tasks.
 You can find them in the `configs` directory.
 
-<a name="data-loading"></a>
-
 ## 🚀 Data Preparation
 
 `LuxonisTrain` supports several ways of loading data:
@@ -206,8 +200,6 @@ You can find them in the `configs` directory.
 - using an already existing dataset in our custom `LuxonisDataset` format
 - using a custom loader
   - to learn how to implement and use custom loaders, see [Customizations](#customizations)
-
-<a name="data-directory"></a>
 
 ### 📂 Data Directory
 
@@ -288,8 +280,6 @@ loader:
     dataset_dir: "roboflow://team-roboflow/coco-128/2/coco"
 ```
 
-<a name="luxonis-dataset"></a>
-
 ### 💾 `LuxonisDataset`
 
 `LuxonisDataset` is our custom dataset format designed for easy and efficient dataset management.
@@ -316,7 +306,6 @@ loader:
 >
 > **The `inspect` command is currently only available in the CLI**
 
-<a name="training"></a>
 
 ## 🏋️‍♂️ Training
 
@@ -372,8 +361,6 @@ tensorboard --logdir output/tensorboard_logs
 
 Open the provided URL to visualize training metrics.
 
-<a name="testing"></a>
-
 ## ✍ Testing
 
 Evaluate your trained model on a specific dataset view (`train`, `val`, or `test`).
@@ -397,8 +384,6 @@ model.test(weights="path/to/checkpoint.ckpt")
 
 The testing process can be started automatically at the end of the training by using the `TestOnTrainEnd` callback.
 To learn more about callbacks, see [Callbacks](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/callbacks/README.md).
-
-<a name="inference"></a>
 
 ## 🧠 Inference
 
@@ -452,9 +437,7 @@ model.infer(
 )
 ```
 
-<a name="exporting"></a>
-
-## 🤖 Exporting Models
+## 🤖 Exporting
 
 Export your trained models to formats suitable for deployment on edge devices.
 
@@ -486,8 +469,6 @@ Model export can be run automatically at the end of the training by using the `E
 
 The exported models are saved in the export directory within your `output` folder.
 
-<a name="nn-archive"></a>
-
 ## 🗂️ NN Archive
 
 Create an `NN Archive` file for easy deployment with the `DepthAI` API.
@@ -512,8 +493,6 @@ model.archive(weights="path/to/checkpoint.ckpt")
 ```
 
 The archive can be created automatically at the end of the training by using the `ArchiveOnTrainEnd` callback.
-
-<a name="tuning"></a>
 
 ## 🔬 Tuning
 
@@ -550,8 +529,6 @@ from luxonis_train import LuxonisModel
 model = LuxonisModel("configs/example_tuning.yaml")
 model.tune()
 ```
-
-<a name="customizations"></a>
 
 ## 🎨 Customizations
 
@@ -653,13 +630,9 @@ model.train()
 
 For more information on how to define custom components, consult the respective in-source documentation.
 
-<a name="tutorials"></a>
-
 ## 📚 Tutorials and Examples
 
 We are actively working on providing examples and tutorials for different parts of the library which will help you to start more easily. The tutorials can be found [here](https://github.com/luxonis/depthai-ml-training/tree/master) and will be updated regularly.
-
-<a name="credentials"></a>
 
 ## 🔑 Credentials
 
@@ -695,8 +668,6 @@ Instead:
 - `POSTGRES_HOST`
 - `POSTGRES_PORT`
 - `POSTGRES_DB`
-
-<a name="contributing"></a>
 
 ## 🤝 Contributing
 
