@@ -41,6 +41,15 @@ OptsType = Annotated[
     ),
 ]
 
+WeightsType = Annotated[
+    Path | None,
+    typer.Option(
+        help="Path to the model weights.",
+        show_default=False,
+        metavar="FILE",
+    ),
+]
+
 ViewType = Annotated[
     _ViewType, typer.Option(help="Which dataset view to use.")
 ]
@@ -77,12 +86,13 @@ def train(
 def test(
     config: ConfigType = None,
     view: ViewType = _ViewType.VAL,
+    weights: WeightsType = None,
     opts: OptsType = None,
 ):
     """Evaluate model."""
     from luxonis_train.core import LuxonisModel
 
-    LuxonisModel(config, opts).test(view=view.value)
+    LuxonisModel(config, opts).test(view=view.value, weights=weights)
 
 
 @app.command()
@@ -94,11 +104,21 @@ def tune(config: ConfigType = None, opts: OptsType = None):
 
 
 @app.command()
-def export(config: ConfigType = None, opts: OptsType = None):
+def export(
+    config: ConfigType = None,
+    save_path: Annotated[
+        Path | None,
+        typer.Option(help="Path where to save the exported model."),
+    ] = None,
+    weights: WeightsType = None,
+    opts: OptsType = None,
+):
     """Export model."""
     from luxonis_train.core import LuxonisModel
 
-    LuxonisModel(config, opts).export()
+    LuxonisModel(config, opts).export(
+        onnx_save_path=save_path, weights=weights
+    )
 
 
 @app.command()
@@ -107,6 +127,7 @@ def infer(
     view: ViewType = _ViewType.VAL,
     save_dir: SaveDirType = None,
     source_path: SourcePathType = None,
+    weights: WeightsType = None,
     opts: OptsType = None,
 ):
     """Run inference."""
@@ -116,6 +137,7 @@ def infer(
         view=view.value,
         save_dir=save_dir,
         source_path=source_path,
+        weights=weights,
     )
 
 
@@ -140,7 +162,8 @@ def inspect(
             "-s",
             help=(
                 "Multiplier for the image size. "
-                "By default the images are shown in their original size."
+                "By default the images are shown in their original size. "
+                "Use this option to scale them."
             ),
             show_default=False,
         ),
@@ -225,19 +248,20 @@ def inspect(
 
 @app.command()
 def archive(
+    config: ConfigType = None,
     executable: Annotated[
         str | None,
         typer.Option(
             help="Path to the model file.", show_default=False, metavar="FILE"
         ),
     ] = None,
-    config: ConfigType = None,
+    weights: WeightsType = None,
     opts: OptsType = None,
 ):
     """Generate NN archive."""
     from luxonis_train.core import LuxonisModel
 
-    LuxonisModel(str(config), opts).archive(executable)
+    LuxonisModel(str(config), opts).archive(path=executable, weights=weights)
 
 
 def version_callback(value: bool):
