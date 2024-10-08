@@ -2,9 +2,9 @@
 
 
 model:
-  name: segmentation_light
+  name: detection_light
   predefined_model:
-    name: SegmentationModel
+    name: DetectionModel
     params:
       variant: light
 
@@ -15,9 +15,9 @@ loader:
 trainer:
   preprocessing:
     train_image_size: [384, 512]
-    keep_aspect_ratio: True
+    keep_aspect_ratio: true
     normalize:
-      active: True
+      active: true
     augmentations:
       - name: Defocus
         params:
@@ -40,7 +40,7 @@ trainer:
 
 
 tuner:
-  study_name: seg_study
+  study_name: det_study
   n_trials: 10
   storage:
     storage_type: local

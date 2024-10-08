@@ -16,9 +16,9 @@ loader:
 trainer:
   preprocessing:
     train_image_size: [&height 128, &width 128]
-    keep_aspect_ratio: False
+    keep_aspect_ratio: false
     normalize:
-      active: True
+      active: true
 
   batch_size: 4
   epochs: &epochs 1

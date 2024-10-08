@@ -23,6 +23,14 @@ Metrics from the [`torchmetrics`](https://lightning.ai/docs/torchmetrics/stable/
 
 For more information, see [object-keypoint-similarity](https://learnopencv.com/object-keypoint-similarity/).
 
+**Params**
+
+| Key                | Type                  | Default value | Description                                                           |
+| ------------------ | --------------------- | ------------- | --------------------------------------------------------------------- |
+| `sigmas`           | `list[float] \| None` | `None`        | List of sigmas for each keypoint. If `None`, the COCO sigmas are used |
+| `area_factor`      | `float`               | `0.53`        | Factor by which to multiply the bounding box area                     |
+| `use_cocoeval_oks` | `bool`                | `True`        | Whether to use the same OKS formula as in COCO evaluation             |
+
 ## MeanAveragePrecision
 
 Compute the `Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)` for object detection predictions.
@@ -43,4 +51,13 @@ boxes.
 
 Similar to [MeanAveragePrecision](#meanaverageprecision), but uses [OKS](#objectkeypointsimilarity) as `IoU` measure.
 For a deeper understanding of how OKS works, please refer to the detailed explanation provided [here](https://learnopencv.com/object-keypoint-similarity/).
-Evaluation leverages  COCO evaluation framework (COCOeval) to assess mAP performance.
+Evaluation leverages COCO evaluation framework (COCOeval) to assess mAP performance.
+
+**Params**
+
+| Key           | Type                                | Default value | Description                                                           |
+| ------------- | ----------------------------------- | ------------- | --------------------------------------------------------------------- |
+| `sigmas`      | `list[float] \| None`               | `None`        | List of sigmas for each keypoint. If `None`, the COCO sigmas are used |
+| `area_factor` | `float`                             | `0.53`        | Factor by which to multiply the bounding box area                     |
+| `max_dets`    | `int`                               | `20`          | Maximum number of detections per image                                |
+| `box_fotmat`  | `Literal["xyxy", "xywh", "cxcywh"]` | `"xyxy"`      | Format of the bounding boxes                                          |

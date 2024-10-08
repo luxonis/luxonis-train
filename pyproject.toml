@@ -12,6 +12,8 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Development Status :: 4 - Beta",
   "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Scientific/Engineering :: Image Processing",
   "Topic :: Scientific/Engineering :: Image Recognition",
@@ -47,6 +49,7 @@ select = ["E4", "E7", "E9", "F", "W", "B", "I"]
 
 [tool.docformatter]
 black = true
+style = "epytext"
 wrap-summaries = 72
 wrap-descriptions = 72
 

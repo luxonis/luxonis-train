@@ -1,235 +1,235 @@
 # Nodes
 
 Nodes are the basic building structures of the model. They can be connected together
-arbitrarily as long as the two nodes are compatible with each other. We've grouped together nodes that are similar so it's easier to build an architecture that makes sense.
+arbitrarily as long as the two nodes are compatible with each other. We've grouped together nodes that are similar, so it's easier to build an architecture that makes sense.
 
 ## Table Of Contents
 
 - [Backbones](#backbones)
-  - [ResNet](#resnet)
-  - [MicroNet](#micronet)
-  - [RepVGG](#repvgg)
-  - [EfficientRep](#efficientrep)
-  - [RexNetV1_lite](#rexnetv1_lite)
-  - [MobileOne](#mobileone)
-  - [MobileNetV2](#mobilenetv2)
-  - [EfficientNet](#efficientnet)
-  - [ContextSpatial](#contextspatial)
-  - [DDRNet](#ddrnet)
+  - [`ResNet`](#resnet)
+  - [`MicroNet`](#micronet)
+  - [`RepVGG`](#repvgg)
+  - [`EfficientRep`](#efficientrep)
+  - [`RexNetV1_lite`](#rexnetv1_lite)
+  - [`MobileOne`](#mobileone)
+  - [`MobileNetV2`](#mobilenetv2)
+  - [`EfficientNet`](#efficientnet)
+  - [`ContextSpatial`](#contextspatial)
+  - [`DDRNet`](#ddrnet)
 - [Necks](#necks)
-  - [RepPANNeck](#reppanneck)
+  - [`RepPANNeck`](#reppanneck)
 - [Heads](#heads)
-  - [ClassificationHead](#classificationhead)
-  - [SegmentationHead](#segmentationhead)
-  - [BiSeNetHead](#bisenethead)
-  - [EfficientBBoxHead](#efficientbboxhead)
-  - [EfficientKeypointBBoxHead](#efficientkeypointbboxhead)
-  - [DDRNetSegmentationHead](#ddrnetsegmentationhead)
+  - [`ClassificationHead`](#classificationhead)
+  - [`SegmentationHead`](#segmentationhead)
+  - [`BiSeNetHead`](#bisenethead)
+  - [`EfficientBBoxHead`](#efficientbboxhead)
+  - [`EfficientKeypointBBoxHead`](#efficientkeypointbboxhead)
+  - [`DDRNetSegmentationHead`](#ddrnetsegmentationhead)
 
 Every node takes these parameters:
 
-| Key              | Type        | Default value | Description                                                                  |
-| ---------------- | ----------- | ------------- | ---------------------------------------------------------------------------- |
-| n_classes        | int \| None | None          | Number of classes in the dataset. Inferred from the dataset if not provided. |
-| remove_on_export | bool        | False         | Whether node should be removed when exporting the whole model.               |
+| Key                | Type          | Default value | Description                                                                 |
+| ------------------ | ------------- | ------------- | --------------------------------------------------------------------------- |
+| `n_classes`        | `int \| None` | `None`        | Number of classes in the dataset. Inferred from the dataset if not provided |
+| `remove_on_export` | `bool`        | `False`       | Whether node should be removed when exporting the whole model               |
 
-In addition, the following class attributes can be overriden:
+In addition, the following class attributes can be overridden:
 
-| Key          | Type                                                                | Default value | Description                                                                                                                                   |
-| ------------ | ------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| attach_index | int \| "all" \| Tuple\[int, int\] \| Tuple\[int, int, int\] \| None | None          | Index of previous output that the head attaches to. Each node has a sensible default. Usually should not be manually set in most cases.       |
-| tasks        | List\[TaskType\] \| Dict\[TaskType, str\] \| None                   | None          | Tasks supported by the node. Should be overriden for head nodes. Either a list of tasks or a dictionary mapping tasks to their default names. |
+| Key            | Type                                                              | Default value | Description                                                                                                                                                                                                                     |
+| -------------- | ----------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `attach_index` | `int \| "all" \| tuple[int, int] \| tuple[int, int, int] \| None` | `None`        | Index of previous output that the head attaches to. Each node has a sensible default. Usually should not be manually set in most cases. Can be either a single index, a slice (negative indexing is also supported), or `"all"` |
+| `tasks`        | `list[TaskType] \| Dict[TaskType, str] \| None`                   | `None`        | Tasks supported by the node. Should be overridden for head nodes. Either a list of tasks or a dictionary mapping tasks to their default names                                                                                   |
 
 Additional parameters for specific nodes are listed below.
 
 ## Backbones
 
-### ResNet
+### `ResNet`
 
 Adapted from [here](https://pytorch.org/vision/main/models/resnet.html).
 
-**Params**
+**Parameters:**
 
-| Key              | Type                                      | Default value | Description                            |
-| ---------------- | ----------------------------------------- | ------------- | -------------------------------------- |
-| variant          | Literal\["18", "34", "50", "101", "152"\] | "18"          | Variant of the network.                |
-| download_weights | bool                                      | False         | If True download weights from imagenet |
+| Key                | Type                                      | Default value | Description                            |
+| ------------------ | ----------------------------------------- | ------------- | -------------------------------------- |
+| `variant`          | `Literal["18", "34", "50", "101", "152"]` | `"18"`        | Variant of the network                 |
+| `download_weights` | `bool`                                    | `False`       | If True download weights from ImageNet |
 
-### MicroNet
+### `MicroNet`
 
 Adapted from [here](https://github.com/liyunsheng13/micronet).
 
-**Params**
+**Parameters:**
 
-| Key     | Type                        | Default value | Description             |
-| ------- | --------------------------- | ------------- | ----------------------- |
-| variant | Literal\["M1", "M2", "M3"\] | "M1"          | Variant of the network. |
+| Key       | Type                        | Default value | Description            |
+| --------- | --------------------------- | ------------- | ---------------------- |
+| `variant` | `Literal["M1", "M2", "M3"]` | `"M1"`        | Variant of the network |
 
-### RepVGG
+### `RepVGG`
 
 Adapted from [here](https://github.com/DingXiaoH/RepVGG).
 
-**Params**
+**Parameters:**
 
-| Key     | Type                        | Default value | Description             |
-| ------- | --------------------------- | ------------- | ----------------------- |
-| variant | Literal\["A0", "A1", "A2"\] | "A0"          | Variant of the network. |
+| Key       | Type                        | Default value | Description            |
+| --------- | --------------------------- | ------------- | ---------------------- |
+| `variant` | `Literal["A0", "A1", "A2"]` | `"A0"`        | Variant of the network |
 
-### EfficientRep
+### `EfficientRep`
 
 Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
-**Params**
+**Parameters:**
 
-| Key           | Type                                                              | Default value               | Description                                                     |
-| ------------- | ----------------------------------------------------------------- | --------------------------- | --------------------------------------------------------------- |
-| variant       | Literal\["n", "nano", "s", "small", "m", "medium", "l", "large"\] | "nano"                      | Variant of the network                                          |
-| channels_list | List\[int\]                                                       | \[64, 128, 256, 512, 1024\] | List of number of channels for each block                       |
-| n_repeats     | List\[int\]                                                       | \[1, 6, 12, 18, 6\]         | List of number of repeats of RepVGGBlock                        |
-| depth_mul     | float                                                             | 0.33                        | Depth multiplier                                                |
-| width_mul     | float                                                             | 0.25                        | Width multiplier                                                |
-| block         | Literal\["RepBlock", "CSPStackRepBlock"\]                         | "RepBlock"                  | Base block used                                                 |
-| csp_e         | float                                                             | 0.5                         | Factor for intermediate channels when block=="CSPStackRepBlock" |
+| Key             | Type                                                              | Default value               | Description                                                                |
+| --------------- | ----------------------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------- |
+| `variant`       | `Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]` | `"nano"`                    | Variant of the network                                                     |
+| `channels_list` | `list[int]`                                                       | \[64, 128, 256, 512, 1024\] | List of number of channels for each block                                  |
+| `n_repeats`     | `list[int]`                                                       | \[1, 6, 12, 18, 6\]         | List of number of repeats of `RepVGGBlock`                                 |
+| `depth_mul`     | `float`                                                           | `0.33`                      | Depth multiplier                                                           |
+| `width_mul`     | `float`                                                           | `0.25`                      | Width multiplier                                                           |
+| `block`         | `Literal["RepBlock", "CSPStackRepBlock"]`                         | `"RepBlock"`                | Base block used                                                            |
+| `csp_e`         | `float`                                                           | `0.5`                       | Factor for intermediate channels when block is set to `"CSPStackRepBlock"` |
 
 ### RexNetV1_lite
 
-Adapted from ([here](https://github.com/clovaai/rexnet).
+Adapted from [here](https://github.com/clovaai/rexnet)
 
-**Params**
+**Parameters:**
 
-| Key             | Type               | Default value | Description                   |
-| --------------- | ------------------ | ------------- | ----------------------------- |
-| fix_head_stem   | bool               | False         | Whether to multiply head stem |
-| divisible_value | int                | 8             | Divisor used                  |
-| input_ch        | int                | 16            | tarting channel dimension     |
-| final_ch        | int                | 164           | Final channel dimension       |
-| multiplier      | float              | 1.0           | Channel dimension multiplier  |
-| kernel_sizes    | int \| list\[int\] | 3             | Kernel sizes                  |
+| Key               | Type               | Default value | Description                   |
+| ----------------- | ------------------ | ------------- | ----------------------------- |
+| `fix_head_stem`   | `bool`             | `False`       | Whether to multiply head stem |
+| `divisible_value` | `int`              | `8`           | Divisor used                  |
+| `input_ch`        | `int`              | `16`          | tarting channel dimension     |
+| `final_ch`        | `int`              | `164`         | Final channel dimension       |
+| `multiplier`      | `float`            | `1.0`         | Channel dimension multiplier  |
+| `kernel_sizes`    | `int \| list[int]` | `3`           | Kernel sizes                  |
 
-### MobileOne
+### `MobileOne`
 
 Adapted from [here](https://github.com/apple/ml-mobileone).
 
-**Params**
+**Parameters:**
 
-| Key     | Type                                    | Default value | Description             |
-| ------- | --------------------------------------- | ------------- | ----------------------- |
-| variant | Literal\["s0", "s1", "s2", "s3", "s4"\] | "s0"          | Variant of the network. |
+| Key       | Type                                    | Default value | Description            |
+| --------- | --------------------------------------- | ------------- | ---------------------- |
+| `variant` | `Literal["s0", "s1", "s2", "s3", "s4"]` | `"s0"`        | Variant of the network |
 
-### MobileNetV2
+### `MobileNetV2`
 
 Adapted from [here](https://pytorch.org/vision/main/models/generated/torchvision.models.mobilenet_v2.html).
 
-**Params**
+**Parameters:**
 
-| Key              | Type | Default value | Description                            |
-| ---------------- | ---- | ------------- | -------------------------------------- |
-| download_weights | bool | False         | If True download weights from imagenet |
+| Key                | Type   | Default value | Description                            |
+| ------------------ | ------ | ------------- | -------------------------------------- |
+| `download_weights` | `bool` | `False`       | If True download weights from ImageNet |
 
-### EfficientNet
+### `EfficientNet`
 
 Adapted from [here](https://github.com/rwightman/gen-efficientnet-pytorch).
 
-**Params**
+**Parameters:**
 
-| Key              | Type | Default value | Description                             |
-| ---------------- | ---- | ------------- | --------------------------------------- |
-| download_weights | bool | False         | If True download weights from imagenet. |
+| Key                | Type   | Default value | Description                            |
+| ------------------ | ------ | ------------- | -------------------------------------- |
+| `download_weights` | `bool` | `False`       | If True download weights from ImageNet |
 
-### ContextSpatial
+### `ContextSpatial`
 
 Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 
-**Params**
+**Parameters:**
 
-| Key              | Type | Default value | Description   |
-| ---------------- | ---- | ------------- | ------------- |
-| context_backbone | str  | "MobileNetV2" | Backbone used |
+| Key                | Type  | Default value   | Description                                                                                          |
+| ------------------ | ----- | --------------- | ---------------------------------------------------------------------------------------------------- |
+| `context_backbone` | `str` | `"MobileNetV2"` | Backbone used for the context path. Must be a reference to a node registered in the `NODES` registry |
 
-### DDRNet
+### `DDRNet`
 
 Adapted from [here](https://github.com/ydhongHIT/DDRNet)
-**Params**
+**Parameters:**
 
-| Key     | Type                       | Default value | Description             |
-| ------- | -------------------------- | ------------- | ----------------------- |
-| variant | Literal\["23-slim", "23"\] | "23-slim"     | Variant of the network. |
+| Key       | Type                       | Default value | Description            |
+| --------- | -------------------------- | ------------- | ---------------------- |
+| `variant` | `Literal["23-slim", "23"]` | `"23-slim"`   | Variant of the network |
 
 ## Neck
 
-### RepPANNeck
+### `RepPANNeck`
 
 Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
-**Params**
+**Parameters:**
 
-| Key           | Type                                                              | Default value                                           | Description                                                     |
-| ------------- | ----------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------- |
-| variant       | Literal\["n", "nano", "s", "small", "m", "medium", "l", "large"\] | "nano"                                                  | Variant of the network                                          |
-| n_heads       | Literal\[2,3,4\]                                                  | 3 ***Note:** Should be same also on head in most cases* | Number of output heads                                          |
-| channels_list | List\[int\]                                                       | \[256, 128, 128, 256, 256, 512\]                        | List of number of channels for each block                       |
-| n_repeats     | List\[int\]                                                       | \[12, 12, 12, 12\]                                      | List of number of repeats of RepVGGBlock                        |
-| depth_mul     | float                                                             | 0.33                                                    | Depth multiplier                                                |
-| width_mul     | float                                                             | 0.25                                                    | Width multiplier                                                |
-| block         | Literal\["RepBlock", "CSPStackRepBlock"\]                         | "RepBlock"                                              | Base block used                                                 |
-| csp_e         | float                                                             | 0.5                                                     | Factor for intermediate channels when block=="CSPStackRepBlock" |
+| Key             | Type                                                              | Default value                    | Description                                                                     |
+| --------------- | ----------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------- |
+| `variant`       | `Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]` | `"nano"`                         | Variant of the network                                                          |
+| `n_heads`       | `Literal[2,3,4]`                                                  | `3`                              | Number of output heads. Should be same also on the connected head in most cases |
+| `channels_list` | `list[int]`                                                       | `[256, 128, 128, 256, 256, 512]` | List of number of channels for each block                                       |
+| `n_repeats`     | `list[int]`                                                       | `[12, 12, 12, 12]`               | List of number of repeats of `RepVGGBlock`                                      |
+| `depth_mul`     | `float`                                                           | `0.33`                           | Depth multiplier                                                                |
+| `width_mul`     | `float`                                                           | `0.25`                           | Width multiplier                                                                |
+| `block`         | `Literal["RepBlock", "CSPStackRepBlock"]`                         | `"RepBlock"`                     | Base block used                                                                 |
+| `csp_e`         | `float`                                                           | `0.5`                            | Factor for intermediate channels when block is set to `"CSPStackRepBlock"`      |
 
 ## Heads
 
-### ClassificationHead
+### `ClassificationHead`
 
-**Params**
+**Parameters:**
 
-| Key        | Type  | Default value | Description                                   |
-| ---------- | ----- | ------------- | --------------------------------------------- |
-| fc_dropout | float | 0.2           | Dropout rate before last layer, range \[0,1\] |
+| Key          | Type    | Default value | Description                                      |
+| ------------ | ------- | ------------- | ------------------------------------------------ |
+| `fc_dropout` | `float` | `0.2`         | Dropout rate before last layer, range $\[0, 1\]$ |
 
-### SegmentationHead
+### `SegmentationHead`
 
 Adapted from [here](https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py).
 
-### BiSeNetHead
+### `BiSeNetHead`
 
 Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 
-**Params**
+**Parameters:**
 
-| Key                   | Type | Default value | Description                            |
-| --------------------- | ---- | ------------- | -------------------------------------- |
-| intermediate_channels | int  | 64            | How many intermediate channels to use. |
+| Key                     | Type  | Default value | Description                           |
+| ----------------------- | ----- | ------------- | ------------------------------------- |
+| `intermediate_channels` | `int` | `64`          | How many intermediate channels to use |
 
-### EfficientBBoxHead
+### `EfficientBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
-**Params**
+**Parameters:**
 
-| Key        | Type  | Default value | Description                                        |
-| ---------- | ----- | ------------- | -------------------------------------------------- |
-| n_heads    | bool  | 3             | Number of output heads                             |
-| conf_thres | float | 0.25          | Confidence threshold for nms (used for evaluation) |
-| iou_thres  | float | 0.45          | Iou threshold for nms (used for evaluation)        |
+| Key          | Type    | Default value | Description                                                           |
+| ------------ | ------- | ------------- | --------------------------------------------------------------------- |
+| `n_heads`    | `bool`  | `3`           | Number of output heads                                                |
+| `conf_thres` | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation) |
+| `iou_thres`  | `float` | `0.45`        | `IoU` threshold for non-maxima-suppression (used for evaluation)      |
 
-### EfficientKeypointBBoxHead
+### `EfficientKeypointBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
 
-**Params**
+**Parameters:**
 
-| Key         | Type        | Default value | Description                                        |
-| ----------- | ----------- | ------------- | -------------------------------------------------- |
-| n_keypoints | int \| None | None          | Number of keypoints.                               |
-| n_heads     | int         | 3             | Number of output heads                             |
-| conf_thres  | float       | 0.25          | Confidence threshold for nms (used for evaluation) |
-| iou_thres   | float       | 0.45          | Iou threshold for nms (used for evaluation)        |
+| Key           | Type           | Default value | Description                                                           |
+| ------------- | -------------- | ------------- | --------------------------------------------------------------------- |
+| `n_keypoints` | `int \| None ` | `None`        | Number of keypoints                                                   |
+| `n_heads`     | `int`          | `3`           | Number of output heads                                                |
+| `conf_thres`  | `float`        | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation) |
+| `iou_thres`   | `float`        | `0.45`        | `IoU` threshold for non-maxima-suppression (used for evaluation)      |
 
-### DDRNetSegmentationHead
+### `DDRNetSegmentationHead`
 
 Adapted from [here](https://github.com/ydhongHIT/DDRNet).
 
-**Params**
+**Parameters:**
 
-| Key            | Type | Default value | Description                                                                                    |
-| -------------- | ---- | ------------- | ---------------------------------------------------------------------------------------------- |
-| inter_channels | int  | 64            | Width of internal conv. Must be a multiple of scale_factor^2 when inter_mode is pixel_shuffle. |
-| inter_mode     | str  | "bilinear     | Upsampling method.                                                                             |
+| Key              | Type  | Default value | Description                                                                                                               |
+| ---------------- | ----- | ------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `inter_channels` | `int` | `64`          | Width of internal convolutions                                                                                            |
+| `inter_mode`     | `str` | `"bilinear"`  | Up-sampling method. One of `"nearest"`, `"linear"`, `"bilinear"`, `"bicubic"`, `"trilinear"`, `"area"`, `"pixel_shuffle"` |
