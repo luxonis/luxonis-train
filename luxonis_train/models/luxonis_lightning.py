@@ -415,7 +415,6 @@ class LuxonisLightningModule(pl.LightningModule):
                 compute_visualizations
                 and node_name in self.visualizers
                 and images is not None
-                and labels is not None
             ):
                 for viz_name, visualizer in self.visualizers[
                     node_name

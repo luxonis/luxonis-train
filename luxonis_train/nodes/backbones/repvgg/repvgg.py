@@ -46,16 +46,16 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
 
         @type variant: Literal["A0", "A1", "A2"]
         @param variant: RepVGG model variant. Defaults to "A0".
+        @type n_blocks: tuple[int, int, int, int] | None
+        @param n_blocks: Number of blocks in each stage.
+        @type width_multiplier: tuple[float, float, float, float] | None
+        @param width_multiplier: Width multiplier for each stage.
         @type override_groups_map: dict[int, int] | None
         @param override_groups_map: Dictionary mapping layer index to number of groups. The layers are indexed starting from 0.
         @type use_se: bool
         @param use_se: Whether to use Squeeze-and-Excitation blocks.
         @type use_checkpoint: bool
         @param use_checkpoint: Whether to use checkpointing.
-        @type n_blocks: tuple[int, int, int, int] | None
-        @param n_blocks: Number of blocks in each stage.
-        @type width_multiplier: tuple[float, float, float, float] | None
-        @param width_multiplier: Width multiplier for each stage.
         """
         super().__init__(**kwargs)
         var = get_variant(variant)
