@@ -15,19 +15,61 @@
 
 ## 🌟 Overview
 
-Luxonis Training Framework (`LuxonisTrain`) is a flexible and easy-to-use tool for training deep learning models. It is built on top of `PyTorch Lightning` and provides a simple interface for training, testing, and exporting models.
+`LuxonisTrain` is a user-friendly tool designed to streamline the training of deep learning models, especially for edge devices. Built on top of `PyTorch Lightning`, it simplifies the process of training, testing, and exporting models with minimal coding required.
 
-- **No Code Approach:** No coding skills are required to use `LuxonisTrain`. All you need to do is to define a simple configuration file in a user-friendly `YAML` format.
-- **Simplicity:** You can jump right in using our set of predefined configuration files for most common computer vision tasks.
-- **Extensibility:** Define your custom components using an easy-to-use Python API that does the heavy lifting for you.
-- **Built for the Edge:** `LuxonisTrain` was built with edge devices in mind, focusing on optimal architectures to run with limited compute.
+### ✨ Key Features
+
+- **No Coding Required**: Define your training pipeline entirely through a single `YAML` configuration file.
+- **Predefined Configurations**: Utilize ready-made configs for common computer vision tasks to start quickly.
+- **Customizable**: Extend functionality with custom components using an intuitive Python API.
+- **Edge Optimized**: Focus on models optimized for deployment on edge devices with limited compute resources.
 
 > \[!WARNING\]
-> **The project is in a beta state and might be unstable or contain bugs - please report any feedback.**
+> **🚧 The project is in a beta state and might be unstable or contain bugs - please report any feedback.**
+
+<a name="quick-start"></a>
+
+## 🚀 Quick Start
+
+Get started with `LuxonisTrain` in just a few steps:
+
+1. Install `LuxonisTrain`
+
+```bash
+pip install luxonis-train
+```
+
+This will create the `luxonis_train` executable in your `PATH`.
+
+1. Use the provided `configs/detection_light_model.yaml` configuration file to train a lightweight object detection model.
+   You can download the file by executing the following command:
+
+```bash
+wget https://raw.githubusercontent.com/luxonis/luxonis-train/main/configs/detection_light_model.yaml
+```
+
+1. Find a suitable dataset for your task. We'll use a sample COCO dataset from `RoboFlow` for this example.
+
+1. Start Training
+
+```bash
+luxonis_train train                   \
+  --config detection_light_model.yaml \
+  loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco"
+```
+
+1. Monitor Progress with `TensorBoard`
+
+```bash
+tensorboard --logdir output/tensorboard_logs
+```
+
+1. Open the provided URL in your browser to visualize the training progress.
 
 ## 📜 Table Of Contents
 
 - [🌟 Overview](#overview)
+  - [✨ Key Features](#key-features)
 - [🛠️ Installation](#installation)
 - [📝 Usage](#usage)
   - [💻 CLI](#cli)
@@ -49,21 +91,24 @@ Luxonis Training Framework (`LuxonisTrain`) is a flexible and easy-to-use tool f
 
 <a name="installation"></a>
 
-## 🛠️ Installation
+### 🛠️ Installation
 
-`luxonis-train` is hosted on PyPI and can be installed with `pip` as:
+`LuxonisTrain` requires **Python 3.10** or higher. We recommend using a virtual environment to manage dependencies.
+
+**Install via `pip`**:
 
 ```bash
 pip install luxonis-train
 ```
 
-This command will also create a `luxonis_train` executable in your `PATH`. For more information on how to use the CLI, see [CLI Usage](#cli).
+This will also install the `luxonis_train` CLI. For more information on how to use it, see [CLI Usage](#cli).
 
 <a name="usage"></a>
 
 ## 📝 Usage
 
-You can use `LuxonisTrain` either from the command line or from a Python script.
+You can use `LuxonisTrain` either from the **command line** or via the **Python API**.
+We will demonstrate both ways in the following sections.
 
 <a name="cli"></a>
 
@@ -81,7 +126,7 @@ The CLI is the most straightforward way how to use `LuxonisTrain`. The CLI provi
 - `tune` - Tune the hyperparameters of the model for better performance
 - `inspect` - Inspect the dataset you are using and visualize the annotations
 
-To learn more information about any of these commands, run
+**To get help on any command:**
 
 ```bash
 luxonis_train <command> --help
@@ -93,18 +138,67 @@ Specific usage examples can be found in the respective sections below.
 
 ## ⚙️ Configuration
 
-The entire configuration is specified in a `YAML` file. This includes the model topology, loss functions, metrics,
-optimizers, and all the other components. For extensive list of all options, specific instructions and example
-configuration files, see [Configuration](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md).
+`LuxonisTrain` uses `YAML` configuration files to define the training pipeline. Here's a breakdown of the key sections:
 
-We provide a set of predefined configuration files for most common computer vision tasks.
+```yaml
+model:
+  name: model_name
+
+  # Use a predefined detection model instead of defining
+  # the model architecture manually
+  predefined_model:
+    name: DetectionModel
+    params:
+      variant: light
+
+# Download and parse the coco dataset from RoboFlow.
+# Save it internally as `coco_test` dataset for future reference.
+loader:
+  params:
+    dataset_name: coco_test
+    dataset_dir: "roboflow://team-roboflow/coco-128/2/coco"
+
+trainer:
+  batch_size: 8
+  epochs: 200
+  n_workers: 8
+  validation_interval: 10
+
+  preprocessing:
+    train_image_size: [384, 384]
+
+    # Uses the imagenet normalization by default
+    normalize:
+      active: true
+
+    # Augmentations are powered by Albumentations
+    augmentations:
+      - name: Defocus
+      - name: Sharpen
+      - name: Flip
+
+  callbacks:
+    - name: ExportOnTrainEnd
+    - name: ArchiveOnTrainEnd
+    - name: TestOnTrainEnd
+
+  optimizer:
+    name: SGD
+    params:
+      lr: 0.02
+
+  scheduler:
+    name: ConstantLR
+```
+
+For an extensive list of all the available options, see [Configuration](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md).
+
+We provide a set of predefined configuration files for the most common computer vision tasks.
 You can find them in the `configs` directory.
-
-In the following examples, we will be using the `configs/detection_light_model.yaml` configuration file.
 
 <a name="data-loading"></a>
 
-## 🚀 Data
+## 🚀 Data Preparation
 
 `LuxonisTrain` supports several ways of loading data:
 
@@ -119,7 +213,7 @@ In the following examples, we will be using the `configs/detection_light_model.y
 
 The easiest way to load data is to use a directory with the dataset in one of the supported formats.
 
-The supported formats are:
+**Supported formats:**
 
 - `COCO` - We support COCO JSON format in two variants:
   - [`RoboFlow`](https://roboflow.com/formats/coco-json)
@@ -164,39 +258,34 @@ The supported formats are:
   3, class3
   ```
 
-To use a directory loader, you need to specify the `dataset_dir` parameter in the config file.
+#### Preparing your Data
 
-`dataset_dir` can be one of the following:
+1. Organize your dataset into one of the supported formats.
+1. Place your dataset in a directory accessible by the training script.
+1. Update the `dataset_dir` parameter in the configuration file to point to the dataset directory.
 
-- local path to the dataset directory
+**The `dataset_dir` can be one of the following:**
+
+- Local path to the dataset directory
 - URL to a remote dataset
-  - the dataset will be downloaded to a `"data"` directory in the current working directory
-  - supported URL protocols:
-    - `s3://bucket/path/to/directory` for AWS S3
-    - `gs://buclet/path/to/directory` for Google Cloud Storage
-    - `roboflow://workspace/project/version/format` for `RoboFlow` datasets
+  - The dataset will be downloaded to a `"data"` directory in the current working directory
+  - **Supported URL protocols:**
+    - `s3://bucket/path/to/directory` fo **AWS S3**
+    - `gs://buclet/path/to/directory` for **Google Cloud Storage**
+    - `roboflow://workspace/project/version/format` for **RoboFlow**
       - `workspace` - name of the workspace the dataset belongs to
       - `project` - name of the project the dataset belongs to
       - `version` - version of the dataset
       - `format` - one of `coco`, `darknet`, `voc`, `yolov4pytorch`, `mt-yolov6`, `createml`, `tensorflow`, `folder`, `png-mask-semantic`
       - **example:** `roboflow://team-roboflow/coco-128/2/coco`
 
+**Example:**
+
 ```yaml
 loader:
   params:
-    # Optional, the dataset will be created under this name.
-    # If not specified, the name of the dataset will be
-    # the same as the name of the dataset directory.
     dataset_name: "coco_test"
-
-    # Path to the dataset directory. It can be be either a local path
-    # or an URL to a remote dataset.
     dataset_dir: "roboflow://team-roboflow/coco-128/2/coco"
-
-    # One of coco, voc, darknet, yolov4, yolov6, createml, tfcsv, clsdir, or segmask.
-    # Notice the values of `dataset_type` here are a bit different
-    # from the dataset formats in the RoboFlow URL.
-    dataset_type: "coco"
 ```
 
 <a name="luxonis-dataset"></a>
@@ -231,7 +320,7 @@ loader:
 
 ## 🏋️‍♂️ Training
 
-Once you've created your `config.yaml` file you can start the training process by running:
+Once your configuration file and dataset are ready, start the training process.
 
 **CLI:**
 
@@ -239,18 +328,16 @@ Once you've created your `config.yaml` file you can start the training process b
 luxonis_train train --config configs/detection_light_model.yaml
 ```
 
-If you wish to change some config parameters without modifying the config file,
-you can do this by providing key-value pairs as arguments. Example of this is:
+> \[!TIP\]
+> To change a configuration parameter from the command line, use the following syntax:
+>
+> ```bash
+> luxonis_train train                           \
+>   --config configs/detection_light_model.yaml \
+>   loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco"
+> ```
 
-```bash
-luxonis_train train                           \
-  --config configs/detection_light_model.yaml \
-  loader.params.dataset_dir "roboflow://team-roboflow/coco-128/2/coco"
-```
-
-Where keys and values are space separated and sub-keys are dot (`.`) separated. If the configuration field is a list, then key/sub-key should be a number (_e.g._ `trainer.preprocessing.augmentations.0.params.p 1`).
-
-**Python:**
+**Python API:**
 
 ```python
 from luxonis_train import LuxonisModel
@@ -262,42 +349,34 @@ model = LuxonisModel(
 model.train()
 ```
 
+**Expected Output:**
+
+```log
+INFO     Using predefined model: `DetectionModel`
+INFO     Main metric: `MeanAveragePrecision`
+INFO     GPU available: True (cuda), used: True
+INFO     TPU available: False, using: 0 TPU cores
+INFO     HPU available: False, using: 0 HPUs
+...
+INFO     Training finished
+INFO     Checkpoints saved in: output/1-coral-wren
+```
+
+**Monitoring with `TensorBoard`:**
+
 If not explicitly disabled, the training process will be monitored by `TensorBoard`. To start the `TensorBoard` server, run:
 
 ```bash
 tensorboard --logdir output/tensorboard_logs
 ```
 
-This command will start the server and print the URL where you can access the `TensorBoard` dashboard.
-
-By default, the files produced during the training run will be saved in the `output` directory.
-Individual runs will be saved under a randomly generated run name.
-
-Assuming all optional callbacks are enabled, the output directory will be similar to the following:
-
-```plaintext
-output/
-├── tensorboard_logs/
-└── 0-red-puma/
-    ├── config.yaml
-    ├── luxonis_train.log
-    ├── metadata.yaml
-    ├── best_val_metrics/
-    │   └── model_metric_name=metric_value_loss=loss_value.ckpt
-    ├── min_val_loss/
-    │   └── model_loss=loss_value.ckpt
-    ├── export/
-    │   ├── model.onnx
-    │   └── model.blob
-    └── archive/
-        └── model.onnx.tar.gz
-```
+Open the provided URL to visualize training metrics.
 
 <a name="testing"></a>
 
 ## ✍ Testing
 
-To test the model on a specific dataset view (`train`, `test`, or `val`), use the following command:
+Evaluate your trained model on a specific dataset view (`train`, `val`, or `test`).
 
 **CLI:**
 
@@ -307,7 +386,7 @@ luxonis_train test --config configs/detection_light_model.yaml \
                    --weights path/to/checkpoint.ckpt
 ```
 
-**Python:**
+**Python API:**
 
 ```python
 from luxonis_train import LuxonisModel
@@ -323,11 +402,11 @@ To learn more about callbacks, see [Callbacks](https://github.com/luxonis/luxoni
 
 ## 🧠 Inference
 
-You can use the `infer` command to run inference on a dataset, image directory, or a video file.
+Run inference on images, datasets, or videos.
 
 **CLI:**
 
-To run the inference on a dataset view and show the results on screen:
+- **Inference on a Dataset View:**
 
 ```bash
 luxonis_train infer --config configs/detection_light_model.yaml \
@@ -335,7 +414,7 @@ luxonis_train infer --config configs/detection_light_model.yaml \
                     --weights path/to/checkpoint.ckpt
 ```
 
-To run the inference on a video file and show the results on screen:
+- **Inference on a Video File:**
 
 ```bash
 luxonis_train infer --config configs/detection_light_model.yaml \
@@ -343,7 +422,7 @@ luxonis_train infer --config configs/detection_light_model.yaml \
                     --source-path path/to/video.mp4
 ```
 
-To run the inference on an image directory and save the results to another directory:
+- **Inference on an Image Directory:**
 
 ```bash
 luxonis_train infer --config configs/detection_light_model.yaml \
@@ -352,7 +431,7 @@ luxonis_train infer --config configs/detection_light_model.yaml \
                     --save-dir path/to/save_directory
 ```
 
-**Python:**
+**Python API:**
 
 ```python
 from luxonis_train import LuxonisModel
@@ -375,13 +454,16 @@ model.infer(
 
 <a name="exporting"></a>
 
-## 🤖 Exporting
+## 🤖 Exporting Models
 
-We support export to `ONNX`, and `BLOB` formats, latter of which can run on OAK-D cameras.
+Export your trained models to formats suitable for deployment on edge devices.
+
+Supported formats:
+
+- **ONNX**: Open Neural Network Exchange format.
+- **BLOB**: Format compatible with OAK-D cameras.
 
 To configure the exporter, you can specify the [exporter](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#exporter) section in the config file.
-
-By default, the exporter will export the model only to the `ONNX` format.
 
 You can see an example export configuration [here](https://github.com/luxonis/luxonis-train/blob/main/configs/example_export.yaml).
 
@@ -391,7 +473,7 @@ You can see an example export configuration [here](https://github.com/luxonis/lu
 luxonis_train export --config configs/example_export.yaml --weights path/to/weights.ckpt
 ```
 
-**Python:**
+**Python API:**
 
 ```python
 from luxonis_train import LuxonisModel
@@ -400,15 +482,17 @@ model = LuxonisModel("configs/example_export.yaml")
 model.export(weights="path/to/weights.ckpt")
 ```
 
-The export process can be run automatically at the end of the training by using the `ExportOnTrainEnd` callback.
+Model export can be run automatically at the end of the training by using the `ExportOnTrainEnd` callback.
+
+The exported models are saved in the export directory within your `output` folder.
 
 <a name="nn-archive"></a>
 
 ## 🗂️ NN Archive
 
-The models can also be exported to our custom `NN Archive` format. `NN Archive` is a `.tar.gz` file that can be easily used with the [`DepthAI`](https://github.com/luxonis/depthai) API.
+Create an `NN Archive` file for easy deployment with the `DepthAI` API.
 
-The archive contains the exported model together with all the metadata needed for running the model with no additional configuration from the user.
+The archive contains the exported model together with all the metadata needed for running the model.
 
 **CLI:**
 
@@ -418,22 +502,13 @@ luxonis_train archive                         \
   --weights path/to/checkpoint.ckpt
 ```
 
-Or you can specify the path to the exported model if you already have it:
-
-```bash
-luxonis_train archive                         \
-  --config configs/detection_light_model.yaml \
-  --executable path/to/exported_model.onnx
-```
-
-**Python:**
+**Python API:**
 
 ```python
 from luxonis_train import LuxonisModel
 
 model = LuxonisModel("configs/detection_light_model.yaml")
-model.archive("path/to/exported_model.onnx")
-# model.archive(weights="path/to/checkpoint.ckpt")
+model.archive(weights="path/to/checkpoint.ckpt")
 ```
 
 The archive can be created automatically at the end of the training by using the `ArchiveOnTrainEnd` callback.
@@ -442,11 +517,24 @@ The archive can be created automatically at the end of the training by using the
 
 ## 🔬 Tuning
 
-The `tune` command can be used to search for the optimal hyperparameters of the model in order to boost its performance.
-The tuning is powered by [`Optuna`](https://optuna.org/).
-To use tuning, you have to specify the [tuner](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#tuner) section in the config file.
+Optimize your model's performance using hyperparameter tuning powered by [`Optuna`](https://optuna.org/).
 
-You can see an example tuning configuration [here](https://github.com/luxonis/luxonis-train/blob/main/configs/example_tuning.yaml).
+**Configuration:**
+
+Include a [`tuner`](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#tuner) section in your configuration file.
+
+```yaml
+
+tuner:
+  study_name: det_study
+  n_trials: 10
+  storage:
+    storage_type: local
+  params:
+    trainer.optimizer.name_categorical: ["Adam", "SGD"]
+    trainer.optimizer.params.lr_float: [0.0001, 0.001]
+    trainer.batch_size_int: [4, 16, 4]
+```
 
 **CLI:**
 
@@ -454,7 +542,7 @@ You can see an example tuning configuration [here](https://github.com/luxonis/lu
 luxonis_train tune --config configs/example_tuning.yaml
 ```
 
-**Python:**
+**Python API:**
 
 ```python
 from luxonis_train import LuxonisModel
@@ -467,28 +555,44 @@ model.tune()
 
 ## 🎨 Customizations
 
+`LuxonisTrain` is highly modular, allowing you to customize various components:
+
+- **Loaders**: Handle data loading and preprocessing.
+- **Nodes**: Represent computational units in the model architecture.
+- **Losses**: Define the loss functions used to train the model.
+- **Metrics**: Measure the model's performance during training.
+- **Visualizers**: Visualize the model's predictions during training.
+- **Callbacks**: Allow custom code to be executed at different stages of training.
+- **Optimizers/Schedulers**: Control how the model's weights are updated.
+
+Understanding these components helps in tailoring the framework to your specific needs.
+
 We provide a registry interface through which you can create new
-[loaders](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/loaders/README.md),
-[nodes](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/nodes/README.md),
-[losses](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/README.md),
-[metrics](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/README.md),
-[visualizers](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/README.md),
-[callbacks](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/callbacks/README.md),
-[optimizers](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#optimizer),
-and [schedulers](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#scheduler).
 
-Registered components can be then referenced in the config file. Custom components need to inherit from their respective base classes:
+- [**Loaders**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/loaders/README.md): Handles data loading and preprocessing.
+- [**Nodes**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/nodes/README.md): Represents computational units in the model architecture.
+- [**Losses**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/README.md): Define the loss functions used to train the model.
+- [**Metrics**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/README.md): Measure the model's performance during training.
+- [**Visualizers**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/README.md): Visualize the model's predictions during training.
+- [**Callbacks**](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/callbacks/README.md): Allow custom code to be executed at different stages of training.
+- [**Optimizers**](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#optimizer): Control how the model's weights are updated.
+- [**Schedulers**](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#scheduler): Adjust the learning rate during training.
 
-- Loader - [`BaseLoader`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/loaders/base_loader.py)
-- Node - [`BaseNode`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/models/nodes/base_node.py)
-- Loss - [`BaseLoss`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/base_loss.py)
-- Metric - [`BaseMetric`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/base_metric.py)
-- Visualizer - [`BaseVisualizer`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/base_visualizer.py)
-- Callback - [`lightning.pytorch.callbacks.Callback`](https://lightning.ai/docs/pytorch/stable/extensions/callbacks.html), requires manual registration to the `CALLBACKS` registry
-- Optimizer - [`torch.optim.Optimizer`](https://pytorch.org/docs/stable/optim.html#torch.optim.Optimizer), requires manual registration to the `OPTIMIZERS` registry
-- Scheduler - [`torch.optim.lr_scheduler.LRScheduler`](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate), requires manual registration to the `SCHEDULERS` registry
+**Creating Custom Components:**
 
-Here is an example of how to create custom loss and optimizer:
+Implement custom components by subclassing the respective base classes and/or registering them.
+Registered components can be referenced in the config file. Custom components need to inherit from their respective base classes:
+
+- **Loaders** - [`BaseLoader`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/loaders/base_loader.py)
+- **Nodes** - [`BaseNode`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/models/nodes/base_node.py)
+- **Losses** - [`BaseLoss`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/base_loss.py)
+- **Metrics** - [`BaseMetric`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/base_metric.py)
+- **Visualizers** - [`BaseVisualizer`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/visualizers/base_visualizer.py)
+- **Callbacks** - [`lightning.pytorch.callbacks.Callback`](https://lightning.ai/docs/pytorch/stable/extensions/callbacks.html), requires manual registration to the `CALLBACKS` registry
+- **Optimizers** - [`torch.optim.Optimizer`](https://pytorch.org/docs/stable/optim.html#torch.optim.Optimizer), requires manual registration to the `OPTIMIZERS` registry
+- **Schedulers** - [`torch.optim.lr_scheduler.LRScheduler`](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate), requires manual registration to the `SCHEDULERS` registry
+
+**Example:**
 
 ```python
 from torch.optim import Optimizer
@@ -497,33 +601,47 @@ from luxonis_train.attached_modules.losses import BaseLoss
 
 @OPTIMIZERS.register_module()
 class CustomOptimizer(Optimizer):
-    ...
+    def __init__(self, params, lr=0.001):
+        super().__init__(params, defaults={'lr': lr})
+        # Implement optimizer logic
 
-# Subclasses of BaseNode, LuxonisLoss, LuxonisMetric
+# Subclasses of BaseNode, BaseLoss, BaseMetric
 # and BaseVisualizer are registered automatically.
 class CustomLoss(BaseLoss):
-    # This class is automatically registered under `CustomLoss` name.
+    # This class is automatically registered under the name `CustomLoss`.
     def __init__(self, k_steps: int, **kwargs):
         super().__init__(**kwargs)
         ...
 ```
 
-In the configuration file you can reference the `CustomOptimizer` and `CustomLoss` by their names:
+**Using custom components in config:**
 
 ```yaml
-losses:
-  - name: CustomLoss
-    params:  # additional parameters
-      k_steps: 12
+model:
+  nodes:
+  - name: SegmentationHead
+    losses:
+    - name: CustomLoss
+      params:
+        k_steps: 12
+
+optimizer:
+  name: CustomOptimizer
+  params:
+    lr: 0.01
 ```
 
-The files containing the custom components must be sourced before the training script is run. To do that in CLI, you can use the `--source` argument:
+> \[!NOTE\]
+> Files containing the custom components must be sourced before the training script is run.
+> To do that in CLI, you can use the `--source` argument:
+>
+> ```bash
+> luxonis_train --source custom_components.py train --config config.yaml
+> ```
 
-```bash
-luxonis_train --source custom_components.py train --config config.yaml
-```
+**Python API:**
 
-You can also run the training from a python script:
+You have to import the custom components before creating the `LuxonisModel` instance.
 
 ```python
 from custom_components import *
@@ -545,38 +663,34 @@ We are actively working on providing examples and tutorials for different parts 
 
 ## 🔑 Credentials
 
-Local use is supported by default. In addition, we also integrate several cloud services which can be primarily used for logging the training progress and storing data. To use these services, you usually need to load specific environment variables to set up the correct credentials.
+When using cloud services, avoid hard-coding credentials or placing them directly in your configuration files.
+Instead:
 
-You have these options how to set up the environment variables:
+- Use environment variables to store sensitive information.
+- Use a `.env` file and load it securely, ensuring it's excluded from version control.
 
-- Using standard environment variables
-- Specifying the variables in a `.env` file. If a variable is both in the environment and present in `.env` file, the exported variable takes precedence.
-- Specifying the variables in the [ENVIRON](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#environ) section of the config file. Variables defined in the config file will take precedence over environment and `.env` variables. Note that this is not a recommended way due to security reasons.
+**Supported Cloud Services:**
 
-The following storage services are supported:
-
-- `AWS S3`, requires the following environment variables:
+- **AWS S3**, requires:
   - `AWS_ACCESS_KEY_ID`
   - `AWS_SECRET_ACCESS_KEY`
   - `AWS_S3_ENDPOINT_URL`
-- `Google Cloud Storage`, requires the following environment variables:
+- **Google Cloud Storage**, requires:
   - `GOOGLE_APPLICATION_CREDENTIALS`
-- `RoboFlow`, requires the following environment variables:
+- **RoboFlow**, requires:
   - `ROBOFLOW_API_KEY`
 
-For logging and tracking, we support:
+**For logging and tracking, we support:**
 
-- `MLFlow`, requires the following environment variables:
+- **MLFlow**, requires:
   - `MLFLOW_S3_BUCKET`
   - `MLFLOW_S3_ENDPOINT_URL`
   - `MLFLOW_TRACKING_URI`
-- `WandB`, requires the following environment variables:
+- **WandB**, requires:
   - `WANDB_API_KEY`
 
-There is an option for remote `POSTGRESS` database storage for [Tuning](#tuning).
-You need to specify the following env variables in order to connect to the database:
+**For remote database storage, we support:**
 
-- `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
 - `POSTGRES_HOST`
 - `POSTGRES_PORT`
@@ -586,10 +700,4 @@ You need to specify the following env variables in order to connect to the datab
 
 ## 🤝 Contributing
 
-If you want to contribute to the development, consult the [Contribution guide](https://github.com/luxonis/luxonis-train/blob/main/CONTRIBUTING.md) for further instructions.
-
-<a name="license"></a>
-
-## 📄 License
-
-This project is licensed under the [Apache License, Version 2.0](https://opensource.org/license/apache-2-0/) - see the [LICENSE](LICENSE) file for details.
+We welcome contributions! Please read our [Contribution Guide](https://github.com/luxonis/luxonis-train/blob/main/CONTRIBUTING.md) to get started. Whether it's reporting bugs, improving documentation, or adding new features, your help is appreciated.
