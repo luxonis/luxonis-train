@@ -235,6 +235,10 @@ def test_callbacks(opts: dict[str, Any], parking_lot_dataset: LuxonisDataset):
                 "name": "ExportOnTrainEnd",
             },
             {
+                "name": "ExportOnTrainEnd",
+                "params": {"preferred_checkpoint": "loss"},
+            },
+            {
                 "name": "ArchiveOnTrainEnd",
                 "params": {"preferred_checkpoint": "loss"},
             },
