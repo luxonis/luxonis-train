@@ -173,8 +173,8 @@ class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         label_canvas: Tensor,
         prediction_canvas: Tensor,
         predictions: list[Tensor],
-        targets: Tensor,
-    ) -> tuple[Tensor, Tensor]:
+        targets: Tensor | None,
+    ) -> tuple[Tensor, Tensor] | Tensor:
         """Creates a visualization of the bounding box predictions and
         labels.
 
@@ -189,17 +189,6 @@ class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         @type targets: Tensor
         @param targets: The target bounding boxes.
         """
-        targets_viz = self.draw_targets(
-            label_canvas,
-            targets,
-            color_dict=self.colors,
-            label_dict=self.bbox_labels,
-            draw_labels=self.draw_labels,
-            fill=self.fill,
-            font=self.font,
-            font_size=self.font_size,
-            width=self.width,
-        )
         predictions_viz = self.draw_predictions(
             prediction_canvas,
             predictions,
@@ -211,4 +200,18 @@ class BBoxVisualizer(BaseVisualizer[list[Tensor], Tensor]):
             font_size=self.font_size,
             width=self.width,
         )
-        return targets_viz, predictions_viz.to(targets_viz.device)
+        if targets is None:
+            return predictions_viz
+
+        targets_viz = self.draw_targets(
+            label_canvas,
+            targets,
+            color_dict=self.colors,
+            label_dict=self.bbox_labels,
+            draw_labels=self.draw_labels,
+            fill=self.fill,
+            font=self.font,
+            font_size=self.font_size,
+            width=self.width,
+        )
+        return targets_viz, predictions_viz

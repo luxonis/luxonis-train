@@ -67,7 +67,7 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
         @type n_conv_branches: int | None
         @param n_conv_branches: Number of linear convolution branches in MobileOne block. If provided, overrides the variant values.
         @type use_se: bool | None
-        @param use_se: Whether to use SE blocks in the network. If provided, overrides the variant value.
+        @param use_se: Whether to use C{Squeeze-and-Excitation} blocks in the network. If provided, overrides the variant value.
         """
         super().__init__(**kwargs)
 

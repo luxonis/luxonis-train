@@ -5,6 +5,7 @@ import torch
 from torch import Tensor
 
 from luxonis_train.enums import TaskType
+from luxonis_train.utils import Labels, Packet
 
 from .base_visualizer import BaseVisualizer
 from .utils import figure_to_torch, numpy_to_torch_img, torch_img_to_numpy
@@ -56,29 +57,38 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
         ax.grid(True)
         return figure_to_torch(fig, width, height)
 
+    def prepare(
+        self, inputs: Packet[Tensor], labels: Labels | None
+    ) -> tuple[Tensor, Tensor]:
+        predictions, targets = super().prepare(inputs, labels)
+        if isinstance(predictions, list):
+            predictions = predictions[0]
+        return predictions, targets
+
     def forward(
         self,
         label_canvas: Tensor,
         prediction_canvas: Tensor,
         predictions: Tensor,
-        labels: Tensor,
+        targets: Tensor | None,
     ) -> Tensor | tuple[Tensor, Tensor]:
         overlay = torch.zeros_like(label_canvas)
         plots = torch.zeros_like(prediction_canvas)
         for i in range(len(overlay)):
             prediction = predictions[i]
-            gt = self._get_class_name(labels[i])
             arr = torch_img_to_numpy(label_canvas[i].clone())
             curr_class = self._get_class_name(prediction)
-            arr = cv2.putText(
-                arr,
-                f"GT: {gt}",
-                (5, 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                self.font_scale,
-                self.color,
-                self.thickness,
-            )
+            if targets is not None:
+                gt = self._get_class_name(targets[i])
+                arr = cv2.putText(
+                    arr,
+                    f"GT: {gt}",
+                    (5, 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    self.font_scale,
+                    self.color,
+                    self.thickness,
+                )
             arr = cv2.putText(
                 arr,
                 f"Pred: {curr_class}",
