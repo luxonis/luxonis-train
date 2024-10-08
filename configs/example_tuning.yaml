@@ -40,7 +40,7 @@ trainer:
 
 
 tuner:
-  study_name: seg_study
+  study_name: det_study
   n_trials: 10
   storage:
     storage_type: local
