@@ -314,7 +314,7 @@ loader:
 > To inspect the loader output, use the `luxonis_train inspect` command:
 >
 > ```bash
-> luxonis_train inspect --config <config.yaml> --view <train/val/test>
+> luxonis_train inspect --config configs/detection_light_model.yaml
 > ```
 >
 > **The `inspect` command is currently only available in the CLI**
