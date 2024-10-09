@@ -44,7 +44,7 @@ class BaseNode(
 
     When the node is called, the inputs are sent to the L{unwrap} method.
     The C{unwrap} method should return a valid input to the L{forward} method.
-    Outputs of the C{forward} method are then send to L{wrap} method,
+    Outputs of the C{forward} method are then sent to L{wrap} method,
     which wraps the output into a C{Packet}. The wrapped C{Packet} is the final output of the node.
 
     The L{run} method combines the C{unwrap}, C{forward} and C{wrap} methods
@@ -53,9 +53,9 @@ class BaseNode(
     When subclassing, the following methods should be implemented:
         - L{forward}: Forward pass of the module.
         - L{unwrap}: Optional. Unwraps the inputs from the input packet.
-            The default implementation expects a single input with `features` key.
+            The default implementation expects a single input with C{features} key.
         - L{wrap}: Optional. Wraps the output of the forward pass
-            into a `Packet[Tensor]`. The default implementation expects wraps the output
+            into a C{Packet[Tensor]}. The default implementation expects wraps the output
             of the forward pass into a packet with either "features" or the task name as the key.
 
     Additionally, the following class attributes can be defined:
@@ -64,7 +64,7 @@ class BaseNode(
 
     Example::
         class MyNode(BaseNode):
-            # equivalent to `tasks = {TaskType.CLASSIFICATION: "classification"}`
+            # equivalent to C{tasks = {TaskType.CLASSIFICATION: "classification"}}
             tasks = [TaskType.CLASSIFICATION]
 
             def __init__(self, **kwargs):
@@ -95,7 +95,7 @@ class BaseNode(
     @type attach_index: AttachIndexType
     @ivar attach_index: Index of previous output that this node attaches to.
         Can be a single integer to specify a single output, a tuple of
-        two or three integers to specify a range of outputs or `"all"` to
+        two or three integers to specify a range of outputs or C{"all"} to
         specify all outputs. Defaults to "all". Python indexing conventions apply.
 
     @type tasks: list[TaskType] | dict[TaskType, str] | None
@@ -122,37 +122,34 @@ class BaseNode(
         attach_index: AttachIndexType | None = None,
         _tasks: dict[TaskType, str] | None = None,
     ):
-        """Constructor for the BaseNode.
+        """Constructor for the C{BaseNode}.
 
         @type input_shapes: list[Packet[Size]] | None
         @param input_shapes: List of input shapes for the module.
-
         @type original_in_shape: Size | None
-        @param original_in_shape: Original input shape of the model. Some
-            nodes won't function if not provided.
-
-        @type dataset_metadata: L{DatasetMetadata} | None
-        @param dataset_metadata: Metadata of the dataset.
+        @param original_in_shape: Original input shape of the model.
             Some nodes won't function if not provided.
-
+        @type dataset_metadata: L{DatasetMetadata} | None
+        @param dataset_metadata: Metadata of the dataset. Some nodes
+            won't function if not provided.
         @type n_classes: int | None
         @param n_classes: Number of classes in the dataset. Provide only
-            in case `dataset_metadata` is not provided. Defaults to None.
-
+            in case C{dataset_metadata} is not provided. Defaults to
+            None.
         @type in_sizes: Size | list[Size] | None
-        @param in_sizes: List of input sizes for the node.
-            Provide only in case the `input_shapes` were not provided.
-
+        @param in_sizes: List of input sizes for the node. Provide only
+            in case the C{input_shapes} were not provided.
         @type attach_index: AttachIndexType
-        @param attach_index: Index of previous output that this node attaches to.
-            Can be a single integer to specify a single output, a tuple of
-            two or three integers to specify a range of outputs or `"all"` to
-            specify all outputs. Defaults to "all". Python indexing conventions apply. If provided as a constructor argument, overrides the class attribute.
-
-
+        @param attach_index: Index of previous output that this node
+            attaches to. Can be a single integer to specify a single
+            output, a tuple of two or three integers to specify a range
+            of outputs or C{"all"} to specify all outputs. Defaults to
+            "all". Python indexing conventions apply. If provided as a
+            constructor argument, overrides the class attribute.
         @type _tasks: dict[TaskType, str] | None
-        @param _tasks: Dictionary of tasks that the node supports. Overrides the
-            class L{tasks} attribute. Shouldn't be provided by the user in most cases.
+        @param _tasks: Dictionary of tasks that the node supports.
+            Overrides the class L{tasks} attribute. Shouldn't be
+            provided by the user in most cases.
         """
         super().__init__()
 
@@ -423,10 +420,10 @@ class BaseNode(
     def in_sizes(self) -> Size | list[Size]:
         """Simplified getter for the input shapes.
 
-        Should work out of the box for most cases where the `input_shapes` are
-        sufficiently simple. Otherwise the `input_shapes` should be used directly.
+        Should work out of the box for most cases where the C{input_shapes} are
+        sufficiently simple. Otherwise, the C{input_shapes} should be used directly.
 
-        In case `in_sizes` were provided during initialization, they are returned
+        In case C{in_sizes} were provided during initialization, they are returned
         directly.
 
         Example::
@@ -459,7 +456,7 @@ class BaseNode(
         """Simplified getter for the number of input channels.
 
         Should work out of the box for most cases where the
-        C{input_shapes} are sufficiently simple. Otherwise the
+        C{input_shapes} are sufficiently simple. Otherwise, the
         C{input_shapes} should be used directly. If C{attach_index} is
         set to "all" or is a slice, returns a list of input channels,
         otherwise returns a single value.
@@ -474,12 +471,13 @@ class BaseNode(
     def in_height(self) -> int | list[int]:
         """Simplified getter for the input height.
 
-        Should work out of the box for most cases where the `input_shapes` are
-        sufficiently simple. Otherwise the `input_shapes` should be used directly.
+        Should work out of the box for most cases where the
+        C{input_shapes} are sufficiently simple. Otherwise, the
+        C{input_shapes} should be used directly.
 
         @type: int | list[int]
-        @raises RuntimeError: If the C{input_shapes} are too complicated for
-            the default implementation of C{in_sizes}.
+        @raises RuntimeError: If the C{input_shapes} are too complicated
+            for the default implementation of C{in_sizes}.
         """
         return self._get_nth_size(-2)
 
@@ -487,12 +485,13 @@ class BaseNode(
     def in_width(self) -> int | list[int]:
         """Simplified getter for the input width.
 
-        Should work out of the box for most cases where the `input_shapes` are
-        sufficiently simple. Otherwise the `input_shapes` should be used directly.
+        Should work out of the box for most cases where the
+        C{input_shapes} are sufficiently simple. Otherwise, the
+        C{input_shapes} should be used directly.
 
         @type: int | list[int]
-        @raises RuntimeError: If the C{input_shapes} are too complicated for
-            the default implementation of C{in_sizes}.
+        @raises RuntimeError: If the C{input_shapes} are too complicated
+            for the default implementation of C{in_sizes}.
         """
         return self._get_nth_size(-1)
 
@@ -553,7 +552,8 @@ class BaseNode(
         ...
 
     def wrap(self, output: ForwardOutputT) -> Packet[Tensor]:
-        """Wraps the output of the forward pass into a `Packet[Tensor]`.
+        """Wraps the output of the forward pass into a
+        C{Packet[Tensor]}.
 
         The default implementation expects a single tensor or a list of tensors
         and wraps them into a Packet with either the node task as a key
@@ -609,7 +609,7 @@ class BaseNode(
 
         @rtype: L{Packet}[Tensor]
         @return: Outputs of the module as a dictionary of list of tensors:
-            `{"features": [Tensor, ...], "segmentation": [Tensor]}`
+            C{{"features": [Tensor, ...], "segmentation": [Tensor]}}
 
         @raises RuntimeError: If default L{wrap} or L{unwrap} methods are not sufficient.
         """

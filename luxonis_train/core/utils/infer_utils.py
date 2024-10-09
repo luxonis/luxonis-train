@@ -9,7 +9,7 @@ import torch
 from torch import Tensor
 
 import luxonis_train
-from luxonis_train.attached_modules.visualizers import get_unnormalized_images
+from luxonis_train.attached_modules.visualizers import get_denormalized_images
 
 IMAGE_FORMATS = {
     ".bmp",
@@ -54,7 +54,7 @@ def prepare_and_infer_image(
     inputs = {
         "image": torch.tensor(img).unsqueeze(0).permute(0, 3, 1, 2).float()
     }
-    images = get_unnormalized_images(model.cfg, inputs)
+    images = get_denormalized_images(model.cfg, inputs)
 
     outputs = model.lightning_module.forward(
         inputs, images=images, compute_visualizations=True
@@ -178,7 +178,7 @@ def infer_from_dataset(
         if broken:  # pragma: no cover
             break
 
-        images = get_unnormalized_images(model.cfg, inputs)
+        images = get_denormalized_images(model.cfg, inputs)
         batch_size = images.shape[0]
         outputs = model.lightning_module.forward(
             inputs, labels, images=images, compute_visualizations=True

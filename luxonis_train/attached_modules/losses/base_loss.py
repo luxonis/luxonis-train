@@ -31,7 +31,7 @@ class BaseLoss(
         @type args: Unpack[Ts]
         @param args: Prepared inputs from the L{prepare} method.
         @rtype: Tensor | tuple[Tensor, dict[str, Tensor]]
-        @return: The main loss and optional a dictionary of sublosses
+        @return: The main loss and optional a dictionary of sub-losses
             (for logging). Only the main loss is used for
             backpropagation.
         """
@@ -49,7 +49,7 @@ class BaseLoss(
         @type labels: L{Labels}
         @param labels: Labels from the dataset.
         @rtype: Tensor | tuple[Tensor, dict[str, Tensor]]
-        @return: The main loss and optional a dictionary of sublosses
+        @return: The main loss and optional a dictionary of sub-losses
             (for logging). Only the main loss is used for
             backpropagation.
         @raises IncompatibleException: If the inputs are not compatible

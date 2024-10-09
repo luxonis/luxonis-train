@@ -66,11 +66,12 @@ class MeanAveragePrecisionKeypoints(
         @param sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then
             use COCO if possible otherwise defaults. Defaults to C{None}.
         @type area_factor: float | None
-        @param area_factor: Factor by which we multiply bbox area. If None then use default one. Defaults to C{None}.
+        @param area_factor: Factor by which we multiply the bounding box area.
+            If not set, the default factor of C{0.53} is used.
         @type max_dets: int,
         @param max_dets: Maximum number of detections to be considered per image. Defaults to C{20}.
         @type box_format: Literal["xyxy", "xywh", "cxcywh"]
-        @param box_format: Input bbox format.
+        @param box_format: Input bounding box format. Defaults to C{"xyxy"}.
         """
         super().__init__(**kwargs)
 
@@ -170,7 +171,7 @@ class MeanAveragePrecisionKeypoints(
                 - labels (tIntTensor): Tensor of shape C{(N)} containing
                   0-indexed detection classes for the boxes.
                 - keypoints (FloatTensor): Tensor of shape C{(N, 3*K)} and in
-                  format C{[x, y, vis, x, y, vis, ...]} where C{x} an C{y} are unnormalized
+                  format C{[x, y, vis, x, y, vis, ...]} where C{x} an C{y} are absolute
                   keypoint coordinates and C{vis} is keypoint visibility.
 
         @type target: list[dict[str, Tensor]]
@@ -191,7 +192,7 @@ class MeanAveragePrecisionKeypoints(
                   based on the bounding box/masks provided. Only affects which samples
                   contribute to the C{map_small}, C{map_medium}, C{map_large} values.
                 - keypoints (FloatTensor): Tensor of shape C{(N, 3*K)} in format
-                  C{[x, y, vis, x, y, vis, ...]} where C{x} an C{y} are unnormalized keypoint
+                  C{[x, y, vis, x, y, vis, ...]} where C{x} an C{y} are absolute keypoint
                   coordinates and `vis` is keypoint visibility.
         """
         for item in preds:

@@ -130,7 +130,7 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
         Reparameterizes the model to obtain a plain CNN-like structure for inference.
         TODO: add more details
 
-        @warning: The reparametrization is destructive and cannot be reversed!
+        @warning: The re-parametrization is destructive and cannot be reversed!
 
         @type export: bool
         @param export: Whether to set the export mode to True or False. Defaults to True.

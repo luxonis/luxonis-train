@@ -42,8 +42,8 @@ class BaseMetric(
         @rtype: Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]
         @return: The computed metric. Can be one of:
            - A single Tensor.
-           - A tuple of a Tensor and a dictionary of submetrics.
-           - A dictionary of submetrics. If this is the case, then the metric
+           - A tuple of a Tensor and a dictionary of sub-metrics.
+           - A dictionary of sub-metrics. If this is the case, then the metric
               cannot be used as the main metric of the model.
         """
         ...

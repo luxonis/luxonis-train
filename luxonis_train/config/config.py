@@ -384,7 +384,7 @@ class TrainerConfig(BaseModelExtraForbid):
     def validate_deterministic(self) -> Self:
         if self.seed is not None and self.deterministic is None:
             logger.warning(
-                "Setting `trainer.deterministic` to True because `trainer.seed` is set."
+                "Setting `trainer.deterministic` to True because `trainer.seed` is set. "
                 "This can cause certain layers to fail. "
                 "In such cases, set `trainer.deterministic` to `'warn'`."
             )
@@ -489,7 +489,7 @@ class Config(LuxonisConfig):
         if "ENVIRON" in data:
             logger.warning(
                 "Specifying `ENVIRON` section in config file is not recommended. "
-                "Please use environment variables or .env file instead."
+                "Please use environment variables or `.env` file instead."
             )
         return data
 

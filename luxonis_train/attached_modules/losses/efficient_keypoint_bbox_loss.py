@@ -62,9 +62,10 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         @type iou_loss_weight: float
         @param iou_loss_weight: Weight of IoU loss.
         @type sigmas: list[float] | None
-        @param sigmas: Sigmas used in KeypointLoss for OKS metric. If None then use COCO ones if possible or default ones. Defaults to C{None}.
+        @param sigmas: Sigmas used in keypoint loss for OKS metric. If None then use COCO ones if possible or default ones. Defaults to C{None}.
         @type area_factor: float | None
-        @param area_factor: Factor by which we multiply bbox area which is used in KeypointLoss. If None then use default one. Defaults to C{None}.
+        @param area_factor: Factor by which we multiply bounding box area which is used in the keypoint loss.
+            If not set, the default factor of `0.53` is used.
         """
         super().__init__(
             n_warmup_epochs=n_warmup_epochs,
