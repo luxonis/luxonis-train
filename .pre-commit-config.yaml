@@ -15,12 +15,6 @@ repos:
         additional_dependencies: [tomli]
         args: [--in-place, --style=epytext]
 
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
-    hooks:
-    - id: no-commit-to-branch
-      args: ['--branch', 'main', '--branch', 'dev']
-
   - repo: https://github.com/executablebooks/mdformat
     rev: 0.7.10
     hooks:
