@@ -1,0 +1,29 @@
+name: Metadata
+
+on:
+  pull_request:
+
+permissions:
+  pull-requests: write
+  contents: write
+  checks: write
+
+jobs:
+  assigner:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto-assign
+        uses: toshimaru/auto-author-assign@v2.1.1
+
+  labeler:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Labeler
+        uses: actions/labeler@v5
+        with:
+          configuration-path: .github/labeler.yaml
