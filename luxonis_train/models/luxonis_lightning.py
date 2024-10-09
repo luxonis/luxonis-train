@@ -10,6 +10,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint, RichModelSummary
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
 from luxonis_ml.data import LuxonisDataset
 from torch import Size, Tensor, nn
+from torch.amp import autocast
 
 import luxonis_train
 from luxonis_train.attached_modules import (
@@ -392,8 +393,13 @@ class LuxonisLightningModule(pl.LightningModule):
                     node_inputs.append(computed[pred])
                 else:
                     node_inputs.append({"features": [inputs[pred]]})
-            outputs = node.run(node_inputs)
+
+            with autocast(device_type=self.device.type):
+                outputs = node.run(node_inputs)
+
             computed[node_name] = outputs
+
+            del node_inputs
 
             if (
                 compute_loss
@@ -420,20 +426,15 @@ class LuxonisLightningModule(pl.LightningModule):
                     node_name
                 ].items():
                     viz = combine_visualizations(
-                        visualizer.run(
-                            images,
-                            images,
-                            outputs,
-                            labels,
-                        ),
+                        visualizer.run(images, images, outputs, labels),
                     )
                     visualizations[node_name][viz_name] = viz
 
             for computed_name in list(computed.keys()):
                 if computed_name in self.outputs:
                     continue
-                for node_name in unprocessed:
-                    if computed_name in self.graph[node_name]:
+                for unprocessed_name in unprocessed:
+                    if computed_name in self.graph[unprocessed_name]:
                         break
                 else:
                     del computed[computed_name]
@@ -443,6 +444,8 @@ class LuxonisLightningModule(pl.LightningModule):
             for node_name, outputs in computed.items()
             if node_name in self.outputs
         }
+
+        torch.cuda.empty_cache()
 
         return LuxonisOutput(
             outputs=outputs_dict, losses=losses, visualizations=visualizations
