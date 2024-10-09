@@ -28,10 +28,11 @@ class DAPPMBranch(nn.Module):
             parameter is omitted, and AdaptiveAvgPool2d over all the
             input is performed.
         @type stride: int
-        @param stride: Stride for the first convolution. When stride=0,
-            AdaptiveAvgPool2d over all the input is performed (output is
-            1x1). When stride=1, nothing is performed. When stride>1, a
-            convolution with stride=stride is performed.
+        @param stride: Stride for the first convolution. When stride is
+            set to 0, C{AdaptiveAvgPool2d} over all the input is
+            performed (output is 1x1). When set to 1, no operation is
+            performed. When stride>1, a convolution with
+            C{stride=stride} is performed.
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type branch_channels: int

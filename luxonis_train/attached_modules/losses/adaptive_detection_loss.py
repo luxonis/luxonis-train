@@ -70,7 +70,7 @@ class AdaptiveDetectionLoss(
         self.original_img_size = self.original_in_shape[1:]
 
         self.n_warmup_epochs = n_warmup_epochs
-        self.atts_assigner = ATSSAssigner(topk=9, n_classes=self.n_classes)
+        self.atss_assigner = ATSSAssigner(topk=9, n_classes=self.n_classes)
         self.tal_assigner = TaskAlignedAssigner(
             topk=13, n_classes=self.n_classes, alpha=1.0, beta=6.0
         )
@@ -197,7 +197,7 @@ class AdaptiveDetectionLoss(
         pred_scores: Tensor,
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
         if self._epoch < self.n_warmup_epochs:
-            return self.atts_assigner(
+            return self.atss_assigner(
                 self.anchors,
                 self.n_anchors_list,
                 gt_labels,

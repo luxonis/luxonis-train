@@ -27,9 +27,9 @@ class BaseAttachedModule(
 
     Attached modules include losses, metrics and visualizers.
 
-    This class contains a default implementation of `prepare` method, which
+    This class contains a default implementation of C{prepare} method, which
     should be sufficient for most simple cases. More complex modules should
-    override the `prepare` method.
+    override the C{prepare} method.
 
     When subclassing, the following methods can be overridden:
         - L{prepare}: Prepares node outputs for the forward pass of the module.
@@ -163,7 +163,8 @@ class BaseAttachedModule(
         """Getter for the tasks of the attached node.
 
         @type: dict[TaskType, str]
-        @raises RuntimeError: If the node does not have the `tasks` attribute set.
+        @raises RuntimeError: If the node does not have the C{tasks}
+            attribute set.
         """
         if self.node._tasks is None:
             raise RuntimeError(
@@ -250,7 +251,7 @@ class BaseAttachedModule(
         @raises IncompatibleException: If the task is not present in the inputs.
 
         @raises ValueError: If the module requires multiple labels.
-            For such cases, the `prepare` method should be overridden.
+            For such cases, the C{prepare} method should be overridden.
         """
         if task_type is not None:
             if isinstance(task_type, TaskType):

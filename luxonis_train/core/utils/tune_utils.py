@@ -30,7 +30,7 @@ def _augs_to_indices(all_augs: list[str], aug_names: list[str]) -> list[int]:
 def get_trial_params(
     all_augs: list[str], params: dict[str, Any], trial: optuna.trial.Trial
 ) -> dict[str, Any]:
-    """Get trial params based on specified config."""
+    """Get trial parameters based on specified config."""
     new_params = {}
     for key, value in params.items():
         key_info = key.split("_")

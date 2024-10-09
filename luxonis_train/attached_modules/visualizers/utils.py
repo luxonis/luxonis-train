@@ -77,14 +77,14 @@ def preprocess_images(
 ) -> Tensor:
     """Performs preprocessing on a batch of images.
 
-    Preprocessing includes unnormalizing and converting to uint8.
+    Preprocessing includes denormalizing and converting to uint8.
 
     @type imgs: Tensor
     @param imgs: Batch of images.
     @type mean: list[float] | float | None
-    @param mean: Mean used for unnormalization. Defaults to C{None}.
+    @param mean: Mean used for denormalization. Defaults to C{None}.
     @type std: list[float] | float | None
-    @param std: Std used for unnormalization. Defaults to C{None}.
+    @param std: Std used for denormalization. Defaults to C{None}.
     @rtype: Tensor
     @return: Batch of preprocessed images.
     """
@@ -92,7 +92,7 @@ def preprocess_images(
     for i in range(imgs.shape[0]):
         curr_img = imgs[i]
         if mean is not None or std is not None:
-            curr_img = unnormalize(curr_img, to_uint8=True, mean=mean, std=std)
+            curr_img = denormalize(curr_img, to_uint8=True, mean=mean, std=std)
         else:
             curr_img = curr_img.to(torch.uint8)
 
@@ -187,25 +187,25 @@ def seg_output_to_bool(data: Tensor, binary_threshold: float = 0.5) -> Tensor:
     return masks
 
 
-def unnormalize(
+def denormalize(
     img: Tensor,
     mean: list[float] | float | None = None,
     std: list[float] | float | None = None,
     to_uint8: bool = False,
 ) -> Tensor:
-    """Unnormalizes an image back to original values, optionally
+    """Denormalizes an image back to original values, optionally
     converts it to uint8.
 
     @type img: Tensor
-    @param img: Image to unnormalize.
+    @param img: Image to denormalize.
     @type mean: list[float] | float | None
-    @param mean: Mean used for unnormalization. Defaults to C{None}.
+    @param mean: Mean used for denormalization. Defaults to C{None}.
     @type std: list[float] | float | None
-    @param std: Std used for unnormalization. Defaults to C{None}.
+    @param std: Std used for denormalization. Defaults to C{None}.
     @type to_uint8: bool
     @param to_uint8: Whether to convert to uint8. Defaults to C{False}.
     @rtype: Tensor
-    @return: Unnormalized image.
+    @return: denormalized image.
     """
     mean = mean or 0
     std = std or 1
@@ -223,7 +223,7 @@ def unnormalize(
     return out_img
 
 
-def get_unnormalized_images(cfg: Config, inputs: dict[str, Tensor]) -> Tensor:
+def get_denormalized_images(cfg: Config, inputs: dict[str, Tensor]) -> Tensor:
     # Get images from inputs according to config
     images = inputs[cfg.loader.image_source]
 

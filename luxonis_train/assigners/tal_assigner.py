@@ -17,7 +17,7 @@ class TaskAlignedAssigner(nn.Module):
         """Task Aligned Assigner.
 
         Adapted from: U{TOOD: Task-aligned One-stage Object Detection<https://arxiv.org/pdf/2108.07755.pdf>}.
-        Cose is adapted from: U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/assigner/tal_assigner.py}.
+        Code is adapted from: U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/assigner/tal_assigner.py}.
 
         @license: U{Apache License, Version 2.0<https://github.com/Nioolek/PPYOLOE_pytorch/
             tree/master?tab=Apache-2.0-1-ov-file#readme>}
@@ -25,7 +25,7 @@ class TaskAlignedAssigner(nn.Module):
         @type n_classes: int
         @param n_classes: Number of classes in the dataset.
         @type topk: int
-        @param topk: Number of anchors considere in selection. Defaults to 13.
+        @param topk: Number of anchors considered in selection. Defaults to 13.
         @type alpha: float
         @param alpha: Defaults to 1.0.
         @type beta: float

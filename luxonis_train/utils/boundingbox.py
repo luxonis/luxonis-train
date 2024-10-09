@@ -75,7 +75,7 @@ def bbox_iou(
     @type bbox2: Tensor
     @param bbox2: Second set of bboxes [M, 4].
     @type bbox_format: BBoxFormatType
-    @param bbox_format: Input bbox format. Defaults to "xyxy".
+    @param bbox_format: Input bounding box format. Defaults to C{"xyxy"}.
     @type iou_type: Literal["none", "giou", "diou", "ciou", "siou"]
     @param iou_type: IoU type. Defaults to "none".
         Possible values are:

@@ -23,7 +23,7 @@ from luxonis_train.attached_modules.metrics.torchmetrics import (
 )
 from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
-    get_unnormalized_images,
+    get_denormalized_images,
 )
 from luxonis_train.callbacks import BaseLuxonisProgressBar, ModuleFreezer
 from luxonis_train.config import AttachedModuleConfig, Config
@@ -594,11 +594,11 @@ class LuxonisLightningModule(pl.LightningModule):
         @param losses_dict: Dictionary of computed losses. Each node can
             have multiple losses attached. The first key identifies the
             node, the second key identifies the specific loss. Values
-            are either single tensors or tuples of tensors and
-            sublosses.
+            are either single tensors or tuples of tensors and sub-
+            losses.
         @rtype: tuple[Tensor, dict[str, Tensor]]
-        @return: Tuple of final loss and dictionary of processed
-            sublosses. The dictionary is in a format of {loss_name:
+        @return: Tuple of final loss and dictionary of processed sub-
+            losses. The dictionary is in a format of {loss_name:
             loss_value}.
         """
         final_loss = torch.zeros(1, device=self.device)
@@ -693,7 +693,7 @@ class LuxonisLightningModule(pl.LightningModule):
         inputs, labels = batch
         images = None
         if self._logged_images < self.cfg.trainer.n_log_images:
-            images = get_unnormalized_images(self.cfg, inputs)
+            images = get_denormalized_images(self.cfg, inputs)
         outputs = self.forward(
             inputs,
             labels,
