@@ -35,15 +35,15 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
         self.thickness = thickness
 
     def _get_class_name(self, pred: Tensor) -> str:
-        idx = int((pred.argmax()).item())
+        idxs = (pred > 0.5).nonzero(as_tuple=True)[0].tolist()
         if self.class_names is None:
-            return str(idx)
-        return self.class_names[idx]
+            return ", ".join([str(idx) for idx in idxs])
+        return ", ".join([self.class_names[idx] for idx in idxs])
 
     def _generate_plot(
         self, prediction: Tensor, width: int, height: int
     ) -> Tensor:
-        pred = prediction.softmax(-1).detach().cpu().numpy()
+        pred = prediction.sigmoid().detach().cpu().numpy()
         fig, ax = plt.subplots(figsize=(width / 100, height / 100))
         ax.bar(np.arange(len(pred)), pred)
         ax.set_xticks(np.arange(len(pred)))
