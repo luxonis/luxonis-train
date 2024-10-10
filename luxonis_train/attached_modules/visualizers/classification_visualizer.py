@@ -20,7 +20,7 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
         font_scale: float = 1.0,
         color: tuple[int, int, int] = (255, 0, 0),
         thickness: int = 1,
-        multi_label: bool = False,
+        multilabel: bool = False,
         **kwargs,
     ):
         """Visualizer for classification tasks.
@@ -34,11 +34,11 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
         self.font_scale = font_scale
         self.color = color
         self.thickness = thickness
-        self.multi_label = multi_label
+        self.multilabel = multilabel
 
     def _get_class_name(self, pred: Tensor) -> str:
         """Handles both single-label and multi-label classification."""
-        if self.multi_label:
+        if self.multilabel:
             idxs = (pred > 0.5).nonzero(as_tuple=True)[0].tolist()
             if self.class_names is None:
                 return ", ".join([str(idx) for idx in idxs])
@@ -52,7 +52,7 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
     def _generate_plot(
         self, prediction: Tensor, width: int, height: int
     ) -> Tensor:
-        if self.multi_label:
+        if self.multilabel:
             pred = prediction.sigmoid().detach().cpu().numpy()
         else:
             pred = prediction.softmax(-1).detach().cpu().numpy()
