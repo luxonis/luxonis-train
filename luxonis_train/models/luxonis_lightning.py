@@ -10,7 +10,6 @@ from lightning.pytorch.callbacks import ModelCheckpoint, RichModelSummary
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
 from luxonis_ml.data import LuxonisDataset
 from torch import Size, Tensor, nn
-from torch.amp import autocast
 
 import luxonis_train
 from luxonis_train.attached_modules import (
@@ -394,8 +393,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 else:
                     node_inputs.append({"features": [inputs[pred]]})
 
-            with autocast(device_type=self.device.type):
-                outputs = node.run(node_inputs)
+            outputs = node.run(node_inputs)
 
             computed[node_name] = outputs
 
@@ -444,8 +442,6 @@ class LuxonisLightningModule(pl.LightningModule):
             for node_name, outputs in computed.items()
             if node_name in self.outputs
         }
-
-        torch.cuda.empty_cache()
 
         return LuxonisOutput(
             outputs=outputs_dict, losses=losses, visualizations=visualizations
