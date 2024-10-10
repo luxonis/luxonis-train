@@ -411,7 +411,6 @@ Option specific for `ONNX` export.
 
 ```yaml
 exporter:
-  output_names: ["output1", "output2"]
   onnx:
     opset_version: 11
   blobconverter:
