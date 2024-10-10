@@ -388,7 +388,7 @@ Here you can define configuration for exporting.
 | `mean_values`            | `list[float] \| None`             | `None`        | What mean values to use for input normalization. If not provided, inferred from augmentations  |
 | `upload_to_run`          | `bool`                            | `True`        | Whether to upload the exported files to tracked run as artifact                                |
 | `upload_url`             | `str \| None`                     | `None`        | Exported model will be uploaded to this URL if specified                                       |
-| `output_names`           | `list[str] \| None`               | `None`        | Optional list of output names to override the default ones                                     |
+| `output_names`           | `list[str] \| None`               | `None`        | Optional list of output names to override the default ones (deprecated)                        |
 
 ### `ONNX`
 
