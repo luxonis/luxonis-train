@@ -520,27 +520,31 @@ class LuxonisLightningModule(pl.LightningModule):
             ]
         )
 
-        if self.cfg.exporter.output_names is not None:
-            len_names = len(self.cfg.exporter.output_names)
-            if len_names != len(output_order):
-                logger.warning(
-                    f"Number of provided output names ({len_names}) does not match "
-                    f"number of outputs ({len(output_order)}). Using default names."
-                )
-                self.cfg.exporter.output_names = None
+        output_counts = defaultdict(int)
+        for node_name, outs in outputs.items():
+            output_counts[node_name] = sum(len(out) for out in outs.values())
 
-        output_names = self.cfg.exporter.output_names or [
-            f"{node_name}/{output_name}/{i}"
-            for node_name, output_name, i in output_order
-        ]
+        export_output_names_dict = {}
+        for node_name, node in self.nodes.items():
+            if node.export_output_names is not None:
+                if len(node.export_output_names) != output_counts[node_name]:
+                    logger.warning(
+                        f"Number of provided output names for node {node_name} "
+                        f"({len(node.export_output_names)}) does not match "
+                        f"number of outputs ({output_counts[node_name]}). "
+                        f"Using default names."
+                    )
+                else:
+                    export_output_names_dict[node_name] = (
+                        node.export_output_names
+                    )
 
-        if not self.cfg.exporter.output_names:
-            idx = 1
-            # Set to output names required by DAI
-            for i, output_name in enumerate(output_names):
-                if output_name.startswith("EfficientBBoxHead"):
-                    output_names[i] = f"output{idx}_yolov6r2"
-                    idx += 1
+        output_names = []
+        for node_name, output_name, i in output_order:
+            if node_name in export_output_names_dict:
+                output_names.append(export_output_names_dict[node_name][i])
+            else:
+                output_names.append(f"{node_name}/{output_name}/{i}")
 
         old_forward = self.forward
 
