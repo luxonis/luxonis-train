@@ -582,29 +582,56 @@ Registered components can be referenced in the config file. Custom components ne
 - **Optimizers** - [`torch.optim.Optimizer`](https://pytorch.org/docs/stable/optim.html#torch.optim.Optimizer), requires manual registration to the `OPTIMIZERS` registry
 - **Schedulers** - [`torch.optim.lr_scheduler.LRScheduler`](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate), requires manual registration to the `SCHEDULERS` registry
 
-**Example:**
+**Examples:**
+
+**Custom Callback:**
 
 ```python
-from torch.optim import Optimizer
-from luxonis_train.utils.registry import OPTIMIZERS
-from luxonis_train.attached_modules.losses import BaseLoss
+import lightning.pytorch as pl
 
-@OPTIMIZERS.register_module()
-class CustomOptimizer(Optimizer):
-    def __init__(self, params, lr=0.001):
-        super().__init__(params, defaults={'lr': lr})
-        # Implement optimizer logic
+from luxonis_train import LuxonisLightningModule
+from luxonis_train.utils.registry import CALLBACKS
 
-# Subclasses of BaseNode, BaseLoss, BaseMetric
-# and BaseVisualizer are registered automatically.
-class CustomLoss(BaseLoss):
-    # This class is automatically registered under the name `CustomLoss`.
-    def __init__(self, k_steps: int, **kwargs):
+
+@CALLBACKS.register_module()
+class CustomCallback(pl.Callback):
+    def __init__(self, message: str, **kwargs):
         super().__init__(**kwargs)
-        ...
+        self.message = message
+
+    # Will be called at the end of each training epoch.
+    # Consult the PyTorch Lightning documentation for more callback methods.
+    def on_train_epoch_end(
+        self,
+        trainer: pl.Trainer,
+        pl_module: LuxonisLightningModule,
+    ) -> None:
+        print(self.message)
 ```
 
-**Using custom components in config:**
+**Custom Loss:**
+
+```python
+from torch import Tensor
+
+from luxonis_train import BaseLoss, TaskType
+
+# Subclasses of `BaseNode`, `BaseLoss`, `BaseMetric`
+# and `BaseVisualizer` are registered automatically.
+class CustomLoss(BaseLoss):
+    supported_tasks = [TaskType.CLASSIFICATION, TaskType.SEGMENTATION]
+
+    def __init__(self, smoothing: float, **kwargs):
+        super().__init__(**kwargs)
+        self.smoothing = smoothing
+
+    def forward(self, predictions: Tensor, targets: Tensor) -> Tensor:
+        # Implement the actual loss logic here
+        value = predictions.sum() * self.smoothing
+        return value.abs()
+```
+
+**Using custom components in the configuration file:**
 
 ```yaml
 model:
@@ -613,12 +640,13 @@ model:
     losses:
     - name: CustomLoss
       params:
-        k_steps: 12
+        smoothing: 0.0001
 
-optimizer:
-  name: CustomOptimizer
-  params:
-    lr: 0.01
+trainer:
+  callbacks:
+    - name: CustomCallback
+      params:
+        lr: "Hello from the custom callback!"
 ```
 
 > \[!NOTE\]
