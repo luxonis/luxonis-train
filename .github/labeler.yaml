@@ -13,8 +13,9 @@ CLI:
   - changed-files:
     - any-glob-to-any-file: '**/__main__.py'
 
-release:
-  - base-branch: 'main'
+documentation:
+  - changed-files:
+    - any-glob-to-any-file: '**/*.md'
 
 enhancement:
   - head-branch:
