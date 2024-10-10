@@ -813,8 +813,32 @@ class LuxonisLightningModule(pl.LightningModule):
         }
         optimizer = OPTIMIZERS.get(cfg_optimizer.name)(**optim_params)
 
-        scheduler_params = cfg_scheduler.params | {"optimizer": optimizer}
-        scheduler = SCHEDULERS.get(cfg_scheduler.name)(**scheduler_params)
+        def get_scheduler(scheduler_cfg, optimizer):
+            scheduler_class = SCHEDULERS.get(
+                scheduler_cfg["name"]
+            )  # For dictionary access
+            scheduler_params = scheduler_cfg["params"] | {
+                "optimizer": optimizer
+            }  # Dictionary access for params
+            return scheduler_class(**scheduler_params)
+
+        if cfg_scheduler.name == "SequentialLR":
+            schedulers_list = [
+                get_scheduler(scheduler_cfg, optimizer)
+                for scheduler_cfg in cfg_scheduler.params["schedulers"]
+            ]
+
+            scheduler = torch.optim.lr_scheduler.SequentialLR(
+                optimizer,
+                schedulers=schedulers_list,
+                milestones=cfg_scheduler.params["milestones"],
+            )
+        else:
+            scheduler_class = SCHEDULERS.get(
+                cfg_scheduler.name
+            )  # Access as attribute for single scheduler
+            scheduler_params = cfg_scheduler.params | {"optimizer": optimizer}
+            scheduler = scheduler_class(**scheduler_params)
 
         return [optimizer], [scheduler]
 
