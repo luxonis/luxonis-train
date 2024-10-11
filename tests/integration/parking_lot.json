@@ -164,9 +164,9 @@
                     "subtype": "yolov6"
                 },
                 "outputs": [
-                    "bbox-head/boundingbox/0",
-                    "bbox-head/boundingbox/1",
-                    "bbox-head/boundingbox/2"
+                    "output1_yolov6r2",
+                    "output2_yolov6r2",
+                    "output3_yolov6r2"
                 ]
             },
             {
