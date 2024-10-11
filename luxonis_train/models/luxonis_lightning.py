@@ -528,7 +528,7 @@ class LuxonisLightningModule(pl.LightningModule):
             logger.warning(
                 "The use of 'exporter.output_names' is deprecated and will be removed in a future version. "
                 "If 'node.export_output_names' are provided, they will take precedence and overwrite 'exporter.output_names'. "
-                "Please update your code to use 'node.export_output_names' directly."
+                "Please update your config to use 'node.export_output_names' directly."
             )
 
         export_output_names_used = False
