@@ -188,6 +188,7 @@ def _get_head_outputs(
 
     return output_names
 
+
 def get_heads(
     cfg: Config,
     outputs: list[dict],
@@ -226,7 +227,7 @@ def get_heads(
                     head_outputs = _get_head_outputs(
                         outputs, node_alias, node_name
                     )
-                
+
                 if node_alias in head_names:
                     curr_head_name = f"{node_alias}_{len(head_names)}"  # add suffix if name is already present
                 else:
