@@ -24,6 +24,7 @@ class ModelEma(nn.Module):
         model: pl.LightningModule,
         decay: float = 0.9999,
         use_dynamic_decay: bool = True,
+        decay_tau: float = 2000,
         device: str = None,
     ):
         """Constructs `ModelEma`.
@@ -34,6 +35,8 @@ class ModelEma(nn.Module):
         @param decay: Decay rate for the moving average.
         @type use_dynamic_decay: bool
         @param use_dynamic_decay: Use dynamic decay rate.
+        @type decay_tau: float
+        @param decay_tau: Decay tau for the moving average.
         @type device: str
         @param device: Device to perform EMA on.
         """
@@ -47,6 +50,7 @@ class ModelEma(nn.Module):
         self.updates = 0
         self.decay = decay
         self.use_dynamic_decay = use_dynamic_decay
+        self.decay_tau = decay_tau
         self.device = device
         if self.device is not None:
             self.state_dict = {
@@ -66,7 +70,7 @@ class ModelEma(nn.Module):
 
                     if self.use_dynamic_decay:
                         decay = self.decay * (
-                            1 - math.exp(-self.updates / 2000)
+                            1 - math.exp(-self.updates / self.decay_tau)
                         )
                     else:
                         decay = self.decay
@@ -84,8 +88,9 @@ class EMACallback(Callback):
 
     def __init__(
         self,
-        decay: float = 0.9999,
+        decay: float = 0.5,
         use_dynamic_decay: bool = True,
+        decay_tau: float = 2000,
         use_ema_weights: bool = True,
         device: str = None,
     ):
@@ -96,6 +101,8 @@ class EMACallback(Callback):
         @type use_dynamic_decay: bool
         @param use_dynamic_decay: Use dynamic decay rate. If True, the
             decay rate will be updated based on the number of updates.
+        @type decay_tau: float
+        @param decay_tau: Decay tau for the moving average.
         @type use_ema_weights: bool
         @param use_ema_weights: Use EMA weights (replace model weights
             with EMA weights)
@@ -104,6 +111,7 @@ class EMACallback(Callback):
         """
         self.decay = decay
         self.use_dynamic_decay = use_dynamic_decay
+        self.decay_tau = decay_tau
         self.use_ema_weights = use_ema_weights
         self.device = device
 
@@ -126,6 +134,7 @@ class EMACallback(Callback):
             pl_module,
             decay=self.decay,
             use_dynamic_decay=self.use_dynamic_decay,
+            decay_tau=self.decay_tau,
             device=self.device,
         )
 
