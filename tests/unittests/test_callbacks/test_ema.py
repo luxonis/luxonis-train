@@ -41,7 +41,7 @@ def test_ema_update_on_batch_end(model, ema_callback):
     ema_callback.on_fit_start(trainer, model)
 
     initial_ema_state = {
-        k: v.clone() for k, v in ema_callback.ema.state_dict.items()
+        k: v.clone() for k, v in ema_callback.ema.state_dict_ema.items()
     }
 
     outputs = None  # Use a dummy output
@@ -51,7 +51,7 @@ def test_ema_update_on_batch_end(model, ema_callback):
     ema_callback.on_train_batch_end(trainer, model, outputs, batch, batch_idx)
 
     # Check that the EMA has been updated
-    updated_state = ema_callback.ema.state_dict
+    updated_state = ema_callback.ema.state_dict_ema
     assert any(
         not torch.equal(initial_ema_state[k], updated_state[k])
         for k in initial_ema_state
@@ -76,7 +76,8 @@ def test_load_from_checkpoint(model, ema_callback):
     ema_callback.on_load_checkpoint(checkpoint)
 
     assert (
-        ema_callback.ema.state_dict.keys() == checkpoint["state_dict"].keys()
+        ema_callback.ema.state_dict_ema.keys()
+        == checkpoint["state_dict"].keys()
     )
 
 
