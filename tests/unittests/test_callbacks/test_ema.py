@@ -44,9 +44,11 @@ def test_ema_update_on_batch_end(model, ema_callback):
         k: v.clone() for k, v in ema_callback.ema.state_dict_ema.items()
     }
 
-    outputs = None  # Use a dummy output
     batch = torch.rand(2, 2)
     batch_idx = 0
+
+    model.train()
+    outputs = model(batch)
 
     ema_callback.on_train_batch_end(trainer, model, outputs, batch, batch_idx)
 
