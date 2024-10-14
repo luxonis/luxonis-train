@@ -65,3 +65,16 @@ Callback to perform a test run at the end of the training.
 ## `UploadCheckpoint`
 
 Callback that uploads currently the best checkpoint (based on validation loss) to the tracker location - where all other logs are stored.
+
+## `EMACallback`
+
+Callback that updates the stored parameters using a moving average.
+
+**Parameters:**
+
+| Key                 | Type    | Default value | Description                                                                                     |
+| ------------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------- |
+| `decay`             | `float` | `0.5`         | Decay factor for the moving average.                                                            |
+| `use_dynamic_decay` | `bool`  | `True`        | Whether to use dynamic decay.                                                                   |
+| `decay_tau`         | `float` | `2000`        | Decay tau for dynamic decay.                                                                    |
+| `device`            | `str`   | `None`        | Device to use for the moving average. If `None`, the device is inferred from the model's device |
