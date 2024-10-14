@@ -171,7 +171,8 @@ class EMACallback(Callback):
 
         self.collected_state_dict = deepcopy(pl_module.state_dict())
 
-        pl_module.load_state_dict(self.ema.state_dict_ema)
+        if self.ema is not None:
+            pl_module.load_state_dict(self.ema.state_dict_ema)
 
     def on_validation_end(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
@@ -183,7 +184,8 @@ class EMACallback(Callback):
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-        pl_module.load_state_dict(self.collected_state_dict)
+        if self.collected_state_dict is not None:
+            pl_module.load_state_dict(self.collected_state_dict)
 
     def on_train_end(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
@@ -195,8 +197,9 @@ class EMACallback(Callback):
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-        pl_module.load_state_dict(self.ema.state_dict_ema)
-        logger.info("Model weights replaced with the EMA weights.")
+        if self.ema is not None:
+            pl_module.load_state_dict(self.ema.state_dict_ema)
+            logger.info("Model weights replaced with the EMA weights.")
 
     def on_save_checkpoint(
         self,
@@ -213,7 +216,8 @@ class EMACallback(Callback):
         @type checkpoint: dict
         @param checkpoint: Pytorch Lightning checkpoint.
         """
-        checkpoint["state_dict"] = self.ema.state_dict_ema
+        if self.ema is not None:
+            checkpoint["state_dict"] = self.ema.state_dict_ema
 
     def on_load_checkpoint(self, callback_state: dict) -> None:
         """Load the EMA state_dict from the checkpoint.
@@ -221,4 +225,5 @@ class EMACallback(Callback):
         @type callback_state: dict
         @param callback_state: Pytorch Lightning callback state.
         """
-        self.ema.state_dict_ema = callback_state["state_dict"]
+        if self.ema is not None:
+            self.ema.state_dict_ema = callback_state["state_dict"]
