@@ -91,7 +91,6 @@ class EMACallback(Callback):
         decay: float = 0.5,
         use_dynamic_decay: bool = True,
         decay_tau: float = 2000,
-        use_ema_weights: bool = True,
         device: str = None,
     ):
         """Constructs `EMACallback`.
@@ -103,16 +102,12 @@ class EMACallback(Callback):
             decay rate will be updated based on the number of updates.
         @type decay_tau: float
         @param decay_tau: Decay tau for the moving average.
-        @type use_ema_weights: bool
-        @param use_ema_weights: Use EMA weights (replace model weights
-            with EMA weights)
         @type device: str
         @param device: Device to perform EMA on.
         """
         self.decay = decay
         self.use_dynamic_decay = use_dynamic_decay
         self.decay_tau = decay_tau
-        self.use_ema_weights = use_ema_weights
         self.device = device
 
         self.ema = None
@@ -200,9 +195,8 @@ class EMACallback(Callback):
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-        if self.use_ema_weights:
-            pl_module.load_state_dict(self.ema.state_dict)
-            logger.info("Model weights replaced with the EMA weights.")
+        pl_module.load_state_dict(self.ema.state_dict)
+        logger.info("Model weights replaced with the EMA weights.")
 
     def on_save_checkpoint(
         self,
@@ -219,10 +213,7 @@ class EMACallback(Callback):
         @type checkpoint: dict
         @param checkpoint: Pytorch Lightning checkpoint.
         """
-        if self.use_ema_weights:
-            checkpoint["state_dict"] = self.ema.state_dict
-        elif self.ema is not None:
-            checkpoint["state_dict_ema"] = self.ema.state_dict
+        checkpoint["state_dict"] = self.ema.state_dict
 
     def on_load_checkpoint(self, callback_state: dict) -> None:
         """Load the EMA state_dict from the checkpoint.
@@ -230,7 +221,4 @@ class EMACallback(Callback):
         @type callback_state: dict
         @param callback_state: Pytorch Lightning callback state.
         """
-        if self.use_ema_weights:
-            self.ema.state_dict = callback_state["state_dict"]
-        elif self.ema is not None:
-            self.ema.state_dict = callback_state["state_dict_ema"]
+        self.ema.state_dict = callback_state["state_dict"]
