@@ -38,6 +38,7 @@ def test_ema_initialization(model, ema_callback):
 
 def test_ema_update_on_batch_end(model, ema_callback):
     trainer = Trainer()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     ema_callback.on_fit_start(trainer, model)
 
     initial_ema_state = {
@@ -49,6 +50,9 @@ def test_ema_update_on_batch_end(model, ema_callback):
 
     model.train()
     outputs = model(batch)
+    model.zero_grad()
+    outputs.sum().backward()
+    optimizer.step()
 
     ema_callback.on_train_batch_end(trainer, model, outputs, batch, batch_idx)
 
