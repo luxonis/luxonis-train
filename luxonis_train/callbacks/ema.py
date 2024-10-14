@@ -25,7 +25,7 @@ class ModelEma(nn.Module):
         decay: float = 0.9999,
         use_dynamic_decay: bool = True,
         decay_tau: float = 2000,
-        device: str = None,
+        device: str | None = None,
     ):
         """Constructs `ModelEma`.
 
@@ -37,15 +37,15 @@ class ModelEma(nn.Module):
         @param use_dynamic_decay: Use dynamic decay rate.
         @type decay_tau: float
         @param decay_tau: Decay tau for the moving average.
-        @type device: str
+        @type device: str | None
         @param device: Device to perform EMA on.
         """
         super(ModelEma, self).__init__()
         model.eval()
-        self.state_dict = deepcopy(model.state_dict())
+        self.state_dict_ema = deepcopy(model.state_dict())
         model.train()
 
-        for p in self.state_dict.values():
+        for p in self.state_dict_ema.values():
             p.requires_grad = False
         self.updates = 0
         self.decay = decay
@@ -53,8 +53,8 @@ class ModelEma(nn.Module):
         self.decay_tau = decay_tau
         self.device = device
         if self.device is not None:
-            self.state_dict = {
-                k: v.to(device=device) for k, v in self.state_dict.items()
+            self.state_dict_ema = {
+                k: v.to(device=device) for k, v in self.state_dict_ema.items()
             }
 
     def update(self, model: pl.LightningModule) -> None:
@@ -64,7 +64,7 @@ class ModelEma(nn.Module):
         @param model: Pytorch Lightning module.
         """
         with torch.no_grad():
-            for k, ema_p in self.state_dict.items():
+            for k, ema_p in self.state_dict_ema.items():
                 if ema_p.dtype.is_floating_point:
                     self.updates += 1
 
@@ -91,7 +91,7 @@ class EMACallback(Callback):
         decay: float = 0.5,
         use_dynamic_decay: bool = True,
         decay_tau: float = 2000,
-        device: str = None,
+        device: str | None = None,
     ):
         """Constructs `EMACallback`.
 
@@ -102,7 +102,7 @@ class EMACallback(Callback):
             decay rate will be updated based on the number of updates.
         @type decay_tau: float
         @param decay_tau: Decay tau for the moving average.
-        @type device: str
+        @type device: str | None
         @param device: Device to perform EMA on.
         """
         self.decay = decay
@@ -155,7 +155,7 @@ class EMACallback(Callback):
         @param batch_idx: Batch index.
         """
 
-        self.ema.update(pl_module)
+        self.ema.update(pl_module) # type: ignore
 
     def on_validation_epoch_start(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
@@ -171,7 +171,7 @@ class EMACallback(Callback):
 
         self.collected_state_dict = deepcopy(pl_module.state_dict())
 
-        pl_module.load_state_dict(self.ema.state_dict)
+        pl_module.load_state_dict(self.ema.state_dict_ema)
 
     def on_validation_end(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
@@ -195,7 +195,7 @@ class EMACallback(Callback):
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-        pl_module.load_state_dict(self.ema.state_dict)
+        pl_module.load_state_dict(self.ema.state_dict_ema)
         logger.info("Model weights replaced with the EMA weights.")
 
     def on_save_checkpoint(
@@ -213,7 +213,7 @@ class EMACallback(Callback):
         @type checkpoint: dict
         @param checkpoint: Pytorch Lightning checkpoint.
         """
-        checkpoint["state_dict"] = self.ema.state_dict
+        checkpoint["state_dict"] = self.ema.state_dict_ema
 
     def on_load_checkpoint(self, callback_state: dict) -> None:
         """Load the EMA state_dict from the checkpoint.
@@ -221,4 +221,4 @@ class EMACallback(Callback):
         @type callback_state: dict
         @param callback_state: Pytorch Lightning callback state.
         """
-        self.ema.state_dict = callback_state["state_dict"]
+        self.ema.state_dict_ema = callback_state["state_dict"]
