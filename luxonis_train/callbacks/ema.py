@@ -154,8 +154,8 @@ class EMACallback(Callback):
         @type batch_idx: int
         @param batch_idx: Batch index.
         """
-
-        self.ema.update(pl_module)  # type: ignore
+        if self.ema is not None:
+            self.ema.update(pl_module)
 
     def on_validation_epoch_start(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
