@@ -411,6 +411,21 @@ class TrainerConfig(BaseModelExtraForbid):
             self.validation_interval = self.epochs
         return self
 
+    @model_validator(mode="after")
+    def reorder_callbacks(self) -> Self:
+        """Reorder callbacks so that EMA is the first callback, since it
+        needs to be updated before other callbacks."""
+        ema_index = None
+        for i, callback in enumerate(self.callbacks):
+            if callback.name == "EMACallback":
+                ema_index = i
+                break
+        if ema_index is not None:
+            ema_callback = self.callbacks.pop(ema_index)
+            self.callbacks.insert(0, ema_callback)
+
+        return self
+
 
 class OnnxExportConfig(BaseModelExtraForbid):
     opset_version: PositiveInt = 12
