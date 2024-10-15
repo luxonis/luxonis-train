@@ -119,6 +119,7 @@ class BaseNode(
         n_keypoints: int | None = None,
         in_sizes: Size | list[Size] | None = None,
         remove_on_export: bool = False,
+        export_output_names: list[str] | None = None,
         attach_index: AttachIndexType | None = None,
         _tasks: dict[TaskType, str] | None = None,
     ):
@@ -139,6 +140,11 @@ class BaseNode(
         @type in_sizes: Size | list[Size] | None
         @param in_sizes: List of input sizes for the node. Provide only
             in case the C{input_shapes} were not provided.
+        @type remove_on_export: bool
+        @param remove_on_export: If set to True, the node will be removed
+            from the model during export. Defaults to False.
+        @type export_output_names: list[str] | None
+        @param export_output_names: List of output names for the export.
         @type attach_index: AttachIndexType
         @param attach_index: Index of previous output that this node
             attaches to. Can be a single integer to specify a single
@@ -186,6 +192,7 @@ class BaseNode(
         self._n_keypoints = n_keypoints
         self._export = False
         self._remove_on_export = remove_on_export
+        self._export_output_names = export_output_names
         self._epoch = 0
         self._in_sizes = in_sizes
 
@@ -512,6 +519,11 @@ class BaseNode(
     def remove_on_export(self) -> bool:
         """Getter for the remove_on_export attribute."""
         return self._remove_on_export
+
+    @property
+    def export_output_names(self) -> list[str] | None:
+        """Getter for the export_output_names attribute."""
+        return self._export_output_names
 
     def unwrap(self, inputs: list[Packet[Tensor]]) -> ForwardInputT:
         """Prepares inputs for the forward pass.
