@@ -415,15 +415,7 @@ class TrainerConfig(BaseModelExtraForbid):
     def reorder_callbacks(self) -> Self:
         """Reorder callbacks so that EMA is the first callback, since it
         needs to be updated before other callbacks."""
-        ema_index = None
-        for i, callback in enumerate(self.callbacks):
-            if callback.name == "EMACallback":
-                ema_index = i
-                break
-        if ema_index is not None:
-            ema_callback = self.callbacks.pop(ema_index)
-            self.callbacks.insert(0, ema_callback)
-
+        self.callbacks.sort(key=lambda v: 0 if v.name == "EMACallback" else 1)
         return self
 
 
