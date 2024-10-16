@@ -392,8 +392,12 @@ class LuxonisLightningModule(pl.LightningModule):
                     node_inputs.append(computed[pred])
                 else:
                     node_inputs.append({"features": [inputs[pred]]})
+
             outputs = node.run(node_inputs)
+
             computed[node_name] = outputs
+
+            del node_inputs
 
             if (
                 compute_loss
@@ -420,20 +424,15 @@ class LuxonisLightningModule(pl.LightningModule):
                     node_name
                 ].items():
                     viz = combine_visualizations(
-                        visualizer.run(
-                            images,
-                            images,
-                            outputs,
-                            labels,
-                        ),
+                        visualizer.run(images, images, outputs, labels),
                     )
                     visualizations[node_name][viz_name] = viz
 
             for computed_name in list(computed.keys()):
                 if computed_name in self.outputs:
                     continue
-                for node_name in unprocessed:
-                    if computed_name in self.graph[node_name]:
+                for unprocessed_name in unprocessed:
+                    if computed_name in self.graph[unprocessed_name]:
                         break
                 else:
                     del computed[computed_name]
