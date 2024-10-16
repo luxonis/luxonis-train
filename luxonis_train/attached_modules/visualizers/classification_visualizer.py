@@ -20,6 +20,7 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
         font_scale: float = 1.0,
         color: tuple[int, int, int] = (255, 0, 0),
         thickness: int = 1,
+        multilabel: bool = False,
         **kwargs,
     ):
         """Visualizer for classification tasks.
@@ -33,17 +34,28 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
         self.font_scale = font_scale
         self.color = color
         self.thickness = thickness
+        self.multilabel = multilabel
 
     def _get_class_name(self, pred: Tensor) -> str:
-        idx = int((pred.argmax()).item())
-        if self.class_names is None:
-            return str(idx)
-        return self.class_names[idx]
+        """Handles both single-label and multi-label classification."""
+        if self.multilabel:
+            idxs = (pred > 0.5).nonzero(as_tuple=True)[0].tolist()
+            if self.class_names is None:
+                return ", ".join([str(idx) for idx in idxs])
+            return ", ".join([self.class_names[idx] for idx in idxs])
+        else:
+            idx = int((pred.argmax()).item())
+            if self.class_names is None:
+                return str(idx)
+            return self.class_names[idx]
 
     def _generate_plot(
         self, prediction: Tensor, width: int, height: int
     ) -> Tensor:
-        pred = prediction.softmax(-1).detach().cpu().numpy()
+        if self.multilabel:
+            pred = prediction.sigmoid().detach().cpu().numpy()
+        else:
+            pred = prediction.softmax(-1).detach().cpu().numpy()
         fig, ax = plt.subplots(figsize=(width / 100, height / 100))
         ax.bar(np.arange(len(pred)), pred)
         ax.set_xticks(np.arange(len(pred)))
