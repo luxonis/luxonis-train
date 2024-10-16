@@ -24,6 +24,7 @@ from .metadata_logger import MetadataLogger
 from .module_freezer import ModuleFreezer
 from .test_on_train_end import TestOnTrainEnd
 from .upload_checkpoint import UploadCheckpoint
+from .gradcam_visializer import GradCamCallback
 
 CALLBACKS.register_module(module=EarlyStopping)
 CALLBACKS.register_module(module=LearningRateMonitor)
@@ -34,7 +35,7 @@ CALLBACKS.register_module(module=GradientAccumulationScheduler)
 CALLBACKS.register_module(module=StochasticWeightAveraging)
 CALLBACKS.register_module(module=Timer)
 CALLBACKS.register_module(module=ModelPruning)
-
+CALLBACKS.register_module(module=GradCamCallback)
 
 __all__ = [
     "ArchiveOnTrainEnd",
@@ -47,4 +48,5 @@ __all__ = [
     "TestOnTrainEnd",
     "UploadCheckpoint",
     "GPUStatsMonitor",
+    "GradCamCallback",
 ]
