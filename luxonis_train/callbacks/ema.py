@@ -60,26 +60,45 @@ class ModelEma(nn.Module):
     def update(self, model: pl.LightningModule) -> None:
         """Update the stored parameters using a moving average.
 
+        Source: U{<https://github.com/huggingface/pytorch-image-models/blob/main/timm/utils/model_ema.py>}
+
+        @license: U{Apache License 2.0<https://github.com/huggingface/pytorch-image-models/tree/main?tab=Apache-2.0-1-ov-file#readme>}
+
         @type model: L{pl.LightningModule}
         @param model: Pytorch Lightning module.
         """
         with torch.no_grad():
-            for k, ema_p in self.state_dict_ema.items():
-                if ema_p.dtype.is_floating_point:
-                    self.updates += 1
+            self.updates += 1
 
-                    if self.use_dynamic_decay:
-                        decay = self.decay * (
-                            1 - math.exp(-self.updates / self.decay_tau)
-                        )
-                    else:
-                        decay = self.decay
+            if self.use_dynamic_decay:
+                decay = self.decay * (
+                    1 - math.exp(-self.updates / self.decay_tau)
+                )
+            else:
+                decay = self.decay
 
-                    model_p = model.state_dict()[k]
+            ema_lerp_values = []
+            model_lerp_values = []
+            for ema_v, model_v in zip(
+                self.state_dict_ema.values(), model.state_dict().values()
+            ):
+                if ema_v.is_floating_point():
                     if self.device is not None:
-                        model_p = model_p.to(device=self.device)
-                    ema_p *= decay
-                    ema_p += (1.0 - decay) * model_p
+                        model_v = model_v.to(device=self.device)
+                    ema_lerp_values.append(ema_v)
+                    model_lerp_values.append(model_v)
+                else:
+                    ema_v.copy_(model_v)
+
+            if hasattr(torch, "_foreach_lerp_"):
+                torch._foreach_lerp_(
+                    ema_lerp_values, model_lerp_values, weight=1.0 - decay
+                )
+            else:
+                torch._foreach_mul_(ema_lerp_values, scalar=decay)
+                torch._foreach_add_(
+                    ema_lerp_values, model_lerp_values, alpha=1.0 - decay
+                )
 
 
 class EMACallback(Callback):
@@ -154,8 +173,9 @@ class EMACallback(Callback):
         @type batch_idx: int
         @param batch_idx: Batch index.
         """
-        if self.ema is not None:
-            self.ema.update(pl_module)
+        if batch_idx % trainer.accumulate_grad_batches == 0:
+            if self.ema is not None:
+                self.ema.update(pl_module)
 
     def on_validation_epoch_start(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
