@@ -83,6 +83,8 @@ class ModelEma(nn.Module):
                 self.state_dict_ema.values(), model.state_dict().values()
             ):
                 if ema_v.is_floating_point():
+                    if self.device is not None:
+                        model_v = model_v.to(device=self.device)
                     ema_lerp_values.append(ema_v)
                     model_lerp_values.append(model_v)
                 else:
