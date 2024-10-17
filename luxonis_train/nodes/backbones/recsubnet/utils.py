@@ -7,12 +7,9 @@ import cv2
 import numpy as np
 import torch
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-torch.set_default_dtype(torch.float16)
-
 
 @lru_cache(maxsize=32)
-def compute_gradients(res):
+def compute_gradients(res, device):
     angles = 2 * torch.pi * torch.rand(res[0] + 1, res[1] + 1, device=device)
     gradients = torch.stack((torch.cos(angles), torch.sin(angles)), dim=-1)
     return gradients
@@ -48,7 +45,12 @@ def dot(grad, shift, grid, shape):
     ).sum(dim=-1)
 
 
-def rand_perlin_2d(shape, res, fade=fade_function):
+def rand_perlin_2d(
+    shape,
+    res,
+    fade=fade_function,
+    device="cuda",
+):
     delta = (res[0] / shape[0], res[1] / shape[1])
     d = (shape[0] // res[0], shape[1] // res[1])
     grid_x, grid_y = torch.meshgrid(
@@ -58,9 +60,8 @@ def rand_perlin_2d(shape, res, fade=fade_function):
     )
     grid = torch.stack((grid_x % 1, grid_y % 1), dim=-1)
 
-    gradients = compute_gradients(res)
+    gradients = compute_gradients(res, device)
 
-    # Use the refactored tile_grads and dot functions
     n00 = dot(tile_grads([0, -1], [0, -1], gradients, d), [0, 0], grid, shape)
     n10 = dot(
         tile_grads([1, None], [0, -1], gradients, d), [-1, 0], grid, shape
@@ -103,7 +104,11 @@ def rotate_noise(noise):
 
 
 def generate_perlin_noise(
-    shape, min_perlin_scale=0, perlin_scale=6, threshold=0.5
+    shape,
+    min_perlin_scale=0,
+    perlin_scale=6,
+    threshold=0.5,
+    device="cuda",
 ):
     perlin_scalex = 2 ** int(
         torch.randint(
@@ -115,17 +120,19 @@ def generate_perlin_noise(
             min_perlin_scale, perlin_scale, (1,), device=device
         ).item()
     )
-    perlin_noise = rand_perlin_2d(shape, (perlin_scalex, perlin_scaley))
+    perlin_noise = rand_perlin_2d(
+        shape=shape, res=(perlin_scalex, perlin_scaley)
+    )
     perlin_mask = torch.where(
         perlin_noise > threshold,
-        torch.ones_like(perlin_noise),
-        torch.zeros_like(perlin_noise),
+        torch.ones_like(perlin_noise, dtype=torch.float32),
+        torch.zeros_like(perlin_noise, dtype=torch.float32),
     )
     perlin_mask = rotate_noise(perlin_mask)
     return perlin_mask
 
 
-def load_image_as_tensor(img_path):
+def load_image_as_tensor(img_path, device):
     image = cv2.imread(img_path, cv2.IMREAD_COLOR)
     image = torch.tensor(
         image.astype(np.float32) / 255.0, device=device
@@ -133,38 +140,42 @@ def load_image_as_tensor(img_path):
     return image
 
 
-def apply_anomaly_to_batch(batch, anomaly_source_path, beta=None):
+def normalize_image(image, device):
+    mean = torch.tensor([0.485, 0.456, 0.406], device=device).view(3, 1, 1)
+    std = torch.tensor([0.229, 0.224, 0.225], device=device).view(3, 1, 1)
+    return (image - mean) / std
+
+
+def apply_anomaly_to_batch(batch, anomaly_source_path, device, beta=None):
+    batch = batch.to(device)
     anomaly_source_paths = sorted(
         glob.glob(os.path.join(anomaly_source_path, "*/*.jpg"))
     )
     sampled_anomaly_image_path = random.choice(anomaly_source_paths)
 
-    anomaly_image = load_image_as_tensor(sampled_anomaly_image_path)
+    anomaly_image = load_image_as_tensor(sampled_anomaly_image_path, device)
     anomaly_image = torch.nn.functional.interpolate(
         anomaly_image.unsqueeze(0),
         size=batch.shape[2:],
         mode="bilinear",
         align_corners=False,
     ).squeeze(0)
-
+    anomaly_image = normalize_image(anomaly_image, device)
     perlin_masks = [
-        generate_perlin_noise((batch.shape[2], batch.shape[3]))
+        generate_perlin_noise(
+            shape=(batch.shape[2], batch.shape[3]), device=device
+        )
         for _ in range(batch.size(0))
     ]
-    perlin_masks = torch.stack(perlin_masks).unsqueeze(1).to(device)
-    perlin_masks = perlin_masks.expand_as(batch)
+    perlin_masks = torch.stack(perlin_masks).to(device)
 
     if beta is None:
         beta = torch.rand(1, device=device).item() * 0.8
 
-    # Apply anomaly to batch
     augmented_batch = (
-        (1 - perlin_masks) * batch
-        + (1 - beta) * perlin_masks * anomaly_image.unsqueeze(0)
-        + beta * perlin_masks * batch
+        (1 - perlin_masks.unsqueeze(1)) * batch
+        + (1 - beta) * perlin_masks.unsqueeze(1) * anomaly_image.unsqueeze(0)
+        + beta * perlin_masks.unsqueeze(1) * batch
     )
-
-    perlin_mask_bg = 1 - perlin_masks
-    perlin_masks = torch.cat([perlin_masks, perlin_mask_bg], dim=1)
 
     return augmented_batch, perlin_masks
