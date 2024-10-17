@@ -15,6 +15,7 @@ from luxonis_train.utils.registry import CALLBACKS
 from .archive_on_train_end import ArchiveOnTrainEnd
 from .export_on_train_end import ExportOnTrainEnd
 from .gpu_stats_monitor import GPUStatsMonitor
+from .gradcam_visializer import GradCamCallback
 from .luxonis_progress_bar import (
     BaseLuxonisProgressBar,
     LuxonisRichProgressBar,
@@ -24,7 +25,6 @@ from .metadata_logger import MetadataLogger
 from .module_freezer import ModuleFreezer
 from .test_on_train_end import TestOnTrainEnd
 from .upload_checkpoint import UploadCheckpoint
-from .gradcam_visializer import GradCamCallback
 
 CALLBACKS.register_module(module=EarlyStopping)
 CALLBACKS.register_module(module=LearningRateMonitor)
