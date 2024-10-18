@@ -60,12 +60,13 @@ Visualizer for bounding boxes.
 
 **Parameters:**
 
-| Key            | Type                   | Default value | Description                                                               |
-| -------------- | ---------------------- | ------------- | ------------------------------------------------------------------------- |
-| `include_plot` | `bool`                 | `True`        | Whether to include a plot of the class probabilities in the visualization |
-| `color`        | `tuple[int, int, int]` | `(255, 0, 0)` | Color of the text                                                         |
-| `font_scale`   | `float`                | `1.0`         | Scale of the font                                                         |
-| `thickness`    | `int`                  | `1`           | Line thickness of the font                                                |
+| Key            | Type                   | Default value | Description                                                                      |
+| -------------- | ---------------------- | ------------- | -------------------------------------------------------------------------------- |
+| `include_plot` | `bool`                 | `True`        | Whether to include a plot of the class probabilities in the visualization        |
+| `color`        | `tuple[int, int, int]` | `(255, 0, 0)` | Color of the text                                                                |
+| `font_scale`   | `float`                | `1.0`         | Scale of the font                                                                |
+| `thickness`    | `int`                  | `1`           | Line thickness of the font                                                       |
+| `multi_label`  | `bool`                 | `False`       | Set to `True` for multi-label classification, otherwise `False` for single-label |
 
 **Example:**
 
