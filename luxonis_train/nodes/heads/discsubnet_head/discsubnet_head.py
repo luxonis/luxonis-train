@@ -30,9 +30,7 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
         super().__init__(**kwargs)
 
         if isinstance(in_channels, list):
-            in_channels = (
-                in_channels[0] * 2
-            )  # Assuming you concatenate two tensors with the same number of channels
+            in_channels = in_channels[0] * 2
 
         base_width = base_channels
         self.encoder_segment = Encoder(in_channels, base_width)
@@ -47,12 +45,8 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
         else:
             recon, orig, an_mask = x_tuple
 
-        # Concatenate along the channel dimension (dim=1), assuming recon and orig are of shape [B, C, H, W]
-        x = torch.cat(
-            (recon, orig), dim=1
-        )  # Concatenate on the channel axis (dim=1)
+        x = torch.cat((recon, orig), dim=1)
 
-        # Pass through the encoder and decoder
         b1, b2, b3, b4, b5, b6 = self.encoder_segment(x)
         seg_out = self.decoder_segment(b1, b2, b3, b4, b5, b6)
 
@@ -72,6 +66,6 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
             return {
                 "original": orig,
                 "reconstructed": recon,
-                "segmentation": seg_out,
+                "segmentation": [seg_out],
                 "anomaly_mask": an_mask,
             }

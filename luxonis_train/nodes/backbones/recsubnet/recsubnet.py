@@ -38,6 +38,7 @@ class RecSubNet(BaseNode[Tensor, Tuple[Tensor, Tensor, Tensor]]):
             else:
                 h, w = x.shape[-2:]
                 an_mask = torch.zeros((x.shape[0], h, w), device=x.device)
+            an_mask = an_mask.unsqueeze(1)
         b5 = self.encoder(x)
 
         output = self.decoder(b5)

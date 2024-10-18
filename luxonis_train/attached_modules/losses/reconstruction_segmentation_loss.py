@@ -40,7 +40,7 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
     ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
         orig = self.get_input_tensors(inputs, "original")
         recon = self.get_input_tensors(inputs, "reconstructed")
-        seg_out = self.get_input_tensors(inputs, "segmentation")
+        seg_out = self.get_input_tensors(inputs, "segmentation")[0]
         an_mask = self.get_input_tensors(inputs, "anomaly_mask")
 
         return (
@@ -68,6 +68,7 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
             "ssim_loss": ssim,
             "focal_loss": focal,
         }
+        print(sub_losses)
 
         return total_loss, sub_losses
 
