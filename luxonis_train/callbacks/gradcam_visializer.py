@@ -49,8 +49,8 @@ class ModelWrapper(pl.LightningModule):
         @rtype: Union[torch.Tensor, Any]
         @return: The processed output based on the task type.
         """
-        inputs = dict(image=inputs)
-        output = self.model(inputs, *args, **kwargs)
+        input_dict = dict(image=inputs)
+        output = self.model(input_dict, *args, **kwargs)
 
         if self.task == "segmentation":
             return output.outputs["segmentation_head"]["segmentation"][0]
@@ -168,8 +168,8 @@ class GradCamCallback(pl.Callback):
         if self.task == "segmentation":
             output = self.model(model_input)
             normalized_masks = torch.nn.functional.softmax(output, dim=1).cpu()
-            mask = normalized_masks.argmax(axis=1).detach().cpu().numpy()
-            mask_float = np.float32(mask == self.class_idx)
+            mask = normalized_masks.argmax(dim=1).detach().cpu().numpy()
+            mask_float = (mask == self.class_idx).astype(np.float32)
             targets = [
                 SemanticSegmentationTarget(self.class_idx, mask_float[i])
                 for i in range(mask_float.shape[0])
@@ -181,7 +181,8 @@ class GradCamCallback(pl.Callback):
 
         with torch.enable_grad():
             grayscale_cams = self.gradcam(
-                input_tensor=model_input, targets=targets
+                input_tensor=model_input,
+                targets=targets,  # type: ignore
             )
 
         images = get_denormalized_images(pl_module.cfg, x).cpu().numpy()
@@ -197,7 +198,7 @@ class GradCamCallback(pl.Callback):
             fig, ax = plt.subplots(1, 1)
             ax.imshow(visualization, cmap="jet")
             ax.axis("off")
-            trainer.logger.log_image(
+            trainer.logger.log_image(  # type: ignore
                 f"gradcam/gradcam_{batch_idx}_{zip_idx}",
                 visualization,
                 step=trainer.global_step,
