@@ -30,7 +30,7 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
     ):
         super().__init__(**kwargs)
         self.loss_l2 = nn.MSELoss()
-        self.loss_focal = FocalLoss()
+        self.loss_focal = FocalLoss(apply_nonlin=torch.softmax)
         self.loss_ssim = SSIM()
 
     def prepare(
@@ -68,7 +68,6 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
             "ssim_loss": ssim,
             "focal_loss": focal,
         }
-        print(sub_losses)
 
         return total_loss, sub_losses
 
@@ -231,7 +230,7 @@ class FocalLoss(nn.Module):
 
     def forward(self, logit, target):
         if self.apply_nonlin is not None:
-            logit = self.apply_nonlin(logit)
+            logit = self.apply_nonlin(logit, dim=1)
         num_class = logit.shape[1]
 
         if logit.dim() > 2:
