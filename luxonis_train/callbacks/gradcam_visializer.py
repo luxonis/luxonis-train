@@ -1,7 +1,6 @@
 import logging
 from typing import Any, Union
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pytorch_lightning as pl
 import torch
@@ -194,13 +193,8 @@ class GradCamCallback(pl.Callback):
             visualization = show_cam_on_image(
                 image, grayscale_cam, use_rgb=True
             )
-
-            fig, ax = plt.subplots(1, 1)
-            ax.imshow(visualization, cmap="jet")
-            ax.axis("off")
             trainer.logger.log_image(  # type: ignore
                 f"gradcam/gradcam_{batch_idx}_{zip_idx}",
                 visualization,
                 step=trainer.global_step,
             )
-            plt.close(fig)
