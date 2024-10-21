@@ -40,10 +40,7 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
     def forward(self, x_tuple: Tuple[Tensor, Tensor]) -> Tensor:
         """Performs the forward pass through the encoder and decoder."""
 
-        if self.export:
-            recon, orig = x_tuple
-        else:
-            recon, orig, an_mask = x_tuple
+        recon, orig = x_tuple
 
         x = torch.cat((recon, orig), dim=1)
 
@@ -53,7 +50,7 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
         if self.export:
             return seg_out
         else:
-            return seg_out, recon, orig, an_mask
+            return seg_out, recon, orig
 
     def wrap(
         self,
@@ -62,10 +59,9 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
         if self.export:
             return {"segmentation": output}
         else:
-            seg_out, orig, recon, an_mask = output
+            seg_out, recon, orig = output
             return {
                 "original": orig,
                 "reconstructed": recon,
                 "segmentation": [seg_out],
-                "anomaly_mask": an_mask,
             }

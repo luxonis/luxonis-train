@@ -1,6 +1,6 @@
 import logging
 from math import exp
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import torch
@@ -28,6 +28,12 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
         self,
         **kwargs: Any,
     ):
+        """ReconstructionSegmentationLoss implements a combined loss
+        function for reconstruction and segmentation tasks.
+
+        It combines L2 loss for reconstruction, SSIM loss, and Focal
+        loss for segmentation.
+        """
         super().__init__(**kwargs)
         self.loss_l2 = nn.MSELoss()
         self.loss_focal = FocalLoss(apply_nonlin=torch.softmax)
@@ -41,7 +47,9 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
         orig = self.get_input_tensors(inputs, "original")
         recon = self.get_input_tensors(inputs, "reconstructed")
         seg_out = self.get_input_tensors(inputs, "segmentation")[0]
-        an_mask = self.get_input_tensors(inputs, "anomaly_mask")
+        an_mask = self.get_label(labels)
+        if an_mask.shape[1] > 1:
+            an_mask = an_mask[:, 0:1, :, :].contiguous()
 
         return (
             orig,
@@ -73,7 +81,12 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
 
 
 class SSIM(torch.nn.Module):
-    def __init__(self, window_size=11, size_average=True, val_range=None):
+    def __init__(
+        self,
+        window_size: int = 11,
+        size_average: bool = True,
+        val_range: float | None = None,
+    ):
         super(SSIM, self).__init__()
         self.window_size = window_size
         self.size_average = size_average
@@ -83,7 +96,7 @@ class SSIM(torch.nn.Module):
         self.channel = 1
         self.window = create_window(window_size).cuda()
 
-    def forward(self, img1, img2):
+    def forward(self, img1: Tensor, img2: Tensor) -> Tensor:
         (_, channel, _, _) = img1.size()
 
         if channel == self.channel and self.window.dtype == img1.dtype:
@@ -107,7 +120,7 @@ class SSIM(torch.nn.Module):
         return 1.0 - s_score
 
 
-def create_window(window_size, channel=1):
+def create_window(window_size: int, channel: int = 1) -> Tensor:
     _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
     _2D_window = (
         _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
@@ -118,7 +131,7 @@ def create_window(window_size, channel=1):
     return window
 
 
-def gaussian(window_size, sigma):
+def gaussian(window_size: int, sigma: float) -> Tensor:
     gauss = torch.Tensor(
         [
             exp(-((x - window_size // 2) ** 2) / float(2 * sigma**2))
@@ -129,14 +142,14 @@ def gaussian(window_size, sigma):
 
 
 def ssim(
-    img1,
-    img2,
-    window_size=11,
-    window=None,
+    img1: Tensor,
+    img2: Tensor,
+    window_size: int = 11,
+    window: Tensor | None = None,
     size_average=True,
     full=False,
     val_range=None,
-):
+) -> Tensor:
     if val_range is None:
         if torch.max(img1) > 128:
             max_val = 255
@@ -209,12 +222,12 @@ class FocalLoss(nn.Module):
 
     def __init__(
         self,
-        apply_nonlin=None,
-        alpha=None,
-        gamma=2,
-        balance_index=0,
-        smooth=1e-5,
-        size_average=True,
+        apply_nonlin: Callable[[Tensor], Tensor] | None = None,
+        alpha: Tensor = None,
+        gamma: float = 2,
+        balance_index: int = 0,
+        smooth: float = 1e-5,
+        size_average: bool = True,
     ):
         super(FocalLoss, self).__init__()
         self.apply_nonlin = apply_nonlin
@@ -228,7 +241,7 @@ class FocalLoss(nn.Module):
             if self.smooth < 0 or self.smooth > 1.0:
                 raise ValueError("smooth value should be in [0,1]")
 
-    def forward(self, logit, target):
+    def forward(self, logit: Tensor, target: Tensor) -> Tensor:
         if self.apply_nonlin is not None:
             logit = self.apply_nonlin(logit, dim=1)
         num_class = logit.shape[1]
