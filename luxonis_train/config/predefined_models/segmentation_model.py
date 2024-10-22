@@ -114,9 +114,9 @@ class SegmentationModel(BasePredefinedModel):
         loss_list = [
             LossModuleConfig(
                 name=(
-                    "BCEWithLogitsLoss"
+                    "OHEMBCEWithLogitsLoss"
                     if self.task == "binary"
-                    else "CrossEntropyLoss"
+                    else "OHEMCrossEntropyLoss"
                 ),
                 alias="segmentation_loss",
                 attached_to="segmentation_head",
@@ -128,9 +128,9 @@ class SegmentationModel(BasePredefinedModel):
             loss_list.append(
                 LossModuleConfig(
                     name=(
-                        "BCEWithLogitsLoss"
+                        "OHEMBCEWithLogitsLoss"
                         if self.task == "binary"
-                        else "CrossEntropyLoss"
+                        else "OHEMCrossEntropyLoss"
                     ),
                     alias="aux_segmentation_loss",
                     attached_to="aux_segmentation_head",
