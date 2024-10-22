@@ -135,62 +135,52 @@ def generate_perlin_noise(
     return perlin_mask
 
 
-def load_image_as_tensor(img_path: str) -> torch.Tensor:
+def load_image_as_numpy(img_path: str) -> np.ndarray:
     image = cv2.imread(img_path, cv2.IMREAD_COLOR)
-    image = torch.tensor(image.astype(np.float32) / 255.0).permute(2, 0, 1)
+    image = image.astype(np.float32) / 255.0
     return image
-
-
-def normalize_image(
-    image: torch.Tensor, mean: List[float], std: List[float]
-) -> torch.Tensor:
-    mean = torch.tensor(mean).view(3, 1, 1)
-    std = torch.tensor(std).view(3, 1, 1)
-    return (image - mean) / std
 
 
 def apply_anomaly_to_img(
     img: torch.Tensor,
     anomaly_source_paths: List[str],
-    mean: List[float],
-    std: List[float],
     beta: float | None = None,
+    pixel_augs: List[Callable] = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Applies Perlin noise-based anomalies to a single image (C, H, W).
 
     @type img: torch.Tensor
     @param img: The input image tensor of shape (C, H, W).
-
     @type anomaly_source_paths: List[str]
     @param anomaly_source_paths: List of file paths to the anomaly images.
-
-    @type mean: List[float]
-    @param mean: The mean values for normalizing the anomaly image.
-
-    @type std: List[float]
-    @param std: The standard deviation values for normalizing the anomaly image.
-
+    @type pixel_augs: List[Callable]
+    @param pixel_augs: A list of albumentations augmentations to apply to the anomaly image. Defaults to C{None}.
     @type beta: float | None
     @param beta: A blending factor for anomaly and noise. If None, a random value in the range [0, 0.8]
                  is used. Defaults to C{None}.
-
     @rtype: Tuple[torch.Tensor, torch.Tensor]
     @return: A tuple containing:
         - augmented_img (torch.Tensor): The augmented image with applied anomaly and Perlin noise.
         - perlin_mask (torch.Tensor): The Perlin noise mask applied to the image.
     """
 
+    if pixel_augs is None:
+        pixel_augs = []
+
     sampled_anomaly_image_path = random.choice(anomaly_source_paths)
 
-    anomaly_image = load_image_as_tensor(sampled_anomaly_image_path)
-    anomaly_image = torch.nn.functional.interpolate(
-        anomaly_image.unsqueeze(0),
-        size=img.shape[1:],
-        mode="bilinear",
-        align_corners=False,
-    ).squeeze(0)
+    anomaly_image = load_image_as_numpy(sampled_anomaly_image_path)
 
-    anomaly_image = normalize_image(anomaly_image, mean, std)
+    anomaly_image = cv2.resize(
+        anomaly_image,
+        (img.shape[2], img.shape[1]),
+        interpolation=cv2.INTER_LINEAR,
+    )
+
+    for aug in pixel_augs:
+        anomaly_image = torch.tensor(
+            aug(image=anomaly_image)["image"]
+        ).permute(2, 0, 1)
 
     perlin_mask = generate_perlin_noise(
         shape=(img.shape[1], img.shape[2]),
