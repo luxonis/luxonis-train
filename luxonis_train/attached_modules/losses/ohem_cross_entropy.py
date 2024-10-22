@@ -1,7 +1,7 @@
 from typing import Any
 
-from .ohem_loss import OHEMLoss
 from .cross_entropy import CrossEntropyLoss
+from .ohem_loss import OHEMLoss
 
 
 class OHEMCrossEntropyLoss(OHEMLoss):
@@ -14,4 +14,3 @@ class OHEMCrossEntropyLoss(OHEMLoss):
     ):
         kwargs.update(criterion=CrossEntropyLoss)
         super().__init__(**kwargs)
-

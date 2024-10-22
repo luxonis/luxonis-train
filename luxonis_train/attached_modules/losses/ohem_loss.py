@@ -4,9 +4,9 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from .base_loss import BaseLoss
-
 from luxonis_train.enums import TaskType
+
+from .base_loss import BaseLoss
 
 
 class OHEMLoss(BaseLoss[Tensor, Tensor]):
@@ -59,4 +59,3 @@ class OHEMLoss(BaseLoss[Tensor, Tensor]):
             loss = loss[:ohem_num]
 
         return loss.mean()
-
