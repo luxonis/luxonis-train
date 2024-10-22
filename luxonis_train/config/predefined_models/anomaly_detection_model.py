@@ -23,10 +23,10 @@ def get_variant(variant: VariantLiteral) -> AnomalyVariant:
     AnomalyDetectionModel."""
     variants = {
         "light": AnomalyVariant(
-            variant="N",
+            variant="n",
         ),
         "heavy": AnomalyVariant(
-            variant="L",
+            variant="l",
         ),
     }
 
