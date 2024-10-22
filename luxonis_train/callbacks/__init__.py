@@ -13,6 +13,7 @@ from lightning.pytorch.callbacks import (
 from luxonis_train.utils.registry import CALLBACKS
 
 from .archive_on_train_end import ArchiveOnTrainEnd
+from .ema import EMACallback
 from .export_on_train_end import ExportOnTrainEnd
 from .gpu_stats_monitor import GPUStatsMonitor
 from .luxonis_progress_bar import (
@@ -34,6 +35,7 @@ CALLBACKS.register_module(module=GradientAccumulationScheduler)
 CALLBACKS.register_module(module=StochasticWeightAveraging)
 CALLBACKS.register_module(module=Timer)
 CALLBACKS.register_module(module=ModelPruning)
+CALLBACKS.register_module(module=EMACallback)
 
 
 __all__ = [
@@ -47,4 +49,5 @@ __all__ = [
     "TestOnTrainEnd",
     "UploadCheckpoint",
     "GPUStatsMonitor",
+    "EMACallback",
 ]
