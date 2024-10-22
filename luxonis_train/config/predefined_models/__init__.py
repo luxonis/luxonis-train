@@ -1,3 +1,4 @@
+from .anomaly_detection_model import AnomalyDetectionModel
 from .base_predefined_model import BasePredefinedModel
 from .classification_model import ClassificationModel
 from .detection_model import DetectionModel
@@ -10,4 +11,5 @@ __all__ = [
     "KeypointDetectionModel",
     "ClassificationModel",
     "SegmentationModel",
+    "AnomalyDetectionModel",
 ]
