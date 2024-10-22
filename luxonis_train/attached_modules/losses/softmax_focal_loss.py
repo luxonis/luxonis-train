@@ -41,7 +41,7 @@ class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
         """
         super().__init__(**kwargs)
 
-        self.alpha = alpha if alpha is not None else 1.0
+        self.alpha = alpha
         self.gamma = gamma
         self.smooth = smooth
         self.reduction = reduction

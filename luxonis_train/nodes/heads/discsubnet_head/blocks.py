@@ -1,24 +1,38 @@
 import torch
 from torch import Tensor, nn
 
+from luxonis_train.nodes.blocks import ConvModule
+
 
 def conv_block(in_channels: int, out_channels: int) -> nn.Sequential:
     return nn.Sequential(
-        nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
-        nn.BatchNorm2d(out_channels),
-        nn.ReLU(inplace=True),
-        nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-        nn.BatchNorm2d(out_channels),
-        nn.ReLU(inplace=True),
+        ConvModule(
+            in_channels,
+            out_channels,
+            kernel_size=3,
+            padding=1,
+            activation=nn.ReLU(inplace=True),
+        ),
+        ConvModule(
+            out_channels,
+            out_channels,
+            kernel_size=3,
+            padding=1,
+            activation=nn.ReLU(inplace=True),
+        ),
     )
 
 
 def upsample_block(in_channels: int, out_channels: int) -> nn.Sequential:
     return nn.Sequential(
         nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
-        nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
-        nn.BatchNorm2d(out_channels),
-        nn.ReLU(inplace=True),
+        ConvModule(
+            in_channels,
+            out_channels,
+            kernel_size=3,
+            padding=1,
+            activation=nn.ReLU(inplace=True),
+        ),
     )
 
 

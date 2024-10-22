@@ -36,7 +36,7 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
         """
         super().__init__(**kwargs)
         self.loss_l2 = nn.MSELoss()
-        self.loss_focal = SoftmaxFocalLoss(smooth=1e-5)
+        self.loss_focal = SoftmaxFocalLoss(smooth=1e-5, alpha=1, gamma=2.0)
         self.loss_ssim = SSIM()
 
     def prepare(

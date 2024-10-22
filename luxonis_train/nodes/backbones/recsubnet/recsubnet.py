@@ -1,10 +1,27 @@
-from typing import Tuple
+from typing import Literal, Tuple, TypeAlias
 
 from torch import Tensor
 
 from luxonis_train.nodes.base_node import BaseNode
 
 from .blocks import Decoder, Encoder, NanoDecoder, NanoEncoder
+
+VariantLiteral: TypeAlias = Literal["n", "l"]
+
+
+def get_variant(variant: VariantLiteral) -> int:
+    """Returns the base width for the specified variant."""
+    variants = {
+        "n": 64,
+        "l": 128,
+    }
+
+    if variant not in variants:
+        raise ValueError(
+            f"Variant should be one of {list(variants.keys())}, got '{variant}'."
+        )
+
+    return variants[variant]
 
 
 class RecSubNet(BaseNode[Tensor, Tuple[Tensor, Tensor, Tensor]]):
@@ -14,10 +31,10 @@ class RecSubNet(BaseNode[Tensor, Tuple[Tensor, Tensor, Tensor]]):
 
     def __init__(
         self,
-        in_channels=3,
-        out_channels=3,
-        base_width=128,
-        variant="L",
+        in_channels: int = 3,
+        out_channels: int = 3,
+        base_width: int | None = None,
+        variant: VariantLiteral = "l",
         **kwargs,
     ):
         """
@@ -39,21 +56,25 @@ class RecSubNet(BaseNode[Tensor, Tuple[Tensor, Tensor, Tensor]]):
         @type base_width: int
         @param base_width: The base width of the network. Determines the number of filters in the encoder and decoder.
 
-        @type variant: str
-        @param variant: The variant of the RecSubNet to use. Defaults to "L".
+        @type variant: Literal["n", "l"]
+        @param variant: The variant of the RecSubNet to use. "l" for large, "n" for nano (lightweight). Defaults to "l".
 
         @type kwargs: Any
         @param kwargs: Additional arguments to be passed to the BaseNode class.
         """
         super().__init__(**kwargs)
 
-        if variant == "L":
-            self.encoder = Encoder(in_channels, base_width)
-            self.decoder = Decoder(base_width, out_channels=out_channels)
-        elif variant == "N":
-            self.encoder = NanoEncoder(in_channels, base_width // 2)
+        self.base_width = (
+            base_width if base_width is not None else get_variant(variant)
+        )
+
+        if variant == "l":
+            self.encoder = Encoder(in_channels, self.base_width)
+            self.decoder = Decoder(self.base_width, out_channels=out_channels)
+        elif variant == "n":
+            self.encoder = NanoEncoder(in_channels, self.base_width)
             self.decoder = NanoDecoder(
-                base_width // 2, out_channels=out_channels
+                self.base_width, out_channels=out_channels
             )
 
     def forward(self, x: Tensor) -> Tensor:

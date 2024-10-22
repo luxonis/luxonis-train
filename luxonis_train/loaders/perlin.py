@@ -178,9 +178,9 @@ def apply_anomaly_to_img(
     )
 
     for aug in pixel_augs:
-        anomaly_image = torch.tensor(
-            aug(image=anomaly_image)["image"]
-        ).permute(2, 0, 1)
+        anomaly_image = aug(image=anomaly_image)["image"]
+
+    anomaly_image = torch.tensor(anomaly_image).permute(2, 0, 1)
 
     perlin_mask = generate_perlin_noise(
         shape=(img.shape[1], img.shape[2]),

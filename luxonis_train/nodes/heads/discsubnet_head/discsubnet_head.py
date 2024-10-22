@@ -1,15 +1,30 @@
-from typing import Tuple
+from typing import Literal, Tuple, TypeAlias
 
 import torch
 from torch import Tensor
 
 from luxonis_train.enums import TaskType
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.utils import (
-    Packet,
-)
+from luxonis_train.utils import Packet
 
 from .blocks import Decoder, Encoder, NanoDecoder, NanoEncoder
+
+VariantLiteral: TypeAlias = Literal["n", "l"]
+
+
+def get_variant(variant: VariantLiteral) -> int:
+    """Returns the base width for the specified variant."""
+    variants = {
+        "n": 32,
+        "l": 64,
+    }
+
+    if variant not in variants:
+        raise ValueError(
+            f"Variant should be one of {list(variants.keys())}, got '{variant}'."
+        )
+
+    return variants[variant]
 
 
 class DiscSubNetHead(BaseNode[Tensor, Tensor]):
@@ -22,8 +37,8 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
         self,
         in_channels: list[int] | int = 6,
         out_channels: list[int] | int = 2,
-        base_channels: int = 64,
-        variant: str = "L",
+        base_channels: int | None = None,
+        variant: VariantLiteral = "l",  # Use lowercase variant
         **kwargs,
     ):
         """
@@ -34,10 +49,6 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
         input, while the decoder generates a mask that identifies areas of anomalies by distinguishing
         between the reconstructed image and the input.
 
-        The network has two variants:
-        - "L" (large): uses a full encoder-decoder architecture with more filters.
-        - "N" (nano): a lightweight version with fewer filters for more efficient processing.
-
         @type in_channels: list[int] | int
         @param in_channels: Number of input channels for the encoder. Defaults to 6.
 
@@ -45,10 +56,10 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
         @param out_channels: Number of output channels for the decoder. Defaults to 2 (for segmentation masks).
 
         @type base_channels: int
-        @param base_channels: The base number of filters used in the encoder and decoder blocks. Determines model size.
+        @param base_channels: The base number of filters used in the encoder and decoder blocks. If None, it is determined based on the variant.
 
-        @type variant: str
-        @param variant: The variant of the DiscSubNetHead to use. "L" for large, "N" for nano (lightweight). Defaults to "L".
+        @type variant: Literal["n", "l"]
+        @param variant: The variant of the DiscSubNetHead to use. "l" for large, "n" for nano (lightweight). Defaults to "l".
 
         @type kwargs: Any
         @param kwargs: Additional arguments to be passed to the BaseNode class.
@@ -58,14 +69,20 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
         if isinstance(in_channels, list):
             in_channels = in_channels[0] * 2
 
-        base_width = base_channels
-        if variant == "L":
-            self.encoder_segment = Encoder(in_channels, base_width)
-            self.decoder_segment = Decoder(base_width, out_channels)
-        elif variant == "N":
-            nano_base_width = base_width // 2
-            self.encoder_segment = NanoEncoder(in_channels, nano_base_width)
-            self.decoder_segment = NanoDecoder(nano_base_width, out_channels)
+        self.base_channels = (
+            base_channels
+            if base_channels is not None
+            else get_variant(variant)
+        )
+
+        if variant == "l":
+            self.encoder_segment = Encoder(in_channels, self.base_channels)
+            self.decoder_segment = Decoder(self.base_channels, out_channels)
+        elif variant == "n":
+            self.encoder_segment = NanoEncoder(in_channels, self.base_channels)
+            self.decoder_segment = NanoDecoder(
+                self.base_channels, out_channels
+            )
 
     def forward(self, x_tuple: Tuple[Tensor, Tensor]) -> Tensor:
         """Performs the forward pass through the encoder and decoder."""
@@ -85,6 +102,7 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
         self,
         output: tuple[list[Tensor], list[Tensor]] | list[Tensor],
     ) -> Packet[Tensor]:
+        """Wraps the output into a packet."""
         if self.export:
             return {"segmentation": output}
         else:
