@@ -108,6 +108,7 @@ class LuxonisModel:
             callbacks=LuxonisRichProgressBar()
             if self.cfg.trainer.use_rich_progress_bar
             else LuxonisTQDMProgressBar(),
+            precision=self.cfg.trainer.precision,
         )
 
         self.train_augmentations = Augmentations(
