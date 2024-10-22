@@ -1,7 +1,6 @@
 from typing import Any
 
 import torch
-import torch.nn as nn
 from torch import Tensor
 
 from luxonis_train.enums import TaskType
