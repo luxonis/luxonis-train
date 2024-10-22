@@ -19,14 +19,14 @@ class OHEMLoss(BaseLoss[Tensor, Tensor]):
 
     def __init__(
         self,
-        criterion: nn.Module,
+        criterion: BaseLoss,
         ohem_ratio: float = 0.1,
         ohem_threshold: float = 0.7,
         **kwargs: Any,
     ):
         """Initializes the criterion.
 
-        @type criterion: nn.Module
+        @type criterion: BaseLoss
         @param criterion: The criterion to use.
         @type ohem_ratio: float
         @param ohem_ratio: The ratio of pixels to keep.
