@@ -20,7 +20,7 @@ class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
 
     def __init__(
         self,
-        alpha: float = 0.25,
+        alpha: float | list[float] = 0.25,
         gamma: float = 2.0,
         smooth: float = 0.0,
         reduction: Literal["none", "mean", "sum"] = "mean",
@@ -29,7 +29,7 @@ class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
         """Focal loss implementation for binary classification and
         segmentation tasks using Softmax.
 
-        @type alpha: float
+        @type alpha: float | list[float]
         @param alpha: Weighting factor for the rare class. Defaults to
             C{0.25}.
         @type gamma: float
@@ -45,6 +45,11 @@ class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
         self.gamma = gamma
         self.smooth = smooth
         self.reduction = reduction
+
+        if isinstance(alpha, list):
+            self.alpha = torch.tensor(alpha)
+        else:
+            self.alpha = alpha
 
         if self.smooth is not None:
             if self.smooth < 0 or self.smooth > 1.0:
@@ -66,11 +71,19 @@ class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
 
         pt = (targets * logits).sum(dim=1) + self.smooth
 
+        if isinstance(self.alpha, torch.Tensor):
+            if self.alpha.size(0) != logits.size(1):
+                raise ValueError(
+                    f"Alpha length {self.alpha.size(0)} does not match number of classes {logits.size(1)}"
+                )
+            alpha_t = self.alpha[targets.argmax(dim=1)]
+        else:
+            alpha_t = self.alpha
+
         focal_term = torch.pow(1 - pt, self.gamma)
-        loss = -self.alpha * focal_term * pt.log()
+        loss = -alpha_t * focal_term * pt.log()
 
         if self.reduction == "mean":
             return loss.mean()
         elif self.reduction == "sum":
             return loss.sum()
-        return loss

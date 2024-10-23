@@ -26,6 +26,10 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
 
     def __init__(
         self,
+        alpha: float = 1,
+        gamma: float = 2.0,
+        reduction: str = "mean",
+        smooth: float = 1e-5,
         **kwargs: Any,
     ):
         """ReconstructionSegmentationLoss implements a combined loss
@@ -33,10 +37,21 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
 
         It combines L2 loss for reconstruction, SSIM loss, and Focal
         loss for segmentation.
+
+        @type alpha: float
+        @param alpha: Weighting factor for the rare class in the focal loss. Defaults to C{1}.
+        @type gamma: float
+        @param gamma: Focusing parameter for the focal loss. Defaults to C{2.0}.
+        @type smooth: float
+        @param smooth: Label smoothing factor for the focal loss.  Defaults to C{0.0}.
+        @type reduction: Literal["none", "mean", "sum"]
+        @param reduction: Reduction type for the focal loss.. Defaults to C{"mean"}.
         """
         super().__init__(**kwargs)
         self.loss_l2 = nn.MSELoss()
-        self.loss_focal = SoftmaxFocalLoss(smooth=1e-5, alpha=1, gamma=2.0)
+        self.loss_focal = SoftmaxFocalLoss(
+            smooth=smooth, alpha=alpha, gamma=gamma, reduction=reduction
+        )
         self.loss_ssim = SSIM()
 
     def prepare(
