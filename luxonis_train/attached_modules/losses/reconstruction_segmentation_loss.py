@@ -63,18 +63,12 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
         seg_out = self.get_input_tensors(inputs, "segmentation")[0]
         an_mask = labels["segmentation"][0]
         orig = labels["original"][0]
-        if an_mask.shape[1] > 1:
-            an_mask = an_mask[:, 0:1, :, :].contiguous()
-
-        one_hot_an_mask = (
-            F.one_hot(an_mask.squeeze(1).long(), 2).permute(0, 3, 1, 2).float()
-        )
 
         return (
             orig,
             recon,
             seg_out,
-            one_hot_an_mask,
+            an_mask,
         )
 
     def forward(

@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
+    MetricModuleConfig,  # Metrics support added
     ModelNodeConfig,
     Params,
 )
@@ -15,7 +16,8 @@ VariantLiteral: TypeAlias = Literal["light", "heavy"]
 
 
 class AnomalyVariant(BaseModel):
-    variant: str
+    backbone: str
+    backbone_params: Params
 
 
 def get_variant(variant: VariantLiteral) -> AnomalyVariant:
@@ -23,10 +25,12 @@ def get_variant(variant: VariantLiteral) -> AnomalyVariant:
     AnomalyDetectionModel."""
     variants = {
         "light": AnomalyVariant(
-            variant="n",
+            backbone="RecSubNet",
+            backbone_params={"variant": "n"},
         ),
         "heavy": AnomalyVariant(
-            variant="l",
+            backbone="RecSubNet",
+            backbone_params={"variant": "l"},
         ),
     }
 
@@ -41,8 +45,9 @@ def get_variant(variant: VariantLiteral) -> AnomalyVariant:
 class AnomalyDetectionModel(BasePredefinedModel):
     def __init__(
         self,
-        variant: VariantLiteral = "ligth",
-        rec_subnet_params: Params | None = None,
+        variant: VariantLiteral = "light",
+        backbone: str | None = None,
+        backbone_params: Params | None = None,
         disc_subnet_params: Params | None = None,
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
@@ -50,29 +55,26 @@ class AnomalyDetectionModel(BasePredefinedModel):
     ):
         var_config = get_variant(variant)
 
-        self.rec_subnet_params = (
-            rec_subnet_params
-            if rec_subnet_params is not None
-            else {"variant": var_config.variant}
-        )
-        self.disc_subnet_params = (
-            disc_subnet_params
-            if disc_subnet_params is not None
-            else {"variant": var_config.variant}
-        )
+        self.backbone = backbone or var_config.backbone
+        self.backbone_params = (
+            backbone_params
+            if backbone is not None or backbone_params is not None
+            else var_config.backbone_params
+        ) or {}
+        self.disc_subnet_params = disc_subnet_params or {}
         self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
-        self.task_name = task_name or "segmentation"
+        self.task_name = task_name or "anomaly_detection"
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
         """Defines the model nodes, including RecSubNet and
         DiscSubNetHead."""
-        nodes = [
+        return [
             ModelNodeConfig(
-                name="RecSubNet",
+                name=self.backbone,
                 alias="rec_subnet",
-                params=self.rec_subnet_params,
+                params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="DiscSubNetHead",
@@ -81,7 +83,6 @@ class AnomalyDetectionModel(BasePredefinedModel):
                 params=self.disc_subnet_params,
             ),
         ]
-        return nodes
 
     @property
     def losses(self) -> list[LossModuleConfig]:
@@ -94,6 +95,18 @@ class AnomalyDetectionModel(BasePredefinedModel):
                 params=self.loss_params,
                 weight=1.0,
             )
+        ]
+
+    @property
+    def metrics(self) -> list[MetricModuleConfig]:
+        """Defines the metrics used for evaluation."""
+        return [
+            MetricModuleConfig(
+                name="JaccardIndex",
+                alias="segmentation_jaccard_index",
+                attached_to="disc_subnet_head",
+                is_main_metric=True,
+            ),
         ]
 
     @property

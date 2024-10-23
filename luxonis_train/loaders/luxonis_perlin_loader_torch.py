@@ -4,6 +4,7 @@ import random
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch import Tensor
 
 from luxonis_train.enums import TaskType
@@ -69,7 +70,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         tensor_labels = {"original": (tensor_img, TaskType.ARRAY)}
         if self.view[0] == "train":
             tensor_labels["segmentation"] = (
-                an_mask.unsqueeze(0),
+                F.one_hot(an_mask.long(), 2).permute(2, 0, 1).float(),
                 TaskType.SEGMENTATION,
             )
         else:
