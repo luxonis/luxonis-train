@@ -5,6 +5,7 @@ import random
 import numpy as np
 import torch
 import torch.nn.functional as F
+from luxonis_ml.utils import LuxonisFileSystem
 from torch import Tensor
 
 from luxonis_train.enums import TaskType
@@ -33,6 +34,14 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
             noise (only used during training). normalization.
         """
         super().__init__(*args, **kwargs)
+        lux_fs = LuxonisFileSystem(path=anomaly_source_path)
+        if lux_fs.protocol in ["s3", "gcs"]:
+            anomaly_source_path = lux_fs.get_dir(
+                remote_path=anomaly_source_path, local_path="./data"
+            )
+        else:
+            anomaly_source_path = lux_fs.path
+
         if anomaly_source_path and os.path.exists(anomaly_source_path):
             self.anomaly_source_paths = sorted(
                 glob.glob(os.path.join(anomaly_source_path, "*/*.jpg"))
