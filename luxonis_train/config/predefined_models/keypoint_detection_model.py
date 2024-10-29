@@ -71,8 +71,8 @@ class KeypointDetectionModel(BasePredefinedModel):
         self.loss_params = loss_params or {"n_warmup_epochs": 0}
         self.kpt_visualizer_params = kpt_visualizer_params or {}
         self.bbox_visualizer_params = bbox_visualizer_params or {}
-        self.bbox_task_name = bbox_task_name
-        self.kpt_task_name = kpt_task_name
+        self.bbox_task_name = bbox_task_name or "boundingbox"
+        self.kpt_task_name = kpt_task_name or "keypoint_detection"
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
@@ -81,7 +81,7 @@ class KeypointDetectionModel(BasePredefinedModel):
         nodes = [
             ModelNodeConfig(
                 name=self.backbone,
-                alias="kpt_detection_backbone",
+                alias=f"{self.backbone}-{self.kpt_task_name}",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
@@ -90,8 +90,8 @@ class KeypointDetectionModel(BasePredefinedModel):
             nodes.append(
                 ModelNodeConfig(
                     name="RepPANNeck",
-                    alias="kpt_detection_neck",
-                    inputs=["kpt_detection_backbone"],
+                    alias=f"RepPANNeck-{self.kpt_task_name}",
+                    inputs=[f"{self.backbone}-{self.kpt_task_name}"],
                     freezing=self.neck_params.pop("freezing", {}),
                     params=self.neck_params,
                 )
@@ -106,11 +106,11 @@ class KeypointDetectionModel(BasePredefinedModel):
         nodes.append(
             ModelNodeConfig(
                 name="EfficientKeypointBBoxHead",
-                alias="kpt_detection_head",
+                alias=f"EfficientKeypointBBoxHead-{self.kpt_task_name}",
                 inputs=(
-                    ["kpt_detection_neck"]
+                    [f"RepPANNeck-{self.kpt_task_name}"]
                     if self.use_neck
-                    else ["kpt_detection_backbone"]
+                    else [f"{self.backbone}-{self.kpt_task_name}"]
                 ),
                 freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
@@ -125,7 +125,8 @@ class KeypointDetectionModel(BasePredefinedModel):
         return [
             LossModuleConfig(
                 name="EfficientKeypointBBoxLoss",
-                attached_to="kpt_detection_head",
+                alias=f"EfficientKeypointBBoxLoss-{self.kpt_task_name}",
+                attached_to=f"EfficientKeypointBBoxHead-{self.kpt_task_name}",
                 params=self.loss_params,
                 weight=1.0,
             )
@@ -137,14 +138,14 @@ class KeypointDetectionModel(BasePredefinedModel):
         return [
             MetricModuleConfig(
                 name="ObjectKeypointSimilarity",
-                alias="kpt_detection_oks",
-                attached_to="kpt_detection_head",
+                alias=f"ObjectKeypointSimilarity-{self.kpt_task_name}",
+                attached_to=f"EfficientKeypointBBoxHead-{self.kpt_task_name}",
                 is_main_metric=True,
             ),
             MetricModuleConfig(
                 name="MeanAveragePrecisionKeypoints",
-                alias="kpt_detection_map",
-                attached_to="kpt_detection_head",
+                alias=f"MeanAveragePrecisionKeypoints-{self.kpt_task_name}",
+                attached_to=f"EfficientKeypointBBoxHead-{self.kpt_task_name}",
             ),
         ]
 
@@ -155,8 +156,8 @@ class KeypointDetectionModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="MultiVisualizer",
-                alias="kpt_detection_visualizer",
-                attached_to="kpt_detection_head",
+                alias=f"MultiVisualizer-{self.kpt_task_name}",
+                attached_to=f"EfficientKeypointBBoxHead-{self.kpt_task_name}",
                 params={
                     "visualizers": [
                         {
