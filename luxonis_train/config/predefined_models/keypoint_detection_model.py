@@ -72,7 +72,7 @@ class KeypointDetectionModel(BasePredefinedModel):
         self.kpt_visualizer_params = kpt_visualizer_params or {}
         self.bbox_visualizer_params = bbox_visualizer_params or {}
         self.bbox_task_name = bbox_task_name or "boundingbox"
-        self.kpt_task_name = kpt_task_name or "keypoint_detection"
+        self.kpt_task_name = kpt_task_name or "keypoints"
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
