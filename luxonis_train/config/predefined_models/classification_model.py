@@ -81,7 +81,7 @@ class ClassificationModel(BasePredefinedModel):
             ModelNodeConfig(
                 name="ClassificationHead",
                 alias=f"ClassificationHead-{self.task_name}",
-                inputs=["f{self.backbone}-{self.task_name}"],
+                inputs=[f"{self.backbone}-{self.task_name}"],
                 freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
                 task=self.task_name,
