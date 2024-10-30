@@ -77,7 +77,7 @@ class DetectionModel(BasePredefinedModel):
         nodes = [
             ModelNodeConfig(
                 name=self.backbone,
-                alias="detection_backbone",
+                alias=f"{self.backbone}-{self.task_name}",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
@@ -86,8 +86,8 @@ class DetectionModel(BasePredefinedModel):
             nodes.append(
                 ModelNodeConfig(
                     name="RepPANNeck",
-                    alias="detection_neck",
-                    inputs=["detection_backbone"],
+                    alias=f"RepPANNeck-{self.task_name}",
+                    inputs=[f"{self.backbone}-{self.task_name}"],
                     freezing=self.neck_params.pop("freezing", {}),
                     params=self.neck_params,
                 )
@@ -96,11 +96,11 @@ class DetectionModel(BasePredefinedModel):
         nodes.append(
             ModelNodeConfig(
                 name="EfficientBBoxHead",
-                alias="detection_head",
+                alias=f"EfficientBBoxHead-{self.task_name}",
                 freezing=self.head_params.pop("freezing", {}),
-                inputs=["detection_neck"]
+                inputs=[f"RepPANNeck-{self.task_name}"]
                 if self.use_neck
-                else ["detection_backbone"],
+                else [f"{self.backbone}-{self.task_name}"],
                 params=self.head_params,
                 task=self.task_name,
             )
@@ -113,8 +113,8 @@ class DetectionModel(BasePredefinedModel):
         return [
             LossModuleConfig(
                 name="AdaptiveDetectionLoss",
-                alias="detection_loss",
-                attached_to="detection_head",
+                alias=f"AdaptiveDetectionLoss-{self.task_name}",
+                attached_to=f"EfficientBBoxHead-{self.task_name}",
                 params=self.loss_params,
                 weight=1.0,
             )
@@ -126,8 +126,8 @@ class DetectionModel(BasePredefinedModel):
         return [
             MetricModuleConfig(
                 name="MeanAveragePrecision",
-                alias="detection_map",
-                attached_to="detection_head",
+                alias=f"MeanAveragePrecision-{self.task_name}",
+                attached_to=f"EfficientBBoxHead-{self.task_name}",
                 is_main_metric=True,
             ),
         ]
@@ -138,8 +138,8 @@ class DetectionModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="BBoxVisualizer",
-                alias="detection_visualizer",
-                attached_to="detection_head",
+                alias=f"BBoxVisualizer-{self.task_name}",
+                attached_to=f"EfficientBBoxHead-{self.task_name}",
                 params=self.visualizer_params,
             )
         ]
