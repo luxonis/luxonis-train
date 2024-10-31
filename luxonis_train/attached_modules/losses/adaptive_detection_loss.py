@@ -270,8 +270,11 @@ class VarifocalLoss(nn.Module):
             self.alpha * pred_score.pow(self.gamma) * (1 - label)
             + target_score * label
         )
-        ce_loss = F.binary_cross_entropy(
-            pred_score.float(), target_score.float(), reduction="none"
-        )
+        with torch.amp.autocast(
+            device_type=pred_score.device.type, enabled=False
+        ):
+            ce_loss = F.binary_cross_entropy(
+                pred_score.float(), target_score.float(), reduction="none"
+            )
         loss = (ce_loss * weight).sum()
         return loss
