@@ -392,8 +392,12 @@ class LuxonisLightningModule(pl.LightningModule):
                     node_inputs.append(computed[pred])
                 else:
                     node_inputs.append({"features": [inputs[pred]]})
+
             outputs = node.run(node_inputs)
+
             computed[node_name] = outputs
+
+            del node_inputs
 
             if (
                 compute_loss
@@ -420,20 +424,15 @@ class LuxonisLightningModule(pl.LightningModule):
                     node_name
                 ].items():
                     viz = combine_visualizations(
-                        visualizer.run(
-                            images,
-                            images,
-                            outputs,
-                            labels,
-                        ),
+                        visualizer.run(images, images, outputs, labels),
                     )
                     visualizations[node_name][viz_name] = viz
 
             for computed_name in list(computed.keys()):
                 if computed_name in self.outputs:
                     continue
-                for node_name in unprocessed:
-                    if computed_name in self.graph[node_name]:
+                for unprocessed_name in unprocessed:
+                    if computed_name in self.graph[unprocessed_name]:
                         break
                 else:
                     del computed[computed_name]
@@ -851,8 +850,32 @@ class LuxonisLightningModule(pl.LightningModule):
         }
         optimizer = OPTIMIZERS.get(cfg_optimizer.name)(**optim_params)
 
-        scheduler_params = cfg_scheduler.params | {"optimizer": optimizer}
-        scheduler = SCHEDULERS.get(cfg_scheduler.name)(**scheduler_params)
+        def get_scheduler(scheduler_cfg, optimizer):
+            scheduler_class = SCHEDULERS.get(
+                scheduler_cfg["name"]
+            )  # For dictionary access
+            scheduler_params = scheduler_cfg["params"] | {
+                "optimizer": optimizer
+            }  # Dictionary access for params
+            return scheduler_class(**scheduler_params)
+
+        if cfg_scheduler.name == "SequentialLR":
+            schedulers_list = [
+                get_scheduler(scheduler_cfg, optimizer)
+                for scheduler_cfg in cfg_scheduler.params["schedulers"]
+            ]
+
+            scheduler = torch.optim.lr_scheduler.SequentialLR(
+                optimizer,
+                schedulers=schedulers_list,
+                milestones=cfg_scheduler.params["milestones"],
+            )
+        else:
+            scheduler_class = SCHEDULERS.get(
+                cfg_scheduler.name
+            )  # Access as attribute for single scheduler
+            scheduler_params = cfg_scheduler.params | {"optimizer": optimizer}
+            scheduler = scheduler_class(**scheduler_params)
 
         return [optimizer], [scheduler]
 
