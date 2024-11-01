@@ -39,14 +39,10 @@ jobs:
           ref: ${{ github.head_ref }}
 
       - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y pandoc
-          pip install pydoctor
-          curl -L "https://raw.githubusercontent.com/luxonis/python-api-analyzer-to-json/main/gen-docs.py" -o "gen-docs.py"
+        run: pip install pydoctor
 
       - name: Build docs
-        run: python gen-docs.py luxonis_train
+        run: pydoctor --docformat=epytext luxonis_train
 
   type-check:
     needs:
