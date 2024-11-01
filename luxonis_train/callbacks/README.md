@@ -66,7 +66,6 @@ Callback to perform a test run at the end of the training.
 
 Callback that uploads currently the best checkpoint (based on validation loss) to the tracker location - where all other logs are stored.
 
-
 ## `GradCamCallback`
 
 Callback to visualize gradients using Grad-CAM. Works only during validation.
