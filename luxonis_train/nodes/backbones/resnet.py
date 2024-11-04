@@ -11,7 +11,7 @@ class ResNet(BaseNode[Tensor, list[Tensor]]):
     def __init__(
         self,
         variant: Literal["18", "34", "50", "101", "152"] = "18",
-        download_weights: bool = False,
+        download_weights: bool = True,
         zero_init_residual: bool = False,
         groups: int = 1,
         width_per_group: int = 64,
@@ -56,7 +56,7 @@ class ResNet(BaseNode[Tensor, list[Tensor]]):
 
         @type download_weights: bool
         @param download_weights: If True download weights trained on imagenet.
-            Defaults to False.
+            Defaults to True.
         @type zero_init_residual: bool
         @param zero_init_residual: Zero-initialize the last BN in each residual branch,
             so that the residual branch starts with zeros, and each residual block behaves like an identity.

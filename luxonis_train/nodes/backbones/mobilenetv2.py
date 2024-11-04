@@ -9,7 +9,7 @@ from luxonis_train.nodes.base_node import BaseNode
 class MobileNetV2(BaseNode[Tensor, list[Tensor]]):
     def __init__(
         self,
-        download_weights: bool = False,
+        download_weights: bool = True,
         out_indices: list[int] | None = None,
         **kwargs: Any,
     ):
@@ -30,7 +30,7 @@ class MobileNetV2(BaseNode[Tensor, list[Tensor]]):
 
         @type download_weights: bool
         @param download_weights: If True download weights from imagenet. Defaults to
-            False.
+            True.
         @type out_indices: list[int] | None
         @param out_indices: Indices of the output layers. Defaults to [3, 6, 13, 18].
         """
