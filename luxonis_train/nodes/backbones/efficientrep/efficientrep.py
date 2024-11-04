@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Literal
 
+import torch
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
@@ -10,7 +11,7 @@ from luxonis_train.nodes.blocks import (
     RepVGGBlock,
     SpatialPyramidPoolingBlock,
 )
-from luxonis_train.utils import make_divisible
+from luxonis_train.utils import make_divisible, safe_download
 
 from .variants import VariantLiteral, get_variant
 
@@ -29,6 +30,7 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         width_mul: float | None = None,
         block: Literal["RepBlock", "CSPStackRepBlock"] | None = None,
         csp_e: float | None = None,
+        download_weights: bool = True,
         **kwargs: Any,
     ):
         """Implementation of the EfficientRep backbone. Supports the
@@ -59,9 +61,11 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         @param width_mul: Width multiplier. If provided, overrides the variant value.
         @type block: Literal["RepBlock", "CSPStackRepBlock"] | None
         @param block: Base block used when building the backbone. If provided, overrides the variant value.
-        @tpe csp_e: float | None
+        @type csp_e: float | None
         @param csp_e: Factor that controls number of intermediate channels if block="CSPStackRepBlock". If provided,
             overrides the variant value.
+        @type download_weights: bool
+        @param download_weights: If True download weights from COCO. Defaults to True.
         """
         super().__init__(**kwargs)
 
@@ -121,6 +125,20 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
                 kernel_size=5,
             )
         )
+
+        if download_weights:
+            self._init_weights(var.weights_path)
+
+    def _init_weights(self, weights_path: str | None):
+        if not weights_path:
+            logger.warning("No weights found for EfficientRep, skipping.")
+            return
+        local_path = safe_download(weights_path)
+        if local_path:
+            state_dict = torch.load(local_path, weights_only=False)[
+                "state_dict"
+            ]
+            self.load_state_dict(state_dict)
 
     def set_export_mode(self, mode: bool = True) -> None:
         """Reparametrizes instances of L{RepVGGBlock} in the network.

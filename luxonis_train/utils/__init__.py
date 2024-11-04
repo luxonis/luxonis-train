@@ -12,6 +12,7 @@ from .general import (
     get_with_default,
     infer_upscale_factor,
     make_divisible,
+    safe_download,
     to_shape_packet,
 )
 from .graph import traverse_graph
@@ -30,6 +31,7 @@ __all__ = [
     "infer_upscale_factor",
     "to_shape_packet",
     "get_with_default",
+    "safe_download",
     "LuxonisTrackerPL",
     "dist2bbox",
     "bbox2dist",

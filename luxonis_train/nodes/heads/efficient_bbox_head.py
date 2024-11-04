@@ -12,6 +12,7 @@ from luxonis_train.utils import (
     anchors_for_fpn_features,
     dist2bbox,
     non_max_suppression,
+    safe_download,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ class EfficientBBoxHead(
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
+        download_weights: bool = True,
         **kwargs: Any,
     ):
         """Head for object detection.
@@ -47,6 +49,9 @@ class EfficientBBoxHead(
         @type max_det: int
         @param max_det: Maximum number of detections retained after NMS.
             Defaults to C{300}.
+        @type download_weights: bool
+        @param download_weights: If True download weights from COCO.
+            Defaults to True.
         """
         super().__init__(**kwargs)
 
@@ -90,6 +95,21 @@ class EfficientBBoxHead(
             self._export_output_names = [
                 f"output{i+1}_yolov6r2" for i in range(self.n_heads)
             ]
+
+        if download_weights:
+            weights_path = "https://github.com/klemen1999/test_asset_repo/releases/download/v2/efficientbbox_head_coco.ckpt"
+            self._init_weights(weights_path)
+
+    def _init_weights(self, weights_path: str | None):
+        if not weights_path:
+            logger.warning("No weights found for EfficientBBoxHead, skipping.")
+            return
+        local_path = safe_download(weights_path)
+        if local_path:
+            state_dict = torch.load(local_path, weights_only=False)[
+                "state_dict"
+            ]
+            self.load_state_dict(state_dict, strict=False)
 
     def forward(
         self, inputs: list[Tensor]
