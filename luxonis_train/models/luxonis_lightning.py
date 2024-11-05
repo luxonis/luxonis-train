@@ -686,6 +686,22 @@ class LuxonisLightningModule(pl.LightningModule):
         """Performs one step of testing with provided batch."""
         return self._evaluation_step("test", test_batch)
 
+    def predict_step(
+        self, batch: tuple[dict[str, Tensor], Labels]
+    ) -> dict[str, Tensor]:
+        """Performs one step of prediction with provided batch."""
+        inputs, labels = batch
+        images = get_denormalized_images(self.cfg, inputs)
+        outputs = self.forward(
+            inputs,
+            labels,
+            images=images,
+            compute_visualizations=True,
+            compute_loss=False,
+            compute_metrics=False,
+        )
+        return outputs
+
     def on_train_epoch_end(self) -> None:
         """Performs train epoch end operations."""
         epoch_train_losses = self._average_losses(self.training_step_outputs)
