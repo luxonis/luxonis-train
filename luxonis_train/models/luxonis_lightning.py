@@ -688,7 +688,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
     def predict_step(
         self, batch: tuple[dict[str, Tensor], Labels]
-    ) -> dict[str, Tensor]:
+    ) -> LuxonisOutput:
         """Performs one step of prediction with provided batch."""
         inputs, labels = batch
         images = get_denormalized_images(self.cfg, inputs)

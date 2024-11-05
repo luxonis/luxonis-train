@@ -146,10 +146,13 @@ def infer_from_loader(
     predictions = model.pl_trainer.predict(model.lightning_module, loader)
 
     broken = False
+    if predictions is None:
+        return
+
     for i, outputs in enumerate(predictions):
         if broken:  # pragma: no cover
             break
-        visualizations = outputs.visualizations
+        visualizations = outputs.visualizations  # type: ignore
         batch_size = next(
             iter(next(iter(visualizations.values())).values())
         ).shape[0]
