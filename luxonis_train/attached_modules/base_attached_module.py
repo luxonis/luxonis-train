@@ -327,7 +327,7 @@ class BaseAttachedModule(
                 set(self.supported_tasks) & set(self.node_tasks)
             )
         x = self.get_input_tensors(inputs)
-        if labels is None:
+        if labels is None or len(labels) == 0:
             return x, None  # type: ignore
         label, task_type = self._get_label(labels)
         if task_type in [TaskType.CLASSIFICATION, TaskType.SEGMENTATION]:
