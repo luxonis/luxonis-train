@@ -105,9 +105,11 @@ class LuxonisModel:
         self.pl_trainer = create_trainer(
             self.cfg.trainer,
             logger=self.tracker,
-            callbacks=LuxonisRichProgressBar()
-            if self.cfg.trainer.use_rich_progress_bar
-            else LuxonisTQDMProgressBar(),
+            callbacks=(
+                LuxonisRichProgressBar()
+                if self.cfg.trainer.use_rich_progress_bar
+                else LuxonisTQDMProgressBar()
+            ),
             precision=self.cfg.trainer.precision,
         )
 
@@ -543,9 +545,11 @@ class LuxonisModel:
                 _core=self,
             )
             callbacks = [
-                LuxonisRichProgressBar()
-                if cfg.trainer.use_rich_progress_bar
-                else LuxonisTQDMProgressBar()
+                (
+                    LuxonisRichProgressBar()
+                    if cfg.trainer.use_rich_progress_bar
+                    else LuxonisTQDMProgressBar()
+                )
             ]
 
             pruner_callback = PyTorchLightningPruningCallback(
@@ -752,7 +756,7 @@ class LuxonisModel:
         }
 
         cfg_dict = {
-            "config_version": CONFIG_VERSION.__args__[-1],  # type: ignore
+            "config_version": CONFIG_VERSION,
             "model": model,
         }
 
