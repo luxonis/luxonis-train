@@ -33,7 +33,7 @@ jobs:
       run: pip install -e .[dev]
     
     - name: Install latest luxonis-ml
-      run: pip install luxonis-ml[all]@git+https://github.com/luxonis/luxonis-ml.git@main
+      run: pip install luxonis-ml[all]@git+https://github.com/luxonis/luxonis-ml.git@main --upgrade --no-deps --force-reinstall
 
     - name: Authenticate to Google Cloud
       id: google-auth
