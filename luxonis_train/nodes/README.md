@@ -90,7 +90,7 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 | `width_mul`        | `float`                                                           | `0.25`                      | Width multiplier                                                           |
 | `block`            | `Literal["RepBlock", "CSPStackRepBlock"]`                         | `"RepBlock"`                | Base block used                                                            |
 | `csp_e`            | `float`                                                           | `0.5`                       | Factor for intermediate channels when block is set to `"CSPStackRepBlock"` |
-| `download_weights` | `bool`                                                            | `True`                      | If True download weights from COCO                                         |
+| `download_weights` | `bool`                                                            | `True`                      | If True download weights from COCO (if available for specified variant)    |
 
 ### RexNetV1_lite
 
@@ -152,9 +152,10 @@ Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 Adapted from [here](https://github.com/ydhongHIT/DDRNet)
 **Parameters:**
 
-| Key       | Type                       | Default value | Description            |
-| --------- | -------------------------- | ------------- | ---------------------- |
-| `variant` | `Literal["23-slim", "23"]` | `"23-slim"`   | Variant of the network |
+| Key                | Type                       | Default value | Description                                                             |
+| ------------------ | -------------------------- | ------------- | ----------------------------------------------------------------------- |
+| `variant`          | `Literal["23-slim", "23"]` | `"23-slim"`   | Variant of the network                                                  |
+| `download_weights` | `bool`                     | `True`        | If True download weights from COCO (if available for specified variant) |
 
 ## Neck
 
@@ -174,7 +175,7 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 | `width_mul`        | `float`                                                           | `0.25`                           | Width multiplier                                                                |
 | `block`            | `Literal["RepBlock", "CSPStackRepBlock"]`                         | `"RepBlock"`                     | Base block used                                                                 |
 | `csp_e`            | `float`                                                           | `0.5`                            | Factor for intermediate channels when block is set to `"CSPStackRepBlock"`      |
-| `download_weights` | `bool`                                                            | `True`                           | If True download weights from COCO                                              |
+| `download_weights` | `bool`                                                            | `False`                          | If True download weights from COCO (if available for specified variant)         |
 
 ## Heads
 
@@ -212,7 +213,7 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 | `conf_thres`       | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation) |
 | `iou_thres`        | `float` | `0.45`        | `IoU` threshold for non-maxima-suppression (used for evaluation)      |
 | `max_det`          | `int`   | `300`         | Maximum number of detections retained after NMS                       |
-| `download_weights` | `bool`  | `True`        | If True download weights from COCO                                    |
+| `download_weights` | `bool`  | `False`       | If True download weights from COCO                                    |
 
 ### `EfficientKeypointBBoxHead`
 
@@ -233,7 +234,8 @@ Adapted from [here](https://github.com/ydhongHIT/DDRNet).
 
 **Parameters:**
 
-| Key              | Type  | Default value | Description                                                                                                               |
-| ---------------- | ----- | ------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `inter_channels` | `int` | `64`          | Width of internal convolutions                                                                                            |
-| `inter_mode`     | `str` | `"bilinear"`  | Up-sampling method. One of `"nearest"`, `"linear"`, `"bilinear"`, `"bicubic"`, `"trilinear"`, `"area"`, `"pixel_shuffle"` |
+| Key                | Type   | Default value | Description                                                                                                               |
+| ------------------ | ------ | ------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `inter_channels`   | `int`  | `64`          | Width of internal convolutions                                                                                            |
+| `inter_mode`       | `str`  | `"bilinear"`  | Up-sampling method. One of `"nearest"`, `"linear"`, `"bilinear"`, `"bicubic"`, `"trilinear"`, `"area"`, `"pixel_shuffle"` |
+| `download_weights` | `bool` | `False`       | If True download weights from COCO                                                                                        |
