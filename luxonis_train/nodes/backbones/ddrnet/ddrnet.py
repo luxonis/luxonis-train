@@ -1,5 +1,7 @@
+import logging
 from typing import Literal
 
+import torch
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
@@ -9,9 +11,12 @@ from luxonis_train.nodes.blocks import (
     ConvModule,
     UpscaleOnline,
 )
+from luxonis_train.utils import safe_download
 
 from .blocks import DAPPM, BasicDDRBackbone, make_layer
 from .variants import get_variant
+
+logger = logging.getLogger(__name__)
 
 
 class DDRNet(BaseNode[Tensor, list[Tensor]]):
@@ -36,6 +41,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         spp_strides: list[int] | None = None,
         layer3_repeats: int = 1,
         layers: list[int] | None = None,
+        download_weights: bool = True,
         **kwargs,
     ):
         """DDRNet backbone.
@@ -92,6 +98,8 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         @type layers: list[int]
         @param layers: Number of blocks in each layer of the backbone. Defaults to [2,
             2, 2, 2, 1, 2, 2, 1].
+        @type download_weights: bool
+        @param download_weights: If True download weights from COCO. Defaults to True.
         @type kwargs: Any
         @param kwargs: Additional arguments to pass to L{BaseNode}.
         """
@@ -232,6 +240,20 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self.highres_channels = highres_channels
         self.layer5_bottleneck_expansion = layer5_bottleneck_expansion
         self.init_params()
+
+        if download_weights:
+            self._init_weights(var.weights_path)
+
+    def _init_weights(self, weights_path: str | None):
+        if not weights_path:
+            logger.warning("No weights found for DDRNET backbone, skipping.")
+            return
+        local_path = safe_download(weights_path)
+        if local_path:
+            state_dict = torch.load(local_path, weights_only=False)[
+                "state_dict"
+            ]
+            self.load_state_dict(state_dict)
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         width_output = inputs.shape[-1] // 8
