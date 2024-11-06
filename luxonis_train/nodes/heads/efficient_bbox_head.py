@@ -30,7 +30,7 @@ class EfficientBBoxHead(
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
-        download_weights: bool = True,
+        download_weights: bool = False,
         **kwargs: Any,
     ):
         """Head for object detection.
@@ -51,7 +51,7 @@ class EfficientBBoxHead(
             Defaults to C{300}.
         @type download_weights: bool
         @param download_weights: If True download weights from COCO.
-            Defaults to True.
+            Defaults to False.
         """
         super().__init__(**kwargs)
 
@@ -97,7 +97,7 @@ class EfficientBBoxHead(
             ]
 
         if download_weights:
-            weights_path = "https://github.com/klemen1999/test_asset_repo/releases/download/v2/efficientbbox_head_coco.ckpt"
+            weights_path = "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientbbox_head_n_coco.ckpt"
             self._init_weights(weights_path)
 
     def _init_weights(self, weights_path: str | None):

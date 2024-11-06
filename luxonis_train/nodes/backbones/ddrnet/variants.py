@@ -14,7 +14,7 @@ def get_variant(variant: Literal["23-slim", "23"]) -> DDRNetVariant:
         "23-slim": DDRNetVariant(
             channels=32,
             highres_channels=64,
-            weights_path="https://github.com/klemen1999/test_asset_repo/releases/download/v2/ddrnet_23slim_coco.ckpt",
+            weights_path="https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/ddrnet_23slim_coco.ckpt",
         ),
         "23": DDRNetVariant(
             channels=64,

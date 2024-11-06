@@ -32,7 +32,7 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
             "area",
             "pixel_shuffle",
         ] = "bilinear",
-        download_weights: bool = True,
+        download_weights: bool = False,
         **kwargs,
     ):
         """DDRNet segmentation head.
@@ -52,7 +52,7 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
             is used for scaling. Defaults to "bilinear".
         @type download_weights: bool
         @param download_weights: If True download weights from COCO.
-            Defaults to True.
+            Defaults to False.
         """
         super().__init__(**kwargs)
         model_in_h, model_in_w = self.original_in_shape[1:]
@@ -95,7 +95,7 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
             else nn.Upsample(scale_factor=scale_factor, mode=inter_mode)
         )
         if download_weights:
-            weights_path = "https://github.com/klemen1999/test_asset_repo/releases/download/v2/ddrnet_head_coco.ckpt"
+            weights_path = "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/ddrnet_head_coco.ckpt"
             self._init_weights(weights_path)
 
     def _init_weights(self, weights_path: str | None):

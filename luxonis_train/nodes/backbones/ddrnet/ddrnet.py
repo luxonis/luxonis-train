@@ -99,7 +99,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         @param layers: Number of blocks in each layer of the backbone. Defaults to [2,
             2, 2, 2, 1, 2, 2, 1].
         @type download_weights: bool
-        @param download_weights: If True download weights from COCO. Defaults to True.
+        @param download_weights: If True download weights from COCO (if available for specified variant). Defaults to True.
         @type kwargs: Any
         @param kwargs: Additional arguments to pass to L{BaseNode}.
         """
@@ -166,9 +166,11 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             )
             self.layer3_skip.append(
                 make_layer(
-                    in_channels=out_chan_backbone["layer2"]
-                    if i == 0
-                    else highres_channels,
+                    in_channels=(
+                        out_chan_backbone["layer2"]
+                        if i == 0
+                        else highres_channels
+                    ),
                     channels=highres_channels,
                     block=skip_block,
                     num_blocks=self.additional_layers[1],

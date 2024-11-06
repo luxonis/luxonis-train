@@ -22,7 +22,7 @@ def get_variant(variant: VariantLiteral) -> EfficientRepVariant:
             width_multiplier=0.25,
             block="RepBlock",
             csp_e=None,
-            weights_path="https://github.com/klemen1999/test_asset_repo/releases/download/v2/efficientrep_n_coco.ckpt",
+            weights_path="https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientrep_n_coco.ckpt",
         ),
         "s": EfficientRepVariant(
             depth_multiplier=0.33,
