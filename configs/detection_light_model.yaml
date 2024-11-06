@@ -1,4 +1,5 @@
 # Example configuration for training a predefined light detection model
+# NOTE: This example downloads pretrained COCO weights and trainig parameters are already prepared for fine tuning
 
 model:
   name: detection_light

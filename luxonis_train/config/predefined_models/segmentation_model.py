@@ -18,6 +18,7 @@ VariantLiteral = Literal["light", "heavy"]
 class SegmentationVariant(BaseModel):
     backbone: str
     backbone_params: Params
+    head_params: Params
 
 
 def get_variant(variant: VariantLiteral) -> SegmentationVariant:
@@ -27,10 +28,12 @@ def get_variant(variant: VariantLiteral) -> SegmentationVariant:
         "light": SegmentationVariant(
             backbone="DDRNet",
             backbone_params={"variant": "23-slim"},
+            head_params={"download_weights": True},
         ),
         "heavy": SegmentationVariant(
             backbone="DDRNet",
             backbone_params={"variant": "23"},
+            head_params={"download_weights": True},
         ),
     }
 
@@ -52,7 +55,7 @@ class SegmentationModel(BasePredefinedModel):
         aux_head_params: Params | None = None,
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
-        task: Literal["binary", "multiclass"] = "binary",
+        task: Literal["binary", "multiclass"] = "multiclass",
         task_name: str | None = None,
     ):
         var_config = get_variant(variant)
@@ -63,7 +66,7 @@ class SegmentationModel(BasePredefinedModel):
             if backbone is not None or backbone_params is not None
             else var_config.backbone_params
         ) or {}
-        self.head_params = head_params or {}
+        self.head_params = head_params or var_config.head_params
         self.aux_head_params = aux_head_params or {}
         self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
