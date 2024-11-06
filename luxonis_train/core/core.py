@@ -169,15 +169,19 @@ class LuxonisModel:
 
         generator = torch.Generator()
         generator.manual_seed(self.cfg.trainer.seed or 41)
-        if self.cfg.trainer.n_validation_batches is not None:
+        if self.cfg.trainer.n_validation_batches:
             n_samples = (
                 self.cfg.trainer.n_validation_batches
                 * self.cfg.trainer.batch_size
             )
-            val_indices = list(range(min(n_samples, len(self.loaders["val"]))))
-            self.loaders["val"] = torch_data.Subset(
-                self.loaders["val"], val_indices
-            )
+            for view in ["val", "test"]:
+                if view in self.loaders:
+                    indices = list(
+                        range(min(n_samples, len(self.loaders[view])))
+                    )
+                    self.loaders[view] = torch_data.Subset(
+                        self.loaders[view], indices
+                    )
 
         self.pytorch_loaders = {
             view: torch_data.DataLoader(
