@@ -46,16 +46,11 @@ We use pre-commit hooks to ensure code quality and consistency:
 ## Documentation
 
 We use the [Epytext](https://epydoc.sourceforge.net/epytext.html) markup language for documentation.
-To verify that your documentation is formatted correctly, follow these steps:
+To verify that your documentation is formatted correctly, run the following command:
 
-1. Download [`get-docs.py`](https://github.com/luxonis/python-api-analyzer-to-json/blob/main/gen-docs.py) script
-1. Run `python3 get-docs.py luxonis_train` in the root directory.
-   - If the script runs successfully and produces `docs.json` file, your documentation is formatted correctly.
-
-> \[!NOTE\]
-> If the script fails, it might not give a specific error message.
-> In that case, you can run the script for each file individually
-> until you find the one that is causing the error.
+```bash
+pydoctor --docformat=epytext luxonis_train
+```
 
 **Editor Support:**
 
