@@ -19,6 +19,8 @@ Metrics from the [`torchmetrics`](https://lightning.ai/docs/torchmetrics/stable/
 - [Precision](https://lightning.ai/docs/torchmetrics/stable/classification/precision.html)
 - [Recall](https://lightning.ai/docs/torchmetrics/stable/classification/recall.html)
 
+> **Note:** For multi-label classification, ensure that you specify the `params.task` as `multilabel` when using these metrics.
+
 ## ObjectKeypointSimilarity
 
 For more information, see [object-keypoint-similarity](https://learnopencv.com/object-keypoint-similarity/).

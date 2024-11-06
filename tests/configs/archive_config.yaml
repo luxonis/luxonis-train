@@ -7,33 +7,30 @@ model:
     - name: EfficientBBoxHead
       inputs:
         - EfficientRep
+      params:
+        export_output_names: [bbox0, bbox1, bbox2]
 
     - name: EfficientKeypointBBoxHead
       inputs:
         - EfficientRep
+      params:
+        export_output_names: [effkpt0, effkpt1, effkpt2]
 
     - name: SegmentationHead
       inputs:
         - EfficientRep
+      params:
+        export_output_names: [seg0, seg1]
 
     - name: BiSeNetHead
       inputs:
         - EfficientRep
+      params:
+        export_output_names: [impl]
 
     - name: ClassificationHead
       inputs:
         - EfficientRep
-
-exporter:
-  output_names:
-    - seg0
-    - class0
-    - bbox0
-    - bbox1
-    - bbox2
-    - effkpt0
-    - effkpt1
-    - effkpt2
-    - impl
-    - seg1
+      params:
+        export_output_names: [class0]
 

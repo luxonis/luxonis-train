@@ -392,8 +392,12 @@ class LuxonisLightningModule(pl.LightningModule):
                     node_inputs.append(computed[pred])
                 else:
                     node_inputs.append({"features": [inputs[pred]]})
+
             outputs = node.run(node_inputs)
+
             computed[node_name] = outputs
+
+            del node_inputs
 
             if (
                 compute_loss
@@ -420,20 +424,15 @@ class LuxonisLightningModule(pl.LightningModule):
                     node_name
                 ].items():
                     viz = combine_visualizations(
-                        visualizer.run(
-                            images,
-                            images,
-                            outputs,
-                            labels,
-                        ),
+                        visualizer.run(images, images, outputs, labels),
                     )
                     visualizations[node_name][viz_name] = viz
 
             for computed_name in list(computed.keys()):
                 if computed_name in self.outputs:
                     continue
-                for node_name in unprocessed:
-                    if computed_name in self.graph[node_name]:
+                for unprocessed_name in unprocessed:
+                    if computed_name in self.graph[unprocessed_name]:
                         break
                 else:
                     del computed[computed_name]
@@ -520,7 +519,38 @@ class LuxonisLightningModule(pl.LightningModule):
             ]
         )
 
+        output_counts = defaultdict(int)
+        for node_name, outs in outputs.items():
+            output_counts[node_name] = sum(len(out) for out in outs.values())
+
         if self.cfg.exporter.output_names is not None:
+            logger.warning(
+                "The use of 'exporter.output_names' is deprecated and will be removed in a future version. "
+                "If 'node.export_output_names' are provided, they will take precedence and overwrite 'exporter.output_names'. "
+                "Please update your config to use 'node.export_output_names' directly."
+            )
+
+        export_output_names_used = False
+        export_output_names_dict = {}
+        for node_name, node in self.nodes.items():
+            if node.export_output_names is not None:
+                export_output_names_used = True
+                if len(node.export_output_names) != output_counts[node_name]:
+                    logger.warning(
+                        f"Number of provided output names for node {node_name} "
+                        f"({len(node.export_output_names)}) does not match "
+                        f"number of outputs ({output_counts[node_name]}). "
+                        f"Using default names."
+                    )
+                else:
+                    export_output_names_dict[node_name] = (
+                        node.export_output_names
+                    )
+
+        if (
+            not export_output_names_used
+            and self.cfg.exporter.output_names is not None
+        ):
             len_names = len(self.cfg.exporter.output_names)
             if len_names != len(output_order):
                 logger.warning(
@@ -529,18 +559,25 @@ class LuxonisLightningModule(pl.LightningModule):
                 )
                 self.cfg.exporter.output_names = None
 
-        output_names = self.cfg.exporter.output_names or [
-            f"{node_name}/{output_name}/{i}"
-            for node_name, output_name, i in output_order
-        ]
+            output_names = self.cfg.exporter.output_names or [
+                f"{node_name}/{output_name}/{i}"
+                for node_name, output_name, i in output_order
+            ]
 
-        if not self.cfg.exporter.output_names:
-            idx = 1
-            # Set to output names required by DAI
-            for i, output_name in enumerate(output_names):
-                if output_name.startswith("EfficientBBoxHead"):
-                    output_names[i] = f"output{idx}_yolov6r2"
-                    idx += 1
+            if not self.cfg.exporter.output_names:
+                idx = 1
+                # Set to output names required by DAI
+                for i, output_name in enumerate(output_names):
+                    if output_name.startswith("EfficientBBoxHead"):
+                        output_names[i] = f"output{idx}_yolov6r2"
+                        idx += 1
+        else:
+            output_names = []
+            for node_name, output_name, i in output_order:
+                if node_name in export_output_names_dict:
+                    output_names.append(export_output_names_dict[node_name][i])
+                else:
+                    output_names.append(f"{node_name}/{output_name}/{i}")
 
         old_forward = self.forward
 
@@ -813,8 +850,32 @@ class LuxonisLightningModule(pl.LightningModule):
         }
         optimizer = OPTIMIZERS.get(cfg_optimizer.name)(**optim_params)
 
-        scheduler_params = cfg_scheduler.params | {"optimizer": optimizer}
-        scheduler = SCHEDULERS.get(cfg_scheduler.name)(**scheduler_params)
+        def get_scheduler(scheduler_cfg, optimizer):
+            scheduler_class = SCHEDULERS.get(
+                scheduler_cfg["name"]
+            )  # For dictionary access
+            scheduler_params = scheduler_cfg["params"] | {
+                "optimizer": optimizer
+            }  # Dictionary access for params
+            return scheduler_class(**scheduler_params)
+
+        if cfg_scheduler.name == "SequentialLR":
+            schedulers_list = [
+                get_scheduler(scheduler_cfg, optimizer)
+                for scheduler_cfg in cfg_scheduler.params["schedulers"]
+            ]
+
+            scheduler = torch.optim.lr_scheduler.SequentialLR(
+                optimizer,
+                schedulers=schedulers_list,
+                milestones=cfg_scheduler.params["milestones"],
+            )
+        else:
+            scheduler_class = SCHEDULERS.get(
+                cfg_scheduler.name
+            )  # Access as attribute for single scheduler
+            scheduler_params = cfg_scheduler.params | {"optimizer": optimizer}
+            scheduler = scheduler_class(**scheduler_params)
 
         return [optimizer], [scheduler]
 

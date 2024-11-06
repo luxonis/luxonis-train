@@ -74,6 +74,22 @@ class EfficientBBoxHead(
                 in_channels=self.in_channels[i],
             )
             self.heads.append(curr_head)
+        if (
+            self.export_output_names is None
+            or len(self.export_output_names) != self.n_heads
+        ):
+            if (
+                self.export_output_names is not None
+                and len(self.export_output_names) != self.n_heads
+            ):
+                logger.warning(
+                    f"Number of provided output names ({len(self.export_output_names)}) "
+                    f"does not match number of heads ({self.n_heads}). "
+                    f"Using default names."
+                )
+            self._export_output_names = [
+                f"output{i+1}_yolov6r2" for i in range(self.n_heads)
+            ]
 
     def forward(
         self, inputs: list[Tensor]

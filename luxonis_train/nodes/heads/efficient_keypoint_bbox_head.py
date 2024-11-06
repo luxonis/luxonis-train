@@ -64,6 +64,8 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             for x in self.in_channels
         )
 
+        self._export_output_names = None
+
     def forward(
         self, inputs: list[Tensor]
     ) -> tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]]:
