@@ -10,8 +10,6 @@ permissions:
 
 jobs:
   tests:
-    needs:
-      - type-check
     strategy:
       fail-fast: false
       matrix:
