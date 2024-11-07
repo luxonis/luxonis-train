@@ -528,7 +528,6 @@ class Config(LuxonisConfig):
     def smart_auto_populate(cls, instance: "Config") -> None:
         """Automatically populates config fields based on rules, with
         warnings."""
-        warnings = []
 
         # Rule: CosineAnnealingLR should have T_max set to the number of epochs if not provided
         scheduler = instance.trainer.scheduler
@@ -537,7 +536,7 @@ class Config(LuxonisConfig):
             and "T_max" not in scheduler.params
         ):
             scheduler.params["T_max"] = instance.trainer.epochs
-            warnings.append(
+            logger.warning(
                 "T_max was not set for CosineAnnealingLR. Automatically set T_max to number of epochs."
             )
 
@@ -551,12 +550,9 @@ class Config(LuxonisConfig):
                 augmentation.params.update(
                     {"out_width": train_size[0], "out_height": train_size[1]}
                 )
-                warnings.append(
-                    "Mosaic4 augmentation detected. Automatically set out_width and out_height to match train_image_size. "
+                logger.warning(
+                    "Mosaic4 augmentation detected. Automatically set out_width and out_height to match train_image_size."
                 )
-
-        for warning in warnings:
-            logger.warning(warning)
 
 
 def is_acyclic(graph: dict[str, list[str]]) -> bool:
