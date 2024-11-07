@@ -222,6 +222,7 @@ Here you can change everything related to actual training of the model.
 | `verbose`                 | `bool`                                         | `True`        | Print all intermediate results to console                                                                                                        |
 | `pin_memory`              | `bool`                                         | `True`        | Whether to pin memory in the `DataLoader`                                                                                                        |
 | `save_top_k`              | `-1 \| NonNegativeInt`                         | `3`           | Save top K checkpoints based on validation loss when training                                                                                    |
+| `n_validation_batches`    | `PositiveInt \| None`                          | `None`        | Limits the number of validation/test batches and makes the val/test loaders deterministic                                                        |
 
 **Example:**
 
