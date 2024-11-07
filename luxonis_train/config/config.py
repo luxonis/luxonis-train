@@ -358,6 +358,7 @@ class TrainerConfig(BaseModelExtraForbid):
 
     seed: int | None = None
     deterministic: bool | Literal["warn"] | None = None
+    smart_cfg_auto_populate: bool = True
     batch_size: PositiveInt = 32
     accumulate_grad_batches: PositiveInt = 1
     use_weighted_sampler: bool = False
@@ -517,7 +518,51 @@ class Config(LuxonisConfig):
             )
             instance.tracker.project_id = fs.experiment_id
             instance.tracker.run_id = fs.run_id
+
+        if instance.trainer.smart_cfg_auto_populate:
+            cls.smart_auto_populate(instance)
+
         return instance
+
+    @classmethod
+    def smart_auto_populate(cls, instance: "Config") -> None:
+        """Function to smartly populate config fields based on hardcoded
+        rules."""
+        warnings = []
+
+        # Rule: CosineAnnealingLR should have T_max set to the number of epochs if not provided
+        if (
+            hasattr(instance.trainer, "scheduler")
+            and instance.trainer.scheduler.name == "CosineAnnealingLR"
+            and "T_max" not in instance.trainer.scheduler.params
+        ):
+            instance.trainer.scheduler.params["T_max"] = (
+                instance.trainer.epochs
+            )
+            warnings.append(
+                "T_max was not set for CosineAnnealingLR. Automatically set T_max to number of epochs."
+            )
+
+        # Rule: Mosaic4 should have out_width and out_height matching train_image_size if not provided
+        augmentations = instance.trainer.preprocessing.augmentations
+        for augmentation in augmentations:
+            if augmentation.name == "Mosaic4":
+                params = augmentation.params
+                if not params.get("out_width") or not params.get("out_height"):
+                    params["out_width"] = (
+                        instance.trainer.preprocessing.train_image_size[0]
+                    )
+                    params["out_height"] = (
+                        instance.trainer.preprocessing.train_image_size[1]
+                    )
+                    warnings.append(
+                        "Mosaic4 augmentation detected. Automatically set out_width and out_height "
+                        "to match train_image_size."
+                    )
+
+        # Log all warnings
+        for warning in warnings:
+            logger.warning(warning)
 
 
 def is_acyclic(graph: dict[str, list[str]]) -> bool:
