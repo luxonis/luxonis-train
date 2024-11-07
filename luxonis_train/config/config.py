@@ -526,41 +526,35 @@ class Config(LuxonisConfig):
 
     @classmethod
     def smart_auto_populate(cls, instance: "Config") -> None:
-        """Function to smartly populate config fields based on hardcoded
-        rules."""
+        """Automatically populates config fields based on rules, with
+        warnings."""
         warnings = []
 
         # Rule: CosineAnnealingLR should have T_max set to the number of epochs if not provided
+        scheduler = instance.trainer.scheduler
         if (
-            hasattr(instance.trainer, "scheduler")
-            and instance.trainer.scheduler.name == "CosineAnnealingLR"
-            and "T_max" not in instance.trainer.scheduler.params
+            scheduler.name == "CosineAnnealingLR"
+            and "T_max" not in scheduler.params
         ):
-            instance.trainer.scheduler.params["T_max"] = (
-                instance.trainer.epochs
-            )
+            scheduler.params["T_max"] = instance.trainer.epochs
             warnings.append(
                 "T_max was not set for CosineAnnealingLR. Automatically set T_max to number of epochs."
             )
 
         # Rule: Mosaic4 should have out_width and out_height matching train_image_size if not provided
-        augmentations = instance.trainer.preprocessing.augmentations
-        for augmentation in augmentations:
-            if augmentation.name == "Mosaic4":
-                params = augmentation.params
-                if not params.get("out_width") or not params.get("out_height"):
-                    params["out_width"] = (
-                        instance.trainer.preprocessing.train_image_size[0]
-                    )
-                    params["out_height"] = (
-                        instance.trainer.preprocessing.train_image_size[1]
-                    )
-                    warnings.append(
-                        "Mosaic4 augmentation detected. Automatically set out_width and out_height "
-                        "to match train_image_size."
-                    )
+        for augmentation in instance.trainer.preprocessing.augmentations:
+            if augmentation.name == "Mosaic4" and (
+                "out_width" not in augmentation.params
+                or "out_height" not in augmentation.params
+            ):
+                train_size = instance.trainer.preprocessing.train_image_size
+                augmentation.params.update(
+                    {"out_width": train_size[0], "out_height": train_size[1]}
+                )
+                warnings.append(
+                    "Mosaic4 augmentation detected. Automatically set out_width and out_height to match train_image_size. "
+                )
 
-        # Log all warnings
         for warning in warnings:
             logger.warning(warning)
 
