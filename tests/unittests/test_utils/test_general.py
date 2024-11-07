@@ -1,6 +1,8 @@
+import os
+
 import pytest
 
-from luxonis_train.utils.general import infer_upscale_factor
+from luxonis_train.utils.general import infer_upscale_factor, safe_download
 
 
 @pytest.mark.parametrize(
@@ -42,3 +44,17 @@ def test_infer_upscale_factor_fail(
 ):
     with pytest.raises(ValueError):
         infer_upscale_factor(in_size, orig_size)
+
+
+def test_safe_download():
+    url = "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientrep_n_coco.ckpt"
+    local_path = safe_download(url=url, file="test.ckpt", dir=".", force=True)
+    if local_path:
+        assert os.path.isfile(local_path)
+        os.remove(local_path)
+
+
+def test_safe_download_failed():
+    url = "fake_url.fake"
+    local_path = safe_download(url=url, file="test.ckpt", dir=".", force=True)
+    assert local_path is None

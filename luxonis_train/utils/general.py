@@ -1,7 +1,7 @@
 import logging
 import math
 import os
-import urllib
+import urllib.parse
 from pathlib import Path
 from typing import TypeVar
 
