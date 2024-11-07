@@ -167,9 +167,9 @@ class LuxonisModel:
                 "Weighted sampler is not implemented yet."
             )
 
-        generator = torch.Generator()
-        generator.manual_seed(self.cfg.trainer.seed or 41)
         if self.cfg.trainer.n_validation_batches:
+            generator = torch.Generator()
+            generator.manual_seed(self.cfg.trainer.seed or 42)
             n_samples = (
                 self.cfg.trainer.n_validation_batches
                 * self.cfg.trainer.batch_size
@@ -197,7 +197,12 @@ class LuxonisModel:
                 ),
                 pin_memory=self.cfg.trainer.pin_memory,
                 sampler=sampler if view == "train" else None,
-                generator=generator if view in ["val", "test"] else None,
+                generator=generator
+                if (
+                    self.cfg.trainer.n_validation_batches is not None
+                    and view in ["val", "test"]
+                )
+                else None,
             )
             for view in ["train", "val", "test"]
         }

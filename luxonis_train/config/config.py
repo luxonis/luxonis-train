@@ -357,7 +357,7 @@ class TrainerConfig(BaseModelExtraForbid):
     verbose: bool = True
 
     seed: int | None = None
-    n_validation_batches: int | None = None
+    n_validation_batches: PositiveInt | None = None
     deterministic: bool | Literal["warn"] | None = None
     batch_size: PositiveInt = 32
     accumulate_grad_batches: PositiveInt = 1
