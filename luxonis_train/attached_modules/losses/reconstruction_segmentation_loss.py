@@ -107,17 +107,17 @@ class SSIM(torch.nn.Module):
 
         # Assume 1 channel for SSIM
         self.channel = 1
-        self.window = create_window(window_size).cuda()
+        self.window = create_window(window_size)
 
     def forward(self, img1: Tensor, img2: Tensor) -> Tensor:
+        device = img1.device
         (_, channel, _, _) = img1.size()
-
         if channel == self.channel and self.window.dtype == img1.dtype:
-            window = self.window
+            window = self.window.to(device)
         else:
             window = (
                 create_window(self.window_size, channel)
-                .to(img1.device)
+                .to(device)
                 .type(img1.dtype)
             )
             self.window = window
