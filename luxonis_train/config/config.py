@@ -537,7 +537,7 @@ class Config(LuxonisConfig):
         ):
             scheduler.params["T_max"] = instance.trainer.epochs
             logger.warning(
-                "T_max was not set for CosineAnnealingLR. Automatically set T_max to number of epochs."
+                "`T_max` was not set for `CosineAnnealingLR`. Automatically set `T_max` to number of epochs."
             )
 
         # Rule: Mosaic4 should have out_width and out_height matching train_image_size if not provided
@@ -551,7 +551,7 @@ class Config(LuxonisConfig):
                     {"out_width": train_size[0], "out_height": train_size[1]}
                 )
                 logger.warning(
-                    "Mosaic4 augmentation detected. Automatically set out_width and out_height to match train_image_size."
+                    "`Mosaic4` augmentation detected. Automatically set `out_width` and `out_height` to match `train_image_size`."
                 )
 
 
