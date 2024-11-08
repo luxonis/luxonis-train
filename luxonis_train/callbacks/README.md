@@ -66,6 +66,19 @@ Callback to perform a test run at the end of the training.
 
 Callback that uploads currently the best checkpoint (based on validation loss) to the tracker location - where all other logs are stored.
 
+## `GradCamCallback`
+
+Callback to visualize gradients using Grad-CAM. Works only during validation.
+
+**Parameters:**
+
+| Key             | Type  | Default value      | Description                                          |
+| --------------- | ----- | ------------------ | ---------------------------------------------------- |
+| `target_layer`  | `int` | -                  | Layer to visualize gradients.                        |
+| `class_idx`     | `int` | 0                  | Index of the class for visualization. Defaults to 0. |
+| `log_n_batches` | `int` | 1                  | Number of batches to log. Defaults to 1.             |
+| `task`          | `str` | `"classification"` | The type of task. Defaults to "classification".      |
+
 ## `EMACallback`
 
 Callback that updates the stored parameters using a moving average.

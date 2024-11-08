@@ -16,6 +16,7 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`EfficientNet`](#efficientnet)
   - [`ContextSpatial`](#contextspatial)
   - [`DDRNet`](#ddrnet)
+  - [`RecSubNet`](#recsubnet)
 - [Necks](#necks)
   - [`RepPANNeck`](#reppanneck)
 - [Heads](#heads)
@@ -25,8 +26,8 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`EfficientBBoxHead`](#efficientbboxhead)
   - [`EfficientKeypointBBoxHead`](#efficientkeypointbboxhead)
   - [`DDRNetSegmentationHead`](#ddrnetsegmentationhead)
-
-Every node takes these parameters:
+  - [`DiscSubNetHead`](#discsubnet)
+    Every node takes these parameters:
 
 | Key                | Type          | Default value | Description                                                                 |
 | ------------------ | ------------- | ------------- | --------------------------------------------------------------------------- |
@@ -157,6 +158,15 @@ Adapted from [here](https://github.com/ydhongHIT/DDRNet)
 | `variant`          | `Literal["23-slim", "23"]` | `"23-slim"`   | Variant of the network                                                  |
 | `download_weights` | `bool`                     | `True`        | If True download weights from COCO (if available for specified variant) |
 
+### `RecSubNet`
+
+Adapted from [here](https://arxiv.org/abs/2108.07610)
+**Parameters:**
+
+| Key       | Type                | Default value | Description            |
+| --------- | ------------------- | ------------- | ---------------------- |
+| `variant` | `Literal["n", "l"]` | `"l"`         | Variant of the network |
+
 ## Neck
 
 ### `RepPANNeck`
@@ -239,3 +249,13 @@ Adapted from [here](https://github.com/ydhongHIT/DDRNet).
 | `inter_channels`   | `int`  | `64`          | Width of internal convolutions                                                                                            |
 | `inter_mode`       | `str`  | `"bilinear"`  | Up-sampling method. One of `"nearest"`, `"linear"`, `"bilinear"`, `"bicubic"`, `"trilinear"`, `"area"`, `"pixel_shuffle"` |
 | `download_weights` | `bool` | `False`       | If True download weights from COCO                                                                                        |
+
+### `DiscSubNetHead`
+
+Adapted from [here](https://arxiv.org/abs/2108.07610).
+
+**Parameters:**
+
+| Key       | Type                | Default value | Description            |
+| --------- | ------------------- | ------------- | ---------------------- |
+| `variant` | `Literal["n", "l"]` | `"l"`         | Variant of the network |

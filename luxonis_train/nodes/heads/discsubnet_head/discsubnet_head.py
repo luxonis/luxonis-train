@@ -1,0 +1,111 @@
+from typing import Literal, Tuple, TypeAlias
+
+import torch
+from torch import Tensor
+
+from luxonis_train.enums import TaskType
+from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.utils import Packet
+
+from .blocks import Decoder, Encoder, NanoDecoder, NanoEncoder
+
+VariantLiteral: TypeAlias = Literal["n", "l"]
+
+
+def get_variant(variant: VariantLiteral) -> int:
+    """Returns the base width for the specified variant."""
+    variants = {
+        "n": 32,
+        "l": 64,
+    }
+
+    if variant not in variants:
+        raise ValueError(
+            f"Variant should be one of {list(variants.keys())}, got '{variant}'."
+        )
+
+    return variants[variant]
+
+
+class DiscSubNetHead(BaseNode[Tensor, Tensor]):
+    in_channels: list[int] | int
+    out_channels: int
+    base_channels: int
+    tasks: list[TaskType] = [TaskType.SEGMENTATION]
+
+    def __init__(
+        self,
+        in_channels: list[int] | int = 6,
+        out_channels: int = 2,
+        base_channels: int | None = None,
+        variant: VariantLiteral = "l",  # Use lowercase variant
+        **kwargs,
+    ):
+        """
+        DiscSubNetHead: A discriminative sub-network that detects and segments anomalies in images.
+
+        This model is designed to take an input image and generate a mask that highlights anomalies or
+        regions of interest based on reconstruction. The encoder extracts relevant features from the
+        input, while the decoder generates a mask that identifies areas of anomalies by distinguishing
+        between the reconstructed image and the input.
+
+        @type in_channels: list[int] | int
+        @param in_channels: Number of input channels for the encoder. Defaults to 6.
+
+        @type out_channels: int
+        @param out_channels: Number of output channels for the decoder. Defaults to 2 (for segmentation masks).
+
+        @type base_channels: int
+        @param base_channels: The base number of filters used in the encoder and decoder blocks. If None, it is determined based on the variant.
+
+        @type variant: Literal["n", "l"]
+        @param variant: The variant of the DiscSubNetHead to use. "l" for large, "n" for nano (lightweight). Defaults to "l".
+
+        @type kwargs: Any
+        @param kwargs: Additional arguments to be passed to the BaseNode class.
+        """
+        super().__init__(**kwargs)
+
+        if isinstance(in_channels, list):
+            in_channels = in_channels[0] * 2
+
+        self.base_channels = (
+            base_channels
+            if base_channels is not None
+            else get_variant(variant)
+        )
+
+        if variant == "l":
+            self.encoder_segment = Encoder(in_channels, self.base_channels)
+            self.decoder_segment = Decoder(self.base_channels, out_channels)
+        elif variant == "n":
+            self.encoder_segment = NanoEncoder(in_channels, self.base_channels)
+            self.decoder_segment = NanoDecoder(
+                self.base_channels, out_channels
+            )
+
+    def forward(self, x_tuple: Tuple[Tensor, Tensor]) -> tuple[Tensor, Tensor]:
+        """Performs the forward pass through the encoder and decoder."""
+
+        recon, input = x_tuple
+
+        x = torch.cat((recon, input), dim=1)
+
+        seg_out = self.decoder_segment(*self.encoder_segment(x))
+
+        return seg_out, recon
+
+    def wrap(
+        self,
+        output: tuple[Tensor, Tensor],
+    ) -> Packet[Tensor]:
+        """Wraps the output into a packet."""
+        seg_out, recon = output
+        if self.export:
+            return {"segmentation": [seg_out]}
+        else:
+            seg_out, recon = output
+            return {
+                "reconstructed": [recon],
+                "segmentation": [seg_out],
+            }

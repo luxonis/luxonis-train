@@ -82,14 +82,14 @@ class SegmentationModel(BasePredefinedModel):
         node_list = [
             ModelNodeConfig(
                 name=self.backbone,
-                alias="ddrnet_backbone",
+                alias=f"{self.backbone}-{self.task_name}",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="DDRNetSegmentationHead",
-                alias="segmentation_head",
-                inputs=["ddrnet_backbone"],
+                alias=f"DDRNetSegmentationHead-{self.task_name}",
+                inputs=[f"{self.backbone}-{self.task_name}"],
                 freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
                 task=self.task_name,
@@ -99,8 +99,8 @@ class SegmentationModel(BasePredefinedModel):
             node_list.append(
                 ModelNodeConfig(
                     name="DDRNetSegmentationHead",
-                    alias="aux_segmentation_head",
-                    inputs=["ddrnet_backbone"],
+                    alias=f"DDRNetSegmentationHead_aux-{self.task_name}",
+                    inputs=[f"{self.backbone}-{self.task_name}"],
                     freezing=self.aux_head_params.pop("freezing", {}),
                     params=self.aux_head_params,
                     task=self.task_name,
@@ -121,8 +121,12 @@ class SegmentationModel(BasePredefinedModel):
                     if self.task == "binary"
                     else "OHEMCrossEntropyLoss"
                 ),
-                alias="segmentation_loss",
-                attached_to="segmentation_head",
+                alias=(
+                    f"OHEMBCEWithLogitsLoss-{self.task_name}"
+                    if self.task == "binary"
+                    else f"OHEMCrossEntropyLoss-{self.task_name}"
+                ),
+                attached_to=f"DDRNetSegmentationHead-{self.task_name}",
                 params=self.loss_params,
                 weight=1.0,
             ),
@@ -135,8 +139,12 @@ class SegmentationModel(BasePredefinedModel):
                         if self.task == "binary"
                         else "OHEMCrossEntropyLoss"
                     ),
-                    alias="aux_segmentation_loss",
-                    attached_to="aux_segmentation_head",
+                    alias=(
+                        f"OHEMBCEWithLogitsLoss_aux-{self.task_name}"
+                        if self.task == "binary"
+                        else f"OHEMCrossEntropyLoss_aux-{self.task_name}"
+                    ),
+                    attached_to=f"DDRNetSegmentationHead_aux-{self.task_name}",
                     params=self.loss_params,
                     weight=0.4,
                 )
@@ -149,15 +157,15 @@ class SegmentationModel(BasePredefinedModel):
         return [
             MetricModuleConfig(
                 name="JaccardIndex",
-                alias="segmentation_jaccard_index",
-                attached_to="segmentation_head",
+                alias=f"JaccardIndex-{self.task_name}",
+                attached_to=f"DDRNetSegmentationHead-{self.task_name}",
                 is_main_metric=True,
                 params={"task": self.task},
             ),
             MetricModuleConfig(
                 name="F1Score",
-                alias="segmentation_f1_score",
-                attached_to="segmentation_head",
+                alias=f"F1Score-{self.task_name}",
+                attached_to=f"DDRNetSegmentationHead-{self.task_name}",
                 params={"task": self.task},
             ),
         ]
@@ -168,8 +176,8 @@ class SegmentationModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="SegmentationVisualizer",
-                alias="segmentation_visualizer",
-                attached_to="segmentation_head",
+                alias=f"SegmentationVisualizer-{self.task_name}",
+                attached_to=f"DDRNetSegmentationHead-{self.task_name}",
                 params=self.visualizer_params,
             )
         ]

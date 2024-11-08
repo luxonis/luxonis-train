@@ -34,7 +34,11 @@ def collate_fn(
     for task in labels[0].keys():
         task_type = labels[0][task][1]
         annos = [label[task][0] for label in labels]
-        if task_type in [TaskType.CLASSIFICATION, TaskType.SEGMENTATION]:
+        if task_type in [
+            TaskType.CLASSIFICATION,
+            TaskType.SEGMENTATION,
+            TaskType.ARRAY,
+        ]:
             out_labels[task] = torch.stack(annos, 0), task_type
 
         elif task_type in [TaskType.KEYPOINTS, TaskType.BOUNDINGBOX]:
