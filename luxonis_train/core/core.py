@@ -714,6 +714,7 @@ class LuxonisModel:
             ),
             "reverse_channels": self.cfg.trainer.preprocessing.train_rgb,
             "interleaved_to_planar": False,  # TODO: make it modifiable?
+            "dai_type": "RGB888p",
         }
 
         inputs_dict = get_inputs(path)
