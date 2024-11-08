@@ -1,12 +1,14 @@
 import glob
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import cv2
 import numpy as np
 from luxonis_ml.data import BucketStorage, LuxonisDataset
 
 from luxonis_train.core import LuxonisModel
+
+PathType = Union[str, Path]
 
 
 def get_opts() -> dict[str, Any]:
@@ -61,7 +63,9 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
             cv2.rectangle(mask, top_left, bottom_right, 255, -1)
         return mask
 
-    def dummy_generator(train_paths, test_paths):
+    def dummy_generator(
+        train_paths: List[PathType], test_paths: List[PathType]
+    ):
         for path in train_paths:
             yield {
                 "file": path,
@@ -75,7 +79,7 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
             }
 
         for path in test_paths:
-            img = cv2.imread(path)
+            img = cv2.imread(str(path))
             if img is None:
                 continue
             img_h, img_w, _ = img.shape
@@ -98,11 +102,11 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
                 },
             }
 
-    paths_total: List[Path] = [
+    paths_total: List[PathType] = [
         Path(p) for p in glob.glob(str(paths), recursive=True)[:10]
     ]
-    train_paths: List[Path] = paths_total[:5]
-    test_paths: List[Path] = paths_total[5:]
+    train_paths: List[PathType] = paths_total[:5]
+    test_paths: List[PathType] = paths_total[5:]
 
     dataset = LuxonisDataset(
         "dummy_mvtec",
@@ -111,7 +115,7 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
         delete_remote=True,
     )
     dataset.add(dummy_generator(train_paths, test_paths))
-    definitions: Dict[str, List[Path]] = {
+    definitions: Dict[str, List[PathType]] = {
         "train": train_paths,
         "val": test_paths,
     }

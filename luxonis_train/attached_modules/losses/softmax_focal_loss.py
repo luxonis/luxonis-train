@@ -47,9 +47,9 @@ class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
         self.reduction = reduction
 
         if isinstance(alpha, list):
-            self.alpha = torch.tensor(alpha, dtype=torch.float32)
+            self.alpha = torch.tensor(alpha)
         else:
-            self.alpha = torch.tensor([alpha], dtype=torch.float32)
+            self.alpha = alpha
 
         if self.smooth is not None:
             if self.smooth < 0 or self.smooth > 1.0:
@@ -71,18 +71,18 @@ class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
 
         pt = (targets * logits).sum(dim=1) + self.smooth
 
-        if self.alpha.size(0) == 1:
-            alpha_t = self.alpha[0]
-        elif self.alpha.size(0) != logits.size(1):
-            raise ValueError(
-                f"Alpha length {self.alpha.size(0)} does not match number of classes {logits.size(1)}"
-            )
-        else:
+        if isinstance(self.alpha, torch.Tensor):
+            if self.alpha.size(0) != logits.size(1):
+                raise ValueError(
+                    f"Alpha length {self.alpha.size(0)} does not match number of classes {logits.size(1)}"
+                )
             alpha_t = self.alpha[targets.argmax(dim=1)]
+        else:
+            alpha_t = self.alpha
 
         pt = torch.as_tensor(pt, dtype=torch.float32)
         focal_term = torch.pow(1.0 - pt, self.gamma)
-        loss = -alpha_t * focal_term * pt.log()
+        loss = -alpha_t * focal_term * pt.log()  # type: ignore
 
         if self.reduction == "mean":
             return loss.mean()
