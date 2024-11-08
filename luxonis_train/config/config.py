@@ -359,6 +359,7 @@ class TrainerConfig(BaseModelExtraForbid):
     seed: int | None = None
     n_validation_batches: PositiveInt | None = None
     deterministic: bool | Literal["warn"] | None = None
+    smart_cfg_auto_populate: bool = True
     batch_size: PositiveInt = 32
     accumulate_grad_batches: PositiveInt = 1
     use_weighted_sampler: bool = False
@@ -518,7 +519,41 @@ class Config(LuxonisConfig):
             )
             instance.tracker.project_id = fs.experiment_id
             instance.tracker.run_id = fs.run_id
+
+        if instance.trainer.smart_cfg_auto_populate:
+            cls.smart_auto_populate(instance)
+
         return instance
+
+    @classmethod
+    def smart_auto_populate(cls, instance: "Config") -> None:
+        """Automatically populates config fields based on rules, with
+        warnings."""
+
+        # Rule: CosineAnnealingLR should have T_max set to the number of epochs if not provided
+        scheduler = instance.trainer.scheduler
+        if (
+            scheduler.name == "CosineAnnealingLR"
+            and "T_max" not in scheduler.params
+        ):
+            scheduler.params["T_max"] = instance.trainer.epochs
+            logger.warning(
+                "`T_max` was not set for `CosineAnnealingLR`. Automatically set `T_max` to number of epochs."
+            )
+
+        # Rule: Mosaic4 should have out_width and out_height matching train_image_size if not provided
+        for augmentation in instance.trainer.preprocessing.augmentations:
+            if augmentation.name == "Mosaic4" and (
+                "out_width" not in augmentation.params
+                or "out_height" not in augmentation.params
+            ):
+                train_size = instance.trainer.preprocessing.train_image_size
+                augmentation.params.update(
+                    {"out_width": train_size[0], "out_height": train_size[1]}
+                )
+                logger.warning(
+                    "`Mosaic4` augmentation detected. Automatically set `out_width` and `out_height` to match `train_image_size`."
+                )
 
 
 def is_acyclic(graph: dict[str, list[str]]) -> bool:
