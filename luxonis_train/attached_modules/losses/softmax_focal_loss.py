@@ -80,10 +80,12 @@ class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
         else:
             alpha_t = self.alpha
 
-        focal_term = torch.pow(1 - pt, self.gamma)
+        focal_term = torch.pow(1.0 - pt, self.gamma)
         loss = -alpha_t * focal_term * pt.log()
 
         if self.reduction == "mean":
             return loss.mean()
         elif self.reduction == "sum":
             return loss.sum()
+        else:
+            return loss

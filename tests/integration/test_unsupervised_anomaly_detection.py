@@ -98,7 +98,7 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
                 },
             }
 
-    paths_total = glob.glob(str(paths), recursive=True)[:10]
+    paths_total = [Path(p) for p in glob.glob(str(paths), recursive=True)[:10]]
     train_paths, test_paths = paths_total[:5], paths_total[5:]
 
     dataset = LuxonisDataset(

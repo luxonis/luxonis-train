@@ -1,6 +1,7 @@
 import glob
 import os
 import random
+from typing import Callable, List
 
 import numpy as np
 import torch
@@ -19,28 +20,31 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
     def __init__(
         self,
         *args,
-        anomaly_source_path: str | None = None,
+        anomaly_source_path: str,
         noise_prob: float = 0.5,
         **kwargs,
     ):
         """Custom loader for Luxonis datasets that adds Perlin noise
         during training with a given probability.
 
-        @type anomaly_source_path: str | None
         @param anomaly_source_path: Path to the anomaly dataset from
             where random samples are drawn for noise.
-        @type noise_prob: int
         @param noise_prob: The probability with which to apply Perlin
-            noise (only used during training). normalization.
+            noise (only used during training).
         """
+        if not anomaly_source_path:
+            raise ValueError("anomaly_source_path must be a valid string.")
+
         super().__init__(*args, **kwargs)
         lux_fs = LuxonisFileSystem(path=anomaly_source_path)
         if lux_fs.protocol in ["s3", "gcs"]:
-            anomaly_source_path = lux_fs.get_dir(
-                remote_path=anomaly_source_path, local_path="./data"
+            anomaly_source_path = str(
+                lux_fs.get_dir(
+                    remote_paths=[anomaly_source_path], local_dir="./data"
+                )
             )
         else:
-            anomaly_source_path = lux_fs.path
+            anomaly_source_path = str(lux_fs.path)
 
         if anomaly_source_path and os.path.exists(anomaly_source_path):
             self.anomaly_source_paths = sorted(
@@ -52,14 +56,26 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
                 )
         else:
             raise ValueError("Invalid or unspecified anomaly source path.")
+
         self.anomaly_source_path = anomaly_source_path
         self.noise_prob = noise_prob
-        self.base_loader.add_background = True
+        self.base_loader.add_background = True  # type: ignore
         self.base_loader.class_mappings["segmentation"]["background"] = 0
         self.base_loader.class_mappings["segmentation"] = {
             k: (v + 1 if k != "background" else v)
             for k, v in self.base_loader.class_mappings["segmentation"].items()
         }
+
+        if (
+            self.augmentations is None
+            or self.augmentations.pixel_transform is None
+        ):
+            self.pixel_augs: List[Callable] = []
+        else:
+            self.pixel_augs: List[Callable] = [
+                transform
+                for transform in self.augmentations.pixel_transform.transforms
+            ]
 
     def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
         img, labels = self.base_loader[idx]
@@ -67,15 +83,11 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         img = np.transpose(img, (2, 0, 1))
         tensor_img = Tensor(img)
 
-        if (
-            self.view[0] == "train"
-            and self.anomaly_source_path is not None
-            and random.random() < self.noise_prob
-        ):
+        if self.view[0] == "train" and random.random() < self.noise_prob:
             aug_tensor_img, an_mask = apply_anomaly_to_img(
                 tensor_img,
                 anomaly_source_paths=self.anomaly_source_paths,
-                pixel_augs=self.augmentations.pixel_transform.transforms,
+                pixel_augs=self.pixel_augs,
             )
         else:
             aug_tensor_img = tensor_img

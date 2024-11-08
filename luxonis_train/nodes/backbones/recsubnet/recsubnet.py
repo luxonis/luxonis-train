@@ -24,7 +24,7 @@ def get_variant(variant: VariantLiteral) -> int:
     return variants[variant]
 
 
-class RecSubNet(BaseNode[Tensor, Tuple[Tensor, Tensor, Tensor]]):
+class RecSubNet(BaseNode[Tensor, Tuple[Tensor, Tensor]]):
     in_channels: int
     out_channels: int
     base_width: int
@@ -77,7 +77,7 @@ class RecSubNet(BaseNode[Tensor, Tuple[Tensor, Tensor, Tensor]]):
                 self.base_width, out_channels=out_channels
             )
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tuple[Tensor, Tensor]:
         """Performs the forward pass through the encoder and decoder."""
         b5 = self.encoder(x)
         output = self.decoder(b5)

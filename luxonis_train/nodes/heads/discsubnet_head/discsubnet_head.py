@@ -29,14 +29,14 @@ def get_variant(variant: VariantLiteral) -> int:
 
 class DiscSubNetHead(BaseNode[Tensor, Tensor]):
     in_channels: list[int] | int
-    out_channels: list[int] | int
+    out_channels: int
     base_channels: int
     tasks: list[TaskType] = [TaskType.SEGMENTATION]
 
     def __init__(
         self,
         in_channels: list[int] | int = 6,
-        out_channels: list[int] | int = 2,
+        out_channels: int = 2,
         base_channels: int | None = None,
         variant: VariantLiteral = "l",  # Use lowercase variant
         **kwargs,
@@ -52,7 +52,7 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
         @type in_channels: list[int] | int
         @param in_channels: Number of input channels for the encoder. Defaults to 6.
 
-        @type out_channels: list[int] | int
+        @type out_channels: int
         @param out_channels: Number of output channels for the decoder. Defaults to 2 (for segmentation masks).
 
         @type base_channels: int
@@ -84,7 +84,9 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
                 self.base_channels, out_channels
             )
 
-    def forward(self, x_tuple: Tuple[Tensor, Tensor]) -> Tensor:
+    def forward(
+        self, x_tuple: Tuple[Tensor, Tensor]
+    ) -> Tensor | tuple[Tensor, Tensor]:
         """Performs the forward pass through the encoder and decoder."""
 
         recon, input = x_tuple

@@ -1,6 +1,6 @@
 import logging
 from math import exp
-from typing import Any, Union
+from typing import Any, Literal, Union
 
 import torch
 import torch.nn as nn
@@ -28,7 +28,7 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
         self,
         alpha: float = 1,
         gamma: float = 2.0,
-        reduction: str = "mean",
+        reduction: Literal["none", "mean", "sum"] = "mean",
         smooth: float = 1e-5,
         **kwargs: Any,
     ):

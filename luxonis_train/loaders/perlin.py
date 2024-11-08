@@ -70,15 +70,15 @@ def rand_perlin_2d(
 
     gradients = compute_gradients(res)
 
-    n00 = dot(tile_grads([0, -1], [0, -1], gradients, d), [0, 0], grid, shape)
+    n00 = dot(tile_grads((0, -1), (0, -1), gradients, d), (0, 0), grid, shape)
     n10 = dot(
-        tile_grads([1, None], [0, -1], gradients, d), [-1, 0], grid, shape
+        tile_grads((1, None), (0, -1), gradients, d), (-1, 0), grid, shape
     )
     n01 = dot(
-        tile_grads([0, -1], [1, None], gradients, d), [0, -1], grid, shape
+        tile_grads((0, -1), (1, None), gradients, d), (0, -1), grid, shape
     )
     n11 = dot(
-        tile_grads([1, None], [1, None], gradients, d), [-1, -1], grid, shape
+        tile_grads((1, None), (1, None), gradients, d), (-1, -1), grid, shape
     )
 
     t = fade(grid[: shape[0], : shape[1]])
@@ -145,7 +145,7 @@ def apply_anomaly_to_img(
     img: torch.Tensor,
     anomaly_source_paths: List[str],
     beta: float | None = None,
-    pixel_augs: List[Callable] = None,
+    pixel_augs: List[Callable] | None = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Applies Perlin noise-based anomalies to a single image (C, H, W).
 
@@ -153,7 +153,7 @@ def apply_anomaly_to_img(
     @param img: The input image tensor of shape (C, H, W).
     @type anomaly_source_paths: List[str]
     @param anomaly_source_paths: List of file paths to the anomaly images.
-    @type pixel_augs: List[Callable]
+    @type pixel_augs: List[Callable] | None
     @param pixel_augs: A list of albumentations augmentations to apply to the anomaly image. Defaults to C{None}.
     @type beta: float | None
     @param beta: A blending factor for anomaly and noise. If None, a random value in the range [0, 0.8]
