@@ -26,6 +26,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         width_mul: float | None = None,
         block: Literal["RepBlock", "CSPStackRepBlock"] | None = None,
         csp_e: float | None = None,
+        download_weights: bool = False,
         **kwargs: Any,
     ):
         """Implementation of the RepPANNeck module. Supports the version
@@ -62,6 +63,8 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         @tpe csp_e: float | None
         @param csp_e: Factor that controls number of intermediate channels if block="CSPStackRepBlock". If provided,
             overrides the variant value.
+        @type download_weights: bool
+        @param download_weights: If True download weights from COCO (if available for specified variant). Defaults to False.
         """
 
         super().__init__(**kwargs)
@@ -161,6 +164,9 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
             in_channels_next = up_out_channel_list[i]
             out_channels = channels_list_down_blocks[2 * i + 1]
             curr_n_repeats = n_repeats_down_blocks[i]
+
+        if download_weights and var.weights_path:
+            self.load_checkpoint(var.weights_path)
 
     def forward(self, inputs: list[Tensor]) -> list[Tensor]:
         x = inputs[-1]

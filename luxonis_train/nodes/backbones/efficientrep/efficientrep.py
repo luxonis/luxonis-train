@@ -29,6 +29,7 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         width_mul: float | None = None,
         block: Literal["RepBlock", "CSPStackRepBlock"] | None = None,
         csp_e: float | None = None,
+        download_weights: bool = True,
         **kwargs: Any,
     ):
         """Implementation of the EfficientRep backbone. Supports the
@@ -59,9 +60,11 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         @param width_mul: Width multiplier. If provided, overrides the variant value.
         @type block: Literal["RepBlock", "CSPStackRepBlock"] | None
         @param block: Base block used when building the backbone. If provided, overrides the variant value.
-        @tpe csp_e: float | None
+        @type csp_e: float | None
         @param csp_e: Factor that controls number of intermediate channels if block="CSPStackRepBlock". If provided,
             overrides the variant value.
+        @type download_weights: bool
+        @param download_weights: If True download weights from COCO (if available for specified variant). Defaults to True.
         """
         super().__init__(**kwargs)
 
@@ -121,6 +124,9 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
                 kernel_size=5,
             )
         )
+
+        if download_weights and var.weights_path:
+            self.load_checkpoint(var.weights_path)
 
     def set_export_mode(self, mode: bool = True) -> None:
         """Reparametrizes instances of L{RepVGGBlock} in the network.

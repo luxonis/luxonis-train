@@ -18,6 +18,7 @@ VariantLiteral: TypeAlias = Literal["light", "heavy"]
 class KeypointDetectionVariant(BaseModel):
     backbone: str
     backbone_params: Params
+    neck_params: Params
 
 
 def get_variant(variant: VariantLiteral) -> KeypointDetectionVariant:
@@ -27,10 +28,12 @@ def get_variant(variant: VariantLiteral) -> KeypointDetectionVariant:
         "light": KeypointDetectionVariant(
             backbone="EfficientRep",
             backbone_params={"variant": "n"},
+            neck_params={"variant": "n", "download_weights": True},
         ),
         "heavy": KeypointDetectionVariant(
             backbone="EfficientRep",
             backbone_params={"variant": "l"},
+            neck_params={"variant": "l", "download_weights": True},
         ),
     }
 
@@ -66,7 +69,7 @@ class KeypointDetectionModel(BasePredefinedModel):
             if backbone is not None or backbone_params is not None
             else var_config.backbone_params
         ) or {}
-        self.neck_params = neck_params or {}
+        self.neck_params = neck_params or var_config.neck_params
         self.head_params = head_params or {}
         self.loss_params = loss_params or {"n_warmup_epochs": 0}
         self.kpt_visualizer_params = kpt_visualizer_params or {}

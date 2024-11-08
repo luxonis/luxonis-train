@@ -1,3 +1,4 @@
+import logging
 from typing import Literal
 
 from torch import Tensor, nn
@@ -12,6 +13,8 @@ from luxonis_train.nodes.blocks import (
 
 from .blocks import DAPPM, BasicDDRBackbone, make_layer
 from .variants import get_variant
+
+logger = logging.getLogger(__name__)
 
 
 class DDRNet(BaseNode[Tensor, list[Tensor]]):
@@ -36,6 +39,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         spp_strides: list[int] | None = None,
         layer3_repeats: int = 1,
         layers: list[int] | None = None,
+        download_weights: bool = True,
         **kwargs,
     ):
         """DDRNet backbone.
@@ -92,6 +96,8 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         @type layers: list[int]
         @param layers: Number of blocks in each layer of the backbone. Defaults to [2,
             2, 2, 2, 1, 2, 2, 1].
+        @type download_weights: bool
+        @param download_weights: If True download weights from COCO (if available for specified variant). Defaults to True.
         @type kwargs: Any
         @param kwargs: Additional arguments to pass to L{BaseNode}.
         """
@@ -158,9 +164,11 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             )
             self.layer3_skip.append(
                 make_layer(
-                    in_channels=out_chan_backbone["layer2"]
-                    if i == 0
-                    else highres_channels,
+                    in_channels=(
+                        out_chan_backbone["layer2"]
+                        if i == 0
+                        else highres_channels
+                    ),
                     channels=highres_channels,
                     block=skip_block,
                     num_blocks=self.additional_layers[1],
@@ -232,6 +240,9 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self.highres_channels = highres_channels
         self.layer5_bottleneck_expansion = layer5_bottleneck_expansion
         self.init_params()
+
+        if download_weights and var.weights_path:
+            self.load_checkpoint(var.weights_path)
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         width_output = inputs.shape[-1] // 8

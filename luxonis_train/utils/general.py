@@ -1,7 +1,11 @@
 import logging
 import math
+import os
+import urllib.parse
+from pathlib import Path, PurePosixPath
 from typing import TypeVar
 
+import torch
 from torch import Size, Tensor
 
 from luxonis_train.utils.types import Packet
@@ -139,3 +143,63 @@ def get_with_default(
 
     logger.info(msg, stacklevel=2)
     return default
+
+
+def safe_download(
+    url: str,
+    file: str | None = None,
+    dir: str = ".cache/luxonis_train",
+    retry: int = 3,
+    force: bool = False,
+) -> Path | None:
+    """Downloads file from the web and returns either local path or None
+    if downloading failed.
+
+    @type url: str
+    @param url: URL of the file you want to download.
+    @type file: str | None
+    @param file: Name of the saved file, if None infers it from URL.
+        Defaults to None.
+    @type dir: str
+    @param dir: Directory to store downloaded file in. Defaults to
+        '.cache_data'.
+    @type retry: int
+    @param retry: Number of retries when downloading. Defaults to 3.
+    @type force: bool
+    @param force: Whether to force redownload if file already exists.
+        Defaults to False.
+    @rtype: Path | None
+    @return: Path to local file or None if downloading failed.
+    """
+    os.makedirs(dir, exist_ok=True)
+    f = Path(dir or ".") / (file or url2file(url))
+    if f.is_file() and not force:
+        logger.warning(f"File {f} is already cached, using that one.")
+        return f
+    else:
+        uri = clean_url(url)
+        logger.info(f"Downloading `{uri}` to `{f}`")
+        for i in range(retry + 1):
+            try:
+                torch.hub.download_url_to_file(url, str(f), progress=True)
+                return f
+            except Exception:
+                if i == retry:
+                    logger.warning("Download failed, retry limit reached.")
+                    return None
+                logger.warning(f"Download failed, retrying {i+1}/{retry} ...")
+
+
+def clean_url(url: str) -> str:
+    """Strip auth from URL, i.e. https://url.com/file.txt?auth -> https://url.com/file.txt."""
+    url = str(PurePosixPath(url)).replace(
+        ":/", "://"
+    )  # Pathlib turns :// -> :/, PurePosixPath for Windows
+    return urllib.parse.unquote(url).split("?")[
+        0
+    ]  # '%2F' to '/', split https://url.com/file.txt?auth
+
+
+def url2file(url: str) -> str:
+    """Convert URL to filename, i.e. https://url.com/file.txt?auth -> file.txt."""
+    return Path(clean_url(url)).name
