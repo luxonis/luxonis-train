@@ -105,9 +105,12 @@ class LuxonisModel:
         self.pl_trainer = create_trainer(
             self.cfg.trainer,
             logger=self.tracker,
-            callbacks=LuxonisRichProgressBar()
-            if self.cfg.trainer.use_rich_progress_bar
-            else LuxonisTQDMProgressBar(),
+            callbacks=(
+                LuxonisRichProgressBar()
+                if self.cfg.trainer.use_rich_progress_bar
+                else LuxonisTQDMProgressBar()
+            ),
+            precision=self.cfg.trainer.precision,
         )
 
         self.train_augmentations = Augmentations(
@@ -166,6 +169,22 @@ class LuxonisModel:
                 "Weighted sampler is not implemented yet."
             )
 
+        if self.cfg.trainer.n_validation_batches:
+            generator = torch.Generator()
+            generator.manual_seed(self.cfg.trainer.seed or 42)
+            n_samples = (
+                self.cfg.trainer.n_validation_batches
+                * self.cfg.trainer.batch_size
+            )
+            for view in ["val", "test"]:
+                if view in self.loaders:
+                    indices = list(
+                        range(min(n_samples, len(self.loaders[view])))
+                    )
+                    self.loaders[view] = torch_data.Subset(  # type: ignore
+                        self.loaders[view], indices
+                    )
+
         self.pytorch_loaders = {
             view: torch_data.DataLoader(
                 self.loaders[view],
@@ -180,6 +199,12 @@ class LuxonisModel:
                 ),
                 pin_memory=self.cfg.trainer.pin_memory,
                 sampler=sampler if view == "train" else None,
+                generator=generator
+                if (
+                    self.cfg.trainer.n_validation_batches is not None
+                    and view in ["val", "test"]
+                )
+                else None,
             )
             for view in ["train", "val", "test"]
         }
@@ -542,9 +567,11 @@ class LuxonisModel:
                 _core=self,
             )
             callbacks = [
-                LuxonisRichProgressBar()
-                if cfg.trainer.use_rich_progress_bar
-                else LuxonisTQDMProgressBar()
+                (
+                    LuxonisRichProgressBar()
+                    if cfg.trainer.use_rich_progress_bar
+                    else LuxonisTQDMProgressBar()
+                )
             ]
 
             pruner_callback = PyTorchLightningPruningCallback(
@@ -709,6 +736,7 @@ class LuxonisModel:
             ),
             "reverse_channels": self.cfg.trainer.preprocessing.train_rgb,
             "interleaved_to_planar": False,  # TODO: make it modifiable?
+            "dai_type": "RGB888p",
         }
 
         inputs_dict = get_inputs(path)
@@ -751,7 +779,7 @@ class LuxonisModel:
         }
 
         cfg_dict = {
-            "config_version": CONFIG_VERSION.__args__[-1],  # type: ignore
+            "config_version": CONFIG_VERSION,
             "model": model,
         }
 

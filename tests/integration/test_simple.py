@@ -269,3 +269,24 @@ def test_freezing(opts: dict[str, Any], coco_dataset: LuxonisDataset):
     opts["loader.params.dataset_name"] = coco_dataset.identifier
     model = LuxonisModel(config_file, opts)
     model.train()
+
+
+def test_smart_cfg_auto_populate(
+    opts: dict[str, Any], parking_lot_dataset: LuxonisDataset
+):
+    config_file = "tests/configs/smart_cfg_populate_config.yaml"
+    opts = {
+        "loader.params.dataset_name": parking_lot_dataset.dataset_name,
+    }
+    model = LuxonisModel(config_file, opts)
+    assert (
+        model.cfg.trainer.scheduler.params["T_max"] == model.cfg.trainer.epochs
+    )
+    assert (
+        model.cfg.trainer.preprocessing.augmentations[0].params["out_width"]
+        == model.cfg.trainer.preprocessing.train_image_size[0]
+    )
+    assert (
+        model.cfg.trainer.preprocessing.augmentations[0].params["out_height"]
+        == model.cfg.trainer.preprocessing.train_image_size[1]
+    )
