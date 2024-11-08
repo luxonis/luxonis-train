@@ -33,7 +33,7 @@ def get_variant(variant: VariantLiteral) -> SegmentationVariant:
         "heavy": SegmentationVariant(
             backbone="DDRNet",
             backbone_params={"variant": "23"},
-            head_params={"download_weights": True},
+            head_params={"download_weights": False},
         ),
     }
 
@@ -55,7 +55,7 @@ class SegmentationModel(BasePredefinedModel):
         aux_head_params: Params | None = None,
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
-        task: Literal["binary", "multiclass"] = "multiclass",
+        task: Literal["binary", "multiclass"] = "binary",
         task_name: str | None = None,
     ):
         var_config = get_variant(variant)

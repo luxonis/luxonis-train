@@ -12,7 +12,7 @@ from luxonis_train.config import (
 
 from .base_predefined_model import BasePredefinedModel
 
-VariantLiteral: TypeAlias = Literal["light", "heavy"]
+VariantLiteral: TypeAlias = Literal["light", "medium", "heavy"]
 
 
 class DetectionVariant(BaseModel):
@@ -31,6 +31,12 @@ def get_variant(variant: VariantLiteral) -> DetectionVariant:
             backbone_params={"variant": "n"},
             neck_params={"variant": "n", "download_weights": True},
             head_params={"download_weights": True},
+        ),
+        "medium": DetectionVariant(
+            backbone="EfficientRep",
+            backbone_params={"variant": "s"},
+            neck_params={"variant": "s", "download_weights": False},
+            head_params={"download_weights": False},
         ),
         "heavy": DetectionVariant(
             backbone="EfficientRep",
