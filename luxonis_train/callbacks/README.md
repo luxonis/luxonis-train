@@ -65,3 +65,29 @@ Callback to perform a test run at the end of the training.
 ## `UploadCheckpoint`
 
 Callback that uploads currently the best checkpoint (based on validation loss) to the tracker location - where all other logs are stored.
+
+## `GradCamCallback`
+
+Callback to visualize gradients using Grad-CAM. Works only during validation.
+
+**Parameters:**
+
+| Key             | Type  | Default value      | Description                                          |
+| --------------- | ----- | ------------------ | ---------------------------------------------------- |
+| `target_layer`  | `int` | -                  | Layer to visualize gradients.                        |
+| `class_idx`     | `int` | 0                  | Index of the class for visualization. Defaults to 0. |
+| `log_n_batches` | `int` | 1                  | Number of batches to log. Defaults to 1.             |
+| `task`          | `str` | `"classification"` | The type of task. Defaults to "classification".      |
+
+## `EMACallback`
+
+Callback that updates the stored parameters using a moving average.
+
+**Parameters:**
+
+| Key                 | Type    | Default value | Description                                                                                     |
+| ------------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------- |
+| `decay`             | `float` | `0.5`         | Decay factor for the moving average.                                                            |
+| `use_dynamic_decay` | `bool`  | `True`        | Whether to use dynamic decay.                                                                   |
+| `decay_tau`         | `float` | `2000`        | Decay tau for dynamic decay.                                                                    |
+| `device`            | `str`   | `None`        | Device to use for the moving average. If `None`, the device is inferred from the model's device |

@@ -340,6 +340,7 @@ class TrainerConfig(BaseModelExtraForbid):
     preprocessing: PreprocessingConfig = PreprocessingConfig()
     use_rich_progress_bar: bool = True
 
+    precision: Literal["16-mixed", "32"] = "32"
     accelerator: Literal["auto", "cpu", "gpu", "tpu"] = "auto"
     devices: int | list[int] | str = "auto"
     strategy: Literal["auto", "ddp"] = "auto"
@@ -409,6 +410,13 @@ class TrainerConfig(BaseModelExtraForbid):
                 "Setting `validation_interval` same as `epochs` otherwise no checkpoint would be generated."
             )
             self.validation_interval = self.epochs
+        return self
+
+    @model_validator(mode="after")
+    def reorder_callbacks(self) -> Self:
+        """Reorder callbacks so that EMA is the first callback, since it
+        needs to be updated before other callbacks."""
+        self.callbacks.sort(key=lambda v: 0 if v.name == "EMACallback" else 1)
         return self
 
 

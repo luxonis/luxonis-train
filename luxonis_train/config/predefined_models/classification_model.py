@@ -74,14 +74,14 @@ class ClassificationModel(BasePredefinedModel):
         return [
             ModelNodeConfig(
                 name=self.backbone,
-                alias="classification_backbone",
+                alias=f"{self.backbone}-{self.task_name}",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="ClassificationHead",
-                alias="classification_head",
-                inputs=["classification_backbone"],
+                alias=f"ClassificationHead-{self.task_name}",
+                inputs=[f"{self.backbone}-{self.task_name}"],
                 freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
                 task=self.task_name,
@@ -94,8 +94,8 @@ class ClassificationModel(BasePredefinedModel):
         return [
             LossModuleConfig(
                 name="CrossEntropyLoss",
-                alias="classification_loss",
-                attached_to="classification_head",
+                alias=f"CrossEntropyLoss-{self.task_name}",
+                attached_to=f"ClassificationHead-{self.task_name}",
                 params=self.loss_params,
                 weight=1.0,
             )
@@ -107,21 +107,21 @@ class ClassificationModel(BasePredefinedModel):
         return [
             MetricModuleConfig(
                 name="F1Score",
-                alias="classification_f1_score",
+                alias=f"F1Score-{self.task_name}",
                 is_main_metric=True,
-                attached_to="classification_head",
+                attached_to=f"ClassificationHead-{self.task_name}",
                 params={"task": self.task},
             ),
             MetricModuleConfig(
                 name="Accuracy",
-                alias="classification_accuracy",
-                attached_to="classification_head",
+                alias=f"Accuracy-{self.task_name}",
+                attached_to=f"ClassificationHead-{self.task_name}",
                 params={"task": self.task},
             ),
             MetricModuleConfig(
                 name="Recall",
-                alias="classification_recall",
-                attached_to="classification_head",
+                alias=f"Recall-{self.task_name}",
+                attached_to=f"ClassificationHead-{self.task_name}",
                 params={"task": self.task},
             ),
         ]
@@ -132,7 +132,8 @@ class ClassificationModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="ClassificationVisualizer",
-                attached_to="classification_head",
+                alias=f"ClassificationVisualizer-{self.task_name}",
+                attached_to=f"ClassificationHead-{self.task_name}",
                 params=self.visualizer_params,
             )
         ]
