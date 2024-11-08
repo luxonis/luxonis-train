@@ -179,9 +179,9 @@ class LuxonisModel:
                     indices = list(
                         range(min(n_samples, len(self.loaders[view])))
                     )
-                    self.loaders[view] = torch_data.Subset(
+                    self.loaders[view] = torch_data.Subset(  # type: ignore
                         self.loaders[view], indices
-                    )  # type: ignore
+                    )
 
         self.pytorch_loaders = {
             view: torch_data.DataLoader(
