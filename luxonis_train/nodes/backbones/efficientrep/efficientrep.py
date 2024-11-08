@@ -1,7 +1,6 @@
 import logging
 from typing import Any, Literal
 
-import torch
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
@@ -11,7 +10,7 @@ from luxonis_train.nodes.blocks import (
     RepVGGBlock,
     SpatialPyramidPoolingBlock,
 )
-from luxonis_train.utils import make_divisible, safe_download
+from luxonis_train.utils import make_divisible
 
 from .variants import VariantLiteral, get_variant
 
@@ -126,19 +125,8 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
             )
         )
 
-        if download_weights:
-            self._init_weights(var.weights_path)
-
-    def _init_weights(self, weights_path: str | None):
-        if not weights_path:
-            logger.warning("No weights found for EfficientRep, skipping.")
-            return
-        local_path = safe_download(weights_path)
-        if local_path:
-            state_dict = torch.load(local_path, weights_only=False)[
-                "state_dict"
-            ]
-            self.load_state_dict(state_dict)
+        if download_weights and var.weights_path:
+            self.load_checkpoint(var.weights_path)
 
     def set_export_mode(self, mode: bool = True) -> None:
         """Reparametrizes instances of L{RepVGGBlock} in the network.

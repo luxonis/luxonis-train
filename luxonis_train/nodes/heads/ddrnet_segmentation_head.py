@@ -7,7 +7,7 @@ from torch import Tensor
 
 from luxonis_train.enums import TaskType
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.utils.general import infer_upscale_factor, safe_download
+from luxonis_train.utils.general import infer_upscale_factor
 
 logger = logging.getLogger(__name__)
 
@@ -96,20 +96,7 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
         )
         if download_weights:
             weights_path = "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/ddrnet_head_coco.ckpt"
-            self._init_weights(weights_path)
-
-    def _init_weights(self, weights_path: str | None):
-        if not weights_path:
-            logger.warning(
-                "No weights found for DDRNET segmentation head, skipping."
-            )
-            return
-        local_path = safe_download(weights_path)
-        if local_path:
-            state_dict = torch.load(local_path, weights_only=False)[
-                "state_dict"
-            ]
-            self.load_state_dict(state_dict, strict=False)
+            self.load_checkpoint(weights_path, strict=False)
 
     def forward(self, inputs: Tensor) -> Tensor:
         x: Tensor = self.relu(self.bn1(inputs))

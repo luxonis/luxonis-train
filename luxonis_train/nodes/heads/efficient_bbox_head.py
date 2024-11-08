@@ -12,7 +12,6 @@ from luxonis_train.utils import (
     anchors_for_fpn_features,
     dist2bbox,
     non_max_suppression,
-    safe_download,
 )
 
 logger = logging.getLogger(__name__)
@@ -97,19 +96,10 @@ class EfficientBBoxHead(
             ]
 
         if download_weights:
-            weights_path = "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientbbox_head_n_coco.ckpt"
-            self._init_weights(weights_path)
-
-    def _init_weights(self, weights_path: str | None):
-        if not weights_path:
-            logger.warning("No weights found for EfficientBBoxHead, skipping.")
-            return
-        local_path = safe_download(weights_path)
-        if local_path:
-            state_dict = torch.load(local_path, weights_only=False)[
-                "state_dict"
-            ]
-            self.load_state_dict(state_dict, strict=False)
+            # TODO: Handle variants of head in a nicer way
+            if self.in_channels == [32, 64, 128]:
+                weights_path = "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientbbox_head_n_coco.ckpt"
+                self.load_checkpoint(weights_path, strict=False)
 
     def forward(
         self, inputs: list[Tensor]

@@ -1,12 +1,11 @@
 import logging
 from typing import Any, Literal
 
-import torch
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import RepVGGBlock
-from luxonis_train.utils import make_divisible, safe_download
+from luxonis_train.utils import make_divisible
 
 from .blocks import CSPDownBlock, CSPUpBlock, RepDownBlock, RepUpBlock
 from .variants import VariantLiteral, get_variant
@@ -166,19 +165,8 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
             out_channels = channels_list_down_blocks[2 * i + 1]
             curr_n_repeats = n_repeats_down_blocks[i]
 
-        if download_weights:
-            self._init_weights(var.weights_path)
-
-    def _init_weights(self, weights_path: str | None):
-        if not weights_path:
-            logger.warning("No weights found for RepPANNeck, skipping.")
-            return
-        local_path = safe_download(weights_path)
-        if local_path:
-            state_dict = torch.load(local_path, weights_only=False)[
-                "state_dict"
-            ]
-            self.load_state_dict(state_dict)
+        if download_weights and var.weights_path:
+            self.load_checkpoint(var.weights_path)
 
     def forward(self, inputs: list[Tensor]) -> list[Tensor]:
         x = inputs[-1]

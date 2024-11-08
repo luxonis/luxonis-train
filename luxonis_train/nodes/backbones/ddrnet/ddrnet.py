@@ -1,7 +1,6 @@
 import logging
 from typing import Literal
 
-import torch
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
@@ -11,7 +10,6 @@ from luxonis_train.nodes.blocks import (
     ConvModule,
     UpscaleOnline,
 )
-from luxonis_train.utils import safe_download
 
 from .blocks import DAPPM, BasicDDRBackbone, make_layer
 from .variants import get_variant
@@ -243,19 +241,8 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self.layer5_bottleneck_expansion = layer5_bottleneck_expansion
         self.init_params()
 
-        if download_weights:
-            self._init_weights(var.weights_path)
-
-    def _init_weights(self, weights_path: str | None):
-        if not weights_path:
-            logger.warning("No weights found for DDRNET backbone, skipping.")
-            return
-        local_path = safe_download(weights_path)
-        if local_path:
-            state_dict = torch.load(local_path, weights_only=False)[
-                "state_dict"
-            ]
-            self.load_state_dict(state_dict)
+        if download_weights and var.weights_path:
+            self.load_checkpoint(var.weights_path)
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         width_output = inputs.shape[-1] // 8
