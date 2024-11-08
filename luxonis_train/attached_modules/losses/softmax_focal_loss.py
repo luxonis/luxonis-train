@@ -80,6 +80,7 @@ class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
         else:
             alpha_t = self.alpha
 
+        pt = torch.as_tensor(pt, dtype=torch.float32)
         focal_term = torch.pow(1.0 - pt, self.gamma)
         loss = -alpha_t * focal_term * pt.log()
 

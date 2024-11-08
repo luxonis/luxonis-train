@@ -102,11 +102,11 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
 
     def wrap(
         self,
-        output: tuple[list[Tensor], list[Tensor]] | list[Tensor],
+        output: Tensor | tuple[Tensor, Tensor],
     ) -> Packet[Tensor]:
         """Wraps the output into a packet."""
         if self.export:
-            return {"segmentation": output}
+            return {"segmentation": [output]}
         else:
             seg_out, recon = output
             return {

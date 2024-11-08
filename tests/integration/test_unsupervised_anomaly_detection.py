@@ -1,6 +1,6 @@
 import glob
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 
 import cv2
 import numpy as np
@@ -98,8 +98,11 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
                 },
             }
 
-    paths_total = [Path(p) for p in glob.glob(str(paths), recursive=True)[:10]]
-    train_paths, test_paths = paths_total[:5], paths_total[5:]
+    paths_total: List[Path] = [
+        Path(p) for p in glob.glob(str(paths), recursive=True)[:10]
+    ]
+    train_paths: List[Path] = paths_total[:5]
+    test_paths: List[Path] = paths_total[5:]
 
     dataset = LuxonisDataset(
         "dummy_mvtec",
