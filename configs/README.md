@@ -222,6 +222,7 @@ Here you can change everything related to actual training of the model.
 | `verbose`                 | `bool`                                         | `True`        | Print all intermediate results to console                                                                                                        |
 | `pin_memory`              | `bool`                                         | `True`        | Whether to pin memory in the `DataLoader`                                                                                                        |
 | `save_top_k`              | `-1 \| NonNegativeInt`                         | `3`           | Save top K checkpoints based on validation loss when training                                                                                    |
+| `smart_cfg_auto_populate` | `bool`                                         | `True`        | Automatically populate sensible default values for missing config fields and log warnings                                                        |
 
 **Example:**
 
