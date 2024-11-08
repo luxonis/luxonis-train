@@ -115,7 +115,7 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
         "train": train_paths,
         "val": test_paths,
     }
-    dataset.make_splits(definitions)
+    dataset.make_splits(definitions=definitions)
 
 
 def test_anomaly_detection():
