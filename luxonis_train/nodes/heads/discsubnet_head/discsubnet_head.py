@@ -84,9 +84,7 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
                 self.base_channels, out_channels
             )
 
-    def forward(
-        self, x_tuple: Tuple[Tensor, Tensor]
-    ) -> Tensor | tuple[Tensor, Tensor]:
+    def forward(self, x_tuple: Tuple[Tensor, Tensor]) -> tuple[Tensor, Tensor]:
         """Performs the forward pass through the encoder and decoder."""
 
         recon, input = x_tuple
@@ -95,18 +93,16 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
 
         seg_out = self.decoder_segment(*self.encoder_segment(x))
 
-        if self.export:
-            return seg_out
-        else:
-            return seg_out, recon
+        return seg_out, recon
 
     def wrap(
         self,
-        output: Tensor | tuple[Tensor, Tensor],
+        output: tuple[Tensor, Tensor],
     ) -> Packet[Tensor]:
         """Wraps the output into a packet."""
+        seg_out, recon = output
         if self.export:
-            return {"segmentation": [output]}
+            return {"segmentation": [seg_out]}
         else:
             seg_out, recon = output
             return {

@@ -1,6 +1,6 @@
 import glob
 from pathlib import Path
-from typing import Any, List
+from typing import Any, Dict, List
 
 import cv2
 import numpy as np
@@ -111,7 +111,11 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
         delete_remote=True,
     )
     dataset.add(dummy_generator(train_paths, test_paths))
-    dataset.make_splits(definitions={"train": train_paths, "val": test_paths})
+    definitions: Dict[str, List[Path]] = {
+        "train": train_paths,
+        "val": test_paths,
+    }
+    dataset.make_splits(definitions)
 
 
 def test_anomaly_detection():
