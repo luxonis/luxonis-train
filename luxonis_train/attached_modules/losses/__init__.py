@@ -6,6 +6,7 @@ from .efficient_keypoint_bbox_loss import EfficientKeypointBBoxLoss
 from .ohem_bce_with_logits import OHEMBCEWithLogitsLoss
 from .ohem_cross_entropy import OHEMCrossEntropyLoss
 from .ohem_loss import OHEMLoss
+from .reconstruction_segmentation_loss import ReconstructionSegmentationLoss
 from .sigmoid_focal_loss import SigmoidFocalLoss
 from .smooth_bce_with_logits import SmoothBCEWithLogitsLoss
 from .softmax_focal_loss import SoftmaxFocalLoss
@@ -19,6 +20,7 @@ __all__ = [
     "SigmoidFocalLoss",
     "SmoothBCEWithLogitsLoss",
     "SoftmaxFocalLoss",
+    "ReconstructionSegmentationLoss",
     "OHEMLoss",
     "OHEMCrossEntropyLoss",
     "OHEMBCEWithLogitsLoss",

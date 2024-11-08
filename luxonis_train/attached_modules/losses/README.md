@@ -63,11 +63,12 @@ Adapted from [here](https://pytorch.org/vision/stable/generated/torchvision.ops.
 
 **Parameters:**
 
-| Key         | Type                             | Default value | Description                                                                    |
-| ----------- | -------------------------------- | ------------- | ------------------------------------------------------------------------------ |
-| `alpha`     | `float \| list`                  | `0.25`        | Either a float for all channels or list of alphas for each channel             |
-| `gamma`     | `float`                          | `2.0`         | Exponent of the modulating factor $(1 - p_t)$ to balance easy vs hard examples |
-| `reduction` | `Literal["none", "mean", "sum"]` | `"mean"`      | Specifies the reduction to apply to the output                                 |
+| Key         | Type                             | Default value | Description                                                                                                                                                  |
+| ----------- | -------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `alpha`     | `float \| list[float]`           | `1`           | Balancing factor to reduce the impact of class imbalance. Can be a single value or a list of values per class.                                               |
+| `gamma`     | `float`                          | `2.0`         | Exponent of the modulating factor $(1 - p_t)$ to balance easy vs hard examples                                                                               |
+| `reduction` | `Literal["none", "mean", "sum"]` | `"mean"`      | Specifies the reduction to apply to the output                                                                                                               |
+| `smooth`    | `float`                          | `1e-5`        | A small value added to labels to prevent zero probabilities, helping to smooth and stabilize training by making the model less confident in its predictions. |
 
 ## `AdaptiveDetectionLoss`
 
@@ -98,3 +99,16 @@ Keypoint Similarity Loss](https://arxiv.org/ftp/arxiv/papers/2204/2204.06806.pdf
 | `vis_kpts_loss_weight`  | `float`                                           | `1.0`         | Weight used for the keypoint visibility sub-loss                                                              |
 | `sigmas`                | `list[float] \ None`                              | `None`        | Sigmas used in `KeypointLoss` for `OKS` metric. If `None` then use COCO ones if possible or default ones      |
 | `area_factor`           | `float \| None`                                   | `None`        | Factor by which we multiply bounding box area which is used in `KeypointLoss.` If `None` then use default one |
+
+## `ReconstructionSegmentationLoss`
+
+Adapted from [here](https://arxiv.org/abs/2108.07610).
+
+**Parameters:**
+
+| Key         | Type                             | Default value | Description                                                                              |
+| ----------- | -------------------------------- | ------------- | ---------------------------------------------------------------------------------------- |
+| `alpha`     | `float \| list`                  | `1.0`         | Weighting factor for Focal loss, either a single float or list of values for each class. |
+| `gamma`     | `float`                          | `2.0`         | Modulates the balance between easy and hard examples in Focal loss.                      |
+| `reduction` | `Literal["none", "mean", "sum"]` | `"mean"`      | Specifies how to reduce the output of the Focal loss.                                    |
+| `smooth`    | `float`                          | `1e-5`        | Smoothing factor to prevent overconfidence in predictions for Focal loss.                |

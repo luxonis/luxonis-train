@@ -1,0 +1,39 @@
+model:
+  nodes:
+    - name: EfficientRep
+      params:
+        variant: "n"
+
+    - name: RepPANNeck
+      inputs:
+        - EfficientRep
+
+    - name: EfficientBBoxHead
+      inputs:
+        - RepPANNeck
+
+  losses:
+    - name: AdaptiveDetectionLoss
+      attached_to: EfficientBBoxHead
+      params:
+        n_warmup_epochs: 0
+
+loader:
+  train_view: val
+  params:
+    dataset_name: D1ParkingLot
+
+trainer:
+  batch_size: 2
+  epochs: 200
+
+  preprocessing:
+    train_image_size: [256, 320]
+    keep_aspect_ratio: true
+    normalize:
+      active: true
+    augmentations:
+      - name: Mosaic4
+
+  scheduler:
+    name: CosineAnnealingLR
