@@ -67,7 +67,7 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
                 "file": path,
                 "annotation": {
                     "type": "rle",
-                    "class": "no_anomaly",
+                    "class": "object",
                     "height": 256,
                     "width": 256,
                     "counts": "0" * (256 * 256),
@@ -91,7 +91,7 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
                 "file": path,
                 "annotation": {
                     "type": "polyline",
-                    "class": "anomaly",
+                    "class": "object",
                     "points": [
                         pt for segment in poly_normalized for pt in segment
                     ],
@@ -116,4 +116,6 @@ def test_anomaly_detection():
         Path("tests/data/COCO_people_subset/person_val2017_subset/*")
     )
     config = get_opts()
-    LuxonisModel(config).train()
+    model = LuxonisModel(config)
+    model.train()
+    model.test()

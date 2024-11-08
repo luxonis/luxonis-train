@@ -54,6 +54,12 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
             raise ValueError("Invalid or unspecified anomaly source path.")
         self.anomaly_source_path = anomaly_source_path
         self.noise_prob = noise_prob
+        self.base_loader.add_background = True
+        self.base_loader.class_mappings["segmentation"]["background"] = 0
+        self.base_loader.class_mappings["segmentation"] = {
+            k: (v + 1 if k != "background" else v)
+            for k, v in self.base_loader.class_mappings["segmentation"].items()
+        }
 
     def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
         img, labels = self.base_loader[idx]

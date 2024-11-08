@@ -73,13 +73,13 @@ class AnomalyDetectionModel(BasePredefinedModel):
         return [
             ModelNodeConfig(
                 name=self.backbone,
-                alias="rec_subnet",
+                alias=f"{self.backbone}-{self.task_name}",
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="DiscSubNetHead",
-                alias="disc_subnet_head",
-                inputs=["rec_subnet"],
+                alias=f"DiscSubNetHead-{self.task_name}",
+                inputs=[f"{self.backbone}-{self.task_name}"],
                 params=self.disc_subnet_params,
             ),
         ]
@@ -90,8 +90,8 @@ class AnomalyDetectionModel(BasePredefinedModel):
         return [
             LossModuleConfig(
                 name="ReconstructionSegmentationLoss",
-                alias="anomaly_loss",
-                attached_to="disc_subnet_head",
+                alias=f"ReconstructionSegmentationLoss-{self.task_name}",
+                attached_to=f"DiscSubNetHead-{self.task_name}",
                 params=self.loss_params,
                 weight=1.0,
             )
@@ -103,8 +103,9 @@ class AnomalyDetectionModel(BasePredefinedModel):
         return [
             MetricModuleConfig(
                 name="JaccardIndex",
-                alias="segmentation_jaccard_index",
-                attached_to="disc_subnet_head",
+                alias=f"JaccardIndex-{self.task_name}",
+                attached_to=f"DiscSubNetHead-{self.task_name}",
+                params={"num_classes": 2, "task": "multiclass"},
                 is_main_metric=True,
             ),
         ]
@@ -116,8 +117,8 @@ class AnomalyDetectionModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="SegmentationVisualizer",
-                alias="anomaly_visualizer",
-                attached_to="disc_subnet_head",
+                alias=f"SegmentationVisualizer-{self.task_name}",
+                attached_to=f"DiscSubNetHead-{self.task_name}",
                 params=self.visualizer_params,
             )
         ]
