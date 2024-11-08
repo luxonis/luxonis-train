@@ -35,6 +35,7 @@ class LuxonisTrackerPL(LuxonisTracker, Logger):
             else:
                 mlflow_status = "FAILED"
             self.experiment["mlflow"].end_run(mlflow_status)
+            self.close()
         if self.is_wandb:
             if status == "success":
                 wandb_status = 0
