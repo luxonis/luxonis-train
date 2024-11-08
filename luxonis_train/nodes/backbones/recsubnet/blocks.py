@@ -1,11 +1,11 @@
-from torch import nn
+from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks import ConvModule
 
 
 class ConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(ConvBlock, self).__init__()
+    def __init__(self, in_channels: int, out_channels: int) -> None:
+        super().__init__()
         self.block = nn.Sequential(
             ConvModule(
                 in_channels,
@@ -23,13 +23,13 @@ class ConvBlock(nn.Module):
             ),
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return self.block(x)
 
 
 class Encoder(nn.Module):
-    def __init__(self, input_channels, width):
-        super(Encoder, self).__init__()
+    def __init__(self, input_channels: int, width: int) -> None:
+        super().__init__()
         self.encoder_block1 = ConvBlock(input_channels, width)
         self.pool1 = nn.MaxPool2d(2)
 
@@ -44,7 +44,7 @@ class Encoder(nn.Module):
 
         self.encoder_block5 = ConvBlock(width * 8, width * 8)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         enc1 = self.encoder_block1(x)
         enc1_pool = self.pool1(enc1)
         enc2 = self.encoder_block2(enc1_pool)
@@ -58,8 +58,8 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, width, out_channels=1):
-        super(Decoder, self).__init__()
+    def __init__(self, width: int, out_channels: int = 1) -> None:
+        super().__init__()
 
         self.upscale1 = self.upscale_block(width * 8, width * 8)
         self.decoder_block1 = ConvBlock(width * 8, width * 4)
@@ -77,7 +77,9 @@ class Decoder(nn.Module):
             width, out_channels, kernel_size=3, padding=1
         )
 
-    def upscale_block(self, in_channels, out_channels):
+    def upscale_block(
+        self, in_channels: int, out_channels: int
+    ) -> nn.Sequential:
         return nn.Sequential(
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
             ConvModule(
@@ -89,7 +91,7 @@ class Decoder(nn.Module):
             ),
         )
 
-    def forward(self, enc5):
+    def forward(self, enc5: Tensor) -> Tensor:
         up1 = self.upscale1(enc5)
         dec1 = self.decoder_block1(up1)
 
@@ -107,8 +109,8 @@ class Decoder(nn.Module):
 
 
 class NanoEncoder(nn.Module):
-    def __init__(self, input_channels, width):
-        super(NanoEncoder, self).__init__()
+    def __init__(self, input_channels: int, width: int) -> None:
+        super().__init__()
 
         self.encoder_block1 = ConvBlock(input_channels, width)
         self.pool1 = nn.MaxPool2d(2)
@@ -125,8 +127,8 @@ class NanoEncoder(nn.Module):
 
 
 class NanoDecoder(nn.Module):
-    def __init__(self, width, out_channels=1):
-        super(NanoDecoder, self).__init__()
+    def __init__(self, width: int, out_channels: int = 1) -> None:
+        super().__init__()
 
         self.upscale1 = self.upscale_block(int(width * 1.1), width)
         self.decoder_block1 = ConvBlock(width, width)
@@ -138,14 +140,16 @@ class NanoDecoder(nn.Module):
             width // 2, out_channels, kernel_size=3, padding=1
         )
 
-    def upscale_block(self, in_channels, out_channels):
+    def upscale_block(
+        self, in_channels: int, out_channels: int
+    ) -> nn.Sequential:
         return nn.Sequential(
             nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
             nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
         )
 
-    def forward(self, enc2):
+    def forward(self, enc2: Tensor) -> Tensor:
         up1 = self.upscale1(enc2)
         dec1 = self.decoder_block1(up1)
 

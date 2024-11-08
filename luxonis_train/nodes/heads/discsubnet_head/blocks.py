@@ -38,7 +38,7 @@ def upsample_block(in_channels: int, out_channels: int) -> nn.Sequential:
 
 class Encoder(nn.Module):
     def __init__(self, in_channels: int, base_width: int) -> None:
-        super(Encoder, self).__init__()
+        super().__init__()
         self.enc_block1 = conv_block(in_channels, base_width)
         self.pool1 = nn.MaxPool2d(2)
 
@@ -75,7 +75,7 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
     def __init__(self, base_width: int, out_channels: int = 1) -> None:
-        super(Decoder, self).__init__()
+        super().__init__()
 
         self.up6 = upsample_block(base_width * 8, base_width * 8)
         self.dec_block6 = conv_block(base_width * (8 + 8), base_width * 8)
@@ -131,7 +131,7 @@ class Decoder(nn.Module):
 
 class NanoEncoder(nn.Module):
     def __init__(self, in_channels: int, base_width: int) -> None:
-        super(NanoEncoder, self).__init__()
+        super().__init__()
 
         self.enc_block1 = conv_block(in_channels, base_width)
         self.pool1 = nn.MaxPool2d(2)
@@ -148,7 +148,7 @@ class NanoEncoder(nn.Module):
 
 class NanoDecoder(nn.Module):
     def __init__(self, base_width: int, out_channels: int = 1) -> None:
-        super(NanoDecoder, self).__init__()
+        super().__init__()
 
         self.up2 = upsample_block(int(base_width * 1.1), base_width)
         self.dec_block2 = conv_block(base_width * 2, base_width)
