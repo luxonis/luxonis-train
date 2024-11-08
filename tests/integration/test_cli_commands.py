@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Tuple
 
 import pytest
 
@@ -16,13 +17,13 @@ ARCHIVE_PATH = Path("tests/integration/model.nn")
 
 
 @pytest.fixture(scope="session", autouse=True)
-def clear_files():
+def clear_files() -> None:
     yield
     ONNX_PATH.unlink(missing_ok=True)
     ARCHIVE_PATH.unlink(missing_ok=True)
 
 
-def run_command(command):
+def run_command(command: str) -> Tuple[str, str, int]:
     result = subprocess.run(
         command,
         shell=True,
@@ -45,7 +46,7 @@ def run_command(command):
         "luxonis_train --version",
     ],
 )
-def test_cli_command_success(command):
+def test_cli_command_success(command: str) -> None:
     stdout, stderr, exit_code = run_command(command)
     assert exit_code == 0, f"Error: {stderr}"
     assert "Error" not in stderr
@@ -61,7 +62,7 @@ def test_cli_command_success(command):
         "luxonis_train archive --config nonexistent.yaml",
     ],
 )
-def test_cli_command_failure(command):
+def test_cli_command_failure(command: str) -> None:
     stdout, stderr, exit_code = run_command(command)
     assert exit_code != 0, f"Expected failure but got: {stderr}"
     assert "Error" in stderr or stderr.strip()
