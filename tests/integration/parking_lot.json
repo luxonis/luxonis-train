@@ -30,7 +30,8 @@
                         57.375
                     ],
                     "reverse_channels": true,
-                    "interleaved_to_planar": false
+                    "interleaved_to_planar": false,
+                    "dai_type": "RGB888p"
                 }
             }
         ],
@@ -153,8 +154,8 @@
                 "metadata": {
                     "postprocessor_path": null,
                     "classes": [
-                        "motorbike",
-                        "car"
+                        "car",
+                        "motorbike"
                     ],
                     "n_classes": 2,
                     "iou_threshold": 0.45,
@@ -229,29 +230,29 @@
                 "metadata": {
                     "postprocessor_path": null,
                     "classes": [
-                        "background",
-                        "chrysler",
-                        "bmw",
-                        "ducati",
-                        "dodge",
-                        "ferrari",
-                        "infiniti",
-                        "land-rover",
-                        "roll-royce",
-                        "saab",
                         "Kawasaki",
-                        "moto",
-                        "truimph",
                         "alfa-romeo",
+                        "aprilia",
+                        "background",
+                        "bmw",
+                        "buick",
+                        "chrysler",
+                        "dodge",
+                        "ducati",
+                        "ferrari",
                         "harley",
                         "honda",
+                        "infiniti",
+                        "isuzu",
                         "jeep",
-                        "aprilia",
+                        "land-rover",
+                        "moto",
                         "piaggio",
-                        "yamaha",
-                        "buick",
                         "pontiac",
-                        "isuzu"
+                        "roll-royce",
+                        "saab",
+                        "truimph",
+                        "yamaha"
                     ],
                     "n_classes": 23,
                     "is_softmax": false

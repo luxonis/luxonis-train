@@ -6,7 +6,6 @@ from typing import TypedDict
 import onnx
 from luxonis_ml.nn_archive.config_building_blocks import (
     DataType,
-    ObjectDetectionSubtypeYOLO,
 )
 from onnx.onnx_pb import TensorProto
 
@@ -143,7 +142,7 @@ def _get_head_specific_parameters(
             ImplementedHeadsIsSoxtmaxed, head_name
         ).value
     elif head_name == "EfficientBBoxHead":
-        parameters["subtype"] = ObjectDetectionSubtypeYOLO.YOLOv6.value
+        parameters["subtype"] = "yolov6"
         head_node = nodes[head_alias]
         parameters["iou_threshold"] = head_node.iou_thres
         parameters["conf_threshold"] = head_node.conf_thres
