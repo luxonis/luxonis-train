@@ -1,0 +1,61 @@
+
+
+model:
+  name: client_commands_test_model
+  nodes:
+    - name: EfficientRep
+      params:
+        variant: "n"
+
+    - name: RepPANNeck
+      inputs:
+        - EfficientRep
+
+    - name: EfficientBBoxHead
+      inputs:
+        - RepPANNeck
+
+  losses:
+    - name: AdaptiveDetectionLoss
+      attached_to: EfficientBBoxHead
+      params:
+        n_warmup_epochs: 0
+
+
+  metrics:
+    - name: MeanAveragePrecision
+      is_main_metric: true
+      attached_to: EfficientBBoxHead
+
+  visualizers:
+    - name: BBoxVisualizer
+      attached_to: EfficientBBoxHead
+
+tracker:
+  project_name: Parking_Lot
+  is_tensorboard: true
+
+loader:
+  train_view: val
+  val_view: val
+  test_view: val
+  params:
+    dataset_name: coco_test
+
+trainer:
+  batch_size: 2
+  epochs: 1
+  n_workers: 4
+  validation_interval: 1
+
+  preprocessing:
+    train_image_size: [256, 320]
+    keep_aspect_ratio: true
+    train_rgb: true
+    normalize:
+      active: true
+
+  callbacks:
+    - name: ExportOnTrainEnd
+    - name: ArchiveOnTrainEnd
+
