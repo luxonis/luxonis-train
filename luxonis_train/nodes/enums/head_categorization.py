@@ -9,6 +9,7 @@ class ImplementedHeads(Enum):
     EfficientKeypointBBoxHead = "YoloDetectionNetwork"
     SegmentationHead = "SegmentationParser"
     BiSeNetHead = "SegmentationParser"
+    DDRNetSegmentationHead = "SegmentationParser"
 
 
 class ImplementedHeadsIsSoxtmaxed(Enum):
@@ -19,3 +20,4 @@ class ImplementedHeadsIsSoxtmaxed(Enum):
     EfficientKeypointBBoxHead = None
     SegmentationHead = False
     BiSeNetHead = False
+    DDRNetSegmentationHead = False
