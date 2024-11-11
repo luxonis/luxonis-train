@@ -61,7 +61,7 @@ def test_cli_command_success(
     "command",
     [
         "luxonis_train train --config nonexistent.yaml",
-        "luxonis_train test --config nonexistent.yaml --view invalid",
+        "luxonis_train test --config tests/configs/cli_commands.yaml --view invalid",
         "luxonis_train export --config nonexistent.yaml",
         "luxonis_train inspect --config nonexistent.yaml --view train --size-multiplier -1.0",
         "luxonis_train archive --config nonexistent.yaml",
