@@ -3,24 +3,22 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Tuple
+from typing import Generator, Tuple
 
 import pytest
 
 os.environ["PYTHONIOENCODING"] = "utf-8"
 
-sys.stdout.reconfigure(encoding="utf-8")
-sys.stderr.reconfigure(encoding="utf-8")
+sys.stdout.reconfigure(encoding="utf-8")  # type: ignore
+sys.stderr.reconfigure(encoding="utf-8")  # type: ignore
 
 ONNX_PATH = Path("tests/integration/model.onnx")
-ARCHIVE_PATH = Path("tests/integration/model.nn")
 
 
 @pytest.fixture(scope="session", autouse=True)
-def clear_files() -> None:
+def clear_files() -> Generator[None, None, None]:
     yield
     ONNX_PATH.unlink(missing_ok=True)
-    ARCHIVE_PATH.unlink(missing_ok=True)
 
 
 def run_command(command: str) -> Tuple[str, str, int]:
