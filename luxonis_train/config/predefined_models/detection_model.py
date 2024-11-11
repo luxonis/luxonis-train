@@ -12,12 +12,14 @@ from luxonis_train.config import (
 
 from .base_predefined_model import BasePredefinedModel
 
-VariantLiteral: TypeAlias = Literal["light", "heavy"]
+VariantLiteral: TypeAlias = Literal["light", "medium", "heavy"]
 
 
 class DetectionVariant(BaseModel):
     backbone: str
     backbone_params: Params
+    neck_params: Params
+    head_params: Params
 
 
 def get_variant(variant: VariantLiteral) -> DetectionVariant:
@@ -27,10 +29,20 @@ def get_variant(variant: VariantLiteral) -> DetectionVariant:
         "light": DetectionVariant(
             backbone="EfficientRep",
             backbone_params={"variant": "n"},
+            neck_params={"variant": "n", "download_weights": True},
+            head_params={"download_weights": True},
+        ),
+        "medium": DetectionVariant(
+            backbone="EfficientRep",
+            backbone_params={"variant": "s"},
+            neck_params={"variant": "s", "download_weights": False},
+            head_params={"download_weights": False},
         ),
         "heavy": DetectionVariant(
             backbone="EfficientRep",
             backbone_params={"variant": "l"},
+            neck_params={"variant": "l", "download_weights": False},
+            head_params={"download_weights": False},
         ),
     }
 
@@ -64,8 +76,8 @@ class DetectionModel(BasePredefinedModel):
             else var_config.backbone_params
         ) or {}
         self.backbone = backbone or var_config.backbone
-        self.neck_params = neck_params or {}
-        self.head_params = head_params or {}
+        self.neck_params = neck_params or var_config.neck_params
+        self.head_params = head_params or var_config.head_params
         self.loss_params = loss_params or {"n_warmup_epochs": 0}
         self.visualizer_params = visualizer_params or {}
         self.task_name = task_name or "boundingbox"

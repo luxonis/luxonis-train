@@ -11,7 +11,7 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
 
     def __init__(
         self,
-        download_weights: bool = False,
+        download_weights: bool = True,
         out_indices: list[int] | None = None,
         **kwargs: Any,
     ):
@@ -30,7 +30,7 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
             <https://arxiv.org/abs/1905.11946>}
         @type download_weights: bool
         @param download_weights: If C{True} download weights from imagenet. Defaults to
-            C{False}.
+            C{True}.
         @type out_indices: list[int] | None
         @param out_indices: Indices of the output layers. Defaults to [0, 1, 2, 4, 6].
         """

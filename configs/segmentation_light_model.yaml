@@ -1,4 +1,5 @@
 # Example configuration for training a predefined light segmentation model
+# NOTE: This example downloads pretrained COCO weights and training parameters are already prepared for fine tuning
 
 model:
   name: segmentation_light
@@ -31,7 +32,7 @@ trainer:
   optimizer:
     name: SGD
     params:
-      lr: 0.02
+      lr: 0.001
       momentum: 0.9
       weight_decay: 0.0005
       nesterov: true
@@ -40,4 +41,4 @@ trainer:
     name: CosineAnnealingLR
     params:
       T_max: *epochs
-      eta_min: 0.0002
+      eta_min: 0.00001

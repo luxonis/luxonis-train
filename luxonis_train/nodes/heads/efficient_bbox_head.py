@@ -29,6 +29,7 @@ class EfficientBBoxHead(
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
+        download_weights: bool = False,
         **kwargs: Any,
     ):
         """Head for object detection.
@@ -47,6 +48,9 @@ class EfficientBBoxHead(
         @type max_det: int
         @param max_det: Maximum number of detections retained after NMS.
             Defaults to C{300}.
+        @type download_weights: bool
+        @param download_weights: If True download weights from COCO.
+            Defaults to False.
         """
         super().__init__(**kwargs)
 
@@ -90,6 +94,12 @@ class EfficientBBoxHead(
             self._export_output_names = [
                 f"output{i+1}_yolov6r2" for i in range(self.n_heads)
             ]
+
+        if download_weights:
+            # TODO: Handle variants of head in a nicer way
+            if self.in_channels == [32, 64, 128]:
+                weights_path = "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientbbox_head_n_coco.ckpt"
+                self.load_checkpoint(weights_path, strict=False)
 
     def forward(
         self, inputs: list[Tensor]

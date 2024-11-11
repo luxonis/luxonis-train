@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from contextlib import suppress
 from typing import Generic, TypeVar
 
+import torch
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
 from typeguard import TypeCheckError, check_type
@@ -14,6 +15,7 @@ from luxonis_train.utils import (
     DatasetMetadata,
     IncompatibleException,
     Packet,
+    safe_download,
 )
 from luxonis_train.utils.registry import NODES
 
@@ -501,6 +503,26 @@ class BaseNode(
             for the default implementation of C{in_sizes}.
         """
         return self._get_nth_size(-1)
+
+    def load_checkpoint(self, path: str, strict: bool = True):
+        """Loads checkpoint for the module. If path is url then it
+        downloads it locally and stores it in cache.
+
+        @type path: str | None
+        @param path: Path to local or remote .ckpt file.
+        @type strict: bool
+        @param strict: Whether to load weights strictly or not. Defaults
+            to True.
+        """
+        local_path = safe_download(url=path)
+        if local_path:
+            state_dict = torch.load(
+                local_path, weights_only=False, map_location="cpu"
+            )[
+                "state_dict"
+            ]  # load explicitly to cpu, PL takes care of transfering to CUDA is needed
+            self.load_state_dict(state_dict, strict=strict)
+            logging.info(f"Checkpoint for {self.__class__.__name__} loaded.")
 
     @property
     def export(self) -> bool:
