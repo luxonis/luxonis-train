@@ -113,7 +113,7 @@ def _get_classes(
                 node_task = "classification"
             case "EfficientBBoxHead":
                 node_task = "boundingbox"
-            case "SegmentationHead" | "BiSeNetHead":
+            case "SegmentationHead" | "BiSeNetHead" | "DDRNetSegmentationHead":
                 node_task = "segmentation"
             case "EfficientKeypointBBoxHead":
                 node_task = "keypoints"
@@ -147,7 +147,11 @@ def _get_head_specific_parameters(
         parameters["iou_threshold"] = head_node.iou_thres
         parameters["conf_threshold"] = head_node.conf_thres
         parameters["max_det"] = head_node.max_det
-    elif head_name in ["SegmentationHead", "BiSeNetHead"]:
+    elif head_name in [
+        "SegmentationHead",
+        "BiSeNetHead",
+        "DDRNetSegmentationHead",
+    ]:
         parameters["is_softmax"] = getattr(
             ImplementedHeadsIsSoxtmaxed, head_name
         ).value
@@ -210,6 +214,8 @@ def get_heads(
     for node in cfg.model.nodes:
         node_name = node.name
         node_alias = node.alias or node_name
+        if "aux-segmentation" in node_alias:
+            continue
         if node_alias in cfg.model.outputs:
             if node_name in ImplementedHeads.__members__:
                 parser = getattr(ImplementedHeads, node_name).value
