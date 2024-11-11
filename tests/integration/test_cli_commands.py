@@ -3,9 +3,11 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Generator, Tuple
+from typing import Tuple
 
 import pytest
+from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.utils import environ
 
 os.environ["PYTHONIOENCODING"] = "utf-8"
 
@@ -16,7 +18,8 @@ ONNX_PATH = Path("tests/integration/model.onnx")
 
 
 @pytest.fixture(scope="session", autouse=True)
-def clear_files() -> Generator[None, None, None]:
+def prepare():
+    os.environ["LUXONISML_BASE_PATH"] = str(environ.LUXONISML_BASE_PATH)
     yield
     ONNX_PATH.unlink(missing_ok=True)
 
@@ -30,6 +33,7 @@ def run_command(command: str) -> Tuple[str, str, int]:
         stderr=subprocess.PIPE,
         encoding=locale.getpreferredencoding(),
         errors="replace",
+        env=os.environ,
     )
     return result.stdout, result.stderr, result.returncode
 
@@ -44,8 +48,11 @@ def run_command(command: str) -> Tuple[str, str, int]:
         "luxonis_train --version",
     ],
 )
-def test_cli_command_success(command: str) -> None:
-    stdout, stderr, exit_code = run_command(command)
+def test_cli_command_success(
+    command: str, coco_dataset: LuxonisDataset
+) -> None:
+    command += f" loader.params.dataset_name {coco_dataset.identifier}"
+    _, stderr, exit_code = run_command(command)
     assert exit_code == 0, f"Error: {stderr}"
     assert "Error" not in stderr
 
@@ -60,7 +67,10 @@ def test_cli_command_success(command: str) -> None:
         "luxonis_train archive --config nonexistent.yaml",
     ],
 )
-def test_cli_command_failure(command: str) -> None:
-    stdout, stderr, exit_code = run_command(command)
+def test_cli_command_failure(
+    command: str, coco_dataset: LuxonisDataset
+) -> None:
+    command += f" loader.params.dataset_name {coco_dataset.identifier}"
+    _, stderr, exit_code = run_command(command)
     assert exit_code != 0, f"Expected failure but got: {stderr}"
     assert "Error" in stderr or stderr.strip()
