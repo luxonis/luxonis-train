@@ -125,8 +125,21 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
             )
         )
 
+        self.initialize_weights()
+
         if download_weights and var.weights_path:
             self.load_checkpoint(var.weights_path)
+
+    def initialize_weights(self):
+        for m in self.modules():
+            t = type(m)
+            if t is nn.Conv2d:
+                pass
+            elif t is nn.BatchNorm2d:
+                m.eps = 1e-3
+                m.momentum = 0.03
+            elif t in [nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU]:
+                m.inplace = True
 
     def set_export_mode(self, mode: bool = True) -> None:
         """Reparametrizes instances of L{RepVGGBlock} in the network.
@@ -143,6 +156,14 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
                     module.reparametrize()
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
+        # # Lets plot the input
+        # img_plt = inputs[0].cpu().numpy().transpose(1, 2, 0)
+        # # it was normalised with /255.0 so we have to denormalise it
+        # img_plt = img_plt * 255.0
+        # import matplotlib.pyplot as plt
+        # plt.imshow(img_plt.astype(int))
+        # plt.show(block=True)
+
         outputs: list[Tensor] = []
         x = self.repvgg_encoder(inputs)
         for block in self.blocks:

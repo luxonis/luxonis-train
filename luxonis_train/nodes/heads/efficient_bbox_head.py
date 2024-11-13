@@ -95,11 +95,24 @@ class EfficientBBoxHead(
                 f"output{i+1}_yolov6r2" for i in range(self.n_heads)
             ]
 
+        self.initialize_weights()
+
         if download_weights:
             # TODO: Handle variants of head in a nicer way
             if self.in_channels == [32, 64, 128]:
                 weights_path = "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientbbox_head_n_coco.ckpt"
                 self.load_checkpoint(weights_path, strict=False)
+
+    def initialize_weights(self):
+        for m in self.modules():
+            t = type(m)
+            if t is nn.Conv2d:
+                pass
+            elif t is nn.BatchNorm2d:
+                m.eps = 1e-3
+                m.momentum = 0.03
+            elif t in [nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU]:
+                m.inplace = True
 
     def forward(
         self, inputs: list[Tensor]

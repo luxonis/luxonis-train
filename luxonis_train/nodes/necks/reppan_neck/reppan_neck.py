@@ -165,8 +165,21 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
             out_channels = channels_list_down_blocks[2 * i + 1]
             curr_n_repeats = n_repeats_down_blocks[i]
 
+        self.initialize_weights()
+
         if download_weights and var.weights_path:
             self.load_checkpoint(var.weights_path)
+
+    def initialize_weights(self):
+        for m in self.modules():
+            t = type(m)
+            if t is nn.Conv2d:
+                pass
+            elif t is nn.BatchNorm2d:
+                m.eps = 1e-3
+                m.momentum = 0.03
+            elif t in [nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU]:
+                m.inplace = True
 
     def forward(self, inputs: list[Tensor]) -> list[Tensor]:
         x = inputs[-1]

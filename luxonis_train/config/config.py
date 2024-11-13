@@ -328,6 +328,8 @@ class CallbackConfig(BaseModelExtraForbid):
 
 class OptimizerConfig(BaseModelExtraForbid):
     name: str = "Adam"
+    apply_custom_lr: bool = False
+    warmup_epochs: int = 0
     params: Params = {}
 
 
