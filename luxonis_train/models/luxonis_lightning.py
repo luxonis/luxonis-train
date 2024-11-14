@@ -133,15 +133,6 @@ class LuxonisLightningModule(pl.LightningModule):
         self._core = _core
 
         self.cfg = cfg
-        ##
-        self.max_stepnum = math.ceil(
-            len(self._core.loaders["train"]) / cfg.trainer.batch_size
-        )
-        self.warmup_stepnum = max(
-            round(cfg.trainer.optimizer.warmup_epochs * self.max_stepnum), 1000
-        )
-        self.step = 0
-        ##
         self.original_in_shapes = input_shapes
         self.image_source = cfg.loader.image_source
         self.dataset_metadata = dataset_metadata or DatasetMetadata()
@@ -877,40 +868,56 @@ class LuxonisLightningModule(pl.LightningModule):
         apply_custom_lr = cfg_optimizer.apply_custom_lr
 
         if apply_custom_lr:
-            g_bnw, g_w, g_b = [], [], []
-            for v in self.modules():
-                if hasattr(v, "bias") and isinstance(
-                    v.bias, torch.nn.Parameter
+            assert cfg_optimizer.name == "SGD", (
+                "Custom learning rates are supported only for SGD optimizer. "
+                f"Got {cfg_optimizer.name}."
+            )
+            self.max_stepnum = math.ceil(
+                len(self._core.loaders["train"]) / self.cfg.trainer.batch_size
+            )
+            self.warmup_stepnum = max(
+                round(
+                    self.cfg.trainer.optimizer.warmup_epochs * self.max_stepnum
+                ),
+                1000,
+            )
+            self.step = 0
+            batch_norm_weights, regular_weights, biases = [], [], []
+            for module in self.modules():
+                if hasattr(module, "bias") and isinstance(
+                    module.bias, torch.nn.Parameter
                 ):
-                    g_b.append(v.bias)
-                if isinstance(v, torch.nn.BatchNorm2d):
-                    g_bnw.append(v.weight)
-                elif hasattr(v, "weight") and isinstance(
-                    v.weight, torch.nn.Parameter
+                    biases.append(module.bias)
+                if isinstance(module, torch.nn.BatchNorm2d):
+                    batch_norm_weights.append(module.weight)
+                elif hasattr(module, "weight") and isinstance(
+                    module.weight, torch.nn.Parameter
                 ):
-                    g_w.append(v.weight)
+                    regular_weights.append(module.weight)
 
-            # Create the optimizer with parameter groups
-            assert cfg_optimizer.name in [
-                "SGD",
-                "Adam",
-            ], "ERROR: unknown optimizer, use SGD or Adam"
             optimizer = torch.optim.SGD(
-                g_bnw,
+                [
+                    {
+                        "params": batch_norm_weights,
+                        "lr": cfg_optimizer.params["lr"],
+                        "momentum": cfg_optimizer.params["momentum"],
+                        "nesterov": True,
+                    },
+                    {
+                        "params": regular_weights,
+                        "weight_decay": cfg_optimizer.params["weight_decay"],
+                    },
+                    {"params": biases},
+                ],
                 lr=cfg_optimizer.params["lr"],
                 momentum=cfg_optimizer.params["momentum"],
-                nesterov=True,
+                nesterov=cfg_optimizer.params["nesterov"],
             )
 
-            optimizer.add_param_group(
-                {
-                    "params": g_w,
-                    "weight_decay": cfg_optimizer.params["weight_decay"],
-                }
+            lrf = (
+                self.cfg.trainer.optimizer.params["lre"]
+                / self.cfg.trainer.optimizer.params["lr"]
             )
-            optimizer.add_param_group({"params": g_b})
-
-            lrf = 0.01
             self.lf = (
                 lambda x: (
                     (1 - math.cos(x * math.pi / self.cfg.trainer.epochs)) / 2
@@ -961,8 +968,8 @@ class LuxonisLightningModule(pl.LightningModule):
     def on_after_backward(self):
         """Custom logic to adjust learning rates and momentum after
         loss.backward."""
-        # Call your custom logic here
-        self.custom_logic()
+        if self.cfg.trainer.optimizer.apply_custom_lr:
+            self.custom_logic()
 
     def custom_logic(self):
         """Custom logic to adjust learning rates and momentum after
