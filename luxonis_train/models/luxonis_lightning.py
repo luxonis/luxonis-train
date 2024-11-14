@@ -877,7 +877,8 @@ class LuxonisLightningModule(pl.LightningModule):
             )
             self.warmup_stepnum = max(
                 round(
-                    self.cfg.trainer.optimizer.warmup_epochs * self.max_stepnum
+                    self.cfg.trainer.optimizer.params["warmup_epochs"]
+                    * self.max_stepnum
                 ),
                 1000,
             )
