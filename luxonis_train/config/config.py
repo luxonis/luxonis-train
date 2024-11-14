@@ -328,7 +328,6 @@ class CallbackConfig(BaseModelExtraForbid):
 
 class OptimizerConfig(BaseModelExtraForbid):
     name: str = "Adam"
-    apply_custom_lr: bool = False
     params: Params = {}
 
 
@@ -356,6 +355,7 @@ class TrainerConfig(BaseModelExtraForbid):
     profiler: Literal["simple", "advanced"] | None = None
     matmul_precision: Literal["medium", "high", "highest"] | None = None
     verbose: bool = True
+    apply_custom_lr: bool = False
 
     seed: int | None = None
     n_validation_batches: PositiveInt | None = None

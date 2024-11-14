@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Literal, cast
 
 import lightning.pytorch as pl
-import numpy as np
 import torch
 from lightning.pytorch.callbacks import ModelCheckpoint, RichModelSummary
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
@@ -865,70 +864,32 @@ class LuxonisLightningModule(pl.LightningModule):
         cfg_optimizer = self.cfg.trainer.optimizer
         cfg_scheduler = self.cfg.trainer.scheduler
 
-        apply_custom_lr = cfg_optimizer.apply_custom_lr
+        if self.cfg.trainer.apply_custom_lr:
+            assert (
+                cfg_optimizer.name == "TripleLRSGD"
+            ), "Custom learning rate is only supported for TripleLRSGD optimizer."
+            assert (
+                cfg_scheduler.name == "TripleLRScheduler"
+            ), "Custom learning rate is only supported for TripleLRScheduler scheduler."
 
-        if apply_custom_lr:
-            assert cfg_optimizer.name == "SGD", (
-                "Custom learning rates are supported only for SGD optimizer. "
-                f"Got {cfg_optimizer.name}."
-            )
-            self.max_stepnum = math.ceil(
+            max_stepnum = math.ceil(
                 len(self._core.loaders["train"]) / self.cfg.trainer.batch_size
             )
-            self.warmup_stepnum = max(
-                round(
-                    self.cfg.trainer.optimizer.params["warmup_epochs"]
-                    * self.max_stepnum
-                ),
-                1000,
+            custom_optimizer = OPTIMIZERS.get(cfg_optimizer.name)(
+                self, cfg_optimizer.params
             )
-            self.step = 0
-            batch_norm_weights, regular_weights, biases = [], [], []
-            for module in self.modules():
-                if hasattr(module, "bias") and isinstance(
-                    module.bias, torch.nn.Parameter
-                ):
-                    biases.append(module.bias)
-                if isinstance(module, torch.nn.BatchNorm2d):
-                    batch_norm_weights.append(module.weight)
-                elif hasattr(module, "weight") and isinstance(
-                    module.weight, torch.nn.Parameter
-                ):
-                    regular_weights.append(module.weight)
+            optimizer = custom_optimizer.create_optimizer()
 
-            optimizer = torch.optim.SGD(
-                [
-                    {
-                        "params": batch_norm_weights,
-                        "lr": cfg_optimizer.params["lr"],
-                        "momentum": cfg_optimizer.params["momentum"],
-                        "nesterov": True,
-                    },
-                    {
-                        "params": regular_weights,
-                        "weight_decay": cfg_optimizer.params["weight_decay"],
-                    },
-                    {"params": biases},
-                ],
-                lr=cfg_optimizer.params["lr"],
-                momentum=cfg_optimizer.params["momentum"],
-                nesterov=cfg_optimizer.params["nesterov"],
+            custom_scheduler = SCHEDULERS.get(cfg_scheduler.name)(
+                optimizer,
+                cfg_scheduler.params,
+                self.cfg.trainer.epochs,
+                max_stepnum,
             )
+            scheduler = custom_scheduler.create_scheduler()
 
-            lrf = (
-                self.cfg.trainer.optimizer.params["lre"]
-                / self.cfg.trainer.optimizer.params["lr"]
-            )
-            self.lf = (
-                lambda x: (
-                    (1 - math.cos(x * math.pi / self.cfg.trainer.epochs)) / 2
-                )
-                * (lrf - 1)
-                + 1
-            )
-            scheduler = torch.optim.lr_scheduler.LambdaLR(
-                optimizer, lr_lambda=self.lf
-            )
+            self.custom_scheduler = custom_scheduler
+
             return [optimizer], [scheduler]
 
         else:
@@ -969,50 +930,8 @@ class LuxonisLightningModule(pl.LightningModule):
     def on_after_backward(self):
         """Custom logic to adjust learning rates and momentum after
         loss.backward."""
-        if self.cfg.trainer.optimizer.apply_custom_lr:
-            self.custom_logic()
-
-    def custom_logic(self):
-        """Custom logic to adjust learning rates and momentum after
-        loss.backward."""
-
-        # Increment step counter
-        self.step = (
-            self.step % self.max_stepnum
-        )  # Reset step counter after each epoch
-        curr_step = self.step + self.max_stepnum * self.current_epoch
-
-        # Warm-up phase adjustments
-        if curr_step <= self.warmup_stepnum:
-            optimizer = self.optimizers()
-            for k, param in enumerate(optimizer.param_groups):
-                warmup_bias_lr = (
-                    self.cfg.trainer.optimizer.params["warmup_bias_lr"]
-                    if k == 2
-                    else 0.0
-                )
-                param["lr"] = np.interp(
-                    curr_step,
-                    [0, self.warmup_stepnum],
-                    [
-                        warmup_bias_lr,
-                        self.cfg.trainer.optimizer.params["lr"]
-                        * self.lf(self.current_epoch),
-                    ],
-                )
-                if "momentum" in param:
-                    param["momentum"] = np.interp(
-                        curr_step,
-                        [0, self.warmup_stepnum],
-                        [
-                            self.cfg.trainer.optimizer.params[
-                                "warmup_momentum"
-                            ],
-                            self.cfg.trainer.optimizer.params["momentum"],
-                        ],
-                    )
-
-        self.step += 1
+        if self.cfg.trainer.apply_custom_lr:
+            self.custom_scheduler.update_learning_rate(self.current_epoch)
 
     def load_checkpoint(self, path: str | Path | None) -> None:
         """Loads checkpoint weights from provided path.
