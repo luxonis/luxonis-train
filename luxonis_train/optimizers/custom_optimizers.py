@@ -12,7 +12,14 @@ class TripleLRSGD:
         @param params: The parameters to be used for the optimizer
         """
         self.model = model
-        self.params = params
+        self.params = {
+            "lr": 0.02,
+            "momentum": 0.937,
+            "weight_decay": 0.0005,
+            "nesterov": True,
+        }
+        if params:
+            self.params.update(params)
 
     def create_optimizer(self):
         batch_norm_weights, regular_weights, biases = [], [], []

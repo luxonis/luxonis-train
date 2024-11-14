@@ -24,8 +24,19 @@ class TripleLRScheduler:
         @type max_stepnum: int
         @param max_stepnum: The maximum number of steps to train for
         """
+        if optimizer.__class__.__name__ != "SGD":
+            raise ValueError(
+                "TripleLRScheduler can only be used with the 'SGD' optimizer."
+            )
         self.optimizer = optimizer
-        self.params = params
+        self.params = {
+            "warmup_epochs": 3,
+            "warmup_bias_lr": 0.1,
+            "warmup_momentum": 0.8,
+            "lre": 0.0002,
+        }
+        if params:
+            self.params.update(params)
         self.max_stepnum = max_stepnum
         self.warmup_stepnum = max(
             round(self.params["warmup_epochs"] * self.max_stepnum), 1000
