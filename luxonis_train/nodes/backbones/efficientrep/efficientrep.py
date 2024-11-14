@@ -156,14 +156,6 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
                     module.reparametrize()
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
-        # # Lets plot the input
-        # img_plt = inputs[0].cpu().numpy().transpose(1, 2, 0)
-        # # it was normalised with /255.0 so we have to denormalise it
-        # img_plt = img_plt * 255.0
-        # import matplotlib.pyplot as plt
-        # plt.imshow(img_plt.astype(int))
-        # plt.show(block=True)
-
         outputs: list[Tensor] = []
         x = self.repvgg_encoder(inputs)
         for block in self.blocks:
