@@ -336,6 +336,11 @@ class SchedulerConfig(BaseModelExtraForbid):
     params: Params = {}
 
 
+class TrainingStrategyConfig(BaseModelExtraForbid):
+    name: str = "TripleLRSGDStrategy"
+    params: Params = {}
+
+
 class TrainerConfig(BaseModelExtraForbid):
     preprocessing: PreprocessingConfig = PreprocessingConfig()
     use_rich_progress_bar: bool = True
@@ -355,7 +360,6 @@ class TrainerConfig(BaseModelExtraForbid):
     profiler: Literal["simple", "advanced"] | None = None
     matmul_precision: Literal["medium", "high", "highest"] | None = None
     verbose: bool = True
-    apply_custom_lr: bool = False
 
     seed: int | None = None
     n_validation_batches: PositiveInt | None = None
@@ -383,6 +387,7 @@ class TrainerConfig(BaseModelExtraForbid):
 
     optimizer: OptimizerConfig = OptimizerConfig()
     scheduler: SchedulerConfig = SchedulerConfig()
+    training_strategy: TrainingStrategyConfig = TrainingStrategyConfig()
 
     @model_validator(mode="after")
     def validate_deterministic(self) -> Self:

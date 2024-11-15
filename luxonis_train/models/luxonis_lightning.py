@@ -1,4 +1,3 @@
-import math
 from collections import defaultdict
 from collections.abc import Mapping
 from logging import getLogger
@@ -26,7 +25,11 @@ from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
     get_denormalized_images,
 )
-from luxonis_train.callbacks import BaseLuxonisProgressBar, ModuleFreezer
+from luxonis_train.callbacks import (
+    BaseLuxonisProgressBar,
+    ModuleFreezer,
+    TrainingManager,
+)
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.nodes import BaseNode
 from luxonis_train.utils import (
@@ -43,6 +46,7 @@ from luxonis_train.utils.registry import (
     CALLBACKS,
     OPTIMIZERS,
     SCHEDULERS,
+    STRATEGIES,
     Registry,
 )
 
@@ -268,6 +272,16 @@ class LuxonisLightningModule(pl.LightningModule):
         self.visualizers = self._to_module_dict(self.visualizers)  # type: ignore
 
         self.load_checkpoint(self.cfg.model.weights)
+
+        if self.cfg.trainer.training_strategy.params:
+            self.training_strategy = STRATEGIES.get(
+                self.cfg.trainer.training_strategy.name
+            )(
+                pl_module=self,
+                params=self.cfg.trainer.training_strategy.params,
+            )
+        else:
+            self.training_strategy = None
 
     @property
     def core(self) -> "luxonis_train.core.LuxonisModel":
@@ -850,6 +864,9 @@ class LuxonisLightningModule(pl.LightningModule):
                     CALLBACKS.get(callback.name)(**callback.params)
                 )
 
+        if self.training_strategy is not None:
+            callbacks.append(TrainingManager(strategy=self.training_strategy))
+
         return callbacks
 
     def configure_optimizers(
@@ -858,45 +875,17 @@ class LuxonisLightningModule(pl.LightningModule):
         list[torch.optim.Optimizer],
         list[torch.optim.lr_scheduler.LRScheduler],
     ]:
-        """Configures model optimizers and schedulers with optional
-        custom learning rates and warm-up logic."""
+        """Configures model optimizers and schedulers."""
+        if self.training_strategy is not None:
+            return self.training_strategy.configure_optimizers()
 
         cfg_optimizer = self.cfg.trainer.optimizer
         cfg_scheduler = self.cfg.trainer.scheduler
 
-        if self.cfg.trainer.apply_custom_lr:
-            assert (
-                cfg_optimizer.name == "TripleLRSGD"
-            ), "Custom learning rate is only supported for TripleLRSGD optimizer."
-            assert (
-                cfg_scheduler.name == "TripleLRScheduler"
-            ), "Custom learning rate is only supported for TripleLRScheduler scheduler."
-
-            max_stepnum = math.ceil(
-                len(self._core.loaders["train"]) / self.cfg.trainer.batch_size
-            )
-            custom_optimizer = OPTIMIZERS.get(cfg_optimizer.name)(
-                self, cfg_optimizer.params
-            )
-            optimizer = custom_optimizer.create_optimizer()
-
-            custom_scheduler = SCHEDULERS.get(cfg_scheduler.name)(
-                optimizer,
-                cfg_scheduler.params,
-                self.cfg.trainer.epochs,
-                max_stepnum,
-            )
-            scheduler = custom_scheduler.create_scheduler()
-
-            self.custom_scheduler = custom_scheduler
-
-            return [optimizer], [scheduler]
-
-        else:
-            optim_params = cfg_optimizer.params | {
-                "params": filter(lambda p: p.requires_grad, self.parameters()),
-            }
-            optimizer = OPTIMIZERS.get(cfg_optimizer.name)(**optim_params)
+        optim_params = cfg_optimizer.params | {
+            "params": filter(lambda p: p.requires_grad, self.parameters()),
+        }
+        optimizer = OPTIMIZERS.get(cfg_optimizer.name)(**optim_params)
 
         def get_scheduler(scheduler_cfg, optimizer):
             scheduler_class = SCHEDULERS.get(
@@ -926,12 +915,6 @@ class LuxonisLightningModule(pl.LightningModule):
             scheduler = scheduler_class(**scheduler_params)
 
         return [optimizer], [scheduler]
-
-    def on_after_backward(self):
-        """Custom logic to adjust learning rates and momentum after
-        loss.backward."""
-        if self.cfg.trainer.apply_custom_lr:
-            self.custom_scheduler.update_learning_rate(self.current_epoch)
 
     def load_checkpoint(self, path: str | Path | None) -> None:
         """Loads checkpoint weights from provided path.

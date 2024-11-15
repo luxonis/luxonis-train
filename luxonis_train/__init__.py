@@ -10,6 +10,7 @@ try:
     from .nodes import *
     from .optimizers import *
     from .schedulers import *
+    from .strategies import *
     from .utils import *
 except ImportError as e:
     warnings.warn(

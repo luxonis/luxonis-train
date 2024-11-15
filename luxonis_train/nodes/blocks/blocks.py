@@ -60,13 +60,14 @@ class EfficientDecoupledBlock(nn.Module):
 
     def initialize_weights(self):
         for m in self.modules():
-            t = type(m)
-            if t is nn.Conv2d:
+            if isinstance(m, nn.Conv2d):
                 pass
-            elif t is nn.BatchNorm2d:
-                m.eps = 1e-3
+            elif isinstance(m, nn.BatchNorm2d):
+                m.eps = 0.001
                 m.momentum = 0.03
-            elif t in [nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU]:
+            elif isinstance(
+                m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU)
+            ):
                 m.inplace = True
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:

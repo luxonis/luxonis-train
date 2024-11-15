@@ -2,8 +2,6 @@ from torch.optim import lr_scheduler
 
 from luxonis_train.utils.registry import SCHEDULERS
 
-from .custom_schedulers import TripleLRScheduler
-
 for scheduler in [
     lr_scheduler.LambdaLR,
     lr_scheduler.MultiplicativeLR,
@@ -20,6 +18,5 @@ for scheduler in [
     lr_scheduler.CyclicLR,
     lr_scheduler.OneCycleLR,
     lr_scheduler.CosineAnnealingWarmRestarts,
-    TripleLRScheduler,
 ]:
     SCHEDULERS.register_module(module=scheduler)

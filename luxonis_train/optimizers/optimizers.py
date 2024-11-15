@@ -2,8 +2,6 @@ import torch.optim as optim
 
 from luxonis_train.utils.registry import OPTIMIZERS
 
-from .custom_optimizers import TripleLRSGD
-
 for optimizer in [
     optim.Adadelta,
     optim.Adagrad,
@@ -17,6 +15,5 @@ for optimizer in [
     optim.RAdam,
     optim.RMSprop,
     optim.SGD,
-    TripleLRSGD,
 ]:
     OPTIMIZERS.register_module(module=optimizer)
