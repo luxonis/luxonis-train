@@ -155,8 +155,7 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
         self.cfg = self.model.cfg
 
         max_stepnum = math.ceil(
-            len(self.model._core.loaders["train"])
-            / self.cfg.trainer.batch_size
+            len(self.model.core.loaders["train"]) / self.cfg.trainer.batch_size
         )
 
         self.optimizer = TripleLRSGD(self.model, params).create_optimizer()

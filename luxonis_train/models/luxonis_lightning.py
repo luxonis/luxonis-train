@@ -865,7 +865,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 )
 
         if self.training_strategy is not None:
-            callbacks.append(TrainingManager(strategy=self.training_strategy))
+            callbacks.append(TrainingManager(strategy=self.training_strategy))  # type: ignore
 
         return callbacks
 
