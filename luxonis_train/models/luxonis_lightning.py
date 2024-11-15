@@ -278,7 +278,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 self.cfg.trainer.training_strategy.name
             )(
                 pl_module=self,
-                params=self.cfg.trainer.training_strategy.params,
+                params=self.cfg.trainer.training_strategy.params,  # type: ignore
             )
         else:
             self.training_strategy = None

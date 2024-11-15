@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Tuple
 
 import pytorch_lightning as pl
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.lr_scheduler import LRScheduler
 
 from luxonis_train.utils.registry import STRATEGIES
 
@@ -19,7 +18,9 @@ class BaseTrainingStrategy(
         self.pl_module = pl_module
 
     @abstractmethod
-    def configure_optimizers(self) -> Tuple[_LRScheduler, Optimizer]:
+    def configure_optimizers(
+        self,
+    ) -> tuple[list[Optimizer], list[LRScheduler]]:
         pass
 
     @abstractmethod
