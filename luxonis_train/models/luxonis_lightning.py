@@ -273,7 +273,15 @@ class LuxonisLightningModule(pl.LightningModule):
 
         self.load_checkpoint(self.cfg.model.weights)
 
-        if self.cfg.trainer.training_strategy.params:
+        if self.cfg.trainer.training_strategy is not None:
+            if self.cfg.trainer.optimizer is not None:
+                logger.warning(
+                    "Training strategy is active; the specified optimizer will be ignored."
+                )
+            if self.cfg.trainer.scheduler is not None:
+                logger.warning(
+                    "Training strategy is active; the specified scheduler will be ignored."
+                )
             self.training_strategy = STRATEGIES.get(
                 self.cfg.trainer.training_strategy.name
             )(

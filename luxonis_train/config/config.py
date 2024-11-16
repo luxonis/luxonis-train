@@ -337,7 +337,7 @@ class SchedulerConfig(BaseModelExtraForbid):
 
 
 class TrainingStrategyConfig(BaseModelExtraForbid):
-    name: str = "TripleLRSGDStrategy"
+    name: str
     params: Params = {}
 
 
@@ -387,7 +387,7 @@ class TrainerConfig(BaseModelExtraForbid):
 
     optimizer: OptimizerConfig = OptimizerConfig()
     scheduler: SchedulerConfig = SchedulerConfig()
-    training_strategy: TrainingStrategyConfig = TrainingStrategyConfig()
+    training_strategy: TrainingStrategyConfig | None = None
 
     @model_validator(mode="after")
     def validate_deterministic(self) -> Self:
