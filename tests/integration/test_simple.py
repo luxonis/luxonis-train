@@ -69,10 +69,11 @@ def test_predefined_models(
     config_file = f"configs/{config_file}.yaml"
     opts |= {
         "loader.params.dataset_name": (
-            cifar10_dataset.dataset_name
+            cifar10_dataset.identifier
             if "classification" in config_file
-            else coco_dataset.dataset_name
+            else coco_dataset.identifier
         ),
+        "trainer.epochs": 1,
     }
     model = LuxonisModel(config_file, opts)
     model.train()
