@@ -105,5 +105,6 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
         x = self.conv2(x)
         x = self.upscale(x)
         if self.export:
-            return x.argmax(dim=1).to(dtype=torch.int32)
+            x = x.argmax(dim=1) if self.n_classes > 1 else (x > 0)
+            return x.to(dtype=torch.int32)
         return x
