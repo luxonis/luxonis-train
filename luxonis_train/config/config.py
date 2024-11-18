@@ -327,12 +327,12 @@ class CallbackConfig(BaseModelExtraForbid):
 
 
 class OptimizerConfig(BaseModelExtraForbid):
-    name: str = "Adam"
+    name: str
     params: Params = {}
 
 
 class SchedulerConfig(BaseModelExtraForbid):
-    name: str = "ConstantLR"
+    name: str
     params: Params = {}
 
 
@@ -385,8 +385,8 @@ class TrainerConfig(BaseModelExtraForbid):
 
     callbacks: list[CallbackConfig] = []
 
-    optimizer: OptimizerConfig = OptimizerConfig()
-    scheduler: SchedulerConfig = SchedulerConfig()
+    optimizer: OptimizerConfig | None = None
+    scheduler: SchedulerConfig | None = None
     training_strategy: TrainingStrategyConfig | None = None
 
     @model_validator(mode="after")
@@ -536,16 +536,34 @@ class Config(LuxonisConfig):
         """Automatically populates config fields based on rules, with
         warnings."""
 
+        # Rule: Set default optimizer and scheduler if training_strategy is not defined and optimizer and scheduler are None
+        if instance.trainer.training_strategy is None:
+            if instance.trainer.optimizer is None:
+                instance.trainer.optimizer = OptimizerConfig(
+                    name="Adam", params={}
+                )
+                logger.warning(
+                    "Optimizer not specified. Automatically set to `Adam`."
+                )
+            if instance.trainer.scheduler is None:
+                instance.trainer.scheduler = SchedulerConfig(
+                    name="ConstantLR", params={}
+                )
+                logger.warning(
+                    "Scheduler not specified. Automatically set to `ConstantLR`."
+                )
+
         # Rule: CosineAnnealingLR should have T_max set to the number of epochs if not provided
-        scheduler = instance.trainer.scheduler
-        if (
-            scheduler.name == "CosineAnnealingLR"
-            and "T_max" not in scheduler.params
-        ):
-            scheduler.params["T_max"] = instance.trainer.epochs
-            logger.warning(
-                "`T_max` was not set for `CosineAnnealingLR`. Automatically set `T_max` to number of epochs."
-            )
+        if instance.trainer.scheduler is not None:
+            scheduler = instance.trainer.scheduler
+            if (
+                scheduler.name == "CosineAnnealingLR"
+                and "T_max" not in scheduler.params
+            ):
+                scheduler.params["T_max"] = instance.trainer.epochs
+                logger.warning(
+                    "`T_max` was not set for `CosineAnnealingLR`. Automatically set `T_max` to number of epochs."
+                )
 
         # Rule: Mosaic4 should have out_width and out_height matching train_image_size if not provided
         for augmentation in instance.trainer.preprocessing.augmentations:
