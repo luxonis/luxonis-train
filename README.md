@@ -675,7 +675,7 @@ For more information on how to define custom components, consult the respective 
 
 ## 📚 Tutorials and Examples
 
-We are actively working on providing examples and tutorials for different parts of the library which will help you to start more easily. The tutorials can be found [here](https://github.com/luxonis/depthai-ml-training/tree/master) and will be updated regularly.
+We are actively working on providing examples and tutorials for different parts of the library which will help you to start more easily. The tutorials can be found [here](https://github.com/luxonis/depthai-ml-training/tree/main/training) and will be updated regularly.
 
 <a name="credentials"></a>
 
