@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
     tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
+    in_channels: int
     attach_index: int = 2
 
     def __init__(
