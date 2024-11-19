@@ -58,6 +58,8 @@ def clear_files():
         "detection_light_model",
         "keypoint_bbox_heavy_model",
         "keypoint_bbox_light_model",
+        "detection_fomo_ligth_model",
+        "detection_fomo_heavy_model",
     ],
 )
 def test_predefined_models(
@@ -73,10 +75,11 @@ def test_predefined_models(
             if "classification" in config_file
             else coco_dataset.dataset_name
         ),
+        "trainer.epochs": 1,
     }
     model = LuxonisModel(config_file, opts)
     model.train()
-    model.test()
+    model.test(view="train")
 
 
 def test_multi_input(opts: dict[str, Any], infer_path: Path):

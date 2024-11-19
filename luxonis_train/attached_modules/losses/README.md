@@ -11,6 +11,7 @@ List of all the available loss functions.
 - [`SoftmaxFocalLoss`](#softmaxfocalloss)
 - [`AdaptiveDetectionLoss`](#adaptivedetectionloss)
 - [`EfficientKeypointBBoxLoss`](#efficientkeypointbboxloss)
+- [`FOMOLocalizationLoss`](#fomolocalizationLoss)
 
 ## `CrossEntropyLoss`
 
@@ -112,3 +113,11 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 | `gamma`     | `float`                          | `2.0`         | Modulates the balance between easy and hard examples in Focal loss.                      |
 | `reduction` | `Literal["none", "mean", "sum"]` | `"mean"`      | Specifies how to reduce the output of the Focal loss.                                    |
 | `smooth`    | `float`                          | `1e-5`        | Smoothing factor to prevent overconfidence in predictions for Focal loss.                |
+
+## `FOMOLocalizationLoss`
+
+**Parameters:**
+
+| Key             | Type    | Default value | Description                                     |
+| --------------- | ------- | ------------- | ----------------------------------------------- |
+| `object_weight` | `float` | `1000`        | Weight for the objects in the loss calculation. |

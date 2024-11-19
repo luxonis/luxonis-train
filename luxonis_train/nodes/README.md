@@ -27,6 +27,7 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`EfficientKeypointBBoxHead`](#efficientkeypointbboxhead)
   - [`DDRNetSegmentationHead`](#ddrnetsegmentationhead)
   - [`DiscSubNetHead`](#discsubnet)
+  - [`FOMOHead`](#fomohead)
     Every node takes these parameters:
 
 | Key                | Type          | Default value | Description                                                                 |
@@ -259,3 +260,12 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 | Key       | Type                | Default value | Description            |
 | --------- | ------------------- | ------------- | ---------------------- |
 | `variant` | `Literal["n", "l"]` | `"l"`         | Variant of the network |
+
+### `FOMOHead`
+
+**Parameters:**
+
+| Key               | Type  | Default value | Description                                             |
+| ----------------- | ----- | ------------- | ------------------------------------------------------- |
+| `num_conv_layers` | `int` | `3`           | Number of convolutional layers to use in the model.     |
+| `conv_channels`   | `int` | `16`          | Number of output channels for each convolutional layer. |
