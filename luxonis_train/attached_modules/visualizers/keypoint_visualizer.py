@@ -57,6 +57,12 @@ class KeypointVisualizer(BaseVisualizer[list[Tensor], Tensor]):
             prediction = predictions[i]
             mask = prediction[..., 2] < visibility_threshold
             visible_kpts = prediction[..., :2] * (~mask).unsqueeze(-1).float()
+            visible_kpts[..., 0] = torch.clamp(
+                visible_kpts[..., 0], 0, canvas.size(-1) - 1
+            )
+            visible_kpts[..., 1] = torch.clamp(
+                visible_kpts[..., 1], 0, canvas.size(-2) - 1
+            )
             viz[i] = draw_keypoints(
                 canvas[i].clone(),
                 visible_kpts[..., :2],
