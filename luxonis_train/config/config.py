@@ -517,6 +517,7 @@ class Config(LuxonisConfig):
     ) -> "Config":
         instance = super().get_config(cfg, overrides)
         if not isinstance(cfg, str):
+            cls.smart_auto_populate(instance)
             return instance
         fs = LuxonisFileSystem(cfg)
         if fs.is_mlflow:
