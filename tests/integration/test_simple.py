@@ -58,7 +58,7 @@ def clear_files():
         "detection_light_model",
         "keypoint_bbox_heavy_model",
         "keypoint_bbox_light_model",
-        "detection_fomo_ligth_model",
+        "detection_fomo_light_model",
         "detection_fomo_heavy_model",
     ],
 )
