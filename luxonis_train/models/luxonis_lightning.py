@@ -890,6 +890,11 @@ class LuxonisLightningModule(pl.LightningModule):
         cfg_optimizer = self.cfg.trainer.optimizer
         cfg_scheduler = self.cfg.trainer.scheduler
 
+        if cfg_optimizer is None or cfg_scheduler is None:
+            raise ValueError(
+                "Optimizer and scheduler configuration must not be None."
+            )
+
         optim_params = cfg_optimizer.params | {
             "params": filter(lambda p: p.requires_grad, self.parameters()),
         }
