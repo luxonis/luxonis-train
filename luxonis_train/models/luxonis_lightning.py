@@ -25,7 +25,11 @@ from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
     get_denormalized_images,
 )
-from luxonis_train.callbacks import BaseLuxonisProgressBar, ModuleFreezer
+from luxonis_train.callbacks import (
+    BaseLuxonisProgressBar,
+    ModuleFreezer,
+    TrainingManager,
+)
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.nodes import BaseNode
 from luxonis_train.utils import (
@@ -42,6 +46,7 @@ from luxonis_train.utils.registry import (
     CALLBACKS,
     OPTIMIZERS,
     SCHEDULERS,
+    STRATEGIES,
     Registry,
 )
 
@@ -267,6 +272,24 @@ class LuxonisLightningModule(pl.LightningModule):
         self.visualizers = self._to_module_dict(self.visualizers)  # type: ignore
 
         self.load_checkpoint(self.cfg.model.weights)
+
+        if self.cfg.trainer.training_strategy is not None:
+            if (
+                self.cfg.trainer.optimizer is not None
+                or self.cfg.trainer.scheduler is not None
+            ):
+                raise ValueError(
+                    "Training strategy is defined, but optimizer or scheduler is also defined. "
+                    "Please remove optimizer and scheduler from the config."
+                )
+            self.training_strategy = STRATEGIES.get(
+                self.cfg.trainer.training_strategy.name
+            )(
+                pl_module=self,
+                params=self.cfg.trainer.training_strategy.params,  # type: ignore
+            )
+        else:
+            self.training_strategy = None
 
     @property
     def core(self) -> "luxonis_train.core.LuxonisModel":
@@ -849,6 +872,9 @@ class LuxonisLightningModule(pl.LightningModule):
                     CALLBACKS.get(callback.name)(**callback.params)
                 )
 
+        if self.training_strategy is not None:
+            callbacks.append(TrainingManager(strategy=self.training_strategy))  # type: ignore
+
         return callbacks
 
     def configure_optimizers(
@@ -858,8 +884,16 @@ class LuxonisLightningModule(pl.LightningModule):
         list[torch.optim.lr_scheduler.LRScheduler],
     ]:
         """Configures model optimizers and schedulers."""
+        if self.training_strategy is not None:
+            return self.training_strategy.configure_optimizers()
+
         cfg_optimizer = self.cfg.trainer.optimizer
         cfg_scheduler = self.cfg.trainer.scheduler
+
+        if cfg_optimizer is None or cfg_scheduler is None:
+            raise ValueError(
+                "Optimizer and scheduler configuration must not be None."
+            )
 
         optim_params = cfg_optimizer.params | {
             "params": filter(lambda p: p.requires_grad, self.parameters()),

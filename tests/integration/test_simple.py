@@ -69,14 +69,15 @@ def test_predefined_models(
     config_file = f"configs/{config_file}.yaml"
     opts |= {
         "loader.params.dataset_name": (
-            cifar10_dataset.dataset_name
+            cifar10_dataset.identifier
             if "classification" in config_file
-            else coco_dataset.dataset_name
+            else coco_dataset.identifier
         ),
+        "trainer.epochs": 1,
     }
     model = LuxonisModel(config_file, opts)
     model.train()
-    model.test()
+    model.test(view="train")
 
 
 def test_multi_input(opts: dict[str, Any], infer_path: Path):
@@ -280,7 +281,7 @@ def test_smart_cfg_auto_populate(
     }
     model = LuxonisModel(config_file, opts)
     assert (
-        model.cfg.trainer.scheduler.params["T_max"] == model.cfg.trainer.epochs
+        model.cfg.trainer.scheduler.params["T_max"] == model.cfg.trainer.epochs  # type: ignore
     )
     assert (
         model.cfg.trainer.preprocessing.augmentations[0].params["out_width"]

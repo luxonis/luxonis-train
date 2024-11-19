@@ -35,6 +35,11 @@ OPTIMIZERS: Registry[type[Optimizer]] = Registry(name="optimizers")
 SCHEDULERS: Registry[type[LRScheduler]] = Registry(name="schedulers")
 """Registry for all schedulers."""
 
+STRATEGIES: Registry[type["lt.strategies.BaseTrainingStrategy"]] = Registry(
+    name="strategies"
+)
+"""Registry for all strategies."""
+
 VISUALIZERS: Registry[type["lt.visualizers.BaseVisualizer"]] = Registry(
     "visualizers"
 )

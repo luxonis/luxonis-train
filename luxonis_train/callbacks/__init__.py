@@ -25,6 +25,7 @@ from .luxonis_progress_bar import (
 from .metadata_logger import MetadataLogger
 from .module_freezer import ModuleFreezer
 from .test_on_train_end import TestOnTrainEnd
+from .training_manager import TrainingManager
 from .upload_checkpoint import UploadCheckpoint
 
 CALLBACKS.register_module(module=EarlyStopping)
@@ -38,6 +39,7 @@ CALLBACKS.register_module(module=Timer)
 CALLBACKS.register_module(module=ModelPruning)
 CALLBACKS.register_module(module=GradCamCallback)
 CALLBACKS.register_module(module=EMACallback)
+CALLBACKS.register_module(module=TrainingManager)
 
 
 __all__ = [
@@ -53,4 +55,5 @@ __all__ = [
     "GPUStatsMonitor",
     "GradCamCallback",
     "EMACallback",
+    "TrainingManager",
 ]

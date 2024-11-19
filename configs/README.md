@@ -376,6 +376,37 @@ trainer:
       eta_min: 0
 ```
 
+### Training Strategy
+
+Defines the training strategy to be used. Currently, only the `TripleLRSGDStrategy` is supported, but more strategies will be added in the future.
+
+| Key               | Type    | Default value           | Description                                    |
+| ----------------- | ------- | ----------------------- | ---------------------------------------------- |
+| `name`            | `str`   | `"TripleLRSGDStrategy"` | Name of the training strategy                  |
+| `warmup_epochs`   | `int`   | `3`                     | Number of epochs for the warmup phase          |
+| `warmup_bias_lr`  | `float` | `0.1`                   | Learning rate for bias during the warmup phase |
+| `warmup_momentum` | `float` | `0.8`                   | Momentum value during the warmup phase         |
+| `lr`              | `float` | `0.02`                  | Initial learning rate                          |
+| `lre`             | `float` | `0.0002`                | End learning rate                              |
+| `momentum`        | `float` | `0.937`                 | Momentum for the optimizer                     |
+| `weight_decay`    | `float` | `0.0005`                | Weight decay value                             |
+| `nesterov`        | `bool`  | `true`                  | Use Nesterov momentum or not                   |
+
+**Example:**
+
+```yaml
+training_strategy:
+  name: "TripleLRSGDStrategy"
+  warmup_epochs: 3
+  warmup_bias_lr: 0.1
+  warmup_momentum: 0.8
+  lr: 0.02
+  lre: 0.0002
+  momentum: 0.937
+  weight_decay: 0.0005
+  nesterov: true
+```
+
 ## Exporter
 
 Here you can define configuration for exporting.
