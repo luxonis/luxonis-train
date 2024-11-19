@@ -56,19 +56,6 @@ class EfficientDecoupledBlock(nn.Module):
 
         prior_prob = 1e-2
         self._initialize_weights_and_biases(prior_prob)
-        self.initialize_weights()
-
-    def initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                pass
-            elif isinstance(m, nn.BatchNorm2d):
-                m.eps = 0.001
-                m.momentum = 0.03
-            elif isinstance(
-                m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU)
-            ):
-                m.inplace = True
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         out_feature = self.decoder(x)

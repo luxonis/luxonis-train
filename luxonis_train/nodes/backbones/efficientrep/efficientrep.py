@@ -30,6 +30,7 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         block: Literal["RepBlock", "CSPStackRepBlock"] | None = None,
         csp_e: float | None = None,
         download_weights: bool = True,
+        initialize_weights: bool = True,
         **kwargs: Any,
     ):
         """Implementation of the EfficientRep backbone. Supports the
@@ -65,6 +66,8 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
             overrides the variant value.
         @type download_weights: bool
         @param download_weights: If True download weights from COCO (if available for specified variant). Defaults to True.
+        @type initialize_weights: bool
+        @param initialize_weights: If True, initialize weights of the model.
         """
         super().__init__(**kwargs)
 
@@ -125,7 +128,8 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
             )
         )
 
-        self.initialize_weights()
+        if initialize_weights:
+            self.initialize_weights()
 
         if download_weights and var.weights_path:
             self.load_checkpoint(var.weights_path)

@@ -30,6 +30,7 @@ class EfficientBBoxHead(
         iou_thres: float = 0.45,
         max_det: int = 300,
         download_weights: bool = False,
+        initialize_weights: bool = True,
         **kwargs: Any,
     ):
         """Head for object detection.
@@ -51,6 +52,8 @@ class EfficientBBoxHead(
         @type download_weights: bool
         @param download_weights: If True download weights from COCO.
             Defaults to False.
+        @type initialize_weights: bool
+        @param initialize_weights: If True, initialize weights.
         """
         super().__init__(**kwargs)
 
@@ -95,7 +98,8 @@ class EfficientBBoxHead(
                 f"output{i+1}_yolov6r2" for i in range(self.n_heads)
             ]
 
-        self.initialize_weights()
+        if initialize_weights:
+            self.initialize_weights()
 
         if download_weights:
             # TODO: Handle variants of head in a nicer way
