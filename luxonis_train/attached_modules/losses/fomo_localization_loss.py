@@ -44,7 +44,10 @@ class FOMOLocalizationLoss(BaseLoss[Tensor, Tensor]):
 
         for kpt in target_kpts:
             img_idx, class_idx = int(kpt[0]), int(kpt[1])
-            x_c, y_c = int(kpt[2] * width), int(kpt[3] * height)
+            x_c, y_c = (
+                (kpt[2] * width).round().int(),
+                (kpt[3] * height).round().int(),
+            )
             target_heatmap[img_idx, class_idx, y_c, x_c] = 1.0
 
         return heatmap, target_heatmap

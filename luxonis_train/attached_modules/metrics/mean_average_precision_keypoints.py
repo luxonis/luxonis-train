@@ -138,15 +138,23 @@ class MeanAveragePrecisionKeypoints(
 
             curr_label = label[label[:, 0] == i].to(output_kpts[i].device)
             curr_bboxs = curr_label[:, 2:6]
-            curr_bboxs[:, 0::2] *= image_size[1]
-            curr_bboxs[:, 1::2] *= image_size[0]
+            curr_bboxs[:, 0::2] = (
+                (curr_bboxs[:, 0::2] * image_size[1]).round().int()
+            )
+            curr_bboxs[:, 1::2] = (
+                (curr_bboxs[:, 1::2] * image_size[0]).round().int()
+            )
             curr_kpts = curr_label[:, 6:]
-            curr_kpts[:, 0::3] *= image_size[1]
-            curr_kpts[:, 1::3] *= image_size[0]
+            curr_kpts[:, 0::3] = (
+                (curr_kpts[:, 0::3] * image_size[1]).round().int()
+            )
+            curr_kpts[:, 1::3] = (
+                (curr_kpts[:, 1::3] * image_size[0]).round().int()
+            )
             label_list_kpt_map.append(
                 {
                     "boxes": curr_bboxs,
-                    "labels": curr_label[:, 1].int(),
+                    "labels": curr_label[:, 1].round().int(),
                     "keypoints": curr_kpts,
                 }
             )
