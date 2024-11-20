@@ -216,7 +216,7 @@ def compute_oks(
     @rtype: Tensor
     @return: Object Keypoint Similarity every pred and gt [M, N]
     """
-    eps = 1e-7
+    eps = 1e-12
     distances = (gt[:, None, :, 0] - pred[..., 0]) ** 2 + (
         gt[:, None, :, 1] - pred[..., 1]
     ) ** 2

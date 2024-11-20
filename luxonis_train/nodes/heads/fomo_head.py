@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
-    tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
+    tasks: list[TaskType] = [TaskType.KEYPOINTS, TaskType.BOUNDINGBOX]
     in_channels: int
     attach_index: int = 2
 
@@ -67,46 +67,40 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
                 "features": [heatmap],
             }
         else:
-            boxes = self._heatmap_to_xyxy(heatmap)
+            keypoints = self._heatmap_to_kpts(heatmap)
             return {
-                "boundingbox": boxes,
+                "keypoints": keypoints,
                 "features": [heatmap],
             }
 
-    def _heatmap_to_xyxy(self, heatmap: Tensor) -> List[Tensor]:
-        """Convert heatmap to bounding boxes, ensuring all tensors are
+    def _heatmap_to_kpts(self, heatmap: Tensor) -> List[Tensor]:
+        """Convert heatmap to keypoint pairs, ensuring all tensors are
         on the same device."""
         device = heatmap.device
         batch_size, num_classes, height, width = heatmap.shape
-        bbox_size = (
-            self.original_img_size[1] + self.original_img_size[0]
-        ) / 40
 
-        batch_boxes = []
+        batch_kpts = []
         for batch_idx in range(batch_size):
-            boxes = [
-                torch.tensor(
-                    [
-                        x / width * self.original_img_size[1] - bbox_size / 2,
-                        y / height * self.original_img_size[0] - bbox_size / 2,
-                        x / width * self.original_img_size[1] + bbox_size / 2,
-                        y / height * self.original_img_size[0] + bbox_size / 2,
-                        1,
-                        c,
-                    ],
-                    device=device,
+            kpts_per_img = []
+
+            for c in range(num_classes):
+                y_indices, x_indices = torch.where(
+                    torch.sigmoid(heatmap[batch_idx, c, :, :]) > 0.5
                 )
-                for c in range(num_classes)
-                for y, x in zip(
-                    *torch.where(
-                        torch.sigmoid(heatmap[batch_idx, c, :, :]) > 0.5
-                    )
-                )
-            ]
-            batch_boxes.append(
-                torch.stack(boxes)
-                if boxes
-                else torch.empty((0, 6), device=device)
+
+                kpts = []
+                for y, x in zip(y_indices, x_indices):
+                    kpt_x = x.item() / width * self.original_img_size[1]
+                    kpt_y = y.item() / height * self.original_img_size[0]
+                    kpts.append([kpt_x, kpt_y, 2])
+
+                kpts_per_img.append(kpts)
+
+            while len(kpts_per_img) < self.n_keypoints:
+                kpts_per_img.append([0, 0, 0])
+
+            batch_kpts.append(
+                torch.tensor(kpts_per_img, device=device).permute(1, 0, 2)
             )
 
-        return batch_boxes
+        return batch_kpts

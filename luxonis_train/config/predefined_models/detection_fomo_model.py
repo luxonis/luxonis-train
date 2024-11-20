@@ -96,8 +96,8 @@ class FOMOModel(BasePredefinedModel):
     def metrics(self) -> list[MetricModuleConfig]:
         return [
             MetricModuleConfig(
-                name="MeanAveragePrecision",
-                alias=f"MeanAveragePrecision-{self.task_name}",
+                name="ObjectKeypointSimilarity",
+                alias=f"ObjectKeypointSimilarity-{self.task_name}",
                 attached_to=f"FOMOHead-{self.task_name}",
                 is_main_metric=True,
             ),
@@ -107,8 +107,8 @@ class FOMOModel(BasePredefinedModel):
     def visualizers(self) -> list[AttachedModuleConfig]:
         return [
             AttachedModuleConfig(
-                name="BBoxVisualizer",
-                alias=f"BBoxVisualizer-{self.task_name}",
+                name="KeypointVisualizer",
+                alias=f"KeypointVisualizer-{self.task_name}",
                 attached_to=f"FOMOHead-{self.task_name}",
                 params=self.visualizer_params,
             )
