@@ -9,6 +9,7 @@ models which can be used instead.
 - [`DetectionModel`](#detectionmodel)
 - [`KeypointDetectionModel`](#keypointdetectionmodel)
 - [`ClassificationModel`](#classificationmodel)
+- [`FOMOModel`](#fomomodel)
 
 **Parameters:**
 
@@ -148,3 +149,31 @@ See an example configuration file using this predefined model [here](../../../co
 | `visualizer_params` | `dict`                                | `{}`           | Additional parameters to the visualizer                                                   |
 | `task`              | `Literal["multiclass", "multilabel"]` | `"multiclass"` | Type of the task of the model                                                             |
 | `task_name`         | `str \| None`                         | `None`         | Custom task name for the head                                                             |
+
+## `FOMOModel`
+
+The `FOMOModel` allows for both `"light"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster.
+
+See an example configuration file using this predefined model [here](../../../configs/detection_fomo_light_model.yaml) for the `"light"` variant, and [here](../../../configs/detection_fomo_heavy_model.yaml) for the `"heavy"` variant.
+
+### **Components**
+
+| Name                                                                                            | Alias               | Function                                                                       |
+| ----------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------ |
+| [`MobileNetV2`](../../nodes/README.md#mobilenetv2)                                              | `"fomo_backbone"`   | Backbone of the model. Available variants: `"light"` and `"heavy"`.            |
+| [`FOMOHead`](../../nodes/README.md#fomohead)                                                    | `"fomo_head"`       | Head of the model with a configurable number of convolutional layers.          |
+| [`FOMOLocalizationLoss`](../../attached_modules/losses/README.md#fomolocalizationloss)          | `"fomo_loss"`       | Loss function for object localization.                                         |
+| [`ObjectKeypointSimilarity`](../../attached_modules/metrics/README.md#objectkeypointsimilarity) | `"fomo_oks"`        | Metric to evaluate the similarity between predicted and true object keypoints. |
+| [`KeypointVisualizer`](../../attached_modules/visualizers/README.md#keypointvisualizer)         | `"fomo_visualizer"` | Visualizer for the model's keypoint predictions.                               |
+
+### **Parameters**
+
+| Key                 | Type                        | Default value   | Description                                                                                     |
+| ------------------- | --------------------------- | --------------- | ----------------------------------------------------------------------------------------------- |
+| `variant`           | `Literal["light", "heavy"]` | `"light"`       | Defines the variant of the model. `"light"` uses fewer layers in the head, `"heavy"` uses more. |
+| `backbone`          | `str`                       | `"MobileNetV2"` | Name of the node to be used as a backbone.                                                      |
+| `backbone_params`   | `dict`                      | `{}`            | Additional parameters for the backbone.                                                         |
+| `head_params`       | `dict`                      | `{}`            | Additional parameters for the head, such as the number of convolutional layers.                 |
+| `loss_params`       | `dict`                      | `{}`            | Additional parameters for the loss function.                                                    |
+| `visualizer_params` | `dict`                      | `{}`            | Additional parameters for the visualizer.                                                       |
+| `task_name`         | `str \| None`               | `None`          | Custom task name for the model head.                                                            |

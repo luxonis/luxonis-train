@@ -59,7 +59,7 @@ class FOMOModel(BasePredefinedModel):
         self.head_params = head_params or var_config.head_params
         self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
-        self.task_name = task_name or "boundingbox"
+        self.task_name = task_name or "keypoints"
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:

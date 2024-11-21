@@ -79,7 +79,7 @@ def test_predefined_models(
     }
     model = LuxonisModel(config_file, opts)
     model.train()
-    model.test(view="train")
+    model.test()
 
 
 def test_multi_input(opts: dict[str, Any], infer_path: Path):

@@ -1,10 +1,9 @@
 # Example configuration for training a predefined fomo heavy detection model
-# NOTE: This example downloads pretrained COCO weights and training parameters are already prepared for fine tuning
 
 model:
-  name: detection_fomo
+  name: fomo_detection_heavy
   predefined_model:
-    name: DetectionModel
+    name: FOMOModel
     params:
       variant: heavy
 
