@@ -89,7 +89,7 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
         if self.is_detection:
             out_bbox = self.get_input_tensors(inputs, TaskType.BOUNDINGBOX)
             bbox = self.get_label(labels, TaskType.BOUNDINGBOX)
-            bbox = bbox.to(out_bbox[0].device)
+            bbox = bbox.to(out_bbox[0].device).clone()
             bbox[..., 2:6] = box_convert(bbox[..., 2:6], "xywh", "xyxy")
             scale_factors = torch.tensor(
                 [
