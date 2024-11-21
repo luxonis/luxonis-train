@@ -173,9 +173,7 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
             results["detection_confusion_matrix"] = self.detection_cm
             print("detection_confusion_matrix:\n", self.detection_cm)
 
-        return torch.tensor(
-            [-1.0], dtype=torch.float32
-        )  # Change this once luxonis-ml supports returning tensor as a metric
+        return results
 
     def _compute_confusion_matrix(
         self, preds: Tensor, targets: Tensor
