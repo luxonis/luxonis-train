@@ -72,16 +72,10 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
 
     def prepare(self, inputs: Packet[Tensor], labels: Labels):
         if self.is_detection:
-            out_bbox = self.get_input_tensors(
-                inputs, TaskType.BOUNDINGBOX
-            )  # Predictions list of bs elements with shape [N,6] where 6 is [x1, y1, x2, y2, score, class]
-            bbox = self.get_label(
-                labels, TaskType.BOUNDINGBOX
-            )  # Ground truth shape of [M, 6] where 6 is [image_idx, class, x1, y1, w, h]
+            out_bbox = self.get_input_tensors(inputs, TaskType.BOUNDINGBOX)
+            bbox = self.get_label(labels, TaskType.BOUNDINGBOX)
             bbox = bbox.to(out_bbox[0].device)
-            bbox[..., 2:6] = box_convert(
-                bbox[..., 2:6], "xywh", "xyxy"
-            )  # Convert ground truth to "xyxy"
+            bbox[..., 2:6] = box_convert(bbox[..., 2:6], "xywh", "xyxy")
             scale_factors = torch.tensor(
                 [
                     self.original_in_shape[2],
@@ -186,12 +180,12 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
 
             if img_targets.shape[0] == 0:
                 for pred_class in pred[:, 5].int():
-                    cm[pred_class, self.n_classes] += 1  # False positive
+                    cm[pred_class, self.n_classes] += 1
                 continue
 
             if pred.shape[0] == 0:
                 for gt_class in img_targets[:, 1].int():
-                    cm[self.n_classes, gt_class] += 1  # False negative
+                    cm[self.n_classes, gt_class] += 1
                 continue
 
             pred = pred[pred[:, 4] > self.confidence_threshold]
@@ -205,9 +199,7 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
             iou_thresholded = iou > self.iou_threshold
 
             if iou_thresholded.any():
-                iou_max, pred_max_idx = torch.max(
-                    iou, dim=1
-                )  # Maximum IoU for each GT
+                iou_max, pred_max_idx = torch.max(iou, dim=1)
                 iou_gt_mask = iou_max > self.iou_threshold
                 gt_match_idx = torch.arange(
                     len(gt_boxes), device=gt_boxes.device
