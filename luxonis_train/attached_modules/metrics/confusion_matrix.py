@@ -70,7 +70,22 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
                 dist_reduce_fx="sum",
             )
 
-    def prepare(self, inputs: Packet[Tensor], labels: Labels):
+    def prepare(
+        self, inputs: Packet[Tensor], labels: Labels
+    ) -> tuple[dict[str, Tensor], dict[str, Tensor]]:
+        """Prepare data for classification, segmentation, and detection
+        tasks.
+
+        @type inputs: Packet[Tensor]
+        @param inputs: The inputs to the model.
+        @type labels: Labels
+        @param labels: The ground-truth labels.
+        @return: A tuple of two dictionaries: one for predictions and
+            one for targets.
+        """
+        predictions = {}
+        targets = {}
+
         if self.is_detection:
             out_bbox = self.get_input_tensors(inputs, TaskType.BOUNDINGBOX)
             bbox = self.get_label(labels, TaskType.BOUNDINGBOX)
@@ -86,42 +101,62 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
                 device=bbox.device,
             )
             bbox[..., 2:6] *= scale_factors
-            return out_bbox, bbox
+            predictions["detection"] = out_bbox
+            targets["detection"] = bbox
 
         if self.is_classification:
-            prediction = (
-                self.get_input_tensors(inputs, TaskType.CLASSIFICATION),
+            prediction = self.get_input_tensors(
+                inputs, TaskType.CLASSIFICATION
             )
             target = self.get_label(labels, TaskType.CLASSIFICATION).to(
                 prediction[0].device
             )
-            return prediction, target
+            predictions["classification"] = prediction
+            targets["classification"] = target
 
         if self.is_segmentation:
-            prediction = (
-                self.get_input_tensors(inputs, TaskType.SEGMENTATION),
-            )
+            prediction = self.get_input_tensors(inputs, TaskType.SEGMENTATION)
             target = self.get_label(labels, TaskType.SEGMENTATION).to(
                 prediction[0].device
             )
-            return prediction, target
+            predictions["segmentation"] = prediction
+            targets["segmentation"] = target
 
-    def update(self, preds: list[Tensor], target: Tensor) -> None:
-        if self.is_classification:
+        return predictions, targets
+
+    def update(
+        self, predictions: dict[str, Tensor], targets: dict[str, Tensor]
+    ) -> None:
+        """Update the confusion matrices for all tasks using prepared
+        data.
+
+        @type predictions: dict[str, Tensor]
+        @param predictions: A dictionary containing predictions for all
+            tasks.
+        @type targets: dict[str, Tensor]
+        @param targets: A dictionary containing targets for all tasks.
+        """
+        if "classification" in predictions and "classification" in targets:
+            preds = predictions["classification"]
+            target = targets["classification"]
             pred_classes = preds[0].argmax(dim=1)  # [B]
             target_classes = target.argmax(dim=1)  # [B]
             self.classification_cm += self._compute_confusion_matrix(
                 pred_classes, target_classes
             )
 
-        if self.is_segmentation:
+        if "segmentation" in predictions and "segmentation" in targets:
+            preds = predictions["segmentation"]
+            target = targets["segmentation"]
             pred_masks = preds[0].argmax(dim=1)  # [B, H, W]
             target_masks = target.argmax(dim=1)  # [B, H, W]
             self.segmentation_cm += self._compute_confusion_matrix(
                 pred_masks.view(-1), target_masks.view(-1)
             )
 
-        if self.is_detection:
+        if "detection" in predictions and "detection" in targets:
+            preds = predictions["detection"]
+            target = targets["detection"]
             self.detection_cm += self._compute_detection_confusion_matrix(
                 preds, target
             )
