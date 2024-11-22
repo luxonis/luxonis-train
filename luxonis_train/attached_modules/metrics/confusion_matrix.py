@@ -45,6 +45,20 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
         self.is_detection = TaskType.BOUNDINGBOX in self.node.tasks
         self.is_segmentation = TaskType.SEGMENTATION in self.node.tasks
 
+        if (
+            sum(
+                [
+                    self.is_classification,
+                    self.is_detection,
+                    self.is_segmentation,
+                ]
+            )
+            > 1
+        ):
+            raise ValueError(
+                "Multiple tasks detected in self.node.tasks. Only one task is allowed."
+            )
+
         if self.is_classification:
             self.add_state(
                 "classification_cm",
@@ -162,16 +176,15 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
             )
 
     def compute(self) -> dict[str, Tensor]:
+        """Compute confusion matrices for classification, segmentation,
+        and detection tasks."""
         results = {}
         if self.is_classification:
             results["classification_confusion_matrix"] = self.classification_cm
-            print("classification_confusion_matrix:\n", self.classification_cm)
         if self.is_segmentation:
             results["segmentation_confusion_matrix"] = self.segmentation_cm
-            print("segmentation_confusion_matrix:\n", self.segmentation_cm)
         if self.is_detection:
             results["detection_confusion_matrix"] = self.detection_cm
-            print("detection_confusion_matrix:\n", self.detection_cm)
 
         return results
 
@@ -200,6 +213,9 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
         @param preds: List of predictions for each image. Each tensor
             has shape [N, 6] where 6 is for [x1, y1, x2, y2, score,
             class]
+        @type targets: Tensor
+        @param targets: Ground truth boxes and classes. Shape [M, 6]
+            where first column is image index.
         """
         cm = torch.zeros(
             self.n_classes + 1,
