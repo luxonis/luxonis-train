@@ -813,7 +813,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 if "matrix" in metric_name.lower():
                     self.logger.log_matrix(
                         matrix=metric_value.cpu().numpy(),
-                        path=f"{mode}/metrics/{self.current_epoch}/{metric_name}",
+                        name=f"{mode}/metrics/{self.current_epoch}/{metric_name}",
                     )
                 else:
                     metric_results[node_name][metric_name] = (
