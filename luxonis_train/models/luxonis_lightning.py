@@ -1037,8 +1037,6 @@ class LuxonisLightningModule(pl.LightningModule):
 
         if self.main_metric is not None:
             main_metric_node, main_metric_name = self.main_metric.split("/")
-            if "matrix" in main_metric_name.lower():
-                return
             main_metric = metrics[main_metric_node][main_metric_name]
             logger.info(
                 f"{stage} main metric ({self.main_metric}): {main_metric:.4f}"
