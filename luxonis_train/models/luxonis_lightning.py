@@ -814,6 +814,7 @@ class LuxonisLightningModule(pl.LightningModule):
                     self.logger.log_matrix(
                         matrix=metric_value.cpu().numpy(),
                         name=f"{mode}/metrics/{self.current_epoch}/{metric_name}",
+                        step=self.current_epoch,
                     )
                 else:
                     metric_results[node_name][metric_name] = (
