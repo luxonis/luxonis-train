@@ -41,9 +41,18 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
         self.iou_threshold = iou_threshold
         self.confidence_threshold = confidence_threshold
 
-        self.is_classification = TaskType.CLASSIFICATION in self.node.tasks
-        self.is_detection = TaskType.BOUNDINGBOX in self.node.tasks
-        self.is_segmentation = TaskType.SEGMENTATION in self.node.tasks
+        self.is_classification = (
+            self.node.tasks is not None
+            and TaskType.CLASSIFICATION in self.node.tasks
+        )
+        self.is_detection = (
+            self.node.tasks is not None
+            and TaskType.BOUNDINGBOX in self.node.tasks
+        )
+        self.is_segmentation = (
+            self.node.tasks is not None
+            and TaskType.SEGMENTATION in self.node.tasks
+        )
 
         if (
             sum(
@@ -169,7 +178,7 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
             )
 
         if "detection" in predictions and "detection" in targets:
-            preds = predictions["detection"]
+            preds = predictions["detection"]  # type: ignore
             target = targets["detection"]
             self.detection_cm += self._compute_detection_confusion_matrix(
                 preds, target
