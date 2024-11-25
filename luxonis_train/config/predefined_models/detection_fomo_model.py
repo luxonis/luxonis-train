@@ -9,6 +9,7 @@ from luxonis_train.config import (
     ModelNodeConfig,
     Params,
 )
+from luxonis_train.enums import TaskType
 
 from .base_predefined_model import BasePredefinedModel
 
@@ -80,8 +81,8 @@ class FOMOModel(BasePredefinedModel):
                 inputs=[f"{self.backbone}-{self.kpt_task_name}"],
                 params=self.head_params,
                 task={
-                    "boundingbox": self.bbox_task_name,
-                    "keypoints": self.kpt_task_name,
+                    TaskType.BOUNDINGBOX: self.bbox_task_name,
+                    TaskType.KEYPOINTS: self.kpt_task_name,
                 },
             ),
         ]

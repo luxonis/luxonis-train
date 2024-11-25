@@ -1,6 +1,6 @@
 import glob
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import cv2
 import numpy as np
@@ -8,6 +8,8 @@ import pytest
 from luxonis_ml.data import BucketStorage, LuxonisDataset
 
 from luxonis_train.core import LuxonisModel
+
+PathType = Union[str, Path]
 
 
 def create_dummy_bbox_keypoint_dataset(paths: Path):
@@ -82,7 +84,7 @@ def create_dummy_bbox_keypoint_dataset(paths: Path):
         delete_remote=True,
     )
     dataset.add(dummy_generator(train_paths + test_paths))
-    definitions: Dict[str, List[Path]] = {
+    definitions: Dict[str, List[PathType]] = {
         "train": train_paths,
         "val": test_paths,
     }
