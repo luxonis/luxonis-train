@@ -12,7 +12,7 @@ from luxonis_train.config import (
 
 from .base_predefined_model import BasePredefinedModel
 
-VariantLiteral: TypeAlias = Literal["light", "medium", "heavy"]
+VariantLiteral: TypeAlias = Literal["light", "heavy"]
 
 
 class FOMOVariant(BaseModel):
@@ -49,8 +49,9 @@ class FOMOModel(BasePredefinedModel):
         backbone_params: Params | None = None,
         head_params: Params | None = None,
         loss_params: Params | None = None,
-        visualizer_params: Params | None = None,
-        task_name: str | None = None,
+        kpt_visualizer_params: Params | None = None,
+        bbox_task_name: str | None = None,
+        kpt_task_name: str | None = None,
     ):
         var_config = get_variant(variant)
 
@@ -58,24 +59,30 @@ class FOMOModel(BasePredefinedModel):
         self.backbone_params = backbone_params or {}
         self.head_params = head_params or var_config.head_params
         self.loss_params = loss_params or {}
-        self.visualizer_params = visualizer_params or {}
-        self.task_name = task_name or "keypoints"
+        self.kpt_visualizer_params = kpt_visualizer_params or {}
+        self.bbox_task_name = (
+            bbox_task_name or "boundingbox"
+        )  # Needed for OKS calculation
+        self.kpt_task_name = kpt_task_name or "keypoints"
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
         nodes = [
             ModelNodeConfig(
                 name=self.backbone,
-                alias=f"{self.backbone}-{self.task_name}",
+                alias=f"{self.backbone}-{self.kpt_task_name}",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="FOMOHead",
-                alias=f"FOMOHead-{self.task_name}",
-                inputs=[f"{self.backbone}-{self.task_name}"],
+                alias=f"FOMOHead-{self.kpt_task_name}",
+                inputs=[f"{self.backbone}-{self.kpt_task_name}"],
                 params=self.head_params,
-                task=self.task_name,
+                task={
+                    "boundingbox": self.bbox_task_name,
+                    "keypoints": self.kpt_task_name,
+                },
             ),
         ]
         return nodes
@@ -85,8 +92,8 @@ class FOMOModel(BasePredefinedModel):
         return [
             LossModuleConfig(
                 name="FOMOLocalizationLoss",
-                alias=f"FOMOLocalizationLoss-{self.task_name}",
-                attached_to=f"FOMOHead-{self.task_name}",
+                alias=f"FOMOLocalizationLoss-{self.kpt_task_name}",
+                attached_to=f"FOMOHead-{self.kpt_task_name}",
                 params=self.loss_params,
                 weight=1.0,
             )
@@ -97,8 +104,8 @@ class FOMOModel(BasePredefinedModel):
         return [
             MetricModuleConfig(
                 name="ObjectKeypointSimilarity",
-                alias=f"ObjectKeypointSimilarity-{self.task_name}",
-                attached_to=f"FOMOHead-{self.task_name}",
+                alias=f"ObjectKeypointSimilarity-{self.kpt_task_name}",
+                attached_to=f"FOMOHead-{self.kpt_task_name}",
                 is_main_metric=True,
             ),
         ]
@@ -107,9 +114,16 @@ class FOMOModel(BasePredefinedModel):
     def visualizers(self) -> list[AttachedModuleConfig]:
         return [
             AttachedModuleConfig(
-                name="KeypointVisualizer",
-                alias=f"KeypointVisualizer-{self.task_name}",
-                attached_to=f"FOMOHead-{self.task_name}",
-                params=self.visualizer_params,
+                name="MultiVisualizer",
+                alias=f"MultiVisualizer-{self.kpt_task_name}",
+                attached_to=f"FOMOHead-{self.kpt_task_name}",
+                params={
+                    "visualizers": [
+                        {
+                            "name": "KeypointVisualizer",
+                            "params": self.kpt_visualizer_params,
+                        },
+                    ]
+                },
             )
         ]

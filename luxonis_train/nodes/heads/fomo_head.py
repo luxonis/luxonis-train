@@ -96,8 +96,8 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
 
                 kpts_per_img.append(kpts)
 
-            while len(kpts_per_img) < self.n_keypoints:
-                kpts_per_img.append([0, 0, 0])
+            if all(len(kpt) == 0 for kpt in kpts_per_img):
+                kpts_per_img = [[[0, 0, 0]]]  # One keypoint per object
 
             batch_kpts.append(
                 torch.tensor(kpts_per_img, device=device).permute(1, 0, 2)
