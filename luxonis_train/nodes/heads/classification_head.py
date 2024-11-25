@@ -4,9 +4,10 @@ from torch import Tensor, nn
 
 from luxonis_train.enums import TaskType
 from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.nodes.interfaces import Archivable
 
 
-class ClassificationHead(BaseNode[Tensor, Tensor]):
+class ClassificationHead(BaseNode[Tensor, Tensor], Archivable):
     in_channels: int
     tasks: list[TaskType] = [TaskType.CLASSIFICATION]
 

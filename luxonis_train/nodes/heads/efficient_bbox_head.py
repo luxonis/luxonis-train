@@ -7,6 +7,7 @@ from torch import Tensor, nn
 from luxonis_train.enums import TaskType
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import EfficientDecoupledBlock
+from luxonis_train.nodes.interfaces import Archivable
 from luxonis_train.utils import (
     Packet,
     anchors_for_fpn_features,
@@ -18,7 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 class EfficientBBoxHead(
-    BaseNode[list[Tensor], tuple[list[Tensor], list[Tensor], list[Tensor]]]
+    BaseNode[list[Tensor], tuple[list[Tensor], list[Tensor], list[Tensor]]],
+    Archivable,
 ):
     in_channels: list[int]
     tasks: list[TaskType] = [TaskType.BOUNDINGBOX]

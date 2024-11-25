@@ -7,12 +7,13 @@ from torch import Tensor
 
 from luxonis_train.enums import TaskType
 from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.nodes.interfaces import Archivable
 from luxonis_train.utils.general import infer_upscale_factor
 
 logger = logging.getLogger(__name__)
 
 
-class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
+class DDRNetSegmentationHead(BaseNode[Tensor, Tensor], Archivable):
     attach_index: int = -1
     in_height: int
     in_width: int
