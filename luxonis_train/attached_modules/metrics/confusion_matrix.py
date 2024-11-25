@@ -181,7 +181,8 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
             preds = predictions["detection"]  # type: ignore
             target = targets["detection"]
             self.detection_cm += self._compute_detection_confusion_matrix(
-                preds, target
+                preds,
+                target,  # type: ignore
             )
 
     def compute(self) -> dict[str, Tensor]:
