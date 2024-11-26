@@ -704,7 +704,11 @@ class LuxonisModel:
             return self._archive(path)
 
     def _archive(self, path: str | Path | None = None) -> Path:
-        from .utils.archive_utils import get_heads, get_inputs, get_outputs
+        from .utils.archive_utils import (
+            get_head_configs,
+            get_inputs,
+            get_outputs,
+        )
 
         archive_name = self.cfg.archiver.name or self.cfg.model.name
         archive_save_directory = Path(self.run_save_dir, "archive")
@@ -761,11 +765,9 @@ class LuxonisModel:
                 }
             )
 
-        heads = get_heads(
-            self.cfg,
+        heads = get_head_configs(
+            self.lightning_module,
             outputs,
-            self.loaders["train"].get_classes(),
-            self.lightning_module.nodes,  # type: ignore
         )
 
         model = {

@@ -9,6 +9,7 @@ from .boundingbox import (
 from .dataset_metadata import DatasetMetadata
 from .exceptions import IncompatibleException
 from .general import (
+    deep_merge_dicts,
     get_with_default,
     infer_upscale_factor,
     make_divisible,
@@ -30,6 +31,7 @@ __all__ = [
     "make_divisible",
     "infer_upscale_factor",
     "to_shape_packet",
+    "deep_merge_dicts",
     "get_with_default",
     "safe_download",
     "LuxonisTrackerPL",
