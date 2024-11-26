@@ -1,27 +1,35 @@
-
 from abc import abstractmethod
 from typing import Generic, Literal
 
-from luxonis_train.nodes.base_node import BaseNode, ForwardInputT, ForwardOutputT
+from luxonis_train.nodes.base_node import (
+    BaseNode,
+    ForwardInputT,
+    ForwardOutputT,
+)
 from luxonis_train.utils import deep_merge_dicts
 
 
-class BaseHead(BaseNode[ForwardInputT, ForwardOutputT], Generic[ForwardInputT, ForwardOutputT]):
+class BaseHead(
+    BaseNode[ForwardInputT, ForwardOutputT],
+    Generic[ForwardInputT, ForwardOutputT],
+):
     """Base class for all heads in the model.
 
     @type parser: str | None
     @ivar parser: Parser to use for the head.
-
     @type is_softmaxed: bool | None
     @ivar is_softmaxed: Whether the head uses softmax or not.
     """
 
-    parser: Literal[
-        "ClassificationParser",
-        "YOLO",
-        "YoloDetectionNetwork",
-        "SegmentationParser"
-    ] | None = None
+    parser: (
+        Literal[
+            "ClassificationParser",
+            "YOLO",
+            "YoloDetectionNetwork",
+            "SegmentationParser",
+        ]
+        | None
+    ) = None
     is_softmaxed: bool | None = None
 
     def __init__(self, **kwargs):
@@ -43,7 +51,7 @@ class BaseHead(BaseNode[ForwardInputT, ForwardOutputT], Generic[ForwardInputT, F
         custom_config = self._get_custom_head_config()
         deep_merge_dicts(config, custom_config)
         return config
-        
+
     def _get_base_head_config(self) -> dict:
         """Get base head configuration.
 
@@ -56,7 +64,7 @@ class BaseHead(BaseNode[ForwardInputT, ForwardOutputT], Generic[ForwardInputT, F
                 "is_softmax": self.is_softmaxed,
                 "classes": self.class_names,
                 "n_classes": self.n_classes,
-            }
+            },
         }
 
     @abstractmethod
