@@ -2,6 +2,7 @@ from typing import Literal
 
 import torch
 from torch import Tensor
+from torchmetrics.classification import MulticlassConfusionMatrix
 from torchvision.ops import box_convert, box_iou
 
 from luxonis_train.enums import TaskType
@@ -92,6 +93,9 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
                 ),  # +1 for background
                 dist_reduce_fx="sum",
             )
+        self.compute_confusion_matrix = MulticlassConfusionMatrix(
+            num_classes=self.n_classes
+        )
 
     def prepare(
         self, inputs: Packet[Tensor], labels: Labels
@@ -164,16 +168,15 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
             target = targets["classification"]
             pred_classes = preds[0].argmax(dim=1)  # [B]
             target_classes = target.argmax(dim=1)  # [B]
-            self.classification_cm += self._compute_confusion_matrix(
+            self.classification_cm += self.compute_confusion_matrix(
                 pred_classes, target_classes
             )
-
         if "segmentation" in predictions and "segmentation" in targets:
             preds = predictions["segmentation"]
             target = targets["segmentation"]
             pred_masks = preds[0].argmax(dim=1)  # [B, H, W]
             target_masks = target.argmax(dim=1)  # [B, H, W]
-            self.segmentation_cm += self._compute_confusion_matrix(
+            self.segmentation_cm += self.compute_confusion_matrix(
                 pred_masks.view(-1), target_masks.view(-1)
             )
 
@@ -197,22 +200,6 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
             results["detection_confusion_matrix"] = self.detection_cm
 
         return results
-
-    def _compute_confusion_matrix(
-        self, preds: Tensor, targets: Tensor
-    ) -> Tensor:
-        """Compute a confusion matrix using efficient vectorized
-        operations."""
-        mask = (targets >= 0) & (targets < self.n_classes)
-        preds = preds[mask]
-        targets = targets[mask]
-
-        indices = targets * self.n_classes + preds
-        cm = torch.bincount(
-            indices,
-            minlength=self.n_classes * self.n_classes,
-        ).reshape(self.n_classes, self.n_classes)
-        return cm
 
     def _compute_detection_confusion_matrix(
         self, preds: list[Tensor], targets: Tensor
