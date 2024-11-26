@@ -5,11 +5,10 @@ from torch import Tensor, nn
 from luxonis_train.enums import TaskType
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
-from luxonis_train.nodes.interfaces import Archivable
 from luxonis_train.utils import infer_upscale_factor
 
 
-class BiSeNetHead(BaseNode[Tensor, Tensor], Archivable):
+class BiSeNetHead(BaseNode[Tensor, Tensor]):
     in_height: int
     in_width: int
     in_channels: int
