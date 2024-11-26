@@ -183,8 +183,8 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
         if "detection" in predictions and "detection" in targets:
             preds = predictions["detection"]  # type: ignore
             target = targets["detection"]
-            self.detection_cm += self._compute_detection_confusion_matrix(
-                preds,
+            self.detection_cm += self._compute_detection_confusion_matrix(  # type: ignore
+                preds,  # type: ignore
                 target,  # type: ignore
             )
 
