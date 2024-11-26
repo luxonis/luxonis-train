@@ -460,6 +460,8 @@ class LuxonisLightningModule(pl.LightningModule):
                 else:
                     del computed[computed_name]
 
+        torch.cuda.empty_cache()
+
         outputs_dict = {
             node_name: outputs
             for node_name, outputs in computed.items()
