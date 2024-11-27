@@ -32,6 +32,7 @@ from luxonis_train.callbacks import (
 )
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.nodes import BaseNode
+from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.utils import (
     DatasetMetadata,
     Kwargs,
@@ -353,6 +354,13 @@ class LuxonisLightningModule(pl.LightningModule):
                 dataset_metadata=self.dataset_metadata,
                 **node_kwargs,
             )
+            if isinstance(node, BaseHead):
+                try:
+                    node.get_custom_head_config()
+                except NotImplementedError:
+                    logger.warning(
+                        f"Head {node_name} does not implement get_custom_head_config method. Archivation of this head will fail."
+                    )
             node_outputs = node.run(node_dummy_inputs)
 
             dummy_inputs[node_name] = node_outputs
