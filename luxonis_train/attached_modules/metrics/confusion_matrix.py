@@ -69,22 +69,12 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
                 "Multiple tasks detected in self.node.tasks. Only one task is allowed."
             )
 
-        if self.is_classification:
-            self.add_state(
-                "classification_cm",
-                default=torch.zeros(
-                    self.n_classes, self.n_classes, dtype=torch.int64
-                ),
-                dist_reduce_fx="sum",
+        self.metric_cm = None
+        if self.is_classification or self.is_segmentation:
+            self.metric_cm = MulticlassConfusionMatrix(
+                num_classes=self.n_classes
             )
-        if self.is_segmentation:
-            self.add_state(
-                "segmentation_cm",
-                default=torch.zeros(
-                    self.n_classes, self.n_classes, dtype=torch.int64
-                ),
-                dist_reduce_fx="sum",
-            )
+
         if self.is_detection:
             self.add_state(
                 "detection_cm",
@@ -168,17 +158,14 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
             target = targets["classification"]
             pred_classes = preds[0].argmax(dim=1)  # [B]
             target_classes = target.argmax(dim=1)  # [B]
-            self.classification_cm += self.compute_confusion_matrix(
-                pred_classes, target_classes
-            )
+            self.metric_cm.update(pred_classes, target_classes)
+
         if "segmentation" in predictions and "segmentation" in targets:
             preds = predictions["segmentation"]
             target = targets["segmentation"]
             pred_masks = preds[0].argmax(dim=1)  # [B, H, W]
             target_masks = target.argmax(dim=1)  # [B, H, W]
-            self.segmentation_cm += self.compute_confusion_matrix(
-                pred_masks.view(-1), target_masks.view(-1)
-            )
+            self.metric_cm.update(pred_masks.view(-1), target_masks.view(-1))
 
         if "detection" in predictions and "detection" in targets:
             preds = predictions["detection"]  # type: ignore
@@ -192,10 +179,12 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
         """Compute confusion matrices for classification, segmentation,
         and detection tasks."""
         results = {}
-        if self.is_classification:
-            results["classification_confusion_matrix"] = self.classification_cm
-        if self.is_segmentation:
-            results["segmentation_confusion_matrix"] = self.segmentation_cm
+        if self.metric_cm:
+            task_type = (
+                "classification" if self.is_classification else "segmentation"
+            )
+            results[f"{task_type}_confusion_matrix"] = self.metric_cm.compute()
+            self.metric_cm.reset()
         if self.is_detection:
             results["detection_confusion_matrix"] = self.detection_cm
 
