@@ -8,13 +8,15 @@ from luxonis_train.nodes import BaseNode
 
 
 def test_compute_detection_confusion_matrix_specific_case():
-    class DummyNode(BaseNode):
+    class DummyNodeDetection(BaseNode):
         tasks = [TaskType.BOUNDINGBOX]
 
         def forward(self, _):
             pass
 
-    metric = ConfusionMatrix(node=DummyNode(n_classes=3), iou_threshold=0.5)
+    metric = ConfusionMatrix(
+        node=DummyNodeDetection(n_classes=3), iou_threshold=0.5
+    )
 
     preds = [torch.empty((0, 6)) for _ in range(3)]
     preds.append(
