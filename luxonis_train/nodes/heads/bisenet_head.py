@@ -3,17 +3,18 @@ from typing import Any
 from torch import Tensor, nn
 
 from luxonis_train.enums import TaskType
-from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.utils import infer_upscale_factor
 
 
-class BiSeNetHead(BaseNode[Tensor, Tensor]):
+class BiSeNetHead(BaseHead[Tensor, Tensor]):
     in_height: int
     in_width: int
     in_channels: int
 
     tasks: list[TaskType] = [TaskType.SEGMENTATION]
+    parser: str = "SegmentationParser"
 
     def __init__(self, intermediate_channels: int = 64, **kwargs: Any):
         """BiSeNet segmentation head.
@@ -56,3 +57,13 @@ class BiSeNetHead(BaseNode[Tensor, Tensor]):
         x = self.conv_3x3(inputs)
         x = self.conv_1x1(x)
         return self.upscale(x)
+
+    def get_custom_head_config(self) -> dict:
+        """Returns custom head configuration.
+
+        @rtype: dict
+        @return: Custom head configuration.
+        """
+        return {
+            "is_softmax": False,
+        }

@@ -17,6 +17,7 @@ from .efficient_bbox_head import EfficientBBoxHead
 
 class EfficientKeypointBBoxHead(EfficientBBoxHead):
     tasks: list[TaskType] = [TaskType.KEYPOINTS, TaskType.BOUNDINGBOX]
+    parser: str = "YoloDetectionNetwork"
 
     def __init__(
         self,
@@ -214,3 +215,16 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             max_det=self.max_det,
             predicts_objectness=False,
         )
+
+    def get_custom_head_config(self) -> dict:
+        """Returns custom head configuration.
+
+        @rtype: dict
+        @return: Custom head configuration.
+        """
+        return {
+            "iou_threshold": self.iou_thres,
+            "conf_threshold": self.conf_thres,
+            "max_det": self.max_det,
+            "n_keypoints": self.n_keypoints,
+        }

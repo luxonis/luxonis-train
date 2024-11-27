@@ -234,7 +234,11 @@ class EfficientBBoxHead(
         )
 
     def get_custom_head_config(self) -> dict:
-        """Returns custom head configuration."""
+        """Returns custom head configuration.
+
+        @rtype: dict
+        @return: Custom head configuration.
+        """
         return {
             "subtype": "yolov6",
             "iou_threshold": self.iou_thres,
