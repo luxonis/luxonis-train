@@ -5,7 +5,6 @@ from luxonis_train.nodes.base_node import (
     ForwardInputT,
     ForwardOutputT,
 )
-from luxonis_train.utils import deep_merge_dicts
 
 
 class BaseHead(
@@ -31,7 +30,7 @@ class BaseHead(
         """
         config = self._get_base_head_config()
         custom_config = self.get_custom_head_config()
-        deep_merge_dicts(config, custom_config)
+        config["metadata"].update(custom_config)
         return config
 
     def _get_base_head_config(self) -> dict:
