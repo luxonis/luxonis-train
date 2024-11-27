@@ -17,7 +17,7 @@ from .efficient_bbox_head import EfficientBBoxHead
 
 class EfficientKeypointBBoxHead(EfficientBBoxHead):
     tasks: list[TaskType] = [TaskType.KEYPOINTS, TaskType.BOUNDINGBOX]
-    parser: str = "YoloDetectionNetwork"
+    parser: str = "YOLOExtendedParser"
 
     def __init__(
         self,
