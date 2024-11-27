@@ -123,6 +123,18 @@ def test_custom_tasks(
             ), "Config JSON not found in the archive."
             generated_config = json.loads(extracted_cfg.read().decode())
 
+        # Sort the fields in the config to make the comparison consistent
+        def sort_by_name(config, keys):
+            for key in keys:
+                if key in config["model"]:
+                    config["model"][key] = sorted(
+                        config["model"][key], key=lambda x: x["name"]
+                    )
+
+        keys_to_sort = ["inputs", "outputs", "heads"]
+        sort_by_name(generated_config, keys_to_sort)
+        sort_by_name(correct_archive_config, keys_to_sort)
+
         assert generated_config == correct_archive_config
 
 
