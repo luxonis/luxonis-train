@@ -23,7 +23,6 @@ class EfficientBBoxHead(
     in_channels: list[int]
     tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
     parser = "YOLO"
-    is_soxtmaxed: bool = False
 
     def __init__(
         self,
@@ -234,7 +233,7 @@ class EfficientBBoxHead(
             predicts_objectness=False,
         )
 
-    def _get_custom_head_config(self) -> dict:
+    def get_custom_head_config(self) -> dict:
         """Returns custom head configuration."""
         return {
             "subtype": "yolov6",

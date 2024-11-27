@@ -1,5 +1,4 @@
-from abc import abstractmethod
-from typing import Generic, Literal
+from typing import Generic
 
 from luxonis_train.nodes.base_node import (
     BaseNode,
@@ -17,29 +16,12 @@ class BaseHead(
 
     @type parser: str | None
     @ivar parser: Parser to use for the head.
-    @type is_softmaxed: bool | None
-    @ivar is_softmaxed: Whether the head uses softmax or not.
     """
 
-    parser: (
-        Literal[
-            "ClassificationParser",
-            "YOLO",
-            "YoloDetectionNetwork",
-            "SegmentationParser",
-        ]
-        | None
-    ) = None
-    is_softmaxed: bool | None = None
+    parser: str | None = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-    def __init_subclass__(cls, **kwargs):
-        """Check if head has all required attributes."""
-        super().__init_subclass__()
-        if cls.parser is None:
-            raise ValueError(f"Head `{cls.__name__}` must define a parser.")
 
     def get_head_config(self) -> dict:
         """Get head configuration.
@@ -48,7 +30,7 @@ class BaseHead(
         @return: Head configuration.
         """
         config = self._get_base_head_config()
-        custom_config = self._get_custom_head_config()
+        custom_config = self.get_custom_head_config()
         deep_merge_dicts(config, custom_config)
         return config
 
@@ -61,17 +43,17 @@ class BaseHead(
         return {
             "parser": self.parser,
             "metadata": {
-                "is_softmax": self.is_softmaxed,
                 "classes": self.class_names,
                 "n_classes": self.n_classes,
             },
         }
 
-    @abstractmethod
-    def _get_custom_head_config(self) -> dict:
+    def get_custom_head_config(self) -> dict:
         """Get custom head configuration.
 
         @rtype: dict
         @return: Custom head configuration.
         """
-        ...
+        raise NotImplementedError(
+            "get_custom_head_config method must be implemented."
+        )
