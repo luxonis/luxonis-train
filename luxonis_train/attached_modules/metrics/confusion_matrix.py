@@ -155,14 +155,18 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
             target = targets["classification"]
             pred_classes = preds[0].argmax(dim=1)  # [B]
             target_classes = target.argmax(dim=1)  # [B]
-            self.metric_cm.update(pred_classes, target_classes)
+            if self.metric_cm is not None:
+                self.metric_cm.update(pred_classes, target_classes)
 
         if "segmentation" in predictions and "segmentation" in targets:
             preds = predictions["segmentation"]
             target = targets["segmentation"]
             pred_masks = preds[0].argmax(dim=1)  # [B, H, W]
             target_masks = target.argmax(dim=1)  # [B, H, W]
-            self.metric_cm.update(pred_masks.view(-1), target_masks.view(-1))
+            if self.metric_cm is not None:
+                self.metric_cm.update(
+                    pred_masks.view(-1), target_masks.view(-1)
+                )
 
         if "detection" in predictions and "detection" in targets:
             preds = predictions["detection"]  # type: ignore
