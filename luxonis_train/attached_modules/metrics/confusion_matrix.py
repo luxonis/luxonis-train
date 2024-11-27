@@ -83,9 +83,6 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
                 ),  # +1 for background
                 dist_reduce_fx="sum",
             )
-        self.compute_confusion_matrix = MulticlassConfusionMatrix(
-            num_classes=self.n_classes
-        )
 
     def prepare(
         self, inputs: Packet[Tensor], labels: Labels
