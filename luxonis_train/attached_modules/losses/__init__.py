@@ -3,6 +3,7 @@ from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
 from .cross_entropy import CrossEntropyLoss
 from .efficient_keypoint_bbox_loss import EfficientKeypointBBoxLoss
+from .fomo_localization_loss import FOMOLocalizationLoss
 from .ohem_bce_with_logits import OHEMBCEWithLogitsLoss
 from .ohem_cross_entropy import OHEMCrossEntropyLoss
 from .ohem_loss import OHEMLoss
@@ -24,4 +25,5 @@ __all__ = [
     "OHEMLoss",
     "OHEMCrossEntropyLoss",
     "OHEMBCEWithLogitsLoss",
+    "FOMOLocalizationLoss",
 ]

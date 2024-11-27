@@ -96,11 +96,19 @@ class ObjectKeypointSimilarity(
 
             curr_label = label[label[:, 0] == i].to(pred_kpt.device)
             curr_bboxs = curr_label[:, 2:6]
-            curr_bboxs[:, 0::2] *= image_size[1]
-            curr_bboxs[:, 1::2] *= image_size[0]
+            curr_bboxs[:, 0::2] = (
+                (curr_bboxs[:, 0::2] * image_size[1]).round().int()
+            )
+            curr_bboxs[:, 1::2] = (
+                (curr_bboxs[:, 1::2] * image_size[0]).round().int()
+            )
             curr_kpts = curr_label[:, 6:]
-            curr_kpts[:, 0::3] *= image_size[1]
-            curr_kpts[:, 1::3] *= image_size[0]
+            curr_kpts[:, 0::3] = (
+                (curr_kpts[:, 0::3] * image_size[1]).round().int()
+            )
+            curr_kpts[:, 1::3] = (
+                (curr_kpts[:, 1::3] * image_size[0]).round().int()
+            )
             curr_bboxs_widths = curr_bboxs[:, 2] - curr_bboxs[:, 0]
             curr_bboxs_heights = curr_bboxs[:, 3] - curr_bboxs[:, 1]
             curr_scales = (
