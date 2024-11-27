@@ -149,64 +149,19 @@
         ],
         "heads": [
             {
-                "name": "bbox-head",
-                "parser": "YOLO",
-                "metadata": {
-                    "postprocessor_path": null,
-                    "classes": [
-                        "car",
-                        "motorbike"
-                    ],
-                    "n_classes": 2,
-                    "iou_threshold": 0.45,
-                    "conf_threshold": 0.25,
-                    "max_det": 300,
-                    "anchors": null,
-                    "subtype": "yolov6"
-                },
-                "outputs": [
-                    "output1_yolov6r2",
-                    "output2_yolov6r2",
-                    "output3_yolov6r2"
-                ]
-            },
-            {
-                "name": "motorbike-detection-head",
-                "parser": "YoloDetectionNetwork",
-                "metadata": {
-                    "postprocessor_path": null,
-                    "classes": [
-                        "motorbike"
-                    ],
-                    "n_classes": 1,
-                    "iou_threshold": 0.45,
-                    "conf_threshold": 0.25,
-                    "max_det": 300,
-                    "anchors": null,
-                    "n_keypoints": 3
-                },
-                "outputs": [
-                    "motorbike-detection-head/outputs/0",
-                    "motorbike-detection-head/outputs/1",
-                    "motorbike-detection-head/outputs/2"
-                ]
-            },
-            {
-                "name": "color-segmentation-head",
+                "name": "vehicle-type-segmentation-head",
                 "parser": "SegmentationParser",
                 "metadata": {
                     "postprocessor_path": null,
                     "classes": [
                         "background",
-                        "blue",
-                        "green",
-                        "red"
+                        "car",
+                        "motorbike"
                     ],
-                    "n_classes": 4,
-                    "is_softmax": false
+                    "n_classes": 3
                 },
                 "outputs": [
-                    "color-segmentation-head/color-segmentation/0"
+                    "vehicle-type-segmentation-head/vehicle_type-segmentation/0"
                 ]
             },
             {
@@ -217,11 +172,27 @@
                     "classes": [
                         "vehicle"
                     ],
-                    "n_classes": 1,
-                    "is_softmax": false
+                    "n_classes": 1
                 },
                 "outputs": [
                     "any-vehicle-segmentation-head/vehicle-segmentation/0"
+                ]
+            },
+            {
+                "name": "bbox-head",
+                "parser": "YOLO",
+                "metadata": {
+                    "postprocessor_path": null,
+                    "classes": [
+                        "car",
+                        "motorbike"
+                    ],
+                    "n_classes": 2
+                },
+                "outputs": [
+                    "output1_yolov6r2",
+                    "output2_yolov6r2",
+                    "output3_yolov6r2"
                 ]
             },
             {
@@ -254,28 +225,43 @@
                         "truimph",
                         "yamaha"
                     ],
-                    "n_classes": 23,
-                    "is_softmax": false
+                    "n_classes": 23
                 },
                 "outputs": [
                     "brand-segmentation-head/brand-segmentation/0"
                 ]
             },
             {
-                "name": "vehicle-type-segmentation-head",
+                "name": "color-segmentation-head",
                 "parser": "SegmentationParser",
                 "metadata": {
                     "postprocessor_path": null,
                     "classes": [
                         "background",
-                        "car",
-                        "motorbike"
+                        "blue",
+                        "green",
+                        "red"
                     ],
-                    "n_classes": 3,
-                    "is_softmax": false
+                    "n_classes": 4
                 },
                 "outputs": [
-                    "vehicle-type-segmentation-head/vehicle_type-segmentation/0"
+                    "color-segmentation-head/color-segmentation/0"
+                ]
+            },
+            {
+                "name": "motorbike-detection-head",
+                "parser": "YoloDetectionNetwork",
+                "metadata": {
+                    "postprocessor_path": null,
+                    "classes": [
+                        "motorbike"
+                    ],
+                    "n_classes": 1
+                },
+                "outputs": [
+                    "motorbike-detection-head/outputs/0",
+                    "motorbike-detection-head/outputs/1",
+                    "motorbike-detection-head/outputs/2"
                 ]
             }
         ]
