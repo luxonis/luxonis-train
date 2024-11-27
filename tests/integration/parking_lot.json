@@ -158,7 +158,8 @@
                         "car",
                         "motorbike"
                     ],
-                    "n_classes": 3
+                    "n_classes": 3,
+                    "is_softmax": false
                 },
                 "outputs": [
                     "vehicle-type-segmentation-head/vehicle_type-segmentation/0"
@@ -172,7 +173,8 @@
                     "classes": [
                         "vehicle"
                     ],
-                    "n_classes": 1
+                    "n_classes": 1,
+                    "is_softmax": false
                 },
                 "outputs": [
                     "any-vehicle-segmentation-head/vehicle-segmentation/0"
@@ -187,7 +189,12 @@
                         "car",
                         "motorbike"
                     ],
-                    "n_classes": 2
+                    "n_classes": 2,
+                    "iou_threshold": 0.45,
+                    "conf_threshold": 0.25,
+                    "max_det": 300,
+                    "anchors": null,
+                    "subtype": "yolov6"
                 },
                 "outputs": [
                     "output1_yolov6r2",
@@ -225,7 +232,8 @@
                         "truimph",
                         "yamaha"
                     ],
-                    "n_classes": 23
+                    "n_classes": 23,
+                    "is_softmax": false
                 },
                 "outputs": [
                     "brand-segmentation-head/brand-segmentation/0"
@@ -242,7 +250,8 @@
                         "green",
                         "red"
                     ],
-                    "n_classes": 4
+                    "n_classes": 4,
+                    "is_softmax": false
                 },
                 "outputs": [
                     "color-segmentation-head/color-segmentation/0"
@@ -250,13 +259,19 @@
             },
             {
                 "name": "motorbike-detection-head",
-                "parser": "YoloDetectionNetwork",
+                "parser": "YOLOExtendedParser",
                 "metadata": {
                     "postprocessor_path": null,
                     "classes": [
                         "motorbike"
                     ],
-                    "n_classes": 1
+                    "n_classes": 1,
+                    "iou_threshold": 0.45,
+                    "conf_threshold": 0.25,
+                    "max_det": 300,
+                    "anchors": null,
+                    "subtype": "yolov6",
+                    "n_keypoints": 3
                 },
                 "outputs": [
                     "motorbike-detection-head/outputs/0",
