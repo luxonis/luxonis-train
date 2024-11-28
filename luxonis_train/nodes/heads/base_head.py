@@ -19,9 +19,6 @@ class BaseHead(
 
     parser: str | None = None
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
     def get_head_config(self) -> dict:
         """Get head configuration.
 
