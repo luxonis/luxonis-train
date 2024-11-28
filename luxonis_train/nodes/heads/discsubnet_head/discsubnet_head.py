@@ -4,7 +4,7 @@ import torch
 from torch import Tensor
 
 from luxonis_train.enums import TaskType
-from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.utils import Packet
 
 from .blocks import Decoder, Encoder, NanoDecoder, NanoEncoder
@@ -27,7 +27,7 @@ def get_variant(variant: VariantLiteral) -> int:
     return variants[variant]
 
 
-class DiscSubNetHead(BaseNode[Tensor, Tensor]):
+class DiscSubNetHead(BaseHead[Tensor, Tensor]):
     in_channels: list[int] | int
     out_channels: int
     base_channels: int
@@ -109,3 +109,11 @@ class DiscSubNetHead(BaseNode[Tensor, Tensor]):
                 "reconstructed": [recon],
                 "segmentation": [seg_out],
             }
+
+    def get_custom_head_config(self) -> dict:
+        """Returns custom head configuration.
+
+        @rtype: dict
+        @return: Custom head configuration.
+        """
+        return {}

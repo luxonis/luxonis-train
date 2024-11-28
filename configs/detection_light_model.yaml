@@ -26,6 +26,11 @@ trainer:
   n_log_images: 8
 
   callbacks:
+    - name: EMACallback
+      params:
+        decay: 0.9999 
+        use_dynamic_decay: True 
+        decay_tau: 2000
     - name: ExportOnTrainEnd
     - name: TestOnTrainEnd
 
@@ -43,10 +48,3 @@ trainer:
     params:
       T_max: *epochs         
       eta_min: 0.000384
-
-  callbacks:
-    - name: EMACallback
-      params:
-        decay: 0.9999 
-        use_dynamic_decay: True 
-        decay_tau: 2000

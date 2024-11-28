@@ -5,8 +5,8 @@ import torch
 from torch import Tensor, nn
 
 from luxonis_train.enums import TaskType
-from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import EfficientDecoupledBlock
+from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.utils import (
     Packet,
     anchors_for_fpn_features,
@@ -18,10 +18,11 @@ logger = logging.getLogger(__name__)
 
 
 class EfficientBBoxHead(
-    BaseNode[list[Tensor], tuple[list[Tensor], list[Tensor], list[Tensor]]]
+    BaseHead[list[Tensor], tuple[list[Tensor], list[Tensor], list[Tensor]]],
 ):
     in_channels: list[int]
     tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
+    parser = "YOLO"
 
     def __init__(
         self,
@@ -231,3 +232,16 @@ class EfficientBBoxHead(
             max_det=self.max_det,
             predicts_objectness=False,
         )
+
+    def get_custom_head_config(self) -> dict:
+        """Returns custom head configuration.
+
+        @rtype: dict
+        @return: Custom head configuration.
+        """
+        return {
+            "subtype": "yolov6",
+            "iou_threshold": self.iou_thres,
+            "conf_threshold": self.conf_thres,
+            "max_det": self.max_det,
+        }
