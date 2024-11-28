@@ -1,5 +1,3 @@
-from typing import Generic
-
 from luxonis_train.nodes.base_node import (
     BaseNode,
     ForwardInputT,
@@ -9,7 +7,6 @@ from luxonis_train.nodes.base_node import (
 
 class BaseHead(
     BaseNode[ForwardInputT, ForwardOutputT],
-    Generic[ForwardInputT, ForwardOutputT],
 ):
     """Base class for all heads in the model.
 
