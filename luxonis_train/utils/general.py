@@ -203,15 +203,3 @@ def clean_url(url: str) -> str:
 def url2file(url: str) -> str:
     """Convert URL to filename, i.e. https://url.com/file.txt?auth -> file.txt."""
     return Path(clean_url(url)).name
-
-
-def deep_merge_dicts(dict1: dict, dict2: dict) -> None:
-    for key, value in dict2.items():
-        if (
-            isinstance(value, dict)
-            and key in dict1
-            and isinstance(dict1[key], dict)
-        ):
-            deep_merge_dicts(dict1[key], value)
-        else:
-            dict1[key] = value
