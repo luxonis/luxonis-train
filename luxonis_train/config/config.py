@@ -151,15 +151,24 @@ class ModelConfig(BaseModelExtraForbid):
     def check_main_metric(self) -> Self:
         for metric in self.metrics:
             if metric.is_main_metric:
+                if "matrix" in metric.name.lower():
+                    raise ValueError(
+                        f"Main metric cannot contain 'matrix' in its name: `{metric.name}`"
+                    )
                 logger.info(f"Main metric: `{metric.name}`")
                 return self
 
         logger.warning("No main metric specified.")
         if self.metrics:
-            metric = self.metrics[0]
-            metric.is_main_metric = True
-            name = metric.alias or metric.name
-            logger.info(f"Setting '{name}' as main metric.")
+            for metric in self.metrics:
+                if "matrix" not in metric.name.lower():
+                    metric.is_main_metric = True
+                    name = metric.alias or metric.name
+                    logger.info(f"Setting '{name}' as main metric.")
+                    return self
+            raise ValueError(
+                "[Configuration Error] No valid main metric can be set as all metrics contain 'matrix' in their names."
+            )
         else:
             logger.warning(
                 "[Ignore if using predefined model] "
