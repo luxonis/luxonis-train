@@ -10,7 +10,7 @@ model:
 
 loader:
   params:
-    dataset_name: coco_10
+    dataset_name: coco_test
 
 trainer:
   preprocessing:
