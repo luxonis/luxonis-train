@@ -251,7 +251,7 @@ trainer:
 
 ### Smart Configuration Auto-population
 
-When setting `trainer.smart_cfg_auto_populate = True`, the following set of rules will be applied automatically to populate missing configuration fields with sensible defaults:
+When setting `trainer.smart_cfg_auto_populate = True`, the following set of rules will be applied:
 
 #### Auto-population Rules
 
