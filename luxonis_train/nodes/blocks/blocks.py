@@ -81,6 +81,90 @@ class EfficientDecoupledBlock(nn.Module):
             module.weight = nn.Parameter(w, requires_grad=True)
 
 
+class SegProto(nn.Module):
+    def __init__(self, in_ch, mid_ch=256, out_ch=32):
+        """Initializes the segmentation prototype generator.
+
+        @type in_ch: int
+        @param in_ch: Number of input channels.
+        @type mid_ch: int
+        @param mid_ch: Number of intermediate channels. Defaults to 256.
+        @type out_ch: int
+        @param out_ch: Number of output channels. Defaults to 32.
+        """
+        super().__init__()
+        self.conv1 = ConvModule(
+            in_channels=in_ch,
+            out_channels=mid_ch,
+            kernel_size=3,
+            stride=1,
+            padding=1,
+            activation=nn.SiLU(),
+        )
+        self.upsample = nn.ConvTranspose2d(
+            in_channels=mid_ch,
+            out_channels=mid_ch,
+            kernel_size=2,
+            stride=2,
+            bias=True,
+        )
+        self.conv2 = ConvModule(
+            in_channels=mid_ch,
+            out_channels=mid_ch,
+            kernel_size=3,
+            stride=1,
+            padding=1,
+            activation=nn.SiLU(),
+        )
+        self.conv3 = ConvModule(
+            in_channels=mid_ch,
+            out_channels=out_ch,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            activation=nn.SiLU(),
+        )
+
+    def forward(self, x):
+        """Defines the forward pass of the segmentation prototype
+        generator.
+
+        @type x: torch.Tensor
+        @param x: Input tensor.
+        @rtype: torch.Tensor
+        @return: Processed tensor.
+        """
+        return self.conv3(self.conv2(self.upsample(self.conv1(x))))
+
+
+class DFL(nn.Module):
+    def __init__(self, channels: int = 16):
+        """
+        Constructs the module with a convolutional layer using the specified input channels.
+        Proposed in Generalized Focal Loss https://ieeexplore.ieee.org/document/9792391
+
+        @type channels: int
+        @param channels: Number of input channels. Defaults to 16.
+
+        """
+        super().__init__()
+        self.transform = nn.Conv2d(
+            channels, 1, kernel_size=1, bias=False
+        ).requires_grad_(False)
+        weights = torch.arange(channels, dtype=torch.float32)
+        self.transform.weight.data.copy_(weights.view(1, channels, 1, 1))
+        self.num_channels = channels
+
+    def forward(self, input: Tensor):
+        """Transforms the input tensor and returns the processed
+        output."""
+        batch_size, _, anchors = input.size()
+        reshaped = input.view(batch_size, 4, self.num_channels, anchors)
+        softmaxed = reshaped.transpose(2, 1).softmax(dim=1)
+        processed = self.transform(softmaxed)
+        return processed.view(batch_size, 4, anchors)
+
+
 class ConvModule(nn.Sequential):
     def __init__(
         self,
@@ -128,6 +212,51 @@ class ConvModule(nn.Sequential):
             ),
             nn.BatchNorm2d(out_channels),
             activation or nn.ReLU(),
+        )
+
+
+class DWConvModule(ConvModule):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int = 1,
+        padding: int = 0,
+        dilation: int = 1,
+        bias: bool = False,
+        activation: nn.Module | None = None,
+    ):
+        """Depth-wise Conv2d + BN + Activation.
+
+        @type in_channels: int
+        @param in_channels: Number of input channels.
+        @type out_channels: int
+        @param out_channels: Number of output channels.
+        @type kernel_size: int
+        @param kernel_size: Kernel size.
+        @type stride: int
+        @param stride: Stride. Defaults to 1.
+        @type padding: int
+        @param padding: Padding. Defaults to 0.
+        @type dilation: int
+        @param dilation: Dilation. Defaults to 1.
+        @type bias: bool
+        @param bias: Whether to use bias. Defaults to False.
+        @type activation: L{nn.Module} | None
+        @param activation: Activation function. If None then nn.Relu.
+        """
+
+        super().__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=in_channels,  # Depth-wise convolution
+            bias=bias,
+            activation=activation,
         )
 
 

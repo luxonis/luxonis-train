@@ -19,6 +19,7 @@ def dist2bbox(
     distance: Tensor,
     anchor_points: Tensor,
     out_format: BBoxFormatType = "xyxy",
+    dim: int = -1,
 ) -> Tensor:
     """Transform distance (ltrb) to box ("xyxy", "xywh" or "cxcywh").
 
@@ -29,12 +30,14 @@ def dist2bbox(
     @type out_format: BBoxFormatType
     @param out_format: BBox output format. Defaults to "xyxy".
     @rtype: Tensor
+    @param dim: Dimension to split distance tensor. Defaults to -1.
+    @rtype: Tensor
     @return: BBoxes in correct format
     """
-    lt, rb = torch.split(distance, 2, -1)
+    lt, rb = torch.split(distance, 2, dim=dim)
     x1y1 = anchor_points - lt
     x2y2 = anchor_points + rb
-    bbox = torch.cat([x1y1, x2y2], -1)
+    bbox = torch.cat([x1y1, x2y2], dim=dim)
     if out_format in ["xyxy", "xywh", "cxcywh"]:
         bbox = box_convert(bbox, in_fmt="xyxy", out_fmt=out_format)
     else:
@@ -399,6 +402,39 @@ def anchors_for_fpn_features(
         n_anchors_list,
         torch.cat(stride_tensor).to(device),
     )
+
+
+def apply_bounding_box_to_masks(
+    masks: Tensor, bounding_boxes: Tensor
+) -> Tensor:
+    """Crops the given masks to the regions specified by the
+    corresponding bounding boxes.
+
+    @type masks: Tensor
+    @param masks: Masks tensor of shape [n, h, w].
+    @type bounding_boxes: Tensor
+    @param bounding_boxes: Bounding boxes tensor of shape [n, 4].
+    @rtype: Tensor
+    @return: Cropped masks tensor of shape [n, h, w].
+    """
+    _, mask_height, mask_width = masks.shape
+    left, top, right, bottom = torch.split(
+        bounding_boxes[:, :, None], 1, dim=1
+    )
+    width_indices = torch.arange(
+        mask_width, device=masks.device, dtype=left.dtype
+    )[None, None, :]
+    height_indices = torch.arange(
+        mask_height, device=masks.device, dtype=left.dtype
+    )[None, :, None]
+
+    cropped_masks = masks * (
+        (width_indices >= left)
+        & (width_indices < right)
+        & (height_indices >= top)
+        & (height_indices < bottom)
+    )
+    return cropped_masks
 
 
 def compute_iou_loss(

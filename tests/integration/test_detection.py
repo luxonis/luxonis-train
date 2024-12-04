@@ -26,6 +26,10 @@ def get_opts_backbone(backbone: str) -> dict[str, Any]:
                     },
                     "inputs": [backbone],
                 },
+                {
+                    "name": "PrecisionBBoxHead",
+                    "inputs": [backbone],
+                },
             ],
             "losses": [
                 {
@@ -37,6 +41,10 @@ def get_opts_backbone(backbone: str) -> dict[str, Any]:
                     "attached_to": "EfficientKeypointBBoxHead",
                     "params": {"area_factor": 0.5},
                 },
+                {
+                    "name": "PrecisionDFLDetectionLoss",
+                    "attached_to": "PrecisionBBoxHead",
+                },
             ],
             "metrics": [
                 {
@@ -47,6 +55,10 @@ def get_opts_backbone(backbone: str) -> dict[str, Any]:
                     "name": "MeanAveragePrecisionKeypoints",
                     "alias": "EfficientKeypointBBoxHead-MaP",
                     "attached_to": "EfficientKeypointBBoxHead",
+                },
+                {
+                    "name": "MeanAveragePrecision",
+                    "attached_to": "PrecisionBBoxHead",
                 },
             ],
         }
@@ -72,17 +84,29 @@ def get_opts_variant(variant: str) -> dict[str, Any]:
                     "name": "EfficientBBoxHead",
                     "inputs": ["neck"],
                 },
+                {
+                    "name": "PrecisionBBoxHead",
+                    "inputs": ["neck"],
+                },
             ],
             "losses": [
                 {
                     "name": "AdaptiveDetectionLoss",
                     "attached_to": "EfficientBBoxHead",
                 },
+                {
+                    "name": "PrecisionDFLDetectionLoss",
+                    "attached_to": "PrecisionBBoxHead",
+                },
             ],
             "metrics": [
                 {
                     "name": "MeanAveragePrecision",
                     "attached_to": "EfficientBBoxHead",
+                },
+                {
+                    "name": "MeanAveragePrecision",
+                    "attached_to": "PrecisionBBoxHead",
                 },
             ],
         }
@@ -111,6 +135,7 @@ def test_backbones(
 ):
     opts = get_opts_backbone(backbone)
     opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
+    opts["trainer.epochs"] = 1
     train_and_test(config, opts)
 
 
@@ -122,4 +147,5 @@ def test_variants(
 ):
     opts = get_opts_variant(variant)
     opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
+    opts["trainer.epochs"] = 1
     train_and_test(config, opts)
