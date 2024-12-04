@@ -225,8 +225,7 @@ Here you can change everything related to actual training of the model.
 | `save_top_k`              | `-1 \| NonNegativeInt`                         | `3`           | Save top K checkpoints based on validation loss when training                                                                                    |
 | `smart_cfg_auto_populate` | `bool`                                         | `True`        | Automatically populate sensible default values for missing config fields and log warnings                                                        |
 | `n_validation_batches`    | `PositiveInt \| None`                          | `None`        | Limits the number of validation/test batches and makes the val/test loaders deterministic                                                        |
-
-**Example:**
+| `smart_cfg_auto_populate` | `bool`                                         | `True`        | Automatically populate sensible default values for missing config fields and log warnings                                                        |
 
 ```yaml
 
@@ -247,7 +246,32 @@ trainer:
   skip_last_batch: true
   log_sub_losses: true
   save_top_k: 3
+  smart_cfg_auto_populate: true
 ```
+
+### Smart Configuration Auto-population
+
+When setting `trainer.smart_cfg_auto_populate = True`, the following set of rules will be applied automatically to populate missing configuration fields with sensible defaults:
+
+#### Auto-population Rules
+
+1. **Default Optimizer and Scheduler:**
+
+   - If `training_strategy` is not defined and neither `optimizer` nor `scheduler` is set, the following defaults are applied:
+     - Optimizer: `Adam`
+     - Scheduler: `ConstantLR`
+
+1. **CosineAnnealingLR Adjustment:**
+
+   - If the `CosineAnnealingLR` scheduler is used and `T_max` is not set, it is automatically set to the number of epochs.
+
+1. **Mosaic4 Augmentation:**
+
+   - If `Mosaic4` augmentation is used without `out_width` and `out_height` parameters, they are set to match the training image size.
+
+1. **Validation/Test Views:**
+
+   - If `train_view`, `val_view`, and `test_view` are the same, and `n_validation_batches` is not explicitly set, it defaults to `10` to prevent validation/testing on the entire training set.
 
 ### Preprocessing
 

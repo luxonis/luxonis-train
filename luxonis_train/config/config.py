@@ -580,6 +580,19 @@ class Config(LuxonisConfig):
                     "`Mosaic4` augmentation detected. Automatically set `out_width` and `out_height` to match `train_image_size`."
                 )
 
+        # Rule: If train, val, and test views are the same, set n_validation_batches
+        if (
+            instance.loader.train_view
+            == instance.loader.val_view
+            == instance.loader.test_view
+            and instance.trainer.n_validation_batches is None
+        ):
+            instance.trainer.n_validation_batches = 10
+            logger.warning(
+                "Train, validation, and test views are the same. Automatically set `n_validation_batches` to 10 to prevent validation/testing on the full train set. "
+                "If this behavior is not desired, set `smart_cfg_auto_populate` to `False`."
+            )
+
 
 def is_acyclic(graph: dict[str, list[str]]) -> bool:
     """Tests if graph is acyclic.
