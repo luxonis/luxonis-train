@@ -60,6 +60,10 @@ The `DetectionModel` allows for both `"light"` and `"heavy"` variants, where the
 
 See an example configuration file using this predefined model [here](../../../configs/detection_light_model.yaml) for the `"light"` variant, and [here](../../../configs/detection_heavy_model.yaml) for the `"heavy"` variant.
 
+This detection model is based on [YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications](https://arxiv.org/pdf/2209.02976.pdf). The pretrained `"light"` model on COCOtrain2017 dataset achieves **36.1% mAP** on the COCOval2017 dataset.
+
+For best validation accuracies, choosing a **small `conf_thresh` (e.g., 0.03)** and a **high `iou_thresh` (e.g., 0.65)** can provide an additional few percentage points in the mAP metric.
+
 **Components:**
 
 | Name                                                                                     | Alias                    | Function                                                                                                 |
