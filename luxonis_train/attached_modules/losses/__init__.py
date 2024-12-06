@@ -7,6 +7,7 @@ from .fomo_localization_loss import FOMOLocalizationLoss
 from .ohem_bce_with_logits import OHEMBCEWithLogitsLoss
 from .ohem_cross_entropy import OHEMCrossEntropyLoss
 from .ohem_loss import OHEMLoss
+from .pml_loss import MetricLearningLoss
 from .reconstruction_segmentation_loss import ReconstructionSegmentationLoss
 from .sigmoid_focal_loss import SigmoidFocalLoss
 from .smooth_bce_with_logits import SmoothBCEWithLogitsLoss
@@ -26,4 +27,5 @@ __all__ = [
     "OHEMCrossEntropyLoss",
     "OHEMBCEWithLogitsLoss",
     "FOMOLocalizationLoss",
+    "MetricLearningLoss",
 ]
