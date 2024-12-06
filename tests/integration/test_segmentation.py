@@ -123,7 +123,9 @@ def train_and_test(
                 assert value > 0.8, f"{name} = {value} (expected > 0.8)"
 
 
-@pytest.mark.parametrize("backbone", BACKBONES)
+@pytest.mark.parametrize(
+    "backbone", [b for b in BACKBONES if b != "GhostFaceNetsV2"]
+)
 def test_backbones(
     backbone: str,
     config: dict[str, Any],

@@ -38,6 +38,7 @@ def collate_fn(
             TaskType.CLASSIFICATION,
             TaskType.SEGMENTATION,
             TaskType.ARRAY,
+            TaskType.LABEL,
         ]:
             out_labels[task] = torch.stack(annos, 0), task_type
 
