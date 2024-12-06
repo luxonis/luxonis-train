@@ -29,6 +29,10 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
         self, inputs: Packet[Tensor], labels: Labels | None
     ) -> tuple[Tensor, Tensor]:
         embeddings = inputs["features"][0]
+
+        assert (
+            labels is not None and "id" in labels
+        ), "ID labels are required for metric learning losses"
         IDs = labels["id"][0]
         return embeddings, IDs
 
@@ -69,13 +73,20 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
 
         # Plot the embeddings
         fig, ax = plt.subplots(figsize=(10, 10))
-        scatter = ax.scatter(
-            embeddings_2d[:, 0],
-            embeddings_2d[:, 1],
-            c=IDs.detach().cpu().numpy(),
-            cmap="viridis",
-            s=5,
-        )
+        if IDs is not None:
+            scatter = ax.scatter(
+                embeddings_2d[:, 0],
+                embeddings_2d[:, 1],
+                c=IDs.detach().cpu().numpy(),
+                cmap="viridis",
+                s=5,
+            )
+        else:
+            scatter = ax.scatter(
+                embeddings_2d[:, 0],
+                embeddings_2d[:, 1],
+                s=5,
+            )
         fig.colorbar(scatter, ax=ax)
         ax.set_title("Embeddings Visualization")
         ax.set_xlabel("Dimension 1")

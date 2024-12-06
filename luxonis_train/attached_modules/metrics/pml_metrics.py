@@ -79,6 +79,10 @@ class ClosestIsPositiveAccuracy(BaseMetric):
 
     def prepare(self, inputs, labels):
         embeddings = inputs["features"][0]
+
+        assert (
+            labels is not None and "id" in labels
+        ), "ID labels are required for metric learning losses"
         IDs = labels["id"][0][:, 0]
         return embeddings, IDs
 
@@ -158,6 +162,10 @@ class MedianDistances(BaseMetric):
 
     def prepare(self, inputs, labels):
         embeddings = inputs["features"][0]
+
+        assert (
+            labels is not None and "id" in labels
+        ), "ID labels are required for metric learning losses"
         IDs = labels["id"][0][:, 0]
         return embeddings, IDs
 

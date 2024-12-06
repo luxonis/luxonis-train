@@ -263,6 +263,8 @@ class GhostBottleneckV2(nn.Module):
         has_se = se_ratio is not None and se_ratio > 0.0
         self.stride = stride
 
+        assert layer_id is not None, "Layer ID must be explicitly provided"
+
         # Point-wise expansion
         if layer_id <= 1:
             self.ghost1 = GhostModuleV2(
@@ -507,66 +509,3 @@ class GhostFaceNetsV2(BaseNode[torch.Tensor, list[torch.Tensor]]):
         x = self.pointwise_conv(x)
         x = self.classifier(x)
         return x
-
-    # @property
-    # def task(self) -> str:
-    #     return "label"
-
-    # @property
-    # def tasks(self) -> dict:
-    #     return [TaskType.LABEL]
-
-
-if __name__ == "__main__":
-    W, H = 256, 256
-    model = GhostFaceNetsV2(image_size=W)
-    model.eval()  # Set the model to evaluation mode
-
-    # Create a dummy input tensor of the appropriate size
-    x = torch.randn(1, 3, H, W)
-
-    # Export the model
-    onnx_path = "ghostfacenet.onnx"
-    torch.onnx.export(
-        model,  # model being run
-        x,  # model input (or a tuple for multiple inputs)
-        onnx_path,  # where to save the model (can be a file or file-like object)
-        export_params=True,  # store the trained parameter weights inside the model file
-        opset_version=12,  # the ONNX version to export the model to
-        do_constant_folding=True,  # whether to execute constant folding for optimization
-        input_names=["input"],  # the model's input names
-        output_names=["output"],  # the model's output names
-        #   dynamic_axes={'input' : {0 : 'batch_size'},    # variable length axes
-        #                 'output' : {0 : 'batch_size'}}
-    )
-    import os
-
-    import numpy as np
-    import onnx
-    import onnxsim
-
-    # logger.info("Simplifying ONNX model...")
-    model_onnx = onnx.load(onnx_path)
-    onnx_model, check = onnxsim.simplify(model_onnx)
-    if not check:
-        raise RuntimeError("Onnx simplify failed.")
-    onnx.save(onnx_model, onnx_path)
-
-    # Add calibration data
-    dir = "shared_with_container/calibration_data/"
-    for file in os.listdir(dir):
-        os.remove(dir + file)
-    for i in range(20):
-        np_array = np.random.rand(1, 3, H, W).astype(np.float32)
-        np.save(f"{dir}{i:02d}.npy", np_array)
-        np_array.tofile(f"{dir}{i:02d}.raw")
-
-    # Test backpropagation on the model
-    # Create a dummy target tensor of the appropriate size
-    Y = model(x)
-    target = torch.randn(1, 512)
-    loss_fn = torch.nn.MSELoss()
-    loss = loss_fn(Y, target)
-    model.zero_grad()
-    loss.backward()
-    print("Backpropagation test successful")
