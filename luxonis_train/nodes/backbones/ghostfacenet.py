@@ -356,6 +356,44 @@ class GhostFaceNetsV2(BaseNode[torch.Tensor, list[torch.Tensor]]):
         *args,
         **kwargs,
     ):
+        """GhostFaceNetsV2 backbone.
+
+        GhostFaceNetsV2 is a convolutional neural network architecture focused on face recognition, but it is
+        adaptable to generic embedding tasks. It is based on the GhostNet architecture and uses Ghost BottleneckV2 blocks.
+
+        Source: U{https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py}
+
+        @license: U{MIT License
+            <https://github.com/Hazqeel09/ellzaf_ml/blob/main/LICENSE>}
+
+        @see: U{GhostFaceNets: Lightweight Face Recognition Model From Cheap Operations
+            <https://www.researchgate.net/publication/369930264_GhostFaceNets_Lightweight_Face_Recognition_Model_from_Cheap_Operations>}
+
+        @type cfgs: list[list[list[int]]] | None
+        @param cfgs: List of Ghost BottleneckV2 configurations. Defaults to None, which uses the original GhostFaceNetsV2 configuration.
+        @type embedding_size: int
+        @param embedding_size: Size of the embedding. Defaults to 512.
+        @type num_classes: int
+        @param num_classes: Number of classes. Defaults to 0, which makes the network output the raw embeddings. Otherwise it can be used to
+            add another linear layer to the network, which is useful for training using ArcFace or similar classification-based losses that
+            require the user to drop the last layer of the network.
+        @type width: float
+        @param width: Width multiplier. Increases complexity and number of parameters. Defaults to 1.0.
+        @type dropout: float
+        @param dropout: Dropout rate. Defaults to 0.2.
+        @type block: nn.Module
+        @param block: Ghost BottleneckV2 block. Defaults to GhostBottleneckV2.
+        @type add_pointwise_conv: bool
+        @param add_pointwise_conv: If True, adds a pointwise convolution layer at the end of the network. Defaults to False.
+        @type bn_momentum: float
+        @param bn_momentum: Batch normalization momentum. Defaults to 0.9.
+        @type bn_epsilon: float
+        @param bn_epsilon: Batch normalization epsilon. Defaults to 1e-5.
+        @type init_kaiming: bool
+        @param init_kaiming: If True, initializes the weights using the Kaiming initialization. Defaults to True.
+        @type block_args: dict
+        @param block_args: Arguments to pass to the block. Defaults to None.
+        """
         # kwargs['_tasks'] = {TaskType.LABEL: 'features'}
         super().__init__(*args, **kwargs)
 
