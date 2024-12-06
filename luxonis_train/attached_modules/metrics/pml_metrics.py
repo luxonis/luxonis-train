@@ -10,13 +10,15 @@ from .base_metric import BaseMetric
 def _pairwise_distances(embeddings, squared=False):
     """Compute the 2D matrix of distances between all the embeddings.
 
-    Args:
-        embeddings: tensor of shape (batch_size, embed_dim)
-        squared: Boolean. If true, output is the pairwise squared euclidean distance matrix.
-                If false, output is the pairwise euclidean distance matrix.
-
-    Returns:
-        pairwise_distances: tensor of shape (batch_size, batch_size)
+    @param embeddings: tensor of shape (batch_size, embed_dim)
+    @type embeddings: torch.Tensor
+    @param squared: If true, output is the pairwise squared euclidean
+        distance matrix. If false, output is the pairwise euclidean
+        distance matrix.
+    @type squared: bool
+    @return: pairwise_distances: tensor of shape (batch_size,
+        batch_size)
+    @rtype: torch.Tensor
     """
     # Get the dot product between all embeddings
     # shape (batch_size, batch_size)
