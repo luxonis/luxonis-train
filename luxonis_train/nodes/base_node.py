@@ -523,6 +523,10 @@ class BaseNode(
             ]  # load explicitly to cpu, PL takes care of transfering to CUDA is needed
             self.load_state_dict(state_dict, strict=strict)
             logging.info(f"Checkpoint for {self.__class__.__name__} loaded.")
+        else:
+            logger.warning(
+                f"No checkpoint available for {self.__class__.__name__}, skipping."
+            )
 
     @property
     def export(self) -> bool:

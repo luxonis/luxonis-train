@@ -8,7 +8,7 @@ from luxonis_train.nodes.blocks import RepVGGBlock
 from luxonis_train.utils import make_divisible
 
 from .blocks import CSPDownBlock, CSPUpBlock, RepDownBlock, RepUpBlock
-from .variants import VariantLiteral, get_variant
+from .variants import VariantLiteral, get_variant, get_variant_weights
 
 logger = logging.getLogger(__name__)
 
@@ -171,8 +171,14 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         if initialize_weights:
             self.initialize_weights()
 
-        if download_weights and var.weights_path:
-            self.load_checkpoint(var.weights_path)
+        if download_weights:
+            weights_path = get_variant_weights(variant, initialize_weights)
+            if weights_path:
+                self.load_checkpoint(path=weights_path)
+            else:
+                logger.warning(
+                    f"No checkpoint available for {self.__class__.__name__}, skipping."
+                )
 
     def initialize_weights(self):
         for m in self.modules():
