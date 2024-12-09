@@ -137,7 +137,7 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
                 self.load_checkpoint(path=weights_path)
             else:
                 logger.warning(
-                    f"No checkpoint available for {self.__class__.__name__}, skipping."
+                    f"No checkpoint available for {self.name}, skipping."
                 )
 
     def initialize_weights(self):

@@ -246,7 +246,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                 self.load_checkpoint(var.weights_path)
             else:
                 logger.warning(
-                    f"No checkpoint available for {self.__class__.__name__}, skipping."
+                    f"No checkpoint available for {self.name}, skipping."
                 )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
