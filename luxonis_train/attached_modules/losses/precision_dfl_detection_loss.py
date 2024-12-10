@@ -76,15 +76,15 @@ class PrecisionDFLDetectionLoss(
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
         feats = self.get_input_tensors(inputs, "features")
         self._init_parameters(feats)
-        self.batch_size = feats[0].shape[0]
+        batch_size = feats[0].shape[0]
         pred_distri, pred_scores = torch.cat(
-            [xi.view(self.batch_size, self.node.no, -1) for xi in feats], 2
+            [xi.view(batch_size, self.node.no, -1) for xi in feats], 2
         ).split((self.node.reg_max * 4, self.n_classes), 1)
         target = self.get_label(labels)
         pred_distri = pred_distri.permute(0, 2, 1).contiguous()
         pred_scores = pred_scores.permute(0, 2, 1).contiguous()
 
-        target = self._preprocess_bbox_target(target, self.batch_size)
+        target = self._preprocess_bbox_target(target, batch_size)
 
         pred_bboxes = self.decode_bbox(self.anchor_points_strided, pred_distri)
 
@@ -148,7 +148,7 @@ class PrecisionDFLDetectionLoss(
             "dfl": loss_dfl.detach(),
         }
 
-        return loss * self.batch_size, sub_losses
+        return loss, sub_losses
 
     def _preprocess_bbox_target(
         self, target: Tensor, batch_size: int

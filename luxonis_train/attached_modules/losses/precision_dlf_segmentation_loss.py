@@ -68,9 +68,9 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         proto = self.get_input_tensors(inputs, "prototypes")
         pred_mask = self.get_input_tensors(inputs, "mask_coeficients")
         self._init_parameters(det_feats)
-        self.batch_size, _, mask_h, mask_w = proto.shape
+        batch_size, _, mask_h, mask_w = proto.shape
         pred_distri, pred_scores = torch.cat(
-            [xi.view(self.batch_size, self.node.no, -1) for xi in det_feats], 2
+            [xi.view(batch_size, self.node.no, -1) for xi in det_feats], 2
         ).split((self.node.reg_max * 4, self.n_classes), 1)
         target_bbox = self.get_label(labels, TaskType.BOUNDINGBOX)
         img_idx = target_bbox[:, 0].unsqueeze(-1)
@@ -84,9 +84,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         pred_scores = pred_scores.permute(0, 2, 1).contiguous()
         pred_mask = pred_mask.permute(0, 2, 1).contiguous()
 
-        target_bbox = self._preprocess_bbox_target(
-            target_bbox, self.batch_size
-        )
+        target_bbox = self._preprocess_bbox_target(target_bbox, batch_size)
 
         pred_bboxes = self.decode_bbox(self.anchor_points_strided, pred_distri)
 
