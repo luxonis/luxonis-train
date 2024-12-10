@@ -10,3 +10,4 @@ class TaskType(str, Enum):
     KEYPOINTS = "keypoints"
     LABEL = "label"
     ARRAY = "array"
+    INSTANCE_SEGMENTATION = "instance_segmentation"

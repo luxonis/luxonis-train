@@ -1,3 +1,5 @@
+import warnings
+
 from luxonis_train.loaders import BaseLoaderTorch
 
 
@@ -43,10 +45,11 @@ class DatasetMetadata:
         """
         if task is not None:
             if task not in self._classes:
-                raise ValueError(
-                    f"Task '{task}' is not present in the dataset."
+                # TODO: rework this
+                warnings.warn(
+                    f"Task '{task}' is not present in the dataset. Ignoring the task argument.",
+                    UserWarning,
                 )
-            return len(self._classes[task])
         n_classes = len(list(self._classes.values())[0])
         for classes in self._classes.values():
             if len(classes) != n_classes:
@@ -99,10 +102,12 @@ class DatasetMetadata:
         """
         if task is not None:
             if task not in self._classes:
-                raise ValueError(
-                    f"Task type {task} is not present in the dataset."
+                # TODO: rework this
+                warnings.warn(
+                    f"Task '{task}' is not present in the dataset. Ignoring the task argument.",
+                    UserWarning,
                 )
-            return self._classes[task]
+            task = None
         class_names = list(self._classes.values())[0]
         for classes in self._classes.values():
             if classes != class_names:

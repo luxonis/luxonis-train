@@ -16,7 +16,10 @@ from .precision_bbox_head import PrecisionBBoxHead
 
 
 class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
-    tasks: list[TaskType] = [TaskType.SEGMENTATION, TaskType.BOUNDINGBOX]
+    tasks: list[TaskType] = [
+        TaskType.INSTANCE_SEGMENTATION,
+        TaskType.BOUNDINGBOX,
+    ]
 
     def __init__(
         self,
@@ -120,11 +123,13 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
             "prototypes": prototypes,
             "mask_coeficients": mask_coefficients,
             "boundingbox": [],
-            "segmentation": [],  # TODO: Sync on how we want to visualize this
+            "instance_segmentation": [],
         }
 
-        for i, pred in enumerate(preds):
-            results["segmentation"].append(
+        for i, pred in enumerate(
+            preds
+        ):  # TODO: Investigate low seg loss but wrong masks
+            results["instance_segmentation"].append(
                 refine_and_apply_masks(
                     prototypes[i],
                     pred[:, 6:],
@@ -168,6 +173,10 @@ def refine_and_apply_masks(
         where the masks are cropped according to their respective
         bounding boxes.
     """
+    if predicted_masks.size(0) == 0 or bounding_boxes.size(0) == 0:
+        img_h, img_w = target_shape
+        return torch.zeros(0, img_h, img_w, dtype=torch.uint8)
+
     channels, proto_h, proto_w = mask_prototypes.shape
     img_h, img_w = target_shape
     masks_combined = (

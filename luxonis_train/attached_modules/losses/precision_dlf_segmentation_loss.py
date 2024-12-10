@@ -24,7 +24,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
     node: PrecisionSegmentBBoxHead
     supported_tasks: list[TaskType] = [
         TaskType.BOUNDINGBOX,
-        TaskType.SEGMENTATION,
+        TaskType.INSTANCE_SEGMENTATION,
     ]
 
     def __init__(
@@ -73,15 +73,12 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             [xi.view(self.batch_size, self.node.no, -1) for xi in det_feats], 2
         ).split((self.node.reg_max * 4, self.n_classes), 1)
         target_bbox = self.get_label(labels, TaskType.BOUNDINGBOX)
-        target_masks = self.get_label(
-            labels, TaskType.SEGMENTATION
-        )  # TODO: THIS SHOULD BE REFINED AFTER ANNOTATION REFACTOR IN LUXONIS_ML
+        img_idx = target_bbox[:, 0]
+        target_masks = self.get_label(labels, TaskType.INSTANCE_SEGMENTATION)
         if tuple(target_masks.shape[-2:]) != (mask_h, mask_w):
             target_masks = F.interpolate(
-                target_masks, (mask_h, mask_w), mode="nearest"
-            )[
-                0
-            ]  # TODO: target_mask should be [1, N_masks, H, W] -> [N_masks, H, W]. Masks are ordered the same way as in target_bbox
+                target_masks.unsqueeze(0), (mask_h, mask_w), mode="nearest"
+            ).squeeze(0)
 
         pred_distri = pred_distri.permute(0, 2, 1).contiguous()
         pred_scores = pred_scores.permute(0, 2, 1).contiguous()
@@ -121,6 +118,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             pred_mask,
             proto,
             target_masks,
+            img_idx,
         )
 
     def forward(
@@ -135,6 +133,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         pred_masks: Tensor,
         proto: Tensor,
         target_masks: Tensor,
+        img_idx: Tensor,
     ):
         max_assigned_scores_sum = max(assigned_scores.sum(), 1)
         loss_cls = (
@@ -154,17 +153,12 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             loss_iou = torch.tensor(0.0).to(pred_distri.device)
             loss_dfl = torch.tensor(0.0).to(pred_distri.device)
 
-        # TODO: after annotation refactor in luxonis-ml, this dummy batch_idx should be updated
-        batch_idx = torch.tensor([0], device=proto.device).unsqueeze(
-            -1
-        )  # THAT IS WHAT YOLO uses
-
         loss_seg = self.calculate_segmentation_loss(
             mask_positive,
             target_masks,
             assigned_gt_idx,
             assigned_bboxes,
-            batch_idx,
+            img_idx,
             proto,
             pred_masks,
             self.overlap,
@@ -174,7 +168,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             self.class_loss_weight * loss_cls
             + self.bbox_loss_weight * loss_iou
             + self.dfl_loss_weight * loss_dfl
-            + loss_seg * self.bbox_loss_weight
+            + self.bbox_loss_weight * loss_seg
         )
         sub_losses = {
             "class": loss_cls.detach(),
@@ -183,7 +177,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             "seg": loss_seg.detach(),
         }
 
-        return loss * self.batch_size, sub_losses
+        return loss, sub_losses
 
     # TODO: Modify after adding corect annotation loading
     def calculate_segmentation_loss(

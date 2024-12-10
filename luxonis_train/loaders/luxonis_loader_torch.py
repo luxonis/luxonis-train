@@ -1,9 +1,8 @@
 import logging
-from typing import Literal
+from typing import List, Literal, Optional, Union
 
 import numpy as np
 from luxonis_ml.data import (
-    Augmentations,
     BucketStorage,
     BucketType,
     LuxonisDataset,
@@ -25,16 +24,22 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
     @typechecked
     def __init__(
         self,
-        dataset_name: str | None = None,
-        dataset_dir: str | None = None,
-        dataset_type: DatasetType | None = None,
-        team_id: str | None = None,
+        dataset_name: Optional[str] = None,
+        dataset_dir: Optional[str] = None,
+        dataset_type: Optional[DatasetType] = None,
+        team_id: Optional[str] = None,
         bucket_type: Literal["internal", "external"] = "internal",
         bucket_storage: Literal["local", "s3", "gcs", "azure"] = "local",
         stream: bool = False,
         delete_existing: bool = True,
-        view: str | list[str] = "train",
-        augmentations: Augmentations | None = None,
+        view: Union[str, List[str]] = "train",
+        augmentation_engine: Literal["albumentations"] = "albumentations",
+        augmentation_config: Optional[Union[List, str]] = None,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+        keep_aspect_ratio: bool = False,
+        out_image_format: Literal["RGB", "BGR"] = "RGB",
+        force_resync: bool = False,
         **kwargs,
     ):
         """Torch-compatible loader for Luxonis datasets.
@@ -69,15 +74,30 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             because the underlying data might have changed. If C{delete_existing} is set
             to C{False} and a dataset of the same name already exists, the existing
             dataset will be used instead of re-parsing the data.
-        @type view: str | list[str]
+        @type view: Union[str, List[str]]
         @param view: A single split or a list of splits that will be used to create a
             view of the dataset. Each split is a string that represents a subset of the
             dataset. The available splits depend on the dataset, but usually include
             'train', 'val', and 'test'. Defaults to 'train'.
-        @type augmentations: Augmentations | None
-        @param augmentations: Augmentations to apply to the data. Defaults to C{None}.
+        @type augmentation_engine: Literal["albumentations"]
+        @param augmentation_engine: Engine to use for applying augmentations.
+            Defaults to 'albumentations'.
+        @type augmentation_config: List | str | None
+        @param augmentation_config: Augmentation configuration as a list or path to a
+            configuration file. Defaults to C{None}.
+        @type height: int | None
+        @param height: Optional height to resize the images.
+        @type width: int | None
+        @param width: Optional width to resize the images.
+        @type keep_aspect_ratio: bool
+        @param keep_aspect_ratio: Flag to maintain aspect ratio during resizing.
+        @type out_image_format: Literal["RGB", "BGR"]
+        @param out_image_format: Format of the output images. Defaults to 'RGB'.
+        @type force_resync: bool
+        @param force_resync: Force a resynchronization of the dataset. Defaults to False.
         """
-        super().__init__(view=view, augmentations=augmentations, **kwargs)
+        super().__init__(view=view, **kwargs)
+
         if dataset_dir is not None:
             self.dataset = self._parse_dataset(
                 dataset_dir, dataset_name, dataset_type, delete_existing
@@ -93,11 +113,17 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 bucket_type=BucketType(bucket_type),
                 bucket_storage=BucketStorage(bucket_storage),
             )
+
         self.base_loader = LuxonisLoader(
             dataset=self.dataset,
             view=self.view,
-            stream=stream,
-            augmentations=self.augmentations,
+            augmentation_engine=augmentation_engine,
+            augmentation_config=augmentation_config,
+            height=height,
+            width=width,
+            keep_aspect_ratio=keep_aspect_ratio,
+            out_image_format=out_image_format,
+            force_resync=force_resync,
         )
 
     def __len__(self) -> int:
@@ -114,9 +140,12 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         img = np.transpose(img, (2, 0, 1))  # HWC to CHW
         tensor_img = Tensor(img)
         tensor_labels: dict[str, tuple[Tensor, TaskType]] = {}
-        for task, (array, label_type) in labels.items():
-            tensor_labels[task] = (Tensor(array), TaskType(label_type.value))
-
+        for task_with_type, array in labels.items():
+            task_parts = task_with_type.split("/")
+            if len(task_parts) != 2:
+                raise ValueError(f"Invalid task format: {task_with_type}")
+            _, task_type = task_parts
+            tensor_labels[task_type] = (Tensor(array), TaskType(task_type))
         return {self.image_source: tensor_img}, tensor_labels
 
     def get_classes(self) -> dict[str, list[str]]:
@@ -130,8 +159,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
     def _parse_dataset(
         self,
         dataset_dir: str,
-        dataset_name: str | None,
-        dataset_type: DatasetType | None,
+        dataset_name: Optional[str],
+        dataset_type: Optional[DatasetType],
         delete_existing: bool,
     ) -> LuxonisDataset:
         if dataset_name is None:
@@ -144,21 +173,18 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 logger.warning(
                     f"Dataset {dataset_name} already exists. "
                     "The dataset will be generated again to ensure the latest data are used. "
-                    "If you don't want to regenerate the dataset every time, set `delete_existing=False`'"
+                    "If you don't want to regenerate the dataset every time, set `delete_existing=False`."
                 )
 
         if dataset_type is None:
             logger.warning(
-                "Dataset type is not set. "
-                "Attempting to infer it from the directory structure. "
-                "If this fails, please set the dataset type manually. "
-                f"Supported types are: {', '.join(DatasetType.__members__)}."
+                "Dataset type is not set. Attempting to infer it from the directory structure. "
+                "If this fails, please set the dataset type manually."
             )
 
         logger.info(
             f"Parsing dataset from {dataset_dir} with name '{dataset_name}'"
         )
-
         return LuxonisParser(
             dataset_dir,
             dataset_name=dataset_name,
