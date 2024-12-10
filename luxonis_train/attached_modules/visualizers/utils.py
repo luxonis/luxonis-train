@@ -118,7 +118,6 @@ def draw_segmentation_labels(
     @rtype: Tensor
     @return: Image with segmentation labels drawn on.
     """
-    print(f"sum(label): {label.sum()}")
     masks = label.bool()
     masks = masks.cpu()
     img = img.cpu()

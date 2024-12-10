@@ -33,7 +33,9 @@ class PrecisionBBoxHead(BaseNode[list[Tensor], list[Tensor]]):
     ):
         """
         Adapted from U{Real-Time Flying Object Detection with YOLOv8
-        <https://arxiv.org/pdf/2305.09972>}
+        <https://arxiv.org/pdf/2305.09972>} and from U{YOLOv6: A Single-Stage Object Detection Framework
+        for Industrial Applications
+        <https://arxiv.org/pdf/2209.02976.pdf>}.
 
         @type ch: tuple[int]
         @param ch: Channels for each detection layer.

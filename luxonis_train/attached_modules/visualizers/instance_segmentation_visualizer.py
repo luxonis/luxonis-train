@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
     """Visualizer for instance segmentation tasks, supporting the
     visualization of predicted and ground truth bounding boxes and
-    instance masks."""
+    instance segmentation masks."""
 
     supported_tasks: list[TaskType] = [
         TaskType.INSTANCE_SEGMENTATION,
@@ -40,18 +40,26 @@ class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         alpha: float = 0.6,
         **kwargs,
     ):
-        """Initialize the visualizer with customization options for
-        appearance.
+        """Visualizer for instance segmentation tasks.
 
-        Parameters:
-        - labels: A dictionary or list mapping class indices to labels. Defaults to None.
-        - draw_labels: Whether to draw labels on bounding boxes. Defaults to True.
-        - colors: Colors for each class. Can be a dictionary or list. Defaults to None.
-        - fill: Whether to fill bounding boxes. Defaults to False.
-        - width: Line width for bounding boxes. Defaults to None (adaptive).
-        - font: Font to use for labels. Defaults to None.
-        - font_size: Font size for labels. Defaults to None.
-        - alpha: Transparency for instance masks. Defaults to 0.6.
+        @type labels: dict[int, str] | list[str] | None
+        @param labels: Dictionary mapping class indices to class labels.
+        @type draw_labels: bool
+        @param draw_labels: Whether to draw class labels on the
+            visualizations.
+        @type colors: dict[str, L{Color}] | list[L{Color}] | None
+        @param colors: Dicionary mapping class labels to colors.
+        @type fill: bool | None
+        @param fill: Whether to fill the boundingbox with color.
+        @type width: int | None
+        @param width: Width of the bounding box Lines.
+        @type font: str | None
+        @param font: Font of the clas labels.
+        @type font_size: int | None
+        @param font_size: Font size of the class Labels.
+        @type alpha: float
+        @param alpha: Alpha value of the segmentation masks. Defaults to
+            C{0.6}.
         """
         super().__init__(**kwargs)
 
@@ -82,9 +90,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
     def prepare(
         self, inputs: Packet[Tensor], labels: Labels | None
     ) -> tuple[Tensor, Tensor, list[Tensor], Tensor | None, Tensor | None]:
-        """
-        TODO: Docstring
-        """
+        # Override the prepare base method
         target_bboxes = labels["boundingbox"][0]
         target_masks = labels["instance_segmentation"][0]
         predicted_bboxes = inputs["boundingbox"]
@@ -103,14 +109,13 @@ class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         draw_labels: bool,
         alpha: float,
     ) -> Tensor:
-        """Draw predicted bounding boxes and masks on the canvas."""
         viz = torch.zeros_like(canvas)
 
         for i in range(len(canvas)):
             viz[i] = canvas[i].clone()
-            prediction = pred_bboxes[i]
-            masks = pred_masks[i]
-            prediction_classes = prediction[..., 5].int()
+            image_bboxes = pred_bboxes[i]
+            image_masks = pred_masks[i]
+            prediction_classes = image_bboxes[..., 5].int()
 
             cls_labels = (
                 [label_dict[int(c)] for c in prediction_classes]
@@ -127,18 +132,16 @@ class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
             width = width or max(1, int(min(H, W) / 100))
 
             try:
-                for j, mask in enumerate(masks):
-                    print(f"mask.sum(): {mask.sum()}")
-                    viz[i] = draw_segmentation_labels(
-                        viz[i],
-                        mask.unsqueeze(0),
-                        colors=[cls_colors[j]],
-                        alpha=alpha,
-                    ).to(canvas.device)
+                viz[i] = draw_segmentation_labels(
+                    viz[i],
+                    image_masks,
+                    colors=cls_colors,
+                    alpha=alpha,
+                ).to(canvas.device)
 
                 viz[i] = draw_bounding_boxes(
                     viz[i],
-                    prediction[:, :4],
+                    image_bboxes[:, :4],
                     width=width,
                     labels=cls_labels,
                     colors=cls_colors,
@@ -162,14 +165,13 @@ class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         draw_labels: bool,
         alpha: float,
     ) -> Tensor:
-        """Draw ground truth bounding boxes and masks on the canvas."""
         viz = torch.zeros_like(canvas)
 
         for i in range(len(canvas)):
             viz[i] = canvas[i].clone()
-            image_targets = target_bboxes[target_bboxes[:, 0] == i]
+            image_bboxes = target_bboxes[target_bboxes[:, 0] == i]
             image_masks = target_masks[target_bboxes[:, 0] == i]
-            target_classes = image_targets[:, 1].int()
+            target_classes = image_bboxes[:, 1].int()
 
             cls_labels = (
                 [label_dict[int(c)] for c in target_classes]
@@ -185,23 +187,19 @@ class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
             *_, H, W = canvas.shape
             width = width or max(1, int(min(H, W) / 100))
 
-            for j, (bbox, mask) in enumerate(
-                zip(image_targets[:, 2:], image_masks)
-            ):
-                print(f"sum(mask): {mask.sum()}")
-                viz[i] = draw_segmentation_labels(
-                    viz[i],
-                    mask.unsqueeze(0),
-                    alpha=alpha,
-                    colors=[cls_colors[j]],
-                ).to(canvas.device)
-                viz[i] = draw_bounding_box_labels(
-                    viz[i],
-                    bbox.unsqueeze(0),
-                    width=width,
-                    labels=[cls_labels[j]] if cls_labels else None,
-                    colors=[cls_colors[j]],
-                ).to(canvas.device)
+            viz[i] = draw_segmentation_labels(
+                viz[i],
+                image_masks,
+                alpha=alpha,
+                colors=cls_colors,
+            ).to(canvas.device)
+            viz[i] = draw_bounding_box_labels(
+                viz[i],
+                image_bboxes[:, 2:],
+                width=width,
+                labels=cls_labels if cls_labels else None,
+                colors=cls_colors,
+            ).to(canvas.device)
 
         return viz
 
@@ -214,7 +212,28 @@ class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         predicted_bboxes: Tensor,
         predicted_masks: Tensor,
     ) -> tuple[Tensor, Tensor] | Tensor:
-        """Visualize predictions and ground truth."""
+        """Creates visualizations of the predicted and target bounding
+        boxes and instance masks.
+
+        @type label_canvas: Tensor
+        @param label_canvas: Tensor containing the target
+            visualizations.
+        @type prediction_canvas: Tensor
+        @param prediction_canvas: Tensor containing the predicted
+            visualizations.
+        @type target_bboxes: Tensor | None
+        @param target_bboxes: Tensor containing the target bounding
+            boxes.
+        @type target_masks: Tensor | None
+        @param target_masks: Tensor containing the target instance
+            masks.
+        @type predicted_bboxes: Tensor
+        @param predicted_bboxes: Tensor containing the predicted
+            bounding boxes.
+        @type predicted_masks: Tensor
+        @param predicted_masks: Tensor containing the predicted instance
+            masks.
+        """
         predictions_viz = self.draw_predictions(
             prediction_canvas,
             predicted_bboxes,

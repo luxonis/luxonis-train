@@ -39,7 +39,9 @@ class PrecisionDFLDetectionLoss(
         **kwargs: Any,
     ):
         """BBox loss adapted from  U{Real-Time Flying Object Detection with YOLOv8
-        <https://arxiv.org/pdf/2305.09972>}
+        <https://arxiv.org/pdf/2305.09972>} and from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
+        <https://arxiv.org/pdf/2209.02976.pdf>}.
+        Code is adapted from U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models}.
 
         @type reg_max: int
         @param reg_max: Maximum number of regression channels. Defaults to 16.

@@ -34,7 +34,9 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         """
         Head for instance segmentation and object detection.
         Adapted from U{Real-Time Flying Object Detection with YOLOv8
-        <https://arxiv.org/pdf/2305.09972>}
+        <https://arxiv.org/pdf/2305.09972>} and from U{YOLOv6: A Single-Stage Object Detection Framework
+        for Industrial Applications
+        <https://arxiv.org/pdf/2209.02976.pdf>}.
 
         @type n_heads: Literal[2, 3, 4]
         @param n_heads: Number of output heads. Defaults to 3.
