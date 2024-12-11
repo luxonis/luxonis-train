@@ -47,6 +47,8 @@ class PrecisionBBoxHead(BaseNode[list[Tensor], list[Tensor]]):
         @param conf_thres: Confidence threshold for NMS.
         @type iou_thres: float
         @param iou_thres: IoU threshold for NMS.
+        @type max_det: int
+        @param max_det: Maximum number of detections retained after NMS.
         """
         super().__init__(**kwargs)
         self.reg_max = reg_max

@@ -31,7 +31,6 @@ class PrecisionDFLDetectionLoss(
 
     def __init__(
         self,
-        reg_max: int = 16,
         tal_topk: int = 10,
         class_loss_weight: float = 0.5,
         bbox_loss_weight: float = 7.5,
@@ -43,8 +42,6 @@ class PrecisionDFLDetectionLoss(
         <https://arxiv.org/pdf/2209.02976.pdf>}.
         Code is adapted from U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models}.
 
-        @type reg_max: int
-        @param reg_max: Maximum number of regression channels. Defaults to 16.
         @type tal_topk: int
         @param tal_topk: Number of anchors considered in selection. Defaults to 10.
         @type class_loss_weight: float
@@ -67,8 +64,8 @@ class PrecisionDFLDetectionLoss(
         self.assigner = TaskAlignedAssigner(
             n_classes=self.n_classes, topk=tal_topk, alpha=0.5, beta=6.0
         )
-        self.bbox_loss = CustomBboxLoss(reg_max)
-        self.proj = torch.arange(reg_max, dtype=torch.float)
+        self.bbox_loss = CustomBboxLoss(self.node.reg_max)
+        self.proj = torch.arange(self.node.reg_max, dtype=torch.float)
         self.bce = nn.BCEWithLogitsLoss(reduction="none")
 
     def prepare(

@@ -29,7 +29,6 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
 
     def __init__(
         self,
-        reg_max: int = 16,
         tal_topk: int = 10,
         class_loss_weight: float = 0.5,
         bbox_loss_weight: float = 7.5,
@@ -41,8 +40,6 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         <https://arxiv.org/pdf/2209.02976.pdf>}.
         Code is adapted from U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models}.
 
-        @type reg_max: int
-        @param reg_max: Maximum number of regression channels. Defaults to 16.
         @type tal_topk: int
         @param tal_topk: Number of anchors considered in selection. Defaults to 10.
         @type class_loss_weight: float
@@ -53,7 +50,6 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         @param dfl_loss_weight: Weight for DFL loss. Defaults to 1.5. For optimal results, multiply with accumulate_grad_batches.
         """
         super().__init__(
-            reg_max=reg_max,
             tal_topk=tal_topk,
             class_loss_weight=class_loss_weight,
             bbox_loss_weight=bbox_loss_weight,
