@@ -10,6 +10,7 @@ models which can be used instead.
 - [`KeypointDetectionModel`](#keypointdetectionmodel)
 - [`ClassificationModel`](#classificationmodel)
 - [`FOMOModel`](#fomomodel)
+- [`InstanceSegmentationModel`](#instancesegmentationmodel)
 
 **Parameters:**
 
@@ -56,7 +57,7 @@ See an example configuration file using this predefined model [here](../../../co
 
 ## `DetectionModel`
 
-The `DetectionModel` allows for both `"light"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster.
+The `DetectionModel` supports `"light"`, `"medium"`, and `"heavy"` variants, with `"light"` optimized for speed, `"heavy"` for accuracy, and `"medium"` offering a balance between the two.
 
 See an example configuration file using this predefined model [here](../../../configs/detection_light_model.yaml) for the `"light"` variant, and [here](../../../configs/detection_heavy_model.yaml) for the `"heavy"` variant.
 
@@ -177,3 +178,34 @@ See an example configuration file using this predefined model [here](../../../co
 | `loss_params`       | `dict`                      | `{}`            | Additional parameters for the loss function.                                                    |
 | `visualizer_params` | `dict`                      | `{}`            | Additional parameters for the visualizer.                                                       |
 | `task_name`         | `str \| None`               | `None`          | Custom task name for the model head.                                                            |
+
+## `InstanceSegmentationModel`
+
+The `InstanceSegmentationModel` supports `"light"`, `"medium"`, and `"heavy"` variants, with `"light"` optimized for speed, `"heavy"` for accuracy, and `"medium"` offering a balance between the two.
+
+See an example configuration file using this predefined model [here](../../../configs/instance_segmentation_light_model.yaml) for the `"light"` variant, and [here](../../../configs/instance_segmentation_heavy_model.yaml) for the `"heavy"` variant.
+
+**Components:**
+
+| Name                                                                                                            | Alias                                | Function                                                                                                                                 |
+| --------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| [`EfficientRep`](../../nodes/README.md#efficientrep)                                                            | `"instance_segmentation_backbone"`   | Backbone of the model. Available variants: `"light"` (`EfficientRep-N`), `"medium"` (`EfficientRep-S`), and `"heavy"` (`EfficientRep-L`) |
+| [`RepPANNeck`](../../nodes/README.md#reppanneck)                                                                | `"instance_segmentation_neck"`       | Neck of the model                                                                                                                        |
+| [`PrecisionSegmentBBoxHead`](../../nodes/README.md#precisionsegmentbboxhead)                                    | `"instance_segmentation_head"`       | Head of the model for instance segmentation                                                                                              |
+| [`PrecisionDFLSegmentationLoss`](../../attached_modules/losses/README.md#precisiondflsegmentationloss)          | `"instance_segmentation_loss"`       | Loss function for training instance segmentation models                                                                                  |
+| [`MeanAveragePrecision`](../../attached_modules/metrics/README.md#meanaverageprecision)                         | `"instance_segmentation_map"`        | Main metric of the model, measuring mean average precision                                                                               |
+| [`InstanceSegmentationVisualizer`](../../attached_modules/visualizers/README.md#instancesegmentationvisualizer) | `"instance_segmentation_visualizer"` | Visualizer for displaying instance segmentation results                                                                                  |
+
+**Parameters:**
+
+| Key                 | Type                                  | Default value    | Description                                                                                                                          |
+| ------------------- | ------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `variant`           | `Literal["light", "medium", "heavy"]` | `"light"`        | Defines the variant of the model. `"light"` uses `EfficientRep-N`, `"medium"` uses `EfficientRep-S`, `"heavy"` uses `EfficientRep-L` |
+| `use_neck`          | `bool`                                | `True`           | Whether to include the neck in the model                                                                                             |
+| `backbone`          | `str`                                 | `"EfficientRep"` | Name of the node to be used as a backbone                                                                                            |
+| `backbone_params`   | `dict`                                | `{}`             | Additional parameters to the backbone                                                                                                |
+| `neck_params`       | `dict`                                | `{}`             | Additional parameters to the neck                                                                                                    |
+| `head_params`       | `dict`                                | `{}`             | Additional parameters to the head                                                                                                    |
+| `loss_params`       | `dict`                                | `{}`             | Additional parameters to the loss function                                                                                           |
+| `visualizer_params` | `dict`                                | `{}`             | Additional parameters to the visualizer                                                                                              |
+| `task_name`         | `str \| None`                         | `None`           | Custom task name for the head                                                                                                        |
