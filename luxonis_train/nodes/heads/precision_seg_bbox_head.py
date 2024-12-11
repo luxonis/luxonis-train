@@ -102,16 +102,24 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
                 "prototypes": prototypes,
                 "mask_coeficients": mask_coefficients,
             }
+
         if self.export:
-            {
-                self.task: (
-                    torch.cat([det_feats, mask_coefficients], 1),
-                    prototypes,
-                )
+            pred_bboxes = self._export_bbox_output(det_feats)
+            return {
+                TaskType.INSTANCE_SEGMENTATION: [
+                    torch.cat(
+                        [pred_bboxes, mask_coefficients], 1
+                    ),  # Shape: [N, 4 + 1 + num_classes + n_masks, N_anchors]
+                ],
+                "prototypes": [prototypes],  # Shape: [N, n_masks, H, W]
             }
-        pred_bboxes = self._inference(det_feats, mask_coefficients)
+
+        pred_bboxes = self._inference_bbox_output(det_feats)
+        preds_combined = torch.cat(
+            [pred_bboxes, mask_coefficients.permute(0, 2, 1)], dim=-1
+        )
         preds = non_max_suppression(
-            pred_bboxes,
+            preds_combined,
             n_classes=self.n_classes,
             conf_thres=self.conf_thres,
             iou_thres=self.iou_thres,
@@ -128,9 +136,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
             "instance_segmentation": [],
         }
 
-        for i, pred in enumerate(
-            preds
-        ):  # TODO: Investigate low seg loss but wrong masks
+        for i, pred in enumerate(preds):
             results["instance_segmentation"].append(
                 refine_and_apply_masks(
                     prototypes[i],

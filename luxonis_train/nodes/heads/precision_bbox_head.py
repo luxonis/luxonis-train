@@ -136,11 +136,12 @@ class PrecisionBBoxHead(BaseNode[list[Tensor], list[Tensor]]):
             return {
                 "features": output,
             }
-        y = self._inference(output)
+
         if self.export:
-            return {self.task: y}
+            return {self.task: [self._export_bbox_output(output)]}
+
         boxes = non_max_suppression(
-            y,
+            self._inference_bbox_output(output),
             n_classes=self.n_classes,
             conf_thres=self.conf_thres,
             iou_thres=self.iou_thres,
@@ -166,25 +167,35 @@ class PrecisionBBoxHead(BaseNode[list[Tensor], list[Tensor]]):
         )
         return stride
 
-    def _inference(self, x: list[Tensor], masks: Tensor | None = None):
-        """Decode predicted bounding boxes and class probabilities based
-        on multiple-level feature maps."""
+    def _extract_cls_and_box(self, x: list[Tensor]):
+        """Extract classification and bounding box tensors."""
         shape = x[0].shape
         x_cat = torch.cat([xi.view(shape[0], self.no, -1) for xi in x], 2)
-        _, self.anchor_points, _, self.strides = anchors_for_fpn_features(
+        box, cls = x_cat.split((self.reg_max * 4, self.n_classes), 1)
+        return box, cls.sigmoid(), shape  # Apply sigmoid to cls
+
+    def _export_bbox_output(self, x: list[Tensor]):
+        """Prepare the output for export."""
+        box, cls, _ = self._extract_cls_and_box(x)
+        box_dist = self.dfl(box)  # Shape: [N, 4, N_anchors]
+        conf, _ = cls.max(1, keepdim=True)  # Shape: [N, 1, N_anchors]
+        export_output = torch.cat(
+            [box_dist, conf, cls], dim=1
+        )  # Shape: [N, 4 + 1 + num_classes, N_anchors]
+        return export_output
+
+    def _inference_bbox_output(self, x: list[Tensor]):
+        """Perform inference on predicted bounding boxes and class
+        probabilities."""
+        box, cls, shape = self._extract_cls_and_box(x)
+        box_dist = self.dfl(box)
+
+        _, anchor_points, _, strides = anchors_for_fpn_features(
             x, self.stride, 0.5
         )
-        box, cls = x_cat.split((self.reg_max * 4, self.n_classes), 1)
-        pred_bboxes = self.decode_bboxes(
-            self.dfl(box), self.anchor_points.transpose(0, 1)
-        ) * self.strides.transpose(0, 1)
-
-        if self.export:
-            return torch.cat(
-                (pred_bboxes.permute(0, 2, 1), cls.sigmoid().permute(0, 2, 1)),
-                1,
-            )
-
+        pred_bboxes = dist2bbox(
+            box_dist, anchor_points.transpose(0, 1), out_format="xyxy", dim=1
+        ) * strides.transpose(0, 1)
         base_output = [
             pred_bboxes.permute(0, 2, 1),
             torch.ones(
@@ -195,15 +206,8 @@ class PrecisionBBoxHead(BaseNode[list[Tensor], list[Tensor]]):
             cls.permute(0, 2, 1),
         ]
 
-        if masks is not None:
-            base_output.append(masks.permute(0, 2, 1))
-
         output_merged = torch.cat(base_output, dim=-1)
         return output_merged
-
-    def decode_bboxes(self, bboxes: Tensor, anchors: Tensor) -> Tensor:
-        """Decode bounding boxes."""
-        return dist2bbox(bboxes, anchors, out_format="xyxy", dim=1)
 
     def bias_init(self):
         """Initialize biases for the detection heads.
