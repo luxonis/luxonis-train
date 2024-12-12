@@ -138,31 +138,26 @@ class SegProto(nn.Module):
 
 
 class DFL(nn.Module):
-    def __init__(self, channels: int = 16):
-        """
-        Constructs the module with a convolutional layer using the specified input channels.
-        Proposed in Generalized Focal Loss https://ieeexplore.ieee.org/document/9792391
+    def __init__(self, reg_max: int = 16):
+        """The DFL (Distribution Focal Loss) module processes input
+        tensors by applying softmax over a specified dimension and
+        projecting the resulting tensor to produce output logits.
 
-        @type channels: int
-        @param channels: Number of input channels. Defaults to 16.
-
+        @type reg_max: int
+        @param reg_max: Maximum number of regression outputs. Defaults
+            to 16.
         """
         super().__init__()
-        self.transform = nn.Conv2d(
-            channels, 1, kernel_size=1, bias=False
-        ).requires_grad_(False)
-        weights = torch.arange(channels, dtype=torch.float32)
-        self.transform.weight.data.copy_(weights.view(1, channels, 1, 1))
-        self.num_channels = channels
+        self.proj_conv = nn.Conv2d(reg_max, 1, kernel_size=1, bias=False)
+        self.proj_conv.weight.data.copy_(
+            torch.arange(reg_max, dtype=torch.float32).view(1, reg_max, 1, 1)
+        )
+        self.proj_conv.requires_grad_(False)
 
-    def forward(self, input: Tensor):
-        """Transforms the input tensor and returns the processed
-        output."""
-        batch_size, _, anchors = input.size()
-        reshaped = input.view(batch_size, 4, self.num_channels, anchors)
-        softmaxed = reshaped.transpose(2, 1).softmax(dim=1)
-        processed = self.transform(softmaxed)
-        return processed.view(batch_size, 4, anchors)
+    def forward(self, x: Tensor) -> Tensor:
+        bs, _, h, w = x.size()
+        x = F.softmax(x.view(bs, 4, -1, h * w).permute(0, 2, 1, 3), dim=1)
+        return self.proj_conv(x)[:, 0].view(bs, 4, h, w)
 
 
 class ConvModule(nn.Sequential):

@@ -80,14 +80,10 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         self, inputs: list[Tensor]
     ) -> tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]]:
         prototypes = self.proto(inputs[0])
-        bs = prototypes.shape[0]
-        mask_coefficients = torch.cat(
-            [
-                self.mask_layers[i](inputs[i]).view(bs, self.n_masks, -1)
-                for i in range(self.n_heads)
-            ],
-            dim=2,
-        )
+        mask_coefficients = [
+            self.mask_layers[i](inputs[i]) for i in range(self.n_heads)
+        ]
+
         det_outs = super().forward(inputs)
 
         return det_outs, prototypes, mask_coefficients
@@ -96,25 +92,34 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         self, output: tuple[list[Tensor], Tensor, Tensor]
     ) -> Packet[Tensor]:
         det_feats, prototypes, mask_coefficients = output
+
+        if self.export:
+            pred_bboxes = self._prepare_bbox_export(*det_feats)
+            return {
+                "boundingbox": pred_bboxes,
+                "masks": mask_coefficients,
+                "prototypes": prototypes,
+            }
+
+        det_feats_combined = [
+            torch.cat((reg, cls), dim=1) for reg, cls in zip(*det_feats)
+        ]
+        mask_coefficients = torch.cat(
+            [
+                coef.view(coef.size(0), self.n_masks, -1)
+                for coef in mask_coefficients
+            ],
+            dim=2,
+        )
+
         if self.training:
             return {
-                "features": det_feats,
+                "features": det_feats_combined,
                 "prototypes": prototypes,
                 "mask_coeficients": mask_coefficients,
             }
 
-        if self.export:
-            pred_bboxes = self._export_bbox_output(det_feats)
-            return {
-                TaskType.INSTANCE_SEGMENTATION: [
-                    torch.cat(
-                        [pred_bboxes, mask_coefficients], 1
-                    ),  # Shape: [N, 4 + 1 + num_classes + n_masks, N_anchors]
-                ],
-                "prototypes": [prototypes],  # Shape: [N, n_masks, H, W]
-            }
-
-        pred_bboxes = self._inference_bbox_output(det_feats)
+        pred_bboxes = self._prepare_bbox_inference_output(*det_feats)
         preds_combined = torch.cat(
             [pred_bboxes, mask_coefficients.permute(0, 2, 1)], dim=-1
         )
@@ -129,7 +134,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         )
 
         results = {
-            "features": det_feats,
+            "features": det_feats_combined,
             "prototypes": prototypes,
             "mask_coeficients": mask_coefficients,
             "boundingbox": [],

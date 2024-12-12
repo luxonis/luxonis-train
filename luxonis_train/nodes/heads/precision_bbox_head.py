@@ -126,24 +126,38 @@ class PrecisionBBoxHead(BaseNode[list[Tensor], list[Tensor]]):
         self.bias_init()
         self.initialize_weights()
 
-    def forward(self, x: list[Tensor]) -> list[Tensor]:
+    def forward(self, x: list[Tensor]) -> tuple[list[Tensor], list[Tensor]]:
+        cls_outputs = []
+        reg_outputs = []
         for i in range(self.n_heads):
             reg_output = self.detection_heads[i][0](x[i])
             cls_output = self.detection_heads[i][1](x[i])
-            x[i] = torch.cat((reg_output, cls_output), 1)
-        return x
+            reg_outputs.append(reg_output)
+            cls_outputs.append(cls_output)
+        return reg_outputs, cls_outputs
 
-    def wrap(self, output: list[Tensor]) -> Packet[Tensor]:
+    def wrap(
+        self, output: tuple[list[Tensor], list[Tensor]]
+    ) -> Packet[Tensor]:
+        reg_outputs, cls_outputs = (
+            output  # ([bs, 4*reg_max, h_f, w_f]), ([bs, n_classes, h_f, w_f])
+        )
+        features = [
+            torch.cat((reg, cls), dim=1)
+            for reg, cls in zip(reg_outputs, cls_outputs)
+        ]
         if self.training:
             return {
-                "features": output,
+                "features": features,
             }
 
         if self.export:
-            return {self.task: [self._export_bbox_output(output)]}
+            return {
+                self.task: self._prepare_bbox_export(reg_outputs, cls_outputs)
+            }
 
         boxes = non_max_suppression(
-            self._inference_bbox_output(output),
+            self._prepare_bbox_inference_output(reg_outputs, cls_outputs),
             n_classes=self.n_classes,
             conf_thres=self.conf_thres,
             iou_thres=self.iou_thres,
@@ -153,7 +167,7 @@ class PrecisionBBoxHead(BaseNode[list[Tensor], list[Tensor]]):
         )
 
         return {
-            "features": output,
+            "features": features,
             "boundingbox": boxes,
         }
 
@@ -169,46 +183,68 @@ class PrecisionBBoxHead(BaseNode[list[Tensor], list[Tensor]]):
         )
         return stride
 
-    def _extract_cls_and_box(self, x: list[Tensor]):
+    def _prepare_bbox_and_cls(
+        self, reg_outputs: list[Tensor], cls_outputs: list[Tensor]
+    ) -> list[Tensor]:
         """Extract classification and bounding box tensors."""
-        shape = x[0].shape
-        x_cat = torch.cat([xi.view(shape[0], self.no, -1) for xi in x], 2)
-        box, cls = x_cat.split((self.reg_max * 4, self.n_classes), 1)
-        return box, cls.sigmoid(), shape  # Apply sigmoid to cls
+        output = []
+        for i in range(self.n_heads):
+            box = self.dfl(reg_outputs[i])
+            cls = cls_outputs[i].sigmoid()
+            conf = cls.max(1, keepdim=True)[0]
+            output.append(
+                torch.cat([box, conf, cls], dim=1)
+            )  # [bs, 4 + 1 + n_classes, h_f, w_f]
+        return output
 
-    def _export_bbox_output(self, x: list[Tensor]):
+    def _prepare_bbox_export(
+        self, reg_outputs: list[Tensor], cls_outputs: list[Tensor]
+    ) -> Tensor:
         """Prepare the output for export."""
-        box, cls, _ = self._extract_cls_and_box(x)
-        box_dist = self.dfl(box)  # Shape: [N, 4, N_anchors]
-        conf, _ = cls.max(1, keepdim=True)  # Shape: [N, 1, N_anchors]
-        export_output = torch.cat(
-            [box_dist, conf, cls], dim=1
-        )  # Shape: [N, 4 + 1 + num_classes, N_anchors]
-        return export_output
+        return self._prepare_bbox_and_cls(reg_outputs, cls_outputs)
 
-    def _inference_bbox_output(self, x: list[Tensor]):
+    def _prepare_bbox_inference_output(
+        self, reg_outputs: list[Tensor], cls_outputs: list[Tensor]
+    ):
         """Perform inference on predicted bounding boxes and class
         probabilities."""
-        box, cls, shape = self._extract_cls_and_box(x)
-        box_dist = self.dfl(box)
+        processed_outputs = self._prepare_bbox_and_cls(
+            reg_outputs, cls_outputs
+        )
+        box_dists = []
+        class_probs = []
+        for feature in processed_outputs:
+            bs, _, h, w = feature.size()
+            reshaped = feature.view(bs, -1, h * w)
+            box_dist = reshaped[:, :4, :]
+            cls = reshaped[:, 5:, :]
+            box_dists.append(box_dist)
+            class_probs.append(cls)
+
+        box_dists = torch.cat(box_dists, dim=2)
+        class_probs = torch.cat(class_probs, dim=2)
 
         _, anchor_points, _, strides = anchors_for_fpn_features(
-            x, self.stride, 0.5
+            processed_outputs, self.stride, 0.5
         )
+
         pred_bboxes = dist2bbox(
-            box_dist, anchor_points.transpose(0, 1), out_format="xyxy", dim=1
+            box_dists, anchor_points.transpose(0, 1), out_format="xyxy", dim=1
         ) * strides.transpose(0, 1)
+
         base_output = [
-            pred_bboxes.permute(0, 2, 1),
+            pred_bboxes.permute(0, 2, 1),  # [BS, H*W, 4]
             torch.ones(
-                (shape[0], pred_bboxes.shape[2], 1),
+                (box_dists.shape[0], pred_bboxes.shape[2], 1),
                 dtype=pred_bboxes.dtype,
                 device=pred_bboxes.device,
             ),
-            cls.permute(0, 2, 1),
+            class_probs.permute(0, 2, 1),  # [BS, H*W, n_classes]
         ]
 
-        output_merged = torch.cat(base_output, dim=-1)
+        output_merged = torch.cat(
+            base_output, dim=-1
+        )  # [BS, H*W, 4 + 1 + n_classes]
         return output_merged
 
     def bias_init(self):
