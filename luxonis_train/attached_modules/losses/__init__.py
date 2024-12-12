@@ -7,6 +7,8 @@ from .fomo_localization_loss import FOMOLocalizationLoss
 from .ohem_bce_with_logits import OHEMBCEWithLogitsLoss
 from .ohem_cross_entropy import OHEMCrossEntropyLoss
 from .ohem_loss import OHEMLoss
+from .precision_dfl_detection_loss import PrecisionDFLDetectionLoss
+from .precision_dlf_segmentation_loss import PrecisionDFLSegmentationLoss
 from .reconstruction_segmentation_loss import ReconstructionSegmentationLoss
 from .sigmoid_focal_loss import SigmoidFocalLoss
 from .smooth_bce_with_logits import SmoothBCEWithLogitsLoss
@@ -26,4 +28,6 @@ __all__ = [
     "OHEMCrossEntropyLoss",
     "OHEMBCEWithLogitsLoss",
     "FOMOLocalizationLoss",
+    "PrecisionDFLDetectionLoss",
+    "PrecisionDFLSegmentationLoss",
 ]

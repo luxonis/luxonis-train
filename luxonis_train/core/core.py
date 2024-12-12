@@ -13,7 +13,6 @@ import torch
 import torch.utils.data as torch_data
 import yaml
 from lightning.pytorch.utilities import rank_zero_only
-from luxonis_ml.data import Augmentations
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.utils import LuxonisFileSystem, reset_logging, setup_logging
@@ -113,25 +112,11 @@ class LuxonisModel:
             precision=self.cfg.trainer.precision,
         )
 
-        self.train_augmentations = Augmentations(
-            image_size=self.cfg.trainer.preprocessing.train_image_size,
-            augmentations=[
-                i.model_dump()
-                for i in self.cfg.trainer.preprocessing.get_active_augmentations()
-            ],
-            train_rgb=self.cfg.trainer.preprocessing.train_rgb,
-            keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
-        )
-        self.val_augmentations = Augmentations(
-            image_size=self.cfg.trainer.preprocessing.train_image_size,
-            augmentations=[
-                i.model_dump()
-                for i in self.cfg.trainer.preprocessing.get_active_augmentations()
-            ],
-            train_rgb=self.cfg.trainer.preprocessing.train_rgb,
-            keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
-            only_normalize=True,
-        )
+        self.train_augmentations = [
+            i.model_dump()
+            for i in self.cfg.trainer.preprocessing.get_active_augmentations()
+        ]
+        self.val_augmentations = self.train_augmentations
 
         self.loaders: dict[str, BaseLoaderTorch] = {}
         for view in ["train", "val", "test"]:
@@ -141,16 +126,23 @@ class LuxonisModel:
                 self.cfg.loader.params["delete_existing"] = False
 
             self.loaders[view] = Loader(
-                augmentations=(
-                    self.train_augmentations
-                    if view == "train"
-                    else self.val_augmentations
-                ),
                 view={
                     "train": self.cfg.loader.train_view,
                     "val": self.cfg.loader.val_view,
                     "test": self.cfg.loader.test_view,
                 }[view],
+                augmentation_engine="albumentations",
+                augmentation_config=(
+                    self.train_augmentations
+                    if view == "train"
+                    else self.val_augmentations
+                ),
+                height=self.cfg.trainer.preprocessing.train_image_size[0],
+                width=self.cfg.trainer.preprocessing.train_image_size[1],
+                keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
+                out_image_format="RGB"
+                if self.cfg.trainer.preprocessing.train_rgb
+                else "BGR",
                 image_source=self.cfg.loader.image_source,
                 **self.cfg.loader.params,
             )

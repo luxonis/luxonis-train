@@ -12,6 +12,8 @@ List of all the available loss functions.
 - [`AdaptiveDetectionLoss`](#adaptivedetectionloss)
 - [`EfficientKeypointBBoxLoss`](#efficientkeypointbboxloss)
 - [`FOMOLocalizationLoss`](#fomolocalizationLoss)
+- \[`PrecisionDFLDetectionLoss`\] (# precisiondfldetectionloss)
+- \[`PrecisionDFLSegmentationLoss`\] (# precisiondflsegmentationloss)
 
 ## `CrossEntropyLoss`
 
@@ -121,3 +123,29 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 | Key             | Type    | Default value | Description                                     |
 | --------------- | ------- | ------------- | ----------------------------------------------- |
 | `object_weight` | `float` | `1000`        | Weight for the objects in the loss calculation. |
+
+## `PrecisionDFLDetectionLoss`
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+**Parameters:**
+
+| Key                 | Type    | Default value | Description                                |
+| ------------------- | ------- | ------------- | ------------------------------------------ |
+| `tal_topk`          | `int`   | `10`          | Number of anchors considered in selection. |
+| `class_loss_weight` | `float` | `0.5`         | Weight for classification loss.            |
+| `bbox_loss_weight`  | `float` | `7.5`         | Weight for bbox loss.                      |
+| `dfl_loss_weigth`   | `float` | `1.5`         | Weight for DFL loss.                       |
+
+## `PrecisionDFLSegmentationLoss`
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+**Parameters:**
+
+| Key                 | Type    | Default value | Description                                |
+| ------------------- | ------- | ------------- | ------------------------------------------ |
+| `tal_topk`          | `int`   | `10`          | Number of anchors considered in selection. |
+| `class_loss_weight` | `float` | `0.5`         | Weight for classification loss.            |
+| `bbox_loss_weight`  | `float` | `7.5`         | Weight for bbox and segmentation loss.     |
+| `dfl_loss_weigth`   | `float` | `1.5`         | Weight for DFL loss.                       |
