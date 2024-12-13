@@ -228,6 +228,10 @@ class LuxonisModel:
         self._exported_models: dict[str, Path] = {}
 
     def _train(self, resume: str | None, *args, **kwargs):
+        self.logger = getLogger(__name__)
+        self.logger.info(f"Detected GPUs: {torch.cuda.device_count()}")
+        self.logger.info(f"Configured devices: {self.pl_trainer.num_devices}")
+        self.logger.info(f"Configured num_nodes: {self.pl_trainer.num_nodes}")
         status = "success"
         try:
             self.pl_trainer.fit(*args, ckpt_path=resume, **kwargs)
