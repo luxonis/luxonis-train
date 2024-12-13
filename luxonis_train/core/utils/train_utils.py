@@ -1,6 +1,8 @@
 from typing import Any
 
 import lightning.pytorch as pl
+from lightning.pytorch.plugins.environments import LightningEnvironment
+from lightning.pytorch.strategies import DDPStrategy
 
 from luxonis_train.config import TrainerConfig
 
@@ -14,10 +16,15 @@ def create_trainer(cfg: TrainerConfig, **kwargs: Any) -> pl.Trainer:
     @rtype: pl.Trainer
     @return: Pytorch Lightning trainer.
     """
+    strategy = (  # WARNING: DDP training fix
+        DDPStrategy(cluster_environment=LightningEnvironment())
+        if cfg.strategy.lower() == "ddp"
+        else cfg.strategy
+    )
     return pl.Trainer(
         accelerator=cfg.accelerator,
         devices=cfg.devices,
-        strategy=cfg.strategy,
+        strategy=strategy,
         max_epochs=cfg.epochs,
         accumulate_grad_batches=cfg.accumulate_grad_batches,
         check_val_every_n_epoch=cfg.validation_interval,
