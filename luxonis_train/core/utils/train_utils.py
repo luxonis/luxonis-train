@@ -1,10 +1,9 @@
-import os
 from typing import Any
 
 import lightning.pytorch as pl
-from lightning.pytorch.plugins.environments import LightningEnvironment
-from lightning.pytorch.strategies import DDPStrategy
 
+# from lightning.pytorch.plugins.environments import LightningEnvironment
+# from lightning.pytorch.strategies import DDPStrategy
 from luxonis_train.config import TrainerConfig
 
 
@@ -17,17 +16,17 @@ def create_trainer(cfg: TrainerConfig, **kwargs: Any) -> pl.Trainer:
     @rtype: pl.Trainer
     @return: Pytorch Lightning trainer.
     """
-    os.environ["NCCL_DEBUG"] = "INFO"
-    os.environ["NCCL_SOCKET_IFNAME"] = (
-        "eth0"  # Adjust based on your network interface
-    )
-    os.environ["NCCL_IB_DISABLE"] = "1"  # Disable InfiniBand if not available
+    # os.environ["NCCL_DEBUG"] = "INFO"
+    # os.environ["NCCL_SOCKET_IFNAME"] = (
+    #     "eth0"  # Adjust based on your network interface
+    # )
+    # os.environ["NCCL_IB_DISABLE"] = "1"  # Disable InfiniBand if not available
 
-    strategy = (  # WARNING: DDP training FREEZES when using LightningEnvironment!!!
-        DDPStrategy(cluster_environment=LightningEnvironment())
-        if cfg.strategy.lower() == "ddp"
-        else cfg.strategy
-    )
+    # strategy = (  # WARNING: DDP training FREEZES when using LightningEnvironment!!!
+    #     DDPStrategy(cluster_environment=LightningEnvironment())
+    #     if cfg.strategy.lower() == "ddp"
+    #     else cfg.strategy
+    # )
     # printenv | grep -E "WORLD_SIZE|RANK|LOCAL_RANK|MASTER_ADDR|MASTER_PORT"
 
     # output:
@@ -46,7 +45,7 @@ def create_trainer(cfg: TrainerConfig, **kwargs: Any) -> pl.Trainer:
     return pl.Trainer(
         accelerator=cfg.accelerator,
         devices=cfg.devices,
-        strategy=strategy,
+        strategy=cfg.strategy,
         max_epochs=cfg.epochs,
         accumulate_grad_batches=cfg.accumulate_grad_batches,
         check_val_every_n_epoch=cfg.validation_interval,
