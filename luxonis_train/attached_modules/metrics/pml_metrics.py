@@ -7,62 +7,6 @@ from .base_metric import BaseMetric
 # to PyTorch from TensorFlow
 
 
-def _pairwise_distances(embeddings, squared=False):
-    """Compute the 2D matrix of distances between all the embeddings.
-
-    @param embeddings: tensor of shape (batch_size, embed_dim)
-    @type embeddings: torch.Tensor
-    @param squared: If true, output is the pairwise squared euclidean
-        distance matrix. If false, output is the pairwise euclidean
-        distance matrix.
-    @type squared: bool
-    @return: pairwise_distances: tensor of shape (batch_size,
-        batch_size)
-    @rtype: torch.Tensor
-    """
-    # Get the dot product between all embeddings
-    # shape (batch_size, batch_size)
-    dot_product = torch.matmul(embeddings, embeddings.t())
-
-    # Get squared L2 norm for each embedding. We can just take the diagonal of `dot_product`.
-    # This also provides more numerical stability (the diagonal of the result will be exactly 0).
-    # shape (batch_size,)
-    square_norm = torch.diag(dot_product)
-
-    # Compute the pairwise distance matrix as we have:
-    # ||a - b||^2 = ||a||^2  - 2 <a, b> + ||b||^2
-    # shape (batch_size, batch_size)
-    distances = (
-        square_norm.unsqueeze(0) - 2.0 * dot_product + square_norm.unsqueeze(1)
-    )
-
-    # Because of computation errors, some distances might be negative so we put everything >= 0.0
-    distances = torch.max(distances, torch.tensor(0.0))
-
-    if not squared:
-        # Because the gradient of sqrt is infinite when distances == 0.0 (ex: on the diagonal)
-        # we need to add a small epsilon where distances == 0.0
-        mask = (distances == 0.0).float()
-        distances = distances + mask * 1e-16
-
-        distances = torch.sqrt(distances)
-
-        # Correct the epsilon added: set the distances on the mask to be exactly 0.0
-        distances = distances * (1.0 - mask)
-
-    return distances
-
-
-def _get_anchor_positive_triplet_mask(labels):
-    indices_equal = torch.eye(
-        labels.shape[0], dtype=torch.uint8, device=labels.device
-    )
-    indices_not_equal = ~indices_equal
-    labels_equal = labels.unsqueeze(0) == labels.unsqueeze(1)
-    mask = indices_not_equal & labels_equal
-    return mask
-
-
 class ClosestIsPositiveAccuracy(BaseMetric):
     def __init__(self, cross_batch_memory_size=0, **kwargs):
         super().__init__(**kwargs)
@@ -83,8 +27,8 @@ class ClosestIsPositiveAccuracy(BaseMetric):
         assert (
             labels is not None and "id" in labels
         ), "ID labels are required for metric learning losses"
-        IDs = labels["id"][0][:, 0]
-        return embeddings, IDs
+        ids = labels["id"][0][:, 0]
+        return embeddings, ids
 
     def update(self, inputs: Tensor, target: Tensor):
         embeddings, labels = inputs, target
@@ -166,8 +110,8 @@ class MedianDistances(BaseMetric):
         assert (
             labels is not None and "id" in labels
         ), "ID labels are required for metric learning losses"
-        IDs = labels["id"][0][:, 0]
-        return embeddings, IDs
+        ids = labels["id"][0][:, 0]
+        return embeddings, ids
 
     def update(self, inputs: Tensor, target: Tensor):
         embeddings, labels = inputs, target
@@ -211,13 +155,18 @@ class MedianDistances(BaseMetric):
         # Get the positive mask and convert it to boolean
         positive_mask = _get_anchor_positive_triplet_mask(labels).bool()
 
+        # Filter out distances to negative elements w.r.t. each query embedding
         only_positive_distances = pairwise_distances.clone()
         only_positive_distances[~positive_mask] = float("inf")
 
+        # From the positive distances, get the closest positive distance for each query embedding
         closest_positive_distances, _ = torch.min(
             only_positive_distances, dim=1
         )
 
+        # Calculate the difference between the closest distance (any) and closest positive distances
+        # - this tells us how much closer should the closest positive be in order for the embedding
+        # to be considered correct
         non_inf_mask = closest_positive_distances != float("inf")
         difference = closest_positive_distances - closest_distances
         difference = difference[non_inf_mask]
@@ -256,3 +205,59 @@ class MedianDistances(BaseMetric):
                 closest_vs_positive_distances
             ),
         }
+
+
+def _pairwise_distances(embeddings, squared=False):
+    """Compute the 2D matrix of distances between all the embeddings.
+
+    @param embeddings: tensor of shape (batch_size, embed_dim)
+    @type embeddings: torch.Tensor
+    @param squared: If true, output is the pairwise squared euclidean
+        distance matrix. If false, output is the pairwise euclidean
+        distance matrix.
+    @type squared: bool
+    @return: pairwise_distances: tensor of shape (batch_size,
+        batch_size)
+    @rtype: torch.Tensor
+    """
+    # Get the dot product between all embeddings
+    # shape (batch_size, batch_size)
+    dot_product = torch.matmul(embeddings, embeddings.t())
+
+    # Get squared L2 norm for each embedding. We can just take the diagonal of `dot_product`.
+    # This also provides more numerical stability (the diagonal of the result will be exactly 0).
+    # shape (batch_size,)
+    square_norm = torch.diag(dot_product)
+
+    # Compute the pairwise distance matrix as we have:
+    # ||a - b||^2 = ||a||^2  - 2 <a, b> + ||b||^2
+    # shape (batch_size, batch_size)
+    distances = (
+        square_norm.unsqueeze(0) - 2.0 * dot_product + square_norm.unsqueeze(1)
+    )
+
+    # Because of computation errors, some distances might be negative so we put everything >= 0.0
+    distances = torch.max(distances, torch.tensor(0.0))
+
+    if not squared:
+        # Because the gradient of sqrt is infinite when distances == 0.0 (ex: on the diagonal)
+        # we need to add a small epsilon where distances == 0.0
+        mask = (distances == 0.0).float()
+        distances = distances + mask * 1e-16
+
+        distances = torch.sqrt(distances)
+
+        # Correct the epsilon added: set the distances on the mask to be exactly 0.0
+        distances = distances * (1.0 - mask)
+
+    return distances
+
+
+def _get_anchor_positive_triplet_mask(labels):
+    indices_equal = torch.eye(
+        labels.shape[0], dtype=torch.uint8, device=labels.device
+    )
+    indices_not_equal = ~indices_equal
+    labels_equal = labels.unsqueeze(0) == labels.unsqueeze(1)
+    mask = indices_not_equal & labels_equal
+    return mask

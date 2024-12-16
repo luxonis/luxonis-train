@@ -11,7 +11,7 @@ model:
         embedding_size: &embedding_size 512
   
   losses:
-    - name: MetricLearningLoss
+    - name: EmbeddingLossWrapper
       params: 
         loss_name: SupConLoss
         embedding_size: *embedding_size

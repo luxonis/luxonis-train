@@ -33,15 +33,15 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
         assert (
             labels is not None and "id" in labels
         ), "ID labels are required for metric learning losses"
-        IDs = labels["id"][0]
-        return embeddings, IDs
+        ids = labels["id"][0]
+        return embeddings, ids
 
     def forward(
         self,
         label_canvas: Tensor,
         prediction_canvas: Tensor,
         embeddings: Tensor,
-        IDs: Tensor | None,
+        ids: Tensor | None,
         **kwargs,
     ) -> Tensor:
         """Creates a visualization of the embeddings.
@@ -52,14 +52,14 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
         @param prediction_canvas: The canvas to draw the predictions on.
         @type embeddings: Tensor
         @param embeddings: The embeddings to visualize.
-        @type IDs: Tensor
-        @param IDs: The IDs to visualize.
+        @type ids: Tensor
+        @param ids: The ids to visualize.
         @rtype: Tensor
         @return: An embedding space projection.
         """
 
         # Embeddings: [B, D], D = e.g. 512
-        # IDs: [B, 1], corresponding to the embeddings
+        # ids: [B, 1], corresponding to the embeddings
 
         # Convert embeddings to numpy array
         embeddings_np = embeddings.detach().cpu().numpy()
@@ -73,11 +73,11 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
 
         # Plot the embeddings
         fig, ax = plt.subplots(figsize=(10, 10))
-        if IDs is not None:
+        if ids is not None:
             scatter = ax.scatter(
                 embeddings_2d[:, 0],
                 embeddings_2d[:, 1],
-                c=IDs.detach().cpu().numpy(),
+                c=ids.detach().cpu().numpy(),
                 cmap="viridis",
                 s=5,
             )
