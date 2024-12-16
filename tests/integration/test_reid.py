@@ -88,7 +88,9 @@ for loss in CLASS_EMBEDDING_LOSSES:
 
 
 @pytest.mark.parametrize("loss_name", not_class_based_losses)
-def test_reid(opts: dict[str, Any], infer_path: Path, loss_name: str):
+def test_available_losses(
+    opts: dict[str, Any], infer_path: Path, loss_name: str
+):
     config_file = "tests/configs/reid.yaml"
     opts["model.losses.0.params.loss_name"] = loss_name
 
@@ -113,3 +115,28 @@ def test_reid(opts: dict[str, Any], infer_path: Path, loss_name: str):
     assert len(list(infer_path.iterdir())) == 0
     model.infer(view="val", save_dir=infer_path)
     assert infer_path.exists()
+
+
+@pytest.mark.parametrize("loss_name", CLASS_EMBEDDING_LOSSES)
+@pytest.mark.parametrize("num_classes", [-2, NUM_INDIVIDUALS])
+def test_unsupported_class_based_losses(
+    opts: dict[str, Any], loss_name: str, num_classes: int
+):
+    config_file = "tests/configs/reid.yaml"
+    opts["model.losses.0.params.loss_name"] = loss_name
+    opts["model.losses.0.params.num_classes"] = num_classes
+    opts["model.nodes.0.params.num_classes"] = num_classes
+
+    with pytest.raises(ValueError):
+        model = LuxonisModel(config_file, opts)
+        model.train()
+
+
+@pytest.mark.parametrize("loss_name", ["NonExistentLoss"])
+def test_nonexistent_losses(opts: dict[str, Any], loss_name: str):
+    config_file = "tests/configs/reid.yaml"
+    opts["model.losses.0.params.loss_name"] = loss_name
+
+    with pytest.raises(ValueError):
+        model = LuxonisModel(config_file, opts)
+        model.train()

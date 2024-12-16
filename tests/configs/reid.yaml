@@ -15,7 +15,7 @@ model:
       params: 
         loss_name: SupConLoss
         embedding_size: *embedding_size
-        cross_batch_memory_size: &memory_size 200
+        cross_batch_memory_size: &memory_size 4
       attached_to: GhostFaceNetsV2
   
   metrics:
