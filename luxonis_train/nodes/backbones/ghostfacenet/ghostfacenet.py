@@ -142,12 +142,6 @@ class GhostFaceNetsV2(BaseNode[Tensor, list[Tensor]]):
             if isinstance(m, nn.BatchNorm2d):
                 m.momentum, m.eps = var.bn_momentum, var.bn_epsilon
 
-    def unwrap(self, inputs):
-        return [inputs[0]["features"][0]]
-
-    def wrap(self, outputs):
-        return {"features": [outputs]}
-
     def forward(self, inps):
         x = inps[0]
         x = self.conv_stem(x)
