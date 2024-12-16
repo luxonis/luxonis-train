@@ -17,6 +17,6 @@ __all__ = [
     "Precision",
     "Recall",
     "ClosestIsPositiveAccuracy",
-    "ConfusionMatrix",  
+    "ConfusionMatrix",
     "MedianDistances",
 ]
