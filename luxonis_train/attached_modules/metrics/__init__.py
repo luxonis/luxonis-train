@@ -1,4 +1,5 @@
 from .base_metric import BaseMetric
+from .confusion_matrix import ConfusionMatrix
 from .mean_average_precision import MeanAveragePrecision
 from .mean_average_precision_keypoints import MeanAveragePrecisionKeypoints
 from .object_keypoint_similarity import ObjectKeypointSimilarity
@@ -16,5 +17,6 @@ __all__ = [
     "Precision",
     "Recall",
     "ClosestIsPositiveAccuracy",
+    "ConfusionMatrix",  
     "MedianDistances",
 ]

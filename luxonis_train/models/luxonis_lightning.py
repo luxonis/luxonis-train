@@ -818,14 +818,21 @@ class LuxonisLightningModule(pl.LightningModule):
         logger.info("Metrics computed.")
         for node_name, metrics in computed_metrics.items():
             for metric_name, metric_value in metrics.items():
-                metric_results[node_name][metric_name] = (
-                    metric_value.cpu().item()
-                )
-                self.log(
-                    f"{mode}/metric/{node_name}/{metric_name}",
-                    metric_value,
-                    sync_dist=True,
-                )
+                if "matrix" in metric_name.lower():
+                    self.logger.log_matrix(
+                        matrix=metric_value.cpu().numpy(),
+                        name=f"{mode}/metrics/{self.current_epoch}/{metric_name}",
+                        step=self.current_epoch,
+                    )
+                else:
+                    metric_results[node_name][metric_name] = (
+                        metric_value.cpu().item()
+                    )
+                    self.log(
+                        f"{mode}/metric/{node_name}/{metric_name}",
+                        metric_value,
+                        sync_dist=True,
+                    )
 
         if self.cfg.trainer.verbose:
             self._print_results(

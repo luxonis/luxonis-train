@@ -103,10 +103,13 @@ class EfficientBBoxHead(
             self.initialize_weights()
 
         if download_weights:
-            # TODO: Handle variants of head in a nicer way
-            if self.in_channels == [32, 64, 128]:
-                weights_path = "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientbbox_head_n_coco.ckpt"
-                self.load_checkpoint(weights_path, strict=False)
+            weights_path = self.get_variant_weights(initialize_weights)
+            if weights_path:
+                self.load_checkpoint(path=weights_path, strict=False)
+            else:
+                logger.warning(
+                    f"No checkpoint available for {self.name}, skipping."
+                )
 
     def initialize_weights(self):
         for m in self.modules():
@@ -119,6 +122,25 @@ class EfficientBBoxHead(
                 m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU)
             ):
                 m.inplace = True
+
+    def get_variant_weights(self, initialize_weights: bool) -> str | None:
+        if self.in_channels == [32, 64, 128]:  # light predefined model
+            if initialize_weights:
+                return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/efficientbbox_head_n_coco.ckpt"
+            else:
+                return "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientbbox_head_n_coco.ckpt"
+        elif self.in_channels == [64, 128, 256]:  # medium predefined model
+            if initialize_weights:
+                return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/efficientbbox_head_s_coco.ckpt"
+            else:
+                return None
+        elif self.in_channels == [128, 256, 512]:  # heavy predefined model
+            if initialize_weights:
+                return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/efficientbbox_head_l_coco.ckpt"
+            else:
+                return None
+        else:
+            return None
 
     def forward(
         self, inputs: list[Tensor]
