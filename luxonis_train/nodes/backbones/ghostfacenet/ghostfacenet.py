@@ -2,8 +2,8 @@
 import math
 from typing import Literal
 
-import torch
 import torch.nn as nn
+from torch import Tensor
 
 from luxonis_train.nodes.backbones.ghostfacenet.blocks import (
     GhostBottleneckV2,
@@ -15,7 +15,7 @@ from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
 
 
-class GhostFaceNetsV2(BaseNode[torch.Tensor, list[torch.Tensor]]):
+class GhostFaceNetsV2(BaseNode[Tensor, list[Tensor]]):
     in_channels: list[int]
     in_width: list[int]
 
