@@ -758,13 +758,13 @@ class LuxonisLightningModule(pl.LightningModule):
 
     #     self.training_step_outputs.clear()
 
-    # def on_validation_epoch_end(self) -> None:
-    #     """Performs validation epoch end operations."""
-    #     return self._evaluation_epoch_end("val")
+    def on_validation_epoch_end(self) -> None:
+        """Performs validation epoch end operations."""
+        return self._evaluation_epoch_end("val")
 
-    # def on_test_epoch_end(self) -> None:
-    #     """Performs test epoch end operations."""
-    #     return self._evaluation_epoch_end("test")
+    def on_test_epoch_end(self) -> None:
+        """Performs test epoch end operations."""
+        return self._evaluation_epoch_end("test")
 
     def get_status(self) -> tuple[int, int]:
         """Returns current epoch and number of all epochs."""
@@ -822,8 +822,8 @@ class LuxonisLightningModule(pl.LightningModule):
     def _evaluation_epoch_end(self, mode: Literal["test", "val"]) -> None:
         epoch_val_losses = self._average_losses(self.validation_step_outputs)
 
-        # for key, value in epoch_val_losses.items():
-        #     self.log(f"{mode}/{key}", value, sync_dist=True)
+        for key, value in epoch_val_losses.items():
+            self.log(f"{mode}/{key}", value, sync_dist=True)
 
         metric_results: dict[str, dict[str, float]] = defaultdict(dict)
         logger.info(f"Computing metrics on {mode} subset ...")
@@ -833,20 +833,20 @@ class LuxonisLightningModule(pl.LightningModule):
             for metric_name, metric_value in metrics.items():
                 if "matrix" in metric_name.lower():
                     pass
-                    # self.logger.log_matrix(
-                    #     matrix=metric_value.cpu().numpy(),
-                    #     name=f"{mode}/metrics/{self.current_epoch}/{metric_name}",
-                    #     step=self.current_epoch,
-                    # )
+                    self.logger.log_matrix(
+                        matrix=metric_value.cpu().numpy(),
+                        name=f"{mode}/metrics/{self.current_epoch}/{metric_name}",
+                        step=self.current_epoch,
+                    )
                 else:
                     metric_results[node_name][metric_name] = (
                         metric_value.cpu().item()
                     )
-                    # self.log(
-                    #     f"{mode}/metric/{node_name}/{metric_name}",
-                    #     metric_value,
-                    #     sync_dist=True,
-                    # )
+                    self.log(
+                        f"{mode}/metric/{node_name}/{metric_name}",
+                        metric_value,
+                        sync_dist=True,
+                    )
 
         if self.cfg.trainer.verbose:
             self._print_results(
