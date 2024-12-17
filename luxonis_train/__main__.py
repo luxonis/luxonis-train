@@ -77,7 +77,18 @@ def train(
     opts: OptsType = None,
 ):
     """Start training."""
+    from luxonis_ml.data.datasets import LuxonisDataset
+    from luxonis_ml.data.utils.enums import BucketStorage
+
     from luxonis_train.core import LuxonisModel
+
+    bucket_storage = BucketStorage.GCS
+    _dataset = LuxonisDataset(
+        "_26662c4_COCO_splits_det",
+        bucket_storage=bucket_storage,
+        delete_existing=False,
+        delete_remote=False,
+    )
 
     LuxonisModel(config, opts).train(resume_weights=resume)
 
