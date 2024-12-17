@@ -436,6 +436,8 @@ class LuxonisLightningModule(pl.LightningModule):
                 and labels is not None
             ):
                 for loss_name, loss in self.losses[node_name].items():
+                    outputs = self.all_gather(outputs)
+                    labels = self.all_gather(labels)
                     losses[node_name][loss_name] = loss.run(outputs, labels)
 
             if (
