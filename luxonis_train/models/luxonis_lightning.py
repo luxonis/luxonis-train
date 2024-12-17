@@ -436,8 +436,6 @@ class LuxonisLightningModule(pl.LightningModule):
                 and labels is not None
             ):
                 for loss_name, loss in self.losses[node_name].items():
-                    outputs = self.all_gather(outputs)
-                    labels = self.all_gather(labels)
                     losses[node_name][loss_name] = loss.run(outputs, labels)
 
             if (
@@ -737,13 +735,13 @@ class LuxonisLightningModule(pl.LightningModule):
 
     def on_train_epoch_end(self) -> None:
         """Performs train epoch end operations."""
-        epoch_train_losses = self._average_losses(self.training_step_outputs)
+        # epoch_train_losses = self._average_losses(self.training_step_outputs)
         for module in self.modules():
             if isinstance(module, (BaseNode, BaseLoss)):
                 module._epoch = self.current_epoch
 
-        for key, value in epoch_train_losses.items():
-            self.log(f"train/{key}", value, sync_dist=True)
+        # for key, value in epoch_train_losses.items():
+        #     self.log(f"train/{key}", value, sync_dist=True)
 
         self.training_step_outputs.clear()
 
@@ -811,8 +809,8 @@ class LuxonisLightningModule(pl.LightningModule):
     def _evaluation_epoch_end(self, mode: Literal["test", "val"]) -> None:
         epoch_val_losses = self._average_losses(self.validation_step_outputs)
 
-        for key, value in epoch_val_losses.items():
-            self.log(f"{mode}/{key}", value, sync_dist=True)
+        # for key, value in epoch_val_losses.items():
+        #     self.log(f"{mode}/{key}", value, sync_dist=True)
 
         metric_results: dict[str, dict[str, float]] = defaultdict(dict)
         logger.info(f"Computing metrics on {mode} subset ...")
@@ -830,11 +828,11 @@ class LuxonisLightningModule(pl.LightningModule):
                     metric_results[node_name][metric_name] = (
                         metric_value.cpu().item()
                     )
-                    self.log(
-                        f"{mode}/metric/{node_name}/{metric_name}",
-                        metric_value,
-                        sync_dist=True,
-                    )
+                    # self.log(
+                    #     f"{mode}/metric/{node_name}/{metric_name}",
+                    #     metric_value,
+                    #     sync_dist=True,
+                    # )
 
         if self.cfg.trainer.verbose:
             self._print_results(
