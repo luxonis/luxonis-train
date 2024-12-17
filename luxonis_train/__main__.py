@@ -78,17 +78,22 @@ def train(
 ):
     """Start training."""
     from luxonis_ml.data.datasets import LuxonisDataset
+    from luxonis_ml.data.loaders import LuxonisLoader
     from luxonis_ml.data.utils.enums import BucketStorage
 
     from luxonis_train.core import LuxonisModel
 
     bucket_storage = BucketStorage.GCS
-    _dataset = LuxonisDataset(
+    dataset = LuxonisDataset(
         "_26662c4_COCO_splits_det",
         bucket_storage=bucket_storage,
         delete_existing=False,
         delete_remote=False,
     )
+    loader = LuxonisLoader(dataset, view="val")
+    for _image, ann in loader:
+        _box = ann["boundingbox"][0]
+        break
 
     LuxonisModel(config, opts).train(resume_weights=resume)
 
