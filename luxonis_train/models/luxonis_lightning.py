@@ -6,7 +6,6 @@ from typing import Literal, cast
 
 import lightning.pytorch as pl
 import torch
-import torch.distributed as dist
 from lightning.pytorch.callbacks import ModelCheckpoint, RichModelSummary
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
 from luxonis_ml.data import LuxonisDataset
@@ -405,7 +404,6 @@ class LuxonisLightningModule(pl.LightningModule):
         @rtype: L{LuxonisOutput}
         @return: Output of the model.
         """
-        rank = dist.get_rank() if dist.is_initialized() else 0
         losses: dict[
             str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]
         ] = defaultdict(dict)
@@ -427,7 +425,6 @@ class LuxonisLightningModule(pl.LightningModule):
                     node_inputs.append({"features": [inputs[pred]]})
 
             outputs = node.run(node_inputs)
-            logger.info(f"Node {node_name} outputs computed. rank: {rank}")
 
             computed[node_name] = outputs
 
@@ -438,9 +435,6 @@ class LuxonisLightningModule(pl.LightningModule):
                 and node_name in self.losses
                 and labels is not None
             ):
-                logger.info(
-                    f"Computing losses for node {node_name}. rank: {rank}"
-                )
                 for loss_name, loss in self.losses[node_name].items():
                     losses[node_name][loss_name] = loss.run(outputs, labels)
 
@@ -449,9 +443,6 @@ class LuxonisLightningModule(pl.LightningModule):
                 and node_name in self.metrics
                 and labels is not None
             ):
-                logger.info(
-                    f"Updating metrics for node {node_name}. rank: {rank}"
-                )
                 for metric in self.metrics[node_name].values():
                     metric.run_update(outputs, labels)
 
@@ -460,9 +451,6 @@ class LuxonisLightningModule(pl.LightningModule):
                 and node_name in self.visualizers
                 and images is not None
             ):
-                logger.info(
-                    f"Computing visualizations for node {node_name}. rank: {rank}"
-                )
                 for viz_name, visualizer in self.visualizers[
                     node_name
                 ].items():
@@ -485,7 +473,6 @@ class LuxonisLightningModule(pl.LightningModule):
             for node_name, outputs in computed.items()
             if node_name in self.outputs
         }
-        logger.info(f"Model forward pass completed. rank: {rank}")
 
         return LuxonisOutput(
             outputs=outputs_dict, losses=losses, visualizations=visualizations
@@ -803,17 +790,17 @@ class LuxonisLightningModule(pl.LightningModule):
         self.validation_step_outputs.append(step_output)
 
         logged_images = self._logged_images
-        for _, visualizations in outputs.visualizations.items():
-            for _, viz_batch in visualizations.items():
+        for node_name, visualizations in outputs.visualizations.items():
+            for viz_name, viz_batch in visualizations.items():
                 logged_images = self._logged_images
-                for _viz in viz_batch:
+                for viz in viz_batch:
                     if logged_images >= self.cfg.trainer.n_log_images:
                         break
-                    # self.logger.log_image(
-                    #     f"{mode}/visualizations/{node_name}/{viz_name}/{logged_images}",
-                    #     viz.detach().cpu().numpy().transpose(1, 2, 0),
-                    #     step=self.current_epoch,
-                    # )
+                    self.logger.log_image(
+                        f"{mode}/visualizations/{node_name}/{viz_name}/{logged_images}",
+                        viz.detach().cpu().numpy().transpose(1, 2, 0),
+                        step=self.current_epoch,
+                    )
                     logged_images += 1
         self._logged_images = logged_images
 
