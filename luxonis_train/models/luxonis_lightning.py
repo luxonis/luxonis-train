@@ -425,6 +425,7 @@ class LuxonisLightningModule(pl.LightningModule):
                     node_inputs.append({"features": [inputs[pred]]})
 
             outputs = node.run(node_inputs)
+            logger.info(f"Node {node_name} outputs computed.")
 
             computed[node_name] = outputs
 
@@ -435,6 +436,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 and node_name in self.losses
                 and labels is not None
             ):
+                logger.info(f"Computing losses for node {node_name}.")
                 for loss_name, loss in self.losses[node_name].items():
                     losses[node_name][loss_name] = loss.run(outputs, labels)
 
@@ -443,6 +445,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 and node_name in self.metrics
                 and labels is not None
             ):
+                logger.info(f"Updating metrics for node {node_name}.")
                 for metric in self.metrics[node_name].values():
                     metric.run_update(outputs, labels)
 
@@ -451,6 +454,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 and node_name in self.visualizers
                 and images is not None
             ):
+                logger.info(f"Computing visualizations for node {node_name}.")
                 for viz_name, visualizer in self.visualizers[
                     node_name
                 ].items():
@@ -473,6 +477,7 @@ class LuxonisLightningModule(pl.LightningModule):
             for node_name, outputs in computed.items()
             if node_name in self.outputs
         }
+        logger.info("Model forward pass completed.")
 
         return LuxonisOutput(
             outputs=outputs_dict, losses=losses, visualizations=visualizations
@@ -790,17 +795,17 @@ class LuxonisLightningModule(pl.LightningModule):
         self.validation_step_outputs.append(step_output)
 
         logged_images = self._logged_images
-        for node_name, visualizations in outputs.visualizations.items():
-            for viz_name, viz_batch in visualizations.items():
+        for _, visualizations in outputs.visualizations.items():
+            for _, viz_batch in visualizations.items():
                 logged_images = self._logged_images
-                for viz in viz_batch:
+                for _viz in viz_batch:
                     if logged_images >= self.cfg.trainer.n_log_images:
                         break
-                    self.logger.log_image(
-                        f"{mode}/visualizations/{node_name}/{viz_name}/{logged_images}",
-                        viz.detach().cpu().numpy().transpose(1, 2, 0),
-                        step=self.current_epoch,
-                    )
+                    # self.logger.log_image(
+                    #     f"{mode}/visualizations/{node_name}/{viz_name}/{logged_images}",
+                    #     viz.detach().cpu().numpy().transpose(1, 2, 0),
+                    #     step=self.current_epoch,
+                    # )
                     logged_images += 1
         self._logged_images = logged_images
 
@@ -819,11 +824,12 @@ class LuxonisLightningModule(pl.LightningModule):
         for node_name, metrics in computed_metrics.items():
             for metric_name, metric_value in metrics.items():
                 if "matrix" in metric_name.lower():
-                    self.logger.log_matrix(
-                        matrix=metric_value.cpu().numpy(),
-                        name=f"{mode}/metrics/{self.current_epoch}/{metric_name}",
-                        step=self.current_epoch,
-                    )
+                    pass
+                    # self.logger.log_matrix(
+                    #     matrix=metric_value.cpu().numpy(),
+                    #     name=f"{mode}/metrics/{self.current_epoch}/{metric_name}",
+                    #     step=self.current_epoch,
+                    # )
                 else:
                     metric_results[node_name][metric_name] = (
                         metric_value.cpu().item()
