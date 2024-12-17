@@ -12,7 +12,6 @@ from luxonis_ml.data import (
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.enums import DatasetType
 from torch import Size, Tensor
-from torch import distributed as dist
 from typeguard import typechecked
 
 from luxonis_train.enums import TaskType
@@ -88,33 +87,12 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 raise ValueError(
                     "Either `dataset_dir` or `dataset_name` must be provided."
                 )
-            # Check distributed setup
-            if not dist.is_available() or not dist.is_initialized():
-                rank = 0  # Default to rank 0 if not in distributed mode
-            else:
-                rank = dist.get_rank()
-
-            # Rank 0 initializes the dataset
-            if rank == 0:
-                self.dataset = LuxonisDataset(
-                    dataset_name=dataset_name,
-                    team_id=team_id,
-                    bucket_type=BucketType(bucket_type),
-                    bucket_storage=BucketStorage(bucket_storage),
-                )
-            # Synchronize all ranks to ensure dataset is initialized
-            if dist.is_available() and dist.is_initialized():
-                dist.barrier()
-
-            # All ranks load the dataset after rank 0 initializes it
-            if rank != 0:
-                self.dataset = LuxonisDataset(
-                    dataset_name=dataset_name,
-                    team_id=team_id,
-                    bucket_type=BucketType(bucket_type),
-                    bucket_storage=BucketStorage(bucket_storage),
-                )
-
+            self.dataset = LuxonisDataset(
+                dataset_name=dataset_name,
+                team_id=team_id,
+                bucket_type=BucketType(bucket_type),
+                bucket_storage=BucketStorage(bucket_storage),
+            )
         self.base_loader = LuxonisLoader(
             dataset=self.dataset,
             view=self.view,
