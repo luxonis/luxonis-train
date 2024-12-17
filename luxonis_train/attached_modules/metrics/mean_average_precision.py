@@ -83,5 +83,6 @@ class MeanAveragePrecision(
                     )
 
         map = metric_dict.pop("map")
-
+        map = map.to(self.device)
+        metric_dict = {k: v.to(self.device) for k, v in metric_dict.items()}
         return map, metric_dict
