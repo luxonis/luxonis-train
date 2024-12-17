@@ -3,7 +3,8 @@ from typing import Any
 import lightning.pytorch as pl
 
 # from lightning.pytorch.plugins.environments import LightningEnvironment
-# from lightning.pytorch.strategies import DDPStrategy
+from lightning.pytorch.strategies import DDPStrategy
+
 from luxonis_train.config import TrainerConfig
 
 
@@ -42,10 +43,15 @@ def create_trainer(cfg: TrainerConfig, **kwargs: Any) -> pl.Trainer:
     # START TRAINGING luxonis_trian train --config TEST_GCP.yaml
     # Manualy trained -> WORKED!!!
 
+    if cfg.strategy.lower() == "ddp":
+        strategy = DDPStrategy(find_unused_parameters=True)
+    else:
+        strategy = cfg.strategy
+
     return pl.Trainer(
         accelerator=cfg.accelerator,
         devices=cfg.devices,
-        strategy=cfg.strategy,
+        strategy=strategy,
         max_epochs=cfg.epochs,
         accumulate_grad_batches=cfg.accumulate_grad_batches,
         check_val_every_n_epoch=cfg.validation_interval,
