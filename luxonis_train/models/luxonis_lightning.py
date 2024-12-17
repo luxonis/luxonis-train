@@ -746,25 +746,25 @@ class LuxonisLightningModule(pl.LightningModule):
         )
         return outputs
 
-    def on_train_epoch_end(self) -> None:
-        """Performs train epoch end operations."""
-        # epoch_train_losses = self._average_losses(self.training_step_outputs)
-        for module in self.modules():
-            if isinstance(module, (BaseNode, BaseLoss)):
-                module._epoch = self.current_epoch
+    # def on_train_epoch_end(self) -> None:
+    #     """Performs train epoch end operations."""
+    #     # epoch_train_losses = self._average_losses(self.training_step_outputs)
+    #     for module in self.modules():
+    #         if isinstance(module, (BaseNode, BaseLoss)):
+    #             module._epoch = self.current_epoch
 
-        # for key, value in epoch_train_losses.items():
-        #     self.log(f"train/{key}", value, sync_dist=True)
+    #     # for key, value in epoch_train_losses.items():
+    #     #     self.log(f"train/{key}", value, sync_dist=True)
 
-        self.training_step_outputs.clear()
+    #     self.training_step_outputs.clear()
 
-    def on_validation_epoch_end(self) -> None:
-        """Performs validation epoch end operations."""
-        return self._evaluation_epoch_end("val")
+    # def on_validation_epoch_end(self) -> None:
+    #     """Performs validation epoch end operations."""
+    #     return self._evaluation_epoch_end("val")
 
-    def on_test_epoch_end(self) -> None:
-        """Performs test epoch end operations."""
-        return self._evaluation_epoch_end("test")
+    # def on_test_epoch_end(self) -> None:
+    #     """Performs test epoch end operations."""
+    #     return self._evaluation_epoch_end("test")
 
     def get_status(self) -> tuple[int, int]:
         """Returns current epoch and number of all epochs."""
