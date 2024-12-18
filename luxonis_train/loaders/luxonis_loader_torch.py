@@ -89,32 +89,45 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                     "Either `dataset_dir` or `dataset_name` must be provided."
                 )
 
-            rank = dist.get_rank()
+        rank = dist.get_rank()
 
-            if rank == 0:
-                logger.info(f"Rank {rank} is creating the dataset")
-                self.dataset = LuxonisDataset(
-                    dataset_name=dataset_name,
-                    team_id=team_id,
-                    bucket_type=BucketType(bucket_type),
-                    bucket_storage=BucketStorage(bucket_storage),
-                )
-                logger.info(f"Rank {rank} finished creating the dataset")
-                # Signal other ranks that dataset creation is complete
-                dist.barrier()
-            else:
-                logger.info(
-                    f"Rank {rank} is waiting for rank 0 to create the dataset"
-                )
-                # Wait for rank 0 to finish
-                dist.barrier()
-                logger.info(f"Rank {rank} is loading the created dataset")
-                self.dataset = LuxonisDataset(
-                    dataset_name=dataset_name,
-                    team_id=team_id,
-                    bucket_type=BucketType(bucket_type),
-                    bucket_storage=BucketStorage(bucket_storage),
-                )
+        if rank == 0:
+            logger.info(f"Rank {rank} is creating the dataset")
+            self.dataset = LuxonisDataset(
+                dataset_name=dataset_name,
+                team_id=team_id,
+                bucket_type=BucketType(bucket_type),
+                bucket_storage=BucketStorage(bucket_storage),
+            )
+            logger.info(f"Rank {rank} finished creating the dataset")
+            # Signal other ranks that dataset creation is complete
+            dist.barrier()  # First barrier: ensures rank 1 doesn't proceed before rank 0 finishes
+            logger.info(
+                f"Rank {rank} is waiting for all ranks to complete dataset loading"
+            )
+        else:
+            logger.info(
+                f"Rank {rank} is waiting for rank 0 to create the dataset"
+            )
+            # Wait for rank 0 to finish creating the dataset
+            dist.barrier()  # First barrier: ensures rank 1 waits for rank 0
+            logger.info(f"Rank {rank} is loading the created dataset")
+            self.dataset = LuxonisDataset(
+                dataset_name=dataset_name,
+                team_id=team_id,
+                bucket_type=BucketType(bucket_type),
+                bucket_storage=BucketStorage(bucket_storage),
+            )
+            logger.info(f"Rank {rank} finished loading the dataset")
+            # Signal rank 0 that this rank is done
+            dist.barrier()  # Second barrier: ensures rank 0 waits for rank 1
+
+        if rank == 0:
+            # Second barrier: ensures rank 0 does not proceed until all ranks are ready
+            dist.barrier()
+            logger.info(
+                f"Rank {rank} is proceeding after all ranks completed dataset loading"
+            )
 
         self.base_loader = LuxonisLoader(
             dataset=self.dataset,
