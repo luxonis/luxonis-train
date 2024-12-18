@@ -77,23 +77,7 @@ def train(
     opts: OptsType = None,
 ):
     """Start training."""
-    from luxonis_ml.data.datasets import LuxonisDataset
-    from luxonis_ml.data.loaders import LuxonisLoader
-    from luxonis_ml.data.utils.enums import BucketStorage
-
     from luxonis_train.core import LuxonisModel
-
-    bucket_storage = BucketStorage.GCS
-    dataset = LuxonisDataset(
-        "_26662c4_COCO_splits_det",
-        bucket_storage=bucket_storage,
-        delete_existing=False,
-        delete_remote=False,
-    )
-    loader = LuxonisLoader(dataset, view="val")
-    for _image, ann in loader:
-        _box = ann["boundingbox"][0]
-        break
 
     LuxonisModel(config, opts).train(resume_weights=resume)
 
@@ -307,6 +291,24 @@ def common(
 ):
     if source:
         exec(source.read_text(), globals(), globals())
+
+    # Load the dataset here
+    from luxonis_ml.data.datasets import LuxonisDataset
+    from luxonis_ml.data.loaders import LuxonisLoader
+    from luxonis_ml.data.utils.enums import BucketStorage
+
+    bucket_storage = BucketStorage.GCS
+    dataset = LuxonisDataset(
+        "_26662c4_COCO_splits_det",
+        bucket_storage=bucket_storage,
+        delete_existing=False,
+        delete_remote=False,
+    )
+    loader = LuxonisLoader(dataset, view="val")
+    for _image, ann in loader:
+        _box = ann["boundingbox"][0]
+        print(_box)
+        break
 
 
 if __name__ == "__main__":
