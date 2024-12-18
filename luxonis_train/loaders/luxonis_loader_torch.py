@@ -2,6 +2,7 @@ import logging
 from typing import Literal
 
 import numpy as np
+import torch.distributed as dist
 from luxonis_ml.data import (
     Augmentations,
     BucketStorage,
@@ -87,6 +88,10 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 raise ValueError(
                     "Either `dataset_dir` or `dataset_name` must be provided."
                 )
+            if dist.is_initialized():
+                rank = dist.get_rank()
+                logger.info(f"Rank {rank} is loading dataset {dataset_name}")
+
             self.dataset = LuxonisDataset(
                 dataset_name=dataset_name,
                 team_id=team_id,
