@@ -294,10 +294,18 @@ def common(
     from pathlib import Path
 
     import requests
+    import torch.distributed as dist  # For rank checking in distributed environments
     from tqdm import tqdm
 
     if source:
         exec(source.read_text(), globals(), globals())
+
+    def is_rank_0():
+        """Check if the current process is rank 0 in a distributed
+        environment."""
+        if dist.is_available() and dist.is_initialized():
+            return dist.get_rank() == 0
+        return True  # If not distributed, assume single-node, single-process (rank 0)
 
     # Paths for COCO dataset download and extraction
     coco_base_url = "http://images.cocodataset.org"
@@ -332,134 +340,141 @@ def common(
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(extract_to)
 
-    # Download and extract COCO train images and annotations
-    download_dir.mkdir(exist_ok=True)
-    train_images_zip = download_dir / "train2017.zip"
-    annotations_zip = download_dir / "annotations_trainval2017.zip"
+    # Only rank 0 downloads and extracts the dataset
+    if is_rank_0():
+        download_dir.mkdir(exist_ok=True)
+        train_images_zip = download_dir / "train2017.zip"
+        annotations_zip = download_dir / "annotations_trainval2017.zip"
 
-    if not train_images_dir.exists():
-        if not train_images_zip.exists():
-            download_file(coco_train_images_url, train_images_zip)
-        extract_zip(train_images_zip, download_dir)
+        if not train_images_dir.exists():
+            if not train_images_zip.exists():
+                download_file(coco_train_images_url, train_images_zip)
+            extract_zip(train_images_zip, download_dir)
 
-    if not annotations_dir.exists():
-        if not annotations_zip.exists():
-            download_file(coco_train_annotations_url, annotations_zip)
-        extract_zip(annotations_zip, download_dir)
+        if not annotations_dir.exists():
+            if not annotations_zip.exists():
+                download_file(coco_train_annotations_url, annotations_zip)
+            extract_zip(annotations_zip, download_dir)
 
-    # Load the dataset
-    import glob
-    import json
+        # Load the dataset
+        import glob
+        import json
 
-    import cv2
-    import numpy as np
-    from luxonis_ml.data.datasets import LuxonisDataset
-    from luxonis_ml.data.utils.enums import BucketStorage
+        import cv2
+        import numpy as np
+        from luxonis_ml.data.datasets import LuxonisDataset
+        from luxonis_ml.data.utils.enums import BucketStorage
 
-    # Global lists for tracking yielded images
-    yielded_train_images = []
+        # Global lists for tracking yielded images
+        yielded_train_images = []
 
-    def COCO_generator():
-        # Define the datasets for train
-        datasets = [
-            {
-                "annot_file": str(
-                    annotations_dir / "instances_train2017.json"
-                ),
-                "img_dir": str(train_images_dir),
-                "split": "train",
-            },
-        ]
+        def COCO_generator():
+            # Define the datasets for train
+            datasets = [
+                {
+                    "annot_file": str(
+                        annotations_dir / "instances_train2017.json"
+                    ),
+                    "img_dir": str(train_images_dir),
+                    "split": "train",
+                },
+            ]
 
-        for dataset in datasets:
-            annot_file = dataset["annot_file"]
-            img_dir = dataset["img_dir"]
-            split = dataset["split"]
+            for dataset in datasets:
+                annot_file = dataset["annot_file"]
+                img_dir = dataset["img_dir"]
+                split = dataset["split"]
 
-            # Get paths to images sorted by number
-            im_paths = glob.glob(os.path.join(img_dir, "*.jpg"))
-            nums = np.array(
-                [
-                    int(os.path.splitext(os.path.basename(path))[0])
-                    for path in im_paths
-                ]
-            )
-            idxs = np.argsort(nums)
-            im_paths = list(np.array(im_paths)[idxs])
+                # Get paths to images sorted by number
+                im_paths = glob.glob(os.path.join(img_dir, "*.jpg"))
+                nums = np.array(
+                    [
+                        int(os.path.splitext(os.path.basename(path))[0])
+                        for path in im_paths
+                    ]
+                )
+                idxs = np.argsort(nums)
+                im_paths = list(np.array(im_paths)[idxs])
 
-            # Load annotations
-            with open(annot_file) as file:
-                data = json.load(file)
-            imgs = data["images"]
-            anns = data["annotations"]
-            cats = data["categories"]
+                # Load annotations
+                with open(annot_file) as file:
+                    data = json.load(file)
+                imgs = data["images"]
+                anns = data["annotations"]
+                cats = data["categories"]
 
-            # Create dictionaries for quick lookups
-            img_dict = {img["file_name"]: img for img in imgs}
-            ann_dict = {}
-            for ann in anns:
-                img_id = ann["image_id"]
-                if img_id not in ann_dict:
-                    ann_dict[img_id] = []
-                ann_dict[img_id].append(ann)
+                # Create dictionaries for quick lookups
+                img_dict = {img["file_name"]: img for img in imgs}
+                ann_dict = {}
+                for ann in anns:
+                    img_id = ann["image_id"]
+                    if img_id not in ann_dict:
+                        ann_dict[img_id] = []
+                    ann_dict[img_id].append(ann)
 
-            # Process each image and its annotations
-            for path in tqdm(im_paths):
-                gran = os.path.basename(path)
-                img = img_dict.get(gran, None)
-                if img is None:
-                    continue
-                img_id = img["id"]
-                img_anns = ann_dict.get(img_id, [])
+                # Process each image and its annotations
+                for path in tqdm(im_paths):
+                    gran = os.path.basename(path)
+                    img = img_dict.get(gran, None)
+                    if img is None:
+                        continue
+                    img_id = img["id"]
+                    img_anns = ann_dict.get(img_id, [])
 
-                if not img_anns:
-                    continue
-
-                im = cv2.imread(path)
-                if im is None:
-                    continue
-
-                height, width, _ = im.shape
-
-                for _, ann in enumerate(img_anns):
-                    if ann.get("iscrowd", True):
+                    if not img_anns:
                         continue
 
-                    cls = [
-                        cat for cat in cats if cat["id"] == ann["category_id"]
-                    ][0]["name"]
+                    im = cv2.imread(path)
+                    if im is None:
+                        continue
 
-                    x, y, w, h = ann["bbox"]
+                    height, width, _ = im.shape
 
-                    if split == "train":
-                        if path not in yielded_train_images:
-                            yielded_train_images.append(path)
+                    for _, ann in enumerate(img_anns):
+                        if ann.get("iscrowd", True):
+                            continue
 
-                    yield {
-                        "file": path,
-                        "annotation": {
-                            "type": "boundingbox",
-                            "class": cls,
-                            "x": x / width,
-                            "y": y / height,
-                            "w": w / width,
-                            "h": h / height,
-                        },
-                    }
+                        cls = [
+                            cat
+                            for cat in cats
+                            if cat["id"] == ann["category_id"]
+                        ][0]["name"]
 
-    dataset_name = "coco_local_train"
-    bucket_storage = BucketStorage.LOCAL
-    dataset = LuxonisDataset(
-        dataset_name,
-        bucket_storage=bucket_storage,
-        delete_existing=True,
-        delete_remote=True,
-    )
-    definitions = {
-        "train": yielded_train_images,
-    }
-    dataset.add(COCO_generator(), batch_size=100_000_000)
-    dataset.make_splits(definitions=definitions)
+                        x, y, w, h = ann["bbox"]
+
+                        if split == "train":
+                            if path not in yielded_train_images:
+                                yielded_train_images.append(path)
+
+                        yield {
+                            "file": path,
+                            "annotation": {
+                                "type": "boundingbox",
+                                "class": cls,
+                                "x": x / width,
+                                "y": y / height,
+                                "w": w / width,
+                                "h": h / height,
+                            },
+                        }
+
+        dataset_name = "coco_local_train"
+        bucket_storage = BucketStorage.LOCAL
+        dataset = LuxonisDataset(
+            dataset_name,
+            bucket_storage=bucket_storage,
+            delete_existing=True,
+            delete_remote=True,
+        )
+        definitions = {
+            "train": yielded_train_images,
+        }
+        dataset.add(COCO_generator(), batch_size=100_000_000)
+        dataset.make_splits(definitions=definitions)
+
+    # Synchronize across all ranks after dataset preparation
+    if dist.is_available() and dist.is_initialized():
+        dist.barrier()
 
 
 if __name__ == "__main__":
