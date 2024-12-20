@@ -24,5 +24,7 @@ def create_trainer(cfg: TrainerConfig, **kwargs: Any) -> pl.Trainer:
         num_sanity_val_steps=cfg.n_sanity_val_steps,
         profiler=cfg.profiler,
         deterministic=cfg.deterministic,
+        gradient_clip_val=cfg.gradient_clip_val,
+        gradient_clip_algorithm=cfg.gradient_clip_algorithm,
         **kwargs,
     )
