@@ -56,9 +56,9 @@ class AdaptiveDetectionLoss(
         @type reduction: Literal["sum", "mean"]
         @param reduction: Reduction type for loss.
         @type class_loss_weight: float
-        @param class_loss_weight: Weight of classification loss.
+        @param class_loss_weight: Weight of classification loss. Defaults to 1.0. For optimal results, multiply with accumulate_grad_batches.
         @type iou_loss_weight: float
-        @param iou_loss_weight: Weight of IoU loss.
+        @param iou_loss_weight: Weight of IoU loss. Defaults to 2.5. For optimal results, multiply with accumulate_grad_batches.
         """
         super().__init__(**kwargs)
 
@@ -133,6 +133,11 @@ class AdaptiveDetectionLoss(
         assigned_scores: Tensor,
         mask_positive: Tensor,
     ):
+        assigned_labels = torch.where(
+            mask_positive > 0,
+            assigned_labels,
+            torch.full_like(assigned_labels, self.n_classes),
+        )
         one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[
             ..., :-1
         ]

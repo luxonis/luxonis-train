@@ -1,4 +1,5 @@
 from .blocks import (
+    DFL,
     AttentionRefinmentBlock,
     BasicResNetBlock,
     BlockRepeater,
@@ -6,9 +7,11 @@ from .blocks import (
     ConvModule,
     CSPStackRepBlock,
     DropPath,
+    DWConvModule,
     EfficientDecoupledBlock,
     FeatureFusionBlock,
     RepVGGBlock,
+    SegProto,
     SpatialPyramidPoolingBlock,
     SqueezeExciteBlock,
     UpBlock,
@@ -32,4 +35,7 @@ __all__ = [
     "Bottleneck",
     "UpscaleOnline",
     "DropPath",
+    "SegProto",
+    "DWConvModule",
+    "DFL",
 ]

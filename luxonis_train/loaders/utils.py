@@ -50,4 +50,8 @@ def collate_fn(
                 label_box.append(l_box)
             out_labels[task] = torch.cat(label_box, 0), task_type
 
+        elif task_type == TaskType.INSTANCE_SEGMENTATION:
+            masks = [label[task][0] for label in labels]
+            out_labels[task] = torch.cat(masks, 0), task_type
+
     return out_inputs, out_labels
