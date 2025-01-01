@@ -20,4 +20,4 @@ repos:
     hooks:
       - id: mdformat
         additional_dependencies:
-          - mdformat-gfm==0.3.7
+          - mdformat-gfm==0.3.6
