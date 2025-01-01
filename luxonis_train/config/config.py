@@ -376,6 +376,8 @@ class TrainerConfig(BaseModelExtraForbid):
     smart_cfg_auto_populate: bool = True
     batch_size: PositiveInt = 32
     accumulate_grad_batches: PositiveInt = 1
+    gradient_clip_val: NonNegativeFloat | None = None
+    gradient_clip_algorithm: Literal["norm", "value"] | None = None
     use_weighted_sampler: bool = False
     epochs: PositiveInt = 100
     n_workers: Annotated[
