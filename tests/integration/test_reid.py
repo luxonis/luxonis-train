@@ -35,7 +35,7 @@ class CustomReIDLoader(BaseLoaderTorch):
 
     def __getitem__(self, _):  # pragma: no cover
         # Fake data
-        image = torch.rand(3, 256, 256, dtype=torch.float32)
+        image = torch.rand(self.input_shapes["image"], dtype=torch.float32)
         inputs = {
             "image": image,
         }
@@ -53,6 +53,24 @@ class CustomReIDLoader(BaseLoaderTorch):
 
     def get_classes(self) -> dict[TaskType, list[str]]:
         return {TaskType.LABEL: ["id"]}
+
+
+class CustomReIDLoaderNoID(CustomReIDLoader):
+    def __getitem__(self, _):
+        inputs, labels = super().__getitem__(_)
+        labels["something_else"] = labels["id"]
+        del labels["id"]
+
+        return inputs, labels
+
+
+class CustomReIDLoaderImageSize2(CustomReIDLoader):
+    @property
+    def input_shapes(self):
+        return {
+            "image": torch.Size([3, 200, 200]),
+            "id": torch.Size([1]),
+        }
 
 
 @pytest.fixture
@@ -128,8 +146,7 @@ def test_unsupported_class_based_losses(
     opts["model.nodes.0.params.num_classes"] = num_classes
 
     with pytest.raises(ValueError):
-        model = LuxonisModel(config_file, opts)
-        model.train()
+        LuxonisModel(config_file, opts)
 
 
 @pytest.mark.parametrize("loss_name", ["NonExistentLoss"])
@@ -138,5 +155,30 @@ def test_nonexistent_losses(opts: dict[str, Any], loss_name: str):
     opts["model.losses.0.params.loss_name"] = loss_name
 
     with pytest.raises(ValueError):
+        LuxonisModel(config_file, opts)
+
+
+def test_bad_loader(opts: dict[str, Any]):
+    config_file = "tests/configs/reid.yaml"
+    opts["loader.name"] = "CustomReIDLoaderNoID"
+
+    with pytest.raises(ValueError):
         model = LuxonisModel(config_file, opts)
         model.train()
+
+
+def test_not_enough_samples_for_metrics(opts: dict[str, Any]):
+    config_file = "tests/configs/reid.yaml"
+    opts["model.metrics.1.params.cross_batch_memory_size"] = 100
+
+    model = LuxonisModel(config_file, opts)
+    model.train()
+
+
+def test_image_size_not_divisible_by_32(opts: dict[str, Any]):
+    config_file = "tests/configs/reid.yaml"
+    opts["loader.name"] = "CustomReIDLoaderImageSize2"
+
+    # with pytest.raises(ValueError):
+    model = LuxonisModel(config_file, opts)
+    model.train()

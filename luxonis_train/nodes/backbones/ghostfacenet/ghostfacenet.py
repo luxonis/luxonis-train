@@ -111,16 +111,7 @@ class GhostFaceNetsV2(BaseNode[Tensor, list[Tensor]]):
         self.blocks = nn.Sequential(*stages)
 
         # Building pointwise convolution
-        pointwise_conv = []
-        if var.add_pointwise_conv:
-            pointwise_conv.append(
-                nn.Conv2d(input_channel, output_channel, 1, 1, 0, bias=True)
-            )
-            pointwise_conv.append(nn.BatchNorm2d(output_channel))
-            pointwise_conv.append(nn.PReLU())
-        else:
-            pointwise_conv.append(nn.Sequential())
-
+        pointwise_conv = [nn.Sequential()]
         self.pointwise_conv = nn.Sequential(*pointwise_conv)
         self.classifier = ModifiedGDC(
             image_size,

@@ -41,7 +41,7 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
         label_canvas: Tensor,
         prediction_canvas: Tensor,
         embeddings: Tensor,
-        ids: Tensor | None,
+        ids: Tensor,
         **kwargs,
     ) -> Tensor:
         """Creates a visualization of the embeddings.
@@ -73,20 +73,14 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
 
         # Plot the embeddings
         fig, ax = plt.subplots(figsize=(10, 10))
-        if ids is not None:
-            scatter = ax.scatter(
-                embeddings_2d[:, 0],
-                embeddings_2d[:, 1],
-                c=ids.detach().cpu().numpy(),
-                cmap="viridis",
-                s=5,
-            )
-        else:
-            scatter = ax.scatter(
-                embeddings_2d[:, 0],
-                embeddings_2d[:, 1],
-                s=5,
-            )
+        scatter = ax.scatter(
+            embeddings_2d[:, 0],
+            embeddings_2d[:, 1],
+            c=ids.detach().cpu().numpy(),
+            cmap="viridis",
+            s=5,
+        )
+
         fig.colorbar(scatter, ax=ax)
         ax.set_title("Embeddings Visualization")
         ax.set_xlabel("Dimension 1")
