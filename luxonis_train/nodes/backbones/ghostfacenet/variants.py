@@ -211,4 +211,4 @@ def get_variant(variant: Literal["V2"]) -> GhostFaceNetsVariant:
             "GhostFaceNets model variant should be in "
             f"{list(variants.keys())}, got {variant}."
         )
-    return variants[variant]
+    return variants[variant].model_copy()
