@@ -61,7 +61,6 @@ class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
             (self.in_height, self.in_width), (model_in_h, model_in_w)
         )
         self.scale_factor = scale_factor
-
         if (
             inter_mode == "pixel_shuffle"
             and inter_channels % (scale_factor**2) != 0
@@ -95,9 +94,23 @@ class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
             if inter_mode == "pixel_shuffle"
             else nn.Upsample(scale_factor=scale_factor, mode=inter_mode)
         )
+
         if download_weights:
-            weights_path = "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/ddrnet_head_coco.ckpt"
-            self.load_checkpoint(weights_path, strict=False)
+            weights_path = self.get_variant_weights()
+            if weights_path:
+                self.load_checkpoint(path=weights_path, strict=False)
+            else:
+                logger.warning(
+                    f"No checkpoint available for {self.name}, skipping."
+                )
+
+    def get_variant_weights(self) -> str | None:
+        if self.in_channels == 128:  # light predefined model
+            return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/ddrnet_head_23slim_coco.ckpt"
+        elif self.in_channels == 256:  # heavy predefined model
+            return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/ddrnet_head_23_coco.ckpt"
+        else:
+            return None
 
     def forward(self, inputs: Tensor) -> Tensor:
         x: Tensor = self.relu(self.bn1(inputs))
