@@ -738,9 +738,9 @@ class LuxonisModel:
             "scale": _mult(
                 self.cfg.trainer.preprocessing.normalize.params["std"]
             ),
-            "reverse_channels": self.cfg.trainer.preprocessing.train_rgb,
-            "interleaved_to_planar": False,  # TODO: make it modifiable?
-            "dai_type": "RGB888p",
+            "dai_type": "RGB888p"
+            if self.cfg.trainer.preprocessing.train_rgb
+            else "BGR888p",
         }
 
         inputs_dict = get_inputs(path)
