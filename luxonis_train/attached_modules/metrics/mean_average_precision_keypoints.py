@@ -254,17 +254,36 @@ class MeanAveragePrecisionKeypoints(
             self.coco_eval.summarize()
             stats = self.coco_eval.stats
 
-        kpt_map = torch.tensor([stats[0]], dtype=torch.float32)
+        device = self.pred_keypoints[0].device
+        kpt_map = torch.tensor([stats[0]], dtype=torch.float32, device=device)
         return kpt_map, {
-            "kpt_map_50": torch.tensor([stats[1]], dtype=torch.float32),
-            "kpt_map_75": torch.tensor([stats[2]], dtype=torch.float32),
-            "kpt_map_medium": torch.tensor([stats[3]], dtype=torch.float32),
-            "kpt_map_large": torch.tensor([stats[4]], dtype=torch.float32),
-            "kpt_mar": torch.tensor([stats[5]], dtype=torch.float32),
-            "kpt_mar_50": torch.tensor([stats[6]], dtype=torch.float32),
-            "kpt_mar_75": torch.tensor([stats[7]], dtype=torch.float32),
-            "kpt_mar_medium": torch.tensor([stats[8]], dtype=torch.float32),
-            "kpt_mar_large": torch.tensor([stats[9]], dtype=torch.float32),
+            "kpt_map_50": torch.tensor(
+                [stats[1]], dtype=torch.float32, device=device
+            ),
+            "kpt_map_75": torch.tensor(
+                [stats[2]], dtype=torch.float32, device=device
+            ),
+            "kpt_map_medium": torch.tensor(
+                [stats[3]], dtype=torch.float32, device=device
+            ),
+            "kpt_map_large": torch.tensor(
+                [stats[4]], dtype=torch.float32, device=device
+            ),
+            "kpt_mar": torch.tensor(
+                [stats[5]], dtype=torch.float32, device=device
+            ),
+            "kpt_mar_50": torch.tensor(
+                [stats[6]], dtype=torch.float32, device=device
+            ),
+            "kpt_mar_75": torch.tensor(
+                [stats[7]], dtype=torch.float32, device=device
+            ),
+            "kpt_mar_medium": torch.tensor(
+                [stats[8]], dtype=torch.float32, device=device
+            ),
+            "kpt_mar_large": torch.tensor(
+                [stats[9]], dtype=torch.float32, device=device
+            ),
         }
 
     def _get_coco_format(
