@@ -29,6 +29,8 @@
                         57.12,
                         57.375
                     ],
+                    "reverse_channels": null,
+                    "interleaved_to_planar": null,
                     "dai_type": "RGB888p"
                 }
             }
