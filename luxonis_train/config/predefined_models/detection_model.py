@@ -1,4 +1,4 @@
-from typing import Literal, Optional, TypeAlias
+from typing import Literal, TypeAlias
 
 from pydantic import BaseModel
 
@@ -67,7 +67,7 @@ class DetectionModel(BasePredefinedModel):
         visualizer_params: Params | None = None,
         task_name: str | None = None,
         enable_confusion_matrix: bool = True,
-        confusion_matrix_params: Optional[Params] = None,
+        confusion_matrix_params: Params | None = None,
     ):
         var_config = get_variant(variant)
 

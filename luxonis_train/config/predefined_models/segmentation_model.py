@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -58,7 +58,7 @@ class SegmentationModel(BasePredefinedModel):
         task: Literal["binary", "multiclass"] = "binary",
         task_name: str | None = None,
         enable_confusion_matrix: bool = True,
-        confusion_matrix_params: Optional[Params] = None,
+        confusion_matrix_params: Params | None = None,
     ):
         var_config = get_variant(variant)
 
