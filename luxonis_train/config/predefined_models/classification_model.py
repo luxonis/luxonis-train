@@ -1,4 +1,4 @@
-from typing import Literal, TypeAlias
+from typing import Literal, Optional, TypeAlias
 
 from pydantic import BaseModel
 
@@ -53,6 +53,8 @@ class ClassificationModel(BasePredefinedModel):
         visualizer_params: Params | None = None,
         task: Literal["multiclass", "multilabel"] = "multiclass",
         task_name: str | None = None,
+        enable_confusion_matrix: bool = True,
+        confusion_matrix_params: Optional[Params] = None,
     ):
         var_config = get_variant(variant)
 
@@ -67,6 +69,8 @@ class ClassificationModel(BasePredefinedModel):
         self.visualizer_params = visualizer_params or {}
         self.task = task
         self.task_name = task_name or "classification"
+        self.enable_confusion_matrix = enable_confusion_matrix
+        self.confusion_matrix_params = confusion_matrix_params or {}
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
@@ -104,7 +108,7 @@ class ClassificationModel(BasePredefinedModel):
     @property
     def metrics(self) -> list[MetricModuleConfig]:
         """Defines the metrics used for evaluation."""
-        return [
+        metrics = [
             MetricModuleConfig(
                 name="F1Score",
                 alias=f"F1Score-{self.task_name}",
@@ -125,6 +129,16 @@ class ClassificationModel(BasePredefinedModel):
                 params={"task": self.task},
             ),
         ]
+        if self.enable_confusion_matrix:
+            metrics.append(
+                MetricModuleConfig(
+                    name="ConfusionMatrix",
+                    alias=f"ConfusionMatrix-{self.task_name}",
+                    attached_to=f"ClassificationHead-{self.task_name}",
+                    params={**self.confusion_matrix_params},
+                )
+            )
+        return metrics
 
     @property
     def visualizers(self) -> list[AttachedModuleConfig]:
