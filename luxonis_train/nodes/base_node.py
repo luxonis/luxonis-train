@@ -109,7 +109,7 @@ class BaseNode(
     """
 
     attach_index: AttachIndexType
-    tasks: list[TaskType] | dict[TaskType, str] | None = None
+    task_types: list[TaskType] | None = None
 
     def __init__(
         self,
@@ -123,7 +123,7 @@ class BaseNode(
         remove_on_export: bool = False,
         export_output_names: list[str] | None = None,
         attach_index: AttachIndexType | None = None,
-        _tasks: dict[TaskType, str] | None = None,
+        task_name: str | None = None,
     ):
         """Constructor for the C{BaseNode}.
 
@@ -168,11 +168,16 @@ class BaseNode(
                 "Make sure this is intended."
             )
             self.attach_index = attach_index
-        self._tasks = None
-        if _tasks is not None:
-            self._tasks = _tasks
-        elif self.tasks is not None:
-            self._tasks = self._process_tasks(self.tasks)
+
+        self.task_name = task_name
+        if task_name is None and dataset_metadata is not None:
+            if len(dataset_metadata.task_names) == 1:
+                self.task_name = next(iter(dataset_metadata.task_names))
+            else:
+                raise ValueError(
+                    f"Dataset contain multiple tasks, but the `task_name` "
+                    f"argument for node '{self.name}' was not provided."
+                )
 
         if getattr(self, "attach_index", None) is None:
             parameters = inspect.signature(self.forward).parameters
@@ -200,15 +205,6 @@ class BaseNode(
 
         self._check_type_overrides()
 
-    @staticmethod
-    def _process_tasks(
-        tasks: dict[TaskType, str] | list[TaskType],
-    ) -> dict[TaskType, str]:
-        if isinstance(tasks, dict):
-            return tasks
-        else:
-            return {task: task.value for task in tasks}
-
     def _check_type_overrides(self) -> None:
         properties = []
         for name, value in inspect.getmembers(self.__class__):
@@ -228,67 +224,28 @@ class BaseNode(
                             "not compatible with its predecessor."
                         ) from e
 
-    def get_task_name(self, task: TaskType) -> str:
-        """Gets the name of a task for a particular C{TaskType}.
-
-        @type task: TaskType
-        @param task: Task to get the name for.
-        @rtype: str
-        @return: Name of the task.
-        @raises RuntimeError: If the node does not define any tasks.
-        @raises ValueError: If the task is not supported by the node.
-        """
-        if not self._tasks:
-            raise RuntimeError(f"Node '{self.name}' does not define any task.")
-
-        if task not in self._tasks:
-            raise ValueError(
-                f"Node '{self.name}' does not support the '{task.value}' task."
-            )
-        return self._tasks[task]
-
     @property
     def name(self) -> str:
         return self.__class__.__name__
 
     @property
-    def task(self) -> str:
-        """Getter for the task.
+    def task_type(self) -> str:
+        """Getter for the task type.
 
         @type: str
         @raises RuntimeError: If the node doesn't define any task.
         @raises ValueError: If the node defines more than one task. In
             that case, use the L{get_task_name} method instead.
         """
-        if not self._tasks:
+        if not self.task_types:
             raise RuntimeError(f"{self.name} does not define any task.")
 
-        if len(self._tasks) > 1:
+        if len(self.task_types) > 1:
             raise ValueError(
                 f"Node {self.name} has multiple tasks defined. "
                 "Use the `get_task_name` method instead."
             )
-        return next(iter(self._tasks.values()))
-
-    def get_n_classes(self, task: TaskType) -> int:
-        """Gets the number of classes for a particular task.
-
-        @type task: TaskType
-        @param task: Task to get the number of classes for.
-        @rtype: int
-        @return: Number of classes for the task.
-        """
-        return self.dataset_metadata.n_classes(self.get_task_name(task))
-
-    def get_class_names(self, task: TaskType) -> list[str]:
-        """Gets the class names for a particular task.
-
-        @type task: TaskType
-        @param task: Task to get the class names for.
-        @rtype: list[str]
-        @return: Class names for the task.
-        """
-        return self.dataset_metadata.classes(self.get_task_name(task))
+        return self.task_types[0].value
 
     @property
     def n_keypoints(self) -> int:
@@ -301,12 +258,10 @@ class BaseNode(
         if self._n_keypoints is not None:
             return self._n_keypoints
 
-        if self._tasks:
-            if TaskType.KEYPOINTS not in self._tasks:
+        if self.task_types:
+            if TaskType.KEYPOINTS not in self.task_types:
                 raise ValueError(f"{self.name} does not support keypoints.")
-            return self.dataset_metadata.n_keypoints(
-                self.get_task_name(TaskType.KEYPOINTS)
-            )
+            return self.dataset_metadata.n_keypoints(self.task_name)
 
         raise RuntimeError(
             f"{self.name} does not have any tasks defined, "
@@ -329,7 +284,7 @@ class BaseNode(
         if self._n_classes is not None:
             return self._n_classes
 
-        if not self._tasks:
+        if not self.task_types:
             raise RuntimeError(
                 f"{self.name} does not have any tasks defined, "
                 "`BaseNode.n_classes` property cannot be used. "
@@ -337,12 +292,12 @@ class BaseNode(
                 "pass the `n_classes` attribute to the constructor or call "
                 "the `BaseNode.dataset_metadata.n_classes` method manually."
             )
-        elif len(self._tasks) == 1:
-            return self.dataset_metadata.n_classes(self.task)
+        elif len(self.task_types) == 1:
+            return self.dataset_metadata.n_classes(self.task_name)
         else:
             n_classes = [
-                self.dataset_metadata.n_classes(self.get_task_name(task))
-                for task in self._tasks
+                self.dataset_metadata.n_classes(self.task_name)
+                for task in self.task_types
             ]
             if len(set(n_classes)) == 1:
                 return n_classes[0]
@@ -362,7 +317,7 @@ class BaseNode(
             different tasks. In that case, use the L{get_class_names}
             method.
         """
-        if not self._tasks:
+        if not self.task_types:
             raise RuntimeError(
                 f"{self.name} does not have any tasks defined, "
                 "`BaseNode.class_names` property cannot be used. "
@@ -370,12 +325,12 @@ class BaseNode(
                 "pass the `n_classes` attribute to the constructor or call "
                 "the `BaseNode.dataset_metadata.class_names` method manually."
             )
-        elif len(self._tasks) == 1:
-            return self.dataset_metadata.classes(self.task)
+        elif len(self.task_types) == 1:
+            return self.dataset_metadata.classes(self.task_name)
         else:
             class_names = [
-                self.dataset_metadata.classes(self.get_task_name(task))
-                for task in self._tasks
+                self.dataset_metadata.classes(self.task_name)
+                for task in self.task_types
             ]
             if all(set(names) == set(class_names[0]) for names in class_names):
                 return class_names[0]
@@ -633,7 +588,7 @@ class BaseNode(
                 "Default `wrap` expects a single tensor or a list of tensors."
             )
         try:
-            task = self.task
+            task = f"{self.task_name}/{self.task_type}"
         except RuntimeError:
             task = "features"
         return {task: outputs}
@@ -654,11 +609,12 @@ class BaseNode(
         unwrapped = self.unwrap(inputs)
         outputs = self(unwrapped)
         wrapped = self.wrap(outputs)
-        str_tasks = [task.value for task in self._tasks] if self._tasks else []
+        str_tasks = [task.value for task in self.task_types or []]
         for key in list(wrapped.keys()):
             if key in str_tasks:
+                assert self.task_name is not None
                 value = wrapped.pop(key)
-                wrapped[self.get_task_name(TaskType(key))] = value
+                wrapped[f"{self.task_name}/{key}"] = value
         return wrapped
 
     T = TypeVar("T", Tensor, Size)

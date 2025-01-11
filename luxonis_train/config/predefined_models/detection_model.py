@@ -80,7 +80,7 @@ class DetectionModel(BasePredefinedModel):
         self.head_params = head_params or var_config.head_params
         self.loss_params = loss_params or {"n_warmup_epochs": 0}
         self.visualizer_params = visualizer_params or {}
-        self.task_name = task_name or "boundingbox"
+        self.task_name = task_name
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
@@ -114,7 +114,7 @@ class DetectionModel(BasePredefinedModel):
                 if self.use_neck
                 else [f"{self.backbone}-{self.task_name}"],
                 params=self.head_params,
-                task=self.task_name,
+                task_name=self.task_name,
             )
         )
         return nodes

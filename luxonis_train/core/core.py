@@ -13,7 +13,6 @@ import torch
 import torch.utils.data as torch_data
 import yaml
 from lightning.pytorch.utilities import rank_zero_only
-from luxonis_ml.data import Augmentations
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.utils import LuxonisFileSystem, reset_logging, setup_logging
@@ -113,26 +112,6 @@ class LuxonisModel:
             precision=self.cfg.trainer.precision,
         )
 
-        self.train_augmentations = Augmentations(
-            image_size=self.cfg.trainer.preprocessing.train_image_size,
-            augmentations=[
-                i.model_dump()
-                for i in self.cfg.trainer.preprocessing.get_active_augmentations()
-            ],
-            train_rgb=self.cfg.trainer.preprocessing.train_rgb,
-            keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
-        )
-        self.val_augmentations = Augmentations(
-            image_size=self.cfg.trainer.preprocessing.train_image_size,
-            augmentations=[
-                i.model_dump()
-                for i in self.cfg.trainer.preprocessing.get_active_augmentations()
-            ],
-            train_rgb=self.cfg.trainer.preprocessing.train_rgb,
-            keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
-            only_normalize=True,
-        )
-
         self.loaders: dict[str, BaseLoaderTorch] = {}
         for view in ["train", "val", "test"]:
             loader_name = self.cfg.loader.name
@@ -141,17 +120,20 @@ class LuxonisModel:
                 self.cfg.loader.params["delete_existing"] = False
 
             self.loaders[view] = Loader(
-                augmentations=(
-                    self.train_augmentations
-                    if view == "train"
-                    else self.val_augmentations
-                ),
                 view={
                     "train": self.cfg.loader.train_view,
                     "val": self.cfg.loader.val_view,
                     "test": self.cfg.loader.test_view,
                 }[view],
                 image_source=self.cfg.loader.image_source,
+                height=self.cfg.trainer.preprocessing.train_image_size.height,
+                width=self.cfg.trainer.preprocessing.train_image_size.width,
+                augmentation_config=[
+                    i.model_dump()
+                    for i in self.cfg.trainer.preprocessing.get_active_augmentations()
+                ],
+                out_image_format=self.cfg.trainer.preprocessing.color_format,
+                keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
                 **self.cfg.loader.params,
             )
 
@@ -739,7 +721,7 @@ class LuxonisModel:
                 self.cfg.trainer.preprocessing.normalize.params["std"]
             ),
             "dai_type": "RGB888p"
-            if self.cfg.trainer.preprocessing.train_rgb
+            if self.cfg.trainer.preprocessing.out_image_format
             else "BGR888p",
         }
 

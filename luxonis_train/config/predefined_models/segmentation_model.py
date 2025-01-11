@@ -71,7 +71,7 @@ class SegmentationModel(BasePredefinedModel):
         self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
         self.task = task
-        self.task_name = task_name or "segmentation"
+        self.task_name = task_name
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
@@ -85,6 +85,7 @@ class SegmentationModel(BasePredefinedModel):
                 alias=f"{self.backbone}-{self.task_name}",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
+                task_name=self.task_name,
             ),
             ModelNodeConfig(
                 name="DDRNetSegmentationHead",
@@ -92,7 +93,7 @@ class SegmentationModel(BasePredefinedModel):
                 inputs=[f"{self.backbone}-{self.task_name}"],
                 freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
-                task=self.task_name,
+                task_name=self.task_name,
             ),
         ]
         if self.backbone_params.get("use_aux_heads", True):
@@ -103,7 +104,7 @@ class SegmentationModel(BasePredefinedModel):
                     inputs=[f"{self.backbone}-{self.task_name}"],
                     freezing=self.aux_head_params.pop("freezing", {}),
                     params=self.aux_head_params,
-                    task=self.task_name,
+                    task_name=self.task_name,
                     remove_on_export=self.aux_head_params.pop(
                         "remove_on_export", True
                     ),

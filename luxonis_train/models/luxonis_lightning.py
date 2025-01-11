@@ -181,32 +181,17 @@ class LuxonisLightningModule(pl.LightningModule):
                     )
                 frozen_nodes.append((node_name, unfreeze_after))
 
-            if node_cfg.task is not None:
-                if Node.tasks is None:
-                    raise ValueError(
-                        f"Cannot define tasks for node {node_name}."
-                        "This node doesn't specify any tasks."
-                    )
-                if isinstance(node_cfg.task, str):
-                    assert Node.tasks
-                    if len(Node.tasks) > 1:
-                        raise ValueError(
-                            f"Node {node_name} specifies multiple tasks, "
-                            "but only one task is specified in the config. "
-                            "Specify the tasks as a dictionary instead."
-                        )
+            if node_cfg.task_name is not None and Node.task_types is None:
+                raise ValueError(
+                    f"Cannot define tasks for node {node_name}."
+                    "This node doesn't specify any tasks."
+                )
 
-                    node_cfg.task = {next(iter(Node.tasks)): node_cfg.task}
-                else:
-                    node_cfg.task = {
-                        **Node._process_tasks(Node.tasks),
-                        **node_cfg.task,
-                    }
             nodes[node_name] = (
                 Node,
                 {
                     **node_cfg.params,
-                    "_tasks": node_cfg.task,
+                    "task_name": node_cfg.task_name,
                     "remove_on_export": node_cfg.remove_on_export,
                 },
             )
@@ -1000,7 +985,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 loader = self._core.loaders["train"]
                 dataset = getattr(loader, "dataset", None)
                 if isinstance(dataset, LuxonisDataset):
-                    n_classes = len(dataset.get_classes()[1][node.task])
+                    n_classes = len(dataset.get_classes()[1][node.task_name])
                     if n_classes == 1:
                         cfg.params["task"] = "binary"
                     else:

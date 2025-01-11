@@ -1,9 +1,9 @@
 import logging
-from typing import Literal
+from pathlib import Path
+from typing import Any, Literal
 
 import numpy as np
 from luxonis_ml.data import (
-    Augmentations,
     BucketStorage,
     BucketType,
     LuxonisDataset,
@@ -13,8 +13,6 @@ from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.enums import DatasetType
 from torch import Size, Tensor
 from typeguard import typechecked
-
-from luxonis_train.enums import TaskType
 
 from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput
 
@@ -31,10 +29,15 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         team_id: str | None = None,
         bucket_type: Literal["internal", "external"] = "internal",
         bucket_storage: Literal["local", "s3", "gcs", "azure"] = "local",
-        stream: bool = False,
         delete_existing: bool = True,
         view: str | list[str] = "train",
-        augmentations: Augmentations | None = None,
+        augmentation_engine: str
+        | Literal["albumentations"] = "albumentations",
+        augmentation_config: Path | str | list[dict[str, Any]] | None = None,
+        height: int | None = None,
+        width: int | None = None,
+        keep_aspect_ratio: bool = True,
+        out_image_format: Literal["RGB", "BGR"] = "RGB",
         **kwargs,
     ):
         """Torch-compatible loader for Luxonis datasets.
@@ -61,8 +64,6 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             Defaults to 'internal'.
         @type bucket_storage: Literal["local", "s3", "gcs", "azure"]
         @param bucket_storage: Type of the bucket storage. Defaults to 'local'.
-        @type stream: bool
-        @param stream: Flag for data streaming. Defaults to C{False}.
         @type delete_existing: bool
         @param delete_existing: Only relevant when C{dataset_dir} is provided. By
             default, the dataset is parsed again every time the loader is created
@@ -74,10 +75,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             view of the dataset. Each split is a string that represents a subset of the
             dataset. The available splits depend on the dataset, but usually include
             'train', 'val', and 'test'. Defaults to 'train'.
-        @type augmentations: Augmentations | None
-        @param augmentations: Augmentations to apply to the data. Defaults to C{None}.
         """
-        super().__init__(view=view, augmentations=augmentations, **kwargs)
+        super().__init__(view=view, **kwargs)
         if dataset_dir is not None:
             self.dataset = self._parse_dataset(
                 dataset_dir, dataset_name, dataset_type, delete_existing
@@ -93,15 +92,19 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 bucket_type=BucketType(bucket_type),
                 bucket_storage=BucketStorage(bucket_storage),
             )
-        self.base_loader = LuxonisLoader(
+        self.loader = LuxonisLoader(
             dataset=self.dataset,
-            view=self.view,
-            stream=stream,
-            augmentations=self.augmentations,
+            view=view,
+            augmentation_engine=augmentation_engine,
+            augmentation_config=augmentation_config,
+            height=height,
+            width=width,
+            keep_aspect_ratio=keep_aspect_ratio,
+            out_image_format=out_image_format,
         )
 
     def __len__(self) -> int:
-        return len(self.base_loader)
+        return len(self.loader)
 
     @property
     def input_shapes(self) -> dict[str, Size]:
@@ -109,13 +112,13 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         return {self.image_source: img.shape}
 
     def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
-        img, labels = self.base_loader[idx]
+        img, labels = self.loader[idx]
 
         img = np.transpose(img, (2, 0, 1))  # HWC to CHW
         tensor_img = Tensor(img)
-        tensor_labels: dict[str, tuple[Tensor, TaskType]] = {}
-        for task, (array, label_type) in labels.items():
-            tensor_labels[task] = (Tensor(array), TaskType(label_type.value))
+        tensor_labels: dict[str, Tensor] = {}
+        for task, array in labels.items():
+            tensor_labels[task] = Tensor(array)
 
         return {self.image_source: tensor_img}, tensor_labels
 

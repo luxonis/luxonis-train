@@ -1,7 +1,7 @@
 import logging
 import sys
 import warnings
-from typing import Annotated, Any, Literal, TypeAlias
+from typing import Annotated, Any, Literal, NamedTuple, TypeAlias
 
 from luxonis_ml.enums import DatasetType
 from luxonis_ml.utils import (
@@ -19,11 +19,14 @@ from pydantic.types import (
 )
 from typing_extensions import Self
 
-from luxonis_train.enums import TaskType
-
 logger = logging.getLogger(__name__)
 
 Params: TypeAlias = dict[str, Any]
+
+
+class ImageSize(NamedTuple):
+    height: int
+    width: int
 
 
 class AttachedModuleConfig(BaseModelExtraForbid):
@@ -62,7 +65,7 @@ class ModelNodeConfig(BaseModelExtraForbid):
     input_sources: list[str] = []  # From data loader
     freezing: FreezingConfig = FreezingConfig()
     remove_on_export: bool = False
-    task: str | dict[TaskType, str] | None = None
+    task_name: str | None = None
     params: Params = {}
 
 
@@ -303,10 +306,10 @@ class AugmentationConfig(BaseModelExtraForbid):
 
 class PreprocessingConfig(BaseModelExtraForbid):
     train_image_size: Annotated[
-        list[int], Field(default=[256, 256], min_length=2, max_length=2)
-    ] = [256, 256]
+        ImageSize, Field(default=[256, 256], min_length=2, max_length=2)
+    ] = ImageSize(256, 256)
     keep_aspect_ratio: bool = True
-    train_rgb: bool = True
+    color_format: Literal["RGB", "BGR"] = "RGB"
     normalize: NormalizeAugmentationConfig = NormalizeAugmentationConfig()
     augmentations: list[AugmentationConfig] = []
 

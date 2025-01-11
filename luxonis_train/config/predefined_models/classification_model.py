@@ -84,7 +84,7 @@ class ClassificationModel(BasePredefinedModel):
                 inputs=[f"{self.backbone}-{self.task_name}"],
                 freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
-                task=self.task_name,
+                task_name=self.task_name,
             ),
         ]
 

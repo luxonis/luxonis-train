@@ -1,7 +1,7 @@
 import torch
+from luxonis_ml.data.utils import get_task_type
 from torch import Tensor
 
-from luxonis_train.enums import TaskType
 from luxonis_train.utils.types import Labels
 
 LuxonisLoaderTorchOutput = tuple[dict[str, Tensor], Labels]
@@ -32,22 +32,18 @@ def collate_fn(
     out_labels: Labels = {}
 
     for task in labels[0].keys():
-        task_type = labels[0][task][1]
-        annos = [label[task][0] for label in labels]
-        if task_type in [
-            TaskType.CLASSIFICATION,
-            TaskType.SEGMENTATION,
-            TaskType.ARRAY,
-        ]:
-            out_labels[task] = torch.stack(annos, 0), task_type
+        task_type = get_task_type(task)
+        annos = [label[task] for label in labels]
 
-        elif task_type in [TaskType.KEYPOINTS, TaskType.BOUNDINGBOX]:
+        if task_type in {"keypoints", "boundingbox"}:
             label_box: list[Tensor] = []
             for i, box in enumerate(annos):
                 l_box = torch.zeros((box.shape[0], box.shape[1] + 1))
                 l_box[:, 0] = i  # add target image index for build_targets()
                 l_box[:, 1:] = box
                 label_box.append(l_box)
-            out_labels[task] = torch.cat(label_box, 0), task_type
+            out_labels[task] = torch.cat(label_box, 0)
+        else:
+            out_labels[task] = torch.stack(annos, 0)
 
     return out_inputs, out_labels

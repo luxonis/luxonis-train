@@ -122,7 +122,7 @@ class KeypointDetectionModel(BasePredefinedModel):
                 ),
                 freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
-                task=task,
+                task_name=task,
             )
         )
         return nodes

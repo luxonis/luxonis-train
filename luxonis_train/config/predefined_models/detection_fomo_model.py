@@ -80,7 +80,7 @@ class FOMOModel(BasePredefinedModel):
                 alias=f"FOMOHead-{self.kpt_task_name}",
                 inputs=[f"{self.backbone}-{self.kpt_task_name}"],
                 params=self.head_params,
-                task={
+                task_name={
                     TaskType.BOUNDINGBOX: self.bbox_task_name,
                     TaskType.KEYPOINTS: self.kpt_task_name,
                 },

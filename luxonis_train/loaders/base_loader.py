@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 
-from luxonis_ml.data import Augmentations
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size
 from torch.utils.data import Dataset
@@ -23,11 +22,9 @@ class BaseLoaderTorch(
     def __init__(
         self,
         view: str | list[str],
-        augmentations: Augmentations | None = None,
         image_source: str | None = None,
     ):
         self.view = view if isinstance(view, list) else [view]
-        self.augmentations = augmentations
         self._image_source = image_source
 
     @property
