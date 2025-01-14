@@ -2,7 +2,10 @@ from typing import Literal
 
 import torch
 from torch import Tensor
-from torchmetrics.classification import MulticlassConfusionMatrix
+from torchmetrics.classification import (
+    BinaryConfusionMatrix,
+    MulticlassConfusionMatrix,
+)
 from torchvision.ops import box_convert, box_iou
 
 from luxonis_train.enums import TaskType
@@ -71,9 +74,12 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
 
         self.metric_cm = None
         if self.is_classification or self.is_segmentation:
-            self.metric_cm = MulticlassConfusionMatrix(
-                num_classes=self.n_classes
-            )
+            if self.n_classes == 1:
+                self.metric_cm = BinaryConfusionMatrix()
+            else:
+                self.metric_cm = MulticlassConfusionMatrix(
+                    num_classes=self.n_classes
+                )
 
         if self.is_detection:
             self.add_state(
@@ -153,16 +159,32 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
         if "classification" in predictions and "classification" in targets:
             preds = predictions["classification"]
             target = targets["classification"]
-            pred_classes = preds[0].argmax(dim=1)  # [B]
-            target_classes = target.argmax(dim=1)  # [B]
+            pred_classes = (
+                preds[0].argmax(dim=1)
+                if preds[0].shape[1] > 1
+                else preds[0].sigmoid().squeeze(1).round().int()
+            )  # [B]
+            target_classes = (
+                target.argmax(dim=1)
+                if target.shape[1] > 1
+                else target.squeeze(1).round().int()
+            )  # [B]
             if self.metric_cm is not None:
                 self.metric_cm.update(pred_classes, target_classes)
 
         if "segmentation" in predictions and "segmentation" in targets:
             preds = predictions["segmentation"]
             target = targets["segmentation"]
-            pred_masks = preds[0].argmax(dim=1)  # [B, H, W]
-            target_masks = target.argmax(dim=1)  # [B, H, W]
+            pred_masks = (
+                preds[0].argmax(dim=1)
+                if preds[0].shape[1] > 1
+                else preds[0].squeeze(1).sigmoid().round().int()
+            )  # [B, H, W]
+            target_masks = (
+                target.argmax(dim=1)
+                if target.shape[1] > 1
+                else target.squeeze(1).round().int()
+            )  # [B, H, W]
             if self.metric_cm is not None:
                 self.metric_cm.update(
                     pred_masks.view(-1), target_masks.view(-1)

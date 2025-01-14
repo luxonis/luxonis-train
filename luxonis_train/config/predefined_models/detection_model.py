@@ -66,6 +66,8 @@ class DetectionModel(BasePredefinedModel):
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
         task_name: str = "",
+        enable_confusion_matrix: bool = True,
+        confusion_matrix_params: Params | None = None,
     ):
         var_config = get_variant(variant)
 
@@ -81,6 +83,8 @@ class DetectionModel(BasePredefinedModel):
         self.loss_params = loss_params or {"n_warmup_epochs": 0}
         self.visualizer_params = visualizer_params or {}
         self.task_name = task_name
+        self.enable_confusion_matrix = enable_confusion_matrix
+        self.confusion_matrix_params = confusion_matrix_params or {}
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
@@ -134,13 +138,23 @@ class DetectionModel(BasePredefinedModel):
     @property
     def metrics(self) -> list[MetricModuleConfig]:
         """Defines the metrics used for evaluation."""
-        return [
+        metrics = [
             MetricModuleConfig(
                 name="MeanAveragePrecision",
                 attached_to=f"{self.task_name}/EfficientBBoxHead",
                 is_main_metric=True,
             ),
         ]
+        if self.enable_confusion_matrix:
+            metrics.append(
+                MetricModuleConfig(
+                    name="ConfusionMatrix",
+                    alias=f"ConfusionMatrix-{self.task_name}",
+                    attached_to=f"EfficientBBoxHead-{self.task_name}",
+                    params={**self.confusion_matrix_params},
+                )
+            )
+        return metrics
 
     @property
     def visualizers(self) -> list[AttachedModuleConfig]:

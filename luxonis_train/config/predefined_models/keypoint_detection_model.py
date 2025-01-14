@@ -63,6 +63,8 @@ class KeypointDetectionModel(BasePredefinedModel):
         kpt_visualizer_params: Params | None = None,
         bbox_visualizer_params: Params | None = None,
         task_name: str = "",
+        enable_confusion_matrix: bool = True,
+        confusion_matrix_params: Params | None = None,
     ):
         var_config = get_variant(variant)
 
@@ -79,6 +81,8 @@ class KeypointDetectionModel(BasePredefinedModel):
         self.kpt_visualizer_params = kpt_visualizer_params or {}
         self.bbox_visualizer_params = bbox_visualizer_params or {}
         self.task_name = task_name
+        self.enable_confusion_matrix = enable_confusion_matrix
+        self.confusion_matrix_params = confusion_matrix_params or {}
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
@@ -134,7 +138,7 @@ class KeypointDetectionModel(BasePredefinedModel):
     @property
     def metrics(self) -> list[MetricModuleConfig]:
         """Defines the metrics used for evaluation."""
-        return [
+        metrics = [
             MetricModuleConfig(
                 name="ObjectKeypointSimilarity",
                 attached_to=f"{self.task_name}/EfficientKeypointBBoxHead",
@@ -145,6 +149,16 @@ class KeypointDetectionModel(BasePredefinedModel):
                 attached_to=f"{self.task_name}/EfficientKeypointBBoxHead",
             ),
         ]
+        if self.enable_confusion_matrix:
+            metrics.append(
+                MetricModuleConfig(
+                    name="ConfusionMatrix",
+                    alias=f"ConfusionMatrix-{self.kpt_task_name}",
+                    attached_to=f"EfficientKeypointBBoxHead-{self.kpt_task_name}",
+                    params={**self.confusion_matrix_params},
+                )
+            )
+        return metrics
 
     @property
     def visualizers(self) -> list[AttachedModuleConfig]:
