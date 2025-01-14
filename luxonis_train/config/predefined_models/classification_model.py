@@ -66,7 +66,7 @@ class ClassificationModel(BasePredefinedModel):
         self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
         self.task = task
-        self.task_name = task_name or "classification"
+        self.task_name = task_name or ""
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
