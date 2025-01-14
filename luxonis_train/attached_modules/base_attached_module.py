@@ -73,13 +73,13 @@ class BaseAttachedModule(
                 for label in self.supported_tasks
             ]
             module_supported = f"[{', '.join(module_supported)}]"
-            if not self.node.task_types:
+            if not self.node.tasks:
                 raise IncompatibleException(
                     f"Module '{self.name}' requires one of the following "
                     f"labels or combinations of labels: {module_supported}, "
                     f"but is connected to node '{self.node.name}' which does not specify any tasks."
                 )
-            node_tasks = set(self.node.task_types)
+            node_tasks = set(self.node.tasks)
             for required_labels in self.supported_tasks:
                 if isinstance(required_labels, TaskType):
                     required_labels = [required_labels]
@@ -89,7 +89,7 @@ class BaseAttachedModule(
                     self.required_labels = required_labels
                     break
             else:
-                node_supported = [task.value for task in self.node.task_types]
+                node_supported = [task.value for task in self.node.tasks]
                 raise IncompatibleException(
                     f"Module '{self.name}' requires one of the following labels or combinations of labels: {module_supported}, "
                     f"but is connected to node '{self.node.name}' which does not support any of them. "
@@ -166,11 +166,11 @@ class BaseAttachedModule(
         @raises RuntimeError: If the node does not have the C{tasks}
             attribute set.
         """
-        if self.node.task_types is None:
+        if self.node.tasks is None:
             raise RuntimeError(
                 "Node must have the `tasks` attribute specified."
             )
-        return self.node.task_types
+        return self.node.tasks
 
     def get_label(
         self, labels: Labels, task_type: TaskType | None = None
@@ -214,8 +214,12 @@ class BaseAttachedModule(
             task_name = self.node.task_name
             task = f"{task_name}/{task_type.value}"
             if task not in labels:
-                raise IncompatibleException.from_missing_task(
-                    task_type.value, list(labels.keys()), self.name
+                raise IncompatibleException(
+                    f"Module '{self.name}' requires label of type "
+                    f"'{task_type.value}' assigned to task '{task_name}', "
+                    "but the label is missing from the dataset. "
+                    f"Available labels: {list(labels.keys())}. "
+                    f"Missing label: '{task}'."
                 )
             return labels[task], task_type
 
@@ -274,7 +278,19 @@ class BaseAttachedModule(
                 f"{self.name} requires multiple labels, "
                 "you must provide the `task_type` argument to extract the desired input."
             )
-        task_type = self.node_tasks[0].value
+        if len(self.node_tasks) == 1:
+            task_type = self.node_tasks[0].value
+        else:
+            required_label = self.required_labels[0]
+            for task in self.node_tasks:
+                if task.value == required_label:
+                    task_type = task.value
+                    break
+            else:
+                raise IncompatibleException(
+                    f"Task {required_label} is not supported by the node "
+                    f"{self.node.name}."
+                )
         return inputs[f"{self.node.task_name}/{task_type}"]
 
     def prepare(
@@ -307,7 +323,7 @@ class BaseAttachedModule(
         @raises RuntimeError: If the C{tasks} attribute is not set on the node.
         @raises RuntimeError: If the C{supported_tasks} attribute is not set on the module.
         """
-        if self.node.task_types is None:
+        if self.node.tasks is None:
             raise RuntimeError(
                 f"{self.node.name} must have the `tasks` attribute specified "
                 f"for {self.name} to make use of the default `prepare` method."
