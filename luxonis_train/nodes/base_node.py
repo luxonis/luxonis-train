@@ -93,18 +93,16 @@ class BaseNode(
                 # by the attached modules.
                 return {"classification": [output]}
 
-
     @type attach_index: AttachIndexType
     @ivar attach_index: Index of previous output that this node attaches to.
         Can be a single integer to specify a single output, a tuple of
         two or three integers to specify a range of outputs or C{"all"} to
         specify all outputs. Defaults to "all". Python indexing conventions apply.
 
-    @type tasks: list[TaskType] | dict[TaskType, str] | None
-    @ivar tasks: Dictionary of tasks that the node supports. Should be defined
-        by the user as a class attribute. The key is the task type and the value
-        is the name of the task. For example:
-        C{{TaskType.CLASSIFICATION: "classification"}}.
+    @type tasks: list[TaskType] | None
+    @ivar tasks: List of task types that the node supports.
+        Should be defined as a class attribute by the user.
+        For example C{[TaskType.CLASSIFICATION]}.
         Only needs to be defined for head nodes.
     """
 
@@ -154,6 +152,10 @@ class BaseNode(
             of outputs or C{"all"} to specify all outputs. Defaults to
             "all". Python indexing conventions apply. If provided as a
             constructor argument, overrides the class attribute.
+        @type task_name: str | None
+        @param task_name: Specifies which task group from the dataset to use
+            in case the dataset contains multiple tasks. Otherwise, the
+            task group is inferred from the dataset metadata.
         """
         super().__init__()
 
