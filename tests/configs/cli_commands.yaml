@@ -51,7 +51,7 @@ trainer:
   preprocessing:
     train_image_size: [256, 320]
     keep_aspect_ratio: true
-    train_rgb: true
+    color_format: RGB
     normalize:
       active: true
 

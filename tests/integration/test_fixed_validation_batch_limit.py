@@ -19,7 +19,11 @@ def get_config() -> dict[str, Any]:
                     "alias": "neck",
                     "inputs": ["backbone"],
                 },
-                {"name": "EfficientBBoxHead", "inputs": ["neck"]},
+                {
+                    "name": "EfficientBBoxHead",
+                    "task_name": "motorbike",
+                    "inputs": ["neck"],
+                },
             ],
             "losses": [
                 {

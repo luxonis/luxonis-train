@@ -1,8 +1,17 @@
 import pytest
+import torch
+from torch import Tensor
 
 from luxonis_train import BaseLoss, BaseNode
 from luxonis_train.enums import TaskType
 from luxonis_train.utils.exceptions import IncompatibleException
+from luxonis_train.utils.types import Labels, Packet
+
+SEGMENTATION_ARRAY = torch.tensor([0])
+KEYPOINT_ARRAY = torch.tensor([1])
+BOUNDINGBOX_ARRAY = torch.tensor([2])
+CLASSIFICATION_ARRAY = torch.tensor([3])
+FEATURES_ARRAY = torch.tensor([4])
 
 
 class DummyBackbone(BaseNode):
@@ -41,20 +50,20 @@ class NoLabelLoss(BaseLoss):
 
 
 @pytest.fixture
-def labels():
+def labels() -> Labels:
     return {
-        "segmentation": ("segmentation", TaskType.SEGMENTATION),
-        "keypoints": ("keypoints", TaskType.KEYPOINTS),
-        "boundingbox": ("boundingbox", TaskType.BOUNDINGBOX),
-        "classification": ("classification", TaskType.CLASSIFICATION),
+        "/segmentation": SEGMENTATION_ARRAY,
+        "/keypoints": KEYPOINT_ARRAY,
+        "/boundingbox": BOUNDINGBOX_ARRAY,
+        "/classification": CLASSIFICATION_ARRAY,
     }
 
 
 @pytest.fixture
-def inputs():
+def inputs() -> Packet[Tensor]:
     return {
-        "features": ["features"],
-        "segmentation": ["segmentation"],
+        "features": [FEATURES_ARRAY],
+        "/segmentation": [SEGMENTATION_ARRAY],
     }
 
 
@@ -63,10 +72,10 @@ def test_valid_properties():
     loss = DummyLoss(node=head)
     no_labels_loss = NoLabelLoss(node=head)
     assert loss.node == head
-    assert loss.node_tasks == {TaskType.SEGMENTATION: "segmentation"}
+    assert loss.node_tasks == [TaskType.SEGMENTATION]
     assert loss.required_labels == [TaskType.SEGMENTATION]
     assert no_labels_loss.node == head
-    assert no_labels_loss.node_tasks == {TaskType.SEGMENTATION: "segmentation"}
+    assert no_labels_loss.node_tasks == [TaskType.SEGMENTATION]
     assert no_labels_loss.required_labels == []
 
 
@@ -82,45 +91,49 @@ def test_invalid_properties():
         _ = NoLabelLoss(node=backbone).node_tasks
 
 
-def test_get_label(labels):
+def test_get_label(labels: Labels):
     seg_head = DummySegmentationHead()
     det_head = DummyDetectionHead()
     seg_loss = DummyLoss(node=seg_head)
-    assert seg_loss.get_label(labels) == "segmentation"
-    assert seg_loss.get_label(labels, TaskType.SEGMENTATION) == "segmentation"
+    assert seg_loss.get_label(labels) == SEGMENTATION_ARRAY
+    assert (
+        seg_loss.get_label(labels, TaskType.SEGMENTATION) == SEGMENTATION_ARRAY
+    )
 
-    del labels["segmentation"]
-    labels["segmentation-task"] = ("segmentation", TaskType.SEGMENTATION)
+    del labels["/segmentation"]
+    labels["task/segmentation"] = SEGMENTATION_ARRAY
 
     with pytest.raises(IncompatibleException):
         seg_loss.get_label(labels)
 
     det_loss = DummyLoss(node=det_head)
-    assert det_loss.get_label(labels, TaskType.KEYPOINTS) == "keypoints"
-    assert det_loss.get_label(labels, TaskType.BOUNDINGBOX) == "boundingbox"
+    assert det_loss.get_label(labels, TaskType.KEYPOINTS) == KEYPOINT_ARRAY
+    assert (
+        det_loss.get_label(labels, TaskType.BOUNDINGBOX) == BOUNDINGBOX_ARRAY
+    )
 
     with pytest.raises(ValueError):
         det_loss.get_label(labels)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(IncompatibleException):
         det_loss.get_label(labels, TaskType.SEGMENTATION)
 
 
-def test_input_tensors(inputs):
+def test_input_tensors(inputs: Packet[Tensor]):
     seg_head = DummySegmentationHead()
     seg_loss = DummyLoss(node=seg_head)
-    assert seg_loss.get_input_tensors(inputs) == ["segmentation"]
-    assert seg_loss.get_input_tensors(inputs, "segmentation") == [
-        "segmentation"
+    assert seg_loss.get_input_tensors(inputs) == [SEGMENTATION_ARRAY]
+    assert seg_loss.get_input_tensors(inputs, "/segmentation") == [
+        SEGMENTATION_ARRAY
     ]
     assert seg_loss.get_input_tensors(inputs, TaskType.SEGMENTATION) == [
-        "segmentation"
+        SEGMENTATION_ARRAY
     ]
 
     with pytest.raises(IncompatibleException):
         seg_loss.get_input_tensors(inputs, TaskType.KEYPOINTS)
     with pytest.raises(IncompatibleException):
-        seg_loss.get_input_tensors(inputs, "keypoints")
+        seg_loss.get_input_tensors(inputs, "/keypoints")
 
     det_head = DummyDetectionHead()
     det_loss = DummyLoss(node=det_head)
@@ -128,17 +141,20 @@ def test_input_tensors(inputs):
         det_loss.get_input_tensors(inputs)
 
 
-def test_prepare(inputs, labels):
+def test_prepare(inputs: Packet[Tensor], labels: Labels):
     backbone = DummyBackbone()
     seg_head = DummySegmentationHead()
     seg_loss = DummyLoss(node=seg_head)
     det_head = DummyDetectionHead()
 
-    assert seg_loss.prepare(inputs, labels) == ("segmentation", "segmentation")
-    inputs["segmentation"].append("segmentation2")
     assert seg_loss.prepare(inputs, labels) == (
-        "segmentation2",
-        "segmentation",
+        SEGMENTATION_ARRAY,
+        SEGMENTATION_ARRAY,
+    )
+    inputs["/segmentation"].append(FEATURES_ARRAY)
+    assert seg_loss.prepare(inputs, labels) == (
+        FEATURES_ARRAY,
+        SEGMENTATION_ARRAY,
     )
 
     with pytest.raises(RuntimeError):

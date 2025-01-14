@@ -70,11 +70,12 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
             yield {
                 "file": path,
                 "annotation": {
-                    "type": "rle",
                     "class": "object",
-                    "height": 256,
-                    "width": 256,
-                    "counts": "0" * (256 * 256),
+                    "segmentation": {
+                        "height": 256,
+                        "width": 256,
+                        "counts": "0" * (256 * 256),
+                    },
                 },
             }
 
@@ -94,11 +95,14 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
             yield {
                 "file": path,
                 "annotation": {
-                    "type": "polyline",
                     "class": "object",
-                    "points": [
-                        pt for segment in poly_normalized for pt in segment
-                    ],
+                    "segmentation": {
+                        "height": img_h,
+                        "width": img_w,
+                        "points": [
+                            pt for segment in poly_normalized for pt in segment
+                        ],
+                    },
                 },
             }
 
