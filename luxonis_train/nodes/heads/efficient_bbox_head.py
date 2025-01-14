@@ -21,7 +21,7 @@ class EfficientBBoxHead(
     BaseHead[list[Tensor], tuple[list[Tensor], list[Tensor], list[Tensor]]],
 ):
     in_channels: list[int]
-    task_types: list[TaskType] = [TaskType.BOUNDINGBOX]
+    tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
     parser = "YOLO"
 
     def __init__(
@@ -171,7 +171,7 @@ class EfficientBBoxHead(
                 conf, _ = out_cls.max(1, keepdim=True)
                 out = torch.cat([out_reg, conf, out_cls], dim=1)
                 outputs.append(out)
-            return {self.task_type: outputs}
+            return {"boundingbox": outputs}
 
         cls_tensor = torch.cat(
             [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))],

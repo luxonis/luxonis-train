@@ -18,7 +18,7 @@ class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
     in_width: int
     in_channels: int
 
-    task_types: list[TaskType] = [TaskType.SEGMENTATION]
+    tasks: list[TaskType] = [TaskType.SEGMENTATION]
     parser: str = "SegmentationParser"
 
     def __init__(

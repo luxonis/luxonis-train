@@ -180,12 +180,16 @@ class LuxonisLightningModule(pl.LightningModule):
                         node_cfg.freezing.unfreeze_after * epochs
                     )
                 frozen_nodes.append((node_name, unfreeze_after))
-
-            if node_cfg.task_name is not None and Node.task_types is None:
-                raise ValueError(
-                    f"Cannot define tasks for node {node_name}."
-                    "This node doesn't specify any tasks."
-                )
+            task_names = list(self.dataset_metadata.task_names)
+            if not node_cfg.task_name:
+                if len(task_names) == 1:
+                    node_cfg.task_name = task_names[0]
+                elif issubclass(Node, BaseHead):
+                    raise ValueError(
+                        f"Dataset contains multiple tasks: {task_names}. "
+                        f"Node {node_name} does not have the `task_name` parameter set. "
+                        "Please specify the `task_name` parameter for each head node. "
+                    )
 
             nodes[node_name] = (
                 Node,
@@ -1030,7 +1034,10 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
         if self.main_metric is not None:
-            main_metric_node, main_metric_name = self.main_metric.split("/")
+            print(self.main_metric)
+            *main_metric_node, main_metric_name = self.main_metric.split("/")
+            main_metric_node = "/".join(main_metric_node)
+
             main_metric = metrics[main_metric_node][main_metric_name]
             logger.info(
                 f"{stage} main metric ({self.main_metric}): {main_metric:.4f}"

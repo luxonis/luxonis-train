@@ -9,5 +9,4 @@ class TaskType(str, Enum):
     INSTANCE_SEGMENTATION = "instance_segmentation"
     BOUNDINGBOX = "boundingbox"
     KEYPOINTS = "keypoints"
-    LABEL = "label"
     ARRAY = "array"

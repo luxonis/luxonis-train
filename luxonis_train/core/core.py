@@ -721,7 +721,7 @@ class LuxonisModel:
                 self.cfg.trainer.preprocessing.normalize.params["std"]
             ),
             "dai_type": "RGB888p"
-            if self.cfg.trainer.preprocessing.out_image_format
+            if self.cfg.trainer.preprocessing.color_format == "RGB"
             else "BGR888p",
         }
 

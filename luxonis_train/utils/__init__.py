@@ -16,7 +16,7 @@ from .general import (
     to_shape_packet,
 )
 from .graph import traverse_graph
-from .keypoints import get_sigmas
+from .keypoints import get_sigmas, insert_class
 from .tracker import LuxonisTrackerPL
 from .types import AttachIndexType, Kwargs, Labels, Packet
 
@@ -41,4 +41,5 @@ __all__ = [
     "compute_iou_loss",
     "get_sigmas",
     "traverse_graph",
+    "insert_class",
 ]
