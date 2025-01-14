@@ -65,7 +65,7 @@ class ModelNodeConfig(BaseModelExtraForbid):
     input_sources: list[str] = []  # From data loader
     freezing: FreezingConfig = FreezingConfig()
     remove_on_export: bool = False
-    task_name: str | None = None
+    task_name: str = ""
     params: Params = {}
 
 
@@ -105,7 +105,7 @@ class ModelConfig(BaseModelExtraForbid):
             if "Head" in name and last_body_index is None:
                 last_body_index = i - 1
             names.append(name)
-            if i > 0 and "inputs" not in node:
+            if i > 0 and "inputs" not in node and "input_sources" not in node:
                 if last_body_index is not None:
                     prev_name = names[last_body_index]
                 else:
@@ -202,23 +202,32 @@ class ModelConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_unique_names(self) -> Self:
-        for section, objects in [
-            ("nodes", self.nodes),
-            ("losses", self.losses),
-            ("metrics", self.metrics),
-            ("visualizers", self.visualizers),
+        for modules in [
+            self.nodes,
+            self.losses,
+            self.metrics,
+            self.visualizers,
         ]:
             names: set[str] = set()
-            for obj in objects:
-                obj: AttachedModuleConfig
-                name = obj.alias or obj.name
+            node_index = 0
+            for module in modules:
+                module: AttachedModuleConfig | ModelNodeConfig
+                name = module.alias or module.name
                 if name in names:
-                    if obj.alias is None:
-                        obj.alias = f"{name}_{obj.attached_to}"
-                    if obj.alias in names:
-                        raise ValueError(
-                            f"Duplicate name `{name}` in `{section}` section."
+                    if module.alias is None:
+                        if isinstance(module, ModelNodeConfig):
+                            module.alias = module.name
+                        else:
+                            module.alias = f"{name}_{module.attached_to}"
+
+                    if module.alias in names:
+                        new_alias = f"{module.alias}_{node_index}"
+                        logger.warning(
+                            f"Duplicate name: {module.alias}. Renaming to {new_alias}."
                         )
+                        module.alias = new_alias
+                        node_index += 1
+
                 names.add(name)
         return self
 

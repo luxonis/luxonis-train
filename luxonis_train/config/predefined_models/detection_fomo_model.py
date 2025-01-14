@@ -9,7 +9,6 @@ from luxonis_train.config import (
     ModelNodeConfig,
     Params,
 )
-from luxonis_train.enums import TaskType
 
 from .base_predefined_model import BasePredefinedModel
 
@@ -51,8 +50,7 @@ class FOMOModel(BasePredefinedModel):
         head_params: Params | None = None,
         loss_params: Params | None = None,
         kpt_visualizer_params: Params | None = None,
-        bbox_task_name: str | None = None,
-        kpt_task_name: str | None = None,
+        task_name: str = "",
     ):
         var_config = get_variant(variant)
 
@@ -61,29 +59,23 @@ class FOMOModel(BasePredefinedModel):
         self.head_params = head_params or var_config.head_params
         self.loss_params = loss_params or {}
         self.kpt_visualizer_params = kpt_visualizer_params or {}
-        self.bbox_task_name = (
-            bbox_task_name or "boundingbox"
-        )  # Needed for OKS calculation
-        self.kpt_task_name = kpt_task_name or "keypoints"
+        self.task_name = task_name
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
         nodes = [
             ModelNodeConfig(
                 name=self.backbone,
-                alias=f"{self.backbone}-{self.kpt_task_name}",
+                alias=f"{self.task_name}/{self.backbone}",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="FOMOHead",
-                alias=f"FOMOHead-{self.kpt_task_name}",
-                inputs=[f"{self.backbone}-{self.kpt_task_name}"],
+                alias=f"{self.task_name}/FOMOHead",
+                inputs=[f"{self.task_name}/{self.backbone}"],
                 params=self.head_params,
-                task_name={
-                    TaskType.BOUNDINGBOX: self.bbox_task_name,
-                    TaskType.KEYPOINTS: self.kpt_task_name,
-                },
+                task_name=self.task_name,
             ),
         ]
         return nodes
@@ -93,8 +85,7 @@ class FOMOModel(BasePredefinedModel):
         return [
             LossModuleConfig(
                 name="FOMOLocalizationLoss",
-                alias=f"FOMOLocalizationLoss-{self.kpt_task_name}",
-                attached_to=f"FOMOHead-{self.kpt_task_name}",
+                attached_to=f"{self.task_name}/FOMOHead",
                 params=self.loss_params,
                 weight=1.0,
             )
@@ -105,8 +96,7 @@ class FOMOModel(BasePredefinedModel):
         return [
             MetricModuleConfig(
                 name="ObjectKeypointSimilarity",
-                alias=f"ObjectKeypointSimilarity-{self.kpt_task_name}",
-                attached_to=f"FOMOHead-{self.kpt_task_name}",
+                attached_to=f"{self.task_name}/FOMOHead",
                 is_main_metric=True,
             ),
         ]
@@ -116,8 +106,7 @@ class FOMOModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="MultiVisualizer",
-                alias=f"MultiVisualizer-{self.kpt_task_name}",
-                attached_to=f"FOMOHead-{self.kpt_task_name}",
+                attached_to=f"{self.task_name}/FOMOHead",
                 params={
                     "visualizers": [
                         {
