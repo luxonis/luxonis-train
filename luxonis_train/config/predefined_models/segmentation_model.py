@@ -166,8 +166,8 @@ class SegmentationModel(BasePredefinedModel):
             metrics.append(
                 MetricModuleConfig(
                     name="ConfusionMatrix",
-                    alias=f"ConfusionMatrix-{self.task_name}",
-                    attached_to=f"DDRNetSegmentationHead-{self.task_name}",
+                    alias=f"{self.task_name}/ConfusionMatrix",
+                    attached_to=f"{self.task_name}/DDRNetSegmentationHead",
                     params={**self.confusion_matrix_params},
                 )
             )

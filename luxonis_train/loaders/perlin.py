@@ -1,4 +1,5 @@
 import random
+from pathlib import Path
 from typing import Callable, List, Tuple
 
 import cv2
@@ -135,17 +136,17 @@ def generate_perlin_noise(
     return perlin_mask
 
 
-def load_image_as_numpy(img_path: str) -> np.ndarray:
-    image = cv2.imread(img_path, cv2.IMREAD_COLOR)
+def load_image_as_numpy(img_path: Path) -> np.ndarray:
+    image = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
     image = image.astype(np.float32) / 255.0
     return image
 
 
 def apply_anomaly_to_img(
     img: torch.Tensor,
-    anomaly_source_paths: List[str],
+    anomaly_source_paths: List[Path],
     beta: float | None = None,
-    pixel_augs: List[Callable] | None = None,
+    pixel_augs: Callable | None = None,  # type: ignore
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Applies Perlin noise-based anomalies to a single image (C, H, W).
 
@@ -165,7 +166,9 @@ def apply_anomaly_to_img(
     """
 
     if pixel_augs is None:
-        pixel_augs = []
+
+        def pixel_augs(image):
+            return {"image": image}
 
     sampled_anomaly_image_path = random.choice(anomaly_source_paths)
 
@@ -177,8 +180,7 @@ def apply_anomaly_to_img(
         interpolation=cv2.INTER_LINEAR,
     )
 
-    for aug in pixel_augs:
-        anomaly_image = aug(image=anomaly_image)["image"]
+    anomaly_image = pixel_augs(image=anomaly_image)["image"]
 
     anomaly_image = torch.tensor(anomaly_image).permute(2, 0, 1)
 

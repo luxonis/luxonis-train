@@ -153,8 +153,8 @@ class KeypointDetectionModel(BasePredefinedModel):
             metrics.append(
                 MetricModuleConfig(
                     name="ConfusionMatrix",
-                    alias=f"ConfusionMatrix-{self.kpt_task_name}",
-                    attached_to=f"EfficientKeypointBBoxHead-{self.kpt_task_name}",
+                    alias=f"{self.task_name}/ConfusionMatrix",
+                    attached_to=f"{self.task_name}/EfficientKeypointBBoxHead",
                     params={**self.confusion_matrix_params},
                 )
             )

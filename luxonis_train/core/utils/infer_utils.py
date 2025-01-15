@@ -47,12 +47,10 @@ def process_visualizations(
 
 
 def prepare_and_infer_image(
-    model: "luxonis_train.core.LuxonisModel",
-    img: np.ndarray,
+    model: "luxonis_train.core.LuxonisModel", img: Tensor
 ):
     """Prepares the image for inference and runs the model."""
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img, _ = model.val_augmentations([(img, {})])
+    img = model.loaders["val"].augment_test_image(img)  # type: ignore
 
     inputs = {
         "image": torch.tensor(img).unsqueeze(0).permute(0, 3, 1, 2).float()
@@ -94,9 +92,11 @@ def infer_from_video(
         ret, frame = cap.read()
         if not ret:  # pragma: no cover
             break
+        if model.cfg.trainer.preprocessing.color_format == "RGB":
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # TODO: batched inference
-        outputs = prepare_and_infer_image(model, frame)
+        outputs = prepare_and_infer_image(model, torch.tensor(frame))
         renders = process_visualizations(outputs.visualizations, batch_size=1)
 
         for (node_name, viz_name), [viz] in renders.items():
@@ -213,8 +213,8 @@ def infer_from_directory(
         dataset_name=dataset_name,
         image_source="image",
         view="test",
-        augmentations=model.val_augmentations,
     )
+    loader.loader.augmentations = model.loaders["val"].loader.augmentations  # type: ignore
     loader = torch_data.DataLoader(
         loader, batch_size=model.cfg.trainer.batch_size
     )

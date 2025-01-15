@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import numpy as np
+import torch
 from luxonis_ml.data import (
     BucketStorage,
     BucketType,
@@ -123,12 +124,18 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         return {self.image_source: tensor_img}, tensor_labels
 
     def get_classes(self) -> dict[str, list[str]]:
-        _, classes = self.dataset.get_classes()
-        return {task: classes[task] for task in classes}
+        return self.dataset.get_classes()
 
     def get_n_keypoints(self) -> dict[str, int]:
         skeletons = self.dataset.get_skeletons()
         return {task: len(skeletons[task][0]) for task in skeletons}
+
+    def augment_test_image(self, img: Tensor) -> Tensor:
+        if self.loader.augmentations is None:
+            return img
+        return torch.tensor(
+            self.loader.augmentations.apply([(img.numpy(), {})])[0]
+        )
 
     def _parse_dataset(
         self,

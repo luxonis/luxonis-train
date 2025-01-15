@@ -989,7 +989,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 loader = self._core.loaders["train"]
                 dataset = getattr(loader, "dataset", None)
                 if isinstance(dataset, LuxonisDataset):
-                    n_classes = len(dataset.get_classes()[1][node.task_name])
+                    n_classes = len(dataset.get_classes()[node.task_name])
                     if n_classes == 1:
                         cfg.params["task"] = "binary"
                     else:
@@ -1034,7 +1034,6 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
         if self.main_metric is not None:
-            print(self.main_metric)
             *main_metric_node, main_metric_name = self.main_metric.split("/")
             main_metric_node = "/".join(main_metric_node)
 

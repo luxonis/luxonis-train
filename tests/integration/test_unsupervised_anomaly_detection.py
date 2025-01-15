@@ -11,7 +11,7 @@ from luxonis_train.core import LuxonisModel
 PathType = Union[str, Path]
 
 
-def get_opts() -> dict[str, Any]:
+def get_config() -> dict[str, Any]:
     return {
         "model": {
             "name": "DREAM",
@@ -38,11 +38,14 @@ def get_opts() -> dict[str, Any]:
                 "keep_aspect_ratio": False,
                 "normalize": {"active": True},
             },
-            "batch_size": 1,
-            "epochs": 1,
+            "batch_size": 4,
+            "epochs": 800,
             "num_workers": 0,
             "validation_interval": 10,
             "num_sanity_val_steps": 0,
+        },
+        "tracker": {
+            "save_directory": "tests/integration/save-directory",
         },
     }
 
@@ -67,22 +70,19 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
         train_paths: List[PathType], test_paths: List[PathType]
     ):
         for path in train_paths:
+            img = cv2.imread(str(path))
+            img_h, img_w, _ = img.shape
+            mask = np.zeros((img_h, img_w), dtype=np.uint8)
             yield {
                 "file": path,
                 "annotation": {
                     "class": "object",
-                    "segmentation": {
-                        "height": 256,
-                        "width": 256,
-                        "counts": "0" * (256 * 256),
-                    },
+                    "segmentation": {"mask": mask},
                 },
             }
 
         for path in test_paths:
             img = cv2.imread(str(path))
-            if img is None:
-                continue
             img_h, img_w, _ = img.shape
             mask = random_square_mask((img_h, img_w))
             poly = cv2.findContours(
@@ -130,7 +130,6 @@ def test_anomaly_detection():
     create_dummy_anomaly_detection_dataset(
         Path("tests/data/COCO_people_subset/person_val2017_subset/*")
     )
-    config = get_opts()
-    model = LuxonisModel(config)
+    model = LuxonisModel(get_config())
     model.train()
     model.test()

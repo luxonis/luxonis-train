@@ -149,8 +149,8 @@ class DetectionModel(BasePredefinedModel):
             metrics.append(
                 MetricModuleConfig(
                     name="ConfusionMatrix",
-                    alias=f"ConfusionMatrix-{self.task_name}",
-                    attached_to=f"EfficientBBoxHead-{self.task_name}",
+                    alias=f"{self.task_name}/ConfusionMatrix",
+                    attached_to=f"{self.task_name}/EfficientBBoxHead",
                     params={**self.confusion_matrix_params},
                 )
             )

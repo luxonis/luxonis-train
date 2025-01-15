@@ -11,8 +11,7 @@ def test_compute_detection_confusion_matrix_specific_case():
     class DummyNodeDetection(BaseNode):
         tasks = [TaskType.BOUNDINGBOX]
 
-        def forward(self, _):
-            pass
+        def forward(self, _): ...
 
     metric = ConfusionMatrix(
         node=DummyNodeDetection(n_classes=3), iou_threshold=0.5

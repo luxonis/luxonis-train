@@ -96,7 +96,7 @@
                 "dtype": "float32",
                 "shape": [
                     1,
-                    7,
+                    8,
                     32,
                     40
                 ],
@@ -107,7 +107,7 @@
                 "dtype": "float32",
                 "shape": [
                     1,
-                    7,
+                    8,
                     16,
                     20
                 ],
@@ -118,11 +118,11 @@
                 "dtype": "float32",
                 "shape": [
                     1,
-                    7,
+                    8,
                     8,
                     10
                 ],
-                "layout": "NCHW"
+                "layout": "NCDE"
             }
         ],
         "heads": [
@@ -169,9 +169,9 @@
                 "metadata": {
                     "postprocessor_path": null,
                     "classes": [
-                        "background",
+                        "motorbike",
                         "car",
-                        "motorbike"
+                        "background"
                     ],
                     "n_classes": 3,
                     "is_softmax": false
@@ -185,9 +185,10 @@
                     "postprocessor_path": null,
                     "classes": [
                         "motorbike",
-                        "car"
+                        "car",
+                        "background"
                     ],
-                    "n_classes": 2,
+                    "n_classes": 3,
                     "iou_threshold": 0.45,
                     "conf_threshold": 0.25,
                     "max_det": 300,
