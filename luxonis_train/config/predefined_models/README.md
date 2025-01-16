@@ -31,7 +31,7 @@ See an example configuration file using this predefined model [here](../../../co
 
 ### Performance Metrics
 
-FPS (frames per second) for `light` and `heavy` variants on different devices:
+FPS (frames per second) for `light` and `heavy` variants on different devices with image size 384x512:
 
 | Variant     | RVC2 FPS | RVC4 FPS |
 | ----------- | -------- | -------- |
@@ -81,7 +81,7 @@ The pretrained models achieve the following performance on the COCOval2017 datas
 
 ### Performance Metrics
 
-FPS (frames per second) for `light`, `medium` and `heavy` variants on different devices:
+FPS (frames per second) for `light`, `medium` and `heavy` variants on different devices with image size 384x512:
 
 | Variant      | RVC2 FPS | RVC4 FPS |
 | ------------ | -------- | -------- |
@@ -122,7 +122,7 @@ See an example configuration file using this predefined model [here](../../../co
 
 ### Performance Metrics
 
-FPS (frames per second) for `light`, `medium` and `heavy` variants on different devices:
+FPS (frames per second) for `light`, `medium` and `heavy` variants on different devices with image size 384x512:
 
 | Variant      | RVC2 FPS | RVC4 FPS |
 | ------------ | -------- | -------- |
@@ -167,7 +167,7 @@ See an example configuration file using this predefined model [here](../../../co
 
 ### Performance Metrics
 
-FPS (frames per second) for `light` and `heavy` variants on different devices:
+FPS (frames per second) for `light` and `heavy` variants on different devices with image size 384x512:
 
 | Variant     | RVC2 FPS | RVC4 FPS |
 | ----------- | -------- | -------- |
@@ -206,7 +206,7 @@ There is a trade-off in this simple model: training with a larger `object_weight
 
 ### Performance Metrics
 
-FPS (frames per second) for `light` and `heavy` variants on different devices:
+FPS (frames per second) for `light` and `heavy` variants on different devices with image size 384x512:
 
 | Variant     | RVC2 FPS | RVC4 FPS |
 | ----------- | -------- | -------- |
@@ -242,7 +242,7 @@ The `AnomalyDetectionModel` allows for both `"light"` and `"heavy"` variants, wh
 
 ### Performance Metrics
 
-FPS (frames per second) for `light` and `heavy` variants on different devices:
+FPS (frames per second) for `light` and `heavy` variants on different devices with image size 256x256:
 
 | Variant     | RVC2 FPS | RVC4 FPS |
 | ----------- | -------- | -------- |
