@@ -160,6 +160,8 @@ The `FOMOModel` allows for both `"light"` and `"heavy"` variants, where the `"he
 
 See an example configuration file using this predefined model [here](../../../configs/detection_fomo_light_model.yaml) for the `"light"` variant, and [here](../../../configs/detection_fomo_heavy_model.yaml) for the `"heavy"` variant.
 
+There is a trade-off in this simple model: training with a larger `object_weight` in the loss parameters may result in more false positives (FP), but it will improve accuracy. You can also use `use_nms: True` in the `head_params` to enable NMS which can reduce FP, but it will also reduce TP for close neighbors.
+
 ### **Components**
 
 | Name                                                                                            | Alias               | Function                                                                       |

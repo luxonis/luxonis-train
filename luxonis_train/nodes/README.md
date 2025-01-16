@@ -268,7 +268,8 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 
 **Parameters:**
 
-| Key               | Type  | Default value | Description                                             |
-| ----------------- | ----- | ------------- | ------------------------------------------------------- |
-| `num_conv_layers` | `int` | `3`           | Number of convolutional layers to use in the model.     |
-| `conv_channels`   | `int` | `16`          | Number of output channels for each convolutional layer. |
+| Key               | Type   | Default value | Description                                                                              |
+| ----------------- | ------ | ------------- | ---------------------------------------------------------------------------------------- |
+| `num_conv_layers` | `int`  | `3`           | Number of convolutional layers to use in the model.                                      |
+| `conv_channels`   | `int`  | `16`          | Number of output channels for each convolutional layer.                                  |
+| `use_nms`         | `bool` | `False`       | If True, enable NMS. This can reduce FP, but it will also reduce TP for close neighbors. |

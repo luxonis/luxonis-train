@@ -21,6 +21,7 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         self,
         num_conv_layers: int = 3,
         conv_channels: int = 16,
+        use_nms: bool = False,
         **kwargs: Any,
     ):
         """FOMO Head for object detection using heatmaps.
@@ -37,6 +38,7 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         self.original_img_size = self.original_in_shape[1:]
         self.num_conv_layers = num_conv_layers
         self.conv_channels = conv_channels
+        self.use_nms = use_nms
 
         current_channels = self.in_channels
 
@@ -76,7 +78,11 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
 
     def _heatmap_to_kpts(self, heatmap: Tensor) -> List[Tensor]:
         """Convert heatmap to keypoint pairs using local-max NMS so that
-        only the strongest local peak in a neighborhood is retained."""
+        only the strongest local peak in a neighborhood is retained.
+
+        @type heatmap: Tensor
+        @param heatmap: Heatmap to convert to keypoints.
+        """
         device = heatmap.device
         batch_size, num_classes, height, width = heatmap.shape
 
@@ -87,19 +93,25 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
             for c in range(num_classes):
                 prob_map = torch.sigmoid(heatmap[batch_idx, c, :, :])
 
-                pooled_map = (
-                    F.max_pool2d(
-                        prob_map.unsqueeze(0).unsqueeze(0),  # shape [1,1,H,W]
-                        kernel_size=3,
-                        stride=1,
-                        padding=1,
-                    )
-                    .squeeze(0)
-                    .squeeze(0)
-                )  # back to [H,W]
+                if self.use_nms:
+                    pooled_map = (
+                        F.max_pool2d(
+                            prob_map.unsqueeze(0).unsqueeze(
+                                0
+                            ),  # shape [1,1,H,W]
+                            kernel_size=3,
+                            stride=1,
+                            padding=1,
+                        )
+                        .squeeze(0)
+                        .squeeze(0)
+                    )  # back to [H,W]
 
-                threshold = 0.5
-                keep = (prob_map == pooled_map) & (prob_map > threshold)
+                    threshold = 0.5
+                    keep = (prob_map == pooled_map) & (prob_map > threshold)
+                else:
+                    threshold = 0.5
+                    keep = prob_map > threshold
 
                 y_indices, x_indices = torch.where(keep)
                 kpts = []
