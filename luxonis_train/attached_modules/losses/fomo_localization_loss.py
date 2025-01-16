@@ -20,7 +20,7 @@ class FOMOLocalizationLoss(BaseLoss[Tensor, Tensor]):
         (TaskType.BOUNDINGBOX, TaskType.KEYPOINTS)
     ]
 
-    def __init__(self, object_weight: float = 1000, **kwargs: Any):
+    def __init__(self, object_weight: float = 500, **kwargs: Any):
         """FOMO Localization Loss for object detection using heatmaps.
 
         @type object_weight: float
