@@ -25,15 +25,15 @@ class FOMOVariant(BaseModel):
 def get_variant(variant: VariantLiteral) -> FOMOVariant:
     """Returns the specific variant configuration for the FOMOModel."""
     variants = {
-        "heavy": FOMOVariant(
-            backbone="MobileNetV2",
-            head_params={"num_conv_layers": 2, "conv_channels": 16},
-            backbone_params={},
-        ),
         "light": FOMOVariant(
             backbone="EfficientRep",
             head_params={"num_conv_layers": 2, "conv_channels": 16},
             backbone_params={"variant": "n"},
+        ),
+        "heavy": FOMOVariant(
+            backbone="MobileNetV2",
+            head_params={"num_conv_layers": 2, "conv_channels": 16},
+            backbone_params={},
         ),
     }
 
