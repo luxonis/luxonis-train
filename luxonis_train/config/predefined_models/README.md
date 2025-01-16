@@ -10,6 +10,7 @@ models which can be used instead.
 - [`KeypointDetectionModel`](#keypointdetectionmodel)
 - [`ClassificationModel`](#classificationmodel)
 - [`FOMOModel`](#fomomodel)
+- [`AnomalyDetectionModel`](#anomalydetectionmodel)
 
 **Parameters:**
 
@@ -27,6 +28,15 @@ models which can be used instead.
 The `SegmentationModel` allows for both `"light"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster.
 
 See an example configuration file using this predefined model [here](../../../configs/segmentation_light_model.yaml) for the `"light"` variant, and [here](../../../configs/segmentation_heavy_model.yaml) for the `"heavy"` variant.
+
+### Performance Metrics
+
+FPS (frames per second) for `light` and `heavy` variants on different devices with image size 384x512:
+
+| Variant     | RVC2 FPS | RVC4 FPS |
+| ----------- | -------- | -------- |
+| **`light`** | 43       | 75       |
+| **`heavy`** | 14       | 48       |
 
 **Components:**
 
@@ -56,13 +66,28 @@ See an example configuration file using this predefined model [here](../../../co
 
 ## `DetectionModel`
 
-The `DetectionModel` allows for both `"light"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster.
+The `DetectionModel` allows for `"light"`, `"medium"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster.
 
 See an example configuration file using this predefined model [here](../../../configs/detection_light_model.yaml) for the `"light"` variant, and [here](../../../configs/detection_heavy_model.yaml) for the `"heavy"` variant.
 
-This detection model is based on [YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications](https://arxiv.org/pdf/2209.02976.pdf). The pretrained `"light"` model on COCOtrain2017 dataset achieves **36.1% mAP** on the COCOval2017 dataset.
+This detection model is based on [YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications](https://arxiv.org/pdf/2209.02976.pdf).
+
+The pretrained models achieve the following performance on the COCOval2017 dataset:
+
+- **`light` variant**: **36.1% mAP** (trained on COCOtrain2017)
+- **`heavy` variant**: **51.2% mAP** (trained on COCOtrain2017)
 
 **Note**: To align with the evaluation procedure used by other state-of-the-art (SOTA) models, we adopted a small `conf_thresh` (e.g., `0.03`) and a high `iou_thresh` (e.g., `0.65`) during validation.
+
+### Performance Metrics
+
+FPS (frames per second) for `light`, `medium` and `heavy` variants on different devices with image size 384x512:
+
+| Variant      | RVC2 FPS | RVC4 FPS |
+| ------------ | -------- | -------- |
+| **`light`**  | 50       | 194      |
+| **`medium`** | 25       | 166      |
+| **`heavy`**  | 7        | 120      |
 
 **Components:**
 
@@ -77,23 +102,33 @@ This detection model is based on [YOLOv6: A Single-Stage Object Detection Framew
 
 **Parameters:**
 
-| Key                 | Type                        | Default value    | Description                                                                                        |
-| ------------------- | --------------------------- | ---------------- | -------------------------------------------------------------------------------------------------- |
-| `variant`           | `Literal["light", "heavy"]` | `"light"`        | Defines the variant of the model. `"light"` uses `EfficientRep-N`, `"heavy"` uses `EfficientRep-L` |
-| `use_neck`          | `bool`                      | `True`           | Whether to include the neck in the model                                                           |
-| `backbone`          | `str`                       | `"EfficientRep"` | Name of the node to be used as a backbone                                                          |
-| `backbone_params`   | `dict`                      | `{}`             | Additional parameters to the backbone                                                              |
-| `neck_params`       | `dict`                      | `{}`             | Additional parameters to the neck                                                                  |
-| `head_params`       | `dict`                      | `{}`             | Additional parameters to the head                                                                  |
-| `loss_params`       | `dict`                      | `{}`             | Additional parameters to the loss                                                                  |
-| `visualizer_params` | `dict`                      | `{}`             | Additional parameters to the visualizer                                                            |
-| `task_name`         | `str \| None`               | `None`           | Custom task name for the head                                                                      |
+| Key                 | Type                                  | Default value    | Description                                                                                        |
+| ------------------- | ------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------- |
+| `variant`           | `Literal["light", "heavy", "medium"]` | `"light"`        | Defines the variant of the model. `"light"` uses `EfficientRep-N`, `"heavy"` uses `EfficientRep-L` |
+| `use_neck`          | `bool`                                | `True`           | Whether to include the neck in the model                                                           |
+| `backbone`          | `str`                                 | `"EfficientRep"` | Name of the node to be used as a backbone                                                          |
+| `backbone_params`   | `dict`                                | `{}`             | Additional parameters to the backbone                                                              |
+| `neck_params`       | `dict`                                | `{}`             | Additional parameters to the neck                                                                  |
+| `head_params`       | `dict`                                | `{}`             | Additional parameters to the head                                                                  |
+| `loss_params`       | `dict`                                | `{}`             | Additional parameters to the loss                                                                  |
+| `visualizer_params` | `dict`                                | `{}`             | Additional parameters to the visualizer                                                            |
+| `task_name`         | `str \| None`                         | `None`           | Custom task name for the head                                                                      |
 
 ## `KeypointDetectionModel`
 
-The `KeypointDetectionModel` allows for both `"light"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster.
+The `KeypointDetectionModel` allows for `"light"`, `"medium"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster.
 
 See an example configuration file using this predefined model [here](../../../configs/keypoint_bbox_light_model.yaml) for the `"light"` variant, and [here](../../../configs/keypoint_bbox_heavy_model.yaml) for the `"heavy"` variant.
+
+### Performance Metrics
+
+FPS (frames per second) for `light`, `medium` and `heavy` variants on different devices with image size 384x512:
+
+| Variant      | RVC2 FPS | RVC4 FPS |
+| ------------ | -------- | -------- |
+| **`light`**  | 45       | 137      |
+| **`medium`** | 24       | 120      |
+| **`heavy`**  | 7        | 101      |
 
 **Components:**
 
@@ -110,25 +145,34 @@ See an example configuration file using this predefined model [here](../../../co
 
 **Parameters:**
 
-| Key                      | Type                        | Default value    | Description                                                                                        |
-| ------------------------ | --------------------------- | ---------------- | -------------------------------------------------------------------------------------------------- |
-| `variant`                | `Literal["light", "heavy"]` | `"light"`        | Defines the variant of the model. `"light"` uses `EfficientRep-N`, `"heavy"` uses `EfficientRep-L` |
-| `use_neck`               | `bool`                      | `True`           | Whether to include the neck in the model                                                           |
-| `backbone`               | `str`                       | `"EfficientRep"` | Name of the node to be used as a backbone                                                          |
-| `backbone_params`        | `dict`                      | `{}`             | Additional parameters to the backbone                                                              |
-| `neck_params`            | `dict`                      | `{}`             | Additional parameters to the neck                                                                  |
-| `head_params`            | `dict`                      | `{}`             | Additional parameters to the head                                                                  |
-| `loss_params`            | `dict`                      | `{}`             | Additional parameters to the loss                                                                  |
-| `kpt_visualizer_params`  | `dict`                      | `{}`             | Additional parameters to the keypoint visualizer                                                   |
-| `bbox_visualizer_params` | `dict`                      | `{}`             | Additional parameters to the bounding box visualizer                                               |
-| `bbox_task_name`         | `str \| None`               | `None`           | Custom task name for the detection head                                                            |
-| `kpt_task_name`          | `str \| None`               | `None`           | Custom task name for the keypoint head                                                             |
+| Key                      | Type                                  | Default value    | Description                                                                                        |
+| ------------------------ | ------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------- |
+| `variant`                | `Literal["light", "heavy", "medium"]` | `"light"`        | Defines the variant of the model. `"light"` uses `EfficientRep-N`, `"heavy"` uses `EfficientRep-L` |
+| `use_neck`               | `bool`                                | `True`           | Whether to include the neck in the model                                                           |
+| `backbone`               | `str`                                 | `"EfficientRep"` | Name of the node to be used as a backbone                                                          |
+| `backbone_params`        | `dict`                                | `{}`             | Additional parameters to the backbone                                                              |
+| `neck_params`            | `dict`                                | `{}`             | Additional parameters to the neck                                                                  |
+| `head_params`            | `dict`                                | `{}`             | Additional parameters to the head                                                                  |
+| `loss_params`            | `dict`                                | `{}`             | Additional parameters to the loss                                                                  |
+| `kpt_visualizer_params`  | `dict`                                | `{}`             | Additional parameters to the keypoint visualizer                                                   |
+| `bbox_visualizer_params` | `dict`                                | `{}`             | Additional parameters to the bounding box visualizer                                               |
+| `bbox_task_name`         | `str \| None`                         | `None`           | Custom task name for the detection head                                                            |
+| `kpt_task_name`          | `str \| None`                         | `None`           | Custom task name for the keypoint head                                                             |
 
 ## `ClassificationModel`
 
 The `ClassificationModel` allows for both `"light"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster. Can be used for multi-class and multi-label tasks.
 
 See an example configuration file using this predefined model [here](../../../configs/classification_light_model.yaml) for the `"light"` variant, and [here](../../../configs/classification_heavy_model.yaml) for the `"heavy"` variant.
+
+### Performance Metrics
+
+FPS (frames per second) for `light` and `heavy` variants on different devices with image size 384x512:
+
+| Variant     | RVC2 FPS | RVC4 FPS |
+| ----------- | -------- | -------- |
+| **`light`** | 46       | 176      |
+| **`heavy`** | 5        | 134      |
 
 **Components:**
 
@@ -158,13 +202,23 @@ See an example configuration file using this predefined model [here](../../../co
 
 The `FOMOModel` allows for both `"light"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster.
 
-See an example configuration file using this predefined model [here](../../../configs/detection_fomo_light_model.yaml) for the `"light"` variant, and [here](../../../configs/detection_fomo_heavy_model.yaml) for the `"heavy"` variant.
+There is a trade-off in this simple model: training with a larger `object_weight` in the loss parameters may result in more false positives (FP), but it will improve accuracy. You can also use `use_nms: True` in the `head_params` to enable NMS which can reduce FP, but it will also reduce TP for close neighbors.
+
+### Performance Metrics
+
+FPS (frames per second) for `light` and `heavy` variants on different devices with image size 384x512:
+
+| Variant     | RVC2 FPS | RVC4 FPS |
+| ----------- | -------- | -------- |
+| **`light`** | 140      | 243      |
+| **`heavy`** | 34       | 230      |
 
 ### **Components**
 
 | Name                                                                                            | Alias               | Function                                                                       |
 | ----------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------ |
-| [`MobileNetV2`](../../nodes/README.md#mobilenetv2)                                              | `"fomo_backbone"`   | Backbone of the model. Available variants: `"light"` and `"heavy"`.            |
+| [`MobileNetV2`](../../nodes/README.md#mobilenetv2)                                              | `"fomo_backbone"`   | Backbone of the model. Available for `"heavy"` variant                         |
+| [`EfficientRep`](../../nodes/README.md#efficientrep)                                            | `"fomo_backbone"`   | Backbone of the model. Available for `"light"` variant                         |
 | [`FOMOHead`](../../nodes/README.md#fomohead)                                                    | `"fomo_head"`       | Head of the model with a configurable number of convolutional layers.          |
 | [`FOMOLocalizationLoss`](../../attached_modules/losses/README.md#fomolocalizationloss)          | `"fomo_loss"`       | Loss function for object localization.                                         |
 | [`ObjectKeypointSimilarity`](../../attached_modules/metrics/README.md#objectkeypointsimilarity) | `"fomo_oks"`        | Metric to evaluate the similarity between predicted and true object keypoints. |
@@ -181,3 +235,38 @@ See an example configuration file using this predefined model [here](../../../co
 | `loss_params`       | `dict`                      | `{}`            | Additional parameters for the loss function.                                                    |
 | `visualizer_params` | `dict`                      | `{}`            | Additional parameters for the visualizer.                                                       |
 | `task_name`         | `str \| None`               | `None`          | Custom task name for the model head.                                                            |
+
+## `AnomalyDetectionModel`
+
+The `AnomalyDetectionModel` allows for both `"light"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster.
+
+### Performance Metrics
+
+FPS (frames per second) for `light` and `heavy` variants on different devices with image size 256x256:
+
+| Variant     | RVC2 FPS | RVC4 FPS |
+| ----------- | -------- | -------- |
+| **`light`** | 3        | 120      |
+| **`heavy`** | 0.5      | 61       |
+
+**Components:**
+
+| Name                                                                                                       | Alias                     | Function                                                           |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------ |
+| [`RecSubNet`](../../nodes/README.md#recsubnet)                                                             | `"anomaly_backbone"`      | Backbone of the model. Available variants: `"light"` and `"heavy"` |
+| [`DiscSubNetHead`](../../nodes/README.md#discsubnethead)                                                   | `"anomaly_head"`          | Head of the model                                                  |
+| [`ReconstructionSegmentationLoss`](../../attached_modules/losses/README.md#reconstructionsegmentationloss) | `"anomaly_loss"`          | Loss of the model                                                  |
+| [`JaccardIndex`](../../attached_modules/metrics/README.md#torchmetrics)                                    | `"anomaly_jaccard_index"` | Main metric of the model                                           |
+| [`SegmentationVisualizer`](../../attached_modules/visualizers/README.md#segmentationvisualizer)            | `"anomaly_visualizer"`    | Visualizer of the `DiscSubNetHead`                                 |
+
+**Parameters:**
+
+| Key                  | Type                        | Default value | Description                                                                                     |
+| -------------------- | --------------------------- | ------------- | ----------------------------------------------------------------------------------------------- |
+| `variant`            | `Literal["light", "heavy"]` | `"light"`     | Defines the variant of the model. `"light"` uses a smaller network, `"heavy"` uses a larger one |
+| `backbone`           | `str`                       | `"RecSubNet"` | Name of the node to be used as a backbone                                                       |
+| `backbone_params`    | `dict`                      | `{}`          | Additional parameters for the backbone                                                          |
+| `disc_subnet_params` | `dict`                      | `{}`          | Additional parameters for the discriminator subnet                                              |
+| `loss_params`        | `dict`                      | `{}`          | Additional parameters for the loss                                                              |
+| `visualizer_params`  | `dict`                      | `{}`          | Additional parameters for the visualizer                                                        |
+| `task_name`          | `str \| None`               | `None`        | Custom task name for the head                                                                   |
