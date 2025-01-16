@@ -280,14 +280,14 @@ We use [`Albumentations`](https://albumentations.ai/docs/) library for `augmenta
 
 Additionally, we support `Mosaic4` and `MixUp` batch augmentations and letterbox resizing if `keep_aspect_ratio: true`.
 
-| Key                 | Type         | Default value | Description                                                                                                                                                             |
-| ------------------- | ------------ | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `train_image_size`  | `list[int]`  | `[256, 256]`  | Image size used for training as `[height, width]`                                                                                                                       |
-| `keep_aspect_ratio` | `bool`       | `True`        | Whether to keep the aspect ratio while resizing                                                                                                                         |
-| `train_rgb`         | `bool`       | `"RGB"`       | Whether to train on RGB or BGR images                                                                                                                                   |
-| `normalize.active`  | `bool`       | `True`        | Whether to use normalization                                                                                                                                            |
-| `normalize.params`  | `dict`       | `{}`          | Parameters for normalization, see [Normalize](https://albumentations.ai/docs/api_reference/augmentations/transforms/#albumentations.augmentations.transforms.Normalize) |
-| `augmentations`     | `list[dict]` | `[]`          | List of `Albumentations` augmentations                                                                                                                                  |
+| Key                 | Type                    | Default value | Description                                                                                                                                                             |
+| ------------------- | ----------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `train_image_size`  | `list[int]`             | `[256, 256]`  | Image size used for training as `[height, width]`                                                                                                                       |
+| `keep_aspect_ratio` | `bool`                  | `True`        | Whether to keep the aspect ratio while resizing                                                                                                                         |
+| `color_space`       | `Literal["RGB", "BGR"]` | `"RGB"`       | Whether to train on RGB or BGR images                                                                                                                                   |
+| `normalize.active`  | `bool`                  | `True`        | Whether to use normalization                                                                                                                                            |
+| `normalize.params`  | `dict`                  | `{}`          | Parameters for normalization, see [Normalize](https://albumentations.ai/docs/api_reference/augmentations/transforms/#albumentations.augmentations.transforms.Normalize) |
+| `augmentations`     | `list[dict]`            | `[]`          | List of `Albumentations` augmentations                                                                                                                                  |
 
 #### Augmentations
 
@@ -306,7 +306,7 @@ trainer:
     # using YAML capture to reuse the image size
     train_image_size: [&height 384, &width 384]
     keep_aspect_ratio: true
-    train_rgb: true
+    color_space: "RGB"
     normalize:
       active: true
     augmentations:

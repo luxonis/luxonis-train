@@ -92,7 +92,7 @@ def infer_from_video(
         ret, frame = cap.read()
         if not ret:  # pragma: no cover
             break
-        if model.cfg.trainer.preprocessing.train_rgb:
+        if model.cfg.trainer.preprocessing.color_space == "RGB":
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # TODO: batched inference

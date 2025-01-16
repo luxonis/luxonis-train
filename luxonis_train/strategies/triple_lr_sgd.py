@@ -1,8 +1,8 @@
 # strategies/triple_lr_sgd.py
 import math
 
+import lightning.pytorch as pl
 import numpy as np
-import pytorch_lightning as pl
 import torch
 from torch.optim import SGD
 from torch.optim.lr_scheduler import LambdaLR

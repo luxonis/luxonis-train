@@ -110,7 +110,9 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         @param out_image_format: The format of the output images. Defaults
             to C{"RGB"}.
         """
-        super().__init__(view=view, **kwargs)
+        super().__init__(
+            view=view if isinstance(view, list) else [view], **kwargs
+        )
         if dataset_dir is not None:
             self.dataset = self._parse_dataset(
                 dataset_dir, dataset_name, dataset_type, delete_existing

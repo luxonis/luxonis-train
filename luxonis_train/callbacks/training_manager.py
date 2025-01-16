@@ -1,4 +1,4 @@
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 
 from luxonis_train.strategies.base_strategy import BaseTrainingStrategy
 
