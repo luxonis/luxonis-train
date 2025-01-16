@@ -57,6 +57,8 @@ class SegmentationModel(BasePredefinedModel):
         visualizer_params: Params | None = None,
         task: Literal["binary", "multiclass"] = "binary",
         task_name: str | None = None,
+        enable_confusion_matrix: bool = True,
+        confusion_matrix_params: Params | None = None,
     ):
         var_config = get_variant(variant)
 
@@ -72,6 +74,8 @@ class SegmentationModel(BasePredefinedModel):
         self.visualizer_params = visualizer_params or {}
         self.task = task
         self.task_name = task_name or "segmentation"
+        self.enable_confusion_matrix = enable_confusion_matrix
+        self.confusion_matrix_params = confusion_matrix_params or {}
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
@@ -154,7 +158,7 @@ class SegmentationModel(BasePredefinedModel):
     @property
     def metrics(self) -> list[MetricModuleConfig]:
         """Defines the metrics used for evaluation."""
-        return [
+        metrics = [
             MetricModuleConfig(
                 name="JaccardIndex",
                 alias=f"JaccardIndex-{self.task_name}",
@@ -169,6 +173,16 @@ class SegmentationModel(BasePredefinedModel):
                 params={"task": self.task},
             ),
         ]
+        if self.enable_confusion_matrix:
+            metrics.append(
+                MetricModuleConfig(
+                    name="ConfusionMatrix",
+                    alias=f"ConfusionMatrix-{self.task_name}",
+                    attached_to=f"DDRNetSegmentationHead-{self.task_name}",
+                    params={**self.confusion_matrix_params},
+                )
+            )
+        return metrics
 
     @property
     def visualizers(self) -> list[AttachedModuleConfig]:
