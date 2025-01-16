@@ -1,6 +1,5 @@
 import logging
-from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 import numpy as np
 import torch
@@ -31,88 +30,45 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         bucket_type: Literal["internal", "external"] = "internal",
         bucket_storage: Literal["local", "s3", "gcs", "azure"] = "local",
         delete_existing: bool = True,
-        view: str | list[str] = "train",
-        augmentation_engine: str
-        | Literal["albumentations"] = "albumentations",
-        augmentation_config: Path | str | list[dict[str, Any]] | None = None,
-        height: int | None = None,
-        width: int | None = None,
-        keep_aspect_ratio: bool = True,
-        out_image_format: Literal["RGB", "BGR"] = "RGB",
         **kwargs,
     ):
         """Torch-compatible loader for Luxonis datasets.
 
-        Can either use an already existing dataset or parse a new one from a directory.
+        Can either use an already existing dataset or parse a new one
+        from a directory.
 
         @type dataset_name: str | None
-        @param dataset_name: Name of the dataset to load. If not provided, the
-            C{dataset_dir} argument must be provided instead. If both C{dataset_dir} and
-            C{dataset_name} are provided, the dataset will be parsed from the directory
-            and saved with the provided name.
+        @param dataset_name: Name of the dataset to load. If not
+            provided, the C{dataset_dir} argument must be provided
+            instead. If both C{dataset_dir} and C{dataset_name} are
+            provided, the dataset will be parsed from the directory and
+            saved with the provided name.
         @type dataset_dir: str | None
-        @param dataset_dir: Path to the dataset directory. It can be either a local path
-            or a URL. The data can be in a zip file. If not provided, C{dataset_name} of
-            an existing dataset must be provided.
+        @param dataset_dir: Path to the dataset directory. It can be
+            either a local path or a URL. The data can be in a zip file.
+            If not provided, C{dataset_name} of an existing dataset must
+            be provided.
         @type dataset_type: str | None
-        @param dataset_type: Type of the dataset. Only relevant when C{dataset_dir} is
-            provided. If not provided, the type will be inferred from the directory
-            structure.
+        @param dataset_type: Type of the dataset. Only relevant when
+            C{dataset_dir} is provided. If not provided, the type will
+            be inferred from the directory structure.
         @type team_id: str | None
         @param team_id: Optional unique team identifier for the cloud.
         @type bucket_type: Literal["internal", "external"]
-        @param bucket_type: Type of the bucket. Only relevant for remote datasets.
-            Defaults to 'internal'.
+        @param bucket_type: Type of the bucket. Only relevant for remote
+            datasets. Defaults to 'internal'.
         @type bucket_storage: Literal["local", "s3", "gcs", "azure"]
-        @param bucket_storage: Type of the bucket storage. Defaults to 'local'.
+        @param bucket_storage: Type of the bucket storage. Defaults to
+            'local'.
         @type delete_existing: bool
-        @param delete_existing: Only relevant when C{dataset_dir} is provided. By
-            default, the dataset is parsed again every time the loader is created
-            because the underlying data might have changed. If C{delete_existing} is set
-            to C{False} and a dataset of the same name already exists, the existing
+        @param delete_existing: Only relevant when C{dataset_dir} is
+            provided. By default, the dataset is parsed again every time
+            the loader is created because the underlying data might have
+            changed. If C{delete_existing} is set to C{False} and a
+            dataset of the same name already exists, the existing
             dataset will be used instead of re-parsing the data.
-        @type view: str | list[str]
-        @param view: A single split or a list of splits that will be used to create a
-            view of the dataset. Each split is a string that represents a subset of the
-            dataset. The available splits depend on the dataset, but usually include
-            'train', 'val', and 'test'. Defaults to 'train'.
-        @type augmentation_engine: Union[Literal["albumentations"], str]
-        @param augmentation_engine: The augmentation engine to use.
-            Defaults to C{"albumentations"}.
-        @type augmentation_config: Optional[Union[List[Dict[str, Any]],
-            PathType]]
-        @param augmentation_config: The configuration for the
-            augmentations. This can be either a list of C{Dict[str, Any]} or
-            a path to a configuration file.
-            The config member is a dictionary with two keys: C{name} and
-            C{params}. C{name} is the name of the augmentation to
-            instantiate and C{params} is an optional dictionary
-            of parameters to pass to the augmentation.
-
-            Example::
-
-                [
-                    {"name": "HorizontalFlip", "params": {"p": 0.5}},
-                    {"name": "RandomBrightnessContrast", "params": {"p": 0.1}},
-                    {"name": "Defocus"}
-                ]
-
-        @type height: Optional[int]
-        @param height: The height of the output images. Defaults to
-            C{None}.
-        @type width: Optional[int]
-        @param width: The width of the output images. Defaults to
-            C{None}.
-        @type keep_aspect_ratio: bool
-        @param keep_aspect_ratio: Whether to keep the aspect ratio of the
-            images. Defaults to C{True}.
-        @type out_image_format: Literal["RGB", "BGR"]
-        @param out_image_format: The format of the output images. Defaults
-            to C{"RGB"}.
         """
-        super().__init__(
-            view=view if isinstance(view, list) else [view], **kwargs
-        )
+        super().__init__(**kwargs)
         if dataset_dir is not None:
             self.dataset = self._parse_dataset(
                 dataset_dir, dataset_name, dataset_type, delete_existing
@@ -130,13 +86,15 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             )
         self.loader = LuxonisLoader(
             dataset=self.dataset,
-            view=view,
-            augmentation_engine=augmentation_engine,
-            augmentation_config=augmentation_config,
-            height=height,
-            width=width,
-            keep_aspect_ratio=keep_aspect_ratio,
-            out_image_format=out_image_format,
+            view=self.view,
+            augmentation_engine=self.augmentation_engine,
+            augmentation_config=[
+                aug.model_dump() for aug in self.augmentation_config
+            ],
+            height=self.height,
+            width=self.width,
+            keep_aspect_ratio=self.keep_aspect_ratio,
+            out_image_format=self.color_space,
         )
 
     def __len__(self) -> int:
