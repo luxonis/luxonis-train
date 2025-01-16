@@ -10,7 +10,7 @@ from .needs_checkpoint import NeedsCheckpoint
 logger = logging.getLogger(__name__)
 
 
-@CALLBACKS.register_module()
+@CALLBACKS.register()
 class ExportOnTrainEnd(NeedsCheckpoint):
     def on_train_end(
         self,

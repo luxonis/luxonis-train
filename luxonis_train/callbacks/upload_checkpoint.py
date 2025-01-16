@@ -10,7 +10,7 @@ import luxonis_train
 from luxonis_train.utils.registry import CALLBACKS
 
 
-@CALLBACKS.register_module()
+@CALLBACKS.register()
 class UploadCheckpoint(pl.Callback):
     """Callback that uploads best checkpoint based on the validation
     loss."""
