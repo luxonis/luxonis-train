@@ -76,6 +76,39 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             view of the dataset. Each split is a string that represents a subset of the
             dataset. The available splits depend on the dataset, but usually include
             'train', 'val', and 'test'. Defaults to 'train'.
+        @type augmentation_engine: Union[Literal["albumentations"], str]
+        @param augmentation_engine: The augmentation engine to use.
+            Defaults to C{"albumentations"}.
+        @type augmentation_config: Optional[Union[List[Dict[str, Any]],
+            PathType]]
+        @param augmentation_config: The configuration for the
+            augmentations. This can be either a list of C{Dict[str, Any]} or
+            a path to a configuration file.
+            The config member is a dictionary with two keys: C{name} and
+            C{params}. C{name} is the name of the augmentation to
+            instantiate and C{params} is an optional dictionary
+            of parameters to pass to the augmentation.
+
+            Example::
+
+                [
+                    {"name": "HorizontalFlip", "params": {"p": 0.5}},
+                    {"name": "RandomBrightnessContrast", "params": {"p": 0.1}},
+                    {"name": "Defocus"}
+                ]
+
+        @type height: Optional[int]
+        @param height: The height of the output images. Defaults to
+            C{None}.
+        @type width: Optional[int]
+        @param width: The width of the output images. Defaults to
+            C{None}.
+        @type keep_aspect_ratio: bool
+        @param keep_aspect_ratio: Whether to keep the aspect ratio of the
+            images. Defaults to C{True}.
+        @type out_image_format: Literal["RGB", "BGR"]
+        @param out_image_format: The format of the output images. Defaults
+            to C{"RGB"}.
         """
         super().__init__(view=view, **kwargs)
         if dataset_dir is not None:
