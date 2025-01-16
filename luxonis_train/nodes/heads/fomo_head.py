@@ -65,16 +65,42 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         return self.conv_layers(inputs)
 
     def wrap(self, heatmap: Tensor) -> Packet[Tensor]:
-        if self.training or self.export:
+        if self.export:
+            return {"outputs": [self._apply_nms_if_needed(heatmap)]}
+
+        if self.training:
             return {
                 "features": [heatmap],
             }
-        else:
-            keypoints = self._heatmap_to_kpts(heatmap)
-            return {
-                "keypoints": keypoints,
-                "features": [heatmap],
-            }
+
+        keypoints = self._heatmap_to_kpts(heatmap)
+        return {
+            "keypoints": keypoints,
+            "features": [heatmap],
+        }
+
+    def _apply_nms_if_needed(self, heatmap: Tensor) -> Tensor:
+        """Apply NMS pooling to the heatmap if use_nms is enabled.
+
+        @type heatmap: Tensor
+        @param heatmap: Heatmap to process.
+        @return: Processed heatmap with or without pooling.
+        """
+        if not self.use_nms:
+            return heatmap
+
+        return (
+            F.max_pool2d(
+                heatmap.unsqueeze(0).unsqueeze(
+                    0
+                ),  # Add dummy batch/channel dimensions
+                kernel_size=3,
+                stride=1,
+                padding=1,
+            )
+            .squeeze(0)
+            .squeeze(0)
+        )  # Remove dummy dimensions
 
     def _heatmap_to_kpts(self, heatmap: Tensor) -> List[Tensor]:
         """Convert heatmap to keypoint pairs using local-max NMS so that
@@ -93,33 +119,17 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
             for c in range(num_classes):
                 prob_map = torch.sigmoid(heatmap[batch_idx, c, :, :])
 
-                if self.use_nms:
-                    pooled_map = (
-                        F.max_pool2d(
-                            prob_map.unsqueeze(0).unsqueeze(
-                                0
-                            ),  # shape [1,1,H,W]
-                            kernel_size=3,
-                            stride=1,
-                            padding=1,
-                        )
-                        .squeeze(0)
-                        .squeeze(0)
-                    )  # back to [H,W]
-
-                    threshold = 0.5
-                    keep = (prob_map == pooled_map) & (prob_map > threshold)
-                else:
-                    threshold = 0.5
-                    keep = prob_map > threshold
+                keep = self._get_keypoint_mask(prob_map)
 
                 y_indices, x_indices = torch.where(keep)
-                kpts = []
-                for y, x in zip(y_indices, x_indices):
-                    kpt_x = x.item() / width * self.original_img_size[1]
-                    kpt_y = y.item() / height * self.original_img_size[0]
-
-                    kpts.append([kpt_x, kpt_y, float(prob_map[y, x])])
+                kpts = [
+                    [
+                        x.item() / width * self.original_img_size[1],
+                        y.item() / height * self.original_img_size[0],
+                        float(prob_map[y, x]),
+                    ]
+                    for y, x in zip(y_indices, x_indices)
+                ]
 
                 kpts_per_img.append(kpts)
 
@@ -133,3 +143,26 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
             )
 
         return batch_kpts
+
+    def _get_keypoint_mask(self, prob_map: Tensor) -> Tensor:
+        """Generate a mask for keypoints using NMS if enabled.
+
+        @type prob_map: Tensor
+        @param prob_map: Probability map for a specific class.
+        @return: Binary mask indicating keypoint positions.
+        """
+        if self.use_nms:
+            pooled_map = (
+                F.max_pool2d(
+                    prob_map.unsqueeze(0).unsqueeze(0),  # [1, 1, H, W]
+                    kernel_size=3,
+                    stride=1,
+                    padding=1,
+                )
+                .squeeze(0)
+                .squeeze(0)
+            )  # [H, W]
+            threshold = 0.5
+            return (prob_map == pooled_map) & (prob_map > threshold)
+
+        return prob_map > 0.5

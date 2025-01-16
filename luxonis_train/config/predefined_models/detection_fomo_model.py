@@ -35,11 +35,6 @@ def get_variant(variant: VariantLiteral) -> FOMOVariant:
             head_params={"num_conv_layers": 2, "conv_channels": 16},
             backbone_params={"variant": "n"},
         ),
-        "medium": FOMOVariant(
-            backbone="EfficientRep",
-            head_params={"num_conv_layers": 2, "conv_channels": 16},
-            backbone_params={"variant": "s"},
-        ),
     }
 
     if variant not in variants:
