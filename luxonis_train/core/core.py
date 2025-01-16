@@ -132,7 +132,9 @@ class LuxonisModel:
                     i.model_dump()
                     for i in self.cfg.trainer.preprocessing.get_active_augmentations()
                 ],
-                out_image_format=self.cfg.trainer.preprocessing.color_format,
+                out_image_format="RGB"
+                if self.cfg.trainer.preprocessing.train_rgb
+                else "BGR",
                 keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
                 **self.cfg.loader.params,
             )
@@ -721,7 +723,7 @@ class LuxonisModel:
                 self.cfg.trainer.preprocessing.normalize.params["std"]
             ),
             "dai_type": "RGB888p"
-            if self.cfg.trainer.preprocessing.color_format == "RGB"
+            if self.cfg.trainer.preprocessing.train_rgb
             else "BGR888p",
         }
 

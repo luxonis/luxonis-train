@@ -100,7 +100,6 @@ trainer:
   preprocessing:
     train_image_size: [&height 384, &width 384]
     keep_aspect_ratio: true
-    color_format: RGB
     normalize:
       active: true
     augmentations:
