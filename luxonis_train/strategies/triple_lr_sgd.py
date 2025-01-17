@@ -51,7 +51,7 @@ class TripleLRScheduler:
             + 1
         )
 
-    def create_scheduler(self):
+    def create_scheduler(self) -> LambdaLR:
         scheduler = LambdaLR(self.optimizer, lr_lambda=self.lf)
         return scheduler
 
@@ -103,7 +103,7 @@ class TripleLRSGD:
         if params:
             self.params.update(params)
 
-    def create_optimizer(self):
+    def create_optimizer(self) -> torch.optim.Optimizer:
         batch_norm_weights, regular_weights, biases = [], [], []
 
         for module in self.model.modules():
@@ -166,6 +166,6 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
     def configure_optimizers(self) -> tuple[list[Optimizer], list[LambdaLR]]:
         return [self.optimizer], [self.scheduler.create_scheduler()]
 
-    def update_parameters(self, *args, **kwargs):
+    def update_parameters(self, *args, **kwargs) -> None:
         current_epoch = self.model.current_epoch
         self.scheduler.update_learning_rate(current_epoch)

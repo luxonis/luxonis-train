@@ -62,7 +62,7 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
 
     def forward(
         self, orig: Tensor, recon: Tensor, seg_out: Tensor, an_mask: Tensor
-    ):
+    ) -> tuple[Tensor, dict[str, Tensor]]:
         l2 = self.loss_l2(recon, orig)
         ssim = self.loss_ssim(recon, orig)
         focal = self.loss_focal(seg_out, an_mask)
@@ -142,8 +142,8 @@ def ssim(
     img2: Tensor,
     window_size: int = 11,
     window: Tensor | None = None,
-    size_average=True,
-    val_range=None,
+    size_average: bool = True,
+    val_range: float | None = None,
 ) -> Tensor:
     if val_range is None:
         if torch.max(img1) > 128:

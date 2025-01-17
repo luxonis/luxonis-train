@@ -208,7 +208,7 @@ class LuxonisModel:
 
         self._exported_models: dict[str, Path] = {}
 
-    def _train(self, resume: str | None, *args, **kwargs):
+    def _train(self, resume: str | None, *args, **kwargs) -> None:
         status = "success"
         try:
             self.pl_trainer.fit(*args, ckpt_path=resume, **kwargs)
@@ -245,7 +245,7 @@ class LuxonisModel:
                 LuxonisFileSystem.download(resume_weights, self.run_save_dir)
             )
 
-        def graceful_exit(signum: int, _):  # pragma: no cover
+        def graceful_exit(signum: int, _: Any) -> None:  # pragma: no cover
             logger.info(
                 f"{signal.Signals(signum).name} received, stopping training..."
             )

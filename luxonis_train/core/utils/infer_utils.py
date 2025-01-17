@@ -7,12 +7,13 @@ import cv2
 import numpy as np
 import torch
 import torch.utils.data as torch_data
-from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from torch import Tensor
 
 import luxonis_train
 from luxonis_train.attached_modules.visualizers import get_denormalized_images
 from luxonis_train.loaders import LuxonisLoaderTorch
+from luxonis_train.models.luxonis_output import LuxonisOutput
 
 IMAGE_FORMATS = {
     ".bmp",
@@ -48,7 +49,7 @@ def process_visualizations(
 
 def prepare_and_infer_image(
     model: "luxonis_train.core.LuxonisModel", img: Tensor
-):
+) -> LuxonisOutput:
     """Prepares the image for inference and runs the model."""
     img = model.loaders["val"].augment_test_image(img)  # type: ignore
 
@@ -196,7 +197,7 @@ def infer_from_directory(
     """
     img_paths = list(img_paths)
 
-    def generator():
+    def generator() -> DatasetIterator:
         for img_path in img_paths:
             yield {
                 "file": img_path,

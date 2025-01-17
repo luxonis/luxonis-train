@@ -15,7 +15,7 @@ class TrainingManager(pl.Callback):
 
     def on_after_backward(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
-    ):
+    ) -> None:
         """PyTorch Lightning hook that is called after the backward
         pass.
 

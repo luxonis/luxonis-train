@@ -20,9 +20,7 @@ class BaseTrainingStrategy(
     @abstractmethod
     def configure_optimizers(
         self,
-    ) -> tuple[list[Optimizer], list[LRScheduler]]:
-        pass
+    ) -> tuple[list[Optimizer], list[LRScheduler]]: ...
 
     @abstractmethod
-    def update_parameters(self, *args, **kwargs):
-        pass
+    def update_parameters(self, *args, **kwargs) -> None: ...

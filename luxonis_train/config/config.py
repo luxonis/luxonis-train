@@ -498,7 +498,9 @@ class ExportConfig(ArchiveConfig):
 
     @model_validator(mode="after")
     def check_values(self) -> Self:
-        def pad_values(values: float | list[float] | None):
+        def pad_values(
+            values: float | list[float] | None,
+        ) -> list[float] | None:
             if values is None:
                 return None
             if isinstance(values, float):
@@ -644,7 +646,7 @@ def is_acyclic(graph: dict[str, list[str]]) -> bool:
     """
     graph = graph.copy()
 
-    def dfs(node: str, visited: set[str], recursion_stack: set[str]):
+    def dfs(node: str, visited: set[str], recursion_stack: set[str]) -> bool:
         visited.add(node)
         recursion_stack.add(node)
 

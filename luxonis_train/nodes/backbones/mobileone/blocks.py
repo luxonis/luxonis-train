@@ -133,7 +133,7 @@ class MobileOneBlock(nn.Module):
 
         return self.activation(self.se(out))
 
-    def reparameterize(self):
+    def reparameterize(self) -> None:
         """Following works like U{RepVGG: Making VGG-style ConvNets Great Again
         <https://arxiv.org/pdf/2101.03697.pdf. We re-parameterize multi-branched>}
         architecture used at training time to obtain a plain CNN-like structure

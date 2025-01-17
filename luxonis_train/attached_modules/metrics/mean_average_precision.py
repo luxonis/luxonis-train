@@ -31,7 +31,7 @@ class MeanAveragePrecision(
         self,
         outputs: list[dict[str, Tensor]],
         labels: list[dict[str, Tensor]],
-    ):
+    ) -> None:
         self.metric.update(outputs, labels)
 
     def prepare(
