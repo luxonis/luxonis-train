@@ -61,7 +61,9 @@ class InstanceSegmentationModel(BasePredefinedModel):
         head_params: Params | None = None,
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
-        task_name: str | None = None,
+        task_name: str = "",
+        enable_confusion_matrix: bool = True,
+        confusion_matrix_params: Params | None = None,
     ):
         var_config = get_variant(variant)
 
@@ -74,9 +76,11 @@ class InstanceSegmentationModel(BasePredefinedModel):
         self.backbone = backbone or var_config.backbone
         self.neck_params = neck_params or var_config.neck_params
         self.head_params = head_params or {}
-        self.loss_params = loss_params or {"n_warmup_epochs": 0}
+        self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
-        self.task_name = task_name or "instance_segmentation"
+        self.task_name = task_name
+        self.enable_confusion_matrix = enable_confusion_matrix
+        self.confusion_matrix_params = confusion_matrix_params or {}
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
@@ -85,7 +89,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
         nodes = [
             ModelNodeConfig(
                 name=self.backbone,
-                alias=f"{self.backbone}-{self.task_name}",
+                alias=f"{self.task_name}/{self.backbone}",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
@@ -94,8 +98,8 @@ class InstanceSegmentationModel(BasePredefinedModel):
             nodes.append(
                 ModelNodeConfig(
                     name="RepPANNeck",
-                    alias=f"RepPANNeck-{self.task_name}",
-                    inputs=[f"{self.backbone}-{self.task_name}"],
+                    alias=f"{self.task_name}/RepPANNeck",
+                    inputs=[f"{self.task_name}/{self.backbone}"],
                     freezing=self.neck_params.pop("freezing", {}),
                     params=self.neck_params,
                 )
@@ -104,13 +108,13 @@ class InstanceSegmentationModel(BasePredefinedModel):
         nodes.append(
             ModelNodeConfig(
                 name="PrecisionSegmentBBoxHead",
-                alias=f"PrecisionSegmentBBoxHead-{self.task_name}",
+                alias=f"{self.task_name}/PrecisionSegmentBBoxHead",
                 freezing=self.head_params.pop("freezing", {}),
-                inputs=[f"RepPANNeck-{self.task_name}"]
+                inputs=[f"{self.task_name}/RepPANNeck"]
                 if self.use_neck
                 else [f"{self.backbone}-{self.task_name}"],
                 params=self.head_params,
-                task=self.task_name,
+                # task=self.task_name,
             )
         )
         return nodes
@@ -121,8 +125,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
         return [
             LossModuleConfig(
                 name="PrecisionDFLSegmentationLoss",
-                alias=f"PrecisionDFLSegmentationLoss-{self.task_name}",
-                attached_to=f"PrecisionSegmentBBoxHead-{self.task_name}",
+                attached_to=f"{self.task_name}/PrecisionSegmentBBoxHead",
                 params=self.loss_params,
                 weight=1.0,
             )
@@ -131,14 +134,23 @@ class InstanceSegmentationModel(BasePredefinedModel):
     @property
     def metrics(self) -> list[MetricModuleConfig]:
         """Defines the metrics used for evaluation."""
-        return [
+        metrics = [
             MetricModuleConfig(
                 name="MeanAveragePrecision",
-                alias=f"MeanAveragePrecision-{self.task_name}",
-                attached_to=f"PrecisionSegmentBBoxHead-{self.task_name}",
+                attached_to=f"{self.task_name}/PrecisionSegmentBBoxHead",
                 is_main_metric=True,
             ),
         ]
+        if self.enable_confusion_matrix:
+            metrics.append(
+                MetricModuleConfig(
+                    name="ConfusionMatrix",
+                    alias=f"{self.task_name}/ConfusionMatrix",
+                    attached_to=f"{self.task_name}/PrecisionSegmentBBoxHead",
+                    params={**self.confusion_matrix_params},
+                )
+            )
+        return metrics
 
     @property
     def visualizers(self) -> list[AttachedModuleConfig]:
@@ -146,8 +158,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="InstanceSegmentationVisualizer",
-                alias=f"InstanceSegmentationVisualizer-{self.task_name}",
-                attached_to=f"PrecisionSegmentBBoxHead-{self.task_name}",
+                attached_to=f"{self.task_name}/PrecisionSegmentBBoxHead",
                 params=self.visualizer_params,
             )
         ]
