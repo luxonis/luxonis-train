@@ -212,10 +212,13 @@ def infer_from_directory(
 
     loader = LuxonisLoaderTorch(
         dataset_name=dataset_name,
-        image_source="image",
         view="test",
+        height=model.cfg_preprocessing.train_image_size.height,
+        width=model.cfg_preprocessing.train_image_size.width,
+        augmentation_config=model.cfg_preprocessing.get_active_augmentations(),
+        color_space=model.cfg_preprocessing.color_space,
+        keep_aspect_ratio=model.cfg_preprocessing.keep_aspect_ratio,
     )
-    loader.loader.augmentations = model.loaders["val"].loader.augmentations  # type: ignore
     loader = torch_data.DataLoader(
         loader, batch_size=model.cfg.trainer.batch_size
     )
