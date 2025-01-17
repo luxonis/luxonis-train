@@ -3,10 +3,9 @@ import math
 from copy import deepcopy
 from typing import Any
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 import torch
-from pytorch_lightning.callbacks import Callback
-from pytorch_lightning.utilities.types import STEP_OUTPUT
+from lightning.pytorch.utilities.types import STEP_OUTPUT
 from torch import nn
 
 logger = logging.getLogger(__name__)
@@ -101,7 +100,7 @@ class ModelEma(nn.Module):
                 )
 
 
-class EMACallback(Callback):
+class EMACallback(pl.Callback):
     """Callback that updates the stored parameters using a moving
     average."""
 

@@ -4,6 +4,7 @@ import warnings
 from typing import Annotated, Any, Literal, NamedTuple, TypeAlias
 
 from luxonis_ml.enums import DatasetType
+from luxonis_ml.typing import ConfigItem
 from luxonis_ml.utils import (
     BaseModelExtraForbid,
     Environ,
@@ -318,9 +319,19 @@ class PreprocessingConfig(BaseModelExtraForbid):
         ImageSize, Field(default=[256, 256], min_length=2, max_length=2)
     ] = ImageSize(256, 256)
     keep_aspect_ratio: bool = True
-    train_rgb: bool = True
+    color_space: Literal["RGB", "BGR"] = "RGB"
     normalize: NormalizeAugmentationConfig = NormalizeAugmentationConfig()
     augmentations: list[AugmentationConfig] = []
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_train_rgb(cls, data: dict[str, Any]) -> dict[str, Any]:
+        if "train_rgb" in data:
+            warnings.warn(
+                "Field `train_rgb` is deprecated. Use `color_space` instead."
+            )
+            data["color_space"] = "RGB" if data.pop("train_rgb") else "BGR"
+        return data
 
     @model_validator(mode="after")
     def check_normalize(self) -> Self:
@@ -332,13 +343,17 @@ class PreprocessingConfig(BaseModelExtraForbid):
             )
         return self
 
-    def get_active_augmentations(self) -> list[AugmentationConfig]:
+    def get_active_augmentations(self) -> list[ConfigItem]:
         """Returns list of augmentations that are active.
 
         @rtype: list[AugmentationConfig]
         @return: Filtered list of active augmentation configs
         """
-        return [aug for aug in self.augmentations if aug.active]
+        return [
+            ConfigItem(name=aug.name, params=aug.params)
+            for aug in self.augmentations
+            if aug.active
+        ]
 
 
 class CallbackConfig(BaseModelExtraForbid):
@@ -483,7 +498,9 @@ class ExportConfig(ArchiveConfig):
 
     @model_validator(mode="after")
     def check_values(self) -> Self:
-        def pad_values(values: float | list[float] | None):
+        def pad_values(
+            values: float | list[float] | None,
+        ) -> list[float] | None:
             if values is None:
                 return None
             if isinstance(values, float):
@@ -629,7 +646,7 @@ def is_acyclic(graph: dict[str, list[str]]) -> bool:
     """
     graph = graph.copy()
 
-    def dfs(node: str, visited: set[str], recursion_stack: set[str]):
+    def dfs(node: str, visited: set[str], recursion_stack: set[str]) -> bool:
         visited.add(node)
         recursion_stack.add(node)
 

@@ -9,6 +9,7 @@ import torch
 from lightning.pytorch.callbacks import ModelCheckpoint, RichModelSummary
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
 from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.typing import ConfigItem
 from torch import Size, Tensor, nn
 
 import luxonis_train
@@ -601,7 +602,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         old_forward = self.forward
 
-        def export_forward(inputs) -> tuple[Tensor, ...]:
+        def export_forward(inputs: dict[str, Tensor]) -> tuple[Tensor, ...]:
             outputs = old_forward(
                 inputs,
                 None,
@@ -904,14 +905,12 @@ class LuxonisLightningModule(pl.LightningModule):
         }
         optimizer = OPTIMIZERS.get(cfg_optimizer.name)(**optim_params)
 
-        def get_scheduler(scheduler_cfg, optimizer):
-            scheduler_class = SCHEDULERS.get(
-                scheduler_cfg["name"]
-            )  # For dictionary access
-            scheduler_params = scheduler_cfg["params"] | {
-                "optimizer": optimizer
-            }  # Dictionary access for params
-            return scheduler_class(**scheduler_params)
+        def get_scheduler(
+            scheduler_cfg: ConfigItem, optimizer: torch.optim.Optimizer
+        ) -> torch.optim.lr_scheduler._LRScheduler:
+            scheduler_class = SCHEDULERS.get(scheduler_cfg.name)
+            scheduler_params = scheduler_cfg.params | {"optimizer": optimizer}
+            return scheduler_class(**scheduler_params)  # type: ignore
 
         if cfg_scheduler.name == "SequentialLR":
             schedulers_list = [

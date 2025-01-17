@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
@@ -20,9 +20,7 @@ class BaseTrainingStrategy(
     @abstractmethod
     def configure_optimizers(
         self,
-    ) -> tuple[list[Optimizer], list[LRScheduler]]:
-        pass
+    ) -> tuple[list[Optimizer], list[LRScheduler]]: ...
 
     @abstractmethod
-    def update_parameters(self, *args, **kwargs):
-        pass
+    def update_parameters(self, *args, **kwargs) -> None: ...

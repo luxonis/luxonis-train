@@ -1,24 +1,28 @@
 import random
-from typing import cast
+from collections.abc import Generator
+from contextlib import contextmanager
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-from luxonis_ml.data import AlbumentationsEngine
 from luxonis_ml.utils import LuxonisFileSystem
 from torch import Tensor
+from typing_extensions import override
 
-from .base_loader import LuxonisLoaderTorchOutput
+from luxonis_train.utils.types import Labels
+
 from .luxonis_loader_torch import LuxonisLoaderTorch
 from .perlin import apply_anomaly_to_img
 
 
 class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
+    @override
     def __init__(
         self,
         *args,
         anomaly_source_path: str,
         noise_prob: float = 0.5,
+        beta: float | None = None,
         **kwargs,
     ):
         """Custom loader for Luxonis datasets that adds Perlin noise
@@ -58,37 +62,51 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
             raise ValueError(
                 "This loader only supports datasets with a single task."
             )
+        self.beta = beta
         self.task_name = next(iter(self.loader.dataset.get_tasks()))
+        self.augmentations = self.loader.augmentations
 
-        augmentations = cast(AlbumentationsEngine, self.loader.augmentations)
-        if augmentations is None or augmentations.pixel_transform is None:
-            self.pixel_augs = None
-        else:
-            self.pixel_augs = augmentations.pixel_transform
+    @override
+    def get(self, idx: int) -> tuple[Tensor, Labels]:
+        with _freeze_seed():
+            img, labels = self.loader[idx]
 
-    def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
-        img, labels = self.loader[idx]
+        an_mask = torch.tensor(labels.pop(f"{self.task_name}/segmentation"))[
+            0, ...
+        ]
 
         img = np.transpose(img, (2, 0, 1))
-        tensor_img = Tensor(img)
+        tensor_img = torch.tensor(img)
+        tensor_labels = self.dict_numpy_to_torch(labels)
 
         if self.view[0] == "train" and random.random() < self.noise_prob:
+            anomaly_path = random.choice(self.anomaly_files)
+            anomaly_img = self.read_image(str(anomaly_path))
+
+            if self.augmentations is not None:
+                anomaly_img = self.augmentations.apply([(anomaly_img, {})])[0]
+
+            anomaly_img = torch.tensor(anomaly_img).permute(2, 0, 1)
             aug_tensor_img, an_mask = apply_anomaly_to_img(
-                tensor_img,
-                anomaly_source_paths=self.anomaly_files,
-                pixel_augs=self.pixel_augs,
+                tensor_img, anomaly_img, self.beta
             )
         else:
             aug_tensor_img = tensor_img
-            h, w = aug_tensor_img.shape[-2:]
-            an_mask = torch.zeros((h, w))
 
-        tensor_labels = {f"{self.task_name}/original/segmentation": tensor_img}
-        for task, array in labels.items():
-            tensor_labels[task] = Tensor(array)
+        an_mask = F.one_hot(an_mask.long(), 2).permute(2, 0, 1).float()
 
-        tensor_labels[f"{self.task_name}/segmentation"] = (
-            F.one_hot(an_mask.long(), 2).permute(2, 0, 1).float()
-        )
+        tensor_labels = {
+            f"{self.task_name}/original/segmentation": tensor_img,
+            f"{self.task_name}/segmentation": an_mask,
+        }
 
-        return {self.image_source: aug_tensor_img}, tensor_labels
+        return aug_tensor_img, tensor_labels
+
+
+@contextmanager
+def _freeze_seed() -> Generator:
+    python_seed = random.getstate()
+    numpy_seed = np.random.get_state()
+    yield
+    random.setstate(python_seed)
+    np.random.set_state(numpy_seed)

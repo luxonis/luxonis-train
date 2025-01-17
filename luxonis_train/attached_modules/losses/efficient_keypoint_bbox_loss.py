@@ -187,7 +187,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         gt_kpts: Tensor,
         pred_kpts: Tensor,
         area: Tensor,
-    ):
+    ) -> tuple[Tensor, dict[str, Tensor]]:
         device = pred_bboxes.device
         sigmas = self.sigmas.to(device)
         d = (gt_kpts[..., 0] - pred_kpts[..., 0]).pow(2) + (
@@ -272,7 +272,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         adj_kpts[..., 1] += y_adj
         return adj_kpts
 
-    def _init_parameters(self, features: list[Tensor]):
+    def _init_parameters(self, features: list[Tensor]) -> None:
         device = features[0].device
         super()._init_parameters(features)
         self.gt_kpts_scale = torch.tensor(

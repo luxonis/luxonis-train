@@ -111,7 +111,7 @@ class EfficientBBoxHead(
                     f"No checkpoint available for {self.name}, skipping."
                 )
 
-    def initialize_weights(self):
+    def initialize_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 pass
@@ -201,7 +201,7 @@ class EfficientBBoxHead(
                 "distributions": [reg_tensor],
             }
 
-    def _fit_stride_to_n_heads(self):
+    def _fit_stride_to_n_heads(self) -> Tensor:
         """Returns correct stride for number of heads and attach
         index."""
         stride = torch.tensor(

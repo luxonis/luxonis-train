@@ -10,7 +10,7 @@ from luxonis_train.config import Config
 from luxonis_train.utils.registry import CALLBACKS
 
 
-@CALLBACKS.register_module()
+@CALLBACKS.register()
 class MetadataLogger(pl.Callback):
     def __init__(self, hyperparams: list[str]):
         """Callback that logs training metadata.

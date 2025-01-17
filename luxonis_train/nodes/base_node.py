@@ -378,7 +378,7 @@ class BaseNode(
         """
         return self._get_nth_size(-1)
 
-    def load_checkpoint(self, path: str, strict: bool = True):
+    def load_checkpoint(self, path: str, strict: bool = True) -> None:
         """Loads checkpoint for the module. If path is url then it
         downloads it locally and stores it in cache.
 

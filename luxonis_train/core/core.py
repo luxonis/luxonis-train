@@ -75,6 +75,8 @@ class LuxonisModel:
         else:
             self.cfg = Config.get_config(cfg, opts)
 
+        self.cfg_preprocessing = self.cfg.trainer.preprocessing
+
         rich.traceback.install(suppress=[pl, torch], show_locals=False)
 
         self.tracker = LuxonisTrackerPL(
@@ -126,16 +128,11 @@ class LuxonisModel:
                     "test": self.cfg.loader.test_view,
                 }[view],
                 image_source=self.cfg.loader.image_source,
-                height=self.cfg.trainer.preprocessing.train_image_size.height,
-                width=self.cfg.trainer.preprocessing.train_image_size.width,
-                augmentation_config=[
-                    i.model_dump()
-                    for i in self.cfg.trainer.preprocessing.get_active_augmentations()
-                ],
-                out_image_format="RGB"
-                if self.cfg.trainer.preprocessing.train_rgb
-                else "BGR",
-                keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
+                height=self.cfg_preprocessing.train_image_size.height,
+                width=self.cfg_preprocessing.train_image_size.width,
+                augmentation_config=self.cfg_preprocessing.get_active_augmentations(),
+                color_space=self.cfg_preprocessing.color_space,
+                keep_aspect_ratio=self.cfg_preprocessing.keep_aspect_ratio,
                 **self.cfg.loader.params,
             )
 
@@ -211,7 +208,7 @@ class LuxonisModel:
 
         self._exported_models: dict[str, Path] = {}
 
-    def _train(self, resume: str | None, *args, **kwargs):
+    def _train(self, resume: str | None, *args, **kwargs) -> None:
         status = "success"
         try:
             self.pl_trainer.fit(*args, ckpt_path=resume, **kwargs)
@@ -248,7 +245,7 @@ class LuxonisModel:
                 LuxonisFileSystem.download(resume_weights, self.run_save_dir)
             )
 
-        def graceful_exit(signum: int, _):  # pragma: no cover
+        def graceful_exit(signum: int, _: Any) -> None:  # pragma: no cover
             logger.info(
                 f"{signal.Signals(signum).name} received, stopping training..."
             )
@@ -598,9 +595,7 @@ class LuxonisModel:
                 "You have to specify the `tuner` section in config."
             )
 
-        all_augs = [
-            a.name for a in self.cfg.trainer.preprocessing.augmentations
-        ]
+        all_augs = [a.name for a in self.cfg_preprocessing.augmentations]
         rank = rank_zero_only.rank
         cfg_tracker = self.cfg.tracker
         tracker_params = cfg_tracker.model_dump()
@@ -716,15 +711,9 @@ class LuxonisModel:
             return [round(x * 255.0, 5) for x in lst]
 
         preprocessing = {  # TODO: keep preprocessing same for each input?
-            "mean": _mult(
-                self.cfg.trainer.preprocessing.normalize.params["mean"]
-            ),
-            "scale": _mult(
-                self.cfg.trainer.preprocessing.normalize.params["std"]
-            ),
-            "dai_type": "RGB888p"
-            if self.cfg.trainer.preprocessing.train_rgb
-            else "BGR888p",
+            "mean": _mult(self.cfg_preprocessing.normalize.params["mean"]),
+            "scale": _mult(self.cfg_preprocessing.normalize.params["std"]),
+            "dai_type": f"{self.cfg_preprocessing.color_space}888p",
         }
 
         inputs_dict = get_inputs(path)

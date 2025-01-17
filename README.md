@@ -595,7 +595,7 @@ from luxonis_train import LuxonisLightningModule
 from luxonis_train.utils.registry import CALLBACKS
 
 
-@CALLBACKS.register_module()
+@CALLBACKS.register()
 class CustomCallback(pl.Callback):
     def __init__(self, message: str, **kwargs):
         super().__init__(**kwargs)
