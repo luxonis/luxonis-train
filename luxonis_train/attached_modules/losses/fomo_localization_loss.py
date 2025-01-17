@@ -8,6 +8,7 @@ from torch import Tensor
 from luxonis_train.enums import TaskType
 from luxonis_train.nodes import FOMOHead
 from luxonis_train.utils import Labels, Packet
+from luxonis_train.utils.keypoints import insert_class
 
 from .base_loss import BaseLoss
 
@@ -37,6 +38,8 @@ class FOMOLocalizationLoss(BaseLoss[Tensor, Tensor]):
     ) -> tuple[Tensor, Tensor]:
         heatmap = self.get_input_tensors(inputs, "features")[0]
         target_kpts = self.get_label(labels, TaskType.KEYPOINTS)
+        target_bbox = self.get_label(labels, TaskType.BOUNDINGBOX)
+        target_kpts = insert_class(target_kpts, target_bbox)
         batch_size, num_classes, height, width = heatmap.shape
         target_heatmap = torch.zeros(
             (batch_size, num_classes, height, width), device=heatmap.device

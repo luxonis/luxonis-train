@@ -118,7 +118,7 @@ class NanoEncoder(nn.Module):
         self.encoder_block2 = ConvBlock(width, int(width * 1.1))
         self.pool2 = nn.MaxPool2d(2)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         enc1 = self.encoder_block1(x)
         enc1_pool = self.pool1(enc1)
         enc2 = self.encoder_block2(enc1_pool)

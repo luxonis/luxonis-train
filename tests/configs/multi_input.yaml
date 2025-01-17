@@ -12,83 +12,57 @@ model:
   name: example_multi_input
   nodes:
     - name: FullBackbone
-      alias: full_backbone
 
     - name: RGBDBackbone
-      alias: rgbd_backbone
       input_sources:
         - left
         - right
         - disparity
 
     - name: PointcloudBackbone
-      alias: pointcloud_backbone
       input_sources:
         - pointcloud
 
     - name: FusionNeck
-      alias: fusion_neck
       inputs:
-        - rgbd_backbone
-        - pointcloud_backbone
+        - RGBDBackbone
+        - PointcloudBackbone
       input_sources:
         - disparity
 
     - name: FusionNeck2
-      alias: fusion_neck_2
       inputs:
-        - rgbd_backbone
-        - pointcloud_backbone
-        - full_backbone
+        - RGBDBackbone
+        - PointcloudBackbone
+        - FullBackbone
 
     - name: CustomSegHead1
-      alias: head_1
       inputs:
-        - fusion_neck
+        - FusionNeck
+      losses:
+        - name: BCEWithLogitsLoss
+      metrics:
+        - name: JaccardIndex
+          is_main_metric: true
+          params:
+            task: binary
+      visualizers:
+        - name: SegmentationVisualizer
 
     - name: CustomSegHead2
-      alias: head_2
       inputs:
-        - fusion_neck
-        - fusion_neck_2
+        - FusionNeck
+        - FusionNeck2
       input_sources:
         - disparity
-
-  losses:
-    - name: BCEWithLogitsLoss
-      alias: loss_1
-      attached_to: head_1
-
-    - name: CrossEntropyLoss
-      alias: loss_2
-      attached_to: head_2
-
-  metrics:
-    - name: JaccardIndex
-      alias: jaccard_index_1
-      attached_to: head_1
-      is_main_metric: True
-      params:
-        task: binary
-
-    - name: JaccardIndex
-      alias: jaccard_index_2
-      attached_to: head_2
-      params:
-        task: binary
-
-  visualizers:
-    - name: SegmentationVisualizer
-      alias: seg_vis_1
-      attached_to: head_1
-      params:
-        colors: "#FF5055"
-
-    - name: SegmentationVisualizer
-      alias: seg_vis_2
-      attached_to: head_2
-      params:
-        colors: "#55AAFF"
+      losses:
+        - name: CrossEntropyLoss
+      metrics:
+        - name: JaccardIndex
+          params:
+            task: binary
+      visualizers:
+        - name: SegmentationVisualizer
 
 tracker:
   project_name: multi_input_example

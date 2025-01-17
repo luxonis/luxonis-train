@@ -2,14 +2,11 @@ from typing import Any, Literal, TypeVar
 
 from torch import Size, Tensor
 
-from luxonis_train.enums import TaskType
-
 Kwargs = dict[str, Any]
 """Kwargs is a dictionary containing keyword arguments."""
 
-Labels = dict[str, tuple[Tensor, TaskType]]
-"""Labels is a dictionary containing a tuple of tensors and their
-corresponding task type."""
+Labels = dict[str, Tensor]
+"""Labels is a dictionary mapping task names to tensors."""
 
 AttachIndexType = Literal["all"] | int | tuple[int, int] | tuple[int, int, int]
 """AttachIndexType is used to specify to which output of the prevoius

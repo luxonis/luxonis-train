@@ -1,3 +1,5 @@
+from typing import Set
+
 from luxonis_train.loaders import BaseLoaderTorch
 
 
@@ -27,6 +29,15 @@ class DatasetMetadata:
         self._classes = classes or {}
         self._n_keypoints = n_keypoints or {}
         self._loader = loader
+
+    @property
+    def task_names(self) -> Set[str]:
+        """Gets the names of the tasks present in the dataset.
+
+        @rtype: set[str]
+        @return: Names of the tasks present in the dataset.
+        """
+        return set(self._classes.keys())
 
     def n_classes(self, task: str | None = None) -> int:
         """Gets the number of classes for the specified task.

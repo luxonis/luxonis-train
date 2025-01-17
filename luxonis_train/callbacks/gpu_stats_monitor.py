@@ -25,20 +25,20 @@ import subprocess
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 import torch
 from lightning.pytorch.accelerators.cuda import CUDAAccelerator
+from lightning.pytorch.utilities import rank_zero_only
+from lightning.pytorch.utilities.parsing import AttributeDict
+from lightning.pytorch.utilities.types import STEP_OUTPUT
 from lightning_fabric.utilities.exceptions import (
     MisconfigurationException,  # noqa: F401
 )
-from pytorch_lightning.utilities import rank_zero_only
-from pytorch_lightning.utilities.parsing import AttributeDict
-from pytorch_lightning.utilities.types import STEP_OUTPUT
 
 from luxonis_train.utils.registry import CALLBACKS
 
 
-@CALLBACKS.register_module()
+@CALLBACKS.register()
 class GPUStatsMonitor(pl.Callback):
     def __init__(
         self,

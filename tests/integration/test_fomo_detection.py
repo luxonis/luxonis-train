@@ -50,26 +50,18 @@ def create_dummy_bbox_keypoint_dataset(paths: Path):
             )
 
             for i, bbox in enumerate(bboxes):
-                # Generate bounding box annotation
                 yield {
                     "file": path,
                     "annotation": {
-                        "type": "boundingbox",
-                        "instance_id": i,
                         "class": "object",
-                        "x": bbox["x"],
-                        "y": bbox["y"],
-                        "w": bbox["w"],
-                        "h": bbox["h"],
-                    },
-                }
-                yield {
-                    "file": path,
-                    "annotation": {
-                        "type": "keypoints",
                         "instance_id": i,
-                        "class": "object",
-                        "keypoints": [keypoints[i]],
+                        "boundingbox": {
+                            "x": bbox["x"],
+                            "y": bbox["y"],
+                            "w": bbox["w"],
+                            "h": bbox["h"],
+                        },
+                        "keypoints": {"keypoints": [keypoints[i]]},
                     },
                 }
 

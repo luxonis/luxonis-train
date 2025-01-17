@@ -4,7 +4,7 @@ from luxonis_train.utils import DatasetMetadata
 
 
 @pytest.fixture
-def metadata():
+def metadata() -> DatasetMetadata:
     return DatasetMetadata(
         classes={
             "color-segmentation": ["car", "person"],
@@ -14,7 +14,7 @@ def metadata():
     )
 
 
-def test_n_classes(metadata):
+def test_n_classes(metadata: DatasetMetadata):
     assert metadata.n_classes("color-segmentation") == 2
     assert metadata.n_classes("detection") == 2
     assert metadata.n_classes() == 2
@@ -25,7 +25,7 @@ def test_n_classes(metadata):
         metadata.n_classes()
 
 
-def test_n_keypoints(metadata):
+def test_n_keypoints(metadata: DatasetMetadata):
     assert metadata.n_keypoints("color-segmentation") == 0
     assert metadata.n_keypoints("detection") == 0
     assert metadata.n_keypoints() == 0
@@ -36,7 +36,7 @@ def test_n_keypoints(metadata):
         metadata.n_keypoints()
 
 
-def test_class_names(metadata):
+def test_class_names(metadata: DatasetMetadata):
     assert metadata.classes("color-segmentation") == ["car", "person"]
     assert metadata.classes("detection") == ["car", "person"]
     assert metadata.classes() == ["car", "person"]

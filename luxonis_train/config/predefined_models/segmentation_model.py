@@ -56,7 +56,7 @@ class SegmentationModel(BasePredefinedModel):
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
         task: Literal["binary", "multiclass"] = "binary",
-        task_name: str | None = None,
+        task_name: str = "",
         enable_confusion_matrix: bool = True,
         confusion_matrix_params: Params | None = None,
     ):
@@ -73,7 +73,7 @@ class SegmentationModel(BasePredefinedModel):
         self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
         self.task = task
-        self.task_name = task_name or "segmentation"
+        self.task_name = task_name
         self.enable_confusion_matrix = enable_confusion_matrix
         self.confusion_matrix_params = confusion_matrix_params or {}
 
@@ -86,28 +86,29 @@ class SegmentationModel(BasePredefinedModel):
         node_list = [
             ModelNodeConfig(
                 name=self.backbone,
-                alias=f"{self.backbone}-{self.task_name}",
+                alias=f"{self.task_name}/{self.backbone}",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
+                task_name=self.task_name,
             ),
             ModelNodeConfig(
                 name="DDRNetSegmentationHead",
-                alias=f"DDRNetSegmentationHead-{self.task_name}",
-                inputs=[f"{self.backbone}-{self.task_name}"],
+                alias=f"{self.task_name}/DDRNetSegmentationHead",
+                inputs=[f"{self.task_name}/{self.backbone}"],
                 freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
-                task=self.task_name,
+                task_name=self.task_name,
             ),
         ]
         if self.backbone_params.get("use_aux_heads", True):
             node_list.append(
                 ModelNodeConfig(
                     name="DDRNetSegmentationHead",
-                    alias=f"DDRNetSegmentationHead_aux-{self.task_name}",
-                    inputs=[f"{self.backbone}-{self.task_name}"],
+                    alias=f"{self.task_name}/DDRNetSegmentationHead_aux",
+                    inputs=[f"{self.task_name}/{self.backbone}"],
                     freezing=self.aux_head_params.pop("freezing", {}),
                     params=self.aux_head_params,
-                    task=self.task_name,
+                    task_name=self.task_name,
                     remove_on_export=self.aux_head_params.pop(
                         "remove_on_export", True
                     ),
@@ -125,12 +126,7 @@ class SegmentationModel(BasePredefinedModel):
                     if self.task == "binary"
                     else "OHEMCrossEntropyLoss"
                 ),
-                alias=(
-                    f"OHEMBCEWithLogitsLoss-{self.task_name}"
-                    if self.task == "binary"
-                    else f"OHEMCrossEntropyLoss-{self.task_name}"
-                ),
-                attached_to=f"DDRNetSegmentationHead-{self.task_name}",
+                attached_to=f"{self.task_name}/DDRNetSegmentationHead",
                 params=self.loss_params,
                 weight=1.0,
             ),
@@ -143,12 +139,7 @@ class SegmentationModel(BasePredefinedModel):
                         if self.task == "binary"
                         else "OHEMCrossEntropyLoss"
                     ),
-                    alias=(
-                        f"OHEMBCEWithLogitsLoss_aux-{self.task_name}"
-                        if self.task == "binary"
-                        else f"OHEMCrossEntropyLoss_aux-{self.task_name}"
-                    ),
-                    attached_to=f"DDRNetSegmentationHead_aux-{self.task_name}",
+                    attached_to=f"{self.task_name}/DDRNetSegmentationHead_aux",
                     params=self.loss_params,
                     weight=0.4,
                 )
@@ -161,15 +152,13 @@ class SegmentationModel(BasePredefinedModel):
         metrics = [
             MetricModuleConfig(
                 name="JaccardIndex",
-                alias=f"JaccardIndex-{self.task_name}",
-                attached_to=f"DDRNetSegmentationHead-{self.task_name}",
+                attached_to=f"{self.task_name}/DDRNetSegmentationHead",
                 is_main_metric=True,
                 params={"task": self.task},
             ),
             MetricModuleConfig(
                 name="F1Score",
-                alias=f"F1Score-{self.task_name}",
-                attached_to=f"DDRNetSegmentationHead-{self.task_name}",
+                attached_to=f"{self.task_name}/DDRNetSegmentationHead",
                 params={"task": self.task},
             ),
         ]
@@ -177,8 +166,8 @@ class SegmentationModel(BasePredefinedModel):
             metrics.append(
                 MetricModuleConfig(
                     name="ConfusionMatrix",
-                    alias=f"ConfusionMatrix-{self.task_name}",
-                    attached_to=f"DDRNetSegmentationHead-{self.task_name}",
+                    alias=f"{self.task_name}/ConfusionMatrix",
+                    attached_to=f"{self.task_name}/DDRNetSegmentationHead",
                     params={**self.confusion_matrix_params},
                 )
             )
@@ -190,8 +179,7 @@ class SegmentationModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="SegmentationVisualizer",
-                alias=f"SegmentationVisualizer-{self.task_name}",
-                attached_to=f"DDRNetSegmentationHead-{self.task_name}",
+                attached_to=f"{self.task_name}/DDRNetSegmentationHead",
                 params=self.visualizer_params,
             )
         ]

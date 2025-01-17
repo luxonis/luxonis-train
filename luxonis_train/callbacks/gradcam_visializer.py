@@ -1,16 +1,16 @@
 import logging
 from typing import Any, Union
 
+import lightning.pytorch as pl
 import numpy as np
-import pytorch_lightning as pl
 import torch
+from lightning.pytorch.utilities.types import STEP_OUTPUT
 from pytorch_grad_cam import HiResCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
 from pytorch_grad_cam.utils.model_targets import (
     ClassifierOutputTarget,
     SemanticSegmentationTarget,
 )
-from pytorch_lightning.utilities.types import STEP_OUTPUT
 
 from luxonis_train.attached_modules.visualizers import (
     get_denormalized_images,

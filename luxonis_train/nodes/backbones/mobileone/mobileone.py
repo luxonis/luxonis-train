@@ -142,7 +142,9 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
                 if hasattr(module, "reparameterize"):
                     module.reparameterize()
 
-    def _make_stage(self, planes: int, n_blocks: int, n_se_blocks: int):
+    def _make_stage(
+        self, planes: int, n_blocks: int, n_se_blocks: int
+    ) -> nn.Sequential:
         """Build a stage of MobileOne model.
 
         @type planes: int
@@ -161,7 +163,7 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
             use_se = False
             if n_se_blocks > n_blocks:
                 raise ValueError(
-                    "Number of SE blocks cannot " "exceed number of layers."
+                    "Number of SE blocks cannot exceed number of layers."
                 )
             if ix >= (n_blocks - n_se_blocks):
                 use_se = True

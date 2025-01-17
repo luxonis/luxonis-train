@@ -2,7 +2,7 @@ from copy import deepcopy
 
 import pytest
 import torch
-from pytorch_lightning import LightningModule, Trainer
+from lightning.pytorch import LightningModule, Trainer
 
 from luxonis_train.callbacks.ema import EMACallback, ModelEma
 

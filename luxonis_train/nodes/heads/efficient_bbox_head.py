@@ -111,7 +111,7 @@ class EfficientBBoxHead(
                     f"No checkpoint available for {self.name}, skipping."
                 )
 
-    def initialize_weights(self):
+    def initialize_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 pass
@@ -171,7 +171,7 @@ class EfficientBBoxHead(
                 conf, _ = out_cls.max(1, keepdim=True)
                 out = torch.cat([out_reg, conf, out_cls], dim=1)
                 outputs.append(out)
-            return {self.task: outputs}
+            return {"boundingbox": outputs}
 
         cls_tensor = torch.cat(
             [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))],
@@ -201,7 +201,7 @@ class EfficientBBoxHead(
                 "distributions": [reg_tensor],
             }
 
-    def _fit_stride_to_n_heads(self):
+    def _fit_stride_to_n_heads(self) -> Tensor:
         """Returns correct stride for number of heads and attach
         index."""
         stride = torch.tensor(

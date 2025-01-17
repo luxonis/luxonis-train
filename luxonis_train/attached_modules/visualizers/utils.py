@@ -160,7 +160,7 @@ def draw_keypoint_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
     @return: Image with keypoint labels drawn on.
     """
     _, H, W = img.shape
-    keypoints_unflat = label[:, 1:].reshape(-1, 3)
+    keypoints_unflat = label.reshape(-1, 3)
     keypoints_points = keypoints_unflat[:, :2]
     keypoints_points[:, 0] *= W
     keypoints_points[:, 1] *= H

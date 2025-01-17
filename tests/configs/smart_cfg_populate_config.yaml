@@ -9,6 +9,7 @@ model:
         - EfficientRep
 
     - name: EfficientBBoxHead
+      task_name: vehicle_type
       inputs:
         - RepPANNeck
 

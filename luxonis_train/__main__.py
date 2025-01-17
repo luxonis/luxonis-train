@@ -3,10 +3,9 @@ from importlib.metadata import version
 from pathlib import Path
 from typing import Annotated
 
+import numpy as np
 import typer
 from luxonis_ml.utils import setup_logging
-
-from luxonis_train.config import Config
 
 setup_logging(use_rich=True)
 
@@ -175,47 +174,16 @@ def inspect(
     To close the window press 'q' or 'Esc'.
     """
     import cv2
-    from luxonis_ml.data import Augmentations, LabelType
     from luxonis_ml.data.utils.visualizations import visualize
 
-    from luxonis_train.utils.registry import LOADERS
+    from luxonis_train.core import LuxonisModel
 
-    cfg = Config.get_config(config, opts)
-    train_augmentations = Augmentations(
-        image_size=cfg.trainer.preprocessing.train_image_size,
-        augmentations=[
-            i.model_dump()
-            for i in cfg.trainer.preprocessing.get_active_augmentations()
-            if i.name != "Normalize"
-        ],
-        train_rgb=cfg.trainer.preprocessing.train_rgb,
-        keep_aspect_ratio=cfg.trainer.preprocessing.keep_aspect_ratio,
-    )
-    val_augmentations = Augmentations(
-        image_size=cfg.trainer.preprocessing.train_image_size,
-        augmentations=[
-            i.model_dump()
-            for i in cfg.trainer.preprocessing.get_active_augmentations()
-        ],
-        train_rgb=cfg.trainer.preprocessing.train_rgb,
-        keep_aspect_ratio=cfg.trainer.preprocessing.keep_aspect_ratio,
-        only_normalize=True,
-    )
+    opts = opts or []
+    opts.extend(["trainer.preprocessing.normalize.active", "False"])
 
-    Loader = LOADERS.get(cfg.loader.name)
-    loader = Loader(
-        augmentations=(
-            train_augmentations if view == "train" else val_augmentations
-        ),
-        view={
-            "train": cfg.loader.train_view,
-            "val": cfg.loader.val_view,
-            "test": cfg.loader.test_view,
-        }[view],
-        image_source=cfg.loader.image_source,
-        **cfg.loader.params,
-    )
+    model = LuxonisModel(config, opts)
 
+    loader = model.loaders[view.value]
     for images, labels in loader:
         for img in images.values():
             if len(img.shape) != 3:
@@ -226,11 +194,10 @@ def inspect(
             k: v.numpy().transpose(1, 2, 0) for k, v in images.items()
         }
         main_image = np_images[loader.image_source]
-        main_image = cv2.cvtColor(main_image, cv2.COLOR_RGB2BGR)
-        np_labels = {
-            task: (label.numpy(), LabelType(task_type))
-            for task, (label, task_type) in labels.items()
-        }
+        main_image = cv2.cvtColor(main_image, cv2.COLOR_RGB2BGR).astype(
+            np.uint8
+        )
+        np_labels = {task: label.numpy() for task, label in labels.items()}
 
         h, w, _ = main_image.shape
         new_h, new_w = int(h * size_multiplier), int(w * size_multiplier)

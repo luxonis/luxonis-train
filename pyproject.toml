@@ -64,7 +64,7 @@ reportUnnecessaryIsInstance = "none"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--disable-warnings"
+addopts = "--disable-warnings -x"
 markers = [
     "unit: mark a test as a unit test",
     "integration: mark a test as an integration test",

@@ -180,7 +180,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
                     f"No checkpoint available for {self.name}, skipping."
                 )
 
-    def initialize_weights(self):
+    def initialize_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 pass

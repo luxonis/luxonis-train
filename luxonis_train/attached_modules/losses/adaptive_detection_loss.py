@@ -3,7 +3,7 @@ from typing import Any, Literal, cast
 
 import torch
 import torch.nn.functional as F
-from torch import Tensor, nn
+from torch import Tensor, amp, nn
 from torchvision.ops import box_convert
 
 from luxonis_train.assigners import ATSSAssigner, TaskAlignedAssigner
@@ -132,7 +132,7 @@ class AdaptiveDetectionLoss(
         assigned_labels: Tensor,
         assigned_scores: Tensor,
         mask_positive: Tensor,
-    ):
+    ) -> tuple[Tensor, dict[str, Tensor]]:
         one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[
             ..., :-1
         ]
@@ -161,7 +161,7 @@ class AdaptiveDetectionLoss(
 
         return loss, sub_losses
 
-    def _init_parameters(self, features: list[Tensor]):
+    def _init_parameters(self, features: list[Tensor]) -> None:
         if not hasattr(self, "gt_bboxes_scale"):
             self.gt_bboxes_scale = torch.tensor(
                 [
@@ -235,7 +235,7 @@ class AdaptiveDetectionLoss(
         out_target[..., 1:] = box_convert(scaled_target, "xywh", "xyxy")
         return out_target
 
-    def _log_assigner_change(self):
+    def _log_assigner_change(self) -> None:
         if self._logged_assigner_change:
             return
 
@@ -270,9 +270,7 @@ class VarifocalLoss(nn.Module):
             self.alpha * pred_score.pow(self.gamma) * (1 - label)
             + target_score * label
         )
-        with torch.amp.autocast(
-            device_type=pred_score.device.type, enabled=False
-        ):
+        with amp.autocast(device_type=pred_score.device.type, enabled=False):
             ce_loss = F.binary_cross_entropy(
                 pred_score.float(), target_score.float(), reduction="none"
             )

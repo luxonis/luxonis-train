@@ -1,18 +1,14 @@
 import logging
 from math import exp
-from typing import Any, Literal, Union
+from typing import Literal
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torch import Tensor
+from torch import Tensor, nn
 
 from luxonis_train.enums import TaskType
 from luxonis_train.nodes import DiscSubNetHead
-from luxonis_train.utils import (
-    Labels,
-    Packet,
-)
+from luxonis_train.utils import Labels, Packet
 
 from .base_loss import BaseLoss
 from .softmax_focal_loss import SoftmaxFocalLoss
@@ -30,7 +26,7 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
         gamma: float = 2.0,
         reduction: Literal["none", "mean", "sum"] = "mean",
         smooth: float = 1e-5,
-        **kwargs: Any,
+        **kwargs,
     ):
         """ReconstructionSegmentationLoss implements a combined loss
         function for reconstruction and segmentation tasks.
@@ -55,29 +51,18 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
         self.loss_ssim = SSIM()
 
     def prepare(
-        self,
-        inputs: Packet[Tensor],
-        labels: Labels,
+        self, inputs: Packet[Tensor], labels: Labels
     ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
         recon = self.get_input_tensors(inputs, "reconstructed")[0]
-        seg_out = self.get_input_tensors(inputs, "segmentation")[0]
-        an_mask = labels["segmentation"][0]
-        orig = labels["original"][0]
+        seg_out = self.get_input_tensors(inputs)[0]
+        an_mask = labels[f"{self.node.task_name}/segmentation"]
+        orig = labels[f"{self.node.task_name}/original/segmentation"]
 
-        return (
-            orig,
-            recon,
-            seg_out,
-            an_mask,
-        )
+        return orig, recon, seg_out, an_mask
 
     def forward(
-        self,
-        orig: Tensor,
-        recon: Tensor,
-        seg_out: Tensor,
-        an_mask: Tensor,
-    ):
+        self, orig: Tensor, recon: Tensor, seg_out: Tensor, an_mask: Tensor
+    ) -> tuple[Tensor, dict[str, Tensor]]:
         l2 = self.loss_l2(recon, orig)
         ssim = self.loss_ssim(recon, orig)
         focal = self.loss_focal(seg_out, an_mask)
@@ -93,14 +78,14 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
         return total_loss, sub_losses
 
 
-class SSIM(torch.nn.Module):
+class SSIM(nn.Module):
     def __init__(
         self,
         window_size: int = 11,
         size_average: bool = True,
         val_range: float | None = None,
     ):
-        super(SSIM, self).__init__()
+        super().__init__()
         self.window_size = window_size
         self.size_average = size_average
         self.val_range = val_range
@@ -123,7 +108,7 @@ class SSIM(torch.nn.Module):
             self.window = window
             self.channel = channel
 
-        s_score, ssim_map = ssim(
+        s_score = ssim(
             img1,
             img2,
             window=window,
@@ -134,11 +119,9 @@ class SSIM(torch.nn.Module):
 
 
 def create_window(window_size: int, channel: int = 1) -> Tensor:
-    _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
-    _2D_window = (
-        _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
-    )
-    window = _2D_window.expand(
+    window_1d = gaussian(window_size, 1.5).unsqueeze(1)
+    widnow_2d = window_1d.mm(window_1d.t()).float().unsqueeze(0).unsqueeze(0)
+    window = widnow_2d.expand(
         channel, 1, window_size, window_size
     ).contiguous()
     return window
@@ -159,10 +142,9 @@ def ssim(
     img2: Tensor,
     window_size: int = 11,
     window: Tensor | None = None,
-    size_average=True,
-    full=False,
-    val_range=None,
-) -> Union[Tensor, tuple[Tensor, Tensor]]:
+    size_average: bool = True,
+    val_range: float | None = None,
+) -> Tensor:
     if val_range is None:
         if torch.max(img1) > 128:
             max_val = 255
@@ -205,15 +187,9 @@ def ssim(
 
     v1 = 2.0 * sigma12 + c2
     v2 = sigma1_sq + sigma2_sq + c2
-    cs = torch.mean(v1 / v2)  # contrast sensitivity
 
     ssim_map = ((2 * mu1_mu2 + c1) * v1) / ((mu1_sq + mu2_sq + c1) * v2)
 
     if size_average:
-        ret = ssim_map.mean()
-    else:
-        ret = ssim_map.mean(1).mean(1).mean(1)
-
-    if full:
-        return ret, cs
-    return ret, ssim_map
+        return ssim_map.mean()
+    return ssim_map.mean(1).mean(1).mean(1)

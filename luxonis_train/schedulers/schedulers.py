@@ -19,4 +19,4 @@ for scheduler in [
     lr_scheduler.OneCycleLR,
     lr_scheduler.CosineAnnealingWarmRestarts,
 ]:
-    SCHEDULERS.register_module(module=scheduler)
+    SCHEDULERS.register(module=scheduler)

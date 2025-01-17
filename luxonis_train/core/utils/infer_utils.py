@@ -7,12 +7,13 @@ import cv2
 import numpy as np
 import torch
 import torch.utils.data as torch_data
-from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from torch import Tensor
 
 import luxonis_train
 from luxonis_train.attached_modules.visualizers import get_denormalized_images
 from luxonis_train.loaders import LuxonisLoaderTorch
+from luxonis_train.models.luxonis_output import LuxonisOutput
 
 IMAGE_FORMATS = {
     ".bmp",
@@ -47,12 +48,10 @@ def process_visualizations(
 
 
 def prepare_and_infer_image(
-    model: "luxonis_train.core.LuxonisModel",
-    img: np.ndarray,
-):
+    model: "luxonis_train.core.LuxonisModel", img: Tensor
+) -> LuxonisOutput:
     """Prepares the image for inference and runs the model."""
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img, _ = model.val_augmentations([(img, {})])
+    img = model.loaders["val"].augment_test_image(img)  # type: ignore
 
     inputs = {
         "image": torch.tensor(img).unsqueeze(0).permute(0, 3, 1, 2).float()
@@ -94,9 +93,11 @@ def infer_from_video(
         ret, frame = cap.read()
         if not ret:  # pragma: no cover
             break
+        if model.cfg.trainer.preprocessing.color_space == "RGB":
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # TODO: batched inference
-        outputs = prepare_and_infer_image(model, frame)
+        outputs = prepare_and_infer_image(model, torch.tensor(frame))
         renders = process_visualizations(outputs.visualizations, batch_size=1)
 
         for (node_name, viz_name), [viz] in renders.items():
@@ -196,7 +197,7 @@ def infer_from_directory(
     """
     img_paths = list(img_paths)
 
-    def generator():
+    def generator() -> DatasetIterator:
         for img_path in img_paths:
             yield {
                 "file": img_path,
@@ -211,9 +212,12 @@ def infer_from_directory(
 
     loader = LuxonisLoaderTorch(
         dataset_name=dataset_name,
-        image_source="image",
         view="test",
-        augmentations=model.val_augmentations,
+        height=model.cfg_preprocessing.train_image_size.height,
+        width=model.cfg_preprocessing.train_image_size.width,
+        augmentation_config=model.cfg_preprocessing.get_active_augmentations(),
+        color_space=model.cfg_preprocessing.color_space,
+        keep_aspect_ratio=model.cfg_preprocessing.keep_aspect_ratio,
     )
     loader = torch_data.DataLoader(
         loader, batch_size=model.cfg.trainer.batch_size

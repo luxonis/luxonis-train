@@ -1,9 +1,10 @@
 import logging
 import sys
 import warnings
-from typing import Annotated, Any, Literal, TypeAlias
+from typing import Annotated, Any, Literal, NamedTuple, TypeAlias
 
 from luxonis_ml.enums import DatasetType
+from luxonis_ml.typing import ConfigItem
 from luxonis_ml.utils import (
     BaseModelExtraForbid,
     Environ,
@@ -19,11 +20,14 @@ from pydantic.types import (
 )
 from typing_extensions import Self
 
-from luxonis_train.enums import TaskType
-
 logger = logging.getLogger(__name__)
 
 Params: TypeAlias = dict[str, Any]
+
+
+class ImageSize(NamedTuple):
+    height: int
+    width: int
 
 
 class AttachedModuleConfig(BaseModelExtraForbid):
@@ -62,7 +66,7 @@ class ModelNodeConfig(BaseModelExtraForbid):
     input_sources: list[str] = []  # From data loader
     freezing: FreezingConfig = FreezingConfig()
     remove_on_export: bool = False
-    task: str | dict[TaskType, str] | None = None
+    task_name: str = ""
     params: Params = {}
 
 
@@ -102,7 +106,7 @@ class ModelConfig(BaseModelExtraForbid):
             if "Head" in name and last_body_index is None:
                 last_body_index = i - 1
             names.append(name)
-            if i > 0 and "inputs" not in node:
+            if i > 0 and "inputs" not in node and "input_sources" not in node:
                 if last_body_index is not None:
                     prev_name = names[last_body_index]
                 else:
@@ -199,23 +203,32 @@ class ModelConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_unique_names(self) -> Self:
-        for section, objects in [
-            ("nodes", self.nodes),
-            ("losses", self.losses),
-            ("metrics", self.metrics),
-            ("visualizers", self.visualizers),
+        for modules in [
+            self.nodes,
+            self.losses,
+            self.metrics,
+            self.visualizers,
         ]:
             names: set[str] = set()
-            for obj in objects:
-                obj: AttachedModuleConfig
-                name = obj.alias or obj.name
+            node_index = 0
+            for module in modules:
+                module: AttachedModuleConfig | ModelNodeConfig
+                name = module.alias or module.name
                 if name in names:
-                    if obj.alias is None:
-                        obj.alias = f"{name}_{obj.attached_to}"
-                    if obj.alias in names:
-                        raise ValueError(
-                            f"Duplicate name `{name}` in `{section}` section."
+                    if module.alias is None:
+                        if isinstance(module, ModelNodeConfig):
+                            module.alias = module.name
+                        else:
+                            module.alias = f"{name}_{module.attached_to}"
+
+                    if module.alias in names:
+                        new_alias = f"{module.alias}_{node_index}"
+                        logger.warning(
+                            f"Duplicate name: {module.alias}. Renaming to {new_alias}."
                         )
+                        module.alias = new_alias
+                        node_index += 1
+
                 names.add(name)
         return self
 
@@ -303,12 +316,22 @@ class AugmentationConfig(BaseModelExtraForbid):
 
 class PreprocessingConfig(BaseModelExtraForbid):
     train_image_size: Annotated[
-        list[int], Field(default=[256, 256], min_length=2, max_length=2)
-    ] = [256, 256]
+        ImageSize, Field(default=[256, 256], min_length=2, max_length=2)
+    ] = ImageSize(256, 256)
     keep_aspect_ratio: bool = True
-    train_rgb: bool = True
+    color_space: Literal["RGB", "BGR"] = "RGB"
     normalize: NormalizeAugmentationConfig = NormalizeAugmentationConfig()
     augmentations: list[AugmentationConfig] = []
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_train_rgb(cls, data: dict[str, Any]) -> dict[str, Any]:
+        if "train_rgb" in data:
+            warnings.warn(
+                "Field `train_rgb` is deprecated. Use `color_space` instead."
+            )
+            data["color_space"] = "RGB" if data.pop("train_rgb") else "BGR"
+        return data
 
     @model_validator(mode="after")
     def check_normalize(self) -> Self:
@@ -320,13 +343,17 @@ class PreprocessingConfig(BaseModelExtraForbid):
             )
         return self
 
-    def get_active_augmentations(self) -> list[AugmentationConfig]:
+    def get_active_augmentations(self) -> list[ConfigItem]:
         """Returns list of augmentations that are active.
 
         @rtype: list[AugmentationConfig]
         @return: Filtered list of active augmentation configs
         """
-        return [aug for aug in self.augmentations if aug.active]
+        return [
+            ConfigItem(name=aug.name, params=aug.params)
+            for aug in self.augmentations
+            if aug.active
+        ]
 
 
 class CallbackConfig(BaseModelExtraForbid):
@@ -471,7 +498,9 @@ class ExportConfig(ArchiveConfig):
 
     @model_validator(mode="after")
     def check_values(self) -> Self:
-        def pad_values(values: float | list[float] | None):
+        def pad_values(
+            values: float | list[float] | None,
+        ) -> list[float] | None:
             if values is None:
                 return None
             if isinstance(values, float):
@@ -617,7 +646,7 @@ def is_acyclic(graph: dict[str, list[str]]) -> bool:
     """
     graph = graph.copy()
 
-    def dfs(node: str, visited: set[str], recursion_stack: set[str]):
+    def dfs(node: str, visited: set[str], recursion_stack: set[str]) -> bool:
         visited.add(node)
         recursion_stack.add(node)
 

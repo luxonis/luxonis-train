@@ -15,6 +15,7 @@ from luxonis_train.utils import (
     get_sigmas,
     get_with_default,
 )
+from luxonis_train.utils.keypoints import insert_class
 
 from .base_metric import BaseMetric
 
@@ -107,16 +108,17 @@ class MeanAveragePrecisionKeypoints(
         self, inputs: Packet[Tensor], labels: Labels
     ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
         assert self.node.tasks is not None
-        kpts = self.get_label(labels, TaskType.KEYPOINTS)
-        boxes = self.get_label(labels, TaskType.BOUNDINGBOX)
+        kpts_labels = self.get_label(labels, TaskType.KEYPOINTS)
+        bbox_labels = self.get_label(labels, TaskType.BOUNDINGBOX)
+        kpts_labels = insert_class(kpts_labels, bbox_labels)
 
-        nkpts = (kpts.shape[1] - 2) // 3
-        label = torch.zeros((len(boxes), nkpts * 3 + 6))
-        label[:, :2] = boxes[:, :2]
-        label[:, 2:6] = box_convert(boxes[:, 2:], "xywh", "xyxy")
-        label[:, 6::3] = kpts[:, 2::3]  # x
-        label[:, 7::3] = kpts[:, 3::3]  # y
-        label[:, 8::3] = kpts[:, 4::3]  # visiblity
+        n_kpts = (kpts_labels.shape[1] - 2) // 3
+        label = torch.zeros((len(bbox_labels), n_kpts * 3 + 6))
+        label[:, :2] = bbox_labels[:, :2]
+        label[:, 2:6] = box_convert(bbox_labels[:, 2:], "xywh", "xyxy")
+        label[:, 6::3] = kpts_labels[:, 2::3]  # x
+        label[:, 7::3] = kpts_labels[:, 3::3]  # y
+        label[:, 8::3] = kpts_labels[:, 4::3]  # visiblity
 
         output_list_kpt_map: list[dict[str, Tensor]] = []
         label_list_kpt_map: list[dict[str, Tensor]] = []
