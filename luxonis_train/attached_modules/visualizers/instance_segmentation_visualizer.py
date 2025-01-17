@@ -91,10 +91,12 @@ class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         self, inputs: Packet[Tensor], labels: Labels | None
     ) -> tuple[Tensor, Tensor, list[Tensor], Tensor | None, Tensor | None]:
         # Override the prepare base method
-        target_bboxes = labels["boundingbox"][0]
-        target_masks = labels["instance_segmentation"][0]
-        predicted_bboxes = inputs["boundingbox"]
-        predicted_masks = inputs["instance_segmentation"]
+        target_bboxes = self.get_label(labels, TaskType.BOUNDINGBOX)
+        target_masks = self.get_label(labels, TaskType.INSTANCE_SEGMENTATION)
+        predicted_bboxes = self.get_input_tensors(inputs, TaskType.BOUNDINGBOX)
+        predicted_masks = self.get_input_tensors(
+            inputs, TaskType.INSTANCE_SEGMENTATION
+        )
 
         return target_bboxes, target_masks, predicted_bboxes, predicted_masks
 

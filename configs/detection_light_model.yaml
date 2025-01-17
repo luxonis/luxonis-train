@@ -7,6 +7,11 @@ model:
     name: DetectionModel
     params:
       variant: light
+      loss_params:
+        iou_type: "siou"
+        n_warmup_epochs: 0 # No assigner warmup
+        iou_loss_weight: 20 # Should be 2.5 * accumulate_grad_batches for best results
+        class_loss_weight: 8 # Should be 1 * accumulate_grad_batches for best results
 
 loader:
   params:
@@ -20,29 +25,11 @@ trainer:
       active: true
 
   batch_size: 8
-  epochs: &epochs 200
+  epochs: &epochs 300
+  accumulate_grad_batches: 8 # For best results, always accumulate gradients to effectively use 64 batch size
   n_workers: 8
   validation_interval: 10
   n_log_images: 8
-
-  callbacks:
-    - name: ExportOnTrainEnd
-    - name: TestOnTrainEnd
-
-  optimizer:
-    name: SGD
-    params:
-      lr: 0.0032           
-      momentum: 0.843      
-      weight_decay: 0.00036 
-      dampening: 0.0        
-      nesterov: true    
-
-  scheduler:
-    name: CosineAnnealingLR
-    params:
-      T_max: *epochs         
-      eta_min: 0.000384
 
   callbacks:
     - name: EMACallback
@@ -50,3 +37,17 @@ trainer:
         decay: 0.9999 
         use_dynamic_decay: True 
         decay_tau: 2000
+    - name: ExportOnTrainEnd
+    - name: TestOnTrainEnd
+
+  training_strategy: # Fine tuning params
+    name: "TripleLRSGDStrategy"
+    params: 
+      warmup_epochs: 2
+      warmup_bias_lr: 0.05
+      warmup_momentum: 0.5
+      lr: 0.0032
+      lre: 0.000384
+      momentum: 0.843     
+      weight_decay: 0.00036   
+      nesterov: True

@@ -241,8 +241,13 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self.layer5_bottleneck_expansion = layer5_bottleneck_expansion
         self.init_params()
 
-        if download_weights and var.weights_path:
-            self.load_checkpoint(var.weights_path)
+        if download_weights:
+            if var.weights_path:
+                self.load_checkpoint(var.weights_path)
+            else:
+                logger.warning(
+                    f"No checkpoint available for {self.name}, skipping."
+                )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         width_output = inputs.shape[-1] // 8

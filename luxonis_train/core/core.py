@@ -112,12 +112,6 @@ class LuxonisModel:
             precision=self.cfg.trainer.precision,
         )
 
-        self.train_augmentations = [
-            i.model_dump()
-            for i in self.cfg.trainer.preprocessing.get_active_augmentations()
-        ]
-        self.val_augmentations = self.train_augmentations
-
         self.loaders: dict[str, BaseLoaderTorch] = {}
         for view in ["train", "val", "test"]:
             loader_name = self.cfg.loader.name
@@ -131,19 +125,17 @@ class LuxonisModel:
                     "val": self.cfg.loader.val_view,
                     "test": self.cfg.loader.test_view,
                 }[view],
-                augmentation_engine="albumentations",
-                augmentation_config=(
-                    self.train_augmentations
-                    if view == "train"
-                    else self.val_augmentations
-                ),
-                height=self.cfg.trainer.preprocessing.train_image_size[0],
-                width=self.cfg.trainer.preprocessing.train_image_size[1],
-                keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
+                image_source=self.cfg.loader.image_source,
+                height=self.cfg.trainer.preprocessing.train_image_size.height,
+                width=self.cfg.trainer.preprocessing.train_image_size.width,
+                augmentation_config=[
+                    i.model_dump()
+                    for i in self.cfg.trainer.preprocessing.get_active_augmentations()
+                ],
                 out_image_format="RGB"
                 if self.cfg.trainer.preprocessing.train_rgb
                 else "BGR",
-                image_source=self.cfg.loader.image_source,
+                keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
                 **self.cfg.loader.params,
             )
 
@@ -696,7 +688,11 @@ class LuxonisModel:
             return self._archive(path)
 
     def _archive(self, path: str | Path | None = None) -> Path:
-        from .utils.archive_utils import get_heads, get_inputs, get_outputs
+        from .utils.archive_utils import (
+            get_head_configs,
+            get_inputs,
+            get_outputs,
+        )
 
         archive_name = self.cfg.archiver.name or self.cfg.model.name
         archive_save_directory = Path(self.run_save_dir, "archive")
@@ -726,9 +722,9 @@ class LuxonisModel:
             "scale": _mult(
                 self.cfg.trainer.preprocessing.normalize.params["std"]
             ),
-            "reverse_channels": self.cfg.trainer.preprocessing.train_rgb,
-            "interleaved_to_planar": False,  # TODO: make it modifiable?
-            "dai_type": "RGB888p",
+            "dai_type": "RGB888p"
+            if self.cfg.trainer.preprocessing.train_rgb
+            else "BGR888p",
         }
 
         inputs_dict = get_inputs(path)
@@ -753,11 +749,9 @@ class LuxonisModel:
                 }
             )
 
-        heads = get_heads(
-            self.cfg,
+        heads = get_head_configs(
+            self.lightning_module,
             outputs,
-            self.loaders["train"].get_classes(),
-            self.lightning_module.nodes,  # type: ignore
         )
 
         model = {

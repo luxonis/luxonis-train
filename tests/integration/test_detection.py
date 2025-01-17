@@ -16,14 +16,12 @@ def get_opts_backbone(backbone: str) -> dict[str, Any]:
                 },
                 {
                     "name": "EfficientBBoxHead",
+                    "task_name": "vehicle_type",
                     "inputs": [backbone],
                 },
                 {
                     "name": "EfficientKeypointBBoxHead",
-                    "task": {
-                        "keypoints": "car-keypoints",
-                        "boundingbox": "car-boundingbox",
-                    },
+                    "task_name": "car",
                     "inputs": [backbone],
                 },
                 {
@@ -82,6 +80,7 @@ def get_opts_variant(variant: str) -> dict[str, Any]:
                 },
                 {
                     "name": "EfficientBBoxHead",
+                    "task_name": "motorbike",
                     "inputs": ["neck"],
                 },
                 {

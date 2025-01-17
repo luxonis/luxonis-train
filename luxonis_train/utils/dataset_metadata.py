@@ -1,4 +1,4 @@
-import warnings
+from typing import Set
 
 from luxonis_train.loaders import BaseLoaderTorch
 
@@ -30,6 +30,15 @@ class DatasetMetadata:
         self._n_keypoints = n_keypoints or {}
         self._loader = loader
 
+    @property
+    def task_names(self) -> Set[str]:
+        """Gets the names of the tasks present in the dataset.
+
+        @rtype: set[str]
+        @return: Names of the tasks present in the dataset.
+        """
+        return set(self._classes.keys())
+
     def n_classes(self, task: str | None = None) -> int:
         """Gets the number of classes for the specified task.
 
@@ -45,11 +54,10 @@ class DatasetMetadata:
         """
         if task is not None:
             if task not in self._classes:
-                # TODO: rework this
-                warnings.warn(
-                    f"Task '{task}' is not present in the dataset. Ignoring the task argument.",
-                    UserWarning,
+                raise ValueError(
+                    f"Task '{task}' is not present in the dataset."
                 )
+            return len(self._classes[task])
         n_classes = len(list(self._classes.values())[0])
         for classes in self._classes.values():
             if len(classes) != n_classes:
@@ -102,12 +110,10 @@ class DatasetMetadata:
         """
         if task is not None:
             if task not in self._classes:
-                # TODO: rework this
-                warnings.warn(
-                    f"Task '{task}' is not present in the dataset. Ignoring the task argument.",
-                    UserWarning,
+                raise ValueError(
+                    f"Task type {task} is not present in the dataset."
                 )
-            task = None
+            return self._classes[task]
         class_names = list(self._classes.values())[0]
         for classes in self._classes.values():
             if classes != class_names:

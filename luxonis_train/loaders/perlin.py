@@ -1,4 +1,5 @@
 import random
+from pathlib import Path
 from typing import Callable, List, Tuple
 
 import cv2
@@ -13,7 +14,7 @@ def compute_gradients(res: tuple[int, int]) -> torch.Tensor:
 
 
 @torch.jit.script
-def lerp_torch(
+def lerp_torch(  # pragma: no cover
     x: torch.Tensor, y: torch.Tensor, w: torch.Tensor
 ) -> torch.Tensor:
     return (y - x) * w + x
@@ -91,7 +92,7 @@ def rand_perlin_2d(
 
 
 @torch.jit.script
-def rotate_noise(noise: torch.Tensor) -> torch.Tensor:
+def rotate_noise(noise: torch.Tensor) -> torch.Tensor:  # pragma: no cover
     angle = torch.rand(1) * 2 * torch.pi
     h, w = noise.shape
     center_y, center_x = h // 2, w // 2
@@ -135,17 +136,17 @@ def generate_perlin_noise(
     return perlin_mask
 
 
-def load_image_as_numpy(img_path: str) -> np.ndarray:
-    image = cv2.imread(img_path, cv2.IMREAD_COLOR)
+def load_image_as_numpy(img_path: Path) -> np.ndarray:
+    image = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
     image = image.astype(np.float32) / 255.0
     return image
 
 
 def apply_anomaly_to_img(
     img: torch.Tensor,
-    anomaly_source_paths: List[str],
+    anomaly_source_paths: List[Path],
     beta: float | None = None,
-    pixel_augs: List[Callable] | None = None,
+    pixel_augs: Callable | None = None,  # type: ignore
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Applies Perlin noise-based anomalies to a single image (C, H, W).
 
@@ -164,9 +165,6 @@ def apply_anomaly_to_img(
         - perlin_mask (torch.Tensor): The Perlin noise mask applied to the image.
     """
 
-    if pixel_augs is None:
-        pixel_augs = []
-
     sampled_anomaly_image_path = random.choice(anomaly_source_paths)
 
     anomaly_image = load_image_as_numpy(sampled_anomaly_image_path)
@@ -177,8 +175,8 @@ def apply_anomaly_to_img(
         interpolation=cv2.INTER_LINEAR,
     )
 
-    for aug in pixel_augs:
-        anomaly_image = aug(image=anomaly_image)["image"]
+    if pixel_augs is not None:
+        anomaly_image = pixel_augs(image=anomaly_image)["image"]
 
     anomaly_image = torch.tensor(anomaly_image).permute(2, 0, 1)
 

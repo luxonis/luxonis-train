@@ -6,8 +6,7 @@ class TaskType(str, Enum):
 
     CLASSIFICATION = "classification"
     SEGMENTATION = "segmentation"
+    INSTANCE_SEGMENTATION = "instance_segmentation"
     BOUNDINGBOX = "boundingbox"
     KEYPOINTS = "keypoints"
-    LABEL = "label"
     ARRAY = "array"
-    INSTANCE_SEGMENTATION = "instance_segmentation"

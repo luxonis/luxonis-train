@@ -1,15 +1,12 @@
-import glob
-import os
 import random
-from typing import Callable, List
+from typing import cast
 
 import numpy as np
 import torch
 import torch.nn.functional as F
+from luxonis_ml.data import AlbumentationsEngine
 from luxonis_ml.utils import LuxonisFileSystem
 from torch import Tensor
-
-from luxonis_train.enums import TaskType
 
 from .base_loader import LuxonisLoaderTorchOutput
 from .luxonis_loader_torch import LuxonisLoaderTorch
@@ -32,53 +29,45 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         @param noise_prob: The probability with which to apply Perlin
             noise (only used during training).
         """
-        if not anomaly_source_path:
-            raise ValueError("anomaly_source_path must be a valid string.")
-
         super().__init__(*args, **kwargs)
-        lux_fs = LuxonisFileSystem(path=anomaly_source_path)
-        if lux_fs.protocol in ["s3", "gcs"]:
-            anomaly_source_path = str(
-                lux_fs.get_dir(
-                    remote_paths=[anomaly_source_path], local_dir="./data"
-                )
-            )
-        else:
-            anomaly_source_path = str(lux_fs.path)
 
-        if anomaly_source_path and os.path.exists(anomaly_source_path):
-            self.anomaly_source_paths = sorted(
-                glob.glob(os.path.join(anomaly_source_path, "*/*.jpg"))
+        try:
+            self.anomaly_source_path = LuxonisFileSystem.download(
+                anomaly_source_path, dest="./data"
             )
-            if not self.anomaly_source_paths:
-                raise FileNotFoundError(
-                    "No .jpg files found at the specified path."
-                )
-        else:
-            raise ValueError("Invalid or unspecified anomaly source path.")
+        except Exception as e:
+            raise FileNotFoundError(
+                "The anomaly source path is invalid."
+            ) from e
 
-        self.anomaly_source_path = anomaly_source_path
+        from luxonis_train.core.utils.infer_utils import IMAGE_FORMATS
+
+        self.anomaly_files = [
+            f
+            for f in self.anomaly_source_path.rglob("*")
+            if f.suffix.lower() in IMAGE_FORMATS
+        ]
+        if not self.anomaly_files:
+            raise FileNotFoundError(
+                "No image files found at the specified path."
+            )
+
         self.noise_prob = noise_prob
-        self.base_loader.add_background = True  # type: ignore
-        self.base_loader.class_mappings["segmentation"]["background"] = 0
-        self.base_loader.class_mappings["segmentation"] = {
-            k: (v + 1 if k != "background" else v)
-            for k, v in self.base_loader.class_mappings["segmentation"].items()
-        }
+        if len(self.loader.dataset.get_tasks()) > 1:
+            # TODO: Can be extended to multiple tasks
+            raise ValueError(
+                "This loader only supports datasets with a single task."
+            )
+        self.task_name = next(iter(self.loader.dataset.get_tasks()))
 
-        if (
-            self.augmentations is None
-            or self.augmentations.pixel_transform is None
-        ):
-            self.pixel_augs: List[Callable] = []
+        augmentations = cast(AlbumentationsEngine, self.loader.augmentations)
+        if augmentations is None or augmentations.pixel_transform is None:
+            self.pixel_augs = None
         else:
-            self.pixel_augs: List[Callable] = [
-                transform
-                for transform in self.augmentations.pixel_transform.transforms
-            ]
+            self.pixel_augs = augmentations.pixel_transform
 
     def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
-        img, labels = self.base_loader[idx]
+        img, labels = self.loader[idx]
 
         img = np.transpose(img, (2, 0, 1))
         tensor_img = Tensor(img)
@@ -86,7 +75,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         if self.view[0] == "train" and random.random() < self.noise_prob:
             aug_tensor_img, an_mask = apply_anomaly_to_img(
                 tensor_img,
-                anomaly_source_paths=self.anomaly_source_paths,
+                anomaly_source_paths=self.anomaly_files,
                 pixel_augs=self.pixel_augs,
             )
         else:
@@ -94,17 +83,12 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
             h, w = aug_tensor_img.shape[-2:]
             an_mask = torch.zeros((h, w))
 
-        tensor_labels = {"original": (tensor_img, TaskType.ARRAY)}
-        if self.view[0] == "train":
-            tensor_labels["segmentation"] = (
-                F.one_hot(an_mask.long(), 2).permute(2, 0, 1).float(),
-                TaskType.SEGMENTATION,
-            )
-        else:
-            for task, (array, label_type) in labels.items():
-                tensor_labels[task] = (
-                    Tensor(array),
-                    TaskType(label_type.value),
-                )
+        tensor_labels = {f"{self.task_name}/original/segmentation": tensor_img}
+        for task, array in labels.items():
+            tensor_labels[task] = Tensor(array)
+
+        tensor_labels[f"{self.task_name}/segmentation"] = (
+            F.one_hot(an_mask.long(), 2).permute(2, 0, 1).float()
+        )
 
         return {self.image_source: aug_tensor_img}, tensor_labels

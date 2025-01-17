@@ -1,7 +1,7 @@
 import logging
 import sys
 import warnings
-from typing import Annotated, Any, Literal, TypeAlias
+from typing import Annotated, Any, Literal, NamedTuple, TypeAlias
 
 from luxonis_ml.enums import DatasetType
 from luxonis_ml.utils import (
@@ -19,11 +19,14 @@ from pydantic.types import (
 )
 from typing_extensions import Self
 
-from luxonis_train.enums import TaskType
-
 logger = logging.getLogger(__name__)
 
 Params: TypeAlias = dict[str, Any]
+
+
+class ImageSize(NamedTuple):
+    height: int
+    width: int
 
 
 class AttachedModuleConfig(BaseModelExtraForbid):
@@ -62,7 +65,7 @@ class ModelNodeConfig(BaseModelExtraForbid):
     input_sources: list[str] = []  # From data loader
     freezing: FreezingConfig = FreezingConfig()
     remove_on_export: bool = False
-    task: str | dict[TaskType, str] | None = None
+    task_name: str = ""
     params: Params = {}
 
 
@@ -102,7 +105,7 @@ class ModelConfig(BaseModelExtraForbid):
             if "Head" in name and last_body_index is None:
                 last_body_index = i - 1
             names.append(name)
-            if i > 0 and "inputs" not in node:
+            if i > 0 and "inputs" not in node and "input_sources" not in node:
                 if last_body_index is not None:
                     prev_name = names[last_body_index]
                 else:
@@ -151,15 +154,24 @@ class ModelConfig(BaseModelExtraForbid):
     def check_main_metric(self) -> Self:
         for metric in self.metrics:
             if metric.is_main_metric:
+                if "matrix" in metric.name.lower():
+                    raise ValueError(
+                        f"Main metric cannot contain 'matrix' in its name: `{metric.name}`"
+                    )
                 logger.info(f"Main metric: `{metric.name}`")
                 return self
 
         logger.warning("No main metric specified.")
         if self.metrics:
-            metric = self.metrics[0]
-            metric.is_main_metric = True
-            name = metric.alias or metric.name
-            logger.info(f"Setting '{name}' as main metric.")
+            for metric in self.metrics:
+                if "matrix" not in metric.name.lower():
+                    metric.is_main_metric = True
+                    name = metric.alias or metric.name
+                    logger.info(f"Setting '{name}' as main metric.")
+                    return self
+            raise ValueError(
+                "[Configuration Error] No valid main metric can be set as all metrics contain 'matrix' in their names."
+            )
         else:
             logger.warning(
                 "[Ignore if using predefined model] "
@@ -190,23 +202,32 @@ class ModelConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_unique_names(self) -> Self:
-        for section, objects in [
-            ("nodes", self.nodes),
-            ("losses", self.losses),
-            ("metrics", self.metrics),
-            ("visualizers", self.visualizers),
+        for modules in [
+            self.nodes,
+            self.losses,
+            self.metrics,
+            self.visualizers,
         ]:
             names: set[str] = set()
-            for obj in objects:
-                obj: AttachedModuleConfig
-                name = obj.alias or obj.name
+            node_index = 0
+            for module in modules:
+                module: AttachedModuleConfig | ModelNodeConfig
+                name = module.alias or module.name
                 if name in names:
-                    if obj.alias is None:
-                        obj.alias = f"{name}_{obj.attached_to}"
-                    if obj.alias in names:
-                        raise ValueError(
-                            f"Duplicate name `{name}` in `{section}` section."
+                    if module.alias is None:
+                        if isinstance(module, ModelNodeConfig):
+                            module.alias = module.name
+                        else:
+                            module.alias = f"{name}_{module.attached_to}"
+
+                    if module.alias in names:
+                        new_alias = f"{module.alias}_{node_index}"
+                        logger.warning(
+                            f"Duplicate name: {module.alias}. Renaming to {new_alias}."
                         )
+                        module.alias = new_alias
+                        node_index += 1
+
                 names.add(name)
         return self
 
@@ -294,8 +315,8 @@ class AugmentationConfig(BaseModelExtraForbid):
 
 class PreprocessingConfig(BaseModelExtraForbid):
     train_image_size: Annotated[
-        list[int], Field(default=[256, 256], min_length=2, max_length=2)
-    ] = [256, 256]
+        ImageSize, Field(default=[256, 256], min_length=2, max_length=2)
+    ] = ImageSize(256, 256)
     keep_aspect_ratio: bool = True
     train_rgb: bool = True
     normalize: NormalizeAugmentationConfig = NormalizeAugmentationConfig()
@@ -367,6 +388,8 @@ class TrainerConfig(BaseModelExtraForbid):
     smart_cfg_auto_populate: bool = True
     batch_size: PositiveInt = 32
     accumulate_grad_batches: PositiveInt = 1
+    gradient_clip_val: NonNegativeFloat | None = None
+    gradient_clip_algorithm: Literal["norm", "value"] | None = None
     use_weighted_sampler: bool = False
     epochs: PositiveInt = 100
     n_workers: Annotated[
@@ -579,6 +602,19 @@ class Config(LuxonisConfig):
                 logger.warning(
                     "`Mosaic4` augmentation detected. Automatically set `out_width` and `out_height` to match `train_image_size`."
                 )
+
+        # Rule: If train, val, and test views are the same, set n_validation_batches
+        if (
+            instance.loader.train_view
+            == instance.loader.val_view
+            == instance.loader.test_view
+            and instance.trainer.n_validation_batches is None
+        ):
+            instance.trainer.n_validation_batches = 10
+            logger.warning(
+                "Train, validation, and test views are the same. Automatically set `n_validation_batches` to 10 to prevent validation/testing on the full train set. "
+                "If this behavior is not desired, set `smart_cfg_auto_populate` to `False`."
+            )
 
 
 def is_acyclic(graph: dict[str, list[str]]) -> bool:

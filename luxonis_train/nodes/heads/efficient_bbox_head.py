@@ -5,8 +5,8 @@ import torch
 from torch import Tensor, nn
 
 from luxonis_train.enums import TaskType
-from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import EfficientDecoupledBlock
+from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.utils import (
     Packet,
     anchors_for_fpn_features,
@@ -18,10 +18,11 @@ logger = logging.getLogger(__name__)
 
 
 class EfficientBBoxHead(
-    BaseNode[list[Tensor], tuple[list[Tensor], list[Tensor], list[Tensor]]]
+    BaseHead[list[Tensor], tuple[list[Tensor], list[Tensor], list[Tensor]]],
 ):
     in_channels: list[int]
     tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
+    parser = "YOLO"
 
     def __init__(
         self,
@@ -102,10 +103,13 @@ class EfficientBBoxHead(
             self.initialize_weights()
 
         if download_weights:
-            # TODO: Handle variants of head in a nicer way
-            if self.in_channels == [32, 64, 128]:
-                weights_path = "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientbbox_head_n_coco.ckpt"
-                self.load_checkpoint(weights_path, strict=False)
+            weights_path = self.get_variant_weights(initialize_weights)
+            if weights_path:
+                self.load_checkpoint(path=weights_path, strict=False)
+            else:
+                logger.warning(
+                    f"No checkpoint available for {self.name}, skipping."
+                )
 
     def initialize_weights(self):
         for m in self.modules():
@@ -118,6 +122,25 @@ class EfficientBBoxHead(
                 m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU)
             ):
                 m.inplace = True
+
+    def get_variant_weights(self, initialize_weights: bool) -> str | None:
+        if self.in_channels == [32, 64, 128]:  # light predefined model
+            if initialize_weights:
+                return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/efficientbbox_head_n_coco.ckpt"
+            else:
+                return "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientbbox_head_n_coco.ckpt"
+        elif self.in_channels == [64, 128, 256]:  # medium predefined model
+            if initialize_weights:
+                return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/efficientbbox_head_s_coco.ckpt"
+            else:
+                return None
+        elif self.in_channels == [128, 256, 512]:  # heavy predefined model
+            if initialize_weights:
+                return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/efficientbbox_head_l_coco.ckpt"
+            else:
+                return None
+        else:
+            return None
 
     def forward(
         self, inputs: list[Tensor]
@@ -148,7 +171,7 @@ class EfficientBBoxHead(
                 conf, _ = out_cls.max(1, keepdim=True)
                 out = torch.cat([out_reg, conf, out_cls], dim=1)
                 outputs.append(out)
-            return {self.task: outputs}
+            return {"boundingbox": outputs}
 
         cls_tensor = torch.cat(
             [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))],
@@ -231,3 +254,16 @@ class EfficientBBoxHead(
             max_det=self.max_det,
             predicts_objectness=False,
         )
+
+    def get_custom_head_config(self) -> dict:
+        """Returns custom head configuration.
+
+        @rtype: dict
+        @return: Custom head configuration.
+        """
+        return {
+            "subtype": "yolov6",
+            "iou_threshold": self.iou_thres,
+            "conf_threshold": self.conf_thres,
+            "max_det": self.max_det,
+        }

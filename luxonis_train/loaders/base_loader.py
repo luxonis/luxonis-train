@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 
-from luxonis_ml.data import Augmentations
 from luxonis_ml.utils.registry import AutoRegisterMeta
-from torch import Size
+from torch import Size, Tensor
 from torch.utils.data import Dataset
 
 from luxonis_train.utils.registry import LOADERS
@@ -23,11 +22,9 @@ class BaseLoaderTorch(
     def __init__(
         self,
         view: str | list[str],
-        augmentations: Augmentations | None = None,
         image_source: str | None = None,
     ):
         self.view = view if isinstance(view, list) else [view]
-        self.augmentations = augmentations
         self._image_source = image_source
 
     @property
@@ -85,6 +82,13 @@ class BaseLoaderTorch(
         @type: torch.Size
         """
         return self.input_shapes[self.image_source]
+
+    def augment_test_image(self, img: Tensor) -> Tensor:
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not expose interface "
+            "for test-time augmentation. Implement "
+            "`augment_test_image` method to expose this functionality."
+        )
 
     @abstractmethod
     def __len__(self) -> int:

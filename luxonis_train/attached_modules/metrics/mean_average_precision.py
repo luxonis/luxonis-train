@@ -57,9 +57,11 @@ class MeanAveragePrecision(
             else None
         )
 
-        output_nms_bboxes = self.get_input_tensors(inputs, "boundingbox")
+        output_nms_bboxes = self.get_input_tensors(
+            inputs, TaskType.BOUNDINGBOX
+        )
         output_nms_masks = (
-            self.get_input_tensors(inputs, "instance_segmentation")
+            self.get_input_tensors(inputs, TaskType.INSTANCE_SEGMENTATION)
             if self.is_segmentation
             else None
         )
@@ -147,5 +149,9 @@ class MeanAveragePrecision(
                         )
 
             scalar = metric_dict.pop("map", torch.tensor(0.0))
+
+        # WARNING: fix DDP pl.log error
+        metric_dict = {k: v.to(self.device) for k, v in metric_dict.items()}
+        scalar = scalar.to(self.device)
 
         return scalar, metric_dict

@@ -93,23 +93,21 @@ class BaseNode(
                 # by the attached modules.
                 return {"classification": [output]}
 
-
     @type attach_index: AttachIndexType
     @ivar attach_index: Index of previous output that this node attaches to.
         Can be a single integer to specify a single output, a tuple of
         two or three integers to specify a range of outputs or C{"all"} to
         specify all outputs. Defaults to "all". Python indexing conventions apply.
 
-    @type tasks: list[TaskType] | dict[TaskType, str] | None
-    @ivar tasks: Dictionary of tasks that the node supports. Should be defined
-        by the user as a class attribute. The key is the task type and the value
-        is the name of the task. For example:
-        C{{TaskType.CLASSIFICATION: "classification"}}.
+    @type tasks: list[TaskType] | None
+    @ivar tasks: List of task types that the node supports.
+        Should be defined as a class attribute by the user.
+        For example C{[TaskType.CLASSIFICATION]}.
         Only needs to be defined for head nodes.
     """
 
     attach_index: AttachIndexType
-    tasks: list[TaskType] | dict[TaskType, str] | None = None
+    tasks: list[TaskType] | None = None
 
     def __init__(
         self,
@@ -123,7 +121,7 @@ class BaseNode(
         remove_on_export: bool = False,
         export_output_names: list[str] | None = None,
         attach_index: AttachIndexType | None = None,
-        _tasks: dict[TaskType, str] | None = None,
+        task_name: str | None = None,
     ):
         """Constructor for the C{BaseNode}.
 
@@ -154,10 +152,10 @@ class BaseNode(
             of outputs or C{"all"} to specify all outputs. Defaults to
             "all". Python indexing conventions apply. If provided as a
             constructor argument, overrides the class attribute.
-        @type _tasks: dict[TaskType, str] | None
-        @param _tasks: Dictionary of tasks that the node supports.
-            Overrides the class L{tasks} attribute. Shouldn't be
-            provided by the user in most cases.
+        @type task_name: str | None
+        @param task_name: Specifies which task group from the dataset to use
+            in case the dataset contains multiple tasks. Otherwise, the
+            task group is inferred from the dataset metadata.
         """
         super().__init__()
 
@@ -168,11 +166,16 @@ class BaseNode(
                 "Make sure this is intended."
             )
             self.attach_index = attach_index
-        self._tasks = None
-        if _tasks is not None:
-            self._tasks = _tasks
-        elif self.tasks is not None:
-            self._tasks = self._process_tasks(self.tasks)
+
+        if task_name is None and dataset_metadata is not None:
+            if len(dataset_metadata.task_names) == 1:
+                task_name = next(iter(dataset_metadata.task_names))
+            else:
+                raise ValueError(
+                    f"Dataset contain multiple tasks, but the `task_name` "
+                    f"argument for node '{self.name}' was not provided."
+                )
+        self.task_name = task_name or ""
 
         if getattr(self, "attach_index", None) is None:
             parameters = inspect.signature(self.forward).parameters
@@ -200,15 +203,6 @@ class BaseNode(
 
         self._check_type_overrides()
 
-    @staticmethod
-    def _process_tasks(
-        tasks: dict[TaskType, str] | list[TaskType],
-    ) -> dict[TaskType, str]:
-        if isinstance(tasks, dict):
-            return tasks
-        else:
-            return {task: task.value for task in tasks}
-
     def _check_type_overrides(self) -> None:
         properties = []
         for name, value in inspect.getmembers(self.__class__):
@@ -228,67 +222,9 @@ class BaseNode(
                             "not compatible with its predecessor."
                         ) from e
 
-    def get_task_name(self, task: TaskType) -> str:
-        """Gets the name of a task for a particular C{TaskType}.
-
-        @type task: TaskType
-        @param task: Task to get the name for.
-        @rtype: str
-        @return: Name of the task.
-        @raises RuntimeError: If the node does not define any tasks.
-        @raises ValueError: If the task is not supported by the node.
-        """
-        if not self._tasks:
-            raise RuntimeError(f"Node '{self.name}' does not define any task.")
-
-        if task not in self._tasks:
-            raise ValueError(
-                f"Node '{self.name}' does not support the '{task.value}' task."
-            )
-        return self._tasks[task]
-
     @property
     def name(self) -> str:
         return self.__class__.__name__
-
-    @property
-    def task(self) -> str:
-        """Getter for the task.
-
-        @type: str
-        @raises RuntimeError: If the node doesn't define any task.
-        @raises ValueError: If the node defines more than one task. In
-            that case, use the L{get_task_name} method instead.
-        """
-        if not self._tasks:
-            raise RuntimeError(f"{self.name} does not define any task.")
-
-        if len(self._tasks) > 1:
-            raise ValueError(
-                f"Node {self.name} has multiple tasks defined. "
-                "Use the `get_task_name` method instead."
-            )
-        return next(iter(self._tasks.values()))
-
-    def get_n_classes(self, task: TaskType) -> int:
-        """Gets the number of classes for a particular task.
-
-        @type task: TaskType
-        @param task: Task to get the number of classes for.
-        @rtype: int
-        @return: Number of classes for the task.
-        """
-        return self.dataset_metadata.n_classes(self.get_task_name(task))
-
-    def get_class_names(self, task: TaskType) -> list[str]:
-        """Gets the class names for a particular task.
-
-        @type task: TaskType
-        @param task: Task to get the class names for.
-        @rtype: list[str]
-        @return: Class names for the task.
-        """
-        return self.dataset_metadata.classes(self.get_task_name(task))
 
     @property
     def n_keypoints(self) -> int:
@@ -296,94 +232,32 @@ class BaseNode(
 
         @type: int
         @raises ValueError: If the node does not support keypoints.
-        @raises RuntimeError: If the node doesn't define any task.
         """
         if self._n_keypoints is not None:
             return self._n_keypoints
 
-        if self._tasks:
-            if TaskType.KEYPOINTS not in self._tasks:
-                raise ValueError(f"{self.name} does not support keypoints.")
-            return self.dataset_metadata.n_keypoints(
-                self.get_task_name(TaskType.KEYPOINTS)
-            )
-
-        raise RuntimeError(
-            f"{self.name} does not have any tasks defined, "
-            "`BaseNode.n_keypoints` property cannot be used. "
-            "Either override the `tasks` class attribute, "
-            "pass the `n_keypoints` attribute to the constructor or call "
-            "the `BaseNode.dataset_metadata.get_n_keypoints` method manually."
-        )
+        if TaskType.KEYPOINTS not in (self.tasks or []):
+            raise ValueError(f"{self.name} does not support keypoints.")
+        return self.dataset_metadata.n_keypoints(self.task_name)
 
     @property
     def n_classes(self) -> int:
         """Getter for the number of classes.
 
         @type: int
-        @raises RuntimeError: If the node doesn't define any task.
-        @raises ValueError: If the number of classes is different for
-            different tasks. In that case, use the L{get_n_classes}
-            method.
         """
         if self._n_classes is not None:
             return self._n_classes
 
-        if not self._tasks:
-            raise RuntimeError(
-                f"{self.name} does not have any tasks defined, "
-                "`BaseNode.n_classes` property cannot be used. "
-                "Either override the `tasks` class attribute, "
-                "pass the `n_classes` attribute to the constructor or call "
-                "the `BaseNode.dataset_metadata.n_classes` method manually."
-            )
-        elif len(self._tasks) == 1:
-            return self.dataset_metadata.n_classes(self.task)
-        else:
-            n_classes = [
-                self.dataset_metadata.n_classes(self.get_task_name(task))
-                for task in self._tasks
-            ]
-            if len(set(n_classes)) == 1:
-                return n_classes[0]
-            raise ValueError(
-                "Node defines multiple tasks but they have different number of classes. "
-                "This is likely an error, as the number of classes should be the same."
-                "If it is intended, use `BaseNode.get_n_classes` instead."
-            )
+        return self.dataset_metadata.n_classes(self.task_name)
 
     @property
     def class_names(self) -> list[str]:
         """Getter for the class names.
 
         @type: list[str]
-        @raises RuntimeError: If the node doesn't define any task.
-        @raises ValueError: If the class names are different for
-            different tasks. In that case, use the L{get_class_names}
-            method.
         """
-        if not self._tasks:
-            raise RuntimeError(
-                f"{self.name} does not have any tasks defined, "
-                "`BaseNode.class_names` property cannot be used. "
-                "Either override the `tasks` class attribute, "
-                "pass the `n_classes` attribute to the constructor or call "
-                "the `BaseNode.dataset_metadata.class_names` method manually."
-            )
-        elif len(self._tasks) == 1:
-            return self.dataset_metadata.classes(self.task)
-        else:
-            class_names = [
-                self.dataset_metadata.classes(self.get_task_name(task))
-                for task in self._tasks
-            ]
-            if all(set(names) == set(class_names[0]) for names in class_names):
-                return class_names[0]
-            raise ValueError(
-                "Node defines multiple tasks but they have different class names. "
-                "This is likely an error, as the class names should be the same. "
-                "If it is intended, use `BaseNode.get_class_names` instead."
-            )
+        return self.dataset_metadata.classes(self.task_name)
 
     @property
     def input_shapes(self) -> list[Packet[Size]]:
@@ -522,7 +396,11 @@ class BaseNode(
                 "state_dict"
             ]  # load explicitly to cpu, PL takes care of transfering to CUDA is needed
             self.load_state_dict(state_dict, strict=strict)
-            logging.info(f"Checkpoint for {self.__class__.__name__} loaded.")
+            logging.info(f"Checkpoint for {self.name} loaded.")
+        else:
+            logger.warning(
+                f"No checkpoint available for {self.name}, skipping."
+            )
 
     @property
     def export(self) -> bool:
@@ -628,10 +506,14 @@ class BaseNode(
             raise ValueError(
                 "Default `wrap` expects a single tensor or a list of tensors."
             )
-        try:
-            task = self.task
-        except RuntimeError:
-            task = "features"
+        if not self.tasks:
+            return {"features": outputs}
+        if len(self.tasks) > 1:
+            raise RuntimeError(
+                f"Node {self.name} defines multiple tasks. "
+                "The `wrap` method should be overridden."
+            )
+        task = f"{self.task_name or ''}/{self.tasks[0].value}"
         return {task: outputs}
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:
@@ -650,11 +532,12 @@ class BaseNode(
         unwrapped = self.unwrap(inputs)
         outputs = self(unwrapped)
         wrapped = self.wrap(outputs)
-        str_tasks = [task.value for task in self._tasks] if self._tasks else []
+        str_tasks = [task.value for task in self.tasks or []]
         for key in list(wrapped.keys()):
             if key in str_tasks:
+                assert self.task_name is not None
                 value = wrapped.pop(key)
-                wrapped[self.get_task_name(TaskType(key))] = value
+                wrapped[f"{self.task_name}/{key}"] = value
         return wrapped
 
     T = TypeVar("T", Tensor, Size)

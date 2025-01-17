@@ -32,6 +32,7 @@ from luxonis_train.callbacks import (
 )
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.nodes import BaseNode
+from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.utils import (
     DatasetMetadata,
     Kwargs,
@@ -179,33 +180,22 @@ class LuxonisLightningModule(pl.LightningModule):
                         node_cfg.freezing.unfreeze_after * epochs
                     )
                 frozen_nodes.append((node_name, unfreeze_after))
-
-            if node_cfg.task is not None:
-                if Node.tasks is None:
+            task_names = list(self.dataset_metadata.task_names)
+            if not node_cfg.task_name:
+                if len(task_names) == 1:
+                    node_cfg.task_name = task_names[0]
+                elif issubclass(Node, BaseHead):
                     raise ValueError(
-                        f"Cannot define tasks for node {node_name}."
-                        "This node doesn't specify any tasks."
+                        f"Dataset contains multiple tasks: {task_names}. "
+                        f"Node {node_name} does not have the `task_name` parameter set. "
+                        "Please specify the `task_name` parameter for each head node. "
                     )
-                if isinstance(node_cfg.task, str):
-                    assert Node.tasks
-                    if len(Node.tasks) > 1:
-                        raise ValueError(
-                            f"Node {node_name} specifies multiple tasks, "
-                            "but only one task is specified in the config. "
-                            "Specify the tasks as a dictionary instead."
-                        )
 
-                    node_cfg.task = {next(iter(Node.tasks)): node_cfg.task}
-                else:
-                    node_cfg.task = {
-                        **Node._process_tasks(Node.tasks),
-                        **node_cfg.task,
-                    }
             nodes[node_name] = (
                 Node,
                 {
                     **node_cfg.params,
-                    "_tasks": node_cfg.task,
+                    "task_name": node_cfg.task_name,
                     "remove_on_export": node_cfg.remove_on_export,
                 },
             )
@@ -353,6 +343,13 @@ class LuxonisLightningModule(pl.LightningModule):
                 dataset_metadata=self.dataset_metadata,
                 **node_kwargs,
             )
+            if isinstance(node, BaseHead):
+                try:
+                    node.get_custom_head_config()
+                except NotImplementedError:
+                    logger.warning(
+                        f"Head {node_name} does not implement get_custom_head_config method. Archivation of this head will fail."
+                    )
             node_outputs = node.run(node_dummy_inputs)
 
             dummy_inputs[node_name] = node_outputs
@@ -810,14 +807,21 @@ class LuxonisLightningModule(pl.LightningModule):
         logger.info("Metrics computed.")
         for node_name, metrics in computed_metrics.items():
             for metric_name, metric_value in metrics.items():
-                metric_results[node_name][metric_name] = (
-                    metric_value.cpu().item()
-                )
-                self.log(
-                    f"{mode}/metric/{node_name}/{metric_name}",
-                    metric_value,
-                    sync_dist=True,
-                )
+                if "matrix" in metric_name.lower():
+                    self.logger.log_matrix(
+                        matrix=metric_value.cpu().numpy(),
+                        name=f"{mode}/metrics/{self.current_epoch}/{metric_name}",
+                        step=self.current_epoch,
+                    )
+                else:
+                    metric_results[node_name][metric_name] = (
+                        metric_value.cpu().item()
+                    )
+                    self.log(
+                        f"{mode}/metric/{node_name}/{metric_name}",
+                        metric_value,
+                        sync_dist=True,
+                    )
 
         if self.cfg.trainer.verbose:
             self._print_results(
@@ -985,7 +989,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 loader = self._core.loaders["train"]
                 dataset = getattr(loader, "dataset", None)
                 if isinstance(dataset, LuxonisDataset):
-                    n_classes = len(dataset.get_classes()[1][node.task])
+                    n_classes = len(dataset.get_classes()[node.task_name])
                     if n_classes == 1:
                         cfg.params["task"] = "binary"
                     else:
@@ -1030,7 +1034,9 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
         if self.main_metric is not None:
-            main_metric_node, main_metric_name = self.main_metric.split("/")
+            *main_metric_node, main_metric_name = self.main_metric.split("/")
+            main_metric_node = "/".join(main_metric_node)
+
             main_metric = metrics[main_metric_node][main_metric_name]
             logger.info(
                 f"{stage} main metric ({self.main_metric}): {main_metric:.4f}"

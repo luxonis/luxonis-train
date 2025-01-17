@@ -14,12 +14,12 @@ def get_variant(variant: Literal["23-slim", "23"]) -> DDRNetVariant:
         "23-slim": DDRNetVariant(
             channels=32,
             highres_channels=64,
-            weights_path="https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/ddrnet_23slim_coco.ckpt",
+            weights_path="https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/ddrnet_23slim_coco.ckpt",
         ),
         "23": DDRNetVariant(
             channels=64,
             highres_channels=128,
-            weights_path=None,
+            weights_path="https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/ddrnet_23_coco.ckpt",
         ),
     }
     if variant not in variants:  # pragma: no cover

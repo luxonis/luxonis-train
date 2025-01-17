@@ -1,7 +1,9 @@
 import logging
-from typing import List, Literal, Optional, Union
+from pathlib import Path
+from typing import Any, Literal
 
 import numpy as np
+import torch
 from luxonis_ml.data import (
     BucketStorage,
     BucketType,
@@ -13,8 +15,6 @@ from luxonis_ml.enums import DatasetType
 from torch import Size, Tensor
 from typeguard import typechecked
 
-from luxonis_train.enums import TaskType
-
 from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput
 
 logger = logging.getLogger(__name__)
@@ -24,22 +24,21 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
     @typechecked
     def __init__(
         self,
-        dataset_name: Optional[str] = None,
-        dataset_dir: Optional[str] = None,
-        dataset_type: Optional[DatasetType] = None,
-        team_id: Optional[str] = None,
+        dataset_name: str | None = None,
+        dataset_dir: str | None = None,
+        dataset_type: DatasetType | None = None,
+        team_id: str | None = None,
         bucket_type: Literal["internal", "external"] = "internal",
         bucket_storage: Literal["local", "s3", "gcs", "azure"] = "local",
-        stream: bool = False,
         delete_existing: bool = True,
-        view: Union[str, List[str]] = "train",
-        augmentation_engine: Literal["albumentations"] = "albumentations",
-        augmentation_config: Optional[Union[List, str]] = None,
-        height: Optional[int] = None,
-        width: Optional[int] = None,
-        keep_aspect_ratio: bool = False,
+        view: str | list[str] = "train",
+        augmentation_engine: str
+        | Literal["albumentations"] = "albumentations",
+        augmentation_config: Path | str | list[dict[str, Any]] | None = None,
+        height: int | None = None,
+        width: int | None = None,
+        keep_aspect_ratio: bool = True,
         out_image_format: Literal["RGB", "BGR"] = "RGB",
-        force_resync: bool = False,
         **kwargs,
     ):
         """Torch-compatible loader for Luxonis datasets.
@@ -66,38 +65,52 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             Defaults to 'internal'.
         @type bucket_storage: Literal["local", "s3", "gcs", "azure"]
         @param bucket_storage: Type of the bucket storage. Defaults to 'local'.
-        @type stream: bool
-        @param stream: Flag for data streaming. Defaults to C{False}.
         @type delete_existing: bool
         @param delete_existing: Only relevant when C{dataset_dir} is provided. By
             default, the dataset is parsed again every time the loader is created
             because the underlying data might have changed. If C{delete_existing} is set
             to C{False} and a dataset of the same name already exists, the existing
             dataset will be used instead of re-parsing the data.
-        @type view: Union[str, List[str]]
+        @type view: str | list[str]
         @param view: A single split or a list of splits that will be used to create a
             view of the dataset. Each split is a string that represents a subset of the
             dataset. The available splits depend on the dataset, but usually include
             'train', 'val', and 'test'. Defaults to 'train'.
-        @type augmentation_engine: Literal["albumentations"]
-        @param augmentation_engine: Engine to use for applying augmentations.
-            Defaults to 'albumentations'.
-        @type augmentation_config: List | str | None
-        @param augmentation_config: Augmentation configuration as a list or path to a
-            configuration file. Defaults to C{None}.
-        @type height: int | None
-        @param height: Optional height to resize the images.
-        @type width: int | None
-        @param width: Optional width to resize the images.
+        @type augmentation_engine: Union[Literal["albumentations"], str]
+        @param augmentation_engine: The augmentation engine to use.
+            Defaults to C{"albumentations"}.
+        @type augmentation_config: Optional[Union[List[Dict[str, Any]],
+            PathType]]
+        @param augmentation_config: The configuration for the
+            augmentations. This can be either a list of C{Dict[str, Any]} or
+            a path to a configuration file.
+            The config member is a dictionary with two keys: C{name} and
+            C{params}. C{name} is the name of the augmentation to
+            instantiate and C{params} is an optional dictionary
+            of parameters to pass to the augmentation.
+
+            Example::
+
+                [
+                    {"name": "HorizontalFlip", "params": {"p": 0.5}},
+                    {"name": "RandomBrightnessContrast", "params": {"p": 0.1}},
+                    {"name": "Defocus"}
+                ]
+
+        @type height: Optional[int]
+        @param height: The height of the output images. Defaults to
+            C{None}.
+        @type width: Optional[int]
+        @param width: The width of the output images. Defaults to
+            C{None}.
         @type keep_aspect_ratio: bool
-        @param keep_aspect_ratio: Flag to maintain aspect ratio during resizing.
+        @param keep_aspect_ratio: Whether to keep the aspect ratio of the
+            images. Defaults to C{True}.
         @type out_image_format: Literal["RGB", "BGR"]
-        @param out_image_format: Format of the output images. Defaults to 'RGB'.
-        @type force_resync: bool
-        @param force_resync: Force a resynchronization of the dataset. Defaults to False.
+        @param out_image_format: The format of the output images. Defaults
+            to C{"RGB"}.
         """
         super().__init__(view=view, **kwargs)
-
         if dataset_dir is not None:
             self.dataset = self._parse_dataset(
                 dataset_dir, dataset_name, dataset_type, delete_existing
@@ -113,21 +126,19 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 bucket_type=BucketType(bucket_type),
                 bucket_storage=BucketStorage(bucket_storage),
             )
-
-        self.base_loader = LuxonisLoader(
+        self.loader = LuxonisLoader(
             dataset=self.dataset,
-            view=self.view,
+            view=view,
             augmentation_engine=augmentation_engine,
             augmentation_config=augmentation_config,
             height=height,
             width=width,
             keep_aspect_ratio=keep_aspect_ratio,
             out_image_format=out_image_format,
-            force_resync=force_resync,
         )
 
     def __len__(self) -> int:
-        return len(self.base_loader)
+        return len(self.loader)
 
     @property
     def input_shapes(self) -> dict[str, Size]:
@@ -135,32 +146,35 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         return {self.image_source: img.shape}
 
     def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
-        img, labels = self.base_loader[idx]
+        img, labels = self.loader[idx]
 
         img = np.transpose(img, (2, 0, 1))  # HWC to CHW
         tensor_img = Tensor(img)
-        tensor_labels: dict[str, tuple[Tensor, TaskType]] = {}
-        for task_with_type, array in labels.items():
-            task_parts = task_with_type.split("/")
-            if len(task_parts) != 2:
-                raise ValueError(f"Invalid task format: {task_with_type}")
-            _, task_type = task_parts
-            tensor_labels[task_type] = (Tensor(array), TaskType(task_type))
+        tensor_labels: dict[str, Tensor] = {}
+        for task, array in labels.items():
+            tensor_labels[task] = Tensor(array)
+
         return {self.image_source: tensor_img}, tensor_labels
 
     def get_classes(self) -> dict[str, list[str]]:
-        _, classes = self.dataset.get_classes()
-        return {task: classes[task] for task in classes}
+        return self.dataset.get_classes()
 
     def get_n_keypoints(self) -> dict[str, int]:
         skeletons = self.dataset.get_skeletons()
         return {task: len(skeletons[task][0]) for task in skeletons}
 
+    def augment_test_image(self, img: Tensor) -> Tensor:
+        if self.loader.augmentations is None:
+            return img
+        return torch.tensor(
+            self.loader.augmentations.apply([(img.numpy(), {})])[0]
+        )
+
     def _parse_dataset(
         self,
         dataset_dir: str,
-        dataset_name: Optional[str],
-        dataset_type: Optional[DatasetType],
+        dataset_name: str | None,
+        dataset_type: DatasetType | None,
         delete_existing: bool,
     ) -> LuxonisDataset:
         if dataset_name is None:
@@ -173,18 +187,21 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 logger.warning(
                     f"Dataset {dataset_name} already exists. "
                     "The dataset will be generated again to ensure the latest data are used. "
-                    "If you don't want to regenerate the dataset every time, set `delete_existing=False`."
+                    "If you don't want to regenerate the dataset every time, set `delete_existing=False`'"
                 )
 
         if dataset_type is None:
             logger.warning(
-                "Dataset type is not set. Attempting to infer it from the directory structure. "
-                "If this fails, please set the dataset type manually."
+                "Dataset type is not set. "
+                "Attempting to infer it from the directory structure. "
+                "If this fails, please set the dataset type manually. "
+                f"Supported types are: {', '.join(DatasetType.__members__)}."
             )
 
         logger.info(
             f"Parsing dataset from {dataset_dir} with name '{dataset_name}'"
         )
+
         return LuxonisParser(
             dataset_dir,
             dataset_name=dataset_name,

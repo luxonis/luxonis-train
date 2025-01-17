@@ -208,6 +208,8 @@ Here you can change everything related to actual training of the model.
 | `deterministic`           | `bool \| "warn" \| None`                       | `None`        | Whether PyTorch should use deterministic backend                                                                                                 |
 | `batch_size`              | `int`                                          | `32`          | Batch size used for training                                                                                                                     |
 | `accumulate_grad_batches` | `int`                                          | `1`           | Number of batches for gradient accumulation                                                                                                      |
+| `gradient_clip_val`       | `NonNegativeFloat \| None`                     | `None`        | Value for gradient clipping. If `None`, gradient clipping is disabled. Clipping can help prevent exploding gradients.                            |
+| `gradient_clip_algorithm` | `Literal["norm", "value"] \| None`             | `None`        | Algorithm to use for gradient clipping. Options are `"norm"` (clip by norm) or `"value"` (clip element-wise).                                    |
 | `use_weighted_sampler`    | `bool`                                         | `False`       | Whether to use `WeightedRandomSampler` for training, only works with classification tasks                                                        |
 | `epochs`                  | `int`                                          | `100`         | Number of training epochs                                                                                                                        |
 | `n_workers`               | `int`                                          | `4`           | Number of workers for data loading                                                                                                               |
@@ -223,10 +225,8 @@ Here you can change everything related to actual training of the model.
 | `verbose`                 | `bool`                                         | `True`        | Print all intermediate results to console                                                                                                        |
 | `pin_memory`              | `bool`                                         | `True`        | Whether to pin memory in the `DataLoader`                                                                                                        |
 | `save_top_k`              | `-1 \| NonNegativeInt`                         | `3`           | Save top K checkpoints based on validation loss when training                                                                                    |
-| `smart_cfg_auto_populate` | `bool`                                         | `True`        | Automatically populate sensible default values for missing config fields and log warnings                                                        |
 | `n_validation_batches`    | `PositiveInt \| None`                          | `None`        | Limits the number of validation/test batches and makes the val/test loaders deterministic                                                        |
-
-**Example:**
+| `smart_cfg_auto_populate` | `bool`                                         | `True`        | Automatically populate sensible default values for missing config fields and log warnings                                                        |
 
 ```yaml
 
@@ -247,7 +247,32 @@ trainer:
   skip_last_batch: true
   log_sub_losses: true
   save_top_k: 3
+  smart_cfg_auto_populate: true
 ```
+
+### Smart Configuration Auto-population
+
+When setting `trainer.smart_cfg_auto_populate = True`, the following set of rules will be applied:
+
+#### Auto-population Rules
+
+1. **Default Optimizer and Scheduler:**
+
+   - If `training_strategy` is not defined and neither `optimizer` nor `scheduler` is set, the following defaults are applied:
+     - Optimizer: `Adam`
+     - Scheduler: `ConstantLR`
+
+1. **CosineAnnealingLR Adjustment:**
+
+   - If the `CosineAnnealingLR` scheduler is used and `T_max` is not set, it is automatically set to the number of epochs.
+
+1. **Mosaic4 Augmentation:**
+
+   - If `Mosaic4` augmentation is used without `out_width` and `out_height` parameters, they are set to match the training image size.
+
+1. **Validation/Test Views:**
+
+   - If `train_view`, `val_view`, and `test_view` are the same, and `n_validation_batches` is not explicitly set, it defaults to `10` to prevent validation/testing on the entire training set.
 
 ### Preprocessing
 
@@ -259,7 +284,7 @@ Additionally, we support `Mosaic4` and `MixUp` batch augmentations and letterbox
 | ------------------- | ------------ | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `train_image_size`  | `list[int]`  | `[256, 256]`  | Image size used for training as `[height, width]`                                                                                                                       |
 | `keep_aspect_ratio` | `bool`       | `True`        | Whether to keep the aspect ratio while resizing                                                                                                                         |
-| `train_rgb`         | `bool`       | `True`        | Whether to train on RGB or BGR images                                                                                                                                   |
+| `train_rgb`         | `bool`       | `"RGB"`       | Whether to train on RGB or BGR images                                                                                                                                   |
 | `normalize.active`  | `bool`       | `True`        | Whether to use normalization                                                                                                                                            |
 | `normalize.params`  | `dict`       | `{}`          | Parameters for normalization, see [Normalize](https://albumentations.ai/docs/api_reference/augmentations/transforms/#albumentations.augmentations.transforms.Normalize) |
 | `augmentations`     | `list[dict]` | `[]`          | List of `Albumentations` augmentations                                                                                                                                  |
@@ -393,7 +418,7 @@ Each training strategy is a dictionary with the following fields:
 ```yaml
 training_strategy:
   name: "TripleLRSGDStrategy"
-  params: 
+  params:
     warmup_epochs: 3
     warmup_bias_lr: 0.1
     warmup_momentum: 0.8

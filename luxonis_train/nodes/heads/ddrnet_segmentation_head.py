@@ -6,19 +6,20 @@ import torch.nn as nn
 from torch import Tensor
 
 from luxonis_train.enums import TaskType
-from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.utils.general import infer_upscale_factor
 
 logger = logging.getLogger(__name__)
 
 
-class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
+class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
     attach_index: int = -1
     in_height: int
     in_width: int
     in_channels: int
 
     tasks: list[TaskType] = [TaskType.SEGMENTATION]
+    parser: str = "SegmentationParser"
 
     def __init__(
         self,
@@ -60,7 +61,6 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
             (self.in_height, self.in_width), (model_in_h, model_in_w)
         )
         self.scale_factor = scale_factor
-
         if (
             inter_mode == "pixel_shuffle"
             and inter_channels % (scale_factor**2) != 0
@@ -94,9 +94,23 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
             if inter_mode == "pixel_shuffle"
             else nn.Upsample(scale_factor=scale_factor, mode=inter_mode)
         )
+
         if download_weights:
-            weights_path = "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/ddrnet_head_coco.ckpt"
-            self.load_checkpoint(weights_path, strict=False)
+            weights_path = self.get_variant_weights()
+            if weights_path:
+                self.load_checkpoint(path=weights_path, strict=False)
+            else:
+                logger.warning(
+                    f"No checkpoint available for {self.name}, skipping."
+                )
+
+    def get_variant_weights(self) -> str | None:
+        if self.in_channels == 128:  # light predefined model
+            return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/ddrnet_head_23slim_coco.ckpt"
+        elif self.in_channels == 256:  # heavy predefined model
+            return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/ddrnet_head_23_coco.ckpt"
+        else:
+            return None
 
     def forward(self, inputs: Tensor) -> Tensor:
         x: Tensor = self.relu(self.bn1(inputs))
@@ -108,3 +122,13 @@ class DDRNetSegmentationHead(BaseNode[Tensor, Tensor]):
             x = x.argmax(dim=1) if self.n_classes > 1 else x > 0
             return x.to(dtype=torch.int32)
         return x
+
+    def get_custom_head_config(self) -> dict:
+        """Returns custom head configuration.
+
+        @rtype: dict
+        @return: Custom head configuration.
+        """
+        return {
+            "is_softmax": False,
+        }

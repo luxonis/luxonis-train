@@ -3,12 +3,13 @@ from typing import Any
 from torch import Tensor, nn
 
 from luxonis_train.enums import TaskType
-from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.nodes.heads import BaseHead
 
 
-class ClassificationHead(BaseNode[Tensor, Tensor]):
+class ClassificationHead(BaseHead[Tensor, Tensor]):
     in_channels: int
     tasks: list[TaskType] = [TaskType.CLASSIFICATION]
+    parser: str = "ClassificationParser"
 
     def __init__(self, dropout_rate: float = 0.2, **kwargs: Any):
         """Simple classification head.
@@ -31,3 +32,13 @@ class ClassificationHead(BaseNode[Tensor, Tensor]):
 
     def forward(self, inputs: Tensor) -> Tensor:
         return self.head(inputs)
+
+    def get_custom_head_config(self) -> dict:
+        """Returns custom head configuration.
+
+        @rtype: dict
+        @return: Custom head configuration.
+        """
+        return {
+            "is_softmax": False,
+        }
