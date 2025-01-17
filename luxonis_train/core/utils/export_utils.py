@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 def replace_weights(
     module: "luxonis_train.models.LuxonisLightningModule",
     weights: str | Path | None = None,
-) -> Generator[None, None, None]:
+) -> Generator:
     old_weights = None
     if weights is not None:
         old_weights = module.state_dict()

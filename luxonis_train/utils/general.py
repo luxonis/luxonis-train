@@ -187,7 +187,9 @@ def safe_download(
                 if i == retry:
                     logger.warning("Download failed, retry limit reached.")
                     return None
-                logger.warning(f"Download failed, retrying {i+1}/{retry} ...")
+                logger.warning(
+                    f"Download failed, retrying {i + 1}/{retry} ..."
+                )
 
 
 def clean_url(url: str) -> str:

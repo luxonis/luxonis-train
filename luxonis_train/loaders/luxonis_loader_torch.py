@@ -12,15 +12,17 @@ from luxonis_ml.data import (
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.enums import DatasetType
 from torch import Size, Tensor
-from typeguard import typechecked
+from typing_extensions import override
 
-from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput
+from luxonis_train.utils.types import Labels
+
+from .base_loader import BaseLoaderTorch
 
 logger = logging.getLogger(__name__)
 
 
 class LuxonisLoaderTorch(BaseLoaderTorch):
-    @typechecked
+    @override
     def __init__(
         self,
         dataset_name: str | None = None,
@@ -97,28 +99,30 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             out_image_format=self.color_space,
         )
 
+    @override
     def __len__(self) -> int:
         return len(self.loader)
 
     @property
+    @override
     def input_shapes(self) -> dict[str, Size]:
         img = self[0][0][self.image_source]
         return {self.image_source: img.shape}
 
-    def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
+    @override
+    def get(self, idx: int) -> tuple[Tensor, Labels]:
         img, labels = self.loader[idx]
 
         img = np.transpose(img, (2, 0, 1))  # HWC to CHW
-        tensor_img = Tensor(img)
-        tensor_labels: dict[str, Tensor] = {}
-        for task, array in labels.items():
-            tensor_labels[task] = Tensor(array)
+        tensor_img = torch.tensor(img)
 
-        return {self.image_source: tensor_img}, tensor_labels
+        return tensor_img, self.dict_numpy_to_torch(labels)
 
+    @override
     def get_classes(self) -> dict[str, list[str]]:
         return self.dataset.get_classes()
 
+    @override
     def get_n_keypoints(self) -> dict[str, int]:
         skeletons = self.dataset.get_skeletons()
         return {task: len(skeletons[task][0]) for task in skeletons}

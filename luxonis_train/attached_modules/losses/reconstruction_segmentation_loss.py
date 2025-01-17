@@ -55,7 +55,7 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
     ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
         recon = self.get_input_tensors(inputs, "reconstructed")[0]
         seg_out = self.get_input_tensors(inputs)[0]
-        an_mask = self.get_label(labels)
+        an_mask = labels[f"{self.node.task_name}/segmentation"]
         orig = labels[f"{self.node.task_name}/original/segmentation"]
 
         return orig, recon, seg_out, an_mask
