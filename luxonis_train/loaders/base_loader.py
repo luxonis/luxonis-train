@@ -260,7 +260,7 @@ class BaseLoaderTorch(
         @return: Dictionary of torch tensors.
         """
         return {
-            task: torch.tensor(array)
+            task: torch.tensor(array).float()
             for task, array in numpy_dictionary.items()
         }
 
