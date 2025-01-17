@@ -10,6 +10,7 @@ from .boundingbox import (
 from .dataset_metadata import DatasetMetadata
 from .exceptions import IncompatibleException
 from .general import (
+    get_attribute_check_none,
     get_with_default,
     infer_upscale_factor,
     make_divisible,
@@ -43,5 +44,6 @@ __all__ = [
     "get_sigmas",
     "traverse_graph",
     "insert_class",
+    "get_attribute_check_none",
     "apply_bounding_box_to_masks",
 ]
