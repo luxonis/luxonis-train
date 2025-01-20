@@ -37,11 +37,12 @@ def collate_fn(
 
         if task_type in {"keypoints", "boundingbox"}:
             label_box: list[Tensor] = []
-            for i, box in enumerate(annos):
-                l_box = torch.zeros((box.shape[0], box.shape[1] + 1))
-                l_box[:, 0] = i  # add target image index for build_targets()
-                l_box[:, 1:] = box
-                label_box.append(l_box)
+            for i, ann in enumerate(annos):
+                new_ann = torch.zeros((ann.shape[0], ann.shape[1] + 1))
+                # add target image index for build_targets()
+                new_ann[:, 0] = i
+                new_ann[:, 1:] = ann
+                label_box.append(new_ann)
             out_labels[task] = torch.cat(label_box, 0)
 
         elif task_type == "instance_segmentation":

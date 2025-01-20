@@ -96,7 +96,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             height=self.height,
             width=self.width,
             keep_aspect_ratio=self.keep_aspect_ratio,
-            out_image_format=self.color_space,
+            color_space=self.color_space,
         )
 
     @override
