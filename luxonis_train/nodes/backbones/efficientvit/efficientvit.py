@@ -4,13 +4,13 @@ import torch.nn as nn
 from torch import Tensor
 
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.nodes.blocks import (
-    ConvModule,
+from luxonis_train.nodes.blocks import ConvModule
+
+from .blocks import (
     DepthwiseSeparableConv,
     EfficientViTBlock,
     MobileBottleneckBlock,
 )
-
 from .variants import VariantLiteral, get_variant
 
 
@@ -26,47 +26,41 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
         dim: int | None = None,
         **kwargs: Any,
     ):
-        """EfficientViT backbone implementation that is based on the
+        """EfficientViT backbone implementation based on a lightweight
         transformer architecture.
 
         This implementation is inspired by the architecture described in the paper:
-        U{EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction}
-        <https://arxiv.org/abs/2205.14756>.
+        "EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction"
+        (https://arxiv.org/abs/2205.14756).
 
-        The EfficientViT model leverages the transformer architecture to achieve a balance between
-        computational efficiency and model performance. The model is designed to be lightweight and
-        suitable for deployment on edge devices with limited resources.
-
+        The EfficientViT model is designed to provide a balance between computational efficiency
+        and performance, making it suitable for deployment on edge devices with limited resources.
 
         @type variant: Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]
         @param variant: EfficientViT variant. Defaults to "nano".
-            The variant determines the depth and width multipliers, block used and intermediate channel scaling factor.
-            The depth multiplier determines the number of blocks in each stage and the width multiplier determines the number of channels.
-            The following variants are available:
-                - "n" or "nano" (default): depth_multiplier=0.33, width_multiplier=0.25, block=RepBlock, e=None
-                - "s" or "small": depth_multiplier=0.33, width_multiplier=0.50, block=RepBlock, e=None
-                - "m" or "medium": depth_multiplier=0.60, width_multiplier=0.75, block=CSPStackRepBlock, e=2/3
-                - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0, block=CSPStackRepBlock, e=1/2
+            The variant determines the width, depth, and dimension of the network. The following variants are available:
+                - "n" or "nano" (default): width_list=[8, 16, 32, 64, 128], depth_list=[1, 2, 2, 2, 2], dim=16
+                - "s" or "small": width_list=[16, 32, 64, 128, 256], depth_list=[1, 2, 3, 3, 4], dim=16
+                - "m" or "medium": width_list=[24, 48, 96, 192, 384], depth_list=[1, 3, 4, 4, 6], dim=32
+                - "l" or "large": width_list=[32, 64, 128, 256, 512], depth_list=[1, 4, 6, 6, 9], dim=32
 
         @type width_list: list[int] | None
-        @param width_list: List of number of channels for each block. If unspecified,
-            defaults to [64, 128, 256, 512, 1024].
+        @param width_list: List of number of channels for each block. If unspecified, defaults to the variant's width_list.
         @type depth_list: list[int] | None
-        @param depth_list: List of number of repeats of RepVGGBlock. If unspecified,
-            defaults to [1, 6, 12, 18, 6].
+        @param depth_list: List of number of layers in each block. If unspecified, defaults to the variant's depth_list.
         @type expand_ratio: int
         @param expand_ratio: Expansion ratio for the MobileBottleneckBlock. Defaults to 4.
         @type dim: int | None
-        @param dim: Dimension of the transformer. Defaults to None.
+        @param dim: Dimension of the transformer. Defaults to the variant's dim.
         @type kwargs: Any
         @param kwargs: Additional keyword arguments.
         """
         super().__init__(**kwargs)
 
-        variant = get_variant(variant)
-        width_list = width_list or variant.width_list
-        depth_list = depth_list or variant.depth_list
-        dim = dim or variant.dim
+        var = get_variant(variant)
+        width_list = width_list or var.width_list
+        depth_list = depth_list or var.depth_list
+        dim = dim or var.dim
 
         # feature_extractor
         self.feature_extractor = nn.ModuleList(

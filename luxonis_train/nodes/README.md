@@ -178,9 +178,13 @@ Adapted from [here](https://arxiv.org/abs/2205.14756)
 
 **Parameters:**
 
-| Key       | Type                                                              | Default value | Description            |
-| --------- | ----------------------------------------------------------------- | ------------- | ---------------------- |
-| `variant` | `Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]` | `"nano"`      | Variant of the network |
+| Key            | Type                                                              | Default value                    | Description                                         |
+| -------------- | ----------------------------------------------------------------- | -------------------------------- | --------------------------------------------------- |
+| `variant`      | `Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]` | `"nano"`                         | Variant of the network                              |
+| `width_list`   | `list[int]`                                                       | `[256, 256, 256, 256, 256, 512]` | List of number of channels for each block           |
+| `depth_list`   | `list[int]`                                                       | `[12, 12, 12, 12]`               | List of number of repeats of `EfficientViTBlock`    |
+| `expand_ratio` | `int`                                                             | `4`                              | Factor by which channels expand in the local module |
+| `dim`          | `int`                                                             | `None`                           | Dimension size for each attention head              |
 
 ## Neck
 
