@@ -1,34 +1,32 @@
-import random
-from typing import Callable, List, Tuple
+from typing import Callable, Tuple
 
-import cv2
-import numpy as np
 import torch
+from torch import Tensor
 
 
-def compute_gradients(res: tuple[int, int]) -> torch.Tensor:
+def compute_gradients(res: tuple[int, int]) -> Tensor:
     angles = 2 * torch.pi * torch.rand(res[0] + 1, res[1] + 1)
     gradients = torch.stack((torch.cos(angles), torch.sin(angles)), dim=-1)
     return gradients
 
 
 @torch.jit.script
-def lerp_torch(
-    x: torch.Tensor, y: torch.Tensor, w: torch.Tensor
-) -> torch.Tensor:
+def lerp_torch(  # pragma: no cover
+    x: Tensor, y: Tensor, w: Tensor
+) -> Tensor:
     return (y - x) * w + x
 
 
-def fade_function(t: torch.Tensor) -> torch.Tensor:
+def fade_function(t: Tensor) -> Tensor:
     return 6 * t**5 - 15 * t**4 + 10 * t**3
 
 
 def tile_grads(
     slice1: Tuple[int, int | None],
     slice2: Tuple[int, int | None],
-    gradients: torch.Tensor,
+    gradients: Tensor,
     d: Tuple[int, int],
-) -> torch.Tensor:
+) -> Tensor:
     return (
         gradients[slice1[0] : slice1[1], slice2[0] : slice2[1]]
         .repeat_interleave(d[0], 0)
@@ -37,11 +35,11 @@ def tile_grads(
 
 
 def dot(
-    grad: torch.Tensor,
+    grad: Tensor,
     shift: Tuple[int, int],
-    grid: torch.Tensor,
+    grid: Tensor,
     shape: Tuple[int, int],
-) -> torch.Tensor:
+) -> Tensor:
     return (
         torch.stack(
             (
@@ -57,8 +55,8 @@ def dot(
 def rand_perlin_2d(
     shape: Tuple[int, int],
     res: Tuple[int, int],
-    fade: Callable[[torch.Tensor], torch.Tensor] = fade_function,
-) -> torch.Tensor:
+    fade: Callable[[Tensor], Tensor] = fade_function,
+) -> Tensor:
     delta = (res[0] / shape[0], res[1] / shape[1])
     d = (shape[0] // res[0], shape[1] // res[1])
     grid_x, grid_y = torch.meshgrid(
@@ -91,7 +89,7 @@ def rand_perlin_2d(
 
 
 @torch.jit.script
-def rotate_noise(noise: torch.Tensor) -> torch.Tensor:
+def rotate_noise(noise: Tensor) -> Tensor:  # pragma: no cover
     angle = torch.rand(1) * 2 * torch.pi
     h, w = noise.shape
     center_y, center_x = h // 2, w // 2
@@ -116,7 +114,7 @@ def generate_perlin_noise(
     min_perlin_scale: int = 0,
     perlin_scale: int = 6,
     threshold: float = 0.5,
-) -> torch.Tensor:
+) -> Tensor:
     perlin_scalex = 2 ** int(
         torch.randint(min_perlin_scale, perlin_scale, (1,)).item()
     )
@@ -135,21 +133,14 @@ def generate_perlin_noise(
     return perlin_mask
 
 
-def load_image_as_numpy(img_path: str) -> np.ndarray:
-    image = cv2.imread(img_path, cv2.IMREAD_COLOR)
-    image = image.astype(np.float32) / 255.0
-    return image
-
-
 def apply_anomaly_to_img(
-    img: torch.Tensor,
-    anomaly_source_paths: List[str],
+    img: Tensor,
+    anomaly_img: Tensor,
     beta: float | None = None,
-    pixel_augs: List[Callable] | None = None,
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> Tuple[Tensor, Tensor]:
     """Applies Perlin noise-based anomalies to a single image (C, H, W).
 
-    @type img: torch.Tensor
+    @type img: Tensor
     @param img: The input image tensor of shape (C, H, W).
     @type anomaly_source_paths: List[str]
     @param anomaly_source_paths: List of file paths to the anomaly images.
@@ -158,29 +149,11 @@ def apply_anomaly_to_img(
     @type beta: float | None
     @param beta: A blending factor for anomaly and noise. If None, a random value in the range [0, 0.8]
                  is used. Defaults to C{None}.
-    @rtype: Tuple[torch.Tensor, torch.Tensor]
+    @rtype: Tuple[Tensor, Tensor]
     @return: A tuple containing:
-        - augmented_img (torch.Tensor): The augmented image with applied anomaly and Perlin noise.
-        - perlin_mask (torch.Tensor): The Perlin noise mask applied to the image.
+        - augmented_img (Tensor): The augmented image with applied anomaly and Perlin noise.
+        - perlin_mask (Tensor): The Perlin noise mask applied to the image.
     """
-
-    if pixel_augs is None:
-        pixel_augs = []
-
-    sampled_anomaly_image_path = random.choice(anomaly_source_paths)
-
-    anomaly_image = load_image_as_numpy(sampled_anomaly_image_path)
-
-    anomaly_image = cv2.resize(
-        anomaly_image,
-        (img.shape[2], img.shape[1]),
-        interpolation=cv2.INTER_LINEAR,
-    )
-
-    for aug in pixel_augs:
-        anomaly_image = aug(image=anomaly_image)["image"]
-
-    anomaly_image = torch.tensor(anomaly_image).permute(2, 0, 1)
 
     perlin_mask = generate_perlin_noise(
         shape=(img.shape[1], img.shape[2]),
@@ -191,7 +164,7 @@ def apply_anomaly_to_img(
 
     augmented_img = (
         (1 - perlin_mask).unsqueeze(0) * img
-        + (1 - beta) * perlin_mask.unsqueeze(0) * anomaly_image
+        + (1 - beta) * perlin_mask.unsqueeze(0) * anomaly_img
         + beta * perlin_mask.unsqueeze(0) * img
     )
 

@@ -31,7 +31,7 @@ class MeanAveragePrecision(
         self,
         outputs: list[dict[str, Tensor]],
         labels: list[dict[str, Tensor]],
-    ):
+    ) -> None:
         self.metric.update(outputs, labels)
 
     def prepare(
@@ -83,5 +83,7 @@ class MeanAveragePrecision(
                     )
 
         map = metric_dict.pop("map")
-
+        # WARNING: fix DDP pl.log error
+        map = map.to(self.device)
+        metric_dict = {k: v.to(self.device) for k, v in metric_dict.items()}
         return map, metric_dict

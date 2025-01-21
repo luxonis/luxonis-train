@@ -2,8 +2,8 @@ import logging
 from typing import Literal
 
 import numpy as np
+import torch
 from luxonis_ml.data import (
-    Augmentations,
     BucketStorage,
     BucketType,
     LuxonisDataset,
@@ -12,17 +12,17 @@ from luxonis_ml.data import (
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.enums import DatasetType
 from torch import Size, Tensor
-from typeguard import typechecked
+from typing_extensions import override
 
-from luxonis_train.enums import TaskType
+from luxonis_train.utils.types import Labels
 
-from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput
+from .base_loader import BaseLoaderTorch
 
 logger = logging.getLogger(__name__)
 
 
 class LuxonisLoaderTorch(BaseLoaderTorch):
-    @typechecked
+    @override
     def __init__(
         self,
         dataset_name: str | None = None,
@@ -31,53 +31,46 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         team_id: str | None = None,
         bucket_type: Literal["internal", "external"] = "internal",
         bucket_storage: Literal["local", "s3", "gcs", "azure"] = "local",
-        stream: bool = False,
         delete_existing: bool = True,
-        view: str | list[str] = "train",
-        augmentations: Augmentations | None = None,
         **kwargs,
     ):
         """Torch-compatible loader for Luxonis datasets.
 
-        Can either use an already existing dataset or parse a new one from a directory.
+        Can either use an already existing dataset or parse a new one
+        from a directory.
 
         @type dataset_name: str | None
-        @param dataset_name: Name of the dataset to load. If not provided, the
-            C{dataset_dir} argument must be provided instead. If both C{dataset_dir} and
-            C{dataset_name} are provided, the dataset will be parsed from the directory
-            and saved with the provided name.
+        @param dataset_name: Name of the dataset to load. If not
+            provided, the C{dataset_dir} argument must be provided
+            instead. If both C{dataset_dir} and C{dataset_name} are
+            provided, the dataset will be parsed from the directory and
+            saved with the provided name.
         @type dataset_dir: str | None
-        @param dataset_dir: Path to the dataset directory. It can be either a local path
-            or a URL. The data can be in a zip file. If not provided, C{dataset_name} of
-            an existing dataset must be provided.
+        @param dataset_dir: Path to the dataset directory. It can be
+            either a local path or a URL. The data can be in a zip file.
+            If not provided, C{dataset_name} of an existing dataset must
+            be provided.
         @type dataset_type: str | None
-        @param dataset_type: Type of the dataset. Only relevant when C{dataset_dir} is
-            provided. If not provided, the type will be inferred from the directory
-            structure.
+        @param dataset_type: Type of the dataset. Only relevant when
+            C{dataset_dir} is provided. If not provided, the type will
+            be inferred from the directory structure.
         @type team_id: str | None
         @param team_id: Optional unique team identifier for the cloud.
         @type bucket_type: Literal["internal", "external"]
-        @param bucket_type: Type of the bucket. Only relevant for remote datasets.
-            Defaults to 'internal'.
+        @param bucket_type: Type of the bucket. Only relevant for remote
+            datasets. Defaults to 'internal'.
         @type bucket_storage: Literal["local", "s3", "gcs", "azure"]
-        @param bucket_storage: Type of the bucket storage. Defaults to 'local'.
-        @type stream: bool
-        @param stream: Flag for data streaming. Defaults to C{False}.
+        @param bucket_storage: Type of the bucket storage. Defaults to
+            'local'.
         @type delete_existing: bool
-        @param delete_existing: Only relevant when C{dataset_dir} is provided. By
-            default, the dataset is parsed again every time the loader is created
-            because the underlying data might have changed. If C{delete_existing} is set
-            to C{False} and a dataset of the same name already exists, the existing
+        @param delete_existing: Only relevant when C{dataset_dir} is
+            provided. By default, the dataset is parsed again every time
+            the loader is created because the underlying data might have
+            changed. If C{delete_existing} is set to C{False} and a
+            dataset of the same name already exists, the existing
             dataset will be used instead of re-parsing the data.
-        @type view: str | list[str]
-        @param view: A single split or a list of splits that will be used to create a
-            view of the dataset. Each split is a string that represents a subset of the
-            dataset. The available splits depend on the dataset, but usually include
-            'train', 'val', and 'test'. Defaults to 'train'.
-        @type augmentations: Augmentations | None
-        @param augmentations: Augmentations to apply to the data. Defaults to C{None}.
         """
-        super().__init__(view=view, augmentations=augmentations, **kwargs)
+        super().__init__(**kwargs)
         if dataset_dir is not None:
             self.dataset = self._parse_dataset(
                 dataset_dir, dataset_name, dataset_type, delete_existing
@@ -93,39 +86,53 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 bucket_type=BucketType(bucket_type),
                 bucket_storage=BucketStorage(bucket_storage),
             )
-        self.base_loader = LuxonisLoader(
+        self.loader = LuxonisLoader(
             dataset=self.dataset,
             view=self.view,
-            stream=stream,
-            augmentations=self.augmentations,
+            augmentation_engine=self.augmentation_engine,
+            augmentation_config=[
+                aug.model_dump() for aug in self.augmentation_config
+            ],
+            height=self.height,
+            width=self.width,
+            keep_aspect_ratio=self.keep_aspect_ratio,
+            color_space=self.color_space,
         )
 
+    @override
     def __len__(self) -> int:
-        return len(self.base_loader)
+        return len(self.loader)
 
     @property
+    @override
     def input_shapes(self) -> dict[str, Size]:
         img = self[0][0][self.image_source]
         return {self.image_source: img.shape}
 
-    def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
-        img, labels = self.base_loader[idx]
+    @override
+    def get(self, idx: int) -> tuple[Tensor, Labels]:
+        img, labels = self.loader[idx]
 
         img = np.transpose(img, (2, 0, 1))  # HWC to CHW
-        tensor_img = Tensor(img)
-        tensor_labels: dict[str, tuple[Tensor, TaskType]] = {}
-        for task, (array, label_type) in labels.items():
-            tensor_labels[task] = (Tensor(array), TaskType(label_type.value))
+        tensor_img = torch.tensor(img)
 
-        return {self.image_source: tensor_img}, tensor_labels
+        return tensor_img, self.dict_numpy_to_torch(labels)
 
+    @override
     def get_classes(self) -> dict[str, list[str]]:
-        _, classes = self.dataset.get_classes()
-        return {task: classes[task] for task in classes}
+        return self.dataset.get_classes()
 
+    @override
     def get_n_keypoints(self) -> dict[str, int]:
         skeletons = self.dataset.get_skeletons()
         return {task: len(skeletons[task][0]) for task in skeletons}
+
+    def augment_test_image(self, img: Tensor) -> Tensor:
+        if self.loader.augmentations is None:
+            return img
+        return torch.tensor(
+            self.loader.augmentations.apply([(img.numpy(), {})])[0]
+        )
 
     def _parse_dataset(
         self,

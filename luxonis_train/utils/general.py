@@ -3,7 +3,7 @@ import math
 import os
 import urllib.parse
 from pathlib import Path, PurePosixPath
-from typing import TypeVar
+from typing import Any, TypeVar
 
 import torch
 from torch import Size, Tensor
@@ -187,7 +187,9 @@ def safe_download(
                 if i == retry:
                     logger.warning("Download failed, retry limit reached.")
                     return None
-                logger.warning(f"Download failed, retrying {i+1}/{retry} ...")
+                logger.warning(
+                    f"Download failed, retrying {i + 1}/{retry} ..."
+                )
 
 
 def clean_url(url: str) -> str:
@@ -203,3 +205,42 @@ def clean_url(url: str) -> str:
 def url2file(url: str) -> str:
     """Convert URL to filename, i.e. https://url.com/file.txt?auth -> file.txt."""
     return Path(clean_url(url)).name
+
+
+def get_attribute_check_none(obj: object, attribute: str) -> Any:
+    """Get private attribute from object and check if it is not None.
+
+    Example:
+
+        >>> class Person:
+        ...     def __init__(self, age: int | None = None):
+        ...         self._age = age
+        ...
+        ...     @property
+        ...     def age(self):
+        ...         return get_attribute_check_none(self, "age")
+
+        >>> mike = Person(20)
+        >>> print(mike.age)
+        20
+
+        >>> amanda = Person()
+        >>> print(amanda.age)
+        Traceback (most recent call last):
+        ValueError: attribute 'age' was not set
+
+    @type obj: object
+    @param obj: Object to get attribute from.
+
+    @type attribute: str
+    @param attribute: Name of the attribute to get.
+
+    @rtype: Any
+    @return: Value of the attribute.
+
+    @raise ValueError: If the attribute is None.
+    """
+    value = getattr(obj, f"_{attribute}")
+    if value is None:
+        raise ValueError(f"attribute '{attribute}' was not set")
+    return value

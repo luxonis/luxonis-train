@@ -1,5 +1,6 @@
 import torch
 from torch import Tensor, nn
+from typing_extensions import override
 
 from luxonis_train.enums import TaskType
 from luxonis_train.loaders import BaseLoaderTorch
@@ -8,8 +9,10 @@ from luxonis_train.utils import Packet
 
 
 class CustomMultiInputLoader(BaseLoaderTorch):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._height = 224
+        self._width = 224
 
     @property
     def input_shapes(self):
@@ -20,7 +23,7 @@ class CustomMultiInputLoader(BaseLoaderTorch):
             "pointcloud": torch.Size([1000, 3]),
         }
 
-    def __getitem__(self, _):  # pragma: no cover
+    def get(self, _):  # pragma: no cover
         # Fake data
         left = torch.rand(3, 224, 224, dtype=torch.float32)
         right = torch.rand(3, 224, 224, dtype=torch.float32)
@@ -36,17 +39,16 @@ class CustomMultiInputLoader(BaseLoaderTorch):
         # Fake labels
         segmap = torch.zeros(1, 224, 224, dtype=torch.float32)
         segmap[0, 100:150, 100:150] = 1
-        labels = {
-            "segmentation": (segmap, TaskType.SEGMENTATION),
-        }
+        labels = {"/segmentation": segmap}
 
         return inputs, labels
 
     def __len__(self):
         return 10
 
-    def get_classes(self) -> dict[TaskType, list[str]]:
-        return {TaskType.SEGMENTATION: ["square"]}
+    @override
+    def get_classes(self) -> dict[str, list[str]]:
+        return {"": ["square"]}
 
 
 class MultiInputTestBaseNode(BaseNode):
@@ -77,7 +79,7 @@ class FusionNeck2(MultiInputTestBaseNode): ...
 
 
 class CustomSegHead1(MultiInputTestBaseNode):
-    tasks = {TaskType.SEGMENTATION: "segmentation"}
+    tasks = [TaskType.SEGMENTATION]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -92,7 +94,7 @@ class CustomSegHead1(MultiInputTestBaseNode):
 
 
 class CustomSegHead2(MultiInputTestBaseNode):
-    tasks = {TaskType.SEGMENTATION: "segmentation"}
+    tasks = [TaskType.SEGMENTATION]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

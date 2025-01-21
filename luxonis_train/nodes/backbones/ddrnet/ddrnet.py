@@ -297,7 +297,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         else:
             return [x]
 
-    def init_params(self):
+    def init_params(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(

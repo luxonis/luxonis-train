@@ -16,4 +16,4 @@ for optimizer in [
     optim.RMSprop,
     optim.SGD,
 ]:
-    OPTIMIZERS.register_module(module=optimizer)
+    OPTIMIZERS.register(module=optimizer)
