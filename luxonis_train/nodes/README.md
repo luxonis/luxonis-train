@@ -17,6 +17,7 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`ContextSpatial`](#contextspatial)
   - [`DDRNet`](#ddrnet)
   - [`RecSubNet`](#recsubnet)
+  - [`EfficientViT`](#efficientvit)
 - [Necks](#necks)
   - [`RepPANNeck`](#reppanneck)
 - [Heads](#heads)
@@ -153,6 +154,7 @@ Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 ### `DDRNet`
 
 Adapted from [here](https://github.com/ydhongHIT/DDRNet)
+
 **Parameters:**
 
 | Key                | Type                       | Default value | Description                                                             |
@@ -163,11 +165,22 @@ Adapted from [here](https://github.com/ydhongHIT/DDRNet)
 ### `RecSubNet`
 
 Adapted from [here](https://arxiv.org/abs/2108.07610)
+
 **Parameters:**
 
 | Key       | Type                | Default value | Description            |
 | --------- | ------------------- | ------------- | ---------------------- |
 | `variant` | `Literal["n", "l"]` | `"l"`         | Variant of the network |
+
+### `EfficientViT`
+
+Adapted from [here](https://arxiv.org/abs/2205.14756)
+
+**Parameters:**
+
+| Key       | Type                                                              | Default value | Description            |
+| --------- | ----------------------------------------------------------------- | ------------- | ---------------------- |
+| `variant` | `Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]` | `"nano"`      | Variant of the network |
 
 ## Neck
 
