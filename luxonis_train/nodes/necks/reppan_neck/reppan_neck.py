@@ -1,4 +1,5 @@
 import logging
+import math
 from typing import Any, Literal
 
 from torch import Tensor, nn
@@ -71,6 +72,25 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         """
 
         super().__init__(**kwargs)
+
+        if (
+            self.original_in_shape[-1] % 32 != 0
+            or self.original_in_shape[-2] % 32 != 0
+        ):
+            logger.warning(
+                "Image dimensions should be divisible by 32. This may cause 'RepPANNeck' to crash."
+            )
+
+        if (
+            math.gcd(
+                math.gcd(self.in_width[-1], self.in_width[-2]),
+                self.in_width[-3],
+            )
+            == 1
+        ):
+            raise ValueError(
+                "The greatest common divisor of the input widths of 'RepPANNeck' s 1. Image dimensions should be divisible by 32."
+            )
 
         self.n_heads = n_heads
 
