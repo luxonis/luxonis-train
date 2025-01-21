@@ -86,9 +86,9 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
                 in_channels=width_list[0],
                 out_channels=width_list[0],
                 stride=1,
-                activation=[nn.Hardswish(), nn.Identity()],  # Correct
-                use_residual=True,  # Correct
-                use_bias=[False, False],  # Correct
+                activation=[nn.Hardswish(), nn.Identity()],
+                use_residual=True,
+                use_bias=[False, False],
             )
             self.feature_extractor.append(block)
 
@@ -104,13 +104,13 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
                     out_channels=w,
                     stride=stride,
                     expand_ratio=expand_ratio,
-                    use_norm=[True, True, True],  # Correct
+                    use_norm=[True, True, True],
                     activation=[
                         nn.Hardswish(),
                         nn.Hardswish(),
                         nn.Identity(),
-                    ],  # Correct
-                    use_bias=[False, False, False],  # Correct
+                    ],
+                    use_bias=[False, False, False],
                     use_residual=True if stride == 1 else False,
                 )
                 encoder_blocks.append(block)
@@ -128,9 +128,9 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
                     nn.Hardswish(),
                     nn.Hardswish(),
                     nn.Identity(),
-                ],  # Correct
-                use_norm=[False, False, True],  # Correct
-                use_residual=False,  # Correct
+                ],
+                use_norm=[False, False, True],
+                use_residual=False,
             )
             encoder_blocks.append(block)
             in_channels = w
