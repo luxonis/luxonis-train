@@ -86,7 +86,6 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
                 or self.in_height[-i] * 2 != self.in_height[-i - 1]
             ):
                 raise ValueError(
-                    f"Inconsistent feature map dimensions at index {len(self.in_width) - i - 1}. "
                     f"Expected width and height of feature map at index {len(self.in_width) - i} to be half of those at index {len(self.in_width) - i - 1}. "
                     f"Image shape {self.original_in_shape} must be divisible by 32 to avoid 'RepPANNeck' crashing."
                 )
