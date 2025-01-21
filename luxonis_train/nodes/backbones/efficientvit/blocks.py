@@ -12,8 +12,8 @@ class DepthwiseSeparableConv(nn.Module):
         out_channels: int,
         kernel_size: int = 3,
         stride: int = 1,
-        use_bias: list[bool, bool] | None = None,
-        activation: list[nn.Module, nn.Module] | None = None,
+        use_bias: list[bool] | None = None,
+        activation: list[nn.Module] | None = None,
         use_residual: bool = False,
     ):
         """Depthwise separable convolution.

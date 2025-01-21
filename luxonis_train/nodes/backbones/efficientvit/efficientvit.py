@@ -145,7 +145,7 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
             x = block(x)
         outputs.append(x)
         for encoder_blocks in self.encoder_blocks:
-            for block in encoder_blocks:
+            for block in encoder_blocks:  # type: ignore
                 x = block(x)
             outputs.append(x)
         return outputs
