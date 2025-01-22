@@ -28,18 +28,18 @@ from .test_on_train_end import TestOnTrainEnd
 from .training_manager import TrainingManager
 from .upload_checkpoint import UploadCheckpoint
 
-CALLBACKS.register_module(module=EarlyStopping)
-CALLBACKS.register_module(module=LearningRateMonitor)
-CALLBACKS.register_module(module=ModelCheckpoint)
-CALLBACKS.register_module(module=RichModelSummary)
-CALLBACKS.register_module(module=DeviceStatsMonitor)
-CALLBACKS.register_module(module=GradientAccumulationScheduler)
-CALLBACKS.register_module(module=StochasticWeightAveraging)
-CALLBACKS.register_module(module=Timer)
-CALLBACKS.register_module(module=ModelPruning)
-CALLBACKS.register_module(module=GradCamCallback)
-CALLBACKS.register_module(module=EMACallback)
-CALLBACKS.register_module(module=TrainingManager)
+CALLBACKS.register(module=EarlyStopping)
+CALLBACKS.register(module=LearningRateMonitor)
+CALLBACKS.register(module=ModelCheckpoint)
+CALLBACKS.register(module=RichModelSummary)
+CALLBACKS.register(module=DeviceStatsMonitor)
+CALLBACKS.register(module=GradientAccumulationScheduler)
+CALLBACKS.register(module=StochasticWeightAveraging)
+CALLBACKS.register(module=Timer)
+CALLBACKS.register(module=ModelPruning)
+CALLBACKS.register(module=GradCamCallback)
+CALLBACKS.register(module=EMACallback)
+CALLBACKS.register(module=TrainingManager)
 
 
 __all__ = [

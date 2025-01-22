@@ -9,6 +9,7 @@ import torch
 from lightning.pytorch.callbacks import ModelCheckpoint, RichModelSummary
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
 from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.typing import ConfigItem
 from torch import Size, Tensor, nn
 
 import luxonis_train
@@ -180,33 +181,22 @@ class LuxonisLightningModule(pl.LightningModule):
                         node_cfg.freezing.unfreeze_after * epochs
                     )
                 frozen_nodes.append((node_name, unfreeze_after))
-
-            if node_cfg.task is not None:
-                if Node.tasks is None:
+            task_names = list(self.dataset_metadata.task_names)
+            if not node_cfg.task_name:
+                if len(task_names) == 1:
+                    node_cfg.task_name = task_names[0]
+                elif issubclass(Node, BaseHead):
                     raise ValueError(
-                        f"Cannot define tasks for node {node_name}."
-                        "This node doesn't specify any tasks."
+                        f"Dataset contains multiple tasks: {task_names}. "
+                        f"Node {node_name} does not have the `task_name` parameter set. "
+                        "Please specify the `task_name` parameter for each head node. "
                     )
-                if isinstance(node_cfg.task, str):
-                    assert Node.tasks
-                    if len(Node.tasks) > 1:
-                        raise ValueError(
-                            f"Node {node_name} specifies multiple tasks, "
-                            "but only one task is specified in the config. "
-                            "Specify the tasks as a dictionary instead."
-                        )
 
-                    node_cfg.task = {next(iter(Node.tasks)): node_cfg.task}
-                else:
-                    node_cfg.task = {
-                        **Node._process_tasks(Node.tasks),
-                        **node_cfg.task,
-                    }
             nodes[node_name] = (
                 Node,
                 {
                     **node_cfg.params,
-                    "_tasks": node_cfg.task,
+                    "task_name": node_cfg.task_name,
                     "remove_on_export": node_cfg.remove_on_export,
                 },
             )
@@ -612,7 +602,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         old_forward = self.forward
 
-        def export_forward(inputs) -> tuple[Tensor, ...]:
+        def export_forward(inputs: dict[str, Tensor]) -> tuple[Tensor, ...]:
             outputs = old_forward(
                 inputs,
                 None,
@@ -915,18 +905,16 @@ class LuxonisLightningModule(pl.LightningModule):
         }
         optimizer = OPTIMIZERS.get(cfg_optimizer.name)(**optim_params)
 
-        def get_scheduler(scheduler_cfg, optimizer):
-            scheduler_class = SCHEDULERS.get(
-                scheduler_cfg["name"]
-            )  # For dictionary access
-            scheduler_params = scheduler_cfg["params"] | {
-                "optimizer": optimizer
-            }  # Dictionary access for params
-            return scheduler_class(**scheduler_params)
+        def get_scheduler(
+            scheduler_cfg: ConfigItem, optimizer: torch.optim.Optimizer
+        ) -> torch.optim.lr_scheduler.LRScheduler:
+            scheduler_class = SCHEDULERS.get(scheduler_cfg.name)
+            scheduler_params = scheduler_cfg.params | {"optimizer": optimizer}
+            return scheduler_class(**scheduler_params)  # type: ignore
 
         if cfg_scheduler.name == "SequentialLR":
             schedulers_list = [
-                get_scheduler(scheduler_cfg, optimizer)
+                get_scheduler(ConfigItem(**scheduler_cfg), optimizer)
                 for scheduler_cfg in cfg_scheduler.params["schedulers"]
             ]
 
@@ -1000,7 +988,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 loader = self._core.loaders["train"]
                 dataset = getattr(loader, "dataset", None)
                 if isinstance(dataset, LuxonisDataset):
-                    n_classes = len(dataset.get_classes()[1][node.task])
+                    n_classes = len(dataset.get_classes()[node.task_name])
                     if n_classes == 1:
                         cfg.params["task"] = "binary"
                     else:
@@ -1045,7 +1033,9 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
         if self.main_metric is not None:
-            main_metric_node, main_metric_name = self.main_metric.split("/")
+            *main_metric_node, main_metric_name = self.main_metric.split("/")
+            main_metric_node = "/".join(main_metric_node)
+
             main_metric = metrics[main_metric_node][main_metric_name]
             logger.info(
                 f"{stage} main metric ({self.main_metric}): {main_metric:.4f}"

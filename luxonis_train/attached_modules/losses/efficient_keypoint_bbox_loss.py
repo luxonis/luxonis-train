@@ -16,6 +16,7 @@ from luxonis_train.utils import (
     get_with_default,
 )
 from luxonis_train.utils.boundingbox import IoUType
+from luxonis_train.utils.keypoints import insert_class
 
 from .bce_with_logits import BCEWithLogitsLoss
 
@@ -100,8 +101,9 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         pred_distri = self.get_input_tensors(inputs, "distributions")[0]
         pred_kpts = self.get_input_tensors(inputs, "keypoints_raw")[0]
 
-        target_kpts = self.get_label(labels, TaskType.KEYPOINTS)
         target_bbox = self.get_label(labels, TaskType.BOUNDINGBOX)
+        target_kpts = self.get_label(labels, TaskType.KEYPOINTS)
+        target_kpts = insert_class(target_kpts, target_bbox)
 
         batch_size = pred_scores.shape[0]
         n_kpts = (target_kpts.shape[1] - 2) // 3
@@ -185,7 +187,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         gt_kpts: Tensor,
         pred_kpts: Tensor,
         area: Tensor,
-    ):
+    ) -> tuple[Tensor, dict[str, Tensor]]:
         device = pred_bboxes.device
         sigmas = self.sigmas.to(device)
         d = (gt_kpts[..., 0] - pred_kpts[..., 0]).pow(2) + (
@@ -270,7 +272,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         adj_kpts[..., 1] += y_adj
         return adj_kpts
 
-    def _init_parameters(self, features: list[Tensor]):
+    def _init_parameters(self, features: list[Tensor]) -> None:
         device = features[0].device
         super()._init_parameters(features)
         self.gt_kpts_scale = torch.tensor(

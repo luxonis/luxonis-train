@@ -9,6 +9,7 @@ from .boundingbox import (
 from .dataset_metadata import DatasetMetadata
 from .exceptions import IncompatibleException
 from .general import (
+    get_attribute_check_none,
     get_with_default,
     infer_upscale_factor,
     make_divisible,
@@ -16,7 +17,7 @@ from .general import (
     to_shape_packet,
 )
 from .graph import traverse_graph
-from .keypoints import get_sigmas
+from .keypoints import get_sigmas, insert_class
 from .tracker import LuxonisTrackerPL
 from .types import AttachIndexType, Kwargs, Labels, Packet
 
@@ -41,4 +42,6 @@ __all__ = [
     "compute_iou_loss",
     "get_sigmas",
     "traverse_graph",
+    "insert_class",
+    "get_attribute_check_none",
 ]

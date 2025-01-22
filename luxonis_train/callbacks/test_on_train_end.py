@@ -5,7 +5,7 @@ import luxonis_train
 from luxonis_train.utils.registry import CALLBACKS
 
 
-@CALLBACKS.register_module()
+@CALLBACKS.register()
 class TestOnTrainEnd(pl.Callback):
     """Callback to perform a test run at the end of the training."""
 
