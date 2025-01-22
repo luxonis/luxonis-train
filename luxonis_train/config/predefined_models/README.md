@@ -243,6 +243,16 @@ The `InstanceSegmentationModel` supports `"light"`, `"medium"`, and `"heavy"` va
 
 See an example configuration file using this predefined model [here](../../../configs/instance_segmentation_light_model.yaml) for the `"light"` variant, and [here](../../../configs/instance_segmentation_heavy_model.yaml) for the `"heavy"` variant.
 
+### Performance Metrics
+
+FPS (frames per second) for `light`, `medium` and `heavy` variants on different devices with image size 384x512:
+
+| Variant      | RVC2 FPS | RVC4 FPS |
+| ------------ | -------- | -------- |
+| **`light`**  | 10       | 131      |
+| **`medium`** | 6        | 116      |
+| **`heavy`**  | 3        | 82       |
+
 **Components:**
 
 | Name                                                                                                            | Alias                                | Function                                                                                                                                 |
