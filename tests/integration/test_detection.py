@@ -80,11 +80,6 @@ def get_opts_variant(variant: str) -> dict[str, Any]:
                 },
                 {
                     "name": "EfficientBBoxHead",
-                    "task_name": "motorbike",
-                    "inputs": ["neck"],
-                },
-                {
-                    "name": "PrecisionBBoxHead",
                     "inputs": ["neck"],
                 },
             ],

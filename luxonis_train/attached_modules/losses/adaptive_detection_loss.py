@@ -132,7 +132,7 @@ class AdaptiveDetectionLoss(
         assigned_labels: Tensor,
         assigned_scores: Tensor,
         mask_positive: Tensor,
-    ):
+    ) -> tuple[Tensor, dict[str, Tensor]]:
         assigned_labels = torch.where(
             mask_positive > 0,
             assigned_labels,

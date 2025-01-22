@@ -9,10 +9,10 @@ from luxonis_train.utils import Packet
 
 
 class CustomMultiInputLoader(BaseLoaderTorch):
-    def __init__(
-        self, view: str | list[str], image_source: str | None = None, **_
-    ):
-        super().__init__(view=view, image_source=image_source)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._height = 224
+        self._width = 224
 
     @property
     def input_shapes(self):
@@ -23,7 +23,7 @@ class CustomMultiInputLoader(BaseLoaderTorch):
             "pointcloud": torch.Size([1000, 3]),
         }
 
-    def __getitem__(self, _):  # pragma: no cover
+    def get(self, _):  # pragma: no cover
         # Fake data
         left = torch.rand(3, 224, 224, dtype=torch.float32)
         right = torch.rand(3, 224, 224, dtype=torch.float32)

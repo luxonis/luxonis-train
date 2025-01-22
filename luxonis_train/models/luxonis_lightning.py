@@ -907,14 +907,14 @@ class LuxonisLightningModule(pl.LightningModule):
 
         def get_scheduler(
             scheduler_cfg: ConfigItem, optimizer: torch.optim.Optimizer
-        ) -> torch.optim.lr_scheduler._LRScheduler:
+        ) -> torch.optim.lr_scheduler.LRScheduler:
             scheduler_class = SCHEDULERS.get(scheduler_cfg.name)
             scheduler_params = scheduler_cfg.params | {"optimizer": optimizer}
             return scheduler_class(**scheduler_params)  # type: ignore
 
         if cfg_scheduler.name == "SequentialLR":
             schedulers_list = [
-                get_scheduler(scheduler_cfg, optimizer)
+                get_scheduler(ConfigItem(**scheduler_cfg), optimizer)
                 for scheduler_cfg in cfg_scheduler.params["schedulers"]
             ]
 

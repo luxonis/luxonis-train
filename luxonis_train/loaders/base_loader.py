@@ -27,11 +27,11 @@ class BaseLoaderTorch(
     def __init__(
         self,
         view: list[str],
-        height: int,
-        width: int,
+        height: int | None = None,
+        width: int | None = None,
         augmentation_engine: str = "albumentations",
         augmentation_config: list[ConfigItem] | None = None,
-        image_source: str = "default",
+        image_source: str = "image",
         keep_aspect_ratio: bool = True,
         color_space: Literal["RGB", "BGR"] = "RGB",
     ):
