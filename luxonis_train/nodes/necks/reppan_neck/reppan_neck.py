@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
     in_channels: list[int]
+    in_width: list[int]
+    in_height: list[int]
 
     def __init__(
         self,
