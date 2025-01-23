@@ -127,6 +127,9 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
         self.bias_init()
         self.initialize_weights()
 
+        self.check_export_output_names()
+
+    def check_export_output_names(self):
         if (
             self.export_output_names is None
             or len(self.export_output_names) != self.n_heads
@@ -141,7 +144,7 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
                     f"Using default names."
                 )
             self._export_output_names = [
-                f"output{i+1}_yolov8r2" for i in range(self.n_heads)
+                f"output{i + 1}_yolov8" for i in range(self.n_heads)
             ]
 
     def forward(self, x: list[Tensor]) -> tuple[list[Tensor], list[Tensor]]:

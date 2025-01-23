@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Literal
 
 import torch
@@ -13,6 +14,8 @@ from luxonis_train.utils import (
 )
 
 from .precision_bbox_head import PrecisionBBoxHead
+
+logger = logging.getLogger(__name__)
 
 
 class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
@@ -61,10 +64,6 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         )
 
         self.n_masks = n_masks
-        self.n_proto = n_proto
-
-        self.proto = SegProto(self.in_channels[0], self.n_proto, self.n_masks)
-
         mid_ch = max(self.in_channels[0] // 4, self.n_masks)
         self.mask_layers = nn.ModuleList(
             nn.Sequential(
@@ -75,7 +74,30 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
             for x in self.in_channels
         )
 
-        self._export_output_names = None
+        self.n_proto = n_proto
+        self.proto = SegProto(self.in_channels[0], self.n_proto, self.n_masks)
+
+        self.check_export_output_names()
+
+    def check_export_output_names(self):
+        if (
+            self.export_output_names is None
+            or len(self.export_output_names) != self.n_heads
+        ):
+            if (
+                self.export_output_names is not None
+                and len(self.export_output_names) != self.n_heads
+            ):
+                logger.warning(
+                    f"Number of provided output names ({len(self.export_output_names)}) "
+                    f"does not match number of heads ({self.n_heads}). "
+                    f"Using default names."
+                )
+            self._export_output_names = (
+                [f"output{i + 1}_yolov8" for i in range(self.n_heads)]
+                + [f"output{i + 1}_masks" for i in range(self.n_heads)]
+                + ["protos_output"]
+            )  # export names are applied on sorter output names
 
     def forward(
         self, inputs: list[Tensor]
