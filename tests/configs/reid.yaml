@@ -30,10 +30,6 @@ model:
         - name: EmbeddingsVisualizer
 
 loader:
-  train_view: train
-  val_view: [test_query, test_gallery]
-  test_view: [test_query, test_gallery]
-
   params:
     dataset_name: reid_dataset
 
