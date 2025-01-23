@@ -243,7 +243,7 @@ class ModelConfig(BaseModelExtraForbid):
             else:
                 warnings.warn(
                     f"Field `model.{section}` is deprecated. "
-                    f"Please specify `{section}`under "
+                    f"Please specify `{section}` under "
                     "the node they are attached to."
                 )
             for node in data["nodes"]:

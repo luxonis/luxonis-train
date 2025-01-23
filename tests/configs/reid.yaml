@@ -5,43 +5,44 @@ model:
   name: reid_test
   nodes:
     - name: GhostFaceNetsV2
-      input_sources: 
-        - image
       params:
         embedding_size: &embedding_size 512
-  
-  losses:
-    - name: EmbeddingLossWrapper
-      params: 
-        loss_name: SupConLoss
-        embedding_size: *embedding_size
-        cross_batch_memory_size: &memory_size 4
-      attached_to: GhostFaceNetsV2
-  
-  metrics:
-    - name: ClosestIsPositiveAccuracy
-      params:
-        cross_batch_memory_size: *memory_size
-      attached_to: GhostFaceNetsV2
-      is_main_metric: True
-    - name: MedianDistances
-      params:
-        cross_batch_memory_size: *memory_size
-      attached_to: GhostFaceNetsV2
-      is_main_metric: False
 
-  visualizers:
-    - name: EmbeddingsVisualizer
-      attached_to: GhostFaceNetsV2
+      losses:
+        - name: SupConLoss
+          # params:
+          #   embedding_size: *embedding_size
+            # cross_batch_memory_size: &memory_size 4
+
+      metrics:
+        - name: ClosestIsPositiveAccuracy
+          # params:
+          #   cross_batch_memory_size: *memory_size
+          is_main_metric: True
+
+        - name: MedianDistances
+          # params:
+          #   cross_batch_memory_size: *memory_size
+
+      visualizers:
+        - name: EmbeddingsVisualizer
+
+loader:
+  train_view: train
+  val_view: [test_query, test_gallery]
+  test_view: [test_query, test_gallery]
+
+  params:
+    dataset_name: reid_dataset
 
 trainer:
   preprocessing:
     train_image_size: [256, 256]
 
   batch_size: 16
-  epochs: 10
+  epochs: 1
   n_workers: 0
-  validation_interval: 10
+  validation_interval: 1
 
   callbacks:
     - name: ExportOnTrainEnd
@@ -50,11 +51,3 @@ trainer:
     name: Adam
     params:
       lr: 0.01
-
-tracker:
-  project_name: reid_example
-  is_tensorboard: True
-
-exporter:
-  onnx:
-    opset_version: 11

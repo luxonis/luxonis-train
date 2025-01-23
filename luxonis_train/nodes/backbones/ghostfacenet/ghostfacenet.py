@@ -5,6 +5,7 @@ from typing import Literal
 import torch.nn as nn
 from torch import Tensor
 
+from luxonis_train.enums import Metadata
 from luxonis_train.nodes.backbones.ghostfacenet.blocks import (
     GhostBottleneckV2,
     ModifiedGDC,
@@ -16,15 +17,14 @@ from luxonis_train.nodes.blocks import ConvModule
 
 
 class GhostFaceNetsV2(BaseNode[Tensor, list[Tensor]]):
-    in_channels: list[int]
-    in_width: list[int]
+    in_channels: int
+    in_width: int
+    tasks = [Metadata("id")]
 
     def __init__(
         self,
-        embedding_size=512,
-        num_classes=-1,
+        embedding_size: int = 512,
         variant: Literal["V2"] = "V2",
-        *args,
         **kwargs,
     ):
         """GhostFaceNetsV2 backbone.
@@ -42,20 +42,15 @@ class GhostFaceNetsV2(BaseNode[Tensor, list[Tensor]]):
 
         @type embedding_size: int
         @param embedding_size: Size of the embedding. Defaults to 512.
-        @type num_classes: int
-        @param num_classes: Number of classes. Defaults to -1, which leaves the default variant value in. Otherwise it can be used to
-            have the network return raw embeddings (=0) or add another linear layer to the network, which is useful for training using
-            ArcFace or similar classification-based losses that require the user to drop the last layer of the network.
         @type variant: Literal["V2"]
         @param variant: Variant of the GhostFaceNets embedding model. Defaults to "V2" (which is the only variant available).
         """
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
+        self.embedding_size = embedding_size
 
-        image_size = self.in_width[0]
-        channels = self.in_channels[0]
+        image_size = self.in_width
+        channels = self.in_channels
         var = get_variant(variant)
-        if num_classes >= 0:
-            var.num_classes = num_classes
         self.cfgs = var.cfgs
 
         # Building first layer
@@ -89,7 +84,6 @@ class GhostFaceNetsV2(BaseNode[Tensor, list[Tensor]]):
                             b_cfg.stride,
                             se_ratio=b_cfg.se_ratio,
                             layer_id=layer_id,
-                            args=var.block_args,
                         )
                     )
                 input_channel = output_channel
@@ -110,13 +104,9 @@ class GhostFaceNetsV2(BaseNode[Tensor, list[Tensor]]):
 
         self.blocks = nn.Sequential(*stages)
 
-        # Building pointwise convolution
-        pointwise_conv = [nn.Sequential()]
-        self.pointwise_conv = nn.Sequential(*pointwise_conv)
-        self.classifier = ModifiedGDC(
+        self.head = ModifiedGDC(
             image_size,
             output_channel,
-            var.num_classes,
             var.dropout,
             embedding_size,
         )
@@ -133,12 +123,10 @@ class GhostFaceNetsV2(BaseNode[Tensor, list[Tensor]]):
             if isinstance(m, nn.BatchNorm2d):
                 m.momentum, m.eps = var.bn_momentum, var.bn_epsilon
 
-    def forward(self, inps):
-        x = inps[0]
+    def forward(self, x: Tensor) -> Tensor:
         x = self.conv_stem(x)
         x = self.bn1(x)
         x = self.act1(x)
         x = self.blocks(x)
-        x = self.pointwise_conv(x)
-        x = self.classifier(x)
+        x = self.head(x)
         return x

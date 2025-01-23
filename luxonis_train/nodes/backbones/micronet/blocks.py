@@ -414,11 +414,8 @@ class DYShiftMax(nn.Module):
         return out
 
 
-def _make_divisible(
-    value: int, divisor: int, min_value: int | None = None
-) -> int:
-    if min_value is None:
-        min_value = divisor
+def _make_divisible(value: int, divisor: int) -> int:
+    min_value = divisor
     new_v = max(min_value, int(value + divisor / 2) // divisor * divisor)
     # Make sure that round down does not go down by more than 10%.
     if new_v < 0.9 * value:

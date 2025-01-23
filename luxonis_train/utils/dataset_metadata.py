@@ -62,7 +62,7 @@ class DatasetMetadata:
         for classes in self._classes.values():
             if len(classes) != n_classes:
                 raise RuntimeError(
-                    "The dataset contains different number of classes for different tasks."
+                    "The dataset contains different number of classes for different tasks. "
                     "Please specify the 'task' argument to get the number of classes."
                 )
         return n_classes
@@ -90,7 +90,7 @@ class DatasetMetadata:
         for n in self._n_keypoints.values():
             if n != n_keypoints:
                 raise RuntimeError(
-                    "The dataset contains different number of keypoints for different tasks."
+                    "The dataset contains different number of keypoints for different tasks. "
                     "Please specify the 'task' argument to get the number of keypoints."
                 )
         return n_keypoints

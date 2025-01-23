@@ -9,7 +9,7 @@ from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
 from typeguard import TypeCheckError, check_type
 
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task, TaskType
 from luxonis_train.utils import (
     AttachIndexType,
     DatasetMetadata,
@@ -107,7 +107,7 @@ class BaseNode(
     """
 
     attach_index: AttachIndexType
-    tasks: list[TaskType] | None = None
+    tasks: list[Task] | None = None
 
     def __init__(
         self,
