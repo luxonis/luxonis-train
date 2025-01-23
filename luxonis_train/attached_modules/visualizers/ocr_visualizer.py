@@ -39,18 +39,20 @@ class OCRVisualizer(BaseVisualizer[Tensor, Tensor]):
         """Prepares the predictions and targets for visualization.
 
         @type inputs: Packet[Tensor]
-        @param inputs: A packet containing input tensors, typically network predictions.
+        @param inputs: A packet containing input tensors, typically
+            network predictions.
         @type labels: Labels
-        @param labels: A dictionary containing text labels and corresponding lengths.
+        @param labels: A dictionary containing text labels and
+            corresponding lengths.
         @rtype: tuple[Tensor, list[str]]
         @return: A tuple of predictions and targets.
         """
 
-        preds = inputs['/classification'][0]
+        preds = inputs["/classification"][0]
 
-        preds = self.node.decoder(preds) # type: ignore
-        targets_batch = labels['/metadata/text'].int()
-        target_lengths = labels['/metadata/text_length'].int()
+        preds = self.node.decoder(preds)  # type: ignore
+        targets_batch = labels["/metadata/text"].int()
+        target_lengths = labels["/metadata/text_length"].int()
 
         targets = prepare_batch_targets(targets_batch, target_lengths)
 
@@ -58,7 +60,7 @@ class OCRVisualizer(BaseVisualizer[Tensor, Tensor]):
         for target in targets:
             target = target[target != 0]
             target = [chr(int(char.item())) for char in target]
-            target = ''.join(target)
+            target = "".join(target)
             target_strings.append(target)
         print(target_strings)
         return (preds, target_strings)
@@ -89,13 +91,13 @@ class OCRVisualizer(BaseVisualizer[Tensor, Tensor]):
 
         print("targets", targets)
         print(len(overlay))
-        
+
         for i in range(len(overlay)):
             prediction_text = predictions[i][0]
             prediction_prob = predictions[i][1]
             arr = torch_img_to_numpy(label_canvas[i].clone())
             pred_img = np.full_like(arr, 255)
-            
+
             if targets is not None:
                 gt_text = targets[i]
                 pred_img = cv2.putText(
@@ -107,7 +109,7 @@ class OCRVisualizer(BaseVisualizer[Tensor, Tensor]):
                     self.color,
                     self.thickness,
                 )
-            
+
             pred_img = cv2.putText(
                 pred_img,
                 f"Pred: {prediction_text} {prediction_prob:.2f}",
@@ -117,7 +119,7 @@ class OCRVisualizer(BaseVisualizer[Tensor, Tensor]):
                 self.color,
                 self.thickness,
             )
-            
+
             overlay[i] = numpy_to_torch_img(arr)
             preds_targets[i] = numpy_to_torch_img(pred_img)
 

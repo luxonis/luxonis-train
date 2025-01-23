@@ -5,11 +5,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from luxonis_train.utils import (
-    Labels,
-    Packet,
-    prepare_batch_targets
-)
+from luxonis_train.utils import Labels, Packet, prepare_batch_targets
 
 from .base_loss import BaseLoss
 
@@ -23,8 +19,8 @@ class CTCLoss(BaseLoss[Tensor, Tensor, Tensor]):
         """Initializes the CTC loss with optional focal loss support.
 
         @type use_focal_loss: bool
-        @param use_focal_loss: Whether to apply focal loss weighting to the CTC loss. 
-            Defaults to True.
+        @param use_focal_loss: Whether to apply focal loss weighting to
+            the CTC loss. Defaults to True.
         """
         super().__init__(**kwargs)
         self.loss_func = nn.CTCLoss(blank=0, reduction="none")
@@ -33,21 +29,25 @@ class CTCLoss(BaseLoss[Tensor, Tensor, Tensor]):
     def prepare(
         self, inputs: Packet[Tensor], labels: Labels
     ) -> tuple[Tensor, Tensor, Tensor]:
-        """Prepares the inputs, targets, and target lengths for loss computation.
+        """Prepares the inputs, targets, and target lengths for loss
+        computation.
 
         @type inputs: Packet[Tensor]
-        @param inputs: A packet containing input tensors, typically network predictions.
+        @param inputs: A packet containing input tensors, typically
+            network predictions.
         @type labels: Labels
-        @param labels: A dictionary containing text labels and corresponding lengths.
+        @param labels: A dictionary containing text labels and
+            corresponding lengths.
         @rtype: tuple[Tensor, Tensor, Tensor]
-        @return: A tuple of predictions, encoded targets, and target lengths.
+        @return: A tuple of predictions, encoded targets, and target
+            lengths.
         """
         preds = inputs["/classification"][0]
         targets_batch = labels["/metadata/text"]
         target_lengths = labels["/metadata/text_length"].int()
 
         targets = prepare_batch_targets(targets_batch, target_lengths)
-        targets = self.node.encoder(targets).to(preds.device) # type: ignore
+        targets = self.node.encoder(targets).to(preds.device)  # type: ignore
 
         return preds, targets, target_lengths
 
@@ -57,8 +57,9 @@ class CTCLoss(BaseLoss[Tensor, Tensor, Tensor]):
         """Computes the CTC loss, optionally applying focal loss.
 
         @type preds: Tensor
-        @param preds: Network predictions of shape (B, T, C), where T is the sequence length,
-            B is the batch size, and C is the number of classes.
+        @param preds: Network predictions of shape (B, T, C), where T is
+            the sequence length, B is the batch size, and C is the
+            number of classes.
         @type targets: Tensor
         @param targets: Encoded target sequences.
         @type target_lengths: Tensor
@@ -68,10 +69,12 @@ class CTCLoss(BaseLoss[Tensor, Tensor, Tensor]):
         """
 
         preds = preds.permute(1, 0, 2)
-        preds = preds.log_softmax(-1) 
+        preds = preds.log_softmax(-1)
 
         T, B, _ = preds.shape
-        preds_lengths = torch.full((B,), T, dtype=torch.int64, device=preds.device)
+        preds_lengths = torch.full(
+            (B,), T, dtype=torch.int64, device=preds.device
+        )
 
         loss = self.loss_func(preds, targets, preds_lengths, target_lengths)
 

@@ -1,7 +1,3 @@
-from typing import Literal, TypeAlias
-
-from pydantic import BaseModel
-
 from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
@@ -11,6 +7,7 @@ from luxonis_train.config import (
 )
 
 from .base_predefined_model import BasePredefinedModel
+
 
 class OCRRecognitionModel(BasePredefinedModel):
     """A predefined model for OCR recognition tasks."""
@@ -28,7 +25,6 @@ class OCRRecognitionModel(BasePredefinedModel):
         max_text_len: int = 40,
         ignore_unknown: bool = True,
     ):
-
         self.backbone = backbone
         self.backbone_params = backbone_params or {}
         self.backbone_params["max_text_len"] = max_text_len
@@ -51,11 +47,11 @@ class OCRRecognitionModel(BasePredefinedModel):
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
-                    name="SVTRNeck",
-                    alias=f"{self.task_name}/SVTRNeck",
-                    inputs=[f"{self.task_name}/{self.backbone}"],
-                    freezing=self.neck_params.pop("freezing", {}),
-                    params=self.neck_params,
+                name="SVTRNeck",
+                alias=f"{self.task_name}/SVTRNeck",
+                inputs=[f"{self.task_name}/{self.backbone}"],
+                freezing=self.neck_params.pop("freezing", {}),
+                params=self.neck_params,
             ),
             ModelNodeConfig(
                 name="OCRCTCHead",

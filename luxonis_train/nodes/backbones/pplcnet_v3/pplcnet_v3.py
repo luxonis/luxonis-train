@@ -1,12 +1,13 @@
 import logging
+
 from torch import Tensor, nn
-from torch.nn import functional as F
 from torch.nn import (
     Conv2d,
 )
-from luxonis_train.nodes.blocks import ConvModule
+from torch.nn import functional as F
 
 from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.nodes.blocks import ConvModule
 
 from .blocks import LCNetV3Block, LearnableRepLayer, make_divisible
 
@@ -66,18 +67,24 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
         det: bool = False,
         max_text_len: int = 40,
         **kwargs,
-    ):  
+    ):
         """PPLCNetV3 backbone.
 
-        @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/blob/main/ppocr/modeling/backbones/rec_lcnetv3.py>}
-        @see: U{Original code <https://github.com/PaddlePaddle/PaddleOCR>}
-        @license: U{Apache License, Version 2.0 <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE>}
+        @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/
+            blob/main/ppocr/modeling/backbones/rec_lcnetv3.py>}
+        @see: U{Original code
+            <https://github.com/PaddlePaddle/PaddleOCR>}
+        @license: U{Apache License, Version 2.0
+            <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE
+            >}
         @type scale: float
         @param scale: Scale factor. Defaults to 0.95.
         @type conv_kxk_num: int
-        @param conv_kxk_num: Number of convolution branches. Defaults to 4.
+        @param conv_kxk_num: Number of convolution branches. Defaults to
+            4.
         @type det: bool
-        @param det: Whether to use the detection backbone. Defaults to False.
+        @param det: Whether to use the detection backbone. Defaults to
+            False.
         @type max_text_len: int
         @param max_text_len: Maximum text length. Defaults to 40.
         """
@@ -108,7 +115,9 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
                     use_se=se,
                     conv_kxk_num=conv_kxk_num,
                 )
-                for _, (k, in_c, out_c, s, se) in enumerate(self.net_config["blocks2"])
+                for _, (k, in_c, out_c, s, se) in enumerate(
+                    self.net_config["blocks2"]
+                )
             ]
         )
 
@@ -122,7 +131,9 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
                     use_se=se,
                     conv_kxk_num=conv_kxk_num,
                 )
-                for _, (k, in_c, out_c, s, se) in enumerate(self.net_config["blocks3"])
+                for _, (k, in_c, out_c, s, se) in enumerate(
+                    self.net_config["blocks3"]
+                )
             ]
         )
 
@@ -136,7 +147,9 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
                     use_se=se,
                     conv_kxk_num=conv_kxk_num,
                 )
-                for _, (k, in_c, out_c, s, se) in enumerate(self.net_config["blocks4"])
+                for _, (k, in_c, out_c, s, se) in enumerate(
+                    self.net_config["blocks4"]
+                )
             ]
         )
 
@@ -150,7 +163,9 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
                     use_se=se,
                     conv_kxk_num=conv_kxk_num,
                 )
-                for _, (k, in_c, out_c, s, se) in enumerate(self.net_config["blocks5"])
+                for _, (k, in_c, out_c, s, se) in enumerate(
+                    self.net_config["blocks5"]
+                )
             ]
         )
 
@@ -164,7 +179,9 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
                     use_se=se,
                     conv_kxk_num=conv_kxk_num,
                 )
-                for _, (k, in_c, out_c, s, se) in enumerate(self.net_config["blocks6"])
+                for _, (k, in_c, out_c, s, se) in enumerate(
+                    self.net_config["blocks6"]
+                )
             ]
         )
         self.out_channels = make_divisible(512 * scale)
@@ -180,10 +197,38 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
 
             self.layer_list = nn.ModuleList(
                 [
-                    Conv2d(self.out_channels[0], int(mv_c[0] * scale), 1, 1, 0, bias=True),
-                    Conv2d(self.out_channels[1], int(mv_c[1] * scale), 1, 1, 0, bias=True),
-                    Conv2d(self.out_channels[2], int(mv_c[2] * scale), 1, 1, 0, bias=True),
-                    Conv2d(self.out_channels[3], int(mv_c[3] * scale), 1, 1, 0, bias=True),
+                    Conv2d(
+                        self.out_channels[0],
+                        int(mv_c[0] * scale),
+                        1,
+                        1,
+                        0,
+                        bias=True,
+                    ),
+                    Conv2d(
+                        self.out_channels[1],
+                        int(mv_c[1] * scale),
+                        1,
+                        1,
+                        0,
+                        bias=True,
+                    ),
+                    Conv2d(
+                        self.out_channels[2],
+                        int(mv_c[2] * scale),
+                        1,
+                        1,
+                        0,
+                        bias=True,
+                    ),
+                    Conv2d(
+                        self.out_channels[3],
+                        int(mv_c[3] * scale),
+                        1,
+                        1,
+                        0,
+                        bias=True,
+                    ),
                 ]
             )
             self.out_channels = [
@@ -194,7 +239,8 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
             ]
 
     def set_export_mode(self, mode: bool = True) -> None:
-        """Reparametrizes instances of L{LearnableRepLayer} in the network.
+        """Reparametrizes instances of L{LearnableRepLayer} in the
+        network.
 
         @type mode: bool
         @param mode: Whether to set the export mode. Defaults to

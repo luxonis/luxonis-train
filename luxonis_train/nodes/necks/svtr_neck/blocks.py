@@ -1,5 +1,5 @@
 import torch
-from torch import nn, Tensor
+from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks import ConvModule, DropPath
 
@@ -15,6 +15,7 @@ class Im2Seq(nn.Module):
         x = x.squeeze(axis=2)
         x = x.permute([0, 2, 1])
         return x
+
 
 class Mlp(nn.Module):
     def __init__(
@@ -41,13 +42,14 @@ class Mlp(nn.Module):
         x = self.drop(x)
         return x
 
+
 class ConvMixer(nn.Module):
     def __init__(
         self,
         dim: int,
         num_heads: int = 8,
-        HW: list[int] = [8, 25],
-        local_k: list[int] = [3, 3],
+        HW: tuple[int, int] = (8, 25),
+        local_k: tuple[int, int] = (3, 3),
     ):
         super().__init__()
         self.HW = HW
@@ -55,7 +57,7 @@ class ConvMixer(nn.Module):
         self.local_mixer = nn.Conv2d(
             dim,
             dim,
-            local_k, # type: ignore
+            local_k,  # type: ignore
             1,
             (local_k[0] // 2, local_k[1] // 2),
             groups=num_heads,
@@ -69,7 +71,7 @@ class ConvMixer(nn.Module):
         x = self.local_mixer(x)
         x = x.flatten(2).transpose([0, 2, 1])
         return x
-    
+
 
 class Attention(nn.Module):
     def __init__(
@@ -78,7 +80,7 @@ class Attention(nn.Module):
         num_heads: int = 8,
         mixer: str = "Global",
         HW: list[int] | None = None,
-        local_k: list[int] = [7, 11],
+        local_k: tuple[int, int] = (7, 11),
         qk_scale: float | None = None,
         attn_drop: float = 0.0,
         proj_drop: float = 0.0,
@@ -102,21 +104,27 @@ class Attention(nn.Module):
         if mixer == "Local" and HW is not None:
             hk = local_k[0]
             wk = local_k[1]
-            mask = torch.ones((H * W, H + hk - 1, W + wk - 1), dtype=torch.float32) # type: ignore
+            mask = torch.ones(
+                (H * W, H + hk - 1, W + wk - 1), dtype=torch.float32
+            )  # type: ignore
             for h in range(H):
                 for w in range(W):
                     mask[h * W + w, h : h + hk, w : w + wk] = 0.0
-            mask_paddle = mask[:, hk // 2 : H + hk // 2, wk // 2 : W + wk // 2].flatten(1)
-            mask_inf = torch.full((H * W, H * W), float("-inf"), dtype=torch.float32) # type: ignore
+            mask_paddle = mask[
+                :, hk // 2 : H + hk // 2, wk // 2 : W + wk // 2
+            ].flatten(1)
+            mask_inf = torch.full(
+                (H * W, H * W), float("-inf"), dtype=torch.float32
+            )  # type: ignore
             mask = torch.where(mask_paddle < 1, mask_paddle, mask_inf)
-            self.mask = mask.unsqueeze(0).unsqueeze(0) 
+            self.mask = mask.unsqueeze(0).unsqueeze(0)
         self.mixer = mixer
 
     def forward(self, x: Tensor) -> Tensor:
         batch_size = x.shape[0]
         qkv = (
             self.qkv(x)
-            .reshape((batch_size, -1, 3, self.num_heads, self.head_dim)) # 0
+            .reshape((batch_size, -1, 3, self.num_heads, self.head_dim))  # 0
             .permute((2, 0, 3, 1, 4))
         )
         q, k, v = qkv[0] * self.scale, qkv[1], qkv[2]
@@ -127,7 +135,11 @@ class Attention(nn.Module):
         attn = nn.functional.log_softmax(attn, dim=-1).exp()
         attn = self.attn_drop(attn)
 
-        x = (attn.matmul(v)).permute((0, 2, 1, 3)).reshape((batch_size, -1, self.dim))
+        x = (
+            (attn.matmul(v))
+            .permute((0, 2, 1, 3))
+            .reshape((batch_size, -1, self.dim))
+        )
         x = self.proj(x)
         x = self.proj_drop(x)
         return x
@@ -139,7 +151,7 @@ class Block(nn.Module):
         dim: int,
         num_heads: int = 8,
         mixer: str = "Global",
-        local_mixer: list[int] = [7, 11],
+        local_mixer: tuple[int, int] = (7, 11),
         HW: list[int] | None = None,
         mlp_ratio: float = 4.0,
         qk_scale: float | None = None,
@@ -149,7 +161,7 @@ class Block(nn.Module):
         act_layer: type[nn.Module] = nn.GELU,
         norm_layer: type[nn.Module] | str = "nn.LayerNorm",
         epsilon: float = 1e-6,
-        prenorm: bool = True
+        prenorm: bool = True,
     ):
         super().__init__()
         if isinstance(norm_layer, str):
@@ -168,11 +180,15 @@ class Block(nn.Module):
                 proj_drop=drop,
             )
         elif mixer == "Conv":
-            self.mixer = ConvMixer(dim, num_heads=num_heads, HW=HW, local_k=local_mixer)
+            self.mixer = ConvMixer(
+                dim, num_heads=num_heads, HW=HW, local_k=local_mixer
+            )
         else:
             raise TypeError("The mixer must be one of [Global, Local, Conv]")
 
-        self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
+        self.drop_path = (
+            DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
+        )
         if isinstance(norm_layer, str):
             self.norm2 = eval(norm_layer)(dim, eps=epsilon)
         else:
@@ -195,7 +211,6 @@ class Block(nn.Module):
             x = x + self.drop_path(self.mixer(self.norm1(x)))
             x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x
-    
 
 
 class EncoderWithSVTR(nn.Module):
@@ -223,10 +238,14 @@ class EncoderWithSVTR(nn.Module):
             kernel_size=kernel_size,
             padding=kernel_size[0] // 2,
             bias=True,
-            activation=nn.ReLU()
+            activation=nn.ReLU(),
         )
         self.conv2 = ConvModule(
-            in_channels // 8, hidden_dims, kernel_size=1, bias=True, activation=nn.ReLU()
+            in_channels // 8,
+            hidden_dims,
+            kernel_size=1,
+            bias=True,
+            activation=nn.ReLU(),
         )
 
         self.svtr_block = nn.ModuleList(
@@ -250,7 +269,13 @@ class EncoderWithSVTR(nn.Module):
             ]
         )
         self.norm = nn.LayerNorm(hidden_dims, eps=1e-6)
-        self.conv3 = ConvModule(hidden_dims, in_channels, kernel_size=1, bias=True, activation=nn.ReLU())
+        self.conv3 = ConvModule(
+            hidden_dims,
+            in_channels,
+            kernel_size=1,
+            bias=True,
+            activation=nn.ReLU(),
+        )
         self.conv4 = ConvModule(
             2 * in_channels,
             in_channels // 8,
@@ -260,7 +285,13 @@ class EncoderWithSVTR(nn.Module):
             activation=nn.ReLU(),
         )
 
-        self.conv1x1 = ConvModule(in_channels // 8, dims, kernel_size=1, bias=True, activation=nn.ReLU())
+        self.conv1x1 = ConvModule(
+            in_channels // 8,
+            dims,
+            kernel_size=1,
+            bias=True,
+            activation=nn.ReLU(),
+        )
         self.out_channels = dims
         self.apply(self._init_weights)
 
@@ -279,16 +310,16 @@ class EncoderWithSVTR(nn.Module):
         else:
             z = x
         h = z
-        
+
         z = self.conv1(z)
         z = self.conv2(z)
-        
+
         B, C, H, W = z.shape
         z = z.flatten(2).permute(0, 2, 1)
         for blk in self.svtr_block:
             z = blk(z)
         z = self.norm(z)
-        
+
         z = z.reshape([B, H, W, C]).permute(0, 3, 1, 2)
         z = self.conv3(z)
         z = torch.cat((h, z), dim=1)

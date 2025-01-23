@@ -1,11 +1,10 @@
 import logging
-from typing import Any, Literal
 
-from torch import Tensor, nn
+from torch import Tensor
 
 from luxonis_train.nodes.base_node import BaseNode
 
-from .blocks import Im2Seq, EncoderWithSVTR
+from .blocks import EncoderWithSVTR, Im2Seq
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +15,20 @@ class SVTRNeck(BaseNode[list[Tensor], list[Tensor]]):
     def __init__(self, **kwargs):
         """Initializes the SVTR neck.
 
-        @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/blob/main/ppocr/modeling/necks/rnn.py>}
-        @see: U{Original code <https://github.com/PaddlePaddle/PaddleOCR>}
-        @license: U{Apache License, Version 2.0 <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE>}
+        @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/
+            blob/main/ppocr/modeling/necks/rnn.py>}
+        @see: U{Original code
+            <https://github.com/PaddlePaddle/PaddleOCR>}
+        @license: U{Apache License, Version 2.0
+            <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE
+            >}
+        @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/
+            blob/main/ppocr/modeling/necks/rnn.py>}
+        @see: U{Original code
+            <https://github.com/PaddlePaddle/PaddleOCR>}
+        @license: U{Apache License, Version 2.0
+            <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE
+            >}
         """
         super().__init__(**kwargs)
         self.encoder_reshape = Im2Seq(self.in_channels)

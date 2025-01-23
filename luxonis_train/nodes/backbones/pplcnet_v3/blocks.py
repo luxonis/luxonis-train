@@ -1,14 +1,15 @@
 import torch
 from torch import Tensor, nn
-from torch.nn import functional as F
 from torch.nn import (
     AdaptiveAvgPool2d,
     BatchNorm2d,
     Conv2d,
     ReLU,
 )
+from torch.nn import functional as F
 
 from luxonis_train.nodes.blocks import ConvModule
+
 
 def make_divisible(v, divisor: int = 16, min_value: int | None = None):
     if min_value is None:
@@ -17,6 +18,7 @@ def make_divisible(v, divisor: int = 16, min_value: int | None = None):
     if new_v < 0.9 * v:
         new_v += divisor
     return new_v
+
 
 class Act(nn.Module):
     def __init__(self, act: str = "hswish"):
@@ -30,11 +32,12 @@ class Act(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         return self.lab(self.act(x))
-    
+
+
 class LearnableAffineBlock(nn.Module):
     def __init__(self, scale_value: float = 1.0, bias_value: float = 0.0):
         super().__init__()
-        
+
         self.scale = nn.Parameter(torch.full((1,), scale_value))
         self.bias = nn.Parameter(torch.full((1,), bias_value))
 
@@ -70,7 +73,7 @@ class LearnableRepLayer(nn.Module):
         )
 
         self.conv_kxk = nn.ModuleList(
-            [   
+            [
                 ConvModule(
                     in_channels,
                     out_channels,
@@ -87,7 +90,13 @@ class LearnableRepLayer(nn.Module):
 
         self.conv_1x1 = (
             ConvModule(
-                in_channels, out_channels, 1, self.stride, groups=groups, bias=True, activation=nn.Identity(),
+                in_channels,
+                out_channels,
+                1,
+                self.stride,
+                groups=groups,
+                bias=True,
+                activation=nn.Identity(),
             )
             if kernel_size > 1
             else None
@@ -131,8 +140,8 @@ class LearnableRepLayer(nn.Module):
             groups=self.groups,
             bias=True,
         )
-        self.reparam_conv.weight.data = kernel # type: ignore
-        self.reparam_conv.bias.data = bias # type: ignore
+        self.reparam_conv.weight.data = kernel  # type: ignore
+        self.reparam_conv.bias.data = bias  # type: ignore
 
         del self.conv_kxk
         del self.conv_1x1
@@ -141,7 +150,9 @@ class LearnableRepLayer(nn.Module):
         if hasattr(self, "id_tensor"):
             del self.id_tensor
 
-    def _pad_kernel_1x1_to_kxk(self, kernel1x1: Tensor | None, pad: int) -> Tensor | int:
+    def _pad_kernel_1x1_to_kxk(
+        self, kernel1x1: Tensor | None, pad: int
+    ) -> Tensor | int:
         if not isinstance(kernel1x1, Tensor):
             return 0
         else:
@@ -149,13 +160,18 @@ class LearnableRepLayer(nn.Module):
 
     def _get_kernel_bias(self):
         device = next(self.parameters()).device
-        kernel_conv_1x1, bias_conv_1x1 = self._fuse_bn_tensor(self.conv_1x1, device)
-
-        kernel_conv_1x1 = self._pad_kernel_1x1_to_kxk(
-            kernel_conv_1x1, self.kernel_size // 2 # type: ignore
+        kernel_conv_1x1, bias_conv_1x1 = self._fuse_bn_tensor(
+            self.conv_1x1, device
         )
 
-        kernel_identity, bias_identity = self._fuse_bn_tensor(self.identity, device)
+        kernel_conv_1x1 = self._pad_kernel_1x1_to_kxk(
+            kernel_conv_1x1,
+            self.kernel_size // 2,  # type: ignore
+        )
+
+        kernel_identity, bias_identity = self._fuse_bn_tensor(
+            self.identity, device
+        )
 
         kernel_conv_kxk = 0
         bias_conv_kxk = 0
@@ -168,7 +184,9 @@ class LearnableRepLayer(nn.Module):
         bias_reparam = bias_conv_kxk + bias_conv_1x1 + bias_identity
         return kernel_reparam, bias_reparam
 
-    def _fuse_bn_tensor(self, branch: nn.Module | None, device: torch.device) -> tuple[Tensor, Tensor] | tuple[int, int]:
+    def _fuse_bn_tensor(
+        self, branch: nn.Module | None, device: torch.device
+    ) -> tuple[Tensor, Tensor] | tuple[int, int]:
         if not branch:
             return 0, 0
         elif isinstance(branch, ConvModule):
@@ -183,12 +201,21 @@ class LearnableRepLayer(nn.Module):
             if not hasattr(self, "id_tensor"):
                 input_dim = self.in_channels // self.groups
                 kernel_value = torch.zeros(
-                    (self.in_channels, input_dim, self.kernel_size, self.kernel_size),
-                    dtype=branch.weight.dtype, device=device
+                    (
+                        self.in_channels,
+                        input_dim,
+                        self.kernel_size,
+                        self.kernel_size,
+                    ),
+                    dtype=branch.weight.dtype,
+                    device=device,
                 )
                 for i in range(self.in_channels):
                     kernel_value[
-                        i, i % input_dim, self.kernel_size // 2, self.kernel_size // 2
+                        i,
+                        i % input_dim,
+                        self.kernel_size // 2,
+                        self.kernel_size // 2,
                     ] = 1
                 self.id_tensor = kernel_value
             kernel = self.id_tensor
@@ -198,15 +225,15 @@ class LearnableRepLayer(nn.Module):
             beta = branch.bias
             eps = branch.eps
         assert running_var is not None
-        std = (running_var + eps).sqrt() # type: ignore
-        t = (gamma / std).reshape((-1, 1, 1, 1)).to(kernel.device) # type: ignore
-        return kernel * t, beta - running_mean * gamma / std # type: ignore
+        std = (running_var + eps).sqrt()  # type: ignore
+        t = (gamma / std).reshape((-1, 1, 1, 1)).to(kernel.device)  # type: ignore
+        return kernel * t, beta - running_mean * gamma / std  # type: ignore
 
 
 class SELayer(nn.Module):
     def __init__(self, channel: int, reduction: int = 4):
         super().__init__()
-       
+
         self.avg_pool = AdaptiveAvgPool2d(1)
         self.conv1 = Conv2d(
             in_channels=channel,

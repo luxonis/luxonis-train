@@ -1,19 +1,20 @@
-import torch
-from torch import Tensor
-from .base_metric import BaseMetric
 import logging
 
-from luxonis_train.utils import (
-    Labels,
-    Packet,
-    prepare_batch_targets
-)
+import torch
+from torch import Tensor
+
+from luxonis_train.utils import Labels, Packet, prepare_batch_targets
+
+from .base_metric import BaseMetric
 
 logger = logging.getLogger(__name__)
 
 
-class OCRAccuracy(BaseMetric[list[dict[str, Tensor]], list[dict[str, Tensor]]]):
+class OCRAccuracy(
+    BaseMetric[list[dict[str, Tensor]], list[dict[str, Tensor]]]
+):
     """Accuracy metric for OCR tasks."""
+
     def __init__(self, blank_cls: int = 0, **kwargs):
         """Initializes the OCR accuracy metric.
 
@@ -33,31 +34,34 @@ class OCRAccuracy(BaseMetric[list[dict[str, Tensor]], list[dict[str, Tensor]]]):
         }
         self.n = 0
 
-
     def prepare(
         self, inputs: Packet[Tensor], labels: Labels
     ) -> tuple[Tensor, Tensor]:
-        """Prepares the predictions and targets for accuracy computation.
+        """Prepares the predictions and targets for accuracy
+        computation.
 
         @type inputs: Packet[Tensor]
-        @param inputs: A packet containing input tensors, typically network predictions.
+        @param inputs: A packet containing input tensors, typically
+            network predictions.
         @type labels: Labels
-        @param labels: A dictionary containing text labels and corresponding lengths.
+        @param labels: A dictionary containing text labels and
+            corresponding lengths.
         @rtype: tuple[Tensor, Tensor]
         @return: A tuple of predictions and targets.
         """
 
-        preds = inputs['/classification'][0]
-        targets_batch = labels['/metadata/text']
-        target_lengths = labels['/metadata/text_length'].int()
+        preds = inputs["/classification"][0]
+        targets_batch = labels["/metadata/text"]
+        target_lengths = labels["/metadata/text_length"].int()
 
         targets = prepare_batch_targets(targets_batch, target_lengths)
-        targets = self.node.encoder(targets).to(preds.device) # type: ignore
+        targets = self.node.encoder(targets).to(preds.device)  # type: ignore
 
         return (preds, targets)
-    
+
     def update(self, preds: Tensor, targets: Tensor) -> None:
-        """Updates the running metric with the given predictions and targets.
+        """Updates the running metric with the given predictions and
+        targets.
 
         @type preds: Tensor
         @param preds: A tensor containing the network predictions.
@@ -65,18 +69,22 @@ class OCRAccuracy(BaseMetric[list[dict[str, Tensor]], list[dict[str, Tensor]]]):
         @param targets: A tensor containing the target labels.
         """
 
-        B, T, C = preds.shape 
+        B, T, C = preds.shape
 
         pred_classes = preds.argmax(dim=-1)
 
         preds = torch.zeros((B, T), dtype=torch.int64, device=preds.device)
         for i in range(B):
             unique_cons_classes = torch.unique_consecutive(pred_classes[i])
-            unique_cons_classes = unique_cons_classes[unique_cons_classes != self.blank_cls]
+            unique_cons_classes = unique_cons_classes[
+                unique_cons_classes != self.blank_cls
+            ]
             if len(unique_cons_classes) != 0:
-                preds[i, :unique_cons_classes.shape[0]] = unique_cons_classes
-    
-        target = torch.nn.functional.pad(targets, (0, T - targets.shape[1]), value=self.blank_cls)
+                preds[i, : unique_cons_classes.shape[0]] = unique_cons_classes
+
+        target = torch.nn.functional.pad(
+            targets, (0, T - targets.shape[1]), value=self.blank_cls
+        )
         errors = preds != target
         errors = errors.sum(dim=1)
 
@@ -89,7 +97,8 @@ class OCRAccuracy(BaseMetric[list[dict[str, Tensor]], list[dict[str, Tensor]]]):
         """Computes the OCR accuracy.
 
         @rtype: tuple[Tensor, dict[str, Tensor]]
-        @return: A tuple containing the OCR accuracy and a dictionary of individual accuracies.
+        @return: A tuple containing the OCR accuracy and a dictionary of
+            individual accuracies.
         """
         result = {
             "acc_0": torch.tensor(self.running_metric["acc_0"] / self.n),
