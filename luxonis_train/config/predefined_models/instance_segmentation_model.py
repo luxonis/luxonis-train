@@ -15,27 +15,27 @@ from .base_predefined_model import BasePredefinedModel
 VariantLiteral: TypeAlias = Literal["light", "medium", "heavy"]
 
 
-class DetectionVariant(BaseModel):
+class InstanceSegmentationVariant(BaseModel):
     backbone: str
     backbone_params: Params
     neck_params: Params
 
 
-def get_variant(variant: VariantLiteral) -> DetectionVariant:
+def get_variant(variant: VariantLiteral) -> InstanceSegmentationVariant:
     """Returns the specific variant configuration for the
-    DetectionModel."""
+    InstanceSegmentationModel."""
     variants = {
-        "light": DetectionVariant(
+        "light": InstanceSegmentationVariant(
             backbone="EfficientRep",
             backbone_params={"variant": "n"},
             neck_params={"variant": "n"},
         ),
-        "medium": DetectionVariant(
+        "medium": InstanceSegmentationVariant(
             backbone="EfficientRep",
             backbone_params={"variant": "s"},
             neck_params={"variant": "s"},
         ),
-        "heavy": DetectionVariant(
+        "heavy": InstanceSegmentationVariant(
             backbone="EfficientRep",
             backbone_params={"variant": "l"},
             neck_params={"variant": "l"},
@@ -44,7 +44,7 @@ def get_variant(variant: VariantLiteral) -> DetectionVariant:
 
     if variant not in variants:
         raise ValueError(
-            f"Detection variant should be one of {list(variants.keys())}, got '{variant}'."
+            f"Instance segmentation variant should be one of {list(variants.keys())}, got '{variant}'."
         )
 
     return variants[variant]
@@ -114,14 +114,14 @@ class InstanceSegmentationModel(BasePredefinedModel):
                 if self.use_neck
                 else [f"{self.backbone}-{self.task_name}"],
                 params=self.head_params,
-                # task=self.task_name,
             )
         )
         return nodes
 
     @property
     def losses(self) -> list[LossModuleConfig]:
-        """Defines the loss module for the detection task."""
+        """Defines the loss module for the instance segmentation
+        task."""
         return [
             LossModuleConfig(
                 name="PrecisionDFLSegmentationLoss",
@@ -154,7 +154,8 @@ class InstanceSegmentationModel(BasePredefinedModel):
 
     @property
     def visualizers(self) -> list[AttachedModuleConfig]:
-        """Defines the visualizer used for the detection task."""
+        """Defines the visualizer used for the instance segmentation
+        task."""
         return [
             AttachedModuleConfig(
                 name="InstanceSegmentationVisualizer",

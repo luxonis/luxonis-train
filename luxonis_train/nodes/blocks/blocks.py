@@ -252,7 +252,7 @@ class DWConvModule(ConvModule):
             stride=stride,
             padding=padding,
             dilation=dilation,
-            groups=in_channels,  # Depth-wise convolution
+            groups=math.gcd(in_channels, out_channels),
             bias=bias,
             activation=activation,
         )
