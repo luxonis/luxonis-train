@@ -5,8 +5,8 @@ from pytorch_metric_learning.losses import CrossBatchMemory
 from torch import Tensor
 
 from luxonis_train.enums import Metadata
-from luxonis_train.nodes.backbones.ghostfacenet import GhostFaceNetV2
 from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.nodes.heads.ghostfacenet_head import GhostFaceNetHead
 
 from .base_loss import BaseLoss
 
@@ -42,7 +42,7 @@ for loss_name in EMBEDDING_LOSSES:
     class EmbeddingLossWrapper(
         BaseLoss[Tensor, Tensor], register_name=loss_name
     ):
-        node: GhostFaceNetV2
+        node: GhostFaceNetHead
         supported_tasks = [Metadata("id")]
 
         def __init__(self, *, node: BaseNode | None = None, **kwargs):
@@ -64,3 +64,7 @@ for loss_name in EMBEDDING_LOSSES:
 
         def forward(self, inputs: Tensor, target: Tensor) -> Tensor:
             return self.loss_func(inputs, target)
+
+        @property
+        def name(self) -> str:
+            return loss_name  # noqa: B023

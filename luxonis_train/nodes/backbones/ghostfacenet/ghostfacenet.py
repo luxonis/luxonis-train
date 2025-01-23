@@ -5,23 +5,20 @@ from typing import Literal
 import torch.nn as nn
 from torch import Tensor
 
-from luxonis_train.enums import Metadata
 from luxonis_train.nodes.backbones.ghostfacenet.variants import get_variant
 from luxonis_train.nodes.backbones.micronet.blocks import _make_divisible
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
 
-from .blocks import GhostBottleneckV2, ModifiedGDC
+from .blocks import GhostBottleneckV2
 
 
 class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
     in_channels: int
     in_width: int
-    tasks = [Metadata("id")]
 
     def __init__(
         self,
-        embedding_size: int = 512,
         variant: Literal["V2"] = "V2",
         **kwargs,
     ):
@@ -38,15 +35,11 @@ class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
         @see: U{GhostFaceNets: Lightweight Face Recognition Model From Cheap Operations
             <https://www.researchgate.net/publication/369930264_GhostFaceNets_Lightweight_Face_Recognition_Model_from_Cheap_Operations>}
 
-        @type embedding_size: int
-        @param embedding_size: Size of the embedding. Defaults to 512.
         @type variant: Literal["V2"]
         @param variant: Variant of the GhostFaceNets embedding model. Defaults to "V2" (which is the only variant available).
         """
         super().__init__(**kwargs)
-        self.embedding_size = embedding_size
 
-        image_size = self.in_width
         var = get_variant(variant)
         output_channel = _make_divisible(int(16 * var.width), 4)
         input_channel = output_channel
@@ -101,16 +94,9 @@ class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
 
         self.blocks = nn.Sequential(*stages)
 
-        self.head = ModifiedGDC(
-            image_size,
-            output_channel,
-            var.dropout,
-            embedding_size,
-        )
-
         self._init_weights()
 
-    def _init_weights(self):
+    def _init_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
                 fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
@@ -123,6 +109,4 @@ class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
                 m.eps = 1e-5
 
     def forward(self, x: Tensor) -> Tensor:
-        x = self.blocks(x)
-        x = self.head(x)
-        return x
+        return self.blocks(x)

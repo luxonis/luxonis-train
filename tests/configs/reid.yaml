@@ -5,6 +5,8 @@ model:
   name: reid_test
   nodes:
     - name: GhostFaceNetV2
+
+    - name: GhostFaceNetHead
       params:
         embedding_size: &embedding_size 512
 
