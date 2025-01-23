@@ -37,33 +37,33 @@ EMBEDDING_LOSSES = [
     "TupletMarginLoss",
 ]
 
-for loss_name in EMBEDDING_LOSSES:
+for _loss_name in EMBEDDING_LOSSES:
 
     class EmbeddingLossWrapper(
-        BaseLoss[Tensor, Tensor], register_name=loss_name
+        BaseLoss[Tensor, Tensor], register_name=_loss_name
     ):
         node: GhostFaceNetHead
         supported_tasks = [Metadata("id")]
 
         def __init__(self, *, node: BaseNode | None = None, **kwargs):
             super().__init__(node=node)
+            loss_name = _loss_name  # noqa: B023
 
-            if not hasattr(pml_losses, loss_name):  # noqa: B023
+            if not hasattr(pml_losses, loss_name):
                 raise ValueError(
-                    f"Loss {loss_name} not found in "  # noqa: B023
-                    "pytorch-metric-learning"
+                    f"Loss {loss_name} not found in pytorch-metric-learning"
                 )
-            Loss = getattr(pml_losses, loss_name)  # noqa: B023
+            Loss = getattr(pml_losses, loss_name)
             self.loss_func = Loss(**kwargs)
 
             if self.node.embedding_size is not None:
-                if loss_name in CrossBatchMemory.supported_losses():  # noqa: B023
+                if loss_name in CrossBatchMemory.supported_losses():
                     self.loss_func = CrossBatchMemory(
                         self.loss_func, embedding_size=self.node.embedding_size
                     )
                 else:
                     logger.warning(
-                        f"CrossBatchMemory is not supported for {loss_name}. "  # noqa: B023
+                        f"'CrossBatchMemory' is not supported for {loss_name}. "
                         "Ignoring cross_batch_memory_size."
                     )
 
@@ -72,4 +72,4 @@ for loss_name in EMBEDDING_LOSSES:
 
         @property
         def name(self) -> str:
-            return loss_name  # noqa: B023
+            return _loss_name  # noqa: B023
