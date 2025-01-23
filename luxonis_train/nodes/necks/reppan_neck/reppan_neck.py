@@ -84,9 +84,12 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
 
         for i in range(1, n_heads):
             if (
-                self.in_width[-i] * 2 != self.in_width[-i - 1]
-                or self.in_height[-i] * 2 != self.in_height[-i - 1]
-            ):
+                (
+                    self.in_width[-i] * 2 != self.in_width[-i - 1]
+                    or self.in_height[-i] * 2 != self.in_height[-i - 1]
+                )
+                and self.attach_index == "all"
+            ):  # TODO: fix the attach_index and this condition
                 raise ValueError(
                     f"Expected width and height of feature map at index {len(self.in_width) - i} to be half of those at index {len(self.in_width) - i - 1}. "
                     f"Image shape {self.original_in_shape} must be divisible by 32 to avoid 'RepPANNeck' crashing."
