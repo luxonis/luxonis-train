@@ -58,6 +58,7 @@ def clear_files():
         "detection_light_model",
         "keypoint_bbox_heavy_model",
         "keypoint_bbox_light_model",
+        "ocr_recognition_model",
     ],
 )
 def test_predefined_models(
