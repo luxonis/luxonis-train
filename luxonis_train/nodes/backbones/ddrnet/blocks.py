@@ -135,9 +135,8 @@ class DAPPM(nn.Module):
         @type inter_mode: str
         @param inter_mode: Interpolation mode for upscaling. Defaults to
             "bilinear".
-
-        @raises ValueError: If the lengths of `kernel_sizes` and `strides`
-            are not the same.
+        @raises ValueError: If the lengths of C{kernel_sizes} and
+            C{strides} are not the same.
         """
         super().__init__()
 
