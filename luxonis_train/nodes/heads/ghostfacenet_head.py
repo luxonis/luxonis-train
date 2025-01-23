@@ -15,7 +15,11 @@ class GhostFaceNetHead(BaseNode[Tensor, list[Tensor]]):
     tasks = [Metadata("id")]
 
     def __init__(
-        self, embedding_size: int = 512, dropout: float = 0.2, **kwargs
+        self,
+        embedding_size: int = 512,
+        cross_batch_memory_size: int | None = None,
+        dropout: float = 0.2,
+        **kwargs,
     ):
         """GhostFaceNetV2 backbone.
 
@@ -32,9 +36,14 @@ class GhostFaceNetHead(BaseNode[Tensor, list[Tensor]]):
 
         @type embedding_size: int
         @param embedding_size: Size of the embedding. Defaults to 512.
+        @type cross_batch_memory_size: int | None
+        @param cross_batch_memory_size: Size of the cross-batch memory. Defaults to None.
+        @type dropout: float
+        @param dropout: Dropout rate. Defaults to 0.2.
         """
         super().__init__(**kwargs)
         self.embedding_size = embedding_size
+        self.cross_batch_memory_size = cross_batch_memory_size
         _, H, W = self.original_in_shape
 
         self.head = nn.Sequential(

@@ -56,7 +56,7 @@ for _loss_name in EMBEDDING_LOSSES:
             Loss = getattr(pml_losses, loss_name)
             self.loss_func = Loss(**kwargs)
 
-            if self.node.embedding_size is not None:
+            if self.node.cross_batch_memory_size is not None:
                 if loss_name in CrossBatchMemory.supported_losses():
                     self.loss_func = CrossBatchMemory(
                         self.loss_func, embedding_size=self.node.embedding_size

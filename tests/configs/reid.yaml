@@ -8,34 +8,30 @@ model:
 
     - name: GhostFaceNetHead
       params:
-        embedding_size: &embedding_size 512
+        embedding_size: 512
+        cross_batch_memory_size: 4
 
       losses:
         - name: SupConLoss
-          # params:
-          #   embedding_size: *embedding_size
-            # cross_batch_memory_size: &memory_size 4
 
       metrics:
         - name: ClosestIsPositiveAccuracy
-          # params:
-          #   cross_batch_memory_size: *memory_size
           is_main_metric: True
 
         - name: MedianDistances
-          # params:
-          #   cross_batch_memory_size: *memory_size
 
       visualizers:
         - name: EmbeddingsVisualizer
 
 loader:
+  train_view: val
+
   params:
     dataset_name: reid_dataset
 
 trainer:
   preprocessing:
-    train_image_size: [256, 256]
+    train_image_size: [256, 320]
 
   batch_size: 16
   epochs: 1

@@ -2,6 +2,7 @@ import torch
 from torch import Tensor
 
 from luxonis_train.enums import Metadata
+from luxonis_train.nodes.heads.ghostfacenet_head import GhostFaceNetHead
 
 from .base_metric import BaseMetric
 
@@ -11,10 +12,11 @@ from .base_metric import BaseMetric
 
 class ClosestIsPositiveAccuracy(BaseMetric[Tensor, Tensor]):
     supported_tasks = [Metadata("id")]
+    node: GhostFaceNetHead
 
-    def __init__(self, cross_batch_memory_size=0, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.cross_batch_memory_size = cross_batch_memory_size
+        self.cross_batch_memory_size = self.node.cross_batch_memory_size
         self.add_state("cross_batch_memory", default=[], dist_reduce_fx="cat")
         self.add_state(
             "correct_predictions",
@@ -28,7 +30,7 @@ class ClosestIsPositiveAccuracy(BaseMetric[Tensor, Tensor]):
     def update(self, inputs: Tensor, target: Tensor):
         embeddings, labels = inputs, target
 
-        if self.cross_batch_memory_size > 0:
+        if self.cross_batch_memory_size is not None:
             self.cross_batch_memory.extend(list(zip(embeddings, labels)))
 
             if len(self.cross_batch_memory) > self.cross_batch_memory_size:
@@ -73,10 +75,11 @@ class ClosestIsPositiveAccuracy(BaseMetric[Tensor, Tensor]):
 
 class MedianDistances(BaseMetric[Tensor, Tensor]):
     supported_tasks = [Metadata("id")]
+    node: GhostFaceNetHead
 
-    def __init__(self, cross_batch_memory_size=0, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.cross_batch_memory_size = cross_batch_memory_size
+        self.cross_batch_memory_size = self.node.cross_batch_memory_size
         self.add_state("cross_batch_memory", default=[], dist_reduce_fx="cat")
         self.add_state("all_distances", default=[], dist_reduce_fx="cat")
         self.add_state("closest_distances", default=[], dist_reduce_fx="cat")
@@ -88,7 +91,7 @@ class MedianDistances(BaseMetric[Tensor, Tensor]):
     def update(self, inputs: Tensor, target: Tensor):
         embeddings, labels = inputs, target
 
-        if self.cross_batch_memory_size > 0:
+        if self.cross_batch_memory_size is not None:
             self.cross_batch_memory.extend(list(zip(embeddings, labels)))
 
             if len(self.cross_batch_memory) > self.cross_batch_memory_size:
