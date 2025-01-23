@@ -287,7 +287,7 @@ class LuxonisModel:
                     logger.warning(
                         "Resume weights provided in the command line, but resume_training in config is set to True. Ignoring resume weights provided in the command line."
                     )
-                resume_checkpoint = self.cfg.model.weights
+                resume_checkpoint = self.cfg.model.weights  # type: ignore
             logger.info("Starting training...")
             self._train(
                 resume_checkpoint,
