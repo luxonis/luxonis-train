@@ -48,6 +48,11 @@ for loss_name in EMBEDDING_LOSSES:
         def __init__(self, *, node: BaseNode | None = None, **kwargs):
             super().__init__(node=node)
 
+            if not hasattr(pml_losses, loss_name):  # noqa: B023
+                raise ValueError(
+                    f"Loss {loss_name} not found in "  # noqa: B023
+                    "pytorch-metric-learning"
+                )
             Loss = getattr(pml_losses, loss_name)  # noqa: B023
             self.loss_func = Loss(**kwargs)
 
