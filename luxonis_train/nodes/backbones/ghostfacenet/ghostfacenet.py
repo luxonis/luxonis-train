@@ -6,14 +6,12 @@ import torch.nn as nn
 from torch import Tensor
 
 from luxonis_train.enums import Metadata
-from luxonis_train.nodes.backbones.ghostfacenet.blocks import (
-    GhostBottleneckV2,
-    ModifiedGDC,
-)
 from luxonis_train.nodes.backbones.ghostfacenet.variants import get_variant
 from luxonis_train.nodes.backbones.micronet.blocks import _make_divisible
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
+
+from .blocks import GhostBottleneckV2, ModifiedGDC
 
 
 class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
@@ -49,23 +47,22 @@ class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
         self.embedding_size = embedding_size
 
         image_size = self.in_width
-        channels = self.in_channels
         var = get_variant(variant)
-        self.cfgs = var.cfgs
-
-        # Building first layer
         output_channel = _make_divisible(int(16 * var.width), 4)
-        self.conv_stem = nn.Conv2d(
-            channels, output_channel, 3, 2, 1, bias=False
-        )
-        self.bn1 = nn.BatchNorm2d(output_channel)
-        self.act1 = nn.PReLU()
         input_channel = output_channel
 
-        # Building Ghost BottleneckV2 blocks
-        stages = []
+        stages: list[nn.Module] = [
+            ConvModule(
+                self.in_channels,
+                output_channel,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+                activation=nn.PReLU(),
+            )
+        ]
         layer_id = 0
-        for cfg in self.cfgs:
+        for cfg in var.block_configs:
             layers = []
             for b_cfg in cfg:
                 output_channel = _make_divisible(
@@ -111,22 +108,21 @@ class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
             embedding_size,
         )
 
-        # Initializing weights
+        self._init_weights()
+
+    def _init_weights(self):
         for m in self.modules():
-            if var.init_kaiming:
-                if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-                    fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
-                    negative_slope = 0.25
-                    m.weight.data.normal_(
-                        0, math.sqrt(2.0 / (fan_in * (1 + negative_slope**2)))
-                    )
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
+                negative_slope = 0.25
+                m.weight.data.normal_(
+                    0, math.sqrt(2.0 / (fan_in * (1 + negative_slope**2)))
+                )
             if isinstance(m, nn.BatchNorm2d):
-                m.momentum, m.eps = var.bn_momentum, var.bn_epsilon
+                m.momentum = 0.9
+                m.eps = 1e-5
 
     def forward(self, x: Tensor) -> Tensor:
-        x = self.conv_stem(x)
-        x = self.bn1(x)
-        x = self.act1(x)
         x = self.blocks(x)
         x = self.head(x)
         return x

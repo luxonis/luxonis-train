@@ -52,11 +52,7 @@ class GhostFaceNetsVariant(BaseModel):
     dropout: float
     block: type[nn.Module]
     add_pointwise_conv: bool
-    bn_momentum: float
-    bn_epsilon: float
-    init_kaiming: bool
-    block_args: dict | None
-    cfgs: List[List[BlockConfig]]
+    block_configs: List[List[BlockConfig]]
 
 
 V2 = GhostFaceNetsVariant(
@@ -65,11 +61,7 @@ V2 = GhostFaceNetsVariant(
     dropout=0.2,
     block=GhostBottleneckV2,
     add_pointwise_conv=False,
-    bn_momentum=0.9,
-    bn_epsilon=1e-5,
-    init_kaiming=True,
-    block_args=None,
-    cfgs=[
+    block_configs=[
         [
             BlockConfig(
                 kernel_size=3,
