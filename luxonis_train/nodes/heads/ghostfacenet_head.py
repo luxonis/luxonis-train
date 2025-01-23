@@ -35,15 +35,16 @@ class GhostFaceNetHead(BaseNode[Tensor, list[Tensor]]):
         """
         super().__init__(**kwargs)
         self.embedding_size = embedding_size
-        image_size = self.original_in_shape[1]
+        _, H, W = self.original_in_shape
 
         self.head = nn.Sequential(
             ConvModule(
                 self.in_channels,
                 self.in_channels,
-                kernel_size=(image_size // 32)
-                if image_size % 32 == 0
-                else (image_size // 32 + 1),
+                kernel_size=(
+                    H // 32 if H % 32 == 0 else H // 32 + 1,
+                    W // 32 if W % 32 == 0 else W // 32 + 1,
+                ),
                 groups=self.in_channels,
                 activation=False,
             ),
