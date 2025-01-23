@@ -16,7 +16,7 @@ from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
 
 
-class GhostFaceNetsV2(BaseNode[Tensor, list[Tensor]]):
+class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
     in_channels: int
     in_width: int
     tasks = [Metadata("id")]

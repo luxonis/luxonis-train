@@ -1,3 +1,3 @@
-from .ghostfacenet import GhostFaceNetsV2
+from .ghostfacenet import GhostFaceNetV2
 
-__all__ = ["GhostFaceNetsV2"]
+__all__ = ["GhostFaceNetV2"]

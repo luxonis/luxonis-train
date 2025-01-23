@@ -2,7 +2,7 @@ from .contextspatial import ContextSpatial
 from .ddrnet import DDRNet
 from .efficientnet import EfficientNet
 from .efficientrep import EfficientRep
-from .ghostfacenet.ghostfacenet import GhostFaceNetsV2
+from .ghostfacenet import GhostFaceNetV2
 from .micronet import MicroNet
 from .mobilenetv2 import MobileNetV2
 from .mobileone import MobileOne
@@ -23,5 +23,5 @@ __all__ = [
     "ResNet",
     "DDRNet",
     "RecSubNet",
-    "GhostFaceNetsV2",
+    "GhostFaceNetV2",
 ]

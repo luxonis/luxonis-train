@@ -103,7 +103,7 @@ def train_and_test(
 
 
 @pytest.mark.parametrize(
-    "backbone", [b for b in BACKBONES if b != "GhostFaceNetsV2"]
+    "backbone", [b for b in BACKBONES if b != "GhostFaceNetV2"]
 )
 def test_backbones(
     backbone: str,

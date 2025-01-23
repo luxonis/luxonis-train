@@ -4,7 +4,7 @@ loader:
 model:
   name: reid_test
   nodes:
-    - name: GhostFaceNetsV2
+    - name: GhostFaceNetV2
       params:
         embedding_size: &embedding_size 512
 
