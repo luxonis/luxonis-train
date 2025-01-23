@@ -120,9 +120,9 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 
 **Parameters:**
 
-| Key             | Type    | Default value | Description                                     |
-| --------------- | ------- | ------------- | ----------------------------------------------- |
-| `object_weight` | `float` | `1000`        | Weight for the objects in the loss calculation. |
+| Key             | Type    | Default value | Description                                                                                                                                                                          |
+| --------------- | ------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `object_weight` | `float` | `500`         | Weight for the objects in the loss calculation. Training with a larger `object_weight` in the loss parameters may result in more false positives (FP), but it will improve accuracy. |
 
 ## `PrecisionDFLDetectionLoss`
 
