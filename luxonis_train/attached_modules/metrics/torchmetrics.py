@@ -12,7 +12,7 @@ from .base_metric import BaseMetric
 logger = logging.getLogger(__name__)
 
 
-class TorchMetricWrapper(BaseMetric[Tensor]):
+class TorchMetricWrapper(BaseMetric[Tensor, Tensor]):
     Metric: type[torchmetrics.Metric]
 
     def __init__(self, **kwargs: Any):

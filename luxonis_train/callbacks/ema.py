@@ -39,7 +39,7 @@ class ModelEma(nn.Module):
         @type device: str | None
         @param device: Device to perform EMA on.
         """
-        super(ModelEma, self).__init__()
+        super().__init__()
         model.eval()
         self.state_dict_ema = deepcopy(model.state_dict())
         model.train()

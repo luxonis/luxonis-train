@@ -39,7 +39,7 @@ def collate_fn(
             label_box: list[Tensor] = []
             for i, ann in enumerate(annos):
                 new_ann = torch.zeros((ann.shape[0], ann.shape[1] + 1))
-                # add target image index for build_targets()
+                # add batch index to separate boxes from different images
                 new_ann[:, 0] = i
                 new_ann[:, 1:] = ann
                 label_box.append(new_ann)

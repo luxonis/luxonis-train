@@ -1,10 +1,8 @@
 from typing import Any
 
-import pytest
 from luxonis_ml.data import LuxonisDataset
 
 from luxonis_train.core import LuxonisModel
-from luxonis_train.nodes.backbones import __all__ as BACKBONES
 
 
 def get_opts(backbone: str) -> dict[str, Any]:
@@ -123,9 +121,6 @@ def train_and_test(
                 assert value > 0.8, f"{name} = {value} (expected > 0.8)"
 
 
-@pytest.mark.parametrize(
-    "backbone", [b for b in BACKBONES if b != "GhostFaceNetV2"]
-)
 def test_backbones(
     backbone: str,
     config: dict[str, Any],
