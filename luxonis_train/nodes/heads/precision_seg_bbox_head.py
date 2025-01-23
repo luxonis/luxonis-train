@@ -20,6 +20,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         TaskType.INSTANCE_SEGMENTATION,
         TaskType.BOUNDINGBOX,
     ]
+    parser: str = "YOLOExtendedParser "
 
     def __init__(
         self,
@@ -155,6 +156,19 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
             results["boundingbox"].append(pred[:, :6])
 
         return results
+
+    def get_custom_head_config(self) -> dict:
+        """Returns custom head configuration.
+
+        @rtype: dict
+        @return: Custom head configuration.
+        """
+        return {
+            "subtype": "yolov8",
+            "iou_threshold": self.iou_thres,
+            "conf_threshold": self.conf_thres,
+            "max_det": self.max_det,
+        }
 
 
 def refine_and_apply_masks(

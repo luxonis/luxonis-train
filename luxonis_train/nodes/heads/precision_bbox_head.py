@@ -6,8 +6,8 @@ import torch
 from torch import Tensor, nn
 
 from luxonis_train.enums import TaskType
-from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.blocks import DFL, ConvModule, DWConvModule
+from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.utils import (
     Packet,
     anchors_for_fpn_features,
@@ -18,9 +18,10 @@ from luxonis_train.utils import (
 logger = logging.getLogger(__name__)
 
 
-class PrecisionBBoxHead(BaseNode[list[Tensor], list[Tensor]]):
+class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
     in_channels: list[int]
     tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
+    parser = "YOLO"
 
     def __init__(
         self,
@@ -125,6 +126,23 @@ class PrecisionBBoxHead(BaseNode[list[Tensor], list[Tensor]]):
         self.dfl = DFL(reg_max) if reg_max > 1 else nn.Identity()
         self.bias_init()
         self.initialize_weights()
+
+        if (
+            self.export_output_names is None
+            or len(self.export_output_names) != self.n_heads
+        ):
+            if (
+                self.export_output_names is not None
+                and len(self.export_output_names) != self.n_heads
+            ):
+                logger.warning(
+                    f"Number of provided output names ({len(self.export_output_names)}) "
+                    f"does not match number of heads ({self.n_heads}). "
+                    f"Using default names."
+                )
+            self._export_output_names = [
+                f"output{i+1}_yolov8r2" for i in range(self.n_heads)
+            ]
 
     def forward(self, x: list[Tensor]) -> tuple[list[Tensor], list[Tensor]]:
         cls_outputs = []
@@ -278,3 +296,16 @@ class PrecisionBBoxHead(BaseNode[list[Tensor], list[Tensor]]):
                 m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU)
             ):
                 m.inplace = True
+
+    def get_custom_head_config(self) -> dict:
+        """Returns custom head configuration.
+
+        @rtype: dict
+        @return: Custom head configuration.
+        """
+        return {
+            "subtype": "yolov8",
+            "iou_threshold": self.iou_thres,
+            "conf_threshold": self.conf_thres,
+            "max_det": self.max_det,
+        }
