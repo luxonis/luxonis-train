@@ -148,7 +148,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                     out_channels=highres_channels,
                     kernel_size=1,
                     bias=False,
-                    activation=nn.Identity(),
+                    activation=False,
                 )
             )
             self.down3.append(
@@ -159,7 +159,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                     stride=2,
                     padding=1,
                     bias=False,
-                    activation=nn.Identity(),
+                    activation=False,
                 )
             )
             self.layer3_skip.append(
@@ -180,7 +180,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             out_channels=highres_channels,
             kernel_size=1,
             bias=False,
-            activation=nn.Identity(),
+            activation=False,
         )
 
         self.down4 = nn.Sequential(
@@ -200,7 +200,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                 stride=2,
                 padding=1,
                 bias=False,
-                activation=nn.Identity(),
+                activation=False,
             ),
         )
 

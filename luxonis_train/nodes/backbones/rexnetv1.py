@@ -202,7 +202,7 @@ class LinearBottleneck(nn.Module):
                 in_channels=dw_channels,
                 out_channels=channels,
                 kernel_size=1,
-                activation=nn.Identity(),
+                activation=False,
             )
         )
 

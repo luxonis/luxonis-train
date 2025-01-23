@@ -10,32 +10,6 @@ from luxonis_train.nodes.blocks import SqueezeExciteBlock
 from luxonis_train.nodes.blocks.blocks import ConvModule
 
 
-class ModifiedGDC(nn.Sequential):
-    def __init__(
-        self,
-        image_size: int,
-        in_channels: int,
-        dropout: float,
-        embedding_size: int = 512,
-    ):
-        modules = [
-            ConvModule(
-                in_channels,
-                in_channels,
-                kernel_size=(image_size // 32)
-                if image_size % 32 == 0
-                else (image_size // 32 + 1),
-                groups=in_channels,
-                activation=nn.Identity(),
-            ),
-            nn.Dropout(dropout),
-            nn.Conv2d(in_channels, embedding_size, kernel_size=1, bias=False),
-            nn.Flatten(),
-            nn.BatchNorm1d(embedding_size),
-        ]
-        super().__init__(*modules)
-
-
 class GhostModuleV2(nn.Module):
     def __init__(
         self,
@@ -59,7 +33,7 @@ class GhostModuleV2(nn.Module):
             kernel_size,
             stride,
             kernel_size // 2,
-            activation=nn.PReLU() if use_prelu else nn.Identity(),
+            activation=nn.PReLU() if use_prelu else False,
         )
         self.cheap_operation = ConvModule(
             intermediate_channels,
@@ -68,7 +42,7 @@ class GhostModuleV2(nn.Module):
             1,
             dw_size // 2,
             groups=intermediate_channels,
-            activation=nn.PReLU() if use_prelu else nn.Identity(),
+            activation=nn.PReLU() if use_prelu else False,
         )
 
         if self.mode == "attn":
@@ -79,7 +53,7 @@ class GhostModuleV2(nn.Module):
                     kernel_size,
                     stride,
                     kernel_size // 2,
-                    activation=nn.Identity(),
+                    activation=False,
                 ),
                 ConvModule(
                     out_channels,
@@ -88,7 +62,7 @@ class GhostModuleV2(nn.Module):
                     stride=1,
                     padding=(0, 2),
                     groups=out_channels,
-                    activation=nn.Identity(),
+                    activation=False,
                 ),
                 ConvModule(
                     out_channels,
@@ -97,7 +71,7 @@ class GhostModuleV2(nn.Module):
                     stride=1,
                     padding=(2, 0),
                     groups=out_channels,
-                    activation=nn.Identity(),
+                    activation=False,
                 ),
                 nn.AvgPool2d(kernel_size=2, stride=2),
                 nn.Sigmoid(),

@@ -10,8 +10,6 @@ from luxonis_train.nodes.backbones.micronet.blocks import _make_divisible
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
 
-from .blocks import GhostBottleneckV2
-
 
 class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
     in_channels: int
@@ -64,31 +62,28 @@ class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
                 hidden_channel = _make_divisible(
                     b_cfg.expand_size * var.width, 4
                 )
-                if var.block == GhostBottleneckV2:
-                    layers.append(
-                        var.block(
-                            input_channel,
-                            hidden_channel,
-                            output_channel,
-                            b_cfg.kernel_size,
-                            b_cfg.stride,
-                            se_ratio=b_cfg.se_ratio,
-                            layer_id=layer_id,
-                        )
+                layers.append(
+                    var.block(
+                        input_channel,
+                        hidden_channel,
+                        output_channel,
+                        b_cfg.kernel_size,
+                        b_cfg.stride,
+                        se_ratio=b_cfg.se_ratio,
+                        layer_id=layer_id,
                     )
+                )
                 input_channel = output_channel
                 layer_id += 1
             stages.append(nn.Sequential(*layers))
 
         output_channel = _make_divisible(b_cfg.expand_size * var.width, 4)
         stages.append(
-            nn.Sequential(
-                ConvModule(
-                    input_channel,
-                    output_channel,
-                    kernel_size=1,
-                    activation=nn.PReLU(),
-                )
+            ConvModule(
+                input_channel,
+                output_channel,
+                kernel_size=1,
+                activation=nn.PReLU(),
             )
         )
 

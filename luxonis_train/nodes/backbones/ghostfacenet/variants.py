@@ -3,15 +3,15 @@ from typing import List, Literal
 from pydantic import BaseModel
 from torch import nn
 
-from luxonis_train.nodes.backbones.ghostfacenet.blocks import GhostBottleneckV2
+from .blocks import GhostBottleneckV2
 
 
 class BlockConfig(BaseModel):
     kernel_size: int
     expand_size: int
     output_channels: int
-    se_ratio: float
     stride: int
+    se_ratio: float
 
 
 class GhostFaceNetsVariant(BaseModel):
@@ -33,9 +33,6 @@ class GhostFaceNetsVariant(BaseModel):
     @type block: nn.Module
     @param block: Ghost BottleneckV2 block. Defaults to
         GhostBottleneckV2.
-    @type add_pointwise_conv: bool
-    @param add_pointwise_conv: If True, adds a pointwise convolution
-        layer at the end of the network. Defaults to False.
     @type bn_momentum: float
     @param bn_momentum: Batch normalization momentum. Defaults to 0.9.
     @type bn_epsilon: float
@@ -47,20 +44,14 @@ class GhostFaceNetsVariant(BaseModel):
     @param block_args: Arguments to pass to the block. Defaults to None.
     """
 
-    num_classes: int
     width: int
-    dropout: float
     block: type[nn.Module]
-    add_pointwise_conv: bool
     block_configs: List[List[BlockConfig]]
 
 
 V2 = GhostFaceNetsVariant(
-    num_classes=0,
     width=1,
-    dropout=0.2,
     block=GhostBottleneckV2,
-    add_pointwise_conv=False,
     block_configs=[
         [
             BlockConfig(

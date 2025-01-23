@@ -92,7 +92,7 @@ class ConvModule(nn.Sequential):
         dilation: int | tuple[int, int] = 1,
         groups: int = 1,
         bias: bool = False,
-        activation: nn.Module | None = None,
+        activation: nn.Module | None | Literal[False] = None,
     ):
         """Conv2d + BN + Activation.
 
@@ -112,10 +112,11 @@ class ConvModule(nn.Sequential):
         @param groups: Groups. Defaults to 1.
         @type bias: bool
         @param bias: Whether to use bias. Defaults to False.
-        @type activation: L{nn.Module} | None
-        @param activation: Activation function. If None then nn.ReLU.
+        @type activation: L{nn.Module} | None | Literal[False]
+        @param activation: Activation function. If None then nn.ReLU. If
+            False then no activation. Defaults to None.
         """
-        super().__init__(
+        blocks = [
             nn.Conv2d(
                 in_channels,
                 out_channels,
@@ -127,8 +128,10 @@ class ConvModule(nn.Sequential):
                 bias,
             ),
             nn.BatchNorm2d(out_channels),
-            activation or nn.ReLU(),
-        )
+        ]
+        if activation is not False:
+            blocks.append(activation or nn.ReLU())
+        super().__init__(*blocks)
 
 
 class UpBlock(nn.Sequential):
@@ -316,7 +319,7 @@ class RepVGGBlock(nn.Module):
             stride=stride,
             padding=padding,
             groups=groups,
-            activation=nn.Identity(),
+            activation=False,
         )
         self.rbr_1x1 = ConvModule(
             in_channels=in_channels,
@@ -325,7 +328,7 @@ class RepVGGBlock(nn.Module):
             stride=stride,
             padding=padding_11,
             groups=groups,
-            activation=nn.Identity(),
+            activation=False,
         )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -601,7 +604,7 @@ class AttentionRefinmentBlock(nn.Module):
                 in_channels=out_channels,
                 out_channels=out_channels,
                 kernel_size=1,
-                activation=nn.Identity(),
+                activation=False,
             ),
             nn.Sigmoid(),
         )
@@ -641,7 +644,7 @@ class FeatureFusionBlock(nn.Module):
                 in_channels=out_channels,
                 out_channels=out_channels // reduction,
                 kernel_size=1,
-                activation=nn.Identity(),
+                activation=False,
             ),
             nn.Sigmoid(),
         )

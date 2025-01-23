@@ -145,7 +145,7 @@ class MicroBlock(nn.Module):
                 out_channels=out_channels,
                 kernel_size=1,
                 groups=group2,
-                activation=nn.Identity(),
+                activation=False,
             ),
             DYShiftMax(
                 out_channels,
@@ -179,7 +179,7 @@ class MicroBlock(nn.Module):
                 out_channels=intermediate_channels,
                 kernel_size=1,
                 groups=group1,
-                activation=nn.Identity(),
+                activation=False,
             ),
             DYShiftMax(
                 intermediate_channels,
@@ -217,7 +217,7 @@ class MicroBlock(nn.Module):
                 out_channels=intermediate_channels,
                 kernel_size=1,
                 groups=groups_1[0],
-                activation=nn.Identity(),
+                activation=False,
             ),
             DYShiftMax(
                 intermediate_channels,
@@ -256,7 +256,7 @@ class MicroBlock(nn.Module):
                 out_channels=out_channels,
                 kernel_size=1,
                 groups=group1,
-                activation=nn.Identity(),
+                activation=False,
             ),
             DYShiftMax(
                 out_channels,

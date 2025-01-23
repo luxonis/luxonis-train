@@ -5,10 +5,8 @@ import torch.nn as nn
 from torch import Tensor
 
 from luxonis_train.enums import Metadata
-from luxonis_train.nodes.backbones.ghostfacenet.blocks import (
-    ModifiedGDC,
-)
 from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.nodes.blocks.blocks import ConvModule
 
 
 class GhostFaceNetHead(BaseNode[Tensor, list[Tensor]]):
@@ -37,14 +35,25 @@ class GhostFaceNetHead(BaseNode[Tensor, list[Tensor]]):
         """
         super().__init__(**kwargs)
         self.embedding_size = embedding_size
+        image_size = self.original_in_shape[1]
 
-        self.head = ModifiedGDC(
-            self.original_in_shape[1],
-            self.in_channels,
-            dropout,
-            self.embedding_size,
+        self.head = nn.Sequential(
+            ConvModule(
+                self.in_channels,
+                self.in_channels,
+                kernel_size=(image_size // 32)
+                if image_size % 32 == 0
+                else (image_size // 32 + 1),
+                groups=self.in_channels,
+                activation=False,
+            ),
+            nn.Dropout(dropout),
+            nn.Conv2d(
+                self.in_channels, embedding_size, kernel_size=1, bias=False
+            ),
+            nn.Flatten(),
+            nn.BatchNorm1d(embedding_size),
         )
-
         self._init_weights()
 
     def _init_weights(self):
