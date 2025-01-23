@@ -59,10 +59,22 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
 
     def prepare(
         self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
+    ) -> tuple[
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+        Tensor,
+    ]:
         det_feats = self.get_input_tensors(inputs, "features")
-        proto = self.get_input_tensors(inputs, "prototypes")
-        pred_mask = self.get_input_tensors(inputs, "mask_coeficients")
+        proto = self.get_input_tensors(inputs, "prototypes")[0]
+        pred_mask = self.get_input_tensors(inputs, "mask_coeficients")[0]
         self._init_parameters(det_feats)
         batch_size, _, mask_h, mask_w = proto.shape
         pred_distri, pred_scores = torch.cat(
@@ -129,7 +141,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         target_masks: Tensor,
         img_idx: Tensor,
     ):
-        max_assigned_scores_sum = max(assigned_scores.sum(), 1)
+        max_assigned_scores_sum = max(assigned_scores.sum().item(), 1)
         loss_cls = (
             self.bce(pred_scores, assigned_scores)
         ).sum() / max_assigned_scores_sum

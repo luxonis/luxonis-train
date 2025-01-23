@@ -130,8 +130,8 @@ class PrecisionBBoxHead(BaseNode[list[Tensor], list[Tensor]]):
         cls_outputs = []
         reg_outputs = []
         for i in range(self.n_heads):
-            reg_output = self.detection_heads[i][0](x[i])
-            cls_output = self.detection_heads[i][1](x[i])
+            reg_output = self.detection_heads[i][0](x[i])  # type: ignore
+            cls_output = self.detection_heads[i][1](x[i])  # type: ignore
             reg_outputs.append(reg_output)
             cls_outputs.append(cls_output)
         return reg_outputs, cls_outputs
@@ -153,7 +153,9 @@ class PrecisionBBoxHead(BaseNode[list[Tensor], list[Tensor]]):
 
         if self.export:
             return {
-                self.task: self._prepare_bbox_export(reg_outputs, cls_outputs)
+                "boundingbox": self._prepare_bbox_export(
+                    reg_outputs, cls_outputs
+                )
             }
 
         boxes = non_max_suppression(
@@ -199,13 +201,13 @@ class PrecisionBBoxHead(BaseNode[list[Tensor], list[Tensor]]):
 
     def _prepare_bbox_export(
         self, reg_outputs: list[Tensor], cls_outputs: list[Tensor]
-    ) -> Tensor:
+    ) -> list[Tensor]:
         """Prepare the output for export."""
         return self._prepare_bbox_and_cls(reg_outputs, cls_outputs)
 
     def _prepare_bbox_inference_output(
         self, reg_outputs: list[Tensor], cls_outputs: list[Tensor]
-    ):
+    ) -> Tensor:
         """Perform inference on predicted bounding boxes and class
         probabilities."""
         processed_outputs = self._prepare_bbox_and_cls(
@@ -254,8 +256,8 @@ class PrecisionBBoxHead(BaseNode[list[Tensor], list[Tensor]]):
         classification branches.
         """
         for head, stride in zip(self.detection_heads, self.stride):
-            reg_branch = head[0]
-            cls_branch = head[1]
+            reg_branch = head[0]  # type: ignore
+            cls_branch = head[1]  # type: ignore
 
             reg_conv = reg_branch[-1]
             reg_conv.bias.data[:] = 1.0

@@ -116,7 +116,7 @@ class PrecisionDFLDetectionLoss(
         assigned_scores: Tensor,
         mask_positive: Tensor,
     ):
-        max_assigned_scores_sum = max(assigned_scores.sum(), 1)
+        max_assigned_scores_sum = max(assigned_scores.sum().item(), 1)
         loss_cls = (
             self.bce(pred_scores, assigned_scores)
         ).sum() / max_assigned_scores_sum

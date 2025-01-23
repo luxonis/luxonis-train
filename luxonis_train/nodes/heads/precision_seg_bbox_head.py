@@ -78,7 +78,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
 
     def forward(
         self, inputs: list[Tensor]
-    ) -> tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]]:
+    ) -> tuple[tuple[list[Tensor], list[Tensor]], Tensor, list[Tensor]]:
         prototypes = self.proto(inputs[0])
         mask_coefficients = [
             self.mask_layers[i](inputs[i]) for i in range(self.n_heads)
@@ -89,16 +89,17 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         return det_outs, prototypes, mask_coefficients
 
     def wrap(
-        self, output: tuple[list[Tensor], Tensor, Tensor]
+        self,
+        output: tuple[tuple[list[Tensor], list[Tensor]], Tensor, list[Tensor]],
     ) -> Packet[Tensor]:
         det_feats, prototypes, mask_coefficients = output
 
         if self.export:
-            pred_bboxes = self._prepare_bbox_export(*det_feats)
+            pred_bboxes = self._prepare_bbox_export(*det_feats)  # type: ignore
             return {
                 "boundingbox": pred_bboxes,
                 "masks": mask_coefficients,
-                "prototypes": prototypes,
+                "prototypes": [prototypes],
             }
 
         det_feats_combined = [
@@ -115,11 +116,11 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         if self.training:
             return {
                 "features": det_feats_combined,
-                "prototypes": prototypes,
-                "mask_coeficients": mask_coefficients,
+                "prototypes": [prototypes],
+                "mask_coeficients": [mask_coefficients],
             }
 
-        pred_bboxes = self._prepare_bbox_inference_output(*det_feats)
+        pred_bboxes = self._prepare_bbox_inference_output(*det_feats)  # type: ignore
         preds_combined = torch.cat(
             [pred_bboxes, mask_coefficients.permute(0, 2, 1)], dim=-1
         )
@@ -135,8 +136,8 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
 
         results = {
             "features": det_feats_combined,
-            "prototypes": prototypes,
-            "mask_coeficients": mask_coefficients,
+            "prototypes": [prototypes],
+            "mask_coeficients": [mask_coefficients],
             "boundingbox": [],
             "instance_segmentation": [],
         }

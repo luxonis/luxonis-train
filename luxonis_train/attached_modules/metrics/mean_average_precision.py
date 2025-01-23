@@ -29,7 +29,7 @@ class MeanAveragePrecision(
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
-        self.is_segmentation = (
+        self.is_segmentation = (self.node.tasks is not None) and (
             TaskType.INSTANCE_SEGMENTATION in self.node.tasks
         )
 
@@ -38,7 +38,7 @@ class MeanAveragePrecision(
         else:
             iou_type = "bbox"
 
-        self.metric = detection.MeanAveragePrecision(iou_type=iou_type)
+        self.metric = detection.MeanAveragePrecision(iou_type=iou_type)  # type: ignore
 
     def update(
         self,
@@ -77,7 +77,7 @@ class MeanAveragePrecision(
                 "labels": output_nms_bboxes[i][:, 5].int(),
             }
             if self.is_segmentation:
-                pred["masks"] = output_nms_masks[i].to(
+                pred["masks"] = output_nms_masks[i].to(  # type: ignore
                     dtype=torch.bool
                 )  # Predicted masks (M, H, W)
             output_list.append(pred)
@@ -93,7 +93,7 @@ class MeanAveragePrecision(
                 "labels": curr_label[:, 1].int(),
             }
             if self.is_segmentation:
-                gt["masks"] = mask_label[box_label[:, 0] == i].to(
+                gt["masks"] = mask_label[box_label[:, 0] == i].to(  # type: ignore
                     dtype=torch.bool
                 )
             label_list.append(gt)

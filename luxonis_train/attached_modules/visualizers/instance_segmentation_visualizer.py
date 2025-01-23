@@ -88,8 +88,8 @@ class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         self.alpha = alpha
 
     def prepare(
-        self, inputs: Packet[Tensor], labels: Labels | None
-    ) -> tuple[Tensor, Tensor, list[Tensor], Tensor | None, Tensor | None]:
+        self, inputs: Packet[Tensor], labels: Labels
+    ) -> tuple[Tensor, Tensor, list[Tensor], list[Tensor]]:
         # Override the prepare base method
         target_bboxes = self.get_label(labels, TaskType.BOUNDINGBOX)
         target_masks = self.get_label(labels, TaskType.INSTANCE_SEGMENTATION)
@@ -211,8 +211,8 @@ class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         prediction_canvas: Tensor,
         target_bboxes: Tensor | None,
         target_masks: Tensor | None,
-        predicted_bboxes: Tensor,
-        predicted_masks: Tensor,
+        predicted_bboxes: list[Tensor],
+        predicted_masks: list[Tensor],
     ) -> tuple[Tensor, Tensor] | Tensor:
         """Creates visualizations of the predicted and target bounding
         boxes and instance masks.
@@ -229,12 +229,12 @@ class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         @type target_masks: Tensor | None
         @param target_masks: Tensor containing the target instance
             masks.
-        @type predicted_bboxes: Tensor
-        @param predicted_bboxes: Tensor containing the predicted
-            bounding boxes.
-        @type predicted_masks: Tensor
-        @param predicted_masks: Tensor containing the predicted instance
-            masks.
+        @type predicted_bboxes: list[Tensor]
+        @param predicted_bboxes: List of tensors containing the
+            predicted bounding boxes.
+        @type predicted_masks: list[Tensor]
+        @param predicted_masks: List of tensors containing the predicted
+            instance masks.
         """
         predictions_viz = self.draw_predictions(
             prediction_canvas,
