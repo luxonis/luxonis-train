@@ -23,7 +23,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         TaskType.INSTANCE_SEGMENTATION,
         TaskType.BOUNDINGBOX,
     ]
-    parser: str = "YOLOExtendedParser "
+    parser: str = "YOLOExtendedParser"
 
     def __init__(
         self,

@@ -49,8 +49,3 @@ trainer:
       momentum: 0.937     
       weight_decay: 0.0005
       nesterov: True
-
-
-exporter:
-  onnx:
-    opset_version: 18
