@@ -121,3 +121,13 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 | Key             | Type    | Default value | Description                                     |
 | --------------- | ------- | ------------- | ----------------------------------------------- |
 | `object_weight` | `float` | `1000`        | Weight for the objects in the loss calculation. |
+
+## `CTCLoss`
+
+CTC loss with optional focal loss weighting.
+
+**Parameters:**
+
+| Key              | Type   | Default value | Description                                            |
+| ---------------- | ------ | ------------- | ------------------------------------------------------ |
+| `use_focal_loss` | `bool` | `True`        | Whether to apply focal loss weighting to the CTC loss. |

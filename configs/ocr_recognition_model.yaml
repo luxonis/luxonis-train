@@ -1,0 +1,43 @@
+# Example configuration for training a predefined light classification model
+
+model:
+  name: ocr_recognition
+  predefined_model:
+    name: OCRRecognitionModel
+    params:
+      backbone: PPLCNetV3
+      alphabet: ['a', 'b', 'c', 'd', 'e', 'h', 'l', 'm', 'n', 'o', 'p', 'x', 'y', 'z']
+      max_text_len: 40
+      ignore_unknown: true
+
+loader:
+  params:
+    dataset_name: toy_ocr
+
+  val_view: train
+  test_view: train
+
+trainer:
+  preprocessing:
+    train_image_size: [48, 320]
+    keep_aspect_ratio: true
+    normalize:
+      active: true
+
+  batch_size: 4
+  epochs: 400
+  n_workers: 4
+  validation_interval: 10
+  n_log_images: 8
+
+  callbacks:
+    - name: TestOnTrainEnd
+    - name: ExportOnTrainEnd
+
+  optimizer:
+    name: Adam
+    params:
+      lr: 0.002
+
+  scheduler:
+    name: ConstantLR

@@ -3,6 +3,7 @@ from .bbox_visualizer import BBoxVisualizer
 from .classification_visualizer import ClassificationVisualizer
 from .keypoint_visualizer import KeypointVisualizer
 from .multi_visualizer import MultiVisualizer
+from .ocr_visualizer import OCRVisualizer
 from .segmentation_visualizer import SegmentationVisualizer
 from .utils import (
     combine_visualizations,
@@ -23,6 +24,7 @@ __all__ = [
     "KeypointVisualizer",
     "MultiVisualizer",
     "SegmentationVisualizer",
+    "OCRVisualizer",
     "combine_visualizations",
     "draw_bounding_box_labels",
     "draw_keypoint_labels",

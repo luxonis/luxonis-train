@@ -6,6 +6,7 @@ from .discsubnet_head import DiscSubNetHead
 from .efficient_bbox_head import EfficientBBoxHead
 from .efficient_keypoint_bbox_head import EfficientKeypointBBoxHead
 from .fomo_head import FOMOHead
+from .ocr_ctc_head import OCRCTCHead
 from .segmentation_head import SegmentationHead
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "DDRNetSegmentationHead",
     "DiscSubNetHead",
     "FOMOHead",
+    "OCRCTCHead",
 ]

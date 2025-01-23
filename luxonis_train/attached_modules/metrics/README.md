@@ -63,3 +63,13 @@ Evaluation leverages COCO evaluation framework (COCOeval) to assess mAP performa
 | `area_factor` | `float`                             | `0.53`        | Factor by which to multiply the bounding box area                     |
 | `max_dets`    | `int`                               | `20`          | Maximum number of detections per image                                |
 | `box_fotmat`  | `Literal["xyxy", "xywh", "cxcywh"]` | `"xyxy"`      | Format of the bounding boxes                                          |
+
+## OCRAccuracy
+
+Accuracy metric for OCR tasks.
+
+**Params**
+
+| Key         | Type  | Default value | Description                                |
+| ----------- | ----- | ------------- | ------------------------------------------ |
+| `blank_cls` | `int` | `0`           | Index of the blank class. Defaults to `0`. |

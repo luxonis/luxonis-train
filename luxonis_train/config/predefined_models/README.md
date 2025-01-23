@@ -270,3 +270,34 @@ FPS (frames per second) for `light` and `heavy` variants on different devices wi
 | `loss_params`        | `dict`                      | `{}`          | Additional parameters for the loss                                                              |
 | `visualizer_params`  | `dict`                      | `{}`          | Additional parameters for the visualizer                                                        |
 | `task_name`          | `str \| None`               | `None`        | Custom task name for the head                                                                   |
+
+## `OCRRecognitionModel`
+
+FPS of the `OCRRecognitionModel` on different devices with image size 48x320:
+
+| RVC2 FPS | RVC4 FPS |
+| -------- | -------- |
+| 77       | 350      |
+
+**Components:**
+
+| Name                                                                          | Alias                             | Function                                                             |
+| ----------------------------------------------------------------------------- | --------------------------------- | -------------------------------------------------------------------- |
+| [`PPLCNetV3`](../../nodes/README.md#pplcnetv3)                                | `"ocr_recognition"`               | Backbone of the OCR recognition model.                               |
+| [`SVTRNeck`](../../nodes/README.md#svtrneck)                                  | `"ocr_recognition/SVTRNeck"`      | Neck component to refine features from the backbone.                 |
+| [`OCRCTCHead`](../../nodes/README.md#ocrctchead)                              | `"ocr_recognition/OCRCTCHead"`    | Head of the model for text recognition with CTC decoding.            |
+| [`CTCLoss`](../../attached_modules/losses/README.md#ctcloss)                  | `"ocr_recognition/CTCLoss"`       | Loss function for sequence learning in OCR recognition tasks.        |
+| [`OCRAccuracy`](../../attached_modules/metrics/README.md#ocraccuracy)         | `"ocr_recognition/OCRAccuracy"`   | Metric to evaluate the accuracy of text recognition.                 |
+| [`OCRVisualizer`](../../attached_modules/visualizers/README.md#ocrvisualizer) | `"ocr_recognition/OCRVisualizer"` | Visualizer to display the predicted text alongside the input images. |
+
+**Parameters:**
+
+| Key                 | Type          | Default value | Description                               |
+| ------------------- | ------------- | ------------- | ----------------------------------------- |
+| `backbone`          | `str`         | `"SVTRNeck"`  | Name of the node to be used as a backbone |
+| `backbone_params`   | `dict`        | `{}`          | Additional parameters for the backbone    |
+| `neck_params`       | `dict`        | `{}`          | Additional parameters for the neck        |
+| `head_params`       | `dict`        | `{}`          | Additional parameters for the head        |
+| `loss_params`       | `dict`        | `{}`          | Additional parameters for the loss        |
+| `visualizer_params` | `dict`        | `{}`          | Additional parameters for the visualizer  |
+| `task_name`         | `str \| None` | `None`        | Custom task name for the head             |

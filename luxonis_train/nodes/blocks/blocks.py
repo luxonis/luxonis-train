@@ -86,7 +86,7 @@ class ConvModule(nn.Sequential):
         self,
         in_channels: int,
         out_channels: int,
-        kernel_size: int,
+        kernel_size: int | tuple[int, int],
         stride: int = 1,
         padding: int = 0,
         dilation: int = 1,

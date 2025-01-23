@@ -17,8 +17,10 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`ContextSpatial`](#contextspatial)
   - [`DDRNet`](#ddrnet)
   - [`RecSubNet`](#recsubnet)
+  - [`PPLCNetV3`](#pplcnetv3)
 - [Necks](#necks)
   - [`RepPANNeck`](#reppanneck)
+  - [`SVTRNeck`](#svtrneck)
 - [Heads](#heads)
   - [`ClassificationHead`](#classificationhead)
   - [`SegmentationHead`](#segmentationhead)
@@ -28,6 +30,7 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`DDRNetSegmentationHead`](#ddrnetsegmentationhead)
   - [`DiscSubNetHead`](#discsubnet)
   - [`FOMOHead`](#fomohead)
+  - [`OCRCTCHead`](#ocrctchead)
     Every node takes these parameters:
 
 | Key                | Type          | Default value | Description                                                                 |
@@ -160,6 +163,18 @@ Adapted from [here](https://github.com/ydhongHIT/DDRNet)
 | `variant`          | `Literal["23-slim", "23"]` | `"23-slim"`   | Variant of the network                                                  |
 | `download_weights` | `bool`                     | `True`        | If True download weights from COCO (if available for specified variant) |
 
+### `PPLCNetV3`
+
+Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
+**Parameters:**
+
+| Key            | Type    | Default value | Description                    |
+| -------------- | ------- | ------------- | ------------------------------ |
+| `scale`        | `float` | `0.95`        | Scale factor for the model     |
+| `conv_kxk_num` | `int`   | `4`           | Number of convolutional layers |
+| `det`          | `bool`  | `False`       | Whether to use for detection   |
+| `max_text_len` | `int`   | `40`          | Maximum length of the text     |
+
 ### `RecSubNet`
 
 Adapted from [here](https://arxiv.org/abs/2108.07610)
@@ -189,6 +204,10 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 | `csp_e`              | `float`                                                           | `0.5`                            | Factor for intermediate channels when block is set to `"CSPStackRepBlock"`      |
 | `download_weights`   | `bool`                                                            | `False`                          | If True download weights from COCO (if available for specified variant)         |
 | `initialize_weights` | `bool`                                                            | `True`                           | If True, initialize weights.                                                    |
+
+### `SVTRNeck`
+
+Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 
 ## Heads
 
@@ -272,3 +291,16 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 | ----------------- | ----- | ------------- | ------------------------------------------------------- |
 | `num_conv_layers` | `int` | `3`           | Number of convolutional layers to use in the model.     |
 | `conv_channels`   | `int` | `16`          | Number of output channels for each convolutional layer. |
+
+### `OCRCTCHead`
+
+Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
+**Parameters:**
+
+| Key              | Type    | Default value | Description                           |
+| ---------------- | ------- | ------------- | ------------------------------------- |
+| `alphabet`       | `list`  | `None`        | List of characters.                   |
+| `ignore_unknown` | `bool`  | `True`        | Whether to ignore unknown characters. |
+| `fc_decay`       | `float` | `0.0004`      | L2 regularization factor.             |
+| `mid_channels`   | `int`   | `None`        | Number of middle channels.            |
+| `return_feats`   | `bool`  | `False`       | Whether to return features.           |
