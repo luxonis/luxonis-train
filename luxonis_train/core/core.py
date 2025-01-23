@@ -240,15 +240,15 @@ class LuxonisModel:
             self.tracker._finalize(status)
 
     def train(
-        self, new_thread: bool = False, resume_checkpoint: str | None = None
+        self, new_thread: bool = False, resume_weights: str | None = None
     ) -> None:
         """Runs training.
 
         @type new_thread: bool
         @param new_thread: Runs training in new thread if set to True.
-        @type resume_checkpoint: str | None
-        @param resume_checkpoint: Path to the checkpoint from which to
-            to resume the training.
+        @type resume_weights: str | None
+        @param resume_weights: Path to the checkpoint from which to to
+            resume the training.
         """
 
         if self.cfg.trainer.matmul_precision is not None:
@@ -259,11 +259,9 @@ class LuxonisModel:
                 self.cfg.trainer.matmul_precision
             )
 
-        if resume_checkpoint is not None:
-            resume_checkpoint = str(
-                LuxonisFileSystem.download(
-                    resume_checkpoint, self.run_save_dir
-                )
+        if resume_weights is not None:
+            resume_weights = str(
+                LuxonisFileSystem.download(resume_weights, self.run_save_dir)
             )
 
         def graceful_exit(signum: int, _):  # pragma: no cover
@@ -283,14 +281,14 @@ class LuxonisModel:
         if not new_thread:
             logger.info(f"Checkpoints will be saved in: {self.run_save_dir}")
             if self.cfg.trainer.resume_training:
-                if resume_checkpoint is not None:
+                if resume_weights is not None:
                     logger.warning(
                         "Resume weights provided in the command line, but resume_training in config is set to True. Ignoring resume weights provided in the command line."
                     )
-                resume_checkpoint = self.cfg.model.weights  # type: ignore
+                resume_weights = self.cfg.model.weights  # type: ignore
             logger.info("Starting training...")
             self._train(
-                resume_checkpoint,
+                resume_weights,
                 self.lightning_module,
                 self.pytorch_loaders["train"],
                 self.pytorch_loaders["val"],
@@ -308,7 +306,7 @@ class LuxonisModel:
             self.thread = threading.Thread(
                 target=self._train,
                 args=(
-                    resume_checkpoint,
+                    resume_weights,
                     self.lightning_module,
                     self.pytorch_loaders["train"],
                     self.pytorch_loaders["val"],
