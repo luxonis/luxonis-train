@@ -21,6 +21,9 @@ trainer:
     keep_aspect_ratio: true
     normalize:
       active: true
+      params:
+        mean: [0., 0., 0.]
+        std: [1, 1, 1]
 
   batch_size: 8
   epochs: &epochs 300

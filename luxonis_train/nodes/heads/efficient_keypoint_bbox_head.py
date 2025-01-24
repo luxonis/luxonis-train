@@ -100,7 +100,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         (
             _,
             self.anchor_points,
-            _,
+            self.n_anchors_list,
             self.stride_tensor,
         ) = anchors_for_fpn_features(
             features,
@@ -126,14 +126,16 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         if self.export:
             det_outputs: list[Tensor] = []
             kpt_outputs: list[Tensor] = []
-            for out_cls, out_reg, out_kpt in zip(
-                cls_score_list, reg_distri_list, kpt_list, strict=True
+            for i, (out_cls, out_reg, out_kpt) in enumerate(
+                zip(cls_score_list, reg_distri_list, kpt_list, strict=True)
             ):
                 conf, _ = out_cls.max(1, keepdim=True)
                 out = torch.cat([out_reg, conf, out_cls], dim=1)
                 det_outputs.append(out)
-                kpt_outputs.append(out_kpt)
-            return {"boundingbox": det_outputs, "keypoints": kpt_list}
+                kpt_outputs.append(
+                    self._dist2kpts(out_kpt.view(bs, self.nk, -1), bs, i)
+                )
+            return {"boundingbox": det_outputs, "keypoints": kpt_outputs}
 
         cls_tensor = torch.cat(
             [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))],
@@ -161,8 +163,13 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
                 "distributions": [reg_tensor],
                 "keypoints_raw": [kpt_tensor],
             }
-
-        pred_kpt = self._dist2kpts(kpt_tensor)
+        pred_kpt = torch.cat(
+            [
+                self._dist2kpts(kpt_list[i].view(bs, self.nk, -1), bs, i)
+                for i in range(len(kpt_list))
+            ],
+            dim=2,
+        ).permute(0, 2, 1)
         detections = self._process_to_bbox_and_kps(
             (features, cls_tensor, reg_tensor, pred_kpt)
         )
@@ -178,26 +185,18 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             "keypoints_raw": [kpt_tensor],
         }
 
-    def _dist2kpts(self, kpts: Tensor) -> Tensor:
+    def _dist2kpts(self, kpts: Tensor, batch_size: int, index: int) -> Tensor:
         """Decodes keypoints."""
-        y = kpts.clone()
-
-        anchor_points_transposed = self.anchor_points.transpose(0, 1)
-        stride_tensor = self.stride_tensor.squeeze(-1)
-
-        stride_tensor = stride_tensor.view(1, -1, 1)
-        anchor_points_x = anchor_points_transposed[0].view(1, -1, 1)
-        anchor_points_y = anchor_points_transposed[1].view(1, -1, 1)
-
-        y[:, :, 0::3] = (
-            y[:, :, 0::3] * 2.0 + (anchor_points_x - 0.5)
-        ) * stride_tensor
-        y[:, :, 1::3] = (
-            y[:, :, 1::3] * 2.0 + (anchor_points_y - 0.5)
-        ) * stride_tensor
-        y[:, :, 2::3] = y[:, :, 2::3].sigmoid()
-
-        return y
+        anchors = self.anchor_points.split(self.n_anchors_list, dim=0)
+        kpt_predictions = kpts.view(batch_size, self.n_keypoints, 3, -1)
+        grid_coords = (
+            kpt_predictions[:, :, :2] * 2.0
+            + (anchors[index].transpose(1, 0) - 0.5)
+        ) * self.stride[index]
+        decoded_kpts = torch.cat(
+            (grid_coords, kpt_predictions[:, :, 2:3].sigmoid()), 2
+        )
+        return decoded_kpts.view(batch_size, self.nk, -1)
 
     def _process_to_bbox_and_kps(
         self, output: tuple[list[Tensor], Tensor, Tensor, Tensor]

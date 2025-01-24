@@ -99,7 +99,7 @@ Keypoint Similarity Loss](https://arxiv.org/ftp/arxiv/papers/2204/2204.06806.pdf
 | `class_loss_weight`     | `float`                                           | `1.0`         | Weight used for the classification sub-loss                                                                   |
 | `iou_loss_weight`       | `float`                                           | `2.5`         | Weight used for the `IoU` sub-loss                                                                            |
 | `regr_kpts_loss_weight` | `float`                                           | `1.5`         | Weight used for the `OKS` sub-loss                                                                            |
-| `vis_kpts_loss_weight`  | `float`                                           | `1.0`         | Weight used for the keypoint visibility sub-loss                                                              |
+| `vis_kpts_loss_weight`  | `float`                                           | `2.0`         | Weight used for the keypoint visibility sub-loss                                                              |
 | `sigmas`                | `list[float] \ None`                              | `None`        | Sigmas used in `KeypointLoss` for `OKS` metric. If `None` then use COCO ones if possible or default ones      |
 | `area_factor`           | `float \| None`                                   | `None`        | Factor by which we multiply bounding box area which is used in `KeypointLoss.` If `None` then use default one |
 
