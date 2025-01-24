@@ -26,6 +26,8 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
     in_channels: int
     tasks: list[TaskType] = [TaskType.CLASSIFICATION]
 
+    parser: str = "ClassificationSequenceParser"
+
     def __init__(
         self,
         alphabet: list,
@@ -109,6 +111,21 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
             return F.softmax(predicts, dim=-1)
 
         return result
+
+    def get_custom_head_config(self) -> dict:
+        """Returns custom head configuration.
+
+        @rtype: dict
+        @return: Custom head configuration.
+        """
+        return {
+            "classes": self.encoder.alphabet,
+            "n_classes": self.encoder.num_classes,
+            "is_softmax": True,
+            "concatenate_classes": True,
+            "ignored_indexes": [0],
+            "remove_duplicates": True,
+        }
 
     @property
     def encoder(self) -> OCREncoder:

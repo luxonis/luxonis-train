@@ -60,7 +60,6 @@ class OCRDecoder:
             self.ignored_tokens = [0]
 
         self.int_to_char = {v: k for k, v in char_to_int.items()}
-        self.ignored_tokens = ignored_tokens
         self.is_remove_duplicate = is_remove_duplicate
 
     def decode(self, preds: Tensor) -> list[tuple[str, float]]:
@@ -120,12 +119,12 @@ class OCREncoder:
             Defaults to True.
         """
 
-        self.alphabet = np.unique(alphabet)
-        self.char_to_int = {char: i + 1 for i, char in enumerate(alphabet)}
-        self.char_to_int[""] = 0
+        self._alphabet = [""] + list(np.unique(alphabet))
+        self.char_to_int = {char: i for i, char in enumerate(alphabet)}
 
         self.ignore_unknown = ignore_unknown
         if not self.ignore_unknown:
+            self._alphabet.append("<UNK>")
             self.char_to_int["<UNK>"] = len(self.char_to_int)
 
     def encode(self, targets: Tensor) -> Tensor:
@@ -159,3 +158,11 @@ class OCREncoder:
 
     def __call__(self, targets: Tensor) -> Tensor:
         return self.encode(targets)
+
+    @property
+    def alphabet(self) -> list[str]:
+        return self._alphabet
+
+    @property
+    def num_classes(self) -> int:
+        return len(self._alphabet)
