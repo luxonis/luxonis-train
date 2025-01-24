@@ -260,10 +260,14 @@ class BaseLoaderTorch(
         @rtype: dict[str, torch.Tensor]
         @return: Dictionary of torch tensors.
         """
-        return {
-            task: torch.tensor(array).float()
-            for task, array in numpy_dictionary.items()
-        }
+        torch_dictionary = {}
+
+        for task, array in numpy_dictionary.items():
+            if array.dtype.kind in "U":
+                array = np.array([ord(c) for c in array[0]], dtype=np.int32)
+            torch_dictionary[task] = torch.tensor(array, dtype=torch.float32)
+
+        return torch_dictionary
 
     def read_image(self, path: str) -> npt.NDArray[np.float32]:
         """Reads an image from a file.

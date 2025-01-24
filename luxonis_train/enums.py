@@ -14,6 +14,7 @@ class TaskType(str, Enum):
 
 @dataclass
 class Metadata:
+    # typ: type[float] | type[int] | type[str] | type[Category]
     name: str
 
     @property
@@ -28,11 +29,3 @@ class Metadata:
 
 
 Task: TypeAlias = TaskType | Metadata
-# class TaskType:
-#
-#     CLASSIFICATION = SimpleTask.CLASSIFICATION
-#     SEGMENTATION = SimpleTask.SEGMENTATION
-#     INSTANCE_SEGMENTATION = SimpleTask.INSTANCE_SEGMENTATION
-#     BOUNDINGBOX = SimpleTask.BOUNDINGBOX
-#     KEYPOINTS = SimpleTask.KEYPOINTS
-#     ARRAY = SimpleTask.ARRAY

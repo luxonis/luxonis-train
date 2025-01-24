@@ -67,6 +67,7 @@ class ModelNodeConfig(BaseModelExtraForbid):
     freezing: FreezingConfig = FreezingConfig()
     remove_on_export: bool = False
     task_name: str = ""
+    metadata_task_override: str | dict[str, str] | None = None
     params: Params = {}
 
 
