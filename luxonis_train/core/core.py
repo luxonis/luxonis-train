@@ -294,6 +294,7 @@ class LuxonisModel:
         self,
         onnx_save_path: str | Path | None = None,
         weights: str | Path | None = None,
+        ignore_missing_weights: bool = False,
     ) -> None:
         """Runs export.
 
@@ -307,12 +308,15 @@ class LuxonisModel:
             configuration file will be used. The current weights of the
             model will be temporarily replaced with the weights from the
             specified checkpoint.
+        @type ignore_missing_weights: bool
+        @param ignore_missing_weights: If set to True, the warning about
+            missing weights will be suppressed.
         @raises RuntimeError: If C{onnxsim} fails to simplify the model.
         """
 
         weights = weights or self.cfg.model.weights
 
-        if weights is None:
+        if not ignore_missing_weights and weights is None:
             logger.warning(
                 "No model weights specified. Exporting model without weights."
             )
@@ -699,7 +703,7 @@ class LuxonisModel:
             logger.warning("No model executable specified for archiving.")
             if "onnx" not in self._exported_models:
                 logger.info("Exporting model to ONNX...")
-                self.export()
+                self.export(ignore_missing_weights=True)
             path = self._exported_models["onnx"]
 
         path = Path(path)
