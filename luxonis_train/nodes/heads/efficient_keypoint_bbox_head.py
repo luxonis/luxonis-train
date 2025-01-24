@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Literal
 
 import torch
@@ -13,6 +14,8 @@ from luxonis_train.utils import (
 )
 
 from .efficient_bbox_head import EfficientBBoxHead
+
+logger = logging.getLogger(__name__)
 
 
 class EfficientKeypointBBoxHead(EfficientBBoxHead):
@@ -67,6 +70,28 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
 
         self._export_output_names = None
 
+        self.check_export_output_names()
+
+    def check_export_output_names(self):
+        if (
+            self.export_output_names is None
+            or len(self.export_output_names) != self.n_heads
+        ):
+            if (
+                self.export_output_names is not None
+                and len(self.export_output_names) != self.n_heads
+            ):
+                logger.warning(
+                    f"Number of provided output names ({len(self.export_output_names)}) "
+                    f"does not match number of heads ({self.n_heads}). "
+                    f"Using default names."
+                )
+            self._export_output_names = [
+                f"output{i + 1}_yolov6" for i in range(self.n_heads)
+            ] + [
+                f"kpt_output{i + 1}" for i in range(self.n_heads)
+            ]  # export names are applied on sorter output names
+
     def forward(
         self, inputs: list[Tensor]
     ) -> tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]]:
@@ -99,22 +124,16 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         features, cls_score_list, reg_distri_list, kpt_list = output
         bs = features[0].shape[0]
         if self.export:
-            outputs: list[Tensor] = []
-            for out_cls, out_reg, out_kpts in zip(
+            det_outputs: list[Tensor] = []
+            kpt_outputs: list[Tensor] = []
+            for out_cls, out_reg, out_kpt in zip(
                 cls_score_list, reg_distri_list, kpt_list, strict=True
             ):
-                chunks = torch.split(out_kpts, 3, dim=1)
-                modified_chunks: list[Tensor] = []
-                for chunk in chunks:
-                    x = chunk[:, 0:1, :, :]
-                    y = chunk[:, 1:2, :, :]
-                    v = torch.sigmoid(chunk[:, 2:3, :, :])
-                    modified_chunk = torch.cat([x, y, v], dim=1)
-                    modified_chunks.append(modified_chunk)
-                out_kpts_modified = torch.cat(modified_chunks, dim=1)
-                out = torch.cat([out_reg, out_cls, out_kpts_modified], dim=1)
-                outputs.append(out)
-            return {"outputs": outputs}
+                conf, _ = out_cls.max(1, keepdim=True)
+                out = torch.cat([out_reg, conf, out_cls], dim=1)
+                det_outputs.append(out)
+                kpt_outputs.append(out_kpt)
+            return {"boundingbox": det_outputs, "keypoints": kpt_list}
 
         cls_tensor = torch.cat(
             [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))],
