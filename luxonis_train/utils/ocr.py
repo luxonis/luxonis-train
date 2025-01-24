@@ -120,7 +120,7 @@ class OCREncoder:
         """
 
         self._alphabet = [""] + list(np.unique(alphabet))
-        self.char_to_int = {char: i for i, char in enumerate(alphabet)}
+        self.char_to_int = {char: i for i, char in enumerate(self._alphabet)}
 
         self.ignore_unknown = ignore_unknown
         if not self.ignore_unknown:
