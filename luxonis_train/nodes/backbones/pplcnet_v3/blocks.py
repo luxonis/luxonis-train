@@ -81,7 +81,6 @@ class LearnableRepLayer(nn.Module):
                     stride=self.stride,
                     padding=(kernel_size - 1) // 2,
                     groups=groups,
-                    bias=True,
                     activation=nn.Identity(),
                 )
                 for _ in range(self.num_conv_branches)
@@ -95,7 +94,6 @@ class LearnableRepLayer(nn.Module):
                 1,
                 self.stride,
                 groups=groups,
-                bias=True,
                 activation=nn.Identity(),
             )
             if kernel_size > 1
@@ -153,8 +151,8 @@ class LearnableRepLayer(nn.Module):
     def _pad_kernel_1x1_to_kxk(
         self, kernel1x1: Tensor | None, pad: int
     ) -> Tensor | int:
-        if not isinstance(kernel1x1, Tensor):
-            return 0
+        if kernel1x1 is None or torch.equal(kernel1x1, torch.tensor(0)):
+            return torch.tensor(0)
         else:
             return nn.functional.pad(kernel1x1, [pad, pad, pad, pad])
 
@@ -186,9 +184,9 @@ class LearnableRepLayer(nn.Module):
 
     def _fuse_bn_tensor(
         self, branch: nn.Module | None, device: torch.device
-    ) -> tuple[Tensor, Tensor] | tuple[int, int]:
-        if not branch:
-            return 0, 0
+    ) -> tuple[Tensor, Tensor]:
+        if branch is None:
+            return torch.tensor(0), torch.tensor(0)
         elif isinstance(branch, ConvModule):
             kernel = branch[0].weight
             running_mean = branch[1].running_mean
