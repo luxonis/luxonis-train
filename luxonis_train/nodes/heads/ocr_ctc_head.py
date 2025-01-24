@@ -67,8 +67,7 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
         self._encoder = OCREncoder(alphabet, ignore_unknown)
         self._decoder = OCRDecoder(self.encoder.char_to_int)
 
-        self.out_channels = len(self.encoder.char_to_int)
-
+        self.out_channels = self._encoder.num_classes
         if mid_channels is None:
             weight_attr, bias_attr = get_para_bias_attr(
                 fc_decay, self.in_channels
@@ -92,6 +91,8 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
             bias_attr2(self.fc2.bias)
 
         self.mid_channels = mid_channels
+
+        self._export_output_names = ["output_ocr_ctc"]
 
     def forward(self, x: Tensor) -> Tensor | tuple[Tensor, Tensor]:
         x = x.squeeze(2).permute(0, 2, 1)
