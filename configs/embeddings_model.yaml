@@ -1,0 +1,47 @@
+loader:
+  name: CustomReIDLoader
+
+model:
+  name: reid_test
+  nodes:
+    - name: GhostFaceNetV2
+
+    - name: GhostFaceNetHead
+      alias: color-embeddings
+      metadata_task_override: color
+      params:
+        embedding_size: 16
+
+      losses:
+        - name: SupConLoss
+          params:
+            miner: MultiSimilarityMiner
+            distance: CosineSimilarity
+            reducer: ThresholdReducer
+            reducer_params:
+              high: 0.3
+            regularizer: LpRegularizer
+
+      metrics:
+        - name: ClosestIsPositiveAccuracy
+
+        - name: MedianDistances
+
+      visualizers:
+        - name: EmbeddingsVisualizer
+
+loader:
+  params:
+    dataset_name: ParkingLot
+
+trainer:
+  preprocessing:
+    train_image_size: [256, 256]
+
+  batch_size: 16
+  epochs: 100
+  validation_interval: 10
+  n_log_images: 8
+
+  callbacks:
+    - name: ExportOnTrainEnd
