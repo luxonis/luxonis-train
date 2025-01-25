@@ -191,19 +191,13 @@ class LuxonisLightningModule(pl.LightningModule):
                         f"Node {node_name} does not have the `task_name` parameter set. "
                         "Please specify the `task_name` parameter for each head node. "
                     )
-            # if node_cfg.metadata_task_name is not None:
-            #     if Node.tasks is None:
-            #         raise ValueError(
-            #             f"`metadata_task_name` is set for node {node_name}, "
-            #             "but the node does not define any tasks."
-            #         )
-
             nodes[node_name] = (
                 Node,
                 {
                     **node_cfg.params,
                     "task_name": node_cfg.task_name,
                     "remove_on_export": node_cfg.remove_on_export,
+                    "metadata_task_override": node_cfg.metadata_task_override,
                 },
             )
 

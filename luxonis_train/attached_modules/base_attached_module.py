@@ -65,7 +65,17 @@ class BaseAttachedModule(
         self._epoch = 0
 
         self.required_labels: list[Task] = []
-        if self._node and self.supported_tasks:
+        if self._node is not None and self.supported_tasks:
+            for tasks in self.supported_tasks:
+                if not isinstance(tasks, tuple):
+                    tasks = (tasks,)
+                for task in tasks:
+                    if isinstance(task, TaskType):
+                        continue
+                    task.name = self.node.metadata_task_override.get(
+                        task.name, task.name
+                    )
+
             module_supported = [
                 label.value
                 if isinstance(label, Task)

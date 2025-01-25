@@ -12,9 +12,8 @@ class TaskType(str, Enum):
     ARRAY = "array"
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class Metadata:
-    # typ: type[float] | type[int] | type[str] | type[Category]
     name: str
 
     @property
@@ -23,9 +22,6 @@ class Metadata:
 
     def __str__(self) -> str:
         return self.value
-
-    def __hash__(self) -> int:
-        return hash(self.name)
 
 
 Task: TypeAlias = TaskType | Metadata
