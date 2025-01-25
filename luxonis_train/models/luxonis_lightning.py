@@ -594,9 +594,17 @@ class LuxonisLightningModule(pl.LightningModule):
                         idx += 1
         else:
             output_names = []
+            running_i = {}  # for case where export_output_names should be used but output node's output is split into multiple subnodes
             for node_name, output_name, i in output_order:
                 if node_name in export_output_names_dict:
-                    output_names.append(export_output_names_dict[node_name][i])
+                    running_i[node_name] = (
+                        running_i.get(node_name, -1) + 1
+                    )  # if not present default to 0 otherwise add 1
+                    output_names.append(
+                        export_output_names_dict[node_name][
+                            running_i[node_name]
+                        ]
+                    )
                 else:
                     output_names.append(f"{node_name}/{output_name}/{i}")
 

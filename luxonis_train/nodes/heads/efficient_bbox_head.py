@@ -82,27 +82,13 @@ class EfficientBBoxHead(
                 in_channels=self.in_channels[i],
             )
             self.heads.append(curr_head)
-        if (
-            self.export_output_names is None
-            or len(self.export_output_names) != self.n_heads
-        ):
-            if (
-                self.export_output_names is not None
-                and len(self.export_output_names) != self.n_heads
-            ):
-                logger.warning(
-                    f"Number of provided output names ({len(self.export_output_names)}) "
-                    f"does not match number of heads ({self.n_heads}). "
-                    f"Using default names."
-                )
-            self._export_output_names = [
-                f"output{i+1}_yolov6r2" for i in range(self.n_heads)
-            ]
 
         if initialize_weights:
             self.initialize_weights()
 
-        if download_weights:
+        if (
+            download_weights and self.name == "EfficientBBoxHead"
+        ):  # skip download on classes that inherit this one
             weights_path = self.get_variant_weights(initialize_weights)
             if weights_path:
                 self.load_checkpoint(path=weights_path, strict=False)
@@ -110,6 +96,8 @@ class EfficientBBoxHead(
                 logger.warning(
                     f"No checkpoint available for {self.name}, skipping."
                 )
+
+        self.check_export_output_names()
 
     def initialize_weights(self) -> None:
         for m in self.modules():
@@ -141,6 +129,24 @@ class EfficientBBoxHead(
                 return None
         else:
             return None
+
+    def check_export_output_names(self):
+        if (
+            self.export_output_names is None
+            or len(self.export_output_names) != self.n_heads
+        ):
+            if (
+                self.export_output_names is not None
+                and len(self.export_output_names) != self.n_heads
+            ):
+                logger.warning(
+                    f"Number of provided output names ({len(self.export_output_names)}) "
+                    f"does not match number of heads ({self.n_heads}). "
+                    f"Using default names."
+                )
+            self._export_output_names = [
+                f"output{i + 1}_yolov6r2" for i in range(self.n_heads)
+            ]
 
     def forward(
         self, inputs: list[Tensor]

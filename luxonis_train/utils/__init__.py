@@ -1,5 +1,6 @@
 from .boundingbox import (
     anchors_for_fpn_features,
+    apply_bounding_box_to_masks,
     bbox2dist,
     bbox_iou,
     compute_iou_loss,
@@ -44,4 +45,5 @@ __all__ = [
     "traverse_graph",
     "insert_class",
     "get_attribute_check_none",
+    "apply_bounding_box_to_masks",
 ]

@@ -38,7 +38,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         iou_loss_weight: float = 7.5,
         viz_pw: float = 1.0,
         regr_kpts_loss_weight: float = 12,
-        vis_kpts_loss_weight: float = 1.0,
+        vis_kpts_loss_weight: float = 2.0,
         sigmas: list[float] | None = None,
         area_factor: float | None = None,
         **kwargs: Any,
@@ -57,11 +57,11 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         @type class_loss_weight: float
         @param class_loss_weight: Weight of classification loss for bounding boxes.
         @type regr_kpts_loss_weight: float
-        @param regr_kpts_loss_weight: Weight of regression loss for keypoints.
+        @param regr_kpts_loss_weight: Weight of regression loss for keypoints. Defaults to 12.0. For optimal results, multiply with accumulate_grad_batches.
         @type vis_kpts_loss_weight: float
-        @param vis_kpts_loss_weight: Weight of visibility loss for keypoints.
+        @param vis_kpts_loss_weight: Weight of visibility loss for keypoints. Defaults to 2.0. For optimal results, multiply with accumulate_grad_batches.
         @type iou_loss_weight: float
-        @param iou_loss_weight: Weight of IoU loss.
+        @param iou_loss_weight: Weight of IoU loss. Defaults to 2.5. For optimal results, multiply with accumulate_grad_batches.
         @type sigmas: list[float] | None
         @param sigmas: Sigmas used in keypoint loss for OKS metric. If None then use COCO ones if possible or default ones. Defaults to C{None}.
         @type area_factor: float | None
@@ -188,6 +188,11 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         pred_kpts: Tensor,
         area: Tensor,
     ) -> tuple[Tensor, dict[str, Tensor]]:
+        assigned_labels = torch.where(
+            mask_positive > 0,
+            assigned_labels,
+            torch.full_like(assigned_labels, self.n_classes),
+        )
         device = pred_bboxes.device
         sigmas = self.sigmas.to(device)
         d = (gt_kpts[..., 0] - pred_kpts[..., 0]).pow(2) + (
