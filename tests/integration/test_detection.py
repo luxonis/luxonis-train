@@ -4,6 +4,7 @@ import pytest
 from luxonis_ml.data import LuxonisDataset
 
 from luxonis_train.core import LuxonisModel
+from luxonis_train.nodes.backbones import __all__ as BACKBONES
 
 
 def get_opts_backbone(backbone: str) -> dict[str, Any]:
@@ -101,6 +102,7 @@ def train_and_test(
                 assert value > 0.8, f"{name} = {value} (expected > 0.8)"
 
 
+@pytest.mark.parametrize("backbone", BACKBONES)
 def test_backbones(
     backbone: str,
     config: dict[str, Any],
