@@ -5,7 +5,6 @@ from collections.abc import Callable
 import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
-from scipy.stats import zscore
 from sklearn.decomposition import PCA
 from torch import Tensor
 
@@ -24,6 +23,7 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
     def __init__(
         self,
         accumulate_n_batches: int = 2,
+        z_score_threshold: float = 3,
         **kwargs,
     ):
         """Visualizer for embedding tasks like reID.
@@ -37,6 +37,7 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
         # self.memory_size = accumulate_n_batches
         self.color_dict = {}
         self.gen = self._distinct_color_generator()
+        self.z_score_threshold = z_score_threshold
 
     def forward(
         self,
@@ -74,64 +75,12 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
 
         pca = PCA(n_components=2)
         embeddings_2d = pca.fit_transform(embeddings_np)
+        embeddings_2d, ids_np = self._filter_outliers(embeddings_2d, ids_np)
 
-        z = np.abs(zscore(embeddings_2d))
-        mask = (z < 3).all(axis=1)
-        embeddings_2d = embeddings_2d[mask]
-        ids_np = ids_np[mask]
-
-        def plot_to_tensor(
-            embeddings_2d: np.ndarray,
-            ids_np: np.ndarray,
-            plot_func: Callable[[plt.Axes, np.ndarray, np.ndarray], None],
-        ) -> Tensor:
-            fig, ax = plt.subplots(figsize=(10, 10))
-            ax.set_xlim(embeddings_2d[:, 0].min(), embeddings_2d[:, 0].max())
-            ax.set_ylim(embeddings_2d[:, 1].min(), embeddings_2d[:, 1].max())
-
-            plot_func(ax, embeddings_2d, ids_np)
-            ax.axis("off")
-
-            tensor_image = figure_to_torch(
-                fig, width=512, height=512
-            ).unsqueeze(0)
-            plt.close(fig)
-            return tensor_image
-
-        def kde_plot(
-            ax: plt.Axes, emb: np.ndarray, labels: np.ndarray
-        ) -> None:
-            for label in np.unique(labels):
-                subset = emb[labels == label]
-                color = self._get_color(label)
-                sns.kdeplot(
-                    x=subset[:, 0],
-                    y=subset[:, 1],
-                    color=color,
-                    alpha=0.9,
-                    fill=True,
-                    warn_singular=False,
-                    ax=ax,
-                )
-
-        def scatter_plot(
-            ax: plt.Axes, emb: np.ndarray, labels: np.ndarray
-        ) -> None:
-            unique_labels = np.unique(labels)
-            palette = {lbl: self._get_color(lbl) for lbl in unique_labels}
-            sns.scatterplot(
-                x=emb[:, 0],
-                y=emb[:, 1],
-                hue=labels,
-                palette=palette,
-                alpha=0.9,
-                s=300,
-                legend=False,
-                ax=ax,
-            )
-
-        kdeplot = plot_to_tensor(embeddings_2d, ids_np, kde_plot)
-        scatterplot = plot_to_tensor(embeddings_2d, ids_np, scatter_plot)
+        kdeplot = self.plot_to_tensor(embeddings_2d, ids_np, self.kde_plot)
+        scatterplot = self.plot_to_tensor(
+            embeddings_2d, ids_np, self.scatter_plot
+        )
 
         return kdeplot, scatterplot
 
@@ -149,3 +98,64 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
             saturation = 0.8
             value = 0.95
             yield colorsys.hsv_to_rgb(hue, saturation, value)
+
+    def _filter_outliers(
+        self, points: np.ndarray, ids: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
+        mean = np.mean(points, axis=0)
+        std_dev = np.std(points, axis=0)
+        z_scores = (points - mean) / std_dev
+
+        mask = (np.abs(z_scores) < self.z_score_threshold).all(axis=1)
+        logger.info(f"Filtered out {len(points) - mask.sum()} outliers")
+        return points[mask], ids[mask]
+
+    @staticmethod
+    def plot_to_tensor(
+        embeddings_2d: np.ndarray,
+        ids_np: np.ndarray,
+        plot_func: Callable[[plt.Axes, np.ndarray, np.ndarray], None],
+    ) -> Tensor:
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.set_xlim(embeddings_2d[:, 0].min(), embeddings_2d[:, 0].max())
+        ax.set_ylim(embeddings_2d[:, 1].min(), embeddings_2d[:, 1].max())
+
+        plot_func(ax, embeddings_2d, ids_np)
+        ax.axis("off")
+
+        tensor_image = figure_to_torch(fig, width=512, height=512).unsqueeze(0)
+        plt.close(fig)
+        return tensor_image
+
+    def kde_plot(
+        self, ax: plt.Axes, emb: np.ndarray, labels: np.ndarray
+    ) -> None:
+        for label in np.unique(labels):
+            subset = emb[labels == label]
+            color = self._get_color(label)
+            sns.kdeplot(
+                x=subset[:, 0],
+                y=subset[:, 1],
+                color=color,
+                alpha=0.9,
+                bw_adjust=1.5,
+                fill=True,
+                warn_singular=False,
+                ax=ax,
+            )
+
+    def scatter_plot(
+        self, ax: plt.Axes, emb: np.ndarray, labels: np.ndarray
+    ) -> None:
+        unique_labels = np.unique(labels)
+        palette = {lbl: self._get_color(lbl) for lbl in unique_labels}
+        sns.scatterplot(
+            x=emb[:, 0],
+            y=emb[:, 1],
+            hue=labels,
+            palette=palette,
+            alpha=0.9,
+            s=300,
+            legend=False,
+            ax=ax,
+        )
