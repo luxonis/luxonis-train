@@ -1,18 +1,15 @@
-# Example configuration for training a predefined light keypoint-detection model
+# Example configuration for training a predefined heavy instance segmentation model
 
 model:
-  name: keypoint_detection_light
+  name: instance_segmentation_heavy
   predefined_model:
-    name: KeypointDetectionModel
+    name: InstanceSegmentationModel
     params:
-      variant: light
+      variant: heavy
       loss_params:
-        iou_type: "siou"
-        n_warmup_epochs: 0 # No assigner warmup
-        iou_loss_weight: 60 # Should be 7.5 * accumulate_grad_batches for best results
+        bbox_loss_weight: 60 # Should be 7.5 * accumulate_grad_batches for best results
         class_loss_weight: 4 # Should be 0.5 * accumulate_grad_batches for best results
-        regr_kpts_loss_weight: 96 # Should be 12 * accumulate_grad_batches for best results
-        vis_kpts_loss_weight: 16 # Should be 2 * accumulate_grad_batches for best results
+        dfl_loss_weight: 12 # Should be 1.5 * accumulate_grad_batches for best results
 
 loader:
   params:
@@ -30,10 +27,10 @@ trainer:
 
   batch_size: 8
   epochs: &epochs 300
-  n_workers: 4
+  accumulate_grad_batches: 8 # For best results, always accumulate gradients to effectively use 64 batch size
+  n_workers: 8
   validation_interval: 10
   n_log_images: 8
-  accumulate_grad_batches: 8 # For best results, always accumulate gradients to effectively use 64 batch size
 
   callbacks:
     - name: EMACallback

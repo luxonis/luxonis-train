@@ -110,6 +110,7 @@ def test_backbones(
 ):
     opts = get_opts_backbone(backbone)
     opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
+    opts["trainer.epochs"] = 1
     train_and_test(config, opts)
 
 
@@ -121,4 +122,5 @@ def test_variants(
 ):
     opts = get_opts_variant(variant)
     opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
+    opts["trainer.epochs"] = 1
     train_and_test(config, opts)

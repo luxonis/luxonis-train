@@ -69,7 +69,7 @@ SourcePathType = Annotated[
 @app.command()
 def train(
     config: ConfigType = None,
-    resume: Annotated[
+    resume_weights: Annotated[
         str | None,
         typer.Option(help="Resume training from this checkpoint."),
     ] = None,
@@ -78,7 +78,7 @@ def train(
     """Start training."""
     from luxonis_train.core import LuxonisModel
 
-    LuxonisModel(config, opts).train(resume_weights=resume)
+    LuxonisModel(config, opts).train(resume_weights=resume_weights)
 
 
 @app.command()

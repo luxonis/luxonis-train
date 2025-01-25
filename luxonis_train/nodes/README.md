@@ -31,7 +31,10 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`DiscSubNetHead`](#discsubnet)
   - [`FOMOHead`](#fomohead)
   - [`GhostFaceNetHead`](#ghostfacenethead)
-    Every node takes these parameters:
+  - [`PrecisionBBoxHead`](#precisionbboxhead)
+  - [`PrecisionSegmentBBoxHead`](#precisionsegmentbboxhead)
+
+Every node takes these parameters:
 
 | Key                | Type          | Default value | Description                                                                 |
 | ------------------ | ------------- | ------------- | --------------------------------------------------------------------------- |
@@ -249,7 +252,7 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
 | Key                  | Type    | Default value | Description                                                           |
 | -------------------- | ------- | ------------- | --------------------------------------------------------------------- |
-| `n_heads`            | `bool`  | `3`           | Number of output heads                                                |
+| `n_heads`            | `int`   | `3`           | Number of output heads                                                |
 | `conf_thres`         | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation) |
 | `iou_thres`          | `float` | `0.45`        | `IoU` threshold for non-maxima-suppression (used for evaluation)      |
 | `max_det`            | `int`   | `300`         | Maximum number of detections retained after NMS                       |
@@ -308,3 +311,33 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 | Key              | Type  | Default value | Description                              |
 | ---------------- | ----- | ------------- | ---------------------------------------- |
 | `embedding_size` | `int` | `512`         | The size of the output embedding vector. |
+
+### `PrecisionBBoxHead`
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+**Parameters:**
+
+| Key          | Type    | Default value | Description                                                               |
+| ------------ | ------- | ------------- | ------------------------------------------------------------------------- |
+| `reg_max`    | `int`   | `16`          | Maximum number of regression channels                                     |
+| `n_heads`    | `int`   | `3`           | Number of output heads                                                    |
+| `conf_thres` | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation)     |
+| `iou_thres`  | `float` | `0.45`        | IoU threshold for non-maxima-suppression (used for evaluation)            |
+| `max_det`    | `int`   | `300`         | Max number of detections for non-maxima-suppression (used for evaluation) |
+
+### `PrecisionSegmentBBoxHead`
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+**Parameters:**
+
+| Key          | Type    | Default value | Description                                                                |
+| ------------ | ------- | ------------- | -------------------------------------------------------------------------- |
+| `reg_max`    | `int`   | `16`          | Maximum number of regression channels.                                     |
+| `n_heads`    | `int`   | `3`           | Number of output heads.                                                    |
+| `conf_thres` | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation).     |
+| `iou_thres`  | `float` | `0.45`        | IoU threshold for non-maxima-suppression (used for evaluation).            |
+| `max_det`    | `int`   | `300`         | Max number of detections for non-maxima-suppression (used for evaluation). |
+| `n_masks`    | `int`   | `32`          | Number of of output instance segmentation masks at the output.             |
+| `n_proto`    | `int`   | `256`         | Number of prototypes generated from the prototype generator.               |

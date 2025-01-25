@@ -261,6 +261,12 @@ class LuxonisModel:
 
         if not new_thread:
             logger.info(f"Checkpoints will be saved in: {self.run_save_dir}")
+            if self.cfg.trainer.resume_training:
+                if resume_weights is not None:
+                    logger.warning(
+                        "Resume weights provided in the command line, but resume_training in config is set to True. Ignoring resume weights provided in the command line."
+                    )
+                resume_weights = self.cfg.model.weights  # type: ignore
             logger.info("Starting training...")
             self._train(
                 resume_weights,

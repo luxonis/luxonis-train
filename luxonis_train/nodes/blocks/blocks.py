@@ -81,6 +81,85 @@ class EfficientDecoupledBlock(nn.Module):
             module.weight = nn.Parameter(w, requires_grad=True)
 
 
+class SegProto(nn.Module):
+    def __init__(self, in_ch, mid_ch=256, out_ch=32):
+        """Initializes the segmentation prototype generator.
+
+        @type in_ch: int
+        @param in_ch: Number of input channels.
+        @type mid_ch: int
+        @param mid_ch: Number of intermediate channels. Defaults to 256.
+        @type out_ch: int
+        @param out_ch: Number of output channels. Defaults to 32.
+        """
+        super().__init__()
+        self.conv1 = ConvModule(
+            in_channels=in_ch,
+            out_channels=mid_ch,
+            kernel_size=3,
+            stride=1,
+            padding=1,
+            activation=nn.SiLU(),
+        )
+        self.upsample = nn.ConvTranspose2d(
+            in_channels=mid_ch,
+            out_channels=mid_ch,
+            kernel_size=2,
+            stride=2,
+            bias=True,
+        )
+        self.conv2 = ConvModule(
+            in_channels=mid_ch,
+            out_channels=mid_ch,
+            kernel_size=3,
+            stride=1,
+            padding=1,
+            activation=nn.SiLU(),
+        )
+        self.conv3 = ConvModule(
+            in_channels=mid_ch,
+            out_channels=out_ch,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            activation=nn.SiLU(),
+        )
+
+    def forward(self, x):
+        """Defines the forward pass of the segmentation prototype
+        generator.
+
+        @type x: torch.Tensor
+        @param x: Input tensor.
+        @rtype: torch.Tensor
+        @return: Processed tensor.
+        """
+        return self.conv3(self.conv2(self.upsample(self.conv1(x))))
+
+
+class DFL(nn.Module):
+    def __init__(self, reg_max: int = 16):
+        """The DFL (Distribution Focal Loss) module processes input
+        tensors by applying softmax over a specified dimension and
+        projecting the resulting tensor to produce output logits.
+
+        @type reg_max: int
+        @param reg_max: Maximum number of regression outputs. Defaults
+            to 16.
+        """
+        super().__init__()
+        self.proj_conv = nn.Conv2d(reg_max, 1, kernel_size=1, bias=False)
+        self.proj_conv.weight.data.copy_(
+            torch.arange(reg_max, dtype=torch.float32).view(1, reg_max, 1, 1)
+        )
+        self.proj_conv.requires_grad_(False)
+
+    def forward(self, x: Tensor) -> Tensor:
+        bs, _, h, w = x.size()
+        x = F.softmax(x.view(bs, 4, -1, h * w).permute(0, 2, 1, 3), dim=1)
+        return self.proj_conv(x)[:, 0].view(bs, 4, h, w)
+
+
 class ConvModule(nn.Sequential):
     def __init__(
         self,
@@ -137,6 +216,51 @@ class ConvModule(nn.Sequential):
 
         if activation is not False:
             blocks.append(activation or nn.ReLU())
+
+
+class DWConvModule(ConvModule):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int = 1,
+        padding: int = 0,
+        dilation: int = 1,
+        bias: bool = False,
+        activation: nn.Module | None = None,
+    ):
+        """Depth-wise Conv2d + BN + Activation.
+
+        @type in_channels: int
+        @param in_channels: Number of input channels.
+        @type out_channels: int
+        @param out_channels: Number of output channels.
+        @type kernel_size: int
+        @param kernel_size: Kernel size.
+        @type stride: int
+        @param stride: Stride. Defaults to 1.
+        @type padding: int
+        @param padding: Padding. Defaults to 0.
+        @type dilation: int
+        @param dilation: Dilation. Defaults to 1.
+        @type bias: bool
+        @param bias: Whether to use bias. Defaults to False.
+        @type activation: L{nn.Module} | None
+        @param activation: Activation function. If None then nn.Relu.
+        """
+
+        super().__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=math.gcd(in_channels, out_channels),
+            bias=bias,
+            activation=activation,
+        )
 
 
 class UpBlock(nn.Sequential):
