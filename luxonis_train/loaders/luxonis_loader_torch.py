@@ -127,6 +127,15 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         skeletons = self.dataset.get_skeletons()
         return {task: len(skeletons[task][0]) for task in skeletons}
 
+    @override
+    def get_metadata_types(
+        self,
+    ) -> dict[str, dict[str, type[int] | type[float] | type[str]]]:
+        return {
+            k: {"float": float, "int": int, "str": str, "Category": int}[v]
+            for k, v in self.dataset.get_metadata_types().items()
+        }
+
     def augment_test_image(self, img: Tensor) -> Tensor:
         if self.loader.augmentations is None:
             return img
