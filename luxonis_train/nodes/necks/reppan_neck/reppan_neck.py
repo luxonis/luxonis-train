@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
     in_channels: list[int]
+    in_width: list[int]
+    in_height: list[int]
 
     def __init__(
         self,
@@ -71,6 +73,27 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         """
 
         super().__init__(**kwargs)
+
+        if (
+            self.original_in_shape[-1] % 32 != 0
+            or self.original_in_shape[-2] % 32 != 0
+        ):
+            logger.warning(
+                "Image dimensions should be divisible by 32. This may cause 'RepPANNeck' to crash."
+            )
+
+        for i in range(1, n_heads):
+            if (
+                (
+                    self.in_width[-i] * 2 != self.in_width[-i - 1]
+                    or self.in_height[-i] * 2 != self.in_height[-i - 1]
+                )
+                and self.attach_index == "all"
+            ):  # TODO: fix the attach_index and this condition
+                raise ValueError(
+                    f"Expected width and height of feature map at index {len(self.in_width) - i} to be half of those at index {len(self.in_width) - i - 1}. "
+                    f"Image shape {self.original_in_shape} must be divisible by 32 to avoid 'RepPANNeck' crashing."
+                )
 
         self.n_heads = n_heads
 
