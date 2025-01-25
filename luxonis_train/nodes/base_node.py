@@ -9,7 +9,7 @@ from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
 from typeguard import TypeCheckError, check_type
 
-from luxonis_train.enums import Task, TaskType
+from luxonis_train.enums import Metadata, Task, TaskType
 from luxonis_train.utils import (
     AttachIndexType,
     DatasetMetadata,
@@ -122,6 +122,7 @@ class BaseNode(
         export_output_names: list[str] | None = None,
         attach_index: AttachIndexType | None = None,
         task_name: str | None = None,
+        metadata_task_override: str | dict[str, str] | None = None,
     ):
         """Constructor for the C{BaseNode}.
 
@@ -176,6 +177,35 @@ class BaseNode(
                     f"argument for node '{self.name}' was not provided."
                 )
         self.task_name = task_name or ""
+        self.metadata_task_override = {}
+        if metadata_task_override is not None:
+            if self.tasks is None:
+                raise ValueError(
+                    "Metadata task override can only be used with nodes that define tasks."
+                )
+            n_metadata_tasks = sum(
+                1 for task in self.tasks if isinstance(task, Metadata)
+            )
+            if n_metadata_tasks > 1 and isinstance(
+                metadata_task_override, str
+            ):
+                raise ValueError(
+                    f"Node '{self.name}' defines multiple metadata tasks, "
+                    "but only a single task name was provided for "
+                    "`metadata_task_override`. Provide a dictionary "
+                    "mapping default names to new names instead ."
+                )
+            for task in self.tasks:
+                if not isinstance(task, Metadata):
+                    continue
+
+                if isinstance(metadata_task_override, dict):
+                    new_name = metadata_task_override.get(task.name, task.name)
+                else:
+                    new_name = metadata_task_override
+
+                self.metadata_task_override[task.name] = new_name
+                task.name = new_name
 
         if getattr(self, "attach_index", None) is None:
             parameters = inspect.signature(self.forward).parameters
