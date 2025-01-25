@@ -75,7 +75,7 @@ class BaseLoaderTorch(
         @type image_source: str
         @param image_source: Name of the image source. Only relevant for
             datasets with multiple image sources, e.g. C{"left"} and C{"right"}. This parameter defines which of these sources is used for
-                visualizations.
+            visualizations.
 
         @type keep_aspect_ratio: bool
         @param keep_aspect_ratio: Whether to keep the aspect ratio of the output image after resizing.
@@ -226,7 +226,7 @@ class BaseLoaderTorch(
         @type idx: int
         @param idx: Sample index.
         @rtype: L{LuxonisLoaderTorchOutput}
-        @return: Sample's data in L{LuxonisLoaderTorchOutput} format
+        @return: Sample's data in L{LuxonisLoaderTorchOutput} format.
         """
         ...
 

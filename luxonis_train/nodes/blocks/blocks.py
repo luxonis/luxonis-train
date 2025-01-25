@@ -93,8 +93,9 @@ class ConvModule(nn.Sequential):
         groups: int = 1,
         bias: bool = False,
         activation: nn.Module | None | Literal[False] = None,
+        use_norm: bool = True,
     ):
-        """Conv2d + BN + Activation.
+        """Conv2d + Optional BN + Activation.
 
         @type in_channels: int
         @param in_channels: Number of input channels.
@@ -115,8 +116,10 @@ class ConvModule(nn.Sequential):
         @type activation: L{nn.Module} | None | Literal[False]
         @param activation: Activation function. If None then nn.ReLU. If
             False then no activation. Defaults to None.
+        @type use_norm: bool
+        @param use_norm: Whether to use normalization. Defaults to True.
         """
-        blocks = [
+        blocks: list[nn.Module] = [
             nn.Conv2d(
                 in_channels,
                 out_channels,
@@ -127,11 +130,13 @@ class ConvModule(nn.Sequential):
                 groups,
                 bias,
             ),
-            nn.BatchNorm2d(out_channels),
         ]
+
+        if use_norm:
+            blocks.append(nn.BatchNorm2d(out_channels))
+
         if activation is not False:
             blocks.append(activation or nn.ReLU())
-        super().__init__(*blocks)
 
 
 class UpBlock(nn.Sequential):

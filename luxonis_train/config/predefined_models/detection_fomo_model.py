@@ -18,18 +18,21 @@ VariantLiteral: TypeAlias = Literal["light", "heavy"]
 class FOMOVariant(BaseModel):
     backbone: str
     head_params: Params
+    backbone_params: Params
 
 
 def get_variant(variant: VariantLiteral) -> FOMOVariant:
     """Returns the specific variant configuration for the FOMOModel."""
     variants = {
         "light": FOMOVariant(
-            backbone="MobileNetV2",
+            backbone="EfficientRep",
             head_params={"num_conv_layers": 2, "conv_channels": 16},
+            backbone_params={"variant": "n"},
         ),
         "heavy": FOMOVariant(
             backbone="MobileNetV2",
-            head_params={"num_conv_layers": 5, "conv_channels": 64},
+            head_params={"num_conv_layers": 2, "conv_channels": 16},
+            backbone_params={},
         ),
     }
 
@@ -55,7 +58,7 @@ class FOMOModel(BasePredefinedModel):
         var_config = get_variant(variant)
 
         self.backbone = backbone or var_config.backbone
-        self.backbone_params = backbone_params or {}
+        self.backbone_params = backbone_params or var_config.backbone_params
         self.head_params = head_params or var_config.head_params
         self.loss_params = loss_params or {}
         self.kpt_visualizer_params = kpt_visualizer_params or {}
