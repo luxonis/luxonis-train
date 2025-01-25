@@ -407,6 +407,7 @@ class TrainerConfig(BaseModelExtraForbid):
     gradient_clip_algorithm: Literal["norm", "value"] | None = None
     use_weighted_sampler: bool = False
     epochs: PositiveInt = 100
+    resume_training: bool = False
     n_workers: Annotated[
         NonNegativeInt,
         Field(validation_alias=AliasChoices("n_workers", "num_workers")),
