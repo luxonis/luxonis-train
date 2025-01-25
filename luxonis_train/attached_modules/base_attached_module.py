@@ -360,7 +360,7 @@ class BaseAttachedModule(
 
         label = self._get_label(labels)
         generics = self._get_generic_params()
-        if generics is None:
+        if generics is None or generics[0].__name__ == "Unpack":
             return x, label  # type: ignore
 
         if len(generics) != 2:
