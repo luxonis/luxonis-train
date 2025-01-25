@@ -7,6 +7,8 @@ Visualizers are used to render the output of a node. They are used in the `visua
 - [`BBoxVisualizer`](#bboxvisualizer)
 - [`ClassificationVisualizer`](#classificationvisualizer)
 - [`KeypointVisualizer`](#keypointvisualizer)
+- [`SegmentationVisualizer`](#segmentationvisualizer)
+- [`EmbeddingsVisualizer`](#embeddingsvisualizer)
 - [`MultiVisualizer`](#multivisualizer)
 
 ## `BBoxVisualizer`
@@ -71,6 +73,14 @@ Visualizer for bounding boxes.
 **Example:**
 
 ![class_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/class.png)
+
+## `EmbeddingsVisualizer`
+
+**Parameters:**
+
+| Key                 | Type    | Default value | Description                                                                                                                   |
+| ------------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `z_score_threshold` | `float` | `3.0`         | Threshold for z-score filtering. Embeddings with z-score higher than this value are considered as outliers and are not drawn. |
 
 ## `MultiVisualizer`
 

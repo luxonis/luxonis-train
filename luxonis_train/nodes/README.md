@@ -18,6 +18,7 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`DDRNet`](#ddrnet)
   - [`RecSubNet`](#recsubnet)
   - [`EfficientViT`](#efficientvit)
+  - [`GhostFaceNetV2`](#ghostfacenetv2)
 - [Necks](#necks)
   - [`RepPANNeck`](#reppanneck)
 - [Heads](#heads)
@@ -29,6 +30,7 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`DDRNetSegmentationHead`](#ddrnetsegmentationhead)
   - [`DiscSubNetHead`](#discsubnet)
   - [`FOMOHead`](#fomohead)
+  - [`GhostFaceNetHead`](#ghostfacenethead)
     Every node takes these parameters:
 
 | Key                | Type          | Default value | Description                                                                 |
@@ -186,6 +188,14 @@ Adapted from [here](https://arxiv.org/abs/2205.14756)
 | `expand_ratio` | `int`                                                             | `4`                              | Factor by which channels expand in the local module |
 | `dim`          | `int`                                                             | `None`                           | Dimension size for each attention head              |
 
+### `GhostFaceNetV2`
+
+**Parameters:**
+
+| Key       | Type            | Default value | Description                 |
+| --------- | --------------- | ------------- | --------------------------- |
+| `variant` | `Literal["V2"]` | `"V2"`        | The variant of the network. |
+
 ## Neck
 
 ### `RepPANNeck`
@@ -290,3 +300,11 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 | `num_conv_layers` | `int`  | `3`           | Number of convolutional layers to use in the model.                                      |
 | `conv_channels`   | `int`  | `16`          | Number of output channels for each convolutional layer.                                  |
 | `use_nms`         | `bool` | `False`       | If True, enable NMS. This can reduce FP, but it will also reduce TP for close neighbors. |
+
+### `GhostFaceNetHead`
+
+**Parameters:**
+
+| Key              | Type  | Default value | Description                              |
+| ---------------- | ----- | ------------- | ---------------------------------------- |
+| `embedding_size` | `int` | `512`         | The size of the output embedding vector. |

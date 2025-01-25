@@ -15,11 +15,7 @@ class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
     in_channels: int
     in_width: int
 
-    def __init__(
-        self,
-        variant: Literal["V2"] = "V2",
-        **kwargs,
-    ):
+    def __init__(self, variant: Literal["V2"] = "V2", **kwargs):
         """GhostFaceNetsV2 backbone.
 
         GhostFaceNetsV2 is a convolutional neural network architecture focused on face recognition, but it is
