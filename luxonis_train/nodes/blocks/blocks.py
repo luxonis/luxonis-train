@@ -217,6 +217,8 @@ class ConvModule(nn.Sequential):
         if activation is not False:
             blocks.append(activation or nn.ReLU())
 
+        super().__init__(*blocks)
+
 
 class DWConvModule(ConvModule):
     def __init__(
