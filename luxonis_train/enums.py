@@ -1,4 +1,3 @@
-from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from functools import cached_property
@@ -32,19 +31,9 @@ class Task(str, Enum):
             case Task.FOMO:
                 return {"boundingbox"}
             case Task.EMBEDDINGS:
-                return {Metadata("color")}
+                return {Metadata("id")}
             case Task.OCR:
                 return {Metadata("text"), Metadata("text_length")}
-
-    def __or__(self, other: "Task") -> "TaskUnion":
-        return TaskUnion() | self | other
-
-
-class TaskUnion(set[Task]):
-    def __or__(self, other: Task) -> "TaskUnion":
-        new = deepcopy(self)
-        new.add(other)
-        return new
 
 
 @dataclass(unsafe_hash=True)
