@@ -135,7 +135,9 @@ class GhostBottleneckV2(nn.Module):
 
         # Squeeze-and-excitation
         if has_se:
-            reduced_chs = _make_divisible(intermediate_channels * se_ratio, 4)
+            reduced_chs = _make_divisible(
+                int(intermediate_channels * se_ratio), 4
+            )
             self.se = SqueezeExciteBlock(
                 intermediate_channels, reduced_chs, True, activation=nn.PReLU()
             )

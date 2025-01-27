@@ -333,7 +333,8 @@ class BaseNode(
                 f"Feature field is missing in {self.name}. "
                 "The default implementation of `in_sizes` cannot be used."
             )
-        return self.get_attached(self.input_shapes[0]["features"])
+        assert isinstance(features, list)
+        return self.get_attached(features)
 
     @property
     def in_channels(self) -> int | list[int]:

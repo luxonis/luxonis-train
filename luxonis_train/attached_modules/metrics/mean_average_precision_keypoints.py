@@ -152,16 +152,16 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
             )
 
         for item in output_list_kpt_map:
-            boxes, keypoints = self._get_safe_item_values(item)
+            boxes, kpts = self._get_safe_item_values(item)
             self.pred_boxes.append(boxes)
-            self.pred_keypoints.append(keypoints)
+            self.pred_keypoints.append(kpts)
             self.pred_scores.append(item["scores"])
             self.pred_labels.append(item["labels"])
 
         for item in label_list_kpt_map:
-            boxes, keypoints = self._get_safe_item_values(item)
+            boxes, kpts = self._get_safe_item_values(item)
             self.groundtruth_boxes.append(boxes)
-            self.groundtruth_keypoints.append(keypoints)
+            self.groundtruth_keypoints.append(kpts)
             self.groundtruth_labels.append(item["labels"])
             self.groundtruth_area.append(
                 item.get("area", torch.zeros_like(item["labels"]))
