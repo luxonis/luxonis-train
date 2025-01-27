@@ -4,15 +4,14 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from luxonis_train.enums import TaskType
-from luxonis_train.utils import Labels, Packet
+from luxonis_train.enums import Task
 
 from .base_visualizer import BaseVisualizer
 from .utils import figure_to_torch, numpy_to_torch_img, torch_img_to_numpy
 
 
-class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
-    supported_tasks: list[TaskType] = [TaskType.CLASSIFICATION]
+class ClassificationVisualizer(BaseVisualizer):
+    supported_tasks: list[Task] = [Task.CLASSIFICATION]
 
     def __init__(
         self,
@@ -69,20 +68,12 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
         ax.grid(True)
         return figure_to_torch(fig, width, height)
 
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels | None
-    ) -> tuple[Tensor, Tensor]:
-        predictions, targets = super().prepare(inputs, labels)
-        if isinstance(predictions, list):
-            predictions = predictions[0]
-        return predictions, targets
-
     def forward(
         self,
         label_canvas: Tensor,
         prediction_canvas: Tensor,
         predictions: Tensor,
-        targets: Tensor | None,
+        target: Tensor | None,
     ) -> Tensor | tuple[Tensor, Tensor]:
         overlay = torch.zeros_like(label_canvas)
         plots = torch.zeros_like(prediction_canvas)
@@ -90,8 +81,8 @@ class ClassificationVisualizer(BaseVisualizer[Tensor, Tensor]):
             prediction = predictions[i]
             arr = torch_img_to_numpy(label_canvas[i].clone())
             curr_class = self._get_class_name(prediction)
-            if targets is not None:
-                gt = self._get_class_name(targets[i])
+            if target is not None:
+                gt = self._get_class_name(target[i])
                 arr = cv2.putText(
                     arr,
                     f"GT: {gt}",

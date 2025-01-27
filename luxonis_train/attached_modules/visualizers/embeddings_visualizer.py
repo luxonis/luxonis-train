@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
 from torch import Tensor
 
-from luxonis_train.enums import Metadata
+from luxonis_train.enums import Task
 
 from .base_visualizer import BaseVisualizer
 from .utils import figure_to_torch
@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 log_disable = False
 
 
-class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
-    supported_tasks = [Metadata("id")]
+class EmbeddingsVisualizer(BaseVisualizer):
+    supported_tasks = [Task.EMBEDDINGS]
 
     def __init__(
         self,
@@ -43,8 +43,8 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
         self,
         label_canvas: Tensor,
         prediction_canvas: Tensor,
-        embeddings: Tensor,
-        ids: Tensor,
+        predictions: Tensor,
+        target: Tensor,
     ) -> tuple[Tensor, Tensor]:
         """Creates a visualization of the embeddings.
 
@@ -60,8 +60,8 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
         @return: An embedding space projection.
         """
 
-        embeddings_np = embeddings.detach().cpu().numpy()
-        ids_np = ids.detach().cpu().numpy().astype(int)
+        embeddings_np = predictions.detach().cpu().numpy()
+        ids_np = target.detach().cpu().numpy().astype(int)
         # if len(self.memory) < self.memory_size:
         #     self.memory.append((embeddings_np, ids_np))
         #     return None

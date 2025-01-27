@@ -6,26 +6,18 @@ import torch.nn.functional as F
 from torch import Tensor
 from torchvision.ops import box_convert
 
-from luxonis_train.attached_modules.losses.precision_dfl_detection_loss import (
-    PrecisionDFLDetectionLoss,
-)
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task
 from luxonis_train.nodes import PrecisionSegmentBBoxHead
-from luxonis_train.utils import (
-    Labels,
-    Packet,
-    apply_bounding_box_to_masks,
-)
+from luxonis_train.utils import apply_bounding_box_to_masks
+
+from .precision_dfl_detection_loss import PrecisionDFLDetectionLoss
 
 logger = logging.getLogger(__name__)
 
 
 class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
     node: PrecisionSegmentBBoxHead
-    supported_tasks: list[TaskType] = [
-        TaskType.BOUNDINGBOX,
-        TaskType.INSTANCE_SEGMENTATION,
-    ]
+    supported_tasks = [Task.INSTANCE_SEGMENTATION]
 
     def __init__(
         self,
@@ -57,47 +49,39 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             **kwargs,
         )
 
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[
-        Tensor,
-        Tensor,
-        Tensor,
-        Tensor,
-        Tensor,
-        Tensor,
-        Tensor,
-        Tensor,
-        Tensor,
-        Tensor,
-        Tensor,
-    ]:
-        det_feats = self.get_input_tensors(inputs, "features")
-        proto = self.get_input_tensors(inputs, "prototypes")[0]
-        pred_mask = self.get_input_tensors(inputs, "mask_coeficients")[0]
-        self._init_parameters(det_feats)
-        batch_size, _, mask_h, mask_w = proto.shape
+    def forward(
+        self,
+        features: list[Tensor],
+        prototypes: Tensor,
+        mask_coeficients: Tensor,
+        target_boundingbox: Tensor,
+        target_instance_segmentation: Tensor,
+    ) -> tuple[Tensor, dict[str, Tensor]]:
+        self._init_parameters(features)
+        batch_size, _, mask_h, mask_w = prototypes.shape
         pred_distri, pred_scores = torch.cat(
-            [xi.view(batch_size, self.node.no, -1) for xi in det_feats], 2
+            [xi.view(batch_size, self.node.no, -1) for xi in features], 2
         ).split((self.node.reg_max * 4, self.n_classes), 1)
-        target_bbox = self.get_label(labels, TaskType.BOUNDINGBOX)
-        img_idx = target_bbox[:, 0].unsqueeze(-1)
-        target_masks = self.get_label(labels, TaskType.INSTANCE_SEGMENTATION)
-        if tuple(target_masks.shape[-2:]) != (mask_h, mask_w):
-            target_masks = F.interpolate(
-                target_masks.unsqueeze(0), (mask_h, mask_w), mode="nearest"
+        img_idx = target_boundingbox[:, 0].unsqueeze(-1)
+        if tuple(target_instance_segmentation.shape[-2:]) != (mask_h, mask_w):
+            target_instance_segmentation = F.interpolate(
+                target_instance_segmentation.unsqueeze(0),
+                (mask_h, mask_w),
+                mode="nearest",
             ).squeeze(0)
 
         pred_distri = pred_distri.permute(0, 2, 1).contiguous()
         pred_scores = pred_scores.permute(0, 2, 1).contiguous()
-        pred_mask = pred_mask.permute(0, 2, 1).contiguous()
+        mask_coeficients = mask_coeficients.permute(0, 2, 1).contiguous()
 
-        target_bbox = self._preprocess_bbox_target(target_bbox, batch_size)
+        target_boundingbox = self._preprocess_bbox_target(
+            target_boundingbox, batch_size
+        )
 
         pred_bboxes = self.decode_bbox(self.anchor_points_strided, pred_distri)
 
-        gt_labels = target_bbox[:, :, :1]
-        gt_xyxy = target_bbox[:, :, 1:]
+        gt_labels = target_boundingbox[:, :, :1]
+        gt_xyxy = target_boundingbox[:, :, 1:]
         mask_gt = (gt_xyxy.sum(-1, keepdim=True) > 0).float()
 
         _, assigned_bboxes, assigned_scores, mask_positive, assigned_gt_idx = (
@@ -113,34 +97,6 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             )
         )
 
-        return (
-            pred_distri,
-            pred_bboxes,
-            pred_scores,
-            assigned_bboxes,
-            assigned_scores,
-            mask_positive,
-            assigned_gt_idx,
-            pred_mask,
-            proto,
-            target_masks,
-            img_idx,
-        )
-
-    def forward(
-        self,
-        pred_distri: Tensor,
-        pred_bboxes: Tensor,
-        pred_scores: Tensor,
-        assigned_bboxes: Tensor,
-        assigned_scores: Tensor,
-        mask_positive: Tensor,
-        assigned_gt_idx: Tensor,
-        pred_masks: Tensor,
-        proto: Tensor,
-        target_masks: Tensor,
-        img_idx: Tensor,
-    ):
         max_assigned_scores_sum = max(assigned_scores.sum().item(), 1)
         loss_cls = (
             self.bce(pred_scores, assigned_scores)
@@ -161,12 +117,12 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
 
         loss_seg = self.compute_segmentation_loss(
             mask_positive,
-            target_masks,
+            target_instance_segmentation,
             assigned_gt_idx,
             assigned_bboxes,
             img_idx,
-            proto,
-            pred_masks,
+            prototypes,
+            mask_coeficients,
         )
 
         loss = (
@@ -186,30 +142,30 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
 
     def compute_segmentation_loss(
         self,
-        fg_mask: torch.Tensor,
-        gt_masks: torch.Tensor,
-        gt_idx: torch.Tensor,
-        bboxes: torch.Tensor,
-        batch_ids: torch.Tensor,
-        proto: torch.Tensor,
-        pred_masks: torch.Tensor,
-    ) -> torch.Tensor:
+        fg_mask: Tensor,
+        gt_masks: Tensor,
+        gt_idx: Tensor,
+        bboxes: Tensor,
+        batch_ids: Tensor,
+        proto: Tensor,
+        pred_masks: Tensor,
+    ) -> Tensor:
         """Compute the segmentation loss for the entire batch.
 
-        @type fg_mask: torch.Tensor
+        @type fg_mask: Tensor
         @param fg_mask: Foreground mask. Shape: (B, N_anchor).
-        @type gt_masks: torch.Tensor
+        @type gt_masks: Tensor
         @param gt_masks: Ground truth masks. Shape: (n, H, W).
-        @type gt_idx: torch.Tensor
+        @type gt_idx: Tensor
         @param gt_idx: Ground truth mask indices. Shape: (B, N_anchor).
-        @type bboxes: torch.Tensor
+        @type bboxes: Tensor
         @param bboxes: Ground truth bounding boxes in xyxy format.
             Shape: (B, N_anchor, 4).
-        @type batch_ids: torch.Tensor
+        @type batch_ids: Tensor
         @param batch_ids: Batch indices. Shape: (n, 1).
-        @type proto: torch.Tensor
+        @type proto: Tensor
         @param proto: Prototype masks. Shape: (B, 32, H, W).
-        @type pred_masks: torch.Tensor
+        @type pred_masks: Tensor
         @param pred_masks: Predicted mask coefficients. Shape: (B,
             N_anchor, 32).
         """

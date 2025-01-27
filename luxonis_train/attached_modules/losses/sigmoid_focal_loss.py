@@ -4,14 +4,11 @@ from torch import Tensor
 from torchvision.ops import sigmoid_focal_loss
 
 from luxonis_train.attached_modules.losses import BaseLoss
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task
 
 
-class SigmoidFocalLoss(BaseLoss[Tensor, Tensor]):
-    supported_tasks: list[TaskType] = [
-        TaskType.SEGMENTATION,
-        TaskType.CLASSIFICATION,
-    ]
+class SigmoidFocalLoss(BaseLoss):
+    supported_tasks = [Task.SEGMENTATION, Task.CLASSIFICATION]
 
     def __init__(
         self,
@@ -38,9 +35,9 @@ class SigmoidFocalLoss(BaseLoss[Tensor, Tensor]):
         self.gamma = gamma
         self.reduction = reduction
 
-    def forward(self, preds: Tensor, target: Tensor) -> Tensor:
+    def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
         loss = sigmoid_focal_loss(
-            preds,
+            predictions,
             target,
             alpha=self.alpha,
             gamma=self.gamma,

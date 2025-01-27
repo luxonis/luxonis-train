@@ -60,8 +60,7 @@ class KeypointDetectionModel(BasePredefinedModel):
         neck_params: Params | None = None,
         head_params: Params | None = None,
         loss_params: Params | None = None,
-        kpt_visualizer_params: Params | None = None,
-        bbox_visualizer_params: Params | None = None,
+        visualizer_params: Params | None = None,
         task_name: str = "",
         enable_confusion_matrix: bool = True,
         confusion_matrix_params: Params | None = None,
@@ -78,8 +77,7 @@ class KeypointDetectionModel(BasePredefinedModel):
         self.neck_params = neck_params or var_config.neck_params
         self.head_params = head_params or {}
         self.loss_params = loss_params or {"n_warmup_epochs": 0}
-        self.kpt_visualizer_params = kpt_visualizer_params or {}
-        self.bbox_visualizer_params = bbox_visualizer_params or {}
+        self.visualizer_params = visualizer_params or {}
         self.task_name = task_name
         self.enable_confusion_matrix = enable_confusion_matrix
         self.confusion_matrix_params = confusion_matrix_params or {}
@@ -166,19 +164,8 @@ class KeypointDetectionModel(BasePredefinedModel):
         task."""
         return [
             AttachedModuleConfig(
-                name="MultiVisualizer",
+                name="KeypointVisualizer",
                 attached_to=f"{self.task_name}/EfficientKeypointBBoxHead",
-                params={
-                    "visualizers": [
-                        {
-                            "name": "KeypointVisualizer",
-                            "params": self.kpt_visualizer_params,
-                        },
-                        {
-                            "name": "BBoxVisualizer",
-                            "params": self.bbox_visualizer_params,
-                        },
-                    ]
-                },
+                params=self.visualizer_params,
             )
         ]

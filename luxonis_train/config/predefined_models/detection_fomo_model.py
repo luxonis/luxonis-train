@@ -52,7 +52,7 @@ class FOMOModel(BasePredefinedModel):
         backbone_params: Params | None = None,
         head_params: Params | None = None,
         loss_params: Params | None = None,
-        kpt_visualizer_params: Params | None = None,
+        visualizer_params: Params | None = None,
         task_name: str = "",
     ):
         var_config = get_variant(variant)
@@ -61,7 +61,7 @@ class FOMOModel(BasePredefinedModel):
         self.backbone_params = backbone_params or var_config.backbone_params
         self.head_params = head_params or var_config.head_params
         self.loss_params = loss_params or {}
-        self.kpt_visualizer_params = kpt_visualizer_params or {}
+        self.visualizer_params = visualizer_params or {}
         self.task_name = task_name
 
     @property
@@ -108,15 +108,8 @@ class FOMOModel(BasePredefinedModel):
     def visualizers(self) -> list[AttachedModuleConfig]:
         return [
             AttachedModuleConfig(
-                name="MultiVisualizer",
+                name="KeypointVisualizer",
                 attached_to=f"{self.task_name}/FOMOHead",
-                params={
-                    "visualizers": [
-                        {
-                            "name": "KeypointVisualizer",
-                            "params": self.kpt_visualizer_params,
-                        },
-                    ]
-                },
+                params=self.visualizer_params,
             )
         ]

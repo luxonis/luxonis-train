@@ -2,13 +2,13 @@ from typing import Any
 
 from torch import Tensor, nn
 
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task
 from luxonis_train.nodes.heads import BaseHead
 
 
 class ClassificationHead(BaseHead[Tensor, Tensor]):
     in_channels: int
-    tasks: list[TaskType] = [TaskType.CLASSIFICATION]
+    task = Task.CLASSIFICATION
     parser: str = "ClassificationParser"
 
     def __init__(self, dropout_rate: float = 0.2, **kwargs: Any):

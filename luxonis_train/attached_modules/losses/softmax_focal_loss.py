@@ -6,17 +6,14 @@ from torch import Tensor
 from torch.nn import functional as F
 
 from luxonis_train.attached_modules.losses import BaseLoss
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task
 
 logger = logging.getLogger(__name__)
 
 
 # TODO: Add support for multi-class tasks
-class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
-    supported_tasks: list[TaskType] = [
-        TaskType.SEGMENTATION,
-        TaskType.CLASSIFICATION,
-    ]
+class SoftmaxFocalLoss(BaseLoss):
+    supported_tasks = [Task.SEGMENTATION, Task.CLASSIFICATION]
 
     def __init__(
         self,
@@ -55,26 +52,26 @@ class SoftmaxFocalLoss(BaseLoss[Tensor, Tensor]):
             if self.smooth < 0 or self.smooth > 1.0:
                 raise ValueError("smooth value should be in [0,1]")
 
-    def forward(
-        self, logits: torch.Tensor, targets: torch.Tensor
-    ) -> torch.Tensor:
-        if logits.shape != targets.shape:
+    def forward(self, predictions: Tensor, targets: Tensor) -> Tensor:
+        if predictions.shape != targets.shape:
             raise ValueError(
-                f"Shape mismatch: {logits.shape} vs {targets.shape}"
+                f"Shape mismatch: {predictions.shape} vs {targets.shape}"
             )
-        logits = F.softmax(logits, dim=1)
+        predictions = F.softmax(predictions, dim=1)
 
         if self.smooth:
             targets = torch.clamp(
-                targets, self.smooth / (logits.size(1) - 1), 1.0 - self.smooth
+                targets,
+                self.smooth / (predictions.size(1) - 1),
+                1.0 - self.smooth,
             )
 
-        pt = (targets * logits).sum(dim=1) + self.smooth
+        pt = (targets * predictions).sum(dim=1) + self.smooth
 
-        if isinstance(self.alpha, torch.Tensor):
-            if self.alpha.size(0) != logits.size(1):
+        if isinstance(self.alpha, Tensor):
+            if self.alpha.size(0) != predictions.size(1):
                 raise ValueError(
-                    f"Alpha length {self.alpha.size(0)} does not match number of classes {logits.size(1)}"
+                    f"Alpha length {self.alpha.size(0)} does not match number of classes {predictions.size(1)}"
                 )
             alpha_t = self.alpha[targets.argmax(dim=1)]
         else:

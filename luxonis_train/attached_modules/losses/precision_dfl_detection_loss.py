@@ -7,11 +7,9 @@ from torch import Tensor, nn
 from torchvision.ops import box_convert
 
 from luxonis_train.assigners import TaskAlignedAssigner
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task
 from luxonis_train.nodes import PrecisionBBoxHead
 from luxonis_train.utils import (
-    Labels,
-    Packet,
     anchors_for_fpn_features,
     bbox2dist,
     bbox_iou,
@@ -23,11 +21,9 @@ from .base_loss import BaseLoss
 logger = logging.getLogger(__name__)
 
 
-class PrecisionDFLDetectionLoss(
-    BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]
-):
+class PrecisionDFLDetectionLoss(BaseLoss):
     node: PrecisionBBoxHead
-    supported_tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
+    supported_tasks = [Task.BOUNDINGBOX]
 
     def __init__(
         self,
@@ -68,16 +64,14 @@ class PrecisionDFLDetectionLoss(
         self.proj = torch.arange(self.node.reg_max, dtype=torch.float)
         self.bce = nn.BCEWithLogitsLoss(reduction="none")
 
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
-        feats = self.get_input_tensors(inputs, "features")
-        self._init_parameters(feats)
-        batch_size = feats[0].shape[0]
+    def forward(
+        self, features: list[Tensor], target: Tensor
+    ) -> tuple[Tensor, dict[str, Tensor]]:
+        self._init_parameters(features)
+        batch_size = features[0].shape[0]
         pred_distri, pred_scores = torch.cat(
-            [xi.view(batch_size, self.node.no, -1) for xi in feats], 2
+            [xi.view(batch_size, self.node.no, -1) for xi in features], 2
         ).split((self.node.reg_max * 4, self.n_classes), 1)
-        target = self.get_label(labels)
         pred_distri = pred_distri.permute(0, 2, 1).contiguous()
         pred_scores = pred_scores.permute(0, 2, 1).contiguous()
 
@@ -97,25 +91,8 @@ class PrecisionDFLDetectionLoss(
             gt_xyxy,
             mask_gt,
         )
+        assigned_bboxes /= self.stride_tensor
 
-        return (
-            pred_distri,
-            pred_bboxes,
-            pred_scores,
-            assigned_bboxes / self.stride_tensor,
-            assigned_scores,
-            mask_positive,
-        )
-
-    def forward(
-        self,
-        pred_distri: Tensor,
-        pred_bboxes: Tensor,
-        pred_scores: Tensor,
-        assigned_bboxes: Tensor,
-        assigned_scores: Tensor,
-        mask_positive: Tensor,
-    ):
         max_assigned_scores_sum = max(assigned_scores.sum().item(), 1)
         loss_cls = (
             self.bce(pred_scores, assigned_scores)

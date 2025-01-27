@@ -4,7 +4,6 @@ from .classification_visualizer import ClassificationVisualizer
 from .embeddings_visualizer import EmbeddingsVisualizer
 from .instance_segmentation_visualizer import InstanceSegmentationVisualizer
 from .keypoint_visualizer import KeypointVisualizer
-from .multi_visualizer import MultiVisualizer
 from .segmentation_visualizer import SegmentationVisualizer
 from .utils import (
     combine_visualizations,
@@ -23,7 +22,6 @@ __all__ = [
     "BaseVisualizer",
     "ClassificationVisualizer",
     "KeypointVisualizer",
-    "MultiVisualizer",
     "SegmentationVisualizer",
     "EmbeddingsVisualizer",
     "InstanceSegmentationVisualizer",

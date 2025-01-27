@@ -3,14 +3,17 @@ from copy import deepcopy
 import torch
 from torch import Tensor
 
-from luxonis_train.enums import TaskType
+from luxonis_train.attached_modules.visualizers.base_visualizer import (
+    BaseVisualizer,
+)
+from luxonis_train.enums import Task
 
-from .base_visualizer import BaseVisualizer
 from .utils import Color, draw_keypoint_labels, draw_keypoints
 
 
-class KeypointVisualizer(BaseVisualizer[list[Tensor], Tensor]):
-    supported_tasks: list[TaskType] = [TaskType.KEYPOINTS]
+# class KeypointVisualizer(BBoxVisualizer):
+class KeypointVisualizer(BaseVisualizer):
+    supported_tasks = [Task.KEYPOINTS]
 
     def __init__(
         self,
@@ -64,9 +67,7 @@ class KeypointVisualizer(BaseVisualizer[list[Tensor], Tensor]):
                 visible_kpts[..., 1], 0, canvas.size(-2) - 1
             )
             viz[i] = draw_keypoints(
-                canvas[i].clone(),
-                visible_kpts[..., :2],
-                **kwargs,
+                canvas[i].clone(), visible_kpts[..., :2], **kwargs
             )
             if nonvisible_color is not None:
                 _kwargs = deepcopy(kwargs)
@@ -75,23 +76,18 @@ class KeypointVisualizer(BaseVisualizer[list[Tensor], Tensor]):
                     prediction[..., :2] * mask.unsqueeze(-1).float()
                 )
                 viz[i] = draw_keypoints(
-                    viz[i].clone(),
-                    nonvisible_kpts[..., :2],
-                    **_kwargs,
+                    viz[i].clone(), nonvisible_kpts[..., :2], **_kwargs
                 )
 
         return viz
 
     @staticmethod
     def draw_targets(canvas: Tensor, targets: Tensor, **kwargs) -> Tensor:
+        print(targets.shape)
         viz = torch.zeros_like(canvas)
         for i in range(len(canvas)):
             target = targets[targets[:, 0] == i][:, 1:]
-            viz[i] = draw_keypoint_labels(
-                canvas[i].clone(),
-                target,
-                **kwargs,
-            )
+            viz[i] = draw_keypoint_labels(canvas[i].clone(), target, **kwargs)
 
         return viz
 
@@ -99,27 +95,38 @@ class KeypointVisualizer(BaseVisualizer[list[Tensor], Tensor]):
         self,
         label_canvas: Tensor,
         prediction_canvas: Tensor,
-        predictions: list[Tensor],
-        targets: Tensor | None,
+        keypoints: list[Tensor],
+        # boundingbox: list[Tensor],
+        target_keypoints: Tensor | None,
+        # target_boundibgbox: Tensor | None,
         **kwargs,
     ) -> tuple[Tensor, Tensor] | Tensor:
         pred_viz = self.draw_predictions(
             prediction_canvas,
-            predictions,
+            keypoints,
             connectivity=self.connectivity,
             colors=self.visible_color,
             nonvisible_color=self.nonvisible_color,
             visibility_threshold=self.visibility_threshold,
             **kwargs,
         )
-        if targets is None:
-            return pred_viz
+        # pred_viz = super().draw_predictions(pred_viz, boundingbox)
 
-        target_viz = self.draw_targets(
-            label_canvas,
-            targets,
-            colors=self.visible_color,
-            connectivity=self.connectivity,
-            **kwargs,
-        )
+        # if target_keypoints is None and target_boundibgbox is None:
+        #     return pred_viz
+
+        if target_keypoints is not None:
+            target_viz = self.draw_targets(
+                label_canvas,
+                target_keypoints,
+                colors=self.visible_color,
+                connectivity=self.connectivity,
+                **kwargs,
+            )
+        else:
+            target_viz = label_canvas
+        #
+        # if target_boundibgbox is not None:
+        #     target_viz = super().draw_targets(target_viz, target_boundibgbox)
+
         return target_viz, pred_viz

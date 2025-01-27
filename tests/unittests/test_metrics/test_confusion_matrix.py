@@ -3,13 +3,13 @@ import torch
 from luxonis_train.attached_modules.metrics.confusion_matrix import (
     ConfusionMatrix,
 )
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task
 from luxonis_train.nodes import BaseNode
 
 
 def test_compute_detection_confusion_matrix_specific_case():
     class DummyNodeDetection(BaseNode):
-        tasks = [TaskType.BOUNDINGBOX]
+        tasks = [Task.BOUNDINGBOX]
 
         def forward(self, _): ...
 

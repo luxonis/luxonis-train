@@ -3,8 +3,7 @@ import logging
 import torch
 from torch import Tensor
 
-from luxonis_train.enums import TaskType
-from luxonis_train.utils import Labels, Packet
+from luxonis_train.enums import Task
 
 from .base_visualizer import BaseVisualizer
 from .utils import (
@@ -18,15 +17,12 @@ from .utils import (
 logger = logging.getLogger(__name__)
 
 
-class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
+class InstanceSegmentationVisualizer(BaseVisualizer):
     """Visualizer for instance segmentation tasks, supporting the
     visualization of predicted and ground truth bounding boxes and
     instance segmentation masks."""
 
-    supported_tasks: list[TaskType] = [
-        TaskType.INSTANCE_SEGMENTATION,
-        TaskType.BOUNDINGBOX,
-    ]
+    supported_tasks = [Task.INSTANCE_SEGMENTATION, Task.BOUNDINGBOX]
 
     def __init__(
         self,
@@ -86,19 +82,6 @@ class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         self.font_size = font_size
         self.draw_labels = draw_labels
         self.alpha = alpha
-
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[Tensor, Tensor, list[Tensor], list[Tensor]]:
-        # Override the prepare base method
-        target_bboxes = self.get_label(labels, TaskType.BOUNDINGBOX)
-        target_masks = self.get_label(labels, TaskType.INSTANCE_SEGMENTATION)
-        predicted_bboxes = self.get_input_tensors(inputs, TaskType.BOUNDINGBOX)
-        predicted_masks = self.get_input_tensors(
-            inputs, TaskType.INSTANCE_SEGMENTATION
-        )
-
-        return target_bboxes, target_masks, predicted_bboxes, predicted_masks
 
     def draw_predictions(
         self,
@@ -209,10 +192,10 @@ class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         self,
         label_canvas: Tensor,
         prediction_canvas: Tensor,
-        target_bboxes: Tensor | None,
-        target_masks: Tensor | None,
-        predicted_bboxes: list[Tensor],
-        predicted_masks: list[Tensor],
+        boundingbox: list[Tensor],
+        instance_segmentation: list[Tensor],
+        target_boundingbox: Tensor | None,
+        target_instance_segmentation: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:
         """Creates visualizations of the predicted and target bounding
         boxes and instance masks.
@@ -238,21 +221,21 @@ class InstanceSegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         """
         predictions_viz = self.draw_predictions(
             prediction_canvas,
-            predicted_bboxes,
-            predicted_masks,
+            boundingbox,
+            instance_segmentation,
             self.width,
             self.bbox_labels,
             self.colors,
             self.draw_labels,
             self.alpha,
         )
-        if target_bboxes is None or target_masks is None:
+        if target_boundingbox is None or target_instance_segmentation is None:
             return predictions_viz
 
         targets_viz = self.draw_targets(
             label_canvas,
-            target_bboxes,
-            target_masks,
+            target_boundingbox,
+            target_instance_segmentation,
             self.width,
             self.bbox_labels,
             self.colors,

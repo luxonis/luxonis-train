@@ -24,11 +24,7 @@ model:
       metrics:
         - name: MeanAveragePrecisionKeypoints
       visualizers:
-        - name: MultiVisualizer
-          params:
-            visualizers:
-              - name: KeypointVisualizer
-              - name: BBoxVisualizer
+        - name: KeypointVisualizer
 
     - name: SegmentationHead
       task_name: color

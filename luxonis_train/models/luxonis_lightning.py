@@ -197,7 +197,7 @@ class LuxonisLightningModule(pl.LightningModule):
                     **node_cfg.params,
                     "task_name": node_cfg.task_name,
                     "remove_on_export": node_cfg.remove_on_export,
-                    "metadata_task_override": node_cfg.metadata_task_override,
+                    # "metadata_task_override": node_cfg.metadata_task_override,
                 },
             )
 

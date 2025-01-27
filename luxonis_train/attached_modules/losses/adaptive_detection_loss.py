@@ -7,11 +7,9 @@ from torch import Tensor, amp, nn
 from torchvision.ops import box_convert
 
 from luxonis_train.assigners import ATSSAssigner, TaskAlignedAssigner
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task
 from luxonis_train.nodes import EfficientBBoxHead
 from luxonis_train.utils import (
-    Labels,
-    Packet,
     anchors_for_fpn_features,
     compute_iou_loss,
     dist2bbox,
@@ -23,11 +21,10 @@ from .base_loss import BaseLoss
 logger = logging.getLogger(__name__)
 
 
-class AdaptiveDetectionLoss(
-    BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]
-):
+class AdaptiveDetectionLoss(BaseLoss):
+    supported_tasks = [Task.BOUNDINGBOX]
+
     node: EfficientBBoxHead
-    supported_tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
 
     anchors: Tensor
     anchor_points: Tensor
@@ -81,21 +78,19 @@ class AdaptiveDetectionLoss(
 
         self._logged_assigner_change = False
 
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
-        feats = self.get_input_tensors(inputs, "features")
-        pred_scores = self.get_input_tensors(inputs, "class_scores")[0]
-        pred_distri = self.get_input_tensors(inputs, "distributions")[0]
+    def forward(
+        self,
+        features: list[Tensor],
+        class_scores: Tensor,
+        distributions: Tensor,
+        target: Tensor,
+    ) -> tuple[Tensor, dict[str, Tensor]]:
+        batch_size = class_scores.shape[0]
 
-        target = self.get_label(labels)
-
-        batch_size = pred_scores.shape[0]
-
-        self._init_parameters(feats)
+        self._init_parameters(features)
 
         target = self._preprocess_bbox_target(target, batch_size)
-        pred_bboxes = dist2bbox(pred_distri, self.anchor_points_strided)
+        pred_bboxes = dist2bbox(distributions, self.anchor_points_strided)
 
         gt_labels = target[:, :, :1]
         gt_xyxy = target[:, :, 1:]
@@ -108,31 +103,11 @@ class AdaptiveDetectionLoss(
             mask_positive,
             _,
         ) = self._run_assigner(
-            gt_labels,
-            gt_xyxy,
-            mask_gt,
-            pred_bboxes,
-            pred_scores,
+            gt_labels, gt_xyxy, mask_gt, pred_bboxes, class_scores
         )
 
-        return (
-            pred_bboxes,
-            pred_scores,
-            assigned_bboxes / self.stride_tensor,
-            assigned_labels,
-            assigned_scores,
-            mask_positive,
-        )
+        assigned_bboxes /= self.stride_tensor
 
-    def forward(
-        self,
-        pred_bboxes: Tensor,
-        pred_scores: Tensor,
-        assigned_bboxes: Tensor,
-        assigned_labels: Tensor,
-        assigned_scores: Tensor,
-        mask_positive: Tensor,
-    ) -> tuple[Tensor, dict[str, Tensor]]:
         assigned_labels = torch.where(
             mask_positive > 0,
             assigned_labels,
@@ -142,7 +117,7 @@ class AdaptiveDetectionLoss(
             ..., :-1
         ]
         loss_cls = self.varifocal_loss(
-            pred_scores, assigned_scores, one_hot_label
+            class_scores, assigned_scores, one_hot_label
         )
 
         if assigned_scores.sum() > 1:

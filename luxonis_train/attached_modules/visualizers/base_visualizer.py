@@ -1,4 +1,6 @@
+import inspect
 from abc import abstractmethod
+from functools import cached_property
 
 from torch import Tensor
 from typing_extensions import TypeVarTuple, Unpack
@@ -11,7 +13,7 @@ Ts = TypeVarTuple("Ts")
 
 
 class BaseVisualizer(
-    BaseAttachedModule[Unpack[Ts]],
+    BaseAttachedModule,
     register=False,
     registry=VISUALIZERS,
 ):
@@ -61,6 +63,16 @@ class BaseVisualizer(
         """
         ...
 
+    @cached_property
+    def _signature(self) -> dict[str, type]:
+        signature = dict(inspect.signature(self.forward).parameters)
+        return {
+            name: param.annotation
+            for name, param in signature.items()
+            if name
+            not in {"self", "label_canvas", "prediction_canvas", "kwargs"}
+        }
+
     def run(
         self,
         label_canvas: Tensor,
@@ -69,5 +81,7 @@ class BaseVisualizer(
         labels: Labels | None,
     ) -> Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]:
         return self(
-            label_canvas, prediction_canvas, *self.prepare(inputs, labels)
+            label_canvas,
+            prediction_canvas,
+            **self.get_parameters(inputs, labels),
         )

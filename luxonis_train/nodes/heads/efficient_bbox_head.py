@@ -4,7 +4,7 @@ from typing import Any, Literal
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task
 from luxonis_train.nodes.blocks import EfficientDecoupledBlock
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.utils import (
@@ -20,9 +20,10 @@ logger = logging.getLogger(__name__)
 class EfficientBBoxHead(
     BaseHead[list[Tensor], tuple[list[Tensor], list[Tensor], list[Tensor]]],
 ):
-    in_channels: list[int]
-    tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
+    task = Task.BOUNDINGBOX
     parser = "YOLO"
+
+    in_channels: list[int]
 
     def __init__(
         self,
@@ -194,8 +195,8 @@ class EfficientBBoxHead(
         if self.training:
             return {
                 "features": features,
-                "class_scores": [cls_tensor],
-                "distributions": [reg_tensor],
+                "class_scores": cls_tensor,
+                "distributions": reg_tensor,
             }
 
         else:
@@ -203,8 +204,8 @@ class EfficientBBoxHead(
             return {
                 "boundingbox": boxes,
                 "features": features,
-                "class_scores": [cls_tensor],
-                "distributions": [reg_tensor],
+                "class_scores": cls_tensor,
+                "distributions": reg_tensor,
             }
 
     def _fit_stride_to_n_heads(self) -> Tensor:

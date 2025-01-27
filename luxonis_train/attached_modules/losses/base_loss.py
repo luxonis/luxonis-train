@@ -1,20 +1,15 @@
+import inspect
 from abc import abstractmethod
+from functools import cached_property
 
 from torch import Tensor
-from typing_extensions import TypeVarTuple, Unpack
 
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.utils.registry import LOSSES
 from luxonis_train.utils.types import Labels, Packet
 
-Ts = TypeVarTuple("Ts")
 
-
-class BaseLoss(
-    BaseAttachedModule[Unpack[Ts]],
-    register=False,
-    registry=LOSSES,
-):
+class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
     """A base class for all loss functions.
 
     This class defines the basic interface for all loss functions. It
@@ -24,7 +19,7 @@ class BaseLoss(
 
     @abstractmethod
     def forward(
-        self, *args: Unpack[Ts]
+        self, *args: Tensor | list[Tensor]
     ) -> Tensor | tuple[Tensor, dict[str, Tensor]]:
         """Forward pass of the loss function.
 
@@ -36,6 +31,15 @@ class BaseLoss(
             backpropagation.
         """
         ...
+
+    @cached_property
+    def _signature(self) -> dict[str, type]:
+        signature = dict(inspect.signature(self.forward).parameters)
+        return {
+            name: param.annotation
+            for name, param in signature.items()
+            if name != "self"
+        }
 
     def run(
         self, inputs: Packet[Tensor], labels: Labels
@@ -55,4 +59,4 @@ class BaseLoss(
         @raises IncompatibleException: If the inputs are not compatible
             with the module.
         """
-        return self(*self.prepare(inputs, labels))
+        return self(**self.get_parameters(inputs, labels))

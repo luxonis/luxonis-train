@@ -5,7 +5,7 @@ from typing import Any, Literal
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task
 from luxonis_train.nodes.blocks import DFL, ConvModule, DWConvModule
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.utils import (
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
     in_channels: list[int]
-    tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
+    task = Task.BOUNDINGBOX
     parser = "YOLO"
 
     def __init__(

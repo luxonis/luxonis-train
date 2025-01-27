@@ -9,7 +9,6 @@ Visualizers are used to render the output of a node. They are used in the `visua
 - [`KeypointVisualizer`](#keypointvisualizer)
 - [`SegmentationVisualizer`](#segmentationvisualizer)
 - [`EmbeddingsVisualizer`](#embeddingsvisualizer)
-- [`MultiVisualizer`](#multivisualizer)
 
 ## `BBoxVisualizer`
 
@@ -81,19 +80,3 @@ Visualizer for bounding boxes.
 | Key                 | Type    | Default value | Description                                                                                                                   |
 | ------------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `z_score_threshold` | `float` | `3.0`         | Threshold for z-score filtering. Embeddings with z-score higher than this value are considered as outliers and are not drawn. |
-
-## `MultiVisualizer`
-
-Special type of meta-visualizer that combines several visualizers into one. The combined visualizers share canvas.
-
-**Parameters:**
-
-| Key           | Type         | Default value | Description                                                                                                                                                                                                                                                  |
-| ------------- | ------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `visualizers` | `list[dict]` | `[]`          | List of visualizers to combine. Each item in the list is a dictionary with the following keys:<br> - `"name"` (`str`): Name of the visualizer. Must be a key in the `VISUALIZERS` registry. <br> - `"params"` (`dict`): Parameters to pass to the visualizer |
-
-**Example:**
-
-Example of combining [`KeypointVisualizer`](#keypointvisualizer) and [`BBoxVisualizer`](#bboxvisualizer).
-
-![multi_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/multi.png)

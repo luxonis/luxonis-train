@@ -23,16 +23,9 @@ model:
         - name: MeanAveragePrecisionKeypoints
 
       visualizers:
-        - name: MultiVisualizer
+        - name: KeypointVisualizer
           params:
-            visualizers:
-              - name: KeypointVisualizer
-                params:
-                  nonvisible_color: blue
-              - name: BBoxVisualizer
-                params:
-                  colors:
-                    person: "#FF5055"
+            nonvisible_color: blue
 
     - name: SegmentationHead
       inputs:

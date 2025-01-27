@@ -4,7 +4,7 @@ import math
 import torch.nn as nn
 from torch import Tensor
 
-from luxonis_train.enums import Metadata
+from luxonis_train.enums import Task
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks.blocks import ConvModule
 
@@ -12,7 +12,7 @@ from luxonis_train.nodes.blocks.blocks import ConvModule
 class GhostFaceNetHead(BaseNode[Tensor, list[Tensor]]):
     in_channels: int
     in_width: int
-    tasks = [Metadata("id")]
+    task = Task.EMBEDDINGS
 
     def __init__(
         self,

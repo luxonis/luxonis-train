@@ -6,9 +6,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task
 from luxonis_train.nodes import DiscSubNetHead
-from luxonis_train.utils import Labels, Packet
 
 from .base_loss import BaseLoss
 from .softmax_focal_loss import SoftmaxFocalLoss
@@ -16,9 +15,9 @@ from .softmax_focal_loss import SoftmaxFocalLoss
 logger = logging.getLogger(__name__)
 
 
-class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
+class ReconstructionSegmentationLoss(BaseLoss):
     node: DiscSubNetHead
-    supported_tasks: list[TaskType] = [TaskType.SEGMENTATION, TaskType.ARRAY]
+    supported_tasks = [Task.ANOMALY_DETECTION]
 
     def __init__(
         self,
@@ -50,22 +49,16 @@ class ReconstructionSegmentationLoss(BaseLoss[Tensor, Tensor, Tensor, Tensor]):
         )
         self.loss_ssim = SSIM()
 
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
-        recon = self.get_input_tensors(inputs, "reconstructed")[0]
-        seg_out = self.get_input_tensors(inputs)[0]
-        an_mask = labels[f"{self.node.task_name}/segmentation"]
-        orig = labels[f"{self.node.task_name}/original/segmentation"]
-
-        return orig, recon, seg_out, an_mask
-
     def forward(
-        self, orig: Tensor, recon: Tensor, seg_out: Tensor, an_mask: Tensor
+        self,
+        predictions: Tensor,
+        reconstructed: Tensor,
+        target_original_segmentation: Tensor,
+        target_segmentation: Tensor,
     ) -> tuple[Tensor, dict[str, Tensor]]:
-        l2 = self.loss_l2(recon, orig)
-        ssim = self.loss_ssim(recon, orig)
-        focal = self.loss_focal(seg_out, an_mask)
+        l2 = self.loss_l2(reconstructed, target_original_segmentation)
+        ssim = self.loss_ssim(reconstructed, target_original_segmentation)
+        focal = self.loss_focal(predictions, target_segmentation)
 
         total_loss = l2 + ssim + focal
 

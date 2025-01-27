@@ -5,15 +5,12 @@ import torchmetrics.detection as detection
 from torch import Tensor
 from torchvision.ops import box_convert
 
-from luxonis_train.enums import TaskType
-from luxonis_train.utils import Labels, Packet
+from luxonis_train.enums import Task
 
 from .base_metric import BaseMetric
 
 
-class MeanAveragePrecision(
-    BaseMetric[list[dict[str, Tensor]], list[dict[str, Tensor]]]
-):
+class MeanAveragePrecision(BaseMetric):
     """Compute the Mean-Average-Precision (mAP) and Mean-Average-Recall
     (mAR) for object detection predictions and instance segmentation.
 
@@ -22,16 +19,11 @@ class MeanAveragePrecision(
     <https://lightning.ai/docs/torchmetrics/stable/detection/mean_average_precision.html>}.
     """
 
-    supported_tasks: list[TaskType] = [
-        TaskType.BOUNDINGBOX,
-        TaskType.INSTANCE_SEGMENTATION,
-    ]
+    supported_tasks = [Task.BOUNDINGBOX, Task.INSTANCE_SEGMENTATION]
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
-        self.is_segmentation = (self.node.tasks is not None) and (
-            TaskType.INSTANCE_SEGMENTATION in self.node.tasks
-        )
+        self.is_segmentation = self.node.task is Task.INSTANCE_SEGMENTATION
 
         if self.is_segmentation:
             iou_type = ("bbox", "segm")
@@ -40,50 +32,26 @@ class MeanAveragePrecision(
 
         self.metric = detection.MeanAveragePrecision(iou_type=iou_type)  # type: ignore
 
-    def update(
-        self,
-        outputs: list[dict[str, Tensor]],
-        labels: list[dict[str, Tensor]],
-    ) -> None:
-        self.metric.update(outputs, labels)
-
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
-        box_label = self.get_label(labels, TaskType.BOUNDINGBOX)
-        mask_label = (
-            self.get_label(labels, TaskType.INSTANCE_SEGMENTATION)
-            if self.is_segmentation
-            else None
-        )
-
-        output_nms_bboxes = self.get_input_tensors(
-            inputs, TaskType.BOUNDINGBOX
-        )
-        output_nms_masks = (
-            self.get_input_tensors(inputs, TaskType.INSTANCE_SEGMENTATION)
-            if self.is_segmentation
-            else None
-        )
+    def update(self, predictions: list[Tensor], targets: Tensor) -> None:
         image_size = self.original_in_shape[1:]
 
         output_list: list[dict[str, Tensor]] = []
         label_list: list[dict[str, Tensor]] = []
-        for i in range(len(output_nms_bboxes)):
+        for i in range(len(predictions)):
             # Prepare predictions
             pred = {
-                "boxes": output_nms_bboxes[i][:, :4],
-                "scores": output_nms_bboxes[i][:, 4],
-                "labels": output_nms_bboxes[i][:, 5].int(),
+                "boxes": predictions[i][:, :4],
+                "scores": predictions[i][:, 4],
+                "labels": predictions[i][:, 5].int(),
             }
             if self.is_segmentation:
-                pred["masks"] = output_nms_masks[i].to(  # type: ignore
+                pred["masks"] = predictions[i].to(  # type: ignore
                     dtype=torch.bool
                 )  # Predicted masks (M, H, W)
             output_list.append(pred)
 
             # Prepare ground truth
-            curr_label = box_label[box_label[:, 0] == i]
+            curr_label = targets[targets[:, 0] == i]
             curr_bboxs = box_convert(curr_label[:, 2:], "xywh", "xyxy")
             curr_bboxs[:, 0::2] *= image_size[1]
             curr_bboxs[:, 1::2] *= image_size[0]
@@ -93,12 +61,12 @@ class MeanAveragePrecision(
                 "labels": curr_label[:, 1].int(),
             }
             if self.is_segmentation:
-                gt["masks"] = mask_label[box_label[:, 0] == i].to(  # type: ignore
+                gt["masks"] = targets[targets[:, 0] == i].to(  # type: ignore
                     dtype=torch.bool
                 )
             label_list.append(gt)
 
-        return output_list, label_list
+        self.metric.update(output_list, label_list)
 
     def reset(self) -> None:
         self.metric.reset()

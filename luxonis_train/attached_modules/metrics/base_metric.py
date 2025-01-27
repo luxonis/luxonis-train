@@ -1,22 +1,16 @@
+import inspect
 from abc import abstractmethod
+from functools import cached_property
 
 from torch import Tensor
 from torchmetrics import Metric
-from typing_extensions import TypeVarTuple, Unpack
 
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.utils import Labels, Packet
 from luxonis_train.utils.registry import METRICS
 
-Ts = TypeVarTuple("Ts")
 
-
-class BaseMetric(
-    BaseAttachedModule[Unpack[Ts]],
-    Metric,
-    register=False,
-    registry=METRICS,
-):
+class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
     """A base class for all metrics.
 
     This class defines the basic interface for all metrics. It utilizes
@@ -25,7 +19,7 @@ class BaseMetric(
     """
 
     @abstractmethod
-    def update(self, *args: Unpack[Ts]) -> None:
+    def update(self, *args: Tensor | list[Tensor]) -> None:
         """Updates the inner state of the metric.
 
         @type args: Unpack[Ts]
@@ -48,17 +42,22 @@ class BaseMetric(
         """
         ...
 
-    def run_update(self, outputs: Packet[Tensor], labels: Labels) -> None:
+    @cached_property
+    def _signature(self) -> dict[str, type]:
+        signature = dict(inspect.signature(self.update).parameters)
+        return {name: param.annotation for name, param in signature.items()}
+
+    def run_update(self, inputs: Packet[Tensor], labels: Labels) -> None:
         """Calls the metric's update method.
 
         Validates and prepares the inputs, then calls the metric's
         update method.
 
-        @type outputs: Packet[Tensor]
-        @param outputs: The outputs of the model.
+        @type inputs: Packet[Tensor]
+        @param inputs: The outputs of the model.
         @type labels: Labels
         @param labels: The labels of the model. @raises
             L{IncompatibleException}: If the inputs are not compatible
             with the module.
         """
-        self.update(*self.prepare(outputs, labels))
+        self.update(**self.get_parameters(inputs, labels))

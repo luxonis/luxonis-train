@@ -5,14 +5,14 @@ from typing import Any
 import torchmetrics
 from torch import Tensor
 
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task
 
 from .base_metric import BaseMetric
 
 logger = logging.getLogger(__name__)
 
 
-class TorchMetricWrapper(BaseMetric[Tensor, Tensor]):
+class TorchMetricWrapper(BaseMetric):
     Metric: type[torchmetrics.Metric]
 
     def __init__(self, **kwargs: Any):
@@ -41,7 +41,7 @@ class TorchMetricWrapper(BaseMetric[Tensor, Tensor]):
                 "or use this metric with a node. "
                 "The 'task' can be one of 'binary', 'multiclass', or 'multilabel'. "
             )
-        self._task = task
+        self._torchmetric_task = task
         kwargs["task"] = task
 
         n_classes: int | None = kwargs.get(
@@ -78,10 +78,10 @@ class TorchMetricWrapper(BaseMetric[Tensor, Tensor]):
 
         self.metric = self.Metric(**kwargs)
 
-    def update(self, preds: Tensor, target: Tensor) -> None:
-        if self._task in ["multiclass"]:
+    def update(self, predictions: Tensor, target: Tensor) -> None:
+        if self._torchmetric_task in ["multiclass"]:
             target = target.argmax(dim=1)
-        self.metric.update(preds, target)
+        self.metric.update(predictions, target)
 
     def compute(self) -> Tensor:
         return self.metric.compute()
@@ -91,40 +91,40 @@ class TorchMetricWrapper(BaseMetric[Tensor, Tensor]):
 
 
 class Accuracy(TorchMetricWrapper):
-    supported_tasks: list[TaskType] = [
-        TaskType.CLASSIFICATION,
-        TaskType.SEGMENTATION,
+    supported_tasks: list[Task] = [
+        Task.CLASSIFICATION,
+        Task.SEGMENTATION,
     ]
     Metric = torchmetrics.Accuracy
 
 
 class F1Score(TorchMetricWrapper):
-    supported_tasks: list[TaskType] = [
-        TaskType.CLASSIFICATION,
-        TaskType.SEGMENTATION,
+    supported_tasks: list[Task] = [
+        Task.CLASSIFICATION,
+        Task.SEGMENTATION,
     ]
     Metric = torchmetrics.F1Score
 
 
 class JaccardIndex(TorchMetricWrapper):
-    supported_tasks: list[TaskType] = [
-        TaskType.CLASSIFICATION,
-        TaskType.SEGMENTATION,
+    supported_tasks: list[Task] = [
+        Task.CLASSIFICATION,
+        Task.SEGMENTATION,
     ]
     Metric = torchmetrics.JaccardIndex
 
 
 class Precision(TorchMetricWrapper):
-    supported_tasks: list[TaskType] = [
-        TaskType.CLASSIFICATION,
-        TaskType.SEGMENTATION,
+    supported_tasks: list[Task] = [
+        Task.CLASSIFICATION,
+        Task.SEGMENTATION,
     ]
     Metric = torchmetrics.Precision
 
 
 class Recall(TorchMetricWrapper):
-    supported_tasks: list[TaskType] = [
-        TaskType.CLASSIFICATION,
-        TaskType.SEGMENTATION,
+    supported_tasks: list[Task] = [
+        Task.CLASSIFICATION,
+        Task.SEGMENTATION,
     ]
     Metric = torchmetrics.Recall

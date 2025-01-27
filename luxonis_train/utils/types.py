@@ -17,7 +17,7 @@ of indices of the output (specifying a range of outputs).
 """
 
 T = TypeVar("T", Tensor, Size)
-Packet = dict[str, list[T]]
+Packet = dict[str, list[T] | T]
 """Packet is a dictionary containing a list of objects of type T.
 
 It is used to pass data between different nodes of the network graph.

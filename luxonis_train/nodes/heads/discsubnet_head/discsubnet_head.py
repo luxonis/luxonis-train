@@ -3,7 +3,7 @@ from typing import Literal, Tuple, TypeAlias
 import torch
 from torch import Tensor
 
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.utils import Packet
 
@@ -31,7 +31,7 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
     in_channels: list[int] | int
     out_channels: int
     base_channels: int
-    tasks: list[TaskType] = [TaskType.SEGMENTATION]
+    task = Task.SEGMENTATION
 
     def __init__(
         self,
@@ -102,13 +102,10 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
         """Wraps the output into a packet."""
         seg_out, recon = output
         if self.export:
-            return {"segmentation": [seg_out]}
+            return {"segmentation": seg_out}
         else:
             seg_out, recon = output
-            return {
-                "reconstructed": [recon],
-                "segmentation": [seg_out],
-            }
+            return {"reconstructed": recon, "segmentation": seg_out}
 
     def get_custom_head_config(self) -> dict:
         """Returns custom head configuration.

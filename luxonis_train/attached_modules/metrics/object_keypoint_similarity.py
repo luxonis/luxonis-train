@@ -6,10 +6,8 @@ from scipy.optimize import linear_sum_assignment
 from torch import Tensor
 from torchvision.ops import box_convert
 
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task
 from luxonis_train.utils import (
-    Labels,
-    Packet,
     get_sigmas,
     get_with_default,
 )
@@ -20,9 +18,7 @@ from .base_metric import BaseMetric
 logger = logging.getLogger(__name__)
 
 
-class ObjectKeypointSimilarity(
-    BaseMetric[list[dict[str, Tensor]], list[dict[str, Tensor]]]
-):
+class ObjectKeypointSimilarity(BaseMetric):
     is_differentiable: bool = False
     higher_is_better: bool = True
     full_state_update: bool = True
@@ -33,7 +29,7 @@ class ObjectKeypointSimilarity(
     groundtruth_keypoints: list[Tensor]
     groundtruth_scales: list[Tensor]
 
-    supported_tasks: list[TaskType] = [TaskType.KEYPOINTS]
+    supported_tasks: list[Task] = [Task.KEYPOINTS]
 
     def __init__(
         self,
@@ -73,28 +69,27 @@ class ObjectKeypointSimilarity(
         )
         self.add_state("groundtruth_scales", default=[], dist_reduce_fx=None)
 
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
-        kpts_labels = self.get_label(labels, TaskType.KEYPOINTS)
-        bbox_labels = self.get_label(labels, TaskType.BOUNDINGBOX)
-        kpts_labels = insert_class(kpts_labels, bbox_labels)
-        n_keypoints = (kpts_labels.shape[1] - 2) // 3
-        label = torch.zeros((len(bbox_labels), n_keypoints * 3 + 6))
-        label[:, :2] = bbox_labels[:, :2]
-        label[:, 2:6] = box_convert(bbox_labels[:, 2:], "xywh", "xyxy")
-        label[:, 6::3] = kpts_labels[:, 2::3]  # insert kp x coordinates
-        label[:, 7::3] = kpts_labels[:, 3::3]  # insert kp y coordinates
-        label[:, 8::3] = kpts_labels[:, 4::3]  # insert kp visibility
+    def update(
+        self,
+        predictions: list[Tensor],
+        target_keypoints: Tensor,
+        target_boundingbox: Tensor,
+    ) -> None:
+        target_keypoints = insert_class(target_keypoints, target_boundingbox)
+        n_keypoints = (target_keypoints.shape[1] - 2) // 3
+        label = torch.zeros((len(target_boundingbox), n_keypoints * 3 + 6))
+        label[:, :2] = target_boundingbox[:, :2]
+        label[:, 2:6] = box_convert(target_boundingbox[:, 2:], "xywh", "xyxy")
+        label[:, 6::3] = target_keypoints[:, 2::3]  # insert kp x coordinates
+        label[:, 7::3] = target_keypoints[:, 3::3]  # insert kp y coordinates
+        label[:, 8::3] = target_keypoints[:, 4::3]  # insert kp visibility
 
-        output_list_oks = []
-        label_list_oks = []
+        prediction_oks = []
+        target_oks = []
         image_size = self.original_in_shape[1:]
 
-        for i, pred_kpt in enumerate(
-            self.get_input_tensors(inputs, TaskType.KEYPOINTS)
-        ):
-            output_list_oks.append({"keypoints": pred_kpt})
+        for i, pred_kpt in enumerate(predictions):
+            prediction_oks.append({"keypoints": pred_kpt})
 
             curr_label = label[label[:, 0] == i].to(pred_kpt.device)
             curr_bboxs = curr_label[:, 2:6]
@@ -116,43 +111,13 @@ class ObjectKeypointSimilarity(
             curr_scales = (
                 curr_bboxs_widths * curr_bboxs_heights * self.area_factor
             )
-            label_list_oks.append(
-                {"keypoints": curr_kpts, "scales": curr_scales}
-            )
+            target_oks.append({"keypoints": curr_kpts, "scales": curr_scales})
 
-        return output_list_oks, label_list_oks
-
-    def update(
-        self, preds: list[dict[str, Tensor]], target: list[dict[str, Tensor]]
-    ) -> None:
-        """Updates the inner state of the metric.
-
-        @type preds: list[dict[str, Tensor]]
-        @param preds: A list consisting of dictionaries each containing key-values for
-            a single image.
-            Parameters that should be provided per dict:
-
-                - keypoints (FloatTensor): Tensor of shape (N, 3*K) and in format
-                  [x, y, vis, x, y, vis, ...] where `x` an `y`
-                  are absolute keypoint coordinates and `vis` is keypoint visibility.
-        @type target: list[dict[str, Tensor]]
-        @param target: A list consisting of dictionaries each containing key-values for
-            a single image.
-            Parameters that should be provided per dict:
-
-                - keypoints (FloatTensor): Tensor of shape (N, 3*K) and in format
-                  [x, y, vis, x, y, vis, ...] where `x` an `y`
-                  are absolute keypoint coordinates and `vis` is keypoint visibility.
-                - scales (FloatTensor): Tensor of shape (N) where each value
-                  corresponds to scale of the bounding box.
-                  Scale of one bounding box is defined as sqrt(width*height) where
-                  width and height are not normalized.
-        """
-        for item in preds:
+        for item in prediction_oks:
             keypoints = self._fix_empty_tensors(item["keypoints"])
             self.pred_keypoints.append(keypoints)
 
-        for item in target:
+        for item in target_oks:
             keypoints = self._fix_empty_tensors(item["keypoints"])
             self.groundtruth_keypoints.append(keypoints)
             self.groundtruth_scales.append(item["scales"])

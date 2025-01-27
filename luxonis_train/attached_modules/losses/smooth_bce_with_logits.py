@@ -3,17 +3,14 @@ from typing import Any, Literal
 import torch
 from torch import Tensor
 
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task
 
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
 
 
-class SmoothBCEWithLogitsLoss(BaseLoss[list[Tensor], Tensor]):
-    supported_tasks: list[TaskType] = [
-        TaskType.SEGMENTATION,
-        TaskType.CLASSIFICATION,
-    ]
+class SmoothBCEWithLogitsLoss(BaseLoss):
+    supported_tasks = [Task.SEGMENTATION, Task.CLASSIFICATION]
 
     def __init__(
         self,

@@ -9,7 +9,7 @@ from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
 from typeguard import TypeCheckError, check_type
 
-from luxonis_train.enums import Metadata, Task, TaskType
+from luxonis_train.enums import Task
 from luxonis_train.utils import (
     AttachIndexType,
     DatasetMetadata,
@@ -107,7 +107,7 @@ class BaseNode(
     """
 
     attach_index: AttachIndexType
-    tasks: list[Task] | None = None
+    task: Task | None = None
 
     def __init__(
         self,
@@ -122,7 +122,7 @@ class BaseNode(
         export_output_names: list[str] | None = None,
         attach_index: AttachIndexType | None = None,
         task_name: str | None = None,
-        metadata_task_override: str | dict[str, str] | None = None,
+        labels_override: str | dict[str, str] | None = None,
     ):
         """Constructor for the C{BaseNode}.
 
@@ -177,35 +177,6 @@ class BaseNode(
                     f"argument for node '{self.name}' was not provided."
                 )
         self.task_name = task_name or ""
-        self.metadata_task_override = {}
-        if metadata_task_override is not None:
-            if self.tasks is None:
-                raise ValueError(
-                    "Metadata task override can only be used with nodes that define tasks."
-                )
-            n_metadata_tasks = sum(
-                1 for task in self.tasks if isinstance(task, Metadata)
-            )
-            if n_metadata_tasks > 1 and isinstance(
-                metadata_task_override, str
-            ):
-                raise ValueError(
-                    f"Node '{self.name}' defines multiple metadata tasks, "
-                    "but only a single task name was provided for "
-                    "`metadata_task_override`. Provide a dictionary "
-                    "mapping default names to new names instead ."
-                )
-            for task in self.tasks:
-                if not isinstance(task, Metadata):
-                    continue
-
-                if isinstance(metadata_task_override, dict):
-                    new_name = metadata_task_override.get(task.name, task.name)
-                else:
-                    new_name = metadata_task_override
-
-                self.metadata_task_override[task.name] = new_name
-                task.name = new_name
 
         if getattr(self, "attach_index", None) is None:
             parameters = inspect.signature(self.forward).parameters
@@ -266,8 +237,8 @@ class BaseNode(
         if self._n_keypoints is not None:
             return self._n_keypoints
 
-        if TaskType.KEYPOINTS not in (self.tasks or []):
-            raise ValueError(f"{self.name} does not support keypoints.")
+        if self.task is not Task.KEYPOINTS:
+            raise ValueError(f"'{self.name}' does not support keypoints.")
         return self.dataset_metadata.n_keypoints(self.task_name)
 
     @property
@@ -480,7 +451,10 @@ class BaseNode(
                 f"Node {self.name} expects a single input, but got {len(inputs)} inputs instead. "
                 "If the node expects multiple inputs, the `unwrap` method should be overridden."
             )
-        return self.get_attached(inputs[0]["features"])  # type: ignore
+        inp = inputs[0]["features"]
+        if isinstance(inp, Tensor):
+            return inp  # type: ignore
+        return self.get_attached(inp)  # type: ignore
 
     @abstractmethod
     def forward(self, inputs: ForwardInputT) -> ForwardOutputT:
@@ -504,7 +478,7 @@ class BaseNode(
         Example::
 
             >>> class FooNode(BaseNode):
-            ...     tasks = [TaskType.CLASSIFICATION]
+            ...     task = TaskType.CLASSIFICATION
             ...
             ... class BarNode(BaseNode):
             ...     pass
@@ -527,7 +501,7 @@ class BaseNode(
         """
 
         if isinstance(output, Tensor):
-            outputs = [output]
+            outputs = output
         elif isinstance(output, (list, tuple)) and all(
             isinstance(t, Tensor) for t in output
         ):
@@ -536,15 +510,11 @@ class BaseNode(
             raise ValueError(
                 "Default `wrap` expects a single tensor or a list of tensors."
             )
-        if not self.tasks:
-            return {"features": outputs}
-        if len(self.tasks) > 1:
-            raise RuntimeError(
-                f"Node {self.name} defines multiple tasks. "
-                "The `wrap` method should be overridden."
-            )
-        task = f"{self.task_name or ''}/{self.tasks[0].value}"
-        return {task: outputs}
+        if self.task is None:
+            name = "features"
+        else:
+            name = self.task.value
+        return {name: outputs}
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:
         """Combines the forward pass with the wrapping and unwrapping of
@@ -559,16 +529,7 @@ class BaseNode(
 
         @raises RuntimeError: If default L{wrap} or L{unwrap} methods are not sufficient.
         """
-        unwrapped = self.unwrap(inputs)
-        outputs = self(unwrapped)
-        wrapped = self.wrap(outputs)
-        str_tasks = [task.value for task in self.tasks or []]
-        for key in list(wrapped.keys()):
-            if key in str_tasks:
-                assert self.task_name is not None
-                value = wrapped.pop(key)
-                wrapped[f"{self.task_name}/{key}"] = value
-        return wrapped
+        return self.wrap(self(self.unwrap(inputs)))
 
     T = TypeVar("T", Tensor, Size)
 

@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.utils import Packet
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
-    tasks: list[TaskType] = [TaskType.KEYPOINTS, TaskType.BOUNDINGBOX]
+    task = Task.FOMO
     in_channels: int
     attach_index: int = 1
 
@@ -69,15 +69,10 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
             return {"outputs": [self._apply_nms_if_needed(heatmap)]}
 
         if self.training:
-            return {
-                "features": [heatmap],
-            }
+            return {"heatmap": heatmap}
 
         keypoints = self._heatmap_to_kpts(heatmap)
-        return {
-            "keypoints": keypoints,
-            "features": [heatmap],
-        }
+        return {"keypoints": keypoints, "heatmap": heatmap}
 
     def _apply_nms_if_needed(self, heatmap: Tensor) -> Tensor:
         """Apply NMS pooling to the heatmap if use_nms is enabled.
