@@ -1,8 +1,10 @@
+import inspect
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Collection, Sequence
+from collections.abc import Callable, Collection, Sequence
 from contextlib import suppress
 from functools import cached_property
+from inspect import Parameter
 
 from luxonis_ml.data.utils import get_task_type
 from luxonis_ml.utils.registry import AutoRegisterMeta
@@ -85,9 +87,22 @@ class BaseAttachedModule(
 
         self._check_node_type_override()
 
+    @staticmethod
+    def _get_signature(
+        func: Callable, exclude: Collection[str] | None = None
+    ) -> dict[str, Parameter]:
+        exclude = set(exclude or [])
+        exclude |= {"self", "kwargs"}
+        signature = dict(inspect.signature(func).parameters)
+        return {
+            name: param
+            for name, param in signature.items()
+            if name not in exclude
+        }
+
     @cached_property
     @abstractmethod
-    def _signature(self) -> dict[str, type]: ...
+    def _signature(self) -> dict[str, Parameter]: ...
 
     @property
     def task(self) -> Task:
@@ -213,7 +228,9 @@ class BaseAttachedModule(
         pred_name = None
         if len(self._signature) == 2:
             pred_name, target_name = self._signature.keys()
-            if self.task.main_output in inputs:
+            if pred_name in inputs:
+                input_names.append(pred_name)
+            elif self.task.main_output in inputs:
                 input_names.append(self.task.main_output)
             else:
                 input_names.append(pred_name)
@@ -253,15 +270,18 @@ class BaseAttachedModule(
                 for name in target_names:
                     label_name = name.replace("target_", "")
                     if label_name not in labels:
-                        raise RuntimeError(
-                            f"Module '{self.name}' requires the label '{label_name}', "
-                            f"but it is not present in the dataset. "
-                            f"All available labels: {list(labels.keys())}. "
-                        )
-                    targets[name] = labels[label_name]
+                        if self._signature[name].default is Parameter.empty:
+                            raise RuntimeError(
+                                f"Module '{self.name}' requires the label '{label_name}', "
+                                f"but it is not present in the dataset. "
+                                f"All available labels: {list(labels.keys())}. "
+                            )
+                    else:
+                        targets[name] = labels[label_name]
             kwargs = predictions | targets
 
-        for name, typ in self._signature.items():
+        for name, param in self._signature.items():
+            typ = param.annotation
             if typ == Tensor and not isinstance(kwargs[name], Tensor):
                 raise RuntimeError(
                     f"Module '{self.name}' expects a tensor for input '{name}', "
@@ -270,6 +290,7 @@ class BaseAttachedModule(
                 )
 
             elif typ == list[Tensor] and not isinstance(kwargs[name], list):
+                exit(2)
                 raise RuntimeError(
                     f"Module '{self.name}' expects a list of tensors for input '{name}', "
                     f"but the node '{self.node.name}' returned a single tensor. Please make sure "

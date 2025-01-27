@@ -1,6 +1,6 @@
-import inspect
 from abc import abstractmethod
 from functools import cached_property
+from inspect import Parameter
 
 from torch import Tensor
 from typing_extensions import TypeVarTuple, Unpack
@@ -64,14 +64,10 @@ class BaseVisualizer(
         ...
 
     @cached_property
-    def _signature(self) -> dict[str, type]:
-        signature = dict(inspect.signature(self.forward).parameters)
-        return {
-            name: param.annotation
-            for name, param in signature.items()
-            if name
-            not in {"self", "target_canvas", "prediction_canvas", "kwargs"}
-        }
+    def _signature(self) -> dict[str, Parameter]:
+        return self._get_signature(
+            self.forward, {"target_canvas", "prediction_canvas"}
+        )
 
     def run(
         self,

@@ -1,6 +1,6 @@
-import inspect
 from abc import abstractmethod
 from functools import cached_property
+from inspect import Parameter
 
 from torch import Tensor
 from torchmetrics import Metric
@@ -43,9 +43,8 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         ...
 
     @cached_property
-    def _signature(self) -> dict[str, type]:
-        signature = dict(inspect.signature(self.update).parameters)
-        return {name: param.annotation for name, param in signature.items()}
+    def _signature(self) -> dict[str, Parameter]:
+        return self._get_signature(self.update)
 
     def run_update(self, inputs: Packet[Tensor], labels: Labels) -> None:
         """Calls the metric's update method.

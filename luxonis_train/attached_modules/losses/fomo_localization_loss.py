@@ -7,6 +7,7 @@ from torch import Tensor
 
 from luxonis_train.enums import Task
 from luxonis_train.nodes import FOMOHead
+from luxonis_train.utils import get_center_keypoints
 
 from .base_loss import BaseLoss
 
@@ -31,7 +32,7 @@ class FOMOLocalizationLoss(BaseLoss):
 
     def forward(self, heatmap: Tensor, target: Tensor) -> Tensor:
         batch_size, num_classes, height, width = heatmap.shape
-        target_keypoints = self._create_target_keypoints(target, height, width)
+        target_keypoints = get_center_keypoints(target, height, width)
         target_heatmap = torch.zeros(
             (batch_size, num_classes, height, width), device=heatmap.device
         )
@@ -46,15 +47,3 @@ class FOMOLocalizationLoss(BaseLoss):
         return F.binary_cross_entropy_with_logits(
             heatmap, target_heatmap, weight=weight_matrix
         )
-
-    def _create_target_keypoints(
-        self, bboxes: Tensor, height: int, width: int
-    ) -> Tensor:
-        # one keypoint for each box in the center
-        target_keypoints = torch.empty(
-            (bboxes.shape[0], 4), device=bboxes.device, dtype=torch.int
-        )
-        target_keypoints[:, :2] = bboxes[:, :2]
-        target_keypoints[:, 2] = (bboxes[:, 2] + bboxes[:, 4] / 2) * width
-        target_keypoints[:, 3] = (bboxes[:, 3] + bboxes[:, 5] / 2) * height
-        return target_keypoints

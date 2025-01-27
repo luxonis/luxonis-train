@@ -1,6 +1,6 @@
-import inspect
 from abc import abstractmethod
 from functools import cached_property
+from inspect import Parameter
 
 from torch import Tensor
 
@@ -33,13 +33,8 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
         ...
 
     @cached_property
-    def _signature(self) -> dict[str, type]:
-        signature = dict(inspect.signature(self.forward).parameters)
-        return {
-            name: param.annotation
-            for name, param in signature.items()
-            if name != "self"
-        }
+    def _signature(self) -> dict[str, Parameter]:
+        return self._get_signature(self.forward)
 
     def run(
         self, inputs: Packet[Tensor], labels: Labels

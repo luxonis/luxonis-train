@@ -13,7 +13,7 @@ from luxonis_train.utils import (
     get_sigmas,
     get_with_default,
 )
-from luxonis_train.utils.keypoints import insert_class
+from luxonis_train.utils.keypoints import get_center_keypoints, insert_class
 
 from .base_metric import BaseMetric
 
@@ -75,15 +75,22 @@ class ObjectKeypointSimilarity(BaseMetric):
     @override
     def required_labels(self) -> set[str]:
         if self.task is Task.FOMO:
-            return Task.SEGMENTATION.required_labels
+            return Task.BOUNDINGBOX.required_labels
         return self.task.required_labels
 
     def update(
         self,
-        predictions: list[Tensor],
-        target_keypoints: Tensor,
+        keypoints: list[Tensor],
         target_boundingbox: Tensor,
+        target_keypoints: Tensor | None = None,
     ) -> None:
+        if target_keypoints is None:
+            if self.task is not Task.FOMO:
+                raise ValueError(
+                    "The target keypoints are not required only when used "
+                    " with FOMO task."
+                )
+            target_keypoints = get_center_keypoints(target_boundingbox)
         target_keypoints = insert_class(target_keypoints, target_boundingbox)
         n_keypoints = (target_keypoints.shape[1] - 2) // 3
         label = torch.zeros((len(target_boundingbox), n_keypoints * 3 + 6))
@@ -97,7 +104,7 @@ class ObjectKeypointSimilarity(BaseMetric):
         target_oks = []
         image_size = self.original_in_shape[1:]
 
-        for i, pred_kpt in enumerate(predictions):
+        for i, pred_kpt in enumerate(keypoints):
             prediction_oks.append({"keypoints": pred_kpt})
 
             curr_label = label[label[:, 0] == i].to(pred_kpt.device)

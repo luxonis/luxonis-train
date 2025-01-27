@@ -18,7 +18,7 @@ from .general import (
     to_shape_packet,
 )
 from .graph import traverse_graph
-from .keypoints import get_sigmas, insert_class
+from .keypoints import get_center_keypoints, get_sigmas, insert_class
 from .tracker import LuxonisTrackerPL
 from .types import AttachIndexType, Kwargs, Labels, Packet
 
@@ -46,4 +46,5 @@ __all__ = [
     "insert_class",
     "get_attribute_check_none",
     "apply_bounding_box_to_masks",
+    "get_center_keypoints",
 ]
