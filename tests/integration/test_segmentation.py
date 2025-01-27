@@ -6,6 +6,9 @@ from luxonis_ml.data import LuxonisDataset
 from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
 
+# TODO: Remove the following line after the incompatibility issue is resolved
+BACKBONES = [backbone for backbone in BACKBONES if backbone != "PPLCNetV3"]
+
 
 def get_opts(backbone: str) -> dict[str, Any]:
     opts = {
