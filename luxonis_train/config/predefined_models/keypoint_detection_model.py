@@ -143,7 +143,7 @@ class KeypointDetectionModel(BasePredefinedModel):
                 is_main_metric=True,
             ),
             MetricModuleConfig(
-                name="MeanAveragePrecisionKeypoints",
+                name="MeanAveragePrecision",
                 attached_to=f"{self.task_name}/EfficientKeypointBBoxHead",
             ),
         ]

@@ -8,14 +8,13 @@ from pycocotools.cocoeval import COCOeval
 from torch import Tensor
 from torchvision.ops import box_convert
 
+from luxonis_train.attached_modules.metrics import BaseMetric
 from luxonis_train.enums import Task
 from luxonis_train.utils import get_sigmas, get_with_default
 from luxonis_train.utils.keypoints import insert_class
 
-from .base_metric import BaseMetric
 
-
-class MeanAveragePrecisionKeypoints(BaseMetric):
+class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
     """Mean Average Precision metric for keypoints.
 
     Uses C{OKS} as IoU measure.
