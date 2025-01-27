@@ -80,7 +80,7 @@ class ConfusionMatrix(BaseMetric):
     @override
     def task(self) -> Task:
         task = super().task
-        if task is Task.KEYPOINTS:
+        if task in {Task.KEYPOINTS, Task.INSTANCE_SEGMENTATION}:
             return Task.BOUNDINGBOX
         return task
 
