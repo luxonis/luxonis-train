@@ -122,7 +122,6 @@ class BaseNode(
         export_output_names: list[str] | None = None,
         attach_index: AttachIndexType | None = None,
         task_name: str | None = None,
-        labels_override: str | dict[str, str] | None = None,
     ):
         """Constructor for the C{BaseNode}.
 

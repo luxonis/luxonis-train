@@ -746,10 +746,7 @@ class LuxonisModel:
                 }
             )
 
-        heads = get_head_configs(
-            self.lightning_module,
-            outputs,
-        )
+        heads = get_head_configs(self.lightning_module, outputs)
 
         model = {
             "metadata": {

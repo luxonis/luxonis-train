@@ -79,7 +79,8 @@ class FusionNeck2(MultiInputTestBaseNode): ...
 
 
 class CustomSegHead1(MultiInputTestBaseNode):
-    tasks = [Task.SEGMENTATION]
+    task = Task.SEGMENTATION
+    attach_index = -1
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -89,12 +90,12 @@ class CustomSegHead1(MultiInputTestBaseNode):
         assert len(inputs) == 1
         return inputs[0]["features"][-1]
 
-    def forward(self, inputs: Tensor):
-        return [self.conv(inputs)]
+    def forward(self, inputs: Tensor) -> Tensor:
+        return self.conv(inputs)
 
 
 class CustomSegHead2(MultiInputTestBaseNode):
-    tasks = [Task.SEGMENTATION]
+    task = Task.SEGMENTATION
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -103,7 +104,6 @@ class CustomSegHead2(MultiInputTestBaseNode):
     def unwrap(self, inputs: list[Packet[Tensor]]):
         return [packet["features"][-1] for packet in inputs]
 
-    def forward(self, inputs: list[Tensor]):
+    def forward(self, inputs: list[Tensor]) -> Tensor:
         fn1, _, disp = inputs
-        x = fn1 + disp
-        return [self.conv(x)]
+        return self.conv(fn1 + disp)

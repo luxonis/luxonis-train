@@ -13,6 +13,9 @@ def get_opts_backbone(backbone: str) -> dict[str, Any]:
             "nodes": [
                 {
                     "name": backbone,
+                    "params": {"variant": "n"}
+                    if backbone == "RecSubNet"
+                    else {},
                 },
                 {
                     "name": "EfficientBBoxHead",

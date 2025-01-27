@@ -117,7 +117,10 @@ def _get_head_outputs(
 
     output_names = []
     for output in outputs:
-        name = output["name"].split("/")[0]
+        try:
+            _, name, _, _ = output["name"].split("/")
+        except ValueError:
+            name = output["name"]
         if name == head_name:
             output_names.append(output["name"])
 
@@ -125,8 +128,7 @@ def _get_head_outputs(
 
 
 def get_head_configs(
-    lightning_module: LuxonisLightningModule,
-    outputs: list[dict],
+    lightning_module: LuxonisLightningModule, outputs: list[dict]
 ) -> list[dict]:
     """Get model heads.
 

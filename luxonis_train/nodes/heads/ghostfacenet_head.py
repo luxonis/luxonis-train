@@ -5,14 +5,16 @@ import torch.nn as nn
 from torch import Tensor
 
 from luxonis_train.enums import Task
-from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks.blocks import ConvModule
+from luxonis_train.nodes.heads import BaseHead
 
 
-class GhostFaceNetHead(BaseNode[Tensor, list[Tensor]]):
+class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
     in_channels: int
     in_width: int
     task = Task.EMBEDDINGS
+
+    attach_index = -1
 
     def __init__(
         self,

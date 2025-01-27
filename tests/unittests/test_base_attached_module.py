@@ -95,9 +95,6 @@ def test_pick_labels(labels: Labels):
     del labels["/segmentation"]
     labels["task/segmentation"] = SEGMENTATION_ARRAY
 
-    with pytest.raises(RuntimeError):
-        seg_loss.pick_labels(labels)
-
     det_loss = DummyLoss(node=det_head)
     assert det_loss.pick_labels(labels) == {
         "keypoints": KEYPOINT_ARRAY,

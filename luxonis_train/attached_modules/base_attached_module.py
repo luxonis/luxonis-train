@@ -5,6 +5,8 @@ from collections.abc import Callable, Collection, Sequence
 from contextlib import suppress
 from functools import cached_property
 from inspect import Parameter
+from types import UnionType
+from typing import Union, get_args, get_origin
 
 from luxonis_ml.data.utils import get_task_type
 from luxonis_ml.utils.registry import AutoRegisterMeta
@@ -187,20 +189,11 @@ class BaseAttachedModule(
         required_labels = {
             f"{self.node.task_name}/{label}" for label in self.required_labels
         }
-        missing = set(required_labels) - set(labels.keys())
-        if missing:
-            raise RuntimeError(
-                f"Module '{self.name}' requires the following labels: "
-                f"{list(missing)}, but the dataset does not contain "
-                f"all of them. Missing labels: {list(missing)}. "
-                f"All available labels: {list(labels.keys())}. "
-                "Please make sure you're using the correct dataset."
-            )
-        picked = {
-            get_task_type(label): labels[label] for label in required_labels
+        return {
+            get_task_type(label): labels[label]
+            for label in required_labels
+            if label in labels
         }
-
-        return picked
 
     def pick_inputs(
         self, inputs: Packet[Tensor], keys: Collection[str]
@@ -219,6 +212,12 @@ class BaseAttachedModule(
                 "Please make sure you're using the correct node."
             )
         return out
+
+    def _argument_is_optional(self, name: str) -> bool:
+        annotation = self._signature[name].annotation
+        origin = get_origin(annotation)
+        args = get_args(annotation)
+        return origin in {Union, UnionType} and type(None) in args
 
     def get_parameters(
         self, inputs: Packet[Tensor], labels: Labels | None = None
@@ -260,7 +259,10 @@ class BaseAttachedModule(
             predictions[pred_name] = predictions.pop(self.task.main_output)
 
         if labels is None:
-            kwargs = predictions
+            targets = {}
+            for name in target_names:
+                if self._argument_is_optional(name):
+                    targets[name] = None
         else:
             labels = self.pick_labels(labels)
             if len(target_names) == len(labels) == 1:
@@ -270,7 +272,10 @@ class BaseAttachedModule(
                 for name in target_names:
                     label_name = name.replace("target_", "")
                     if label_name not in labels:
-                        if self._signature[name].default is Parameter.empty:
+                        if self._argument_is_optional(name):
+                            targets[name] = None
+
+                        elif self._signature[name].default is Parameter.empty:
                             raise RuntimeError(
                                 f"Module '{self.name}' requires the label '{label_name}', "
                                 f"but it is not present in the dataset. "
@@ -278,7 +283,8 @@ class BaseAttachedModule(
                             )
                     else:
                         targets[name] = labels[label_name]
-            kwargs = predictions | targets
+
+        kwargs = predictions | targets
 
         for name, param in self._signature.items():
             typ = param.annotation

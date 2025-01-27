@@ -32,6 +32,7 @@ from luxonis_train.callbacks import (
     TrainingManager,
 )
 from luxonis_train.config import AttachedModuleConfig, Config
+from luxonis_train.enums import Metadata
 from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.utils import (
@@ -146,6 +147,7 @@ class LuxonisLightningModule(pl.LightningModule):
         self.loader_input_shapes: dict[str, dict[str, Size]] = {}
         self.node_input_sources: dict[str, list[str]] = defaultdict(list)
         self.loss_weights: dict[str, float] = {}
+        self.node_tasks: dict[str, str] = {}
         self.main_metric: str | None = None
         self.save_dir = save_dir
         self.test_step_outputs: list[Mapping[str, Tensor | float | int]] = []
@@ -191,13 +193,32 @@ class LuxonisLightningModule(pl.LightningModule):
                         f"Node {node_name} does not have the `task_name` parameter set. "
                         "Please specify the `task_name` parameter for each head node. "
                     )
+            self.node_tasks[node_name] = node_cfg.task_name
+
+            task_override = node_cfg.metadata_task_override
+            if task_override is not None and Node.task is not None:
+                metadata = {
+                    label
+                    for label in Node.task.required_labels
+                    if isinstance(label, Metadata)
+                }
+                if isinstance(task_override, str):
+                    if len(metadata) != 1:
+                        raise ValueError(
+                            f"Task '{Node.task}' of node '{Node.__name__}' requires multiple metadata labels: {metadata}, "
+                            "so the `metadata_task_override` must be a dictionary."
+                        )
+                    task_override = {next(iter(metadata)).name: task_override}
+
+                for m in metadata:
+                    m.name = task_override.get(m.name, m.name)
+
             nodes[node_name] = (
                 Node,
                 {
                     **node_cfg.params,
                     "task_name": node_cfg.task_name,
                     "remove_on_export": node_cfg.remove_on_export,
-                    # "metadata_task_override": node_cfg.metadata_task_override,
                 },
             )
 
@@ -576,7 +597,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 self.cfg.exporter.output_names = None
 
             output_names = self.cfg.exporter.output_names or [
-                f"{node_name}/{output_name}/{i}"
+                f"{self.node_tasks[node_name]}/{node_name}/{output_name}/{i}"
                 for node_name, output_name, i in output_order
             ]
 
@@ -601,22 +622,28 @@ class LuxonisLightningModule(pl.LightningModule):
                         ]
                     )
                 else:
-                    output_names.append(f"{node_name}/{output_name}/{i}")
+                    output_names.append(
+                        f"{self.node_tasks[node_name]}/{node_name}/{output_name}/{i}"
+                    )
 
         old_forward = self.forward
 
         def export_forward(inputs: dict[str, Tensor]) -> tuple[Tensor, ...]:
-            outputs = old_forward(
+            old_outputs = old_forward(
                 inputs,
                 None,
                 compute_loss=False,
                 compute_metrics=False,
                 compute_visualizations=False,
             ).outputs
-            return tuple(
-                outputs[node_name][output_name][i]
-                for node_name, output_name, i in output_order
-            )
+            outputs = []
+            for node_name, output_name, i in output_order:
+                node_output = old_outputs[node_name][output_name]
+                if isinstance(node_output, Tensor):
+                    outputs.append(node_output)
+                else:
+                    outputs.append(node_output[i])
+            return tuple(outputs)
 
         self.forward = export_forward  # type: ignore
 
