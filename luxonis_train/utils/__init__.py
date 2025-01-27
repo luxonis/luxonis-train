@@ -1,5 +1,6 @@
 from .boundingbox import (
     anchors_for_fpn_features,
+    apply_bounding_box_to_masks,
     bbox2dist,
     bbox_iou,
     compute_iou_loss,
@@ -48,4 +49,5 @@ __all__ = [
     "OCREncoder",
     "OCRDecoder",
     "prepare_batch_targets",
+    "apply_bounding_box_to_masks",
 ]

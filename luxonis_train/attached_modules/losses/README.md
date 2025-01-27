@@ -12,6 +12,8 @@ List of all the available loss functions.
 - [`AdaptiveDetectionLoss`](#adaptivedetectionloss)
 - [`EfficientKeypointBBoxLoss`](#efficientkeypointbboxloss)
 - [`FOMOLocalizationLoss`](#fomolocalizationLoss)
+- \[`PrecisionDFLDetectionLoss`\] (# precisiondfldetectionloss)
+- \[`PrecisionDFLSegmentationLoss`\] (# precisiondflsegmentationloss)
 
 ## `CrossEntropyLoss`
 
@@ -97,7 +99,7 @@ Keypoint Similarity Loss](https://arxiv.org/ftp/arxiv/papers/2204/2204.06806.pdf
 | `class_loss_weight`     | `float`                                           | `1.0`         | Weight used for the classification sub-loss                                                                   |
 | `iou_loss_weight`       | `float`                                           | `2.5`         | Weight used for the `IoU` sub-loss                                                                            |
 | `regr_kpts_loss_weight` | `float`                                           | `1.5`         | Weight used for the `OKS` sub-loss                                                                            |
-| `vis_kpts_loss_weight`  | `float`                                           | `1.0`         | Weight used for the keypoint visibility sub-loss                                                              |
+| `vis_kpts_loss_weight`  | `float`                                           | `2.0`         | Weight used for the keypoint visibility sub-loss                                                              |
 | `sigmas`                | `list[float] \ None`                              | `None`        | Sigmas used in `KeypointLoss` for `OKS` metric. If `None` then use COCO ones if possible or default ones      |
 | `area_factor`           | `float \| None`                                   | `None`        | Factor by which we multiply bounding box area which is used in `KeypointLoss.` If `None` then use default one |
 
@@ -120,7 +122,7 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 
 | Key             | Type    | Default value | Description                                                                                                                                                                          |
 | --------------- | ------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `object_weight` | `float` | `1000`        | Weight for the objects in the loss calculation. Training with a larger `object_weight` in the loss parameters may result in more false positives (FP), but it will improve accuracy. |
+| `object_weight` | `float` | `500`         | Weight for the objects in the loss calculation. Training with a larger `object_weight` in the loss parameters may result in more false positives (FP), but it will improve accuracy. |
 
 ## `CTCLoss`
 
@@ -131,3 +133,29 @@ CTC loss with optional focal loss weighting.
 | Key              | Type   | Default value | Description                                            |
 | ---------------- | ------ | ------------- | ------------------------------------------------------ |
 | `use_focal_loss` | `bool` | `True`        | Whether to apply focal loss weighting to the CTC loss. |
+
+## `PrecisionDFLDetectionLoss`
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+**Parameters:**
+
+| Key                 | Type    | Default value | Description                                |
+| ------------------- | ------- | ------------- | ------------------------------------------ |
+| `tal_topk`          | `int`   | `10`          | Number of anchors considered in selection. |
+| `class_loss_weight` | `float` | `0.5`         | Weight for classification loss.            |
+| `bbox_loss_weight`  | `float` | `7.5`         | Weight for bbox loss.                      |
+| `dfl_loss_weigth`   | `float` | `1.5`         | Weight for DFL loss.                       |
+
+## `PrecisionDFLSegmentationLoss`
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+**Parameters:**
+
+| Key                 | Type    | Default value | Description                                |
+| ------------------- | ------- | ------------- | ------------------------------------------ |
+| `tal_topk`          | `int`   | `10`          | Number of anchors considered in selection. |
+| `class_loss_weight` | `float` | `0.5`         | Weight for classification loss.            |
+| `bbox_loss_weight`  | `float` | `7.5`         | Weight for bbox and segmentation loss.     |
+| `dfl_loss_weigth`   | `float` | `1.5`         | Weight for DFL loss.                       |

@@ -34,6 +34,12 @@ def test_forward():
         pred_scores, pred_bboxes, anchor_points, gt_labels, gt_bboxes, mask_gt
     )
 
+    labels = torch.where(
+        mask,
+        labels,
+        torch.full_like(labels, n_classes),
+    )
+
     assert labels.shape == (batch_size, n_anchors)
     assert bboxes.shape == (batch_size, n_anchors, 4)
     assert scores.shape == (

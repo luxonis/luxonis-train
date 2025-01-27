@@ -10,6 +10,7 @@ models which can be used instead.
 - [`KeypointDetectionModel`](#keypointdetectionmodel)
 - [`ClassificationModel`](#classificationmodel)
 - [`FOMOModel`](#fomomodel)
+- [`InstanceSegmentationModel`](#instancesegmentationmodel)
 - [`AnomalyDetectionModel`](#anomalydetectionmodel)
 
 **Parameters:**
@@ -25,7 +26,7 @@ models which can be used instead.
 
 ## `SegmentationModel`
 
-The `SegmentationModel` allows for both `"light"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster.
+The `SegmentationModel` supports `"light"` and `"heavy"` variants, with `"light"` optimized for speed and `"heavy"` for accuracy.
 
 See an example configuration file using this predefined model [here](../../../configs/segmentation_light_model.yaml) for the `"light"` variant, and [here](../../../configs/segmentation_heavy_model.yaml) for the `"heavy"` variant.
 
@@ -66,7 +67,7 @@ FPS (frames per second) for `light` and `heavy` variants on different devices wi
 
 ## `DetectionModel`
 
-The `DetectionModel` allows for `"light"`, `"medium"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster.
+The `DetectionModel` supports `"light"`, `"medium"`, and `"heavy"` variants, with `"light"` optimized for speed, `"heavy"` for accuracy, and `"medium"` offering a balance between the two.
 
 See an example configuration file using this predefined model [here](../../../configs/detection_light_model.yaml) for the `"light"` variant, and [here](../../../configs/detection_heavy_model.yaml) for the `"heavy"` variant.
 
@@ -116,7 +117,7 @@ FPS (frames per second) for `light`, `medium` and `heavy` variants on different 
 
 ## `KeypointDetectionModel`
 
-The `KeypointDetectionModel` allows for `"light"`, `"medium"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster.
+The `KeypointDetectionModel` supports `"light"`, `"medium"`, and `"heavy"` variants, with `"light"` optimized for speed, `"heavy"` for accuracy, and `"medium"` offering a balance between the two.
 
 See an example configuration file using this predefined model [here](../../../configs/keypoint_bbox_light_model.yaml) for the `"light"` variant, and [here](../../../configs/keypoint_bbox_heavy_model.yaml) for the `"heavy"` variant.
 
@@ -161,7 +162,7 @@ FPS (frames per second) for `light`, `medium` and `heavy` variants on different 
 
 ## `ClassificationModel`
 
-The `ClassificationModel` allows for both `"light"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster. Can be used for multi-class and multi-label tasks.
+The `ClassificationModel` supports `"light"` and `"heavy"` variants, with `"light"` optimized for speed and `"heavy"` for accuracy.
 
 See an example configuration file using this predefined model [here](../../../configs/classification_light_model.yaml) for the `"light"` variant, and [here](../../../configs/classification_heavy_model.yaml) for the `"heavy"` variant.
 
@@ -200,7 +201,7 @@ FPS (frames per second) for `light` and `heavy` variants on different devices wi
 
 ## `FOMOModel`
 
-The `FOMOModel` allows for both `"light"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster.
+The `FOMOModel` supports `"light"` and `"heavy"` variants, with `"light"` optimized for speed and `"heavy"` for accuracy.
 
 There is a trade-off in this simple model: training with a larger `object_weight` in the loss parameters may result in more false positives (FP), but it will improve accuracy. You can also use `use_nms: True` in the `head_params` to enable NMS which can reduce FP, but it will also reduce TP for close neighbors.
 
@@ -240,9 +241,50 @@ For larger heatmaps and improved accuracy, you can adjust the `attach_index` in 
 | `visualizer_params` | `dict`                      | `{}`            | Additional parameters for the visualizer.                                                       |
 | `task_name`         | `str \| None`               | `None`          | Custom task name for the model head.                                                            |
 
+## `InstanceSegmentationModel`
+
+The `InstanceSegmentationModel` supports `"light"`, `"medium"`, and `"heavy"` variants, with `"light"` optimized for speed, `"heavy"` for accuracy, and `"medium"` offering a balance between the two.
+
+See an example configuration file using this predefined model [here](../../../configs/instance_segmentation_light_model.yaml) for the `"light"` variant, and [here](../../../configs/instance_segmentation_heavy_model.yaml) for the `"heavy"` variant.
+
+### Performance Metrics
+
+FPS (frames per second) for `light`, `medium` and `heavy` variants on different devices with image size 384x512:
+
+| Variant      | RVC2 FPS | RVC4 FPS |
+| ------------ | -------- | -------- |
+| **`light`**  | 15       | 131      |
+| **`medium`** | 9        | 116      |
+| **`heavy`**  | 3        | 82       |
+
+**Components:**
+
+| Name                                                                                                            | Alias                                | Function                                                                                                                                 |
+| --------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| [`EfficientRep`](../../nodes/README.md#efficientrep)                                                            | `"instance_segmentation_backbone"`   | Backbone of the model. Available variants: `"light"` (`EfficientRep-N`), `"medium"` (`EfficientRep-S`), and `"heavy"` (`EfficientRep-L`) |
+| [`RepPANNeck`](../../nodes/README.md#reppanneck)                                                                | `"instance_segmentation_neck"`       | Neck of the model                                                                                                                        |
+| [`PrecisionSegmentBBoxHead`](../../nodes/README.md#precisionsegmentbboxhead)                                    | `"instance_segmentation_head"`       | Head of the model for instance segmentation                                                                                              |
+| [`PrecisionDFLSegmentationLoss`](../../attached_modules/losses/README.md#precisiondflsegmentationloss)          | `"instance_segmentation_loss"`       | Loss function for training instance segmentation models                                                                                  |
+| [`MeanAveragePrecision`](../../attached_modules/metrics/README.md#meanaverageprecision)                         | `"instance_segmentation_map"`        | Main metric of the model, measuring mean average precision                                                                               |
+| [`InstanceSegmentationVisualizer`](../../attached_modules/visualizers/README.md#instancesegmentationvisualizer) | `"instance_segmentation_visualizer"` | Visualizer for displaying instance segmentation results                                                                                  |
+
+**Parameters:**
+
+| Key                 | Type                                  | Default value    | Description                                                                                                                          |
+| ------------------- | ------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `variant`           | `Literal["light", "medium", "heavy"]` | `"light"`        | Defines the variant of the model. `"light"` uses `EfficientRep-N`, `"medium"` uses `EfficientRep-S`, `"heavy"` uses `EfficientRep-L` |
+| `use_neck`          | `bool`                                | `True`           | Whether to include the neck in the model                                                                                             |
+| `backbone`          | `str`                                 | `"EfficientRep"` | Name of the node to be used as a backbone                                                                                            |
+| `backbone_params`   | `dict`                                | `{}`             | Additional parameters to the backbone                                                                                                |
+| `neck_params`       | `dict`                                | `{}`             | Additional parameters to the neck                                                                                                    |
+| `head_params`       | `dict`                                | `{}`             | Additional parameters to the head                                                                                                    |
+| `loss_params`       | `dict`                                | `{}`             | Additional parameters to the loss function                                                                                           |
+| `visualizer_params` | `dict`                                | `{}`             | Additional parameters to the visualizer                                                                                              |
+| `task_name`         | `str \| None`                         | `None`           | Custom task name for the head                                                                                                        |
+
 ## `AnomalyDetectionModel`
 
-The `AnomalyDetectionModel` allows for both `"light"` and `"heavy"` variants, where the `"heavy"` variant is more accurate, and the `"light"` variant is faster.
+The `AnomalyDetectionModel` supports `"light"` and `"heavy"` variants, with `"light"` optimized for speed and `"heavy"` for accuracy.
 
 ### Performance Metrics
 

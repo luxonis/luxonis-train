@@ -44,8 +44,10 @@ def collate_fn(
                 new_ann[:, 1:] = ann
                 label_box.append(new_ann)
             out_labels[task] = torch.cat(label_box, 0)
+
         elif task_type == "instance_segmentation" or "metadata" in task_type:
-            out_labels[task] = torch.cat(annos, 0)
+            masks = [label[task] for label in labels]
+            out_labels[task] = torch.cat(masks, 0)
         else:
             out_labels[task] = torch.stack(annos, 0)
 

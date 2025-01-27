@@ -32,6 +32,8 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`DiscSubNetHead`](#discsubnet)
   - [`FOMOHead`](#fomohead)
   - [`OCRCTCHead`](#ocrctchead)
+  - [`PrecisionBBoxHead`](#precisionbboxhead)
+  - [`PrecisionSegmentBBoxHead`](#precisionsegmentbboxhead)
     Every node takes these parameters:
 
 | Key                | Type          | Default value | Description                                                                 |
@@ -260,7 +262,7 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
 | Key                  | Type    | Default value | Description                                                           |
 | -------------------- | ------- | ------------- | --------------------------------------------------------------------- |
-| `n_heads`            | `bool`  | `3`           | Number of output heads                                                |
+| `n_heads`            | `int`   | `3`           | Number of output heads                                                |
 | `conf_thres`         | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation) |
 | `iou_thres`          | `float` | `0.45`        | `IoU` threshold for non-maxima-suppression (used for evaluation)      |
 | `max_det`            | `int`   | `300`         | Maximum number of detections retained after NMS                       |
@@ -324,3 +326,33 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 | `fc_decay`       | `float` | `0.0004`      | L2 regularization factor.             |
 | `mid_channels`   | `int`   | `None`        | Number of middle channels.            |
 | `return_feats`   | `bool`  | `False`       | Whether to return features.           |
+
+## `PrecisionBBoxHead`
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+**Parameters:**
+
+| Key          | Type    | Default value | Description                                                               |
+| ------------ | ------- | ------------- | ------------------------------------------------------------------------- |
+| `reg_max`    | `int`   | `16`          | Maximum number of regression channels                                     |
+| `n_heads`    | `int`   | `3`           | Number of output heads                                                    |
+| `conf_thres` | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation)     |
+| `iou_thres`  | `float` | `0.45`        | IoU threshold for non-maxima-suppression (used for evaluation)            |
+| `max_det`    | `int`   | `300`         | Max number of detections for non-maxima-suppression (used for evaluation) |
+
+## `PrecisionSegmentBBoxHead`
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+**Parameters:**
+
+| Key          | Type    | Default value | Description                                                                |
+| ------------ | ------- | ------------- | -------------------------------------------------------------------------- |
+| `reg_max`    | `int`   | `16`          | Maximum number of regression channels.                                     |
+| `n_heads`    | `int`   | `3`           | Number of output heads.                                                    |
+| `conf_thres` | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation).     |
+| `iou_thres`  | `float` | `0.45`        | IoU threshold for non-maxima-suppression (used for evaluation).            |
+| `max_det`    | `int`   | `300`         | Max number of detections for non-maxima-suppression (used for evaluation). |
+| `n_masks`    | `int`   | `32`          | Number of of output instance segmentation masks at the output.             |
+| `n_proto`    | `int`   | `256`         | Number of prototypes generated from the prototype generator.               |
