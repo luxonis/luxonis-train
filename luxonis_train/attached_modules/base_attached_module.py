@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from contextlib import suppress
 from functools import cached_property
 
@@ -188,7 +188,7 @@ class BaseAttachedModule(
         return picked
 
     def pick_inputs(
-        self, inputs: Packet[Tensor], keys: list[str]
+        self, inputs: Packet[Tensor], keys: Collection[str]
     ) -> Packet[Tensor]:
         out = {}
         for expected in keys:

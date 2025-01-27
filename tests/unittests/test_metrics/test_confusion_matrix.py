@@ -9,7 +9,7 @@ from luxonis_train.nodes import BaseNode
 
 def test_compute_detection_confusion_matrix_specific_case():
     class DummyNodeDetection(BaseNode):
-        tasks = [Task.BOUNDINGBOX]
+        task = Task.BOUNDINGBOX
 
         def forward(self, _): ...
 
