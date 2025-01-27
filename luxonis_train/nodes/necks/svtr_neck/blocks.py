@@ -105,9 +105,9 @@ class Attention(nn.Module):
             hk = local_k[0]
             wk = local_k[1]
             mask = torch.ones(
-                (H * W, H + hk - 1, W + wk - 1),
-                dtype=torch.float32,  # type: ignore
-            )  # type: ignore
+                (H * W, H + hk - 1, W + wk - 1),  # type: ignore
+                dtype=torch.float32,
+            )
             for h in range(H):
                 for w in range(W):
                     mask[h * W + w, h : h + hk, w : w + wk] = 0.0
@@ -115,10 +115,10 @@ class Attention(nn.Module):
                 :, hk // 2 : H + hk // 2, wk // 2 : W + wk // 2
             ].flatten(1)
             mask_inf = torch.full(
-                (H * W, H * W),
+                (H * W, H * W),  # type: ignore
                 float("-inf"),
-                dtype=torch.float32,  # type: ignore
-            )  # type: ignore
+                dtype=torch.float32,
+            )
             mask = torch.where(mask_paddle < 1, mask_paddle, mask_inf)
             self.mask = mask.unsqueeze(0).unsqueeze(0)
         self.mixer = mixer
