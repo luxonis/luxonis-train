@@ -1,7 +1,7 @@
-# Example configuration for training a predefined light classification model
+# Example configuration for training a predefined light OCR recognition model
 
 model:
-  name: ocr_recognition
+  name: ocr_recognition_light
   predefined_model:
     name: OCRRecognitionModel
     params:
