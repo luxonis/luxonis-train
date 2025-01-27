@@ -65,8 +65,8 @@ class ConvMixer(nn.Module):
         )
 
     def forward(self, x):
-        h = self.HW[0] # type: ignore
-        w = self.HW[1] # type: ignore
+        h = self.HW[0]  # type: ignore
+        w = self.HW[1]  # type: ignore
         x = x.transpose([0, 2, 1]).reshape([0, self.dim, h, w])
         x = self.local_mixer(x)
         x = x.flatten(2).transpose([0, 2, 1])
@@ -105,7 +105,8 @@ class Attention(nn.Module):
             hk = local_k[0]
             wk = local_k[1]
             mask = torch.ones(
-                (H * W, H + hk - 1, W + wk - 1), dtype=torch.float32 # type: ignore
+                (H * W, H + hk - 1, W + wk - 1),
+                dtype=torch.float32,  # type: ignore
             )  # type: ignore
             for h in range(H):
                 for w in range(W):
@@ -114,7 +115,9 @@ class Attention(nn.Module):
                 :, hk // 2 : H + hk // 2, wk // 2 : W + wk // 2
             ].flatten(1)
             mask_inf = torch.full(
-                (H * W, H * W), float("-inf"), dtype=torch.float32 # type: ignore
+                (H * W, H * W),
+                float("-inf"),
+                dtype=torch.float32,  # type: ignore
             )  # type: ignore
             mask = torch.where(mask_paddle < 1, mask_paddle, mask_inf)
             self.mask = mask.unsqueeze(0).unsqueeze(0)
