@@ -142,7 +142,7 @@ def draw_bounding_box_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
     bboxs = box_convert(label, "xywh", "xyxy")
     bboxs[:, 0::2] *= W
     bboxs[:, 1::2] *= H
-    return draw_bounding_boxes(img, bboxs, **kwargs)
+    return draw_bounding_boxes(img, label, **kwargs)
 
 
 def draw_keypoint_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:

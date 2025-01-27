@@ -7,6 +7,7 @@ from torchmetrics.classification import (
     MulticlassConfusionMatrix,
 )
 from torchvision.ops import box_convert, box_iou
+from typing_extensions import override
 
 from luxonis_train.enums import Task
 
@@ -66,7 +67,7 @@ class ConfusionMatrix(BaseMetric):
 
         self.detection_cm: Tensor
 
-        if self.task is Task.BOUNDINGBOX:
+        if self.task in {Task.BOUNDINGBOX, Task.KEYPOINTS}:
             self.add_state(
                 "detection_cm",
                 default=torch.zeros(
@@ -74,6 +75,19 @@ class ConfusionMatrix(BaseMetric):
                 ),  # +1 for background
                 dist_reduce_fx="sum",
             )
+
+    @property
+    @override
+    def task(self) -> Task:
+        task = super().task
+        if task is Task.KEYPOINTS:
+            return Task.BOUNDINGBOX
+        return task
+
+    @property
+    @override
+    def required_labels(self) -> set[str]:
+        return super().required_labels - {"keypoints"}
 
     def update(
         self, predictions: Tensor | list[Tensor], target: Tensor
@@ -89,7 +103,7 @@ class ConfusionMatrix(BaseMetric):
             one for targets.
         """
 
-        if self.task is Task.BOUNDINGBOX:
+        if self.task in {Task.BOUNDINGBOX, Task.KEYPOINTS}:
             assert isinstance(predictions, list)
             target[..., 2:6] = box_convert(target[..., 2:6], "xywh", "xyxy")
             scale_factors = torch.tensor(
@@ -130,25 +144,25 @@ class ConfusionMatrix(BaseMetric):
             if target.shape[1] > 1
             else target.squeeze(1).round().int()
         )
-        if self.metric_cm is not None:
-            self.metric_cm.update(preds.view(-1), targets.view(-1))
+
+        self.metric_cm.update(preds.view(-1), targets.view(-1))
 
     def compute(self) -> dict[str, Tensor]:
         """Compute confusion matrices for classification, segmentation,
         and detection tasks."""
         results = {}
-        if self.metric_cm is not None:
+        if hasattr(self, "metric_cm"):
             results[f"{self.task}_confusion_matrix"] = self.metric_cm.compute()
-        if self.task is Task.BOUNDINGBOX:
+        if self.task in {Task.BOUNDINGBOX, Task.KEYPOINTS}:
             results["detection_confusion_matrix"] = self.detection_cm
 
         return results
 
     def reset(self) -> None:
-        if self.metric_cm is not None:
+        if hasattr(self, "metric_cm"):
             self.metric_cm.reset()
 
-        if self.task is Task.BOUNDINGBOX:
+        if self.task in {Task.BOUNDINGBOX, Task.KEYPOINTS}:
             self.detection_cm.zero_()
 
     def _compute_detection_confusion_matrix(

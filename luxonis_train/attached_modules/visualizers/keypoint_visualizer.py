@@ -3,16 +3,14 @@ from copy import deepcopy
 import torch
 from torch import Tensor
 
-from luxonis_train.attached_modules.visualizers.base_visualizer import (
-    BaseVisualizer,
-)
+from luxonis_train.attached_modules.visualizers import BBoxVisualizer
 from luxonis_train.enums import Task
 
 from .utils import Color, draw_keypoint_labels, draw_keypoints
 
 
-# class KeypointVisualizer(BBoxVisualizer):
-class KeypointVisualizer(BaseVisualizer):
+class KeypointVisualizer(BBoxVisualizer):
+    # class KeypointVisualizer(BaseVisualizer):
     supported_tasks = [Task.KEYPOINTS]
 
     def __init__(
@@ -83,7 +81,6 @@ class KeypointVisualizer(BaseVisualizer):
 
     @staticmethod
     def draw_targets(canvas: Tensor, targets: Tensor, **kwargs) -> Tensor:
-        print(targets.shape)
         viz = torch.zeros_like(canvas)
         for i in range(len(canvas)):
             target = targets[targets[:, 0] == i][:, 1:]
@@ -96,9 +93,9 @@ class KeypointVisualizer(BaseVisualizer):
         label_canvas: Tensor,
         prediction_canvas: Tensor,
         keypoints: list[Tensor],
-        # boundingbox: list[Tensor],
+        boundingbox: list[Tensor],
         target_keypoints: Tensor | None,
-        # target_boundibgbox: Tensor | None,
+        target_boundingbox: Tensor | None,
         **kwargs,
     ) -> tuple[Tensor, Tensor] | Tensor:
         pred_viz = self.draw_predictions(
@@ -110,23 +107,23 @@ class KeypointVisualizer(BaseVisualizer):
             visibility_threshold=self.visibility_threshold,
             **kwargs,
         )
-        # pred_viz = super().draw_predictions(pred_viz, boundingbox)
+        pred_viz = super().draw_predictions(pred_viz, boundingbox)
 
-        # if target_keypoints is None and target_boundibgbox is None:
-        #     return pred_viz
+        if target_keypoints is None and target_boundingbox is None:
+            return pred_viz
+
+        if target_boundingbox is not None:
+            target_viz = super().draw_targets(label_canvas, target_boundingbox)
+        else:
+            target_viz = label_canvas
 
         if target_keypoints is not None:
             target_viz = self.draw_targets(
-                label_canvas,
+                target_viz,
                 target_keypoints,
                 colors=self.visible_color,
                 connectivity=self.connectivity,
                 **kwargs,
             )
-        else:
-            target_viz = label_canvas
-        #
-        # if target_boundibgbox is not None:
-        #     target_viz = super().draw_targets(target_viz, target_boundibgbox)
 
         return target_viz, pred_viz

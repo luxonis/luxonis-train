@@ -234,7 +234,11 @@ class BaseAttachedModule(
                 for name in target_names:
                     label_name = name.replace("target_", "")
                     if label_name not in labels:
-                        raise RuntimeError
+                        raise RuntimeError(
+                            f"Module '{self.name}' requires the label '{label_name}', "
+                            f"but it is not present in the dataset. "
+                            f"All available labels: {list(labels.keys())}. "
+                        )
                     targets[name] = labels[label_name]
             kwargs = predictions | targets
 

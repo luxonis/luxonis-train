@@ -97,8 +97,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
     def update(
         self,
-        keypoints: Tensor,
-        boundingbox: Tensor,
+        keypoints: list[Tensor],
+        boundingbox: list[Tensor],
         target_keypoints: Tensor,
         target_boundingbox: Tensor,
     ) -> None:

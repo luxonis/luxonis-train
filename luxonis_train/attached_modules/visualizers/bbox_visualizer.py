@@ -2,16 +2,12 @@ import logging
 
 import torch
 from torch import Tensor
+from torchvision.utils import draw_bounding_boxes
 
 from luxonis_train.enums import Task
 
 from .base_visualizer import BaseVisualizer
-from .utils import (
-    Color,
-    draw_bounding_box_labels,
-    draw_bounding_boxes,
-    get_color,
-)
+from .utils import Color, get_color
 
 
 class BBoxVisualizer(BaseVisualizer):
@@ -100,9 +96,9 @@ class BBoxVisualizer(BaseVisualizer):
 
             *_, H, W = canvas.shape
             width = self.width or max(1, int(min(H, W) / 100))
-            viz[i] = draw_bounding_box_labels(
+            viz[i] = draw_bounding_boxes(
                 canvas[i].clone(),
-                target[:, 2:],
+                target[:, 2:].int(),
                 width=width,
                 labels=cls_labels,
                 colors=cls_colors,
@@ -171,6 +167,7 @@ class BBoxVisualizer(BaseVisualizer):
         @param targets: The target bounding boxes.
         """
         predictions_viz = self.draw_predictions(prediction_canvas, predictions)
+        assert targets is not None
         if targets is None:
             return predictions_viz
 
