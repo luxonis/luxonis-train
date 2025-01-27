@@ -11,10 +11,7 @@ from .base_loss import BaseLoss
 class OHEMLoss(BaseLoss):
     """Generic OHEM loss that can be used with different criterions."""
 
-    supported_tasks: list[Task] = [
-        Task.SEGMENTATION,
-        Task.CLASSIFICATION,
-    ]
+    supported_tasks = [Task.SEGMENTATION, Task.CLASSIFICATION]
 
     def __init__(
         self,

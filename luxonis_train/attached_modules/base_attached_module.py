@@ -208,20 +208,33 @@ class BaseAttachedModule(
     def get_parameters(
         self, inputs: Packet[Tensor], labels: Labels | None = None
     ) -> Packet[Tensor]:
-        target_names = []
         input_names = []
-        override = False
-        for name in self._signature.keys():
-            if name.startswith("target"):
-                target_names.append(name)
-            elif name in {"predictions", "prediction", "preds"}:
-                input_names.append(self.task.value)
-                override = True
-            else:
-                input_names.append(name)
+        target_names = []
+        pred_name = None
+        if len(self._signature) == 2:
+            pred_name, target_name = self._signature.keys()
+            input_names.append(self.task.value)
+            target_names.append(target_name)
+        else:
+            for name in self._signature.keys():
+                if name.startswith("target"):
+                    target_names.append(name)
+                elif name in {"predictions", "prediction", "preds", "pred"}:
+                    input_names.append(self.task.value)
+                    pred_name = name
+                else:
+                    raise RuntimeError(
+                        f"To make use of automatic parameter extraction, the signature of `{self.name}.forward` (or `update` for subclasses of `BaseMetric`) must follow "
+                        "one of the following rules: "
+                        "1. Exactly two arguments, first one for predictions and second one for targets. "
+                        "2. Predictions argument named 'predictions', 'prediction', 'preds', or 'pred' and a target arguments with names starting with 'target'. The predictions argument will be matched to the main output of the node (output named the same as the node's task). "
+                        "3. Prediction arguments named the same way as "
+                        "keys in the node outputs and target arguments with names starting with 'target'. "
+                        f"The node outputs are: {list(inputs.keys())}."
+                    )
         predictions = self.pick_inputs(inputs, input_names)
-        if override:
-            predictions["predictions"] = predictions.pop(self.task.value)
+        if pred_name is not None:
+            predictions[pred_name] = predictions.pop(self.task.value)
 
         if labels is None:
             kwargs = predictions
