@@ -130,12 +130,14 @@ class ObjectKeypointSimilarity(BaseMetric):
             target_oks.append({"keypoints": curr_kpts, "scales": curr_scales})
 
         for item in prediction_oks:
-            keypoints = self._fix_empty_tensors(item["keypoints"])
-            self.pred_keypoints.append(keypoints)
+            self.pred_keypoints.append(
+                self._fix_empty_tensors(item["keypoints"])
+            )
 
         for item in target_oks:
-            keypoints = self._fix_empty_tensors(item["keypoints"])
-            self.groundtruth_keypoints.append(keypoints)
+            self.groundtruth_keypoints.append(
+                self._fix_empty_tensors(item["keypoints"])
+            )
             self.groundtruth_scales.append(item["scales"])
 
     def compute(self) -> Tensor:
