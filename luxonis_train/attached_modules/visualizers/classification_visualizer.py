@@ -70,16 +70,16 @@ class ClassificationVisualizer(BaseVisualizer):
 
     def forward(
         self,
-        label_canvas: Tensor,
+        target_canvas: Tensor,
         prediction_canvas: Tensor,
         predictions: Tensor,
         target: Tensor | None,
     ) -> Tensor | tuple[Tensor, Tensor]:
-        overlay = torch.zeros_like(label_canvas)
+        overlay = torch.zeros_like(target_canvas)
         plots = torch.zeros_like(prediction_canvas)
         for i in range(len(overlay)):
             prediction = predictions[i]
-            arr = torch_img_to_numpy(label_canvas[i].clone())
+            arr = torch_img_to_numpy(target_canvas[i].clone())
             curr_class = self._get_class_name(prediction)
             if target is not None:
                 gt = self._get_class_name(target[i])

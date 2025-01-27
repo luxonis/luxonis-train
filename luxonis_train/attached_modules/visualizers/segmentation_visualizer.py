@@ -97,7 +97,7 @@ class SegmentationVisualizer(BaseVisualizer):
 
     def forward(
         self,
-        label_canvas: Tensor,
+        target_canvas: Tensor,
         prediction_canvas: Tensor,
         predictions: Tensor,
         target: Tensor | None,
@@ -106,8 +106,8 @@ class SegmentationVisualizer(BaseVisualizer):
         """Creates a visualization of the segmentation predictions and
         labels.
 
-        @type label_canvas: Tensor
-        @param label_canvas: The canvas to draw the labels on.
+        @type target_canvas: Tensor
+        @param target_canvas: The canvas to draw the labels on.
         @type prediction_canvas: Tensor
         @param prediction_canvas: The canvas to draw the predictions on.
         @type predictions: Tensor
@@ -131,7 +131,7 @@ class SegmentationVisualizer(BaseVisualizer):
             return predictions_vis
 
         targets_vis = self.draw_targets(
-            label_canvas,
+            target_canvas,
             target,
             colors=self.colors,
             alpha=self.alpha,

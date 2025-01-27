@@ -147,7 +147,7 @@ class BBoxVisualizer(BaseVisualizer):
 
     def forward(
         self,
-        label_canvas: Tensor,
+        target_canvas: Tensor,
         prediction_canvas: Tensor,
         predictions: list[Tensor],
         targets: Tensor | None,
@@ -155,8 +155,8 @@ class BBoxVisualizer(BaseVisualizer):
         """Creates a visualization of the bounding box predictions and
         labels.
 
-        @type label_canvas: Tensor
-        @param label_canvas: The canvas containing the labels.
+        @type target_canvas: Tensor
+        @param target_canvas: The canvas containing the labels.
         @type prediction_canvas: Tensor
         @param prediction_canvas: The canvas containing the predictions.
         @type prediction: Tensor
@@ -167,9 +167,8 @@ class BBoxVisualizer(BaseVisualizer):
         @param targets: The target bounding boxes.
         """
         predictions_viz = self.draw_predictions(prediction_canvas, predictions)
-        assert targets is not None
         if targets is None:
             return predictions_viz
 
-        targets_viz = self.draw_targets(label_canvas, targets)
+        targets_viz = self.draw_targets(target_canvas, targets)
         return targets_viz, predictions_viz

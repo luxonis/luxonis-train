@@ -27,7 +27,7 @@ class BaseVisualizer(
     @abstractmethod
     def forward(
         self,
-        label_canvas: Tensor,
+        target_canvas: Tensor,
         prediction_canvas: Tensor,
         *args: Unpack[Ts],
     ) -> (
@@ -49,8 +49,8 @@ class BaseVisualizer(
               depth estimation).
             - A list of images, representing unrelated visualizations.
 
-        @type label_canvas: Tensor
-        @param label_canvas: An image to draw the labels on.
+        @type target_canvas: Tensor
+        @param target_canvas: An image to draw the labels on.
         @type prediction_canvas: Tensor
         @param prediction_canvas: An image to draw the predictions on.
         @type args: Unpack[Ts]
@@ -70,18 +70,18 @@ class BaseVisualizer(
             name: param.annotation
             for name, param in signature.items()
             if name
-            not in {"self", "label_canvas", "prediction_canvas", "kwargs"}
+            not in {"self", "target_canvas", "prediction_canvas", "kwargs"}
         }
 
     def run(
         self,
-        label_canvas: Tensor,
+        target_canvas: Tensor,
         prediction_canvas: Tensor,
         inputs: Packet[Tensor],
         labels: Labels | None,
     ) -> Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]:
         return self(
-            label_canvas,
+            target_canvas,
             prediction_canvas,
             **self.get_parameters(inputs, labels),
         )

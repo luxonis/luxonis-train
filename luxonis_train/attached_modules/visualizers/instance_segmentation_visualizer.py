@@ -190,7 +190,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
 
     def forward(
         self,
-        label_canvas: Tensor,
+        target_canvas: Tensor,
         prediction_canvas: Tensor,
         boundingbox: list[Tensor],
         instance_segmentation: list[Tensor],
@@ -200,8 +200,8 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         """Creates visualizations of the predicted and target bounding
         boxes and instance masks.
 
-        @type label_canvas: Tensor
-        @param label_canvas: Tensor containing the target
+        @type target_canvas: Tensor
+        @param target_canvas: Tensor containing the target
             visualizations.
         @type prediction_canvas: Tensor
         @param prediction_canvas: Tensor containing the predicted
@@ -233,7 +233,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             return predictions_viz
 
         targets_viz = self.draw_targets(
-            label_canvas,
+            target_canvas,
             target_boundingbox,
             target_instance_segmentation,
             self.width,

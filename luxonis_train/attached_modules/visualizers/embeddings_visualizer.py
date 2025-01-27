@@ -41,21 +41,21 @@ class EmbeddingsVisualizer(BaseVisualizer):
 
     def forward(
         self,
-        label_canvas: Tensor,
+        target_canvas: Tensor,
         prediction_canvas: Tensor,
         predictions: Tensor,
         target: Tensor,
     ) -> tuple[Tensor, Tensor]:
         """Creates a visualization of the embeddings.
 
-        @type label_canvas: Tensor
-        @param label_canvas: The canvas to draw the labels on.
+        @type target_canvas: Tensor
+        @param target_canvas: The canvas to draw the labels on.
         @type prediction_canvas: Tensor
         @param prediction_canvas: The canvas to draw the predictions on.
         @type embeddings: Tensor
         @param embeddings: The embeddings to visualize.
-        @type ids: Tensor
-        @param ids: The ids to visualize.
+        @type target: Tensor
+        @param target: Ids of the embeddings.
         @rtype: Tensor
         @return: An embedding space projection.
         """

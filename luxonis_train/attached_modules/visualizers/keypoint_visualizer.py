@@ -90,7 +90,7 @@ class KeypointVisualizer(BBoxVisualizer):
 
     def forward(
         self,
-        label_canvas: Tensor,
+        target_canvas: Tensor,
         prediction_canvas: Tensor,
         keypoints: list[Tensor],
         boundingbox: list[Tensor],
@@ -113,9 +113,11 @@ class KeypointVisualizer(BBoxVisualizer):
             return pred_viz
 
         if target_boundingbox is not None:
-            target_viz = super().draw_targets(label_canvas, target_boundingbox)
+            target_viz = super().draw_targets(
+                target_canvas, target_boundingbox
+            )
         else:
-            target_viz = label_canvas
+            target_viz = target_canvas
 
         if target_keypoints is not None:
             target_viz = self.draw_targets(
