@@ -22,7 +22,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
     visualization of predicted and ground truth bounding boxes and
     instance segmentation masks."""
 
-    supported_tasks = [Task.INSTANCE_SEGMENTATION, Task.BOUNDINGBOX]
+    supported_tasks = [Task.INSTANCE_SEGMENTATION]
 
     def __init__(
         self,

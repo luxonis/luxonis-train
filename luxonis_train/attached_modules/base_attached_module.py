@@ -222,6 +222,8 @@ class BaseAttachedModule(
                 elif name in {"predictions", "prediction", "preds", "pred"}:
                     input_names.append(self.task.value)
                     pred_name = name
+                elif name in inputs:
+                    input_names.append(name)
                 else:
                     raise RuntimeError(
                         f"To make use of automatic parameter extraction, the signature of `{self.name}.forward` (or `update` for subclasses of `BaseMetric`) must follow "

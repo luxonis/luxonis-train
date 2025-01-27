@@ -1,9 +1,11 @@
+from functools import cached_property
 from typing import Any
 
 import torch
 import torchmetrics.detection as detection
 from torch import Tensor
 from torchvision.ops import box_convert
+from typing_extensions import override
 
 from luxonis_train.enums import Task
 
@@ -31,6 +33,11 @@ class MeanAveragePrecision(BaseMetric):
             iou_type = "bbox"
 
         self.metric = detection.MeanAveragePrecision(iou_type=iou_type)  # type: ignore
+
+    @cached_property
+    @override
+    def required_labels(self) -> set[str]:
+        return Task.BOUNDINGBOX.required_labels
 
     def update(self, predictions: list[Tensor], targets: Tensor) -> None:
         image_size = self.original_in_shape[1:]
