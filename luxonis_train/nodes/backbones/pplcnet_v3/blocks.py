@@ -150,7 +150,9 @@ class LearnableRepLayer(nn.Module):
     def _pad_kernel_1x1_to_kxk(
         self, kernel1x1: Tensor | None, pad: int
     ) -> Tensor | int:
-        if kernel1x1 is None or torch.equal(kernel1x1, torch.tensor(0)):
+        if kernel1x1 is None or torch.equal(
+            kernel1x1, torch.tensor(0, device=kernel1x1.device)
+        ):
             return torch.tensor(0)
         else:
             return nn.functional.pad(kernel1x1, [pad, pad, pad, pad])
