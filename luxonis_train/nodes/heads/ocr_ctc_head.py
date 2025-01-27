@@ -8,20 +8,6 @@ from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.utils import OCRDecoder, OCREncoder
 
 
-def get_para_bias_attr(l2_decay: float, k: int):
-    stdv = 1.0 / math.sqrt(k * 1.0)
-
-    def weight_attr(tensor):
-        nn.init.uniform_(tensor, -stdv, stdv)
-        tensor.regularizer = l2_decay
-
-    def bias_attr(tensor):
-        nn.init.uniform_(tensor, -stdv, stdv)
-        tensor.regularizer = l2_decay
-
-    return weight_attr, bias_attr
-
-
 class OCRCTCHead(BaseHead[Tensor, Tensor]):
     in_channels: int
     tasks: list[TaskType] = [TaskType.CLASSIFICATION]
@@ -135,3 +121,17 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
     @property
     def decoder(self) -> OCRDecoder:
         return self._decoder
+
+
+def get_para_bias_attr(l2_decay: float, k: int):
+    stdv = 1.0 / math.sqrt(k * 1.0)
+
+    def weight_attr(tensor):
+        nn.init.uniform_(tensor, -stdv, stdv)
+        tensor.regularizer = l2_decay
+
+    def bias_attr(tensor):
+        nn.init.uniform_(tensor, -stdv, stdv)
+        tensor.regularizer = l2_decay
+
+    return weight_attr, bias_attr

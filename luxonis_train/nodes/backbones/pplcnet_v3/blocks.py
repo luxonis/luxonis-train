@@ -1,14 +1,13 @@
 import torch
 from torch import Tensor, nn
 from torch.nn import (
-    AdaptiveAvgPool2d,
     BatchNorm2d,
     Conv2d,
     ReLU,
 )
 from torch.nn import functional as F
 
-from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.nodes.blocks import ConvModule, SqueezeExciteBlock
 
 
 def make_divisible(v, divisor: int = 16, min_value: int | None = None):
@@ -228,40 +227,6 @@ class LearnableRepLayer(nn.Module):
         return kernel * t, beta - running_mean * gamma / std  # type: ignore
 
 
-class SELayer(nn.Module):
-    def __init__(self, channel: int, reduction: int = 4):
-        super().__init__()
-
-        self.avg_pool = AdaptiveAvgPool2d(1)
-        self.conv1 = Conv2d(
-            in_channels=channel,
-            out_channels=channel // reduction,
-            kernel_size=1,
-            stride=1,
-            padding=0,
-            bias=True,
-        )
-        self.relu = ReLU()
-        self.conv2 = Conv2d(
-            in_channels=channel // reduction,
-            out_channels=channel,
-            kernel_size=1,
-            stride=1,
-            padding=0,
-            bias=True,
-        )
-
-    def forward(self, x: Tensor) -> Tensor:
-        identity = x
-        x = self.avg_pool(x)
-        x = self.conv1(x)
-        x = self.relu(x)
-        x = self.conv2(x)
-        x = F.relu6(x + 3) * (1.0 / 6)
-        x = identity * x
-        return x
-
-
 class LCNetV3Block(nn.Module):
     def __init__(
         self,
@@ -283,7 +248,12 @@ class LCNetV3Block(nn.Module):
             num_conv_branches=conv_kxk_num,
         )
         if use_se:
-            self.se = SELayer(in_channels)
+            self.se = SqueezeExciteBlock(
+                in_channels=in_channels,
+                intermediate_channels=in_channels // 4,
+                approx_sigmoid=True,
+            )
+
         self.pw_conv = LearnableRepLayer(
             in_channels=in_channels,
             out_channels=out_channels,

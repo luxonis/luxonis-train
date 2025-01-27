@@ -145,7 +145,7 @@ class Attention(nn.Module):
         return x
 
 
-class Block(nn.Module):
+class SVTRBlock(nn.Module):
     def __init__(
         self,
         dim: int,
@@ -250,7 +250,7 @@ class EncoderWithSVTR(nn.Module):
 
         self.svtr_block = nn.ModuleList(
             [
-                Block(
+                SVTRBlock(
                     dim=hidden_dims,
                     num_heads=num_heads,
                     mixer="Global",
