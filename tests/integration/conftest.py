@@ -102,6 +102,47 @@ def cifar10_dataset() -> LuxonisDataset:
     return dataset
 
 
+@pytest.fixture(scope="session")
+def mnist_dataset_ocr() -> LuxonisDataset:
+    dataset = LuxonisDataset("mnist_test", delete_existing=True)
+    output_folder = WORK_DIR / "mnist"
+    output_folder.mkdir(parents=True, exist_ok=True)
+    mnist_torch = torchvision.datasets.MNIST(
+        root=output_folder, train=False, download=True
+    )
+
+    classes = [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+    ]
+
+    def MNIST_subset_generator():
+        for i, (image, label) in enumerate(mnist_torch):
+            if i == 1000:
+                break
+            path = output_folder / f"mnist_{i}.png"
+            image.save(path)
+            print(path, label)
+            yield {
+                "file": path,
+                "annotation": {
+                    "metadata": {"text": classes[label], "text_length": 1},
+                },
+            }
+
+    dataset.add(MNIST_subset_generator())
+    dataset.make_splits()
+    return dataset
+
+
 @pytest.fixture
 def config(train_overfit: bool) -> dict[str, Any]:
     if train_overfit:  # pragma: no cover
