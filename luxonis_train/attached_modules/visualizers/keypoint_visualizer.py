@@ -3,15 +3,14 @@ from copy import deepcopy
 import torch
 from torch import Tensor
 
-from luxonis_train.attached_modules.visualizers import BBoxVisualizer
 from luxonis_train.enums import Task
 
+from .bbox_visualizer import BBoxVisualizer
 from .utils import Color, draw_keypoint_labels, draw_keypoints
 
 
 class KeypointVisualizer(BBoxVisualizer):
-    # class KeypointVisualizer(BaseVisualizer):
-    supported_tasks = [Task.KEYPOINTS]
+    supported_tasks = [Task.KEYPOINTS, Task.FOMO]
 
     def __init__(
         self,
@@ -65,7 +64,7 @@ class KeypointVisualizer(BBoxVisualizer):
                 visible_kpts[..., 1], 0, canvas.size(-2) - 1
             )
             viz[i] = draw_keypoints(
-                canvas[i].clone(), visible_kpts[..., :2], **kwargs
+                canvas[i].clone(), visible_kpts[..., :2].int(), **kwargs
             )
             if nonvisible_color is not None:
                 _kwargs = deepcopy(kwargs)

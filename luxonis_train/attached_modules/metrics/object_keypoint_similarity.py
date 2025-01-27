@@ -1,10 +1,12 @@
 import logging
+from functools import cached_property
 from typing import Any
 
 import torch
 from scipy.optimize import linear_sum_assignment
 from torch import Tensor
 from torchvision.ops import box_convert
+from typing_extensions import override
 
 from luxonis_train.enums import Task
 from luxonis_train.utils import (
@@ -29,7 +31,7 @@ class ObjectKeypointSimilarity(BaseMetric):
     groundtruth_keypoints: list[Tensor]
     groundtruth_scales: list[Tensor]
 
-    supported_tasks: list[Task] = [Task.KEYPOINTS]
+    supported_tasks = [Task.KEYPOINTS, Task.FOMO]
 
     def __init__(
         self,
@@ -68,6 +70,13 @@ class ObjectKeypointSimilarity(BaseMetric):
             "groundtruth_keypoints", default=[], dist_reduce_fx=None
         )
         self.add_state("groundtruth_scales", default=[], dist_reduce_fx=None)
+
+    @cached_property
+    @override
+    def required_labels(self) -> set[str]:
+        if self.task is Task.FOMO:
+            return Task.SEGMENTATION.required_labels
+        return self.task.required_labels
 
     def update(
         self,

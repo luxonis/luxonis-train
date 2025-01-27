@@ -4,6 +4,7 @@ from typing import Any, List
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
+from typing_extensions import override
 
 from luxonis_train.enums import Task
 from luxonis_train.nodes.base_node import BaseNode
@@ -61,6 +62,11 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         )
         self.conv_layers = nn.Sequential(*layers)
 
+    @property
+    @override
+    def n_keypoints(self) -> int:
+        return 1
+
     def forward(self, inputs: List[Tensor]) -> Tensor:
         return self.conv_layers(inputs)
 
@@ -111,6 +117,7 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
                 keep = self._get_keypoint_mask(prob_map)
 
                 y_indices, x_indices = torch.where(keep)
+                # TODO: class
                 kpts = [
                     [
                         x.item() / width * self.original_img_size[1],

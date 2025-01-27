@@ -1,7 +1,9 @@
 import logging
+from functools import cached_property
 
 import torch
 from torch import Tensor
+from typing_extensions import override
 
 from luxonis_train.enums import Task
 
@@ -18,7 +20,7 @@ log_disable = False
 
 
 class SegmentationVisualizer(BaseVisualizer):
-    supported_tasks: list[Task] = [Task.SEGMENTATION]
+    supported_tasks = [Task.SEGMENTATION, Task.ANOMALY_DETECTION]
 
     def __init__(
         self,
@@ -168,3 +170,10 @@ class SegmentationVisualizer(BaseVisualizer):
         if background_class is not None:
             colors[background_class] = background_color
         return colors
+
+    @cached_property
+    @override
+    def required_labels(self) -> set[str]:
+        if self.task is Task.ANOMALY_DETECTION:
+            return Task.SEGMENTATION.required_labels
+        return self.task.required_labels

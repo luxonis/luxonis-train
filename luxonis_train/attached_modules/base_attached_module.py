@@ -175,10 +175,10 @@ class BaseAttachedModule(
         missing = set(required_labels) - set(labels.keys())
         if missing:
             raise RuntimeError(
-                f"Module {self.name} requires the following labels: "
-                f"{', '.join(missing)}, but the dataset does not contain "
-                f"all of them. Missing labels: {', '.join(missing)}. "
-                f"All available labels: {', '.join(labels.keys())}. "
+                f"Module '{self.name}' requires the following labels: "
+                f"{list(missing)}, but the dataset does not contain "
+                f"all of them. Missing labels: {list(missing)}. "
+                f"All available labels: {list(labels.keys())}. "
                 "Please make sure you're using the correct dataset."
             )
         picked = {
@@ -213,14 +213,17 @@ class BaseAttachedModule(
         pred_name = None
         if len(self._signature) == 2:
             pred_name, target_name = self._signature.keys()
-            input_names.append(self.task.value)
+            if self.task.main_output in inputs:
+                input_names.append(self.task.main_output)
+            else:
+                input_names.append(pred_name)
             target_names.append(target_name)
         else:
             for name in self._signature.keys():
                 if name.startswith("target"):
                     target_names.append(name)
                 elif name in {"predictions", "prediction", "preds", "pred"}:
-                    input_names.append(self.task.value)
+                    input_names.append(self.task.main_output)
                     pred_name = name
                 elif name in inputs:
                     input_names.append(name)
@@ -234,9 +237,10 @@ class BaseAttachedModule(
                         "keys in the node outputs and target arguments with names starting with 'target'. "
                         f"The node outputs are: {list(inputs.keys())}."
                     )
+
         predictions = self.pick_inputs(inputs, input_names)
-        if pred_name is not None:
-            predictions[pred_name] = predictions.pop(self.task.value)
+        if pred_name is not None and self.task.main_output in predictions:
+            predictions[pred_name] = predictions.pop(self.task.main_output)
 
         if labels is None:
             kwargs = predictions

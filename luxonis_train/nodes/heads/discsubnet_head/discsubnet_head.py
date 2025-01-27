@@ -31,7 +31,7 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
     in_channels: list[int] | int
     out_channels: int
     base_channels: int
-    task = Task.SEGMENTATION
+    task = Task.ANOMALY_DETECTION
 
     def __init__(
         self,
@@ -60,9 +60,6 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
 
         @type variant: Literal["n", "l"]
         @param variant: The variant of the DiscSubNetHead to use. "l" for large, "n" for nano (lightweight). Defaults to "l".
-
-        @type kwargs: Any
-        @param kwargs: Additional arguments to be passed to the BaseNode class.
         """
         super().__init__(**kwargs)
 

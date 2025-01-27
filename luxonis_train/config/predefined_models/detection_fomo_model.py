@@ -108,7 +108,7 @@ class FOMOModel(BasePredefinedModel):
     def visualizers(self) -> list[AttachedModuleConfig]:
         return [
             AttachedModuleConfig(
-                name="KeypointVisualizer",
+                name="FOMOVisualizer",
                 attached_to=f"{self.task_name}/FOMOHead",
                 params=self.visualizer_params,
             )

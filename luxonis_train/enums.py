@@ -35,6 +35,16 @@ class Task(str, Enum):
             case Task.OCR:
                 return {Metadata("text"), Metadata("text_length")}
 
+    @cached_property
+    def main_output(self) -> str:
+        match self:
+            case Task.FOMO:
+                return "heatmap"
+            case Task.ANOMALY_DETECTION:
+                return "segmentation"
+            case _:
+                return self.value
+
 
 @dataclass(unsafe_hash=True)
 class Metadata(str):

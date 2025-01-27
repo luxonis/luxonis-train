@@ -96,7 +96,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         an_mask = F.one_hot(an_mask.long(), 2).permute(2, 0, 1).float()
 
         tensor_labels = {
-            f"{self.task_name}/original/segmentation": tensor_img,
+            f"{self.task_name}/original_segmentation": tensor_img,
             f"{self.task_name}/segmentation": an_mask,
         }
 

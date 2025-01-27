@@ -1,9 +1,11 @@
 import logging
 from contextlib import suppress
+from functools import cached_property
 from typing import Any
 
 import torchmetrics
 from torch import Tensor
+from typing_extensions import override
 
 from luxonis_train.enums import Task
 
@@ -89,11 +91,19 @@ class TorchMetricWrapper(BaseMetric):
     def reset(self) -> None:
         self.metric.reset()
 
+    @cached_property
+    @override
+    def required_labels(self) -> set[str]:
+        if self.task is Task.ANOMALY_DETECTION:
+            return Task.SEGMENTATION.required_labels
+        return self.task.required_labels
+
 
 class Accuracy(TorchMetricWrapper):
     supported_tasks: list[Task] = [
         Task.CLASSIFICATION,
         Task.SEGMENTATION,
+        Task.ANOMALY_DETECTION,
     ]
     Metric = torchmetrics.Accuracy
 
@@ -102,6 +112,7 @@ class F1Score(TorchMetricWrapper):
     supported_tasks: list[Task] = [
         Task.CLASSIFICATION,
         Task.SEGMENTATION,
+        Task.ANOMALY_DETECTION,
     ]
     Metric = torchmetrics.F1Score
 
@@ -110,6 +121,7 @@ class JaccardIndex(TorchMetricWrapper):
     supported_tasks: list[Task] = [
         Task.CLASSIFICATION,
         Task.SEGMENTATION,
+        Task.ANOMALY_DETECTION,
     ]
     Metric = torchmetrics.JaccardIndex
 
@@ -118,6 +130,7 @@ class Precision(TorchMetricWrapper):
     supported_tasks: list[Task] = [
         Task.CLASSIFICATION,
         Task.SEGMENTATION,
+        Task.ANOMALY_DETECTION,
     ]
     Metric = torchmetrics.Precision
 
@@ -126,5 +139,6 @@ class Recall(TorchMetricWrapper):
     supported_tasks: list[Task] = [
         Task.CLASSIFICATION,
         Task.SEGMENTATION,
+        Task.ANOMALY_DETECTION,
     ]
     Metric = torchmetrics.Recall
