@@ -1,3 +1,7 @@
+from typing import Literal, TypeAlias
+
+from pydantic import BaseModel
+
 from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
@@ -8,12 +12,42 @@ from luxonis_train.config import (
 
 from .base_predefined_model import BasePredefinedModel
 
+VariantLiteral: TypeAlias = Literal["light", "heavy"]
+
+
+class OCRRecognitionVariant(BaseModel):
+    backbone: str
+    backbone_params: Params
+    neck_params: Params
+    head_params: Params
+
+
+def get_variant(variant: VariantLiteral) -> OCRRecognitionVariant:
+    """Returns the specific variant configuration for the
+    OCRRecognitionModel."""
+    variants = {
+        "light": OCRRecognitionVariant(
+            backbone="PPLCNetV3",
+            backbone_params={"variant": "rec-light"},
+            neck_params={},
+            head_params={},
+        ),
+    }
+
+    if variant not in variants:
+        raise ValueError(
+            f"OCR variant should be one of {list(variants.keys())}, got '{variant}'."
+        )
+
+    return variants[variant]
+
 
 class OCRRecognitionModel(BasePredefinedModel):
     """A predefined model for OCR recognition tasks."""
 
     def __init__(
         self,
+        variant: VariantLiteral = "light",
         backbone: str | None = None,
         backbone_params: Params | None = None,
         neck_params: Params | None = None,
@@ -25,11 +59,18 @@ class OCRRecognitionModel(BasePredefinedModel):
         max_text_len: int = 40,
         ignore_unknown: bool = True,
     ):
-        self.backbone = backbone
-        self.backbone_params = backbone_params or {}
+        var_config = get_variant(variant)
+
+        self.backbone = backbone or var_config.backbone
+        self.backbone_params = (
+            backbone_params
+            if backbone is not None or backbone_params is not None
+            else var_config.backbone_params
+        ) or {}
+        self.neck_params = neck_params or var_config.neck_params
+        self.head_params = head_params or var_config.head_params
+
         self.backbone_params["max_text_len"] = max_text_len
-        self.neck_params = neck_params or {}
-        self.head_params = head_params or {}
         self.head_params["alphabet"] = alphabet
         self.head_params["ignore_unknown"] = ignore_unknown
         self.loss_params = loss_params or {}

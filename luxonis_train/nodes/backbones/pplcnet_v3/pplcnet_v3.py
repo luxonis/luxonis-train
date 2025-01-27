@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 
 from torch import Tensor, nn
 from torch.nn import (
@@ -10,51 +11,9 @@ from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
 
 from .blocks import LCNetV3Block, LearnableRepLayer, make_divisible
+from .variants import get_variant
 
 logger = logging.getLogger(__name__)
-
-
-NET_CONFIG_det = {
-    "blocks2":
-    # k, in_c, out_c, s, use_se
-    [[3, 16, 32, 1, False]],
-    "blocks3": [[3, 32, 64, 2, False], [3, 64, 64, 1, False]],
-    "blocks4": [[3, 64, 128, 2, False], [3, 128, 128, 1, False]],
-    "blocks5": [
-        [3, 128, 256, 2, False],
-        [5, 256, 256, 1, False],
-        [5, 256, 256, 1, False],
-        [5, 256, 256, 1, False],
-        [5, 256, 256, 1, False],
-    ],
-    "blocks6": [
-        [5, 256, 512, 2, True],
-        [5, 512, 512, 1, True],
-        [5, 512, 512, 1, False],
-        [5, 512, 512, 1, False],
-    ],
-}
-
-NET_CONFIG_rec = {
-    "blocks2":
-    # k, in_c, out_c, s, use_se
-    [[3, 16, 32, 1, False]],
-    "blocks3": [[3, 32, 64, 2, False], [3, 64, 64, 1, False]],
-    "blocks4": [[3, 64, 128, 1, False], [3, 128, 128, 1, False]],
-    "blocks5": [
-        [3, 128, 256, 2, False],
-        [5, 256, 256, 1, False],
-        [5, 256, 256, 1, False],
-        [5, 256, 256, 1, False],
-        [5, 256, 256, 1, False],
-    ],
-    "blocks6": [
-        [5, 256, 512, 1, True],
-        [5, 512, 512, 1, True],
-        [5, 512, 512, 1, False],
-        [5, 512, 512, 1, False],
-    ],
-}
 
 
 class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
@@ -62,9 +21,11 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
 
     def __init__(
         self,
-        scale: float = 0.95,
-        conv_kxk_num: int = 4,
-        det: bool = False,
+        variant: Literal["rec-light"] = "rec-light",
+        scale: float | None = None,
+        conv_kxk_num: int | None = None,
+        det: bool | None = None,
+        net_config: dict[str, list[list[int | bool]]] | None = None,
         max_text_len: int = 40,
         **kwargs,
     ):
@@ -89,15 +50,19 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
         @param max_text_len: Maximum text length. Defaults to 40.
         """
         super().__init__(**kwargs)
-        self.scale = scale
-        self.det = det
-        self.max_text_len = max_text_len
 
-        self.net_config = NET_CONFIG_det if self.det else NET_CONFIG_rec
+        var = get_variant(variant)
+
+        self.scale = scale or var.scale
+        self.det = det or var.det
+        self.conv_kxk_num = conv_kxk_num or var.conv_kxk_num
+        self.net_config = net_config or var.net_config
+
+        self.max_text_len = max_text_len
 
         self.conv1 = ConvModule(
             in_channels=self.in_channels,
-            out_channels=make_divisible(16 * scale),
+            out_channels=make_divisible(16 * self.scale),
             kernel_size=3,
             stride=2,
             padding=1,
@@ -108,12 +73,12 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
         self.blocks2 = nn.Sequential(
             *[
                 LCNetV3Block(
-                    in_channels=make_divisible(in_c * scale),
-                    out_channels=make_divisible(out_c * scale),
+                    in_channels=make_divisible(in_c * self.scale),
+                    out_channels=make_divisible(out_c * self.scale),
                     dw_size=k,
                     stride=s,
-                    use_se=se,
-                    conv_kxk_num=conv_kxk_num,
+                    use_se=se,  # type: ignore
+                    conv_kxk_num=self.conv_kxk_num,
                 )
                 for _, (k, in_c, out_c, s, se) in enumerate(
                     self.net_config["blocks2"]
@@ -124,12 +89,12 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
         self.blocks3 = nn.Sequential(
             *[
                 LCNetV3Block(
-                    in_channels=make_divisible(in_c * scale),
-                    out_channels=make_divisible(out_c * scale),
+                    in_channels=make_divisible(in_c * self.scale),
+                    out_channels=make_divisible(out_c * self.scale),
                     dw_size=k,
                     stride=s,
-                    use_se=se,
-                    conv_kxk_num=conv_kxk_num,
+                    use_se=se,  # type: ignore
+                    conv_kxk_num=self.conv_kxk_num,
                 )
                 for _, (k, in_c, out_c, s, se) in enumerate(
                     self.net_config["blocks3"]
@@ -140,12 +105,12 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
         self.blocks4 = nn.Sequential(
             *[
                 LCNetV3Block(
-                    in_channels=make_divisible(in_c * scale),
-                    out_channels=make_divisible(out_c * scale),
+                    in_channels=make_divisible(in_c * self.scale),
+                    out_channels=make_divisible(out_c * self.scale),
                     dw_size=k,
                     stride=s,
-                    use_se=se,
-                    conv_kxk_num=conv_kxk_num,
+                    use_se=se,  # type: ignore
+                    conv_kxk_num=self.conv_kxk_num,
                 )
                 for _, (k, in_c, out_c, s, se) in enumerate(
                     self.net_config["blocks4"]
@@ -156,12 +121,12 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
         self.blocks5 = nn.Sequential(
             *[
                 LCNetV3Block(
-                    in_channels=make_divisible(in_c * scale),
-                    out_channels=make_divisible(out_c * scale),
+                    in_channels=make_divisible(in_c * self.scale),
+                    out_channels=make_divisible(out_c * self.scale),
                     dw_size=k,
                     stride=s,
-                    use_se=se,
-                    conv_kxk_num=conv_kxk_num,
+                    use_se=se,  # type: ignore
+                    conv_kxk_num=self.conv_kxk_num,
                 )
                 for _, (k, in_c, out_c, s, se) in enumerate(
                     self.net_config["blocks5"]
@@ -172,34 +137,34 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
         self.blocks6 = nn.Sequential(
             *[
                 LCNetV3Block(
-                    in_channels=make_divisible(in_c * scale),
-                    out_channels=make_divisible(out_c * scale),
+                    in_channels=make_divisible(in_c * self.scale),
+                    out_channels=make_divisible(out_c * self.scale),
                     dw_size=k,
                     stride=s,
-                    use_se=se,
-                    conv_kxk_num=conv_kxk_num,
+                    use_se=se,  # type: ignore
+                    conv_kxk_num=self.conv_kxk_num,
                 )
                 for _, (k, in_c, out_c, s, se) in enumerate(
                     self.net_config["blocks6"]
                 )
             ]
         )
-        self.out_channels = make_divisible(512 * scale)
+        self.out_channels = make_divisible(512 * self.scale)
 
         if self.det:
             mv_c = [16, 24, 56, 480]
             self.out_channels = [
-                make_divisible(self.net_config["blocks3"][-1][2] * scale),
-                make_divisible(self.net_config["blocks4"][-1][2] * scale),
-                make_divisible(self.net_config["blocks5"][-1][2] * scale),
-                make_divisible(self.net_config["blocks6"][-1][2] * scale),
+                make_divisible(self.net_config["blocks3"][-1][2] * self.scale),
+                make_divisible(self.net_config["blocks4"][-1][2] * self.scale),
+                make_divisible(self.net_config["blocks5"][-1][2] * self.scale),
+                make_divisible(self.net_config["blocks6"][-1][2] * self.scale),
             ]
 
             self.layer_list = nn.ModuleList(
                 [
                     Conv2d(
                         self.out_channels[0],
-                        int(mv_c[0] * scale),
+                        int(mv_c[0] * self.scale),
                         1,
                         1,
                         0,
@@ -207,7 +172,7 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
                     ),
                     Conv2d(
                         self.out_channels[1],
-                        int(mv_c[1] * scale),
+                        int(mv_c[1] * self.scale),
                         1,
                         1,
                         0,
@@ -215,7 +180,7 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
                     ),
                     Conv2d(
                         self.out_channels[2],
-                        int(mv_c[2] * scale),
+                        int(mv_c[2] * self.scale),
                         1,
                         1,
                         0,
@@ -223,7 +188,7 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
                     ),
                     Conv2d(
                         self.out_channels[3],
-                        int(mv_c[3] * scale),
+                        int(mv_c[3] * self.scale),
                         1,
                         1,
                         0,
@@ -232,10 +197,10 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
                 ]
             )
             self.out_channels = [
-                int(mv_c[0] * scale),
-                int(mv_c[1] * scale),
-                int(mv_c[2] * scale),
-                int(mv_c[3] * scale),
+                int(mv_c[0] * self.scale),
+                int(mv_c[1] * self.scale),
+                int(mv_c[2] * self.scale),
+                int(mv_c[3] * self.scale),
             ]
 
     def set_export_mode(self, mode: bool = True) -> None:

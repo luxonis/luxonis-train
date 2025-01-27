@@ -62,7 +62,7 @@ class OCRVisualizer(BaseVisualizer[Tensor, Tensor]):
             target = [chr(int(char.item())) for char in target]
             target = "".join(target)
             target_strings.append(target)
-        print(target_strings)
+
         return (preds, target_strings)
 
     def forward(
@@ -88,9 +88,6 @@ class OCRVisualizer(BaseVisualizer[Tensor, Tensor]):
 
         overlay = torch.zeros_like(label_canvas)
         preds_targets = torch.zeros_like(prediction_canvas)
-
-        print("targets", targets)
-        print(len(overlay))
 
         for i in range(len(overlay)):
             prediction_text = predictions[i][0]
