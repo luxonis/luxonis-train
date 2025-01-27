@@ -277,11 +277,26 @@ FPS (frames per second) for `light` and `heavy` variants on different devices wi
 
 ## `OCRRecognitionModel`
 
-FPS of the `OCRRecognitionModel` on different devices with image size 48x320:
+This model is based on the [PPOCRv4](https://github.com/PaddlePaddle/PaddleOCR) recognition model. In order to create a dataset you need to provide image paths, labels and text lengths. Each label should be a string with the text that is present in the image. The text length should be the length of the text in the image. You can use the following code snippet to create a dataset:
 
-| RVC2 FPS | RVC4 FPS |
-| -------- | -------- |
-| 77       | 350      |
+```python
+for path, label in tqdm(zip(im_paths, labels)):
+    if len(label):
+        yield {
+            "file": path,
+            "annotation": {
+                "metadata": {"text": label, "text_length": len(label)},
+            },
+        }
+```
+
+### Performance Metrics
+
+FPS for `light` variant on different devices with image size 48x320:
+
+| Variant     | RVC2 FPS | RVC4 FPS |
+| ----------- | -------- | -------- |
+| **`light`** | 77       | 350      |
 
 **Components:**
 
@@ -296,12 +311,16 @@ FPS of the `OCRRecognitionModel` on different devices with image size 48x320:
 
 **Parameters:**
 
-| Key                 | Type          | Default value | Description                               |
-| ------------------- | ------------- | ------------- | ----------------------------------------- |
-| `backbone`          | `str`         | `"SVTRNeck"`  | Name of the node to be used as a backbone |
-| `backbone_params`   | `dict`        | `{}`          | Additional parameters for the backbone    |
-| `neck_params`       | `dict`        | `{}`          | Additional parameters for the neck        |
-| `head_params`       | `dict`        | `{}`          | Additional parameters for the head        |
-| `loss_params`       | `dict`        | `{}`          | Additional parameters for the loss        |
-| `visualizer_params` | `dict`        | `{}`          | Additional parameters for the visualizer  |
-| `task_name`         | `str \| None` | `None`        | Custom task name for the head             |
+| Key                 | Type          | Default value | Description                                                 |
+| ------------------- | ------------- | ------------- | ----------------------------------------------------------- |
+| `variant`           | `str`         | `"light"`     | Defines the variant of the model.                           |
+| `backbone`          | `str`         | `"SVTRNeck"`  | Name of the node to be used as a backbone                   |
+| `backbone_params`   | `dict`        | `{}`          | Additional parameters for the backbone                      |
+| `neck_params`       | `dict`        | `{}`          | Additional parameters for the neck                          |
+| `head_params`       | `dict`        | `{}`          | Additional parameters for the head                          |
+| `loss_params`       | `dict`        | `{}`          | Additional parameters for the loss                          |
+| `visualizer_params` | `dict`        | `{}`          | Additional parameters for the visualizer                    |
+| `task_name`         | `str \| None` | `None`        | Custom task name for the head                               |
+| `alphabet`          | `List[str]`   | `None`        | List of possible characters.                                |
+| `max_text_len`      | `int`         | `40`          | Maximum text length.                                        |
+| `ignore_unknown`    | `bool`        | `True`        | Whether to ignore unknown characters (not in the alphabet). |

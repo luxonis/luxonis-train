@@ -51,13 +51,14 @@ class PPLCNetV3Variant(BaseModel):
     det: bool
     net_config: dict[str, list[list[int]]]
 
+
 def get_variant(variant: Literal["rec-light"]) -> PPLCNetV3Variant:
     variants = {
         "rec-light": PPLCNetV3Variant(
-            scale = 0.95,
-            conv_kxk_num = 4,
-            det = False,
-            net_config = NET_CONFIG_rec,
+            scale=0.95,
+            conv_kxk_num=4,
+            det=False,
+            net_config=NET_CONFIG_rec,
         ),
     }
     if variant not in variants:  # pragma: no cover

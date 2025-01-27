@@ -170,12 +170,14 @@ Adapted from [here](https://github.com/ydhongHIT/DDRNet)
 Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 **Parameters:**
 
-| Key            | Type    | Default value | Description                    |
-| -------------- | ------- | ------------- | ------------------------------ |
-| `scale`        | `float` | `0.95`        | Scale factor for the model     |
-| `conv_kxk_num` | `int`   | `4`           | Number of convolutional layers |
-| `det`          | `bool`  | `False`       | Whether to use for detection   |
-| `max_text_len` | `int`   | `40`          | Maximum length of the text     |
+| Key            | Type                   | Default value | Description                    |
+| -------------- | ---------------------- | ------------- | ------------------------------ |
+| `variant`      | Literal\["rec-light"\] | `"rec-light"` | Variant of the network         |
+| `scale`        | `float`                | `0.95`        | Scale factor for the model     |
+| `conv_kxk_num` | `int`                  | `4`           | Number of convolutional layers |
+| `det`          | `bool`                 | `False`       | Whether to use for detection   |
+| `net_config`   | `dict`                 | `None`        | Configuration for the network  |
+| `max_text_len` | `int`                  | `40`          | Maximum length of the text     |
 
 ### `RecSubNet`
 
