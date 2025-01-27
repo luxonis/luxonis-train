@@ -42,7 +42,7 @@ def get_opts_backbone(backbone: str) -> dict[str, Any]:
                     "attached_to": "EfficientBBoxHead",
                 },
                 {
-                    "name": "MeanAveragePrecisionKeypoints",
+                    "name": "MeanAveragePrecision",
                     "alias": "EfficientKeypointBBoxHead-MaP",
                     "attached_to": "EfficientKeypointBBoxHead",
                 },

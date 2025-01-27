@@ -22,7 +22,7 @@ model:
       losses:
         - name: EfficientKeypointBBoxLoss
       metrics:
-        - name: MeanAveragePrecisionKeypoints
+        - name: MeanAveragePrecision
       visualizers:
         - name: KeypointVisualizer
 

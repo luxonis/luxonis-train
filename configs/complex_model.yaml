@@ -20,7 +20,7 @@ model:
       metrics:
         - name: ObjectKeypointSimilarity
           is_main_metric: true
-        - name: MeanAveragePrecisionKeypoints
+        - name: MeanAveragePrecision
 
       visualizers:
         - name: KeypointVisualizer

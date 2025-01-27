@@ -290,7 +290,6 @@ class BaseAttachedModule(
                 )
 
             elif typ == list[Tensor] and not isinstance(kwargs[name], list):
-                exit(2)
                 raise RuntimeError(
                     f"Module '{self.name}' expects a list of tensors for input '{name}', "
                     f"but the node '{self.node.name}' returned a single tensor. Please make sure "
