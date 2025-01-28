@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from luxonis_train.utils import Labels, Packet, prepare_batch_targets
+from luxonis_train.utils import Labels, Packet
 
 from .base_loss import BaseLoss
 
@@ -43,10 +43,8 @@ class CTCLoss(BaseLoss[Tensor, Tensor, Tensor]):
             lengths.
         """
         preds = inputs["/classification"][0]
-        targets_batch = labels["/metadata/text"]
-        target_lengths = labels["/metadata/text_length"].int()
-
-        targets = prepare_batch_targets(targets_batch, target_lengths)
+        targets = labels["/metadata/text"]
+        target_lengths = torch.sum(targets != 0, dim=1)
         targets = self.node.encoder(targets).to(preds.device)  # type: ignore
 
         return preds, targets, target_lengths

@@ -7,34 +7,6 @@ from torch import Tensor
 logger = logging.getLogger(__name__)
 
 
-def prepare_batch_targets(
-    targets_batch: Tensor, target_lengths: Tensor
-) -> Tensor:
-    """Prepares the batch targets for loss computation.
-
-    @type targets_batch: Tensor
-    @param targets_batch: A tensor of shape (B, T) containing the target
-        labels.
-    @type target_lengths: Tensor
-    @param target_lengths: A tensor of shape (B,) containing the target
-        lengths.
-    @rtype: Tensor
-    @return: A tensor of shape (B, max_length) containing the prepared
-        targets.
-    """
-
-    max_length = int(target_lengths.max().item())
-    targets = torch.zeros(len(target_lengths), max_length, dtype=torch.int32)
-
-    start_idx = 0
-    for i, length in enumerate(target_lengths):
-        end_idx = start_idx + length
-        targets[i, :length] = targets_batch[start_idx:end_idx]
-        start_idx = end_idx
-
-    return targets
-
-
 class OCRDecoder:
     """OCR decoder for converting model predictions to text."""
 

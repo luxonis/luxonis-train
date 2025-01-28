@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from luxonis_train.utils import Labels, Packet, prepare_batch_targets
+from luxonis_train.utils import Labels, Packet
 
 from .base_visualizer import BaseVisualizer
 from .utils import numpy_to_torch_img, torch_img_to_numpy
@@ -51,10 +51,7 @@ class OCRVisualizer(BaseVisualizer[Tensor, Tensor]):
         preds = inputs["/classification"][0]
 
         preds = self.node.decoder(preds)  # type: ignore
-        targets_batch = labels["/metadata/text"].int()
-        target_lengths = labels["/metadata/text_length"].int()
-
-        targets = prepare_batch_targets(targets_batch, target_lengths)
+        targets = labels["/metadata/text"]
 
         target_strings = []
         for target in targets:
