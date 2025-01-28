@@ -319,13 +319,13 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 **Parameters:**
 
-| Key              | Type               | Default value | Description                                            |
-| ---------------- | ------------------ | ------------- | ------------------------------------------------------ |
-| `alphabet`       | `list[str] \| str` | `english`     | List of characters or a name of a predefined alphabet. |
-| `ignore_unknown` | `bool`             | `True`        | Whether to ignore unknown characters.                  |
-| `fc_decay`       | `float`            | `0.0004`      | L2 regularization factor.                              |
-| `mid_channels`   | `int`              | `None`        | Number of middle channels.                             |
-| `return_feats`   | `bool`             | `False`       | Whether to return features.                            |
+| Key              | Type                                                                                                                                | Default value | Description                                            |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------ |
+| `alphabet`       | `list[str] \| Literal["english", "english_lowercase", "numeric", "alphanumeric", "alphanumeric_lowercase", "punctuation", "ascii"]` | `english`     | List of characters or a name of a predefined alphabet. |
+| `ignore_unknown` | `bool`                                                                                                                              | `True`        | Whether to ignore unknown characters.                  |
+| `fc_decay`       | `float`                                                                                                                             | `0.0004`      | L2 regularization factor.                              |
+| `mid_channels`   | `int`                                                                                                                               | `None`        | Number of middle channels.                             |
+| `return_feats`   | `bool`                                                                                                                              | `False`       | Whether to return features.                            |
 
 ## `PrecisionBBoxHead`
 

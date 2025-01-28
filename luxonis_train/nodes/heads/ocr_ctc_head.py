@@ -6,6 +6,7 @@ from torch.nn import functional as F
 from luxonis_train.enums import TaskType
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.utils import OCRDecoder, OCREncoder
+from luxonis_train.utils.ocr import AlphabetName
 
 
 class OCRCTCHead(BaseHead[Tensor, Tensor]):
@@ -16,7 +17,7 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
 
     def __init__(
         self,
-        alphabet: list[str] | str = "english",
+        alphabet: list[str] | AlphabetName = "english",
         ignore_unknown: bool = True,
         fc_decay: float = 0.0004,
         mid_channels: int | None = None,
@@ -32,7 +33,7 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
         @license: U{Apache License, Version 2.0
             <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE
             >}
-        @type alphabet: list[str] | str
+        @type alphabet: list[str] | AlphabetName
         @param alphabet: List of characters or a name of the alphabet.
         @type ignore_unknown: bool
         @param ignore_unknown: Whether to ignore unknown characters.

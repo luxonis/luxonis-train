@@ -353,16 +353,16 @@ FPS for `light` variant on different devices with image size 48x320:
 
 **Parameters:**
 
-| Key                 | Type               | Default value | Description                                                 |
-| ------------------- | ------------------ | ------------- | ----------------------------------------------------------- |
-| `variant`           | `str`              | `"light"`     | Defines the variant of the model.                           |
-| `backbone`          | `str`              | `"SVTRNeck"`  | Name of the node to be used as a backbone                   |
-| `backbone_params`   | `dict`             | `{}`          | Additional parameters for the backbone                      |
-| `neck_params`       | `dict`             | `{}`          | Additional parameters for the neck                          |
-| `head_params`       | `dict`             | `{}`          | Additional parameters for the head                          |
-| `loss_params`       | `dict`             | `{}`          | Additional parameters for the loss                          |
-| `visualizer_params` | `dict`             | `{}`          | Additional parameters for the visualizer                    |
-| `task_name`         | `str \| None`      | `None`        | Custom task name for the head                               |
-| `alphabet`          | `List[str] \| str` | `english`     | List of characters or a name of a predefined alphabet.      |
-| `max_text_len`      | `int`              | `40`          | Maximum text length.                                        |
-| `ignore_unknown`    | `bool`             | `True`        | Whether to ignore unknown characters (not in the alphabet). |
+| Key                 | Type                                                                                                                                | Default value | Description                                                 |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------- | ----------------------------------------------------------- |
+| `variant`           | `str`                                                                                                                               | `"light"`     | Defines the variant of the model.                           |
+| `backbone`          | `str`                                                                                                                               | `"SVTRNeck"`  | Name of the node to be used as a backbone                   |
+| `backbone_params`   | `dict`                                                                                                                              | `{}`          | Additional parameters for the backbone                      |
+| `neck_params`       | `dict`                                                                                                                              | `{}`          | Additional parameters for the neck                          |
+| `head_params`       | `dict`                                                                                                                              | `{}`          | Additional parameters for the head                          |
+| `loss_params`       | `dict`                                                                                                                              | `{}`          | Additional parameters for the loss                          |
+| `visualizer_params` | `dict`                                                                                                                              | `{}`          | Additional parameters for the visualizer                    |
+| `task_name`         | `str \| None`                                                                                                                       | `None`        | Custom task name for the head                               |
+| `alphabet`          | `List[str] \| Literal["english", "english_lowercase", "numeric", "alphanumeric", "alphanumeric_lowercase", "punctuation", "ascii"]` | `english`     | List of characters or a name of a predefined alphabet.      |
+| `max_text_len`      | `int`                                                                                                                               | `40`          | Maximum text length.                                        |
+| `ignore_unknown`    | `bool`                                                                                                                              | `True`        | Whether to ignore unknown characters (not in the alphabet). |

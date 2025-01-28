@@ -9,6 +9,7 @@ from luxonis_train.config import (
     ModelNodeConfig,
     Params,
 )
+from luxonis_train.utils.ocr import AlphabetName
 
 from .base_predefined_model import BasePredefinedModel
 
@@ -55,7 +56,7 @@ class OCRRecognitionModel(BasePredefinedModel):
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
         task_name: str | None = None,
-        alphabet: list[str] | str = "english",
+        alphabet: list[str] | AlphabetName = "english",
         max_text_len: int = 40,
         ignore_unknown: bool = True,
     ):

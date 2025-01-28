@@ -1,4 +1,5 @@
 import logging
+from typing import Literal, TypeAlias
 
 import numpy as np
 import torch
@@ -18,6 +19,16 @@ ALPHABETS = {
     "punctuation": list(" !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"),
     "ascii": list("".join(chr(i) for i in range(32, 127))),
 }
+
+AlphabetName: TypeAlias = Literal[
+    "english",
+    "english_lowercase",
+    "numeric",
+    "alphanumeric",
+    "alphanumeric_lowercase",
+    "punctuation",
+    "ascii",
+]
 
 
 class OCRDecoder:
@@ -96,12 +107,12 @@ class OCREncoder:
 
     def __init__(
         self,
-        alphabet: list[str] | str = "english",
+        alphabet: list[str] | AlphabetName = "english",
         ignore_unknown: bool = True,
     ):
         """Initializes the OCR encoder.
 
-        @type alphabet: list[str] | str
+        @type alphabet: list[str] | AlphabetName
         @param alphabet: A list of characters in the alphabet or a name
             of a predefined alphabet. Defaults to "english".
         @type ignore_unknown: bool
