@@ -85,7 +85,7 @@ class ObjectKeypointSimilarity(BaseMetric):
         target_keypoints: Tensor | None = None,
     ) -> None:
         if target_keypoints is None:
-            if self.task is not Tasks.FOMO:
+            if self.task != Tasks.FOMO:
                 raise ValueError(
                     "The target keypoints are not required only when used "
                     " with FOMO task."
