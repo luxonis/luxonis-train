@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from luxonis_train.nodes import OCRCTCHead
 from luxonis_train.utils import Labels, Packet
 
 from .base_loss import BaseLoss
@@ -14,6 +15,8 @@ logger = getLogger(__name__)
 
 class CTCLoss(BaseLoss[Tensor, Tensor, Tensor]):
     """CTC loss with optional focal loss weighting."""
+
+    node: OCRCTCHead
 
     def __init__(self, use_focal_loss: bool = True, **kwargs: Any):
         """Initializes the CTC loss with optional focal loss support.
@@ -45,7 +48,7 @@ class CTCLoss(BaseLoss[Tensor, Tensor, Tensor]):
         preds = inputs["/classification"][0]
         targets = labels["/metadata/text"]
         target_lengths = torch.sum(targets != 0, dim=1)
-        targets = self.node.encoder(targets).to(preds.device)  # type: ignore
+        targets = self.node.encoder(targets).to(preds.device)
 
         return preds, targets, target_lengths
 

@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from luxonis_train.nodes import OCRCTCHead
 from luxonis_train.utils import Labels, Packet
 
 from .base_visualizer import BaseVisualizer
@@ -11,6 +12,8 @@ from .utils import numpy_to_torch_img, torch_img_to_numpy
 
 class OCRVisualizer(BaseVisualizer[Tensor, Tensor]):
     """Visualizer for OCR tasks."""
+
+    node: OCRCTCHead
 
     def __init__(
         self,
@@ -35,7 +38,7 @@ class OCRVisualizer(BaseVisualizer[Tensor, Tensor]):
 
     def prepare(
         self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[Tensor, list[str]]:
+    ) -> tuple[list[tuple[str, float]], list[str]]:
         """Prepares the predictions and targets for visualization.
 
         @type inputs: Packet[Tensor]
@@ -50,7 +53,7 @@ class OCRVisualizer(BaseVisualizer[Tensor, Tensor]):
 
         preds = inputs["/classification"][0]
 
-        preds = self.node.decoder(preds)  # type: ignore
+        preds = self.node.decoder(preds)
         targets = labels["/metadata/text"]
 
         target_strings = []

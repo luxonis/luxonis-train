@@ -3,6 +3,7 @@ import logging
 import torch
 from torch import Tensor
 
+from luxonis_train.nodes import OCRCTCHead
 from luxonis_train.utils import Labels, Packet
 
 from .base_metric import BaseMetric
@@ -14,6 +15,8 @@ class OCRAccuracy(
     BaseMetric[list[dict[str, Tensor]], list[dict[str, Tensor]]]
 ):
     """Accuracy metric for OCR tasks."""
+
+    node: OCRCTCHead
 
     def __init__(self, blank_cls: int = 0, **kwargs):
         """Initializes the OCR accuracy metric.
@@ -52,7 +55,7 @@ class OCRAccuracy(
 
         preds = inputs["/classification"][0]
         targets = labels["/metadata/text"]
-        targets = self.node.encoder(targets).to(preds.device)  # type: ignore
+        targets = self.node.encoder(targets).to(preds.device)
 
         return (preds, targets)
 
