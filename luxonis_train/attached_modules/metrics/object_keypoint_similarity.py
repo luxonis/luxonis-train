@@ -31,7 +31,7 @@ class ObjectKeypointSimilarity(BaseMetric):
     groundtruth_keypoints: list[Tensor]
     groundtruth_scales: list[Tensor]
 
-    supported_tasks = [Tasks.KEYPOINTS, Tasks.FOMO]
+    supported_tasks = [Tasks.KEYPOINTS, Tasks.INSTANCE_KEYPOINTS, Tasks.FOMO]
 
     def __init__(
         self,

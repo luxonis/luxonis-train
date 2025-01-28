@@ -2,6 +2,7 @@ from typing import Literal
 
 import torch
 from torch import Tensor
+from torchmetrics import Metric
 from torchmetrics.classification import (
     BinaryConfusionMatrix,
     MulticlassConfusionMatrix,
@@ -9,18 +10,20 @@ from torchmetrics.classification import (
 from torchvision.ops import box_convert, box_iou
 from typing_extensions import override
 
-from luxonis_train.tasks import Metadata, Task, Tasks
+from luxonis_train.tasks import InstanceBaseTask, Metadata, Task, Tasks
 
 from .base_metric import BaseMetric
 
 
+# TODO: Possibly split to two classes and treat `ConfusionMatrix` as
+# a factory with `__new__` method.
 class ConfusionMatrix(BaseMetric):
     supported_tasks = [
         Tasks.CLASSIFICATION,
-        Tasks.SEGMENTATION,
-        Tasks.KEYPOINTS,
-        Tasks.INSTANCE_SEGMENTATION,
         Tasks.BOUNDINGBOX,
+        Tasks.SEGMENTATION,
+        Tasks.INSTANCE_SEGMENTATION,
+        Tasks.INSTANCE_KEYPOINTS,
     ]
 
     def __init__(
@@ -52,6 +55,8 @@ class ConfusionMatrix(BaseMetric):
         self.box_format = box_format
         self.iou_threshold = iou_threshold
         self.confidence_threshold = confidence_threshold
+        self.metric_cm: Metric | None = None
+        self.detection_cm: Tensor | None = None
 
         if self.task in {
             Tasks.CLASSIFICATION,
@@ -65,9 +70,7 @@ class ConfusionMatrix(BaseMetric):
                     num_classes=self.n_classes
                 )
 
-        self.detection_cm: Tensor
-
-        if self.task in {Tasks.BOUNDINGBOX, Tasks.KEYPOINTS}:
+        if self.task in {Tasks.BOUNDINGBOX, Tasks.INSTANCE_KEYPOINTS}:
             self.add_state(
                 "detection_cm",
                 default=torch.zeros(
@@ -80,7 +83,7 @@ class ConfusionMatrix(BaseMetric):
     @override
     def task(self) -> Task:
         task = super().task
-        if task in {Tasks.KEYPOINTS, Tasks.INSTANCE_SEGMENTATION}:
+        if isinstance(task, InstanceBaseTask):
             return Tasks.BOUNDINGBOX
         return task
 
@@ -103,7 +106,7 @@ class ConfusionMatrix(BaseMetric):
             one for targets.
         """
 
-        if self.task in {Tasks.BOUNDINGBOX, Tasks.KEYPOINTS}:
+        if self.detection_cm is not None:
             assert isinstance(predictions, list)
             target[..., 2:6] = box_convert(target[..., 2:6], "xywh", "xyxy")
             scale_factors = torch.tensor(
@@ -125,6 +128,7 @@ class ConfusionMatrix(BaseMetric):
 
         assert isinstance(predictions, Tensor)
 
+        # TODO: Could be unified?
         if self.task == Tasks.CLASSIFICATION:
             preds = (
                 predictions.argmax(dim=1)
@@ -145,24 +149,25 @@ class ConfusionMatrix(BaseMetric):
             else target.squeeze(1).round().int()
         )
 
+        assert self.metric_cm is not None
         self.metric_cm.update(preds.view(-1), targets.view(-1))
 
     def compute(self) -> dict[str, Tensor]:
         """Compute confusion matrices for classification, segmentation,
         and detection tasks."""
         results = {}
-        if hasattr(self, "metric_cm"):
+        if self.metric_cm is not None:
             results[f"{self.task}_confusion_matrix"] = self.metric_cm.compute()
-        if self.task in {Tasks.BOUNDINGBOX, Tasks.KEYPOINTS}:
+        if self.detection_cm is not None:
             results["detection_confusion_matrix"] = self.detection_cm
 
         return results
 
     def reset(self) -> None:
-        if hasattr(self, "metric_cm"):
+        if self.metric_cm is not None:
             self.metric_cm.reset()
 
-        if self.task in {Tasks.BOUNDINGBOX, Tasks.KEYPOINTS}:
+        if self.detection_cm is not None:
             self.detection_cm.zero_()
 
     def _compute_detection_confusion_matrix(

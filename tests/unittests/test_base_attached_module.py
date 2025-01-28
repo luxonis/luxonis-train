@@ -31,13 +31,13 @@ class DummyBBoxHead(BaseNode):
 
 
 class DummyDetectionHead(BaseNode):
-    task = Tasks.KEYPOINTS
+    task = Tasks.INSTANCE_KEYPOINTS
 
     def forward(self, _): ...
 
 
 class DummyLoss(BaseLoss):
-    supported_tasks = [Tasks.SEGMENTATION, Tasks.KEYPOINTS]
+    supported_tasks = [Tasks.SEGMENTATION, Tasks.INSTANCE_KEYPOINTS]
 
     def forward(self, _): ...
 

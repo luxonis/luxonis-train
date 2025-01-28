@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class EfficientKeypointBBoxHead(EfficientBBoxHead):
-    task = Tasks.KEYPOINTS
+    task = Tasks.INSTANCE_KEYPOINTS
     parser: str = "YOLOExtendedParser"
 
     def __init__(

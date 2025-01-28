@@ -21,7 +21,7 @@ from .bce_with_logits import BCEWithLogitsLoss
 
 class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
     node: EfficientKeypointBBoxHead
-    supported_tasks = [Tasks.KEYPOINTS]
+    supported_tasks = [Tasks.INSTANCE_KEYPOINTS]
 
     gt_kpts_scale: Tensor
 

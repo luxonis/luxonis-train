@@ -45,18 +45,11 @@ class BaseAttachedModule(
     @type node: BaseNode
     @param node: Reference to the node that this module is attached to.
 
-    @type supported_tasks: list[Task | tuple[Task, ...]] | None
+    @type supported_tasks: list[Task] | None
     @ivar supported_tasks: List of task types that the module supports.
         Elements of the list can be either a single task type or a tuple of
         task types. In case of the latter, the module requires all of the
         specified labels in the tuple to be present.
-
-        Example:
-            - C{[Tasks.CLASSIFICATION, Tasks.SEGMENTATION]} means that the
-              module requires either classification or segmentation labels.
-            - C{[(Tasks.BOUNDINGBOX, Tasks.KEYPOINTS), Tasks.SEGMENTATION]}
-              means that the module requires either both bounding box I{and} keypoint
-              labels I{or} segmentation labels.
     """
 
     supported_tasks: Task | Sequence[Task] | None = None

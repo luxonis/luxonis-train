@@ -10,12 +10,12 @@ from luxonis_ml.data import Category
 __all__ = ["Metadata", "Task", "Tasks"]
 
 
-class classproperty:
+class staticproperty:
     def __init__(self, func: Callable) -> None:
         self.func = func
 
-    def __get__(self, _: Any, owner: type) -> Any:
-        return self.func(owner)
+    def __get__(self, *_) -> Any:
+        return self.func()
 
 
 @dataclass
@@ -69,34 +69,44 @@ class Segmentation(Task):
         return {"segmentation"}
 
 
-class InstanceSegmentation(Task):
-    def __init__(self):
-        super().__init__("instance_segmentation")
-
-    @cached_property
-    def required_labels(self) -> set[str | Metadata]:
-        return {"instance_segmentation", "boundingbox"}
-
-
-class BoundingBox(Task):
-    def __init__(self):
-        super().__init__("boundingbox")
-
+class InstanceBaseTask(Task):
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
         return {"boundingbox"}
 
 
-class Keypoints(Task):
+class BoundingBox(InstanceBaseTask):
+    def __init__(self):
+        super().__init__("boundingbox")
+
+
+class InstanceSegmentation(InstanceBaseTask):
+    def __init__(self):
+        super().__init__("instance_segmentation")
+
+    @cached_property
+    def required_labels(self) -> set[str | Metadata]:
+        return super().required_labels | {"instance_segmentation"}
+
+    @property
+    def main_output(self) -> str:
+        return "segmentation"
+
+
+class InstanceKeypoints(InstanceBaseTask):
     def __init__(self):
         super().__init__("keypoints")
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        return {"keypoints", "boundingbox"}
+        return super().required_labels | {"keypoints"}
+
+    @property
+    def main_output(self) -> str:
+        return "keypoints"
 
 
-class Pointcloud(Task):
+class Keypoints(Task):
     def __init__(self):
         super().__init__("pointcloud")
 
@@ -104,9 +114,14 @@ class Pointcloud(Task):
     def required_labels(self) -> set[str | Metadata]:
         return {"keypoints"}
 
+
+class Fomo(InstanceBaseTask):
+    def __init__(self):
+        super().__init__("fomo")
+
     @property
     def main_output(self) -> str:
-        return "keypoints"
+        return "heatmap"
 
 
 class Embeddings(Task):
@@ -116,10 +131,6 @@ class Embeddings(Task):
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
         return {Metadata("id", int | Category)}
-
-    @property
-    def main_output(self) -> str:
-        return "embeddings"
 
 
 class AnomalyDetection(Task):
@@ -141,59 +152,46 @@ class Ocr(Task):
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        return {Metadata("text", str), Metadata("text_length", int)}
-
-
-class Fomo(Task):
-    def __init__(self):
-        super().__init__("fomo")
-
-    @cached_property
-    def required_labels(self) -> set[str | Metadata]:
-        return {"boundingbox"}
-
-    @property
-    def main_output(self) -> str:
-        return "heatmap"
+        return {Metadata("text", str)}
 
 
 class Tasks:
-    @classproperty
+    @staticproperty
     def CLASSIFICATION() -> Classification:
         return Classification()
 
-    @classproperty
-    def SEGMENTATION(self) -> Segmentation:
+    @staticproperty
+    def SEGMENTATION() -> Segmentation:
         return Segmentation()
 
-    @classproperty
-    def INSTANCE_SEGMENTATION(self) -> InstanceSegmentation:
+    @staticproperty
+    def INSTANCE_SEGMENTATION() -> InstanceSegmentation:
         return InstanceSegmentation()
 
-    @classproperty
-    def BOUNDINGBOX(self) -> BoundingBox:
+    @staticproperty
+    def BOUNDINGBOX() -> BoundingBox:
         return BoundingBox()
 
-    @classproperty
-    def KEYPOINTS(self) -> Keypoints:
+    @staticproperty
+    def INSTANCE_KEYPOINTS() -> InstanceKeypoints:
+        return InstanceKeypoints()
+
+    @staticproperty
+    def KEYPOINTS() -> Keypoints:
         return Keypoints()
 
-    @classproperty
-    def POINTCLOUD(self) -> Pointcloud:
-        return Pointcloud()
-
-    @classproperty
-    def EMBEDDINGS(self) -> Embeddings:
+    @staticproperty
+    def EMBEDDINGS() -> Embeddings:
         return Embeddings()
 
-    @classproperty
-    def ANOMALY_DETECTION(self) -> AnomalyDetection:
+    @staticproperty
+    def ANOMALY_DETECTION() -> AnomalyDetection:
         return AnomalyDetection()
 
-    @classproperty
-    def OCR(self) -> Ocr:
+    @staticproperty
+    def OCR() -> Ocr:
         return Ocr()
 
-    @classproperty
-    def FOMO(self) -> Fomo:
+    @staticproperty
+    def FOMO() -> Fomo:
         return Fomo()

@@ -10,7 +10,7 @@ from .utils import Color, draw_keypoint_labels, draw_keypoints
 
 
 class KeypointVisualizer(BBoxVisualizer):
-    supported_tasks = [Tasks.KEYPOINTS, Tasks.FOMO]
+    supported_tasks = [Tasks.INSTANCE_KEYPOINTS, Tasks.FOMO]
 
     def __init__(
         self,

@@ -20,7 +20,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
     Uses C{OKS} as IoU measure.
     """
 
-    supported_tasks = [Tasks.KEYPOINTS]
+    supported_tasks = [Tasks.INSTANCE_KEYPOINTS]
 
     is_differentiable: bool = False
     higher_is_better: bool = True
