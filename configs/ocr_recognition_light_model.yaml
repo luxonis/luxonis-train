@@ -6,7 +6,7 @@ model:
     name: OCRRecognitionModel
     params:
       variant: light
-      alphabet: ['a', 'b', 'c', 'd', 'e', 'h', 'l', 'm', 'n', 'o', 'p', 'x', 'y', 'z']
+      alphabet: english
       max_text_len: 40
       ignore_unknown: true
 

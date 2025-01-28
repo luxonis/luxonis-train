@@ -55,7 +55,7 @@ class OCRRecognitionModel(BasePredefinedModel):
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
         task_name: str | None = None,
-        alphabet: list[str] | None = None,
+        alphabet: list[str] | str = "english",
         max_text_len: int = 40,
         ignore_unknown: bool = True,
     ):

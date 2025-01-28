@@ -16,7 +16,7 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
 
     def __init__(
         self,
-        alphabet: list,
+        alphabet: list[str] | str = "english",
         ignore_unknown: bool = True,
         fc_decay: float = 0.0004,
         mid_channels: int | None = None,
@@ -32,8 +32,8 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
         @license: U{Apache License, Version 2.0
             <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE
             >}
-        @type alphabet: list
-        @param alphabet: List of characters.
+        @type alphabet: list[str] | str
+        @param alphabet: List of characters or a name of the alphabet.
         @type ignore_unknown: bool
         @param ignore_unknown: Whether to ignore unknown characters.
             Defaults to True.

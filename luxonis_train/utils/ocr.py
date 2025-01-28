@@ -7,6 +7,19 @@ from torch import Tensor
 logger = logging.getLogger(__name__)
 
 
+ALPHABETS = {
+    "english": list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+    "english_lowercase": list("abcdefghijklmnopqrstuvwxyz"),
+    "numeric": list("0123456789"),
+    "alphanumeric": list(
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    ),
+    "alphanumeric_lowercase": list("abcdefghijklmnopqrstuvwxyz0123456789"),
+    "punctuation": list(" !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"),
+    "ascii": list("".join(chr(i) for i in range(32, 127))),
+}
+
+
 class OCRDecoder:
     """OCR decoder for converting model predictions to text."""
 
@@ -81,15 +94,30 @@ class OCRDecoder:
 class OCREncoder:
     """OCR encoder for converting text to model targets."""
 
-    def __init__(self, alphabet: list[str], ignore_unknown: bool = True):
+    def __init__(
+        self,
+        alphabet: list[str] | str = "english",
+        ignore_unknown: bool = True,
+    ):
         """Initializes the OCR encoder.
 
-        @type alphabet: list[str]
-        @param alphabet: A list of characters in the alphabet.
+        @type alphabet: list[str] | str
+        @param alphabet: A list of characters in the alphabet or a name
+            of a predefined alphabet. Defaults to "english".
         @type ignore_unknown: bool
         @param ignore_unknown: Whether to ignore unknown characters.
             Defaults to True.
         """
+
+        if isinstance(alphabet, str):
+            if alphabet not in ALPHABETS:
+                raise ValueError(
+                    f"Invalid alphabet name '{alphabet}'. "
+                    f"Available options are: {list(ALPHABETS.keys())}. "
+                    f"Alternatively, you can provide a custom alphabet as a list of characters."
+                )
+            alphabet = ALPHABETS[alphabet]
+            logger.info(f"Using predefined alphabet '{alphabet}'.")
 
         self._alphabet = [""] + list(np.unique(alphabet))
         self.char_to_int = {char: i for i, char in enumerate(self._alphabet)}
