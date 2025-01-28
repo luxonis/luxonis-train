@@ -321,7 +321,7 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 
 | Key              | Type               | Default value | Description                                            |
 | ---------------- | ------------------ | ------------- | ------------------------------------------------------ |
-| `alphabet`       | `list[str] \| str` | `None`        | List of characters or a name of a predefined alphabet. |
+| `alphabet`       | `list[str] \| str` | `english`     | List of characters or a name of a predefined alphabet. |
 | `ignore_unknown` | `bool`             | `True`        | Whether to ignore unknown characters.                  |
 | `fc_decay`       | `float`            | `0.0004`      | L2 regularization factor.                              |
 | `mid_channels`   | `int`              | `None`        | Number of middle channels.                             |
