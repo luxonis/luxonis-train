@@ -5,8 +5,8 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from luxonis_train.attached_modules.losses import AdaptiveDetectionLoss
-from luxonis_train.enums import Task
 from luxonis_train.nodes import EfficientKeypointBBoxHead
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import (
     compute_iou_loss,
     dist2bbox,
@@ -21,7 +21,7 @@ from .bce_with_logits import BCEWithLogitsLoss
 
 class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
     node: EfficientKeypointBBoxHead
-    supported_tasks = [Task.KEYPOINTS]
+    supported_tasks = [Tasks.KEYPOINTS]
 
     gt_kpts_scale: Tensor
 

@@ -4,14 +4,14 @@ import torch
 from torch import Tensor
 from torchvision.utils import draw_bounding_boxes
 
-from luxonis_train.enums import Task
+from luxonis_train.tasks import Tasks
 
 from .base_visualizer import BaseVisualizer
 from .utils import Color, draw_bounding_box_labels, get_color
 
 
 class BBoxVisualizer(BaseVisualizer):
-    supported_tasks: list[Task] = [Task.BOUNDINGBOX]
+    supported_tasks = [Tasks.BOUNDINGBOX]
 
     def __init__(
         self,

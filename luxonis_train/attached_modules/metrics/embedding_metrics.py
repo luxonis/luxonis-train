@@ -1,8 +1,8 @@
 import torch
 from torch import Tensor
 
-from luxonis_train.enums import Task
 from luxonis_train.nodes.heads.ghostfacenet_head import GhostFaceNetHead
+from luxonis_train.tasks import Tasks
 
 from .base_metric import BaseMetric
 
@@ -11,7 +11,7 @@ from .base_metric import BaseMetric
 
 
 class ClosestIsPositiveAccuracy(BaseMetric):
-    supported_tasks = [Task.EMBEDDINGS]
+    supported_tasks = [Tasks.EMBEDDINGS]
     node: GhostFaceNetHead
 
     def __init__(self, **kwargs):
@@ -74,7 +74,7 @@ class ClosestIsPositiveAccuracy(BaseMetric):
 
 
 class MedianDistances(BaseMetric):
-    supported_tasks = [Task.EMBEDDINGS]
+    supported_tasks = [Tasks.EMBEDDINGS]
     node: GhostFaceNetHead
 
     cross_batch_memory: list[tuple[Tensor, Tensor]]

@@ -9,7 +9,7 @@ from torch import Tensor
 from torchvision.ops import box_convert
 
 from luxonis_train.attached_modules.metrics import BaseMetric
-from luxonis_train.enums import Task
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import get_sigmas, get_with_default
 from luxonis_train.utils.keypoints import insert_class
 
@@ -20,7 +20,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
     Uses C{OKS} as IoU measure.
     """
 
-    supported_tasks = [Task.KEYPOINTS]
+    supported_tasks = [Tasks.KEYPOINTS]
 
     is_differentiable: bool = False
     higher_is_better: bool = True

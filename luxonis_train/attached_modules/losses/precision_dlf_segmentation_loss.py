@@ -6,8 +6,8 @@ import torch.nn.functional as F
 from torch import Tensor
 from torchvision.ops import box_convert
 
-from luxonis_train.enums import Task
 from luxonis_train.nodes import PrecisionSegmentBBoxHead
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import apply_bounding_box_to_masks
 
 from .precision_dfl_detection_loss import PrecisionDFLDetectionLoss
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
     node: PrecisionSegmentBBoxHead
-    supported_tasks = [Task.INSTANCE_SEGMENTATION]
+    supported_tasks = [Tasks.INSTANCE_SEGMENTATION]
 
     def __init__(
         self,

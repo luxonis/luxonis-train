@@ -1,5 +1,5 @@
-from luxonis_train.enums import Task
 from luxonis_train.nodes import BaseNode
+from luxonis_train.tasks import Tasks
 
 from ..base_metric import BaseMetric
 from .mean_average_precision_bbox import MeanAveragePrecisionBBox
@@ -15,11 +15,11 @@ class MeanAveragePrecision(BaseMetric):
             raise ValueError(
                 f"Node {node.name} does not have the 'task' parameter set."
             )
-        if node.task is Task.INSTANCE_SEGMENTATION:
+        if node.task is Tasks.INSTANCE_SEGMENTATION:
             return MeanAveragePrecisionSegmentation(node=node, **kwargs)
-        if node.task is Task.KEYPOINTS:
+        if node.task is Tasks.KEYPOINTS:
             return MeanAveragePrecisionKeypoints(node=node, **kwargs)
-        if node.task is Task.BOUNDINGBOX:
+        if node.task is Tasks.BOUNDINGBOX:
             return MeanAveragePrecisionBBox(node=node, **kwargs)
         raise ValueError(
             f"MeanAveragePrecision does not support task {node.task}."

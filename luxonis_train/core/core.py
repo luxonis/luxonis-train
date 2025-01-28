@@ -138,6 +138,8 @@ class LuxonisModel:
                 **self.cfg.loader.params,  # type: ignore
             )
 
+        self.loader_metadata_types = self.loaders["train"].get_metadata_types()
+
         for name, loader in self.loaders.items():
             logger.info(
                 f"{name.capitalize()} loader - splits: {loader.view}, size: {len(loader)}"

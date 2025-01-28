@@ -2,9 +2,9 @@ from typing import Any
 
 from torch import Tensor, nn
 
-from luxonis_train.enums import Task
 from luxonis_train.nodes.blocks import UpBlock
 from luxonis_train.nodes.heads import BaseHead
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import infer_upscale_factor
 
 
@@ -13,7 +13,7 @@ class SegmentationHead(BaseHead[Tensor, Tensor]):
     in_width: int
     in_channels: int
 
-    task = Task.SEGMENTATION
+    task = Tasks.SEGMENTATION
     parser: str = "SegmentationParser"
 
     def __init__(self, **kwargs: Any):

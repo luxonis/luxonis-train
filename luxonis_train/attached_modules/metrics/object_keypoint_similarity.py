@@ -8,7 +8,7 @@ from torch import Tensor
 from torchvision.ops import box_convert
 from typing_extensions import override
 
-from luxonis_train.enums import Task
+from luxonis_train.tasks import Metadata, Tasks
 from luxonis_train.utils import (
     get_sigmas,
     get_with_default,
@@ -31,7 +31,7 @@ class ObjectKeypointSimilarity(BaseMetric):
     groundtruth_keypoints: list[Tensor]
     groundtruth_scales: list[Tensor]
 
-    supported_tasks = [Task.KEYPOINTS, Task.FOMO]
+    supported_tasks = [Tasks.KEYPOINTS, Tasks.FOMO]
 
     def __init__(
         self,
@@ -73,9 +73,9 @@ class ObjectKeypointSimilarity(BaseMetric):
 
     @cached_property
     @override
-    def required_labels(self) -> set[str]:
-        if self.task is Task.FOMO:
-            return Task.BOUNDINGBOX.required_labels
+    def required_labels(self) -> set[str | Metadata]:
+        if self.task is Tasks.FOMO:
+            return Tasks.BOUNDINGBOX.required_labels
         return self.task.required_labels
 
     def update(
@@ -85,7 +85,7 @@ class ObjectKeypointSimilarity(BaseMetric):
         target_keypoints: Tensor | None = None,
     ) -> None:
         if target_keypoints is None:
-            if self.task is not Task.FOMO:
+            if self.task is not Tasks.FOMO:
                 raise ValueError(
                     "The target keypoints are not required only when used "
                     " with FOMO task."

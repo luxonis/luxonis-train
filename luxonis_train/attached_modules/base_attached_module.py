@@ -12,8 +12,8 @@ from luxonis_ml.data.utils import get_task_type
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
 
-from luxonis_train.enums import Task
 from luxonis_train.nodes import BaseNode
+from luxonis_train.tasks import Metadata, Task
 from luxonis_train.utils import IncompatibleException, Labels, Packet
 
 logger = logging.getLogger(__name__)
@@ -52,9 +52,9 @@ class BaseAttachedModule(
         specified labels in the tuple to be present.
 
         Example:
-            - C{[Task.CLASSIFICATION, Task.SEGMENTATION]} means that the
+            - C{[Tasks.CLASSIFICATION, Tasks.SEGMENTATION]} means that the
               module requires either classification or segmentation labels.
-            - C{[(Task.BOUNDINGBOX, Task.KEYPOINTS), Task.SEGMENTATION]}
+            - C{[(Tasks.BOUNDINGBOX, Tasks.KEYPOINTS), Tasks.SEGMENTATION]}
               means that the module requires either both bounding box I{and} keypoint
               labels I{or} segmentation labels.
     """
@@ -121,7 +121,7 @@ class BaseAttachedModule(
         return self._task
 
     @property
-    def required_labels(self) -> set[str]:
+    def required_labels(self) -> set[str | Metadata]:
         return self.task.required_labels
 
     @property
@@ -264,6 +264,7 @@ class BaseAttachedModule(
                 if self._argument_is_optional(name):
                     targets[name] = None
         else:
+            all_labels = set(labels.keys())
             labels = self.pick_labels(labels)
             if len(target_names) == len(labels) == 1:
                 targets = {target_names[0]: next(iter(labels.values()))}
@@ -276,10 +277,14 @@ class BaseAttachedModule(
                             targets[name] = None
 
                         elif self._signature[name].default is Parameter.empty:
+                            required = {
+                                f"{self.node.task_name}/{name}"
+                                for name in self.required_labels
+                            }
                             raise RuntimeError(
-                                f"Module '{self.name}' requires the label '{label_name}', "
-                                f"but it is not present in the dataset. "
-                                f"All available labels: {list(labels.keys())}. "
+                                f"Module '{self.name}' requires labels {required}, "
+                                f"but some of them are not present in the dataset. "
+                                f"All available labels: {all_labels}. "
                             )
                     else:
                         targets[name] = labels[label_name]

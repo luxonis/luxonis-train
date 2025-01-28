@@ -1,13 +1,13 @@
 from torch import Tensor
 
 from luxonis_train.attached_modules.visualizers import BBoxVisualizer
-from luxonis_train.enums import Task
+from luxonis_train.tasks import Tasks
 
 from .keypoint_visualizer import KeypointVisualizer
 
 
 class FOMOVisualizer(BBoxVisualizer):
-    supported_tasks = [Task.FOMO]
+    supported_tasks = [Tasks.FOMO]
 
     def forward(
         self,

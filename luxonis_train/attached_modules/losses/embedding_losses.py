@@ -8,9 +8,9 @@ import pytorch_metric_learning.regularizers as pml_regularizers
 from pytorch_metric_learning.losses import CrossBatchMemory
 from torch import Tensor
 
-from luxonis_train.enums import Task
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.heads.ghostfacenet_head import GhostFaceNetHead
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils.types import Kwargs
 
 from .base_loss import BaseLoss
@@ -46,7 +46,7 @@ for _loss_name in EMBEDDING_LOSSES:
 
     class EmbeddingLossWrapper(BaseLoss, register_name=_loss_name):
         node: GhostFaceNetHead
-        supported_tasks = [Task.EMBEDDINGS]
+        supported_tasks = [Tasks.EMBEDDINGS]
         miner: pml_miners.BaseMiner | None
 
         def __init__(

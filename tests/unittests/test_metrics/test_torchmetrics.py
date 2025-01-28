@@ -4,18 +4,18 @@ import torchmetrics
 from luxonis_train.attached_modules.metrics.torchmetrics import (
     TorchMetricWrapper,
 )
-from luxonis_train.enums import Task
 from luxonis_train.nodes import BaseNode
+from luxonis_train.tasks import Tasks
 
 
 def test_torchmetrics():
     class DummyNode(BaseNode):
-        task = Task.CLASSIFICATION
+        task = Tasks.CLASSIFICATION
 
         def forward(self, _): ...
 
     class DummyMetric(TorchMetricWrapper):
-        supported_tasks = [Task.CLASSIFICATION, Task.SEGMENTATION]
+        supported_tasks = [Tasks.CLASSIFICATION, Tasks.SEGMENTATION]
         Metric = torchmetrics.Accuracy
 
     node_1_class = DummyNode(n_classes=1)

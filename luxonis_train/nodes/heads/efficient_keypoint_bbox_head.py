@@ -4,8 +4,8 @@ from typing import Any, Literal
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.enums import Task
 from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import (
     Packet,
     anchors_for_fpn_features,
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class EfficientKeypointBBoxHead(EfficientBBoxHead):
-    task = Task.KEYPOINTS
+    task = Tasks.KEYPOINTS
     parser: str = "YOLOExtendedParser"
 
     def __init__(

@@ -7,8 +7,8 @@ from torch import Tensor, amp, nn
 from torchvision.ops import box_convert
 
 from luxonis_train.assigners import ATSSAssigner, TaskAlignedAssigner
-from luxonis_train.enums import Task
 from luxonis_train.nodes import EfficientBBoxHead
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import (
     anchors_for_fpn_features,
     compute_iou_loss,
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class AdaptiveDetectionLoss(BaseLoss):
-    supported_tasks = [Task.BOUNDINGBOX]
+    supported_tasks = [Tasks.BOUNDINGBOX]
 
     node: EfficientBBoxHead
 

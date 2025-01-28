@@ -3,7 +3,7 @@ import logging
 import torch
 from torch import Tensor
 
-from luxonis_train.enums import Task
+from luxonis_train.tasks import Tasks
 
 from .base_visualizer import BaseVisualizer
 from .utils import (
@@ -22,7 +22,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
     visualization of predicted and ground truth bounding boxes and
     instance segmentation masks."""
 
-    supported_tasks = [Task.INSTANCE_SEGMENTATION]
+    supported_tasks = [Tasks.INSTANCE_SEGMENTATION]
 
     def __init__(
         self,

@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import torch
+from luxonis_ml.data import Category
 from luxonis_ml.typing import ConfigItem
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor
@@ -251,7 +252,7 @@ class BaseLoaderTorch(
 
     def get_metadata_types(
         self,
-    ) -> dict[str, dict[str, type[int] | type[float] | type[str]]]:
+    ) -> dict[str, type[int] | type[Category] | type[float] | type[str]]:
         return {}
 
     def dict_numpy_to_torch(

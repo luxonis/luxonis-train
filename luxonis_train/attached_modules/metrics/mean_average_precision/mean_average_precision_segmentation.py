@@ -2,7 +2,7 @@ import torch
 import torchmetrics.detection as detection
 from torch import Tensor
 
-from luxonis_train.enums import Task
+from luxonis_train.tasks import Tasks
 
 from .mean_average_precision_bbox import MeanAveragePrecisionBBox
 
@@ -10,7 +10,7 @@ from .mean_average_precision_bbox import MeanAveragePrecisionBBox
 class MeanAveragePrecisionSegmentation(
     MeanAveragePrecisionBBox, register=False
 ):
-    supported_tasks = [Task.INSTANCE_SEGMENTATION]
+    supported_tasks = [Tasks.INSTANCE_SEGMENTATION]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

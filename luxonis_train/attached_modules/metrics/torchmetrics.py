@@ -7,7 +7,7 @@ import torchmetrics
 from torch import Tensor
 from typing_extensions import override
 
-from luxonis_train.enums import Task
+from luxonis_train.tasks import Metadata, Tasks
 
 from .base_metric import BaseMetric
 
@@ -93,52 +93,52 @@ class TorchMetricWrapper(BaseMetric):
 
     @cached_property
     @override
-    def required_labels(self) -> set[str]:
-        if self.task is Task.ANOMALY_DETECTION:
-            return Task.SEGMENTATION.required_labels
+    def required_labels(self) -> set[str | Metadata]:
+        if self.task is Tasks.ANOMALY_DETECTION:
+            return Tasks.SEGMENTATION.required_labels
         return self.task.required_labels
 
 
 class Accuracy(TorchMetricWrapper):
-    supported_tasks: list[Task] = [
-        Task.CLASSIFICATION,
-        Task.SEGMENTATION,
-        Task.ANOMALY_DETECTION,
+    supported_tasks = [
+        Tasks.CLASSIFICATION,
+        Tasks.SEGMENTATION,
+        Tasks.ANOMALY_DETECTION,
     ]
     Metric = torchmetrics.Accuracy
 
 
 class F1Score(TorchMetricWrapper):
-    supported_tasks: list[Task] = [
-        Task.CLASSIFICATION,
-        Task.SEGMENTATION,
-        Task.ANOMALY_DETECTION,
+    supported_tasks = [
+        Tasks.CLASSIFICATION,
+        Tasks.SEGMENTATION,
+        Tasks.ANOMALY_DETECTION,
     ]
     Metric = torchmetrics.F1Score
 
 
 class JaccardIndex(TorchMetricWrapper):
-    supported_tasks: list[Task] = [
-        Task.CLASSIFICATION,
-        Task.SEGMENTATION,
-        Task.ANOMALY_DETECTION,
+    supported_tasks = [
+        Tasks.CLASSIFICATION,
+        Tasks.SEGMENTATION,
+        Tasks.ANOMALY_DETECTION,
     ]
     Metric = torchmetrics.JaccardIndex
 
 
 class Precision(TorchMetricWrapper):
-    supported_tasks: list[Task] = [
-        Task.CLASSIFICATION,
-        Task.SEGMENTATION,
-        Task.ANOMALY_DETECTION,
+    supported_tasks = [
+        Tasks.CLASSIFICATION,
+        Tasks.SEGMENTATION,
+        Tasks.ANOMALY_DETECTION,
     ]
     Metric = torchmetrics.Precision
 
 
 class Recall(TorchMetricWrapper):
-    supported_tasks: list[Task] = [
-        Task.CLASSIFICATION,
-        Task.SEGMENTATION,
-        Task.ANOMALY_DETECTION,
+    supported_tasks = [
+        Tasks.CLASSIFICATION,
+        Tasks.SEGMENTATION,
+        Tasks.ANOMALY_DETECTION,
     ]
     Metric = torchmetrics.Recall

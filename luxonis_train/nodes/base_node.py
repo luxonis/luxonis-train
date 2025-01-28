@@ -9,7 +9,7 @@ from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
 from typeguard import TypeCheckError, check_type
 
-from luxonis_train.enums import Task
+from luxonis_train.tasks import Task, Tasks
 from luxonis_train.utils import (
     AttachIndexType,
     DatasetMetadata,
@@ -236,7 +236,7 @@ class BaseNode(
         if self._n_keypoints is not None:
             return self._n_keypoints
 
-        if self.task is not Task.KEYPOINTS:
+        if self.task is not Tasks.KEYPOINTS:
             raise ValueError(f"'{self.name}' does not support keypoints.")
         return self.dataset_metadata.n_keypoints(self.task_name)
 
@@ -513,7 +513,7 @@ class BaseNode(
         if self.task is None:
             name = "features"
         else:
-            name = self.task.value
+            name = self.task.name
         return {name: outputs}
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:

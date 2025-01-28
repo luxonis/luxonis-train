@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from luxonis_train.enums import Task
+from luxonis_train.tasks import Tasks
 
 from .base_loss import BaseLoss
 
@@ -16,7 +16,7 @@ class CrossEntropyLoss(BaseLoss):
     """This criterion computes the cross entropy loss between input
     logits and target."""
 
-    supported_tasks = [Task.SEGMENTATION, Task.CLASSIFICATION]
+    supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 
     def __init__(
         self,

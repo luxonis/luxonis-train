@@ -7,8 +7,8 @@ from torch import Tensor, nn
 from torchvision.ops import box_convert
 
 from luxonis_train.assigners import TaskAlignedAssigner
-from luxonis_train.enums import Task
 from luxonis_train.nodes import PrecisionBBoxHead
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import (
     anchors_for_fpn_features,
     bbox2dist,
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class PrecisionDFLDetectionLoss(BaseLoss):
     node: PrecisionBBoxHead
-    supported_tasks = [Task.BOUNDINGBOX]
+    supported_tasks = [Tasks.BOUNDINGBOX]
 
     def __init__(
         self,

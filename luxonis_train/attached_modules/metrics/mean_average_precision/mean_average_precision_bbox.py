@@ -6,7 +6,7 @@ from torch import Tensor
 from torchvision.ops import box_convert
 
 from luxonis_train.attached_modules.metrics import BaseMetric
-from luxonis_train.enums import Task
+from luxonis_train.tasks import Tasks
 
 
 class MeanAveragePrecisionBBox(BaseMetric, register=False):
@@ -18,7 +18,7 @@ class MeanAveragePrecisionBBox(BaseMetric, register=False):
     <https://lightning.ai/docs/torchmetrics/stable/detection/mean_average_precision.html>}.
     """
 
-    supported_tasks = [Task.BOUNDINGBOX]
+    supported_tasks = [Tasks.BOUNDINGBOX]
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)

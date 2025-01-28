@@ -6,15 +6,15 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 from typing_extensions import override
 
-from luxonis_train.enums import Task
 from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import Packet
 
 logger = logging.getLogger(__name__)
 
 
 class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
-    task = Task.FOMO
+    task = Tasks.FOMO
     in_channels: int
     attach_index: int = 1
 

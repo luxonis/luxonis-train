@@ -2,9 +2,9 @@ import torch
 from torch import Tensor, nn
 from typing_extensions import override
 
-from luxonis_train.enums import Task
 from luxonis_train.loaders import BaseLoaderTorch
 from luxonis_train.nodes import BaseNode
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import Packet
 
 
@@ -79,7 +79,7 @@ class FusionNeck2(MultiInputTestBaseNode): ...
 
 
 class CustomSegHead1(MultiInputTestBaseNode):
-    task = Task.SEGMENTATION
+    task = Tasks.SEGMENTATION
     attach_index = -1
 
     def __init__(self, **kwargs):
@@ -95,7 +95,7 @@ class CustomSegHead1(MultiInputTestBaseNode):
 
 
 class CustomSegHead2(MultiInputTestBaseNode):
-    task = Task.SEGMENTATION
+    task = Tasks.SEGMENTATION
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

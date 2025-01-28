@@ -3,8 +3,8 @@ from typing import Literal, Tuple, TypeAlias
 import torch
 from torch import Tensor
 
-from luxonis_train.enums import Task
 from luxonis_train.nodes.heads import BaseHead
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import Packet
 
 from .blocks import Decoder, Encoder, NanoDecoder, NanoEncoder
@@ -31,7 +31,7 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
     in_channels: list[int] | int
     out_channels: int
     base_channels: int
-    task = Task.ANOMALY_DETECTION
+    task = Tasks.ANOMALY_DETECTION
 
     def __init__(
         self,

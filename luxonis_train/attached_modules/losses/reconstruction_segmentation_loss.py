@@ -6,8 +6,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
-from luxonis_train.enums import Task
 from luxonis_train.nodes import DiscSubNetHead
+from luxonis_train.tasks import Tasks
 
 from .base_loss import BaseLoss
 from .softmax_focal_loss import SoftmaxFocalLoss
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class ReconstructionSegmentationLoss(BaseLoss):
     node: DiscSubNetHead
-    supported_tasks = [Task.ANOMALY_DETECTION]
+    supported_tasks = [Tasks.ANOMALY_DETECTION]
 
     def __init__(
         self,

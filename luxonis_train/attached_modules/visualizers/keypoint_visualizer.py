@@ -3,14 +3,14 @@ from copy import deepcopy
 import torch
 from torch import Tensor
 
-from luxonis_train.enums import Task
+from luxonis_train.tasks import Tasks
 
 from .bbox_visualizer import BBoxVisualizer
 from .utils import Color, draw_keypoint_labels, draw_keypoints
 
 
 class KeypointVisualizer(BBoxVisualizer):
-    supported_tasks = [Task.KEYPOINTS, Task.FOMO]
+    supported_tasks = [Tasks.KEYPOINTS, Tasks.FOMO]
 
     def __init__(
         self,

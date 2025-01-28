@@ -5,7 +5,7 @@ import torch
 from torch import Tensor
 from typing_extensions import override
 
-from luxonis_train.enums import Task
+from luxonis_train.tasks import Metadata, Tasks
 
 from .base_visualizer import BaseVisualizer
 from .utils import (
@@ -20,7 +20,7 @@ log_disable = False
 
 
 class SegmentationVisualizer(BaseVisualizer):
-    supported_tasks = [Task.SEGMENTATION, Task.ANOMALY_DETECTION]
+    supported_tasks = [Tasks.SEGMENTATION, Tasks.ANOMALY_DETECTION]
 
     def __init__(
         self,
@@ -173,7 +173,7 @@ class SegmentationVisualizer(BaseVisualizer):
 
     @cached_property
     @override
-    def required_labels(self) -> set[str]:
-        if self.task is Task.ANOMALY_DETECTION:
-            return Task.SEGMENTATION.required_labels
+    def required_labels(self) -> set[str | Metadata]:
+        if self.task is Tasks.ANOMALY_DETECTION:
+            return Tasks.SEGMENTATION.required_labels
         return self.task.required_labels

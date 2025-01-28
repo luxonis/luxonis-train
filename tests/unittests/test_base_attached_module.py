@@ -3,7 +3,7 @@ import torch
 from torch import Tensor
 
 from luxonis_train import BaseLoss, BaseNode
-from luxonis_train.enums import Task
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils.exceptions import IncompatibleException
 from luxonis_train.utils.types import Labels, Packet
 
@@ -19,25 +19,25 @@ class DummyBackbone(BaseNode):
 
 
 class DummySegmentationHead(BaseNode):
-    task = Task.SEGMENTATION
+    task = Tasks.SEGMENTATION
 
     def forward(self, _): ...
 
 
 class DummyBBoxHead(BaseNode):
-    task = Task.BOUNDINGBOX
+    task = Tasks.BOUNDINGBOX
 
     def forward(self, _): ...
 
 
 class DummyDetectionHead(BaseNode):
-    task = Task.KEYPOINTS
+    task = Tasks.KEYPOINTS
 
     def forward(self, _): ...
 
 
 class DummyLoss(BaseLoss):
-    supported_tasks = [Task.SEGMENTATION, Task.KEYPOINTS]
+    supported_tasks = [Tasks.SEGMENTATION, Tasks.KEYPOINTS]
 
     def forward(self, _): ...
 
@@ -69,10 +69,10 @@ def test_valid_properties():
     loss = DummyLoss(node=head)
     no_labels_loss = NoLabelLoss(node=head)
     assert loss.node is head
-    assert loss.task is Task.SEGMENTATION
+    assert loss.task is Tasks.SEGMENTATION
     assert loss.required_labels == {"segmentation"}
     assert no_labels_loss.node is head
-    assert no_labels_loss.task is Task.SEGMENTATION
+    assert no_labels_loss.task is Tasks.SEGMENTATION
     assert no_labels_loss.required_labels == {"segmentation"}
 
 

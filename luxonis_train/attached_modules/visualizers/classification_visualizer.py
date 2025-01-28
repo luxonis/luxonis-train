@@ -4,14 +4,14 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from luxonis_train.enums import Task
+from luxonis_train.tasks import Tasks
 
 from .base_visualizer import BaseVisualizer
 from .utils import figure_to_torch, numpy_to_torch_img, torch_img_to_numpy
 
 
 class ClassificationVisualizer(BaseVisualizer):
-    supported_tasks: list[Task] = [Task.CLASSIFICATION]
+    supported_tasks = [Tasks.CLASSIFICATION]
 
     def __init__(
         self,

@@ -6,6 +6,7 @@ import torch
 from luxonis_ml.data import (
     BucketStorage,
     BucketType,
+    Category,
     LuxonisDataset,
     LuxonisLoader,
 )
@@ -130,7 +131,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
     @override
     def get_metadata_types(
         self,
-    ) -> dict[str, dict[str, type[int] | type[float] | type[str]]]:
+    ) -> dict[str, type[int] | type[Category] | type[float] | type[str]]:
         return {
             k: {"float": float, "int": int, "str": str, "Category": int}[v]
             for k, v in self.dataset.get_metadata_types().items()

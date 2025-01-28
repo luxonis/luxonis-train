@@ -5,8 +5,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
-from luxonis_train.enums import Task
 from luxonis_train.nodes.blocks import ConvModule, SegProto
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import (
     Packet,
     apply_bounding_box_to_masks,
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
-    task = Task.INSTANCE_SEGMENTATION
+    task = Tasks.INSTANCE_SEGMENTATION
     parser: str = "YOLOExtendedParser"
 
     def __init__(

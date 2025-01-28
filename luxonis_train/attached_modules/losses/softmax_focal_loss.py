@@ -6,14 +6,14 @@ from torch import Tensor
 from torch.nn import functional as F
 
 from luxonis_train.attached_modules.losses import BaseLoss
-from luxonis_train.enums import Task
+from luxonis_train.tasks import Tasks
 
 logger = logging.getLogger(__name__)
 
 
 # TODO: Add support for multi-class tasks
 class SoftmaxFocalLoss(BaseLoss):
-    supported_tasks = [Task.SEGMENTATION, Task.CLASSIFICATION]
+    supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 
     def __init__(
         self,

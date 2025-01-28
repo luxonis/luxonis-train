@@ -5,8 +5,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-from luxonis_train.enums import Task
 from luxonis_train.nodes import FOMOHead
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import get_center_keypoints
 
 from .base_loss import BaseLoss
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 class FOMOLocalizationLoss(BaseLoss):
     node: FOMOHead
-    supported_tasks = [Task.FOMO]
+    supported_tasks = [Tasks.FOMO]
 
     def __init__(self, object_weight: float = 500, **kwargs: Any):
         """FOMO Localization Loss for object detection using heatmaps.

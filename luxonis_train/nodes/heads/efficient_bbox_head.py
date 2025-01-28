@@ -4,9 +4,9 @@ from typing import Any, Literal
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.enums import Task
 from luxonis_train.nodes.blocks import EfficientDecoupledBlock
 from luxonis_train.nodes.heads import BaseHead
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import (
     Packet,
     anchors_for_fpn_features,
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class EfficientBBoxHead(
     BaseHead[list[Tensor], tuple[list[Tensor], list[Tensor], list[Tensor]]],
 ):
-    task = Task.BOUNDINGBOX
+    task = Tasks.BOUNDINGBOX
     parser = "YOLO"
 
     in_channels: list[int]
