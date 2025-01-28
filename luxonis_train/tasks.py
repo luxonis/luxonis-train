@@ -1,10 +1,21 @@
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
 from types import UnionType
-from typing import get_args
+from typing import Any, get_args
 
 from luxonis_ml.data import Category
+
+__all__ = ["Metadata", "Task", "Tasks"]
+
+
+class classproperty:
+    def __init__(self, func: Callable) -> None:
+        self.func = func
+
+    def __get__(self, _: Any, owner: type) -> Any:
+        return self.func(owner)
 
 
 @dataclass
@@ -40,110 +51,149 @@ class Task(ABC):
         return self.name
 
 
+class Classification(Task):
+    def __init__(self):
+        super().__init__("classification")
+
+    @cached_property
+    def required_labels(self) -> set[str | Metadata]:
+        return {"classification"}
+
+
+class Segmentation(Task):
+    def __init__(self):
+        super().__init__("segmentation")
+
+    @cached_property
+    def required_labels(self) -> set[str | Metadata]:
+        return {"segmentation"}
+
+
+class InstanceSegmentation(Task):
+    def __init__(self):
+        super().__init__("instance_segmentation")
+
+    @cached_property
+    def required_labels(self) -> set[str | Metadata]:
+        return {"instance_segmentation", "boundingbox"}
+
+
+class BoundingBox(Task):
+    def __init__(self):
+        super().__init__("boundingbox")
+
+    @cached_property
+    def required_labels(self) -> set[str | Metadata]:
+        return {"boundingbox"}
+
+
+class Keypoints(Task):
+    def __init__(self):
+        super().__init__("keypoints")
+
+    @cached_property
+    def required_labels(self) -> set[str | Metadata]:
+        return {"keypoints", "boundingbox"}
+
+
+class Pointcloud(Task):
+    def __init__(self):
+        super().__init__("pointcloud")
+
+    @cached_property
+    def required_labels(self) -> set[str | Metadata]:
+        return {"keypoints"}
+
+    @property
+    def main_output(self) -> str:
+        return "keypoints"
+
+
+class Embeddings(Task):
+    def __init__(self):
+        super().__init__("embeddings")
+
+    @cached_property
+    def required_labels(self) -> set[str | Metadata]:
+        return {Metadata("id", int | Category)}
+
+    @property
+    def main_output(self) -> str:
+        return "embeddings"
+
+
+class AnomalyDetection(Task):
+    def __init__(self):
+        super().__init__("anomaly_detection")
+
+    @cached_property
+    def required_labels(self) -> set[str | Metadata]:
+        return {"segmentation", "original_segmentation"}
+
+    @property
+    def main_output(self) -> str:
+        return "segmentation"
+
+
+class Ocr(Task):
+    def __init__(self):
+        super().__init__("ocr")
+
+    @cached_property
+    def required_labels(self) -> set[str | Metadata]:
+        return {Metadata("text", str), Metadata("text_length", int)}
+
+
+class Fomo(Task):
+    def __init__(self):
+        super().__init__("fomo")
+
+    @cached_property
+    def required_labels(self) -> set[str | Metadata]:
+        return {"boundingbox"}
+
+    @property
+    def main_output(self) -> str:
+        return "heatmap"
+
+
 class Tasks:
-    class Classification(Task):
-        def __init__(self):
-            super().__init__("classification")
+    @classproperty
+    def CLASSIFICATION() -> Classification:
+        return Classification()
 
-        @cached_property
-        def required_labels(self) -> set[str | Metadata]:
-            return {"classification"}
+    @classproperty
+    def SEGMENTATION(self) -> Segmentation:
+        return Segmentation()
 
-    class Segmentation(Task):
-        def __init__(self):
-            super().__init__("segmentation")
+    @classproperty
+    def INSTANCE_SEGMENTATION(self) -> InstanceSegmentation:
+        return InstanceSegmentation()
 
-        @cached_property
-        def required_labels(self) -> set[str | Metadata]:
-            return {"segmentation"}
+    @classproperty
+    def BOUNDINGBOX(self) -> BoundingBox:
+        return BoundingBox()
 
-    class InstanceSegmentation(Task):
-        def __init__(self):
-            super().__init__("instance_segmentation")
+    @classproperty
+    def KEYPOINTS(self) -> Keypoints:
+        return Keypoints()
 
-        @cached_property
-        def required_labels(self) -> set[str | Metadata]:
-            return {"instance_segmentation", "boundingbox"}
+    @classproperty
+    def POINTCLOUD(self) -> Pointcloud:
+        return Pointcloud()
 
-    class BoundingBox(Task):
-        def __init__(self):
-            super().__init__("boundingbox")
+    @classproperty
+    def EMBEDDINGS(self) -> Embeddings:
+        return Embeddings()
 
-        @cached_property
-        def required_labels(self) -> set[str | Metadata]:
-            return {"boundingbox"}
+    @classproperty
+    def ANOMALY_DETECTION(self) -> AnomalyDetection:
+        return AnomalyDetection()
 
-    class Keypoints(Task):
-        def __init__(self):
-            super().__init__("keypoints")
+    @classproperty
+    def OCR(self) -> Ocr:
+        return Ocr()
 
-        @cached_property
-        def required_labels(self) -> set[str | Metadata]:
-            return {"keypoints", "boundingbox"}
-
-    class Pointcloud(Task):
-        def __init__(self):
-            super().__init__("pointcloud")
-
-        @cached_property
-        def required_labels(self) -> set[str | Metadata]:
-            return {"keypoints"}
-
-        @property
-        def main_output(self) -> str:
-            return "keypoints"
-
-    class Embeddings(Task):
-        def __init__(self):
-            super().__init__("embeddings")
-
-        @cached_property
-        def required_labels(self) -> set[str | Metadata]:
-            return {Metadata("id", int | Category)}
-
-        @property
-        def main_output(self) -> str:
-            return "embeddings"
-
-    class AnomalyDetection(Task):
-        def __init__(self):
-            super().__init__("anomaly_detection")
-
-        @cached_property
-        def required_labels(self) -> set[str | Metadata]:
-            return {"segmentation", "original_segmentation"}
-
-        @property
-        def main_output(self) -> str:
-            return "segmentation"
-
-    class Ocr(Task):
-        def __init__(self):
-            super().__init__("ocr")
-
-        @cached_property
-        def required_labels(self) -> set[str | Metadata]:
-            return {Metadata("text", str), Metadata("text_length", int)}
-
-    class Fomo(Task):
-        def __init__(self):
-            super().__init__("fomo")
-
-        @cached_property
-        def required_labels(self) -> set[str | Metadata]:
-            return {"boundingbox"}
-
-        @property
-        def main_output(self) -> str:
-            return "heatmap"
-
-    CLASSIFICATION = Classification()
-    SEGMENTATION = Segmentation()
-    INSTANCE_SEGMENTATION = InstanceSegmentation()
-    BOUNDINGBOX = BoundingBox()
-    KEYPOINTS = Keypoints()
-    POINTCLOUD = Pointcloud()
-    EMBEDDINGS = Embeddings()
-    ANOMALY_DETECTION = AnomalyDetection()
-    OCR = Ocr()
-    FOMO = Fomo()
+    @classproperty
+    def FOMO(self) -> Fomo:
+        return Fomo()

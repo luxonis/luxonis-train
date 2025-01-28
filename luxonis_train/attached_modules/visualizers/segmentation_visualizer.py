@@ -174,6 +174,6 @@ class SegmentationVisualizer(BaseVisualizer):
     @cached_property
     @override
     def required_labels(self) -> set[str | Metadata]:
-        if self.task is Tasks.ANOMALY_DETECTION:
+        if self.task == Tasks.ANOMALY_DETECTION:
             return Tasks.SEGMENTATION.required_labels
         return self.task.required_labels

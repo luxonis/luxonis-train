@@ -15,11 +15,11 @@ class MeanAveragePrecision(BaseMetric):
             raise ValueError(
                 f"Node {node.name} does not have the 'task' parameter set."
             )
-        if node.task is Tasks.INSTANCE_SEGMENTATION:
+        if node.task == Tasks.INSTANCE_SEGMENTATION:
             return MeanAveragePrecisionSegmentation(node=node, **kwargs)
-        if node.task is Tasks.KEYPOINTS:
+        if node.task == Tasks.KEYPOINTS:
             return MeanAveragePrecisionKeypoints(node=node, **kwargs)
-        if node.task is Tasks.BOUNDINGBOX:
+        if node.task == Tasks.BOUNDINGBOX:
             return MeanAveragePrecisionBBox(node=node, **kwargs)
         raise ValueError(
             f"MeanAveragePrecision does not support task {node.task}."

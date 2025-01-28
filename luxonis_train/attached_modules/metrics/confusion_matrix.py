@@ -125,7 +125,7 @@ class ConfusionMatrix(BaseMetric):
 
         assert isinstance(predictions, Tensor)
 
-        if self.task is Tasks.CLASSIFICATION:
+        if self.task == Tasks.CLASSIFICATION:
             preds = (
                 predictions.argmax(dim=1)
                 if predictions.shape[1] > 1

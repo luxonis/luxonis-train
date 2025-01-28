@@ -74,7 +74,7 @@ class ObjectKeypointSimilarity(BaseMetric):
     @cached_property
     @override
     def required_labels(self) -> set[str | Metadata]:
-        if self.task is Tasks.FOMO:
+        if self.task == Tasks.FOMO:
             return Tasks.BOUNDINGBOX.required_labels
         return self.task.required_labels
 

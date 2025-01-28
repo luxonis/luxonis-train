@@ -69,10 +69,10 @@ def test_valid_properties():
     loss = DummyLoss(node=head)
     no_labels_loss = NoLabelLoss(node=head)
     assert loss.node is head
-    assert loss.task is Tasks.SEGMENTATION
+    assert loss.task == Tasks.SEGMENTATION
     assert loss.required_labels == {"segmentation"}
     assert no_labels_loss.node is head
-    assert no_labels_loss.task is Tasks.SEGMENTATION
+    assert no_labels_loss.task == Tasks.SEGMENTATION
     assert no_labels_loss.required_labels == {"segmentation"}
 
 
