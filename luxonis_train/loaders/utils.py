@@ -44,15 +44,19 @@ def collate_fn(
                 new_ann[:, 1:] = ann
                 label_box.append(new_ann)
             out_labels[task] = torch.cat(label_box, 0)
-
         elif task_type == "instance_segmentation":
             out_labels[task] = torch.cat(annos, 0)
-        elif task_type == "metadata/text":
-            max_len = max(len(anno) for anno in annos)
-            padded_annos = torch.zeros(len(annos), max_len, dtype=torch.int32)
-            for i, anno in enumerate(annos):
-                padded_annos[i, : len(anno)] = anno
-            out_labels[task] = padded_annos
+        elif task_is_metadata(task):
+            if task_type == "metadata/text":
+                max_len = max(len(anno) for anno in annos)
+                padded_annos = torch.zeros(
+                    len(annos), max_len, dtype=torch.int32
+                )
+                for i, anno in enumerate(annos):
+                    padded_annos[i, : len(anno)] = anno
+                out_labels[task] = padded_annos
+            else:
+                out_labels[task] = torch.cat(annos, 0)
         else:
             out_labels[task] = torch.stack(annos, 0)
 
