@@ -443,6 +443,7 @@ training_strategy:
     momentum: 0.937
     weight_decay: 0.0005
     nesterov: True
+    cosine_annealing: True
 ```
 
 ## Exporter

@@ -402,7 +402,7 @@ class TrainerConfig(BaseModelExtraForbid):
     deterministic: bool | Literal["warn"] | None = None
     smart_cfg_auto_populate: bool = True
     batch_size: PositiveInt = 32
-    accumulate_grad_batches: PositiveInt = 1
+    accumulate_grad_batches: PositiveInt | None = None
     gradient_clip_val: NonNegativeFloat | None = None
     gradient_clip_algorithm: Literal["norm", "value"] | None = None
     use_weighted_sampler: bool = False
