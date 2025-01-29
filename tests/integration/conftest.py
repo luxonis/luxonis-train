@@ -134,7 +134,7 @@ def mnist_dataset_ocr() -> LuxonisDataset:
             yield {
                 "file": path,
                 "annotation": {
-                    "metadata": {"text": classes[label], "text_length": 1},
+                    "metadata": {"text": classes[label]},
                 },
             }
 
