@@ -790,8 +790,6 @@ class LuxonisLightningModule(pl.LightningModule):
         logged_images = self._logged_images
         for node_name, visualizations in outputs.visualizations.items():
             for viz_name, viz_batch in visualizations.items():
-                # if viz_batch is None:
-                #     continue
                 for viz in viz_batch:
                     name = f"{mode}/visualizations/{node_name}/{viz_name}"
                     if logged_images[name] >= self.cfg.trainer.n_log_images:

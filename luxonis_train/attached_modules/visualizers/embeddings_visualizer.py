@@ -1,9 +1,9 @@
-import colorsys
 import logging
 from collections.abc import Callable
 
 import numpy as np
 import seaborn as sns
+from luxonis_ml.data.utils import ColorMap
 from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
 from torch import Tensor
@@ -14,18 +14,12 @@ from .base_visualizer import BaseVisualizer
 from .utils import figure_to_torch
 
 logger = logging.getLogger(__name__)
-log_disable = False
 
 
 class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
     supported_tasks = [Metadata("id")]
 
-    def __init__(
-        self,
-        accumulate_n_batches: int = 2,
-        z_score_threshold: float = 3,
-        **kwargs,
-    ):
+    def __init__(self, z_score_threshold: float = 3, **kwargs):
         """Visualizer for embedding tasks like reID.
 
         @type accumulate_n_batches: int
@@ -33,10 +27,7 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
             before visualizing.
         """
         super().__init__(**kwargs)
-        # self.memory = []
-        # self.memory_size = accumulate_n_batches
-        self.color_dict = {}
-        self.gen = self._distinct_color_generator()
+        self.colors = ColorMap()
         self.z_score_threshold = z_score_threshold
 
     def forward(
@@ -62,16 +53,6 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
 
         embeddings_np = embeddings.detach().cpu().numpy()
         ids_np = ids.detach().cpu().numpy().astype(int)
-        # if len(self.memory) < self.memory_size:
-        #     self.memory.append((embeddings_np, ids_np))
-        #     return None
-        #
-        # else:
-        #     embeddings_np = np.concatenate(
-        #         [mem[0] for mem in self.memory], axis=0
-        #     )
-        #     ids_np = np.concatenate([mem[1] for mem in self.memory], axis=0)
-        #     self.memory = []
 
         pca = PCA(n_components=2)
         embeddings_2d = pca.fit_transform(embeddings_np)
@@ -85,19 +66,8 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
         return kdeplot, scatterplot
 
     def _get_color(self, label: int) -> tuple[float, float, float]:
-        if label not in self.color_dict:
-            self.color_dict[label] = next(self.gen)
-        return self.color_dict[label]
-
-    @staticmethod
-    def _distinct_color_generator():
-        golden_ratio = 0.618033988749895
-        hue = 0.0
-        while True:
-            hue = (hue + golden_ratio) % 1
-            saturation = 0.8
-            value = 0.95
-            yield colorsys.hsv_to_rgb(hue, saturation, value)
+        r, g, b = self.colors[label]
+        return r / 255, g / 255, b / 255
 
     def _filter_outliers(
         self, points: np.ndarray, ids: np.ndarray
