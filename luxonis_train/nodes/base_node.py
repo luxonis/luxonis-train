@@ -62,12 +62,11 @@ class BaseNode(
 
     Additionally, the following class attributes can be defined:
         - L{attach_index}: Index of previous output that this node attaches to.
-        - L{tasks}: Dictionary of tasks that the node supports.
+        - L{task}: An instance of `luxonis_train.tasks.Task` that specifies the task of the node. Usually defined for head nodes.
 
     Example::
         class MyNode(BaseNode):
-            # equivalent to C{tasks = {TaskType.CLASSIFICATION: "classification"}}
-            tasks = [TaskType.CLASSIFICATION]
+            task = Tasks.CLASSIFICATION
 
             def __init__(self, **kwargs):
                 super().__init__(**kwargs)
@@ -98,12 +97,6 @@ class BaseNode(
         Can be a single integer to specify a single output, a tuple of
         two or three integers to specify a range of outputs or C{"all"} to
         specify all outputs. Defaults to "all". Python indexing conventions apply.
-
-    @type tasks: list[TaskType] | None
-    @ivar tasks: List of task types that the node supports.
-        Should be defined as a class attribute by the user.
-        For example C{[TaskType.CLASSIFICATION]}.
-        Only needs to be defined for head nodes.
     """
 
     attach_index: AttachIndexType
@@ -476,7 +469,7 @@ class BaseNode(
         Example::
 
             >>> class FooNode(BaseNode):
-            ...     task = TaskType.CLASSIFICATION
+            ...     task = Tasks.CLASSIFICATION
             ...
             ... class BarNode(BaseNode):
             ...     pass

@@ -11,6 +11,7 @@ try:
     from .optimizers import *
     from .schedulers import *
     from .strategies import *
+    from .tasks import *
     from .utils import *
 except ImportError as e:
     warnings.warn(
