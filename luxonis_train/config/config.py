@@ -67,6 +67,7 @@ class ModelNodeConfig(BaseModelExtraForbid):
     freezing: FreezingConfig = FreezingConfig()
     remove_on_export: bool = False
     task_name: str = ""
+    metadata_task_override: str | dict[str, str] | None = None
     params: Params = {}
 
 
@@ -98,13 +99,14 @@ class ModelConfig(BaseModelExtraForbid):
         names = []
         last_body_index: int | None = None
         for i, node in enumerate(nodes):
-            name = node.get("alias", node.get("name"))
+            name = node.get("name")
             if name is None:
                 raise ValueError(
                     f"Node {i} does not specify the `name` field."
                 )
             if "Head" in name and last_body_index is None:
                 last_body_index = i - 1
+            name = node.get("alias") or name
             names.append(name)
             if i > 0 and "inputs" not in node and "input_sources" not in node:
                 if last_body_index is not None:
@@ -243,7 +245,7 @@ class ModelConfig(BaseModelExtraForbid):
             else:
                 warnings.warn(
                     f"Field `model.{section}` is deprecated. "
-                    f"Please specify `{section}`under "
+                    f"Please specify `{section}` under "
                     "the node they are attached to."
                 )
             for node in data["nodes"]:

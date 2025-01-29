@@ -36,7 +36,7 @@ class ModelEma(nn.Module):
         @type decay_tau: float
         @param decay_tau: Decay tau for the moving average.
         """
-        super(ModelEma, self).__init__()
+        super().__init__()
         model.eval()
         self.state_dict_ema = deepcopy(model.state_dict())
         model.train()

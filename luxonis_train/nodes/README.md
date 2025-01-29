@@ -18,6 +18,7 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`DDRNet`](#ddrnet)
   - [`RecSubNet`](#recsubnet)
   - [`EfficientViT`](#efficientvit)
+  - [`GhostFaceNetV2`](#ghostfacenetv2)
 - [Necks](#necks)
   - [`RepPANNeck`](#reppanneck)
 - [Heads](#heads)
@@ -29,9 +30,11 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`DDRNetSegmentationHead`](#ddrnetsegmentationhead)
   - [`DiscSubNetHead`](#discsubnet)
   - [`FOMOHead`](#fomohead)
+  - [`GhostFaceNetHead`](#ghostfacenethead)
   - [`PrecisionBBoxHead`](#precisionbboxhead)
   - [`PrecisionSegmentBBoxHead`](#precisionsegmentbboxhead)
-    Every node takes these parameters:
+
+Every node takes these parameters:
 
 | Key                | Type          | Default value | Description                                                                 |
 | ------------------ | ------------- | ------------- | --------------------------------------------------------------------------- |
@@ -188,6 +191,14 @@ Adapted from [here](https://arxiv.org/abs/2205.14756)
 | `expand_ratio` | `int`                                                             | `4`                              | Factor by which channels expand in the local module |
 | `dim`          | `int`                                                             | `None`                           | Dimension size for each attention head              |
 
+### `GhostFaceNetV2`
+
+**Parameters:**
+
+| Key       | Type            | Default value | Description                 |
+| --------- | --------------- | ------------- | --------------------------- |
+| `variant` | `Literal["V2"]` | `"V2"`        | The variant of the network. |
+
 ## Neck
 
 ### `RepPANNeck`
@@ -293,7 +304,15 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 | `conv_channels`   | `int`  | `16`          | Number of output channels for each convolutional layer.                                  |
 | `use_nms`         | `bool` | `False`       | If True, enable NMS. This can reduce FP, but it will also reduce TP for close neighbors. |
 
-## `PrecisionBBoxHead`
+### `GhostFaceNetHead`
+
+**Parameters:**
+
+| Key              | Type  | Default value | Description                              |
+| ---------------- | ----- | ------------- | ---------------------------------------- |
+| `embedding_size` | `int` | `512`         | The size of the output embedding vector. |
+
+### `PrecisionBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
 
@@ -307,7 +326,7 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arx
 | `iou_thres`  | `float` | `0.45`        | IoU threshold for non-maxima-suppression (used for evaluation)            |
 | `max_det`    | `int`   | `300`         | Max number of detections for non-maxima-suppression (used for evaluation) |
 
-## `PrecisionSegmentBBoxHead`
+### `PrecisionSegmentBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
 

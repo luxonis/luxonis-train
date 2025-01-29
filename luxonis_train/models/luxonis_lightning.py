@@ -161,7 +161,7 @@ class LuxonisLightningModule(pl.LightningModule):
             dict
         )
 
-        self._logged_images = 0
+        self._logged_images = defaultdict(int)
 
         frozen_nodes: list[tuple[str, int]] = []
         nodes: dict[str, tuple[type[BaseNode], Kwargs]] = {}
@@ -191,13 +191,13 @@ class LuxonisLightningModule(pl.LightningModule):
                         f"Node {node_name} does not have the `task_name` parameter set. "
                         "Please specify the `task_name` parameter for each head node. "
                     )
-
             nodes[node_name] = (
                 Node,
                 {
                     **node_cfg.params,
                     "task_name": node_cfg.task_name,
                     "remove_on_export": node_cfg.remove_on_export,
+                    "metadata_task_override": node_cfg.metadata_task_override,
                 },
             )
 
@@ -312,15 +312,10 @@ class LuxonisLightningModule(pl.LightningModule):
             for source_name, shape in shapes.items()
         }
 
-        for (
-            node_name,
-            (
-                Node,
-                node_kwargs,
-            ),
-            node_input_names,
-            _,
-        ) in traverse_graph(self.graph, nodes):
+        for node_name, (
+            Node,
+            node_kwargs,
+        ), node_input_names, _ in traverse_graph(self.graph, nodes):
             node_dummy_inputs: list[Packet[Tensor]] = []
             """List of dummy input packets for the node.
 
@@ -774,8 +769,13 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> dict[str, Tensor]:
         inputs, labels = batch
         images = None
-        if self._logged_images < self.cfg.trainer.n_log_images:
+        if not self._logged_images:
             images = get_denormalized_images(self.cfg, inputs)
+        for value in self._logged_images.values():
+            if value < self.cfg.trainer.n_log_images:
+                images = get_denormalized_images(self.cfg, inputs)
+                break
+
         outputs = self.forward(
             inputs,
             labels,
@@ -790,17 +790,16 @@ class LuxonisLightningModule(pl.LightningModule):
         logged_images = self._logged_images
         for node_name, visualizations in outputs.visualizations.items():
             for viz_name, viz_batch in visualizations.items():
-                logged_images = self._logged_images
                 for viz in viz_batch:
-                    if logged_images >= self.cfg.trainer.n_log_images:
-                        break
+                    name = f"{mode}/visualizations/{node_name}/{viz_name}"
+                    if logged_images[name] >= self.cfg.trainer.n_log_images:
+                        continue
                     self.logger.log_image(
-                        f"{mode}/visualizations/{node_name}/{viz_name}/{logged_images}",
+                        f"{name}/{logged_images[name]}",
                         viz.detach().cpu().numpy().transpose(1, 2, 0),
                         step=self.current_epoch,
                     )
-                    logged_images += 1
-        self._logged_images = logged_images
+                    logged_images[name] += 1
 
         return step_output
 
@@ -840,7 +839,7 @@ class LuxonisLightningModule(pl.LightningModule):
             )
 
         self.validation_step_outputs.clear()
-        self._logged_images = 0
+        self._logged_images.clear()
 
     def configure_callbacks(self) -> list[pl.Callback]:
         """Configures Pytorch Lightning callbacks."""

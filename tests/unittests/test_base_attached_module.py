@@ -148,12 +148,12 @@ def test_prepare(inputs: Packet[Tensor], labels: Labels):
     det_head = DummyDetectionHead()
 
     assert seg_loss.prepare(inputs, labels) == (
-        SEGMENTATION_ARRAY,
+        [SEGMENTATION_ARRAY],
         SEGMENTATION_ARRAY,
     )
     inputs["/segmentation"].append(FEATURES_ARRAY)
     assert seg_loss.prepare(inputs, labels) == (
-        FEATURES_ARRAY,
+        [SEGMENTATION_ARRAY, FEATURES_ARRAY],
         SEGMENTATION_ARRAY,
     )
 

@@ -1,6 +1,7 @@
 from .base_visualizer import BaseVisualizer
 from .bbox_visualizer import BBoxVisualizer
 from .classification_visualizer import ClassificationVisualizer
+from .embeddings_visualizer import EmbeddingsVisualizer
 from .instance_segmentation_visualizer import InstanceSegmentationVisualizer
 from .keypoint_visualizer import KeypointVisualizer
 from .multi_visualizer import MultiVisualizer
@@ -24,6 +25,7 @@ __all__ = [
     "KeypointVisualizer",
     "MultiVisualizer",
     "SegmentationVisualizer",
+    "EmbeddingsVisualizer",
     "InstanceSegmentationVisualizer",
     "combine_visualizations",
     "draw_bounding_box_labels",

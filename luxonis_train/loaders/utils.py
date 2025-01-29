@@ -1,5 +1,5 @@
 import torch
-from luxonis_ml.data.utils import get_task_type
+from luxonis_ml.data.utils import get_task_type, task_is_metadata
 from torch import Tensor
 
 from luxonis_train.utils.types import Labels
@@ -39,15 +39,13 @@ def collate_fn(
             label_box: list[Tensor] = []
             for i, ann in enumerate(annos):
                 new_ann = torch.zeros((ann.shape[0], ann.shape[1] + 1))
-                # add target image index for build_targets()
+                # add batch index to separate boxes from different images
                 new_ann[:, 0] = i
                 new_ann[:, 1:] = ann
                 label_box.append(new_ann)
             out_labels[task] = torch.cat(label_box, 0)
-
-        elif task_type == "instance_segmentation":
-            masks = [label[task] for label in labels]
-            out_labels[task] = torch.cat(masks, 0)
+        elif task_type == "instance_segmentation" or task_is_metadata(task):
+            out_labels[task] = torch.cat(annos, 0)
         else:
             out_labels[task] = torch.stack(annos, 0)
 

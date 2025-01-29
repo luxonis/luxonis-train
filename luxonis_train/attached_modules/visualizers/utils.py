@@ -427,6 +427,6 @@ def combine_visualizations(
         case _:
             raise ValueError(
                 "Visualization should be either a single tensor or a tuple of "
-                "two tensors or a tuple of a tensor and a list of tensors."
+                "two tensors or a tuple of a tensor and a list of tensors. "
                 f"Got: `{type(visualization)}`."
             )

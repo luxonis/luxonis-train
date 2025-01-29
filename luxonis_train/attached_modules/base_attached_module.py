@@ -1,13 +1,13 @@
 import logging
 from abc import ABC
 from contextlib import suppress
-from typing import Generic
+from typing import Generic, get_args
 
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
 from typing_extensions import TypeVarTuple, Unpack
 
-from luxonis_train.enums import TaskType
+from luxonis_train.enums import Task, TaskType
 from luxonis_train.nodes import BaseNode
 from luxonis_train.utils import IncompatibleException, Labels, Packet
 
@@ -57,19 +57,29 @@ class BaseAttachedModule(
               labels I{or} segmentation labels.
     """
 
-    supported_tasks: list[TaskType | tuple[TaskType, ...]] | None = None
+    supported_tasks: list[Task | tuple[Task, ...]] | None = None
 
     def __init__(self, *, node: BaseNode | None = None):
         super().__init__()
         self._node = node
         self._epoch = 0
 
-        self.required_labels: list[TaskType] = []
-        if self._node and self.supported_tasks:
+        self.required_labels: list[Task] = []
+        if self._node is not None and self.supported_tasks:
+            for tasks in self.supported_tasks:
+                if not isinstance(tasks, tuple):
+                    tasks = (tasks,)
+                for task in tasks:
+                    if isinstance(task, TaskType):
+                        continue
+                    task.name = self.node.metadata_task_override.get(
+                        task.name, task.name
+                    )
+
             module_supported = [
                 label.value
-                if isinstance(label, TaskType)
-                else f"({' + '.join(label)})"
+                if isinstance(label, Task)
+                else f"({' + '.join(map(str, label))})"
                 for label in self.supported_tasks
             ]
             module_supported = f"[{', '.join(module_supported)}]"
@@ -81,7 +91,7 @@ class BaseAttachedModule(
                 )
             node_tasks = set(self.node.tasks)
             for required_labels in self.supported_tasks:
-                if isinstance(required_labels, TaskType):
+                if isinstance(required_labels, Task):
                     required_labels = [required_labels]
                 else:
                     required_labels = list(required_labels)
@@ -159,7 +169,7 @@ class BaseAttachedModule(
         return self.node.class_names
 
     @property
-    def node_tasks(self) -> list[TaskType]:
+    def node_tasks(self) -> list[Task]:
         """Getter for the tasks of the attached node.
 
         @type: dict[TaskType, str]
@@ -201,11 +211,11 @@ class BaseAttachedModule(
         @raises ValueError: If the module requires multiple labels and the C{task_type} is not provided.
         @raises IncompatibleException: If the label is not found in the labels dictionary.
         """
-        return self._get_label(labels, task_type)[0]
+        return self._get_label(labels, task_type)
 
     def _get_label(
-        self, labels: Labels, task_type: TaskType | None = None
-    ) -> tuple[Tensor, TaskType]:
+        self, labels: Labels, task_type: Task | None = None
+    ) -> Tensor:
         if task_type is None:
             if len(self.required_labels) == 1:
                 task_type = self.required_labels[0]
@@ -221,7 +231,7 @@ class BaseAttachedModule(
                     f"Available labels: {list(labels.keys())}. "
                     f"Missing label: '{task}'."
                 )
-            return labels[task], task_type
+            return labels[task]
 
         raise ValueError(
             f"{self.name} requires multiple labels. You must provide the "
@@ -229,7 +239,7 @@ class BaseAttachedModule(
         )
 
     def get_input_tensors(
-        self, inputs: Packet[Tensor], task_type: TaskType | str | None = None
+        self, inputs: Packet[Tensor], task_type: Task | str | None = None
     ) -> list[Tensor]:
         """Extracts the input tensors from the packet.
 
@@ -259,7 +269,7 @@ class BaseAttachedModule(
             For such cases, the C{prepare} method should be overridden.
         """
         if task_type is not None:
-            if isinstance(task_type, TaskType):
+            if isinstance(task_type, Task):
                 if task_type not in self.node_tasks:
                     raise IncompatibleException(
                         f"Task {task_type.value} is not supported by the node "
@@ -345,23 +355,44 @@ class BaseAttachedModule(
                 set(self.supported_tasks) & set(self.node_tasks)
             )
         x = self.get_input_tensors(inputs)
-        if labels is None or len(labels) == 0:
+        if labels is None or not labels:
             return x, None  # type: ignore
-        label, task_type = self._get_label(labels)
-        if task_type in [TaskType.CLASSIFICATION, TaskType.SEGMENTATION]:
+
+        label = self._get_label(labels)
+        generics = self._get_generic_params()
+        if generics is None or generics[0].__name__ == "Unpack":
+            return x, label  # type: ignore
+
+        if len(generics) != 2:
+            raise RuntimeError(
+                f"The type signature of '{self.name}' implies a complicated "
+                f"custom module ({self.name}[{', '.join(g.__name__ for g in generics)}]). "
+                "Please implement your own `prepare` method. The default "
+                "`prepare` works only when the generic type of the module "
+                "is `[Tensor | list[Tensor], Tensor]`."
+            )
+
+        if generics[0] is Tensor:
             if len(x) == 1:
                 x = x[0]
             else:
                 logger.warning(
-                    f"Module {self.name} expects a single tensor as input, "
+                    f"Module '{self.name}' expects a single tensor as input, "
                     f"but got {len(x)} tensors. Using the last tensor. "
                     f"If this is not the desired behavior, please override the "
                     "`prepare` method of the attached module or the `wrap` "
-                    f"method of {self.node.name}."
+                    f"method of '{self.node.name}'."
                 )
                 x = x[-1]
 
         return x, label  # type: ignore
+
+    def _get_generic_params(self) -> tuple[type, ...] | None:
+        cls = type(self)
+        try:
+            return get_args(cls.__orig_bases__[0])  # type: ignore
+        except Exception:
+            return None
 
     def _check_node_type_override(self) -> None:
         if "node" not in self.__annotations__:
