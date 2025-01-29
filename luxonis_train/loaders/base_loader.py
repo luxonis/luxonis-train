@@ -249,6 +249,11 @@ class BaseLoaderTorch(
         """
         return None
 
+    def get_metadata_types(
+        self,
+    ) -> dict[str, dict[str, type[int] | type[float] | type[str]]]:
+        return {}
+
     def dict_numpy_to_torch(
         self, numpy_dictionary: dict[str, np.ndarray]
     ) -> dict[str, Tensor]:

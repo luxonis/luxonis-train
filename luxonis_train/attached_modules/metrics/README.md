@@ -8,6 +8,8 @@ List of all the available metrics.
 - [ObjectKeypointSimilarity](#objectkeypointsimilarity)
 - [MeanAveragePrecision](#meanaverageprecision)
 - [MeanAveragePrecisionKeypoints](#meanaverageprecisionkeypoints)
+- [ClosestIsPositiveAccuracy](#closestispositiveaccuracy)
+- [MedianDistances](#mediandistances)
 
 ## Torchmetrics
 
@@ -63,6 +65,16 @@ Evaluation leverages COCO evaluation framework (COCOeval) to assess mAP performa
 | `area_factor` | `float`                             | `0.53`        | Factor by which to multiply the bounding box area                     |
 | `max_dets`    | `int`                               | `20`          | Maximum number of detections per image                                |
 | `box_fotmat`  | `Literal["xyxy", "xywh", "cxcywh"]` | `"xyxy"`      | Format of the bounding boxes                                          |
+
+## ClosestIsPositiveAccuracy
+
+Compute the accuracy of the closest positive sample to the query sample.
+Needs to be connected to the `GhostFaceNetHead` node.
+
+## MedianDistances
+
+Compute the median distance between the query and the positive samples.
+Needs to be connected to the `GhostFaceNetHead` node.
 
 ## OCRAccuracy
 

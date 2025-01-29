@@ -9,7 +9,7 @@ from luxonis_train.callbacks.ema import EMACallback, ModelEma
 
 class SimpleModel(LightningModule):
     def __init__(self):
-        super(SimpleModel, self).__init__()
+        super().__init__()
         self.layer = torch.nn.Linear(2, 2)
 
     def forward(self, x):

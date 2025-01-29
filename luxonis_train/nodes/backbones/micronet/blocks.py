@@ -145,7 +145,7 @@ class MicroBlock(nn.Module):
                 out_channels=out_channels,
                 kernel_size=1,
                 groups=group2,
-                activation=nn.Identity(),
+                activation=False,
             ),
             DYShiftMax(
                 out_channels,
@@ -179,7 +179,7 @@ class MicroBlock(nn.Module):
                 out_channels=intermediate_channels,
                 kernel_size=1,
                 groups=group1,
-                activation=nn.Identity(),
+                activation=False,
             ),
             DYShiftMax(
                 intermediate_channels,
@@ -217,7 +217,7 @@ class MicroBlock(nn.Module):
                 out_channels=intermediate_channels,
                 kernel_size=1,
                 groups=groups_1[0],
-                activation=nn.Identity(),
+                activation=False,
             ),
             DYShiftMax(
                 intermediate_channels,
@@ -256,7 +256,7 @@ class MicroBlock(nn.Module):
                 out_channels=out_channels,
                 kernel_size=1,
                 groups=group1,
-                activation=nn.Identity(),
+                activation=False,
             ),
             DYShiftMax(
                 out_channels,
@@ -357,7 +357,7 @@ class DYShiftMax(nn.Module):
 
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
 
-        squeeze_channels = self._make_divisible(in_channels // reduction, 4)
+        squeeze_channels = _make_divisible(in_channels // reduction, 4)
 
         self.fc = nn.Sequential(
             nn.Linear(in_channels, squeeze_channels),
@@ -413,16 +413,14 @@ class DYShiftMax(nn.Module):
 
         return out
 
-    def _make_divisible(
-        self, value: int, divisor: int, min_value: int | None = None
-    ) -> int:
-        if min_value is None:
-            min_value = divisor
-        new_v = max(min_value, int(value + divisor / 2) // divisor * divisor)
-        # Make sure that round down does not go down by more than 10%.
-        if new_v < 0.9 * value:
-            new_v += divisor
-        return new_v
+
+def _make_divisible(value: int, divisor: int) -> int:
+    min_value = divisor
+    new_v = max(min_value, int(value + divisor / 2) // divisor * divisor)
+    # Make sure that round down does not go down by more than 10%.
+    if new_v < 0.9 * value:
+        new_v += divisor
+    return new_v
 
 
 class SpatialSepConvSF(nn.Module):

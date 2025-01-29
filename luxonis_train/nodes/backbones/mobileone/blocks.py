@@ -91,7 +91,7 @@ class MobileOneBlock(nn.Module):
                     stride=self.stride,
                     padding=padding,
                     groups=self.groups,
-                    activation=nn.Identity(),
+                    activation=False,
                 )
             )
         self.rbr_conv: list[nn.Sequential] = nn.ModuleList(rbr_conv)  # type: ignore
@@ -106,7 +106,7 @@ class MobileOneBlock(nn.Module):
                 stride=self.stride,
                 padding=0,
                 groups=self.groups,
-                activation=nn.Identity(),
+                activation=False,
             )
 
     def forward(self, inputs: Tensor) -> Tensor:

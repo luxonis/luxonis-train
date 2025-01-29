@@ -166,12 +166,12 @@ class ConvModule(nn.Sequential):
         in_channels: int,
         out_channels: int,
         kernel_size: int | tuple[int, int],
-        stride: int = 1,
-        padding: int = 0,
-        dilation: int = 1,
+        stride: int | tuple[int, int] = 1,
+        padding: int | tuple[int, int] = 0,
+        dilation: int | tuple[int, int] = 1,
         groups: int = 1,
         bias: bool = False,
-        activation: nn.Module | None = None,
+        activation: nn.Module | None | Literal[False] = None,
         use_norm: bool = True,
     ):
         """Conv2d + Optional BN + Activation.
@@ -192,12 +192,13 @@ class ConvModule(nn.Sequential):
         @param groups: Groups. Defaults to 1.
         @type bias: bool
         @param bias: Whether to use bias. Defaults to False.
-        @type activation: L{nn.Module} | None
-        @param activation: Activation function. If None then nn.ReLU.
+        @type activation: L{nn.Module} | None | Literal[False]
+        @param activation: Activation function. If None then nn.ReLU. If
+            False then no activation. Defaults to None.
         @type use_norm: bool
         @param use_norm: Whether to use normalization. Defaults to True.
         """
-        super().__init__(
+        blocks: list[nn.Module] = [
             nn.Conv2d(
                 in_channels,
                 out_channels,
@@ -208,9 +209,15 @@ class ConvModule(nn.Sequential):
                 groups,
                 bias,
             ),
-            nn.BatchNorm2d(out_channels) if use_norm else nn.Identity(),
-            activation or nn.ReLU(),
-        )
+        ]
+
+        if use_norm:
+            blocks.append(nn.BatchNorm2d(out_channels))
+
+        if activation is not False:
+            blocks.append(activation or nn.ReLU())
+
+        super().__init__(*blocks)
 
 
 class DWConvModule(ConvModule):
@@ -443,7 +450,7 @@ class RepVGGBlock(nn.Module):
             stride=stride,
             padding=padding,
             groups=groups,
-            activation=nn.Identity(),
+            activation=False,
         )
         self.rbr_1x1 = ConvModule(
             in_channels=in_channels,
@@ -452,7 +459,7 @@ class RepVGGBlock(nn.Module):
             stride=stride,
             padding=padding_11,
             groups=groups,
-            activation=nn.Identity(),
+            activation=False,
         )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -728,7 +735,7 @@ class AttentionRefinmentBlock(nn.Module):
                 in_channels=out_channels,
                 out_channels=out_channels,
                 kernel_size=1,
-                activation=nn.Identity(),
+                activation=False,
             ),
             nn.Sigmoid(),
         )
@@ -768,7 +775,7 @@ class FeatureFusionBlock(nn.Module):
                 in_channels=out_channels,
                 out_channels=out_channels // reduction,
                 kernel_size=1,
-                activation=nn.Identity(),
+                activation=False,
             ),
             nn.Sigmoid(),
         )

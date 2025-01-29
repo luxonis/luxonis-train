@@ -4,10 +4,12 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+import cv2
 import gdown
+import numpy as np
 import pytest
 import torchvision
-from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.data import Category, LuxonisDataset
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.utils import environ
 
@@ -38,11 +40,38 @@ def parking_lot_dataset() -> LuxonisDataset:
     url = "gs://luxonis-test-bucket/luxonis-ml-test-data/D1_ParkingLot_Native.zip"
     parser = LuxonisParser(
         url,
-        dataset_name="_D1_ParkingLot",
+        dataset_name="D1_ParkingLot",
         delete_existing=True,
         save_dir=WORK_DIR,
     )
     return parser.parse(random_split=True)
+
+
+@pytest.fixture(scope="session")
+def embedding_dataset() -> LuxonisDataset:
+    img_dir = WORK_DIR / "embedding_images"
+    img_dir.mkdir(exist_ok=True)
+
+    def generator():
+        for i in range(100):
+            color = [(255, 0, 0), (0, 255, 0), (0, 0, 255)][i % 3]
+            img = np.full((100, 100, 3), color, dtype=np.uint8)
+            img[i, i] = 255
+            cv2.imwrite(str(img_dir / f"image_{i}.png"), img)
+
+            yield {
+                "file": img_dir / f"image_{i}.png",
+                "annotation": {
+                    "metadata": {
+                        "color": Category(["red", "green", "blue"][i % 3]),
+                    },
+                },
+            }
+
+    dataset = LuxonisDataset("embedding_test", delete_existing=True)
+    dataset.add(generator())
+    dataset.make_splits()
+    return dataset
 
 
 @pytest.fixture(scope="session")

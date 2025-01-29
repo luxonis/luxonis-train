@@ -19,6 +19,7 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`RecSubNet`](#recsubnet)
   - [`PPLCNetV3`](#pplcnetv3)
   - [`EfficientViT`](#efficientvit)
+  - [`GhostFaceNetV2`](#ghostfacenetv2)
 - [Necks](#necks)
   - [`RepPANNeck`](#reppanneck)
   - [`SVTRNeck`](#svtrneck)
@@ -31,10 +32,12 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`DDRNetSegmentationHead`](#ddrnetsegmentationhead)
   - [`DiscSubNetHead`](#discsubnet)
   - [`FOMOHead`](#fomohead)
+  - [`GhostFaceNetHead`](#ghostfacenethead)
   - [`OCRCTCHead`](#ocrctchead)
   - [`PrecisionBBoxHead`](#precisionbboxhead)
   - [`PrecisionSegmentBBoxHead`](#precisionsegmentbboxhead)
-    Every node takes these parameters:
+
+Every node takes these parameters:
 
 | Key                | Type          | Default value | Description                                                                 |
 | ------------------ | ------------- | ------------- | --------------------------------------------------------------------------- |
@@ -205,6 +208,14 @@ Adapted from [here](https://arxiv.org/abs/2205.14756)
 | `expand_ratio` | `int`                                                             | `4`                              | Factor by which channels expand in the local module |
 | `dim`          | `int`                                                             | `None`                           | Dimension size for each attention head              |
 
+### `GhostFaceNetV2`
+
+**Parameters:**
+
+| Key       | Type            | Default value | Description                 |
+| --------- | --------------- | ------------- | --------------------------- |
+| `variant` | `Literal["V2"]` | `"V2"`        | The variant of the network. |
+
 ## Neck
 
 ### `RepPANNeck`
@@ -327,7 +338,28 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 | `mid_channels`   | `int`                                                                                                                               | `None`        | Number of middle channels.                             |
 | `return_feats`   | `bool`                                                                                                                              | `False`       | Whether to return features.                            |
 
-## `PrecisionBBoxHead`
+### `OCRCTCHead`
+
+Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
+**Parameters:**
+
+| Key              | Type                                                                                                                                | Default value | Description                                            |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------ |
+| `alphabet`       | `list[str] \| Literal["english", "english_lowercase", "numeric", "alphanumeric", "alphanumeric_lowercase", "punctuation", "ascii"]` | `english`     | List of characters or a name of a predefined alphabet. |
+| `ignore_unknown` | `bool`                                                                                                                              | `True`        | Whether to ignore unknown characters.                  |
+| `fc_decay`       | `float`                                                                                                                             | `0.0004`      | L2 regularization factor.                              |
+| `mid_channels`   | `int`                                                                                                                               | `None`        | Number of middle channels.                             |
+| `return_feats`   | `bool`                                                                                                                              | `False`       | Whether to return features.                            |
+
+### `GhostFaceNetHead`
+
+**Parameters:**
+
+| Key              | Type  | Default value | Description                              |
+| ---------------- | ----- | ------------- | ---------------------------------------- |
+| `embedding_size` | `int` | `512`         | The size of the output embedding vector. |
+
+### `PrecisionBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
 
@@ -341,7 +373,7 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arx
 | `iou_thres`  | `float` | `0.45`        | IoU threshold for non-maxima-suppression (used for evaluation)            |
 | `max_det`    | `int`   | `300`         | Max number of detections for non-maxima-suppression (used for evaluation) |
 
-## `PrecisionSegmentBBoxHead`
+### `PrecisionSegmentBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
 
