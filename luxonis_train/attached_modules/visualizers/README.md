@@ -97,3 +97,19 @@ Special type of meta-visualizer that combines several visualizers into one. The 
 Example of combining [`KeypointVisualizer`](#keypointvisualizer) and [`BBoxVisualizer`](#bboxvisualizer).
 
 ![multi_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/multi.png)
+
+## `OCRVisualizer`
+
+Visualizer for OCR tasks.
+
+**Parameters:**
+
+| Key          | Type                   | Default value | Description                                 |
+| ------------ | ---------------------- | ------------- | ------------------------------------------- |
+| `font_scale` | `float`                | `0.5`         | Font scale of the text. Defaults to `0.5`.  |
+| `color`      | `tuple[int, int, int]` | `(0, 0, 0)`   | Color of the text. Defaults to `(0, 0, 0)`. |
+| `thickness`  | `int`                  | `1`           | Thickness of the text. Defaults to `1`.     |
+
+**Example:**
+
+![ocr_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/ocr.png)

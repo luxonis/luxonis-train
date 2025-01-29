@@ -7,6 +7,7 @@ from .efficient_bbox_head import EfficientBBoxHead
 from .efficient_keypoint_bbox_head import EfficientKeypointBBoxHead
 from .fomo_head import FOMOHead
 from .ghostfacenet_head import GhostFaceNetHead
+from .ocr_ctc_head import OCRCTCHead
 from .precision_bbox_head import PrecisionBBoxHead
 from .precision_seg_bbox_head import PrecisionSegmentBBoxHead
 from .segmentation_head import SegmentationHead
@@ -22,6 +23,7 @@ __all__ = [
     "DiscSubNetHead",
     "GhostFaceNetHead",
     "FOMOHead",
+    "OCRCTCHead",
     "PrecisionBBoxHead",
     "PrecisionSegmentBBoxHead",
 ]

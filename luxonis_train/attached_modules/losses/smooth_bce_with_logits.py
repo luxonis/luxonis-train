@@ -9,7 +9,7 @@ from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
 
 
-class SmoothBCEWithLogitsLoss(BaseLoss[list[Tensor], Tensor]):
+class SmoothBCEWithLogitsLoss(BaseLoss[Tensor, Tensor]):
     supported_tasks: list[TaskType] = [
         TaskType.SEGMENTATION,
         TaskType.CLASSIFICATION,
@@ -65,6 +65,7 @@ class SmoothBCEWithLogitsLoss(BaseLoss[list[Tensor], Tensor]):
         @rtype: Tensor
         @return: A scalar tensor.
         """
+        print(predictions[0].shape)
         if predictions.shape != target.shape:
             raise RuntimeError(
                 f"Target tensor dimension ({target.shape}) and predictions tensor "

@@ -316,3 +316,53 @@ FPS (frames per second) for `light` and `heavy` variants on different devices wi
 | `loss_params`        | `dict`                      | `{}`          | Additional parameters for the loss                                                              |
 | `visualizer_params`  | `dict`                      | `{}`          | Additional parameters for the visualizer                                                        |
 | `task_name`          | `str \| None`               | `None`        | Custom task name for the head                                                                   |
+
+## `OCRRecognitionModel`
+
+This model is based on the [PPOCRv4](https://github.com/PaddlePaddle/PaddleOCR) recognition model. In order to create a dataset you need to provide image paths, labels and text lengths. Each label should be a string with the text that is present in the image. The text length should be the length of the text in the image. You can use the following code snippet to create a dataset:
+
+```python
+for path, label in tqdm(zip(im_paths, labels)):
+    if len(label):
+        yield {
+            "file": path,
+            "annotation": {
+                "metadata": {"text": label},
+            },
+        }
+```
+
+### Performance Metrics
+
+FPS for `light` variant on different devices with image size 48x320:
+
+| Variant     | RVC2 FPS | RVC4 FPS |
+| ----------- | -------- | -------- |
+| **`light`** | 50       | 300      |
+
+**Components:**
+
+| Name                                                                          | Alias                             | Function                                                             |
+| ----------------------------------------------------------------------------- | --------------------------------- | -------------------------------------------------------------------- |
+| [`PPLCNetV3`](../../nodes/README.md#pplcnetv3)                                | `"ocr_recognition"`               | Backbone of the OCR recognition model.                               |
+| [`SVTRNeck`](../../nodes/README.md#svtrneck)                                  | `"ocr_recognition/SVTRNeck"`      | Neck component to refine features from the backbone.                 |
+| [`OCRCTCHead`](../../nodes/README.md#ocrctchead)                              | `"ocr_recognition/OCRCTCHead"`    | Head of the model for text recognition with CTC decoding.            |
+| [`CTCLoss`](../../attached_modules/losses/README.md#ctcloss)                  | `"ocr_recognition/CTCLoss"`       | Loss function for sequence learning in OCR recognition tasks.        |
+| [`OCRAccuracy`](../../attached_modules/metrics/README.md#ocraccuracy)         | `"ocr_recognition/OCRAccuracy"`   | Metric to evaluate the accuracy of text recognition.                 |
+| [`OCRVisualizer`](../../attached_modules/visualizers/README.md#ocrvisualizer) | `"ocr_recognition/OCRVisualizer"` | Visualizer to display the predicted text alongside the input images. |
+
+**Parameters:**
+
+| Key                 | Type                                                                                                                                | Default value | Description                                                 |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------- | ----------------------------------------------------------- |
+| `variant`           | `str`                                                                                                                               | `"light"`     | Defines the variant of the model.                           |
+| `backbone`          | `str`                                                                                                                               | `"SVTRNeck"`  | Name of the node to be used as a backbone                   |
+| `backbone_params`   | `dict`                                                                                                                              | `{}`          | Additional parameters for the backbone                      |
+| `neck_params`       | `dict`                                                                                                                              | `{}`          | Additional parameters for the neck                          |
+| `head_params`       | `dict`                                                                                                                              | `{}`          | Additional parameters for the head                          |
+| `loss_params`       | `dict`                                                                                                                              | `{}`          | Additional parameters for the loss                          |
+| `visualizer_params` | `dict`                                                                                                                              | `{}`          | Additional parameters for the visualizer                    |
+| `task_name`         | `str \| None`                                                                                                                       | `None`        | Custom task name for the head                               |
+| `alphabet`          | `List[str] \| Literal["english", "english_lowercase", "numeric", "alphanumeric", "alphanumeric_lowercase", "punctuation", "ascii"]` | `english`     | List of characters or a name of a predefined alphabet.      |
+| `max_text_len`      | `int`                                                                                                                               | `40`          | Maximum text length.                                        |
+| `ignore_unknown`    | `bool`                                                                                                                              | `True`        | Whether to ignore unknown characters (not in the alphabet). |

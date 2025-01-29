@@ -17,10 +17,12 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`ContextSpatial`](#contextspatial)
   - [`DDRNet`](#ddrnet)
   - [`RecSubNet`](#recsubnet)
+  - [`PPLCNetV3`](#pplcnetv3)
   - [`EfficientViT`](#efficientvit)
   - [`GhostFaceNetV2`](#ghostfacenetv2)
 - [Necks](#necks)
   - [`RepPANNeck`](#reppanneck)
+  - [`SVTRNeck`](#svtrneck)
 - [Heads](#heads)
   - [`ClassificationHead`](#classificationhead)
   - [`SegmentationHead`](#segmentationhead)
@@ -31,6 +33,7 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`DiscSubNetHead`](#discsubnet)
   - [`FOMOHead`](#fomohead)
   - [`GhostFaceNetHead`](#ghostfacenethead)
+  - [`OCRCTCHead`](#ocrctchead)
   - [`PrecisionBBoxHead`](#precisionbboxhead)
   - [`PrecisionSegmentBBoxHead`](#precisionsegmentbboxhead)
 
@@ -167,6 +170,20 @@ Adapted from [here](https://github.com/ydhongHIT/DDRNet)
 | `variant`          | `Literal["23-slim", "23"]` | `"23-slim"`   | Variant of the network                                                  |
 | `download_weights` | `bool`                     | `True`        | If True download weights from COCO (if available for specified variant) |
 
+### `PPLCNetV3`
+
+Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
+**Parameters:**
+
+| Key            | Type                   | Default value | Description                    |
+| -------------- | ---------------------- | ------------- | ------------------------------ |
+| `variant`      | Literal\["rec-light"\] | `"rec-light"` | Variant of the network         |
+| `scale`        | `float`                | `0.95`        | Scale factor for the model     |
+| `conv_kxk_num` | `int`                  | `4`           | Number of convolutional layers |
+| `det`          | `bool`                 | `False`       | Whether to use for detection   |
+| `net_config`   | `dict`                 | `None`        | Configuration for the network  |
+| `max_text_len` | `int`                  | `40`          | Maximum length of the text     |
+
 ### `RecSubNet`
 
 Adapted from [here](https://arxiv.org/abs/2108.07610)
@@ -219,6 +236,10 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 | `csp_e`              | `float`                                                           | `0.5`                            | Factor for intermediate channels when block is set to `"CSPStackRepBlock"`      |
 | `download_weights`   | `bool`                                                            | `False`                          | If True download weights from COCO (if available for specified variant)         |
 | `initialize_weights` | `bool`                                                            | `True`                           | If True, initialize weights.                                                    |
+
+### `SVTRNeck`
+
+Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 
 ## Heads
 
@@ -303,6 +324,32 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 | `num_conv_layers` | `int`  | `3`           | Number of convolutional layers to use in the model.                                      |
 | `conv_channels`   | `int`  | `16`          | Number of output channels for each convolutional layer.                                  |
 | `use_nms`         | `bool` | `False`       | If True, enable NMS. This can reduce FP, but it will also reduce TP for close neighbors. |
+
+### `OCRCTCHead`
+
+Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
+**Parameters:**
+
+| Key              | Type                                                                                                                                | Default value | Description                                            |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------ |
+| `alphabet`       | `list[str] \| Literal["english", "english_lowercase", "numeric", "alphanumeric", "alphanumeric_lowercase", "punctuation", "ascii"]` | `english`     | List of characters or a name of a predefined alphabet. |
+| `ignore_unknown` | `bool`                                                                                                                              | `True`        | Whether to ignore unknown characters.                  |
+| `fc_decay`       | `float`                                                                                                                             | `0.0004`      | L2 regularization factor.                              |
+| `mid_channels`   | `int`                                                                                                                               | `None`        | Number of middle channels.                             |
+| `return_feats`   | `bool`                                                                                                                              | `False`       | Whether to return features.                            |
+
+### `OCRCTCHead`
+
+Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
+**Parameters:**
+
+| Key              | Type                                                                                                                                | Default value | Description                                            |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------ |
+| `alphabet`       | `list[str] \| Literal["english", "english_lowercase", "numeric", "alphanumeric", "alphanumeric_lowercase", "punctuation", "ascii"]` | `english`     | List of characters or a name of a predefined alphabet. |
+| `ignore_unknown` | `bool`                                                                                                                              | `True`        | Whether to ignore unknown characters.                  |
+| `fc_decay`       | `float`                                                                                                                             | `0.0004`      | L2 regularization factor.                              |
+| `mid_channels`   | `int`                                                                                                                               | `None`        | Number of middle channels.                             |
+| `return_feats`   | `bool`                                                                                                                              | `False`       | Whether to return features.                            |
 
 ### `GhostFaceNetHead`
 

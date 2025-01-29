@@ -19,6 +19,7 @@ from .general import (
 )
 from .graph import traverse_graph
 from .keypoints import get_sigmas, insert_class
+from .ocr import OCRDecoder, OCREncoder
 from .tracker import LuxonisTrackerPL
 from .types import AttachIndexType, Kwargs, Labels, Packet
 
@@ -45,5 +46,7 @@ __all__ = [
     "traverse_graph",
     "insert_class",
     "get_attribute_check_none",
+    "OCREncoder",
+    "OCRDecoder",
     "apply_bounding_box_to_masks",
 ]

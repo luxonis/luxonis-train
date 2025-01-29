@@ -75,3 +75,13 @@ Needs to be connected to the `GhostFaceNetHead` node.
 
 Compute the median distance between the query and the positive samples.
 Needs to be connected to the `GhostFaceNetHead` node.
+
+## OCRAccuracy
+
+Accuracy metric for OCR tasks.
+
+**Params**
+
+| Key         | Type  | Default value | Description                                |
+| ----------- | ----- | ------------- | ------------------------------------------ |
+| `blank_cls` | `int` | `0`           | Index of the blank class. Defaults to `0`. |
