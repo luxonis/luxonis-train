@@ -202,6 +202,32 @@ class ModelConfig(BaseModelExtraForbid):
         return self
 
     @model_validator(mode="after")
+    def check_for_invalid_characters(self) -> Self:
+        for modules in [
+            self.nodes,
+            self.losses,
+            self.metrics,
+            self.visualizers,
+        ]:
+            invalid_char_error_message = (
+                "Name, alias or attached module contains a '/', which is not allowed. "
+                "Please rename the node or module to remove any '/' characters."
+            )
+            for module in modules:
+                if isinstance(module, AttachedModuleConfig):
+                    if (module.attached_to and "/" in module.attached_to) or (
+                        module.name and "/" in module.name
+                    ):
+                        raise ValueError(invalid_char_error_message)
+
+                if isinstance(module, ModelNodeConfig):
+                    if (module.alias and "/" in module.alias) or (
+                        module.name and "/" in module.name
+                    ):
+                        raise ValueError(invalid_char_error_message)
+        return self
+
+    @model_validator(mode="after")
     def check_unique_names(self) -> Self:
         for modules in [
             self.nodes,
