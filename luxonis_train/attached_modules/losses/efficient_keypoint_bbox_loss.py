@@ -154,11 +154,6 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             * self.area_factor
         )
 
-        assigned_labels = torch.where(
-            mask_positive > 0,
-            assigned_labels,
-            torch.full_like(assigned_labels, self.n_classes),
-        )
         device = pred_bboxes.device
         sigmas = self.sigmas.to(device)
         d = (gt_kpts[..., 0] - keypoints_raw[..., 0]).pow(2) + (

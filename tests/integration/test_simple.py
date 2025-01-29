@@ -59,6 +59,7 @@ def clear_files():
         "detection_light_model",
         "keypoint_bbox_heavy_model",
         "keypoint_bbox_light_model",
+        "ocr_recognition_light_model",
         "instance_segmentation_heavy_model",
         "instance_segmentation_light_model",
     ],
@@ -68,12 +69,15 @@ def test_predefined_models(
     config_file: str,
     coco_dataset: LuxonisDataset,
     cifar10_dataset: LuxonisDataset,
+    mnist_dataset_ocr: LuxonisDataset,
 ):
     config_file = f"configs/{config_file}.yaml"
     opts |= {
         "loader.params.dataset_name": (
             cifar10_dataset.identifier
             if "classification" in config_file
+            else mnist_dataset_ocr.identifier
+            if "ocr_recognition" in config_file
             else coco_dataset.identifier
         ),
         "trainer.epochs": 1,

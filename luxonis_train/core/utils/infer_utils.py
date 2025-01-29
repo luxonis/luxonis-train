@@ -170,6 +170,7 @@ def infer_from_loader(
                         name = f"{img_path.stem}_{node_name}_{viz_name}"
                     else:
                         name = f"{node_name}_{viz_name}_{i * batch_size + j}"
+                    name = name.replace("/", "-")
                     cv2.imwrite(str(save_dir / f"{name}.png"), viz)
                 else:
                     cv2.imshow(f"{node_name}/{viz_name}", viz)

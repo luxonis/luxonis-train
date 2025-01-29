@@ -167,6 +167,16 @@ For loss specific parameters, see the documentation pages linked above. In addit
 | `regularizer`        | `str`  | `None`        | Name of the regularizer to use with the loss. If `None`, no regularizer is used. All regularizers from [pytorch-metric-learning](https://kevinmusgrave.github.io/pytorch-metric-learning/regularizers/) are supported.          |
 | `regularizer_params` | `dict` | `None`        | Parameters for the regularizer.                                                                                                                                                                                                 |
 
+## `CTCLoss`
+
+CTC loss with optional focal loss weighting.
+
+**Parameters:**
+
+| Key              | Type   | Default value | Description                                            |
+| ---------------- | ------ | ------------- | ------------------------------------------------------ |
+| `use_focal_loss` | `bool` | `True`        | Whether to apply focal loss weighting to the CTC loss. |
+
 ## `PrecisionDFLDetectionLoss`
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).

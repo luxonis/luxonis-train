@@ -80,3 +80,19 @@ Visualizer for bounding boxes.
 | Key                 | Type    | Default value | Description                                                                                                                   |
 | ------------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `z_score_threshold` | `float` | `3.0`         | Threshold for z-score filtering. Embeddings with z-score higher than this value are considered as outliers and are not drawn. |
+
+## `OCRVisualizer`
+
+Visualizer for OCR tasks.
+
+**Parameters:**
+
+| Key          | Type                   | Default value | Description                                 |
+| ------------ | ---------------------- | ------------- | ------------------------------------------- |
+| `font_scale` | `float`                | `0.5`         | Font scale of the text. Defaults to `0.5`.  |
+| `color`      | `tuple[int, int, int]` | `(0, 0, 0)`   | Color of the text. Defaults to `(0, 0, 0)`. |
+| `thickness`  | `int`                  | `1`           | Thickness of the text. Defaults to `1`.     |
+
+**Example:**
+
+![ocr_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/ocr.png)

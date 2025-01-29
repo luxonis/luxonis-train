@@ -108,11 +108,6 @@ class AdaptiveDetectionLoss(BaseLoss):
 
         assigned_bboxes /= self.stride_tensor
 
-        assigned_labels = torch.where(
-            mask_positive > 0,
-            assigned_labels,
-            torch.full_like(assigned_labels, self.n_classes),
-        )
         one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[
             ..., :-1
         ]

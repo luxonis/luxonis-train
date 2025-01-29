@@ -5,6 +5,7 @@ from .embeddings_visualizer import EmbeddingsVisualizer
 from .fomo_visualizer import FOMOVisualizer
 from .instance_segmentation_visualizer import InstanceSegmentationVisualizer
 from .keypoint_visualizer import KeypointVisualizer
+from .ocr_visualizer import OCRVisualizer
 from .segmentation_visualizer import SegmentationVisualizer
 from .utils import (
     combine_visualizations,
@@ -26,6 +27,7 @@ __all__ = [
     "KeypointVisualizer",
     "SegmentationVisualizer",
     "EmbeddingsVisualizer",
+    "OCRVisualizer",
     "InstanceSegmentationVisualizer",
     "combine_visualizations",
     "draw_bounding_box_labels",

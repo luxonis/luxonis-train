@@ -2,6 +2,7 @@ from .adaptive_detection_loss import AdaptiveDetectionLoss
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
 from .cross_entropy import CrossEntropyLoss
+from .ctc_loss import CTCLoss
 from .efficient_keypoint_bbox_loss import EfficientKeypointBBoxLoss
 from .embedding_losses import EmbeddingLossWrapper
 from .fomo_localization_loss import FOMOLocalizationLoss
@@ -30,6 +31,7 @@ __all__ = [
     "OHEMBCEWithLogitsLoss",
     "FOMOLocalizationLoss",
     "EmbeddingLossWrapper",
+    "CTCLoss",
     "PrecisionDFLDetectionLoss",
     "PrecisionDFLSegmentationLoss",
 ]
