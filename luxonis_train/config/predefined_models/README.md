@@ -338,7 +338,7 @@ FPS for `light` variant on different devices with image size 48x320:
 
 | Variant     | RVC2 FPS | RVC4 FPS |
 | ----------- | -------- | -------- |
-| **`light`** | 77       | 350      |
+| **`light`** | 50       | 300      |
 
 **Components:**
 
