@@ -73,13 +73,13 @@ class AnomalyDetectionModel(BasePredefinedModel):
         return [
             ModelNodeConfig(
                 name=self.backbone,
-                alias=f"{self.task_name}/{self.backbone}",
+                alias=f"{self.task_name}-{self.backbone}",
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="DiscSubNetHead",
-                alias=f"{self.task_name}/DiscSubNetHead",
-                inputs=[f"{self.task_name}/{self.backbone}"],
+                alias=f"{self.task_name}-DiscSubNetHead",
+                inputs=[f"{self.task_name}-{self.backbone}"],
                 params=self.disc_subnet_params,
             ),
         ]
@@ -90,7 +90,7 @@ class AnomalyDetectionModel(BasePredefinedModel):
         return [
             LossModuleConfig(
                 name="ReconstructionSegmentationLoss",
-                attached_to=f"{self.task_name}/DiscSubNetHead",
+                attached_to=f"{self.task_name}-DiscSubNetHead",
                 params=self.loss_params,
                 weight=1.0,
             )
@@ -102,7 +102,7 @@ class AnomalyDetectionModel(BasePredefinedModel):
         return [
             MetricModuleConfig(
                 name="JaccardIndex",
-                attached_to=f"{self.task_name}/DiscSubNetHead",
+                attached_to=f"{self.task_name}-DiscSubNetHead",
                 params={"num_classes": 2, "task": "multiclass"},
                 is_main_metric=True,
             ),
@@ -115,7 +115,7 @@ class AnomalyDetectionModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="SegmentationVisualizer",
-                attached_to=f"{self.task_name}/DiscSubNetHead",
+                attached_to=f"{self.task_name}-DiscSubNetHead",
                 params=self.visualizer_params,
             )
         ]

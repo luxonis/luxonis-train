@@ -69,14 +69,14 @@ class FOMOModel(BasePredefinedModel):
         nodes = [
             ModelNodeConfig(
                 name=self.backbone,
-                alias=f"{self.task_name}/{self.backbone}",
+                alias=f"{self.task_name}-{self.backbone}",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="FOMOHead",
-                alias=f"{self.task_name}/FOMOHead",
-                inputs=[f"{self.task_name}/{self.backbone}"],
+                alias=f"{self.task_name}-FOMOHead",
+                inputs=[f"{self.task_name}-{self.backbone}"],
                 params=self.head_params,
                 task_name=self.task_name,
             ),
@@ -88,7 +88,7 @@ class FOMOModel(BasePredefinedModel):
         return [
             LossModuleConfig(
                 name="FOMOLocalizationLoss",
-                attached_to=f"{self.task_name}/FOMOHead",
+                attached_to=f"{self.task_name}-FOMOHead",
                 params=self.loss_params,
                 weight=1.0,
             )
@@ -99,7 +99,7 @@ class FOMOModel(BasePredefinedModel):
         return [
             MetricModuleConfig(
                 name="ObjectKeypointSimilarity",
-                attached_to=f"{self.task_name}/FOMOHead",
+                attached_to=f"{self.task_name}-FOMOHead",
                 is_main_metric=True,
             ),
         ]
@@ -109,7 +109,7 @@ class FOMOModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="MultiVisualizer",
-                attached_to=f"{self.task_name}/FOMOHead",
+                attached_to=f"{self.task_name}-FOMOHead",
                 params={
                     "visualizers": [
                         {
