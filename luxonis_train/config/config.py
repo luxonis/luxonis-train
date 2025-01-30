@@ -209,15 +209,19 @@ class ModelConfig(BaseModelExtraForbid):
             self.metrics,
             self.visualizers,
         ]:
-            invalid_char_error_message = (
-                "Name, alias or attached module contains a '/', which is not allowed. "
-                "Please rename the node or module to remove any '/' characters."
-            )
             for module in modules:
-                if (module.alias and "/" in module.alias) or (
-                    module.name and "/" in module.name
-                ):
-                    raise ValueError(invalid_char_error_message)
+                invalid_parts = []
+                if module.alias and "/" in module.alias:
+                    invalid_parts.append(f"alias '{module.alias}'")
+                if module.name and "/" in module.name:
+                    invalid_parts.append(f"name '{module.name}'")
+
+                if invalid_parts:
+                    error_message = (
+                        f"The {', '.join(invalid_parts)} contain a '/', which is not allowed. "
+                        "Please rename to remove any '/' characters."
+                    )
+                    raise ValueError(error_message)
 
         return self
 
