@@ -37,8 +37,8 @@ class OCRVisualizer(BaseVisualizer):
 
     def forward(
         self,
-        target_canvas: Tensor,
         prediction_canvas: Tensor,
+        target_canvas: Tensor,
         predictions: Tensor,
         targets: Tensor,
     ) -> tuple[Tensor, Tensor]:

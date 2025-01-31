@@ -147,8 +147,8 @@ class BBoxVisualizer(BaseVisualizer):
 
     def forward(
         self,
-        target_canvas: Tensor,
         prediction_canvas: Tensor,
+        target_canvas: Tensor,
         predictions: list[Tensor],
         targets: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:

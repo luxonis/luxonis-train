@@ -70,8 +70,8 @@ class ClassificationVisualizer(BaseVisualizer):
 
     def forward(
         self,
-        target_canvas: Tensor,
         prediction_canvas: Tensor,
+        target_canvas: Tensor,
         predictions: Tensor,
         target: Tensor | None,
     ) -> Tensor | tuple[Tensor, Tensor]:

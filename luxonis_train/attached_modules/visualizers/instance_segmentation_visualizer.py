@@ -190,8 +190,8 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
 
     def forward(
         self,
-        target_canvas: Tensor,
         prediction_canvas: Tensor,
+        target_canvas: Tensor,
         boundingbox: list[Tensor],
         instance_segmentation: list[Tensor],
         target_boundingbox: Tensor | None,

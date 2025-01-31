@@ -11,8 +11,8 @@ class FOMOVisualizer(BBoxVisualizer):
 
     def forward(
         self,
-        target_canvas: Tensor,
         prediction_canvas: Tensor,
+        target_canvas: Tensor,
         keypoints: list[Tensor],
         target_boundingbox: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:

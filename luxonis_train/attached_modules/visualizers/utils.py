@@ -306,14 +306,9 @@ def combine_visualizations(
     visualization: Tensor
     | tuple[Tensor, Tensor]
     | tuple[Tensor, list[Tensor]],
-    # | None,
 ) -> Tensor:
-    # ) -> Tensor | None:
     """Default way of combining multiple visualizations into one final
     image."""
-
-    # if visualization is None:
-    #     return None
 
     def resize_to_match(
         fst: Tensor,

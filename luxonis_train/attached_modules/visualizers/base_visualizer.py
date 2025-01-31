@@ -71,10 +71,11 @@ class BaseVisualizer(
                 del signature[key]
         return signature
 
+    # TODO: Canvases not required if remove `MultiVisualizer`
     def run(
         self,
-        target_canvas: Tensor,
         prediction_canvas: Tensor,
+        target_canvas: Tensor,
         inputs: Packet[Tensor],
         labels: Labels | None,
     ) -> Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]:

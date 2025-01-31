@@ -89,8 +89,8 @@ class KeypointVisualizer(BBoxVisualizer):
 
     def forward(
         self,
-        target_canvas: Tensor,
         prediction_canvas: Tensor,
+        target_canvas: Tensor,
         keypoints: list[Tensor],
         boundingbox: list[Tensor],
         target_keypoints: Tensor | None,

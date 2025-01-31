@@ -20,12 +20,7 @@ log_disable = False
 class EmbeddingsVisualizer(BaseVisualizer):
     supported_tasks = [Tasks.EMBEDDINGS]
 
-    def __init__(
-        self,
-        accumulate_n_batches: int = 2,
-        z_score_threshold: float = 3,
-        **kwargs,
-    ):
+    def __init__(self, z_score_threshold: float = 3, **kwargs):
         """Visualizer for embedding tasks like reID.
 
         @type accumulate_n_batches: int
@@ -33,16 +28,14 @@ class EmbeddingsVisualizer(BaseVisualizer):
             before visualizing.
         """
         super().__init__(**kwargs)
-        # self.memory = []
-        # self.memory_size = accumulate_n_batches
         self.color_dict = {}
         self.gen = self._distinct_color_generator()
         self.z_score_threshold = z_score_threshold
 
     def forward(
         self,
-        target_canvas: Tensor,
         prediction_canvas: Tensor,
+        target_canvas: Tensor,
         predictions: Tensor,
         target: Tensor,
     ) -> tuple[Tensor, Tensor]:
@@ -62,16 +55,6 @@ class EmbeddingsVisualizer(BaseVisualizer):
 
         embeddings_np = predictions.detach().cpu().numpy()
         ids_np = target.detach().cpu().numpy().astype(int)
-        # if len(self.memory) < self.memory_size:
-        #     self.memory.append((embeddings_np, ids_np))
-        #     return None
-        #
-        # else:
-        #     embeddings_np = np.concatenate(
-        #         [mem[0] for mem in self.memory], axis=0
-        #     )
-        #     ids_np = np.concatenate([mem[1] for mem in self.memory], axis=0)
-        #     self.memory = []
 
         pca = PCA(n_components=2)
         embeddings_2d = pca.fit_transform(embeddings_np)

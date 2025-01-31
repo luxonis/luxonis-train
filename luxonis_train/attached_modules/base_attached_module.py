@@ -52,7 +52,7 @@ class BaseAttachedModule(
         specified labels in the tuple to be present.
     """
 
-    supported_tasks: Task | Sequence[Task] | None = None
+    supported_tasks: Sequence[Task] | None = None
 
     def __init__(self, *, node: BaseNode | None = None):
         super().__init__()
@@ -61,21 +61,19 @@ class BaseAttachedModule(
 
         if node is not None and node.task is not None:
             if self.supported_tasks is not None:
-                if isinstance(self.supported_tasks, Task):
-                    supported_tasks = {self.supported_tasks}
-                else:
-                    supported_tasks = set(self.supported_tasks)
-
-                if node.task not in supported_tasks:
+                if node.task not in self.supported_tasks:
                     raise IncompatibleException(
                         f"Module '{self.name}' is not compatible with the "
                         f"'{node.name}' node. '{self.name}' supports "
-                        f" {supported_tasks}, but the node's task is '{node.task}'."
+                        f" {self.supported_tasks}, but the node's "
+                        f"task is '{node.task}'."
                     )
             self._task = node.task
 
-        elif node is None and isinstance(self.supported_tasks, Task):
-            self._task = self.supported_tasks
+        elif (
+            self.supported_tasks is not None and len(self.supported_tasks) == 1
+        ):
+            self._task = self.supported_tasks[0]
 
         else:
             self._task = None
