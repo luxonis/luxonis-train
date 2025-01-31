@@ -217,9 +217,7 @@ class LuxonisLightningModule(pl.LightningModule):
                         m.name = task_override.get(m.name, m.name)
 
                 metadata_types = self.core.loader_metadata_types
-                from rich import print
 
-                print(metadata_types)
                 for m in metadata:
                     m_name = f"{node_cfg.task_name}/{m}"
                     if m_name not in metadata_types:

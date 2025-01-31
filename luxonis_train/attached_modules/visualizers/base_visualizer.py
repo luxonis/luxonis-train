@@ -65,9 +65,11 @@ class BaseVisualizer(
 
     @cached_property
     def _signature(self) -> dict[str, Parameter]:
-        return self._get_signature(
-            self.forward, {"target_canvas", "prediction_canvas"}
-        )
+        signature = self._get_signature(self.forward)
+        for key in list(signature.keys()):
+            if "canvas" in key:
+                del signature[key]
+        return signature
 
     def run(
         self,

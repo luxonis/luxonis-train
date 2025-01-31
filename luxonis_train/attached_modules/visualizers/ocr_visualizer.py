@@ -4,13 +4,12 @@ import torch
 from torch import Tensor
 
 from luxonis_train.nodes import OCRCTCHead
-from luxonis_train.utils import Labels, Packet
 
 from .base_visualizer import BaseVisualizer
 from .utils import numpy_to_torch_img, torch_img_to_numpy
 
 
-class OCRVisualizer(BaseVisualizer[Tensor, Tensor]):
+class OCRVisualizer(BaseVisualizer):
     """Visualizer for OCR tasks."""
 
     node: OCRCTCHead
@@ -36,41 +35,12 @@ class OCRVisualizer(BaseVisualizer[Tensor, Tensor]):
         self.color = color
         self.thickness = thickness
 
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[list[tuple[str, float]], list[str]]:
-        """Prepares the predictions and targets for visualization.
-
-        @type inputs: Packet[Tensor]
-        @param inputs: A packet containing input tensors, typically
-            network predictions.
-        @type labels: Labels
-        @param labels: A dictionary containing text labels and
-            corresponding lengths.
-        @rtype: tuple[Tensor, list[str]]
-        @return: A tuple of predictions and targets.
-        """
-
-        preds = inputs["/classification"][0]
-
-        preds = self.node.decoder(preds)
-        targets = labels["/metadata/text"]
-
-        target_strings = []
-        for target in targets:
-            target = target[target != 0]
-            target = [chr(int(char.item())) for char in target]
-            target = "".join(target)
-            target_strings.append(target)
-
-        return (preds, target_strings)
-
     def forward(
         self,
-        label_canvas: Tensor,
+        target_canvas: Tensor,
         prediction_canvas: Tensor,
-        predictions: list[str],
-        targets: list[str] | None,
+        predictions: Tensor,
+        targets: Tensor,
     ) -> tuple[Tensor, Tensor]:
         """Creates a visualization of the OCR predictions and labels.
 
@@ -85,18 +55,25 @@ class OCRVisualizer(BaseVisualizer[Tensor, Tensor]):
         @rtype: tuple[Tensor, Tensor]
         @return: A tuple of the label and prediction visualizations.
         """
+        decoded_predictions = self.node.decoder(predictions)
 
-        overlay = torch.zeros_like(label_canvas)
+        target_strings = []
+        for target in targets:
+            target = target[target != 0]
+            target = [chr(int(char.item())) for char in target]
+            target = "".join(target)
+            target_strings.append(target)
+
+        overlay = torch.zeros_like(target_canvas)
         preds_targets = torch.zeros_like(prediction_canvas)
 
         for i in range(len(overlay)):
-            prediction_text = predictions[i][0]
-            prediction_prob = predictions[i][1]
-            arr = torch_img_to_numpy(label_canvas[i].clone())
+            pred_text, probability = decoded_predictions[i]
+            arr = torch_img_to_numpy(target_canvas[i].clone())
             pred_img = np.full_like(arr, 255)
 
             if targets is not None:
-                gt_text = targets[i]
+                gt_text = target_strings[i]
                 pred_img = cv2.putText(
                     pred_img,
                     f"GT: {gt_text}",
@@ -109,7 +86,7 @@ class OCRVisualizer(BaseVisualizer[Tensor, Tensor]):
 
             pred_img = cv2.putText(
                 pred_img,
-                f"Pred: {prediction_text} {prediction_prob:.2f}",
+                f"Pred: {pred_text} {probability:.2f}",
                 (5, 40),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 self.font_scale,

@@ -14,8 +14,6 @@ class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
     in_width: int
     task = Tasks.EMBEDDINGS
 
-    attach_index = -1
-
     def __init__(
         self,
         embedding_size: int = 512,

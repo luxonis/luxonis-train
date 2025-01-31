@@ -62,7 +62,6 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
         @rtype: Tensor
         @return: A scalar tensor.
         """
-        print(predictions[0].shape)
         if predictions.shape != target.shape:
             raise RuntimeError(
                 f"Target tensor dimension ({target.shape}) and predictions tensor "

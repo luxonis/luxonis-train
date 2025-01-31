@@ -3,15 +3,15 @@ import math
 from torch import Tensor, nn
 from torch.nn import functional as F
 
-from luxonis_train.enums import TaskType
 from luxonis_train.nodes.heads import BaseHead
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import OCRDecoder, OCREncoder
 from luxonis_train.utils.ocr import AlphabetName
 
 
 class OCRCTCHead(BaseHead[Tensor, Tensor]):
     in_channels: int
-    tasks: list[TaskType] = [TaskType.CLASSIFICATION]
+    task = Tasks.OCR
 
     parser: str = "ClassificationSequenceParser"
 
@@ -84,19 +84,19 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
     def forward(self, x: Tensor) -> Tensor | tuple[Tensor, Tensor]:
         x = x.squeeze(2).permute(0, 2, 1)
         if self.mid_channels is None:
-            predicts = self.fc(x)
+            predictions = self.fc(x)
         else:
             x = self.fc1(x)
             x = F.relu(x)
-            predicts = self.fc2(x)
+            predictions = self.fc2(x)
 
         if self.return_feats:
-            result = (x, predicts)
+            result = (x, predictions)
         else:
-            result = predicts
+            result = predictions
 
         if self.export:
-            return F.softmax(predicts, dim=-1)
+            return F.softmax(predictions, dim=-1)
 
         return result
 
