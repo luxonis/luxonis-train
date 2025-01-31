@@ -1,5 +1,7 @@
 # Extending the Framework
 
+The `luxonis-train` framework is designed to be easily extendable. This document describes how to create custom nodes, losses, metrics, and visualizers.
+
 ## Table of Contents
 
 - [Nodes](#nodes)
@@ -17,8 +19,6 @@
     - [Metric](#metric)
     - [Visualizer](#visualizer)
 
-The `luxonis-train` framework is designed to be easily extendable. This document describes how to create custom nodes, losses, metrics, and visualizers.
-
 ## Nodes
 
 Nodes are the main building blocks of the network. Nodes are usually one of the following types:
@@ -32,7 +32,6 @@ Nodes are the main building blocks of the network. Nodes are usually one of the 
 
 Backbone and necks should inherit from `BaseNode` class, while heads should inherit from `BaseHead` class.
 `BaseHead` offers extended interface on top of `BaseNode` that is used when the model is exported to NN Archive.
-If the model is not intended to be used with `DepthAI`, it is possible to use `BaseNode` for heads as well.
 
 To make the most use out of the framework, the nodes should define the following class attributes:
 
@@ -40,6 +39,8 @@ To make the most use out of the framework, the nodes should define the following
   - Can be either a single integer (negative indexing is supported), a tuple of integers (slice), or the string `"all"`
   - Typically used for heads that are usually connected to backbones producing a list of feature maps
   - If not specified, it is inferred from the type signature of the `forward` method (if possible)
+    - Up to debate whether this is a good idea as it's a quite implicit, the reasoning for this is to make implementing custom models as easy as possible with little boilerplate
+    - Most of these implicit deductions are logged (and eventually it will be all of them) and I'm gradually improving the error messages so they are as explicit as possible, so it shouldn't be too confusing   
 - `task: Task` - specifies the task that the node is used for
   - Relevant for heads only
   - Provides better error messages, compatibility checking, more powerful automation, _etc._
@@ -54,39 +55,45 @@ To make the most use out of the framework, the nodes should define the following
     - `ANOMALY_DETECTION` - image anomaly detection tasks
     - `OCR` - optical character recognition
     - `FOMO` - used for the FOMO task. Special task learning on `"boundingbox"` labels, but predicting keypoints
+    - This namespace pattern could be a bit confusing if you look into the code. It is supposed to look like an enum because it esentially should be an enum. The only reason it's not is because enum cannot be extended on the user side but we need to support defining custom tasks   
   - To define a custom task, see [Custom Tasks](#custom-tasks)
 
-`BaseNode` defines several convenient properties that can be used to access information about the model:
+`BaseNode` implements a few convenient properties that can be used to access information about the model:
 
 - `in_channels: int | list[int]` - number of input channels
   - The output is either a single integer or a list of integers depending on the value of `attach_index`
     - That is, if the node is attached to a backbone producing a list of feature maps and the value of `attach_index` is set to `"all"`, `in_channels` will be a list of the channel counts of each feature map
-  - Works only if the `attach_index` is defined (or could be inferred)
-- `in_width: int | list[int]` - width of the input to the node
-- `in_height: int | list[int]` - height of the input to the node
+  - Works only if the `attach_index` is defined (or it was possible to infer it)
+- `in_width: int | list[int]` - width(s) of the input(s) to the node
+- `in_height: int | list[int]` - height(s) of the input(s) to the node
 - `n_classes: int` - number of classes
-- `n_keypoints: int` - number of keypoints (if applicable)
+- `n_keypoints: int` - number of keypoints (if the dataset contains keypoint labels)
 - `class_names: list[str]` - list of class names
 - `original_in_shape: torch.Size` - shape of the original input image
   - Useful for segmentation heads that need to upsample the output to the original image size
 
 > \[!TIP\]
-> You can add a class-level type hint to `in_channels`, `in_width`, and `in_height`. This will cause the values to be checked at initialization time and an exception will be raised if the annotation is incompatible with the outputs of the preceding node. (_e.g._ setting `attached_index` to `"all"` and annotating `in_channels` as `int` will raise an exception)
+> You can add a class-level type hint to `in_channels`, `in_width`, and `in_height`. This will cause the values to be checked at initialization time and an exception will be raised if the annotation is incompatible with the outputs of the preceding node. (_e.g._ setting `attach_index` to `"all"` and annotating `in_channels` as `int` will raise an exception)
 
 The main methods of the node are:
 
 - `__init__` - constructor
   - Should always take `**kwargs` as an argument and pass it to the parent constructor
-- `forward` - main entry point for the node
-  - Should take either a single tensor or a list of tensors and return again a single tensor or a list of tensors
-- `wrap` - called after `forward`, wraps the output of the node into a dictionary
+  - All the arguments under `node.params` in the config file are passed here 
+- `forward(x: T) -> K` - the forward pass of the node
+  - In most cases should take either a single tensor or a list of tensors and return again a single tensor or a list of tensors
+    - If more control is needed, see the `unwrap` method 
+- `wrap(outputs: K) -> Packet[Tensor]` - called after `forward`, wraps the output of the node into a dictionary
   - The results of `forward` are not the final outputs of the node, but are wrapped into a dictionary (called a `Packet`)
-  - The keys of the dictionary are used to extract the correct values in the attached modules
+  - The keys of the dictionary are used to extract the correct values in the attached modules (losses, metrics, visualizers)
   - Usually needs to be overridden for heads only
+    - Typically it behaves differently for `train`, `eval`, and `export` calls
+    - `train` goes to the loss, `eval` goes to the loss, metrics and visualizers, and `export` is used when the model is exported to ONNX
+    - (all of them are also sent to the next node)
   - The default implementation roughly behaves like this:
     - For backbones and necks, the output is wrapped into a dictionary with a single key `"features"`
     - For heads, the output is wrapped into a dictionary with a single key equivalent to the value of `node.task.main_output` property
-      - If not defined, the node is considered to be a backbone or a neck (_i.e._ using the `"features"` key)
+      - If task is not defined, the node is considered to be a backbone or a neck (_i.e._ using the `"features"` key)
     - Roughly equivalent to:
       ```python
       def wrap(self, output: ForwardOutputType) -> Packet[Tensor]:
@@ -94,8 +101,8 @@ The main methods of the node are:
               return {self.task.main_output: output}
           return {"features": output}
       ```
-- `unwrap` - called before `forward`, the output of `unwrap` is passed to the `forward` method
-  - Usually doesn't need to be overridden
+- `unwrap(inputs: list[Packet[Tensor]]) -> T` - called before `forward`, the output of `unwrap` is directly passed to the `forward` method
+  - Usually doesn't need to be overridden 
   - Receives a list of packets, one for each connected node
     - Usually only one packet is passed
     - Multiple packets are passed if the current node is connected to multiple preceding nodes
@@ -117,7 +124,7 @@ On top of the `BaseNode` interface, `BaseHead` defines the following additional 
 
 The `BaseHead` also defines the following methods that should be overridden:
 
-- `get_custom_ead_config` - returns a dictionary with custom head configuration
+- `get_custom_head_config() -> dict` - returns a dictionary with custom head configuration
   - Used to populate `head.metadata` field in the NN Archive configuration file
 
 ### Custom Tasks
