@@ -385,17 +385,17 @@ class BBoxVisualizer(BaseVisualizer):
         prediction_canvas: Tensor,
         target_canvas: Tensor,
         predictions: list[Tensor],
-        targets: Tensor | None,
+        target: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:
 
         # Common visualizer pattern
 
         predictions_viz = draw_predictions(prediction_canvas, predictions)
 
-        if targets is None:
+        if target is None:
             return predictions_viz
 
-        targets_viz = draw_targets(target_canvas, targets)
-        return targets_viz, predictions_viz
+        target_viz = draw_targets(target_canvas, target)
+        return target_viz, predictions_viz
 
 ```
