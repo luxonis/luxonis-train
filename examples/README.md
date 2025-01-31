@@ -1,5 +1,22 @@
 # Extending the Framework
 
+## Table of Contents
+
+- [Nodes](#nodes)
+  - [`BaseHead` Interface](#basehead-interface)
+  - [Custom Tasks](#custom-tasks)
+    - [Metadata](#metadata)
+  - [Node Examples](#node-examples)
+    - [ResNet Backbone](#resnet-backbone)
+    - [Segmentation Head](#segmentation-head)
+- [Custom Attached Modules](#custom-attached-modules)
+  - [Automatic Inputs and Labels Extraction](#automatic-inputs-and-labels-extraction)
+  - [Attached Modules Examples](#attached-modules-examples)
+    - [Simple Loss](#simple-loss)
+    - [Complex Loss](#complex-loss)
+    - [Metric](#metric)
+    - [Visualizer](#visualizer)
+
 The `luxonis-train` framework is designed to be easily extendable. This document describes how to create custom nodes, losses, metrics, and visualizers.
 
 ## Nodes
@@ -26,6 +43,18 @@ To make the most use out of the framework, the nodes should define the following
 - `task: Task` - specifies the task that the node is used for
   - Relevant for heads only
   - Provides better error messages, compatibility checking, more powerful automation, _etc._
+  - We offer a set of predefined tasks living in the `Tasks` namespace
+    - `CLASSIFICATION` - classification tasks
+    - `SEGMENTATION` - segmentation tasks
+    - `BOUNDINGBOX` - object detection tasks
+    - `INSTANCE_SEGMENTATION` - instance segmentation tasks, requires both `"boundingbox"` and `"segmentation"` labels'
+    - `INSTANCE_KEYPOINTS` - instance segmentation tasks, requires both `"boundingbox"` and `"keypoints"` labels
+    - `KEYPOINTS` - simple keypoint tasks (2D or 3D pointcloud)
+    - `EMBEDDINGS` - used for embedding tasks
+    - `ANOMALY_DETECTION` - image anomaly detection tasks
+    - `OCR` - optical character recognition
+    - `FOMO` - used for the FOMO task. Special task learning on `"boundingbox"` labels, but predicting keypoints
+  - To define a custom task, see [Custom Tasks](#custom-tasks)
 
 `BaseNode` defines several convenient properties that can be used to access information about the model:
 
@@ -91,7 +120,61 @@ The `BaseHead` also defines the following methods that should be overridden:
 - `get_custom_ead_config` - returns a dictionary with custom head configuration
   - Used to populate `head.metadata` field in the NN Archive configuration file
 
-### Node Examples
+### Custom Tasks
+
+If you need to implement a node that does not fit any of the predefined tasks, you can define a custom task by subclassing the `Task` class. The custom class needs to define the following abstract properties:
+
+- `required_labels: set[str | Metadata]` - set of required labels, can be either a string or a `Metadata` object. For details on `Metadata`, see [Metadata](#metadata)
+
+Additionally, you can override the following properties as well:
+
+- `main_output: str` - specifies the main output of the node
+  - Defaults to the name of the task
+  - Only relevant for tasks that produce multiple outputs where one can be considered the main output
+  - Used to automatically extract the correct values from the node output and dataset (see [Automatic Inputs and Labels Extraction](#automatic-inputs-and-labels-extraction))
+
+#### Metadata
+
+`Metadata` specifies a custom `metadata` label in the dataset. By definition, the metadata labels can have arbitrary names and can be of type `str`, `int`, `float`, or `luxonis_ml.data.Category` (special subclass of `str` for categorical values). The `Metadata` class is used to define the expected structure of the metadata label.
+
+The `Metadata` constructor takes the following arguments:
+
+- `name: str` - expected name of the label
+- `typ: type | UnionType` - expected type, supports unions of types
+
+**Example of a Custom Task:**
+
+```python
+from luxonis_train.tasks import Task, Metadata
+
+
+class DistanceEstimation(Task):
+    def __init__(self):
+        super().__init__("distance")
+
+    @property
+    def required_labels(self) -> set[str | Metadata]:
+        return {"boundingbox", Metadata("distance", float | int)}
+
+    @property
+    def main_output(self) -> str:
+        return "boundingbox"
+
+```
+
+The above example could be simplified by inheriting from the `luxonis_train.tasks.BoundingBox` task and overriding the `required_labels` property.
+
+```python
+from luxonis_train.tasks import BoundingBox, Metadata
+
+class DistanceEstimation(BoundingBox):
+    @property
+    def required_labels(self) -> set[str | Metadata]:
+        return super().required_labels | {Metadata("distance", float | int)}
+
+```
+
+### Custom Node Examples
 
 #### ResNet Backbone
 
