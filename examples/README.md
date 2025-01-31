@@ -15,13 +15,13 @@ Nodes are the main building blocks of the network. Nodes are usually one of the 
 
 Backbone and necks should inherit from `BaseNode` class, while heads should inherit from `BaseHead` class.
 `BaseHead` offers extended interface on top of `BaseNode` that is used when the model is exported to NN Archive.
-If the model is not intended to be used with DepthAI, it is possible to use `BaseNode` for heads as well.
+If the model is not intended to be used with `DepthAI`, it is possible to use `BaseNode` for heads as well.
 
 To make the most use out of the framework, the nodes should define the following class attributes:
 
 - `attach_index: int | tuple[int, int] | tuple[int, int, int] | Literal["all"]` - specifies which output of the previous node to use
   - Can be either a single integer (negative indexing is supported), a tuple of integers (slice), or the string `"all"`
-  - Typically used for heads that are ususally connected to backbones producing a list of feature maps
+  - Typically used for heads that are usually connected to backbones producing a list of feature maps
   - If not specified, it is inferred from the type signature of the `forward` method (if possible)
 - `task: Task` - specifies the task that the node is used for
   - Relevant for heads only
@@ -31,7 +31,7 @@ To make the most use out of the framework, the nodes should define the following
 
 - `in_channels: int | list[int]` - number of input channels
   - The output is either a single integer or a list of integers depending on the value of `attach_index`
-    - That is, if the node is attached to a backbone producing a list of feature maps and the value of `attach_index` is setto `"all"`, `in_channels` will be a list of the channel counts of each feature map
+    - That is, if the node is attached to a backbone producing a list of feature maps and the value of `attach_index` is set to `"all"`, `in_channels` will be a list of the channel counts of each feature map
   - Works only if the `attach_index` is defined (or could be inferred)
 - `in_width: int | list[int]` - width of the input to the node
 - `in_height: int | list[int]` - height of the input to the node
@@ -53,8 +53,8 @@ The main methods of the node are:
 - `wrap` - called after `forward`, wraps the output of the node into a dictionary
   - The results of `forward` are not the final outputs of the node, but are wrapped into a dictionary (called a `Packet`)
   - The keys of the dictionary are used to extract the correct values in the attached modules
-  - Usually needs to be overriden for heads only
-  - The default implemementation roughly behaves like this:
+  - Usually needs to be overridden for heads only
+  - The default implementation roughly behaves like this:
     - For backbones and necks, the output is wrapped into a dictionary with a single key `"features"`
     - For heads, the output is wrapped into a dictionary with a single key equivalent to the value of `node.task.main_output` property
       - If not defined, the node is considered to be a backbone or a neck (_i.e._ using the `"features"` key)
@@ -66,7 +66,7 @@ The main methods of the node are:
           return {"features": output}
       ```
 - `unwrap` - called before `forward`, the output of `unwrap` is passed to the `forward` method
-  - Usually doesn't need to be overriden
+  - Usually doesn't need to be overridden
   - Receives a list of packets, one for each connected node
     - Usually only one packet is passed
     - Multiple packets are passed if the current node is connected to multiple preceding nodes
@@ -77,16 +77,16 @@ The main methods of the node are:
       def unwrap(self, inputs: list[Packet[Tensor]]) -> ForwardInputType:
           return inputs[0]["features"][self.attach_index]
       ```
-  - Unless the node is connected to a complex backbone producing multiple outputs on top of the feature maps or to another head, this method doesn't need to be overriden
+  - Unless the node is connected to a complex backbone producing multiple outputs on top of the feature maps or to another head, this method doesn't need to be overridden
 
 ### `BaseHead` Interface
 
 On top of the `BaseNode` interface, `BaseHead` defines the following additional class attributes:
 
 - `parser: str | None` - specifies the parser that should be used with this head
-  - _e.g._ \`"SegmentationParser"
+  - _e.g._ `"SegmentationParser"`
 
-The `BaseHead` also defines the following methods that should be overriden:
+The `BaseHead` also defines the following methods that should be overridden:
 
 - `get_custom_ead_config` - returns a dictionary with custom head configuration
   - Used to populate `head.metadata` field in the NN Archive configuration file
@@ -227,10 +227,10 @@ There are 3 types of attached modules that can be created:
 
 The arguments of the `forward` and `update` methods are special and should follow a specific set of rules to make maximum use of the framework's automation capabilities, (see [Automatic Inputs and Labels Extraction](#automatic-inputs-and-labels-extraction)).
 
-Each attached module should define the the following class attributes:
+Each attached module should define the following class attributes:
 
 - `supported_tasks: Sequence[Task]` - specifies with which tasks the module is compatible
-  - Used to check the compatibility of the module with the task of the connected node and and to automatically extract the correct values from the node output and dataset (see [Automatic Inputs and Labels Extraction](#automatic-inputs-and-labels-extraction))
+  - Used to check the compatibility of the module with the task of the connected node and to automatically extract the correct values from the node output and dataset (see [Automatic Inputs and Labels Extraction](#automatic-inputs-and-labels-extraction))
 - `node` - In case the module is only compatible with a specific node, you can provide a class-level type hint to the `node` attribute. This will check the compatibility of the module with the node at initialization time.
 
 ### Automatic Inputs and Labels Extraction
@@ -244,12 +244,12 @@ The signature of the `forward` or `update` method must follow one of these rules
 - It has only 2 arguments, first one for predictions and second for targets.
   - The first argument will be taken from the node output based on the value of `Task.main_output` property.
   - The second argument will be taken from the dataset based on the value of `Task.required_labels` property.
-  - Works only for tasks that require a single label, i.e wouldn't work for `Task.KEYPOINTS` because it requires both `"boundingbox"` and `"keypoints"` labels
+  - Works only for tasks that require a single label, _i.e._ wouldn't work for `Task.KEYPOINTS` because it requires both `"boundingbox"` and `"keypoints"` labels
 - Single prediction argument named one of `pred`, `preds`, `prediction`, or `predictions`. One or more target arguments.
   - If one target argument, it has to start with `target`
   - If more than one (_e.g._ for `Tasks.KEYPOINTS`) the name should be `target_{name_of_label}`
     - `target_boundingbox`, `target_keypoints`
-- Multiple prediction arguments named the same way as keys in the node output (output of the `BaseNode.wrap` method
+- Multiple prediction arguments named the same way as keys in the node output (output of the `BaseNode.wrap` method)
   - Same rules for target arguments as in the rule above.
 
 > \[!NOTE\]
