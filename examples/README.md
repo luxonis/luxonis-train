@@ -342,7 +342,7 @@ The signature of the `forward` or `update` method must follow one of these rules
 > If the argument is annotated as optional and cannot be extracted, its value will be set to `None`.
 
 > \[!TIP\]
-> Need more control? If the automatic extraction doesn't work for your use case, you can override `run` (or `run_update`) method. These methods are called with 2 arguments; the raw output packet from the connected node and the full label dictionary from the dataset. The return type of these methods is equivalent to the return type of the corresponding `forward` or `update`.
+> Need more control? If the automatic extraction doesn't work for your use case, you can override `run` (or `run_update`) method. These methods are called with 2 arguments; the raw output packet from the connected node and the full label dictionary from the dataset. The return type of these methods is equivalent to the return type of the corresponding `forward` or `update`. Note that this is not recommended and should not be necessary in the vast majority of cases.
 
 ### Attached Modules Examples
 
