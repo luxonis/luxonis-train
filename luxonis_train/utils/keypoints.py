@@ -60,13 +60,11 @@ def get_sigmas(
                 dtype=torch.float32,
             )
         else:
-            msg = "Default sigma of 1/n_keypoints is being used for each keypoint."
+            msg = "Default sigma of 0.04 is being used for each keypoint."
             if caller_name:
                 msg = f"[{caller_name}] {msg}"
             logger.info(msg)
-            return torch.tensor(
-                [1 / n_keypoints] * n_keypoints, dtype=torch.float32
-            )
+            return torch.tensor([0.04] * n_keypoints, dtype=torch.float32)
 
 
 def insert_class(keypoints: Tensor, bboxes: Tensor) -> Tensor:

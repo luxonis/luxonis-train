@@ -27,11 +27,11 @@ For more information, see [object-keypoint-similarity](https://learnopencv.com/o
 
 **Params**
 
-| Key                | Type                  | Default value | Description                                                                                                                                                                  |
-| ------------------ | --------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sigmas`           | `list[float] \| None` | `None`        | List of sigma values for each keypoint. If `None`, the COCO sigmas are used when the COCO dataset is provided. Otherwise, a default sigma value of 1/n_keypoints is applied. |
-| `area_factor`      | `float`               | `0.53`        | Factor by which to multiply the bounding box area                                                                                                                            |
-| `use_cocoeval_oks` | `bool`                | `True`        | Whether to use the same OKS formula as in COCO evaluation                                                                                                                    |
+| Key                | Type                  | Default value | Description                                                                                                                                                         |
+| ------------------ | --------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sigmas`           | `list[float] \| None` | `None`        | List of sigma values for each keypoint. If `None`, the COCO sigmas are used when the COCO dataset is provided. Otherwise, a default sigma value of 0.04 is applied. |
+| `area_factor`      | `float`               | `0.53`        | Factor by which to multiply the bounding box area                                                                                                                   |
+| `use_cocoeval_oks` | `bool`                | `True`        | Whether to use the same OKS formula as in COCO evaluation                                                                                                           |
 
 ## MeanAveragePrecision
 
