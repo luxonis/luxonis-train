@@ -8,7 +8,9 @@ Kwargs = dict[str, Any]
 Labels = dict[str, Tensor]
 """Labels is a dictionary mapping task names to tensors."""
 
-AttachIndexType = Literal["all"] | int | tuple[int, int] | tuple[int, int, int]
+AttachIndexType = (
+    Literal["all"] | int | tuple[int, int] | tuple[int, int, int] | None
+)
 """AttachIndexType is used to specify to which output of the prevoius
 node does the current node attach to.
 

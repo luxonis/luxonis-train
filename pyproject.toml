@@ -61,6 +61,7 @@ reportPrivateUsage = "none"
 reportIncompatibleVariableOverride = "none"
 reportIncompatibleMethodOverride = "none"
 reportUnnecessaryIsInstance = "none"
+reportMatchNotExhaustive = "error"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -99,7 +99,7 @@ class BaseNode(
         specify all outputs. Defaults to "all". Python indexing conventions apply.
     """
 
-    attach_index: AttachIndexType
+    attach_index: AttachIndexType = None
     task: Task | None = None
 
     def __init__(
@@ -160,6 +160,22 @@ class BaseNode(
             )
             self.attach_index = attach_index
 
+        if self.attach_index is None:
+            parameters = inspect.signature(self.forward).parameters
+            assert parameters, f"`{self.name}.forward` has no parameters."
+
+            annotation = next(iter(parameters.values())).annotation
+
+            if len(parameters) > 1 or annotation is inspect.Parameter.empty:
+                logger.warning(self._missing_attach_index_message())
+            else:
+                if annotation == Tensor:
+                    self.attach_index = -1
+                elif annotation == list[Tensor]:
+                    self.attach_index = "all"
+                else:
+                    logger.warning(self._missing_attach_index_message())
+
         if task_name is None and dataset_metadata is not None:
             if len(dataset_metadata.task_names) == 1:
                 task_name = next(iter(dataset_metadata.task_names))
@@ -169,19 +185,6 @@ class BaseNode(
                     f"argument for node '{self.name}' was not provided."
                 )
         self.task_name = task_name or ""
-
-        if getattr(self, "attach_index", None) is None:
-            parameters = inspect.signature(self.forward).parameters
-            inputs_forward_type = parameters.get(
-                "inputs", parameters.get("input", parameters.get("x", None))
-            )
-            if (
-                inputs_forward_type is not None
-                and inputs_forward_type.annotation == Tensor
-            ):
-                self.attach_index = -1
-            else:
-                self.attach_index = "all"
 
         self._input_shapes = input_shapes
         self._original_in_shape = original_in_shape
@@ -544,16 +547,18 @@ class BaseNode(
                 index += len(lst)
             return index
 
-        def _normalize_slice(i: int, j: int) -> slice:
+        def _normalize_slice(i: int, j: int, k: int | None = None) -> slice:
             if i < 0 and j < 0:
-                return slice(len(lst) + i, len(lst) + j, -1 if i > j else 1)
+                return slice(
+                    len(lst) + i, len(lst) + j, k or -1 if i > j else 1
+                )
             if i < 0:
-                return slice(len(lst) + i, j, 1)
+                return slice(len(lst) + i, j, k or 1)
             if j < 0:
-                return slice(i, len(lst) + j, 1)
+                return slice(i, len(lst) + j, k or 1)
             if i > j:
-                return slice(i, j, -1)
-            return slice(i, j, 1)
+                return slice(i, j, k or -1)
+            return slice(i, j, k or 1)
 
         match self.attach_index:
             case "all":
@@ -564,12 +569,14 @@ class BaseNode(
                     raise ValueError(
                         f"Attach index {i} is out of range for list of length {len(lst)}."
                     )
-                return lst[_normalize_index(i)]
+                return lst[i]
             case (int(i), int(j)):
                 return lst[_normalize_slice(i, j)]
             case (int(i), int(j), int(k)):
-                return lst[i:j:k]
-            case _:
+                return lst[_normalize_slice(i, j, k)]
+            case None:
+                raise RuntimeError(self._missing_attach_index_message())
+            case _:  # pragma: no cover
                 raise ValueError(
                     f"Invalid attach index: `{self.attach_index}`"
                 )
@@ -585,4 +592,14 @@ class BaseNode(
         return RuntimeError(
             f"'{self.name}' node is trying to access `{name}`, "
             "but it was not set during initialization. "
+        )
+
+    def _missing_attach_index_message(self) -> str:
+        return (
+            f"Attach index not defined for node '{self.name}'  "
+            "and could not be inferred. "
+            "Some parts of the framework will not work. "
+            "Either pass `attach_index` to the base constructor, "
+            "define it as a class atrribute, or provide proper "
+            "type hints for the `forward` method for implicit inference"
         )
