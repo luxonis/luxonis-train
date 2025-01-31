@@ -132,7 +132,7 @@ def cifar10_dataset() -> LuxonisDataset:
 
 
 @pytest.fixture(scope="session")
-def mnist_dataset_ocr() -> LuxonisDataset:
+def mnist_dataset() -> LuxonisDataset:
     dataset = LuxonisDataset("mnist_test", delete_existing=True)
     output_folder = WORK_DIR / "mnist"
     output_folder.mkdir(parents=True, exist_ok=True)
@@ -140,30 +140,17 @@ def mnist_dataset_ocr() -> LuxonisDataset:
         root=output_folder, train=False, download=True
     )
 
-    classes = [
-        "0",
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
-        "7",
-        "8",
-        "9",
-    ]
-
     def MNIST_subset_generator():
-        for i, (image, label) in enumerate(mnist_torch):
+        for i, (image, label) in enumerate(mnist_torch):  # type: ignore
             if i == 1000:
                 break
             path = output_folder / f"mnist_{i}.png"
             image.save(path)
-            print(path, label)
             yield {
                 "file": path,
                 "annotation": {
-                    "metadata": {"text": classes[label]},
+                    "class": str(label),
+                    "metadata": {"text": str(label)},
                 },
             }
 

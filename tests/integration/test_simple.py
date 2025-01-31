@@ -69,14 +69,14 @@ def test_predefined_models(
     config_file: str,
     coco_dataset: LuxonisDataset,
     cifar10_dataset: LuxonisDataset,
-    mnist_dataset_ocr: LuxonisDataset,
+    mnist_dataset: LuxonisDataset,
 ):
     config_file = f"configs/{config_file}.yaml"
     opts |= {
         "loader.params.dataset_name": (
             cifar10_dataset.identifier
             if "classification" in config_file
-            else mnist_dataset_ocr.identifier
+            else mnist_dataset.identifier
             if "ocr_recognition" in config_file
             else coco_dataset.identifier
         ),
