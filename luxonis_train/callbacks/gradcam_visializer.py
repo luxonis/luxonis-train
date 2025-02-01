@@ -1,4 +1,3 @@
-import logging
 from typing import Any, Union
 
 import lightning.pytorch as pl
@@ -15,8 +14,6 @@ from pytorch_grad_cam.utils.model_targets import (
 from luxonis_train.attached_modules.visualizers import (
     get_denormalized_images,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class ModelWrapper(pl.LightningModule):

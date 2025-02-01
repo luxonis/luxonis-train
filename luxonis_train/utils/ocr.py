@@ -1,12 +1,9 @@
-import logging
 from typing import Literal, TypeAlias
 
 import numpy as np
 import torch
+from loguru import logger
 from torch import Tensor
-
-logger = logging.getLogger(__name__)
-
 
 ALPHABETS = {
     "english": list("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),

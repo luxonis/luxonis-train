@@ -1,6 +1,6 @@
-import logging
 from typing import Literal
 
+from loguru import logger
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
@@ -13,8 +13,6 @@ from luxonis_train.nodes.blocks import (
 
 from .blocks import DAPPM, BasicDDRBackbone, make_layer
 from .variants import get_variant
-
-logger = logging.getLogger(__name__)
 
 
 class DDRNet(BaseNode[Tensor, list[Tensor]]):

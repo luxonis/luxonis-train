@@ -1,10 +1,8 @@
-import logging
 import random
 from typing import Any
 
 import optuna
-
-logger = logging.getLogger(__name__)
+from loguru import logger
 
 
 def _augs_to_indices(all_augs: list[str], aug_names: list[str]) -> list[int]:

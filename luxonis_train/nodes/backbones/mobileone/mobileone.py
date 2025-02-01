@@ -4,17 +4,15 @@ Source: U{<https://github.com/apple/ml-mobileone>}
 @license: U{Apple<https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
 """
 
-import logging
 from typing import Any, Literal
 
+from loguru import logger
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 
 from .blocks import MobileOneBlock
 from .variants import get_variant
-
-logger = logging.getLogger(__name__)
 
 
 class MobileOne(BaseNode[Tensor, list[Tensor]]):

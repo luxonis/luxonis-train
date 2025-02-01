@@ -1,8 +1,8 @@
-import logging
 from typing import Any, Literal
 
 import torch
 import torch.nn.functional as F
+from loguru import logger
 from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks import ConvModule, SegProto
@@ -14,8 +14,6 @@ from luxonis_train.utils import (
 )
 
 from .precision_bbox_head import PrecisionBBoxHead
-
-logger = logging.getLogger(__name__)
 
 
 class PrecisionSegmentBBoxHead(PrecisionBBoxHead):

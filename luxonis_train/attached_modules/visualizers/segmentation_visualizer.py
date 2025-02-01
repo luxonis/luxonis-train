@@ -1,7 +1,7 @@
-import logging
 from functools import cached_property
 
 import torch
+from loguru import logger
 from torch import Tensor
 from typing_extensions import override
 
@@ -15,7 +15,6 @@ from .utils import (
     seg_output_to_bool,
 )
 
-logger = logging.getLogger(__name__)
 log_disable = False
 
 

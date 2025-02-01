@@ -1,5 +1,3 @@
-import logging
-
 import torch
 from torch import Tensor
 
@@ -7,8 +5,6 @@ from luxonis_train.nodes import OCRCTCHead
 from luxonis_train.tasks import Tasks
 
 from .base_metric import BaseMetric
-
-logger = logging.getLogger(__name__)
 
 
 class OCRAccuracy(BaseMetric):

@@ -1,8 +1,8 @@
-import logging
 import sys
 import warnings
 from typing import Annotated, Any, Literal, NamedTuple, TypeAlias
 
+from loguru import logger
 from luxonis_ml.enums import DatasetType
 from luxonis_ml.typing import ConfigItem
 from luxonis_ml.utils import (
@@ -19,8 +19,6 @@ from pydantic.types import (
     PositiveInt,
 )
 from typing_extensions import Self
-
-logger = logging.getLogger(__name__)
 
 Params: TypeAlias = dict[str, Any]
 

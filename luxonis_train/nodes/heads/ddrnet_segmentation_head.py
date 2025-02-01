@@ -1,15 +1,13 @@
-import logging
 from typing import Literal
 
 import torch
 import torch.nn as nn
+from loguru import logger
 from torch import Tensor
 
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
 from luxonis_train.utils.general import infer_upscale_factor
-
-logger = logging.getLogger(__name__)
 
 
 class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):

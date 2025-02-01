@@ -1,9 +1,9 @@
 import colorsys
-import logging
 from collections.abc import Callable
 
 import numpy as np
 import seaborn as sns
+from loguru import logger
 from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
 from torch import Tensor
@@ -13,7 +13,6 @@ from luxonis_train.tasks import Tasks
 from .base_visualizer import BaseVisualizer
 from .utils import figure_to_torch
 
-logger = logging.getLogger(__name__)
 log_disable = False
 
 

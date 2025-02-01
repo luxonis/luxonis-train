@@ -1,9 +1,9 @@
-import logging
 from collections import defaultdict
 from pathlib import Path
 from typing import TypedDict
 
 import onnx
+from loguru import logger
 from luxonis_ml.nn_archive.config_building_blocks import (
     DataType,
 )
@@ -11,8 +11,6 @@ from onnx.onnx_pb import TensorProto
 
 from luxonis_train.models import LuxonisLightningModule
 from luxonis_train.nodes.heads import BaseHead
-
-logger = logging.getLogger(__name__)
 
 
 class ArchiveMetadataDict(TypedDict):

@@ -19,6 +19,7 @@ from .general import (
 )
 from .graph import traverse_graph
 from .keypoints import get_center_keypoints, get_sigmas, insert_class
+from .logging import setup_logging
 from .ocr import OCRDecoder, OCREncoder
 from .tracker import LuxonisTrackerPL
 from .types import AttachIndexType, Kwargs, Labels, Packet
@@ -31,6 +32,7 @@ __all__ = [
     "IncompatibleException",
     "DatasetMetadata",
     "make_divisible",
+    "setup_logging",
     "infer_upscale_factor",
     "to_shape_packet",
     "get_with_default",

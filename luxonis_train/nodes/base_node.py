@@ -5,6 +5,7 @@ from contextlib import suppress
 from typing import Generic, TypeVar
 
 import torch
+from loguru import logger
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
 from typeguard import TypeCheckError, check_type
@@ -21,8 +22,6 @@ from luxonis_train.utils.registry import NODES
 
 ForwardOutputT = TypeVar("ForwardOutputT")
 ForwardInputT = TypeVar("ForwardInputT")
-
-logger = logging.getLogger(__name__)
 
 
 class BaseNode(

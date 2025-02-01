@@ -1,6 +1,6 @@
-import logging
 from typing import Any, Literal
 
+from loguru import logger
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
@@ -13,8 +13,6 @@ from luxonis_train.nodes.blocks import (
 from luxonis_train.utils import make_divisible
 
 from .variants import VariantLiteral, get_variant, get_variant_weights
-
-logger = logging.getLogger(__name__)
 
 
 class EfficientRep(BaseNode[Tensor, list[Tensor]]):

@@ -1,4 +1,3 @@
-import logging
 from typing import Any
 
 import torch
@@ -10,8 +9,6 @@ from luxonis_train.tasks import Tasks
 from luxonis_train.utils import get_center_keypoints
 
 from .base_loss import BaseLoss
-
-logger = logging.getLogger(__name__)
 
 
 class FOMOLocalizationLoss(BaseLoss):

@@ -1,12 +1,8 @@
-import logging
-
 from torch import Tensor
 
 from luxonis_train.nodes.base_node import BaseNode
 
 from .blocks import EncoderWithSVTR, Im2Seq
-
-logger = logging.getLogger(__name__)
 
 
 class SVTRNeck(BaseNode[list[Tensor], list[Tensor]]):

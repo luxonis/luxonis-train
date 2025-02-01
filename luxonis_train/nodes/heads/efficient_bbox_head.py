@@ -1,7 +1,7 @@
-import logging
 from typing import Any, Literal
 
 import torch
+from loguru import logger
 from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks import EfficientDecoupledBlock
@@ -13,8 +13,6 @@ from luxonis_train.utils import (
     dist2bbox,
     non_max_suppression,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class EfficientBBoxHead(

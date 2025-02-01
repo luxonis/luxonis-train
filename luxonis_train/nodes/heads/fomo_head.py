@@ -1,4 +1,3 @@
-import logging
 from typing import Any, List
 
 import torch
@@ -9,8 +8,6 @@ from typing_extensions import override
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.tasks import Tasks
 from luxonis_train.utils import Packet
-
-logger = logging.getLogger(__name__)
 
 
 class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
