@@ -660,6 +660,89 @@ class Config(LuxonisConfig):
                 "If this behavior is not desired, set `smart_cfg_auto_populate` to `False`."
             )
 
+        # Rule: Check if a predefined model is set and adjust config accordingly to achieve best training results
+        predefined_model_cfg = getattr(
+            instance.model, "predefined_model", None
+        )
+        if predefined_model_cfg:
+            logger.info(
+                "Predefined model detected. Applying predefined model configuration rules."
+            )
+            model_name = predefined_model_cfg.name
+            accumulate_grad_batches = int(64 / instance.trainer.batch_size)
+            logger.info(
+                "Setting accumulate_grad_batches to %d (trainer.batch_size=%d)",
+                accumulate_grad_batches,
+                instance.trainer.batch_size,
+            )
+            loss_params = predefined_model_cfg.params.get("loss_params", {})
+            gradient_accumulation_schedule = None
+            if model_name == "InstanceSegmentationModel":
+                loss_params.update(
+                    {
+                        "bbox_loss_weight": 7.5 * accumulate_grad_batches,
+                        "class_loss_weight": 0.5 * accumulate_grad_batches,
+                        "dfl_loss_weight": 1.5 * accumulate_grad_batches,
+                    }
+                )
+                gradient_accumulation_schedule = {
+                    0: 1,
+                    1: (1 + accumulate_grad_batches) // 2,
+                    2: accumulate_grad_batches,
+                }
+                logger.info(
+                    "InstanceSegmentationModel: Updated loss_params: %s",
+                    loss_params,
+                )
+                logger.info(
+                    "InstanceSegmentationModel: Set gradient accumulation schedule to: %s",
+                    gradient_accumulation_schedule,
+                )
+            elif model_name == "KeypointDetectionModel":
+                loss_params.update(
+                    {
+                        "iou_loss_weight": 7.5 * accumulate_grad_batches,
+                        "class_loss_weight": 0.5 * accumulate_grad_batches,
+                        "regr_kpts_loss_weight": 12 * accumulate_grad_batches,
+                        "vis_kpts_loss_weight": 1 * accumulate_grad_batches,
+                    }
+                )
+                gradient_accumulation_schedule = {
+                    0: 1,
+                    1: (1 + accumulate_grad_batches) // 2,
+                    2: accumulate_grad_batches,
+                }
+                logger.info(
+                    "KeypointDetectionModel: Updated loss_params: %s",
+                    loss_params,
+                )
+                logger.info(
+                    "KeypointDetectionModel: Set gradient accumulation schedule to: %s",
+                    gradient_accumulation_schedule,
+                )
+            elif model_name == "DetectionModel":
+                loss_params.update(
+                    {
+                        "iou_loss_weight": 2.5 * accumulate_grad_batches,
+                        "class_loss_weight": 1 * accumulate_grad_batches,
+                    }
+                )
+                logger.info(
+                    "DetectionModel: Updated loss_params: %s", loss_params
+                )
+            predefined_model_cfg.params["loss_params"] = loss_params
+            if gradient_accumulation_schedule:
+                for callback in instance.trainer.callbacks:
+                    if callback.name == "GradientAccumulationScheduler":
+                        callback.params["scheduling"] = (
+                            gradient_accumulation_schedule
+                        )
+                        logger.info(
+                            "GradientAccumulationScheduler callback updated with scheduling: %s",
+                            gradient_accumulation_schedule,
+                        )
+                        break
+
 
 def is_acyclic(graph: dict[str, list[str]]) -> bool:
     """Tests if graph is acyclic.
