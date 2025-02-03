@@ -18,6 +18,7 @@ loader:
     dataset_name: coco_test
 
 trainer:
+  precision: "16-mixed"
   preprocessing:
     train_image_size: [384, 512]
     keep_aspect_ratio: true

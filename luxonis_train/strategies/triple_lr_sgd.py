@@ -36,20 +36,26 @@ class TripleLRScheduler:
             "warmup_bias_lr": 0.1,
             "warmup_momentum": 0.8,
             "lre": 0.0002,
+            "cosine_annealing": True,
         }
         if params:
             self.params.update(params)
         self.max_stepnum = max_stepnum
         self.warmup_stepnum = max(
-            round(self.params["warmup_epochs"] * self.max_stepnum), 1000
+            round(self.params["warmup_epochs"] * self.max_stepnum), 100
         )
         self.step = 0
         self.lrf = self.params["lre"] / self.optimizer.defaults["lr"]
-        self.lf = (
-            lambda x: ((1 - math.cos(x * math.pi / epochs)) / 2)
-            * (self.lrf - 1)
-            + 1
-        )
+        if self.params["cosine_annealing"]:
+            self.lf = (
+                lambda x: ((1 - math.cos(x * math.pi / epochs)) / 2)
+                * (self.lrf - 1)
+                + 1
+            )
+        else:
+            self.lf = (
+                lambda x: max(1 - x / epochs, 0) * (1.0 - self.lrf) + self.lrf
+            )
 
     def create_scheduler(self) -> LambdaLR:
         scheduler = LambdaLR(self.optimizer, lr_lambda=self.lf)
@@ -147,7 +153,16 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
         @type pl_module: pl.LightningModule
         @param pl_module: The pl_module to be used.
         @type params: dict
-        @param params: The parameters for the strategy.
+        @param params: The parameters for the strategy. Those are:
+            - lr: The learning rate.
+            - momentum: The momentum.
+            - weight_decay: The weight decay.
+            - nesterov: Whether to use nesterov.
+            - warmup_epochs: The number of warmup epochs.
+            - warmup_bias_lr: The warmup bias learning rate.
+            - warmup_momentum: The warmup momentum.
+            - lre: The learning rate for the end of the training.
+            - cosine_annealing: Whether to use cosine annealing.
         """
         super().__init__(pl_module)
         self.model = pl_module

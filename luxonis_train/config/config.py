@@ -204,6 +204,30 @@ class ModelConfig(BaseModelExtraForbid):
         return self
 
     @model_validator(mode="after")
+    def check_for_invalid_characters(self) -> Self:
+        for modules in [
+            self.nodes,
+            self.losses,
+            self.metrics,
+            self.visualizers,
+        ]:
+            for module in modules:
+                invalid_parts = []
+                if module.alias and "/" in module.alias:
+                    invalid_parts.append(f"alias '{module.alias}'")
+                if module.name and "/" in module.name:
+                    invalid_parts.append(f"name '{module.name}'")
+
+                if invalid_parts:
+                    error_message = (
+                        f"The {', '.join(invalid_parts)} contain a '/', which is not allowed. "
+                        "Please rename to remove any '/' characters."
+                    )
+                    raise ValueError(error_message)
+
+        return self
+
+    @model_validator(mode="after")
     def check_unique_names(self) -> Self:
         for modules in [
             self.nodes,
@@ -404,7 +428,7 @@ class TrainerConfig(BaseModelExtraForbid):
     deterministic: bool | Literal["warn"] | None = None
     smart_cfg_auto_populate: bool = True
     batch_size: PositiveInt = 32
-    accumulate_grad_batches: PositiveInt = 1
+    accumulate_grad_batches: PositiveInt | None = None
     gradient_clip_val: NonNegativeFloat | None = None
     gradient_clip_algorithm: Literal["norm", "value"] | None = None
     use_weighted_sampler: bool = False

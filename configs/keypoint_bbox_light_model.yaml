@@ -7,18 +7,19 @@ model:
     params:
       variant: light
       loss_params:
-        iou_type: "siou"
+        iou_type: "ciou"
         n_warmup_epochs: 0 # No assigner warmup
         iou_loss_weight: 60 # Should be 7.5 * accumulate_grad_batches for best results
         class_loss_weight: 4 # Should be 0.5 * accumulate_grad_batches for best results
         regr_kpts_loss_weight: 96 # Should be 12 * accumulate_grad_batches for best results
-        vis_kpts_loss_weight: 16 # Should be 2 * accumulate_grad_batches for best results
+        vis_kpts_loss_weight: 8 # Should be 1 * accumulate_grad_batches for best results
 
 loader:
   params:
     dataset_name: coco_test
 
 trainer:
+  precision: "16-mixed"
   preprocessing:
     train_image_size: [384, 512]
     keep_aspect_ratio: true
@@ -33,7 +34,7 @@ trainer:
   n_workers: 4
   validation_interval: 10
   n_log_images: 8
-  accumulate_grad_batches: 8 # For best results, always accumulate gradients to effectively use 64 batch size
+  gradient_clip_val: 10
 
   callbacks:
     - name: EMACallback
@@ -43,15 +44,22 @@ trainer:
         decay_tau: 2000
     - name: ExportOnTrainEnd
     - name: TestOnTrainEnd
+    - name: GradientAccumulationScheduler
+      params:
+        scheduling: # warmup phase is 3 epochs
+          0: 1
+          1: 4
+          2: 8 # For best results, always accumulate gradients to effectively use 64 batch size
 
   training_strategy:
     name: "TripleLRSGDStrategy"
     params: 
       warmup_epochs: 3
-      warmup_bias_lr: 0.1
+      warmup_bias_lr: 0.0
       warmup_momentum: 0.8
       lr: 0.01
       lre: 0.0001
       momentum: 0.937     
       weight_decay: 0.0005
       nesterov: True
+      cosine_annealing: False
