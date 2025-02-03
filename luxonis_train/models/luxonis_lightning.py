@@ -894,7 +894,7 @@ class LuxonisLightningModule(pl.LightningModule):
         if accumulate_grad_batches is not None:
             if not has_gas:
                 gas = pl.callbacks.GradientAccumulationScheduler(
-                    scheduler={0: accumulate_grad_batches}
+                    scheduling={0: accumulate_grad_batches}
                 )
                 callbacks.append(gas)
             else:
