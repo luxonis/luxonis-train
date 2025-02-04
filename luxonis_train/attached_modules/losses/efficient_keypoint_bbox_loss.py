@@ -98,7 +98,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
     ) -> tuple[Tensor, dict[str, Tensor]]:
         target_keypoints = insert_class(target_keypoints, target_boundingbox)
 
-        self.batch_size = class_scores.shape[0]
+        batch_size = class_scores.shape[0]
         n_kpts = (target_keypoints.shape[1] - 2) // 3
 
         self._init_parameters(features)
@@ -106,11 +106,11 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         pred_bboxes = dist2bbox(distributions, self.anchor_points_strided)
         keypoints_raw = self.dist2kpts_noscale(
             self.anchor_points_strided,
-            keypoints_raw.view(self.batch_size, -1, n_kpts, 3),
+            keypoints_raw.view(batch_size, -1, n_kpts, 3),
         )
 
         target_boundingbox = self._preprocess_bbox_target(
-            target_boundingbox, self.batch_size
+            target_boundingbox, batch_size
         )
 
         gt_bbox_labels = target_boundingbox[..., :1]
@@ -127,7 +127,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         )
 
         batched_kpts = self._preprocess_kpts_target(
-            target_keypoints, self.batch_size, self.gt_kpts_scale
+            target_keypoints, batch_size, self.gt_kpts_scale
         )
         assigned_gt_idx_expanded = assigned_gt_idx.unsqueeze(-1).unsqueeze(-1)
         selected_keypoints = batched_kpts.gather(
@@ -203,7 +203,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             "visibility": visibility_loss.detach(),
         }
 
-        return loss * self.batch_size, sub_losses
+        return loss * batch_size, sub_losses
 
     def _preprocess_kpts_target(
         self, kpts_target: Tensor, batch_size: int, scale_tensor: Tensor
