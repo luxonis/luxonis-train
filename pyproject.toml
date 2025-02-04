@@ -63,6 +63,12 @@ reportIncompatibleMethodOverride = "none"
 reportUnnecessaryIsInstance = "none"
 reportMatchNotExhaustive = "error"
 
+[tool.pyleft]
+paths = ["luxonis_train"]
+exclude = [
+    "__main__.py"
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--disable-warnings"
