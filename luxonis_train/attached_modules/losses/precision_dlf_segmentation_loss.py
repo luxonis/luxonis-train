@@ -135,7 +135,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             "seg": loss_seg.detach(),
         }
 
-        return loss, sub_losses
+        return loss * batch_size, sub_losses
 
     def compute_segmentation_loss(
         self,

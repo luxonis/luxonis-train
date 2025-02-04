@@ -40,7 +40,7 @@ To make the most use out of the framework, the nodes should define the following
   - Typically used for heads that are usually connected to backbones producing a list of feature maps
   - If not specified, it is inferred from the type signature of the `forward` method (if possible)
     - Up to debate whether this is a good idea as it's a quite implicit, the reasoning for this is to make implementing custom models as easy as possible with little boilerplate
-    - Most of these implicit deductions are logged (and eventually it will be all of them) and I'm gradually improving the error messages so they are as explicit as possible, so it shouldn't be too confusing   
+    - Most of these implicit deductions are logged (and eventually it will be all of them) and I'm gradually improving the error messages so they are as explicit as possible, so it shouldn't be too confusing
 - `task: Task` - specifies the task that the node is used for
   - Relevant for heads only
   - Provides better error messages, compatibility checking, more powerful automation, _etc._
@@ -55,7 +55,7 @@ To make the most use out of the framework, the nodes should define the following
     - `ANOMALY_DETECTION` - image anomaly detection tasks
     - `OCR` - optical character recognition
     - `FOMO` - used for the FOMO task. Special task learning on `"boundingbox"` labels, but predicting keypoints
-    - This namespace pattern could be a bit confusing if you look into the code. It is supposed to look like an enum because it esentially should be an enum. The only reason it's not is because enum cannot be extended on the user side but we need to support defining custom tasks   
+    - This namespace pattern could be a bit confusing if you look into the code. It is supposed to look like an enum because it esentially should be an enum. The only reason it's not is because enum cannot be extended on the user side but we need to support defining custom tasks
   - To define a custom task, see [Custom Tasks](#custom-tasks)
 
 `BaseNode` implements a few convenient properties that can be used to access information about the model:
@@ -79,10 +79,10 @@ The main methods of the node are:
 
 - `__init__` - constructor
   - Should always take `**kwargs` as an argument and pass it to the parent constructor
-  - All the arguments under `node.params` in the config file are passed here 
+  - All the arguments under `node.params` in the config file are passed here
 - `forward(x: T) -> K` - the forward pass of the node
   - In most cases should take either a single tensor or a list of tensors and return again a single tensor or a list of tensors
-    - If more control is needed, see the `unwrap` method 
+    - If more control is needed, see the `unwrap` method
 - `wrap(outputs: K) -> Packet[Tensor]` - called after `forward`, wraps the output of the node into a dictionary
   - The results of `forward` are not the final outputs of the node, but are wrapped into a dictionary (called a `Packet`)
   - The keys of the dictionary are used to extract the correct values in the attached modules (losses, metrics, visualizers)
@@ -102,7 +102,7 @@ The main methods of the node are:
           return {"features": output}
       ```
 - `unwrap(inputs: list[Packet[Tensor]]) -> T` - called before `forward`, the output of `unwrap` is directly passed to the `forward` method
-  - Usually doesn't need to be overridden 
+  - Usually doesn't need to be overridden
   - Receives a list of packets, one for each connected node
     - Usually only one packet is passed
     - Multiple packets are passed if the current node is connected to multiple preceding nodes

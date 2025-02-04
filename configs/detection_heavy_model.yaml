@@ -18,6 +18,7 @@ loader:
     dataset_name: coco_test
 
 trainer:
+  precision: "16-mixed"
   preprocessing:
     train_image_size: [384, 512]
     keep_aspect_ratio: true
@@ -43,14 +44,14 @@ trainer:
     - name: ExportOnTrainEnd
     - name: TestOnTrainEnd
 
-  training_strategy: # Training from scratch params
+  training_strategy: # Fine tuning params
     name: "TripleLRSGDStrategy"
     params: 
-      warmup_epochs: 3
-      warmup_bias_lr: 0.1
-      warmup_momentum: 0.8
-      lr: 0.01
-      lre: 0.0001
-      momentum: 0.937     
-      weight_decay: 0.0005     
+      warmup_epochs: 2
+      warmup_bias_lr: 0.05
+      warmup_momentum: 0.5
+      lr: 0.0032
+      lre: 0.000384
+      momentum: 0.843     
+      weight_decay: 0.00036   
       nesterov: True
