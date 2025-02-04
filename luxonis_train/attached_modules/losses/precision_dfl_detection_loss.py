@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import cast
 
 import torch
 import torch.nn.functional as F
@@ -28,7 +28,7 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         class_loss_weight: float = 0.5,
         bbox_loss_weight: float = 7.5,
         dfl_loss_weight: float = 1.5,
-        **kwargs: Any,
+        **kwargs,
     ):
         """BBox loss adapted from  U{Real-Time Flying Object Detection with YOLOv8
         <https://arxiv.org/pdf/2305.09972>} and from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications

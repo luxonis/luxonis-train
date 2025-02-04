@@ -1,6 +1,5 @@
 from contextlib import suppress
 from functools import cached_property
-from typing import Any
 
 import torchmetrics
 from torch import Tensor
@@ -14,7 +13,7 @@ from .base_metric import BaseMetric
 class TorchMetricWrapper(BaseMetric):
     Metric: type[torchmetrics.Metric]
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs):
         super().__init__(node=kwargs.pop("node", None))
         task = kwargs.get("task")
         if task is None:

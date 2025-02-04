@@ -1,4 +1,4 @@
-from typing import List, Literal
+from typing import Literal
 
 from pydantic import BaseModel
 from torch import nn
@@ -17,36 +17,19 @@ class BlockConfig(BaseModel):
 class GhostFaceNetsVariant(BaseModel):
     """Variant of the GhostFaceNets embedding model.
 
-    @type cfgs: List[List[BlockConfig]]
-    @param cfgs: List of Ghost BottleneckV2 configurations.
-    @type num_classes: int
-    @param num_classes: Number of classes. Defaults to 0, which makes
-        the network output the raw embeddings. Otherwise it can be used
-        to add another linear layer to the network, which is useful for
-        training using ArcFace or similar classification-based losses
-        that require the user to drop the last layer of the network.
     @type width: int
     @param width: Width multiplier. Increases complexity and number of
         parameters. Defaults to 1.0.
-    @type dropout: float
-    @param dropout: Dropout rate. Defaults to 0.2.
     @type block: nn.Module
     @param block: Ghost BottleneckV2 block. Defaults to
         GhostBottleneckV2.
-    @type bn_momentum: float
-    @param bn_momentum: Batch normalization momentum. Defaults to 0.9.
-    @type bn_epsilon: float
-    @param bn_epsilon: Batch normalization epsilon. Defaults to 1e-5.
-    @type init_kaiming: bool
-    @param init_kaiming: If True, initializes the weights using the
-        Kaiming initialization. Defaults to True.
-    @type block_args: dict
-    @param block_args: Arguments to pass to the block. Defaults to None.
+    @type block_configs: list[list[BlockConfig]]
+    @param block_configs: List of Ghost BottleneckV2 configurations.
     """
 
     width: int
     block: type[nn.Module]
-    block_configs: List[List[BlockConfig]]
+    block_configs: list[list[BlockConfig]]
 
 
 V2 = GhostFaceNetsVariant(

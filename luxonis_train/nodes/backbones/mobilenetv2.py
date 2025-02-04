@@ -1,5 +1,3 @@
-from typing import Any
-
 import torchvision
 from torch import Tensor
 
@@ -11,7 +9,7 @@ class MobileNetV2(BaseNode[Tensor, list[Tensor]]):
         self,
         download_weights: bool = True,
         out_indices: list[int] | None = None,
-        **kwargs: Any,
+        **kwargs,
     ):
         """MobileNetV2 backbone.
 

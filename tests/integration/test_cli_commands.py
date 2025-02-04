@@ -3,7 +3,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Tuple
 
 import pytest
 from luxonis_ml.data import LuxonisDataset
@@ -24,7 +23,7 @@ def prepare():
     ONNX_PATH.unlink(missing_ok=True)
 
 
-def run_command(command: str) -> Tuple[str, str, int]:
+def run_command(command: str) -> tuple[str, str, int]:
     result = subprocess.run(
         command,
         shell=True,

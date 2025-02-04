@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 import torch
 from torch import Tensor
@@ -18,7 +18,7 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
         bce_pow: float = 1.0,
         weight: list[float] | None = None,
         reduction: Literal["mean", "sum", "none"] = "mean",
-        **kwargs: Any,
+        **kwargs,
     ):
         """BCE with logits loss and label smoothing.
 

@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 import torch
 from loguru import logger
@@ -31,7 +31,7 @@ class EfficientBBoxHead(
         max_det: int = 300,
         download_weights: bool = False,
         initialize_weights: bool = True,
-        **kwargs: Any,
+        **kwargs,
     ):
         """Head for object detection.
 

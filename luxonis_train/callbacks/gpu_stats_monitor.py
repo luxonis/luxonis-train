@@ -23,7 +23,7 @@ import os
 import shutil
 import subprocess
 import time
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import lightning.pytorch as pl
 import torch
@@ -31,9 +31,7 @@ from lightning.pytorch.accelerators.cuda import CUDAAccelerator
 from lightning.pytorch.utilities import rank_zero_only
 from lightning.pytorch.utilities.parsing import AttributeDict
 from lightning.pytorch.utilities.types import STEP_OUTPUT
-from lightning_fabric.utilities.exceptions import (
-    MisconfigurationException,  # noqa: F401
-)
+from lightning_fabric.utilities.exceptions import MisconfigurationException
 
 from luxonis_train.utils.registry import CALLBACKS
 
@@ -102,10 +100,10 @@ class GPUStatsMonitor(pl.Callback):
         )
 
         # The logical device IDs for selected devices
-        self._device_ids: List[int] = []  # will be assigned later in setup()
+        self._device_ids: list[int] = []  # will be assigned later in setup()
 
         # The unmasked real GPU IDs
-        self._gpu_ids: List[str] = []  # will be assigned later in setup()
+        self._gpu_ids: list[str] = []  # will be assigned later in setup()
 
     @staticmethod
     def is_available() -> bool:
@@ -203,18 +201,18 @@ class GPUStatsMonitor(pl.Callback):
         trainer.logger.log_metrics(logs, step=trainer.global_step)
 
     @staticmethod
-    def _get_gpu_ids(device_ids: List[int]) -> List[str]:
+    def _get_gpu_ids(device_ids: list[int]) -> list[str]:
         """Get the unmasked real GPU IDs."""
         # All devices if `CUDA_VISIBLE_DEVICES` unset
         default = ",".join(str(i) for i in range(torch.cuda.device_count()))
-        cuda_visible_devices: List[str] = os.getenv(
+        cuda_visible_devices: list[str] = os.getenv(
             "CUDA_VISIBLE_DEVICES", default=default
         ).split(",")
         return [
             cuda_visible_devices[device_id].strip() for device_id in device_ids
         ]
 
-    def _get_gpu_stats(self, queries: List[str]) -> List[List[float]]:
+    def _get_gpu_stats(self, queries: list[str]) -> list[list[float]]:
         if not queries:
             return []
 
@@ -250,10 +248,10 @@ class GPUStatsMonitor(pl.Callback):
 
     @staticmethod
     def _parse_gpu_stats(
-        device_ids: List[int],
-        stats: List[List[float]],
-        keys: List[Tuple[str, str]],
-    ) -> Dict[str, float]:
+        device_ids: list[int],
+        stats: list[list[float]],
+        keys: list[tuple[str, str]],
+    ) -> dict[str, float]:
         """Parse the gpu stats into a loggable dict."""
         logs = {}
         for i, device_id in enumerate(device_ids):
@@ -263,7 +261,7 @@ class GPUStatsMonitor(pl.Callback):
                 logs[f"GPU_{device_id}/{x} - {unit}"] = stats[i][j]
         return logs
 
-    def _get_gpu_stat_keys(self) -> List[Tuple[str, str]]:
+    def _get_gpu_stat_keys(self) -> list[tuple[str, str]]:
         """Get the GPU stats keys."""
         stat_keys = []
 
@@ -281,7 +279,7 @@ class GPUStatsMonitor(pl.Callback):
 
         return stat_keys
 
-    def _get_gpu_device_stat_keys(self) -> List[Tuple[str, str]]:
+    def _get_gpu_device_stat_keys(self) -> list[tuple[str, str]]:
         """Get the device stats keys."""
         stat_keys = []
 

@@ -244,7 +244,7 @@ class BaseLoaderTorch(
         """Returns the dictionary defining the semantic skeleton for
         each class using keypoints.
 
-        @rtype: Dict[str, Dict]
+        @rtype: dict[str, Dict] | None
         @return: A dictionary mapping classes to their skeleton
             definitions.
         """

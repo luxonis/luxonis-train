@@ -1,5 +1,3 @@
-from typing import Any
-
 import torch
 from torch import Tensor
 
@@ -18,7 +16,7 @@ class OHEMLoss(BaseLoss):
         criterion: BaseLoss,
         ohem_ratio: float = 0.1,
         ohem_threshold: float = 0.7,
-        **kwargs: Any,
+        **kwargs,
     ):
         """Initializes the criterion.
 

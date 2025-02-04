@@ -1,5 +1,3 @@
-from typing import Any
-
 import torch
 import torch.nn.functional as F
 from torch import Tensor
@@ -15,13 +13,11 @@ class FOMOLocalizationLoss(BaseLoss):
     node: FOMOHead
     supported_tasks = [Tasks.FOMO]
 
-    def __init__(self, object_weight: float = 500, **kwargs: Any):
+    def __init__(self, object_weight: float = 500, **kwargs):
         """FOMO Localization Loss for object detection using heatmaps.
 
         @type object_weight: float
         @param object_weight: Weight for object in loss calculation.
-        @type kwargs: Any
-        @param kwargs: Additional arguments.
         """
         super().__init__(**kwargs)
         self.original_img_size = self.original_in_shape[1:]

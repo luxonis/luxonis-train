@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 from loguru import logger
 from torch import Tensor, nn
@@ -29,7 +29,7 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         csp_e: float | None = None,
         download_weights: bool = True,
         initialize_weights: bool = True,
-        **kwargs: Any,
+        **kwargs,
     ):
         """Implementation of the EfficientRep backbone. Supports the
         version with RepBlock and CSPStackRepBlock (for larger networks)

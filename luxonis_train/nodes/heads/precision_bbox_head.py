@@ -1,5 +1,5 @@
 import math
-from typing import Any, Literal
+from typing import Literal
 
 import torch
 from loguru import logger
@@ -28,7 +28,7 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
-        **kwargs: Any,
+        **kwargs,
     ):
         """
         Adapted from U{Real-Time Flying Object Detection with YOLOv8

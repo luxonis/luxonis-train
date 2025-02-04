@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 import torch
 import torch.nn.functional as F
@@ -37,7 +37,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         vis_kpts_loss_weight: float = 1.0,
         sigmas: list[float] | None = None,
         area_factor: float | None = None,
-        **kwargs: Any,
+        **kwargs,
     ):
         """BBox loss adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
         <https://arxiv.org/pdf/2209.02976.pdf>}. It combines IoU based bbox regression loss and varifocal loss

@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -22,7 +22,7 @@ class CrossEntropyLoss(BaseLoss):
         ignore_index: int = -100,
         reduction: Literal["none", "mean", "sum"] = "mean",
         label_smoothing: float = 0.0,
-        **kwargs: Any,
+        **kwargs,
     ):
         super().__init__(**kwargs)
 

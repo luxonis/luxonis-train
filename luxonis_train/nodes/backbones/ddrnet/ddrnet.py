@@ -96,8 +96,6 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             2, 2, 2, 1, 2, 2, 1].
         @type download_weights: bool
         @param download_weights: If True download weights from COCO (if available for specified variant). Defaults to True.
-        @type kwargs: Any
-        @param kwargs: Additional arguments to pass to L{BaseNode}.
         """
         super().__init__(**kwargs)
 

@@ -1,5 +1,3 @@
-from typing import Any, List
-
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
@@ -20,7 +18,7 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         num_conv_layers: int = 3,
         conv_channels: int = 16,
         use_nms: bool = False,
-        **kwargs: Any,
+        **kwargs,
     ):
         """FOMO Head for object detection using heatmaps.
 
@@ -29,8 +27,6 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         @type conv_channels: int
         @param conv_channels: Number of channels to use in the
             convolutional layers.
-        @type kwargs: Any
-        @param kwargs: Additional arguments.
         """
         super().__init__(**kwargs)
         self.original_img_size = self.original_in_shape[1:]
@@ -64,7 +60,7 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
     def n_keypoints(self) -> int:
         return 1
 
-    def forward(self, inputs: List[Tensor]) -> Tensor:
+    def forward(self, inputs: list[Tensor]) -> Tensor:
         return self.conv_layers(inputs)
 
     def wrap(self, heatmap: Tensor) -> Packet[Tensor]:
@@ -94,7 +90,7 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
             padding=1,
         )
 
-    def _heatmap_to_kpts(self, heatmap: Tensor) -> List[Tensor]:
+    def _heatmap_to_kpts(self, heatmap: Tensor) -> list[Tensor]:
         """Convert heatmap to keypoint pairs using local-max NMS so that
         only the strongest local peak in a neighborhood is retained.
 

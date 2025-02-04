@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 import torch
 from loguru import logger
@@ -26,7 +26,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
-        **kwargs: Any,
+        **kwargs,
     ):
         """Head for object and keypoint detection.
 

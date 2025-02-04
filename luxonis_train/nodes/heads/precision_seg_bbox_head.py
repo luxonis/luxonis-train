@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 import torch
 import torch.nn.functional as F
@@ -28,7 +28,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
-        **kwargs: Any,
+        **kwargs,
     ):
         """
         Head for instance segmentation and object detection.

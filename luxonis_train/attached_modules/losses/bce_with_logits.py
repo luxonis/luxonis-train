@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 import torch
 from torch import Tensor, nn
@@ -16,7 +16,7 @@ class BCEWithLogitsLoss(BaseLoss):
         weight: list[float] | None = None,
         reduction: Literal["none", "mean", "sum"] = "mean",
         pos_weight: Tensor | None = None,
-        **kwargs: Any,
+        **kwargs,
     ):
         """This loss combines a L{nn.Sigmoid} layer and the
         L{nn.BCELoss} in one single class. This version is more

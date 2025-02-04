@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 from torch import Tensor
 from torchvision.ops import sigmoid_focal_loss
@@ -15,7 +15,7 @@ class SigmoidFocalLoss(BaseLoss):
         alpha: float = 0.25,
         gamma: float = 2.0,
         reduction: Literal["none", "mean", "sum"] = "mean",
-        **kwargs: Any,
+        **kwargs,
     ):
         """Focal loss from U{Focal Loss for Dense Object Detection
         <https://arxiv.org/abs/1708.02002>}.
