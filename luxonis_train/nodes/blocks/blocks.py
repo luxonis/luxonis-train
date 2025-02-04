@@ -132,9 +132,9 @@ class SegProto(nn.Module):
         """Defines the forward pass of the segmentation prototype
         generator.
 
-        @type x: torch.Tensor
+        @type x: Tensor
         @param x: Input tensor.
-        @rtype: torch.Tensor
+        @rtype: Tensor
         @return: Processed tensor.
         """
         return self.conv3(self.conv2(self.upsample(self.conv1(x))))

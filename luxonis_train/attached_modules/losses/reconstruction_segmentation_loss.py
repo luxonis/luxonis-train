@@ -118,7 +118,7 @@ def create_window(window_size: int, channel: int = 1) -> Tensor:
 
 
 def gaussian(window_size: int, sigma: float) -> Tensor:
-    gauss = torch.Tensor(
+    gauss = torch.tensor(
         [
             exp(-((x - window_size // 2) ** 2) / float(2 * sigma**2))
             for x in range(window_size)

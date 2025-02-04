@@ -169,14 +169,14 @@ def _pairwise_distances(embeddings: Tensor, squared: bool = False) -> Tensor:
     """Compute the 2D matrix of distances between all the embeddings.
 
     @param embeddings: tensor of shape (batch_size, embed_dim)
-    @type embeddings: torch.Tensor
+    @type embeddings: Tensor
     @param squared: If true, output is the pairwise squared euclidean
         distance matrix. If false, output is the pairwise euclidean
         distance matrix.
     @type squared: bool
     @return: pairwise_distances: tensor of shape (batch_size,
         batch_size)
-    @rtype: torch.Tensor
+    @rtype: Tensor
     """
     dot_product = torch.matmul(embeddings, embeddings.t())
 

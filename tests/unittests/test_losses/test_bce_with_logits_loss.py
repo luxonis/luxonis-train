@@ -1,5 +1,6 @@
 import pytest
 import torch
+from torch import Tensor
 
 from luxonis_train.attached_modules.losses import BCEWithLogitsLoss
 
@@ -20,7 +21,7 @@ def test_forward_pass():
                 predictions, targets
             )  # -log(sigmoid(1.5)) = 0.2014
 
-            assert isinstance(loss, torch.Tensor)
+            assert isinstance(loss, Tensor)
             assert loss.shape == torch.Size([])
             assert torch.round(loss, decimals=2) == 0.20
 

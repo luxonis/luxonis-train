@@ -1,15 +1,14 @@
 import glob
 from pathlib import Path
-from typing import Any, List, Union
+from typing import Any
 
 import cv2
 import numpy as np
 import pytest
 from luxonis_ml.data import BucketStorage, LuxonisDataset
+from luxonis_ml.typing import PathType
 
 from luxonis_train.core import LuxonisModel
-
-PathType = Union[str, Path]
 
 
 def create_dummy_bbox_keypoint_dataset(paths: Path):
@@ -38,7 +37,7 @@ def create_dummy_bbox_keypoint_dataset(paths: Path):
 
         return bboxes, keypoints
 
-    def dummy_generator(image_paths: List[Path]):
+    def dummy_generator(image_paths: list[Path]):
         for path in image_paths:
             img = cv2.imread(str(path))
             if img is None:

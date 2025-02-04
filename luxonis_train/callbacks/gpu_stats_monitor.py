@@ -23,7 +23,7 @@ import os
 import shutil
 import subprocess
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import lightning.pytorch as pl
 import torch
@@ -117,7 +117,7 @@ class GPUStatsMonitor(pl.Callback):
         self,
         trainer: "pl.Trainer",
         pl_module: "pl.LightningModule",
-        stage: Optional[str] = None,
+        stage: str | None = None,
     ) -> None:
         if not trainer.logger:
             raise MisconfigurationException(
@@ -139,8 +139,8 @@ class GPUStatsMonitor(pl.Callback):
     def on_train_epoch_start(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
-        self._snap_intra_step_time: Optional[float] = None
-        self._snap_inter_step_time: Optional[float] = None
+        self._snap_intra_step_time: float | None = None
+        self._snap_inter_step_time: float | None = None
 
     @rank_zero_only
     def on_train_batch_start(

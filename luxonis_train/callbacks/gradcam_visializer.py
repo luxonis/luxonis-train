@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any
 
 import lightning.pytorch as pl
 import numpy as np
@@ -10,6 +10,7 @@ from pytorch_grad_cam.utils.model_targets import (
     ClassifierOutputTarget,
     SemanticSegmentationTarget,
 )
+from torch import Tensor
 
 from luxonis_train.attached_modules.visualizers import (
     get_denormalized_images,
@@ -30,19 +31,17 @@ class ModelWrapper(pl.LightningModule):
         self.model = model
         self.task = task
 
-    def forward(
-        self, inputs: torch.Tensor, *args: Any, **kwargs: Any
-    ) -> Union[torch.Tensor, Any]:
+    def forward(self, inputs: Tensor, *args, **kwargs) -> Tensor:
         """Forward pass through the model, returning the output based on
         the task type.
 
-        @type inputs: torch.Tensor
+        @type inputs: Tensor
         @param inputs: Input tensor for the model.
         @type args: Any
         @param args: Additional positional arguments.
         @type kwargs: Any
         @param kwargs: Additional keyword arguments.
-        @rtype: Union[torch.Tensor, Any]
+        @rtype: Tensor
         @return: The processed output based on the task type.
         """
         input_dict = dict(image=inputs)
