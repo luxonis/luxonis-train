@@ -110,7 +110,7 @@ jobs:
     - name: Run pytest
       env:
         LUXONISML_BUCKET: luxonis-test-bucket
-      run: pytest --cov --junitxml=junit.xml -o junit_family=legacy
+      run: pytest -x --cov --junitxml=junit.xml -o junit_family=legacy
 
     - name: Upload test results to Codecov
       if: matrix.os == 'ubuntu-latest'
