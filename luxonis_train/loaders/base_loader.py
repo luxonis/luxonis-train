@@ -275,18 +275,18 @@ class BaseLoaderTorch(
 
         return torch_dictionary
 
-    def read_image(self, path: str) -> npt.NDArray[np.float32]:
+    def read_image(self, path: str) -> npt.NDArray[np.uint8]:
         """Reads an image from a file.
 
         @type path: str
         @param path: Path to the image file.
-        @rtype: np.ndarray[np.float32]
+        @rtype: np.ndarray[np.uint8]
         @return: Image as a numpy array.
         """
         img = cv2.imread(path, cv2.IMREAD_COLOR)
         if self.color_space == "RGB":
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        return img.astype(np.float32) / 255.0
+        return img
 
     def _getter_check_none(
         self,

@@ -90,6 +90,9 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
             aug_tensor_img, an_mask = apply_anomaly_to_img(
                 tensor_img, anomaly_img, self.beta
             )
+        elif self.view[0] == "train":
+            aug_tensor_img = tensor_img
+            an_mask = torch.zeros((self.height, self.width))
         else:
             aug_tensor_img = tensor_img
 
@@ -101,6 +104,10 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         }
 
         return aug_tensor_img, tensor_labels
+
+    @override
+    def get_classes(self) -> dict[str, list[str]]:
+        return {self.task_name: ["background", "anomaly"]}
 
 
 @contextmanager
