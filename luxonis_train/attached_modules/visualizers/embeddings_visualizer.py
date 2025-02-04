@@ -1,9 +1,9 @@
-import colorsys
 from collections.abc import Callable
 
 import numpy as np
 import seaborn as sns
 from loguru import logger
+from luxonis_ml.data.utils import ColorMap
 from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
 from torch import Tensor
@@ -12,8 +12,6 @@ from luxonis_train.tasks import Tasks
 
 from .base_visualizer import BaseVisualizer
 from .utils import figure_to_torch
-
-log_disable = False
 
 
 class EmbeddingsVisualizer(BaseVisualizer):
@@ -27,9 +25,12 @@ class EmbeddingsVisualizer(BaseVisualizer):
             before visualizing.
         """
         super().__init__(**kwargs)
-        self.color_dict = {}
-        self.gen = self._distinct_color_generator()
+        self.colors = ColorMap()
         self.z_score_threshold = z_score_threshold
+
+    def _get_color(self, label: int) -> tuple[float, float, float]:
+        r, g, b = self.colors[label]
+        return r / 255, g / 255, b / 255
 
     def forward(
         self,
@@ -65,21 +66,6 @@ class EmbeddingsVisualizer(BaseVisualizer):
         )
 
         return kdeplot, scatterplot
-
-    def _get_color(self, label: int) -> tuple[float, float, float]:
-        if label not in self.color_dict:
-            self.color_dict[label] = next(self.gen)
-        return self.color_dict[label]
-
-    @staticmethod
-    def _distinct_color_generator():
-        golden_ratio = 0.618033988749895
-        hue = 0.0
-        while True:
-            hue = (hue + golden_ratio) % 1
-            saturation = 0.8
-            value = 0.95
-            yield colorsys.hsv_to_rgb(hue, saturation, value)
 
     def _filter_outliers(
         self, points: np.ndarray, ids: np.ndarray
@@ -130,7 +116,7 @@ class EmbeddingsVisualizer(BaseVisualizer):
         self, ax: plt.Axes, emb: np.ndarray, labels: np.ndarray
     ) -> None:
         unique_labels = np.unique(labels)
-        palette = {lbl: self._get_color(lbl) for lbl in unique_labels}
+        palette = {label: self._get_color(label) for label in unique_labels}
         sns.scatterplot(
             x=emb[:, 0],
             y=emb[:, 1],

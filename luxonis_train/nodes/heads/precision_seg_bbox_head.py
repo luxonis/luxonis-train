@@ -74,7 +74,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
 
         self.check_export_output_names()
 
-    def check_export_output_names(self):
+    def check_export_output_names(self) -> None:
         if (
             self.export_output_names is None
             or len(self.export_output_names) != self.n_heads
@@ -161,12 +161,14 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         }
 
         for i, pred in enumerate(preds):
+            height, width = self.original_in_shape[-2:]
             results["instance_segmentation"].append(
                 refine_and_apply_masks(
                     prototypes[i],
                     pred[:, 6:],
                     pred[:, :4],
-                    self.original_in_shape[-2:],
+                    height=height,
+                    width=width,
                     upsample=True,
                 )
             )
@@ -189,45 +191,45 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
 
 
 def refine_and_apply_masks(
-    mask_prototypes,
-    predicted_masks,
-    bounding_boxes,
-    target_shape,
-    upsample=False,
-):
+    mask_prototypes: Tensor,
+    predicted_masks: Tensor,
+    bounding_boxes: Tensor,
+    height: int,
+    width: int,
+    upsample: bool = False,
+) -> Tensor:
     """Refine and apply masks to bounding boxes based on the mask head
     outputs.
 
-    @type mask_prototypes: torch.Tensor
+    @type mask_prototypes: Tensor
     @param mask_prototypes: Tensor of shape [mask_dim, mask_height,
         mask_width].
-    @type predicted_masks: torch.Tensor
+    @type predicted_masks: Tensor
     @param predicted_masks: Tensor of shape [num_masks, mask_dim], where
         num_masks is the number of detected masks.
-    @type bounding_boxes: torch.Tensor
+    @type bounding_boxes: Tensor
     @param bounding_boxes: Tensor of shape [num_masks, 4], containing
         bounding box coordinates.
-    @type target_shape: tuple
-    @param target_shape: Tuple (height, width) representing the
-        dimensions of the original image.
+    @type height: int
+    @param height: Height of the input image.
+    @type width: int
+    @param width: Width of the input image.
     @type upsample: bool
     @param upsample: If True, upsample the masks to the target image
         dimensions. Default is False.
-    @rtype: torch.Tensor
+    @rtype: Tensor
     @return: A binary mask tensor of shape [num_masks, height, width],
         where the masks are cropped according to their respective
         bounding boxes.
     """
     if predicted_masks.size(0) == 0 or bounding_boxes.size(0) == 0:
-        img_h, img_w = target_shape
-        return torch.zeros(0, img_h, img_w, dtype=torch.uint8)
+        return torch.zeros(0, height, width, dtype=torch.uint8)
 
     channels, proto_h, proto_w = mask_prototypes.shape
-    img_h, img_w = target_shape
     masks_combined = (
         predicted_masks @ mask_prototypes.float().view(channels, -1)
     ).view(-1, proto_h, proto_w)
-    w_scale, h_scale = proto_w / img_w, proto_h / img_h
+    w_scale, h_scale = proto_w / width, proto_h / height
     scaled_boxes = bounding_boxes.clone()
     scaled_boxes[:, [0, 2]] *= w_scale
     scaled_boxes[:, [1, 3]] *= h_scale
@@ -235,7 +237,7 @@ def refine_and_apply_masks(
     if upsample:
         cropped_masks = F.interpolate(
             cropped_masks.unsqueeze(0),
-            size=target_shape,
+            size=(height, width),
             mode="bilinear",
             align_corners=False,
         ).squeeze(0)

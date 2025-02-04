@@ -162,7 +162,7 @@ class PrecisionDFLDetectionLoss(BaseLoss):
             )
         return dist2bbox(dist_transformed, anchor_points, out_format="xyxy")
 
-    def _init_parameters(self, features: list[Tensor]):
+    def _init_parameters(self, features: list[Tensor]) -> None:
         if not hasattr(self, "gt_bboxes_scale"):
             _, self.anchor_points, _, self.stride_tensor = (
                 anchors_for_fpn_features(

@@ -24,7 +24,7 @@ class OCRAccuracy(BaseMetric):
         self.blank_cls = blank_cls
         self._init_metric()
 
-    def _init_metric(self):
+    def _init_metric(self) -> None:
         """Initializes the running metric."""
         self.running_metric = {
             "acc_0": 0.0,

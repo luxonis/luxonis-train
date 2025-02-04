@@ -129,7 +129,7 @@ class EfficientBBoxHead(
         else:
             return None
 
-    def check_export_output_names(self):
+    def check_export_output_names(self) -> None:
         if (
             self.export_output_names is None
             or len(self.export_output_names) != self.n_heads

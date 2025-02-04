@@ -66,7 +66,7 @@ class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
         )
         self._init_weights()
 
-    def _init_weights(self):
+    def _init_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
                 fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
