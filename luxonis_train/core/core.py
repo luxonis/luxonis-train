@@ -2,7 +2,6 @@ import os.path as osp
 import signal
 import threading
 from collections.abc import Mapping
-from logging import getLogger
 from pathlib import Path
 from typing import Any, Literal, overload
 
@@ -13,6 +12,7 @@ import torch
 import torch.utils.data as torch_data
 import yaml
 from lightning.pytorch.utilities import rank_zero_only
+from loguru import logger
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.utils import LuxonisFileSystem
@@ -46,8 +46,6 @@ from .utils.infer_utils import (
     infer_from_video,
 )
 from .utils.train_utils import create_trainer
-
-logger = getLogger(__name__)
 
 
 class LuxonisModel:

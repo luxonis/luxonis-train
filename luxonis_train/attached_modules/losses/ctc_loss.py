@@ -1,4 +1,3 @@
-from logging import getLogger
 from typing import Any
 
 import torch
@@ -8,8 +7,6 @@ from torch import Tensor
 from luxonis_train.nodes import OCRCTCHead
 
 from .base_loss import BaseLoss
-
-logger = getLogger(__name__)
 
 
 class CTCLoss(BaseLoss):

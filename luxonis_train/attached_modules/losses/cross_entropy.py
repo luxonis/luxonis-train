@@ -1,15 +1,13 @@
-from logging import getLogger
 from typing import Any, Literal
 
 import torch
 import torch.nn as nn
+from loguru import logger
 from torch import Tensor
 
 from luxonis_train.tasks import Tasks
 
 from .base_loss import BaseLoss
-
-logger = getLogger(__name__)
 
 
 class CrossEntropyLoss(BaseLoss):
