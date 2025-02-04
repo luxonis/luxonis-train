@@ -1,9 +1,6 @@
-import logging
-
 import torch
+from loguru import logger
 from torch import Tensor
-
-logger = logging.getLogger(__name__)
 
 
 def get_sigmas(

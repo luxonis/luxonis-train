@@ -1,6 +1,5 @@
 from collections import defaultdict
 from collections.abc import Mapping
-from logging import getLogger
 from pathlib import Path
 from typing import Literal, cast
 
@@ -8,6 +7,7 @@ import lightning.pytorch as pl
 import torch
 from lightning.pytorch.callbacks import ModelCheckpoint, RichModelSummary
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
+from loguru import logger
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import ConfigItem
 from torch import Size, Tensor, nn
@@ -54,8 +54,6 @@ from luxonis_train.utils.registry import (
 )
 
 from .luxonis_output import LuxonisOutput
-
-logger = getLogger(__name__)
 
 
 class LuxonisLightningModule(pl.LightningModule):

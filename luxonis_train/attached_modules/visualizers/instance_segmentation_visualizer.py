@@ -1,6 +1,5 @@
-import logging
-
 import torch
+from loguru import logger
 from torch import Tensor
 
 from luxonis_train.tasks import Tasks
@@ -13,8 +12,6 @@ from .utils import (
     draw_segmentation_labels,
     get_color,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class InstanceSegmentationVisualizer(BaseVisualizer):

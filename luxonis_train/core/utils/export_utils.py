@@ -1,12 +1,11 @@
-import logging
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
+from loguru import logger
+
 import luxonis_train
 from luxonis_train.config import Config, ExportConfig
-
-logger = logging.getLogger(__name__)
 
 
 @contextmanager

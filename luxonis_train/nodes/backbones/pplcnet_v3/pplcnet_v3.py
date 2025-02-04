@@ -1,10 +1,8 @@
-import logging
 from typing import Literal
 
+from loguru import logger
 from torch import Tensor, nn
-from torch.nn import (
-    Conv2d,
-)
+from torch.nn import Conv2d
 from torch.nn import functional as F
 
 from luxonis_train.nodes.base_node import BaseNode
@@ -12,8 +10,6 @@ from luxonis_train.nodes.blocks import ConvModule
 
 from .blocks import LCNetV3Block, LearnableRepLayer, make_divisible
 from .variants import get_variant
-
-logger = logging.getLogger(__name__)
 
 
 class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):

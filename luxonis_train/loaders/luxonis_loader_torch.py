@@ -1,8 +1,8 @@
-import logging
 from typing import Literal
 
 import numpy as np
 import torch
+from loguru import logger
 from luxonis_ml.data import (
     BucketStorage,
     BucketType,
@@ -18,8 +18,6 @@ from typing_extensions import override
 from luxonis_train.utils.types import Labels
 
 from .base_loader import BaseLoaderTorch
-
-logger = logging.getLogger(__name__)
 
 
 class LuxonisLoaderTorch(BaseLoaderTorch):

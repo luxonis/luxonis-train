@@ -5,9 +5,6 @@ from typing import Annotated
 
 import numpy as np
 import typer
-from luxonis_ml.utils import setup_logging
-
-setup_logging(use_rich=True)
 
 
 class _ViewType(str, Enum):

@@ -1,4 +1,3 @@
-import logging
 from functools import cached_property
 from typing import Any
 
@@ -16,8 +15,6 @@ from luxonis_train.utils import (
 from luxonis_train.utils.keypoints import get_center_keypoints, insert_class
 
 from .base_metric import BaseMetric
-
-logger = logging.getLogger(__name__)
 
 
 class ObjectKeypointSimilarity(BaseMetric):

@@ -1,4 +1,3 @@
-import logging
 from contextlib import suppress
 from functools import cached_property
 from typing import Any
@@ -10,8 +9,6 @@ from typing_extensions import override
 from luxonis_train.tasks import Metadata, Tasks
 
 from .base_metric import BaseMetric
-
-logger = logging.getLogger(__name__)
 
 
 class TorchMetricWrapper(BaseMetric):

@@ -1,11 +1,8 @@
-from logging import getLogger
-
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import BaseFinetuning
+from loguru import logger
 from torch import nn
 from torch.optim.optimizer import Optimizer
-
-logger = getLogger(__name__)
 
 
 class ModuleFreezer(BaseFinetuning):

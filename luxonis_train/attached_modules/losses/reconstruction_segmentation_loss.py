@@ -1,4 +1,3 @@
-import logging
 from math import exp
 from typing import Literal
 
@@ -11,8 +10,6 @@ from luxonis_train.tasks import Tasks
 
 from .base_loss import BaseLoss
 from .softmax_focal_loss import SoftmaxFocalLoss
-
-logger = logging.getLogger(__name__)
 
 
 class ReconstructionSegmentationLoss(BaseLoss):

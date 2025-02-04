@@ -1,5 +1,4 @@
 import inspect
-import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Collection, Sequence
 from contextlib import suppress
@@ -15,8 +14,6 @@ from torch import Size, Tensor, nn
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Metadata, Task
 from luxonis_train.utils import IncompatibleException, Labels, Packet
-
-logger = logging.getLogger(__name__)
 
 
 class BaseAttachedModule(

@@ -1,4 +1,3 @@
-import logging
 import math
 import os
 import urllib.parse
@@ -6,11 +5,10 @@ from pathlib import Path, PurePosixPath
 from typing import Any, TypeVar
 
 import torch
+from loguru import logger
 from torch import Size, Tensor
 
 from luxonis_train.utils.types import Packet
-
-logger = logging.getLogger(__name__)
 
 
 def make_divisible(x: int | float, divisor: int) -> int:

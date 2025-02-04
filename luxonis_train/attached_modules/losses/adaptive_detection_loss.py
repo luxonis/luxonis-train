@@ -1,8 +1,8 @@
-import logging
 from typing import Any, Literal, cast
 
 import torch
 import torch.nn.functional as F
+from loguru import logger
 from torch import Tensor, amp, nn
 from torchvision.ops import box_convert
 
@@ -17,8 +17,6 @@ from luxonis_train.utils import (
 from luxonis_train.utils.boundingbox import IoUType
 
 from .base_loss import BaseLoss
-
-logger = logging.getLogger(__name__)
 
 
 class AdaptiveDetectionLoss(BaseLoss):

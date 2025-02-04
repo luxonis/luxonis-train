@@ -1,4 +1,3 @@
-import logging
 from typing import Any, Literal
 
 import torch
@@ -7,8 +6,6 @@ from torch.nn import functional as F
 
 from luxonis_train.attached_modules.losses import BaseLoss
 from luxonis_train.tasks import Tasks
-
-logger = logging.getLogger(__name__)
 
 
 # TODO: Add support for multi-class tasks

@@ -1,10 +1,9 @@
-import logging
-
 import pytorch_metric_learning.distances as pml_distances
 import pytorch_metric_learning.losses as pml_losses
 import pytorch_metric_learning.miners as pml_miners
 import pytorch_metric_learning.reducers as pml_reducers
 import pytorch_metric_learning.regularizers as pml_regularizers
+from loguru import logger
 from pytorch_metric_learning.losses import CrossBatchMemory
 from torch import Tensor
 
@@ -14,8 +13,6 @@ from luxonis_train.tasks import Tasks
 from luxonis_train.utils.types import Kwargs
 
 from .base_loss import BaseLoss
-
-logger = logging.getLogger(__name__)
 
 EMBEDDING_LOSSES = [
     "AngularLoss",

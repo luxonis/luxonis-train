@@ -1,4 +1,3 @@
-import logging
 from typing import Any, cast
 
 import torch
@@ -17,8 +16,6 @@ from luxonis_train.utils import (
 )
 
 from .base_loss import BaseLoss
-
-logger = logging.getLogger(__name__)
 
 
 class PrecisionDFLDetectionLoss(BaseLoss):

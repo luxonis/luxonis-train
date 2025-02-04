@@ -1,4 +1,3 @@
-import logging
 import math
 from copy import deepcopy
 from typing import Any
@@ -6,9 +5,8 @@ from typing import Any
 import lightning.pytorch as pl
 import torch
 from lightning.pytorch.utilities.types import STEP_OUTPUT
+from loguru import logger
 from torch import nn
-
-logger = logging.getLogger(__name__)
 
 
 class ModelEma(nn.Module):

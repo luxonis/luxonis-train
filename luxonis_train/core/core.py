@@ -2,7 +2,6 @@ import os.path as osp
 import signal
 import threading
 from collections.abc import Mapping
-from logging import getLogger
 from pathlib import Path
 from typing import Any, Literal, overload
 
@@ -13,9 +12,10 @@ import torch
 import torch.utils.data as torch_data
 import yaml
 from lightning.pytorch.utilities import rank_zero_only
+from loguru import logger
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
-from luxonis_ml.utils import LuxonisFileSystem, reset_logging, setup_logging
+from luxonis_ml.utils import LuxonisFileSystem
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
@@ -25,7 +25,11 @@ from luxonis_train.callbacks import (
 from luxonis_train.config import Config
 from luxonis_train.loaders import BaseLoaderTorch, collate_fn
 from luxonis_train.models import LuxonisLightningModule
-from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
+from luxonis_train.utils import (
+    DatasetMetadata,
+    LuxonisTrackerPL,
+    setup_logging,
+)
 from luxonis_train.utils.registry import LOADERS
 
 from .utils.export_utils import (
@@ -42,8 +46,6 @@ from .utils.infer_utils import (
     infer_from_video,
 )
 from .utils.train_utils import create_trainer
-
-logger = getLogger(__name__)
 
 
 class LuxonisModel:
@@ -92,12 +94,7 @@ class LuxonisModel:
         self.log_file = osp.join(self.run_save_dir, "luxonis_train.log")
         self.error_message = None
 
-        # NOTE: to add the file handler (we only get the save dir now,
-        # but we want to use the logger before)
-        reset_logging()
-        setup_logging(
-            file=self.log_file, use_rich=True, tracebacks_suppress=[pl, torch]
-        )
+        setup_logging(file=self.log_file)
 
         # NOTE: overriding logger in pl so it uses our logger to log device info
         rank_zero_module.log = logger

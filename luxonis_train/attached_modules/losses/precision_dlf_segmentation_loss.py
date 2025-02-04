@@ -1,4 +1,3 @@
-import logging
 from typing import Any
 
 import torch
@@ -11,8 +10,6 @@ from luxonis_train.tasks import Tasks
 from luxonis_train.utils import apply_bounding_box_to_masks
 
 from .precision_dfl_detection_loss import PrecisionDFLDetectionLoss
-
-logger = logging.getLogger(__name__)
 
 
 class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
