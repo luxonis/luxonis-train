@@ -10,7 +10,9 @@ from torch.nn import functional as F
 from luxonis_train.nodes.blocks import ConvModule, SqueezeExciteBlock
 
 
-def make_divisible(v, divisor: int = 16, min_value: int | None = None):
+def make_divisible(
+    v: int | float, divisor: int = 16, min_value: int | None = None
+) -> int:
     if min_value is None:
         min_value = divisor
     new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
@@ -40,7 +42,7 @@ class LearnableAffineBlock(nn.Module):
         self.scale = nn.Parameter(torch.full((1,), scale_value))
         self.bias = nn.Parameter(torch.full((1,), bias_value))
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return self.scale * x + self.bias
 
 
@@ -124,7 +126,7 @@ class LearnableRepLayer(nn.Module):
             out = self.act(out)
         return out
 
-    def reparametrize(self):
+    def reparametrize(self) -> None:
         if hasattr(self, "reparam_conv"):
             return
         kernel, bias = self._get_kernel_bias()
@@ -157,7 +159,7 @@ class LearnableRepLayer(nn.Module):
         else:
             return nn.functional.pad(kernel1x1, [pad, pad, pad, pad])
 
-    def _get_kernel_bias(self):
+    def _get_kernel_bias(self) -> tuple[Tensor, Tensor]:
         device = next(self.parameters()).device
         kernel_conv_1x1, bias_conv_1x1 = self._fuse_bn_tensor(
             self.conv_1x1, device

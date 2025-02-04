@@ -244,7 +244,7 @@ class BaseLoaderTorch(
         """Returns the dictionary defining the semantic skeleton for
         each class using keypoints.
 
-        @rtype: Dict[str, Dict]
+        @rtype: dict[str, Dict] | None
         @return: A dictionary mapping classes to their skeleton
             definitions.
         """
@@ -263,7 +263,7 @@ class BaseLoaderTorch(
 
         @type numpy_dictionary: dict[str, np.ndarray]
         @param numpy_dictionary: Dictionary of numpy arrays.
-        @rtype: dict[str, torch.Tensor]
+        @rtype: dict[str, Tensor]
         @return: Dictionary of torch tensors.
         """
         torch_dictionary = {}

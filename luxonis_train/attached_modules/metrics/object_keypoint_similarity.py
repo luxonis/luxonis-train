@@ -1,5 +1,4 @@
 from functools import cached_property
-from typing import Any
 
 import torch
 from scipy.optimize import linear_sum_assignment
@@ -35,7 +34,7 @@ class ObjectKeypointSimilarity(BaseMetric):
         sigmas: list[float] | None = None,
         area_factor: float | None = None,
         use_cocoeval_oks: bool = True,
-        **kwargs: Any,
+        **kwargs,
     ) -> None:
         """Object Keypoint Similarity metric for evaluating keypoint
         predictions.

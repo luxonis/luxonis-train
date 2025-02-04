@@ -1,5 +1,3 @@
-from typing import Any
-
 import torch
 from torch import Tensor, nn
 
@@ -13,7 +11,7 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
         self,
         download_weights: bool = True,
         out_indices: list[int] | None = None,
-        **kwargs: Any,
+        **kwargs,
     ):
         """EfficientNet backbone.
 

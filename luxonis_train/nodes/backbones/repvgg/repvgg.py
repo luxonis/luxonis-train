@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Literal
+from typing import Literal
 
 import torch.utils.checkpoint as checkpoint
 from loguru import logger
@@ -23,7 +23,7 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
         override_groups_map: dict[int, int] | None = None,
         use_se: bool = False,
         use_checkpoint: bool = False,
-        **kwargs: Any,
+        **kwargs,
     ):
         """RepVGG backbone.
 

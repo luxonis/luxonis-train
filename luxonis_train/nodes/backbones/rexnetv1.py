@@ -1,5 +1,3 @@
-from typing import Any
-
 import torch
 from torch import Tensor, nn
 
@@ -18,7 +16,7 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
         multiplier: float = 1.0,
         kernel_sizes: int | list[int] = 3,
         out_indices: list[int] | None = None,
-        **kwargs: Any,
+        **kwargs,
     ):
         """ReXNetV1 (Rank Expansion Networks) backbone, lite version.
 

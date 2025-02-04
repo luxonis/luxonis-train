@@ -69,7 +69,7 @@ class ClosestIsPositiveAccuracy(BaseMetric):
         self.correct_predictions += correct_predictions
         self.total_predictions += len(filtered_labels)
 
-    def compute(self):
+    def compute(self) -> Tensor:
         return self.correct_predictions / self.total_predictions
 
 
@@ -90,7 +90,7 @@ class MedianDistances(BaseMetric):
             "closest_vs_positive_distances", default=[], dist_reduce_fx="cat"
         )
 
-    def update(self, embeddings: Tensor, target: Tensor):
+    def update(self, embeddings: Tensor, target: Tensor) -> None:
         if self.cross_batch_memory_size is not None:
             self.cross_batch_memory.extend(list(zip(embeddings, target)))
 
@@ -137,7 +137,7 @@ class MedianDistances(BaseMetric):
             closest_positive_distances[non_inf_mask]
         )
 
-    def compute(self):
+    def compute(self) -> dict[str, Tensor]:
         if len(self.all_distances) == 0:
             return {
                 "MedianDistance": torch.tensor(float("nan")),
@@ -165,18 +165,18 @@ class MedianDistances(BaseMetric):
         }
 
 
-def _pairwise_distances(embeddings, squared=False):
+def _pairwise_distances(embeddings: Tensor, squared: bool = False) -> Tensor:
     """Compute the 2D matrix of distances between all the embeddings.
 
     @param embeddings: tensor of shape (batch_size, embed_dim)
-    @type embeddings: torch.Tensor
+    @type embeddings: Tensor
     @param squared: If true, output is the pairwise squared euclidean
         distance matrix. If false, output is the pairwise euclidean
         distance matrix.
     @type squared: bool
     @return: pairwise_distances: tensor of shape (batch_size,
         batch_size)
-    @rtype: torch.Tensor
+    @rtype: Tensor
     """
     dot_product = torch.matmul(embeddings, embeddings.t())
 
@@ -198,7 +198,7 @@ def _pairwise_distances(embeddings, squared=False):
     return distances
 
 
-def _get_anchor_positive_triplet_mask(labels):
+def _get_anchor_positive_triplet_mask(labels: Tensor) -> Tensor:
     indices_equal = torch.eye(
         labels.shape[0], dtype=torch.uint8, device=labels.device
     )

@@ -82,56 +82,59 @@ class EfficientDecoupledBlock(nn.Module):
 
 
 class SegProto(nn.Module):
-    def __init__(self, in_ch, mid_ch=256, out_ch=32):
+    def __init__(
+        self, in_channels: int, mid_channels: int = 256, out_channels: int = 32
+    ):
         """Initializes the segmentation prototype generator.
 
-        @type in_ch: int
-        @param in_ch: Number of input channels.
-        @type mid_ch: int
-        @param mid_ch: Number of intermediate channels. Defaults to 256.
-        @type out_ch: int
-        @param out_ch: Number of output channels. Defaults to 32.
+        @type in_channels: int
+        @param in_channels: Number of input channels.
+        @type mid_channels: int
+        @param mid_channels: Number of intermediate channels. Defaults
+            to 256.
+        @type out_channels: int
+        @param out_channels: Number of output channels. Defaults to 32.
         """
         super().__init__()
         self.conv1 = ConvModule(
-            in_channels=in_ch,
-            out_channels=mid_ch,
+            in_channels=in_channels,
+            out_channels=mid_channels,
             kernel_size=3,
             stride=1,
             padding=1,
             activation=nn.SiLU(),
         )
         self.upsample = nn.ConvTranspose2d(
-            in_channels=mid_ch,
-            out_channels=mid_ch,
+            in_channels=mid_channels,
+            out_channels=mid_channels,
             kernel_size=2,
             stride=2,
             bias=True,
         )
         self.conv2 = ConvModule(
-            in_channels=mid_ch,
-            out_channels=mid_ch,
+            in_channels=mid_channels,
+            out_channels=mid_channels,
             kernel_size=3,
             stride=1,
             padding=1,
             activation=nn.SiLU(),
         )
         self.conv3 = ConvModule(
-            in_channels=mid_ch,
-            out_channels=out_ch,
+            in_channels=mid_channels,
+            out_channels=out_channels,
             kernel_size=1,
             stride=1,
             padding=0,
             activation=nn.SiLU(),
         )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         """Defines the forward pass of the segmentation prototype
         generator.
 
-        @type x: torch.Tensor
+        @type x: Tensor
         @param x: Input tensor.
-        @rtype: torch.Tensor
+        @rtype: Tensor
         @return: Processed tensor.
         """
         return self.conv3(self.conv2(self.upsample(self.conv1(x))))

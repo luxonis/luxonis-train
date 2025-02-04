@@ -1,5 +1,3 @@
-from typing import Any
-
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -14,7 +12,7 @@ class CTCLoss(BaseLoss):
 
     node: OCRCTCHead
 
-    def __init__(self, use_focal_loss: bool = True, **kwargs: Any):
+    def __init__(self, use_focal_loss: bool = True, **kwargs):
         """Initializes the CTC loss with optional focal loss support.
 
         @type use_focal_loss: bool

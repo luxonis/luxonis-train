@@ -1,5 +1,3 @@
-from typing import Any
-
 from lightning.pytorch.loggers.logger import Logger
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
 from luxonis_ml.tracker import LuxonisTracker
@@ -9,7 +7,7 @@ class LuxonisTrackerPL(LuxonisTracker, Logger):
     """Implementation of LuxonisTracker that is compatible with
     PytorchLightning."""
 
-    def __init__(self, *, _auto_finalize: bool = True, **kwargs: Any):
+    def __init__(self, *, _auto_finalize: bool = True, **kwargs):
         """
         @type _auto_finalize: bool
         @param _auto_finalize: If True, the run will be finalized automatically when the training ends.

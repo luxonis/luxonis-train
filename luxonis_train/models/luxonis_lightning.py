@@ -5,7 +5,11 @@ from typing import Literal, cast
 
 import lightning.pytorch as pl
 import torch
-from lightning.pytorch.callbacks import ModelCheckpoint, RichModelSummary
+from lightning.pytorch.callbacks import (
+    GradientAccumulationScheduler,
+    ModelCheckpoint,
+    RichModelSummary,
+)
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
 from loguru import logger
 from luxonis_ml.data import LuxonisDataset
@@ -931,12 +935,11 @@ class LuxonisLightningModule(pl.LightningModule):
             self.cfg.trainer, "accumulate_grad_batches", None
         )
         has_gas = any(
-            isinstance(cb, pl.callbacks.GradientAccumulationScheduler)
-            for cb in callbacks
+            isinstance(cb, GradientAccumulationScheduler) for cb in callbacks
         )
         if accumulate_grad_batches is not None:
             if not has_gas:
-                gas = pl.callbacks.GradientAccumulationScheduler(
+                gas = GradientAccumulationScheduler(
                     scheduling={0: accumulate_grad_batches}
                 )
                 callbacks.append(gas)

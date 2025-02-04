@@ -1,4 +1,4 @@
-from typing import Any, Literal, cast
+from typing import Literal, cast
 
 import torch
 import torch.nn.functional as F
@@ -37,7 +37,7 @@ class AdaptiveDetectionLoss(BaseLoss):
         reduction: Literal["sum", "mean"] = "mean",
         class_loss_weight: float = 1.0,
         iou_loss_weight: float = 2.5,
-        **kwargs: Any,
+        **kwargs,
     ):
         """BBox loss adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
         <https://arxiv.org/pdf/2209.02976.pdf>}. It combines IoU based bbox regression loss and varifocal loss

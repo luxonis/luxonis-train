@@ -1,5 +1,5 @@
 import math
-from typing import Any, Literal
+from typing import Literal
 
 import torch
 from loguru import logger
@@ -28,7 +28,7 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
-        **kwargs: Any,
+        **kwargs,
     ):
         """
         Adapted from U{Real-Time Flying Object Detection with YOLOv8
@@ -127,7 +127,7 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
 
         self.check_export_output_names()
 
-    def check_export_output_names(self):
+    def check_export_output_names(self) -> None:
         if (
             self.export_output_names is None
             or len(self.export_output_names) != self.n_heads
@@ -192,7 +192,7 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
             "boundingbox": boxes,
         }
 
-    def _fit_stride_to_n_heads(self):
+    def _fit_stride_to_n_heads(self) -> Tensor:
         """Returns correct stride for number of heads and attach
         index."""
         stride = torch.tensor(
@@ -268,7 +268,7 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
         )  # [BS, H*W, 4 + 1 + n_classes]
         return output_merged
 
-    def bias_init(self):
+    def bias_init(self) -> None:
         """Initialize biases for the detection heads.
 
         Assumes detection_heads structure with separate regression and
@@ -286,7 +286,7 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
                 5 / self.n_classes / (self.original_in_shape[1] / stride) ** 2
             )
 
-    def initialize_weights(self):
+    def initialize_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 pass

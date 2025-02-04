@@ -1,5 +1,3 @@
-from typing import Any
-
 import torch.nn as nn
 from torch import Tensor
 
@@ -24,7 +22,7 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
         depth_list: list[int] | None = None,
         expand_ratio: int = 4,
         dim: int | None = None,
-        **kwargs: Any,
+        **kwargs,
     ):
         """EfficientViT backbone implementation based on a lightweight
         transformer architecture.
@@ -52,8 +50,6 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
         @param expand_ratio: Expansion ratio for the MobileBottleneckBlock. Defaults to 4.
         @type dim: int | None
         @param dim: Dimension of the transformer. Defaults to the variant's dim.
-        @type kwargs: Any
-        @param kwargs: Additional keyword arguments.
         """
         super().__init__(**kwargs)
 

@@ -4,7 +4,7 @@ Source: U{<https://github.com/apple/ml-mobileone>}
 @license: U{Apple<https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
 """
 
-from typing import Any, Literal
+from typing import Literal
 
 from loguru import logger
 from torch import Tensor, nn
@@ -24,7 +24,7 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
         width_multipliers: tuple[float, float, float, float] | None = None,
         n_conv_branches: int | None = None,
         use_se: bool | None = None,
-        **kwargs: Any,
+        **kwargs,
     ):
         """MobileOne: An efficient CNN backbone for mobile devices.
 

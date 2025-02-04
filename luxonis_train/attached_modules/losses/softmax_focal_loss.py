@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 import torch
 from torch import Tensor
@@ -18,7 +18,7 @@ class SoftmaxFocalLoss(BaseLoss):
         gamma: float = 2.0,
         smooth: float = 0.0,
         reduction: Literal["none", "mean", "sum"] = "mean",
-        **kwargs: Any,
+        **kwargs,
     ):
         """Focal loss implementation for classification and segmentation
         tasks using Softmax.

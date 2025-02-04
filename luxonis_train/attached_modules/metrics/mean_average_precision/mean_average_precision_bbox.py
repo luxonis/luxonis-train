@@ -1,5 +1,3 @@
-from typing import Any
-
 import torch
 import torchmetrics.detection as detection
 from torch import Tensor
@@ -20,7 +18,7 @@ class MeanAveragePrecisionBBox(BaseMetric, register=False):
 
     supported_tasks = [Tasks.BOUNDINGBOX]
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         self.metric = detection.MeanAveragePrecision(iou_type="bbox")

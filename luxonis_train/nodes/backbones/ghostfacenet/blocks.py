@@ -177,7 +177,7 @@ class GhostBottleneckV2(nn.Module):
                 nn.BatchNorm2d(out_channels),
             )
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         residual = x
         x = self.ghost1(x)
         if self.stride > 1:

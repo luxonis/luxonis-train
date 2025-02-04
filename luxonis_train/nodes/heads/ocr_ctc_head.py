@@ -1,4 +1,5 @@
 import math
+from collections.abc import Callable
 
 from torch import Tensor, nn
 from torch.nn import functional as F
@@ -124,15 +125,15 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
         return self._decoder
 
 
-def get_para_bias_attr(l2_decay: float, k: int):
+def get_para_bias_attr(l2_decay: float, k: int) -> tuple[Callable, Callable]:
     stdv = 1.0 / math.sqrt(k * 1.0)
 
-    def weight_attr(tensor):
-        nn.init.uniform_(tensor, -stdv, stdv)
-        tensor.regularizer = l2_decay
+    def weight_attr(param: nn.Parameter) -> None:
+        nn.init.uniform_(param, -stdv, stdv)
+        param.regularizer = l2_decay  # type: ignore
 
-    def bias_attr(tensor):
-        nn.init.uniform_(tensor, -stdv, stdv)
-        tensor.regularizer = l2_decay
+    def bias_attr(param: nn.Parameter) -> None:
+        nn.init.uniform_(param, -stdv, stdv)
+        param.regularizer = l2_decay  # type: ignore
 
     return weight_attr, bias_attr

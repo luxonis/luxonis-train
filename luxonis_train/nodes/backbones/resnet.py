@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 import torchvision
 from torch import Tensor
@@ -20,7 +20,7 @@ class ResNet(BaseNode[Tensor, list[Tensor]]):
             False,
             False,
         ),
-        **kwargs: Any,
+        **kwargs,
     ):
         """ResNet backbone.
 
@@ -111,7 +111,7 @@ class ResNet(BaseNode[Tensor, list[Tensor]]):
 
     @staticmethod
     def _get_backbone(
-        variant: Literal["18", "34", "50", "101", "152"], **kwargs: Any
+        variant: Literal["18", "34", "50", "101", "152"], **kwargs
     ) -> TorchResNet:
         variants = {
             "18": torchvision.models.resnet18,

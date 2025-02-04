@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 from loguru import logger
 from torch import Tensor, nn
@@ -28,7 +28,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         csp_e: float | None = None,
         download_weights: bool = False,
         initialize_weights: bool = True,
-        **kwargs: Any,
+        **kwargs,
     ):
         """Implementation of the RepPANNeck module. Supports the version
         with RepBlock and CSPStackRepBlock (for larger networks)

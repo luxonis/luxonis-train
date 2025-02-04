@@ -1,5 +1,3 @@
-from typing import Any
-
 from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks import ConvModule
@@ -16,7 +14,7 @@ class BiSeNetHead(BaseHead[Tensor, Tensor]):
     task = Tasks.SEGMENTATION
     parser: str = "SegmentationParser"
 
-    def __init__(self, intermediate_channels: int = 64, **kwargs: Any):
+    def __init__(self, intermediate_channels: int = 64, **kwargs):
         """BiSeNet segmentation head.
 
         Source: U{BiseNetV1<https://github.com/taveraantonio/BiseNetv1>}

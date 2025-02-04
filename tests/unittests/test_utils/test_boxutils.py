@@ -2,6 +2,7 @@ from typing import Literal
 
 import pytest
 import torch
+from torch import Tensor
 
 from luxonis_train.utils.boundingbox import (
     IoUType,
@@ -99,8 +100,8 @@ def test_compute_iou_loss():
         pred_bboxes, target_bboxes, iou_type="giou"
     )
 
-    assert isinstance(loss_iou, torch.Tensor)
-    assert isinstance(iou, torch.Tensor)
+    assert isinstance(loss_iou, Tensor)
+    assert isinstance(iou, Tensor)
     assert 0 <= iou.min() and iou.max() <= 1
 
 
@@ -115,8 +116,8 @@ def test_anchors_for_fpn_features():
         stride_tensor,
     ) = anchors_for_fpn_features(features, strides)
 
-    assert isinstance(anchors, torch.Tensor)
-    assert isinstance(anchor_points, torch.Tensor)
+    assert isinstance(anchors, Tensor)
+    assert isinstance(anchor_points, Tensor)
     assert isinstance(n_anchors_list, list)
-    assert isinstance(stride_tensor, torch.Tensor)
+    assert isinstance(stride_tensor, Tensor)
     assert len(n_anchors_list) == len(features)

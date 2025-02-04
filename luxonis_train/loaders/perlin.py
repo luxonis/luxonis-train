@@ -1,4 +1,4 @@
-from typing import Callable, Tuple
+from collections.abc import Callable
 
 import torch
 from torch import Tensor
@@ -22,10 +22,10 @@ def fade_function(t: Tensor) -> Tensor:
 
 
 def tile_grads(
-    slice1: Tuple[int, int | None],
-    slice2: Tuple[int, int | None],
+    slice1: tuple[int, int | None],
+    slice2: tuple[int, int | None],
     gradients: Tensor,
-    d: Tuple[int, int],
+    d: tuple[int, int],
 ) -> Tensor:
     return (
         gradients[slice1[0] : slice1[1], slice2[0] : slice2[1]]
@@ -36,9 +36,9 @@ def tile_grads(
 
 def dot(
     grad: Tensor,
-    shift: Tuple[int, int],
+    shift: tuple[int, int],
     grid: Tensor,
-    shape: Tuple[int, int],
+    shape: tuple[int, int],
 ) -> Tensor:
     return (
         torch.stack(
@@ -53,8 +53,8 @@ def dot(
 
 
 def rand_perlin_2d(
-    shape: Tuple[int, int],
-    res: Tuple[int, int],
+    shape: tuple[int, int],
+    res: tuple[int, int],
     fade: Callable[[Tensor], Tensor] = fade_function,
 ) -> Tensor:
     delta = (res[0] / shape[0], res[1] / shape[1])
@@ -110,7 +110,7 @@ def rotate_noise(noise: Tensor) -> Tensor:  # pragma: no cover
 
 
 def generate_perlin_noise(
-    shape: Tuple[int, int],
+    shape: tuple[int, int],
     min_perlin_scale: int = 0,
     perlin_scale: int = 6,
     threshold: float = 0.5,
@@ -137,19 +137,19 @@ def apply_anomaly_to_img(
     img: Tensor,
     anomaly_img: Tensor,
     beta: float | None = None,
-) -> Tuple[Tensor, Tensor]:
+) -> tuple[Tensor, Tensor]:
     """Applies Perlin noise-based anomalies to a single image (C, H, W).
 
     @type img: Tensor
     @param img: The input image tensor of shape (C, H, W).
-    @type anomaly_source_paths: List[str]
+    @type anomaly_source_paths: list[str]
     @param anomaly_source_paths: List of file paths to the anomaly images.
-    @type pixel_augs: List[Callable] | None
+    @type pixel_augs: list[Callable] | None
     @param pixel_augs: A list of albumentations augmentations to apply to the anomaly image. Defaults to C{None}.
     @type beta: float | None
     @param beta: A blending factor for anomaly and noise. If None, a random value in the range [0, 0.8]
                  is used. Defaults to C{None}.
-    @rtype: Tuple[Tensor, Tensor]
+    @rtype: tuple[Tensor, Tensor]
     @return: A tuple containing:
         - augmented_img (Tensor): The augmented image with applied anomaly and Perlin noise.
         - perlin_mask (Tensor): The Perlin noise mask applied to the image.
