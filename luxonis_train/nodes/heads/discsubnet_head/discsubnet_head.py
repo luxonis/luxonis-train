@@ -1,4 +1,4 @@
-from typing import Literal, Tuple, TypeAlias
+from typing import Literal, TypeAlias
 
 import torch
 from torch import Tensor
@@ -81,21 +81,16 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
                 self.base_channels, out_channels
             )
 
-    def forward(self, x_tuple: Tuple[Tensor, Tensor]) -> tuple[Tensor, Tensor]:
+    def forward(self, inputs: list[Tensor]) -> tuple[Tensor, Tensor]:
         """Performs the forward pass through the encoder and decoder."""
 
-        recon, input = x_tuple
-
-        x = torch.cat((recon, input), dim=1)
-
+        reconstruction, x = inputs
+        x = torch.cat([reconstruction, x], dim=1)
         seg_out = self.decoder_segment(*self.encoder_segment(x))
 
-        return seg_out, recon
+        return seg_out, reconstruction
 
-    def wrap(
-        self,
-        output: tuple[Tensor, Tensor],
-    ) -> Packet[Tensor]:
+    def wrap(self, output: tuple[Tensor, Tensor]) -> Packet[Tensor]:
         """Wraps the output into a packet."""
         seg_out, recon = output
         if self.export:
