@@ -99,5 +99,5 @@ class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
                 m.momentum = 0.9
                 m.eps = 1e-5
 
-    def forward(self, x: Tensor) -> Tensor:
-        return self.blocks(x)
+    def forward(self, x: Tensor) -> list[Tensor]:
+        return [self.blocks(x)]

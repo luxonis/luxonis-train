@@ -1,10 +1,10 @@
-from typing import Literal, Tuple, TypeAlias
+from typing import Literal, TypeAlias
 
 import torch
 from torch import Tensor
 
-from luxonis_train.enums import TaskType
 from luxonis_train.nodes.heads import BaseHead
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import Packet
 
 from .blocks import Decoder, Encoder, NanoDecoder, NanoEncoder
@@ -31,7 +31,7 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
     in_channels: list[int] | int
     out_channels: int
     base_channels: int
-    tasks: list[TaskType] = [TaskType.SEGMENTATION]
+    task = Tasks.ANOMALY_DETECTION
 
     def __init__(
         self,
@@ -60,9 +60,6 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
 
         @type variant: Literal["n", "l"]
         @param variant: The variant of the DiscSubNetHead to use. "l" for large, "n" for nano (lightweight). Defaults to "l".
-
-        @type kwargs: Any
-        @param kwargs: Additional arguments to be passed to the BaseNode class.
         """
         super().__init__(**kwargs)
 
@@ -84,31 +81,23 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
                 self.base_channels, out_channels
             )
 
-    def forward(self, x_tuple: Tuple[Tensor, Tensor]) -> tuple[Tensor, Tensor]:
+    def forward(self, inputs: list[Tensor]) -> tuple[Tensor, Tensor]:
         """Performs the forward pass through the encoder and decoder."""
 
-        recon, input = x_tuple
-
-        x = torch.cat((recon, input), dim=1)
-
+        reconstruction, x = inputs
+        x = torch.cat([reconstruction, x], dim=1)
         seg_out = self.decoder_segment(*self.encoder_segment(x))
 
-        return seg_out, recon
+        return seg_out, reconstruction
 
-    def wrap(
-        self,
-        output: tuple[Tensor, Tensor],
-    ) -> Packet[Tensor]:
+    def wrap(self, output: tuple[Tensor, Tensor]) -> Packet[Tensor]:
         """Wraps the output into a packet."""
         seg_out, recon = output
         if self.export:
-            return {"segmentation": [seg_out]}
+            return {"segmentation": seg_out}
         else:
             seg_out, recon = output
-            return {
-                "reconstructed": [recon],
-                "segmentation": [seg_out],
-            }
+            return {"reconstructed": recon, "segmentation": seg_out}
 
     def get_custom_head_config(self) -> dict:
         """Returns custom head configuration.

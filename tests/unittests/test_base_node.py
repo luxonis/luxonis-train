@@ -76,6 +76,7 @@ def test_invalid(packet: Packet[Tensor]):
 
 
 def test_in_sizes():
+    DummyNode.attach_index = "all"
     node = DummyNode(
         input_shapes=[{"features": [Size((3, 224, 224)) for _ in range(3)]}]
     )
@@ -90,6 +91,7 @@ def test_in_sizes():
 def test_check_type_override():
     class DummyNode(BaseNode, register=False):
         in_channels: int
+        attach_index = "all"
 
         def forward(self, _): ...
 

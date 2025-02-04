@@ -17,7 +17,7 @@ def collate_fn(
     @type batch: list[LuxonisLoaderTorchOutput]
     @param batch: List of loader outputs (dict of Tensors) and labels
         (dict of Tensors) in the LuxonisLoaderTorchOutput format.
-    @rtype: tuple[dict[str, Tensor], dict[TaskType, Tensor]]
+    @rtype: tuple[dict[str, Tensor], dict[str, Tensor]]
     @return: Tuple of inputs and annotations in the format expected by
         the model.
     """

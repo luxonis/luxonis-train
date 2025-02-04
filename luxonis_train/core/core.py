@@ -95,7 +95,9 @@ class LuxonisModel:
         # NOTE: to add the file handler (we only get the save dir now,
         # but we want to use the logger before)
         reset_logging()
-        setup_logging(file=self.log_file, use_rich=True)
+        setup_logging(
+            file=self.log_file, use_rich=True, tracebacks_suppress=[pl, torch]
+        )
 
         # NOTE: overriding logger in pl so it uses our logger to log device info
         rank_zero_module.log = logger
@@ -135,6 +137,8 @@ class LuxonisModel:
                 keep_aspect_ratio=self.cfg_preprocessing.keep_aspect_ratio,
                 **self.cfg.loader.params,  # type: ignore
             )
+
+        self.loader_metadata_types = self.loaders["train"].get_metadata_types()
 
         for name, loader in self.loaders.items():
             logger.info(
@@ -748,10 +752,7 @@ class LuxonisModel:
                 }
             )
 
-        heads = get_head_configs(
-            self.lightning_module,
-            outputs,
-        )
+        heads = get_head_configs(self.lightning_module, outputs)
 
         model = {
             "metadata": {

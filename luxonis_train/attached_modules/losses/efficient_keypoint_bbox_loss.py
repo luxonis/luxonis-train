@@ -5,11 +5,9 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from luxonis_train.attached_modules.losses import AdaptiveDetectionLoss
-from luxonis_train.enums import TaskType
 from luxonis_train.nodes import EfficientKeypointBBoxHead
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import (
-    Labels,
-    Packet,
     compute_iou_loss,
     dist2bbox,
     get_sigmas,
@@ -23,9 +21,7 @@ from .bce_with_logits import BCEWithLogitsLoss
 
 class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
     node: EfficientKeypointBBoxHead
-    supported_tasks: list[tuple[TaskType, ...]] = [
-        (TaskType.BOUNDINGBOX, TaskType.KEYPOINTS)
-    ]
+    supported_tasks = [Tasks.INSTANCE_KEYPOINTS]
 
     gt_kpts_scale: Tensor
 
@@ -91,42 +87,34 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         self.regr_kpts_loss_weight = regr_kpts_loss_weight
         self.vis_kpts_loss_weight = vis_kpts_loss_weight
 
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[
-        Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor
-    ]:
-        feats = self.get_input_tensors(inputs, "features")
-        pred_scores = self.get_input_tensors(inputs, "class_scores")[0]
-        pred_distri = self.get_input_tensors(inputs, "distributions")[0]
-        pred_kpts = self.get_input_tensors(inputs, "keypoints_raw")[0]
+    def forward(
+        self,
+        features: list[Tensor],
+        class_scores: Tensor,
+        distributions: Tensor,
+        keypoints_raw: Tensor,
+        target_boundingbox: Tensor,
+        target_keypoints: Tensor,
+    ) -> tuple[Tensor, dict[str, Tensor]]:
+        target_keypoints = insert_class(target_keypoints, target_boundingbox)
 
-        target_bbox = self.get_label(labels, TaskType.BOUNDINGBOX)
-        target_kpts = self.get_label(labels, TaskType.KEYPOINTS)
-        target_kpts = insert_class(target_kpts, target_bbox)
+        batch_size = class_scores.shape[0]
+        n_kpts = (target_keypoints.shape[1] - 2) // 3
 
-        self.batch_size = pred_scores.shape[0]
-        n_kpts = (target_kpts.shape[1] - 2) // 3
+        self._init_parameters(features)
 
-        self._init_parameters(feats)
-
-        pred_bboxes = dist2bbox(pred_distri, self.anchor_points_strided)
-        pred_kpts = self.dist2kpts_noscale(
+        pred_bboxes = dist2bbox(distributions, self.anchor_points_strided)
+        keypoints_raw = self.dist2kpts_noscale(
             self.anchor_points_strided,
-            pred_kpts.view(
-                self.batch_size,
-                -1,
-                n_kpts,
-                3,
-            ),
+            keypoints_raw.view(batch_size, -1, n_kpts, 3),
         )
 
-        target_bbox = self._preprocess_bbox_target(
-            target_bbox, self.batch_size
+        target_boundingbox = self._preprocess_bbox_target(
+            target_boundingbox, batch_size
         )
 
-        gt_bbox_labels = target_bbox[:, :, :1]
-        gt_xyxy = target_bbox[:, :, 1:]
+        gt_bbox_labels = target_boundingbox[..., :1]
+        gt_xyxy = target_boundingbox[..., 1:]
         mask_gt = (gt_xyxy.sum(-1, keepdim=True) > 0).float()
         (
             assigned_labels,
@@ -135,78 +123,57 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             mask_positive,
             assigned_gt_idx,
         ) = self._run_assigner(
-            gt_bbox_labels,
-            gt_xyxy,
-            mask_gt,
-            pred_bboxes,
-            pred_scores,
+            gt_bbox_labels, gt_xyxy, mask_gt, pred_bboxes, class_scores
         )
 
         batched_kpts = self._preprocess_kpts_target(
-            target_kpts, self.batch_size, self.gt_kpts_scale
+            target_keypoints, batch_size, self.gt_kpts_scale
         )
         assigned_gt_idx_expanded = assigned_gt_idx.unsqueeze(-1).unsqueeze(-1)
         selected_keypoints = batched_kpts.gather(
             1, assigned_gt_idx_expanded.expand(-1, -1, self.n_keypoints, 3)
         )
-        xy_components = selected_keypoints[:, :, :, :2]
+        xy_components = selected_keypoints[..., :2]
         normalized_xy = xy_components / self.stride_tensor.view(1, -1, 1, 1)
         selected_keypoints = torch.cat(
-            (normalized_xy, selected_keypoints[:, :, :, 2:]), dim=-1
+            (normalized_xy, selected_keypoints[..., 2:]), dim=-1
         )
-        gt_kpt = selected_keypoints[mask_positive]
-        pred_kpts = pred_kpts[mask_positive]
+        gt_kpts = selected_keypoints[mask_positive]
+        keypoints_raw = keypoints_raw[mask_positive]
         assigned_bboxes = assigned_bboxes / self.stride_tensor
 
         area = (
-            assigned_bboxes[mask_positive][:, 0]
-            - assigned_bboxes[mask_positive][:, 2]
-        ) * (
-            assigned_bboxes[mask_positive][:, 1]
-            - assigned_bboxes[mask_positive][:, 3]
+            (
+                assigned_bboxes[mask_positive][:, 0]
+                - assigned_bboxes[mask_positive][:, 2]
+            )
+            * (
+                assigned_bboxes[mask_positive][:, 1]
+                - assigned_bboxes[mask_positive][:, 3]
+            )
+            * self.area_factor
         )
 
-        return (
-            pred_bboxes,
-            pred_scores,
-            assigned_bboxes,
-            assigned_labels,
-            assigned_scores,
-            mask_positive,
-            gt_kpt,
-            pred_kpts,
-            area * self.area_factor,
-        )
-
-    def forward(
-        self,
-        pred_bboxes: Tensor,
-        pred_scores: Tensor,
-        assigned_bboxes: Tensor,
-        assigned_labels: Tensor,
-        assigned_scores: Tensor,
-        mask_positive: Tensor,
-        gt_kpts: Tensor,
-        pred_kpts: Tensor,
-        area: Tensor,
-    ) -> tuple[Tensor, dict[str, Tensor]]:
         device = pred_bboxes.device
         sigmas = self.sigmas.to(device)
-        d = (gt_kpts[..., 0] - pred_kpts[..., 0]).pow(2) + (
-            gt_kpts[..., 1] - pred_kpts[..., 1]
+        d = (gt_kpts[..., 0] - keypoints_raw[..., 0]).pow(2) + (
+            gt_kpts[..., 1] - keypoints_raw[..., 1]
         ).pow(2)
         e = d / ((2 * sigmas).pow(2) * ((area.view(-1, 1) + 1e-9) * 2))
         mask = (gt_kpts[..., 2] > 0).float()
         regression_loss = (
             ((1 - torch.exp(-e)) * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-9)
         ).mean()
-        visibility_loss = self.b_cross_entropy.forward(pred_kpts[..., 2], mask)
+        visibility_loss = self.b_cross_entropy.forward(
+            keypoints_raw[..., 2], mask
+        )
 
-        one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[
-            ..., :-1
-        ]
+        one_hot_label = F.one_hot(
+            assigned_labels.long(),
+            self.n_classes + 1,
+        )[..., :-1]
         loss_cls = self.varifocal_loss(
-            pred_scores, assigned_scores, one_hot_label
+            class_scores, assigned_scores, one_hot_label
         )
 
         if assigned_scores.sum() > 1:
@@ -236,7 +203,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             "visibility": visibility_loss.detach(),
         }
 
-        return loss * self.batch_size, sub_losses
+        return loss * batch_size, sub_losses
 
     def _preprocess_kpts_target(
         self, kpts_target: Tensor, batch_size: int, scale_tensor: Tensor
@@ -275,12 +242,13 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         return adj_kpts
 
     def _init_parameters(self, features: list[Tensor]) -> None:
-        device = features[0].device
+        if hasattr(self, "gt_kpts_scale"):
+            return
         super()._init_parameters(features)
         self.gt_kpts_scale = torch.tensor(
             [
                 self.original_img_size[1],
                 self.original_img_size[0],
             ],
-            device=device,
+            device=features[0].device,
         )

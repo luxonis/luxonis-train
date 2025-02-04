@@ -3,17 +3,14 @@ from typing import Any, Literal
 import torch
 from torch import Tensor
 
-from luxonis_train.enums import TaskType
+from luxonis_train.tasks import Tasks
 
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
 
 
-class SmoothBCEWithLogitsLoss(BaseLoss[Tensor, Tensor]):
-    supported_tasks: list[TaskType] = [
-        TaskType.SEGMENTATION,
-        TaskType.CLASSIFICATION,
-    ]
+class SmoothBCEWithLogitsLoss(BaseLoss):
+    supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 
     def __init__(
         self,
@@ -65,7 +62,6 @@ class SmoothBCEWithLogitsLoss(BaseLoss[Tensor, Tensor]):
         @rtype: Tensor
         @return: A scalar tensor.
         """
-        print(predictions[0].shape)
         if predictions.shape != target.shape:
             raise RuntimeError(
                 f"Target tensor dimension ({target.shape}) and predictions tensor "

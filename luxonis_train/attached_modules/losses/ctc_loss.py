@@ -6,14 +6,13 @@ import torch.nn as nn
 from torch import Tensor
 
 from luxonis_train.nodes import OCRCTCHead
-from luxonis_train.utils import Labels, Packet
 
 from .base_loss import BaseLoss
 
 logger = getLogger(__name__)
 
 
-class CTCLoss(BaseLoss[Tensor, Tensor, Tensor]):
+class CTCLoss(BaseLoss):
     """CTC loss with optional focal loss weighting."""
 
     node: OCRCTCHead
@@ -29,32 +28,7 @@ class CTCLoss(BaseLoss[Tensor, Tensor, Tensor]):
         self.loss_func = nn.CTCLoss(blank=0, reduction="none")
         self.use_focal_loss = use_focal_loss
 
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[Tensor, Tensor, Tensor]:
-        """Prepares the inputs, targets, and target lengths for loss
-        computation.
-
-        @type inputs: Packet[Tensor]
-        @param inputs: A packet containing input tensors, typically
-            network predictions.
-        @type labels: Labels
-        @param labels: A dictionary containing text labels and
-            corresponding lengths.
-        @rtype: tuple[Tensor, Tensor, Tensor]
-        @return: A tuple of predictions, encoded targets, and target
-            lengths.
-        """
-        preds = inputs["/classification"][0]
-        targets = labels["/metadata/text"]
-        target_lengths = torch.sum(targets != 0, dim=1)
-        targets = self.node.encoder(targets).to(preds.device)
-
-        return preds, targets, target_lengths
-
-    def forward(
-        self, preds: Tensor, targets: Tensor, target_lengths: Tensor
-    ) -> Tensor:
+    def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
         """Computes the CTC loss, optionally applying focal loss.
 
         @type preds: Tensor
@@ -63,21 +37,23 @@ class CTCLoss(BaseLoss[Tensor, Tensor, Tensor]):
             number of classes.
         @type targets: Tensor
         @param targets: Encoded target sequences.
-        @type target_lengths: Tensor
-        @param target_lengths: Lengths of the target sequences.
         @rtype: Tensor
         @return: The computed loss as a scalar tensor.
         """
+        target_lengths = torch.sum(target != 0, dim=1)
+        target = self.node.encoder(target).to(predictions.device)
 
-        preds = preds.permute(1, 0, 2)
-        preds = preds.log_softmax(-1)
+        predictions = predictions.permute(1, 0, 2)
+        predictions = predictions.log_softmax(-1)
 
-        T, B, _ = preds.shape
+        T, B, _ = predictions.shape
         preds_lengths = torch.full(
-            (B,), T, dtype=torch.int64, device=preds.device
+            (B,), T, dtype=torch.int64, device=predictions.device
         )
 
-        loss = self.loss_func(preds, targets, preds_lengths, target_lengths)
+        loss = self.loss_func(
+            predictions, target, preds_lengths, target_lengths
+        )
 
         if self.use_focal_loss:
             weight = (1.0 - torch.exp(-loss)) ** 2

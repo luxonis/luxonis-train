@@ -4,16 +4,17 @@ from typing import Any, List
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
+from typing_extensions import override
 
-from luxonis_train.enums import TaskType
 from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import Packet
 
 logger = logging.getLogger(__name__)
 
 
 class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
-    tasks: list[TaskType] = [TaskType.KEYPOINTS, TaskType.BOUNDINGBOX]
+    task = Tasks.FOMO
     in_channels: int
     attach_index: int = 1
 
@@ -61,6 +62,11 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         )
         self.conv_layers = nn.Sequential(*layers)
 
+    @property
+    @override
+    def n_keypoints(self) -> int:
+        return 1
+
     def forward(self, inputs: List[Tensor]) -> Tensor:
         return self.conv_layers(inputs)
 
@@ -69,15 +75,10 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
             return {"outputs": [self._apply_nms_if_needed(heatmap)]}
 
         if self.training:
-            return {
-                "features": [heatmap],
-            }
+            return {"heatmap": heatmap}
 
         keypoints = self._heatmap_to_kpts(heatmap)
-        return {
-            "keypoints": keypoints,
-            "features": [heatmap],
-        }
+        return {"keypoints": keypoints, "heatmap": heatmap}
 
     def _apply_nms_if_needed(self, heatmap: Tensor) -> Tensor:
         """Apply NMS pooling to the heatmap if use_nms is enabled.
@@ -116,6 +117,7 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
                 keep = self._get_keypoint_mask(prob_map)
 
                 y_indices, x_indices = torch.where(keep)
+                # TODO: class
                 kpts = [
                     [
                         x.item() / width * self.original_img_size[1],

@@ -2,9 +2,9 @@ from .base_visualizer import BaseVisualizer
 from .bbox_visualizer import BBoxVisualizer
 from .classification_visualizer import ClassificationVisualizer
 from .embeddings_visualizer import EmbeddingsVisualizer
+from .fomo_visualizer import FOMOVisualizer
 from .instance_segmentation_visualizer import InstanceSegmentationVisualizer
 from .keypoint_visualizer import KeypointVisualizer
-from .multi_visualizer import MultiVisualizer
 from .ocr_visualizer import OCRVisualizer
 from .segmentation_visualizer import SegmentationVisualizer
 from .utils import (
@@ -22,9 +22,9 @@ from .utils import (
 __all__ = [
     "BBoxVisualizer",
     "BaseVisualizer",
+    "FOMOVisualizer",
     "ClassificationVisualizer",
     "KeypointVisualizer",
-    "MultiVisualizer",
     "SegmentationVisualizer",
     "EmbeddingsVisualizer",
     "OCRVisualizer",

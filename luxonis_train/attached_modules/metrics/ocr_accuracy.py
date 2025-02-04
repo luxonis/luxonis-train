@@ -4,17 +4,17 @@ import torch
 from torch import Tensor
 
 from luxonis_train.nodes import OCRCTCHead
-from luxonis_train.utils import Labels, Packet
+from luxonis_train.tasks import Tasks
 
 from .base_metric import BaseMetric
 
 logger = logging.getLogger(__name__)
 
 
-class OCRAccuracy(
-    BaseMetric[list[dict[str, Tensor]], list[dict[str, Tensor]]]
-):
+class OCRAccuracy(BaseMetric):
     """Accuracy metric for OCR tasks."""
+
+    supported_tasks = [Tasks.OCR]
 
     node: OCRCTCHead
 
@@ -37,29 +37,7 @@ class OCRAccuracy(
         }
         self.n = 0
 
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[Tensor, Tensor]:
-        """Prepares the predictions and targets for accuracy
-        computation.
-
-        @type inputs: Packet[Tensor]
-        @param inputs: A packet containing input tensors, typically
-            network predictions.
-        @type labels: Labels
-        @param labels: A dictionary containing text labels and
-            corresponding lengths.
-        @rtype: tuple[Tensor, Tensor]
-        @return: A tuple of predictions and targets.
-        """
-
-        preds = inputs["/classification"][0]
-        targets = labels["/metadata/text"]
-        targets = self.node.encoder(targets).to(preds.device)
-
-        return (preds, targets)
-
-    def update(self, preds: Tensor, targets: Tensor) -> None:
+    def update(self, predictions: Tensor, target: Tensor) -> None:
         """Updates the running metric with the given predictions and
         targets.
 
@@ -69,23 +47,29 @@ class OCRAccuracy(
         @param targets: A tensor containing the target labels.
         """
 
-        B, T, C = preds.shape
+        target = self.node.encoder(target).to(predictions.device)
 
-        pred_classes = preds.argmax(dim=-1)
+        B, T, _ = predictions.shape
 
-        preds = torch.zeros((B, T), dtype=torch.int64, device=preds.device)
+        pred_classes = predictions.argmax(dim=-1)
+
+        predictions = torch.zeros(
+            (B, T), dtype=torch.int64, device=predictions.device
+        )
         for i in range(B):
             unique_cons_classes = torch.unique_consecutive(pred_classes[i])
             unique_cons_classes = unique_cons_classes[
                 unique_cons_classes != self.blank_cls
             ]
             if len(unique_cons_classes) != 0:
-                preds[i, : unique_cons_classes.shape[0]] = unique_cons_classes
+                predictions[i, : unique_cons_classes.shape[0]] = (
+                    unique_cons_classes
+                )
 
         target = torch.nn.functional.pad(
-            targets, (0, T - targets.shape[1]), value=self.blank_cls
+            target, (0, T - target.shape[1]), value=self.blank_cls
         )
-        errors = preds != target
+        errors = predictions != target
         errors = errors.sum(dim=1)
 
         for acc_at in range(3):
@@ -105,5 +89,7 @@ class OCRAccuracy(
             "acc_1": torch.tensor(self.running_metric["acc_1"] / self.n),
             "acc_2": torch.tensor(self.running_metric["acc_2"] / self.n),
         }
-        self._init_metric()
         return result["acc_0"], result
+
+    def reset(self) -> None:
+        self._init_metric()

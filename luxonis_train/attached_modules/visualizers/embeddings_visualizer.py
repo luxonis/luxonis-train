@@ -1,23 +1,24 @@
+import colorsys
 import logging
 from collections.abc import Callable
 
 import numpy as np
 import seaborn as sns
-from luxonis_ml.data.utils import ColorMap
 from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
 from torch import Tensor
 
-from luxonis_train.enums import Metadata
+from luxonis_train.tasks import Tasks
 
 from .base_visualizer import BaseVisualizer
 from .utils import figure_to_torch
 
 logger = logging.getLogger(__name__)
+log_disable = False
 
 
-class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
-    supported_tasks = [Metadata("id")]
+class EmbeddingsVisualizer(BaseVisualizer):
+    supported_tasks = [Tasks.EMBEDDINGS]
 
     def __init__(self, z_score_threshold: float = 3, **kwargs):
         """Visualizer for embedding tasks like reID.
@@ -27,32 +28,33 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
             before visualizing.
         """
         super().__init__(**kwargs)
-        self.colors = ColorMap()
+        self.color_dict = {}
+        self.gen = self._distinct_color_generator()
         self.z_score_threshold = z_score_threshold
 
     def forward(
         self,
-        label_canvas: Tensor,
         prediction_canvas: Tensor,
-        embeddings: Tensor,
-        ids: Tensor,
+        target_canvas: Tensor,
+        predictions: Tensor,
+        target: Tensor,
     ) -> tuple[Tensor, Tensor]:
         """Creates a visualization of the embeddings.
 
-        @type label_canvas: Tensor
-        @param label_canvas: The canvas to draw the labels on.
+        @type target_canvas: Tensor
+        @param target_canvas: The canvas to draw the labels on.
         @type prediction_canvas: Tensor
         @param prediction_canvas: The canvas to draw the predictions on.
         @type embeddings: Tensor
         @param embeddings: The embeddings to visualize.
-        @type ids: Tensor
-        @param ids: The ids to visualize.
+        @type target: Tensor
+        @param target: Ids of the embeddings.
         @rtype: Tensor
         @return: An embedding space projection.
         """
 
-        embeddings_np = embeddings.detach().cpu().numpy()
-        ids_np = ids.detach().cpu().numpy().astype(int)
+        embeddings_np = predictions.detach().cpu().numpy()
+        ids_np = target.detach().cpu().numpy().astype(int)
 
         pca = PCA(n_components=2)
         embeddings_2d = pca.fit_transform(embeddings_np)
@@ -66,8 +68,19 @@ class EmbeddingsVisualizer(BaseVisualizer[Tensor, Tensor]):
         return kdeplot, scatterplot
 
     def _get_color(self, label: int) -> tuple[float, float, float]:
-        r, g, b = self.colors[label]
-        return r / 255, g / 255, b / 255
+        if label not in self.color_dict:
+            self.color_dict[label] = next(self.gen)
+        return self.color_dict[label]
+
+    @staticmethod
+    def _distinct_color_generator():
+        golden_ratio = 0.618033988749895
+        hue = 0.0
+        while True:
+            hue = (hue + golden_ratio) % 1
+            saturation = 0.8
+            value = 0.95
+            yield colorsys.hsv_to_rgb(hue, saturation, value)
 
     def _filter_outliers(
         self, points: np.ndarray, ids: np.ndarray

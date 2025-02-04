@@ -5,8 +5,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
-from luxonis_train.enums import TaskType
 from luxonis_train.nodes.blocks import ConvModule, SegProto
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import (
     Packet,
     apply_bounding_box_to_masks,
@@ -19,10 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
-    tasks: list[TaskType] = [
-        TaskType.INSTANCE_SEGMENTATION,
-        TaskType.BOUNDINGBOX,
-    ]
+    task = Tasks.INSTANCE_SEGMENTATION
     parser: str = "YOLOExtendedParser"
 
     def __init__(
@@ -97,7 +94,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
                 [f"output{i + 1}_yolov8" for i in range(self.n_heads)]
                 + [f"output{i + 1}_masks" for i in range(self.n_heads)]
                 + ["protos_output"]
-            )  # export names are applied on sorter output names
+            )  # export names are applied on sorted output names
 
     def forward(
         self, inputs: list[Tensor]
@@ -118,11 +115,11 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         det_feats, prototypes, mask_coefficients = output
 
         if self.export:
-            pred_bboxes = self._prepare_bbox_export(*det_feats)  # type: ignore
+            pred_bboxes = self._prepare_bbox_export(*det_feats)
             return {
                 "boundingbox": pred_bboxes,
                 "masks": mask_coefficients,
-                "prototypes": [prototypes],
+                "prototypes": prototypes,
             }
 
         det_feats_combined = [
@@ -139,8 +136,8 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         if self.training:
             return {
                 "features": det_feats_combined,
-                "prototypes": [prototypes],
-                "mask_coeficients": [mask_coefficients],
+                "prototypes": prototypes,
+                "mask_coeficients": mask_coefficients,
             }
 
         pred_bboxes = self._prepare_bbox_inference_output(*det_feats)  # type: ignore
@@ -159,8 +156,8 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
 
         results = {
             "features": det_feats_combined,
-            "prototypes": [prototypes],
-            "mask_coeficients": [mask_coefficients],
+            "prototypes": prototypes,
+            "mask_coeficients": mask_coefficients,
             "boundingbox": [],
             "instance_segmentation": [],
         }

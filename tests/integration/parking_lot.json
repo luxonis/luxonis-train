@@ -24,13 +24,13 @@
         ],
         "outputs": [
             {
-                "name": "BiSeNetHead/brand/segmentation/0",
+                "name": "brand/BiSeNetHead/segmentation/0",
                 "dtype": "float32",
                 "shape": [1, 23, 256, 320],
                 "layout": "NCHW"
             },
             {
-                "name": "SegmentationHead/color/segmentation/0",
+                "name": "color/SegmentationHead/segmentation/0",
                 "dtype": "float32",
                 "shape": [1, 4, 256, 320],
                 "layout": "NCHW"
@@ -106,7 +106,7 @@
                     "n_classes": 23,
                     "is_softmax": false
                 },
-                "outputs": ["BiSeNetHead/brand/segmentation/0"]
+                "outputs": ["brand/BiSeNetHead/segmentation/0"]
             },
             {
                 "name": "BiSeNetHead_0",
@@ -170,7 +170,7 @@
                     "n_classes": 4,
                     "is_softmax": false
                 },
-                "outputs": ["SegmentationHead/color/segmentation/0"]
+                "outputs": ["color/SegmentationHead/segmentation/0"]
             }
         ]
     }

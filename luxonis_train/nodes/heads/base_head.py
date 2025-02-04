@@ -5,9 +5,7 @@ from luxonis_train.nodes.base_node import (
 )
 
 
-class BaseHead(
-    BaseNode[ForwardInputT, ForwardOutputT],
-):
+class BaseHead(BaseNode[ForwardInputT, ForwardOutputT]):
     """Base class for all heads in the model.
 
     @type parser: str | None

@@ -1,8 +1,8 @@
 import torch
 from torch import Tensor
 
-from luxonis_train.enums import Metadata
 from luxonis_train.nodes.heads.ghostfacenet_head import GhostFaceNetHead
+from luxonis_train.tasks import Tasks
 
 from .base_metric import BaseMetric
 
@@ -10,8 +10,8 @@ from .base_metric import BaseMetric
 # to PyTorch from TensorFlow
 
 
-class ClosestIsPositiveAccuracy(BaseMetric[Tensor, Tensor]):
-    supported_tasks = [Metadata("id")]
+class ClosestIsPositiveAccuracy(BaseMetric):
+    supported_tasks = [Tasks.EMBEDDINGS]
     node: GhostFaceNetHead
 
     def __init__(self, **kwargs):
@@ -27,8 +27,8 @@ class ClosestIsPositiveAccuracy(BaseMetric[Tensor, Tensor]):
             "total_predictions", default=torch.tensor(0), dist_reduce_fx="sum"
         )
 
-    def update(self, inputs: Tensor, target: Tensor):
-        embeddings, labels = inputs, target
+    def update(self, predictions: Tensor, target: Tensor) -> None:
+        embeddings, labels = predictions, target
 
         if self.cross_batch_memory_size is not None:
             self.cross_batch_memory.extend(list(zip(embeddings, labels)))
@@ -73,9 +73,11 @@ class ClosestIsPositiveAccuracy(BaseMetric[Tensor, Tensor]):
         return self.correct_predictions / self.total_predictions
 
 
-class MedianDistances(BaseMetric[Tensor, Tensor]):
-    supported_tasks = [Metadata("id")]
+class MedianDistances(BaseMetric):
+    supported_tasks = [Tasks.EMBEDDINGS]
     node: GhostFaceNetHead
+
+    cross_batch_memory: list[tuple[Tensor, Tensor]]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -88,11 +90,9 @@ class MedianDistances(BaseMetric[Tensor, Tensor]):
             "closest_vs_positive_distances", default=[], dist_reduce_fx="cat"
         )
 
-    def update(self, inputs: Tensor, target: Tensor):
-        embeddings, labels = inputs, target
-
+    def update(self, embeddings: Tensor, target: Tensor):
         if self.cross_batch_memory_size is not None:
-            self.cross_batch_memory.extend(list(zip(embeddings, labels)))
+            self.cross_batch_memory.extend(list(zip(embeddings, target)))
 
             if len(self.cross_batch_memory) > self.cross_batch_memory_size:
                 self.cross_batch_memory = self.cross_batch_memory[
@@ -102,9 +102,9 @@ class MedianDistances(BaseMetric[Tensor, Tensor]):
             if len(self.cross_batch_memory) < self.cross_batch_memory_size:
                 return
 
-            embeddings, labels = zip(*self.cross_batch_memory)
-            embeddings = torch.stack(embeddings)
-            labels = torch.stack(labels)
+            embeddings_list, target_list = zip(*self.cross_batch_memory)
+            embeddings = torch.stack(embeddings_list)
+            target = torch.stack(target_list)
 
         pairwise_distances = _pairwise_distances(embeddings)
         self.all_distances.append(
@@ -119,7 +119,7 @@ class MedianDistances(BaseMetric[Tensor, Tensor]):
         closest_distances, _ = torch.min(pairwise_distances, dim=1)
         self.closest_distances.append(closest_distances)
 
-        positive_mask = _get_anchor_positive_triplet_mask(labels).bool()
+        positive_mask = _get_anchor_positive_triplet_mask(target).bool()
 
         only_positive_distances = pairwise_distances.clone()
         only_positive_distances[~positive_mask] = float("inf")

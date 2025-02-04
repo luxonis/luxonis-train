@@ -218,7 +218,7 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
                 if isinstance(module, LearnableRepLayer):
                     module.reparametrize()
 
-    def forward(self, x: Tensor) -> list[Tensor] | Tensor:
+    def forward(self, x: Tensor) -> list[Tensor]:
         out_list = []
         x = self.conv1(x)
 
@@ -241,4 +241,4 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
 
         x = F.adaptive_avg_pool2d(x, (1, self.max_text_len))
 
-        return x
+        return [x]

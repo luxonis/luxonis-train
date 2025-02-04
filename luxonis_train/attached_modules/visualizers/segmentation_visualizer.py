@@ -1,10 +1,11 @@
 import logging
+from functools import cached_property
 
 import torch
 from torch import Tensor
+from typing_extensions import override
 
-from luxonis_train.enums import TaskType
-from luxonis_train.utils import Labels, Packet
+from luxonis_train.tasks import Metadata, Tasks
 
 from .base_visualizer import BaseVisualizer
 from .utils import (
@@ -18,8 +19,8 @@ logger = logging.getLogger(__name__)
 log_disable = False
 
 
-class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
-    supported_tasks: list[TaskType] = [TaskType.SEGMENTATION]
+class SegmentationVisualizer(BaseVisualizer):
+    supported_tasks = [Tasks.SEGMENTATION, Tasks.ANOMALY_DETECTION]
 
     def __init__(
         self,
@@ -96,27 +97,19 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
 
         return viz
 
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels | None
-    ) -> tuple[Tensor, Tensor]:
-        predictions, targets = super().prepare(inputs, labels)
-        if isinstance(predictions, list):
-            predictions = predictions[0]
-        return predictions, targets
-
     def forward(
         self,
-        label_canvas: Tensor,
         prediction_canvas: Tensor,
+        target_canvas: Tensor,
         predictions: Tensor,
-        targets: Tensor | None,
+        target: Tensor | None,
         **kwargs,
     ) -> tuple[Tensor, Tensor] | Tensor:
         """Creates a visualization of the segmentation predictions and
         labels.
 
-        @type label_canvas: Tensor
-        @param label_canvas: The canvas to draw the labels on.
+        @type target_canvas: Tensor
+        @param target_canvas: The canvas to draw the labels on.
         @type prediction_canvas: Tensor
         @param prediction_canvas: The canvas to draw the predictions on.
         @type predictions: Tensor
@@ -136,12 +129,12 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
             background_color=self.background_color,
             **kwargs,
         )
-        if targets is None:
+        if target is None:
             return predictions_vis
 
         targets_vis = self.draw_targets(
-            label_canvas,
-            targets,
+            target_canvas,
+            target,
             colors=self.colors,
             alpha=self.alpha,
             background_class=self.background_class,
@@ -177,3 +170,10 @@ class SegmentationVisualizer(BaseVisualizer[Tensor, Tensor]):
         if background_class is not None:
             colors[background_class] = background_color
         return colors
+
+    @cached_property
+    @override
+    def required_labels(self) -> set[str | Metadata]:
+        if self.task == Tasks.ANOMALY_DETECTION:
+            return Tasks.SEGMENTATION.required_labels
+        return self.task.required_labels

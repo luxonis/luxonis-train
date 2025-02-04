@@ -13,6 +13,9 @@ def get_opts_backbone(backbone: str) -> dict[str, Any]:
             "nodes": [
                 {
                     "name": backbone,
+                    "params": {"variant": "n"}
+                    if backbone == "RecSubNet"
+                    else {},
                 },
                 {
                     "name": "EfficientBBoxHead",
@@ -42,7 +45,7 @@ def get_opts_backbone(backbone: str) -> dict[str, Any]:
                     "attached_to": "EfficientBBoxHead",
                 },
                 {
-                    "name": "MeanAveragePrecisionKeypoints",
+                    "name": "MeanAveragePrecision",
                     "alias": "EfficientKeypointBBoxHead-MaP",
                     "attached_to": "EfficientKeypointBBoxHead",
                 },

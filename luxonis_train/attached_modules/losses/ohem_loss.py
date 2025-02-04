@@ -3,18 +3,15 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from luxonis_train.enums import TaskType
+from luxonis_train.tasks import Tasks
 
 from .base_loss import BaseLoss
 
 
-class OHEMLoss(BaseLoss[Tensor, Tensor]):
+class OHEMLoss(BaseLoss):
     """Generic OHEM loss that can be used with different criterions."""
 
-    supported_tasks: list[TaskType] = [
-        TaskType.SEGMENTATION,
-        TaskType.CLASSIFICATION,
-    ]
+    supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 
     def __init__(
         self,
@@ -40,8 +37,8 @@ class OHEMLoss(BaseLoss[Tensor, Tensor]):
 
         self._was_logged = False
 
-    def forward(self, preds: Tensor, target: Tensor) -> Tensor:
-        loss = self.criterion(preds, target).view(-1)
+    def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
+        loss = self.criterion(predictions, target).view(-1)
 
         num_pixels = loss.numel()
 

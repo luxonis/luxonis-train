@@ -1,6 +1,3 @@
-loader:
-  name: CustomReIDLoader
-
 model:
   name: reid_test
   nodes:

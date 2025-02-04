@@ -39,11 +39,11 @@ class DatasetMetadata:
         """
         return set(self._classes.keys())
 
-    def n_classes(self, task: str | None = None) -> int:
+    def n_classes(self, task_name: str | None = None) -> int:
         """Gets the number of classes for the specified task.
 
-        @type task: str | None
-        @param task: Task to get the number of classes for.
+        @type task_name: str | None
+        @param task_name: Task to get the number of classes for.
         @rtype: int
         @return: Number of classes for the specified task type.
         @raises ValueError: If the C{task} is not present in the
@@ -52,12 +52,12 @@ class DatasetMetadata:
             dataset contains different number of classes for different
             task types.
         """
-        if task is not None:
-            if task not in self._classes:
+        if task_name is not None:
+            if task_name not in self._classes:
                 raise ValueError(
-                    f"Task '{task}' is not present in the dataset."
+                    f"Task '{task_name}' is not present in the dataset."
                 )
-            return len(self._classes[task])
+            return len(self._classes[task_name])
         n_classes = len(list(self._classes.values())[0])
         for classes in self._classes.values():
             if len(classes) != n_classes:
@@ -67,11 +67,11 @@ class DatasetMetadata:
                 )
         return n_classes
 
-    def n_keypoints(self, task: str | None = None) -> int:
+    def n_keypoints(self, task_name: str | None = None) -> int:
         """Gets the number of keypoints for the specified task.
 
-        @type task: str | None
-        @param task: Task to get the number of keypoints for.
+        @type task_name: str | None
+        @param task_name: Task to get the number of keypoints for.
         @rtype: int
         @return: Number of keypoints for the specified task type.
         @raises ValueError: If the C{task} is not present in the
@@ -80,12 +80,12 @@ class DatasetMetadata:
             dataset contains different number of keypoints for different
             task types.
         """
-        if task is not None:
-            if task not in self._n_keypoints:
+        if task_name is not None:
+            if task_name not in self._n_keypoints:
                 raise ValueError(
-                    f"Task '{task}' is not present in the dataset."
+                    f"Task '{task_name}' is not present in the dataset."
                 )
-            return self._n_keypoints[task]
+            return self._n_keypoints[task_name]
         n_keypoints = next(iter(self._n_keypoints.values()))
         for n in self._n_keypoints.values():
             if n != n_keypoints:
@@ -95,11 +95,11 @@ class DatasetMetadata:
                 )
         return n_keypoints
 
-    def classes(self, task: str | None = None) -> list[str]:
+    def classes(self, task_name: str | None = None) -> list[str]:
         """Gets the class names for the specified task.
 
-        @type task: str | None
-        @param task: Task to get the class names for.
+        @type task_name: str | None
+        @param task_name: Task to get the class names for.
         @rtype: list[str]
         @return: List of class names for the specified task type.
         @raises ValueError: If the C{task} is not present in the
@@ -108,12 +108,12 @@ class DatasetMetadata:
             dataset contains different class names for different label
             types.
         """
-        if task is not None:
-            if task not in self._classes:
+        if task_name is not None:
+            if task_name not in self._classes:
                 raise ValueError(
-                    f"Task type {task} is not present in the dataset."
+                    f"Task type {task_name} is not present in the dataset."
                 )
-            return self._classes[task]
+            return self._classes[task_name]
         class_names = list(self._classes.values())[0]
         for classes in self._classes.values():
             if classes != class_names:

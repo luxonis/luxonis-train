@@ -10,6 +10,7 @@ import cv2
 import pytest
 from luxonis_ml.data import LuxonisDataset, LuxonisLoader
 from luxonis_ml.utils import environ
+from pytest_subtests import SubTests
 
 from luxonis_train.core import LuxonisModel
 
@@ -68,14 +69,14 @@ def test_predefined_models(
     config_file: str,
     coco_dataset: LuxonisDataset,
     cifar10_dataset: LuxonisDataset,
-    mnist_dataset_ocr: LuxonisDataset,
+    mnist_dataset: LuxonisDataset,
 ):
     config_file = f"configs/{config_file}.yaml"
     opts |= {
         "loader.params.dataset_name": (
             cifar10_dataset.identifier
             if "classification" in config_file
-            else mnist_dataset_ocr.identifier
+            else mnist_dataset.identifier
             if "ocr_recognition" in config_file
             else coco_dataset.identifier
         ),
@@ -130,7 +131,7 @@ def test_custom_tasks(
             generated_config = json.loads(extracted_cfg.read().decode())
 
         # Sort the fields in the config to make the comparison consistent
-        def sort_by_name(config, keys):
+        def sort_by_name(config: dict, keys: list[str]):
             for key in keys:
                 if key in config["model"]:
                     config["model"][key] = sorted(
@@ -175,7 +176,9 @@ def test_tune(opts: dict[str, Any], coco_dataset: LuxonisDataset):
     assert STUDY_PATH.exists()
 
 
-def test_infer(coco_dataset: LuxonisDataset, infer_path: Path):
+def test_infer(
+    coco_dataset: LuxonisDataset, infer_path: Path, subtests: SubTests
+):
     loader = LuxonisLoader(coco_dataset)
     img_dir = Path("tests/data/img_dir")
     video_writer = cv2.VideoWriter(
@@ -199,17 +202,21 @@ def test_infer(coco_dataset: LuxonisDataset, infer_path: Path):
     }
     model = LuxonisModel("configs/complex_model.yaml", opts)
 
-    model.infer(source_path=img_dir / "0.jpg", save_dir=infer_path)
-    assert len(list(infer_path.glob("*.png"))) == 3
+    with subtests.test("single_image"):
+        model.infer(source_path=img_dir / "0.jpg", save_dir=infer_path)
+        assert len(list(infer_path.glob("*.png"))) == 3
 
-    model.infer(source_path=img_dir, save_dir=infer_path)
-    assert len(list(infer_path.glob("*.png"))) == len(loader) * 3
+    with subtests.test("image_dir"):
+        model.infer(source_path=img_dir, save_dir=infer_path)
+        assert len(list(infer_path.glob("*.png"))) == len(loader) * 3
 
-    model.infer(source_path="tests/data/video.avi", save_dir=infer_path)
-    assert len(list(infer_path.glob("*.mp4"))) == 3
+    with subtests.test("video"):
+        model.infer(source_path="tests/data/video.avi", save_dir=infer_path)
+        assert len(list(infer_path.glob("*.mp4"))) == 3
 
-    model.infer(save_dir=infer_path, view="train")
-    assert len(list(infer_path.glob("*.png"))) == len(loader) * 3 * 2
+    with subtests.test("loader"):
+        model.infer(save_dir=infer_path, view="train")
+        assert len(list(infer_path.glob("*.png"))) == len(loader) * 3 * 2
 
     with pytest.raises(ValueError):
         model.infer(source_path="tests/data/invalid.jpg", save_dir=infer_path)

@@ -61,10 +61,11 @@ reportPrivateUsage = "none"
 reportIncompatibleVariableOverride = "none"
 reportIncompatibleMethodOverride = "none"
 reportUnnecessaryIsInstance = "none"
+reportMatchNotExhaustive = "error"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--disable-warnings -x"
+addopts = "--disable-warnings"
 markers = [
     "unit: mark a test as a unit test",
     "integration: mark a test as an integration test",

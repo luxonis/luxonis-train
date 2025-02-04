@@ -5,8 +5,8 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from luxonis_train.enums import TaskType
 from luxonis_train.nodes.heads import BaseHead
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils.general import infer_upscale_factor
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
     in_width: int
     in_channels: int
 
-    tasks: list[TaskType] = [TaskType.SEGMENTATION]
+    task = Tasks.SEGMENTATION
     parser: str = "SegmentationParser"
 
     def __init__(
@@ -129,6 +129,4 @@ class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
         @rtype: dict
         @return: Custom head configuration.
         """
-        return {
-            "is_softmax": False,
-        }
+        return {"is_softmax": False}

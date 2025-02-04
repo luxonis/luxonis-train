@@ -22,13 +22,9 @@ model:
       losses:
         - name: EfficientKeypointBBoxLoss
       metrics:
-        - name: MeanAveragePrecisionKeypoints
+        - name: MeanAveragePrecision
       visualizers:
-        - name: MultiVisualizer
-          params:
-            visualizers:
-              - name: KeypointVisualizer
-              - name: BBoxVisualizer
+        - name: KeypointVisualizer
 
     - name: SegmentationHead
       task_name: color

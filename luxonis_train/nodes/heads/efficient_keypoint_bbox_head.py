@@ -4,8 +4,8 @@ from typing import Any, Literal
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.enums import TaskType
 from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import (
     Packet,
     anchors_for_fpn_features,
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class EfficientKeypointBBoxHead(EfficientBBoxHead):
-    tasks: list[TaskType] = [TaskType.KEYPOINTS, TaskType.BOUNDINGBOX]
+    task = Tasks.INSTANCE_KEYPOINTS
     parser: str = "YOLOExtendedParser"
 
     def __init__(
@@ -97,17 +97,14 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
     ) -> tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]]:
         features, cls_score_list, reg_distri_list = super().forward(inputs)
 
-        (
-            _,
-            self.anchor_points,
-            self.n_anchors_list,
-            self.stride_tensor,
-        ) = anchors_for_fpn_features(
-            features,
-            self.stride,
-            self.grid_cell_size,
-            self.grid_cell_offset,
-            multiply_with_stride=False,
+        (_, self.anchor_points, self.n_anchors_list, self.stride_tensor) = (
+            anchors_for_fpn_features(
+                features,
+                self.stride,
+                self.grid_cell_size,
+                self.grid_cell_offset,
+                multiply_with_stride=False,
+            )
         )
 
         kpt_list: list[Tensor] = []
@@ -159,9 +156,9 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         if self.training:
             return {
                 "features": features,
-                "class_scores": [cls_tensor],
-                "distributions": [reg_tensor],
-                "keypoints_raw": [kpt_tensor],
+                "class_scores": cls_tensor,
+                "distributions": reg_tensor,
+                "keypoints_raw": kpt_tensor,
             }
         pred_kpt = torch.cat(
             [
@@ -180,9 +177,9 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
                 for detection in detections
             ],
             "features": features,
-            "class_scores": [cls_tensor],
-            "distributions": [reg_tensor],
-            "keypoints_raw": [kpt_tensor],
+            "class_scores": cls_tensor,
+            "distributions": reg_tensor,
+            "keypoints_raw": kpt_tensor,
         }
 
     def _dist2kpts(self, kpts: Tensor, batch_size: int, index: int) -> Tensor:

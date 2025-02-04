@@ -249,7 +249,7 @@ class MobileOneBlock(nn.Module):
             eps = branch.eps
         else:
             raise NotImplementedError(
-                "Only nn.BatchNorm2d and nn.Sequential " "are supported."
+                "Only nn.BatchNorm2d and nn.Sequential are supported."
             )
         assert running_var is not None
         std = (running_var + eps).sqrt()
