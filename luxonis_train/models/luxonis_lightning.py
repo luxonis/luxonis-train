@@ -929,6 +929,25 @@ class LuxonisLightningModule(pl.LightningModule):
                     CALLBACKS.get(callback.name)(**callback.params)
                 )
 
+        accumulate_grad_batches = getattr(
+            self.cfg.trainer, "accumulate_grad_batches", None
+        )
+        has_gas = any(
+            isinstance(cb, pl.callbacks.GradientAccumulationScheduler)
+            for cb in callbacks
+        )
+        if accumulate_grad_batches is not None:
+            if not has_gas:
+                gas = pl.callbacks.GradientAccumulationScheduler(
+                    scheduling={0: accumulate_grad_batches}
+                )
+                callbacks.append(gas)
+            else:
+                logger.warning(
+                    "Gradient accumulation scheduler is already present in the callbacks list. "
+                    "The 'accumulate_grad_batches' parameter in the config will be ignored."
+                )
+
         if self.training_strategy is not None:
             callbacks.append(TrainingManager(strategy=self.training_strategy))  # type: ignore
 

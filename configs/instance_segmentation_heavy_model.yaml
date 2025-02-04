@@ -16,6 +16,7 @@ loader:
     dataset_name: coco_test
 
 trainer:
+  precision: "16-mixed"
   preprocessing:
     train_image_size: [384, 512]
     keep_aspect_ratio: true
@@ -27,10 +28,10 @@ trainer:
 
   batch_size: 8
   epochs: &epochs 300
-  accumulate_grad_batches: 8 # For best results, always accumulate gradients to effectively use 64 batch size
-  n_workers: 8
+  n_workers: 4
   validation_interval: 10
   n_log_images: 8
+  gradient_clip_val: 10
 
   callbacks:
     - name: EMACallback
@@ -40,15 +41,22 @@ trainer:
         decay_tau: 2000
     - name: ExportOnTrainEnd
     - name: TestOnTrainEnd
+    - name: GradientAccumulationScheduler
+      params:
+        scheduling: # warmup phase is 3 epochs
+          0: 1
+          1: 4
+          2: 8 # For best results, always accumulate gradients to effectively use 64 batch size
 
   training_strategy:
     name: "TripleLRSGDStrategy"
     params: 
       warmup_epochs: 3
-      warmup_bias_lr: 0.1
+      warmup_bias_lr: 0.0
       warmup_momentum: 0.8
       lr: 0.01
       lre: 0.0001
       momentum: 0.937     
       weight_decay: 0.0005
       nesterov: True
+      cosine_annealing: False
