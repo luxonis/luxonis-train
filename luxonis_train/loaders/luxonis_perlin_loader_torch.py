@@ -71,30 +71,32 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         with _freeze_seed():
             img, labels = self.loader[idx]
 
-        an_mask = torch.tensor(labels.pop(f"{self.task_name}/segmentation"))[
-            0, ...
-        ]
-
         img = np.transpose(img, (2, 0, 1))
         tensor_img = torch.tensor(img)
         tensor_labels = self.dict_numpy_to_torch(labels)
 
-        if self.view[0] == "train" and random.random() < self.noise_prob:
-            anomaly_path = random.choice(self.anomaly_files)
-            anomaly_img = self.read_image(str(anomaly_path))
+        if self.view[0] == "train":
+            if random.random() < self.noise_prob:
+                anomaly_path = random.choice(self.anomaly_files)
+                anomaly_img = self.read_image(str(anomaly_path))
 
-            if self.augmentations is not None:
-                anomaly_img = self.augmentations.apply([(anomaly_img, {})])[0]
+                if self.augmentations is not None:
+                    anomaly_img = self.augmentations.apply(
+                        [(anomaly_img, {})]
+                    )[0]
 
-            anomaly_img = torch.tensor(anomaly_img).permute(2, 0, 1)
-            aug_tensor_img, an_mask = apply_anomaly_to_img(
-                tensor_img, anomaly_img, self.beta
-            )
-        elif self.view[0] == "train":
-            aug_tensor_img = tensor_img
-            an_mask = torch.zeros((self.height, self.width))
+                anomaly_img = torch.tensor(anomaly_img).permute(2, 0, 1)
+                aug_tensor_img, an_mask = apply_anomaly_to_img(
+                    tensor_img, anomaly_img, self.beta
+                )
+            else:
+                aug_tensor_img = tensor_img
+                an_mask = torch.zeros((self.height, self.width))
         else:
             aug_tensor_img = tensor_img
+            an_mask = torch.tensor(
+                labels.pop(f"{self.task_name}/segmentation")
+            )[0, ...]
 
         an_mask = F.one_hot(an_mask.long(), 2).permute(2, 0, 1).float()
 

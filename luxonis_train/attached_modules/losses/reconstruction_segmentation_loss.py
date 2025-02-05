@@ -3,7 +3,7 @@ from typing import Literal
 
 import torch
 import torch.nn.functional as F
-from torch import Tensor, nn
+from torch import Tensor, amp, nn
 
 from luxonis_train.nodes import DiscSubNetHead
 from luxonis_train.tasks import Tasks
@@ -86,26 +86,30 @@ class SSIM(nn.Module):
 
     def forward(self, img1: Tensor, img2: Tensor) -> Tensor:
         device = img1.device
-        (_, channel, _, _) = img1.size()
-        if channel == self.channel and self.window.dtype == img1.dtype:
-            window = self.window.to(device)
-        else:
-            window = (
-                create_window(self.window_size, channel)
-                .to(device)
-                .type(img1.dtype)
-            )
-            self.window = window
-            self.channel = channel
+        with amp.autocast(device_type=device.type, enabled=False):
+            img1 = img1.float()
+            img2 = img2.float()
 
-        s_score = ssim(
-            img1,
-            img2,
-            window=window,
-            window_size=self.window_size,
-            size_average=self.size_average,
-        )
-        return 1.0 - s_score
+            (_, channel, _, _) = img1.size()
+            if channel == self.channel and self.window.dtype == img1.dtype:
+                window = self.window.to(device)
+            else:
+                window = (
+                    create_window(self.window_size, channel)
+                    .to(device)
+                    .type(img1.dtype)
+                )
+                self.window = window
+                self.channel = channel
+
+            s_score = ssim(
+                img1,
+                img2,
+                window=window,
+                window_size=self.window_size,
+                size_average=self.size_average,
+            )
+            return 1.0 - s_score
 
 
 def create_window(window_size: int, channel: int = 1) -> Tensor:

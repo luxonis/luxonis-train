@@ -1,7 +1,7 @@
 from typing import Any, Literal
 
 import torch
-from torch import Tensor
+from torch import Tensor, amp
 from torch.nn import functional as F
 
 from luxonis_train.attached_modules.losses import BaseLoss
@@ -54,33 +54,37 @@ class SoftmaxFocalLoss(BaseLoss):
             raise ValueError(
                 f"Shape mismatch: {predictions.shape} vs {targets.shape}"
             )
-        predictions = F.softmax(predictions, dim=1)
+        with amp.autocast(device_type=predictions.device.type, enabled=False):
+            predictions = predictions.float()
+            targets = targets.float()
 
-        if self.smooth:
-            targets = torch.clamp(
-                targets,
-                self.smooth / (predictions.size(1) - 1),
-                1.0 - self.smooth,
-            )
+            predictions = F.softmax(predictions, dim=1)
 
-        pt = (targets * predictions).sum(dim=1) + self.smooth
-
-        if isinstance(self.alpha, Tensor):
-            if self.alpha.size(0) != predictions.size(1):
-                raise ValueError(
-                    f"Alpha length {self.alpha.size(0)} does not match number of classes {predictions.size(1)}"
+            if self.smooth:
+                targets = torch.clamp(
+                    targets,
+                    self.smooth / (predictions.size(1) - 1),
+                    1.0 - self.smooth,
                 )
-            alpha_t = self.alpha[targets.argmax(dim=1)]
-        else:
-            alpha_t = self.alpha
 
-        pt = torch.as_tensor(pt, dtype=torch.float32)
-        focal_term = torch.pow(1.0 - pt, self.gamma)
-        loss = -alpha_t * focal_term * pt.log()  # type: ignore
+            pt = (targets * predictions).sum(dim=1) + self.smooth
 
-        if self.reduction == "mean":
-            return loss.mean()
-        elif self.reduction == "sum":
-            return loss.sum()
-        else:
-            return loss
+            if isinstance(self.alpha, Tensor):
+                if self.alpha.size(0) != predictions.size(1):
+                    raise ValueError(
+                        f"Alpha length {self.alpha.size(0)} does not match number of classes {predictions.size(1)}"
+                    )
+                alpha_t = self.alpha[targets.argmax(dim=1)]
+            else:
+                alpha_t = self.alpha
+
+            pt = torch.as_tensor(pt, dtype=torch.float32)
+            focal_term = torch.pow(1.0 - pt, self.gamma)
+            loss = -alpha_t * focal_term * pt.log()  # type: ignore
+
+            if self.reduction == "mean":
+                return loss.mean()
+            elif self.reduction == "sum":
+                return loss.sum()
+            else:
+                return loss
