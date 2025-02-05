@@ -33,7 +33,7 @@ def get_variant(variant: VariantLiteral) -> AnomalyVariant:
         "heavy": AnomalyVariant(
             backbone="RecSubNet",
             backbone_params={"variant": "l"},
-            head_params={"variant": "n"},
+            head_params={"variant": "l"},
         ),
     }
 
