@@ -106,7 +106,7 @@ class AnomalyDetectionModel(BasePredefinedModel):
             MetricModuleConfig(
                 name="JaccardIndex",
                 attached_to=f"{self.task_name}-DiscSubNetHead",
-                params={"num_classes": 1, "task": "binary"},
+                params={"num_classes": 2, "task": "multiclass"},
                 is_main_metric=True,
             ),
         ]
