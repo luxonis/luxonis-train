@@ -276,7 +276,8 @@ class BaseLoaderTorch(
         return torch_dictionary
 
     def read_image(self, path: str) -> npt.NDArray[np.uint8]:
-        """Reads an image from a file.
+        """Reads an image from a file and returns an unnormalized image
+        as a numpy array.
 
         @type path: str
         @param path: Path to the image file.
