@@ -291,7 +291,7 @@ FPS (frames per second) for `light` and `heavy` variants on different devices wi
 
 | Variant     | RVC2 FPS | RVC4 FPS |
 | ----------- | -------- | -------- |
-| **`light`** | 3        | 120      |
+| **`light`** | 10       | 170      |
 | **`heavy`** | 0.5      | 61       |
 
 **Components:**
