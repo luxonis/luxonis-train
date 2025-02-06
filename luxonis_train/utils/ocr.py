@@ -85,8 +85,7 @@ class OCREncoder:
         """Initializes the OCR encoder.
 
         @type alphabet: list[str]
-        @param alphabet: A list of characters in the alphabet. of a
-            predefined alphabet. Defaults to "english".
+        @param alphabet: A list of characters in the alphabet.
         @type ignore_unknown: bool
         @param ignore_unknown: Whether to ignore unknown characters.
             Defaults to True.
