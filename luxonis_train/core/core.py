@@ -547,6 +547,24 @@ class LuxonisModel:
             ]
             cfg = Config.get_config(cfg_copy.model_dump(), curr_params)
 
+            unsupported_callbacks = {
+                "UploadCheckpoint",
+                "ExportOnTrainEnd",
+                "ArchiveOnTrainEnd",
+                "TestOnTrainEnd",
+            }
+
+            filtered_callbacks = []
+            for cb in cfg.trainer.callbacks:
+                if cb.name in unsupported_callbacks:
+                    logger.warning(
+                        f"Callback '{cb.name}' is not supported for tunning and is removed from the callbacks list."
+                    )
+                else:
+                    filtered_callbacks.append(cb)
+
+            cfg.trainer.callbacks = filtered_callbacks
+
             child_tracker.log_hyperparams(curr_params)
 
             cfg.save_data(osp.join(run_save_dir, "config.yaml"))
@@ -589,14 +607,6 @@ class LuxonisModel:
             # Pruning is done by raising an error
             except optuna.TrialPruned as e:
                 logger.info(e)
-
-            if (
-                "val/loss" not in pl_trainer.callback_metrics
-            ):  # pragma: no cover
-                raise ValueError(
-                    "No validation loss found. "
-                    "This can happen if `TestOnTrainEnd` callback is used."
-                )
 
             return pl_trainer.callback_metrics["val/loss"].item()
 
