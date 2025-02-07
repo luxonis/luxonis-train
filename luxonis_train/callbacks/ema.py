@@ -191,7 +191,7 @@ class EMACallback(pl.Callback):
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-        self._restore_original_checkpoints(pl_module)
+        self._restore_original_weights(pl_module)
 
     def on_test_epoch_start(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
@@ -217,7 +217,7 @@ class EMACallback(pl.Callback):
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-        self._restore_original_checkpoints(pl_module)
+        self._restore_original_weights(pl_module)
 
     def on_train_end(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
@@ -277,9 +277,7 @@ class EMACallback(pl.Callback):
         if self.ema is not None:
             pl_module.load_state_dict(self.ema.state_dict_ema)
 
-    def _restore_original_checkpoints(
-        self, pl_module: pl.LightningModule
-    ) -> None:
+    def _restore_original_weights(self, pl_module: pl.LightningModule) -> None:
         """Restore the model's original weights.
 
         This method reverts the model to its state prior to the EMA
