@@ -76,9 +76,36 @@ jobs:
     - name: Pyleft Check
       run: pyleft luxonis_train
 
-  tests:
+  # Tests that the `luxonis-train.config.Config` works
+  # even when the dependencies of `luxonis-train` are
+  # not installed.
+  config-test:
+    runs-on: ubuntu-latest
     needs:
       - type-check
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.head_ref }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: pip
+
+    - name: Test config without dependencies
+      run: |
+        pip install luxonis-ml[utils]
+        pip install -e . --no-deps
+        python -c 'from luxonis_train.config import Config; \
+                   Config.get_config("configs/complex_model.yaml")'
+
+  tests:
+    needs:
+      - config-test
     strategy:
       fail-fast: false
       matrix:

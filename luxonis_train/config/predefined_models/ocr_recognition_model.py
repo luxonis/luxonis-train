@@ -1,5 +1,6 @@
 from typing import Literal, TypeAlias
 
+from loguru import logger
 from pydantic import BaseModel
 
 from luxonis_train.config import (
@@ -9,9 +10,19 @@ from luxonis_train.config import (
     ModelNodeConfig,
     Params,
 )
-from luxonis_train.utils.ocr import AlphabetName
 
 from .base_predefined_model import BasePredefinedModel
+
+AlphabetName: TypeAlias = Literal[
+    "english",
+    "english_lowercase",
+    "numeric",
+    "alphanumeric",
+    "alphanumeric_lowercase",
+    "punctuation",
+    "ascii",
+]
+
 
 VariantLiteral: TypeAlias = Literal["light", "heavy"]
 
@@ -72,7 +83,8 @@ class OCRRecognitionModel(BasePredefinedModel):
         self.head_params = head_params or var_config.head_params
 
         self.backbone_params["max_text_len"] = max_text_len
-        self.head_params["alphabet"] = alphabet
+
+        self.head_params["alphabet"] = self._generate_alphabet(alphabet)
         self.head_params["ignore_unknown"] = ignore_unknown
         self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
@@ -139,3 +151,34 @@ class OCRRecognitionModel(BasePredefinedModel):
                 params=self.visualizer_params,
             )
         ]
+
+    def _generate_alphabet(
+        self, alphabet: list[str] | AlphabetName
+    ) -> list[str]:
+        alphabets = {
+            "english": list(
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            ),
+            "english_lowercase": list("abcdefghijklmnopqrstuvwxyz"),
+            "numeric": list("0123456789"),
+            "alphanumeric": list(
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+            ),
+            "alphanumeric_lowercase": list(
+                "abcdefghijklmnopqrstuvwxyz0123456789"
+            ),
+            "punctuation": list(" !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"),
+            "ascii": list("".join(chr(i) for i in range(32, 127))),
+        }
+
+        if isinstance(alphabet, str):
+            if alphabet not in alphabets:
+                raise ValueError(
+                    f"Invalid alphabet name '{alphabet}'. "
+                    f"Available options are: {list(alphabets.keys())}. "
+                    f"Alternatively, you can provide a custom alphabet as a list of characters."
+                )
+            logger.info(f"Using predefined alphabet '{alphabet}'.")
+            alphabet = alphabets[alphabet]
+
+        return alphabet
