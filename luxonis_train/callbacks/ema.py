@@ -5,7 +5,6 @@ from typing import Any
 import lightning.pytorch as pl
 import torch
 from lightning.pytorch.utilities.types import STEP_OUTPUT
-from loguru import logger
 from torch import nn
 
 
@@ -232,9 +231,7 @@ class EMACallback(pl.Callback):
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-        if self.ema is not None:
-            pl_module.load_state_dict(self.ema.state_dict_ema)
-            logger.info("Model weights replaced with the EMA weights.")
+        self._swap_to_ema_weights(pl_module)
 
     def on_save_checkpoint(
         self,
