@@ -18,6 +18,7 @@ VariantLiteral: TypeAlias = Literal["light", "heavy"]
 class AnomalyVariant(BaseModel):
     backbone: str
     backbone_params: Params
+    head_params: Params
 
 
 def get_variant(variant: VariantLiteral) -> AnomalyVariant:
@@ -27,10 +28,12 @@ def get_variant(variant: VariantLiteral) -> AnomalyVariant:
         "light": AnomalyVariant(
             backbone="RecSubNet",
             backbone_params={"variant": "n"},
+            head_params={"variant": "n"},
         ),
         "heavy": AnomalyVariant(
             backbone="RecSubNet",
             backbone_params={"variant": "l"},
+            head_params={"variant": "l"},
         ),
     }
 
@@ -48,9 +51,9 @@ class AnomalyDetectionModel(BasePredefinedModel):
         variant: VariantLiteral = "light",
         backbone: str | None = None,
         backbone_params: Params | None = None,
-        disc_subnet_params: Params | None = None,
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
+        head_params: str | None = None,
         task_name: str = "",
     ):
         var_config = get_variant(variant)
@@ -61,7 +64,7 @@ class AnomalyDetectionModel(BasePredefinedModel):
             if backbone is not None or backbone_params is not None
             else var_config.backbone_params
         ) or {}
-        self.disc_subnet_params = disc_subnet_params or {}
+        self.head_params = head_params or var_config.head_params
         self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
         self.task_name = task_name or "anomaly_detection"
@@ -80,7 +83,7 @@ class AnomalyDetectionModel(BasePredefinedModel):
                 name="DiscSubNetHead",
                 alias=f"{self.task_name}-DiscSubNetHead",
                 inputs=[f"{self.task_name}-{self.backbone}"],
-                params=self.disc_subnet_params,
+                params=self.head_params,
             ),
         ]
 
