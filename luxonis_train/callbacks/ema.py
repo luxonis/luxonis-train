@@ -179,11 +179,7 @@ class EMACallback(pl.Callback):
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-
-        self.collected_state_dict = deepcopy(pl_module.state_dict())
-
-        if self.ema is not None:
-            pl_module.load_state_dict(self.ema.state_dict_ema)
+        self._swap_to_ema_weights(pl_module)
 
     def on_validation_end(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
@@ -195,8 +191,33 @@ class EMACallback(pl.Callback):
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-        if self.collected_state_dict is not None:
-            pl_module.load_state_dict(self.collected_state_dict)
+        self._restore_original_checkpoints(pl_module)
+
+    def on_test_epoch_start(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> None:
+        """Do testing using the stored parameters. Save the original
+        parameters before replacing with EMA version.
+
+        @type trainer: L{pl.Trainer}
+        @param trainer: Pytorch Lightning trainer.
+        @type pl_module: L{pl.LightningModule}
+        @param pl_module: Pytorch Lightning module.
+        """
+
+        self._swap_to_ema_weights(pl_module)
+
+    def on_test_end(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> None:
+        """Restore original parameters to resume training later.
+
+        @type trainer: L{pl.Trainer}
+        @param trainer: Pytorch Lightning trainer.
+        @type pl_module: L{pl.LightningModule}
+        @param pl_module: Pytorch Lightning module.
+        """
+        self._restore_original_checkpoints(pl_module)
 
     def on_train_end(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
@@ -243,3 +264,16 @@ class EMACallback(pl.Callback):
         """
         if callback_state and "state_dict" in callback_state:
             self.loaded_ema_state_dict = callback_state["state_dict"]
+
+    def _swap_to_ema_weights(self, pl_module: pl.LightningModule) -> None:
+        """Save current state and load the EMA weights."""
+        self.collected_state_dict = deepcopy(pl_module.state_dict())
+        if self.ema is not None:
+            pl_module.load_state_dict(self.ema.state_dict_ema)
+
+    def _restore_original_checkpoints(
+        self, pl_module: pl.LightningModule
+    ) -> None:
+        """Restore the original state."""
+        if self.collected_state_dict is not None:
+            pl_module.load_state_dict(self.collected_state_dict)
