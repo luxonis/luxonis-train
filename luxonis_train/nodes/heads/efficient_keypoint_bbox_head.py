@@ -128,7 +128,12 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
                 out = torch.cat([out_reg, conf, out_cls], dim=1)
                 det_outputs.append(out)
                 kpt_outputs.append(
-                    self._dist2kpts(out_kpt.view(bs, self.nk, -1), bs, i)
+                    self._dist2kpts(
+                        out_kpt.view(bs, self.nk, -1),
+                        bs,
+                        i,
+                        apply_sigmoid=False,
+                    )
                 )
             return {"boundingbox": det_outputs, "keypoints": kpt_outputs}
 
@@ -180,7 +185,13 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             "keypoints_raw": kpt_tensor,
         }
 
-    def _dist2kpts(self, kpts: Tensor, batch_size: int, index: int) -> Tensor:
+    def _dist2kpts(
+        self,
+        kpts: Tensor,
+        batch_size: int,
+        index: int,
+        apply_sigmoid: bool = True,
+    ) -> Tensor:
         """Decodes keypoints."""
         anchors = self.anchor_points.split(self.n_anchors_list, dim=0)
         kpt_predictions = kpts.view(batch_size, self.n_keypoints, 3, -1)
@@ -188,8 +199,17 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             kpt_predictions[:, :, :2] * 2.0
             + (anchors[index].transpose(1, 0) - 0.5)
         ) * self.stride[index]
+
+        conf_scores = kpt_predictions[:, :, 2:3]
+        if apply_sigmoid:
+            conf_scores = conf_scores.sigmoid()
+
         decoded_kpts = torch.cat(
-            (grid_coords, kpt_predictions[:, :, 2:3].sigmoid()), 2
+            (
+                grid_coords,
+                conf_scores,
+            ),
+            2,
         )
         return decoded_kpts.view(batch_size, self.nk, -1)
 
