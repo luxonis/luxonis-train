@@ -194,8 +194,8 @@ class LuxonisModel:
         self.dataset_metadata = DatasetMetadata.from_loader(
             self.loaders["train"]
         )
-
-        self.cfg.save_data(osp.join(self.run_save_dir, "config.yaml"))
+        self.config_file = osp.join(self.run_save_dir, "training_config.yaml")
+        self.cfg.save_data(self.config_file)
 
         self.input_shapes = self.loaders["train"].input_shapes
 
@@ -219,6 +219,7 @@ class LuxonisModel:
             raise e
         finally:
             self.tracker.upload_artifact(self.log_file, typ="logs")
+            self.tracker.upload_artifact(self.config_file, typ="config")
             self.tracker._finalize(status)
 
     def train(
@@ -567,7 +568,7 @@ class LuxonisModel:
 
             child_tracker.log_hyperparams(curr_params)
 
-            cfg.save_data(osp.join(run_save_dir, "config.yaml"))
+            cfg.save_data(osp.join(run_save_dir, "training_config.yaml"))
 
             lightning_module = LuxonisLightningModule(
                 cfg=cfg,
