@@ -109,10 +109,7 @@ class ConfusionMatrix(BaseMetric):
         if self.detection_cm is not None:
             assert isinstance(predictions, list)
 
-            target_boxes = target.clone()
-            target_boxes[..., 2:6] = box_convert(
-                target_boxes[..., 2:6], "xywh", "xyxy"
-            )
+            target[..., 2:6] = box_convert(target[..., 2:6], "xywh", "xyxy")
             scale_factors = torch.tensor(
                 [
                     self.original_in_shape[2],
@@ -122,11 +119,11 @@ class ConfusionMatrix(BaseMetric):
                 ],
                 device=target.device,
             )
-            target_boxes[..., 2:6] *= scale_factors
+            target[..., 2:6] *= scale_factors
 
             self.detection_cm += self._compute_detection_confusion_matrix(
                 predictions,
-                target_boxes,
+                target,
             )
             return
 
