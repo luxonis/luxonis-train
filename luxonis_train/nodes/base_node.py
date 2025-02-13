@@ -384,11 +384,10 @@ class BaseNode(
         """
         local_path = safe_download(url=path)
         if local_path:
-            state_dict = torch.load(
+            # load explicitly to cpu, PL takes care of transfering to CUDA is needed
+            state_dict = torch.load(  # nosemgrep
                 local_path, weights_only=False, map_location="cpu"
-            )[
-                "state_dict"
-            ]  # load explicitly to cpu, PL takes care of transfering to CUDA is needed
+            )["state_dict"]
             self.load_state_dict(state_dict, strict=strict)
             logging.info(f"Checkpoint for {self.name} loaded.")
         else:

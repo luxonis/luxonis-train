@@ -221,7 +221,7 @@ def infer_from_directory(
         keep_aspect_ratio=model.cfg_preprocessing.keep_aspect_ratio,
     )
     loader = torch_data.DataLoader(
-        loader, batch_size=model.cfg.trainer.batch_size
+        loader, batch_size=model.cfg.trainer.batch_size, pin_memory=True
     )
 
     infer_from_loader(model, loader, save_dir, img_paths)
