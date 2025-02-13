@@ -1,3 +1,5 @@
+from typing import Mapping
+
 import torch
 from loguru import logger
 from torch import Tensor
@@ -59,9 +61,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         if isinstance(labels, list):
             labels = {i: label for i, label in enumerate(labels)}
 
-        self.bbox_labels = labels or {
-            i: label for i, label in enumerate(self.class_names)
-        }
+        self.bbox_labels = labels or self.classes.inverse
 
         if colors is None:
             colors = {
@@ -86,7 +86,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         pred_bboxes: list[Tensor],
         pred_masks: list[Tensor],
         width: int | None,
-        label_dict: dict[int, str],
+        label_dict: Mapping[int, str],
         color_dict: dict[str, Color],
         draw_labels: bool,
         alpha: float,
@@ -142,7 +142,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         target_bboxes: Tensor,
         target_masks: Tensor,
         width: int | None,
-        label_dict: dict[int, str],
+        label_dict: Mapping[int, str],
         color_dict: dict[str, Color],
         draw_labels: bool,
         alpha: float,

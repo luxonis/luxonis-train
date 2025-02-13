@@ -1,5 +1,7 @@
 from typing import Set
 
+from bidict import bidict
+
 from luxonis_train.loaders import BaseLoaderTorch
 
 
@@ -9,7 +11,7 @@ class DatasetMetadata:
     def __init__(
         self,
         *,
-        classes: dict[str, list[str]] | None = None,
+        classes: dict[str, dict[str, int]] | None = None,
         n_keypoints: dict[str, int] | None = None,
         loader: BaseLoaderTorch | None = None,
     ):
@@ -17,9 +19,8 @@ class DatasetMetadata:
         infer the number of classes, number of keypoints, I{etc.}
         instead of passing them as arguments to the model.
 
-        @type classes: dict[str, list[str]] | None
-        @param classes: Dictionary mapping tasks to lists of class
-            names.
+        @type classes: dict[str, dict[str, int]] | None
+        @param classes: Dictionary mapping tasks to the classes.
         @type n_keypoints: dict[str, int] | None
         @param n_keypoints: Dictionary mapping tasks to the number of
             keypoints.
@@ -95,7 +96,7 @@ class DatasetMetadata:
                 )
         return n_keypoints
 
-    def classes(self, task_name: str | None = None) -> list[str]:
+    def classes(self, task_name: str | None = None) -> bidict[str, int]:
         """Gets the class names for the specified task.
 
         @type task_name: str | None
@@ -113,14 +114,15 @@ class DatasetMetadata:
                 raise ValueError(
                     f"Task type {task_name} is not present in the dataset."
                 )
-            return self._classes[task_name]
-        class_names = list(self._classes.values())[0]
-        for classes in self._classes.values():
-            if classes != class_names:
+            return bidict(self._classes[task_name])
+        classes = next(iter(self._classes.values()))
+        for c in self._classes.values():
+            if c != classes:
                 raise RuntimeError(
-                    "The dataset contains different class names for different tasks."
+                    "The dataset contains different class "
+                    "definitions for different tasks."
                 )
-        return class_names
+        return bidict(classes)
 
     @classmethod
     def from_loader(cls, loader: BaseLoaderTorch) -> "DatasetMetadata":

@@ -58,9 +58,7 @@ class BBoxVisualizer(BaseVisualizer):
         if isinstance(labels, list):
             labels = {i: label for i, label in enumerate(labels)}
 
-        self.label_dict = labels or {
-            i: label for i, label in enumerate(self.class_names)
-        }
+        self.label_dict = labels or self.classes.inverse
 
         if colors is None:
             colors = {

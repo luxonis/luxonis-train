@@ -232,11 +232,12 @@ class BaseLoaderTorch(
         ...
 
     @abstractmethod
-    def get_classes(self) -> dict[str, list[str]]:
+    def get_classes(self) -> dict[str, dict[str, int]]:
         """Gets classes according to computer vision task.
 
-        @rtype: dict[LabelType, list[str]]
-        @return: A dictionary mapping tasks to their classes.
+        @rtype: dict[LabelType, dict[str, int]]
+        @return: A dictionary mapping tasks to their classes as a
+            mappings from class name to class IDs.
         """
         ...
 

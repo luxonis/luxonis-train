@@ -7,6 +7,7 @@ from inspect import Parameter
 from types import UnionType
 from typing import Union, get_args, get_origin
 
+from bidict import bidict
 from luxonis_ml.data.utils import get_task_type
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
@@ -162,16 +163,16 @@ class BaseAttachedModule(
         return self.node.original_in_shape
 
     @property
-    def class_names(self) -> list[str]:
-        """Getter for the class names.
+    def classes(self) -> bidict[str, int]:
+        """Getter for the class mapping.
 
-        @type: list[str]
+        @type: dict[str, int]
         @raises RuntimeError: If the node doesn't define any task.
         @raises ValueError: If the class names are different for
             different tasks. In that case, use the L{get_class_names}
             method.
         """
-        return self.node.class_names
+        return self.node.classes
 
     def pick_labels(self, labels: Labels) -> Labels:
         required_labels = {

@@ -118,13 +118,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         return tensor_img, self.dict_numpy_to_torch(labels)
 
     @override
-    def get_classes(self) -> dict[str, list[str]]:
-        return {
-            task: [
-                cls for cls, _ in sorted(mapping.items(), key=lambda x: x[1])
-            ]
-            for task, mapping in self.dataset.get_classes().items()
-        }
+    def get_classes(self) -> dict[str, dict[str, int]]:
+        return self.dataset.get_classes()
 
     @override
     def get_n_keypoints(self) -> dict[str, int]:

@@ -7,8 +7,8 @@ from luxonis_train.utils import DatasetMetadata
 def metadata() -> DatasetMetadata:
     return DatasetMetadata(
         classes={
-            "color-segmentation": ["car", "person"],
-            "detection": ["car", "person"],
+            "color-segmentation": {"car": 0, "person": 1},
+            "detection": {"car": 0, "person": 1},
         },
         n_keypoints={"color-segmentation": 0, "detection": 0},
     )
@@ -20,7 +20,7 @@ def test_n_classes(metadata: DatasetMetadata):
     assert metadata.n_classes() == 2
     with pytest.raises(ValueError):
         metadata.n_classes("segmentation")
-    metadata._classes["segmentation"] = ["car", "person", "tree"]
+    metadata._classes["segmentation"] = {"car": 0, "person": 1, "tree": 2}
     with pytest.raises(RuntimeError):
         metadata.n_classes()
 
@@ -37,11 +37,11 @@ def test_n_keypoints(metadata: DatasetMetadata):
 
 
 def test_class_names(metadata: DatasetMetadata):
-    assert metadata.classes("color-segmentation") == ["car", "person"]
-    assert metadata.classes("detection") == ["car", "person"]
-    assert metadata.classes() == ["car", "person"]
+    assert metadata.classes("color-segmentation") == {"car": 0, "person": 1}
+    assert metadata.classes("detection") == {"car": 0, "person": 1}
+    assert metadata.classes() == {"car": 0, "person": 1}
     with pytest.raises(ValueError):
         metadata.classes("segmentation")
-    metadata._classes["segmentation"] = ["car", "person", "tree"]
+    metadata._classes["segmentation"] = {"car": 0, "person": 1, "tree": 2}
     with pytest.raises(RuntimeError):
         metadata.classes()
