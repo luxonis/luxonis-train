@@ -1,6 +1,6 @@
 blobconverter>=1.4.2
 lightning>=2.4.0
-luxonis-ml[data,tracker]>=0.5.1
+luxonis-ml[data,tracker]>=0.6.0
 onnx>=1.12.0
 onnxruntime>=1.13.1
 onnxsim>=0.4.10
