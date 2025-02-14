@@ -385,7 +385,7 @@ class BaseNode(
         local_path = safe_download(url=path)
         if local_path:
             # load explicitly to cpu, PL takes care of transfering to CUDA is needed
-            state_dict = torch.load(  # nosemgrep
+            state_dict = torch.load(  # nosemgrep pragma: no cover
                 local_path, weights_only=False, map_location="cpu"
             )["state_dict"]
             self.load_state_dict(state_dict, strict=strict)

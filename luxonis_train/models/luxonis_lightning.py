@@ -1019,7 +1019,9 @@ class LuxonisLightningModule(pl.LightningModule):
 
         path = str(path)
 
-        checkpoint = torch.load(path, map_location=self.device)  # nosemgrep
+        checkpoint = torch.load(  # nosemgrep pragma: no cover
+            path, map_location=self.device
+        )
 
         if "state_dict" not in checkpoint:
             raise ValueError("Checkpoint does not contain state_dict.")
