@@ -108,6 +108,7 @@ class ConfusionMatrix(BaseMetric):
 
         if self.detection_cm is not None:
             assert isinstance(predictions, list)
+
             target[..., 2:6] = box_convert(target[..., 2:6], "xywh", "xyxy")
             scale_factors = torch.tensor(
                 [

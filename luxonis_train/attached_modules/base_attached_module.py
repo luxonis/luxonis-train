@@ -263,7 +263,6 @@ class BaseAttachedModule(
                     if label_name not in labels:
                         if self._argument_is_optional(name):
                             targets[name] = None
-
                         elif self._signature[name].default is Parameter.empty:
                             required = {
                                 f"{self.node.task_name}/{name}"
@@ -278,6 +277,14 @@ class BaseAttachedModule(
                         targets[name] = labels[label_name]
 
         kwargs = predictions | targets
+
+        for key, val in kwargs.items():
+            if isinstance(val, Tensor):
+                kwargs[key] = val.clone()
+            elif isinstance(val, list):
+                for i, item in enumerate(val):
+                    if isinstance(item, Tensor):
+                        val[i] = item.clone()
 
         for name, param in self._signature.items():
             typ = param.annotation
