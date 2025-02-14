@@ -97,11 +97,29 @@
                 "metadata": {
                     "postprocessor_path": null,
                     "classes": [
-                        "background", "alfa-romeo", "buick", "ducati", "harley",
-                        "ferrari", "infiniti", "jeep", "land-rover", "roll-royce",
-                        "yamaha", "aprilia", "bmw", "dodge", "honda", "moto",
-                        "piaggio", "isuzu", "Kawasaki", "truimph", "pontiac",
-                        "saab", "chrysler"
+                        "background",
+                        "alfa-romeo",
+                        "aprilia",
+                        "bmw",
+                        "buick",
+                        "chrysler",
+                        "dodge",
+                        "ducati",
+                        "ferrari",
+                        "harley",
+                        "honda",
+                        "infiniti",
+                        "isuzu",
+                        "jeep",
+                        "Kawasaki",
+                        "land-rover",
+                        "moto",
+                        "piaggio",
+                        "pontiac",
+                        "roll-royce",
+                        "saab",
+                        "truimph",
+                        "yamaha"
                     ],
                     "n_classes": 23,
                     "is_softmax": false
@@ -113,7 +131,11 @@
                 "parser": "SegmentationParser",
                 "metadata": {
                     "postprocessor_path": null,
-                    "classes": ["motorbike", "car", "background"],
+                    "classes": [
+                        "background",
+                        "car",
+                        "motorbike"
+                    ],
                     "n_classes": 3,
                     "is_softmax": false
                 },
@@ -124,7 +146,11 @@
                 "parser": "YOLO",
                 "metadata": {
                     "postprocessor_path": null,
-                    "classes": ["motorbike", "car", "background"],
+                    "classes": [
+                        "background",
+                        "car",
+                        "motorbike"
+                    ],
                     "n_classes": 3,
                     "iou_threshold": 0.45,
                     "conf_threshold": 0.25,
@@ -166,7 +192,12 @@
                 "parser": "SegmentationParser",
                 "metadata": {
                     "postprocessor_path": null,
-                    "classes": ["background", "blue", "green", "red"],
+                    "classes": [
+                        "background",
+                        "blue",
+                        "green",
+                        "red"
+                    ],
                     "n_classes": 4,
                     "is_softmax": false
                 },

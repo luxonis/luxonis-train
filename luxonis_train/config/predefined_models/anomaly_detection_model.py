@@ -53,7 +53,7 @@ class AnomalyDetectionModel(BasePredefinedModel):
         backbone_params: Params | None = None,
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
-        head_params: str | None = None,
+        head_params: Params | None = None,
         task_name: str = "",
     ):
         var_config = get_variant(variant)

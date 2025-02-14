@@ -47,8 +47,8 @@ class CustomMultiInputLoader(BaseLoaderTorch):
         return 10
 
     @override
-    def get_classes(self) -> dict[str, list[str]]:
-        return {"": ["square"]}
+    def get_classes(self) -> dict[str, dict[str, int]]:
+        return {"": {"square": 0}}
 
 
 class MultiInputTestBaseNode(BaseNode):

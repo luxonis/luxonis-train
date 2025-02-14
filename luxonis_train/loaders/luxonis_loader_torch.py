@@ -118,7 +118,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         return tensor_img, self.dict_numpy_to_torch(labels)
 
     @override
-    def get_classes(self) -> dict[str, list[str]]:
+    def get_classes(self) -> dict[str, dict[str, int]]:
         return self.dataset.get_classes()
 
     @override

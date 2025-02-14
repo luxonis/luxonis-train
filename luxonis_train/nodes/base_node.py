@@ -2,9 +2,11 @@ import inspect
 import logging
 from abc import ABC, abstractmethod
 from contextlib import suppress
+from operator import itemgetter
 from typing import Generic, TypeVar
 
 import torch
+from bidict import bidict
 from loguru import logger
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
@@ -245,12 +247,22 @@ class BaseNode(
         return self.dataset_metadata.n_classes(self.task_name)
 
     @property
+    def classes(self) -> bidict[str, int]:
+        """Getter for the class mappings.
+
+        @type: dict[str, int]
+        """
+        return self.dataset_metadata.classes(self.task_name)
+
+    @property
     def class_names(self) -> list[str]:
         """Getter for the class names.
 
         @type: list[str]
         """
-        return self.dataset_metadata.classes(self.task_name)
+        return [
+            name for name, _ in sorted(self.classes.items(), key=itemgetter(1))
+        ]
 
     @property
     def input_shapes(self) -> list[Packet[Size]]:

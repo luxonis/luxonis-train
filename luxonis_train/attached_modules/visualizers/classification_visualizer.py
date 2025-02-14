@@ -39,14 +39,10 @@ class ClassificationVisualizer(BaseVisualizer):
         """Handles both single-label and multi-label classification."""
         if self.multilabel:
             idxs = (pred > 0.5).nonzero(as_tuple=True)[0].tolist()
-            if self.class_names is None:
-                return ", ".join([str(idx) for idx in idxs])
-            return ", ".join([self.class_names[idx] for idx in idxs])
+            return ", ".join([self.classes.inverse[idx] for idx in idxs])
         else:
             idx = int((pred.argmax()).item())
-            if self.class_names is None:
-                return str(idx)
-            return self.class_names[idx]
+            return self.classes.inverse[idx]
 
     def _generate_plot(
         self, prediction: Tensor, width: int, height: int
@@ -58,10 +54,7 @@ class ClassificationVisualizer(BaseVisualizer):
         fig, ax = plt.subplots(figsize=(width / 100, height / 100))
         ax.bar(np.arange(len(pred)), pred)
         ax.set_xticks(np.arange(len(pred)))
-        if self.class_names is not None:
-            ax.set_xticklabels(self.class_names, rotation=90)
-        else:
-            ax.set_xticklabels(np.arange(1, len(pred) + 1))
+        ax.set_xticklabels(self.classes.inverse, rotation=90)
         ax.set_ylim(0, 1)
         ax.set_xlabel("Class")
         ax.set_ylabel("Probability")
