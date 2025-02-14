@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Literal, cast
+from typing import Any, List, Literal, Optional, cast
 
 import torch
 import torch.nn.functional as F
@@ -42,6 +42,7 @@ class AdaptiveDetectionLoss(
         reduction: Literal["sum", "mean"] = "mean",
         class_loss_weight: float = 1.0,
         iou_loss_weight: float = 2.5,
+        per_class_weights: Optional[List[float]] = None,
         **kwargs: Any,
     ):
         """BBox loss adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
@@ -59,6 +60,8 @@ class AdaptiveDetectionLoss(
         @param class_loss_weight: Weight of classification loss.
         @type iou_loss_weight: float
         @param iou_loss_weight: Weight of IoU loss.
+        @type per_class_weights: Optional[Tensor]
+        @param per_class_weights: Holds a weight for each class to calculate the weighted loss.
         """
         super().__init__(**kwargs)
 
@@ -78,6 +81,7 @@ class AdaptiveDetectionLoss(
         self.varifocal_loss = VarifocalLoss()
         self.class_loss_weight = class_loss_weight
         self.iou_loss_weight = iou_loss_weight
+        self.per_class_weights = per_class_weights
 
         self._logged_assigner_change = False
 
@@ -137,7 +141,7 @@ class AdaptiveDetectionLoss(
             ..., :-1
         ]
         loss_cls = self.varifocal_loss(
-            pred_scores, assigned_scores, one_hot_label
+            pred_scores, assigned_scores, one_hot_label, self.per_class_weights
         )
 
         if assigned_scores.sum() > 1:
@@ -264,12 +268,18 @@ class VarifocalLoss(nn.Module):
         self.gamma = gamma
 
     def forward(
-        self, pred_score: Tensor, target_score: Tensor, label: Tensor
+        self,
+        pred_score: Tensor,
+        target_score: Tensor,
+        label: Tensor,
+        per_class_weights: Tensor,
     ) -> Tensor:
         weight = (
             self.alpha * pred_score.pow(self.gamma) * (1 - label)
             + target_score * label
         )
+        if per_class_weights is not None:
+            weight = weight * torch.tensor(per_class_weights)[label.long()]
         with torch.amp.autocast(
             device_type=pred_score.device.type, enabled=False
         ):
