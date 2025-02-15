@@ -28,7 +28,7 @@ from luxonis_train.callbacks import (
     LuxonisTQDMProgressBar,
 )
 from luxonis_train.config import Config
-from luxonis_train.loaders import BaseTrainDataset, collate_fn
+from luxonis_train.loaders import BaseTorchDataset, collate_fn
 from luxonis_train.models import LuxonisLightningModule
 from luxonis_train.utils import (
     DatasetMetadata,
@@ -120,7 +120,7 @@ class LuxonisModel:
             precision=self.cfg.trainer.precision,
         )
 
-        self.datasets: dict[View, BaseTrainDataset] = {}
+        self.datasets: dict[View, BaseTorchDataset] = {}
         loader_name = self.cfg.loader.name
         Loader = LOADERS.get(loader_name)
         for view in ("train", "val", "test"):

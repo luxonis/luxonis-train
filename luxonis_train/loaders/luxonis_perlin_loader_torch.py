@@ -11,11 +11,11 @@ from typing_extensions import override
 
 from luxonis_train.utils.types import Labels
 
-from .luxonis_loader_torch import LuxonisTrainDataset
+from .luxonis_loader_torch import LuxonisTorchDataset
 from .perlin import apply_anomaly_to_img
 
 
-class PerlinNoiseDataset(LuxonisTrainDataset):
+class PerlinNoiseDataset(LuxonisTorchDataset):
     @override
     def __init__(
         self,

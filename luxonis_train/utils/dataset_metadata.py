@@ -3,7 +3,7 @@ from typing import Set
 from bidict import bidict
 from typing_extensions import deprecated
 
-from luxonis_train.loaders import BaseTrainDataset
+from luxonis_train.loaders import BaseTorchDataset
 
 
 class DatasetMetadata:
@@ -14,7 +14,7 @@ class DatasetMetadata:
         *,
         classes: dict[str, dict[str, int]] | None = None,
         n_keypoints: dict[str, int] | None = None,
-        loader: BaseTrainDataset | None = None,
+        loader: BaseTorchDataset | None = None,
     ):
         """An object containing metadata about the dataset. Used to
         infer the number of classes, number of keypoints, I{etc.}
@@ -127,11 +127,11 @@ class DatasetMetadata:
 
     @classmethod
     @deprecated("`from_loader` is deprecated, use `from_dataset` instead.")
-    def from_loader(cls, loader: BaseTrainDataset) -> "DatasetMetadata":
+    def from_loader(cls, loader: BaseTorchDataset) -> "DatasetMetadata":
         return cls.from_dataset(loader)
 
     @classmethod
-    def from_dataset(cls, dataset: BaseTrainDataset) -> "DatasetMetadata":
+    def from_dataset(cls, dataset: BaseTorchDataset) -> "DatasetMetadata":
         """Creates a L{DatasetMetadata} object from a L{LuxonisDataset}.
 
         @type dataset: LuxonisDataset

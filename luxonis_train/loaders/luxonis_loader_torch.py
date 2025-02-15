@@ -17,10 +17,10 @@ from typing_extensions import override
 
 from luxonis_train.utils.types import Labels
 
-from .base_loader import BaseTrainDataset
+from .base_loader import BaseTorchDataset
 
 
-class LuxonisTrainDataset(BaseTrainDataset):
+class LuxonisTorchDataset(BaseTorchDataset):
     @override
     def __init__(
         self,

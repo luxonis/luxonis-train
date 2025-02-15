@@ -1,12 +1,12 @@
-from .base_loader import BaseTrainDataset
-from .luxonis_loader_torch import LuxonisTrainDataset
+from .base_loader import BaseTorchDataset
+from .luxonis_loader_torch import LuxonisTorchDataset
 from .luxonis_perlin_loader_torch import PerlinNoiseDataset
 from .utils import DatasetOutput, collate_fn
 
 __all__ = [
-    "LuxonisTrainDataset",
+    "LuxonisTorchDataset",
     "collate_fn",
-    "BaseTrainDataset",
+    "BaseTorchDataset",
     "DatasetOutput",
     "PerlinNoiseDataset",
 ]

@@ -12,7 +12,7 @@ from torch import Tensor
 
 import luxonis_train
 from luxonis_train.attached_modules.visualizers import get_denormalized_images
-from luxonis_train.loaders import LuxonisTrainDataset
+from luxonis_train.loaders import LuxonisTorchDataset
 from luxonis_train.models.luxonis_output import LuxonisOutput
 
 IMAGE_FORMATS = {
@@ -211,7 +211,7 @@ def infer_from_directory(
         {"train": 0.0, "val": 0.0, "test": 1.0}, replace_old_splits=True
     )
 
-    loader = LuxonisTrainDataset(
+    loader = LuxonisTorchDataset(
         dataset_name=dataset_name,
         view="test",
         height=model.cfg_preprocessing.train_image_size.height,

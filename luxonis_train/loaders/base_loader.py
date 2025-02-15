@@ -19,7 +19,7 @@ from luxonis_train.utils.types import Labels
 from .utils import DatasetOutput
 
 
-class BaseTrainDataset(
+class BaseTorchDataset(
     Dataset[DatasetOutput],
     ABC,
     metaclass=AutoRegisterMeta,
