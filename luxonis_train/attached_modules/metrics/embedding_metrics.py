@@ -1,10 +1,11 @@
 import torch
 from torch import Tensor
+from typing_extensions import Annotated
 
 from luxonis_train.nodes.heads.ghostfacenet_head import GhostFaceNetHead
 from luxonis_train.tasks import Tasks
 
-from .base_metric import BaseMetric
+from .base_metric import BaseMetric, State
 
 # Converted from https://omoindrot.github.io/triplet-loss#offline-and-online-triplet-mining
 # to PyTorch from TensorFlow
@@ -14,18 +15,19 @@ class ClosestIsPositiveAccuracy(BaseMetric):
     supported_tasks = [Tasks.EMBEDDINGS]
     node: GhostFaceNetHead
 
+    cross_batch_memory: Annotated[
+        list[tuple[Tensor, Tensor]], State(default=[], dist_reduce_fx="cat")
+    ]
+    correct_predictions: Annotated[
+        Tensor, State(default=torch.tensor(0), dist_reduce_fx="sum")
+    ]
+    total_predictions: Annotated[
+        Tensor, State(default=torch.tensor(0), dist_reduce_fx="sum")
+    ]
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.cross_batch_memory_size = self.node.cross_batch_memory_size
-        self.add_state("cross_batch_memory", default=[], dist_reduce_fx="cat")
-        self.add_state(
-            "correct_predictions",
-            default=torch.tensor(0),
-            dist_reduce_fx="sum",
-        )
-        self.add_state(
-            "total_predictions", default=torch.tensor(0), dist_reduce_fx="sum"
-        )
 
     def update(self, predictions: Tensor, target: Tensor) -> None:
         embeddings, labels = predictions, target
@@ -77,18 +79,26 @@ class MedianDistances(BaseMetric):
     supported_tasks = [Tasks.EMBEDDINGS]
     node: GhostFaceNetHead
 
-    cross_batch_memory: list[tuple[Tensor, Tensor]]
+    # cross_batch_memory: list[tuple[Tensor, Tensor]]
+    cross_batch_memory: Annotated[
+        list[tuple[Tensor, Tensor]], State(default=[], dist_reduce_fx="cat")
+    ]
+    all_distances: Annotated[
+        list[Tensor], State(default=[], dist_reduce_fx="cat")
+    ]
+    closest_distances: Annotated[
+        list[Tensor], State(default=[], dist_reduce_fx="cat")
+    ]
+    positive_distances: Annotated[
+        list[Tensor], State(default=[], dist_reduce_fx="cat")
+    ]
+    closest_vs_positive_distances: Annotated[
+        list[Tensor], State(default=[], dist_reduce_fx="cat")
+    ]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.cross_batch_memory_size = self.node.cross_batch_memory_size
-        self.add_state("cross_batch_memory", default=[], dist_reduce_fx="cat")
-        self.add_state("all_distances", default=[], dist_reduce_fx="cat")
-        self.add_state("closest_distances", default=[], dist_reduce_fx="cat")
-        self.add_state("positive_distances", default=[], dist_reduce_fx="cat")
-        self.add_state(
-            "closest_vs_positive_distances", default=[], dist_reduce_fx="cat"
-        )
 
     def update(self, embeddings: Tensor, target: Tensor) -> None:
         if self.cross_batch_memory_size is not None:

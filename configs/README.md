@@ -165,9 +165,9 @@ To store and load the data we use `LuxonisDataset` and `LuxonisLoader.` For spec
 | -------------- | ------------------ | ---------------------- | ------------------------------------ |
 | `name`         | `str`              | `"LuxonisLoaderTorch"` | Name of the Loader                   |
 | `image_source` | `str`              | `"image"`              | Name of the input image group        |
-| `train_view`   | `str \| list[str]` | `"train"`              | splits to use for training           |
-| `val_view`     | `str \| list[str]` | `"val"`                | splits to use for validation         |
-| `test_view`    | `str \| list[str]` | `"test"`               | splits to use for testing            |
+| `train_splits` | `str \| list[str]` | `"train"`              | splits to use for training           |
+| `val_splits`   | `str \| list[str]` | `"val"`                | splits to use for validation         |
+| `test_splits`  | `str \| list[str]` | `"test"`               | splits to use for testing            |
 | `params`       | `dict[str, Any]`   | `{}`                   | Additional parameters for the loader |
 
 ### `LuxonisLoaderTorch`
@@ -288,7 +288,7 @@ When setting `trainer.smart_cfg_auto_populate = True`, the following set of rule
 
 1. **Validation/Test Views:**
 
-   - If `train_view`, `val_view`, and `test_view` are the same, and `n_validation_batches` is not explicitly set, it defaults to `10` to prevent validation/testing on the entire training set.
+   - If `train_splits`, `val_splits`, and `test_splits` are the same, and `n_validation_batches` is not explicitly set, it defaults to `10` to prevent validation/testing on the entire training set.
 
 ### Preprocessing
 

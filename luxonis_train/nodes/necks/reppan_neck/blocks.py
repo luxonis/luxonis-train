@@ -5,10 +5,10 @@ import torch.nn as nn
 from torch import Tensor
 
 from luxonis_train.nodes.blocks import (
-    BlockRepeater,
     ConvModule,
     CSPStackRepBlock,
-    RepVGGBlock,
+    GeneralReparametrizableBlock,
+    ModuleRepeater,
 )
 
 
@@ -67,7 +67,7 @@ class RepUpBlock(PANUpBlockBase):
         in_channels: int,
         in_channels_next: int,
         out_channels: int,
-        n_repeats: int,
+        num_repeats: int,
     ):
         """RepPANNeck up block for smaller networks that uses RepBlock.
 
@@ -87,11 +87,11 @@ class RepUpBlock(PANUpBlockBase):
             out_channels=out_channels,
         )
 
-        self._encode_block = BlockRepeater(
-            block=RepVGGBlock,
+        self._encode_block = ModuleRepeater(
+            module=GeneralReparametrizableBlock,
             in_channels=in_channels_next + out_channels,
             out_channels=out_channels,
-            n_blocks=n_repeats,
+            num_repets=num_repeats,
         )
 
     @property
@@ -218,11 +218,11 @@ class RepDownBlock(PANDownBlockBase):
             downsample_out_channels=downsample_out_channels,
         )
 
-        self._encode_block = BlockRepeater(
-            block=RepVGGBlock,
+        self._encode_block = ModuleRepeater(
+            module=GeneralReparametrizableBlock,
             in_channels=downsample_out_channels + in_channels_next,
             out_channels=out_channels,
-            n_blocks=n_repeats,
+            num_repets=n_repeats,
         )
 
     @property

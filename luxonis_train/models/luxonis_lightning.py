@@ -10,7 +10,7 @@ from lightning.pytorch.callbacks import (
     ModelCheckpoint,
     RichModelSummary,
 )
-from lightning.pytorch.utilities import rank_zero_only  # type: ignore
+from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import ConfigItem
@@ -152,13 +152,8 @@ class LuxonisLightningModule(pl.LightningModule):
         self.node_task_names: dict[str, str] = {}
         self.main_metric: str | None = None
         self.save_dir = save_dir
-        self.test_step_outputs: list[Mapping[str, Tensor | float | int]] = []
-        self.training_step_outputs: list[
-            Mapping[str, Tensor | float | int]
-        ] = []
-        self.validation_step_outputs: list[
-            Mapping[str, Tensor | float | int]
-        ] = []
+        self.training_step_outputs: list[dict[str, Tensor]] = []
+        self.validation_step_outputs: list[dict[str, Tensor]] = []
         self.losses: dict[str, dict[str, BaseLoss]] = defaultdict(dict)
         self.metrics: dict[str, dict[str, BaseMetric]] = defaultdict(dict)
         self.visualizers: dict[str, dict[str, BaseVisualizer]] = defaultdict(
@@ -312,11 +307,9 @@ class LuxonisLightningModule(pl.LightningModule):
                     "Training strategy is defined, but optimizer or scheduler is also defined. "
                     "Please remove optimizer and scheduler from the config."
                 )
-            self.training_strategy = STRATEGIES.get(
-                self.cfg.trainer.training_strategy.name
-            )(
-                pl_module=self,
-                params=self.cfg.trainer.training_strategy.params,  # type: ignore
+            Strategy = STRATEGIES.get(self.cfg.trainer.training_strategy.name)
+            self.training_strategy = Strategy(
+                pl_module=self, **self.cfg.trainer.training_strategy.params
             )
         else:
             self.training_strategy = None
@@ -331,7 +324,7 @@ class LuxonisLightningModule(pl.LightningModule):
     def _initiate_nodes(
         self,
         nodes: dict[str, tuple[type[BaseNode], Kwargs]],
-    ) -> nn.ModuleDict:
+    ) -> dict[str, BaseNode]:
         """Initializes all the nodes in the model.
 
         Traverses the graph and initiates each node using outputs of the
@@ -390,7 +383,7 @@ class LuxonisLightningModule(pl.LightningModule):
             dummy_inputs[node_name] = node_outputs
             initiated_nodes[node_name] = node
 
-        return nn.ModuleDict(initiated_nodes)
+        return cast(dict[str, BaseNode], nn.ModuleDict(initiated_nodes))
 
     def forward(
         self,
@@ -534,6 +527,11 @@ class LuxonisLightningModule(pl.LightningModule):
                 metric_results[node_name] |= computed_submetrics
         return metric_results
 
+    def set_export_mode(self, /, mode: bool) -> None:
+        for module in self.modules():
+            if isinstance(module, BaseNode):
+                module.set_export_mode(mode)
+
     def export_onnx(self, save_path: str, **kwargs) -> list[str]:
         """Exports the model to ONNX format.
 
@@ -560,9 +558,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         inputs_for_onnx = {"inputs": inputs_deep_clone}
 
-        for module in self.modules():
-            if isinstance(module, BaseNode):
-                module.set_export_mode()
+        self.set_export_mode(True)
 
         outputs = self.forward(inputs_deep_clone).outputs
         output_order = sorted(
@@ -674,9 +670,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         self.forward = old_forward  # type: ignore
 
-        for module in self.modules():
-            if isinstance(module, BaseNode):
-                module.set_export_mode(False)
+        self.set_export_mode(False)
 
         logger.info(f"Model exported to {save_path}")
 
@@ -747,20 +741,20 @@ class LuxonisLightningModule(pl.LightningModule):
         self, val_batch: tuple[dict[str, Tensor], Labels]
     ) -> dict[str, Tensor]:
         """Performs one step of validation with provided batch."""
-        return self._evaluation_step("val", val_batch)
+        return self._evaluation_step("val", *val_batch)
 
     def test_step(
         self, test_batch: tuple[dict[str, Tensor], Labels]
     ) -> dict[str, Tensor]:
         """Performs one step of testing with provided batch."""
-        return self._evaluation_step("test", test_batch)
+        return self._evaluation_step("test", *test_batch)
 
     def predict_step(
         self, batch: tuple[dict[str, Tensor], Labels]
     ) -> LuxonisOutput:
         """Performs one step of prediction with provided batch."""
         inputs, labels = batch
-        images = get_denormalized_images(self.cfg, inputs)
+        images = get_denormalized_images(self.cfg, inputs[self.image_source])
         outputs = self.forward(
             inputs,
             labels,
@@ -810,15 +804,16 @@ class LuxonisLightningModule(pl.LightningModule):
     def _evaluation_step(
         self,
         mode: Literal["test", "val"],
-        batch: tuple[dict[str, Tensor], Labels],
+        inputs: dict[str, Tensor],
+        labels: Labels,
     ) -> dict[str, Tensor]:
-        inputs, labels = batch
+        input_image = inputs[self.image_source]
         images = None
         if not self._logged_images:
-            images = get_denormalized_images(self.cfg, inputs)
+            images = get_denormalized_images(self.cfg, input_image)
         for value in self._logged_images.values():
             if value < self.cfg.trainer.n_log_images:
-                images = get_denormalized_images(self.cfg, inputs)
+                images = get_denormalized_images(self.cfg, input_image)
                 break
 
         outputs = self.forward(
@@ -967,11 +962,6 @@ class LuxonisLightningModule(pl.LightningModule):
         cfg_optimizer = self.cfg.trainer.optimizer
         cfg_scheduler = self.cfg.trainer.scheduler
 
-        if cfg_optimizer is None or cfg_scheduler is None:
-            raise ValueError(
-                "Optimizer and scheduler configuration must not be None."
-            )
-
         optim_params = cfg_optimizer.params | {
             "params": filter(lambda p: p.requires_grad, self.parameters()),
         }
@@ -1057,7 +1047,7 @@ class LuxonisLightningModule(pl.LightningModule):
         node: BaseNode = self.nodes[node_name]  # type: ignore
         if issubclass(Module, TorchMetricWrapper):
             if "task" not in cfg.params and self._core is not None:
-                loader = self._core.loaders["train"]
+                loader = self._core.datasets["train"]
                 dataset = getattr(loader, "dataset", None)
                 if isinstance(dataset, LuxonisDataset):
                     n_classes = len(dataset.get_classes()[node.task_name])
@@ -1114,7 +1104,7 @@ class LuxonisLightningModule(pl.LightningModule):
             )
 
     def _average_losses(
-        self, step_outputs: list[Mapping[str, Tensor | float | int]]
+        self, step_outputs: list[dict[str, Tensor]]
     ) -> dict[str, float]:
         avg_losses: dict[str, float] = defaultdict(float)
 

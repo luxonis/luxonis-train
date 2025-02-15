@@ -223,10 +223,7 @@ def denormalize(
     return out_img
 
 
-def get_denormalized_images(cfg: Config, inputs: dict[str, Tensor]) -> Tensor:
-    # Get images from inputs according to config
-    images = inputs[cfg.loader.image_source]
-
+def get_denormalized_images(cfg: Config, images: Tensor) -> Tensor:
     normalize_params = cfg.trainer.preprocessing.normalize.params
     mean = std = None
     if cfg.trainer.preprocessing.normalize.active:

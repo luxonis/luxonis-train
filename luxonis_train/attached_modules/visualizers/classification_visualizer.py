@@ -54,7 +54,7 @@ class ClassificationVisualizer(BaseVisualizer):
         fig, ax = plt.subplots(figsize=(width / 100, height / 100))
         ax.bar(np.arange(len(pred)), pred)
         ax.set_xticks(np.arange(len(pred)))
-        ax.set_xticklabels(self.classes.inverse, rotation=90)
+        ax.set_xticklabels(self.classes.keys(), rotation=90)
         ax.set_ylim(0, 1)
         ax.set_xlabel("Class")
         ax.set_ylabel("Probability")

@@ -2,63 +2,138 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-NET_CONFIG_rec = {
-    "blocks2":
-    # k, in_c, out_c, s, use_se
-    [[3, 16, 32, 1, False]],
-    "blocks3": [[3, 32, 64, 2, False], [3, 64, 64, 1, False]],
-    "blocks4": [[3, 64, 128, 1, False], [3, 128, 128, 1, False]],
-    "blocks5": [
-        [3, 128, 256, 2, False],
-        [5, 256, 256, 1, False],
-        [5, 256, 256, 1, False],
-        [5, 256, 256, 1, False],
-        [5, 256, 256, 1, False],
-    ],
-    "blocks6": [
-        [5, 256, 512, 1, True],
-        [5, 512, 512, 1, True],
-        [5, 512, 512, 1, False],
-        [5, 512, 512, 1, False],
-    ],
-}
 
-NET_CONFIG_det = {
-    "blocks2":
-    # k, in_c, out_c, s, use_se
-    [[3, 16, 32, 1, False]],
-    "blocks3": [[3, 32, 64, 2, False], [3, 64, 64, 1, False]],
-    "blocks4": [[3, 64, 128, 2, False], [3, 128, 128, 1, False]],
-    "blocks5": [
-        [3, 128, 256, 2, False],
-        [5, 256, 256, 1, False],
-        [5, 256, 256, 1, False],
-        [5, 256, 256, 1, False],
-        [5, 256, 256, 1, False],
-    ],
-    "blocks6": [
-        [5, 256, 512, 2, True],
-        [5, 512, 512, 1, True],
-        [5, 512, 512, 1, False],
-        [5, 512, 512, 1, False],
-    ],
-}
+class BlockConfig(BaseModel):
+    kernel_size: int
+    in_channels: int
+    out_channels: int
+    stride: int
+    use_se: bool
 
 
 class PPLCNetV3Variant(BaseModel):
     scale: float
-    conv_kxk_num: int
-    det: bool
-    net_config: dict[str, list[list[int]]]
+    num_branches: int
+    use_detection_backbone: bool
+    net_config: list[list[BlockConfig]]
 
 
 def get_variant(variant: Literal["rec-light"]) -> PPLCNetV3Variant:
     variants = {
         "rec-light": PPLCNetV3Variant(
             scale=0.95,
-            conv_kxk_num=4,
-            det=False,
-            net_config=NET_CONFIG_rec,
+            num_branches=4,
+            use_detection_backbone=False,
+            net_config=[
+                [
+                    BlockConfig(
+                        kernel_size=3,
+                        in_channels=16,
+                        out_channels=32,
+                        stride=1,
+                        use_se=False,
+                    )
+                ],
+                [
+                    BlockConfig(
+                        kernel_size=3,
+                        in_channels=32,
+                        out_channels=64,
+                        stride=2,
+                        use_se=False,
+                    ),
+                    BlockConfig(
+                        kernel_size=3,
+                        in_channels=64,
+                        out_channels=64,
+                        stride=1,
+                        use_se=False,
+                    ),
+                ],
+                [
+                    BlockConfig(
+                        kernel_size=3,
+                        in_channels=64,
+                        out_channels=128,
+                        stride=1,
+                        use_se=False,
+                    ),
+                    BlockConfig(
+                        kernel_size=3,
+                        in_channels=128,
+                        out_channels=128,
+                        stride=1,
+                        use_se=False,
+                    ),
+                ],
+                [
+                    BlockConfig(
+                        kernel_size=3,
+                        in_channels=128,
+                        out_channels=256,
+                        stride=2,
+                        use_se=False,
+                    ),
+                    BlockConfig(
+                        kernel_size=5,
+                        in_channels=256,
+                        out_channels=256,
+                        stride=1,
+                        use_se=False,
+                    ),
+                    BlockConfig(
+                        kernel_size=5,
+                        in_channels=256,
+                        out_channels=256,
+                        stride=1,
+                        use_se=False,
+                    ),
+                    BlockConfig(
+                        kernel_size=5,
+                        in_channels=256,
+                        out_channels=256,
+                        stride=1,
+                        use_se=False,
+                    ),
+                    BlockConfig(
+                        kernel_size=5,
+                        in_channels=256,
+                        out_channels=256,
+                        stride=1,
+                        use_se=False,
+                    ),
+                ],
+                [
+                    BlockConfig(
+                        kernel_size=5,
+                        in_channels=256,
+                        out_channels=512,
+                        stride=1,
+                        use_se=True,
+                    ),
+                    BlockConfig(
+                        kernel_size=5,
+                        in_channels=512,
+                        out_channels=512,
+                        stride=1,
+                        use_se=True,
+                    ),
+                    BlockConfig(
+                        kernel_size=5,
+                        in_channels=512,
+                        out_channels=512,
+                        stride=1,
+                        use_se=False,
+                    ),
+                    BlockConfig(
+                        kernel_size=5,
+                        in_channels=512,
+                        out_channels=512,
+                        stride=1,
+                        use_se=False,
+                    ),
+                ],
+            ],
         ),
     }
     if variant not in variants:  # pragma: no cover

@@ -1,5 +1,3 @@
-from typing import Any
-
 import lightning.pytorch as pl
 import numpy as np
 import torch
@@ -12,9 +10,11 @@ from pytorch_grad_cam.utils.model_targets import (
 )
 from torch import Tensor
 
+import luxonis_train as lxt
 from luxonis_train.attached_modules.visualizers import (
     get_denormalized_images,
 )
+from luxonis_train.utils.types import Packet
 
 
 class ModelWrapper(pl.LightningModule):
@@ -110,9 +110,9 @@ class GradCamCallback(pl.Callback):
     def on_validation_batch_end(
         self,
         trainer: pl.Trainer,
-        pl_module: pl.LightningModule,
+        pl_module: "lxt.LuxonisLightningModule",
         outputs: STEP_OUTPUT,
-        batch: Any,
+        batch: tuple[dict[str, Tensor], Packet[Tensor]],
         batch_idx: int,
     ) -> None:
         """At the end of first n batches, visualize the gradients using
@@ -131,13 +131,14 @@ class GradCamCallback(pl.Callback):
         """
 
         if batch_idx < self.log_n_batches:
-            self.visualize_gradients(trainer, pl_module, batch, batch_idx)
+            images = batch[0][pl_module.image_source]
+            self.visualize_gradients(trainer, pl_module, images, batch_idx)
 
     def visualize_gradients(
         self,
         trainer: pl.Trainer,
-        pl_module: pl.LightningModule,
-        batch: Any,
+        pl_module: "lxt.LuxonisLightningModule",
+        images: Tensor,
         batch_idx: int,
     ) -> None:
         """Visualizes the gradients using Grad-CAM.
@@ -157,8 +158,7 @@ class GradCamCallback(pl.Callback):
         ]
         self.gradcam = HiResCAM(self.model, target_layers)
 
-        x, y = batch
-        model_input = x["image"]
+        model_input = images.clone()
 
         if self.task == "segmentation":
             output = self.model(model_input)
@@ -180,16 +180,18 @@ class GradCamCallback(pl.Callback):
                 targets=targets,  # type: ignore
             )
 
-        images = get_denormalized_images(pl_module.cfg, x).cpu().numpy()
+        np_images = (
+            get_denormalized_images(pl_module.cfg, images).cpu().numpy()
+        )
         for zip_idx, (image, grayscale_cam) in enumerate(
-            zip(images, grayscale_cams)
+            zip(np_images, grayscale_cams)
         ):
             image = image / 255.0
             image = image.transpose(1, 2, 0)
             visualization = show_cam_on_image(
                 image, grayscale_cam, use_rgb=True
             )
-            trainer.logger.log_image(  # type: ignore
+            pl_module.logger.log_image(
                 f"gradcam/gradcam_{batch_idx}_{zip_idx}",
                 visualization,
                 step=trainer.global_step,

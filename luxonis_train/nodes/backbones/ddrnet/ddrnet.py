@@ -1,13 +1,12 @@
 from typing import Literal
 
-from loguru import logger
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import (
-    BasicResNetBlock,
-    Bottleneck,
     ConvModule,
+    ResNetBlock,
+    ResNetBottleneck,
     UpscaleOnline,
 )
 
@@ -29,9 +28,9 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         ssp_inter_mode: str = "bilinear",
         segmentation_inter_mode: str = "bilinear",
         # TODO: nn.Module registry
-        block: type[nn.Module] = BasicResNetBlock,
-        skip_block: type[nn.Module] = BasicResNetBlock,
-        layer5_block: type[nn.Module] = Bottleneck,
+        block: type[nn.Module] = ResNetBlock,
+        skip_block: type[nn.Module] = ResNetBlock,
+        layer5_block: type[nn.Module] = ResNetBottleneck,
         layer5_bottleneck_expansion: int = 2,
         spp_kernel_sizes: list[int] | None = None,
         spp_strides: list[int] | None = None,
@@ -73,10 +72,10 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             Defaults to "bilinear".
         @type block: type[nn.Module]
         @param block: type of block to use in the backbone. Defaults to
-            BasicResNetBlock.
+            ResNetBlock.
         @type skip_block: type[nn.Module]
         @param skip_block: type of block for skip connections. Defaults to
-            BasicResNetBlock.
+            ResNetBlock.
         @type layer5_block: type[nn.Module]
         @param layer5_block: type of block for layer5 and layer5_skip. Defaults to
             Bottleneck.
@@ -237,13 +236,13 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self.layer5_bottleneck_expansion = layer5_bottleneck_expansion
         self.init_params()
 
-        if download_weights:
-            if var.weights_path:
-                self.load_checkpoint(var.weights_path)
-            else:
-                logger.warning(
-                    f"No checkpoint available for {self.name}, skipping."
-                )
+        # if download_weights:
+        #     if var.weights_path:
+        #         self.load_checkpoint(var.weights_path)
+        #     else:
+        #         logger.warning(
+        #             f"No checkpoint available for {self.name}, skipping."
+        #         )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         width_output = inputs.shape[-1] // 8

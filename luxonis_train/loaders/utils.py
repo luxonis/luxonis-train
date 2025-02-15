@@ -4,13 +4,13 @@ from torch import Tensor
 
 from luxonis_train.utils.types import Labels
 
-LuxonisLoaderTorchOutput = tuple[dict[str, Tensor], Labels]
-"""LuxonisLoaderTorchOutput is a tuple of source tensors and
-corresponding labels."""
+DatasetOutput = tuple[dict[str, Tensor], Labels]
+"""DatasetOutput is a tuple of source tensors and corresponding
+labels."""
 
 
 def collate_fn(
-    batch: list[LuxonisLoaderTorchOutput],
+    batch: list[DatasetOutput],
 ) -> tuple[dict[str, Tensor], Labels]:
     """Default collate function used for training.
 

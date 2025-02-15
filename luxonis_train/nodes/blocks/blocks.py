@@ -1,15 +1,23 @@
 import math
-from typing import Literal, TypeVar
+from typing import Generic, Literal, Protocol, TypeVar, cast
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
+from typeguard import typechecked
+from typing_extensions import override
 
 from luxonis_train.nodes.activations import HSigmoid
 
+from .reparametrizable import Reparametrizable
+
+
+class ModuleFactory(Protocol):
+    def __call__(self, in_channels: int, out_channels: int) -> nn.Module: ...
+
 
 class EfficientDecoupledBlock(nn.Module):
+    @typechecked
     def __init__(self, n_classes: int, in_channels: int):
         """Efficient Decoupled block used for class and regression
         predictions.
@@ -71,7 +79,9 @@ class EfficientDecoupledBlock(nn.Module):
             (self.regression_branch[-1], 1.0),
         ]
         for module, fill_value in data:
+            assert isinstance(module, nn.Conv2d)
             assert module.bias is not None
+
             b = module.bias.view(-1)
             b.data.fill_(fill_value)
             module.bias = nn.Parameter(b.view(-1), requires_grad=True)
@@ -82,6 +92,7 @@ class EfficientDecoupledBlock(nn.Module):
 
 
 class SegProto(nn.Module):
+    @typechecked
     def __init__(
         self, in_channels: int, mid_channels: int = 256, out_channels: int = 32
     ):
@@ -141,6 +152,7 @@ class SegProto(nn.Module):
 
 
 class DFL(nn.Module):
+    @typechecked
     def __init__(self, reg_max: int = 16):
         """The DFL (Distribution Focal Loss) module processes input
         tensors by applying softmax over a specified dimension and
@@ -163,7 +175,8 @@ class DFL(nn.Module):
         return self.proj_conv(x)[:, 0].view(bs, 4, h, w)
 
 
-class ConvModule(nn.Sequential):
+class ConvModule(nn.Module):
+    @typechecked
     def __init__(
         self,
         in_channels: int,
@@ -199,31 +212,50 @@ class ConvModule(nn.Sequential):
         @param activation: Activation function. If None then nn.ReLU. If
             False then no activation. Defaults to None.
         @type use_norm: bool
-        @param use_norm: Whether to use normalization. Defaults to True.
+        @param use_norm: Whether to use batch normalization. Defaults to
+            True.
         """
-        blocks: list[nn.Module] = [
-            nn.Conv2d(
-                in_channels,
-                out_channels,
-                kernel_size,
-                stride,
-                padding,
-                dilation,
-                groups,
-                bias,
-            ),
-        ]
+        super().__init__()
 
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.dilation = dilation
+        self.groups = groups
+        self.bias = bias
+
+        self.conv = nn.Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride,
+            padding,
+            dilation,
+            groups,
+            bias,
+        )
+
+        self.bn: nn.BatchNorm2d | None = None
         if use_norm:
-            blocks.append(nn.BatchNorm2d(out_channels))
+            self.bn = nn.BatchNorm2d(out_channels)
 
+        self.activation: nn.Module | None = None
         if activation is not False:
-            blocks.append(activation or nn.ReLU())
+            self.activation = activation or nn.ReLU()
 
-        super().__init__(*blocks)
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.conv(x)
+        if self.bn is not None:
+            x = self.bn(x)
+        if self.activation is not None:
+            x = self.activation(x)
+        return x
 
 
 class DWConvModule(ConvModule):
+    @typechecked
     def __init__(
         self,
         in_channels: int,
@@ -233,7 +265,8 @@ class DWConvModule(ConvModule):
         padding: int = 0,
         dilation: int = 1,
         bias: bool = False,
-        activation: nn.Module | None = None,
+        activation: nn.Module | None | Literal[False] = None,
+        use_norm: bool = True,
     ):
         """Depth-wise Conv2d + BN + Activation.
 
@@ -252,7 +285,11 @@ class DWConvModule(ConvModule):
         @type bias: bool
         @param bias: Whether to use bias. Defaults to False.
         @type activation: L{nn.Module} | None
-        @param activation: Activation function. If None then nn.Relu.
+        @param activation: Activation function. If set to False, then no
+            activation is performend. If None then nn.Relu.
+        @type use_norm: bool
+        @param use_norm: Whether to use batch normalization. Defaults to
+            True.
         """
 
         super().__init__(
@@ -265,10 +302,12 @@ class DWConvModule(ConvModule):
             groups=math.gcd(in_channels, out_channels),
             bias=bias,
             activation=activation,
+            use_norm=use_norm,
         )
 
 
 class UpBlock(nn.Sequential):
+    @typechecked
     def __init__(
         self,
         in_channels: int,
@@ -312,7 +351,7 @@ class UpBlock(nn.Sequential):
                     stride=stride,
                 )
             )
-        elif upsample_mode == "upsample":
+        else:
             layers.append(
                 nn.Upsample(
                     scale_factor=stride,
@@ -321,10 +360,6 @@ class UpBlock(nn.Sequential):
                 )
             )
             layers.append(nn.Conv2d(in_channels, out_channels, kernel_size=1))
-        else:
-            raise ValueError(
-                "Unsupported upsample mode. Choose either 'conv_transpose' or 'upsample'."
-            )
 
         layers.append(
             ConvModule(out_channels, out_channels, kernel_size=3, padding=1)
@@ -334,6 +369,7 @@ class UpBlock(nn.Sequential):
 
 
 class SqueezeExciteBlock(nn.Module):
+    @typechecked
     def __init__(
         self,
         in_channels: int,
@@ -357,7 +393,7 @@ class SqueezeExciteBlock(nn.Module):
         super().__init__()
 
         activation = activation or nn.ReLU()
-        self.pool = nn.AdaptiveAvgPool2d(output_size=1)
+        self.pool = nn.AdaptiveAvgPool2d(1)
         self.conv_down = nn.Conv2d(
             in_channels=in_channels,
             out_channels=intermediate_channels,
@@ -383,7 +419,11 @@ class SqueezeExciteBlock(nn.Module):
         return x
 
 
-class RepVGGBlock(nn.Module):
+RefB = TypeVar("RefB", bound=nn.Module)
+
+
+class GeneralReparametrizableBlock(Generic[RefB], Reparametrizable, nn.Module):
+    @typechecked
     def __init__(
         self,
         in_channels: int,
@@ -392,11 +432,14 @@ class RepVGGBlock(nn.Module):
         stride: int = 1,
         padding: int = 1,
         groups: int = 1,
-        use_se: bool = False,
+        num_branches: int = 1,
+        refine_block: RefB | Literal["se"] | None = None,
+        activation: nn.Module | None | Literal[False] = None,
     ):
-        """RepVGGBlock is a basic rep-style block, including training and deploy status
-        This code is based on U{https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py}.
+        """GeneralReparametrizableBlock is a basic rep-style block,
+        including training and deploy status.
 
+        @see: U{https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py}.
 
         @type in_channels: int
         @param in_channels: Number of input channels.
@@ -408,189 +451,263 @@ class RepVGGBlock(nn.Module):
         @param stride: Stride. Defaults to C{1}.
         @type padding: int
         @param padding: Padding. Defaults to C{1}.
-        @type dilation: int
-        @param dilation: Dilation. Defaults to C{1}.
         @type groups: int
         @param groups: Groups. Defaults to C{1}.
-        @type padding_mode: str
-        @param padding_mode: Padding mode. Defaults to C{"zeros"}.
-        @type deploy: bool
-        @param deploy: Whether to use deploy mode. Defaults to C{False}.
-        @type use_se: bool
-        @param use_se: Whether to use SqueezeExciteBlock. Defaults to C{False}.
+        @type num_branches: int
+        @param num_branches: Number of convolutional branches.
+            During reparametrization, the branches are fused to a single
+            convolutional layer. Defaults to C{1}.
+        @type refine_block: nn.Module | Literal["se"] | None
+        @param refine_block: A block to refine the output.
+            Placed after the convolutional branches and before the
+            activation function.
+            Can be one of the following:
+              - torch module
+              - string `"se"` which will use L{SqueezeExciteBlock}
+            Defaults to C{None}.
+        @type activation: nn.Module | None | Literal[False]
+        @param activation: Activation function. If C{None} then C{nn.ReLU}.
+            If C{False} then no activation. Defaults to C{nn.ReLU}.
         """
         super().__init__()
 
-        self.groups = groups
         self.in_channels = in_channels
         self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.groups = groups
 
-        assert kernel_size == 3
-        assert padding == 1
+        self._reparametrized = False
 
-        padding_11 = padding - kernel_size // 2
+        self.skip_layer: nn.BatchNorm2d | None = None
+        if out_channels == in_channels and stride == 1:
+            self.skip_layer = nn.BatchNorm2d(in_channels)
 
-        self.nonlinearity = nn.ReLU()
+        self.scale_layer: ConvModule | None = None
+        padding_scale = padding - kernel_size // 2
+        if padding_scale > 0:
+            self.scale_layer = ConvModule(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                kernel_size=1,
+                stride=stride,
+                padding=padding_scale,
+                groups=self.groups,
+                activation=False,
+            )
 
-        if use_se:
-            # NOTE: that RepVGG-D2se uses SE before nonlinearity.
-            # But RepVGGplus models uses SqueezeExciteBlock after nonlinearity.
-            self.se = SqueezeExciteBlock(
-                out_channels, intermediate_channels=int(out_channels // 16)
+        branches = [
+            ConvModule(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                kernel_size=kernel_size,
+                stride=stride,
+                padding=padding,
+                groups=self.groups,
+                activation=False,
+            )
+            for _ in range(num_branches)
+        ]
+
+        if refine_block == "se":
+            self.refine_block = SqueezeExciteBlock(
+                in_channels=out_channels,
+                intermediate_channels=out_channels // 16,
             )
         else:
-            self.se = nn.Identity()
+            self.refine_block = refine_block or nn.Identity()
 
-        self.rbr_identity = (
-            nn.BatchNorm2d(num_features=in_channels)
-            if out_channels == in_channels and stride == 1
-            else None
-        )
-        self.rbr_dense = ConvModule(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-            groups=groups,
-            activation=False,
-        )
-        self.rbr_1x1 = ConvModule(
-            in_channels=in_channels,
-            out_channels=out_channels,
-            kernel_size=1,
-            stride=stride,
-            padding=padding_11,
-            groups=groups,
-            activation=False,
-        )
+        if activation is False:
+            self.activation = nn.Identity()
+        else:
+            self.activation = activation or nn.ReLU()
+
+        self.branches = cast(list[ConvModule], nn.ModuleList(branches))
 
     def forward(self, x: Tensor) -> Tensor:
-        if hasattr(self, "rbr_reparam"):
-            return self.nonlinearity(self.se(self.rbr_reparam(x)))
+        out = 0
+        if self.skip_layer is not None:
+            out += self.skip_layer(x)
 
-        if self.rbr_identity is None:
-            id_out = 0
-        else:
-            id_out = self.rbr_identity(x)
+        if self.scale_layer is not None:
+            out += self.scale_layer(x)
+        for branch in self.branches:
+            out += branch(x)
 
-        return self.nonlinearity(
-            self.se(self.rbr_dense(x) + self.rbr_1x1(x) + id_out)
-        )
+        return self.activation(self.refine_block(out))
 
+    @override
     def reparametrize(self) -> None:
-        if hasattr(self, "rbr_reparam"):
-            return
+        if self._reparametrized:
+            raise RuntimeError(
+                f"{self.__class__.__name__} is already reparametrized."
+            )
 
-        kernel, bias = self._get_equivalent_kernel_bias()
-        self.rbr_reparam = nn.Conv2d(
-            in_channels=self.rbr_dense[0].in_channels,
-            out_channels=self.rbr_dense[0].out_channels,
-            kernel_size=self.rbr_dense[0].kernel_size,
-            stride=self.rbr_dense[0].stride,
-            padding=self.rbr_dense[0].padding,
-            dilation=self.rbr_dense[0].dilation,
-            groups=self.rbr_dense[0].groups,
+        kernel, bias = self._get_reparametrized_parameters()
+        rep_dense_block = nn.Conv2d(
+            in_channels=self.branches[0].in_channels,
+            out_channels=self.branches[0].out_channels,
+            kernel_size=self.branches[0].kernel_size,
+            stride=self.branches[0].stride,
+            padding=self.branches[0].padding,
+            dilation=self.branches[0].dilation,
+            groups=self.branches[0].groups,
             bias=True,
         )
-        self.rbr_reparam.weight.data = kernel  # type: ignore
-        self.rbr_reparam.bias.data = bias  # type: ignore
-        del self.rbr_dense
-        del self.rbr_1x1
-        if hasattr(self, "rbr_identity"):
-            del self.rbr_identity
-        if hasattr(self, "id_tensor"):
-            del self.id_tensor
+        rep_dense_block.weight.data = kernel
+        if rep_dense_block.bias is not None:
+            rep_dense_block.bias.data = bias
 
-    def _get_equivalent_kernel_bias(self) -> tuple[Tensor, Tensor]:
-        """Derives the equivalent kernel and bias in a DIFFERENTIABLE
-        way."""
-        kernel3x3, bias3x3 = self._fuse_bn_tensor(self.rbr_dense)
-        kernel1x1, bias1x1 = self._fuse_bn_tensor(self.rbr_1x1)
-        kernelid, biasid = self._fuse_bn_tensor(self.rbr_identity)
-        return (
-            kernel3x3
-            + self._pad_1x1_to_3x3_tensor(kernel1x1)
-            + kernelid.to(kernel3x3.device),
-            bias3x3 + bias1x1 + biasid.to(bias3x3.device),
+        # NOTE: Not sure if the explicit `detach_` and
+        # deletions are necessary. Some of the original
+        # code includes them and some does not.
+        for para in self.parameters():
+            para.detach_()
+
+        del self.branches
+        del self.scale_layer
+        del self.skip_layer
+
+        self.branches = cast(
+            list[ConvModule], nn.ModuleList([rep_dense_block])
+        )
+        self.scale_layer = None
+        self.skip_layer = None
+
+        self._reparametrized = True
+
+    def _get_reparametrized_parameters(self) -> tuple[Tensor, Tensor]:
+        kernel = torch.tensor(0)
+        bias = torch.tensor(0)
+
+        for dense_block in self.branches:
+            kernel_dense, bias_dense = self._fuse_conv_module(dense_block)
+            kernel = kernel_dense + kernel
+            bias = bias_dense + bias
+
+        if self.scale_layer is not None:
+            kernel_scale, bias_scale = self._fuse_conv_module(self.scale_layer)
+            pad = self.kernel_size // 2
+            kernel += torch.nn.functional.pad(
+                kernel_scale, [pad, pad, pad, pad]
+            )
+            bias += bias_scale
+
+        if self.skip_layer is not None:
+            kernel_identity, bias_identity = self._fuse_batch_norm(
+                self.skip_layer
+            )
+            kernel += kernel_identity
+            bias += bias_identity
+
+        return kernel, bias
+
+    def _fuse_conv_module(self, module: ConvModule) -> tuple[Tensor, Tensor]:
+        kernel = module.conv.weight
+        assert module.bn is not None
+        running_mean = module.bn.running_mean
+        running_var = module.bn.running_var
+        gamma = module.bn.weight
+        beta = module.bn.bias
+        eps = module.bn.eps
+        return self._postprocess_fusion(
+            running_var,
+            running_mean,
+            gamma,
+            beta,
+            kernel,
+            eps,
         )
 
-    def _pad_1x1_to_3x3_tensor(self, kernel1x1: Tensor | None) -> Tensor:
-        if kernel1x1 is None:
-            return torch.tensor(0)
-        else:
-            return torch.nn.functional.pad(kernel1x1, [1, 1, 1, 1])
-
-    def _fuse_bn_tensor(
-        self, branch: nn.Module | None
+    def _fuse_batch_norm(
+        self, module: nn.BatchNorm2d
     ) -> tuple[Tensor, Tensor]:
-        if branch is None:
-            return torch.tensor(0), torch.tensor(0)
-        if isinstance(branch, nn.Sequential):
-            kernel = branch[0].weight
-            running_mean = branch[1].running_mean
-            running_var = branch[1].running_var
-            gamma = branch[1].weight
-            beta = branch[1].bias
-            eps = branch[1].eps
-        else:
-            assert isinstance(branch, nn.BatchNorm2d)
-            if not hasattr(self, "id_tensor"):
-                input_dim = self.in_channels // self.groups
-                kernel_value = np.zeros(
-                    (self.in_channels, input_dim, 3, 3), dtype=np.float32
-                )
-                for i in range(self.in_channels):
-                    kernel_value[i, i % input_dim, 1, 1] = 1
-                self.id_tensor = torch.from_numpy(kernel_value)
-            kernel = self.id_tensor
-            running_mean = branch.running_mean
-            running_var = branch.running_var
-            gamma = branch.weight
-            beta = branch.bias
-            eps = branch.eps
-        assert running_var is not None
+        input_dim = self.in_channels // self.groups
+        kernel = torch.zeros(
+            (
+                self.in_channels,
+                input_dim,
+                self.kernel_size,
+                self.kernel_size,
+            ),
+            dtype=module.weight.dtype,
+            device=module.weight.device,
+        )
+        for i in range(self.in_channels):
+            kernel[
+                i,
+                i % input_dim,
+                self.kernel_size // 2,
+                self.kernel_size // 2,
+            ] = 1
+
+        running_mean = module.running_mean
+        running_var = module.running_var
+        gamma = module.weight
+        beta = module.bias
+        eps = module.eps
+        return self._postprocess_fusion(
+            running_var, running_mean, gamma, beta, kernel, eps
+        )
+
+    def _postprocess_fusion(
+        self,
+        running_var: Tensor | None,
+        running_mean: Tensor | None,
+        gamma: Tensor,
+        beta: Tensor,
+        kernel: Tensor,
+        eps: float,
+    ) -> tuple[Tensor, Tensor]:
+        if running_var is None or running_mean is None:
+            raise ValueError(
+                "Running variance and mean must be "
+                "provided for reparametrization."
+            )
         std = (running_var + eps).sqrt()
         t = (gamma / std).reshape(-1, 1, 1, 1).to(kernel.device)
         return kernel * t, beta - running_mean * gamma / std
 
 
-class BlockRepeater(nn.Module):
+class ModuleRepeater(nn.Sequential):
+    @typechecked
     def __init__(
         self,
-        block: type[nn.Module],
+        module: ModuleFactory,
+        num_repets: int,
         in_channels: int,
         out_channels: int,
-        n_blocks: int = 1,
+        **kwargs,
     ):
         """Module which repeats the block n times. First block accepts
         in_channels and outputs out_channels while subsequent blocks
         accept out_channels and output out_channels.
 
-        @type block: L{nn.Module}
-        @param block: Block to repeat.
+        @type module: C{type[nn.Module]}
+        @param module: Module to repeat.
+        @type num_repets: int
+        @param num_repets: Number of blocks to repeat. Defaults to C{1}.
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type out_channels: int
         @param out_channels: Number of output channels.
-        @type n_blocks: int
-        @param n_blocks: Number of blocks to repeat. Defaults to C{1}.
+        @param kwargs: Additional keyword arguments to be passed to the
+            module.
         """
-        super().__init__()
-
-        self.blocks = nn.ModuleList()
-        self.blocks.append(
-            block(in_channels=in_channels, out_channels=out_channels)
-        )
-        for _ in range(n_blocks - 1):
-            self.blocks.append(
-                block(in_channels=out_channels, out_channels=out_channels)
+        blocks = []
+        blocks.append(
+            module(
+                in_channels=in_channels, out_channels=out_channels, **kwargs
             )
-
-    def forward(self, x: Tensor) -> Tensor:
-        for block in self.blocks:
-            x = block(x)
-        return x
+        )
+        for _ in range(num_repets - 1):
+            blocks.append(
+                module(
+                    in_channels=out_channels,
+                    out_channels=out_channels,
+                    **kwargs,
+                )
+            )
+        super().__init__(*blocks)
 
 
 class CSPStackRepBlock(nn.Module):
@@ -601,7 +718,6 @@ class CSPStackRepBlock(nn.Module):
         n_blocks: int = 1,
         e: float = 0.5,
     ):
-        super().__init__()
         """Module composed of three 1x1 conv layers and a stack of sub-
         blocks consisting of two RepVGG blocks with a residual
         connection.
@@ -616,6 +732,7 @@ class CSPStackRepBlock(nn.Module):
         @param e: Factor for number of intermediate channels. Defaults
             to C{0.5}.
         """
+        super().__init__()
         intermediate_channels = int(out_channels * e)
         self.conv_1 = ConvModule(
             in_channels=in_channels,
@@ -635,11 +752,11 @@ class CSPStackRepBlock(nn.Module):
             kernel_size=1,
             padding=autopad(1, None),
         )
-        self.rep_stack = BlockRepeater(
-            block=BottleRep,
+        self.rep_stack = ModuleRepeater(
+            module=BottleRep,
             in_channels=intermediate_channels,
             out_channels=intermediate_channels,
-            n_blocks=n_blocks // 2,
+            num_repets=n_blocks // 2,
         )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -655,25 +772,31 @@ class BottleRep(nn.Module):
         self,
         in_channels: int,
         out_channels: int,
-        block: type[nn.Module] = RepVGGBlock,
+        module: ModuleFactory = GeneralReparametrizableBlock,
         weight: bool = True,
+        **kwargs,
     ):
-        super().__init__()
         """RepVGG bottleneck module.
 
+        @type block: L{type[nn.Module]}
+        @param block: Block to use. Defaults to
+            L{GeneralReparametrizableBlock}.
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type out_channels: int
         @param out_channels: Number of output channels.
-        @type block: L{nn.Module}
-        @param block: Block to use. Defaults to C{RepVGGBlock}.
         @type weight: bool
         @param weight: If using learnable or static shortcut weight.
             Defaults to C{True}.
+        @param kwargs: Additional keyword arguments to be passed to the
+            module.
         """
-        self.conv_1 = block(in_channels=in_channels, out_channels=out_channels)
-        self.conv_2 = block(
-            in_channels=out_channels, out_channels=out_channels
+        super().__init__()
+        self.conv_1 = module(
+            in_channels=in_channels, out_channels=out_channels, **kwargs
+        )
+        self.conv_2 = module(
+            in_channels=out_channels, out_channels=out_channels, **kwargs
         )
         self.shortcut = in_channels == out_channels
         self.alpha = nn.Parameter(torch.ones(1)) if weight else 1.0
@@ -791,32 +914,10 @@ class FeatureFusionBlock(nn.Module):
         return out
 
 
-T = TypeVar("T", int, tuple[int, ...])
-
-
-def autopad(kernel_size: T, padding: T | None = None) -> T:
-    """Compute padding based on kernel size.
-
-    @type kernel_size: int | tuple[int, ...]
-    @param kernel_size: Kernel size.
-    @type padding: int | tuple[int, ...] | None
-    @param padding: Padding. Defaults to None.
-
-    @rtype: int | tuple[int, ...]
-    @return: Computed padding. The output type is the same as the type of the
-        C{kernel_size}.
-    """
-    if padding is not None:
-        return padding
-    if isinstance(kernel_size, int):
-        return kernel_size // 2
-    return tuple(x // 2 for x in kernel_size)
-
-
-class BasicResNetBlock(nn.Module):
+class ResNetBlock(nn.Module):
     def __init__(
         self,
-        in_planes: int,
+        in_channels: int,
         planes: int,
         stride: int = 1,
         expansion: int = 1,
@@ -825,8 +926,8 @@ class BasicResNetBlock(nn.Module):
     ):
         """A basic residual block for ResNet.
 
-        @type in_planes: int
-        @param in_planes: Number of input channels.
+        @type in_channels: int
+        @param in_channels: Number of input channels.
         @type planes: int
         @param planes: Number of output channels.
         @type stride: int
@@ -843,7 +944,7 @@ class BasicResNetBlock(nn.Module):
         super().__init__()
         self.expansion = expansion
         self.conv1 = nn.Conv2d(
-            in_planes,
+            in_channels,
             planes,
             kernel_size=3,
             stride=stride,
@@ -859,10 +960,10 @@ class BasicResNetBlock(nn.Module):
 
         self.drop_path = DropPath(drop_prob=droppath_prob)
         self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != self.expansion * planes:
+        if stride != 1 or in_channels != self.expansion * planes:
             self.shortcut = nn.Sequential(
                 nn.Conv2d(
-                    in_planes,
+                    in_channels,
                     self.expansion * planes,
                     kernel_size=1,
                     stride=stride,
@@ -881,10 +982,10 @@ class BasicResNetBlock(nn.Module):
         return out
 
 
-class Bottleneck(nn.Module):
+class ResNetBottleneck(nn.Module):
     def __init__(
         self,
-        in_planes: int,
+        in_channels: int,
         planes: int,
         stride: int = 1,
         expansion: int = 4,
@@ -893,8 +994,8 @@ class Bottleneck(nn.Module):
     ):
         """A bottleneck block for ResNet.
 
-        @type in_planes: int
-        @param in_planes: Number of input channels.
+        @type in_channels: int
+        @param in_channels: Number of input channels.
         @type planes: int
         @param planes: Number of intermediate channels.
         @type stride: int
@@ -910,10 +1011,20 @@ class Bottleneck(nn.Module):
         """
         super().__init__()
         self.expansion = expansion
-        self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
+        self.conv1 = nn.Conv2d(
+            in_channels,
+            planes,
+            kernel_size=1,
+            bias=False,
+        )
         self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(
-            planes, planes, kernel_size=3, stride=stride, padding=1, bias=False
+            planes,
+            planes,
+            kernel_size=3,
+            stride=stride,
+            padding=1,
+            bias=False,
         )
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = nn.Conv2d(
@@ -924,10 +1035,10 @@ class Bottleneck(nn.Module):
 
         self.drop_path = DropPath(drop_prob=droppath_prob)
         self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != self.expansion * planes:
+        if stride != 1 or in_channels != self.expansion * planes:
             self.shortcut = nn.Sequential(
                 nn.Conv2d(
-                    in_planes,
+                    in_channels,
                     self.expansion * planes,
                     kernel_size=1,
                     stride=stride,
@@ -1046,3 +1157,25 @@ class DropPath(nn.Module):
         if self.drop_prob == 0.0 or not self.training:
             return x
         return self.drop_path(x, self.drop_prob, self.scale_by_keep)
+
+
+T = TypeVar("T", int, tuple[int, ...])
+
+
+def autopad(kernel_size: T, padding: T | None = None) -> T:
+    """Compute padding based on kernel size.
+
+    @type kernel_size: int | tuple[int, ...]
+    @param kernel_size: Kernel size.
+    @type padding: int | tuple[int, ...] | None
+    @param padding: Padding. Defaults to None.
+
+    @rtype: int | tuple[int, ...]
+    @return: Computed padding. The output type is the same as the type of the
+        C{kernel_size}.
+    """
+    if padding is not None:
+        return padding
+    if isinstance(kernel_size, int):
+        return kernel_size // 2
+    return tuple(x // 2 for x in kernel_size)

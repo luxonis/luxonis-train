@@ -1,18 +1,17 @@
-from typing import Literal
+from typing import Literal, cast
 
-from loguru import logger
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import (
-    BlockRepeater,
     CSPStackRepBlock,
-    RepVGGBlock,
+    GeneralReparametrizableBlock,
+    ModuleRepeater,
     SpatialPyramidPoolingBlock,
 )
 from luxonis_train.utils import make_divisible
 
-from .variants import VariantLiteral, get_variant, get_variant_weights
+from .variants import VariantLiteral, get_variant
 
 
 class EfficientRep(BaseNode[Tensor, list[Tensor]]):
@@ -84,28 +83,28 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
             (max(round(i * depth_mul), 1) if i > 1 else i) for i in n_repeats
         ]
 
-        self.repvgg_encoder = RepVGGBlock(
+        self.repvgg_encoder = GeneralReparametrizableBlock(
             in_channels=self.in_channels,
             out_channels=channels_list[0],
             kernel_size=3,
             stride=2,
         )
 
-        self.blocks = nn.ModuleList()
+        self.blocks = cast(list[nn.Sequential], nn.ModuleList())
         for i in range(4):
             curr_block = nn.Sequential(
-                RepVGGBlock(
+                GeneralReparametrizableBlock(
                     in_channels=channels_list[i],
                     out_channels=channels_list[i + 1],
                     kernel_size=3,
                     stride=2,
                 ),
                 (
-                    BlockRepeater(
-                        block=RepVGGBlock,
+                    ModuleRepeater(
+                        module=GeneralReparametrizableBlock,
                         in_channels=channels_list[i + 1],
                         out_channels=channels_list[i + 1],
-                        n_blocks=n_repeats[i + 1],
+                        num_repetitions=n_repeats[i + 1],
                     )
                     if block == "RepBlock"
                     else CSPStackRepBlock(
@@ -129,14 +128,14 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         if initialize_weights:
             self.initialize_weights()
 
-        if download_weights:
-            weights_path = get_variant_weights(variant, initialize_weights)
-            if weights_path:
-                self.load_checkpoint(path=weights_path)
-            else:
-                logger.warning(
-                    f"No checkpoint available for {self.name}, skipping."
-                )
+        # if download_weights:
+        #     weights_path = get_variant_weights(variant, initialize_weights)
+        #     if weights_path:
+        #         self.load_checkpoint(path=weights_path)
+        #     else:
+        #         logger.warning(
+        #             f"No checkpoint available for {self.name}, skipping."
+        #         )
 
     def initialize_weights(self) -> None:
         for m in self.modules():
@@ -149,20 +148,6 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
                 m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU)
             ):
                 m.inplace = True
-
-    def set_export_mode(self, mode: bool = True) -> None:
-        """Reparametrizes instances of L{RepVGGBlock} in the network.
-
-        @type mode: bool
-        @param mode: Whether to set the export mode. Defaults to
-            C{True}.
-        """
-        super().set_export_mode(mode)
-        if self.export:
-            logger.info("Reparametrizing 'EfficientRep'.")
-            for module in self.modules():
-                if isinstance(module, RepVGGBlock):
-                    module.reparametrize()
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         outputs: list[Tensor] = []

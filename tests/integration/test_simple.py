@@ -306,7 +306,7 @@ def test_smart_cfg_auto_populate(
     }
     model = LuxonisModel(config_file, opts)
     assert (
-        model.cfg.trainer.scheduler.params["T_max"] == model.cfg.trainer.epochs  # type: ignore
+        model.cfg.trainer.scheduler.params["T_max"] == model.cfg.trainer.epochs
     )
     assert (
         model.cfg.trainer.preprocessing.augmentations[0].params["out_width"]

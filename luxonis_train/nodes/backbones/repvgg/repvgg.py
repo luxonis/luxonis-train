@@ -2,11 +2,10 @@ from collections import defaultdict
 from typing import Literal
 
 import torch.utils.checkpoint as checkpoint
-from loguru import logger
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.nodes.blocks import RepVGGBlock
+from luxonis_train.nodes.blocks import GeneralReparametrizableBlock
 
 from .variants import get_variant
 
@@ -64,14 +63,14 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
         self.use_se = use_se
         self.use_checkpoint = use_checkpoint
 
-        self.in_planes = min(64, int(64 * width_multiplier[0]))
-        self.stage0 = RepVGGBlock(
+        self._in_channels = min(64, int(64 * width_multiplier[0]))
+        self.stage0 = GeneralReparametrizableBlock(
             in_channels=self.in_channels,
-            out_channels=self.in_planes,
+            out_channels=self._in_channels,
             kernel_size=3,
             stride=2,
             padding=1,
-            use_se=self.use_se,
+            refine_block="se",
         )
         self.blocks = nn.ModuleList(
             [
@@ -105,29 +104,15 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
         blocks: list[nn.Module] = []
         for stride in strides:
             blocks.append(
-                RepVGGBlock(
-                    in_channels=self.in_planes,
+                GeneralReparametrizableBlock(
+                    in_channels=self._in_channels,
                     out_channels=channels,
                     kernel_size=3,
                     stride=stride,
                     padding=1,
                     groups=groups,
-                    use_se=self.use_se,
+                    refine_block="se" if self.use_se else None,
                 )
             )
-            self.in_planes = channels
+            self._in_channels = channels
         return nn.ModuleList(blocks)
-
-    def set_export_mode(self, mode: bool = True) -> None:
-        """Reparametrizes instances of L{RepVGGBlock} in the network.
-
-        @type mode: bool
-        @param mode: Whether to set the export mode. Defaults to
-            C{True}.
-        """
-        super().set_export_mode(mode)
-        if self.export:
-            logger.info("Reparametrizing RepVGG.")
-            for module in self.modules():
-                if isinstance(module, RepVGGBlock):
-                    module.reparametrize()

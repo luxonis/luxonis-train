@@ -11,17 +11,18 @@ from lightning.pytorch.callbacks import (
 from rich.console import Console
 from rich.table import Table
 
+import luxonis_train as lxt
 from luxonis_train.utils.registry import CALLBACKS
 
 
 class BaseLuxonisProgressBar(ABC, ProgressBar):
     def get_metrics(
-        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> dict[str, int | str | float | dict[str, float]]:
         items = super().get_metrics(trainer, pl_module)
         items.pop("v_num", None)
         if trainer.training and pl_module.training_step_outputs:
-            items["Loss"] = pl_module.training_step_outputs[-1]["loss"].item()
+            items["Loss"] = float(pl_module.training_step_outputs[-1]["loss"])
         return items
 
     @abstractmethod

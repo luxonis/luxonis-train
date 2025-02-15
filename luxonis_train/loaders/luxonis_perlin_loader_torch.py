@@ -11,11 +11,11 @@ from typing_extensions import override
 
 from luxonis_train.utils.types import Labels
 
-from .luxonis_loader_torch import LuxonisLoaderTorch
+from .luxonis_loader_torch import LuxonisTrainDataset
 from .perlin import apply_anomaly_to_img
 
 
-class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
+class PerlinNoiseDataset(LuxonisTrainDataset):
     @override
     def __init__(
         self,
@@ -75,7 +75,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         tensor_img = torch.tensor(img)
         tensor_labels = self.dict_numpy_to_torch(labels)
 
-        if self.view[0] == "train":
+        if self.splits[0] == "train":
             if random.random() < self.noise_prob:
                 anomaly_path = random.choice(self.anomaly_files)
                 anomaly_img = self.read_image(str(anomaly_path))

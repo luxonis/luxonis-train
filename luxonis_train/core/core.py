@@ -3,7 +3,12 @@ import signal
 import threading
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Literal, overload
+from typing import (
+    Any,
+    Literal,
+    TypeAlias,
+    overload,
+)
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -23,7 +28,7 @@ from luxonis_train.callbacks import (
     LuxonisTQDMProgressBar,
 )
 from luxonis_train.config import Config
-from luxonis_train.loaders import BaseLoaderTorch, collate_fn
+from luxonis_train.loaders import BaseTrainDataset, collate_fn
 from luxonis_train.models import LuxonisLightningModule
 from luxonis_train.utils import (
     DatasetMetadata,
@@ -46,6 +51,8 @@ from .utils.infer_utils import (
     infer_from_video,
 )
 from .utils.train_utils import create_trainer
+
+View: TypeAlias = Literal["train", "val", "test"]
 
 
 class LuxonisModel:
@@ -113,18 +120,22 @@ class LuxonisModel:
             precision=self.cfg.trainer.precision,
         )
 
-        self.loaders: dict[str, BaseLoaderTorch] = {}
-        for view in ["train", "val", "test"]:
-            loader_name = self.cfg.loader.name
-            Loader = LOADERS.get(loader_name)
-            if loader_name == "LuxonisLoaderTorch" and view != "train":
+        self.datasets: dict[View, BaseTrainDataset] = {}
+        loader_name = self.cfg.loader.name
+        Loader = LOADERS.get(loader_name)
+        for view in ("train", "val", "test"):
+            if (
+                view != "train"
+                and loader_name == "LuxonisLoaderTorch"
+                and self.cfg.loader.params.get("dataset_dir") is not None
+            ):
                 self.cfg.loader.params["delete_existing"] = False
 
-            self.loaders[view] = Loader(
-                view={
-                    "train": self.cfg.loader.train_view,
-                    "val": self.cfg.loader.val_view,
-                    "test": self.cfg.loader.test_view,
+            self.datasets[view] = Loader(
+                splits={
+                    "train": self.cfg.loader.train_splits,
+                    "val": self.cfg.loader.train_splits,
+                    "test": self.cfg.loader.test_splits,
                 }[view],
                 image_source=self.cfg.loader.image_source,
                 height=self.cfg_preprocessing.train_image_size.height,
@@ -132,16 +143,18 @@ class LuxonisModel:
                 augmentation_config=self.cfg_preprocessing.get_active_augmentations(),
                 color_space=self.cfg_preprocessing.color_space,
                 keep_aspect_ratio=self.cfg_preprocessing.keep_aspect_ratio,
-                **self.cfg.loader.params,  # type: ignore
+                **self.cfg.loader.params,
             )
 
-        self.loader_metadata_types = self.loaders["train"].get_metadata_types()
+        self.loader_metadata_types = self.datasets[
+            "train"
+        ].get_metadata_types()
 
-        for name, loader in self.loaders.items():
+        for name, dataset in self.datasets.items():
             logger.info(
-                f"{name.capitalize()} loader - splits: {loader.view}, size: {len(loader)}"
+                f"{name.capitalize()} loader - splits: {dataset.splits}, size: {len(dataset)}"
             )
-            if len(loader) == 0:
+            if len(dataset) == 0:
                 logger.warning(f"{name.capitalize()} loader is empty!")
 
         sampler = None
@@ -151,25 +164,30 @@ class LuxonisModel:
                 "Weighted sampler is not implemented yet."
             )
 
-        if self.cfg.trainer.n_validation_batches:
-            generator = torch.Generator()
-            generator.manual_seed(self.cfg.trainer.seed or 42)
-            n_samples = (
-                self.cfg.trainer.n_validation_batches
-                * self.cfg.trainer.batch_size
-            )
-            for view in ["val", "test"]:
-                if view in self.loaders:
-                    indices = list(
-                        range(min(n_samples, len(self.loaders[view])))
+        self.loaders: dict[View, torch_data.DataLoader] = {}
+        for view in ("train", "val", "test"):
+            if self.cfg.trainer.n_validation_batches is not None and view in {
+                "val",
+                "test",
+            }:
+                generator = torch.Generator()
+                generator.manual_seed(self.cfg.trainer.seed or 42)
+                if self.cfg.trainer.n_validation_batches == -1:
+                    self.cfg.trainer.n_validation_batches = len(
+                        self.datasets["val"]
                     )
-                    self.loaders[view] = torch_data.Subset(  # type: ignore
-                        self.loaders[view], indices
+                else:
+                    n_samples = (
+                        self.cfg.trainer.n_validation_batches
+                        * self.cfg.trainer.batch_size
                     )
+                indices = list(range(min(n_samples, len(self.datasets[view]))))
+                dataset = torch_data.Subset(self.datasets[view], indices)
+            else:
+                dataset = self.datasets[view]
 
-        self.pytorch_loaders = {
-            view: torch_data.DataLoader(
-                self.loaders[view],
+            self.loaders[view] = torch_data.DataLoader(
+                dataset,
                 batch_size=self.cfg.trainer.batch_size,
                 num_workers=self.cfg.trainer.n_workers,
                 collate_fn=collate_fn,
@@ -188,16 +206,14 @@ class LuxonisModel:
                 )
                 else None,
             )
-            for view in ["train", "val", "test"]
-        }
 
-        self.dataset_metadata = DatasetMetadata.from_loader(
-            self.loaders["train"]
+        self.dataset_metadata = DatasetMetadata.from_dataset(
+            self.datasets["train"]
         )
         self.config_file = osp.join(self.run_save_dir, "training_config.yaml")
         self.cfg.save_data(self.config_file)
 
-        self.input_shapes = self.loaders["train"].input_shapes
+        self.input_shapes = self.datasets["train"].input_shapes
 
         self.lightning_module = LuxonisLightningModule(
             cfg=self.cfg,
@@ -273,8 +289,8 @@ class LuxonisModel:
             self._train(
                 resume_weights,
                 self.lightning_module,
-                self.pytorch_loaders["train"],
-                self.pytorch_loaders["val"],
+                self.loaders["train"],
+                self.loaders["val"],
             )
             logger.info("Training finished")
             logger.info(f"Checkpoints saved in: {self.run_save_dir}")
@@ -291,8 +307,8 @@ class LuxonisModel:
                 args=(
                     resume_weights,
                     self.lightning_module,
-                    self.pytorch_loaders["train"],
-                    self.pytorch_loaders["val"],
+                    self.loaders["train"],
+                    self.loaders["val"],
                 ),
                 daemon=True,
             )
@@ -441,7 +457,7 @@ class LuxonisModel:
         """
 
         weights = weights or self.cfg.model.weights
-        loader = self.pytorch_loaders[view]
+        loader = self.loaders[view]
 
         with replace_weights(self.lightning_module, weights):
             if not new_thread:
@@ -574,7 +590,7 @@ class LuxonisModel:
                 cfg=cfg,
                 dataset_metadata=self.dataset_metadata,
                 save_dir=run_save_dir,
-                input_shapes=self.loaders["train"].input_shapes,
+                input_shapes=self.datasets["train"].input_shapes,
                 _core=self,
             )
             callbacks = [
@@ -600,8 +616,8 @@ class LuxonisModel:
             try:
                 pl_trainer.fit(
                     lightning_module,  # type: ignore
-                    self.pytorch_loaders["train"],
-                    self.pytorch_loaders["val"],
+                    self.loaders["train"],
+                    self.loaders["val"],
                 )
                 pruner_callback.check_pruned()
 

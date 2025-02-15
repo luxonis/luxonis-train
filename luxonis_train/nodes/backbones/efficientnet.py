@@ -1,7 +1,16 @@
+from typing import cast
+
 import torch
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
+
+
+class GenEfficientNet(nn.Module):
+    conv_stem: nn.Module
+    bn1: nn.Module
+    act1: nn.Module
+    blocks: nn.ModuleList
 
 
 class EfficientNet(BaseNode[Tensor, list[Tensor]]):
@@ -34,10 +43,13 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
         """
         super().__init__(**kwargs)
 
-        self.backbone: nn.Module = torch.hub.load(  # type: ignore
-            "rwightman/gen-efficientnet-pytorch",
-            "efficientnet_lite0",
-            pretrained=download_weights,
+        self.backbone = cast(
+            GenEfficientNet,
+            torch.hub.load(
+                "rwightman/gen-efficientnet-pytorch",
+                "efficientnet_lite0",
+                pretrained=download_weights,
+            ),
         )
         self.out_indices = out_indices or [0, 1, 2, 4, 6]
 

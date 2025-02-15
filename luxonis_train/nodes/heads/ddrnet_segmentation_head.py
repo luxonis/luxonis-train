@@ -2,7 +2,6 @@ from typing import Literal
 
 import torch
 import torch.nn as nn
-from loguru import logger
 from torch import Tensor
 
 from luxonis_train.nodes.heads import BaseHead
@@ -93,14 +92,14 @@ class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
             else nn.Upsample(scale_factor=scale_factor, mode=inter_mode)
         )
 
-        if download_weights:
-            weights_path = self.get_variant_weights()
-            if weights_path:
-                self.load_checkpoint(path=weights_path, strict=False)
-            else:
-                logger.warning(
-                    f"No checkpoint available for {self.name}, skipping."
-                )
+        # if download_weights:
+        #     weights_path = self.get_variant_weights()
+        #     if weights_path:
+        #         self.load_checkpoint(path=weights_path, strict=False)
+        #     else:
+        #         logger.warning(
+        #             f"No checkpoint available for {self.name}, skipping."
+        #         )
 
     def get_variant_weights(self) -> str | None:
         if self.in_channels == 128:  # light predefined model

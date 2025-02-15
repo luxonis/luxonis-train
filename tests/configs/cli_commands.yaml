@@ -36,9 +36,9 @@ tracker:
   is_tensorboard: true
 
 loader:
-  train_view: val
-  val_view: val
-  test_view: val
+  train_splits: val
+  val_splits: val
+  test_splits: val
   params:
     dataset_name: coco_test
 

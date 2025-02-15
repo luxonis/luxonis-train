@@ -14,8 +14,8 @@ loader:
   params:
     dataset_name: toy_ocr
 
-  val_view: train
-  test_view: train
+  val_splits: train
+  test_splits: train
 
 trainer:
   preprocessing:

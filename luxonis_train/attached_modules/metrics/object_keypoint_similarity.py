@@ -1,4 +1,5 @@
 from functools import cached_property
+from typing import Annotated
 
 import torch
 from scipy.optimize import linear_sum_assignment
@@ -13,7 +14,7 @@ from luxonis_train.utils import (
 )
 from luxonis_train.utils.keypoints import get_center_keypoints, insert_class
 
-from .base_metric import BaseMetric
+from .base_metric import BaseMetric, State
 
 
 class ObjectKeypointSimilarity(BaseMetric):
@@ -23,9 +24,9 @@ class ObjectKeypointSimilarity(BaseMetric):
     plot_lower_bound: float = 0.0
     plot_upper_bound: float = 1.0
 
-    pred_keypoints: list[Tensor]
-    groundtruth_keypoints: list[Tensor]
-    groundtruth_scales: list[Tensor]
+    pred_keypoints: Annotated[list[Tensor], State(default=[])]
+    groundtruth_keypoints: Annotated[list[Tensor], State(default=[])]
+    groundtruth_scales: Annotated[list[Tensor], State(default=[])]
 
     supported_tasks = [Tasks.KEYPOINTS, Tasks.INSTANCE_KEYPOINTS, Tasks.FOMO]
 
@@ -60,12 +61,6 @@ class ObjectKeypointSimilarity(BaseMetric):
             area_factor, "bbox area scaling", self.name, default=0.53
         )
         self.use_cocoeval_oks = use_cocoeval_oks
-
-        self.add_state("pred_keypoints", default=[], dist_reduce_fx=None)
-        self.add_state(
-            "groundtruth_keypoints", default=[], dist_reduce_fx=None
-        )
-        self.add_state("groundtruth_scales", default=[], dist_reduce_fx=None)
 
     @cached_property
     @override

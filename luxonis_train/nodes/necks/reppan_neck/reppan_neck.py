@@ -4,11 +4,10 @@ from loguru import logger
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.nodes.blocks import RepVGGBlock
 from luxonis_train.utils import make_divisible
 
 from .blocks import CSPDownBlock, CSPUpBlock, RepDownBlock, RepUpBlock
-from .variants import VariantLiteral, get_variant, get_variant_weights
+from .variants import VariantLiteral, get_variant
 
 
 class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
@@ -192,14 +191,14 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         if initialize_weights:
             self.initialize_weights()
 
-        if download_weights:
-            weights_path = get_variant_weights(variant, initialize_weights)
-            if weights_path:
-                self.load_checkpoint(path=weights_path)
-            else:
-                logger.warning(
-                    f"No checkpoint available for {self.name}, skipping."
-                )
+        # if download_weights:
+        #     weights_path = get_variant_weights(variant, initialize_weights)
+        #     if weights_path:
+        #         self.load_checkpoint(path=weights_path)
+        #     else:
+        #         logger.warning(
+        #             f"No checkpoint available for {self.name}, skipping."
+        #         )
 
     def initialize_weights(self) -> None:
         for m in self.modules():
@@ -229,20 +228,6 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
             x = down_block(x, up_out)
             outs.append(x)
         return outs
-
-    def set_export_mode(self, mode: bool = True) -> None:
-        """Reparametrizes instances of L{RepVGGBlock} in the network.
-
-        @type mode: bool
-        @param mode: Whether to set the export mode. Defaults to
-            C{True}.
-        """
-        super().set_export_mode(mode)
-        if self.export:
-            logger.info("Reparametrizing 'RepPANNeck'.")
-            for module in self.modules():
-                if isinstance(module, RepVGGBlock):
-                    module.reparametrize()
 
     def _fit_to_n_heads(
         self, channels_list: list[int], n_repeats: list[int]

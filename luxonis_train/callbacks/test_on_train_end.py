@@ -21,7 +21,7 @@ class TestOnTrainEnd(pl.Callback):
             if isinstance(callback, ModelCheckpoint)
         }
 
-        trainer.test(pl_module, pl_module.core.pytorch_loaders["test"])
+        trainer.test(pl_module, pl_module.core.loaders["test"])
 
         # Restore the paths
         for callback in trainer.callbacks:  # type: ignore

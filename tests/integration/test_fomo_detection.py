@@ -97,9 +97,9 @@ def get_opts_fomo_with_dummy_dataset(
             "params": {
                 "dataset_name": dataset_name  # Use the dummy dataset here
             },
-            "train_view": "train",
-            "val_view": "val",
-            "test_view": "val",
+            "train_splits": "train",
+            "val_splits": "val",
+            "test_splits": "val",
         },
         "trainer": {
             "preprocessing": {

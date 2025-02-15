@@ -1,8 +1,9 @@
 from typing import Set
 
 from bidict import bidict
+from typing_extensions import deprecated
 
-from luxonis_train.loaders import BaseLoaderTorch
+from luxonis_train.loaders import BaseTrainDataset
 
 
 class DatasetMetadata:
@@ -13,7 +14,7 @@ class DatasetMetadata:
         *,
         classes: dict[str, dict[str, int]] | None = None,
         n_keypoints: dict[str, int] | None = None,
-        loader: BaseLoaderTorch | None = None,
+        loader: BaseTrainDataset | None = None,
     ):
         """An object containing metadata about the dataset. Used to
         infer the number of classes, number of keypoints, I{etc.}
@@ -125,7 +126,12 @@ class DatasetMetadata:
         return bidict(classes)
 
     @classmethod
-    def from_loader(cls, loader: BaseLoaderTorch) -> "DatasetMetadata":
+    @deprecated("`from_loader` is deprecated, use `from_dataset` instead.")
+    def from_loader(cls, loader: BaseTrainDataset) -> "DatasetMetadata":
+        return cls.from_dataset(loader)
+
+    @classmethod
+    def from_dataset(cls, dataset: BaseTrainDataset) -> "DatasetMetadata":
         """Creates a L{DatasetMetadata} object from a L{LuxonisDataset}.
 
         @type dataset: LuxonisDataset
@@ -134,8 +140,10 @@ class DatasetMetadata:
         @return: Instance of L{DatasetMetadata} created from the
             provided dataset.
         """
-        classes = loader.get_classes()
-        n_keypoints = loader.get_n_keypoints()
+        classes = dataset.get_classes()
+        n_keypoints = dataset.get_n_keypoints()
 
-        instance = cls(classes=classes, n_keypoints=n_keypoints, loader=loader)
+        instance = cls(
+            classes=classes, n_keypoints=n_keypoints, loader=dataset
+        )
         return instance

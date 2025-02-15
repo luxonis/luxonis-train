@@ -2,13 +2,13 @@ import torch
 from torch import Tensor, nn
 from typing_extensions import override
 
-from luxonis_train.loaders import BaseLoaderTorch
+from luxonis_train.loaders import BaseTrainDataset
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Tasks
 from luxonis_train.utils import Packet
 
 
-class CustomMultiInputLoader(BaseLoaderTorch):
+class CustomMultiInputLoader(BaseTrainDataset):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._height = 224

@@ -11,7 +11,7 @@ import luxonis_train as lt
 CALLBACKS: Registry[type[pl.Callback]] = Registry(name="callbacks")
 """Registry for all callbacks."""
 
-LOADERS: Registry[type["lt.loaders.BaseLoaderTorch"]] = Registry(
+LOADERS: Registry[type["lt.loaders.BaseTrainDataset"]] = Registry(
     name="loaders"
 )
 """Registry for all loaders."""

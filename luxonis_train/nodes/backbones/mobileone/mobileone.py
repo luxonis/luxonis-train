@@ -6,12 +6,12 @@ Source: U{<https://github.com/apple/ml-mobileone>}
 
 from typing import Literal
 
-from loguru import logger
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.nodes.blocks import GeneralReparametrizableBlock
+from luxonis_train.nodes.blocks.blocks import SqueezeExciteBlock
 
-from .blocks import MobileOneBlock
 from .variants import get_variant
 
 
@@ -76,11 +76,11 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
         self.n_blocks_per_stage = [2, 8, 10, 1]
         self.n_conv_branches = n_conv_branches or var.n_conv_branches
 
-        self.in_planes = min(64, int(64 * width_multipliers[0]))
+        self._in_channels = min(64, int(64 * width_multipliers[0]))
 
-        self.stage0 = MobileOneBlock(
+        self.stage0 = GeneralReparametrizableBlock(
             in_channels=self.in_channels,
-            out_channels=self.in_planes,
+            out_channels=self._in_channels,
             kernel_size=3,
             stride=2,
             padding=1,
@@ -122,31 +122,13 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
 
         return outs
 
-    def set_export_mode(self, mode: bool = True) -> None:
-        """Sets the module to export mode.
-
-        Reparameterizes the model to obtain a plain CNN-like structure for inference.
-        TODO: add more details
-
-        @warning: The re-parametrization is destructive and cannot be reversed!
-
-        @type export: bool
-        @param export: Whether to set the export mode to True or False. Defaults to True.
-        """
-        super().set_export_mode(mode)
-        if self.export:
-            logger.info("Reparametrizing 'MobileOne'.")
-            for module in self.modules():
-                if hasattr(module, "reparameterize"):
-                    module.reparameterize()
-
     def _make_stage(
-        self, planes: int, n_blocks: int, n_se_blocks: int
+        self, out_channels: int, n_blocks: int, n_se_blocks: int
     ) -> nn.Sequential:
         """Build a stage of MobileOne model.
 
-        @type planes: int
-        @param planes: Number of output channels.
+        @type out_channels: int
+        @param out_channels: Number of output channels.
         @type n_blocks: int
         @param n_blocks: Number of blocks in this stage.
         @type n_se_blocks: int
@@ -158,40 +140,44 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
         strides = [2] + [1] * (n_blocks - 1)
         blocks: list[nn.Module] = []
         for ix, stride in enumerate(strides):
-            use_se = False
             if n_se_blocks > n_blocks:
                 raise ValueError(
                     "Number of SE blocks cannot exceed number of layers."
                 )
             if ix >= (n_blocks - n_se_blocks):
-                use_se = True
+                refine_block = SqueezeExciteBlock(
+                    in_channels=self._in_channels,
+                    intermediate_channels=self._in_channels // 16,
+                )
+            else:
+                refine_block = nn.Identity()
 
             # Depthwise conv
             blocks.append(
-                MobileOneBlock(
-                    in_channels=self.in_planes,
-                    out_channels=self.in_planes,
+                GeneralReparametrizableBlock(
+                    in_channels=self._in_channels,
+                    out_channels=self._in_channels,
                     kernel_size=3,
                     stride=stride,
                     padding=1,
-                    groups=self.in_planes,
-                    use_se=use_se,
-                    n_conv_branches=self.n_conv_branches,
+                    groups=self._in_channels,
+                    num_branches=self.n_conv_branches,
+                    refine_block=refine_block,
                 )
             )
             # Pointwise conv
             blocks.append(
-                MobileOneBlock(
-                    in_channels=self.in_planes,
-                    out_channels=planes,
+                GeneralReparametrizableBlock(
+                    in_channels=self._in_channels,
+                    out_channels=out_channels,
                     kernel_size=1,
                     stride=1,
                     padding=0,
                     groups=1,
-                    use_se=use_se,
-                    n_conv_branches=self.n_conv_branches,
+                    num_branches=self.n_conv_branches,
+                    refine_block=refine_block,
                 )
             )
-            self.in_planes = planes
+            self._in_channels = out_channels
             self.cur_layer_idx += 1
         return nn.Sequential(*blocks)

@@ -12,7 +12,7 @@ from torch import Tensor
 
 import luxonis_train
 from luxonis_train.attached_modules.visualizers import get_denormalized_images
-from luxonis_train.loaders import LuxonisLoaderTorch
+from luxonis_train.loaders import LuxonisTrainDataset
 from luxonis_train.models.luxonis_output import LuxonisOutput
 
 IMAGE_FORMATS = {
@@ -51,12 +51,12 @@ def prepare_and_infer_image(
     model: "luxonis_train.core.LuxonisModel", img: Tensor
 ) -> LuxonisOutput:
     """Prepares the image for inference and runs the model."""
-    img = model.loaders["val"].augment_test_image(img)  # type: ignore
+    img = model.datasets["val"].augment_test_image(img)  # type: ignore
 
     inputs = {
         "image": torch.tensor(img).unsqueeze(0).permute(0, 3, 1, 2).float()
     }
-    images = get_denormalized_images(model.cfg, inputs)
+    images = get_denormalized_images(model.cfg, inputs["image"])
 
     outputs = model.lightning_module.forward(
         inputs, images=images, compute_visualizations=True
@@ -211,7 +211,7 @@ def infer_from_directory(
         {"train": 0.0, "val": 0.0, "test": 1.0}, replace_old_splits=True
     )
 
-    loader = LuxonisLoaderTorch(
+    loader = LuxonisTrainDataset(
         dataset_name=dataset_name,
         view="test",
         height=model.cfg_preprocessing.train_image_size.height,
@@ -244,5 +244,5 @@ def infer_from_dataset(
     @param save_dir: The directory to save the visualizations to.
     """
 
-    loader = model.pytorch_loaders[view]
+    loader = model.loaders[view]
     infer_from_loader(model, loader, save_dir)

@@ -11,7 +11,13 @@ from luxonis_ml.utils import (
     LuxonisConfig,
     LuxonisFileSystem,
 )
-from pydantic import AliasChoices, Field, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    Field,
+    ModelWrapValidatorHandler,
+    field_validator,
+    model_validator,
+)
 from pydantic.types import (
     FilePath,
     NonNegativeFloat,
@@ -296,12 +302,34 @@ class TrackerConfig(BaseModelExtraForbid):
 class LoaderConfig(BaseModelExtraForbid):
     name: str = "LuxonisLoaderTorch"
     image_source: str = "image"
-    train_view: list[str] = ["train"]
-    val_view: list[str] = ["val"]
-    test_view: list[str] = ["test"]
+    train_splits: list[str] = ["train"]
+    val_splits: list[str] = ["val"]
+    test_splits: list[str] = ["test"]
     params: Params = {}
 
-    @field_validator("train_view", "val_view", "test_view", mode="before")
+    @model_validator(mode="before")
+    @classmethod
+    def validate_deprecated_views(cls, data: dict[str, Any]) -> dict[str, Any]:
+        if "train_view" in data:
+            warnings.warn(
+                "Field `train_view` is deprecated. Use `train_splits` instead."
+            )
+            data["train_splits"] = data.pop("train_view")
+        if "val_view" in data:
+            warnings.warn(
+                "Field `val_view` is deprecated. Use `val_splits` instead."
+            )
+            data["val_splits"] = data.pop("val_view")
+        if "test_view" in data:
+            warnings.warn(
+                "Field `test_view` is deprecated. Use `test_splits` instead."
+            )
+            data["test_splits"] = data.pop("test_view")
+        return data
+
+    @field_validator(
+        "train_splits", "val_splits", "test_splits", mode="before"
+    )
     @classmethod
     def validate_splits(cls, splits: Any) -> list[Any]:
         if isinstance(splits, str):
@@ -422,7 +450,7 @@ class TrainerConfig(BaseModelExtraForbid):
     verbose: bool = True
 
     seed: int | None = None
-    n_validation_batches: PositiveInt | None = None
+    n_validation_batches: PositiveInt | Literal[-1] | None = None
     deterministic: bool | Literal["warn"] | None = None
     smart_cfg_auto_populate: bool = True
     batch_size: PositiveInt = 32
@@ -448,9 +476,49 @@ class TrainerConfig(BaseModelExtraForbid):
 
     callbacks: list[CallbackConfig] = []
 
-    optimizer: OptimizerConfig | None = None
-    scheduler: SchedulerConfig | None = None
+    optimizer: OptimizerConfig = OptimizerConfig(name="Adam")
+    scheduler: SchedulerConfig = SchedulerConfig(name="ConstantLR")
+
     training_strategy: TrainingStrategyConfig | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_optimizer(cls, values: Params) -> Params:
+        if "optimizer" not in values:
+            values["optimizer"] = OptimizerConfig(name="Adam")
+            logger.warning("Optimizer not specified, setting to `Adam`")
+        return values
+
+    @model_validator(mode="wrap")
+    @classmethod
+    def validate_scheduler(
+        cls,
+        values: Params,
+        handler: ModelWrapValidatorHandler["TrainerConfig"],
+    ) -> "TrainerConfig":
+        if "scheduler" not in values:
+            values["scheduler"] = SchedulerConfig(name="ConstantLR")
+            logger.warning("Scheduler not specified, setting to `ConstantLR`")
+
+        trainer = handler(values)
+        scheduler = trainer.scheduler
+
+        if scheduler.name == "CosineAnnealingLR":
+            if "T_max" not in scheduler.params:
+                scheduler.params["T_max"] = trainer.epochs
+                logger.warning(
+                    "`T_max` was not set for `CosineAnnealingLR`"
+                    "Automatically set `T_max` to number of epochs."
+                )
+            elif scheduler.params["T_max"] != trainer.epochs:
+                logger.warning(
+                    "Parameter `T_max` of `CosineAnnealingLR` is "
+                    "not equal to the number of epochs. "
+                    "Make sure this is intended."
+                    f"`T_max`: {scheduler.params['T_max']}, "
+                    f"Number of epochs: {trainer.epochs}"
+                )
+        return trainer
 
     @model_validator(mode="after")
     def validate_deterministic(self) -> Self:
@@ -555,12 +623,12 @@ class TunerConfig(BaseModelExtraForbid):
 
 
 class Config(LuxonisConfig):
-    model: Annotated[ModelConfig, Field(default_factory=ModelConfig)]
-    loader: Annotated[LoaderConfig, Field(default_factory=LoaderConfig)]
-    tracker: Annotated[TrackerConfig, Field(default_factory=TrackerConfig)]
-    trainer: Annotated[TrainerConfig, Field(default_factory=TrainerConfig)]
-    exporter: Annotated[ExportConfig, Field(default_factory=ExportConfig)]
-    archiver: Annotated[ArchiveConfig, Field(default_factory=ArchiveConfig)]
+    model: ModelConfig = ModelConfig()
+    loader: LoaderConfig = LoaderConfig()
+    tracker: TrackerConfig = TrackerConfig()
+    trainer: TrainerConfig
+    exporter: ExportConfig = ExportConfig()
+    archiver: ArchiveConfig = ArchiveConfig()
     tuner: TunerConfig | None = None
     ENVIRON: Environ = Field(Environ(), exclude=True)
 
@@ -602,35 +670,6 @@ class Config(LuxonisConfig):
         """Automatically populates config fields based on rules, with
         warnings."""
 
-        # Rule: Set default optimizer and scheduler if training_strategy is not defined and optimizer and scheduler are None
-        if instance.trainer.training_strategy is None:
-            if instance.trainer.optimizer is None:
-                instance.trainer.optimizer = OptimizerConfig(
-                    name="Adam", params={}
-                )
-                logger.warning(
-                    "Optimizer not specified. Automatically set to `Adam`."
-                )
-            if instance.trainer.scheduler is None:
-                instance.trainer.scheduler = SchedulerConfig(
-                    name="ConstantLR", params={}
-                )
-                logger.warning(
-                    "Scheduler not specified. Automatically set to `ConstantLR`."
-                )
-
-        # Rule: CosineAnnealingLR should have T_max set to the number of epochs if not provided
-        if instance.trainer.scheduler is not None:
-            scheduler = instance.trainer.scheduler
-            if (
-                scheduler.name == "CosineAnnealingLR"
-                and "T_max" not in scheduler.params
-            ):
-                scheduler.params["T_max"] = instance.trainer.epochs
-                logger.warning(
-                    "`T_max` was not set for `CosineAnnealingLR`. Automatically set `T_max` to number of epochs."
-                )
-
         # Rule: Mosaic4 should have out_width and out_height matching train_image_size if not provided
         for augmentation in instance.trainer.preprocessing.augmentations:
             if augmentation.name == "Mosaic4" and (
@@ -647,24 +686,33 @@ class Config(LuxonisConfig):
 
         # Rule: If train, val, and test views are the same, set n_validation_batches
         if (
-            instance.loader.train_view
-            == instance.loader.val_view
-            == instance.loader.test_view
-            and instance.trainer.n_validation_batches is None
+            instance.loader.train_splits
+            == instance.loader.val_splits
+            == instance.loader.test_splits
         ):
-            instance.trainer.n_validation_batches = 10
-            logger.warning(
-                "Train, validation, and test views are the same. Automatically set `n_validation_batches` to 10 to prevent validation/testing on the full train set. "
-                "If this behavior is not desired, set `smart_cfg_auto_populate` to `False`."
-            )
+            if instance.trainer.n_validation_batches is None:
+                instance.trainer.n_validation_batches = 10
+                logger.warning(
+                    "Train, validation, and test views are the same. "
+                    "Automatically setting `n_validation_batches` to 10 "
+                    "to prevent validation/testing on the full train set. "
+                    "If this behavior is not desired, set "
+                    "`smart_cfg_auto_populate` to `False`."
+                )
+            else:
+                logger.warning(
+                    "Train, validation, and test views are the same. "
+                    "Make sure this is intended."
+                )
 
         # Rule: Check if a predefined model is set and adjust config accordingly to achieve best training results
-        predefined_model_cfg = getattr(
-            instance.model, "predefined_model", None
-        )
-        if predefined_model_cfg:
+        predefined_model_cfg = instance.model.predefined_model
+        if predefined_model_cfg is not None:
             logger.info(
-                "Predefined model detected. Applying predefined model configuration rules."
+                "Predefined model detected. "
+                "Adjusting  parameters for best training results."
+                "If this behavior is not desired, set "
+                "`smart_cfg_auto_populate` to `False`."
             )
             model_name = predefined_model_cfg.name
             accumulate_grad_batches = int(64 / instance.trainer.batch_size)

@@ -12,6 +12,7 @@ from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
 from typeguard import TypeCheckError, check_type
 
+from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
 from luxonis_train.tasks import Task
 from luxonis_train.utils import (
     AttachIndexType,
@@ -413,13 +414,25 @@ class BaseNode(
         """Getter for the export mode."""
         return self._export
 
-    def set_export_mode(self, mode: bool = True) -> None:
+    @export.setter
+    def export(self, mode: bool) -> None:
+        """Sets the module to export mode."""
+        self.set_export_mode(mode)
+
+    def set_export_mode(self, /, mode: bool) -> None:
         """Sets the module to export mode.
 
         @type mode: bool
-        @param mode: Value to set the export mode to. Defaults to True.
+        @param mode: Value to set the export mode to.
         """
         self._export = mode
+        if not mode:
+            return
+
+        for name, module in self.named_modules():
+            if isinstance(module, Reparametrizable):
+                logger.info(f"Reparametrizing '{name}' in '{self.name}'")
+                module.reparametrize()
 
     @property
     def remove_on_export(self) -> bool:

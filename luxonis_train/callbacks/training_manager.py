@@ -1,5 +1,6 @@
 import lightning.pytorch as pl
 
+import luxonis_train as lxt
 from luxonis_train.strategies.base_strategy import BaseTrainingStrategy
 
 
@@ -14,7 +15,7 @@ class TrainingManager(pl.Callback):
         self.strategy = strategy
 
     def on_after_backward(
-        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
         """PyTorch Lightning hook that is called after the backward
         pass.

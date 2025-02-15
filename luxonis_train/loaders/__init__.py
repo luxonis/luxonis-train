@@ -1,12 +1,12 @@
-from .base_loader import BaseLoaderTorch
-from .luxonis_loader_torch import LuxonisLoaderTorch
-from .luxonis_perlin_loader_torch import LuxonisLoaderPerlinNoise
-from .utils import LuxonisLoaderTorchOutput, collate_fn
+from .base_loader import BaseTrainDataset
+from .luxonis_loader_torch import LuxonisTrainDataset
+from .luxonis_perlin_loader_torch import PerlinNoiseDataset
+from .utils import DatasetOutput, collate_fn
 
 __all__ = [
-    "LuxonisLoaderTorch",
+    "LuxonisTrainDataset",
     "collate_fn",
-    "BaseLoaderTorch",
-    "LuxonisLoaderTorchOutput",
-    "LuxonisLoaderPerlinNoise",
+    "BaseTrainDataset",
+    "DatasetOutput",
+    "PerlinNoiseDataset",
 ]
