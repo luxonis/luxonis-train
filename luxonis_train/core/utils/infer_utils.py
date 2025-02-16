@@ -12,7 +12,7 @@ from torch import Tensor
 
 import luxonis_train
 from luxonis_train.attached_modules.visualizers import get_denormalized_images
-from luxonis_train.loaders import LuxonisTorchDataset
+from luxonis_train.datasets import LuxonisTorchDataset
 from luxonis_train.models.luxonis_output import LuxonisOutput
 
 IMAGE_FORMATS = {

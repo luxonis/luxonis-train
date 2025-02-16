@@ -3,7 +3,7 @@ from typing import Set
 from bidict import bidict
 from typing_extensions import deprecated
 
-from luxonis_train.loaders import BaseTorchDataset
+from luxonis_train.datasets import BaseTorchDataset
 
 
 class DatasetMetadata:

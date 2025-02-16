@@ -17,7 +17,7 @@ from typing_extensions import override
 
 from luxonis_train.utils.types import Labels
 
-from .base_loader import BaseTorchDataset
+from .base_torch_dataset import BaseTorchDataset
 
 
 class LuxonisTorchDataset(BaseTorchDataset):

@@ -28,7 +28,8 @@ from luxonis_train.callbacks import (
     LuxonisTQDMProgressBar,
 )
 from luxonis_train.config import Config
-from luxonis_train.loaders import BaseTorchDataset, collate_fn
+from luxonis_train.datasets import BaseTorchDataset, collate_fn
+from luxonis_train.datasets.luxonis_torch_dataset import LuxonisTorchDataset
 from luxonis_train.models import LuxonisLightningModule
 from luxonis_train.utils import (
     DatasetMetadata,
@@ -126,7 +127,7 @@ class LuxonisModel:
         for view in ("train", "val", "test"):
             if (
                 view != "train"
-                and loader_name == "LuxonisLoaderTorch"
+                and isinstance(Loader, LuxonisTorchDataset)
                 and self.cfg.loader.params.get("dataset_dir") is not None
             ):
                 self.cfg.loader.params["delete_existing"] = False

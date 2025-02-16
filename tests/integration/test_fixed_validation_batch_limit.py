@@ -39,7 +39,7 @@ def get_config() -> dict[str, Any]:
             ],
         },
         "loader": {
-            "name": "LuxonisLoaderTorch",
+            "name": "LuxonisTorchDataset",
             "train_splits": "train",
             "val_splits": "train",
             "test_splits": "train",

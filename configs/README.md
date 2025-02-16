@@ -14,7 +14,7 @@ You can create your own config or use/edit one of the examples.
     - [Visualizers](#visualizers)
 - [Tracker](#tracker)
 - [Loader](#loader)
-  - [`LuxonisLoaderTorch`](#luxonisloadertorch)
+  - [`LuxonisTorchDataset`](#luxonistorchdataset)
 - [Trainer](#trainer)
   - [Preprocessing](#preprocessing)
     - [Augmentations](#augmentations)
@@ -161,18 +161,18 @@ This section controls the data loading process and parameters regarding the data
 
 To store and load the data we use `LuxonisDataset` and `LuxonisLoader.` For specific config parameters refer to [`LuxonisML`](https://github.com/luxonis/luxonis-ml).
 
-| Key            | Type               | Default value          | Description                          |
-| -------------- | ------------------ | ---------------------- | ------------------------------------ |
-| `name`         | `str`              | `"LuxonisLoaderTorch"` | Name of the Loader                   |
-| `image_source` | `str`              | `"image"`              | Name of the input image group        |
-| `train_splits` | `str \| list[str]` | `"train"`              | splits to use for training           |
-| `val_splits`   | `str \| list[str]` | `"val"`                | splits to use for validation         |
-| `test_splits`  | `str \| list[str]` | `"test"`               | splits to use for testing            |
-| `params`       | `dict[str, Any]`   | `{}`                   | Additional parameters for the loader |
+| Key            | Type               | Default value           | Description                          |
+| -------------- | ------------------ | ----------------------- | ------------------------------------ |
+| `name`         | `str`              | `"LuxonisTorchDataset"` | Name of the Dataset                  |
+| `image_source` | `str`              | `"image"`               | Name of the input image group        |
+| `train_splits` | `str \| list[str]` | `"train"`               | splits to use for training           |
+| `val_splits`   | `str \| list[str]` | `"val"`                 | splits to use for validation         |
+| `test_splits`  | `str \| list[str]` | `"test"`                | splits to use for testing            |
+| `params`       | `dict[str, Any]`   | `{}`                    | Additional parameters for the loader |
 
-### `LuxonisLoaderTorch`
+### `LuxonisTorchDataset`
 
-By default, `LuxonisLoaderTorch` can either use an existing `LuxonisDataset` or create a new one if it can be parsed automatically by `LuxonisParser` (check [`LuxonisML`](https://github.com/luxonis/luxonis-ml) `data` sub-package for more info).
+By default, `LuxonisTorchDataset` can either use an existing `LuxonisDataset` or create a new one if it can be parsed automatically by `LuxonisParser` (check [`LuxonisML`](https://github.com/luxonis/luxonis-ml) `data` sub-package for more info).
 
 In most cases you want to set one of the parameters below. You can check all the parameters in the `LuxonisLoaderTorch` class itself.
 

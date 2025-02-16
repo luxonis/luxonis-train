@@ -14,7 +14,6 @@ from luxonis_ml.utils import (
 from pydantic import (
     AliasChoices,
     Field,
-    ModelWrapValidatorHandler,
     field_validator,
     model_validator,
 )
@@ -137,7 +136,7 @@ class ModelConfig(BaseModelExtraForbid):
     def check_predefined_model(self) -> Self:
         from .predefined_models.base_predefined_model import MODELS
 
-        if self.predefined_model:
+        if self.predefined_model is not None:
             logger.info(
                 f"Using predefined model: `{self.predefined_model.name}`"
             )
@@ -300,7 +299,7 @@ class TrackerConfig(BaseModelExtraForbid):
 
 
 class LoaderConfig(BaseModelExtraForbid):
-    name: str = "LuxonisLoaderTorch"
+    name: str = "LuxonisTorchDataset"
     image_source: str = "image"
     train_splits: list[str] = ["train"]
     val_splits: list[str] = ["val"]
@@ -476,57 +475,53 @@ class TrainerConfig(BaseModelExtraForbid):
 
     callbacks: list[CallbackConfig] = []
 
-    optimizer: OptimizerConfig = OptimizerConfig(name="Adam")
-    scheduler: SchedulerConfig = SchedulerConfig(name="ConstantLR")
+    optimizer: OptimizerConfig | None = None
+    scheduler: SchedulerConfig | None = None
 
     training_strategy: TrainingStrategyConfig | None = None
 
-    @model_validator(mode="before")
-    @classmethod
-    def validate_optimizer(cls, values: Params) -> Params:
-        if "optimizer" not in values:
-            values["optimizer"] = OptimizerConfig(name="Adam")
+    @model_validator(mode="after")
+    def validate_optimizer(self) -> Self:
+        if self.optimizer is None and self.training_strategy is None:
+            self.optimizer = OptimizerConfig(name="Adam")
             logger.warning("Optimizer not specified, setting to `Adam`")
-        return values
+        return self
 
-    @model_validator(mode="wrap")
-    @classmethod
-    def validate_scheduler(
-        cls,
-        values: Params,
-        handler: ModelWrapValidatorHandler["TrainerConfig"],
-    ) -> "TrainerConfig":
-        if "scheduler" not in values:
-            values["scheduler"] = SchedulerConfig(name="ConstantLR")
+    @model_validator(mode="after")
+    def validate_scheduler(self) -> Self:
+        if self.scheduler is None and self.training_strategy is None:
+            self.scheduler = SchedulerConfig(name="ConstantLR")
             logger.warning("Scheduler not specified, setting to `ConstantLR`")
 
-        trainer = handler(values)
-        scheduler = trainer.scheduler
+        if self.scheduler is None:
+            return self
 
-        if scheduler.name == "CosineAnnealingLR":
-            if "T_max" not in scheduler.params:
-                scheduler.params["T_max"] = trainer.epochs
+        if self.scheduler.name == "CosineAnnealingLR":
+            if "T_max" not in self.scheduler.params:
+                self.scheduler.params["T_max"] = self.epochs
                 logger.warning(
                     "`T_max` was not set for `CosineAnnealingLR`"
                     "Automatically set `T_max` to number of epochs."
                 )
-            elif scheduler.params["T_max"] != trainer.epochs:
+            elif self.scheduler.params["T_max"] != self.epochs:
                 logger.warning(
                     "Parameter `T_max` of `CosineAnnealingLR` is "
                     "not equal to the number of epochs. "
                     "Make sure this is intended."
-                    f"`T_max`: {scheduler.params['T_max']}, "
-                    f"Number of epochs: {trainer.epochs}"
+                    f"`T_max`: {self.scheduler.params['T_max']}, "
+                    f"Number of epochs: {self.epochs}"
                 )
-        return trainer
+
+        return self
 
     @model_validator(mode="after")
     def validate_deterministic(self) -> Self:
         if self.seed is not None and self.deterministic is None:
             logger.warning(
-                "Setting `trainer.deterministic` to True because `trainer.seed` is set. "
-                "This can cause certain layers to fail. "
-                "In such cases, set `trainer.deterministic` to `'warn'`."
+                "Setting `trainer.deterministic` to True because "
+                "`trainer.seed` is set. This can cause certain "
+                "layers to fail. In such cases, set "
+                "`trainer.deterministic` to `'warn'`."
             )
             self.deterministic = True
         return self
@@ -546,7 +541,8 @@ class TrainerConfig(BaseModelExtraForbid):
     def check_validation_interval(self) -> Self:
         if self.validation_interval > self.epochs:
             logger.warning(
-                "Setting `validation_interval` same as `epochs` otherwise no checkpoint would be generated."
+                "Setting `validation_interval` same as `epochs`, "
+                "otherwise no checkpoint would be generated."
             )
             self.validation_interval = self.epochs
         return self
@@ -623,13 +619,16 @@ class TunerConfig(BaseModelExtraForbid):
 
 
 class Config(LuxonisConfig):
-    model: ModelConfig = ModelConfig()
+    # Must be wrapped in `Field` in order to awoid circular imports
+    model: ModelConfig = Field(default_factory=ModelConfig)
+
     loader: LoaderConfig = LoaderConfig()
     tracker: TrackerConfig = TrackerConfig()
     trainer: TrainerConfig
     exporter: ExportConfig = ExportConfig()
     archiver: ArchiveConfig = ArchiveConfig()
     tuner: TunerConfig | None = None
+
     ENVIRON: Environ = Field(Environ(), exclude=True)
 
     @model_validator(mode="before")
