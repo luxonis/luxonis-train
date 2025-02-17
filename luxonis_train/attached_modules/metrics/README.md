@@ -12,9 +12,6 @@ List of all the available metrics.
 - [MedianDistances](#mediandistances)
 - [ConfusionMatrix](#confusionmatrix)
 
-> \[!NOTE\]
-> **Important:** Both the Confusion Matrix (CM) and Mean Average Precision (mAP) metrics are sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.
-
 ## Torchmetrics
 
 Metrics from the [`torchmetrics`](https://lightning.ai/docs/torchmetrics/stable/) module.
@@ -49,6 +46,9 @@ Compute the `Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)` for obj
 
 where $AP_i$ is the average precision for class $i$ and $n$ is the number of classes. Average precision is the area under the precision-recall curve. For both detection and segmentation tasks, precision and recall are computed based on the Intersection over Union (IoU) between predicted and ground truth regions (bounding boxes or masks). A prediction is considered a true positive if its IoU exceeds a threshold $t$. Precision is defined as the ratio of true positives to all detections, and recall as the ratio of true positives to all ground truth instances.
 
+> \[!NOTE\]
+> **Important:** Mean Average Precision metric is sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.
+
 ## MeanAveragePrecisionKeypoints
 
 Similar to [MeanAveragePrecision](#meanaverageprecision), but uses [OKS](#objectkeypointsimilarity) as `IoU` measure.
@@ -63,6 +63,9 @@ Evaluation leverages the [pycocotools](https://github.com/cocodataset/cocoapi) f
 | `area_factor` | `float`                             | `0.53`        | Factor by which to multiply the bounding box area                     |
 | `max_dets`    | `int`                               | `20`          | Maximum number of detections per image                                |
 | `box_fotmat`  | `Literal["xyxy", "xywh", "cxcywh"]` | `"xyxy"`      | Format of the bounding boxes                                          |
+
+> \[!NOTE\]
+> **Important:** Mean Average Precision Keypoints metric is sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.
 
 ## ClosestIsPositiveAccuracy
 
@@ -87,3 +90,6 @@ Accuracy metric for OCR tasks.
 ## ConfusionMatrix
 
 Compute the confusion matrix for various tasks including classification, segmentation, and object detection.
+
+> \[!NOTE\]
+> **Important:** Confusion Matrix is sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.
