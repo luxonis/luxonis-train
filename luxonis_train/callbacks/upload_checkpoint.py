@@ -47,7 +47,9 @@ class UploadCheckpoint(pl.Callback):
                         .parent.with_suffix(".ckpt")
                         .name
                     )
-                    (torch.save(checkpoint, temp_filename))  # nosemgrep
+                    torch.save(  # nosemgrep: trailofbits.python.pickles-in-pytorch.pickles-in-pytorch
+                        checkpoint, temp_filename
+                    )
                     module.logger.upload_artifact(temp_filename, typ="weights")
 
                     os.remove(temp_filename)
