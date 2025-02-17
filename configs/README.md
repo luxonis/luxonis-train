@@ -16,6 +16,7 @@ You can create your own config or use/edit one of the examples.
 - [Loader](#loader)
   - [`LuxonisLoaderTorch`](#luxonisloadertorch)
 - [Trainer](#trainer)
+  - [Trainer Tips](#trainer-tips)
   - [Preprocessing](#preprocessing)
     - [Augmentations](#augmentations)
   - [Callbacks](#callbacks)
