@@ -427,7 +427,7 @@ optimizer:
 ### Scheduler
 
 What scheduler to use for training.
-List of all optimizers can be found [here](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate).
+List of all schedulers can be found [here](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate).
 
 | Key      | Type   | Default value  | Description                 |
 | -------- | ------ | -------------- | --------------------------- |

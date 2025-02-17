@@ -93,3 +93,5 @@ Compute the confusion matrix for various tasks including classification, segment
 
 > \[!NOTE\]
 > **Important:** Confusion Matrix is sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.
+>
+> **Note:** The Confusion Matrix should not be used as the primary metric for model evaluation.
