@@ -61,7 +61,7 @@ class AdaptiveDetectionLoss(
         @type iou_loss_weight: float
         @param iou_loss_weight: Weight of IoU loss.
         @type per_class_weights: Optional[Tensor]
-        @param per_class_weights: Holds a weight for each class to calculate the weighted loss. It's length must be equal to the number of classes.
+        @param per_class_weights: A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
         """
         super().__init__(**kwargs)
 
@@ -275,7 +275,7 @@ class VarifocalLoss(nn.Module):
         @type gamma: float
         @param gamma: gamma parameter in focal loss, default is 2.0.
         @type per_class_weights: Optional[Tensor]
-        @param per_class_weights: Holds a weight for each class to calculate the weighted loss. It's length must be equal to the number of classes.
+        @param per_class_weights: A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
         """
 
         super().__init__()
