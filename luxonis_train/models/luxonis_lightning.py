@@ -299,17 +299,22 @@ class LuxonisLightningModule(pl.LightningModule):
         self.load_checkpoint(self.cfg.model.weights)
 
         if self.cfg.trainer.training_strategy is not None:
+            logger.info(
+                f"Using training strategy: '{self.cfg.trainer.training_strategy.name}'"
+            )
             if (
                 self.cfg.trainer.optimizer is not None
                 or self.cfg.trainer.scheduler is not None
             ):
                 raise ValueError(
-                    "Training strategy is defined, but optimizer or scheduler is also defined. "
-                    "Please remove optimizer and scheduler from the config."
+                    "Training strategy is defined, but optimizer or "
+                    "scheduler is also defined. Please remove optimizer "
+                    "and scheduler from the config."
                 )
             Strategy = STRATEGIES.get(self.cfg.trainer.training_strategy.name)
             self.training_strategy = Strategy(
-                pl_module=self, **self.cfg.trainer.training_strategy.params
+                pl_module=self,
+                **self.cfg.trainer.training_strategy.params,
             )
         else:
             self.training_strategy = None
@@ -729,9 +734,10 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> Tensor:
         """Performs one step of training with provided batch."""
         outputs = self.forward(*train_batch)
-        assert (
-            outputs.losses
-        ), "Losses are empty, check if you have defined any loss"
+        if not outputs.losses:
+            raise ValueError(
+                "Losses are empty, check if you have defined any loss"
+            )
 
         loss, training_step_output = self.process_losses(outputs.losses)
         self.training_step_outputs.append(training_step_output)

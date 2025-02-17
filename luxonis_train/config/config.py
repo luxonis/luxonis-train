@@ -716,7 +716,9 @@ class Config(LuxonisConfig):
             model_name = predefined_model_cfg.name
             accumulate_grad_batches = int(64 / instance.trainer.batch_size)
             logger.info(
-                "Setting accumulate_grad_batches to %d (trainer.batch_size=%d)",
+                f"Setting 'accumulate_grad_batches' to "
+                f"{accumulate_grad_batches} "
+                f"(trainer.batch_size={instance.trainer.batch_size})",
                 accumulate_grad_batches,
                 instance.trainer.batch_size,
             )
@@ -736,12 +738,11 @@ class Config(LuxonisConfig):
                     2: accumulate_grad_batches,
                 }
                 logger.info(
-                    "InstanceSegmentationModel: Updated loss_params: %s",
-                    loss_params,
+                    f"InstanceSegmentationModel: Updated loss_params: {loss_params}"
                 )
                 logger.info(
-                    "InstanceSegmentationModel: Set gradient accumulation schedule to: %s",
-                    gradient_accumulation_schedule,
+                    f"InstanceSegmentationModel: Set gradient "
+                    f"accumulation schedule to: {gradient_accumulation_schedule}"
                 )
             elif model_name == "KeypointDetectionModel":
                 loss_params.update(
@@ -758,12 +759,11 @@ class Config(LuxonisConfig):
                     2: accumulate_grad_batches,
                 }
                 logger.info(
-                    "KeypointDetectionModel: Updated loss_params: %s",
-                    loss_params,
+                    f"KeypointDetectionModel: Updated loss_params: {loss_params}"
                 )
                 logger.info(
-                    "KeypointDetectionModel: Set gradient accumulation schedule to: %s",
-                    gradient_accumulation_schedule,
+                    f"KeypointDetectionModel: Set gradient accumulation "
+                    f"schedule to: {gradient_accumulation_schedule}"
                 )
             elif model_name == "DetectionModel":
                 loss_params.update(
@@ -773,7 +773,7 @@ class Config(LuxonisConfig):
                     }
                 )
                 logger.info(
-                    "DetectionModel: Updated loss_params: %s", loss_params
+                    f"DetectionModel: Updated loss_params: {loss_params}"
                 )
             predefined_model_cfg.params["loss_params"] = loss_params
             if gradient_accumulation_schedule:
@@ -783,8 +783,8 @@ class Config(LuxonisConfig):
                             gradient_accumulation_schedule
                         )
                         logger.info(
-                            "GradientAccumulationScheduler callback updated with scheduling: %s",
-                            gradient_accumulation_schedule,
+                            f"GradientAccumulationScheduler callback "
+                            f"updated with scheduling: {gradient_accumulation_schedule}"
                         )
                         break
 
