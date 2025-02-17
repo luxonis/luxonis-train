@@ -31,7 +31,7 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
     - [`BiSeNetHead`](#bisenethead)
     - [`DDRNetSegmentationHead`](#ddrnetsegmentationhead)
   - [Detection Heads](#detection-heads)
-    - [Object Detection (Bounding Box) Heads](#object-detection-bounding-box-heads)
+    - [Bounding Box Heads](#bounding-box-heads)
       - [`EfficientBBoxHead`](#efficientbboxhead)
       - [`PrecisionBBoxHead`](#precisionbboxhead)
     - [Keypoint Detection Heads](#keypoint-detection-heads)
@@ -297,7 +297,7 @@ Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works we
 
 You can use various detection metrics with these heads, such as [MeanAveragePrecision](../attached_modules/metrics/README.md#meanaverageprecision) and [ConfusionMatrix](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`BBoxVisualizer`](../attached_modules/visualizers/README.md#bboxvisualizer).
 
-#### Object Detection (Bounding Box) Heads
+#### Bounding Box Heads
 
 ##### `EfficientBBoxHead`
 
@@ -411,7 +411,9 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR). Works well with 
 
 ## Embedding Heads
 
-You can use [OCRAccuracy](../attached_modules/metrics/README.md#ocraccuracy) metric, as well as visualizer [OCRVisualizer](../attached_modules/metrics/README.md#ocrvisualizer).
+You can use [ClosestIsPositiveAccuracy](../attached_modules/metrics/README.md#ocraccuracy) metric, as well as visualizer [EmbeddingsVisualizer](../attached_modules/metrics/README.md#embeddingsvisualizer).
+
+You can use various Embedding metrics with these heads,such as [ClosestIsPositiveAccuracy](../attached_modules/metrics/README.md#closestispositiveaccuracy) and [MedianDistances](../attached_modules/metrics/README.md#mediandistances), as well as visualizer [EmbeddingsVisualizer](../attached_modules/metrics/README.md#embeddingsvisualizer).
 
 ### `GhostFaceNetHead`
 
