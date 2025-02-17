@@ -10,6 +10,7 @@ from luxonis_ml.utils import (
     Environ,
     LuxonisConfig,
     LuxonisFileSystem,
+    is_acyclic,
 )
 from pydantic import (
     AliasChoices,
@@ -24,6 +25,8 @@ from pydantic.types import (
     PositiveInt,
 )
 from typing_extensions import Self
+
+from luxonis_train.utils.registry import MODELS
 
 Params: TypeAlias = dict[str, Any]
 
@@ -134,8 +137,6 @@ class ModelConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_predefined_model(self) -> Self:
-        from .predefined_models.base_predefined_model import MODELS
-
         if self.predefined_model is not None:
             logger.info(
                 f"Using predefined model: `{self.predefined_model.name}`"
@@ -176,7 +177,8 @@ class ModelConfig(BaseModelExtraForbid):
                     logger.info(f"Setting '{name}' as main metric.")
                     return self
             raise ValueError(
-                "[Configuration Error] No valid main metric can be set as all metrics contain 'matrix' in their names."
+                "No valid main metric can be set as all "
+                "metrics contain 'matrix' in their names."
             )
         else:
             logger.warning(
@@ -619,8 +621,7 @@ class TunerConfig(BaseModelExtraForbid):
 
 
 class Config(LuxonisConfig):
-    # Must be wrapped in `Field` in order to awoid circular imports
-    model: ModelConfig = Field(default_factory=ModelConfig)
+    model: ModelConfig = ModelConfig()
 
     loader: LoaderConfig = LoaderConfig()
     tracker: TrackerConfig = TrackerConfig()
@@ -787,40 +788,3 @@ class Config(LuxonisConfig):
                             f"updated with scheduling: {gradient_accumulation_schedule}"
                         )
                         break
-
-
-def is_acyclic(graph: dict[str, list[str]]) -> bool:
-    """Tests if graph is acyclic.
-
-    @type graph: dict[str, list[str]]
-    @param graph: Graph in a format of a dictionary of predecessors.
-        Keys are node names, values are inputs to the node (list of node
-        names).
-    @rtype: bool
-    @return: True if graph is acyclic, False otherwise.
-    """
-    graph = graph.copy()
-
-    def dfs(node: str, visited: set[str], recursion_stack: set[str]) -> bool:
-        visited.add(node)
-        recursion_stack.add(node)
-
-        for predecessor in graph.get(node, []):
-            if predecessor in recursion_stack:
-                return True
-            if predecessor not in visited:
-                if dfs(predecessor, visited, recursion_stack):
-                    return True
-
-        recursion_stack.remove(node)
-        return False
-
-    visited: set[str] = set()
-    recursion_stack: set[str] = set()
-
-    for node in graph.keys():
-        if node not in visited:
-            if dfs(node, visited, recursion_stack):
-                return False
-
-    return True

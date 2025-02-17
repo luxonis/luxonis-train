@@ -2,7 +2,7 @@ import pytest
 import torch
 from torch import Size
 
-from luxonis_train.loaders import collate_fn
+from luxonis_train.datasets import collate_fn
 
 
 @pytest.mark.parametrize(

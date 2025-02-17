@@ -8,6 +8,7 @@ from .config import (
     Params,
     TrainerConfig,
 )
+from .predefined_models import BasePredefinedModel
 
 __all__ = [
     "Config",
@@ -18,4 +19,5 @@ __all__ = [
     "Params",
     "ExportConfig",
     "TrainerConfig",
+    "BasePredefinedModel",
 ]

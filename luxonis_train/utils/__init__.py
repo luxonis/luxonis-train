@@ -17,7 +17,6 @@ from .general import (
     safe_download,
     to_shape_packet,
 )
-from .graph import traverse_graph
 from .keypoints import get_center_keypoints, get_sigmas, insert_class
 from .logging import setup_logging
 from .ocr import OCRDecoder, OCREncoder
@@ -45,7 +44,6 @@ __all__ = [
     "anchors_for_fpn_features",
     "compute_iou_loss",
     "get_sigmas",
-    "traverse_graph",
     "insert_class",
     "get_attribute_check_none",
     "OCREncoder",

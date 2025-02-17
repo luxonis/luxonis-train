@@ -2,7 +2,7 @@ import torch
 from torch import Tensor, nn
 from typing_extensions import override
 
-from luxonis_train.loaders import BaseTorchDataset
+from luxonis_train.datasets import BaseTorchDataset
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Tasks
 from luxonis_train.utils import Packet

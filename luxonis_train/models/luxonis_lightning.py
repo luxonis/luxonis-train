@@ -14,6 +14,7 @@ from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import ConfigItem
+from luxonis_ml.utils import traverse_graph
 from torch import Size, Tensor, nn
 
 import luxonis_train
@@ -46,9 +47,7 @@ from luxonis_train.utils import (
     LuxonisTrackerPL,
     Packet,
     to_shape_packet,
-    traverse_graph,
 )
-from luxonis_train.utils.graph import Graph
 from luxonis_train.utils.registry import (
     CALLBACKS,
     OPTIMIZERS,
@@ -145,7 +144,7 @@ class LuxonisLightningModule(pl.LightningModule):
         self.image_source = cfg.loader.image_source
         self.dataset_metadata = dataset_metadata or DatasetMetadata()
         self.frozen_nodes: list[tuple[nn.Module, int]] = []
-        self.graph: Graph = {}
+        self.graph: dict[str, list[str]] = {}
         self.loader_input_shapes: dict[str, dict[str, Size]] = {}
         self.node_input_sources: dict[str, list[str]] = defaultdict(list)
         self.loss_weights: dict[str, float] = {}

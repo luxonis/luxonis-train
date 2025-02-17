@@ -21,7 +21,6 @@ from .base_torch_dataset import BaseTorchDataset
 
 
 class LuxonisTorchDataset(BaseTorchDataset):
-    @override
     def __init__(
         self,
         dataset_name: str | None = None,
@@ -135,6 +134,7 @@ class LuxonisTorchDataset(BaseTorchDataset):
             for k, v in self.dataset.get_metadata_types().items()
         }
 
+    @override
     def augment_test_image(self, img: Tensor) -> Tensor:
         if self.loader.augmentations is None:
             return img
@@ -157,9 +157,10 @@ class LuxonisTorchDataset(BaseTorchDataset):
                 return LuxonisDataset(dataset_name=dataset_name)
             else:
                 logger.warning(
-                    f"Dataset {dataset_name} already exists. "
-                    "The dataset will be generated again to ensure the latest data are used. "
-                    "If you don't want to regenerate the dataset every time, set `delete_existing=False`'"
+                    f"Dataset '{dataset_name}' already exists. "
+                    "The dataset will be generated again to ensure "
+                    "the latest data are used. If you don't want to regenerate "
+                    "the dataset each time, set `delete_existing` to `False`"
                 )
 
         if dataset_type is None:
@@ -167,7 +168,7 @@ class LuxonisTorchDataset(BaseTorchDataset):
                 "Dataset type is not set. "
                 "Attempting to infer it from the directory structure. "
                 "If this fails, please set the dataset type manually. "
-                f"Supported types are: {', '.join(DatasetType.__members__)}."
+                f"Supported types are: {list(DatasetType.__members__)}."
             )
 
         logger.info(
