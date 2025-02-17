@@ -42,7 +42,7 @@ class AdaptiveDetectionLoss(
         reduction: Literal["sum", "mean"] = "mean",
         class_loss_weight: float = 1.0,
         iou_loss_weight: float = 2.5,
-        per_class_weights: Optional[List[float]] = None,
+        per_class_weights: list[float] | None = None,
         **kwargs: Any,
     ):
         """BBox loss adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
