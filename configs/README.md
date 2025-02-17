@@ -43,19 +43,24 @@ You can create your own config or use/edit one of the examples.
 
 ## Model
 
-This is the most important block, that **must be always defined by the user**. There are two different ways you can create the model.
+The `Model` section is a crucial part of the configuration and **must always be defined by the user**. There are two ways to create a model:
 
-| Key                | Type   | Default value | Description                                                |
-| ------------------ | ------ | ------------- | ---------------------------------------------------------- |
-| `name`             | `str`  | `"model"`     | Name of the model                                          |
-| `weights`          | `path` | `None`        | Path to weights to load                                    |
-| `predefined_model` | `str`  | `None`        | Name of a predefined model to use                          |
-| `params`           | `dict` | `{}`          | Parameters for the predefined model                        |
-| `nodes`            | `list` | `[]`          | List of nodes (see [nodes](#nodes))                        |
-| `losses`           | `list` | `[]`          | List of losses (see [losses](#losses))                     |
-| `metrics`          | `list` | `[]`          | List of metrics (see [metrics](#metrics))                  |
-| `visualziers`      | `list` | `[]`          | List of visualizers (see [visualizers](#visualizers))      |
-| `outputs`          | `list` | `[]`          | List of outputs nodes, inferred from nodes if not provided |
+1. **Manual Configuration** – Define the model by specifying the appropriate nodes.
+1. **Predefined Model** – Use a predefined model by specifying its name and parameters (see [Predefined models](../luxonis_train/config/predefined_models/README.md)).
+
+### Configuration Options
+
+| Key                | Type   | Default Value | Description                                                                                         |
+| ------------------ | ------ | ------------- | --------------------------------------------------------------------------------------------------- |
+| `name`             | `str`  | `"model"`     | Name of the model                                                                                   |
+| `weights`          | `path` | `None`        | Path to a checkpoint file containing all model states, including weights, optimizer, and scheduler. |
+| `nodes`            | `list` | `[]`          | List of nodes (see [Nodes](#nodes))                                                                 |
+| `losses`           | `list` | `[]`          | List of losses (see [Losses](#losses))                                                              |
+| `metrics`          | `list` | `[]`          | List of metrics (see [Metrics](#metrics))                                                           |
+| `visualizers`      | `list` | `[]`          | List of visualizers (see [Visualizers](#visualizers))                                               |
+| `outputs`          | `list` | `[]`          | List of output nodes (inferred from `nodes` if not provided)                                        |
+| `predefined_model` | `str`  | `None`        | Name of a predefined model to use                                                                   |
+| `params`           | `dict` | `{}`          | Parameters for the predefined model                                                                 |
 
 ### Nodes
 
@@ -129,7 +134,10 @@ visualizers:
 
 ## Tracker
 
-This library uses [`LuxonisTrackerPL`](https://github.com/luxonis/luxonis-ml/blob/b2399335efa914ef142b1b1a5db52ad90985c539/src/luxonis_ml/ops/tracker.py#L152).
+Provides experiment tracking capabilities using [`LuxonisTrackerPL`](https://github.com/luxonis/luxonis-ml/blob/b2399335efa914ef142b1b1a5db52ad90985c539/src/luxonis_ml/ops/tracker.py#L152).
+
+It helps log and manage machine learning experiments by integrating with tools like **TensorBoard**, **Weights & Biases (WandB)**, and **MLFlow**, allowing users to store and organize project details, runs, and outputs efficiently.
+
 You can configure it like this:
 
 | Key              | Type          | Default value | Description                                                |
@@ -176,10 +184,15 @@ By default, `LuxonisLoaderTorch` can either use an existing `LuxonisDataset` or 
 
 In most cases you want to set one of the parameters below. You can check all the parameters in the `LuxonisLoaderTorch` class itself.
 
-| Key            | Type  | Default value | Description                                                          |
-| -------------- | ----- | ------------- | -------------------------------------------------------------------- |
-| `dataset_name` | `str` | `None`        | Name of an existing `LuxonisDataset`                                 |
-| `dataset_dir`  | `str` | `None`        | Location of the data from which new `LuxonisDataset` will be created |
+| Key               | Type                                                                                         | Default      | Description                                                                                                                                                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dataset_name`    | `str \| None`                                                                                | `None`       | The name of the dataset. If provided along with `dataset_dir`, the dataset will be parsed from the directory and saved with this name. If only `dataset_name` is provided, an existing dataset with that name is used. |
+| `dataset_dir`     | `str \| None`                                                                                | `None`       | The local path or URL to the dataset directory (or zip file). When provided, a new dataset is created by parsing the data.                                                                                             |
+| `dataset_type`    | `DatasetType \| None`                                                                        | `None`       | The type of the dataset. This is only relevant when `dataset_dir` is provided. If not specified, the type will be inferred from the directory structure.                                                               |
+| `team_id`         | `str \| None`                                                                                | `None`       | An optional unique team identifier for cloud operations.                                                                                                                                                               |
+| `bucket_type`     | Literal <code>"internal"</code> or <code>"external"</code>                                   | `"internal"` | The type of the bucket to use for remote datasets.                                                                                                                                                                     |
+| `bucket_storage`  | Literal <code>"local"</code>, <code>"s3"</code>, <code>"gcs"</code>, or <code>"azure"</code> | `"local"`    | The storage type for the bucket. Use `"local"` for local storage, `"s3"` for AWS S3, `"gcs"` for Google Cloud Storage, or `"azure"` for Microsoft Azure.                                                               |
+| `delete_existing` | `bool`                                                                                       | `True`       | When set to `True`, the dataset will be re-parsed every time the loader is created (to capture any changes in the underlying data). Set to `False` to use an existing dataset with the same name if available.         |
 
 **Example:**
 
@@ -192,7 +205,7 @@ loader:
 
 ```yaml
 loader:
-  # using default loader with a directory
+  # Using the default loader with a directory from which the dataset will be parsed.
   params:
     dataset_name: "dataset_name"
     dataset_dir: "path/to/dataset"
@@ -213,7 +226,7 @@ Here you can change everything related to actual training of the model.
 | `use_weighted_sampler`    | `bool`                                         | `False`       | Whether to use `WeightedRandomSampler` for training, only works with classification tasks                                                                                                              |
 | `epochs`                  | `int`                                          | `100`         | Number of training epochs                                                                                                                                                                              |
 | `n_workers`               | `int`                                          | `4`           | Number of workers for data loading                                                                                                                                                                     |
-| `validation_interval`     | `int`                                          | `5`           | Frequency of computing metrics on validation data                                                                                                                                                      |
+| `validation_interval`     | `int`                                          | `5`           | Frequency at which metrics and visualizations are computed on validation data                                                                                                                          |
 | `n_log_images`            | `int`                                          | `4`           | Maximum number of images to visualize and log                                                                                                                                                          |
 | `skip_last_batch`         | `bool`                                         | `True`        | Whether to skip last batch while training                                                                                                                                                              |
 | `accelerator`             | `Literal["auto", "cpu", "gpu"]`                | `"auto"`      | What accelerator to use for training                                                                                                                                                                   |
@@ -251,44 +264,57 @@ trainer:
   smart_cfg_auto_populate: true
 ```
 
-### Model Fine-Tuning Options
+### Trainer Tips
 
-#### 1. **Fine-Tuning with Custom Configuration Example**
+- #### Model Fine-Tuning Options
 
-- Do **not** set the `resume_training` flag to `true`.
-- Specify a **new LR** in the config (e.g., `0.1`), overriding the previous LR (e.g., `0.001`).
-- Training starts at the new LR, with the scheduler/optimizer reset (can use different schedulers/optimizers than the base run).
+  ##### 1. **Fine-Tuning with Custom Configuration Example**
 
-#### 2. **Resume Training Continuously Example**
+  - Set `resume_training: false`.
+  - Override the previous learning rate (LR), e.g., use `0.1` instead of `0.001`.
+  - Training starts fresh with the new LR, resetting the scheduler/optimizer (can use different ones).
 
-- Use the `resume_training` flag to continue training from the last checkpoint specified in `model.weights`.
-- LR starts at the value where the previous run ended, maintaining continuity in the scheduler (e.g., combined LR plot would shows a seamless curve).
-- For example:
-  - Resuming training with extended epochs (e.g., 400 epochs after 300) and adjusted `T_max` (e.g., 400 after 300 for cosine annealing) and `eta_min` (e.g., 10x less than before) will use the final learning rate (LR) from the previous run. This ignores the initial LR specified in the config and finishes with the new `eta_min` LR.
+  ##### 2. **Resume Training Continuously Example**
 
-### Smart Configuration Auto-population
+  - Set `resume_training: true` to continue training from the last checkpoint in `model.weigts`.
+  - LR continues from where the previous run ended, keeping scheduler continuity.
+  - Example: Extending training (e.g., 400 `epochs` after 300) while adjusting `T_max` (e.g., 400 after 300) and `eta_min` (e.g., reduced 10x). The final LR from the previous run is retained, overriding the initial config LR, and training LR completes with the new `eta_min` value.
 
-When setting `trainer.smart_cfg_auto_populate = True`, the following set of rules will be applied:
+- #### Smart Configuration Auto-population
 
-#### Auto-population Rules
+  When setting `trainer.smart_cfg_auto_populate = True`, the following set of rules will be applied:
 
-1. **Default Optimizer and Scheduler:**
+  1. **Default Optimizer and Scheduler:**
 
-   - If `training_strategy` is not defined and neither `optimizer` nor `scheduler` is set, the following defaults are applied:
-     - Optimizer: `Adam`
-     - Scheduler: `ConstantLR`
+     - If `training_strategy` is not defined and neither `optimizer` nor `scheduler` is set, the following defaults are applied:
+       - Optimizer: `Adam`
+       - Scheduler: `ConstantLR`
 
-1. **CosineAnnealingLR Adjustment:**
+  1. **CosineAnnealingLR Adjustment:**
 
-   - If the `CosineAnnealingLR` scheduler is used and `T_max` is not set, it is automatically set to the number of epochs.
+     - If the `CosineAnnealingLR` scheduler is used and `T_max` is not set, it is automatically set to the number of epochs.
 
-1. **Mosaic4 Augmentation:**
+  1. **Mosaic4 Augmentation:**
 
-   - If `Mosaic4` augmentation is used without `out_width` and `out_height` parameters, they are set to match the training image size.
+     - If `Mosaic4` augmentation is used without `out_width` and `out_height` parameters, they are set to match the training image size.
 
-1. **Validation/Test Views:**
+  1. **Validation/Test Views:**
 
-   - If `train_view`, `val_view`, and `test_view` are the same, and `n_validation_batches` is not explicitly set, it defaults to `10` to prevent validation/testing on the entire training set.
+     - If `train_view`, `val_view`, and `test_view` are the same, and `n_validation_batches` is not explicitly set, it defaults to `10` to prevent validation/testing on the entire training set.
+
+  1. **Predefined Model Configuration Adjustment**
+
+     - If the model has a `predefined_model` attribute, the configuration is auto-adjusted for optimal training:
+
+       - **Accumulate Grad Batches:** Computed as `int(64 / trainer.batch_size)`.
+       - **InstanceSegmentationModel:**
+         - Updates `bbox_loss_weight`, `class_loss_weight`, and `dfl_loss_weight` (scaled by `accumulate_grad_batches`).
+         - Sets a gradient accumulation schedule: `{0: 1, 1: (1 + accumulate_grad_batches) // 2, 2: accumulate_grad_batches}`.
+       - **KeypointDetectionModel:**
+         - Updates `iou_loss_weight`, `class_loss_weight`, `regr_kpts_loss_weight`, and `vis_kpts_loss_weight` (scaled by `accumulate_grad_batches`).
+         - Sets the same gradient accumulation schedule.
+       - **DetectionModel:**
+         - Updates `iou_loss_weight` and `class_loss_weight` (scaled by `accumulate_grad_batches`).
 
 ### Preprocessing
 
@@ -422,7 +448,6 @@ trainer:
 
 Defines the training strategy to be used.
 More information on training strategies and a list of available ones can be found [here](../luxonis_train/strategies/README.md).
-Each training strategy is a dictionary with the following fields:
 
 | Key      | Type   | Default value           | Description                   |
 | -------- | ------ | ----------------------- | ----------------------------- |
@@ -508,6 +533,14 @@ Here you can specify options for tuning.
 > You can specify a set of augmentations defined in `trainer` to choose from.
 > Every run, only a subset of random $N$ augmentations will be active (`is_active` parameter will be `True` for chosen ones and `False` for the rest in the set).
 
+> \[!WARNING\]
+> When using the tuner, the following callbacks are unsupported and will be automatically removed from configurations:
+>
+> - `UploadCheckpoint`
+> - `ExportOnTrainEnd`
+> - `ArchiveOnTrainEnd`
+> - `TestOnTrainEnd`
+
 ### Storage
 
 | Key            | Type                         | Default value | Description                                         |
@@ -518,7 +551,7 @@ Here you can specify options for tuning.
 **Example:**
 
 ```yaml
-t uner:
+tuner:
   study_name: "seg_study"
   n_trials: 10
   storage:
