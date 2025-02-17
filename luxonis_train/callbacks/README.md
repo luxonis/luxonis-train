@@ -10,6 +10,8 @@ List of all supported callbacks.
 - [`MetadataLogger`](#metadatalogger)
 - [`TestOnTrainEnd`](#testontrainend)
 - [`UploadCheckpoint`](#uploadcheckpoint)
+- [`GradCamCallback`](#gradcamcallback)
+- [`EMACallback`](#emacallback)
 
 ## `PytorchLightning` Callbacks
 
