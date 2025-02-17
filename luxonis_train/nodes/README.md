@@ -289,11 +289,11 @@ Adapted from [here](https://github.com/ydhongHIT/DDRNet).
 | `inter_mode`       | `str`  | `"bilinear"`  | Up-sampling method. One of `"nearest"`, `"linear"`, `"bilinear"`, `"bicubic"`, `"trilinear"`, `"area"`, `"pixel_shuffle"` |
 | `download_weights` | `bool` | `False`       | If True download weights from COCO                                                                                        |
 
-## Detection Heads
+### Detection Heads
 
-### Object Detection (Bounding Box) Heads
+#### Object Detection (Bounding Box) Heads
 
-#### `EfficientBBoxHead`
+##### `EfficientBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
@@ -308,7 +308,7 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 | `download_weights`   | `bool`  | `False`       | If True download weights from COCO                                    |
 | `initialize_weights` | `bool`  | `True`        | If True, initialize weights.                                          |
 
-### `PrecisionBBoxHead`
+##### `PrecisionBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
 
@@ -322,9 +322,9 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arx
 | `iou_thres`  | `float` | `0.45`        | IoU threshold for non-maxima-suppression (used for evaluation)            |
 | `max_det`    | `int`   | `300`         | Max number of detections for non-maxima-suppression (used for evaluation) |
 
-### Keypoint Detection Heads
+#### Keypoint Detection Heads
 
-#### `EfficientKeypointBBoxHead`
+##### `EfficientKeypointBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
 
@@ -337,7 +337,7 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
 | `conf_thres`  | `float`        | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation) |
 | `iou_thres`   | `float`        | `0.45`        | `IoU` threshold for non-maxima-suppression (used for evaluation)      |
 
-#### `FOMOHead`
+##### `FOMOHead`
 
 **Parameters:**
 
@@ -347,9 +347,9 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
 | `conv_channels`   | `int`  | `16`          | Number of output channels for each convolutional layer.                                  |
 | `use_nms`         | `bool` | `False`       | If True, enable NMS. This can reduce FP, but it will also reduce TP for close neighbors. |
 
-### Instance Segmentation Heads
+#### Instance Segmentation Heads
 
-#### `PrecisionSegmentBBoxHead`
+##### `PrecisionSegmentBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
 
@@ -365,7 +365,7 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arx
 | `n_masks`    | `int`   | `32`          | Number of of output instance segmentation masks at the output.             |
 | `n_proto`    | `int`   | `256`         | Number of prototypes generated from the prototype generator.               |
 
-## Anomaly Detection Heads
+## Unsupervised Anomaly Detection Heads
 
 ### `DiscSubNetHead`
 
