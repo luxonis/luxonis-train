@@ -24,18 +24,27 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`RepPANNeck`](#reppanneck)
   - [`SVTRNeck`](#svtrneck)
 - [Heads](#heads)
-  - [`ClassificationHead`](#classificationhead)
-  - [`SegmentationHead`](#segmentationhead)
-  - [`BiSeNetHead`](#bisenethead)
-  - [`EfficientBBoxHead`](#efficientbboxhead)
-  - [`EfficientKeypointBBoxHead`](#efficientkeypointbboxhead)
-  - [`DDRNetSegmentationHead`](#ddrnetsegmentationhead)
-  - [`DiscSubNetHead`](#discsubnet)
-  - [`FOMOHead`](#fomohead)
-  - [`GhostFaceNetHead`](#ghostfacenethead)
-  - [`OCRCTCHead`](#ocrctchead)
-  - [`PrecisionBBoxHead`](#precisionbboxhead)
-  - [`PrecisionSegmentBBoxHead`](#precisionsegmentbboxhead)
+  - [Classification Heads](#classification-heads)
+    - [`ClassificationHead`](#classificationhead)
+  - [Segmentation Heads](#segmentation-heads)
+    - [`SegmentationHead`](#segmentationhead)
+    - [`BiSeNetHead`](#bisenethead)
+    - [`DDRNetSegmentationHead`](#ddrnetsegmentationhead)
+  - [Detection Heads](#detection-heads)
+    - **Object Detection (Bounding Box) Heads**
+      - [`EfficientBBoxHead`](#efficientbboxhead)
+      - [`PrecisionBBoxHead`](#precisionbboxhead)
+    - **Keypoint Detection Heads**
+      - [`EfficientKeypointBBoxHead`](#efficientkeypointbboxhead)
+      - [`FOMOHead`](#fomohead)
+    - **Instance Segmentation Heads**
+      - [`PrecisionSegmentBBoxHead`](#precisionsegmentbboxhead)
+  - [Anomaly Detection Heads](#anomaly-detection-heads)
+    - [`DiscSubNetHead`](#discsubnethead)\
+      *Note: Only compatible with the `RecSubNet` backbone.*
+  - [Other Heads](#other-heads)
+    - [`GhostFaceNetHead`](#ghostfacenethead)
+    - [`OCRCTCHead`](#ocrctchead)
 
 Every node takes these parameters:
 
