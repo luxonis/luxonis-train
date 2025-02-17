@@ -31,17 +31,16 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
     - [`BiSeNetHead`](#bisenethead)
     - [`DDRNetSegmentationHead`](#ddrnetsegmentationhead)
   - [Detection Heads](#detection-heads)
-    - **Object Detection (Bounding Box) Heads**
+    - [Object Detection (Bounding Box) Heads](#object-detection-bounding-box-heads)
       - [`EfficientBBoxHead`](#efficientbboxhead)
       - [`PrecisionBBoxHead`](#precisionbboxhead)
-    - **Keypoint Detection Heads**
+    - [Keypoint Detection Heads](#keypoint-detection-heads)
       - [`EfficientKeypointBBoxHead`](#efficientkeypointbboxhead)
       - [`FOMOHead`](#fomohead)
-    - **Instance Segmentation Heads**
+    - [Instance Segmentation Heads](#instance-segmentation-heads)
       - [`PrecisionSegmentBBoxHead`](#precisionsegmentbboxhead)
   - [Anomaly Detection Heads](#anomaly-detection-heads)
-    - [`DiscSubNetHead`](#discsubnethead)\
-      *Note: Only compatible with the `RecSubNet` backbone.*
+    - [`DiscSubNetHead`](#discsubnethead)
   - [Other Heads](#other-heads)
     - [`GhostFaceNetHead`](#ghostfacenethead)
     - [`OCRCTCHead`](#ocrctchead)
@@ -252,7 +251,9 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 
 ## Heads
 
-### `ClassificationHead`
+### Classification Heads
+
+#### `ClassificationHead`
 
 **Parameters:**
 
@@ -260,11 +261,13 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 | ------------ | ------- | ------------- | ------------------------------------------------ |
 | `fc_dropout` | `float` | `0.2`         | Dropout rate before last layer, range $\[0, 1\]$ |
 
-### `SegmentationHead`
+### Segmentation Heads
+
+#### `SegmentationHead`
 
 Adapted from [here](https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py).
 
-### `BiSeNetHead`
+#### `BiSeNetHead`
 
 Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 
@@ -274,7 +277,23 @@ Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 | ----------------------- | ----- | ------------- | ------------------------------------- |
 | `intermediate_channels` | `int` | `64`          | How many intermediate channels to use |
 
-### `EfficientBBoxHead`
+#### `DDRNetSegmentationHead`
+
+Adapted from [here](https://github.com/ydhongHIT/DDRNet).
+
+**Parameters:**
+
+| Key                | Type   | Default value | Description                                                                                                               |
+| ------------------ | ------ | ------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `inter_channels`   | `int`  | `64`          | Width of internal convolutions                                                                                            |
+| `inter_mode`       | `str`  | `"bilinear"`  | Up-sampling method. One of `"nearest"`, `"linear"`, `"bilinear"`, `"bicubic"`, `"trilinear"`, `"area"`, `"pixel_shuffle"` |
+| `download_weights` | `bool` | `False`       | If True download weights from COCO                                                                                        |
+
+## Detection Heads
+
+### Object Detection (Bounding Box) Heads
+
+#### `EfficientBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
@@ -289,7 +308,23 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 | `download_weights`   | `bool`  | `False`       | If True download weights from COCO                                    |
 | `initialize_weights` | `bool`  | `True`        | If True, initialize weights.                                          |
 
-### `EfficientKeypointBBoxHead`
+### `PrecisionBBoxHead`
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+**Parameters:**
+
+| Key          | Type    | Default value | Description                                                               |
+| ------------ | ------- | ------------- | ------------------------------------------------------------------------- |
+| `reg_max`    | `int`   | `16`          | Maximum number of regression channels                                     |
+| `n_heads`    | `int`   | `3`           | Number of output heads                                                    |
+| `conf_thres` | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation)     |
+| `iou_thres`  | `float` | `0.45`        | IoU threshold for non-maxima-suppression (used for evaluation)            |
+| `max_det`    | `int`   | `300`         | Max number of detections for non-maxima-suppression (used for evaluation) |
+
+### Keypoint Detection Heads
+
+#### `EfficientKeypointBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
 
@@ -302,17 +337,35 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
 | `conf_thres`  | `float`        | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation) |
 | `iou_thres`   | `float`        | `0.45`        | `IoU` threshold for non-maxima-suppression (used for evaluation)      |
 
-### `DDRNetSegmentationHead`
-
-Adapted from [here](https://github.com/ydhongHIT/DDRNet).
+#### `FOMOHead`
 
 **Parameters:**
 
-| Key                | Type   | Default value | Description                                                                                                               |
-| ------------------ | ------ | ------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `inter_channels`   | `int`  | `64`          | Width of internal convolutions                                                                                            |
-| `inter_mode`       | `str`  | `"bilinear"`  | Up-sampling method. One of `"nearest"`, `"linear"`, `"bilinear"`, `"bicubic"`, `"trilinear"`, `"area"`, `"pixel_shuffle"` |
-| `download_weights` | `bool` | `False`       | If True download weights from COCO                                                                                        |
+| Key               | Type   | Default value | Description                                                                              |
+| ----------------- | ------ | ------------- | ---------------------------------------------------------------------------------------- |
+| `num_conv_layers` | `int`  | `3`           | Number of convolutional layers to use in the model.                                      |
+| `conv_channels`   | `int`  | `16`          | Number of output channels for each convolutional layer.                                  |
+| `use_nms`         | `bool` | `False`       | If True, enable NMS. This can reduce FP, but it will also reduce TP for close neighbors. |
+
+### Instance Segmentation Heads
+
+#### `PrecisionSegmentBBoxHead`
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+**Parameters:**
+
+| Key          | Type    | Default value | Description                                                                |
+| ------------ | ------- | ------------- | -------------------------------------------------------------------------- |
+| `reg_max`    | `int`   | `16`          | Maximum number of regression channels.                                     |
+| `n_heads`    | `int`   | `3`           | Number of output heads.                                                    |
+| `conf_thres` | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation).     |
+| `iou_thres`  | `float` | `0.45`        | IoU threshold for non-maxima-suppression (used for evaluation).            |
+| `max_det`    | `int`   | `300`         | Max number of detections for non-maxima-suppression (used for evaluation). |
+| `n_masks`    | `int`   | `32`          | Number of of output instance segmentation masks at the output.             |
+| `n_proto`    | `int`   | `256`         | Number of prototypes generated from the prototype generator.               |
+
+## Anomaly Detection Heads
 
 ### `DiscSubNetHead`
 
@@ -324,15 +377,7 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 | --------- | ------------------- | ------------- | ---------------------- |
 | `variant` | `Literal["n", "l"]` | `"l"`         | Variant of the network |
 
-### `FOMOHead`
-
-**Parameters:**
-
-| Key               | Type   | Default value | Description                                                                              |
-| ----------------- | ------ | ------------- | ---------------------------------------------------------------------------------------- |
-| `num_conv_layers` | `int`  | `3`           | Number of convolutional layers to use in the model.                                      |
-| `conv_channels`   | `int`  | `16`          | Number of output channels for each convolutional layer.                                  |
-| `use_nms`         | `bool` | `False`       | If True, enable NMS. This can reduce FP, but it will also reduce TP for close neighbors. |
+## Other Heads
 
 ### `OCRCTCHead`
 
@@ -354,33 +399,3 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 | Key              | Type  | Default value | Description                              |
 | ---------------- | ----- | ------------- | ---------------------------------------- |
 | `embedding_size` | `int` | `512`         | The size of the output embedding vector. |
-
-### `PrecisionBBoxHead`
-
-Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
-
-**Parameters:**
-
-| Key          | Type    | Default value | Description                                                               |
-| ------------ | ------- | ------------- | ------------------------------------------------------------------------- |
-| `reg_max`    | `int`   | `16`          | Maximum number of regression channels                                     |
-| `n_heads`    | `int`   | `3`           | Number of output heads                                                    |
-| `conf_thres` | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation)     |
-| `iou_thres`  | `float` | `0.45`        | IoU threshold for non-maxima-suppression (used for evaluation)            |
-| `max_det`    | `int`   | `300`         | Max number of detections for non-maxima-suppression (used for evaluation) |
-
-### `PrecisionSegmentBBoxHead`
-
-Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
-
-**Parameters:**
-
-| Key          | Type    | Default value | Description                                                                |
-| ------------ | ------- | ------------- | -------------------------------------------------------------------------- |
-| `reg_max`    | `int`   | `16`          | Maximum number of regression channels.                                     |
-| `n_heads`    | `int`   | `3`           | Number of output heads.                                                    |
-| `conf_thres` | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation).     |
-| `iou_thres`  | `float` | `0.45`        | IoU threshold for non-maxima-suppression (used for evaluation).            |
-| `max_det`    | `int`   | `300`         | Max number of detections for non-maxima-suppression (used for evaluation). |
-| `n_masks`    | `int`   | `32`          | Number of of output instance segmentation masks at the output.             |
-| `n_proto`    | `int`   | `256`         | Number of prototypes generated from the prototype generator.               |
