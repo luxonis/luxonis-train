@@ -9,12 +9,16 @@ List of all the available loss functions.
 - [`SmoothBCEWithLogitsLoss`](#smoothbcewithlogitsloss)
 - [`SigmoidFocalLoss`](#sigmoidfocalloss)
 - [`SoftmaxFocalLoss`](#softmaxfocalloss)
+- [`OHEMCrossEntropyLoss`](#ohemcrossnetropyloss)
+- [`OHEMBCEWithLogitsLoss`](#ohembcewithlogitsloss)
 - [`AdaptiveDetectionLoss`](#adaptivedetectionloss)
 - [`EfficientKeypointBBoxLoss`](#efficientkeypointbboxloss)
+- [`ReconstructionSegmentationLoss`](#reconstructionsegmentationloss)
 - [`FOMOLocalizationLoss`](#fomolocalizationLoss)
 - [Embedding Losses](#embedding-losses)
 - [`PrecisionDFLDetectionLoss`](#precisiondfldetectionloss)
 - [`PrecisionDFLSegmentationLoss`](#precisiondflsegmentationloss)
+- [`CTCLoss`](#ctcloss)
 
 ## `CrossEntropyLoss`
 
@@ -73,6 +77,40 @@ Adapted from [here](https://pytorch.org/vision/stable/generated/torchvision.ops.
 | `gamma`     | `float`                          | `2.0`         | Exponent of the modulating factor $(1 - p_t)$ to balance easy vs hard examples                                                                               |
 | `reduction` | `Literal["none", "mean", "sum"]` | `"mean"`      | Specifies the reduction to apply to the output                                                                                                               |
 | `smooth`    | `float`                          | `1e-5`        | A small value added to labels to prevent zero probabilities, helping to smooth and stabilize training by making the model less confident in its predictions. |
+
+## `OHEMBCEWithLogitsLoss`
+
+This criterion computes the binary cross entropy loss between input logits and targets with Online Hard Example Mining (OHEM). It wraps the standard [`BCEWithLogitsLoss`](#bcewithlogitsloss) with OHEM to focus training on the hardest examples.
+
+**Parameters:**
+
+| Key              | Type                             | Default value | Description                                                                                                                                                                              |
+| ---------------- | -------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ohem_ratio`     | `float`                          | `0.1`         | The ratio of elements (e.g., pixels) to keep based on highest loss values. This determines the fraction of hard examples to backpropagate.                                               |
+| `ohem_threshold` | `float`                          | `0.7`         | The threshold used for selecting hard examples. Internally, the threshold is computed as `-torch.log(torch.tensor(ohem_threshold))`. Only loss values above this threshold are retained. |
+| `weight`         | `list[float] \| None`            | `None`        | (Forwarded to `BCEWithLogitsLoss`) A manual rescaling weight given to each class. If provided, it must be a list of the same length as the number of classes.                            |
+| `reduction`      | `Literal["none", "mean", "sum"]` | `"mean"`      | (Forwarded to `BCEWithLogitsLoss`) Specifies the reduction to apply to the output.                                                                                                       |
+| `pos_weight`     | `Tensor \| None`                 | `None`        | (Forwarded to `BCEWithLogitsLoss`) A weight of positive examples to be broadcasted with the target.                                                                                      |
+
+> **Note:** All parameters accepted by the underlying `BCEWithLogitsLoss` are supported, in addition to the OHEM-specific parameters.
+
+______________________________________________________________________
+
+## `OHEMCrossEntropyLoss`
+
+This criterion computes the cross entropy loss between input logits and targets with Online Hard Example Mining (OHEM). It wraps the standard [`CrossEntropyLoss`](#crossentropyloss) with OHEM to prioritize hard examples during training.
+
+**Parameters:**
+
+| Key               | Type                             | Default value | Description                                                                                                                                                                                 |
+| ----------------- | -------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ohem_ratio`      | `float`                          | `0.1`         | The ratio of elements (e.g., pixels) to keep based on their loss values. This controls the fraction of hard examples used for gradient computation.                                         |
+| `ohem_threshold`  | `float`                          | `0.7`         | The threshold for hard example selection. Internally computed as `-torch.log(torch.tensor(ohem_threshold))`, only loss values above this value are retained for the final loss computation. |
+| `weight`          | `list[float] \| None`            | `None`        | (Forwarded to `CrossEntropyLoss`) A manual rescaling weight given to each class. If provided, it must be a list of the same length as the number of classes.                                |
+| `reduction`       | `Literal["none", "mean", "sum"]` | `"mean"`      | (Forwarded to `CrossEntropyLoss`) Specifies the reduction to apply to the output.                                                                                                           |
+| `label_smoothing` | `float` $\\in \[0.0, 1.0\]$      | `0.0`         | (Forwarded to `CrossEntropyLoss`) Specifies the amount of smoothing applied when computing the loss.                                                                                        |
+
+> **Note:** In addition to the OHEM-specific parameters, this loss supports all parameters available for `CrossEntropyLoss`.
 
 ## `AdaptiveDetectionLoss`
 

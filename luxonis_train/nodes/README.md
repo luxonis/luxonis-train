@@ -279,7 +279,7 @@ Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 
 #### `DDRNetSegmentationHead`
 
-Adapted from [here](https://github.com/ydhongHIT/DDRNet).
+Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works well with the [`DDRNet`](#ddrnet) backbone and the [OHEMBCEWithLogitsLoss](../attached_modules/losses/README.md#ohembcewithlogitsloss) loss.
 
 **Parameters:**
 
@@ -295,7 +295,7 @@ Adapted from [here](https://github.com/ydhongHIT/DDRNet).
 
 ##### `EfficientBBoxHead`
 
-Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
+Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf). It works best with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`AdaptiveDetectionLoss`](../attached_modules/losses/README.md#adaptivedetectionloss) loss.
 
 **Parameters:**
 
@@ -310,7 +310,7 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
 ##### `PrecisionBBoxHead`
 
-Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf). It works best with with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`PrecisionDFLDetectionLoss`](../attached_modules/losses/README.md#precisiondfldetectionloss) loss.
 
 **Parameters:**
 
@@ -326,7 +326,7 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arx
 
 ##### `EfficientKeypointBBoxHead`
 
-Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf). It works best with with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`EfficientKeypointBBoxLoss`](../attached_modules/losses/README.md#efficientkeypointbboxloss) loss.
 
 **Parameters:**
 
@@ -338,6 +338,8 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
 | `iou_thres`   | `float`        | `0.45`        | `IoU` threshold for non-maxima-suppression (used for evaluation)      |
 
 ##### `FOMOHead`
+
+Designed to be very fast. Simply attach it to one of the feature maps from the backbone.
 
 **Parameters:**
 
@@ -351,7 +353,7 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf).
 
 ##### `PrecisionSegmentBBoxHead`
 
-Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf). It works best with with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`PrecisionDFLSegmentationLoss`](../attached_modules/losses/README.md#precisiondflsegmentationloss) loss.
 
 **Parameters:**
 
@@ -369,7 +371,7 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arx
 
 ### `DiscSubNetHead`
 
-Adapted from [here](https://arxiv.org/abs/2108.07610).
+Adapted from [here](https://arxiv.org/abs/2108.07610). It currently only works with the [`RecSubNet`](#recsubnet) backbone, which reconstructs the image without anomalies and the  [`ReconstructionSegmentationLoss`](../attached_modules/losses/README.md#reconstructionsegmentationloss) loss.
 
 **Parameters:**
 
@@ -381,7 +383,7 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 
 ### `OCRCTCHead`
 
-Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
+Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR). Works well with the [`SVTRNeck`](#svtrneck) neck and [`CTCLoss`](../attached_modules/losses/README.md#ctcloss) loss.
 **Parameters:**
 
 | Key              | Type        | Default value | Description                                   |
@@ -393,6 +395,8 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 | `return_feats`   | `bool`      | `False`       | Whether to return features.                   |
 
 ### `GhostFaceNetHead`
+
+Works well with the [Embedding Losses](../attached_modules/losses/README.md#embedding-losses).
 
 **Parameters:**
 
