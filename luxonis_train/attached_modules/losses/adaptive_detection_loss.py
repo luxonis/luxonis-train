@@ -1,5 +1,4 @@
 import logging
-import warnings
 from typing import Any, Literal, cast
 
 import torch
@@ -83,7 +82,7 @@ class AdaptiveDetectionLoss(
             if len(per_class_weights) == self.n_classes:
                 self.per_class_weights = torch.tensor(per_class_weights)
             else:
-                warnings.warn(
+                logger.warning(
                     f"Incorrect per_class_weights length. Expected {self.n_classes} but got {len(per_class_weights)}. Setting to None."
                 )
                 self.per_class_weights = None
