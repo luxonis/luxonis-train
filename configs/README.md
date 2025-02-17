@@ -222,6 +222,7 @@ Here you can change everything related to actual training of the model.
 | `deterministic`           | `bool \| "warn" \| None`                       | `None`        | Whether PyTorch should use deterministic backend                                                                                                                                                       |
 | `batch_size`              | `int`                                          | `32`          | Batch size used for training                                                                                                                                                                           |
 | `accumulate_grad_batches` | `int`                                          | `1`           | Number of batches for gradient accumulation                                                                                                                                                            |
+| `precision`               | `Literal["16-mixed", "32"]`                    | `32`          | Controls training precision. `"16-mixed"` can **significantly speed up training** on supported GPUs.                                                                                                   |
 | `gradient_clip_val`       | `NonNegativeFloat \| None`                     | `None`        | Value for gradient clipping. If `None`, gradient clipping is disabled. Clipping can help prevent exploding gradients.                                                                                  |
 | `gradient_clip_algorithm` | `Literal["norm", "value"] \| None`             | `None`        | Algorithm to use for gradient clipping. Options are `"norm"` (clip by norm) or `"value"` (clip element-wise).                                                                                          |
 | `use_weighted_sampler`    | `bool`                                         | `False`       | Whether to use `WeightedRandomSampler` for training, only works with classification tasks                                                                                                              |
@@ -246,6 +247,7 @@ Here you can change everything related to actual training of the model.
 ```yaml
 
 trainer:
+  precision: "16-mixed"
   accelerator: "auto"
   devices: "auto"
   strategy: "auto"
