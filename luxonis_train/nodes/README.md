@@ -39,10 +39,11 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
       - [`FOMOHead`](#fomohead)
     - [Instance Segmentation Heads](#instance-segmentation-heads)
       - [`PrecisionSegmentBBoxHead`](#precisionsegmentbboxhead)
-  - [Anomaly Detection Heads](#anomaly-detection-heads)
+  - [Unsupervised Anomaly Detection Heads](#unsupervised-anomaly-detection-heads)
     - [`DiscSubNetHead`](#discsubnethead)
-  - [Other Heads](#other-heads)
+  - [Embedding Heads](#embedding-heads)
     - [`GhostFaceNetHead`](#ghostfacenethead)
+  - [OCR Heads](#ocr-heads)
     - [`OCRCTCHead`](#ocrctchead)
 
 Every node takes these parameters:
@@ -181,6 +182,7 @@ Adapted from [here](https://github.com/ydhongHIT/DDRNet)
 ### `PPLCNetV3`
 
 Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
+
 **Parameters:**
 
 | Key            | Type                   | Default value | Description                    |
@@ -379,7 +381,7 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arx
 
 ## Unsupervised Anomaly Detection Heads
 
-You can use various segmentation metrics with these heads, such as [`F1Score, JaccardIndex`](../attached_modules/metrics/README.md#torchmetrics) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [SegmentationVisualizer](../attached_modules/metrics/README.md#segmentationvisualizer).
+You can use various segmentation metrics with these heads, such as [`F1Score, JaccardIndex`](../attached_modules/metrics/README.md#torchmetrics) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`SegmentationVisualizer`](../attached_modules/metrics/README.md#segmentationvisualizer).
 
 ### `DiscSubNetHead`
 
@@ -391,7 +393,7 @@ Adapted from [here](https://arxiv.org/abs/2108.07610). It currently only works w
 | --------- | ------------------- | ------------- | ---------------------- |
 | `variant` | `Literal["n", "l"]` | `"l"`         | Variant of the network |
 
-## OCR Heads
+### OCR Heads
 
 You can use [`OCRAccuracy`](../attached_modules/metrics/README.md#ocraccuracy) metric, as well as visualizer [`OCRVisualizer`](../attached_modules/metrics/README.md#ocrvisualizer).
 
@@ -409,15 +411,13 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR). Works well with 
 | `mid_channels`   | `int`       | `None`        | Number of middle channels.                    |
 | `return_feats`   | `bool`      | `False`       | Whether to return features.                   |
 
-## Embedding Heads
+### Embedding Heads
 
-You can use [`ClosestIsPositiveAccuracy`](../attached_modules/metrics/README.md#ocraccuracy) metric, as well as visualizer [`EmbeddingsVisualizer`](../attached_modules/metrics/README.md#embeddingsvisualizer).
-
-You can use various Embedding metrics with these heads,such as [`ClosestIsPositiveAccuracy`](../attached_modules/metrics/README.md#closestispositiveaccuracy) and [`MedianDistances`](../attached_modules/metrics/README.md#mediandistances), as well as visualizer [`EmbeddingsVisualizer`](../attached_modules/metrics/README.md#embeddingsvisualizer).
+You can use various Embedding metrics with these heads, such as [`ClosestIsPositiveAccuracy`](../attached_modules/metrics/README.md#closestispositiveaccuracy) and [`MedianDistances`](../attached_modules/metrics/README.md#mediandistances), as well as visualizer [`EmbeddingsVisualizer`](../attached_modules/metrics/README.md#embeddingsvisualizer).
 
 ### `GhostFaceNetHead`
 
-Works well with the [Embedding Losses](../attached_modules/losses/README.md#embedding-losses).
+Works well with the [`Embedding Losses`](../attached_modules/losses/README.md#embedding-losses).
 
 **Parameters:**
 

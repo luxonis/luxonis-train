@@ -12,17 +12,19 @@ List of all the available loss functions.
 - [`OHEMCrossEntropyLoss`](#ohemcrossnetropyloss)
 - [`OHEMBCEWithLogitsLoss`](#ohembcewithlogitsloss)
 - [`AdaptiveDetectionLoss`](#adaptivedetectionloss)
+- [`PrecisionDFLDetectionLoss`](#precisiondfldetectionloss)
 - [`EfficientKeypointBBoxLoss`](#efficientkeypointbboxloss)
 - [`ReconstructionSegmentationLoss`](#reconstructionsegmentationloss)
 - [`FOMOLocalizationLoss`](#fomolocalizationLoss)
 - [Embedding Losses](#embedding-losses)
-- [`PrecisionDFLDetectionLoss`](#precisiondfldetectionloss)
 - [`PrecisionDFLSegmentationLoss`](#precisiondflsegmentationloss)
 - [`CTCLoss`](#ctcloss)
 
 ## `CrossEntropyLoss`
 
 Adapted from [here](https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html).
+
+Applicable to **segmentation** and **classification** tasks.
 
 **Parameters:**
 
@@ -36,6 +38,8 @@ Adapted from [here](https://pytorch.org/docs/stable/generated/torch.nn.CrossEntr
 
 Adapted from [here](https://pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html).
 
+Applicable to **segmentation** and **classification** tasks.
+
 **Parameters:**
 
 | Key          | Type                             | Default value | Description                                                                                                       |
@@ -45,6 +49,8 @@ Adapted from [here](https://pytorch.org/docs/stable/generated/torch.nn.BCEWithLo
 | `pos_weight` | `Tensor \| None`                 | `None`        | A weight of positive examples to be broadcasted with target                                                       |
 
 ## `SmoothBCEWithLogitsLoss`
+
+Applicable to **segmentation** and **classification** tasks.
 
 **Parameters:**
 
@@ -59,6 +65,8 @@ Adapted from [here](https://pytorch.org/docs/stable/generated/torch.nn.BCEWithLo
 
 Adapted from [here](https://pytorch.org/vision/stable/generated/torchvision.ops.sigmoid_focal_loss.html#torchvision.ops.sigmoid_focal_loss).
 
+Applicable to **segmentation** and **classification** tasks.
+
 **Parameters:**
 
 | Key         | Type                             | Default value | Description                                                                                 |
@@ -68,6 +76,8 @@ Adapted from [here](https://pytorch.org/vision/stable/generated/torchvision.ops.
 | `reduction` | `Literal["none", "mean", "sum"]` | `"mean"`      | Specifies the reduction to apply to the output                                              |
 
 ## `SoftmaxFocalLoss`
+
+Applicable to **segmentation** and **classification** tasks.
 
 **Parameters:**
 
@@ -81,6 +91,8 @@ Adapted from [here](https://pytorch.org/vision/stable/generated/torchvision.ops.
 ## `OHEMBCEWithLogitsLoss`
 
 This criterion computes the binary cross entropy loss between input logits and targets with Online Hard Example Mining (OHEM). It wraps the standard [`BCEWithLogitsLoss`](#bcewithlogitsloss) with OHEM to focus training on the hardest examples.
+
+Applicable to **segmentation** and **classification** tasks.
 
 **Parameters:**
 
@@ -100,6 +112,8 @@ ______________________________________________________________________
 
 This criterion computes the cross entropy loss between input logits and targets with Online Hard Example Mining (OHEM). It wraps the standard [`CrossEntropyLoss`](#crossentropyloss) with OHEM to prioritize hard examples during training.
 
+Applicable to **segmentation** and **classification** tasks.
+
 **Parameters:**
 
 | Key               | Type                             | Default value | Description                                                                                                                                                                                 |
@@ -116,6 +130,8 @@ This criterion computes the cross entropy loss between input logits and targets 
 
 Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
+Applicable to **bounding box detection** tasks.
+
 **Parameters:**
 
 | Key                 | Type                                              | Default value | Description                                                                            |
@@ -125,10 +141,27 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 | `class_loss_weight` | `float`                                           | `1.0`         | Weight used for the classification part of the loss                                    |
 | `iou_loss_weight`   | `float`                                           | `2.5`         | Weight used for the `IoU` part of the loss                                             |
 
+## `PrecisionDFLDetectionLoss`
+
+Applicable to **bounding box detection** tasks.
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+**Parameters:**
+
+| Key                 | Type    | Default value | Description                                |
+| ------------------- | ------- | ------------- | ------------------------------------------ |
+| `tal_topk`          | `int`   | `10`          | Number of anchors considered in selection. |
+| `class_loss_weight` | `float` | `0.5`         | Weight for classification loss.            |
+| `bbox_loss_weight`  | `float` | `7.5`         | Weight for bbox loss.                      |
+| `dfl_loss_weigth`   | `float` | `1.5`         | Weight for DFL loss.                       |
+
 ## `EfficientKeypointBBoxLoss`
 
 Adapted from [YOLO-Pose: Enhancing YOLO for Multi Person Pose Estimation Using Object
 Keypoint Similarity Loss](https://arxiv.org/ftp/arxiv/papers/2204/2204.06806.pdf).
+
+Applicable to **bounding box** and **keypoint detection** tasks.
 
 | Key                     | Type                                              | Default value | Description                                                                                                   |
 | ----------------------- | ------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------- |
@@ -146,6 +179,8 @@ Keypoint Similarity Loss](https://arxiv.org/ftp/arxiv/papers/2204/2204.06806.pdf
 
 Adapted from [here](https://arxiv.org/abs/2108.07610).
 
+Applicable to **anomaly detection** task.
+
 **Parameters:**
 
 | Key         | Type                             | Default value | Description                                                                              |
@@ -157,6 +192,8 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 
 ## `FOMOLocalizationLoss`
 
+Applicable to **FOMO detection** task.
+
 **Parameters:**
 
 | Key             | Type    | Default value | Description                                                                                                                                                                          |
@@ -164,6 +201,8 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 | `object_weight` | `float` | `500`         | Weight for the objects in the loss calculation. Training with a larger `object_weight` in the loss parameters may result in more false positives (FP), but it will improve accuracy. |
 
 ## Embedding Losses
+
+Applicable to **embeddings** tasks.
 
 We support the following losses taken from [pytorch-metric-learning](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/):
 
@@ -209,28 +248,19 @@ For loss specific parameters, see the documentation pages linked above. In addit
 
 CTC loss with optional focal loss weighting.
 
+Applicable to **ocr** tasks.
+
 **Parameters:**
 
 | Key              | Type   | Default value | Description                                            |
 | ---------------- | ------ | ------------- | ------------------------------------------------------ |
 | `use_focal_loss` | `bool` | `True`        | Whether to apply focal loss weighting to the CTC loss. |
 
-## `PrecisionDFLDetectionLoss`
-
-Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
-
-**Parameters:**
-
-| Key                 | Type    | Default value | Description                                |
-| ------------------- | ------- | ------------- | ------------------------------------------ |
-| `tal_topk`          | `int`   | `10`          | Number of anchors considered in selection. |
-| `class_loss_weight` | `float` | `0.5`         | Weight for classification loss.            |
-| `bbox_loss_weight`  | `float` | `7.5`         | Weight for bbox loss.                      |
-| `dfl_loss_weigth`   | `float` | `1.5`         | Weight for DFL loss.                       |
-
 ## `PrecisionDFLSegmentationLoss`
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+Applicable to **instance segmentation** tasks.
 
 **Parameters:**
 
