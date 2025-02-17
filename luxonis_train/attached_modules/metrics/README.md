@@ -37,25 +37,19 @@ For more information, see [object-keypoint-similarity](https://learnopencv.com/o
 
 ## MeanAveragePrecision
 
-Compute the `Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)` for object detection predictions.
+Compute the `Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)` for object detection or instance segmentation predictions. This metric is built upon [pycocotools](https://github.com/cocodataset/cocoapi), which provides robust tools for evaluating these tasks.
 
 ```math
 \text{mAP} = \frac{1}{n} \sum_{i=1}^{n} AP_i
 ```
 
-where $AP_i$ is the average precision for class $i$ and $n$ is the number of classes. The average
-precision is defined as the area under the precision-recall curve. For object detection the recall and precision are
-defined based on the intersection of union (IoU) between the predicted bounding boxes and the ground truth bounding
-boxes e.g. if two boxes have an IoU > t (with t being some threshold) they are considered a match and therefore
-considered a true positive. The precision is then defined as the number of true positives divided by the number of
-all detected boxes and the recall is defined as the number of true positives divided by the number of all ground
-boxes.
+where $AP_i$ is the average precision for class $i$ and $n$ is the number of classes. Average precision is the area under the precision-recall curve. For both detection and segmentation tasks, precision and recall are computed based on the Intersection over Union (IoU) between predicted and ground truth regions (bounding boxes or masks). A prediction is considered a true positive if its IoU exceeds a threshold $t$. Precision is defined as the ratio of true positives to all detections, and recall as the ratio of true positives to all ground truth instances.
 
 ## MeanAveragePrecisionKeypoints
 
 Similar to [MeanAveragePrecision](#meanaverageprecision), but uses [OKS](#objectkeypointsimilarity) as `IoU` measure.
 For a deeper understanding of how OKS works, please refer to the detailed explanation provided [here](https://learnopencv.com/object-keypoint-similarity/).
-Evaluation leverages COCO evaluation framework (COCOeval) to assess mAP performance.
+Evaluation leverages the [pycocotools](https://github.com/cocodataset/cocoapi) framework to assess mAP performance.
 
 **Params**
 
@@ -85,3 +79,10 @@ Accuracy metric for OCR tasks.
 | Key         | Type  | Default value | Description                                |
 | ----------- | ----- | ------------- | ------------------------------------------ |
 | `blank_cls` | `int` | `0`           | Index of the blank class. Defaults to `0`. |
+
+## Confusion Matrix
+
+Compute the confusion matrix for various tasks including classification, segmentation, and object detection.
+
+> \[!NOTE\]
+> **Important:** Both the Confusion Matrix (CM) and Mean Average Precision (mAP) metrics are sensitive to NMS parameters, such as confidence (`conf`) and IoU (`iout`) thresholds. Make sure to adjust these settings appropriately for your specific use case.

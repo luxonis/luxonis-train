@@ -277,7 +277,7 @@ trainer:
 
   ##### 2. **Resume Training Continuously Example**
 
-  - Set `resume_training: true` to continue training from the last checkpoint in `model.weigts`.
+  - Set `resume_training: true` to continue training from the last checkpoint in `model.weights`.
   - LR continues from where the previous run ended, keeping scheduler continuity.
   - Example: Extending training (e.g., 400 `epochs` after 300) while adjusting `T_max` (e.g., 400 after 300) and `eta_min` (e.g., reduced 10x). The final LR from the previous run is retained, overriding the initial config LR, and training LR completes with the new `eta_min` value.
 
