@@ -81,9 +81,7 @@ class AdaptiveDetectionLoss(
 
         if per_class_weights is not None:
             if len(per_class_weights) == self.n_classes:
-                self.per_class_weights = torch.tensor(
-                    per_class_weights
-                )  # TODO: set device?
+                self.per_class_weights = torch.tensor(per_class_weights)
             else:
                 warnings.warn(
                     f"Incorrect per_class_weights length. Expected {self.n_classes} but got {len(per_class_weights)}. Setting to None."
@@ -300,8 +298,11 @@ class VarifocalLoss(nn.Module):
             self.alpha * pred_score.pow(self.gamma) * (1 - label)
             + target_score * label
         )
-
         if self.per_class_weights is not None:
+            if self.per_class_weights.device != pred_score.device:
+                self.per_class_weights = self.per_class_weights.to(
+                    pred_score.device
+                )
             weight = weight * self.per_class_weights.view(
                 1, 1, -1
             )  # ensure correct broadcasting (batches, anchors, classes)
