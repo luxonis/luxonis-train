@@ -250,7 +250,7 @@ class VarifocalLoss(nn.Module):
         @param alpha: alpha parameter in focal loss, default is 0.75.
         @type gamma: float
         @param gamma: gamma parameter in focal loss, default is 2.0.
-        @type per_class_weights: Optional[Tensor]
+        @type per_class_weights: Tensor | None
         @param per_class_weights: A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
         """
 
@@ -280,9 +280,7 @@ class VarifocalLoss(nn.Module):
                 1, 1, -1
             )  # ensure correct broadcasting (batches, anchors, classes)
 
-        with torch.amp.autocast(
-            device_type=pred_score.device.type, enabled=False
-        ):
+        with amp.autocast(device_type=pred_score.device.type, enabled=False):
             ce_loss = F.binary_cross_entropy(
                 pred_score.float(), target_score.float(), reduction="none"
             )
