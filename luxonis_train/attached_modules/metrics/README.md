@@ -10,6 +10,7 @@ List of all the available metrics.
 - [MeanAveragePrecisionKeypoints](#meanaverageprecisionkeypoints)
 - [ClosestIsPositiveAccuracy](#closestispositiveaccuracy)
 - [MedianDistances](#mediandistances)
+- [OCRAccuracy](#ocraccuracy)
 - [ConfusionMatrix](#confusionmatrix)
 
 ## Torchmetrics
