@@ -340,6 +340,9 @@ Additionally, we support `Mosaic4` and `MixUp` batch augmentations and letterbox
 | `active` | `bool` | `True`        | Whether the augmentation is active |
 | `params` | `dict` | `{}`          | Parameters of the augmentation     |
 
+> \[!NOTE\]
+> **Important:** The `Flip` augmentation can disrupt the order of keypoints, which may break the training process if your task relies on a specific keypoint order.
+
 **Example:**
 
 ```yaml
