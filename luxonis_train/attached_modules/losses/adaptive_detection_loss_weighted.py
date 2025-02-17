@@ -1,5 +1,5 @@
 import logging
-from typing import Any, List, Literal, Optional, cast
+from typing import Any, Literal, cast, Optional, List
 
 import torch
 import torch.nn.functional as F
@@ -23,7 +23,7 @@ from .base_loss import BaseLoss
 logger = logging.getLogger(__name__)
 
 
-class AdaptiveDetectionLoss(
+class AdaptiveDetectionLossWeighted(
     BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]
 ):
     node: EfficientBBoxHead
@@ -42,7 +42,9 @@ class AdaptiveDetectionLoss(
         reduction: Literal["sum", "mean"] = "mean",
         class_loss_weight: float = 1.0,
         iou_loss_weight: float = 2.5,
-        per_class_weights: Optional[List[float]] = None,
+        #######################################################################
+        per_class_weights: Optional[List[float]] = None,  # Added parameter -  e.g. torch.tensor([1.0, 2.0, 0.5])
+        #######################################################################
         **kwargs: Any,
     ):
         """BBox loss adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
@@ -81,9 +83,16 @@ class AdaptiveDetectionLoss(
         self.varifocal_loss = VarifocalLoss()
         self.class_loss_weight = class_loss_weight
         self.iou_loss_weight = iou_loss_weight
-        self.per_class_weights = torch.tensor(
-            per_class_weights
-        )  # TODO: set device?
+
+        #######################################################################
+        # Initialize per-class weights
+        if per_class_weights is not None:
+            assert isinstance(per_class_weights, List), "Incorrect per_class_weights type"
+            assert len(per_class_weights) == self.n_classes, "Incorrect per_class_weights size"
+            self.per_class_weights = torch.tensor(per_class_weights)
+        else:
+            self.per_class_weights = torch.tensor([1.0 for _ in range(self.n_classes)])
+        #######################################################################
 
         self._logged_assigner_change = False
 
@@ -139,12 +148,18 @@ class AdaptiveDetectionLoss(
         assigned_scores: Tensor,
         mask_positive: Tensor,
     ):
+
         one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[
             ..., :-1
         ]
+
+        #######################################################################
+        #class_weights = torch.tensor([1.0, 1.0, 3.0])
+        
         loss_cls = self.varifocal_loss(
             pred_scores, assigned_scores, one_hot_label, self.per_class_weights
         )
+        #######################################################################
 
         if assigned_scores.sum() > 1:
             loss_cls /= assigned_scores.sum()
@@ -252,13 +267,10 @@ class AdaptiveDetectionLoss(
         self._logged_assigner_change = True
 
 
+#######################################################################
+# The following loss needs to be edited to introduce the weighting:
 class VarifocalLoss(nn.Module):
-    def __init__(
-        self,
-        alpha: float = 0.75,
-        gamma: float = 2.0,
-        per_class_weights: Tensor | None = None,
-    ):
+    def __init__(self, alpha: float = 0.75, gamma: float = 2.0):
         """Varifocal Loss is a loss function for training a dense object detector to predict
         the IoU-aware classification score, inspired by focal loss.
         Code is adapted from: U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models/losses.py}
@@ -267,36 +279,32 @@ class VarifocalLoss(nn.Module):
         @param alpha: alpha parameter in focal loss, default is 0.75.
         @type gamma: float
         @param gamma: gamma parameter in focal loss, default is 2.0.
-        @type per_class_weights: Optional[Tensor]
-        @param per_class_weights: Holds a weight for each class to calculate the weighted loss.
         """
 
         super().__init__()
 
         self.alpha = alpha
         self.gamma = gamma
-        self.per_class_weights = per_class_weights
 
     def forward(
-        self,
-        pred_score: Tensor,
-        target_score: Tensor,
-        label: Tensor,
+        self, pred_score: Tensor, target_score: Tensor, label: Tensor, class_weights: Tensor
     ) -> Tensor:
+
         weight = (
             self.alpha * pred_score.pow(self.gamma) * (1 - label)
             + target_score * label
         )
 
-        if self.per_class_weights is not None:
-            weight = weight * self.per_class_weights.view(
-                1, 1, -1
-            )  # making sure to use the correct broadcasting
+        # Apply class weights
+        weight = weight * class_weights[label.long()]
+
         with torch.amp.autocast(
             device_type=pred_score.device.type, enabled=False
         ):
             ce_loss = F.binary_cross_entropy(
                 pred_score.float(), target_score.float(), reduction="none"
             )
+        
         loss = (ce_loss * weight).sum()
         return loss
+#######################################################################

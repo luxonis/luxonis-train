@@ -1,4 +1,5 @@
 from .adaptive_detection_loss import AdaptiveDetectionLoss
+from .adaptive_detection_loss_weighted import AdaptiveDetectionLossWeighted
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
 from .cross_entropy import CrossEntropyLoss
@@ -14,6 +15,7 @@ from .softmax_focal_loss import SoftmaxFocalLoss
 
 __all__ = [
     "AdaptiveDetectionLoss",
+    "AdaptiveDetectionLossWeighted",
     "BCEWithLogitsLoss",
     "CrossEntropyLoss",
     "EfficientKeypointBBoxLoss",
