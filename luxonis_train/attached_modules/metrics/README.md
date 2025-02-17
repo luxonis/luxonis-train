@@ -12,6 +12,9 @@ List of all the available metrics.
 - [MedianDistances](#mediandistances)
 - [ConfusionMatrix](#confusionmatrix)
 
+> \[!NOTE\]
+> **Important:** Both the Confusion Matrix (CM) and Mean Average Precision (mAP) metrics are sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.
+
 ## Torchmetrics
 
 Metrics from the [`torchmetrics`](https://lightning.ai/docs/torchmetrics/stable/) module.
@@ -84,6 +87,3 @@ Accuracy metric for OCR tasks.
 ## ConfusionMatrix
 
 Compute the confusion matrix for various tasks including classification, segmentation, and object detection.
-
-> \[!NOTE\]
-> **Important:** Both the Confusion Matrix (CM) and Mean Average Precision (mAP) metrics are sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.
