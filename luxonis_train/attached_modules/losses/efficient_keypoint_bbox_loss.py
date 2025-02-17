@@ -131,7 +131,10 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         )
         assigned_gt_idx_expanded = assigned_gt_idx.unsqueeze(-1).unsqueeze(-1)
         selected_keypoints = batched_kpts.gather(
-            1, assigned_gt_idx_expanded.expand(-1, -1, self.n_keypoints, 3)
+            1,
+            assigned_gt_idx_expanded.expand(
+                -1, -1, self.n_keypoints, 3
+            ).long(),
         )
         xy_components = selected_keypoints[..., :2]
         normalized_xy = xy_components / self.stride_tensor.view(1, -1, 1, 1)
