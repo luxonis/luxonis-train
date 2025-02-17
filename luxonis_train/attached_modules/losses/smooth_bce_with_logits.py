@@ -1,19 +1,16 @@
-from typing import Any, Literal
+from typing import Literal
 
 import torch
 from torch import Tensor
 
-from luxonis_train.enums import TaskType
+from luxonis_train.tasks import Tasks
 
 from .base_loss import BaseLoss
 from .bce_with_logits import BCEWithLogitsLoss
 
 
-class SmoothBCEWithLogitsLoss(BaseLoss[list[Tensor], Tensor]):
-    supported_tasks: list[TaskType] = [
-        TaskType.SEGMENTATION,
-        TaskType.CLASSIFICATION,
-    ]
+class SmoothBCEWithLogitsLoss(BaseLoss):
+    supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 
     def __init__(
         self,
@@ -21,7 +18,7 @@ class SmoothBCEWithLogitsLoss(BaseLoss[list[Tensor], Tensor]):
         bce_pow: float = 1.0,
         weight: list[float] | None = None,
         reduction: Literal["mean", "sum", "none"] = "mean",
-        **kwargs: Any,
+        **kwargs,
     ):
         """BCE with logits loss and label smoothing.
 

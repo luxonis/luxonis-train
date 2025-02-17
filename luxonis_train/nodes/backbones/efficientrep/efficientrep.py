@@ -1,6 +1,6 @@
-import logging
-from typing import Any, Literal
+from typing import Literal
 
+from loguru import logger
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
@@ -13,8 +13,6 @@ from luxonis_train.nodes.blocks import (
 from luxonis_train.utils import make_divisible
 
 from .variants import VariantLiteral, get_variant, get_variant_weights
-
-logger = logging.getLogger(__name__)
 
 
 class EfficientRep(BaseNode[Tensor, list[Tensor]]):
@@ -31,7 +29,7 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         csp_e: float | None = None,
         download_weights: bool = True,
         initialize_weights: bool = True,
-        **kwargs: Any,
+        **kwargs,
     ):
         """Implementation of the EfficientRep backbone. Supports the
         version with RepBlock and CSPStackRepBlock (for larger networks)
@@ -140,7 +138,7 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
                     f"No checkpoint available for {self.name}, skipping."
                 )
 
-    def initialize_weights(self):
+    def initialize_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 pass

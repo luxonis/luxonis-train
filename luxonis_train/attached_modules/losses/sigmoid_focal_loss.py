@@ -1,24 +1,21 @@
-from typing import Any, Literal
+from typing import Literal
 
 from torch import Tensor
 from torchvision.ops import sigmoid_focal_loss
 
 from luxonis_train.attached_modules.losses import BaseLoss
-from luxonis_train.enums import TaskType
+from luxonis_train.tasks import Tasks
 
 
-class SigmoidFocalLoss(BaseLoss[Tensor, Tensor]):
-    supported_tasks: list[TaskType] = [
-        TaskType.SEGMENTATION,
-        TaskType.CLASSIFICATION,
-    ]
+class SigmoidFocalLoss(BaseLoss):
+    supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 
     def __init__(
         self,
         alpha: float = 0.25,
         gamma: float = 2.0,
         reduction: Literal["none", "mean", "sum"] = "mean",
-        **kwargs: Any,
+        **kwargs,
     ):
         """Focal loss from U{Focal Loss for Dense Object Detection
         <https://arxiv.org/abs/1708.02002>}.
@@ -38,9 +35,9 @@ class SigmoidFocalLoss(BaseLoss[Tensor, Tensor]):
         self.gamma = gamma
         self.reduction = reduction
 
-    def forward(self, preds: Tensor, target: Tensor) -> Tensor:
+    def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
         loss = sigmoid_focal_loss(
-            preds,
+            predictions,
             target,
             alpha=self.alpha,
             gamma=self.gamma,

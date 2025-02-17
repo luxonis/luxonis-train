@@ -147,6 +147,11 @@ models_venv/*
 
 # vscode settings
 .vscode
+
+# pycharm settings
+.idea
+
+# additional directories
 tests/data
 mlartifacts
 mlruns

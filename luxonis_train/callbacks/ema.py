@@ -1,15 +1,11 @@
-import logging
 import math
 from copy import deepcopy
 from typing import Any
 
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 import torch
-from pytorch_lightning.callbacks import Callback
-from pytorch_lightning.utilities.types import STEP_OUTPUT
+from lightning.pytorch.utilities.types import STEP_OUTPUT
 from torch import nn
-
-logger = logging.getLogger(__name__)
 
 
 class ModelEma(nn.Module):
@@ -25,7 +21,6 @@ class ModelEma(nn.Module):
         decay: float = 0.9999,
         use_dynamic_decay: bool = True,
         decay_tau: float = 2000,
-        device: str | None = None,
     ):
         """Constructs `ModelEma`.
 
@@ -37,10 +32,8 @@ class ModelEma(nn.Module):
         @param use_dynamic_decay: Use dynamic decay rate.
         @type decay_tau: float
         @param decay_tau: Decay tau for the moving average.
-        @type device: str | None
-        @param device: Device to perform EMA on.
         """
-        super(ModelEma, self).__init__()
+        super().__init__()
         model.eval()
         self.state_dict_ema = deepcopy(model.state_dict())
         model.train()
@@ -51,11 +44,6 @@ class ModelEma(nn.Module):
         self.decay = decay
         self.use_dynamic_decay = use_dynamic_decay
         self.decay_tau = decay_tau
-        self.device = device
-        if self.device is not None:
-            self.state_dict_ema = {
-                k: v.to(device=device) for k, v in self.state_dict_ema.items()
-            }
 
     def update(self, model: pl.LightningModule) -> None:
         """Update the stored parameters using a moving average.
@@ -83,8 +71,6 @@ class ModelEma(nn.Module):
                 self.state_dict_ema.values(), model.state_dict().values()
             ):
                 if ema_v.is_floating_point():
-                    if self.device is not None:
-                        model_v = model_v.to(device=self.device)
                     ema_lerp_values.append(ema_v)
                     model_lerp_values.append(model_v)
                 else:
@@ -101,7 +87,7 @@ class ModelEma(nn.Module):
                 )
 
 
-class EMACallback(Callback):
+class EMACallback(pl.Callback):
     """Callback that updates the stored parameters using a moving
     average."""
 
@@ -110,7 +96,6 @@ class EMACallback(Callback):
         decay: float = 0.5,
         use_dynamic_decay: bool = True,
         decay_tau: float = 2000,
-        device: str | None = None,
     ):
         """Constructs `EMACallback`.
 
@@ -121,15 +106,13 @@ class EMACallback(Callback):
             decay rate will be updated based on the number of updates.
         @type decay_tau: float
         @param decay_tau: Decay tau for the moving average.
-        @type device: str | None
-        @param device: Device to perform EMA on.
         """
         self.decay = decay
         self.use_dynamic_decay = use_dynamic_decay
         self.decay_tau = decay_tau
-        self.device = device
 
         self.ema = None
+        self.loaded_ema_state_dict = None
         self.collected_state_dict = None
 
     def on_fit_start(
@@ -149,8 +132,15 @@ class EMACallback(Callback):
             decay=self.decay,
             use_dynamic_decay=self.use_dynamic_decay,
             decay_tau=self.decay_tau,
-            device=self.device,
         )
+        if self.loaded_ema_state_dict is not None:
+            target_device = next(iter(self.ema.state_dict_ema.values())).device
+            self.loaded_ema_state_dict = {
+                k: v.to(target_device)
+                for k, v in self.loaded_ema_state_dict.items()
+            }
+            self.ema.state_dict_ema = self.loaded_ema_state_dict
+            self.loaded_ema_state_dict = None
 
     def on_train_batch_end(
         self,
@@ -180,46 +170,68 @@ class EMACallback(Callback):
     def on_validation_epoch_start(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
     ) -> None:
-        """Do validation using the stored parameters. Save the original
-        parameters before replacing with EMA version.
+        """Swap the model's weights to the EMA weights at the start of
+        validation.
 
         @type trainer: L{pl.Trainer}
         @param trainer: Pytorch Lightning trainer.
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-
-        self.collected_state_dict = deepcopy(pl_module.state_dict())
-
-        if self.ema is not None:
-            pl_module.load_state_dict(self.ema.state_dict_ema)
+        self._swap_to_ema_weights(pl_module)
 
     def on_validation_end(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
     ) -> None:
-        """Restore original parameters to resume training later.
+        """Restore the original model weights after validation.
 
         @type trainer: L{pl.Trainer}
         @param trainer: Pytorch Lightning trainer.
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-        if self.collected_state_dict is not None:
-            pl_module.load_state_dict(self.collected_state_dict)
+        self._restore_original_weights(pl_module)
+
+    def on_test_epoch_start(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> None:
+        """Swap the model's weights to the EMA weights at the start of
+        testing.
+
+        @type trainer: L{pl.Trainer}
+        @param trainer: Pytorch Lightning trainer.
+        @type pl_module: L{pl.LightningModule}
+        @param pl_module: Pytorch Lightning module.
+        """
+
+        self._swap_to_ema_weights(pl_module)
+
+    def on_test_end(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> None:
+        """Restore the original model weights after testing.
+
+        @type trainer: L{pl.Trainer}
+        @param trainer: Pytorch Lightning trainer.
+        @type pl_module: L{pl.LightningModule}
+        @param pl_module: Pytorch Lightning module.
+        """
+        self._restore_original_weights(pl_module)
 
     def on_train_end(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
     ) -> None:
-        """Update the LightningModule with the EMA weights.
+        """Replace the model's weights with the EMA weights at the end
+        of training.
 
+        This final update ensures that the trained model uses the EMA
+        weights.
         @type trainer: L{pl.Trainer}
         @param trainer: Pytorch Lightning trainer.
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-        if self.ema is not None:
-            pl_module.load_state_dict(self.ema.state_dict_ema)
-            logger.info("Model weights replaced with the EMA weights.")
+        self._swap_to_ema_weights(pl_module)
 
     def on_save_checkpoint(
         self,
@@ -227,7 +239,7 @@ class EMACallback(Callback):
         pl_module: pl.LightningModule,
         checkpoint: dict,
     ) -> None:  # or dict?
-        """Save the EMA state_dict to the checkpoint.
+        """Save the EMA state dictionary into the checkpoint.
 
         @type trainer: L{pl.Trainer}
         @param trainer: Pytorch Lightning trainer.
@@ -239,11 +251,34 @@ class EMACallback(Callback):
         if self.ema is not None:
             checkpoint["state_dict"] = self.ema.state_dict_ema
 
-    def on_load_checkpoint(self, callback_state: dict) -> None:
-        """Load the EMA state_dict from the checkpoint.
+    def on_load_checkpoint(
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
+        callback_state: dict,
+    ) -> None:
+        """Load the EMA state dictionary from the checkpoint.
 
         @type callback_state: dict
         @param callback_state: Pytorch Lightning callback state.
         """
+        if callback_state and "state_dict" in callback_state:
+            self.loaded_ema_state_dict = callback_state["state_dict"]
+
+    def _swap_to_ema_weights(self, pl_module: pl.LightningModule) -> None:
+        """Swap the current model weights with the EMA weights.
+
+        The current state is saved so that it can be restored later.
+        """
+        self.collected_state_dict = deepcopy(pl_module.state_dict())
         if self.ema is not None:
-            self.ema.state_dict_ema = callback_state["state_dict"]
+            pl_module.load_state_dict(self.ema.state_dict_ema)
+
+    def _restore_original_weights(self, pl_module: pl.LightningModule) -> None:
+        """Restore the model's original weights.
+
+        This method reverts the model to its state prior to the EMA
+        weight swap.
+        """
+        if self.collected_state_dict is not None:
+            pl_module.load_state_dict(self.collected_state_dict)

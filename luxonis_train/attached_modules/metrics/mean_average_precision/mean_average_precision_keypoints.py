@@ -8,28 +8,19 @@ from pycocotools.cocoeval import COCOeval
 from torch import Tensor
 from torchvision.ops import box_convert
 
-from luxonis_train.enums import TaskType
-from luxonis_train.utils import (
-    Labels,
-    Packet,
-    get_sigmas,
-    get_with_default,
-)
-
-from .base_metric import BaseMetric
+from luxonis_train.attached_modules.metrics import BaseMetric
+from luxonis_train.tasks import Tasks
+from luxonis_train.utils import get_sigmas, get_with_default
+from luxonis_train.utils.keypoints import insert_class
 
 
-class MeanAveragePrecisionKeypoints(
-    BaseMetric[list[dict[str, Tensor]], list[dict[str, Tensor]]]
-):
+class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
     """Mean Average Precision metric for keypoints.
 
     Uses C{OKS} as IoU measure.
     """
 
-    supported_tasks: list[tuple[TaskType, ...]] = [
-        (TaskType.BOUNDINGBOX, TaskType.KEYPOINTS)
-    ]
+    supported_tasks = [Tasks.INSTANCE_KEYPOINTS]
 
     is_differentiable: bool = False
     higher_is_better: bool = True
@@ -103,40 +94,40 @@ class MeanAveragePrecisionKeypoints(
             "groundtruth_keypoints", default=[], dist_reduce_fx=None
         )
 
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
-        assert self.node.tasks is not None
-        kpts = self.get_label(labels, TaskType.KEYPOINTS)
-        boxes = self.get_label(labels, TaskType.BOUNDINGBOX)
+    def update(
+        self,
+        keypoints: list[Tensor],
+        boundingbox: list[Tensor],
+        target_keypoints: Tensor,
+        target_boundingbox: Tensor,
+    ) -> None:
+        target_keypoints = insert_class(target_keypoints, target_boundingbox)
 
-        nkpts = (kpts.shape[1] - 2) // 3
-        label = torch.zeros((len(boxes), nkpts * 3 + 6))
-        label[:, :2] = boxes[:, :2]
-        label[:, 2:6] = box_convert(boxes[:, 2:], "xywh", "xyxy")
-        label[:, 6::3] = kpts[:, 2::3]  # x
-        label[:, 7::3] = kpts[:, 3::3]  # y
-        label[:, 8::3] = kpts[:, 4::3]  # visiblity
+        n_kpts = (target_keypoints.shape[1] - 2) // 3
+        label = torch.zeros((len(target_boundingbox), n_kpts * 3 + 6))
+        label[:, :2] = target_boundingbox[:, :2]
+        label[:, 2:6] = box_convert(target_boundingbox[:, 2:], "xywh", "xyxy")
+        label[:, 6::3] = target_keypoints[:, 2::3]  # x
+        label[:, 7::3] = target_keypoints[:, 3::3]  # y
+        label[:, 8::3] = target_keypoints[:, 4::3]  # visiblity
 
         output_list_kpt_map: list[dict[str, Tensor]] = []
         label_list_kpt_map: list[dict[str, Tensor]] = []
         image_size = self.original_in_shape[1:]
 
-        output_kpts = self.get_input_tensors(inputs, TaskType.KEYPOINTS)
-        output_bboxes = self.get_input_tensors(inputs, TaskType.BOUNDINGBOX)
-        for i in range(len(output_kpts)):
+        for i in range(len(keypoints)):
             output_list_kpt_map.append(
                 {
-                    "boxes": output_bboxes[i][:, :4],
-                    "scores": output_bboxes[i][:, 4],
-                    "labels": output_bboxes[i][:, 5].int(),
-                    "keypoints": output_kpts[i].reshape(
+                    "boxes": boundingbox[i][:, :4],
+                    "scores": boundingbox[i][:, 4],
+                    "labels": boundingbox[i][:, 5].int(),
+                    "keypoints": keypoints[i].reshape(
                         -1, self.n_keypoints * 3
                     ),
                 }
             )
 
-            curr_label = label[label[:, 0] == i].to(output_kpts[i].device)
+            curr_label = label[label[:, 0] == i].to(keypoints[i].device)
             curr_bboxs = curr_label[:, 2:6]
             curr_bboxs[:, 0::2] = (
                 (curr_bboxs[:, 0::2] * image_size[1]).round().int()
@@ -159,61 +150,17 @@ class MeanAveragePrecisionKeypoints(
                 }
             )
 
-        return output_list_kpt_map, label_list_kpt_map
-
-    def update(
-        self, preds: list[dict[str, Tensor]], target: list[dict[str, Tensor]]
-    ) -> None:
-        """Updates the metric state.
-
-        @type preds: list[dict[str, Tensor]]
-        @param preds: A list consisting of dictionaries each containing key-values for a single image.
-            Parameters that should be provided per dict:
-
-                - boxes (FloatTensor): Tensor of shape C{(N, 4)}
-                  containing `N` detection boxes of the format specified in
-                  the constructor. By default, this method expects `(xmin, ymin,
-                  xmax, ymax)` in absolute image coordinates.
-                - scores (FloatTensor): Tensor of shape C{(N)}
-                  containing detection scores for the boxes.
-                - labels (tIntTensor): Tensor of shape C{(N)} containing
-                  0-indexed detection classes for the boxes.
-                - keypoints (FloatTensor): Tensor of shape C{(N, 3*K)} and in
-                  format C{[x, y, vis, x, y, vis, ...]} where C{x} an C{y} are absolute
-                  keypoint coordinates and C{vis} is keypoint visibility.
-
-        @type target: list[dict[str, Tensor]]
-        @param target: A list consisting of dictionaries each containing key-values for a single image.
-            Parameters that should be provided per dict:
-
-                - boxes (FloatTensor): Tensor of shape C{(N, 4)} containing
-                  `N` ground truth boxes of the format specified in the
-                  constructor. By default, this method expects `(xmin, ymin, xmax, ymax)`
-                  in absolute image coordinates.
-                - labels: :class:`~torch.IntTensor` of shape C{(N)} containing
-                  0-indexed ground truth classes for the boxes.
-                - iscrow (IntTensor): Tensor of shape C{(N)} containing 0/1
-                  values indicating whether the bounding box/masks indicate a crowd of
-                  objects. If not provided it will automatically be set to 0.
-                - area (FloatTensor): Tensor of shape C{(N)} containing the
-                  area of the object. If not provided will be automatically calculated
-                  based on the bounding box/masks provided. Only affects which samples
-                  contribute to the C{map_small}, C{map_medium}, C{map_large} values.
-                - keypoints (FloatTensor): Tensor of shape C{(N, 3*K)} in format
-                  C{[x, y, vis, x, y, vis, ...]} where C{x} an C{y} are absolute keypoint
-                  coordinates and `vis` is keypoint visibility.
-        """
-        for item in preds:
-            boxes, keypoints = self._get_safe_item_values(item)
+        for item in output_list_kpt_map:
+            boxes, kpts = self._get_safe_item_values(item)
             self.pred_boxes.append(boxes)
-            self.pred_keypoints.append(keypoints)
+            self.pred_keypoints.append(kpts)
             self.pred_scores.append(item["scores"])
             self.pred_labels.append(item["labels"])
 
-        for item in target:
-            boxes, keypoints = self._get_safe_item_values(item)
+        for item in label_list_kpt_map:
+            boxes, kpts = self._get_safe_item_values(item)
             self.groundtruth_boxes.append(boxes)
-            self.groundtruth_keypoints.append(keypoints)
+            self.groundtruth_keypoints.append(kpts)
             self.groundtruth_labels.append(item["labels"])
             self.groundtruth_area.append(
                 item.get("area", torch.zeros_like(item["labels"]))
@@ -254,17 +201,36 @@ class MeanAveragePrecisionKeypoints(
             self.coco_eval.summarize()
             stats = self.coco_eval.stats
 
-        kpt_map = torch.tensor([stats[0]], dtype=torch.float32)
+        device = self.pred_keypoints[0].device
+        kpt_map = torch.tensor([stats[0]], dtype=torch.float32, device=device)
         return kpt_map, {
-            "kpt_map_50": torch.tensor([stats[1]], dtype=torch.float32),
-            "kpt_map_75": torch.tensor([stats[2]], dtype=torch.float32),
-            "kpt_map_medium": torch.tensor([stats[3]], dtype=torch.float32),
-            "kpt_map_large": torch.tensor([stats[4]], dtype=torch.float32),
-            "kpt_mar": torch.tensor([stats[5]], dtype=torch.float32),
-            "kpt_mar_50": torch.tensor([stats[6]], dtype=torch.float32),
-            "kpt_mar_75": torch.tensor([stats[7]], dtype=torch.float32),
-            "kpt_mar_medium": torch.tensor([stats[8]], dtype=torch.float32),
-            "kpt_mar_large": torch.tensor([stats[9]], dtype=torch.float32),
+            "kpt_map_50": torch.tensor(
+                [stats[1]], dtype=torch.float32, device=device
+            ),
+            "kpt_map_75": torch.tensor(
+                [stats[2]], dtype=torch.float32, device=device
+            ),
+            "kpt_map_medium": torch.tensor(
+                [stats[3]], dtype=torch.float32, device=device
+            ),
+            "kpt_map_large": torch.tensor(
+                [stats[4]], dtype=torch.float32, device=device
+            ),
+            "kpt_mar": torch.tensor(
+                [stats[5]], dtype=torch.float32, device=device
+            ),
+            "kpt_mar_50": torch.tensor(
+                [stats[6]], dtype=torch.float32, device=device
+            ),
+            "kpt_mar_75": torch.tensor(
+                [stats[7]], dtype=torch.float32, device=device
+            ),
+            "kpt_mar_medium": torch.tensor(
+                [stats[8]], dtype=torch.float32, device=device
+            ),
+            "kpt_mar_large": torch.tensor(
+                [stats[9]], dtype=torch.float32, device=device
+            ),
         }
 
     def _get_coco_format(

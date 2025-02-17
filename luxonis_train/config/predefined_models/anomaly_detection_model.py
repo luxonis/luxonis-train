@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
-    MetricModuleConfig,  # Metrics support added
+    MetricModuleConfig,
     ModelNodeConfig,
     Params,
 )
@@ -18,6 +18,7 @@ VariantLiteral: TypeAlias = Literal["light", "heavy"]
 class AnomalyVariant(BaseModel):
     backbone: str
     backbone_params: Params
+    head_params: Params
 
 
 def get_variant(variant: VariantLiteral) -> AnomalyVariant:
@@ -27,10 +28,12 @@ def get_variant(variant: VariantLiteral) -> AnomalyVariant:
         "light": AnomalyVariant(
             backbone="RecSubNet",
             backbone_params={"variant": "n"},
+            head_params={"variant": "n"},
         ),
         "heavy": AnomalyVariant(
             backbone="RecSubNet",
             backbone_params={"variant": "l"},
+            head_params={"variant": "l"},
         ),
     }
 
@@ -48,10 +51,10 @@ class AnomalyDetectionModel(BasePredefinedModel):
         variant: VariantLiteral = "light",
         backbone: str | None = None,
         backbone_params: Params | None = None,
-        disc_subnet_params: Params | None = None,
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
-        task_name: str | None = None,
+        head_params: Params | None = None,
+        task_name: str = "",
     ):
         var_config = get_variant(variant)
 
@@ -61,7 +64,7 @@ class AnomalyDetectionModel(BasePredefinedModel):
             if backbone is not None or backbone_params is not None
             else var_config.backbone_params
         ) or {}
-        self.disc_subnet_params = disc_subnet_params or {}
+        self.head_params = head_params or var_config.head_params
         self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
         self.task_name = task_name or "anomaly_detection"
@@ -73,14 +76,14 @@ class AnomalyDetectionModel(BasePredefinedModel):
         return [
             ModelNodeConfig(
                 name=self.backbone,
-                alias=f"{self.backbone}-{self.task_name}",
+                alias=f"{self.task_name}-{self.backbone}",
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="DiscSubNetHead",
-                alias=f"DiscSubNetHead-{self.task_name}",
-                inputs=[f"{self.backbone}-{self.task_name}"],
-                params=self.disc_subnet_params,
+                alias=f"{self.task_name}-DiscSubNetHead",
+                inputs=[f"{self.task_name}-{self.backbone}"],
+                params=self.head_params,
             ),
         ]
 
@@ -90,8 +93,7 @@ class AnomalyDetectionModel(BasePredefinedModel):
         return [
             LossModuleConfig(
                 name="ReconstructionSegmentationLoss",
-                alias=f"ReconstructionSegmentationLoss-{self.task_name}",
-                attached_to=f"DiscSubNetHead-{self.task_name}",
+                attached_to=f"{self.task_name}-DiscSubNetHead",
                 params=self.loss_params,
                 weight=1.0,
             )
@@ -103,8 +105,7 @@ class AnomalyDetectionModel(BasePredefinedModel):
         return [
             MetricModuleConfig(
                 name="JaccardIndex",
-                alias=f"JaccardIndex-{self.task_name}",
-                attached_to=f"DiscSubNetHead-{self.task_name}",
+                attached_to=f"{self.task_name}-DiscSubNetHead",
                 params={"num_classes": 2, "task": "multiclass"},
                 is_main_metric=True,
             ),
@@ -117,8 +118,7 @@ class AnomalyDetectionModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="SegmentationVisualizer",
-                alias=f"SegmentationVisualizer-{self.task_name}",
-                attached_to=f"DiscSubNetHead-{self.task_name}",
+                attached_to=f"{self.task_name}-DiscSubNetHead",
                 params=self.visualizer_params,
             )
         ]

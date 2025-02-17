@@ -160,7 +160,7 @@ def draw_keypoint_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
     @return: Image with keypoint labels drawn on.
     """
     _, H, W = img.shape
-    keypoints_unflat = label[:, 1:].reshape(-1, 3)
+    keypoints_unflat = label.reshape(-1, 3)
     keypoints_points = keypoints_unflat[:, :2]
     keypoints_points[:, 0] *= W
     keypoints_points[:, 1] *= H
@@ -427,6 +427,6 @@ def combine_visualizations(
         case _:
             raise ValueError(
                 "Visualization should be either a single tensor or a tuple of "
-                "two tensors or a tuple of a tensor and a list of tensors."
+                "two tensors or a tuple of a tensor and a list of tensors. "
                 f"Got: `{type(visualization)}`."
             )

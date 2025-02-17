@@ -1,9 +1,9 @@
-import logging
 from collections import defaultdict
 from pathlib import Path
 from typing import TypedDict
 
 import onnx
+from loguru import logger
 from luxonis_ml.nn_archive.config_building_blocks import (
     DataType,
 )
@@ -12,15 +12,13 @@ from onnx.onnx_pb import TensorProto
 from luxonis_train.models import LuxonisLightningModule
 from luxonis_train.nodes.heads import BaseHead
 
-logger = logging.getLogger(__name__)
 
-
-class MetadataDict(TypedDict):
+class ArchiveMetadataDict(TypedDict):
     shape: list[int]
     dtype: DataType
 
 
-def get_inputs(path: Path) -> dict[str, MetadataDict]:
+def get_inputs(path: Path) -> dict[str, ArchiveMetadataDict]:
     """Get inputs of a model executable.
 
     @type path: Path
@@ -35,7 +33,7 @@ def get_inputs(path: Path) -> dict[str, MetadataDict]:
         )
 
 
-def get_outputs(path: Path) -> dict[str, MetadataDict]:
+def get_outputs(path: Path) -> dict[str, ArchiveMetadataDict]:
     """Get outputs of a model executable.
 
     @type path: Path
@@ -71,9 +69,9 @@ def _load_onnx_model(onnx_path: Path) -> onnx.ModelProto:
         raise ValueError(f"Failed to load ONNX model: `{onnx_path}`") from e
 
 
-def _get_onnx_outputs(onnx_path: Path) -> dict[str, MetadataDict]:
+def _get_onnx_outputs(onnx_path: Path) -> dict[str, ArchiveMetadataDict]:
     model = _load_onnx_model(onnx_path)
-    outputs: dict[str, MetadataDict] = defaultdict(dict)  # type: ignore
+    outputs: dict[str, ArchiveMetadataDict] = defaultdict(dict)  # type: ignore
 
     for output in model.graph.output:
         shape = [dim.dim_value for dim in output.type.tensor_type.shape.dim]
@@ -85,10 +83,10 @@ def _get_onnx_outputs(onnx_path: Path) -> dict[str, MetadataDict]:
     return outputs
 
 
-def _get_onnx_inputs(onnx_path: Path) -> dict[str, MetadataDict]:
+def _get_onnx_inputs(onnx_path: Path) -> dict[str, ArchiveMetadataDict]:
     model = _load_onnx_model(onnx_path)
 
-    inputs: dict[str, MetadataDict] = defaultdict(dict)  # type: ignore
+    inputs: dict[str, ArchiveMetadataDict] = defaultdict(dict)  # type: ignore
 
     for inp in model.graph.input:
         shape = [dim.dim_value for dim in inp.type.tensor_type.shape.dim]
@@ -100,10 +98,7 @@ def _get_onnx_inputs(onnx_path: Path) -> dict[str, MetadataDict]:
     return inputs
 
 
-def _get_head_outputs(
-    outputs: list[dict],
-    head_name: str,
-) -> list[str]:
+def _get_head_outputs(outputs: list[dict], head_name: str) -> list[str]:
     """Get model outputs in a head-specific format.
 
     @type outputs: list[dict]
@@ -117,7 +112,10 @@ def _get_head_outputs(
 
     output_names = []
     for output in outputs:
-        name = output["name"].split("/")[0]
+        try:
+            _, name, _, _ = output["name"].split("/")
+        except ValueError:
+            name = output["name"]
         if name == head_name:
             output_names.append(output["name"])
 
@@ -125,8 +123,7 @@ def _get_head_outputs(
 
 
 def get_head_configs(
-    lightning_module: LuxonisLightningModule,
-    outputs: list[dict],
+    lightning_module: LuxonisLightningModule, outputs: list[dict]
 ) -> list[dict]:
     """Get model heads.
 

@@ -4,17 +4,15 @@ Source: U{<https://github.com/apple/ml-mobileone>}
 @license: U{Apple<https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
 """
 
-import logging
-from typing import Any, Literal
+from typing import Literal
 
+from loguru import logger
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 
 from .blocks import MobileOneBlock
 from .variants import get_variant
-
-logger = logging.getLogger(__name__)
 
 
 class MobileOne(BaseNode[Tensor, list[Tensor]]):
@@ -26,7 +24,7 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
         width_multipliers: tuple[float, float, float, float] | None = None,
         n_conv_branches: int | None = None,
         use_se: bool | None = None,
-        **kwargs: Any,
+        **kwargs,
     ):
         """MobileOne: An efficient CNN backbone for mobile devices.
 
@@ -142,7 +140,9 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
                 if hasattr(module, "reparameterize"):
                     module.reparameterize()
 
-    def _make_stage(self, planes: int, n_blocks: int, n_se_blocks: int):
+    def _make_stage(
+        self, planes: int, n_blocks: int, n_se_blocks: int
+    ) -> nn.Sequential:
         """Build a stage of MobileOne model.
 
         @type planes: int
@@ -161,7 +161,7 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
             use_se = False
             if n_se_blocks > n_blocks:
                 raise ValueError(
-                    "Number of SE blocks cannot " "exceed number of layers."
+                    "Number of SE blocks cannot exceed number of layers."
                 )
             if ix >= (n_blocks - n_se_blocks):
                 use_se = True

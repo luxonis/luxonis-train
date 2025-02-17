@@ -595,7 +595,7 @@ from luxonis_train import LuxonisLightningModule
 from luxonis_train.utils.registry import CALLBACKS
 
 
-@CALLBACKS.register_module()
+@CALLBACKS.register()
 class CustomCallback(pl.Callback):
     def __init__(self, message: str, **kwargs):
         super().__init__(**kwargs)
@@ -616,12 +616,12 @@ class CustomCallback(pl.Callback):
 ```python
 from torch import Tensor
 
-from luxonis_train import BaseLoss, TaskType
+from luxonis_train import BaseLoss, Tasks
 
 # Subclasses of `BaseNode`, `BaseLoss`, `BaseMetric`
 # and `BaseVisualizer` are registered automatically.
 class CustomLoss(BaseLoss):
-    supported_tasks = [TaskType.CLASSIFICATION, TaskType.SEGMENTATION]
+    supported_tasks = [Tasks.CLASSIFICATION, Tasks.SEGMENTATION]
 
     def __init__(self, smoothing: float, **kwargs):
         super().__init__(**kwargs)

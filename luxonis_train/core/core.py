@@ -2,7 +2,6 @@ import os.path as osp
 import signal
 import threading
 from collections.abc import Mapping
-from logging import getLogger
 from pathlib import Path
 from typing import Any, Literal, overload
 
@@ -13,10 +12,10 @@ import torch
 import torch.utils.data as torch_data
 import yaml
 from lightning.pytorch.utilities import rank_zero_only
-from luxonis_ml.data import Augmentations
+from loguru import logger
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
-from luxonis_ml.utils import LuxonisFileSystem, reset_logging, setup_logging
+from luxonis_ml.utils import LuxonisFileSystem
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
@@ -26,7 +25,11 @@ from luxonis_train.callbacks import (
 from luxonis_train.config import Config
 from luxonis_train.loaders import BaseLoaderTorch, collate_fn
 from luxonis_train.models import LuxonisLightningModule
-from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
+from luxonis_train.utils import (
+    DatasetMetadata,
+    LuxonisTrackerPL,
+    setup_logging,
+)
 from luxonis_train.utils.registry import LOADERS
 
 from .utils.export_utils import (
@@ -43,8 +46,6 @@ from .utils.infer_utils import (
     infer_from_video,
 )
 from .utils.train_utils import create_trainer
-
-logger = getLogger(__name__)
 
 
 class LuxonisModel:
@@ -76,6 +77,8 @@ class LuxonisModel:
         else:
             self.cfg = Config.get_config(cfg, opts)
 
+        self.cfg_preprocessing = self.cfg.trainer.preprocessing
+
         rich.traceback.install(suppress=[pl, torch], show_locals=False)
 
         self.tracker = LuxonisTrackerPL(
@@ -91,10 +94,7 @@ class LuxonisModel:
         self.log_file = osp.join(self.run_save_dir, "luxonis_train.log")
         self.error_message = None
 
-        # NOTE: to add the file handler (we only get the save dir now,
-        # but we want to use the logger before)
-        reset_logging()
-        setup_logging(file=self.log_file, use_rich=True)
+        setup_logging(file=self.log_file)
 
         # NOTE: overriding logger in pl so it uses our logger to log device info
         rank_zero_module.log = logger
@@ -113,26 +113,6 @@ class LuxonisModel:
             precision=self.cfg.trainer.precision,
         )
 
-        self.train_augmentations = Augmentations(
-            image_size=self.cfg.trainer.preprocessing.train_image_size,
-            augmentations=[
-                i.model_dump()
-                for i in self.cfg.trainer.preprocessing.get_active_augmentations()
-            ],
-            train_rgb=self.cfg.trainer.preprocessing.train_rgb,
-            keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
-        )
-        self.val_augmentations = Augmentations(
-            image_size=self.cfg.trainer.preprocessing.train_image_size,
-            augmentations=[
-                i.model_dump()
-                for i in self.cfg.trainer.preprocessing.get_active_augmentations()
-            ],
-            train_rgb=self.cfg.trainer.preprocessing.train_rgb,
-            keep_aspect_ratio=self.cfg.trainer.preprocessing.keep_aspect_ratio,
-            only_normalize=True,
-        )
-
         self.loaders: dict[str, BaseLoaderTorch] = {}
         for view in ["train", "val", "test"]:
             loader_name = self.cfg.loader.name
@@ -141,19 +121,21 @@ class LuxonisModel:
                 self.cfg.loader.params["delete_existing"] = False
 
             self.loaders[view] = Loader(
-                augmentations=(
-                    self.train_augmentations
-                    if view == "train"
-                    else self.val_augmentations
-                ),
                 view={
                     "train": self.cfg.loader.train_view,
                     "val": self.cfg.loader.val_view,
                     "test": self.cfg.loader.test_view,
                 }[view],
                 image_source=self.cfg.loader.image_source,
-                **self.cfg.loader.params,
+                height=self.cfg_preprocessing.train_image_size.height,
+                width=self.cfg_preprocessing.train_image_size.width,
+                augmentation_config=self.cfg_preprocessing.get_active_augmentations(),
+                color_space=self.cfg_preprocessing.color_space,
+                keep_aspect_ratio=self.cfg_preprocessing.keep_aspect_ratio,
+                **self.cfg.loader.params,  # type: ignore
             )
+
+        self.loader_metadata_types = self.loaders["train"].get_metadata_types()
 
         for name, loader in self.loaders.items():
             logger.info(
@@ -212,8 +194,8 @@ class LuxonisModel:
         self.dataset_metadata = DatasetMetadata.from_loader(
             self.loaders["train"]
         )
-
-        self.cfg.save_data(osp.join(self.run_save_dir, "config.yaml"))
+        self.config_file = osp.join(self.run_save_dir, "training_config.yaml")
+        self.cfg.save_data(self.config_file)
 
         self.input_shapes = self.loaders["train"].input_shapes
 
@@ -227,7 +209,7 @@ class LuxonisModel:
 
         self._exported_models: dict[str, Path] = {}
 
-    def _train(self, resume: str | None, *args, **kwargs):
+    def _train(self, resume: str | None, *args, **kwargs) -> None:
         status = "success"
         try:
             self.pl_trainer.fit(*args, ckpt_path=resume, **kwargs)
@@ -237,6 +219,7 @@ class LuxonisModel:
             raise e
         finally:
             self.tracker.upload_artifact(self.log_file, typ="logs")
+            self.tracker.upload_artifact(self.config_file, typ="config")
             self.tracker._finalize(status)
 
     def train(
@@ -264,7 +247,7 @@ class LuxonisModel:
                 LuxonisFileSystem.download(resume_weights, self.run_save_dir)
             )
 
-        def graceful_exit(signum: int, _):  # pragma: no cover
+        def graceful_exit(signum: int, _: Any) -> None:  # pragma: no cover
             logger.info(
                 f"{signal.Signals(signum).name} received, stopping training..."
             )
@@ -280,6 +263,12 @@ class LuxonisModel:
 
         if not new_thread:
             logger.info(f"Checkpoints will be saved in: {self.run_save_dir}")
+            if self.cfg.trainer.resume_training:
+                if resume_weights is not None:
+                    logger.warning(
+                        "Resume weights provided in the command line, but resume_training in config is set to True. Ignoring resume weights provided in the command line."
+                    )
+                resume_weights = self.cfg.model.weights  # type: ignore
             logger.info("Starting training...")
             self._train(
                 resume_weights,
@@ -313,6 +302,7 @@ class LuxonisModel:
         self,
         onnx_save_path: str | Path | None = None,
         weights: str | Path | None = None,
+        ignore_missing_weights: bool = False,
     ) -> None:
         """Runs export.
 
@@ -326,12 +316,15 @@ class LuxonisModel:
             configuration file will be used. The current weights of the
             model will be temporarily replaced with the weights from the
             specified checkpoint.
+        @type ignore_missing_weights: bool
+        @param ignore_missing_weights: If set to True, the warning about
+            missing weights will be suppressed.
         @raises RuntimeError: If C{onnxsim} fails to simplify the model.
         """
 
         weights = weights or self.cfg.model.weights
 
-        if weights is None:
+        if not ignore_missing_weights and weights is None:
             logger.warning(
                 "No model weights specified. Exporting model without weights."
             )
@@ -555,9 +548,27 @@ class LuxonisModel:
             ]
             cfg = Config.get_config(cfg_copy.model_dump(), curr_params)
 
+            unsupported_callbacks = {
+                "UploadCheckpoint",
+                "ExportOnTrainEnd",
+                "ArchiveOnTrainEnd",
+                "TestOnTrainEnd",
+            }
+
+            filtered_callbacks = []
+            for cb in cfg.trainer.callbacks:
+                if cb.name in unsupported_callbacks:
+                    logger.warning(
+                        f"Callback '{cb.name}' is not supported for tunning and is removed from the callbacks list."
+                    )
+                else:
+                    filtered_callbacks.append(cb)
+
+            cfg.trainer.callbacks = filtered_callbacks
+
             child_tracker.log_hyperparams(curr_params)
 
-            cfg.save_data(osp.join(run_save_dir, "config.yaml"))
+            cfg.save_data(osp.join(run_save_dir, "training_config.yaml"))
 
             lightning_module = LuxonisLightningModule(
                 cfg=cfg,
@@ -598,14 +609,6 @@ class LuxonisModel:
             except optuna.TrialPruned as e:
                 logger.info(e)
 
-            if (
-                "val/loss" not in pl_trainer.callback_metrics
-            ):  # pragma: no cover
-                raise ValueError(
-                    "No validation loss found. "
-                    "This can happen if `TestOnTrainEnd` callback is used."
-                )
-
             return pl_trainer.callback_metrics["val/loss"].item()
 
         cfg_tuner = self.cfg.tuner
@@ -614,9 +617,7 @@ class LuxonisModel:
                 "You have to specify the `tuner` section in config."
             )
 
-        all_augs = [
-            a.name for a in self.cfg.trainer.preprocessing.augmentations
-        ]
+        all_augs = [a.name for a in self.cfg_preprocessing.augmentations]
         rank = rank_zero_only.rank
         cfg_tracker = self.cfg.tracker
         tracker_params = cfg_tracker.model_dump()
@@ -720,7 +721,7 @@ class LuxonisModel:
             logger.warning("No model executable specified for archiving.")
             if "onnx" not in self._exported_models:
                 logger.info("Exporting model to ONNX...")
-                self.export()
+                self.export(ignore_missing_weights=True)
             path = self._exported_models["onnx"]
 
         path = Path(path)
@@ -732,15 +733,9 @@ class LuxonisModel:
             return [round(x * 255.0, 5) for x in lst]
 
         preprocessing = {  # TODO: keep preprocessing same for each input?
-            "mean": _mult(
-                self.cfg.trainer.preprocessing.normalize.params["mean"]
-            ),
-            "scale": _mult(
-                self.cfg.trainer.preprocessing.normalize.params["std"]
-            ),
-            "reverse_channels": self.cfg.trainer.preprocessing.train_rgb,
-            "interleaved_to_planar": False,  # TODO: make it modifiable?
-            "dai_type": "RGB888p",
+            "mean": _mult(self.cfg_preprocessing.normalize.params["mean"]),
+            "scale": _mult(self.cfg_preprocessing.normalize.params["std"]),
+            "dai_type": f"{self.cfg_preprocessing.color_space}888p",
         }
 
         inputs_dict = get_inputs(path)
@@ -765,10 +760,7 @@ class LuxonisModel:
                 }
             )
 
-        heads = get_head_configs(
-            self.lightning_module,
-            outputs,
-        )
+        heads = get_head_configs(self.lightning_module, outputs)
 
         model = {
             "metadata": {

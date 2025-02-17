@@ -1,27 +1,28 @@
-import glob
-import os
 import random
-from typing import Callable, List
+from collections.abc import Generator
+from contextlib import contextmanager
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 from luxonis_ml.utils import LuxonisFileSystem
 from torch import Tensor
+from typing_extensions import override
 
-from luxonis_train.enums import TaskType
+from luxonis_train.utils.types import Labels
 
-from .base_loader import LuxonisLoaderTorchOutput
 from .luxonis_loader_torch import LuxonisLoaderTorch
 from .perlin import apply_anomaly_to_img
 
 
 class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
+    @override
     def __init__(
         self,
         *args,
         anomaly_source_path: str,
         noise_prob: float = 0.5,
+        beta: float | None = None,
         **kwargs,
     ):
         """Custom loader for Luxonis datasets that adds Perlin noise
@@ -32,79 +33,89 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         @param noise_prob: The probability with which to apply Perlin
             noise (only used during training).
         """
-        if not anomaly_source_path:
-            raise ValueError("anomaly_source_path must be a valid string.")
-
         super().__init__(*args, **kwargs)
-        lux_fs = LuxonisFileSystem(path=anomaly_source_path)
-        if lux_fs.protocol in ["s3", "gcs"]:
-            anomaly_source_path = str(
-                lux_fs.get_dir(
-                    remote_paths=[anomaly_source_path], local_dir="./data"
-                )
-            )
-        else:
-            anomaly_source_path = str(lux_fs.path)
 
-        if anomaly_source_path and os.path.exists(anomaly_source_path):
-            self.anomaly_source_paths = sorted(
-                glob.glob(os.path.join(anomaly_source_path, "*/*.jpg"))
+        try:
+            self.anomaly_source_path = LuxonisFileSystem.download(
+                anomaly_source_path, dest="./data"
             )
-            if not self.anomaly_source_paths:
-                raise FileNotFoundError(
-                    "No .jpg files found at the specified path."
-                )
-        else:
-            raise ValueError("Invalid or unspecified anomaly source path.")
+        except Exception as e:
+            raise FileNotFoundError(
+                "The anomaly source path is invalid."
+            ) from e
 
-        self.anomaly_source_path = anomaly_source_path
+        from luxonis_train.core.utils.infer_utils import IMAGE_FORMATS
+
+        self.anomaly_files = [
+            f
+            for f in self.anomaly_source_path.rglob("*")
+            if f.suffix.lower() in IMAGE_FORMATS
+        ]
+        if not self.anomaly_files:
+            raise FileNotFoundError(
+                "No image files found at the specified path."
+            )
+
         self.noise_prob = noise_prob
-        self.base_loader.add_background = True  # type: ignore
-        self.base_loader.class_mappings["segmentation"]["background"] = 0
-        self.base_loader.class_mappings["segmentation"] = {
-            k: (v + 1 if k != "background" else v)
-            for k, v in self.base_loader.class_mappings["segmentation"].items()
-        }
+        if len(self.loader.dataset.get_tasks()) > 1:
+            # TODO: Can be extended to multiple tasks
+            raise ValueError(
+                "This loader only supports datasets with a single task."
+            )
+        self.beta = beta
+        self.task_name = next(iter(self.loader.dataset.get_tasks()))
+        self.augmentations = self.loader.augmentations
 
-        if (
-            self.augmentations is None
-            or self.augmentations.pixel_transform is None
-        ):
-            self.pixel_augs: List[Callable] = []
-        else:
-            self.pixel_augs: List[Callable] = [
-                transform
-                for transform in self.augmentations.pixel_transform.transforms
-            ]
-
-    def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
-        img, labels = self.base_loader[idx]
+    @override
+    def get(self, idx: int) -> tuple[Tensor, Labels]:
+        with _freeze_seed():
+            img, labels = self.loader[idx]
 
         img = np.transpose(img, (2, 0, 1))
-        tensor_img = Tensor(img)
+        tensor_img = torch.tensor(img)
+        tensor_labels = self.dict_numpy_to_torch(labels)
 
-        if self.view[0] == "train" and random.random() < self.noise_prob:
-            aug_tensor_img, an_mask = apply_anomaly_to_img(
-                tensor_img,
-                anomaly_source_paths=self.anomaly_source_paths,
-                pixel_augs=self.pixel_augs,
-            )
+        if self.view[0] == "train":
+            if random.random() < self.noise_prob:
+                anomaly_path = random.choice(self.anomaly_files)
+                anomaly_img = self.read_image(str(anomaly_path))
+
+                if self.augmentations is not None:
+                    anomaly_img = self.augmentations.apply(
+                        [(anomaly_img, {})]
+                    )[0]
+
+                anomaly_img = torch.tensor(anomaly_img).permute(2, 0, 1)
+                aug_tensor_img, an_mask = apply_anomaly_to_img(
+                    tensor_img, anomaly_img, self.beta
+                )
+            else:
+                aug_tensor_img = tensor_img
+                an_mask = torch.zeros((self.height, self.width))
         else:
             aug_tensor_img = tensor_img
-            h, w = aug_tensor_img.shape[-2:]
-            an_mask = torch.zeros((h, w))
+            an_mask = torch.tensor(
+                labels.pop(f"{self.task_name}/segmentation")
+            )[-1, ...]
 
-        tensor_labels = {"original": (tensor_img, TaskType.ARRAY)}
-        if self.view[0] == "train":
-            tensor_labels["segmentation"] = (
-                F.one_hot(an_mask.long(), 2).permute(2, 0, 1).float(),
-                TaskType.SEGMENTATION,
-            )
-        else:
-            for task, (array, label_type) in labels.items():
-                tensor_labels[task] = (
-                    Tensor(array),
-                    TaskType(label_type.value),
-                )
+        an_mask = F.one_hot(an_mask.long(), 2).permute(2, 0, 1).float()
 
-        return {self.image_source: aug_tensor_img}, tensor_labels
+        tensor_labels = {
+            f"{self.task_name}/original_segmentation": tensor_img,
+            f"{self.task_name}/segmentation": an_mask,
+        }
+
+        return aug_tensor_img, tensor_labels
+
+    @override
+    def get_classes(self) -> dict[str, list[str]]:
+        return {self.task_name: ["background", "anomaly"]}
+
+
+@contextmanager
+def _freeze_seed() -> Generator:
+    python_seed = random.getstate()
+    numpy_seed = np.random.get_state()
+    yield
+    random.setstate(python_seed)
+    np.random.set_state(numpy_seed)

@@ -143,7 +143,7 @@ class TaskAlignedAssigner(nn.Module):
         pred_bboxes: Tensor,
         gt_labels: Tensor,
         gt_bboxes: Tensor,
-    ):
+    ) -> tuple[Tensor, Tensor]:
         """Calculates anchor alignment metric and IoU between GTs and
         predicted bboxes.
 
@@ -155,7 +155,11 @@ class TaskAlignedAssigner(nn.Module):
         @param gt_labels: Initial GT labels [bs, n_max_boxes, 1]
         @type gt_bboxes: Tensor
         @param gt_bboxes: Initial GT bboxes [bs, n_max_boxes, 4]
+        @rtype: tuple[Tensor, Tensor]
+        @return: Anchor alignment metric and IoU between GTs and
+            predicted bboxes.
         """
+
         pred_scores = pred_scores.permute(0, 2, 1)
         gt_labels = gt_labels.to(torch.long)
         ind = torch.zeros([2, self.bs, self.n_max_boxes], dtype=torch.long)
@@ -175,7 +179,7 @@ class TaskAlignedAssigner(nn.Module):
         metrics: Tensor,
         largest: bool = True,
         topk_mask: Tensor | None = None,
-    ):
+    ) -> Tensor:
         """Selects k anchors based on provided metrics tensor.
 
         @type metrics: Tensor
@@ -255,5 +259,4 @@ class TaskAlignedAssigner(nn.Module):
             assigned_labels,
             torch.full_like(assigned_labels, self.n_classes),
         )
-
         return assigned_labels, assigned_bboxes, assigned_scores

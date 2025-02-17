@@ -1,8 +1,8 @@
 # strategies/triple_lr_sgd.py
 import math
 
+import lightning.pytorch as pl
 import numpy as np
-import pytorch_lightning as pl
 import torch
 from torch.optim import SGD
 from torch.optim.lr_scheduler import LambdaLR
@@ -36,22 +36,28 @@ class TripleLRScheduler:
             "warmup_bias_lr": 0.1,
             "warmup_momentum": 0.8,
             "lre": 0.0002,
+            "cosine_annealing": True,
         }
         if params:
             self.params.update(params)
         self.max_stepnum = max_stepnum
         self.warmup_stepnum = max(
-            round(self.params["warmup_epochs"] * self.max_stepnum), 1000
+            round(self.params["warmup_epochs"] * self.max_stepnum), 100
         )
         self.step = 0
         self.lrf = self.params["lre"] / self.optimizer.defaults["lr"]
-        self.lf = (
-            lambda x: ((1 - math.cos(x * math.pi / epochs)) / 2)
-            * (self.lrf - 1)
-            + 1
-        )
+        if self.params["cosine_annealing"]:
+            self.lf = (
+                lambda x: ((1 - math.cos(x * math.pi / epochs)) / 2)
+                * (self.lrf - 1)
+                + 1
+            )
+        else:
+            self.lf = (
+                lambda x: max(1 - x / epochs, 0) * (1.0 - self.lrf) + self.lrf
+            )
 
-    def create_scheduler(self):
+    def create_scheduler(self) -> LambdaLR:
         scheduler = LambdaLR(self.optimizer, lr_lambda=self.lf)
         return scheduler
 
@@ -103,7 +109,7 @@ class TripleLRSGD:
         if params:
             self.params.update(params)
 
-    def create_optimizer(self):
+    def create_optimizer(self) -> torch.optim.Optimizer:
         batch_norm_weights, regular_weights, biases = [], [], []
 
         for module in self.model.modules():
@@ -147,7 +153,16 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
         @type pl_module: pl.LightningModule
         @param pl_module: The pl_module to be used.
         @type params: dict
-        @param params: The parameters for the strategy.
+        @param params: The parameters for the strategy. Those are:
+            - lr: The learning rate.
+            - momentum: The momentum.
+            - weight_decay: The weight decay.
+            - nesterov: Whether to use nesterov.
+            - warmup_epochs: The number of warmup epochs.
+            - warmup_bias_lr: The warmup bias learning rate.
+            - warmup_momentum: The warmup momentum.
+            - lre: The learning rate for the end of the training.
+            - cosine_annealing: Whether to use cosine annealing.
         """
         super().__init__(pl_module)
         self.model = pl_module
@@ -166,6 +181,6 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
     def configure_optimizers(self) -> tuple[list[Optimizer], list[LambdaLR]]:
         return [self.optimizer], [self.scheduler.create_scheduler()]
 
-    def update_parameters(self, *args, **kwargs):
+    def update_parameters(self, *args, **kwargs) -> None:
         current_epoch = self.model.current_epoch
         self.scheduler.update_learning_rate(current_epoch)

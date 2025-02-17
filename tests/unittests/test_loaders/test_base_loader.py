@@ -2,7 +2,6 @@ import pytest
 import torch
 from torch import Size
 
-from luxonis_train.enums import TaskType
 from luxonis_train.loaders import collate_fn
 
 
@@ -40,22 +39,12 @@ def test_collate_fn(
             inputs[name] = torch.rand(shape, dtype=torch.float32)
 
         labels = {
-            "classification": (
-                torch.randint(0, 2, (2,), dtype=torch.int64),
-                TaskType.CLASSIFICATION,
+            "/classification": (torch.randint(0, 2, (2,), dtype=torch.int64)),
+            "/segmentation": (
+                torch.randint(0, 2, (1, 224, 224), dtype=torch.int64)
             ),
-            "segmentation": (
-                torch.randint(0, 2, (1, 224, 224), dtype=torch.int64),
-                TaskType.SEGMENTATION,
-            ),
-            "keypoints": (
-                torch.rand(1, 52, dtype=torch.float32),
-                TaskType.KEYPOINTS,
-            ),
-            "boundingbox": (
-                torch.rand(1, 5, dtype=torch.float32),
-                TaskType.BOUNDINGBOX,
-            ),
+            "/keypoints": (torch.rand(1, 52, dtype=torch.float32)),
+            "/boundingbox": (torch.rand(1, 5, dtype=torch.float32)),
         }
 
         return inputs, labels
@@ -69,26 +58,26 @@ def test_collate_fn(
         assert inputs["features"].dtype == torch.float32
 
     with subtests.test("classification"):
-        assert "classification" in annotations
-        assert annotations["classification"][0].shape == (batch_size, 2)
-        assert annotations["classification"][0].dtype == torch.int64
+        assert "/classification" in annotations
+        assert annotations["/classification"].shape == (batch_size, 2)
+        assert annotations["/classification"].dtype == torch.int64
 
     with subtests.test("segmentation"):
-        assert "segmentation" in annotations
-        assert annotations["segmentation"][0].shape == (
+        assert "/segmentation" in annotations
+        assert annotations["/segmentation"].shape == (
             batch_size,
             1,
             224,
             224,
         )
-        assert annotations["segmentation"][0].dtype == torch.int64
+        assert annotations["/segmentation"].dtype == torch.int64
 
     with subtests.test("keypoints"):
-        assert "keypoints" in annotations
-        assert annotations["keypoints"][0].shape == (batch_size, 53)
-        assert annotations["keypoints"][0].dtype == torch.float32
+        assert "/keypoints" in annotations
+        assert annotations["/keypoints"].shape == (batch_size, 53)
+        assert annotations["/keypoints"].dtype == torch.float32
 
     with subtests.test("boundingbox"):
-        assert "boundingbox" in annotations
-        assert annotations["boundingbox"][0].shape == (batch_size, 6)
-        assert annotations["boundingbox"][0].dtype == torch.float32
+        assert "/boundingbox" in annotations
+        assert annotations["/boundingbox"].shape == (batch_size, 6)
+        assert annotations["/boundingbox"].dtype == torch.float32

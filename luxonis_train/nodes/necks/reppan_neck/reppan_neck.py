@@ -1,6 +1,6 @@
-import logging
-from typing import Any, Literal
+from typing import Literal
 
+from loguru import logger
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
@@ -10,11 +10,11 @@ from luxonis_train.utils import make_divisible
 from .blocks import CSPDownBlock, CSPUpBlock, RepDownBlock, RepUpBlock
 from .variants import VariantLiteral, get_variant, get_variant_weights
 
-logger = logging.getLogger(__name__)
-
 
 class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
     in_channels: list[int]
+    in_width: list[int]
+    in_height: list[int]
 
     def __init__(
         self,
@@ -28,7 +28,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         csp_e: float | None = None,
         download_weights: bool = False,
         initialize_weights: bool = True,
-        **kwargs: Any,
+        **kwargs,
     ):
         """Implementation of the RepPANNeck module. Supports the version
         with RepBlock and CSPStackRepBlock (for larger networks)
@@ -71,6 +71,27 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         """
 
         super().__init__(**kwargs)
+
+        if (
+            self.original_in_shape[-1] % 32 != 0
+            or self.original_in_shape[-2] % 32 != 0
+        ):
+            logger.warning(
+                "Image dimensions should be divisible by 32. This may cause 'RepPANNeck' to crash."
+            )
+
+        for i in range(1, n_heads):
+            if (
+                (
+                    self.in_width[-i] * 2 != self.in_width[-i - 1]
+                    or self.in_height[-i] * 2 != self.in_height[-i - 1]
+                )
+                and self.attach_index == "all"
+            ):  # TODO: fix the attach_index and this condition
+                raise ValueError(
+                    f"Expected width and height of feature map at index {len(self.in_width) - i} to be half of those at index {len(self.in_width) - i - 1}. "
+                    f"Image shape {self.original_in_shape} must be divisible by 32 to avoid 'RepPANNeck' crashing."
+                )
 
         self.n_heads = n_heads
 
@@ -180,7 +201,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
                     f"No checkpoint available for {self.name}, skipping."
                 )
 
-    def initialize_weights(self):
+    def initialize_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 pass

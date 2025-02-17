@@ -202,29 +202,32 @@ loader:
 
 Here you can change everything related to actual training of the model.
 
-| Key                       | Type                                           | Default value | Description                                                                                                                                      |
-| ------------------------- | ---------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `seed`                    | `int`                                          | `None`        | Seed for reproducibility                                                                                                                         |
-| `deterministic`           | `bool \| "warn" \| None`                       | `None`        | Whether PyTorch should use deterministic backend                                                                                                 |
-| `batch_size`              | `int`                                          | `32`          | Batch size used for training                                                                                                                     |
-| `accumulate_grad_batches` | `int`                                          | `1`           | Number of batches for gradient accumulation                                                                                                      |
-| `use_weighted_sampler`    | `bool`                                         | `False`       | Whether to use `WeightedRandomSampler` for training, only works with classification tasks                                                        |
-| `epochs`                  | `int`                                          | `100`         | Number of training epochs                                                                                                                        |
-| `n_workers`               | `int`                                          | `4`           | Number of workers for data loading                                                                                                               |
-| `validation_interval`     | `int`                                          | `5`           | Frequency of computing metrics on validation data                                                                                                |
-| `n_log_images`            | `int`                                          | `4`           | Maximum number of images to visualize and log                                                                                                    |
-| `skip_last_batch`         | `bool`                                         | `True`        | Whether to skip last batch while training                                                                                                        |
-| `accelerator`             | `Literal["auto", "cpu", "gpu"]`                | `"auto"`      | What accelerator to use for training                                                                                                             |
-| `devices`                 | `int \| list[int] \| str`                      | `"auto"`      | Either specify how many devices to use (int), list specific devices, or use "auto" for automatic configuration based on the selected accelerator |
-| `matmul_precision`        | `Literal["medium", "high", "highest"] \| None` | `None`        | Sets the internal precision of float32 matrix multiplications                                                                                    |
-| `strategy`                | `Literal["auto", "ddp"]`                       | `"auto"`      | What strategy to use for training                                                                                                                |
-| `n_sanity_val_steps`      | `int`                                          | `2`           | Number of sanity validation steps performed before training                                                                                      |
-| `profiler`                | `Literal["simple", "advanced"] \| None`        | `None`        | PL profiler for GPU/CPU/RAM utilization analysis                                                                                                 |
-| `verbose`                 | `bool`                                         | `True`        | Print all intermediate results to console                                                                                                        |
-| `pin_memory`              | `bool`                                         | `True`        | Whether to pin memory in the `DataLoader`                                                                                                        |
-| `save_top_k`              | `-1 \| NonNegativeInt`                         | `3`           | Save top K checkpoints based on validation loss when training                                                                                    |
-| `n_validation_batches`    | `PositiveInt \| None`                          | `None`        | Limits the number of validation/test batches and makes the val/test loaders deterministic                                                        |
-| `smart_cfg_auto_populate` | `bool`                                         | `True`        | Automatically populate sensible default values for missing config fields and log warnings                                                        |
+| Key                       | Type                                           | Default value | Description                                                                                                                                                                                            |
+| ------------------------- | ---------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `seed`                    | `int`                                          | `None`        | Seed for reproducibility                                                                                                                                                                               |
+| `deterministic`           | `bool \| "warn" \| None`                       | `None`        | Whether PyTorch should use deterministic backend                                                                                                                                                       |
+| `batch_size`              | `int`                                          | `32`          | Batch size used for training                                                                                                                                                                           |
+| `accumulate_grad_batches` | `int`                                          | `1`           | Number of batches for gradient accumulation                                                                                                                                                            |
+| `gradient_clip_val`       | `NonNegativeFloat \| None`                     | `None`        | Value for gradient clipping. If `None`, gradient clipping is disabled. Clipping can help prevent exploding gradients.                                                                                  |
+| `gradient_clip_algorithm` | `Literal["norm", "value"] \| None`             | `None`        | Algorithm to use for gradient clipping. Options are `"norm"` (clip by norm) or `"value"` (clip element-wise).                                                                                          |
+| `use_weighted_sampler`    | `bool`                                         | `False`       | Whether to use `WeightedRandomSampler` for training, only works with classification tasks                                                                                                              |
+| `epochs`                  | `int`                                          | `100`         | Number of training epochs                                                                                                                                                                              |
+| `n_workers`               | `int`                                          | `4`           | Number of workers for data loading                                                                                                                                                                     |
+| `validation_interval`     | `int`                                          | `5`           | Frequency of computing metrics on validation data                                                                                                                                                      |
+| `n_log_images`            | `int`                                          | `4`           | Maximum number of images to visualize and log                                                                                                                                                          |
+| `skip_last_batch`         | `bool`                                         | `True`        | Whether to skip last batch while training                                                                                                                                                              |
+| `accelerator`             | `Literal["auto", "cpu", "gpu"]`                | `"auto"`      | What accelerator to use for training                                                                                                                                                                   |
+| `devices`                 | `int \| list[int] \| str`                      | `"auto"`      | Either specify how many devices to use (int), list specific devices, or use "auto" for automatic configuration based on the selected accelerator                                                       |
+| `matmul_precision`        | `Literal["medium", "high", "highest"] \| None` | `None`        | Sets the internal precision of float32 matrix multiplications                                                                                                                                          |
+| `strategy`                | `Literal["auto", "ddp"]`                       | `"auto"`      | What strategy to use for training                                                                                                                                                                      |
+| `n_sanity_val_steps`      | `int`                                          | `2`           | Number of sanity validation steps performed before training                                                                                                                                            |
+| `profiler`                | `Literal["simple", "advanced"] \| None`        | `None`        | PL profiler for GPU/CPU/RAM utilization analysis                                                                                                                                                       |
+| `verbose`                 | `bool`                                         | `True`        | Print all intermediate results to console                                                                                                                                                              |
+| `pin_memory`              | `bool`                                         | `True`        | Whether to pin memory in the `DataLoader`                                                                                                                                                              |
+| `save_top_k`              | `-1 \| NonNegativeInt`                         | `3`           | Save top K checkpoints based on validation loss when training                                                                                                                                          |
+| `n_validation_batches`    | `PositiveInt \| None`                          | `None`        | Limits the number of validation/test batches and makes the val/test loaders deterministic                                                                                                              |
+| `smart_cfg_auto_populate` | `bool`                                         | `True`        | Automatically populate sensible default values for missing config fields and log warnings                                                                                                              |
+| `resume_training`         | `bool`                                         | `False`       | Whether to resume training from a checkpoint. Loads not only the weights from `model.weights` but also the `optimizer state`, `scheduler state`, and other training parameters to continue seamlessly. |
 
 ```yaml
 
@@ -232,7 +235,7 @@ trainer:
   accelerator: "auto"
   devices: "auto"
   strategy: "auto"
-
+  resume_training: true
   n_sanity_val_steps: 1
   profiler: null
   verbose: true
@@ -247,6 +250,21 @@ trainer:
   save_top_k: 3
   smart_cfg_auto_populate: true
 ```
+
+### Model Fine-Tuning Options
+
+#### 1. **Fine-Tuning with Custom Configuration Example**
+
+- Do **not** set the `resume_training` flag to `true`.
+- Specify a **new LR** in the config (e.g., `0.1`), overriding the previous LR (e.g., `0.001`).
+- Training starts at the new LR, with the scheduler/optimizer reset (can use different schedulers/optimizers than the base run).
+
+#### 2. **Resume Training Continuously Example**
+
+- Use the `resume_training` flag to continue training from the last checkpoint specified in `model.weights`.
+- LR starts at the value where the previous run ended, maintaining continuity in the scheduler (e.g., combined LR plot would shows a seamless curve).
+- For example:
+  - Resuming training with extended epochs (e.g., 400 epochs after 300) and adjusted `T_max` (e.g., 400 after 300 for cosine annealing) and `eta_min` (e.g., 10x less than before) will use the final learning rate (LR) from the previous run. This ignores the initial LR specified in the config and finishes with the new `eta_min` LR.
 
 ### Smart Configuration Auto-population
 
@@ -278,14 +296,14 @@ We use [`Albumentations`](https://albumentations.ai/docs/) library for `augmenta
 
 Additionally, we support `Mosaic4` and `MixUp` batch augmentations and letterbox resizing if `keep_aspect_ratio: true`.
 
-| Key                 | Type         | Default value | Description                                                                                                                                                             |
-| ------------------- | ------------ | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `train_image_size`  | `list[int]`  | `[256, 256]`  | Image size used for training as `[height, width]`                                                                                                                       |
-| `keep_aspect_ratio` | `bool`       | `True`        | Whether to keep the aspect ratio while resizing                                                                                                                         |
-| `train_rgb`         | `bool`       | `True`        | Whether to train on RGB or BGR images                                                                                                                                   |
-| `normalize.active`  | `bool`       | `True`        | Whether to use normalization                                                                                                                                            |
-| `normalize.params`  | `dict`       | `{}`          | Parameters for normalization, see [Normalize](https://albumentations.ai/docs/api_reference/augmentations/transforms/#albumentations.augmentations.transforms.Normalize) |
-| `augmentations`     | `list[dict]` | `[]`          | List of `Albumentations` augmentations                                                                                                                                  |
+| Key                 | Type                    | Default value | Description                                                                                                                                                             |
+| ------------------- | ----------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `train_image_size`  | `list[int]`             | `[256, 256]`  | Image size used for training as `[height, width]`                                                                                                                       |
+| `keep_aspect_ratio` | `bool`                  | `True`        | Whether to keep the aspect ratio while resizing                                                                                                                         |
+| `color_space`       | `Literal["RGB", "BGR"]` | `"RGB"`       | Whether to train on RGB or BGR images                                                                                                                                   |
+| `normalize.active`  | `bool`                  | `True`        | Whether to use normalization                                                                                                                                            |
+| `normalize.params`  | `dict`                  | `{}`          | Parameters for normalization, see [Normalize](https://albumentations.ai/docs/api_reference/augmentations/transforms/#albumentations.augmentations.transforms.Normalize) |
+| `augmentations`     | `list[dict]`            | `[]`          | List of `Albumentations` augmentations                                                                                                                                  |
 
 #### Augmentations
 
@@ -304,7 +322,7 @@ trainer:
     # using YAML capture to reuse the image size
     train_image_size: [&height 384, &width 384]
     keep_aspect_ratio: true
-    train_rgb: true
+    color_space: "RGB"
     normalize:
       active: true
     augmentations:
@@ -416,7 +434,7 @@ Each training strategy is a dictionary with the following fields:
 ```yaml
 training_strategy:
   name: "TripleLRSGDStrategy"
-  params: 
+  params:
     warmup_epochs: 3
     warmup_bias_lr: 0.1
     warmup_momentum: 0.8
@@ -425,6 +443,7 @@ training_strategy:
     momentum: 0.937
     weight_decay: 0.0005
     nesterov: True
+    cosine_annealing: True
 ```
 
 ## Exporter

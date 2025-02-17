@@ -13,17 +13,18 @@ def get_opts_backbone(backbone: str) -> dict[str, Any]:
             "nodes": [
                 {
                     "name": backbone,
+                    "params": {"variant": "n"}
+                    if backbone == "RecSubNet"
+                    else {},
                 },
                 {
                     "name": "EfficientBBoxHead",
+                    "task_name": "vehicle_type",
                     "inputs": [backbone],
                 },
                 {
                     "name": "EfficientKeypointBBoxHead",
-                    "task": {
-                        "keypoints": "car-keypoints",
-                        "boundingbox": "car-boundingbox",
-                    },
+                    "task_name": "car",
                     "inputs": [backbone],
                 },
             ],
@@ -44,7 +45,7 @@ def get_opts_backbone(backbone: str) -> dict[str, Any]:
                     "attached_to": "EfficientBBoxHead",
                 },
                 {
-                    "name": "MeanAveragePrecisionKeypoints",
+                    "name": "MeanAveragePrecision",
                     "alias": "EfficientKeypointBBoxHead-MaP",
                     "attached_to": "EfficientKeypointBBoxHead",
                 },
@@ -70,6 +71,7 @@ def get_opts_variant(variant: str) -> dict[str, Any]:
                 },
                 {
                     "name": "EfficientBBoxHead",
+                    "task_name": "motorbike",
                     "inputs": ["neck"],
                 },
             ],
@@ -111,6 +113,7 @@ def test_backbones(
 ):
     opts = get_opts_backbone(backbone)
     opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
+    opts["trainer.epochs"] = 1
     train_and_test(config, opts)
 
 
@@ -122,4 +125,5 @@ def test_variants(
 ):
     opts = get_opts_variant(variant)
     opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
+    opts["trainer.epochs"] = 1
     train_and_test(config, opts)

@@ -1,21 +1,19 @@
-import logging
 from contextlib import suppress
-from typing import Any
+from functools import cached_property
 
 import torchmetrics
 from torch import Tensor
+from typing_extensions import override
 
-from luxonis_train.enums import TaskType
+from luxonis_train.tasks import Metadata, Tasks
 
 from .base_metric import BaseMetric
 
-logger = logging.getLogger(__name__)
 
-
-class TorchMetricWrapper(BaseMetric[Tensor]):
+class TorchMetricWrapper(BaseMetric):
     Metric: type[torchmetrics.Metric]
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, **kwargs):
         super().__init__(node=kwargs.pop("node", None))
         task = kwargs.get("task")
         if task is None:
@@ -41,7 +39,7 @@ class TorchMetricWrapper(BaseMetric[Tensor]):
                 "or use this metric with a node. "
                 "The 'task' can be one of 'binary', 'multiclass', or 'multilabel'. "
             )
-        self._task = task
+        self._torchmetric_task = task
         kwargs["task"] = task
 
         n_classes: int | None = kwargs.get(
@@ -78,10 +76,10 @@ class TorchMetricWrapper(BaseMetric[Tensor]):
 
         self.metric = self.Metric(**kwargs)
 
-    def update(self, preds: Tensor, target: Tensor) -> None:
-        if self._task in ["multiclass"]:
+    def update(self, predictions: Tensor, target: Tensor) -> None:
+        if self._torchmetric_task in ["multiclass"]:
             target = target.argmax(dim=1)
-        self.metric.update(preds, target)
+        self.metric.update(predictions, target)
 
     def compute(self) -> Tensor:
         return self.metric.compute()
@@ -89,42 +87,54 @@ class TorchMetricWrapper(BaseMetric[Tensor]):
     def reset(self) -> None:
         self.metric.reset()
 
+    @cached_property
+    @override
+    def required_labels(self) -> set[str | Metadata]:
+        if self.task == Tasks.ANOMALY_DETECTION:
+            return Tasks.SEGMENTATION.required_labels
+        return self.task.required_labels
+
 
 class Accuracy(TorchMetricWrapper):
-    supported_tasks: list[TaskType] = [
-        TaskType.CLASSIFICATION,
-        TaskType.SEGMENTATION,
+    supported_tasks = [
+        Tasks.CLASSIFICATION,
+        Tasks.SEGMENTATION,
+        Tasks.ANOMALY_DETECTION,
     ]
     Metric = torchmetrics.Accuracy
 
 
 class F1Score(TorchMetricWrapper):
-    supported_tasks: list[TaskType] = [
-        TaskType.CLASSIFICATION,
-        TaskType.SEGMENTATION,
+    supported_tasks = [
+        Tasks.CLASSIFICATION,
+        Tasks.SEGMENTATION,
+        Tasks.ANOMALY_DETECTION,
     ]
     Metric = torchmetrics.F1Score
 
 
 class JaccardIndex(TorchMetricWrapper):
-    supported_tasks: list[TaskType] = [
-        TaskType.CLASSIFICATION,
-        TaskType.SEGMENTATION,
+    supported_tasks = [
+        Tasks.CLASSIFICATION,
+        Tasks.SEGMENTATION,
+        Tasks.ANOMALY_DETECTION,
     ]
     Metric = torchmetrics.JaccardIndex
 
 
 class Precision(TorchMetricWrapper):
-    supported_tasks: list[TaskType] = [
-        TaskType.CLASSIFICATION,
-        TaskType.SEGMENTATION,
+    supported_tasks = [
+        Tasks.CLASSIFICATION,
+        Tasks.SEGMENTATION,
+        Tasks.ANOMALY_DETECTION,
     ]
     Metric = torchmetrics.Precision
 
 
 class Recall(TorchMetricWrapper):
-    supported_tasks: list[TaskType] = [
-        TaskType.CLASSIFICATION,
-        TaskType.SEGMENTATION,
+    supported_tasks = [
+        Tasks.CLASSIFICATION,
+        Tasks.SEGMENTATION,
+        Tasks.ANOMALY_DETECTION,
     ]
     Metric = torchmetrics.Recall

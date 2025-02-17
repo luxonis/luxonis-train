@@ -1,22 +1,20 @@
-import logging
-from typing import Any, Union
+from typing import Any
 
+import lightning.pytorch as pl
 import numpy as np
-import pytorch_lightning as pl
 import torch
+from lightning.pytorch.utilities.types import STEP_OUTPUT
 from pytorch_grad_cam import HiResCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
 from pytorch_grad_cam.utils.model_targets import (
     ClassifierOutputTarget,
     SemanticSegmentationTarget,
 )
-from pytorch_lightning.utilities.types import STEP_OUTPUT
+from torch import Tensor
 
 from luxonis_train.attached_modules.visualizers import (
     get_denormalized_images,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class ModelWrapper(pl.LightningModule):
@@ -33,19 +31,17 @@ class ModelWrapper(pl.LightningModule):
         self.model = model
         self.task = task
 
-    def forward(
-        self, inputs: torch.Tensor, *args: Any, **kwargs: Any
-    ) -> Union[torch.Tensor, Any]:
+    def forward(self, inputs: Tensor, *args, **kwargs) -> Tensor:
         """Forward pass through the model, returning the output based on
         the task type.
 
-        @type inputs: torch.Tensor
+        @type inputs: Tensor
         @param inputs: Input tensor for the model.
         @type args: Any
         @param args: Additional positional arguments.
         @type kwargs: Any
         @param kwargs: Additional keyword arguments.
-        @rtype: Union[torch.Tensor, Any]
+        @rtype: Tensor
         @return: The processed output based on the task type.
         """
         input_dict = dict(image=inputs)

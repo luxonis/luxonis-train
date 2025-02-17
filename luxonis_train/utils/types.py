@@ -2,16 +2,15 @@ from typing import Any, Literal, TypeVar
 
 from torch import Size, Tensor
 
-from luxonis_train.enums import TaskType
-
 Kwargs = dict[str, Any]
 """Kwargs is a dictionary containing keyword arguments."""
 
-Labels = dict[str, tuple[Tensor, TaskType]]
-"""Labels is a dictionary containing a tuple of tensors and their
-corresponding task type."""
+Labels = dict[str, Tensor]
+"""Labels is a dictionary mapping task names to tensors."""
 
-AttachIndexType = Literal["all"] | int | tuple[int, int] | tuple[int, int, int]
+AttachIndexType = (
+    Literal["all"] | int | tuple[int, int] | tuple[int, int, int] | None
+)
 """AttachIndexType is used to specify to which output of the prevoius
 node does the current node attach to.
 
@@ -20,7 +19,7 @@ of indices of the output (specifying a range of outputs).
 """
 
 T = TypeVar("T", Tensor, Size)
-Packet = dict[str, list[T]]
+Packet = dict[str, list[T] | T]
 """Packet is a dictionary containing a list of objects of type T.
 
 It is used to pass data between different nodes of the network graph.

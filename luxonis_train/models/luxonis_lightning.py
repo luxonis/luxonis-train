@@ -1,14 +1,19 @@
 from collections import defaultdict
 from collections.abc import Mapping
-from logging import getLogger
 from pathlib import Path
 from typing import Literal, cast
 
 import lightning.pytorch as pl
 import torch
-from lightning.pytorch.callbacks import ModelCheckpoint, RichModelSummary
+from lightning.pytorch.callbacks import (
+    GradientAccumulationScheduler,
+    ModelCheckpoint,
+    RichModelSummary,
+)
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
+from loguru import logger
 from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.typing import ConfigItem
 from torch import Size, Tensor, nn
 
 import luxonis_train
@@ -33,6 +38,7 @@ from luxonis_train.callbacks import (
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.heads import BaseHead
+from luxonis_train.tasks import Metadata
 from luxonis_train.utils import (
     DatasetMetadata,
     Kwargs,
@@ -52,8 +58,6 @@ from luxonis_train.utils.registry import (
 )
 
 from .luxonis_output import LuxonisOutput
-
-logger = getLogger(__name__)
 
 
 class LuxonisLightningModule(pl.LightningModule):
@@ -145,6 +149,7 @@ class LuxonisLightningModule(pl.LightningModule):
         self.loader_input_shapes: dict[str, dict[str, Size]] = {}
         self.node_input_sources: dict[str, list[str]] = defaultdict(list)
         self.loss_weights: dict[str, float] = {}
+        self.node_task_names: dict[str, str] = {}
         self.main_metric: str | None = None
         self.save_dir = save_dir
         self.test_step_outputs: list[Mapping[str, Tensor | float | int]] = []
@@ -160,14 +165,14 @@ class LuxonisLightningModule(pl.LightningModule):
             dict
         )
 
-        self._logged_images = 0
+        self._logged_images = defaultdict(int)
 
         frozen_nodes: list[tuple[str, int]] = []
         nodes: dict[str, tuple[type[BaseNode], Kwargs]] = {}
 
         for node_cfg in self.cfg.model.nodes:
             node_name = node_cfg.name
-            Node: type[BaseNode] = BaseNode.REGISTRY.get(node_name)
+            Node = cast(type[BaseNode], BaseNode.REGISTRY.get(node_name))
             node_name = node_cfg.alias or node_name
             if node_cfg.freezing.active:
                 epochs = self.cfg.trainer.epochs
@@ -180,33 +185,57 @@ class LuxonisLightningModule(pl.LightningModule):
                         node_cfg.freezing.unfreeze_after * epochs
                     )
                 frozen_nodes.append((node_name, unfreeze_after))
-
-            if node_cfg.task is not None:
-                if Node.tasks is None:
+            task_names = list(self.dataset_metadata.task_names)
+            if not node_cfg.task_name:
+                if len(task_names) == 1:
+                    node_cfg.task_name = task_names[0]
+                elif issubclass(Node, BaseHead):
                     raise ValueError(
-                        f"Cannot define tasks for node {node_name}."
-                        "This node doesn't specify any tasks."
+                        f"Dataset contains multiple tasks: {task_names}. "
+                        f"Node {node_name} does not have the `task_name` parameter set. "
+                        "Please specify the `task_name` parameter for each head node. "
                     )
-                if isinstance(node_cfg.task, str):
-                    assert Node.tasks
-                    if len(Node.tasks) > 1:
+            self.node_task_names[node_name] = node_cfg.task_name
+
+            task_override = node_cfg.metadata_task_override
+            if Node.task is not None:
+                metadata = {
+                    label
+                    for label in Node.task.required_labels
+                    if isinstance(label, Metadata)
+                }
+                if task_override is not None:
+                    if isinstance(task_override, str):
+                        if len(metadata) != 1:
+                            raise ValueError(
+                                f"Task '{Node.task}' of node '{Node.__name__}' requires multiple metadata labels: {metadata}, "
+                                "so the `metadata_task_override` must be a dictionary."
+                            )
+                        task_override = {
+                            next(iter(metadata)).name: task_override
+                        }
+
+                    for m in metadata:
+                        m.name = task_override.get(m.name, m.name)
+
+                metadata_types = self.core.loader_metadata_types
+
+                for m in metadata:
+                    m_name = f"{node_cfg.task_name}/{m}"
+                    if m_name not in metadata_types:
+                        continue
+                    typ = metadata_types[m_name]
+                    if not m.check_type(typ):
                         raise ValueError(
-                            f"Node {node_name} specifies multiple tasks, "
-                            "but only one task is specified in the config. "
-                            "Specify the tasks as a dictionary instead."
+                            f"Metadata type mismatch for label '{m}' in node '{node_name}'. "
+                            f"Expected type '{m.typ}', got '{typ.__name__}'."
                         )
 
-                    node_cfg.task = {next(iter(Node.tasks)): node_cfg.task}
-                else:
-                    node_cfg.task = {
-                        **Node._process_tasks(Node.tasks),
-                        **node_cfg.task,
-                    }
             nodes[node_name] = (
                 Node,
                 {
                     **node_cfg.params,
-                    "_tasks": node_cfg.task,
+                    "task_name": node_cfg.task_name,
                     "remove_on_export": node_cfg.remove_on_export,
                 },
             )
@@ -322,15 +351,10 @@ class LuxonisLightningModule(pl.LightningModule):
             for source_name, shape in shapes.items()
         }
 
-        for (
-            node_name,
-            (
-                Node,
-                node_kwargs,
-            ),
-            node_input_names,
-            _,
-        ) in traverse_graph(self.graph, nodes):
+        for node_name, (
+            Node,
+            node_kwargs,
+        ), node_input_names, _ in traverse_graph(self.graph, nodes):
             node_dummy_inputs: list[Packet[Tensor]] = []
             """List of dummy input packets for the node.
 
@@ -591,7 +615,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 self.cfg.exporter.output_names = None
 
             output_names = self.cfg.exporter.output_names or [
-                f"{node_name}/{output_name}/{i}"
+                f"{self.node_task_names[node_name]}/{node_name}/{output_name}/{i}"
                 for node_name, output_name, i in output_order
             ]
 
@@ -604,26 +628,40 @@ class LuxonisLightningModule(pl.LightningModule):
                         idx += 1
         else:
             output_names = []
+            running_i = {}  # for case where export_output_names should be used but output node's output is split into multiple subnodes
             for node_name, output_name, i in output_order:
                 if node_name in export_output_names_dict:
-                    output_names.append(export_output_names_dict[node_name][i])
+                    running_i[node_name] = (
+                        running_i.get(node_name, -1) + 1
+                    )  # if not present default to 0 otherwise add 1
+                    output_names.append(
+                        export_output_names_dict[node_name][
+                            running_i[node_name]
+                        ]
+                    )
                 else:
-                    output_names.append(f"{node_name}/{output_name}/{i}")
+                    output_names.append(
+                        f"{self.node_task_names[node_name]}/{node_name}/{output_name}/{i}"
+                    )
 
         old_forward = self.forward
 
-        def export_forward(inputs) -> tuple[Tensor, ...]:
-            outputs = old_forward(
+        def export_forward(inputs: dict[str, Tensor]) -> tuple[Tensor, ...]:
+            old_outputs = old_forward(
                 inputs,
                 None,
                 compute_loss=False,
                 compute_metrics=False,
                 compute_visualizations=False,
             ).outputs
-            return tuple(
-                outputs[node_name][output_name][i]
-                for node_name, output_name, i in output_order
-            )
+            outputs = []
+            for node_name, output_name, i in output_order:
+                node_output = old_outputs[node_name][output_name]
+                if isinstance(node_output, Tensor):
+                    outputs.append(node_output)
+                else:
+                    outputs.append(node_output[i])
+            return tuple(outputs)
 
         self.forward = export_forward  # type: ignore
 
@@ -776,8 +814,13 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> dict[str, Tensor]:
         inputs, labels = batch
         images = None
-        if self._logged_images < self.cfg.trainer.n_log_images:
+        if not self._logged_images:
             images = get_denormalized_images(self.cfg, inputs)
+        for value in self._logged_images.values():
+            if value < self.cfg.trainer.n_log_images:
+                images = get_denormalized_images(self.cfg, inputs)
+                break
+
         outputs = self.forward(
             inputs,
             labels,
@@ -792,17 +835,18 @@ class LuxonisLightningModule(pl.LightningModule):
         logged_images = self._logged_images
         for node_name, visualizations in outputs.visualizations.items():
             for viz_name, viz_batch in visualizations.items():
-                logged_images = self._logged_images
+                # if viz_batch is None:
+                #     continue
                 for viz in viz_batch:
-                    if logged_images >= self.cfg.trainer.n_log_images:
-                        break
+                    name = f"{mode}/visualizations/{node_name}/{viz_name}"
+                    if logged_images[name] >= self.cfg.trainer.n_log_images:
+                        continue
                     self.logger.log_image(
-                        f"{mode}/visualizations/{node_name}/{viz_name}/{logged_images}",
+                        f"{name}/{logged_images[name]}",
                         viz.detach().cpu().numpy().transpose(1, 2, 0),
                         step=self.current_epoch,
                     )
-                    logged_images += 1
-        self._logged_images = logged_images
+                    logged_images[name] += 1
 
         return step_output
 
@@ -842,7 +886,7 @@ class LuxonisLightningModule(pl.LightningModule):
             )
 
         self.validation_step_outputs.clear()
-        self._logged_images = 0
+        self._logged_images.clear()
 
     def configure_callbacks(self) -> list[pl.Callback]:
         """Configures Pytorch Lightning callbacks."""
@@ -887,6 +931,24 @@ class LuxonisLightningModule(pl.LightningModule):
                     CALLBACKS.get(callback.name)(**callback.params)
                 )
 
+        accumulate_grad_batches = getattr(
+            self.cfg.trainer, "accumulate_grad_batches", None
+        )
+        has_gas = any(
+            isinstance(cb, GradientAccumulationScheduler) for cb in callbacks
+        )
+        if accumulate_grad_batches is not None:
+            if not has_gas:
+                gas = GradientAccumulationScheduler(
+                    scheduling={0: accumulate_grad_batches}
+                )
+                callbacks.append(gas)
+            else:
+                logger.warning(
+                    "Gradient accumulation scheduler is already present in the callbacks list. "
+                    "The 'accumulate_grad_batches' parameter in the config will be ignored."
+                )
+
         if self.training_strategy is not None:
             callbacks.append(TrainingManager(strategy=self.training_strategy))  # type: ignore
 
@@ -915,18 +977,16 @@ class LuxonisLightningModule(pl.LightningModule):
         }
         optimizer = OPTIMIZERS.get(cfg_optimizer.name)(**optim_params)
 
-        def get_scheduler(scheduler_cfg, optimizer):
-            scheduler_class = SCHEDULERS.get(
-                scheduler_cfg["name"]
-            )  # For dictionary access
-            scheduler_params = scheduler_cfg["params"] | {
-                "optimizer": optimizer
-            }  # Dictionary access for params
-            return scheduler_class(**scheduler_params)
+        def get_scheduler(
+            scheduler_cfg: ConfigItem, optimizer: torch.optim.Optimizer
+        ) -> torch.optim.lr_scheduler.LRScheduler:
+            scheduler_class = SCHEDULERS.get(scheduler_cfg.name)
+            scheduler_params = scheduler_cfg.params | {"optimizer": optimizer}
+            return scheduler_class(**scheduler_params)  # type: ignore
 
         if cfg_scheduler.name == "SequentialLR":
             schedulers_list = [
-                get_scheduler(scheduler_cfg, optimizer)
+                get_scheduler(ConfigItem(**scheduler_cfg), optimizer)
                 for scheduler_cfg in cfg_scheduler.params["schedulers"]
             ]
 
@@ -958,7 +1018,10 @@ class LuxonisLightningModule(pl.LightningModule):
             return
 
         path = str(path)
-        checkpoint = torch.load(path, map_location=self.device)
+
+        checkpoint = torch.load(  # nosemgrep
+            path, map_location=self.device
+        )
 
         if "state_dict" not in checkpoint:
             raise ValueError("Checkpoint does not contain state_dict.")
@@ -1000,7 +1063,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 loader = self._core.loaders["train"]
                 dataset = getattr(loader, "dataset", None)
                 if isinstance(dataset, LuxonisDataset):
-                    n_classes = len(dataset.get_classes()[1][node.task])
+                    n_classes = len(dataset.get_classes()[node.task_name])
                     if n_classes == 1:
                         cfg.params["task"] = "binary"
                     else:
@@ -1045,7 +1108,9 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
         if self.main_metric is not None:
-            main_metric_node, main_metric_name = self.main_metric.split("/")
+            *main_metric_node, main_metric_name = self.main_metric.split("/")
+            main_metric_node = "/".join(main_metric_node)
+
             main_metric = metrics[main_metric_node][main_metric_name]
             logger.info(
                 f"{stage} main metric ({self.main_metric}): {main_metric:.4f}"

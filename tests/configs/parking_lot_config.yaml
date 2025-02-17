@@ -4,103 +4,54 @@ model:
   nodes:
 
     - name: EfficientRep
-      alias: backbone
 
     - name: RepPANNeck
-      alias: neck
-      inputs:
-        - backbone
 
     - name: EfficientBBoxHead
-      alias: bbox-head
-      inputs:
-        - neck
+      task_name: vehicle_type
+      losses:
+        - name: AdaptiveDetectionLoss
+      metrics:
+        - name: MeanAveragePrecision
+          is_main_metric: true
+      visualizers:
+        - name: BBoxVisualizer
 
     - name: EfficientKeypointBBoxHead
-      alias: motorbike-detection-head
-      task:
-        keypoints: motorbike-keypoints
-        boundingbox: motorbike-boundingbox
-      inputs:
-        - neck
+      task_name: motorbike
+      losses:
+        - name: EfficientKeypointBBoxLoss
+      metrics:
+        - name: MeanAveragePrecision
+      visualizers:
+        - name: KeypointVisualizer
 
     - name: SegmentationHead
-      alias: color-segmentation-head
-      task: color-segmentation
-      inputs:
-        - neck
-
-    - name: SegmentationHead
-      alias: any-vehicle-segmentation-head
-      task: vehicle-segmentation
-      inputs:
-        - neck
+      task_name: color
+      losses:
+        - name: CrossEntropyLoss
+      metrics:
+        - name: JaccardIndex
+      visualizers:
+        - name: SegmentationVisualizer
 
     - name: BiSeNetHead
-      alias: brand-segmentation-head
-      task: brand-segmentation
-      inputs:
-        - neck
+      task_name: brand
+      losses:
+        - name: CrossEntropyLoss
+      metrics:
+        - name: Precision
+      visualizers:
+        - name: SegmentationVisualizer
 
     - name: BiSeNetHead
-      alias: vehicle-type-segmentation-head
-      task: vehicle_type-segmentation
-      inputs:
-        - neck
-
-  losses:
-    - name: AdaptiveDetectionLoss
-      attached_to: bbox-head
-    - name: BCEWithLogitsLoss
-      attached_to: any-vehicle-segmentation-head
-    - name: CrossEntropyLoss
-      attached_to: vehicle-type-segmentation-head
-    - name: CrossEntropyLoss
-      attached_to: color-segmentation-head
-    - name: EfficientKeypointBBoxLoss
-      attached_to: motorbike-detection-head
-
-  metrics:
-    - name: MeanAveragePrecisionKeypoints
-      attached_to: motorbike-detection-head
-    - name: MeanAveragePrecision
-      attached_to: bbox-head
-      is_main_metric: true
-    - name: F1Score
-      attached_to: any-vehicle-segmentation-head
-    - name: JaccardIndex
-      attached_to: color-segmentation-head
-    - name: Accuracy
-      attached_to: vehicle-type-segmentation-head
-    - name: Precision
-      attached_to: brand-segmentation-head
-
-  visualizers:
-    - name: MultiVisualizer
-      alias: multi-visualizer-motorbike
-      attached_to: motorbike-detection-head
-      params:
-        visualizers:
-          - name: KeypointVisualizer
-            params:
-              nonvisible_color: blue
-          - name: BBoxVisualizer
-
-    - name: SegmentationVisualizer
-      alias: color-segmentation-visualizer
-      attached_to: color-segmentation-head
-    - name: SegmentationVisualizer
-      alias: vehicle-type-segmentation-visualizer
-      attached_to: vehicle-type-segmentation-head
-    - name: SegmentationVisualizer
-      alias: vehicle-segmentation-visualizer
-      attached_to: any-vehicle-segmentation-head
-    - name: SegmentationVisualizer
-      alias: brand-segmentation-visualizer
-      attached_to: brand-segmentation-head
-    - name: BBoxVisualizer
-      alias: bbox-visualizer
-      attached_to: bbox-head
+      task_name: vehicle_type
+      losses:
+        - name: CrossEntropyLoss
+      metrics:
+        - name: Accuracy
+      visualizers:
+        - name: SegmentationVisualizer
 
 tracker:
   project_name: Parking_Lot
@@ -132,7 +83,6 @@ trainer:
   preprocessing:
     train_image_size: [256, 320]
     keep_aspect_ratio: false
-    train_rgb: true
     normalize:
       active: true
     augmentations:

@@ -1,18 +1,18 @@
-import logging
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
+from loguru import logger
+
 import luxonis_train
 from luxonis_train.config import Config, ExportConfig
-
-logger = logging.getLogger(__name__)
 
 
 @contextmanager
 def replace_weights(
     module: "luxonis_train.models.LuxonisLightningModule",
     weights: str | Path | None = None,
-):
+) -> Generator:
     old_weights = None
     if weights is not None:
         old_weights = module.state_dict()

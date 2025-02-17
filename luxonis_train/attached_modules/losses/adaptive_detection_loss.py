@@ -1,17 +1,15 @@
-import logging
-from typing import Any, Literal, cast
+from typing import Literal, cast
 
 import torch
 import torch.nn.functional as F
-from torch import Tensor, nn
+from loguru import logger
+from torch import Tensor, amp, nn
 from torchvision.ops import box_convert
 
 from luxonis_train.assigners import ATSSAssigner, TaskAlignedAssigner
-from luxonis_train.enums import TaskType
 from luxonis_train.nodes import EfficientBBoxHead
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import (
-    Labels,
-    Packet,
     anchors_for_fpn_features,
     compute_iou_loss,
     dist2bbox,
@@ -20,14 +18,11 @@ from luxonis_train.utils.boundingbox import IoUType
 
 from .base_loss import BaseLoss
 
-logger = logging.getLogger(__name__)
 
+class AdaptiveDetectionLoss(BaseLoss):
+    supported_tasks = [Tasks.BOUNDINGBOX]
 
-class AdaptiveDetectionLoss(
-    BaseLoss[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]
-):
     node: EfficientBBoxHead
-    supported_tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
 
     anchors: Tensor
     anchor_points: Tensor
@@ -43,7 +38,7 @@ class AdaptiveDetectionLoss(
         class_loss_weight: float = 1.0,
         iou_loss_weight: float = 2.5,
         per_class_weights: list[float] | None = None,
-        **kwargs: Any,
+        **kwargs,
     ):
         """BBox loss adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
         <https://arxiv.org/pdf/2209.02976.pdf>}. It combines IoU based bbox regression loss and varifocal loss
@@ -57,10 +52,10 @@ class AdaptiveDetectionLoss(
         @type reduction: Literal["sum", "mean"]
         @param reduction: Reduction type for loss.
         @type class_loss_weight: float
-        @param class_loss_weight: Weight of classification loss.
+        @param class_loss_weight: Weight of classification loss. Defaults to 1.0. For optimal results, multiply with accumulate_grad_batches.
         @type iou_loss_weight: float
-        @param iou_loss_weight: Weight of IoU loss.
-        @type per_class_weights: Optional[Tensor]
+        @param iou_loss_weight: Weight of IoU loss. Defaults to 2.5. For optimal results, multiply with accumulate_grad_batches.
+        @type per_class_weights: list[float] | None
         @param per_class_weights: A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
         """
         super().__init__(**kwargs)
@@ -97,21 +92,19 @@ class AdaptiveDetectionLoss(
 
         self._logged_assigner_change = False
 
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
-        feats = self.get_input_tensors(inputs, "features")
-        pred_scores = self.get_input_tensors(inputs, "class_scores")[0]
-        pred_distri = self.get_input_tensors(inputs, "distributions")[0]
+    def forward(
+        self,
+        features: list[Tensor],
+        class_scores: Tensor,
+        distributions: Tensor,
+        target: Tensor,
+    ) -> tuple[Tensor, dict[str, Tensor]]:
+        batch_size = class_scores.shape[0]
 
-        target = self.get_label(labels)
-
-        batch_size = pred_scores.shape[0]
-
-        self._init_parameters(feats)
+        self._init_parameters(features)
 
         target = self._preprocess_bbox_target(target, batch_size)
-        pred_bboxes = dist2bbox(pred_distri, self.anchor_points_strided)
+        pred_bboxes = dist2bbox(distributions, self.anchor_points_strided)
 
         gt_labels = target[:, :, :1]
         gt_xyxy = target[:, :, 1:]
@@ -124,36 +117,16 @@ class AdaptiveDetectionLoss(
             mask_positive,
             _,
         ) = self._run_assigner(
-            gt_labels,
-            gt_xyxy,
-            mask_gt,
-            pred_bboxes,
-            pred_scores,
+            gt_labels, gt_xyxy, mask_gt, pred_bboxes, class_scores
         )
 
-        return (
-            pred_bboxes,
-            pred_scores,
-            assigned_bboxes / self.stride_tensor,
-            assigned_labels,
-            assigned_scores,
-            mask_positive,
-        )
+        assigned_bboxes /= self.stride_tensor
 
-    def forward(
-        self,
-        pred_bboxes: Tensor,
-        pred_scores: Tensor,
-        assigned_bboxes: Tensor,
-        assigned_labels: Tensor,
-        assigned_scores: Tensor,
-        mask_positive: Tensor,
-    ):
         one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[
             ..., :-1
         ]
         loss_cls = self.varifocal_loss(
-            pred_scores, assigned_scores, one_hot_label
+            class_scores, assigned_scores, one_hot_label
         )
 
         if assigned_scores.sum() > 1:
@@ -177,7 +150,7 @@ class AdaptiveDetectionLoss(
 
         return loss, sub_losses
 
-    def _init_parameters(self, features: list[Tensor]):
+    def _init_parameters(self, features: list[Tensor]) -> None:
         if not hasattr(self, "gt_bboxes_scale"):
             self.gt_bboxes_scale = torch.tensor(
                 [
@@ -251,7 +224,7 @@ class AdaptiveDetectionLoss(
         out_target[..., 1:] = box_convert(scaled_target, "xywh", "xyxy")
         return out_target
 
-    def _log_assigner_change(self):
+    def _log_assigner_change(self) -> None:
         if self._logged_assigner_change:
             return
 
@@ -297,6 +270,7 @@ class VarifocalLoss(nn.Module):
             self.alpha * pred_score.pow(self.gamma) * (1 - label)
             + target_score * label
         )
+
         if self.per_class_weights is not None:
             if self.per_class_weights.device != pred_score.device:
                 self.per_class_weights = self.per_class_weights.to(

@@ -2,14 +2,14 @@ from copy import deepcopy
 
 import pytest
 import torch
-from pytorch_lightning import LightningModule, Trainer
+from lightning.pytorch import LightningModule, Trainer
 
 from luxonis_train.callbacks.ema import EMACallback, ModelEma
 
 
 class SimpleModel(LightningModule):
     def __init__(self):
-        super(SimpleModel, self).__init__()
+        super().__init__()
         self.layer = torch.nn.Linear(2, 2)
 
     def forward(self, x):
@@ -33,7 +33,6 @@ def test_ema_initialization(model, ema_callback):
     assert isinstance(ema_callback.ema, ModelEma)
     assert ema_callback.ema.decay == ema_callback.decay
     assert ema_callback.ema.use_dynamic_decay == ema_callback.use_dynamic_decay
-    assert ema_callback.ema.device == ema_callback.device
 
 
 def test_ema_update_on_batch_end(model, ema_callback):
@@ -76,11 +75,10 @@ def test_ema_state_saved_to_checkpoint(model, ema_callback):
 
 def test_load_from_checkpoint(model, ema_callback):
     trainer = Trainer()
-    ema_callback.on_fit_start(trainer, model)
 
     checkpoint = {"state_dict": deepcopy(model.state_dict())}
-    ema_callback.on_load_checkpoint(checkpoint)
-
+    ema_callback.on_load_checkpoint(trainer, model, checkpoint)
+    ema_callback.on_fit_start(trainer, model)
     assert (
         ema_callback.ema.state_dict_ema.keys()
         == checkpoint["state_dict"].keys()

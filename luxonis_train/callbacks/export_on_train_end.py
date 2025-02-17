@@ -1,16 +1,13 @@
-import logging
-
 import lightning.pytorch as pl
+from loguru import logger
 
 import luxonis_train
 from luxonis_train.utils.registry import CALLBACKS
 
 from .needs_checkpoint import NeedsCheckpoint
 
-logger = logging.getLogger(__name__)
 
-
-@CALLBACKS.register_module()
+@CALLBACKS.register()
 class ExportOnTrainEnd(NeedsCheckpoint):
     def on_train_end(
         self,

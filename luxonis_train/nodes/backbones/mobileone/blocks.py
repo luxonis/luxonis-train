@@ -91,7 +91,7 @@ class MobileOneBlock(nn.Module):
                     stride=self.stride,
                     padding=padding,
                     groups=self.groups,
-                    activation=nn.Identity(),
+                    activation=False,
                 )
             )
         self.rbr_conv: list[nn.Sequential] = nn.ModuleList(rbr_conv)  # type: ignore
@@ -106,7 +106,7 @@ class MobileOneBlock(nn.Module):
                 stride=self.stride,
                 padding=0,
                 groups=self.groups,
-                activation=nn.Identity(),
+                activation=False,
             )
 
     def forward(self, inputs: Tensor) -> Tensor:
@@ -133,7 +133,7 @@ class MobileOneBlock(nn.Module):
 
         return self.activation(self.se(out))
 
-    def reparameterize(self):
+    def reparameterize(self) -> None:
         """Following works like U{RepVGG: Making VGG-style ConvNets Great Again
         <https://arxiv.org/pdf/2101.03697.pdf. We re-parameterize multi-branched>}
         architecture used at training time to obtain a plain CNN-like structure
@@ -249,7 +249,7 @@ class MobileOneBlock(nn.Module):
             eps = branch.eps
         else:
             raise NotImplementedError(
-                "Only nn.BatchNorm2d and nn.Sequential " "are supported."
+                "Only nn.BatchNorm2d and nn.Sequential are supported."
             )
         assert running_var is not None
         std = (running_var + eps).sqrt()

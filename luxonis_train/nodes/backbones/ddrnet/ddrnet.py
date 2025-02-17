@@ -1,6 +1,6 @@
-import logging
 from typing import Literal
 
+from loguru import logger
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
@@ -13,8 +13,6 @@ from luxonis_train.nodes.blocks import (
 
 from .blocks import DAPPM, BasicDDRBackbone, make_layer
 from .variants import get_variant
-
-logger = logging.getLogger(__name__)
 
 
 class DDRNet(BaseNode[Tensor, list[Tensor]]):
@@ -98,8 +96,6 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             2, 2, 2, 1, 2, 2, 1].
         @type download_weights: bool
         @param download_weights: If True download weights from COCO (if available for specified variant). Defaults to True.
-        @type kwargs: Any
-        @param kwargs: Additional arguments to pass to L{BaseNode}.
         """
         super().__init__(**kwargs)
 
@@ -148,7 +144,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                     out_channels=highres_channels,
                     kernel_size=1,
                     bias=False,
-                    activation=nn.Identity(),
+                    activation=False,
                 )
             )
             self.down3.append(
@@ -159,7 +155,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                     stride=2,
                     padding=1,
                     bias=False,
-                    activation=nn.Identity(),
+                    activation=False,
                 )
             )
             self.layer3_skip.append(
@@ -180,7 +176,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             out_channels=highres_channels,
             kernel_size=1,
             bias=False,
-            activation=nn.Identity(),
+            activation=False,
         )
 
         self.down4 = nn.Sequential(
@@ -200,7 +196,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                 stride=2,
                 padding=1,
                 bias=False,
-                activation=nn.Identity(),
+                activation=False,
             ),
         )
 
@@ -297,7 +293,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         else:
             return [x]
 
-    def init_params(self):
+    def init_params(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(

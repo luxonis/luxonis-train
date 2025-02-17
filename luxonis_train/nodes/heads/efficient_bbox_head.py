@@ -1,12 +1,12 @@
-import logging
-from typing import Any, Literal
+from typing import Literal
 
 import torch
+from loguru import logger
 from torch import Tensor, nn
 
-from luxonis_train.enums import TaskType
 from luxonis_train.nodes.blocks import EfficientDecoupledBlock
 from luxonis_train.nodes.heads import BaseHead
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import (
     Packet,
     anchors_for_fpn_features,
@@ -14,15 +14,14 @@ from luxonis_train.utils import (
     non_max_suppression,
 )
 
-logger = logging.getLogger(__name__)
-
 
 class EfficientBBoxHead(
     BaseHead[list[Tensor], tuple[list[Tensor], list[Tensor], list[Tensor]]],
 ):
-    in_channels: list[int]
-    tasks: list[TaskType] = [TaskType.BOUNDINGBOX]
+    task = Tasks.BOUNDINGBOX
     parser = "YOLO"
+
+    in_channels: list[int]
 
     def __init__(
         self,
@@ -32,7 +31,7 @@ class EfficientBBoxHead(
         max_det: int = 300,
         download_weights: bool = False,
         initialize_weights: bool = True,
-        **kwargs: Any,
+        **kwargs,
     ):
         """Head for object detection.
 
@@ -82,27 +81,13 @@ class EfficientBBoxHead(
                 in_channels=self.in_channels[i],
             )
             self.heads.append(curr_head)
-        if (
-            self.export_output_names is None
-            or len(self.export_output_names) != self.n_heads
-        ):
-            if (
-                self.export_output_names is not None
-                and len(self.export_output_names) != self.n_heads
-            ):
-                logger.warning(
-                    f"Number of provided output names ({len(self.export_output_names)}) "
-                    f"does not match number of heads ({self.n_heads}). "
-                    f"Using default names."
-                )
-            self._export_output_names = [
-                f"output{i+1}_yolov6r2" for i in range(self.n_heads)
-            ]
 
         if initialize_weights:
             self.initialize_weights()
 
-        if download_weights:
+        if (
+            download_weights and self.name == "EfficientBBoxHead"
+        ):  # skip download on classes that inherit this one
             weights_path = self.get_variant_weights(initialize_weights)
             if weights_path:
                 self.load_checkpoint(path=weights_path, strict=False)
@@ -111,7 +96,9 @@ class EfficientBBoxHead(
                     f"No checkpoint available for {self.name}, skipping."
                 )
 
-    def initialize_weights(self):
+        self.check_export_output_names()
+
+    def initialize_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 pass
@@ -142,6 +129,24 @@ class EfficientBBoxHead(
         else:
             return None
 
+    def check_export_output_names(self) -> None:
+        if (
+            self.export_output_names is None
+            or len(self.export_output_names) != self.n_heads
+        ):
+            if (
+                self.export_output_names is not None
+                and len(self.export_output_names) != self.n_heads
+            ):
+                logger.warning(
+                    f"Number of provided output names ({len(self.export_output_names)}) "
+                    f"does not match number of heads ({self.n_heads}). "
+                    f"Using default names."
+                )
+            self._export_output_names = [
+                f"output{i + 1}_yolov6r2" for i in range(self.n_heads)
+            ]
+
     def forward(
         self, inputs: list[Tensor]
     ) -> tuple[list[Tensor], list[Tensor], list[Tensor]]:
@@ -171,7 +176,7 @@ class EfficientBBoxHead(
                 conf, _ = out_cls.max(1, keepdim=True)
                 out = torch.cat([out_reg, conf, out_cls], dim=1)
                 outputs.append(out)
-            return {self.task: outputs}
+            return {"boundingbox": outputs}
 
         cls_tensor = torch.cat(
             [cls_score_list[i].flatten(2) for i in range(len(cls_score_list))],
@@ -188,8 +193,8 @@ class EfficientBBoxHead(
         if self.training:
             return {
                 "features": features,
-                "class_scores": [cls_tensor],
-                "distributions": [reg_tensor],
+                "class_scores": cls_tensor,
+                "distributions": reg_tensor,
             }
 
         else:
@@ -197,11 +202,11 @@ class EfficientBBoxHead(
             return {
                 "boundingbox": boxes,
                 "features": features,
-                "class_scores": [cls_tensor],
-                "distributions": [reg_tensor],
+                "class_scores": cls_tensor,
+                "distributions": reg_tensor,
             }
 
-    def _fit_stride_to_n_heads(self):
+    def _fit_stride_to_n_heads(self) -> Tensor:
         """Returns correct stride for number of heads and attach
         index."""
         stride = torch.tensor(

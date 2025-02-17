@@ -1,9 +1,10 @@
-import logging
 import sys
 import warnings
-from typing import Annotated, Any, Literal, TypeAlias
+from typing import Annotated, Any, Literal, NamedTuple, TypeAlias
 
+from loguru import logger
 from luxonis_ml.enums import DatasetType
+from luxonis_ml.typing import ConfigItem
 from luxonis_ml.utils import (
     BaseModelExtraForbid,
     Environ,
@@ -19,11 +20,12 @@ from pydantic.types import (
 )
 from typing_extensions import Self
 
-from luxonis_train.enums import TaskType
-
-logger = logging.getLogger(__name__)
-
 Params: TypeAlias = dict[str, Any]
+
+
+class ImageSize(NamedTuple):
+    height: int
+    width: int
 
 
 class AttachedModuleConfig(BaseModelExtraForbid):
@@ -62,7 +64,8 @@ class ModelNodeConfig(BaseModelExtraForbid):
     input_sources: list[str] = []  # From data loader
     freezing: FreezingConfig = FreezingConfig()
     remove_on_export: bool = False
-    task: str | dict[TaskType, str] | None = None
+    task_name: str = ""
+    metadata_task_override: str | dict[str, str] | None = None
     params: Params = {}
 
 
@@ -94,15 +97,16 @@ class ModelConfig(BaseModelExtraForbid):
         names = []
         last_body_index: int | None = None
         for i, node in enumerate(nodes):
-            name = node.get("alias", node.get("name"))
+            name = node.get("name")
             if name is None:
                 raise ValueError(
                     f"Node {i} does not specify the `name` field."
                 )
             if "Head" in name and last_body_index is None:
                 last_body_index = i - 1
+            name = node.get("alias") or name
             names.append(name)
-            if i > 0 and "inputs" not in node:
+            if i > 0 and "inputs" not in node and "input_sources" not in node:
                 if last_body_index is not None:
                     prev_name = names[last_body_index]
                 else:
@@ -198,24 +202,57 @@ class ModelConfig(BaseModelExtraForbid):
         return self
 
     @model_validator(mode="after")
+    def check_for_invalid_characters(self) -> Self:
+        for modules in [
+            self.nodes,
+            self.losses,
+            self.metrics,
+            self.visualizers,
+        ]:
+            for module in modules:
+                invalid_parts = []
+                if module.alias and "/" in module.alias:
+                    invalid_parts.append(f"alias '{module.alias}'")
+                if module.name and "/" in module.name:
+                    invalid_parts.append(f"name '{module.name}'")
+
+                if invalid_parts:
+                    error_message = (
+                        f"The {', '.join(invalid_parts)} contain a '/', which is not allowed. "
+                        "Please rename to remove any '/' characters."
+                    )
+                    raise ValueError(error_message)
+
+        return self
+
+    @model_validator(mode="after")
     def check_unique_names(self) -> Self:
-        for section, objects in [
-            ("nodes", self.nodes),
-            ("losses", self.losses),
-            ("metrics", self.metrics),
-            ("visualizers", self.visualizers),
+        for modules in [
+            self.nodes,
+            self.losses,
+            self.metrics,
+            self.visualizers,
         ]:
             names: set[str] = set()
-            for obj in objects:
-                obj: AttachedModuleConfig
-                name = obj.alias or obj.name
+            node_index = 0
+            for module in modules:
+                module: AttachedModuleConfig | ModelNodeConfig
+                name = module.alias or module.name
                 if name in names:
-                    if obj.alias is None:
-                        obj.alias = f"{name}_{obj.attached_to}"
-                    if obj.alias in names:
-                        raise ValueError(
-                            f"Duplicate name `{name}` in `{section}` section."
+                    if module.alias is None:
+                        if isinstance(module, ModelNodeConfig):
+                            module.alias = module.name
+                        else:
+                            module.alias = f"{name}_{module.attached_to}"
+
+                    if module.alias in names:
+                        new_alias = f"{module.alias}_{node_index}"
+                        logger.warning(
+                            f"Duplicate name: {module.alias}. Renaming to {new_alias}."
                         )
+                        module.alias = new_alias
+                        node_index += 1
+
                 names.add(name)
         return self
 
@@ -230,7 +267,7 @@ class ModelConfig(BaseModelExtraForbid):
             else:
                 warnings.warn(
                     f"Field `model.{section}` is deprecated. "
-                    f"Please specify `{section}`under "
+                    f"Please specify `{section}` under "
                     "the node they are attached to."
                 )
             for node in data["nodes"]:
@@ -303,12 +340,22 @@ class AugmentationConfig(BaseModelExtraForbid):
 
 class PreprocessingConfig(BaseModelExtraForbid):
     train_image_size: Annotated[
-        list[int], Field(default=[256, 256], min_length=2, max_length=2)
-    ] = [256, 256]
+        ImageSize, Field(default=[256, 256], min_length=2, max_length=2)
+    ] = ImageSize(256, 256)
     keep_aspect_ratio: bool = True
-    train_rgb: bool = True
+    color_space: Literal["RGB", "BGR"] = "RGB"
     normalize: NormalizeAugmentationConfig = NormalizeAugmentationConfig()
     augmentations: list[AugmentationConfig] = []
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_train_rgb(cls, data: dict[str, Any]) -> dict[str, Any]:
+        if "train_rgb" in data:
+            warnings.warn(
+                "Field `train_rgb` is deprecated. Use `color_space` instead."
+            )
+            data["color_space"] = "RGB" if data.pop("train_rgb") else "BGR"
+        return data
 
     @model_validator(mode="after")
     def check_normalize(self) -> Self:
@@ -320,13 +367,17 @@ class PreprocessingConfig(BaseModelExtraForbid):
             )
         return self
 
-    def get_active_augmentations(self) -> list[AugmentationConfig]:
+    def get_active_augmentations(self) -> list[ConfigItem]:
         """Returns list of augmentations that are active.
 
         @rtype: list[AugmentationConfig]
         @return: Filtered list of active augmentation configs
         """
-        return [aug for aug in self.augmentations if aug.active]
+        return [
+            ConfigItem(name=aug.name, params=aug.params)
+            for aug in self.augmentations
+            if aug.active
+        ]
 
 
 class CallbackConfig(BaseModelExtraForbid):
@@ -375,9 +426,12 @@ class TrainerConfig(BaseModelExtraForbid):
     deterministic: bool | Literal["warn"] | None = None
     smart_cfg_auto_populate: bool = True
     batch_size: PositiveInt = 32
-    accumulate_grad_batches: PositiveInt = 1
+    accumulate_grad_batches: PositiveInt | None = None
+    gradient_clip_val: NonNegativeFloat | None = None
+    gradient_clip_algorithm: Literal["norm", "value"] | None = None
     use_weighted_sampler: bool = False
     epochs: PositiveInt = 100
+    resume_training: bool = False
     n_workers: Annotated[
         NonNegativeInt,
         Field(validation_alias=AliasChoices("n_workers", "num_workers")),
@@ -469,7 +523,9 @@ class ExportConfig(ArchiveConfig):
 
     @model_validator(mode="after")
     def check_values(self) -> Self:
-        def pad_values(values: float | list[float] | None):
+        def pad_values(
+            values: float | list[float] | None,
+        ) -> list[float] | None:
             if values is None:
                 return None
             if isinstance(values, float):
@@ -602,6 +658,89 @@ class Config(LuxonisConfig):
                 "If this behavior is not desired, set `smart_cfg_auto_populate` to `False`."
             )
 
+        # Rule: Check if a predefined model is set and adjust config accordingly to achieve best training results
+        predefined_model_cfg = getattr(
+            instance.model, "predefined_model", None
+        )
+        if predefined_model_cfg:
+            logger.info(
+                "Predefined model detected. Applying predefined model configuration rules."
+            )
+            model_name = predefined_model_cfg.name
+            accumulate_grad_batches = int(64 / instance.trainer.batch_size)
+            logger.info(
+                "Setting accumulate_grad_batches to %d (trainer.batch_size=%d)",
+                accumulate_grad_batches,
+                instance.trainer.batch_size,
+            )
+            loss_params = predefined_model_cfg.params.get("loss_params", {})
+            gradient_accumulation_schedule = None
+            if model_name == "InstanceSegmentationModel":
+                loss_params.update(
+                    {
+                        "bbox_loss_weight": 7.5 * accumulate_grad_batches,
+                        "class_loss_weight": 0.5 * accumulate_grad_batches,
+                        "dfl_loss_weight": 1.5 * accumulate_grad_batches,
+                    }
+                )
+                gradient_accumulation_schedule = {
+                    0: 1,
+                    1: (1 + accumulate_grad_batches) // 2,
+                    2: accumulate_grad_batches,
+                }
+                logger.info(
+                    "InstanceSegmentationModel: Updated loss_params: %s",
+                    loss_params,
+                )
+                logger.info(
+                    "InstanceSegmentationModel: Set gradient accumulation schedule to: %s",
+                    gradient_accumulation_schedule,
+                )
+            elif model_name == "KeypointDetectionModel":
+                loss_params.update(
+                    {
+                        "iou_loss_weight": 7.5 * accumulate_grad_batches,
+                        "class_loss_weight": 0.5 * accumulate_grad_batches,
+                        "regr_kpts_loss_weight": 12 * accumulate_grad_batches,
+                        "vis_kpts_loss_weight": 1 * accumulate_grad_batches,
+                    }
+                )
+                gradient_accumulation_schedule = {
+                    0: 1,
+                    1: (1 + accumulate_grad_batches) // 2,
+                    2: accumulate_grad_batches,
+                }
+                logger.info(
+                    "KeypointDetectionModel: Updated loss_params: %s",
+                    loss_params,
+                )
+                logger.info(
+                    "KeypointDetectionModel: Set gradient accumulation schedule to: %s",
+                    gradient_accumulation_schedule,
+                )
+            elif model_name == "DetectionModel":
+                loss_params.update(
+                    {
+                        "iou_loss_weight": 2.5 * accumulate_grad_batches,
+                        "class_loss_weight": 1 * accumulate_grad_batches,
+                    }
+                )
+                logger.info(
+                    "DetectionModel: Updated loss_params: %s", loss_params
+                )
+            predefined_model_cfg.params["loss_params"] = loss_params
+            if gradient_accumulation_schedule:
+                for callback in instance.trainer.callbacks:
+                    if callback.name == "GradientAccumulationScheduler":
+                        callback.params["scheduling"] = (
+                            gradient_accumulation_schedule
+                        )
+                        logger.info(
+                            "GradientAccumulationScheduler callback updated with scheduling: %s",
+                            gradient_accumulation_schedule,
+                        )
+                        break
+
 
 def is_acyclic(graph: dict[str, list[str]]) -> bool:
     """Tests if graph is acyclic.
@@ -615,7 +754,7 @@ def is_acyclic(graph: dict[str, list[str]]) -> bool:
     """
     graph = graph.copy()
 
-    def dfs(node: str, visited: set[str], recursion_stack: set[str]):
+    def dfs(node: str, visited: set[str], recursion_stack: set[str]) -> bool:
         visited.add(node)
         recursion_stack.add(node)
 

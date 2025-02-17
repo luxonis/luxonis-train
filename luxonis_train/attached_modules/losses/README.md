@@ -12,6 +12,9 @@ List of all the available loss functions.
 - [`AdaptiveDetectionLoss`](#adaptivedetectionloss)
 - [`EfficientKeypointBBoxLoss`](#efficientkeypointbboxloss)
 - [`FOMOLocalizationLoss`](#fomolocalizationLoss)
+- [Embedding Losses](#embedding-losses)
+- [`PrecisionDFLDetectionLoss`](#precisiondfldetectionloss)
+- [`PrecisionDFLSegmentationLoss`](#precisiondflsegmentationloss)
 
 ## `CrossEntropyLoss`
 
@@ -98,7 +101,7 @@ Keypoint Similarity Loss](https://arxiv.org/ftp/arxiv/papers/2204/2204.06806.pdf
 | `class_loss_weight`     | `float`                                           | `1.0`         | Weight used for the classification sub-loss                                                                   |
 | `iou_loss_weight`       | `float`                                           | `2.5`         | Weight used for the `IoU` sub-loss                                                                            |
 | `regr_kpts_loss_weight` | `float`                                           | `1.5`         | Weight used for the `OKS` sub-loss                                                                            |
-| `vis_kpts_loss_weight`  | `float`                                           | `1.0`         | Weight used for the keypoint visibility sub-loss                                                              |
+| `vis_kpts_loss_weight`  | `float`                                           | `2.0`         | Weight used for the keypoint visibility sub-loss                                                              |
 | `sigmas`                | `list[float] \ None`                              | `None`        | Sigmas used in `KeypointLoss` for `OKS` metric. If `None` then use COCO ones if possible or default ones      |
 | `area_factor`           | `float \| None`                                   | `None`        | Factor by which we multiply bounding box area which is used in `KeypointLoss.` If `None` then use default one |
 
@@ -119,6 +122,84 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 
 **Parameters:**
 
-| Key             | Type    | Default value | Description                                     |
-| --------------- | ------- | ------------- | ----------------------------------------------- |
-| `object_weight` | `float` | `1000`        | Weight for the objects in the loss calculation. |
+| Key             | Type    | Default value | Description                                                                                                                                                                          |
+| --------------- | ------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `object_weight` | `float` | `500`         | Weight for the objects in the loss calculation. Training with a larger `object_weight` in the loss parameters may result in more false positives (FP), but it will improve accuracy. |
+
+## Embedding Losses
+
+We support the following losses taken from [pytorch-metric-learning](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/):
+
+- [AngularLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#angularloss)
+- [CircleLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#circleloss)
+- [ContrastiveLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#contrastiveloss)
+- [DynamicSoftMarginLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#dynamicsoftmarginloss)
+- [FastAPLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#fastaploss)
+- [HistogramLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#histogramloss)
+- [InstanceLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#instanceloss)
+- [IntraPairVarianceLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#intrapairvarianceloss)
+- [GeneralizedLiftedStructureLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#generalizedliftedstructureloss)
+- [LiftedStructureLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#liftedstructureloss)
+- [MarginLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#marginloss)
+- [MultiSimilarityLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#multisimilarityloss)
+- [NPairsLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#npairsloss)
+- [NCALoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#ncaloss)
+- [NTXentLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#ntxentloss)
+- [PNPLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#pnploss)
+- [RankedListLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#rankedlistloss)
+- [SignalToNoiseRatioContrastiveLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#signaltonoisecontrastiveloss)
+- [SupConLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#supconloss)
+- [ThresholdConsistentMarginLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#thresholdconsistentmarginloss)
+- [TripletMarginLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#tripletmarginloss)
+- [TupletMarginLoss](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/#tupletmarginloss)
+
+**Parameters:**
+
+For loss specific parameters, see the documentation pages linked above. In addition to the loss specific parameters, the following parameters are available:
+
+| Key                  | Type   | Default value | Description                                                                                                                                                                                                                     |
+| -------------------- | ------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `miner`              | `str`  | `None`        | Name of the miner to use with the loss. If `None`, no miner is used. All miners from [pytorch-metric-learning](https://kevinmusgrave.github.io/pytorch-metric-learning/miners/) are supported.                                  |
+| `miner_params`       | `dict` | `None`        | Parameters for the miner.                                                                                                                                                                                                       |
+| `distance`           | `str`  | `None`        | Name of the distance metric to use with the loss. If `None`, no distance metric is used. All distance metrics from [pytorch-metric-learning](https://kevinmusgrave.github.io/pytorch-metric-learning/distances/) are supported. |
+| `distance_params`    | `dict` | `None`        | Parameters for the distance metric.                                                                                                                                                                                             |
+| `reducer`            | `str`  | `None`        | Name of the reducer to use with the loss. If `None`, no reducer is used. All reducers from [pytorch-metric-learning](https://kevinmusgrave.github.io/pytorch-metric-learning/reducers/) are supported.                          |
+| `reducer_params`     | `dict` | `None`        | Parameters for the reducer.                                                                                                                                                                                                     |
+| `regularizer`        | `str`  | `None`        | Name of the regularizer to use with the loss. If `None`, no regularizer is used. All regularizers from [pytorch-metric-learning](https://kevinmusgrave.github.io/pytorch-metric-learning/regularizers/) are supported.          |
+| `regularizer_params` | `dict` | `None`        | Parameters for the regularizer.                                                                                                                                                                                                 |
+
+## `CTCLoss`
+
+CTC loss with optional focal loss weighting.
+
+**Parameters:**
+
+| Key              | Type   | Default value | Description                                            |
+| ---------------- | ------ | ------------- | ------------------------------------------------------ |
+| `use_focal_loss` | `bool` | `True`        | Whether to apply focal loss weighting to the CTC loss. |
+
+## `PrecisionDFLDetectionLoss`
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+**Parameters:**
+
+| Key                 | Type    | Default value | Description                                |
+| ------------------- | ------- | ------------- | ------------------------------------------ |
+| `tal_topk`          | `int`   | `10`          | Number of anchors considered in selection. |
+| `class_loss_weight` | `float` | `0.5`         | Weight for classification loss.            |
+| `bbox_loss_weight`  | `float` | `7.5`         | Weight for bbox loss.                      |
+| `dfl_loss_weigth`   | `float` | `1.5`         | Weight for DFL loss.                       |
+
+## `PrecisionDFLSegmentationLoss`
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+**Parameters:**
+
+| Key                 | Type    | Default value | Description                                |
+| ------------------- | ------- | ------------- | ------------------------------------------ |
+| `tal_topk`          | `int`   | `10`          | Number of anchors considered in selection. |
+| `class_loss_weight` | `float` | `0.5`         | Weight for classification loss.            |
+| `bbox_loss_weight`  | `float` | `7.5`         | Weight for bbox and segmentation loss.     |
+| `dfl_loss_weigth`   | `float` | `1.5`         | Weight for DFL loss.                       |

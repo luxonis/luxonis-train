@@ -1,5 +1,6 @@
+from collections.abc import Iterator
 from copy import deepcopy
-from typing import Iterator, TypeAlias, TypeVar
+from typing import TypeAlias, TypeVar
 
 Graph: TypeAlias = dict[str, list[str]]
 """Graph in a format of a dictionary of predecessors.

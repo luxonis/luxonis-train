@@ -1,4 +1,6 @@
 from abc import abstractmethod
+from functools import cached_property
+from inspect import Parameter
 
 from torch import Tensor
 from typing_extensions import TypeVarTuple, Unpack
@@ -11,7 +13,7 @@ Ts = TypeVarTuple("Ts")
 
 
 class BaseVisualizer(
-    BaseAttachedModule[Unpack[Ts]],
+    BaseAttachedModule,
     register=False,
     registry=VISUALIZERS,
 ):
@@ -25,7 +27,7 @@ class BaseVisualizer(
     @abstractmethod
     def forward(
         self,
-        label_canvas: Tensor,
+        target_canvas: Tensor,
         prediction_canvas: Tensor,
         *args: Unpack[Ts],
     ) -> (
@@ -47,8 +49,8 @@ class BaseVisualizer(
               depth estimation).
             - A list of images, representing unrelated visualizations.
 
-        @type label_canvas: Tensor
-        @param label_canvas: An image to draw the labels on.
+        @type target_canvas: Tensor
+        @param target_canvas: An image to draw the labels on.
         @type prediction_canvas: Tensor
         @param prediction_canvas: An image to draw the predictions on.
         @type args: Unpack[Ts]
@@ -61,13 +63,24 @@ class BaseVisualizer(
         """
         ...
 
+    @cached_property
+    def _signature(self) -> dict[str, Parameter]:
+        signature = self._get_signature(self.forward)
+        for key in list(signature.keys()):
+            if "canvas" in key:
+                del signature[key]
+        return signature
+
+    # TODO: Canvases not required if remove `MultiVisualizer`
     def run(
         self,
-        label_canvas: Tensor,
         prediction_canvas: Tensor,
+        target_canvas: Tensor,
         inputs: Packet[Tensor],
         labels: Labels | None,
     ) -> Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]:
         return self(
-            label_canvas, prediction_canvas, *self.prepare(inputs, labels)
+            target_canvas,
+            prediction_canvas,
+            **self.get_parameters(inputs, labels),
         )

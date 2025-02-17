@@ -1,17 +1,16 @@
 import glob
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any
 
 import cv2
 import numpy as np
 from luxonis_ml.data import BucketStorage, LuxonisDataset
+from luxonis_ml.typing import PathType
 
 from luxonis_train.core import LuxonisModel
 
-PathType = Union[str, Path]
 
-
-def get_opts() -> dict[str, Any]:
+def get_config() -> dict[str, Any]:
     return {
         "model": {
             "name": "DREAM",
@@ -44,6 +43,9 @@ def get_opts() -> dict[str, Any]:
             "validation_interval": 10,
             "num_sanity_val_steps": 0,
         },
+        "tracker": {
+            "save_directory": "tests/integration/save-directory",
+        },
     }
 
 
@@ -64,24 +66,22 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
         return mask
 
     def dummy_generator(
-        train_paths: List[PathType], test_paths: List[PathType]
+        train_paths: list[PathType], test_paths: list[PathType]
     ):
         for path in train_paths:
+            img = cv2.imread(str(path))
+            img_h, img_w, _ = img.shape
+            mask = np.zeros((img_h, img_w), dtype=np.uint8)
             yield {
                 "file": path,
                 "annotation": {
-                    "type": "rle",
                     "class": "object",
-                    "height": 256,
-                    "width": 256,
-                    "counts": "0" * (256 * 256),
+                    "segmentation": {"mask": mask},
                 },
             }
 
         for path in test_paths:
             img = cv2.imread(str(path))
-            if img is None:
-                continue
             img_h, img_w, _ = img.shape
             mask = random_square_mask((img_h, img_w))
             poly = cv2.findContours(
@@ -94,19 +94,22 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
             yield {
                 "file": path,
                 "annotation": {
-                    "type": "polyline",
                     "class": "object",
-                    "points": [
-                        pt for segment in poly_normalized for pt in segment
-                    ],
+                    "segmentation": {
+                        "height": img_h,
+                        "width": img_w,
+                        "points": [
+                            pt for segment in poly_normalized for pt in segment
+                        ],
+                    },
                 },
             }
 
-    paths_total: List[PathType] = [
+    paths_total: list[PathType] = [
         Path(p) for p in glob.glob(str(paths), recursive=True)[:10]
     ]
-    train_paths: List[PathType] = paths_total[:5]
-    test_paths: List[PathType] = paths_total[5:]
+    train_paths: list[PathType] = paths_total[:5]
+    test_paths: list[PathType] = paths_total[5:]
 
     dataset = LuxonisDataset(
         "dummy_mvtec",
@@ -115,7 +118,7 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
         delete_remote=True,
     )
     dataset.add(dummy_generator(train_paths, test_paths))
-    definitions: Dict[str, List[PathType]] = {
+    definitions: dict[str, list[PathType]] = {
         "train": train_paths,
         "val": test_paths,
     }
@@ -126,7 +129,6 @@ def test_anomaly_detection():
     create_dummy_anomaly_detection_dataset(
         Path("tests/data/COCO_people_subset/person_val2017_subset/*")
     )
-    config = get_opts()
-    model = LuxonisModel(config)
+    model = LuxonisModel(get_config())
     model.train()
     model.test()

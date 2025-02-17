@@ -6,6 +6,9 @@ from luxonis_ml.data import LuxonisDataset
 from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
 
+# TODO: Remove the following line after the incompatibility issue is resolved
+BACKBONES = [backbone for backbone in BACKBONES if backbone != "PPLCNetV3"]
+
 
 def get_opts(backbone: str) -> dict[str, Any]:
     opts = {
@@ -17,37 +20,37 @@ def get_opts(backbone: str) -> dict[str, Any]:
                 {
                     "name": "SegmentationHead",
                     "alias": "seg-color-segmentation",
-                    "task": "color-segmentation",
+                    "task_name": "color",
                     "inputs": [backbone],
                 },
                 {
                     "name": "BiSeNetHead",
                     "alias": "bi-color-segmentation",
-                    "task": "color-segmentation",
+                    "task_name": "color",
                     "inputs": [backbone],
                 },
                 {
                     "name": "SegmentationHead",
                     "alias": "seg-vehicle-segmentation",
-                    "task": "vehicle-segmentation",
+                    "task_name": "vehicles",
                     "inputs": [backbone],
                 },
                 {
                     "name": "BiSeNetHead",
                     "alias": "bi-vehicle-segmentation",
-                    "task": "vehicle-segmentation",
+                    "task_name": "vehicles",
                     "inputs": [backbone],
                 },
                 {
                     "name": "SegmentationHead",
                     "alias": "seg-vehicle-segmentation-2",
-                    "task": "vehicle-segmentation",
+                    "task_name": "vehicles",
                     "inputs": [backbone],
                 },
                 {
                     "name": "SegmentationHead",
                     "alias": "seg-vehicle-segmentation-3",
-                    "task": "vehicle-segmentation",
+                    "task_name": "vehicles",
                     "inputs": [backbone],
                 },
             ],

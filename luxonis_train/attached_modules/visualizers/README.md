@@ -7,7 +7,8 @@ Visualizers are used to render the output of a node. They are used in the `visua
 - [`BBoxVisualizer`](#bboxvisualizer)
 - [`ClassificationVisualizer`](#classificationvisualizer)
 - [`KeypointVisualizer`](#keypointvisualizer)
-- [`MultiVisualizer`](#multivisualizer)
+- [`SegmentationVisualizer`](#segmentationvisualizer)
+- [`EmbeddingsVisualizer`](#embeddingsvisualizer)
 
 ## `BBoxVisualizer`
 
@@ -72,18 +73,26 @@ Visualizer for bounding boxes.
 
 ![class_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/class.png)
 
-## `MultiVisualizer`
-
-Special type of meta-visualizer that combines several visualizers into one. The combined visualizers share canvas.
+## `EmbeddingsVisualizer`
 
 **Parameters:**
 
-| Key           | Type         | Default value | Description                                                                                                                                                                                                                                                  |
-| ------------- | ------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `visualizers` | `list[dict]` | `[]`          | List of visualizers to combine. Each item in the list is a dictionary with the following keys:<br> - `"name"` (`str`): Name of the visualizer. Must be a key in the `VISUALIZERS` registry. <br> - `"params"` (`dict`): Parameters to pass to the visualizer |
+| Key                 | Type    | Default value | Description                                                                                                                   |
+| ------------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `z_score_threshold` | `float` | `3.0`         | Threshold for z-score filtering. Embeddings with z-score higher than this value are considered as outliers and are not drawn. |
+
+## `OCRVisualizer`
+
+Visualizer for OCR tasks.
+
+**Parameters:**
+
+| Key          | Type                   | Default value | Description                                 |
+| ------------ | ---------------------- | ------------- | ------------------------------------------- |
+| `font_scale` | `float`                | `0.5`         | Font scale of the text. Defaults to `0.5`.  |
+| `color`      | `tuple[int, int, int]` | `(0, 0, 0)`   | Color of the text. Defaults to `(0, 0, 0)`. |
+| `thickness`  | `int`                  | `1`           | Thickness of the text. Defaults to `1`.     |
 
 **Example:**
 
-Example of combining [`KeypointVisualizer`](#keypointvisualizer) and [`BBoxVisualizer`](#bboxvisualizer).
-
-![multi_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/multi.png)
+![ocr_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/ocr.png)

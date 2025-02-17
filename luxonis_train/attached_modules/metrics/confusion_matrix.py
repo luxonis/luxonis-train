@@ -2,16 +2,30 @@ from typing import Literal
 
 import torch
 from torch import Tensor
-from torchmetrics.classification import MulticlassConfusionMatrix
+from torchmetrics import Metric
+from torchmetrics.classification import (
+    BinaryConfusionMatrix,
+    MulticlassConfusionMatrix,
+)
 from torchvision.ops import box_convert, box_iou
+from typing_extensions import override
 
-from luxonis_train.enums import TaskType
-from luxonis_train.utils import Labels, Packet
+from luxonis_train.tasks import InstanceBaseTask, Metadata, Task, Tasks
 
 from .base_metric import BaseMetric
 
 
-class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
+# TODO: Possibly split to two classes and treat `ConfusionMatrix` as
+# a factory with `__new__` method.
+class ConfusionMatrix(BaseMetric):
+    supported_tasks = [
+        Tasks.CLASSIFICATION,
+        Tasks.BOUNDINGBOX,
+        Tasks.SEGMENTATION,
+        Tasks.INSTANCE_SEGMENTATION,
+        Tasks.INSTANCE_KEYPOINTS,
+    ]
+
     def __init__(
         self,
         box_format: Literal["xyxy", "xywh", "cxcywh"] = "xyxy",
@@ -41,41 +55,22 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
         self.box_format = box_format
         self.iou_threshold = iou_threshold
         self.confidence_threshold = confidence_threshold
+        self.metric_cm: Metric | None = None
+        self.detection_cm: Tensor | None = None
 
-        self.is_classification = (
-            self.node.tasks is not None
-            and TaskType.CLASSIFICATION in self.node.tasks
-        )
-        self.is_detection = (
-            self.node.tasks is not None
-            and TaskType.BOUNDINGBOX in self.node.tasks
-        )
-        self.is_segmentation = (
-            self.node.tasks is not None
-            and TaskType.SEGMENTATION in self.node.tasks
-        )
+        if self.task in {
+            Tasks.CLASSIFICATION,
+            Tasks.SEGMENTATION,
+            Tasks.INSTANCE_SEGMENTATION,
+        }:
+            if self.n_classes == 1:
+                self.metric_cm = BinaryConfusionMatrix()
+            else:
+                self.metric_cm = MulticlassConfusionMatrix(
+                    num_classes=self.n_classes
+                )
 
-        if (
-            sum(
-                [
-                    self.is_classification,
-                    self.is_detection,
-                    self.is_segmentation,
-                ]
-            )
-            > 1
-        ):
-            raise ValueError(
-                "Multiple tasks detected in self.node.tasks. Only one task is allowed."
-            )
-
-        self.metric_cm = None
-        if self.is_classification or self.is_segmentation:
-            self.metric_cm = MulticlassConfusionMatrix(
-                num_classes=self.n_classes
-            )
-
-        if self.is_detection:
+        if self.task in {Tasks.BOUNDINGBOX, Tasks.INSTANCE_KEYPOINTS}:
             self.add_state(
                 "detection_cm",
                 default=torch.zeros(
@@ -84,9 +79,22 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
                 dist_reduce_fx="sum",
             )
 
-    def prepare(
-        self, inputs: Packet[Tensor], labels: Labels
-    ) -> tuple[dict[str, Tensor], dict[str, Tensor]]:
+    @property
+    @override
+    def task(self) -> Task:
+        task = super().task
+        if isinstance(task, InstanceBaseTask):
+            return Tasks.BOUNDINGBOX
+        return task
+
+    @property
+    @override
+    def required_labels(self) -> set[str | Metadata]:
+        return super().required_labels - {"keypoints"}
+
+    def update(
+        self, predictions: Tensor | list[Tensor], target: Tensor
+    ) -> None:
         """Prepare data for classification, segmentation, and detection
         tasks.
 
@@ -97,14 +105,11 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
         @return: A tuple of two dictionaries: one for predictions and
             one for targets.
         """
-        predictions = {}
-        targets = {}
 
-        if self.is_detection:
-            out_bbox = self.get_input_tensors(inputs, TaskType.BOUNDINGBOX)
-            bbox = self.get_label(labels, TaskType.BOUNDINGBOX)
-            bbox = bbox.to(out_bbox[0].device).clone()
-            bbox[..., 2:6] = box_convert(bbox[..., 2:6], "xywh", "xyxy")
+        if self.detection_cm is not None:
+            assert isinstance(predictions, list)
+
+            target[..., 2:6] = box_convert(target[..., 2:6], "xywh", "xyxy")
             scale_factors = torch.tensor(
                 [
                     self.original_in_shape[2],
@@ -112,84 +117,59 @@ class ConfusionMatrix(BaseMetric[Tensor, Tensor]):
                     self.original_in_shape[2],
                     self.original_in_shape[1],
                 ],
-                device=bbox.device,
+                device=target.device,
             )
-            bbox[..., 2:6] *= scale_factors
-            predictions["detection"] = out_bbox
-            targets["detection"] = bbox
+            target[..., 2:6] *= scale_factors
 
-        if self.is_classification:
-            prediction = self.get_input_tensors(
-                inputs, TaskType.CLASSIFICATION
+            self.detection_cm += self._compute_detection_confusion_matrix(
+                predictions,
+                target,
             )
-            target = self.get_label(labels, TaskType.CLASSIFICATION).to(
-                prediction[0].device
-            )
-            predictions["classification"] = prediction
-            targets["classification"] = target
+            return
 
-        if self.is_segmentation:
-            prediction = self.get_input_tensors(inputs, TaskType.SEGMENTATION)
-            target = self.get_label(labels, TaskType.SEGMENTATION).to(
-                prediction[0].device
-            )
-            predictions["segmentation"] = prediction
-            targets["segmentation"] = target
+        assert isinstance(predictions, Tensor)
 
-        return predictions, targets
+        # TODO: Could be unified?
+        if self.task == Tasks.CLASSIFICATION:
+            preds = (
+                predictions.argmax(dim=1)
+                if predictions.shape[1] > 1
+                else predictions.sigmoid().squeeze(1).round().int()
+            )  # [B]
+        else:
+            assert isinstance(predictions, Tensor)
+            preds = (
+                predictions.argmax(dim=1)
+                if predictions.shape[1] > 1
+                else predictions.squeeze(1).sigmoid().round().int()
+            )  # [B, H, W]
 
-    def update(
-        self, predictions: dict[str, Tensor], targets: dict[str, Tensor]
-    ) -> None:
-        """Update the confusion matrices for all tasks using prepared
-        data.
+        targets = (
+            target.argmax(dim=1)
+            if target.shape[1] > 1
+            else target.squeeze(1).round().int()
+        )
 
-        @type predictions: dict[str, Tensor]
-        @param predictions: A dictionary containing predictions for all
-            tasks.
-        @type targets: dict[str, Tensor]
-        @param targets: A dictionary containing targets for all tasks.
-        """
-        if "classification" in predictions and "classification" in targets:
-            preds = predictions["classification"]
-            target = targets["classification"]
-            pred_classes = preds[0].argmax(dim=1)  # [B]
-            target_classes = target.argmax(dim=1)  # [B]
-            if self.metric_cm is not None:
-                self.metric_cm.update(pred_classes, target_classes)
-
-        if "segmentation" in predictions and "segmentation" in targets:
-            preds = predictions["segmentation"]
-            target = targets["segmentation"]
-            pred_masks = preds[0].argmax(dim=1)  # [B, H, W]
-            target_masks = target.argmax(dim=1)  # [B, H, W]
-            if self.metric_cm is not None:
-                self.metric_cm.update(
-                    pred_masks.view(-1), target_masks.view(-1)
-                )
-
-        if "detection" in predictions and "detection" in targets:
-            preds = predictions["detection"]  # type: ignore
-            target = targets["detection"]
-            self.detection_cm += self._compute_detection_confusion_matrix(  # type: ignore
-                preds,  # type: ignore
-                target,  # type: ignore
-            )
+        assert self.metric_cm is not None
+        self.metric_cm.update(preds.view(-1), targets.view(-1))
 
     def compute(self) -> dict[str, Tensor]:
         """Compute confusion matrices for classification, segmentation,
         and detection tasks."""
         results = {}
-        if self.metric_cm:
-            task_type = (
-                "classification" if self.is_classification else "segmentation"
-            )
-            results[f"{task_type}_confusion_matrix"] = self.metric_cm.compute()
-            self.metric_cm.reset()
-        if self.is_detection:
+        if self.metric_cm is not None:
+            results[f"{self.task}_confusion_matrix"] = self.metric_cm.compute()
+        if self.detection_cm is not None:
             results["detection_confusion_matrix"] = self.detection_cm
 
         return results
+
+    def reset(self) -> None:
+        if self.metric_cm is not None:
+            self.metric_cm.reset()
+
+        if self.detection_cm is not None:
+            self.detection_cm.zero_()
 
     def _compute_detection_confusion_matrix(
         self, preds: list[Tensor], targets: Tensor

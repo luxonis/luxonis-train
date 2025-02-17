@@ -1,15 +1,18 @@
 import torch
 from torch import Tensor, nn
+from typing_extensions import override
 
-from luxonis_train.enums import TaskType
 from luxonis_train.loaders import BaseLoaderTorch
 from luxonis_train.nodes import BaseNode
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import Packet
 
 
 class CustomMultiInputLoader(BaseLoaderTorch):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._height = 224
+        self._width = 224
 
     @property
     def input_shapes(self):
@@ -20,7 +23,7 @@ class CustomMultiInputLoader(BaseLoaderTorch):
             "pointcloud": torch.Size([1000, 3]),
         }
 
-    def __getitem__(self, _):  # pragma: no cover
+    def get(self, _):  # pragma: no cover
         # Fake data
         left = torch.rand(3, 224, 224, dtype=torch.float32)
         right = torch.rand(3, 224, 224, dtype=torch.float32)
@@ -36,17 +39,16 @@ class CustomMultiInputLoader(BaseLoaderTorch):
         # Fake labels
         segmap = torch.zeros(1, 224, 224, dtype=torch.float32)
         segmap[0, 100:150, 100:150] = 1
-        labels = {
-            "segmentation": (segmap, TaskType.SEGMENTATION),
-        }
+        labels = {"/segmentation": segmap}
 
         return inputs, labels
 
     def __len__(self):
         return 10
 
-    def get_classes(self) -> dict[TaskType, list[str]]:
-        return {TaskType.SEGMENTATION: ["square"]}
+    @override
+    def get_classes(self) -> dict[str, dict[str, int]]:
+        return {"": {"square": 0}}
 
 
 class MultiInputTestBaseNode(BaseNode):
@@ -77,7 +79,8 @@ class FusionNeck2(MultiInputTestBaseNode): ...
 
 
 class CustomSegHead1(MultiInputTestBaseNode):
-    tasks = {TaskType.SEGMENTATION: "segmentation"}
+    task = Tasks.SEGMENTATION
+    attach_index = -1
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -87,12 +90,12 @@ class CustomSegHead1(MultiInputTestBaseNode):
         assert len(inputs) == 1
         return inputs[0]["features"][-1]
 
-    def forward(self, inputs: Tensor):
-        return [self.conv(inputs)]
+    def forward(self, inputs: Tensor) -> Tensor:
+        return self.conv(inputs)
 
 
 class CustomSegHead2(MultiInputTestBaseNode):
-    tasks = {TaskType.SEGMENTATION: "segmentation"}
+    task = Tasks.SEGMENTATION
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -101,7 +104,6 @@ class CustomSegHead2(MultiInputTestBaseNode):
     def unwrap(self, inputs: list[Packet[Tensor]]):
         return [packet["features"][-1] for packet in inputs]
 
-    def forward(self, inputs: list[Tensor]):
+    def forward(self, inputs: list[Tensor]) -> Tensor:
         fn1, _, disp = inputs
-        x = fn1 + disp
-        return [self.conv(x)]
+        return self.conv(fn1 + disp)

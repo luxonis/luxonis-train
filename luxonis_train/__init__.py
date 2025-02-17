@@ -11,7 +11,12 @@ try:
     from .optimizers import *
     from .schedulers import *
     from .strategies import *
+    from .tasks import *
     from .utils import *
+    from .utils import setup_logging
+
+    setup_logging()
+
 except ImportError as e:
     warnings.warn(
         "Failed to import submodules. "

@@ -1,7 +1,6 @@
 import math
 from typing import Literal, TypeVar
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
@@ -81,20 +80,103 @@ class EfficientDecoupledBlock(nn.Module):
             module.weight = nn.Parameter(w, requires_grad=True)
 
 
+class SegProto(nn.Module):
+    def __init__(
+        self, in_channels: int, mid_channels: int = 256, out_channels: int = 32
+    ):
+        """Initializes the segmentation prototype generator.
+
+        @type in_channels: int
+        @param in_channels: Number of input channels.
+        @type mid_channels: int
+        @param mid_channels: Number of intermediate channels. Defaults
+            to 256.
+        @type out_channels: int
+        @param out_channels: Number of output channels. Defaults to 32.
+        """
+        super().__init__()
+        self.conv1 = ConvModule(
+            in_channels=in_channels,
+            out_channels=mid_channels,
+            kernel_size=3,
+            stride=1,
+            padding=1,
+            activation=nn.SiLU(),
+        )
+        self.upsample = nn.ConvTranspose2d(
+            in_channels=mid_channels,
+            out_channels=mid_channels,
+            kernel_size=2,
+            stride=2,
+            bias=True,
+        )
+        self.conv2 = ConvModule(
+            in_channels=mid_channels,
+            out_channels=mid_channels,
+            kernel_size=3,
+            stride=1,
+            padding=1,
+            activation=nn.SiLU(),
+        )
+        self.conv3 = ConvModule(
+            in_channels=mid_channels,
+            out_channels=out_channels,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            activation=nn.SiLU(),
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Defines the forward pass of the segmentation prototype
+        generator.
+
+        @type x: Tensor
+        @param x: Input tensor.
+        @rtype: Tensor
+        @return: Processed tensor.
+        """
+        return self.conv3(self.conv2(self.upsample(self.conv1(x))))
+
+
+class DFL(nn.Module):
+    def __init__(self, reg_max: int = 16):
+        """The DFL (Distribution Focal Loss) module processes input
+        tensors by applying softmax over a specified dimension and
+        projecting the resulting tensor to produce output logits.
+
+        @type reg_max: int
+        @param reg_max: Maximum number of regression outputs. Defaults
+            to 16.
+        """
+        super().__init__()
+        self.proj_conv = nn.Conv2d(reg_max, 1, kernel_size=1, bias=False)
+        self.proj_conv.weight.data.copy_(
+            torch.arange(reg_max, dtype=torch.float32).view(1, reg_max, 1, 1)
+        )
+        self.proj_conv.requires_grad_(False)
+
+    def forward(self, x: Tensor) -> Tensor:
+        bs, _, h, w = x.size()
+        x = F.softmax(x.view(bs, 4, -1, h * w).permute(0, 2, 1, 3), dim=1)
+        return self.proj_conv(x)[:, 0].view(bs, 4, h, w)
+
+
 class ConvModule(nn.Sequential):
     def __init__(
         self,
         in_channels: int,
         out_channels: int,
-        kernel_size: int,
-        stride: int = 1,
-        padding: int = 0,
-        dilation: int = 1,
+        kernel_size: int | tuple[int, int],
+        stride: int | tuple[int, int] = 1,
+        padding: int | tuple[int, int] = 0,
+        dilation: int | tuple[int, int] = 1,
         groups: int = 1,
         bias: bool = False,
-        activation: nn.Module | None = None,
+        activation: nn.Module | None | Literal[False] = None,
+        use_norm: bool = True,
     ):
-        """Conv2d + BN + Activation.
+        """Conv2d + Optional BN + Activation.
 
         @type in_channels: int
         @param in_channels: Number of input channels.
@@ -112,10 +194,13 @@ class ConvModule(nn.Sequential):
         @param groups: Groups. Defaults to 1.
         @type bias: bool
         @param bias: Whether to use bias. Defaults to False.
-        @type activation: L{nn.Module} | None
-        @param activation: Activation function. If None then nn.ReLU.
+        @type activation: L{nn.Module} | None | Literal[False]
+        @param activation: Activation function. If None then nn.ReLU. If
+            False then no activation. Defaults to None.
+        @type use_norm: bool
+        @param use_norm: Whether to use normalization. Defaults to True.
         """
-        super().__init__(
+        blocks: list[nn.Module] = [
             nn.Conv2d(
                 in_channels,
                 out_channels,
@@ -126,8 +211,59 @@ class ConvModule(nn.Sequential):
                 groups,
                 bias,
             ),
-            nn.BatchNorm2d(out_channels),
-            activation or nn.ReLU(),
+        ]
+
+        if use_norm:
+            blocks.append(nn.BatchNorm2d(out_channels))
+
+        if activation is not False:
+            blocks.append(activation or nn.ReLU())
+
+        super().__init__(*blocks)
+
+
+class DWConvModule(ConvModule):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int = 1,
+        padding: int = 0,
+        dilation: int = 1,
+        bias: bool = False,
+        activation: nn.Module | None = None,
+    ):
+        """Depth-wise Conv2d + BN + Activation.
+
+        @type in_channels: int
+        @param in_channels: Number of input channels.
+        @type out_channels: int
+        @param out_channels: Number of output channels.
+        @type kernel_size: int
+        @param kernel_size: Kernel size.
+        @type stride: int
+        @param stride: Stride. Defaults to 1.
+        @type padding: int
+        @param padding: Padding. Defaults to 0.
+        @type dilation: int
+        @param dilation: Dilation. Defaults to 1.
+        @type bias: bool
+        @param bias: Whether to use bias. Defaults to False.
+        @type activation: L{nn.Module} | None
+        @param activation: Activation function. If None then nn.Relu.
+        """
+
+        super().__init__(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=math.gcd(in_channels, out_channels),
+            bias=bias,
+            activation=activation,
         )
 
 
@@ -316,7 +452,7 @@ class RepVGGBlock(nn.Module):
             stride=stride,
             padding=padding,
             groups=groups,
-            activation=nn.Identity(),
+            activation=False,
         )
         self.rbr_1x1 = ConvModule(
             in_channels=in_channels,
@@ -325,7 +461,7 @@ class RepVGGBlock(nn.Module):
             stride=stride,
             padding=padding_11,
             groups=groups,
-            activation=nn.Identity(),
+            activation=False,
         )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -400,12 +536,12 @@ class RepVGGBlock(nn.Module):
             assert isinstance(branch, nn.BatchNorm2d)
             if not hasattr(self, "id_tensor"):
                 input_dim = self.in_channels // self.groups
-                kernel_value = np.zeros(
-                    (self.in_channels, input_dim, 3, 3), dtype=np.float32
+                kernel_value = torch.zeros(
+                    (self.in_channels, input_dim, 3, 3), dtype=torch.float32
                 )
                 for i in range(self.in_channels):
                     kernel_value[i, i % input_dim, 1, 1] = 1
-                self.id_tensor = torch.from_numpy(kernel_value)
+                self.id_tensor = kernel_value
             kernel = self.id_tensor
             running_mean = branch.running_mean
             running_var = branch.running_var
@@ -601,7 +737,7 @@ class AttentionRefinmentBlock(nn.Module):
                 in_channels=out_channels,
                 out_channels=out_channels,
                 kernel_size=1,
-                activation=nn.Identity(),
+                activation=False,
             ),
             nn.Sigmoid(),
         )
@@ -641,7 +777,7 @@ class FeatureFusionBlock(nn.Module):
                 in_channels=out_channels,
                 out_channels=out_channels // reduction,
                 kernel_size=1,
-                activation=nn.Identity(),
+                activation=False,
             ),
             nn.Sigmoid(),
         )

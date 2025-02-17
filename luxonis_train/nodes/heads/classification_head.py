@@ -1,17 +1,15 @@
-from typing import Any
-
 from torch import Tensor, nn
 
-from luxonis_train.enums import TaskType
 from luxonis_train.nodes.heads import BaseHead
+from luxonis_train.tasks import Tasks
 
 
 class ClassificationHead(BaseHead[Tensor, Tensor]):
     in_channels: int
-    tasks: list[TaskType] = [TaskType.CLASSIFICATION]
+    task = Tasks.CLASSIFICATION
     parser: str = "ClassificationParser"
 
-    def __init__(self, dropout_rate: float = 0.2, **kwargs: Any):
+    def __init__(self, dropout_rate: float = 0.2, **kwargs):
         """Simple classification head.
 
         Consists of a global average pooling layer followed by a dropout

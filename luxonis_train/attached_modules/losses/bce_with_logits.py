@@ -1,25 +1,22 @@
-from typing import Any, Literal
+from typing import Literal
 
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.enums import TaskType
+from luxonis_train.tasks import Tasks
 
 from .base_loss import BaseLoss
 
 
-class BCEWithLogitsLoss(BaseLoss[Tensor, Tensor]):
-    supported_tasks: list[TaskType] = [
-        TaskType.SEGMENTATION,
-        TaskType.CLASSIFICATION,
-    ]
+class BCEWithLogitsLoss(BaseLoss):
+    supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 
     def __init__(
         self,
         weight: list[float] | None = None,
         reduction: Literal["none", "mean", "sum"] = "mean",
         pos_weight: Tensor | None = None,
-        **kwargs: Any,
+        **kwargs,
     ):
         """This loss combines a L{nn.Sigmoid} layer and the
         L{nn.BCELoss} in one single class. This version is more

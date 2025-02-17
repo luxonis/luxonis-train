@@ -11,145 +11,123 @@
                 "name": "image",
                 "dtype": "float32",
                 "input_type": "image",
-                "shape": [
-                    1,
-                    3,
-                    256,
-                    320
-                ],
+                "shape": [1, 3, 256, 320],
                 "layout": "NCHW",
                 "preprocessing": {
-                    "mean": [
-                        123.675,
-                        116.28,
-                        103.53
-                    ],
-                    "scale": [
-                        58.395,
-                        57.12,
-                        57.375
-                    ],
-                    "reverse_channels": true,
-                    "interleaved_to_planar": false,
+                    "mean": [123.675, 116.28, 103.53],
+                    "scale": [58.395, 57.12, 57.375],
+                    "reverse_channels": null,
+                    "interleaved_to_planar": null,
                     "dai_type": "RGB888p"
                 }
             }
         ],
         "outputs": [
             {
-                "name": "any-vehicle-segmentation-head/vehicle-segmentation/0",
+                "name": "brand/BiSeNetHead/segmentation/0",
                 "dtype": "float32",
-                "shape": [
-                    1,
-                    1,
-                    256,
-                    320
-                ],
+                "shape": [1, 23, 256, 320],
+                "layout": "NCHW"
+            },
+            {
+                "name": "color/SegmentationHead/segmentation/0",
+                "dtype": "float32",
+                "shape": [1, 4, 256, 320],
                 "layout": "NCHW"
             },
             {
                 "name": "output1_yolov6r2",
                 "dtype": "float32",
-                "shape": [
-                    1,
-                    7,
-                    32,
-                    40
-                ],
+                "shape": [1, 8, 32, 40],
                 "layout": "NCHW"
             },
             {
                 "name": "output2_yolov6r2",
                 "dtype": "float32",
-                "shape": [
-                    1,
-                    7,
-                    16,
-                    20
-                ],
+                "shape": [1, 8, 16, 20],
                 "layout": "NCHW"
             },
             {
                 "name": "output3_yolov6r2",
                 "dtype": "float32",
-                "shape": [
-                    1,
-                    7,
-                    8,
-                    10
-                ],
-                "layout": "NCHW"
-            },
-            {
-                "name": "brand-segmentation-head/brand-segmentation/0",
-                "dtype": "float32",
-                "shape": [
-                    1,
-                    23,
-                    256,
-                    320
-                ],
-                "layout": "NCHW"
-            },
-            {
-                "name": "color-segmentation-head/color-segmentation/0",
-                "dtype": "float32",
-                "shape": [
-                    1,
-                    4,
-                    256,
-                    320
-                ],
-                "layout": "NCHW"
-            },
-            {
-                "name": "motorbike-detection-head/outputs/0",
-                "dtype": "float32",
-                "shape": [
-                    1,
-                    14,
-                    32,
-                    40
-                ],
-                "layout": "NCHW"
-            },
-            {
-                "name": "motorbike-detection-head/outputs/1",
-                "dtype": "float32",
-                "shape": [
-                    1,
-                    14,
-                    16,
-                    20
-                ],
-                "layout": "NCHW"
-            },
-            {
-                "name": "motorbike-detection-head/outputs/2",
-                "dtype": "float32",
-                "shape": [
-                    1,
-                    14,
-                    8,
-                    10
-                ],
+                "shape": [1, 8, 8, 10],
                 "layout": "NCDE"
             },
             {
-                "name": "vehicle-type-segmentation-head/vehicle_type-segmentation/0",
+                "name": "output1_yolov6",
                 "dtype": "float32",
-                "shape": [
-                    1,
-                    3,
-                    256,
-                    320
-                ],
+                "shape": [1, 6, 32, 40],
                 "layout": "NCHW"
+            },
+            {
+                "name": "output2_yolov6",
+                "dtype": "float32",
+                "shape": [1, 6, 16, 20],
+                "layout": "NCHW"
+            },
+            {
+                "name": "output3_yolov6",
+                "dtype": "float32",
+                "shape": [1, 6, 8, 10],
+                "layout": "NCHW"
+            },
+            {
+                "name": "kpt_output1",
+                "dtype": "float32",
+                "shape": [1, 9, 1280],
+                "layout": "NCD"
+            },
+            {
+                "name": "kpt_output2",
+                "dtype": "float32",
+                "shape": [1, 9, 320],
+                "layout": "NCD"
+            },
+            {
+                "name": "kpt_output3",
+                "dtype": "float32",
+                "shape": [1, 9, 80],
+                "layout": "NCD"
             }
         ],
         "heads": [
             {
-                "name": "vehicle-type-segmentation-head",
+                "name": "BiSeNetHead",
+                "parser": "SegmentationParser",
+                "metadata": {
+                    "postprocessor_path": null,
+                    "classes": [
+                        "background",
+                        "alfa-romeo",
+                        "aprilia",
+                        "bmw",
+                        "buick",
+                        "chrysler",
+                        "dodge",
+                        "ducati",
+                        "ferrari",
+                        "harley",
+                        "honda",
+                        "infiniti",
+                        "isuzu",
+                        "jeep",
+                        "Kawasaki",
+                        "land-rover",
+                        "moto",
+                        "piaggio",
+                        "pontiac",
+                        "roll-royce",
+                        "saab",
+                        "truimph",
+                        "yamaha"
+                    ],
+                    "n_classes": 23,
+                    "is_softmax": false
+                },
+                "outputs": ["brand/BiSeNetHead/segmentation/0"]
+            },
+            {
+                "name": "BiSeNetHead_0",
                 "parser": "SegmentationParser",
                 "metadata": {
                     "postprocessor_path": null,
@@ -161,35 +139,19 @@
                     "n_classes": 3,
                     "is_softmax": false
                 },
-                "outputs": [
-                    "vehicle-type-segmentation-head/vehicle_type-segmentation/0"
-                ]
+                "outputs": []
             },
             {
-                "name": "any-vehicle-segmentation-head",
-                "parser": "SegmentationParser",
-                "metadata": {
-                    "postprocessor_path": null,
-                    "classes": [
-                        "vehicle"
-                    ],
-                    "n_classes": 1,
-                    "is_softmax": false
-                },
-                "outputs": [
-                    "any-vehicle-segmentation-head/vehicle-segmentation/0"
-                ]
-            },
-            {
-                "name": "bbox-head",
+                "name": "EfficientBBoxHead",
                 "parser": "YOLO",
                 "metadata": {
                     "postprocessor_path": null,
                     "classes": [
+                        "background",
                         "car",
                         "motorbike"
                     ],
-                    "n_classes": 2,
+                    "n_classes": 3,
                     "iou_threshold": 0.45,
                     "conf_threshold": 0.25,
                     "max_det": 300,
@@ -203,44 +165,30 @@
                 ]
             },
             {
-                "name": "brand-segmentation-head",
-                "parser": "SegmentationParser",
+                "name": "EfficientKeypointBBoxHead",
+                "parser": "YOLOExtendedParser",
                 "metadata": {
                     "postprocessor_path": null,
-                    "classes": [
-                        "Kawasaki",
-                        "alfa-romeo",
-                        "aprilia",
-                        "background",
-                        "bmw",
-                        "buick",
-                        "chrysler",
-                        "dodge",
-                        "ducati",
-                        "ferrari",
-                        "harley",
-                        "honda",
-                        "infiniti",
-                        "isuzu",
-                        "jeep",
-                        "land-rover",
-                        "moto",
-                        "piaggio",
-                        "pontiac",
-                        "roll-royce",
-                        "saab",
-                        "truimph",
-                        "yamaha"
-                    ],
-                    "n_classes": 23,
-                    "is_softmax": false
+                    "classes": ["motorbike"],
+                    "n_classes": 1,
+                    "iou_threshold": 0.45,
+                    "conf_threshold": 0.25,
+                    "max_det": 300,
+                    "anchors": null,
+                    "subtype": "yolov6",
+                    "n_keypoints": 3
                 },
                 "outputs": [
-                    "brand-segmentation-head/brand-segmentation/0"
+                    "output1_yolov6",
+                    "output2_yolov6",
+                    "output3_yolov6",
+                    "kpt_output1",
+                    "kpt_output2",
+                    "kpt_output3"
                 ]
             },
             {
-                "name": "color-segmentation-head",
+                "name": "SegmentationHead",
                 "parser": "SegmentationParser",
                 "metadata": {
                     "postprocessor_path": null,
@@ -253,31 +201,7 @@
                     "n_classes": 4,
                     "is_softmax": false
                 },
-                "outputs": [
-                    "color-segmentation-head/color-segmentation/0"
-                ]
-            },
-            {
-                "name": "motorbike-detection-head",
-                "parser": "YOLOExtendedParser",
-                "metadata": {
-                    "postprocessor_path": null,
-                    "classes": [
-                        "motorbike"
-                    ],
-                    "n_classes": 1,
-                    "iou_threshold": 0.45,
-                    "conf_threshold": 0.25,
-                    "max_det": 300,
-                    "anchors": null,
-                    "subtype": "yolov6",
-                    "n_keypoints": 3
-                },
-                "outputs": [
-                    "motorbike-detection-head/outputs/0",
-                    "motorbike-detection-head/outputs/1",
-                    "motorbike-detection-head/outputs/2"
-                ]
+                "outputs": ["color/SegmentationHead/segmentation/0"]
             }
         ]
     }

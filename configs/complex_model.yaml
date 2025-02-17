@@ -20,19 +20,12 @@ model:
       metrics:
         - name: ObjectKeypointSimilarity
           is_main_metric: true
-        - name: MeanAveragePrecisionKeypoints
+        - name: MeanAveragePrecision
 
       visualizers:
-        - name: MultiVisualizer
+        - name: KeypointVisualizer
           params:
-            visualizers:
-              - name: KeypointVisualizer
-                params:
-                  nonvisible_color: blue
-              - name: BBoxVisualizer
-                params:
-                  colors:
-                    person: "#FF5055"
+            nonvisible_color: blue
 
     - name: SegmentationHead
       inputs:
@@ -100,7 +93,6 @@ trainer:
   preprocessing:
     train_image_size: [&height 384, &width 384]
     keep_aspect_ratio: true
-    train_rgb: true
     normalize:
       active: true
     augmentations:

@@ -1,16 +1,14 @@
-import logging
 from collections import defaultdict
-from typing import Any, Literal
+from typing import Literal
 
 import torch.utils.checkpoint as checkpoint
+from loguru import logger
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import RepVGGBlock
 
 from .variants import get_variant
-
-logger = logging.getLogger(__name__)
 
 
 class RepVGG(BaseNode[Tensor, list[Tensor]]):
@@ -25,7 +23,7 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
         override_groups_map: dict[int, int] | None = None,
         use_se: bool = False,
         use_checkpoint: bool = False,
-        **kwargs: Any,
+        **kwargs,
     ):
         """RepVGG backbone.
 

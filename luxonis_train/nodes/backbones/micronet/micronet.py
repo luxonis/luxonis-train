@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 from torch import Tensor, nn
 
@@ -13,7 +13,7 @@ class MicroNet(BaseNode[Tensor, list[Tensor]]):
         self,
         variant: Literal["M1", "M2", "M3"] = "M1",
         out_indices: list[int] | None = None,
-        **kwargs: Any,
+        **kwargs,
     ):
         """MicroNet backbone.
 

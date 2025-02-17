@@ -3,6 +3,7 @@ import multiprocessing as mp
 import pytest
 from luxonis_ml.data import LuxonisDataset
 
+from luxonis_train.config.config import SchedulerConfig
 from luxonis_train.core import LuxonisModel
 
 
@@ -32,10 +33,10 @@ def create_model_config():
     }
 
 
-def sequential_scheduler():
-    return {
-        "name": "SequentialLR",
-        "params": {
+def sequential_scheduler() -> SchedulerConfig:
+    return SchedulerConfig(
+        name="SequentialLR",
+        params={
             "schedulers": [
                 {
                     "name": "LinearLR",
@@ -48,14 +49,14 @@ def sequential_scheduler():
             ],
             "milestones": [1],
         },
-    }
+    )
 
 
-def cosine_annealing_scheduler():
-    return {
-        "name": "CosineAnnealingLR",
-        "params": {"T_max": 2, "eta_min": 0.001},
-    }
+def cosine_annealing_scheduler() -> SchedulerConfig:
+    return SchedulerConfig(
+        name="CosineAnnealingLR",
+        params={"T_max": 2, "eta_min": 0.001},
+    )
 
 
 @pytest.mark.parametrize(
@@ -63,7 +64,9 @@ def cosine_annealing_scheduler():
 )
 def test_scheduler(coco_dataset: LuxonisDataset, scheduler_config):
     config = create_model_config()
-    config["trainer"]["scheduler"] = scheduler_config
-    opts = {"loader.params.dataset_name": coco_dataset.dataset_name}
+    opts = {
+        "loader.params.dataset_name": coco_dataset.dataset_name,
+        "trainer.scheduler": scheduler_config,
+    }
     model = LuxonisModel(config, opts)
     model.train()

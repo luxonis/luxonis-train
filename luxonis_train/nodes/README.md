@@ -17,8 +17,12 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`ContextSpatial`](#contextspatial)
   - [`DDRNet`](#ddrnet)
   - [`RecSubNet`](#recsubnet)
+  - [`PPLCNetV3`](#pplcnetv3)
+  - [`EfficientViT`](#efficientvit)
+  - [`GhostFaceNetV2`](#ghostfacenetv2)
 - [Necks](#necks)
   - [`RepPANNeck`](#reppanneck)
+  - [`SVTRNeck`](#svtrneck)
 - [Heads](#heads)
   - [`ClassificationHead`](#classificationhead)
   - [`SegmentationHead`](#segmentationhead)
@@ -28,7 +32,12 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`DDRNetSegmentationHead`](#ddrnetsegmentationhead)
   - [`DiscSubNetHead`](#discsubnet)
   - [`FOMOHead`](#fomohead)
-    Every node takes these parameters:
+  - [`GhostFaceNetHead`](#ghostfacenethead)
+  - [`OCRCTCHead`](#ocrctchead)
+  - [`PrecisionBBoxHead`](#precisionbboxhead)
+  - [`PrecisionSegmentBBoxHead`](#precisionsegmentbboxhead)
+
+Every node takes these parameters:
 
 | Key                | Type          | Default value | Description                                                                 |
 | ------------------ | ------------- | ------------- | --------------------------------------------------------------------------- |
@@ -40,7 +49,7 @@ In addition, the following class attributes can be overridden:
 | Key            | Type                                                              | Default value | Description                                                                                                                                                                                                                     |
 | -------------- | ----------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `attach_index` | `int \| "all" \| tuple[int, int] \| tuple[int, int, int] \| None` | `None`        | Index of previous output that the head attaches to. Each node has a sensible default. Usually should not be manually set in most cases. Can be either a single index, a slice (negative indexing is also supported), or `"all"` |
-| `tasks`        | `list[TaskType] \| Dict[TaskType, str] \| None`                   | `None`        | Tasks supported by the node. Should be overridden for head nodes. Either a list of tasks or a dictionary mapping tasks to their default names                                                                                   |
+| `task`         | `Task \| None`                                                    | `None`        | List of tasks types supported by the node. Should be overridden for head nodes.                                                                                                                                                 |
 
 Additional parameters for specific nodes are listed below.
 
@@ -153,6 +162,7 @@ Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 ### `DDRNet`
 
 Adapted from [here](https://github.com/ydhongHIT/DDRNet)
+
 **Parameters:**
 
 | Key                | Type                       | Default value | Description                                                             |
@@ -160,14 +170,51 @@ Adapted from [here](https://github.com/ydhongHIT/DDRNet)
 | `variant`          | `Literal["23-slim", "23"]` | `"23-slim"`   | Variant of the network                                                  |
 | `download_weights` | `bool`                     | `True`        | If True download weights from COCO (if available for specified variant) |
 
+### `PPLCNetV3`
+
+Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
+**Parameters:**
+
+| Key            | Type                   | Default value | Description                    |
+| -------------- | ---------------------- | ------------- | ------------------------------ |
+| `variant`      | Literal\["rec-light"\] | `"rec-light"` | Variant of the network         |
+| `scale`        | `float`                | `0.95`        | Scale factor for the model     |
+| `conv_kxk_num` | `int`                  | `4`           | Number of convolutional layers |
+| `det`          | `bool`                 | `False`       | Whether to use for detection   |
+| `net_config`   | `dict`                 | `None`        | Configuration for the network  |
+| `max_text_len` | `int`                  | `40`          | Maximum length of the text     |
+
 ### `RecSubNet`
 
 Adapted from [here](https://arxiv.org/abs/2108.07610)
+
 **Parameters:**
 
 | Key       | Type                | Default value | Description            |
 | --------- | ------------------- | ------------- | ---------------------- |
 | `variant` | `Literal["n", "l"]` | `"l"`         | Variant of the network |
+
+### `EfficientViT`
+
+Adapted from [here](https://arxiv.org/abs/2205.14756)
+
+**Parameters:**
+
+| Key            | Type                                                              | Default value                    | Description                                         |
+| -------------- | ----------------------------------------------------------------- | -------------------------------- | --------------------------------------------------- |
+| `variant`      | `Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]` | `"nano"`                         | Variant of the network                              |
+| `width_list`   | `list[int]`                                                       | `[256, 256, 256, 256, 256, 512]` | List of number of channels for each block           |
+| `depth_list`   | `list[int]`                                                       | `[12, 12, 12, 12]`               | List of number of repeats of `EfficientViTBlock`    |
+| `expand_ratio` | `int`                                                             | `4`                              | Factor by which channels expand in the local module |
+| `dim`          | `int`                                                             | `None`                           | Dimension size for each attention head              |
+
+### `GhostFaceNetV2`
+
+**Parameters:**
+
+| Key       | Type            | Default value | Description                 |
+| --------- | --------------- | ------------- | --------------------------- |
+| `variant` | `Literal["V2"]` | `"V2"`        | The variant of the network. |
 
 ## Neck
 
@@ -189,6 +236,10 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 | `csp_e`              | `float`                                                           | `0.5`                            | Factor for intermediate channels when block is set to `"CSPStackRepBlock"`      |
 | `download_weights`   | `bool`                                                            | `False`                          | If True download weights from COCO (if available for specified variant)         |
 | `initialize_weights` | `bool`                                                            | `True`                           | If True, initialize weights.                                                    |
+
+### `SVTRNeck`
+
+Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 
 ## Heads
 
@@ -222,7 +273,7 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
 | Key                  | Type    | Default value | Description                                                           |
 | -------------------- | ------- | ------------- | --------------------------------------------------------------------- |
-| `n_heads`            | `bool`  | `3`           | Number of output heads                                                |
+| `n_heads`            | `int`   | `3`           | Number of output heads                                                |
 | `conf_thres`         | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation) |
 | `iou_thres`          | `float` | `0.45`        | `IoU` threshold for non-maxima-suppression (used for evaluation)      |
 | `max_det`            | `int`   | `300`         | Maximum number of detections retained after NMS                       |
@@ -268,7 +319,59 @@ Adapted from [here](https://arxiv.org/abs/2108.07610).
 
 **Parameters:**
 
-| Key               | Type  | Default value | Description                                             |
-| ----------------- | ----- | ------------- | ------------------------------------------------------- |
-| `num_conv_layers` | `int` | `3`           | Number of convolutional layers to use in the model.     |
-| `conv_channels`   | `int` | `16`          | Number of output channels for each convolutional layer. |
+| Key               | Type   | Default value | Description                                                                              |
+| ----------------- | ------ | ------------- | ---------------------------------------------------------------------------------------- |
+| `num_conv_layers` | `int`  | `3`           | Number of convolutional layers to use in the model.                                      |
+| `conv_channels`   | `int`  | `16`          | Number of output channels for each convolutional layer.                                  |
+| `use_nms`         | `bool` | `False`       | If True, enable NMS. This can reduce FP, but it will also reduce TP for close neighbors. |
+
+### `OCRCTCHead`
+
+Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
+**Parameters:**
+
+| Key              | Type        | Default value | Description                                   |
+| ---------------- | ----------- | ------------- | --------------------------------------------- |
+| `alphabet`       | `list[str]` |               | List of characters for the head to recognize. |
+| `ignore_unknown` | `bool`      | `True`        | Whether to ignore unknown characters.         |
+| `fc_decay`       | `float`     | `0.0004`      | L2 regularization factor.                     |
+| `mid_channels`   | `int`       | `None`        | Number of middle channels.                    |
+| `return_feats`   | `bool`      | `False`       | Whether to return features.                   |
+
+### `GhostFaceNetHead`
+
+**Parameters:**
+
+| Key              | Type  | Default value | Description                              |
+| ---------------- | ----- | ------------- | ---------------------------------------- |
+| `embedding_size` | `int` | `512`         | The size of the output embedding vector. |
+
+### `PrecisionBBoxHead`
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+**Parameters:**
+
+| Key          | Type    | Default value | Description                                                               |
+| ------------ | ------- | ------------- | ------------------------------------------------------------------------- |
+| `reg_max`    | `int`   | `16`          | Maximum number of regression channels                                     |
+| `n_heads`    | `int`   | `3`           | Number of output heads                                                    |
+| `conf_thres` | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation)     |
+| `iou_thres`  | `float` | `0.45`        | IoU threshold for non-maxima-suppression (used for evaluation)            |
+| `max_det`    | `int`   | `300`         | Max number of detections for non-maxima-suppression (used for evaluation) |
+
+### `PrecisionSegmentBBoxHead`
+
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf).
+
+**Parameters:**
+
+| Key          | Type    | Default value | Description                                                                |
+| ------------ | ------- | ------------- | -------------------------------------------------------------------------- |
+| `reg_max`    | `int`   | `16`          | Maximum number of regression channels.                                     |
+| `n_heads`    | `int`   | `3`           | Number of output heads.                                                    |
+| `conf_thres` | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation).     |
+| `iou_thres`  | `float` | `0.45`        | IoU threshold for non-maxima-suppression (used for evaluation).            |
+| `max_det`    | `int`   | `300`         | Max number of detections for non-maxima-suppression (used for evaluation). |
+| `n_masks`    | `int`   | `32`          | Number of of output instance segmentation masks at the output.             |
+| `n_proto`    | `int`   | `256`         | Number of prototypes generated from the prototype generator.               |

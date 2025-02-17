@@ -1,11 +1,9 @@
-import logging
 from typing import Literal
 
 import lightning.pytorch as pl
+from loguru import logger
 
 import luxonis_train
-
-logger = logging.getLogger(__name__)
 
 
 class NeedsCheckpoint(pl.Callback):

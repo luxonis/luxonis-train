@@ -1,15 +1,14 @@
 import glob
 from pathlib import Path
-from typing import Any, List, Union
+from typing import Any
 
 import cv2
 import numpy as np
 import pytest
 from luxonis_ml.data import BucketStorage, LuxonisDataset
+from luxonis_ml.typing import PathType
 
 from luxonis_train.core import LuxonisModel
-
-PathType = Union[str, Path]
 
 
 def create_dummy_bbox_keypoint_dataset(paths: Path):
@@ -38,7 +37,7 @@ def create_dummy_bbox_keypoint_dataset(paths: Path):
 
         return bboxes, keypoints
 
-    def dummy_generator(image_paths: List[Path]):
+    def dummy_generator(image_paths: list[Path]):
         for path in image_paths:
             img = cv2.imread(str(path))
             if img is None:
@@ -50,26 +49,18 @@ def create_dummy_bbox_keypoint_dataset(paths: Path):
             )
 
             for i, bbox in enumerate(bboxes):
-                # Generate bounding box annotation
                 yield {
                     "file": path,
                     "annotation": {
-                        "type": "boundingbox",
-                        "instance_id": i,
                         "class": "object",
-                        "x": bbox["x"],
-                        "y": bbox["y"],
-                        "w": bbox["w"],
-                        "h": bbox["h"],
-                    },
-                }
-                yield {
-                    "file": path,
-                    "annotation": {
-                        "type": "keypoints",
                         "instance_id": i,
-                        "class": "object",
-                        "keypoints": [keypoints[i]],
+                        "boundingbox": {
+                            "x": bbox["x"],
+                            "y": bbox["y"],
+                            "w": bbox["w"],
+                            "h": bbox["h"],
+                        },
+                        "keypoints": {"keypoints": [keypoints[i]]},
                     },
                 }
 

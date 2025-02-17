@@ -1,9 +1,6 @@
-import logging
-
 import torch
+from loguru import logger
 from torch import Tensor
-
-logger = logging.getLogger(__name__)
 
 
 def get_sigmas(
@@ -65,3 +62,47 @@ def get_sigmas(
                 msg = f"[{caller_name}] {msg}"
             logger.info(msg)
             return torch.tensor([0.04] * n_keypoints, dtype=torch.float32)
+
+
+def get_center_keypoints(
+    bboxes: Tensor, height: int = 1, width: int = 1
+) -> Tensor:
+    """Get center keypoints from bounding boxes.
+
+    @type bboxes: Tensor
+    @param bboxes: Tensor of bounding boxes.
+    @type height: int
+    @param height: Image height. Defaults to C{1} (normalized).
+    @type width: int
+    @param width: Image width. Defaults to C{1} (normalized).
+    @rtype: Tensor
+    @return: Tensor of center keypoints.
+    """
+    keypoints = torch.empty(
+        (bboxes.shape[0], 4), device=bboxes.device, dtype=torch.int
+    )
+    keypoints[:, :2] = bboxes[:, :2]
+    keypoints[:, 2] = (bboxes[:, 2] + bboxes[:, 4] / 2) * width
+    keypoints[:, 3] = (bboxes[:, 3] + bboxes[:, 5] / 2) * height
+    return keypoints
+
+
+def insert_class(keypoints: Tensor, bboxes: Tensor) -> Tensor:
+    """Insert class index into keypoints tensor.
+
+    @type keypoints: Tensor
+    @param keypoints: Tensor of keypoints.
+    @type bboxes: Tensor
+    @param bboxes: Tensor of bounding boxes with class index.
+    @rtype: Tensor
+    @return: Tensor of keypoints with class index.
+    """
+    classes = bboxes[:, 1]
+    return torch.cat(
+        (
+            keypoints[:, :1],
+            classes.unsqueeze(-1),
+            keypoints[:, 1:],
+        ),
+        dim=-1,
+    )
