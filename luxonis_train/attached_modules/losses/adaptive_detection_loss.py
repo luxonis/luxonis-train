@@ -1,6 +1,6 @@
 import logging
-from typing import Any, List, Literal, Optional, cast
 import warnings
+from typing import Any, Literal, cast
 
 import torch
 import torch.nn.functional as F
@@ -79,13 +79,17 @@ class AdaptiveDetectionLoss(
             topk=13, n_classes=self.n_classes, alpha=1.0, beta=6.0
         )
 
-        self.per_class_weights = torch.tensor(
-            per_class_weights
-        )  # TODO: set device?
-        if len(per_class_weights) != self.n_classes:
-            warnings.warn(
-                f"Incorrect per_class_weights length. Expected {self.n_classes} but got {len(per_class_weights)}. Setting to None."
-            )
+        if per_class_weights is not None:
+            if len(per_class_weights) == self.n_classes:
+                self.per_class_weights = torch.tensor(
+                    per_class_weights
+                )  # TODO: set device?
+            else:
+                warnings.warn(
+                    f"Incorrect per_class_weights length. Expected {self.n_classes} but got {len(per_class_weights)}. Setting to None."
+                )
+                self.per_class_weights = None
+        else:
             self.per_class_weights = None
 
         self.varifocal_loss = VarifocalLoss(
