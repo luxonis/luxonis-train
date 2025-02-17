@@ -78,10 +78,6 @@ class AdaptiveDetectionLoss(
             topk=13, n_classes=self.n_classes, alpha=1.0, beta=6.0
         )
 
-        self.varifocal_loss = VarifocalLoss()
-        self.class_loss_weight = class_loss_weight
-        self.iou_loss_weight = iou_loss_weight
-        
         if len(per_class_weights) != self.n_classes:
             raise ValueError(
                 f"Incorrect per_class_weights length. Expected {self.n_classes} but got {len(per_class_weights)}."
@@ -89,6 +85,12 @@ class AdaptiveDetectionLoss(
         self.per_class_weights = torch.tensor(
             per_class_weights
         )  # TODO: set device?
+
+        self.varifocal_loss = VarifocalLoss(
+            per_class_weights=self.per_class_weights
+        )
+        self.class_loss_weight = class_loss_weight
+        self.iou_loss_weight = iou_loss_weight
 
         self._logged_assigner_change = False
 
@@ -148,7 +150,7 @@ class AdaptiveDetectionLoss(
             ..., :-1
         ]
         loss_cls = self.varifocal_loss(
-            pred_scores, assigned_scores, one_hot_label, self.per_class_weights
+            pred_scores, assigned_scores, one_hot_label
         )
 
         if assigned_scores.sum() > 1:
@@ -296,7 +298,8 @@ class VarifocalLoss(nn.Module):
         if self.per_class_weights is not None:
             weight = weight * self.per_class_weights.view(
                 1, 1, -1
-            )  # making sure to use the correct broadcasting
+            )  # ensure correct broadcasting (batches, anchors, classes)
+
         with torch.amp.autocast(
             device_type=pred_score.device.type, enabled=False
         ):
