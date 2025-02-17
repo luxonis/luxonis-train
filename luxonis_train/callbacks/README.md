@@ -83,13 +83,12 @@ Callback to visualize gradients using Grad-CAM. Works only during validation.
 
 ## `EMACallback`
 
-Callback that updates the stored parameters using a moving average.
+A callback that maintains an exponential moving average (EMA) of the model's parameters. The EMA weights are employed during validation, testing, visualizations, and for exporting the model, ensuring the deployed model benefits from smoother, more stable parameters.
 
 **Parameters:**
 
-| Key                 | Type    | Default value | Description                                                                                     |
-| ------------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------- |
-| `decay`             | `float` | `0.5`         | Decay factor for the moving average.                                                            |
-| `use_dynamic_decay` | `bool`  | `True`        | Whether to use dynamic decay.                                                                   |
-| `decay_tau`         | `float` | `2000`        | Decay tau for dynamic decay.                                                                    |
-| `device`            | `str`   | `None`        | Device to use for the moving average. If `None`, the device is inferred from the model's device |
+| Key                 | Type    | Default value | Description                                                                        |
+| ------------------- | ------- | ------------- | ---------------------------------------------------------------------------------- |
+| `decay`             | `float` | `0.5`         | The decay factor for updating the EMA. Higher values yield slower updates.         |
+| `use_dynamic_decay` | `bool`  | `True`        | If enabled, adjusts the decay factor dynamically based on the training iteration.  |
+| `decay_tau`         | `float` | `2000`        | The time constant (tau) for dynamic decay, influencing how quickly the EMA adapts. |
