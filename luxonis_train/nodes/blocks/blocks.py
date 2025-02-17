@@ -1,7 +1,6 @@
 import math
 from typing import Literal, TypeVar
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
@@ -537,12 +536,12 @@ class RepVGGBlock(nn.Module):
             assert isinstance(branch, nn.BatchNorm2d)
             if not hasattr(self, "id_tensor"):
                 input_dim = self.in_channels // self.groups
-                kernel_value = np.zeros(
-                    (self.in_channels, input_dim, 3, 3), dtype=np.float32
+                kernel_value = torch.zeros(
+                    (self.in_channels, input_dim, 3, 3), dtype=torch.float32
                 )
                 for i in range(self.in_channels):
                     kernel_value[i, i % input_dim, 1, 1] = 1
-                self.id_tensor = torch.from_numpy(kernel_value)
+                self.id_tensor = kernel_value
             kernel = self.id_tensor
             running_mean = branch.running_mean
             running_var = branch.running_var
