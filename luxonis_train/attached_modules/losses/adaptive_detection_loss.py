@@ -61,7 +61,7 @@ class AdaptiveDetectionLoss(
         @type iou_loss_weight: float
         @param iou_loss_weight: Weight of IoU loss.
         @type per_class_weights: Optional[Tensor]
-        @param per_class_weights: Holds a weight for each class to calculate the weighted loss.
+        @param per_class_weights: Holds a weight for each class to calculate the weighted loss. It's length must be equal to the number of classes.
         """
         super().__init__(**kwargs)
 
@@ -81,6 +81,11 @@ class AdaptiveDetectionLoss(
         self.varifocal_loss = VarifocalLoss()
         self.class_loss_weight = class_loss_weight
         self.iou_loss_weight = iou_loss_weight
+        
+        if len(per_class_weights) != self.n_classes:
+            raise ValueError(
+                f"Incorrect per_class_weights length. Expected {self.n_classes} but got {len(per_class_weights)}."
+            )
         self.per_class_weights = torch.tensor(
             per_class_weights
         )  # TODO: set device?
@@ -268,7 +273,7 @@ class VarifocalLoss(nn.Module):
         @type gamma: float
         @param gamma: gamma parameter in focal loss, default is 2.0.
         @type per_class_weights: Optional[Tensor]
-        @param per_class_weights: Holds a weight for each class to calculate the weighted loss.
+        @param per_class_weights: Holds a weight for each class to calculate the weighted loss. It's length must be equal to the number of classes.
         """
 
         super().__init__()
