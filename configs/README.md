@@ -284,37 +284,37 @@ trainer:
 
   When setting `trainer.smart_cfg_auto_populate = True`, the following set of rules will be applied:
 
-  1. **Default Optimizer and Scheduler:**
+  ##### 1. **Default Optimizer and Scheduler:**
 
-     - If `training_strategy` is not defined and neither `optimizer` nor `scheduler` is set, the following defaults are applied:
-       - Optimizer: `Adam`
-       - Scheduler: `ConstantLR`
+  - If `training_strategy` is not defined and neither `optimizer` nor `scheduler` is set, the following defaults are applied:
+    - Optimizer: `Adam`
+    - Scheduler: `ConstantLR`
 
-  1. **CosineAnnealingLR Adjustment:**
+  ##### 2. **CosineAnnealingLR Adjustment:**
 
-     - If the `CosineAnnealingLR` scheduler is used and `T_max` is not set, it is automatically set to the number of epochs.
+  - If the `CosineAnnealingLR` scheduler is used and `T_max` is not set, it is automatically set to the number of epochs.
 
-  1. **Mosaic4 Augmentation:**
+  ##### 3. **Mosaic4 Augmentation:**
 
-     - If `Mosaic4` augmentation is used without `out_width` and `out_height` parameters, they are set to match the training image size.
+  - If `Mosaic4` augmentation is used without `out_width` and `out_height` parameters, they are set to match the training image size.
 
-  1. **Validation/Test Views:**
+  ##### 4. **Validation/Test Views:**
 
-     - If `train_view`, `val_view`, and `test_view` are the same, and `n_validation_batches` is not explicitly set, it defaults to `10` to prevent validation/testing on the entire training set.
+  - If `train_view`, `val_view`, and `test_view` are the same, and `n_validation_batches` is not explicitly set, it defaults to `10` to prevent validation/testing on the entire training set.
 
-  1. **Predefined Model Configuration Adjustment**
+  ##### 5. **Predefined Model Configuration Adjustment**
 
-     - If the model has a `predefined_model` attribute, the configuration is auto-adjusted for optimal training:
+  - If the model has a `predefined_model` attribute, the configuration is auto-adjusted for optimal training:
 
-       - **Accumulate Grad Batches:** Computed as `int(64 / trainer.batch_size)`.
-       - **InstanceSegmentationModel:**
-         - Updates `bbox_loss_weight`, `class_loss_weight`, and `dfl_loss_weight` (scaled by `accumulate_grad_batches`).
-         - Sets a gradient accumulation schedule: `{0: 1, 1: (1 + accumulate_grad_batches) // 2, 2: accumulate_grad_batches}`.
-       - **KeypointDetectionModel:**
-         - Updates `iou_loss_weight`, `class_loss_weight`, `regr_kpts_loss_weight`, and `vis_kpts_loss_weight` (scaled by `accumulate_grad_batches`).
-         - Sets the same gradient accumulation schedule.
-       - **DetectionModel:**
-         - Updates `iou_loss_weight` and `class_loss_weight` (scaled by `accumulate_grad_batches`).
+    - **Accumulate Grad Batches:** Computed as `int(64 / trainer.batch_size)`.
+    - **InstanceSegmentationModel:**
+      - Updates `bbox_loss_weight`, `class_loss_weight`, and `dfl_loss_weight` (scaled by `accumulate_grad_batches`).
+      - Sets a gradient accumulation schedule: `{0: 1, 1: (1 + accumulate_grad_batches) // 2, 2: accumulate_grad_batches}`.
+    - **KeypointDetectionModel:**
+      - Updates `iou_loss_weight`, `class_loss_weight`, `regr_kpts_loss_weight`, and `vis_kpts_loss_weight` (scaled by `accumulate_grad_batches`).
+      - Sets the same gradient accumulation schedule.
+    - **DetectionModel:**
+      - Updates `iou_loss_weight` and `class_loss_weight` (scaled by `accumulate_grad_batches`).
 
 ### Preprocessing
 
