@@ -28,29 +28,6 @@ ______________________________________________________________________
 - [OCR Losses](#ocr-losses)
   - [`CTCLoss`](#ctcloss)
 - [Embedding Losses](#embedding-losses)
-  - **Available Embedding Losses**
-    - AngularLoss
-    - CircleLoss
-    - ContrastiveLoss
-    - DynamicSoftMarginLoss
-    - FastAPLoss
-    - HistogramLoss
-    - InstanceLoss
-    - IntraPairVarianceLoss
-    - GeneralizedLiftedStructureLoss
-    - LiftedStructureLoss
-    - MarginLoss
-    - MultiSimilarityLoss
-    - NPairsLoss
-    - NCALoss
-    - NTXentLoss
-    - PNPLoss
-    - RankedListLoss
-    - SignalToNoiseRatioContrastiveLoss
-    - SupConLoss
-    - ThresholdConsistentMarginLoss
-    - TripletMarginLoss
-    - TupletMarginLoss
 
 ______________________________________________________________________
 
