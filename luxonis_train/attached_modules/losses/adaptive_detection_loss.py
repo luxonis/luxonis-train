@@ -272,14 +272,17 @@ class VarifocalLoss(nn.Module):
         pred_score: Tensor,
         target_score: Tensor,
         label: Tensor,
-        per_class_weights: Tensor,
+        per_class_weights: List,
     ) -> Tensor:
         weight = (
             self.alpha * pred_score.pow(self.gamma) * (1 - label)
             + target_score * label
         )
+
         if per_class_weights is not None:
-            weight = weight * torch.tensor(per_class_weights)[label.long()]
+            weight = weight * torch.tensor(
+                per_class_weights, device=pred_score.device
+            ).view(1, 1, -1)
         with torch.amp.autocast(
             device_type=pred_score.device.type, enabled=False
         ):
