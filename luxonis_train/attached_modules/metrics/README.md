@@ -10,6 +10,7 @@ List of all the available metrics.
 - [MeanAveragePrecisionKeypoints](#meanaverageprecisionkeypoints)
 - [ClosestIsPositiveAccuracy](#closestispositiveaccuracy)
 - [MedianDistances](#mediandistances)
+- [ConfusionMatrix](#confusionmatrix)
 
 ## Torchmetrics
 
@@ -80,7 +81,7 @@ Accuracy metric for OCR tasks.
 | ----------- | ----- | ------------- | ------------------------------------------ |
 | `blank_cls` | `int` | `0`           | Index of the blank class. Defaults to `0`. |
 
-## Confusion Matrix
+## ConfusionMatrix
 
 Compute the confusion matrix for various tasks including classification, segmentation, and object detection.
 
