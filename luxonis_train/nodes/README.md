@@ -253,7 +253,7 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 
 ### Classification Heads
 
-You can use various classification metrics with these heads, such as [Accuracy, F1Score, Precision, Recall](../attached_modules/metrics/README.md#torchmetrics) and [ConfusionMatrix](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [ClassificationVisualizer](../attached_modules/metrics/README.md#classificationvisualizer).
+You can use various classification metrics with these heads, such as [`Accuracy, F1Score, Precision, Recall`](../attached_modules/metrics/README.md#torchmetrics) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`ClassificationVisualizer`](../attached_modules/metrics/README.md#classificationvisualizer).
 
 #### `ClassificationHead`
 
@@ -265,7 +265,7 @@ You can use various classification metrics with these heads, such as [Accuracy, 
 
 ### Segmentation Heads
 
-You can use various segmentation metrics with these heads, such as [F1Score, JaccardIndex](../attached_modules/metrics/README.md#torchmetrics) and [ConfusionMatrix](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [SegmentationVisualizer](../attached_modules/metrics/README.md#segmentationvisualizer).
+You can use various segmentation metrics with these heads, such as [`F1Score, JaccardIndex`](../attached_modules/metrics/README.md#torchmetrics) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`SegmentationVisualizer`](../attached_modules/metrics/README.md#segmentationvisualizer).
 
 #### `SegmentationHead`
 
@@ -283,7 +283,7 @@ Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 
 #### `DDRNetSegmentationHead`
 
-Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works well with the [`DDRNet`](#ddrnet) backbone and the [OHEMBCEWithLogitsLoss](../attached_modules/losses/README.md#ohembcewithlogitsloss) loss.
+Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works well with the [`DDRNet`](#ddrnet) backbone and the [`OHEMBCEWithLogitsLoss`](../attached_modules/losses/README.md#ohembcewithlogitsloss) loss.
 
 **Parameters:**
 
@@ -295,7 +295,7 @@ Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works we
 
 ### Detection Heads
 
-You can use various detection metrics with these heads, such as [MeanAveragePrecision](../attached_modules/metrics/README.md#meanaverageprecision) and [ConfusionMatrix](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`BBoxVisualizer`](../attached_modules/visualizers/README.md#bboxvisualizer).
+You can use various detection metrics with these heads, such as [`MeanAveragePrecision`](../attached_modules/metrics/README.md#meanaverageprecision) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`BBoxVisualizer`](../attached_modules/visualizers/README.md#bboxvisualizer).
 
 #### Bounding Box Heads
 
@@ -359,7 +359,7 @@ Designed to be very fast. Simply attach it to one of the feature maps from the b
 
 #### Instance Segmentation Heads
 
-You can use various instance segmentation metrics with these heads, such as [MeanAveragePrecision](../attached_modules/metrics/README.md#meanaverageprecision), [ConfusionMatrix](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`InstanceSegmentationVisualizer`](../attached_modules/visualizers/README.md#instancesegmentationvisualizer).
+You can use various instance segmentation metrics with these heads, such as [`MeanAveragePrecision`](../attached_modules/metrics/README.md#meanaverageprecision), [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`InstanceSegmentationVisualizer`](../attached_modules/visualizers/README.md#instancesegmentationvisualizer).
 
 ##### `PrecisionSegmentBBoxHead`
 
@@ -379,7 +379,7 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arx
 
 ## Unsupervised Anomaly Detection Heads
 
-You can use various segmentation metrics with these heads, such as [F1Score, JaccardIndex](../attached_modules/metrics/README.md#torchmetrics) and [ConfusionMatrix](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [SegmentationVisualizer](../attached_modules/metrics/README.md#segmentationvisualizer).
+You can use various segmentation metrics with these heads, such as [`F1Score, JaccardIndex`](../attached_modules/metrics/README.md#torchmetrics) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [SegmentationVisualizer](../attached_modules/metrics/README.md#segmentationvisualizer).
 
 ### `DiscSubNetHead`
 
@@ -393,7 +393,7 @@ Adapted from [here](https://arxiv.org/abs/2108.07610). It currently only works w
 
 ## OCR Heads
 
-You can use [OCRAccuracy](../attached_modules/metrics/README.md#ocraccuracy) metric, as well as visualizer [OCRVisualizer](../attached_modules/metrics/README.md#ocrvisualizer).
+You can use [`OCRAccuracy`](../attached_modules/metrics/README.md#ocraccuracy) metric, as well as visualizer [`OCRVisualizer`](../attached_modules/metrics/README.md#ocrvisualizer).
 
 ### `OCRCTCHead`
 
@@ -411,9 +411,9 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR). Works well with 
 
 ## Embedding Heads
 
-You can use [ClosestIsPositiveAccuracy](../attached_modules/metrics/README.md#ocraccuracy) metric, as well as visualizer [EmbeddingsVisualizer](../attached_modules/metrics/README.md#embeddingsvisualizer).
+You can use [`ClosestIsPositiveAccuracy`](../attached_modules/metrics/README.md#ocraccuracy) metric, as well as visualizer [`EmbeddingsVisualizer`](../attached_modules/metrics/README.md#embeddingsvisualizer).
 
-You can use various Embedding metrics with these heads,such as [ClosestIsPositiveAccuracy](../attached_modules/metrics/README.md#closestispositiveaccuracy) and [MedianDistances](../attached_modules/metrics/README.md#mediandistances), as well as visualizer [EmbeddingsVisualizer](../attached_modules/metrics/README.md#embeddingsvisualizer).
+You can use various Embedding metrics with these heads,such as [`ClosestIsPositiveAccuracy`](../attached_modules/metrics/README.md#closestispositiveaccuracy) and [`MedianDistances`](../attached_modules/metrics/README.md#mediandistances), as well as visualizer [`EmbeddingsVisualizer`](../attached_modules/metrics/README.md#embeddingsvisualizer).
 
 ### `GhostFaceNetHead`
 
