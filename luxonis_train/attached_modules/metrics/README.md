@@ -85,4 +85,4 @@ Accuracy metric for OCR tasks.
 Compute the confusion matrix for various tasks including classification, segmentation, and object detection.
 
 > \[!NOTE\]
-> **Important:** Both the Confusion Matrix (CM) and Mean Average Precision (mAP) metrics are sensitive to NMS parameters, such as confidence (`conf`) and IoU (`iout`) thresholds. Make sure to adjust these settings appropriately for your specific use case.
+> **Important:** Both the Confusion Matrix (CM) and Mean Average Precision (mAP) metrics are sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.
