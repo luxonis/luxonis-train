@@ -1019,7 +1019,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         path = str(path)
 
-        checkpoint = torch.load(  # nosemgrep pragma: no cover
+        checkpoint = torch.load(  # nosemgrep
             path, map_location=self.device
         )
 
