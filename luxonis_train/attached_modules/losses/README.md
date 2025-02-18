@@ -145,7 +145,7 @@ These losses are designed for object detection tasks—including bounding box re
 
 Adapted from [this paper](https://arxiv.org/pdf/2209.02976.pdf).
 
-**Applicable to:** Bounding box detection tasks.
+Compatible with: [`EfficientBBoxHead`](../../nodes/README.md#efficientbboxhead)
 
 **Parameters:**
 
@@ -162,7 +162,7 @@ ______________________________________________________________________
 
 Adapted from [this paper](https://arxiv.org/pdf/2207.02696.pdf) and [this paper](https://arxiv.org/pdf/2209.02976.pdf).
 
-**Applicable to:** Bounding box detection tasks.
+Compatible with: [`PrecisionBBoxHead`](../../nodes/README.md#precisionbboxhead)
 
 **Parameters:**
 
@@ -181,7 +181,7 @@ ______________________________________________________________________
 
 Adapted from [YOLO-Pose](https://arxiv.org/ftp/arxiv/papers/2204/2204.06806.pdf).
 
-**Applicable to:** Bounding box and keypoint detection tasks.
+Compatible with: [`EfficientKeypointBBoxHead`](../../nodes/README.md#efficientkeypointbboxhead)
 
 **Parameters:**
 
@@ -201,7 +201,7 @@ ______________________________________________________________________
 
 #### `FOMOLocalizationLoss`
 
-**Applicable to:** FOMO detection tasks.
+Compatible with: [`FOMOHead`](../../nodes/README.md#fomohead)
 
 **Parameters:**
 
@@ -217,7 +217,7 @@ ______________________________________________________________________
 
 Adapted from [this paper](https://arxiv.org/pdf/2207.02696.pdf) and [this paper](https://arxiv.org/pdf/2209.02976.pdf).
 
-**Applicable to:** Instance segmentation tasks.
+Compatible with: [`PrecisionSegmentBBoxHead`](../../nodes/README.md#precisionsegmentbboxhead)
 
 **Parameters:**
 
@@ -238,7 +238,7 @@ These losses are suited for tasks such as anomaly detection where reconstruction
 
 Adapted from [this paper](https://arxiv.org/abs/2108.07610).
 
-**Applicable to:** Anomaly detection tasks.
+Compatible with: [`DiscSubNetHead`](../../nodes/README.md#discsubnethead)
 
 **Parameters:**
 
@@ -259,7 +259,7 @@ Tailored for Optical Character Recognition tasks.
 
 CTC loss with optional focal loss weighting.
 
-**Applicable to:** OCR tasks.
+Compatible with: [`OCRCTCHead`](../../nodes/README.md#ocrctchead)
 
 **Parameters:**
 
@@ -272,6 +272,8 @@ ______________________________________________________________________
 ## Embedding Losses
 
 Embedding losses are used in tasks such as metric learning and face recognition, primarily sourced from [pytorch-metric-learning](https://kevinmusgrave.github.io/pytorch-metric-learning/losses/).
+
+Compatible with: [`GhostFaceNetHead`](../../nodes/README.md#ghostfacenethead)
 
 ### Available Embedding Losses
 
