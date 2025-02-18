@@ -40,10 +40,10 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
     - [`PrecisionSegmentBBoxHead`](#precisionsegmentbboxhead)
   - [Unsupervised Anomaly Detection Heads](#unsupervised-anomaly-detection-heads)
     - [`DiscSubNetHead`](#discsubnethead)
-  - [Embedding Heads](#embedding-heads)
-    - [`GhostFaceNetHead`](#ghostfacenethead)
   - [OCR Heads](#ocr-heads)
     - [`OCRCTCHead`](#ocrctchead)
+  - [Embedding Heads](#embedding-heads)
+    - [`GhostFaceNetHead`](#ghostfacenethead)
 
 Every node takes these parameters:
 
@@ -394,7 +394,7 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arx
 
 You can use various segmentation metrics with these heads, such as [`F1Score, JaccardIndex`](../attached_modules/metrics/README.md#torchmetrics) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`SegmentationVisualizer`](../attached_modules/metrics/README.md#segmentationvisualizer).
 
-<img src="../../media/example_viz/anomaly_det.png" alt="anomaly_det_viz_example" width="550">
+![anomaly_det_viz_example](../../media/example_viz/anomaly_det.png)
 
 ### `DiscSubNetHead`
 
