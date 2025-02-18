@@ -259,6 +259,8 @@ You can use various classification metrics with these heads, such as [`Accuracy,
 
 ### `ClassificationHead`
 
+For predefined model that utilize it, see [`ClassificationModel`](../config/predefined_models/README.md#classificationmodel).
+
 **Parameters:**
 
 | Key          | Type    | Default value | Description                                      |
