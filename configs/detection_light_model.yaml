@@ -14,6 +14,9 @@ model:
         class_loss_weight: 8 # Should be 1 * accumulate_grad_batches for best results
 
 loader:
+  train_view: train
+  val_view: train
+
   params:
     dataset_name: coco_test
 
@@ -29,7 +32,7 @@ trainer:
         std: [1, 1, 1]
 
   batch_size: 8
-  epochs: &epochs 300
+  epochs: &epochs 800
   accumulate_grad_batches: 8 # For best results, always accumulate gradients to effectively use 64 batch size
   n_workers: 8
   validation_interval: 10
