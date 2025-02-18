@@ -29,7 +29,7 @@ Visualizer for bounding boxes.
 
 **Example:**
 
-<img src="../../media/example_viz/bbox.png" alt="bounding_box_viz_example" width="700" style="border-radius: 20px;">
+<img src="../../../media/example_viz/bbox.png" alt="bounding_box_viz_example" width="700" style="border-radius: 20px;">
 
 ## `KeypointVisualizer`
 
@@ -44,7 +44,7 @@ Visualizer for bounding boxes.
 
 **Example:**
 
-<img src="../../media/example_viz/kpts.png" alt="keypoints_viz_example" width="700" style="border-radius: 20px;">
+<img src="../../../media/example_viz/kpts.png" alt="keypoints_viz_example" width="700" style="border-radius: 20px;">
 
 ## `SegmentationVisualizer`
 
@@ -57,7 +57,7 @@ Visualizer for bounding boxes.
 
 **Example:**
 
-<img src="../../media/example_viz/seg.png" alt="segmentation_viz_example" width="700" style="border-radius: 20px;">
+<img src="../../../media/example_viz/seg.png" alt="segmentation_viz_example" width="700" style="border-radius: 20px;">
 
 ## `ClassificationVisualizer`
 
@@ -73,7 +73,7 @@ Visualizer for bounding boxes.
 
 **Example:**
 
-<img src="../../media/example_viz/class.png" alt="class_viz_example" width="700" style="border-radius: 20px;">
+<img src="../../../media/example_viz/class.png" alt="class_viz_example" width="700" style="border-radius: 20px;">
 
 ## `EmbeddingsVisualizer`
 
@@ -85,7 +85,7 @@ Visualizer for bounding boxes.
 
 **Example:**
 
-<img src="../../media/example_viz/embeddings.png" alt="emb_viz_example" width="700" style="border-radius: 20px;">
+<img src="../../../media/example_viz/embeddings.png" alt="emb_viz_example" width="700" style="border-radius: 20px;">
 
 ## `OCRVisualizer`
 
@@ -101,7 +101,7 @@ Visualizer for OCR tasks.
 
 **Example:**
 
-<img src="../../media/example_viz/ocr.png" alt="ocr_viz_example" width="700" style="border-radius: 20px;">
+<img src="../../../media/example_viz/ocr.png" alt="ocr_viz_example" width="700" style="border-radius: 20px;">
 
 ## `InstanceSegmentationVisualizer`
 
@@ -120,4 +120,4 @@ Visualizer for instance segmentation tasks.
 
 **Example:**
 
-<img src="../../media/example_viz/instance_seg.png" alt="instance_seg_viz_example" width="700" style="border-radius: 20px;">
+<img src="../../../media/example_viz/instance_seg.png" alt="instance_seg_viz_example" width="700" style="border-radius: 20px;">
