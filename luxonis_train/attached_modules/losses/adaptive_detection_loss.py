@@ -37,6 +37,7 @@ class AdaptiveDetectionLoss(BaseLoss):
         reduction: Literal["sum", "mean"] = "mean",
         class_loss_weight: float = 1.0,
         iou_loss_weight: float = 2.5,
+        per_class_weights: list[float] | None = None,
         **kwargs,
     ):
         """BBox loss adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
@@ -54,6 +55,8 @@ class AdaptiveDetectionLoss(BaseLoss):
         @param class_loss_weight: Weight of classification loss. Defaults to 1.0. For optimal results, multiply with accumulate_grad_batches.
         @type iou_loss_weight: float
         @param iou_loss_weight: Weight of IoU loss. Defaults to 2.5. For optimal results, multiply with accumulate_grad_batches.
+        @type per_class_weights: list[float] | None
+        @param per_class_weights: A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
         """
         super().__init__(**kwargs)
 
@@ -70,7 +73,20 @@ class AdaptiveDetectionLoss(BaseLoss):
             topk=13, n_classes=self.n_classes, alpha=1.0, beta=6.0
         )
 
-        self.varifocal_loss = VarifocalLoss()
+        if per_class_weights is not None:
+            if len(per_class_weights) == self.n_classes:
+                self.per_class_weights = torch.tensor(per_class_weights)
+            else:
+                logger.warning(
+                    f"Incorrect per_class_weights length. Expected {self.n_classes} but got {len(per_class_weights)}. Setting to None."
+                )
+                self.per_class_weights = None
+        else:
+            self.per_class_weights = None
+
+        self.varifocal_loss = VarifocalLoss(
+            per_class_weights=self.per_class_weights
+        )
         self.class_loss_weight = class_loss_weight
         self.iou_loss_weight = iou_loss_weight
 
@@ -220,7 +236,12 @@ class AdaptiveDetectionLoss(BaseLoss):
 
 
 class VarifocalLoss(nn.Module):
-    def __init__(self, alpha: float = 0.75, gamma: float = 2.0):
+    def __init__(
+        self,
+        alpha: float = 0.75,
+        gamma: float = 2.0,
+        per_class_weights: Tensor | None = None,
+    ):
         """Varifocal Loss is a loss function for training a dense object detector to predict
         the IoU-aware classification score, inspired by focal loss.
         Code is adapted from: U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models/losses.py}
@@ -229,20 +250,36 @@ class VarifocalLoss(nn.Module):
         @param alpha: alpha parameter in focal loss, default is 0.75.
         @type gamma: float
         @param gamma: gamma parameter in focal loss, default is 2.0.
+        @type per_class_weights: Tensor | None
+        @param per_class_weights: A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
         """
 
         super().__init__()
 
         self.alpha = alpha
         self.gamma = gamma
+        self.per_class_weights = per_class_weights
 
     def forward(
-        self, pred_score: Tensor, target_score: Tensor, label: Tensor
+        self,
+        pred_score: Tensor,
+        target_score: Tensor,
+        label: Tensor,
     ) -> Tensor:
         weight = (
             self.alpha * pred_score.pow(self.gamma) * (1 - label)
             + target_score * label
         )
+
+        if self.per_class_weights is not None:
+            if self.per_class_weights.device != pred_score.device:
+                self.per_class_weights = self.per_class_weights.to(
+                    pred_score.device
+                )
+            weight = weight * self.per_class_weights.view(
+                1, 1, -1
+            )  # ensure correct broadcasting (batches, anchors, classes)
+
         with amp.autocast(device_type=pred_score.device.type, enabled=False):
             ce_loss = F.binary_cross_entropy(
                 pred_score.float(), target_score.float(), reduction="none"

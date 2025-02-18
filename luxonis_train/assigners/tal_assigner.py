@@ -77,13 +77,21 @@ class TaskAlignedAssigner(nn.Module):
         if self.n_max_boxes == 0:
             device = gt_bboxes.device
             return (
-                torch.full_like(pred_scores[..., 0], self.n_classes).to(
+                torch.full_like(
+                    pred_scores[..., 0], self.n_classes, dtype=torch.int64
+                ).to(device),
+                torch.zeros_like(pred_bboxes, dtype=gt_bboxes.dtype).to(
                     device
                 ),
-                torch.zeros_like(pred_bboxes).to(device),
-                torch.zeros_like(pred_scores).to(device),
-                torch.zeros_like(pred_scores[..., 0]).to(device),
-                torch.zeros_like(pred_scores[..., 0]).to(device),
+                torch.zeros_like(pred_scores, dtype=pred_scores.dtype).to(
+                    device
+                ),
+                torch.zeros_like(pred_scores[..., 0], dtype=torch.bool).to(
+                    device
+                ),
+                torch.zeros_like(pred_scores[..., 0], dtype=torch.int64).to(
+                    device
+                ),
             )
 
         # Compute alignment metric between all bboxes (bboxes of all pyramid levels) and GT
