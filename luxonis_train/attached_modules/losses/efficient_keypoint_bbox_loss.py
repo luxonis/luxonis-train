@@ -130,12 +130,19 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             target_keypoints, batch_size, self.gt_kpts_scale
         )
         assigned_gt_idx_expanded = assigned_gt_idx.unsqueeze(-1).unsqueeze(-1)
-        selected_keypoints = batched_kpts.gather(
-            1,
-            assigned_gt_idx_expanded.expand(
-                -1, -1, self.n_keypoints, 3
-            ).long(),
-        )
+        if batched_kpts.size(1) == 0:
+            selected_keypoints = batched_kpts.new_zeros(
+                (
+                    batched_kpts.size(0),
+                    assigned_gt_idx_expanded.size(1),
+                    self.n_keypoints,
+                    3,
+                )
+            )
+        else:
+            selected_keypoints = batched_kpts.gather(
+                1, assigned_gt_idx_expanded.expand(-1, -1, self.n_keypoints, 3)
+            )
         xy_components = selected_keypoints[..., :2]
         normalized_xy = xy_components / self.stride_tensor.view(1, -1, 1, 1)
         selected_keypoints = torch.cat(

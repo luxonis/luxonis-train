@@ -1,3 +1,4 @@
+import importlib.util
 from enum import Enum
 from importlib.metadata import version
 from pathlib import Path
@@ -254,7 +255,11 @@ def common(
     ] = None,
 ):
     if source:
-        exec(source.read_text(), globals(), globals())
+        spec = importlib.util.spec_from_file_location(source.stem, source)
+        if spec:
+            module = importlib.util.module_from_spec(spec=spec)
+            if spec.loader:
+                spec.loader.exec_module(module)
 
 
 if __name__ == "__main__":

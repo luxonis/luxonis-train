@@ -26,7 +26,7 @@ def prepare():
 def run_command(command: str) -> tuple[str, str, int]:
     result = subprocess.run(
         command,
-        shell=True,
+        shell=True,  # nosemgrep
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

@@ -171,15 +171,12 @@ class SVTRBlock(nn.Module):
         attn_drop: float = 0.0,
         drop_path: float = 0.0,
         act_layer: type[nn.Module] = nn.GELU,
-        norm_layer: type[nn.Module] | str = "nn.LayerNorm",
+        norm_layer: type[nn.Module] = nn.LayerNorm,
         epsilon: float = 1e-6,
         prenorm: bool = True,
     ):
         super().__init__()
-        if isinstance(norm_layer, str):
-            self.norm1 = eval(norm_layer)(dim, eps=epsilon)
-        else:
-            self.norm1 = norm_layer(dim)
+        self.norm1 = norm_layer(dim, eps=epsilon)
         if mixer == "Global" or mixer == "Local":
             self.mixer = Attention(
                 dim,
@@ -211,10 +208,8 @@ class SVTRBlock(nn.Module):
         self.drop_path = (
             DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         )
-        if isinstance(norm_layer, str):
-            self.norm2 = eval(norm_layer)(dim, eps=epsilon)
-        else:
-            self.norm2 = norm_layer(dim)
+
+        self.norm2 = norm_layer(dim, eps=epsilon)
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp_ratio = mlp_ratio
         self.mlp = Mlp(
@@ -284,7 +279,7 @@ class EncoderWithSVTR(nn.Module):
                     act_layer=nn.ReLU,
                     attn_drop=attn_drop_rate,
                     drop_path=drop_path,
-                    norm_layer="nn.LayerNorm",
+                    norm_layer=nn.LayerNorm,
                     epsilon=1e-05,
                     prenorm=False,
                 )
