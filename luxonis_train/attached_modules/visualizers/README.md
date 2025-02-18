@@ -1,5 +1,8 @@
 # Visualizers
 
+> \[!NOTE\]
+> **Important:** In all visualizations, the left side always displays the **Ground Truth (GT)** and the right side shows the **Prediction**.
+
 Visualizers are used to render the output of a node. They are used in the `visualizers` field of the `Node` configuration.
 
 ## Table Of Contents
@@ -29,7 +32,7 @@ Visualizer for bounding boxes.
 
 **Example:**
 
-<img src="../../../media/example_viz/bbox.png" alt="bounding_box_viz_example" width="700" style="border-radius: 20px;">
+![bounding_box_viz_example](../../../media/example_viz/bbox.png)
 
 ## `KeypointVisualizer`
 
@@ -44,7 +47,7 @@ Visualizer for bounding boxes.
 
 **Example:**
 
-<img src="../../../media/example_viz/kpts.png" alt="keypoints_viz_example" width="700" style="border-radius: 20px;">
+![keypoints_viz_example](../../../media/example_viz/kpts.png)
 
 ## `SegmentationVisualizer`
 
@@ -57,7 +60,7 @@ Visualizer for bounding boxes.
 
 **Example:**
 
-<img src="../../../media/example_viz/seg.png" alt="segmentation_viz_example" width="700" style="border-radius: 20px;">
+![segmentation_viz_example](../../../media/example_viz/seg.png)
 
 ## `ClassificationVisualizer`
 
@@ -73,7 +76,7 @@ Visualizer for bounding boxes.
 
 **Example:**
 
-<img src="../../../media/example_viz/class.png" alt="class_viz_example" width="700" style="border-radius: 20px;">
+![class_viz_example](../../../media/example_viz/class.png)
 
 ## `EmbeddingsVisualizer`
 
@@ -85,7 +88,7 @@ Visualizer for bounding boxes.
 
 **Example:**
 
-<img src="../../../media/example_viz/embeddings.png" alt="emb_viz_example" width="700" style="border-radius: 20px;">
+![emb_viz_example](../../../media/example_viz/embeddings.png)
 
 ## `OCRVisualizer`
 
@@ -101,7 +104,7 @@ Visualizer for OCR tasks.
 
 **Example:**
 
-<img src="../../../media/example_viz/ocr.png" alt="ocr_viz_example" width="700" style="border-radius: 20px;">
+![ocr_viz_example](../../../media/example_viz/ocr.png)
 
 ## `InstanceSegmentationVisualizer`
 
@@ -120,4 +123,4 @@ Visualizer for instance segmentation tasks.
 
 **Example:**
 
-<img src="../../../media/example_viz/instance_seg.png" alt="instance_seg_viz_example" width="700" style="border-radius: 20px;">
+![instance_esg_viz_example](../../../media/example_viz/instance_seg.png)
