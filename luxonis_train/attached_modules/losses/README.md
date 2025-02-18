@@ -14,15 +14,14 @@ ______________________________________________________________________
   - [`SoftmaxFocalLoss`](#softmaxfocalloss)
   - [`OHEMCrossEntropyLoss`](#ohemcrossentropyloss)
   - [`OHEMBCEWithLogitsLoss`](#ohembcewithlogitsloss)
-- [Detection Losses](#detection-losses)
-  - [Bounding Box Detection Losses](#bounding-box-detection-losses)
-    - [`AdaptiveDetectionLoss`](#adaptivedetectionloss)
-    - [`PrecisionDFLDetectionLoss`](#precisiondfldetectionloss)
-  - [Keypoint & FOMO Detection Losses](#keypoint--fomo-detection-losses)
-    - [`EfficientKeypointBBoxLoss`](#efficientkeypointbboxloss)
-    - [`FOMOLocalizationLoss`](#fomolocalizationloss)
-  - [Instance Segmentation Losses](#instance-segmentation-losses)
-    - [`PrecisionDFLSegmentationLoss`](#precisiondflsegmentationloss)
+- [Bounding Box Detection Losses](#bounding-box-detection-losses)
+  - [`AdaptiveDetectionLoss`](#adaptivedetectionloss)
+  - [`PrecisionDFLDetectionLoss`](#precisiondfldetectionloss)
+- [Keypoint & FOMO Detection Losses](#keypoint--fomo-detection-losses)
+  - [`EfficientKeypointBBoxLoss`](#efficientkeypointbboxloss)
+  - [`FOMOLocalizationLoss`](#fomolocalizationloss)
+- [Instance Segmentation Losses](#instance-segmentation-losses)
+  - [`PrecisionDFLSegmentationLoss`](#precisiondflsegmentationloss)
 - [Anomaly Detection Losses](#anomaly-detection-losses)
   - [`ReconstructionSegmentationLoss`](#reconstructionsegmentationloss)
 - [OCR Losses](#ocr-losses)
@@ -134,10 +133,6 @@ Wraps the standard `BCEWithLogitsLoss` with Online Hard Example Mining (OHEM).
 | `pos_weight`     | `Tensor \| None`                 | `None`        | (Forwarded to `BCEWithLogitsLoss`) Weight for positive examples.                                                                             |
 
 ______________________________________________________________________
-
-## Detection Losses
-
-These losses are designed for object detection tasks—including bounding box regression, keypoint detection, and instance segmentation.
 
 ### Bounding Box Detection Losses
 
