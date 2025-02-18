@@ -80,7 +80,7 @@ class ClassificationVisualizer(BaseVisualizer):
                 arr = cv2.putText(
                     arr,
                     f"GT: {gt}",
-                    (5, 25),
+                    (5, 50),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     self.font_scale,
                     self.color,
@@ -89,7 +89,7 @@ class ClassificationVisualizer(BaseVisualizer):
             arr = cv2.putText(
                 arr,
                 f"Pred: {curr_class}",
-                (5, 50),
+                (5, 75),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 self.font_scale,
                 self.color,
