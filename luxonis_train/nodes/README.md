@@ -256,7 +256,7 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 
 You can use various classification metrics with these heads, such as [`Accuracy, F1Score, Precision, Recall`](../attached_modules/metrics/README.md#torchmetrics) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`ClassificationVisualizer`](../attached_modules/metrics/README.md#classificationvisualizer).
 
-![class_viz_example](../../media/example_viz/class.png)
+<img src="../../media/example_viz/class.png" alt="class_viz_example" width="800">
 
 ### `ClassificationHead`
 
