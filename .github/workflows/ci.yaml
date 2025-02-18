@@ -107,12 +107,8 @@ jobs:
   tests:
     needs:
       - config-test
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-t4-4core
 
     steps:
     - name: Checkout
