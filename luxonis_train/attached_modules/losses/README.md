@@ -17,7 +17,7 @@ ______________________________________________________________________
 - [Bounding Box Detection Losses](#bounding-box-detection-losses)
   - [`AdaptiveDetectionLoss`](#adaptivedetectionloss)
   - [`PrecisionDFLDetectionLoss`](#precisiondfldetectionloss)
-- [Keypoint & FOMO Detection Losses](#keypoint--fomo-detection-losses)
+- [Keypoint Detection Losses](#keypoint-detection-losses)
   - [`EfficientKeypointBBoxLoss`](#efficientkeypointbboxloss)
   - [`FOMOLocalizationLoss`](#fomolocalizationloss)
 - [Instance Segmentation Losses](#instance-segmentation-losses)
@@ -170,7 +170,7 @@ Compatible with: [`PrecisionBBoxHead`](../../nodes/README.md#precisionbboxhead)
 
 ______________________________________________________________________
 
-### Keypoint & FOMO Detection Losses
+### Keypoint Detection Losses
 
 #### `EfficientKeypointBBoxLoss`
 
