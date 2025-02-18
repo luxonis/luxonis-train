@@ -358,7 +358,7 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf). It works best with wi
 
 Designed to be very fast. Simply attach it to one of the feature maps from the backbone and use [`FOMOLocalizationLoss`](../attached_modules/losses/README#fomolocalizationloss).  It is used to predict a keypoint per object, and only the OKS metric should be applicable for evaluating this head. For predefined model that utilizes it, see [`FOMOModel`](../config/predefined_models/README.md#fomomodel).
 
-<img src="../../media/example_viz/fomo.png" alt="fomo_viz_example" width="550">
+![fomo_viz_example](../../media/example_viz/fomo.png)
 
 **Parameters:**
 
