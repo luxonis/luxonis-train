@@ -6,7 +6,7 @@ try:
     from .attached_modules import *
     from .config import *
     from .core import *
-    from .datasets import *
+    from .loaders import *
     from .models import *
     from .nodes import *
     from .optimizers import *

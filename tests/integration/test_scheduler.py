@@ -17,7 +17,7 @@ def create_model_config():
             "num_workers": mp.cpu_count(),
         },
         "loader": {
-            "name": "LuxonisTorchDataset",
+            "name": "LuxonisLoaderTorch",
             "train_splits": "train",
             "params": {"dataset_name": "coco_test"},
         },

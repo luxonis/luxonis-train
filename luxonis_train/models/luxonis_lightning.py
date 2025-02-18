@@ -1052,7 +1052,7 @@ class LuxonisLightningModule(pl.LightningModule):
         node: BaseNode = self.nodes[node_name]  # type: ignore
         if issubclass(Module, TorchMetricWrapper):
             if "task" not in cfg.params and self._core is not None:
-                loader = self._core.datasets["train"]
+                loader = self._core.loaders["train"]
                 dataset = getattr(loader, "dataset", None)
                 if isinstance(dataset, LuxonisDataset):
                     n_classes = len(dataset.get_classes()[node.task_name])

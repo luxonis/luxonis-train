@@ -17,10 +17,10 @@ from typing_extensions import override
 
 from luxonis_train.utils.types import Labels
 
-from .base_torch_dataset import BaseTorchDataset
+from .base_loader import BaseLoaderTorch
 
 
-class LuxonisTorchDataset(BaseTorchDataset):
+class LuxonisLoaderTorch(BaseLoaderTorch):
     def __init__(
         self,
         dataset_name: str | None = None,

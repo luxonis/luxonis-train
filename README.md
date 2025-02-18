@@ -574,7 +574,7 @@ model.tune()
 Implement custom components by subclassing the respective base classes and/or registering them.
 Registered components can be referenced in the config file. Custom components need to inherit from their respective base classes:
 
-- **Datasets** - [`BaseTorchDataset`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/datasets/base_torch_dataset.py)
+- **Loaders** - [`BaseLoaderTorch`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/loaders/base_loader.py)
 - **Nodes** - [`BaseNode`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/models/nodes/base_node.py)
 - **Losses** - [`BaseLoss`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/losses/base_loss.py)
 - **Metrics** - [`BaseMetric`](https://github.com/luxonis/luxonis-train/blob/main/luxonis_train/attached_modules/metrics/base_metric.py)

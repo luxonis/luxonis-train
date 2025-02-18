@@ -16,7 +16,7 @@ MODELS: Registry[type["lxt.config.BasePredefinedModel"]] = Registry(
 CALLBACKS: Registry[type[pl.Callback]] = Registry(name="callbacks")
 """Registry for all callbacks."""
 
-LOADERS: Registry[type["lxt.datasets.BaseTorchDataset"]] = Registry(
+LOADERS: Registry[type["lxt.loaders.BaseLoaderTorch"]] = Registry(
     name="loaders"
 )
 """Registry for all loaders."""

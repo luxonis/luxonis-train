@@ -28,8 +28,8 @@ from luxonis_train.callbacks import (
     LuxonisTQDMProgressBar,
 )
 from luxonis_train.config import Config
-from luxonis_train.datasets import BaseTorchDataset, collate_fn
-from luxonis_train.datasets.luxonis_torch_dataset import LuxonisTorchDataset
+from luxonis_train.loaders import BaseLoaderTorch, collate_fn
+from luxonis_train.loaders.luxonis_loader_torch import LuxonisLoaderTorch
 from luxonis_train.models import LuxonisLightningModule
 from luxonis_train.utils import (
     DatasetMetadata,
@@ -70,7 +70,7 @@ class LuxonisModel:
     ):
         """Constructs a new Core instance.
 
-        Loads the config and initializes datasets, dataloaders, augmentations,
+        Loads the config and initializes loaders, dataloaders, augmentations,
         lightning components, etc.
 
         @type cfg: str | dict[str, Any] | Config
@@ -121,18 +121,18 @@ class LuxonisModel:
             precision=self.cfg.trainer.precision,
         )
 
-        self.datasets: dict[View, BaseTorchDataset] = {}
+        self.loaders: dict[View, BaseLoaderTorch] = {}
         loader_name = self.cfg.loader.name
         Loader = LOADERS.get(loader_name)
         for view in ("train", "val", "test"):
             if (
                 view != "train"
-                and isinstance(Loader, LuxonisTorchDataset)
+                and isinstance(Loader, LuxonisLoaderTorch)
                 and self.cfg.loader.params.get("dataset_dir") is not None
             ):
                 self.cfg.loader.params["delete_existing"] = False
 
-            self.datasets[view] = Loader(
+            self.loaders[view] = Loader(
                 splits={
                     "train": self.cfg.loader.train_splits,
                     "val": self.cfg.loader.train_splits,
@@ -147,15 +147,13 @@ class LuxonisModel:
                 **self.cfg.loader.params,
             )
 
-        self.loader_metadata_types = self.datasets[
-            "train"
-        ].get_metadata_types()
+        self.loader_metadata_types = self.loaders["train"].get_metadata_types()
 
-        for name, dataset in self.datasets.items():
+        for name, loader in self.loaders.items():
             logger.info(
-                f"{name.capitalize()} loader - splits: {dataset.splits}, size: {len(dataset)}"
+                f"{name.capitalize()} loader - splits: {loader.splits}, size: {len(loader)}"
             )
-            if len(dataset) == 0:
+            if len(loader) == 0:
                 logger.warning(f"{name.capitalize()} loader is empty!")
 
         sampler = None
@@ -165,7 +163,7 @@ class LuxonisModel:
                 "Weighted sampler is not implemented yet."
             )
 
-        self.loaders: dict[View, torch_data.DataLoader] = {}
+        self.pytorch_loaders: dict[View, torch_data.DataLoader] = {}
         for view in ("train", "val", "test"):
             if self.cfg.trainer.n_validation_batches is not None and view in {
                 "val",
@@ -175,20 +173,21 @@ class LuxonisModel:
                 generator.manual_seed(self.cfg.trainer.seed or 42)
                 if self.cfg.trainer.n_validation_batches == -1:
                     self.cfg.trainer.n_validation_batches = len(
-                        self.datasets["val"]
+                        self.loaders["val"]
                     )
+                    n_samples = len(self.loaders[view])
                 else:
                     n_samples = (
                         self.cfg.trainer.n_validation_batches
                         * self.cfg.trainer.batch_size
                     )
-                indices = list(range(min(n_samples, len(self.datasets[view]))))
-                dataset = torch_data.Subset(self.datasets[view], indices)
+                indices = range(min(n_samples, len(self.loaders[view])))
+                loader = torch_data.Subset(self.loaders[view], indices)
             else:
-                dataset = self.datasets[view]
+                loader = self.loaders[view]
 
-            self.loaders[view] = torch_data.DataLoader(
-                dataset,
+            self.pytorch_loaders[view] = torch_data.DataLoader(
+                loader,
                 batch_size=self.cfg.trainer.batch_size,
                 num_workers=self.cfg.trainer.n_workers,
                 collate_fn=collate_fn,
@@ -209,12 +208,12 @@ class LuxonisModel:
             )
 
         self.dataset_metadata = DatasetMetadata.from_dataset(
-            self.datasets["train"]
+            self.loaders["train"]
         )
         self.config_file = osp.join(self.run_save_dir, "training_config.yaml")
         self.cfg.save_data(self.config_file)
 
-        self.input_shapes = self.datasets["train"].input_shapes
+        self.input_shapes = self.loaders["train"].input_shapes
 
         self.lightning_module = LuxonisLightningModule(
             cfg=self.cfg,
@@ -290,8 +289,8 @@ class LuxonisModel:
             self._train(
                 resume_weights,
                 self.lightning_module,
-                self.loaders["train"],
-                self.loaders["val"],
+                self.pytorch_loaders["train"],
+                self.pytorch_loaders["val"],
             )
             logger.info("Training finished")
             logger.info(f"Checkpoints saved in: {self.run_save_dir}")
@@ -308,8 +307,8 @@ class LuxonisModel:
                 args=(
                     resume_weights,
                     self.lightning_module,
-                    self.loaders["train"],
-                    self.loaders["val"],
+                    self.pytorch_loaders["train"],
+                    self.pytorch_loaders["val"],
                 ),
                 daemon=True,
             )
@@ -458,7 +457,7 @@ class LuxonisModel:
         """
 
         weights = weights or self.cfg.model.weights
-        loader = self.loaders[view]
+        loader = self.pytorch_loaders[view]
 
         with replace_weights(self.lightning_module, weights):
             if not new_thread:
@@ -591,7 +590,7 @@ class LuxonisModel:
                 cfg=cfg,
                 dataset_metadata=self.dataset_metadata,
                 save_dir=run_save_dir,
-                input_shapes=self.datasets["train"].input_shapes,
+                input_shapes=self.loaders["train"].input_shapes,
                 _core=self,
             )
             callbacks = [
@@ -617,8 +616,8 @@ class LuxonisModel:
             try:
                 pl_trainer.fit(
                     lightning_module,  # type: ignore
-                    self.loaders["train"],
-                    self.loaders["val"],
+                    self.pytorch_loaders["train"],
+                    self.pytorch_loaders["val"],
                 )
                 pruner_callback.check_pruned()
 

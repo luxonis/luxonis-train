@@ -13,7 +13,6 @@ from luxonis_ml.utils import (
     is_acyclic,
 )
 from pydantic import (
-    AliasChoices,
     Field,
     field_validator,
     model_validator,
@@ -301,7 +300,7 @@ class TrackerConfig(BaseModelExtraForbid):
 
 
 class LoaderConfig(BaseModelExtraForbid):
-    name: str = "LuxonisTorchDataset"
+    name: str = "LuxonisLoaderTorch"
     image_source: str = "image"
     train_splits: list[str] = ["train"]
     val_splits: list[str] = ["val"]
@@ -438,14 +437,7 @@ class TrainerConfig(BaseModelExtraForbid):
     accelerator: Literal["auto", "cpu", "gpu", "tpu"] = "auto"
     devices: int | list[int] | str = "auto"
     strategy: Literal["auto", "ddp"] = "auto"
-    n_sanity_val_steps: Annotated[
-        int,
-        Field(
-            validation_alias=AliasChoices(
-                "n_sanity_val_steps", "num_sanity_val_steps"
-            )
-        ),
-    ] = 2
+    n_sanity_val_steps: int = 2
     profiler: Literal["simple", "advanced"] | None = None
     matmul_precision: Literal["medium", "high", "highest"] | None = None
     verbose: bool = True
@@ -461,15 +453,9 @@ class TrainerConfig(BaseModelExtraForbid):
     use_weighted_sampler: bool = False
     epochs: PositiveInt = 100
     resume_training: bool = False
-    n_workers: Annotated[
-        NonNegativeInt,
-        Field(validation_alias=AliasChoices("n_workers", "num_workers")),
-    ] = 4
+    n_workers: NonNegativeInt = 4
     validation_interval: Literal[-1] | PositiveInt = 5
-    n_log_images: Annotated[
-        NonNegativeInt,
-        Field(validation_alias=AliasChoices("n_log_images", "num_log_images")),
-    ] = 4
+    n_log_images: NonNegativeInt = 4
     skip_last_batch: bool = True
     pin_memory: bool = True
     log_sub_losses: bool = True

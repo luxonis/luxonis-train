@@ -11,11 +11,11 @@ from typing_extensions import override
 
 from luxonis_train.utils.types import Labels
 
-from .luxonis_torch_dataset import LuxonisTorchDataset
+from .luxonis_loader_torch import LuxonisLoaderTorch
 from .perlin import apply_anomaly_to_img
 
 
-class PerlinNoiseDataset(LuxonisTorchDataset):
+class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
     @override
     def __init__(
         self,
@@ -25,7 +25,7 @@ class PerlinNoiseDataset(LuxonisTorchDataset):
         beta: float | None = None,
         **kwargs,
     ):
-        """Custom loader for Luxonis datasets that adds Perlin noise
+        """Custom loader for Luxonis loaders that adds Perlin noise
         during training with a given probability.
 
         @param anomaly_source_path: Path to the anomaly dataset from
@@ -60,7 +60,7 @@ class PerlinNoiseDataset(LuxonisTorchDataset):
         if len(self.loader.dataset.get_tasks()) > 1:
             # TODO: Can be extended to multiple tasks
             raise ValueError(
-                "This loader only supports datasets with a single task."
+                "This loader only supports loaders with a single task."
             )
         self.beta = beta
         self.task_name = next(iter(self.loader.dataset.get_tasks()))

@@ -180,7 +180,7 @@ def inspect(
 
     model = LuxonisModel(config, opts)
 
-    loader = model.datasets[view.value]
+    loader = model.loaders[view.value]
     for images, labels in loader:
         for img in images.values():
             if len(img.shape) != 3:
