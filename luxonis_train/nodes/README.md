@@ -285,7 +285,7 @@ Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 
 ### `DDRNetSegmentationHead`
 
-Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works well with the [`DDRNet`](#ddrnet) backbone and the [`OHEMBCEWithLogitsLoss`](../attached_modules/losses/README.md#ohembcewithlogitsloss) loss. For predefined models that utilize it, see [`SegmentationModel`](../config/predefined_models/README.md#segmentationmodel).
+Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works well with the [`DDRNet`](#ddrnet) backbone and the [`OHEMBCEWithLogitsLoss`](../attached_modules/losses/README.md#ohembcewithlogitsloss) loss. For predefined model that utilize it, see [`SegmentationModel`](../config/predefined_models/README.md#segmentationmodel).
 
 **Parameters:**
 
@@ -303,7 +303,7 @@ You can use various detection metrics with these heads, such as [`MeanAveragePre
 
 ### `EfficientBBoxHead`
 
-Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf). It works best with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`AdaptiveDetectionLoss`](../attached_modules/losses/README.md#adaptivedetectionloss) loss. For predefined models that utilize it, see [`DetectionModel`](../config/predefined_models/README.md#detectionmodel)
+Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf). It works best with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`AdaptiveDetectionLoss`](../attached_modules/losses/README.md#adaptivedetectionloss) loss. For predefined model that utilize it, see [`DetectionModel`](../config/predefined_models/README.md#detectionmodel)
 
 **Parameters:**
 
@@ -336,7 +336,7 @@ You can use various keypoint detection metrics with these heads, such as [`MeanA
 
 ### `EfficientKeypointBBoxHead`
 
-Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf). It works best with with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`EfficientKeypointBBoxLoss`](../attached_modules/losses/README.md#efficientkeypointbboxloss) loss. For predefined models that utilize it, see [`KeypointDetectionModel`](../config/predefined_models/README.md#keypointdetectionmodel)
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf). It works best with with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`EfficientKeypointBBoxLoss`](../attached_modules/losses/README.md#efficientkeypointbboxloss) loss. For predefined model that utilize it, see [`KeypointDetectionModel`](../config/predefined_models/README.md#keypointdetectionmodel)
 
 **Parameters:**
 
@@ -349,7 +349,7 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf). It works best with wi
 
 ### `FOMOHead`
 
-Designed to be very fast. Simply attach it to one of the feature maps from the backbone and use [`FOMOLocalizationLoss`](../attached_modules/losses/README#fomolocalizationloss).  It is used to predict a keypoint per object, and only the OKS metric should be applicable for evaluating this head. For predefined models that utilize it, see [`FOMOModel`](../config/predefined_models/README.md#fomomodel).
+Designed to be very fast. Simply attach it to one of the feature maps from the backbone and use [`FOMOLocalizationLoss`](../attached_modules/losses/README#fomolocalizationloss).  It is used to predict a keypoint per object, and only the OKS metric should be applicable for evaluating this head. For predefined model that utilize it, see [`FOMOModel`](../config/predefined_models/README.md#fomomodel).
 
 **Parameters:**
 
@@ -365,7 +365,7 @@ You can use various instance segmentation metrics with these heads, such as [`Me
 
 ### `PrecisionSegmentBBoxHead`
 
-Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf). It works best with with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`PrecisionDFLSegmentationLoss`](../attached_modules/losses/README.md#precisiondflsegmentationloss) loss. For predefined models that utilize it, see [`InstanceSegmentationModel`](../config/predefined_models/README.md#instancesegmentationmodel).
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf). It works best with with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`PrecisionDFLSegmentationLoss`](../attached_modules/losses/README.md#precisiondflsegmentationloss) loss. For predefined model that utilize it, see [`InstanceSegmentationModel`](../config/predefined_models/README.md#instancesegmentationmodel).
 
 **Parameters:**
 
@@ -385,7 +385,7 @@ You can use various segmentation metrics with these heads, such as [`F1Score, Ja
 
 ### `DiscSubNetHead`
 
-Adapted from [here](https://arxiv.org/abs/2108.07610). It currently only works with the [`RecSubNet`](#recsubnet) backbone, which reconstructs the image without anomalies and the  [`ReconstructionSegmentationLoss`](../attached_modules/losses/README.md#reconstructionsegmentationloss) loss. For predefined models that utilize it, see [`AnomalyDetectionModel`](../config/predefined_models/README.md#anomalydetectionmodel).
+Adapted from [here](https://arxiv.org/abs/2108.07610). It currently only works with the [`RecSubNet`](#recsubnet) backbone, which reconstructs the image without anomalies and the  [`ReconstructionSegmentationLoss`](../attached_modules/losses/README.md#reconstructionsegmentationloss) loss. For predefined model that utilize it, see [`AnomalyDetectionModel`](../config/predefined_models/README.md#anomalydetectionmodel).
 
 **Parameters:**
 
@@ -399,7 +399,7 @@ You can use [`OCRAccuracy`](../attached_modules/metrics/README.md#ocraccuracy) m
 
 ### `OCRCTCHead`
 
-Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR). Works well with the [`PPLCNetV3`](#pplcnetv3) backbone, [`SVTRNeck`](#svtrneck) neck and [`CTCLoss`](../attached_modules/losses/README.md#ctcloss) loss. For predefined models that utilize it, see [`OCRRecognitionModel`](../config/predefined_models/README.md#ocrrecognitionmodel).
+Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR). Works well with the [`PPLCNetV3`](#pplcnetv3) backbone, [`SVTRNeck`](#svtrneck) neck and [`CTCLoss`](../attached_modules/losses/README.md#ctcloss) loss. For predefined model that utilize it, see [`OCRRecognitionModel`](../config/predefined_models/README.md#ocrrecognitionmodel).
 
 **Parameters:**
 
