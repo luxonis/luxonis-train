@@ -2,6 +2,7 @@ from typing import Literal
 
 import torch
 import torch.nn.functional as F
+from loguru import logger
 from torch import Tensor
 
 from luxonis_train.attached_modules.losses import AdaptiveDetectionLoss
@@ -130,7 +131,8 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             target_keypoints, batch_size, self.gt_kpts_scale
         )
         assigned_gt_idx_expanded = assigned_gt_idx.unsqueeze(-1).unsqueeze(-1)
-        if batched_kpts.size(1) == 0:
+        if batched_kpts.numel() == 0:
+            logger.debug("No instances found in the batch")
             selected_keypoints = batched_kpts.new_zeros(
                 (
                     batched_kpts.size(0),
