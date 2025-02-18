@@ -303,7 +303,7 @@ You can use various detection metrics with these heads, such as [`MeanAveragePre
 
 ### `EfficientBBoxHead`
 
-Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf). It works best with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`AdaptiveDetectionLoss`](../attached_modules/losses/README.md#adaptivedetectionloss) loss. For predefined model that utilize it, see [`DetectionModel`](../config/predefined_models/README.md#detectionmodel)
+Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf). It works best with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`AdaptiveDetectionLoss`](../attached_modules/losses/README.md#adaptivedetectionloss) loss. For predefined model that utilize it, see [`DetectionModel`](../config/predefined_models/README.md#detectionmodel).
 
 **Parameters:**
 
@@ -336,7 +336,7 @@ You can use various keypoint detection metrics with these heads, such as [`MeanA
 
 ### `EfficientKeypointBBoxHead`
 
-Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf). It works best with with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`EfficientKeypointBBoxLoss`](../attached_modules/losses/README.md#efficientkeypointbboxloss) loss. For predefined model that utilize it, see [`KeypointDetectionModel`](../config/predefined_models/README.md#keypointdetectionmodel)
+Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf). It works best with with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`EfficientKeypointBBoxLoss`](../attached_modules/losses/README.md#efficientkeypointbboxloss) loss. For predefined model that utilize it, see [`KeypointDetectionModel`](../config/predefined_models/README.md#keypointdetectionmodel).
 
 **Parameters:**
 
