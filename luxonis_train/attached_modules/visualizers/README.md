@@ -29,7 +29,7 @@ Visualizer for bounding boxes.
 
 **Example:**
 
-![bounding_box_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/bbox.png)
+![bounding_box_viz_example](../../../media/example_viz/bbox.png)
 
 ## `KeypointVisualizer`
 
@@ -44,7 +44,7 @@ Visualizer for bounding boxes.
 
 **Example:**
 
-![keypoints_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/kpts.png)
+![keypoints_viz_example](../../../media/example_viz/kpts.png)
 
 ## `SegmentationVisualizer`
 
@@ -57,7 +57,7 @@ Visualizer for bounding boxes.
 
 **Example:**
 
-![segmentation_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/segmentation.png)
+![segmentation_viz_example](../../../media/example_viz/seg.png)
 
 ## `ClassificationVisualizer`
 
@@ -73,7 +73,7 @@ Visualizer for bounding boxes.
 
 **Example:**
 
-![class_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/class.png)
+![class_viz_example](../../../media/example_viz/class.png)
 
 ## `EmbeddingsVisualizer`
 
@@ -82,6 +82,10 @@ Visualizer for bounding boxes.
 | Key                 | Type    | Default value | Description                                                                                                                   |
 | ------------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `z_score_threshold` | `float` | `3.0`         | Threshold for z-score filtering. Embeddings with z-score higher than this value are considered as outliers and are not drawn. |
+
+**Example:**
+
+![emb_viz_example](../../../media/example_viz/embeddings.png)
 
 ## `OCRVisualizer`
 
@@ -97,7 +101,7 @@ Visualizer for OCR tasks.
 
 **Example:**
 
-![ocr_viz_example](https://github.com/luxonis/luxonis-train/blob/main/media/example_viz/ocr.png)
+![ocr_viz_example](../../../media/example_viz/ocr.png)
 
 ## `InstanceSegmentationVisualizer`
 
@@ -113,3 +117,7 @@ Visualizer for instance segmentation tasks.
 | `width`     | `int`                                                                                 | `1`           | The width of the bounding box lines                                                                                                                                     |
 | `font`      | `str \| None`                                                                         | `None`        | A filename containing a `TrueType` font                                                                                                                                 |
 | `font_size` | `int \| None`                                                                         | `None`        | Font size used for the labels                                                                                                                                           |
+
+**Example:**
+
+![instance_esg_viz_example](../../../media/example_viz/instance_seg.png)

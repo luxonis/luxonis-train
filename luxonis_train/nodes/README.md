@@ -30,15 +30,14 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
     - [`SegmentationHead`](#segmentationhead)
     - [`BiSeNetHead`](#bisenethead)
     - [`DDRNetSegmentationHead`](#ddrnetsegmentationhead)
-  - [Detection Heads](#detection-heads)
-    - [Bounding Box Heads](#bounding-box-heads)
-      - [`EfficientBBoxHead`](#efficientbboxhead)
-      - [`PrecisionBBoxHead`](#precisionbboxhead)
-    - [Keypoint Detection Heads](#keypoint-detection-heads)
-      - [`EfficientKeypointBBoxHead`](#efficientkeypointbboxhead)
-      - [`FOMOHead`](#fomohead)
-    - [Instance Segmentation Heads](#instance-segmentation-heads)
-      - [`PrecisionSegmentBBoxHead`](#precisionsegmentbboxhead)
+  - [Bounding Box Detection Heads](#bounding-box-heads)
+    - [`EfficientBBoxHead`](#efficientbboxhead)
+    - [`PrecisionBBoxHead`](#precisionbboxhead)
+  - [Keypoint Detection Heads](#keypoint-detection-heads)
+    - [`EfficientKeypointBBoxHead`](#efficientkeypointbboxhead)
+    - [`FOMOHead`](#fomohead)
+  - [Instance Segmentation Heads](#instance-segmentation-heads)
+    - [`PrecisionSegmentBBoxHead`](#precisionsegmentbboxhead)
   - [Unsupervised Anomaly Detection Heads](#unsupervised-anomaly-detection-heads)
     - [`DiscSubNetHead`](#discsubnethead)
   - [Embedding Heads](#embedding-heads)
@@ -257,6 +256,8 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 
 You can use various classification metrics with these heads, such as [`Accuracy, F1Score, Precision, Recall`](../attached_modules/metrics/README.md#torchmetrics) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`ClassificationVisualizer`](../attached_modules/metrics/README.md#classificationvisualizer).
 
+![class_viz_example](../../media/example_viz/class.png)
+
 ### `ClassificationHead`
 
 For predefined model that utilizes it, see [`ClassificationModel`](../config/predefined_models/README.md#classificationmodel).
@@ -270,6 +271,8 @@ For predefined model that utilizes it, see [`ClassificationModel`](../config/pre
 ## Segmentation Heads
 
 You can use various segmentation metrics with these heads, such as [`F1Score, JaccardIndex`](../attached_modules/metrics/README.md#torchmetrics) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`SegmentationVisualizer`](../attached_modules/metrics/README.md#segmentationvisualizer).
+
+![segmentation_viz_example](../../media/example_viz/seg.png)
 
 ### `SegmentationHead`
 
@@ -297,11 +300,11 @@ Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works we
 | `inter_mode`       | `str`  | `"bilinear"`  | Up-sampling method. One of `"nearest"`, `"linear"`, `"bilinear"`, `"bicubic"`, `"trilinear"`, `"area"`, `"pixel_shuffle"` |
 | `download_weights` | `bool` | `False`       | If True download weights from COCO                                                                                        |
 
-## Detection Heads
+## Bounding Box Heads
 
 You can use various detection metrics with these heads, such as [`MeanAveragePrecision`](../attached_modules/metrics/README.md#meanaverageprecision) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`BBoxVisualizer`](../attached_modules/visualizers/README.md#bboxvisualizer).
 
-## Bounding Box Heads
+![bounding_box_viz_example](../../media/example_viz/bbox.png)
 
 ### `EfficientBBoxHead`
 
@@ -340,6 +343,8 @@ You can use various keypoint detection metrics with these heads, such as [`MeanA
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf). It works best with with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`EfficientKeypointBBoxLoss`](../attached_modules/losses/README.md#efficientkeypointbboxloss) loss. For predefined model that utilizes it, see [`KeypointDetectionModel`](../config/predefined_models/README.md#keypointdetectionmodel).
 
+![keypoints_viz_example](../../media/example_viz/kpts.png)
+
 **Parameters:**
 
 | Key           | Type           | Default value | Description                                                           |
@@ -353,6 +358,8 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf). It works best with wi
 
 Designed to be very fast. Simply attach it to one of the feature maps from the backbone and use [`FOMOLocalizationLoss`](../attached_modules/losses/README#fomolocalizationloss).  It is used to predict a keypoint per object, and only the OKS metric should be applicable for evaluating this head. For predefined model that utilizes it, see [`FOMOModel`](../config/predefined_models/README.md#fomomodel).
 
+<img src="../../media/example_viz/fomo.png" alt="fomo_viz_example" width="550">
+
 **Parameters:**
 
 | Key               | Type   | Default value | Description                                                                              |
@@ -364,6 +371,8 @@ Designed to be very fast. Simply attach it to one of the feature maps from the b
 ## Instance Segmentation Heads
 
 You can use various instance segmentation metrics with these heads, such as [`MeanAveragePrecision`](../attached_modules/metrics/README.md#meanaverageprecision), [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`InstanceSegmentationVisualizer`](../attached_modules/visualizers/README.md#instancesegmentationvisualizer).
+
+![instance_esg_viz_example](../../media/example_viz/instance_seg.png)
 
 ### `PrecisionSegmentBBoxHead`
 
@@ -385,6 +394,8 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arx
 
 You can use various segmentation metrics with these heads, such as [`F1Score, JaccardIndex`](../attached_modules/metrics/README.md#torchmetrics) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`SegmentationVisualizer`](../attached_modules/metrics/README.md#segmentationvisualizer).
 
+<img src="../../media/example_viz/anomaly_det.png" alt="anomaly_det_viz_example" width="550">
+
 ### `DiscSubNetHead`
 
 Adapted from [here](https://arxiv.org/abs/2108.07610). It currently only works with the [`RecSubNet`](#recsubnet) backbone, which reconstructs the image without anomalies and the  [`ReconstructionSegmentationLoss`](../attached_modules/losses/README.md#reconstructionsegmentationloss) loss. For predefined model that utilizes it, see [`AnomalyDetectionModel`](../config/predefined_models/README.md#anomalydetectionmodel).
@@ -398,6 +409,8 @@ Adapted from [here](https://arxiv.org/abs/2108.07610). It currently only works w
 ## OCR Heads
 
 You can use [`OCRAccuracy`](../attached_modules/metrics/README.md#ocraccuracy) metric, as well as visualizer [`OCRVisualizer`](../attached_modules/metrics/README.md#ocrvisualizer).
+
+![ocr_viz_example](../../media/example_viz/ocr.png)
 
 ### `OCRCTCHead`
 
@@ -416,6 +429,8 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR). Works well with 
 ## Embedding Heads
 
 You can use various Embedding metrics with these heads, such as [`ClosestIsPositiveAccuracy`](../attached_modules/metrics/README.md#closestispositiveaccuracy) and [`MedianDistances`](../attached_modules/metrics/README.md#mediandistances), as well as visualizer [`EmbeddingsVisualizer`](../attached_modules/metrics/README.md#embeddingsvisualizer).
+
+![emb_viz_example](../../media/example_viz/embeddings.png)
 
 ### `GhostFaceNetHead`
 
