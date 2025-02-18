@@ -13,7 +13,7 @@ from .reparametrizable import Reparametrizable
 
 
 class ModuleFactory(Protocol):
-    def __call__(self, in_channels: int, out_channels: int) -> nn.Module: ...
+    def __call__(self, *args, **kwargs) -> nn.Module: ...
 
 
 class EfficientDecoupledBlock(nn.Module):
@@ -674,8 +674,6 @@ class ModuleRepeater(nn.Sequential):
         self,
         module: ModuleFactory,
         num_repets: int,
-        in_channels: int,
-        out_channels: int,
         **kwargs,
     ):
         """Module which repeats the block n times. First block accepts
@@ -686,28 +684,10 @@ class ModuleRepeater(nn.Sequential):
         @param module: Module to repeat.
         @type num_repets: int
         @param num_repets: Number of blocks to repeat. Defaults to C{1}.
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
         @param kwargs: Additional keyword arguments to be passed to the
             module.
         """
-        blocks = []
-        blocks.append(
-            module(
-                in_channels=in_channels, out_channels=out_channels, **kwargs
-            )
-        )
-        for _ in range(num_repets - 1):
-            blocks.append(
-                module(
-                    in_channels=out_channels,
-                    out_channels=out_channels,
-                    **kwargs,
-                )
-            )
-        super().__init__(*blocks)
+        super().__init__(*(module(**kwargs) for _ in range(num_repets)))
 
 
 class CSPStackRepBlock(nn.Module):
