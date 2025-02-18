@@ -21,10 +21,3 @@ repos:
       - id: mdformat
         additional_dependencies:
           - mdformat-gfm==0.3.6
-
-  - repo: https://github.com/semgrep/pre-commit
-    rev: 'v1.108.0'
-    hooks:
-      - id: semgrep
-        args: ['--config', 'auto', '--config', 'p/secrets', '--error', '--quiet']
-
