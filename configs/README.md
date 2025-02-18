@@ -36,7 +36,6 @@ You can create your own config or use/edit one of the examples.
 | ---------- | ----------------------- | ---------------- |
 | `model`    | [`model`](#model)       | Model section    |
 | `loader`   | [`loader`](#loader)     | Loader section   |
-| `train`    | [`train`](#train)       | Train section    |
 | `tracker`  | [`tracker`](#tracker)   | Tracker section  |
 | `trainer`  | [`trainer`](#trainer)   | Trainer section  |
 | `exporter` | [`exporter`](#exporter) | Exporter section |
@@ -51,21 +50,18 @@ The `Model` section is a crucial part of the configuration and **must always be 
 
 ### Configuration Options
 
-| Key                | Type   | Default Value | Description                                                                                         |
-| ------------------ | ------ | ------------- | --------------------------------------------------------------------------------------------------- |
-| `name`             | `str`  | `"model"`     | Name of the model                                                                                   |
-| `weights`          | `path` | `None`        | Path to a checkpoint file containing all model states, including weights, optimizer, and scheduler. |
-| `nodes`            | `list` | `[]`          | List of nodes (see [Nodes](#nodes))                                                                 |
-| `losses`           | `list` | `[]`          | List of losses (see [Losses](#losses))                                                              |
-| `metrics`          | `list` | `[]`          | List of metrics (see [Metrics](#metrics))                                                           |
-| `visualizers`      | `list` | `[]`          | List of visualizers (see [Visualizers](#visualizers))                                               |
-| `outputs`          | `list` | `[]`          | List of output nodes (inferred from `nodes` if not provided)                                        |
-| `predefined_model` | `str`  | `None`        | Name of a predefined model to use                                                                   |
-| `params`           | `dict` | `{}`          | Parameters for the predefined model                                                                 |
+| Key                | Type   | Default Value | Description                                                                                        |
+| ------------------ | ------ | ------------- | -------------------------------------------------------------------------------------------------- |
+| `name`             | `str`  | `"model"`     | Name of the model                                                                                  |
+| `weights`          | `path` | `None`        | Path to a checkpoint file containing all model states, including weights, optimizer, and scheduler |
+| `nodes`            | `list` | `[]`          | List of nodes (see [Nodes](#nodes))                                                                |
+| `outputs`          | `list` | `[]`          | List of output nodes. If not specified, they are inferred from `nodes`                             |
+| `predefined_model` | `str`  | `None`        | Name of a predefined model to use                                                                  |
+| `params`           | `dict` | `{}`          | Parameters for the predefined model                                                                |
 
 ### Nodes
 
-For list of all nodes, see [nodes](../luxonis_train/nodes/README.md).
+For all available nodes and their `params`, see [nodes](../luxonis_train/nodes/README.md).
 
 | Key                       | Type                   | Default value | Description                                                                                                                                 |
 | ------------------------- | ---------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -76,14 +72,14 @@ For list of all nodes, see [nodes](../luxonis_train/nodes/README.md).
 | `freezing.active`         | `bool`                 | `False`       | whether to freeze the modules so the weights are not updated                                                                                |
 | `freezing.unfreeze_after` | `int \| float \| None` | `None`        | After how many epochs should the modules be unfrozen, can be `int` for a specific number of epochs or `float` for a portion of the training |
 | `remove_on_export`        | `bool`                 | `False`       | Whether the node should be removed when exporting                                                                                           |
-| `losses`                  | `list`                 | `[]`          | List of losses attached to this node                                                                                                        |
-| `metrics`                 | `list`                 | `[]`          | List of metrics attached to this node                                                                                                       |
-| `visualizers`             | `list`                 | `[]`          | List of visualizers attached to this node                                                                                                   |
+| `losses`                  | `list`                 | `[]`          | List of losses attached to this node (see [Losses](#losses))                                                                                |
+| `metrics`                 | `list`                 | `[]`          | List of metrics attached to this node (see [Metrics](#metrics))                                                                             |
+| `visualizers`             | `list`                 | `[]`          | List of visualizers attached to this node (see [Visualizers](#visualizers))                                                                 |
 
 #### Losses
 
 At least one node must have a loss attached to it.
-You can see the list of all currently supported loss functions and their parameters [here](../luxonis_train/attached_modules/losses/README.md).
+For all supported loss functions and their `params`, see [losses](../luxonis_train/attached_modules/losses/README.md).
 
 | Key      | Type    | Default value | Description                              |
 | -------- | ------- | ------------- | ---------------------------------------- |
