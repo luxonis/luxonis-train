@@ -208,33 +208,33 @@ loader:
 
 Here you can change everything related to actual training of the model.
 
-| Key                       | Type                                           | Default value | Description                                                                                                                                                                                            |
-| ------------------------- | ---------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `seed`                    | `int`                                          | `None`        | Seed for reproducibility                                                                                                                                                                               |
-| `deterministic`           | `bool \| "warn" \| None`                       | `None`        | Whether PyTorch should use deterministic backend                                                                                                                                                       |
-| `batch_size`              | `int`                                          | `32`          | Batch size used for training                                                                                                                                                                           |
-| `accumulate_grad_batches` | `int`                                          | `1`           | Number of batches for gradient accumulation                                                                                                                                                            |
-| `precision`               | `Literal["16-mixed", "32"]`                    | `32`          | Controls training precision. `"16-mixed"` can **significantly speed up training** on supported GPUs.                                                                                                   |
-| `gradient_clip_val`       | `NonNegativeFloat \| None`                     | `None`        | Value for gradient clipping. If `None`, gradient clipping is disabled. Clipping can help prevent exploding gradients.                                                                                  |
-| `gradient_clip_algorithm` | `Literal["norm", "value"] \| None`             | `None`        | Algorithm to use for gradient clipping. Options are `"norm"` (clip by norm) or `"value"` (clip element-wise).                                                                                          |
-| `use_weighted_sampler`    | `bool`                                         | `False`       | Whether to use `WeightedRandomSampler` for training, only works with classification tasks                                                                                                              |
-| `epochs`                  | `int`                                          | `100`         | Number of training epochs                                                                                                                                                                              |
-| `n_workers`               | `int`                                          | `4`           | Number of workers for data loading                                                                                                                                                                     |
-| `validation_interval`     | `int`                                          | `5`           | Frequency at which metrics and visualizations are computed on validation data                                                                                                                          |
-| `n_log_images`            | `int`                                          | `4`           | Maximum number of images to visualize and log                                                                                                                                                          |
-| `skip_last_batch`         | `bool`                                         | `True`        | Whether to skip last batch while training                                                                                                                                                              |
-| `accelerator`             | `Literal["auto", "cpu", "gpu"]`                | `"auto"`      | What accelerator to use for training                                                                                                                                                                   |
-| `devices`                 | `int \| list[int] \| str`                      | `"auto"`      | Either specify how many devices to use (int), list specific devices, or use "auto" for automatic configuration based on the selected accelerator                                                       |
-| `matmul_precision`        | `Literal["medium", "high", "highest"] \| None` | `None`        | Sets the internal precision of float32 matrix multiplications                                                                                                                                          |
-| `strategy`                | `Literal["auto", "ddp"]`                       | `"auto"`      | What strategy to use for training                                                                                                                                                                      |
-| `n_sanity_val_steps`      | `int`                                          | `2`           | Number of sanity validation steps performed before training                                                                                                                                            |
-| `profiler`                | `Literal["simple", "advanced"] \| None`        | `None`        | PL profiler for GPU/CPU/RAM utilization analysis                                                                                                                                                       |
-| `verbose`                 | `bool`                                         | `True`        | Print all intermediate results to console                                                                                                                                                              |
-| `pin_memory`              | `bool`                                         | `True`        | Whether to pin memory in the `DataLoader`                                                                                                                                                              |
-| `save_top_k`              | `-1 \| NonNegativeInt`                         | `3`           | Save top K checkpoints based on validation loss when training                                                                                                                                          |
-| `n_validation_batches`    | `PositiveInt \| None`                          | `None`        | Limits the number of validation/test batches and makes the val/test loaders deterministic                                                                                                              |
-| `smart_cfg_auto_populate` | `bool`                                         | `True`        | Automatically populate sensible default values for missing config fields and log warnings                                                                                                              |
-| `resume_training`         | `bool`                                         | `False`       | Whether to resume training from a checkpoint. Loads not only the weights from `model.weights` but also the `optimizer state`, `scheduler state`, and other training parameters to continue seamlessly. |
+| Key                       | Type                                           | Default value | Description                                                                                                                                      |
+| ------------------------- | ---------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `seed`                    | `int`                                          | `None`        | Seed for reproducibility                                                                                                                         |
+| `deterministic`           | `bool \| "warn" \| None`                       | `None`        | Whether PyTorch should use deterministic backend                                                                                                 |
+| `batch_size`              | `int`                                          | `32`          | Batch size used for training                                                                                                                     |
+| `accumulate_grad_batches` | `int`                                          | `1`           | Number of batches for gradient accumulation                                                                                                      |
+| `precision`               | `Literal["16-mixed", "32"]`                    | `32`          | Controls training precision. `"16-mixed"` can **significantly speed up training** on supported GPUs.                                             |
+| `gradient_clip_val`       | `NonNegativeFloat \| None`                     | `None`        | Value for gradient clipping. If `None`, gradient clipping is disabled. Clipping can help prevent exploding gradients.                            |
+| `gradient_clip_algorithm` | `Literal["norm", "value"] \| None`             | `None`        | Algorithm to use for gradient clipping. Options are `"norm"` (clip by norm) or `"value"` (clip element-wise).                                    |
+| `use_weighted_sampler`    | `bool`                                         | `False`       | Whether to use `WeightedRandomSampler` for training, only works with classification tasks                                                        |
+| `epochs`                  | `int`                                          | `100`         | Number of training epochs                                                                                                                        |
+| `n_workers`               | `int`                                          | `4`           | Number of workers for data loading                                                                                                               |
+| `validation_interval`     | `int`                                          | `5`           | Frequency at which metrics and visualizations are computed on validation data                                                                    |
+| `n_log_images`            | `int`                                          | `4`           | Maximum number of images to visualize and log                                                                                                    |
+| `skip_last_batch`         | `bool`                                         | `True`        | Whether to skip last batch while training                                                                                                        |
+| `accelerator`             | `Literal["auto", "cpu", "gpu"]`                | `"auto"`      | What accelerator to use for training                                                                                                             |
+| `devices`                 | `int \| list[int] \| str`                      | `"auto"`      | Either specify how many devices to use (int), list specific devices, or use "auto" for automatic configuration based on the selected accelerator |
+| `matmul_precision`        | `Literal["medium", "high", "highest"] \| None` | `None`        | Sets the internal precision of float32 matrix multiplications                                                                                    |
+| `strategy`                | `Literal["auto", "ddp"]`                       | `"auto"`      | What strategy to use for training                                                                                                                |
+| `n_sanity_val_steps`      | `int`                                          | `2`           | Number of sanity validation steps performed before training                                                                                      |
+| `profiler`                | `Literal["simple", "advanced"] \| None`        | `None`        | PL profiler for GPU/CPU/RAM utilization analysis                                                                                                 |
+| `verbose`                 | `bool`                                         | `True`        | Print all intermediate results to console                                                                                                        |
+| `pin_memory`              | `bool`                                         | `True`        | Whether to pin memory in the `DataLoader`                                                                                                        |
+| `save_top_k`              | `-1 \| NonNegativeInt`                         | `3`           | Save top K checkpoints based on validation loss when training                                                                                    |
+| `n_validation_batches`    | `PositiveInt \| None`                          | `None`        | Limits the number of validation/test batches and makes the val/test loaders deterministic                                                        |
+| `smart_cfg_auto_populate` | `bool`                                         | `True`        | Automatically populate sensible default values for missing config fields and log warnings. See [Trainer Tips](#trainer-tips) for more details    |
+| `resume_training`         | `bool`                                         | `False`       | Whether to resume training from a checkpoint. See [Trainer Tips](#trainer-tips) for more details                                                 |
 
 ```yaml
 
@@ -258,58 +258,6 @@ trainer:
   save_top_k: 3
   smart_cfg_auto_populate: true
 ```
-
-### Trainer Tips
-
-- #### Model Fine-Tuning Options
-
-  ##### 1. **Fine-Tuning with Custom Configuration Example**
-
-  - Set `resume_training: false`.
-  - Override the previous learning rate (LR), e.g., use `0.1` instead of `0.001`.
-  - Training starts fresh with the new LR, resetting the scheduler/optimizer (can use different ones).
-
-  ##### 2. **Resume Training Continuously Example**
-
-  - Set `resume_training: true` to continue training from the last checkpoint in `model.weights`.
-  - LR continues from where the previous run ended, keeping scheduler continuity.
-  - Example: Extending training (e.g., 400 `epochs` after 300) while adjusting `T_max` (e.g., 400 after 300) and `eta_min` (e.g., reduced 10x). The final LR from the previous run is retained, overriding the initial config LR, and training LR completes with the new `eta_min` value.
-
-- #### Smart Configuration Auto-population
-
-  When setting `trainer.smart_cfg_auto_populate = True`, the following set of rules will be applied:
-
-  ##### 1. **Default Optimizer and Scheduler:**
-
-  - If `training_strategy` is not defined and neither `optimizer` nor `scheduler` is set, the following defaults are applied:
-    - Optimizer: `Adam`
-    - Scheduler: `ConstantLR`
-
-  ##### 2. **CosineAnnealingLR Adjustment:**
-
-  - If the `CosineAnnealingLR` scheduler is used and `T_max` is not set, it is automatically set to the number of epochs.
-
-  ##### 3. **Mosaic4 Augmentation:**
-
-  - If `Mosaic4` augmentation is used without `out_width` and `out_height` parameters, they are set to match the training image size.
-
-  ##### 4. **Validation/Test Views:**
-
-  - If `train_view`, `val_view`, and `test_view` are the same, and `n_validation_batches` is not explicitly set, it defaults to `10` to prevent validation/testing on the entire training set.
-
-  ##### 5. **Predefined Model Configuration Adjustment**
-
-  - If the model has a `predefined_model` attribute, the configuration is auto-adjusted for optimal training:
-
-    - **Accumulate Grad Batches:** Computed as `int(64 / trainer.batch_size)`.
-    - **InstanceSegmentationModel:**
-      - Updates `bbox_loss_weight`, `class_loss_weight`, and `dfl_loss_weight` (scaled by `accumulate_grad_batches`).
-      - Sets a gradient accumulation schedule: `{0: 1, 1: (1 + accumulate_grad_batches) // 2, 2: accumulate_grad_batches}`.
-    - **KeypointDetectionModel:**
-      - Updates `iou_loss_weight`, `class_loss_weight`, `regr_kpts_loss_weight`, and `vis_kpts_loss_weight` (scaled by `accumulate_grad_batches`).
-      - Sets the same gradient accumulation schedule.
-    - **DetectionModel:**
-      - Updates `iou_loss_weight` and `class_loss_weight` (scaled by `accumulate_grad_batches`).
 
 ### Preprocessing
 
@@ -468,6 +416,58 @@ training_strategy:
     nesterov: True
     cosine_annealing: True
 ```
+
+### Trainer Tips
+
+- #### Model Fine-Tuning Options
+
+  ##### 1. **Fine-Tuning with Custom Configuration Example**
+
+  - Set `resume_training: false`.
+  - Override the previous learning rate (LR), e.g., use `0.1` instead of `0.001`.
+  - Training starts fresh with the new LR, resetting the scheduler/optimizer (can use different ones).
+
+  ##### 2. **Resume Training Continuously Example**
+
+  - Set `resume_training: true` to continue training from the last checkpoint in `model.weights`.
+  - LR continues from where the previous run ended, keeping scheduler continuity.
+  - Example: Extending training (e.g., 400 `epochs` after 300) while adjusting `T_max` (e.g., 400 after 300) and `eta_min` (e.g., reduced 10x). The final LR from the previous run is retained, overriding the initial config LR, and training LR completes with the new `eta_min` value.
+
+- #### Smart Configuration Auto-population
+
+  When setting `trainer.smart_cfg_auto_populate = True`, the following set of rules will be applied:
+
+  ##### 1. **Default Optimizer and Scheduler:**
+
+  - If `training_strategy` is not defined and neither `optimizer` nor `scheduler` is set, the following defaults are applied:
+    - Optimizer: `Adam`
+    - Scheduler: `ConstantLR`
+
+  ##### 2. **CosineAnnealingLR Adjustment:**
+
+  - If the `CosineAnnealingLR` scheduler is used and `T_max` is not set, it is automatically set to the number of epochs.
+
+  ##### 3. **Mosaic4 Augmentation:**
+
+  - If `Mosaic4` augmentation is used without `out_width` and `out_height` parameters, they are set to match the training image size.
+
+  ##### 4. **Validation/Test Views:**
+
+  - If `train_view`, `val_view`, and `test_view` are the same, and `n_validation_batches` is not explicitly set, it defaults to `10` to prevent validation/testing on the entire training set.
+
+  ##### 5. **Predefined Model Configuration Adjustment**
+
+  - If the model has a `predefined_model` attribute, the configuration is auto-adjusted for optimal training:
+
+    - **Accumulate Grad Batches:** Computed as `int(64 / trainer.batch_size)`.
+    - **InstanceSegmentationModel:**
+      - Updates `bbox_loss_weight`, `class_loss_weight`, and `dfl_loss_weight` (scaled by `accumulate_grad_batches`).
+      - Sets a gradient accumulation schedule: `{0: 1, 1: (1 + accumulate_grad_batches) // 2, 2: accumulate_grad_batches}`.
+    - **KeypointDetectionModel:**
+      - Updates `iou_loss_weight`, `class_loss_weight`, `regr_kpts_loss_weight`, and `vis_kpts_loss_weight` (scaled by `accumulate_grad_batches`).
+      - Sets the same gradient accumulation schedule.
+    - **DetectionModel:**
+      - Updates `iou_loss_weight` and `class_loss_weight` (scaled by `accumulate_grad_batches`).
 
 ## Exporter
 
