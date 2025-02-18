@@ -56,12 +56,12 @@ The `Model` section is a crucial part of the configuration and **must always be 
 | `weights`          | `path` | `None`        | Path to a checkpoint file containing all model states, including weights, optimizer, and scheduler |
 | `nodes`            | `list` | `[]`          | List of nodes (see [Nodes](#nodes))                                                                |
 | `outputs`          | `list` | `[]`          | List of output nodes. If not specified, they are inferred from `nodes`                             |
-| `predefined_model` | `str`  | `None`        | Name of a predefined model to use                                                                  |
+| `predefined_model` | `dict` | `None`        | Dictionary specifying the predefined model name and its parameters                                 |
 | `params`           | `dict` | `{}`          | Parameters for the predefined model                                                                |
 
 ### Nodes
 
-For all available nodes and their `params`, see [nodes](../luxonis_train/nodes/README.md).
+For all available `node` names and their `params`, see [nodes](../luxonis_train/nodes/README.md).
 
 | Key                       | Type                   | Default value | Description                                                                                                                                 |
 | ------------------------- | ---------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -83,6 +83,7 @@ For all supported loss functions and their `params`, see [losses](../luxonis_tra
 
 | Key      | Type    | Default value | Description                              |
 | -------- | ------- | ------------- | ---------------------------------------- |
+| `name`   | `str`   | -             | Name of the loss                         |
 | `weight` | `float` | `1.0`         | Weight of the loss used in the final sum |
 | `alias`  | `str`   | `None`        | Custom name for the loss                 |
 | `params` | `dict`  | `{}`          | Additional parameters for the loss       |
