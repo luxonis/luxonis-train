@@ -61,7 +61,7 @@ The `Model` section is a crucial part of the configuration and **must always be 
 
 ### Nodes
 
-For all available `node` names and their `params`, see [nodes](../luxonis_train/nodes/README.md).
+For all available node names and their `params`, see [nodes](../luxonis_train/nodes/README.md).
 
 | Key                       | Type                   | Default value | Description                                                                                                                                 |
 | ------------------------- | ---------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
