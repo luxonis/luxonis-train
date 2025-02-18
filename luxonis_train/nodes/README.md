@@ -226,7 +226,7 @@ Adapted from [here](https://arxiv.org/abs/2205.14756)
 | --------- | --------------- | ------------- | --------------------------- |
 | `variant` | `Literal["V2"]` | `"V2"`        | The variant of the network. |
 
-## Neck
+## Necks
 
 ### `RepPANNeck`
 
@@ -253,11 +253,11 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 
 ## Heads
 
-### Classification Heads
+## Classification Heads
 
 You can use various classification metrics with these heads, such as [`Accuracy, F1Score, Precision, Recall`](../attached_modules/metrics/README.md#torchmetrics) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`ClassificationVisualizer`](../attached_modules/metrics/README.md#classificationvisualizer).
 
-#### `ClassificationHead`
+### `ClassificationHead`
 
 **Parameters:**
 
@@ -265,15 +265,15 @@ You can use various classification metrics with these heads, such as [`Accuracy,
 | ------------ | ------- | ------------- | ------------------------------------------------ |
 | `fc_dropout` | `float` | `0.2`         | Dropout rate before last layer, range $\[0, 1\]$ |
 
-### Segmentation Heads
+## Segmentation Heads
 
 You can use various segmentation metrics with these heads, such as [`F1Score, JaccardIndex`](../attached_modules/metrics/README.md#torchmetrics) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`SegmentationVisualizer`](../attached_modules/metrics/README.md#segmentationvisualizer).
 
-#### `SegmentationHead`
+### `SegmentationHead`
 
 Adapted from [here](https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py).
 
-#### `BiSeNetHead`
+### `BiSeNetHead`
 
 Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 
@@ -283,7 +283,7 @@ Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 | ----------------------- | ----- | ------------- | ------------------------------------- |
 | `intermediate_channels` | `int` | `64`          | How many intermediate channels to use |
 
-#### `DDRNetSegmentationHead`
+### `DDRNetSegmentationHead`
 
 Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works well with the [`DDRNet`](#ddrnet) backbone and the [`OHEMBCEWithLogitsLoss`](../attached_modules/losses/README.md#ohembcewithlogitsloss) loss.
 
@@ -295,13 +295,13 @@ Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works we
 | `inter_mode`       | `str`  | `"bilinear"`  | Up-sampling method. One of `"nearest"`, `"linear"`, `"bilinear"`, `"bicubic"`, `"trilinear"`, `"area"`, `"pixel_shuffle"` |
 | `download_weights` | `bool` | `False`       | If True download weights from COCO                                                                                        |
 
-### Detection Heads
+## Detection Heads
 
 You can use various detection metrics with these heads, such as [`MeanAveragePrecision`](../attached_modules/metrics/README.md#meanaverageprecision) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`BBoxVisualizer`](../attached_modules/visualizers/README.md#bboxvisualizer).
 
-#### Bounding Box Heads
+## Bounding Box Heads
 
-##### `EfficientBBoxHead`
+### `EfficientBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf). It works best with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`AdaptiveDetectionLoss`](../attached_modules/losses/README.md#adaptivedetectionloss) loss.
 
@@ -316,7 +316,7 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf). It works best with th
 | `download_weights`   | `bool`  | `False`       | If True download weights from COCO                                    |
 | `initialize_weights` | `bool`  | `True`        | If True, initialize weights.                                          |
 
-##### `PrecisionBBoxHead`
+### `PrecisionBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf). It works best with with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`PrecisionDFLDetectionLoss`](../attached_modules/losses/README.md#precisiondfldetectionloss) loss.
 
@@ -330,11 +330,11 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arx
 | `iou_thres`  | `float` | `0.45`        | IoU threshold for non-maxima-suppression (used for evaluation)            |
 | `max_det`    | `int`   | `300`         | Max number of detections for non-maxima-suppression (used for evaluation) |
 
-#### Keypoint Detection Heads
+## Keypoint Detection Heads
 
 You can use various keypoint detection metrics with these heads, such as [`MeanAveragePrecisionKeypoints`](../attached_modules/metrics/README.md#meanaverageprecisionkeypoints), [`ObjectKeypointSimilarity`](../attached_modules/metrics/README.md#objectkeypointsimilarity) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`KeypointVisualizer`](../attached_modules/visualizers/README.md#keypointvisualizer).
 
-##### `EfficientKeypointBBoxHead`
+### `EfficientKeypointBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf). It works best with with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`EfficientKeypointBBoxLoss`](../attached_modules/losses/README.md#efficientkeypointbboxloss) loss.
 
@@ -347,9 +347,9 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf). It works best with wi
 | `conf_thres`  | `float`        | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation) |
 | `iou_thres`   | `float`        | `0.45`        | `IoU` threshold for non-maxima-suppression (used for evaluation)      |
 
-##### `FOMOHead`
+### `FOMOHead`
 
-Designed to be very fast. Simply attach it to one of the feature maps from the backbone.
+Designed to be very fast. Simply attach it to one of the feature maps from the backbone and use [`FOMOLocalizationLoss`](../attached_modules/losses/README#fomolocalizationloss).  It is used to predict a keypoint per object, and only the OKS metric should be applicable for evaluating this head.
 
 **Parameters:**
 
@@ -359,11 +359,11 @@ Designed to be very fast. Simply attach it to one of the feature maps from the b
 | `conv_channels`   | `int`  | `16`          | Number of output channels for each convolutional layer.                                  |
 | `use_nms`         | `bool` | `False`       | If True, enable NMS. This can reduce FP, but it will also reduce TP for close neighbors. |
 
-#### Instance Segmentation Heads
+## Instance Segmentation Heads
 
 You can use various instance segmentation metrics with these heads, such as [`MeanAveragePrecision`](../attached_modules/metrics/README.md#meanaverageprecision), [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`InstanceSegmentationVisualizer`](../attached_modules/visualizers/README.md#instancesegmentationvisualizer).
 
-##### `PrecisionSegmentBBoxHead`
+### `PrecisionSegmentBBoxHead`
 
 Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arxiv.org/pdf/2209.02976.pdf). It works best with with the [`EfficientRep`](#efficientrep) backbone, [`RepPANNeck`](#reppanneck) neck and [`PrecisionDFLSegmentationLoss`](../attached_modules/losses/README.md#precisiondflsegmentationloss) loss.
 
@@ -393,13 +393,13 @@ Adapted from [here](https://arxiv.org/abs/2108.07610). It currently only works w
 | --------- | ------------------- | ------------- | ---------------------- |
 | `variant` | `Literal["n", "l"]` | `"l"`         | Variant of the network |
 
-### OCR Heads
+## OCR Heads
 
 You can use [`OCRAccuracy`](../attached_modules/metrics/README.md#ocraccuracy) metric, as well as visualizer [`OCRVisualizer`](../attached_modules/metrics/README.md#ocrvisualizer).
 
 ### `OCRCTCHead`
 
-Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR). Works well with the [`SVTRNeck`](#svtrneck) neck and [`CTCLoss`](../attached_modules/losses/README.md#ctcloss) loss.
+Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR). Works well with the [`PPLCNetV3`](#pplcnetv3) backbone, [`SVTRNeck`](#svtrneck) neck and [`CTCLoss`](../attached_modules/losses/README.md#ctcloss) loss.
 
 **Parameters:**
 
@@ -411,7 +411,7 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR). Works well with 
 | `mid_channels`   | `int`       | `None`        | Number of middle channels.                    |
 | `return_feats`   | `bool`      | `False`       | Whether to return features.                   |
 
-### Embedding Heads
+## Embedding Heads
 
 You can use various Embedding metrics with these heads, such as [`ClosestIsPositiveAccuracy`](../attached_modules/metrics/README.md#closestispositiveaccuracy) and [`MedianDistances`](../attached_modules/metrics/README.md#mediandistances), as well as visualizer [`EmbeddingsVisualizer`](../attached_modules/metrics/README.md#embeddingsvisualizer).
 
