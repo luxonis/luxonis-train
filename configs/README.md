@@ -182,15 +182,10 @@ By default, `LuxonisLoaderTorch` can either use an existing `LuxonisDataset` or 
 
 In most cases you want to set one of the parameters below. You can check all the parameters in the `LuxonisLoaderTorch` class itself.
 
-| Key               | Type                                                                                         | Default      | Description                                                                                                                                                                                                            |
-| ----------------- | -------------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dataset_name`    | `str \| None`                                                                                | `None`       | The name of the dataset. If provided along with `dataset_dir`, the dataset will be parsed from the directory and saved with this name. If only `dataset_name` is provided, an existing dataset with that name is used. |
-| `dataset_dir`     | `str \| None`                                                                                | `None`       | The local path or URL to the dataset directory (or zip file). When provided, a new dataset is created by parsing the data.                                                                                             |
-| `dataset_type`    | `DatasetType \| None`                                                                        | `None`       | The type of the dataset. This is only relevant when `dataset_dir` is provided. If not specified, the type will be inferred from the directory structure.                                                               |
-| `team_id`         | `str \| None`                                                                                | `None`       | An optional unique team identifier for cloud operations.                                                                                                                                                               |
-| `bucket_type`     | Literal <code>"internal"</code> or <code>"external"</code>                                   | `"internal"` | The type of the bucket to use for remote datasets.                                                                                                                                                                     |
-| `bucket_storage`  | Literal <code>"local"</code>, <code>"s3"</code>, <code>"gcs"</code>, or <code>"azure"</code> | `"local"`    | The storage type for the bucket. Use `"local"` for local storage, `"s3"` for AWS S3, `"gcs"` for Google Cloud Storage, or `"azure"` for Microsoft Azure.                                                               |
-| `delete_existing` | `bool`                                                                                       | `True`       | When set to `True`, the dataset will be re-parsed every time the loader is created (to capture any changes in the underlying data). Set to `False` to use an existing dataset with the same name if available.         |
+| Key            | Type  | Default value | Description                                                          |
+| -------------- | ----- | ------------- | -------------------------------------------------------------------- |
+| `dataset_name` | `str` | `None`        | Name of an existing `LuxonisDataset`                                 |
+| `dataset_dir`  | `str` | `None`        | Location of the data from which new `LuxonisDataset` will be created |
 
 **Example:**
 
