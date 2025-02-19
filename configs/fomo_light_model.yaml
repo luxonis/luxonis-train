@@ -1,0 +1,33 @@
+model:
+  name: fomo_detection_light
+  predefined_model:
+    name: FOMOModel
+    params:
+      variant: light
+
+loader:
+  params:
+    dataset_name: coco_test
+
+trainer:
+  precision: "16-mixed"
+  preprocessing:
+    train_image_size: [384, 512]
+    keep_aspect_ratio: true
+    normalize:
+      active: true
+      params:
+        mean: [0., 0., 0.]
+        std: [1, 1, 1]
+
+  batch_size: 8
+  epochs: 300
+  n_workers: 4
+  validation_interval: 10
+  n_log_images: 8
+  gradient_clip_val: 10
+
+  callbacks:
+    - name: ExportOnTrainEnd
+    - name: TestOnTrainEnd
+

@@ -58,7 +58,16 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             [xi.view(batch_size, self.node.no, -1) for xi in features], 2
         ).split((self.node.reg_max * 4, self.n_classes), 1)
         img_idx = target_boundingbox[:, 0].unsqueeze(-1)
-        if tuple(target_instance_segmentation.shape[-2:]) != (mask_h, mask_w):
+        if target_instance_segmentation.numel() == 0:
+            target_instance_segmentation = torch.empty(
+                (0, mask_h, mask_w),
+                device=target_instance_segmentation.device,
+                dtype=target_instance_segmentation.dtype,
+            )
+        elif tuple(target_instance_segmentation.shape[-2:]) != (
+            mask_h,
+            mask_w,
+        ):
             target_instance_segmentation = F.interpolate(
                 target_instance_segmentation.unsqueeze(0),
                 (mask_h, mask_w),
