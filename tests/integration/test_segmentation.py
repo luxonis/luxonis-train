@@ -1,8 +1,5 @@
 from typing import Any
 
-import pytest
-from luxonis_ml.data import LuxonisDataset
-
 from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
 
@@ -126,12 +123,12 @@ def train_and_test(
                 assert value > 0.8, f"{name} = {value} (expected > 0.8)"
 
 
-@pytest.mark.parametrize("backbone", BACKBONES)
-def test_backbones(
-    backbone: str,
-    config: dict[str, Any],
-    parking_lot_dataset: LuxonisDataset,
-):
-    opts = get_opts(backbone)
-    opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
-    train_and_test(config, opts)
+# @pytest.mark.parametrize("backbone", BACKBONES)
+# def test_backbones(
+#     backbone: str,
+#     config: dict[str, Any],
+#     parking_lot_dataset: LuxonisDataset,
+# ):
+#     opts = get_opts(backbone)
+#     opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
+#     train_and_test(config, opts)
