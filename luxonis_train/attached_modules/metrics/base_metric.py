@@ -16,7 +16,12 @@ from luxonis_train.utils.registry import METRICS
 
 @dataclass(kw_only=True, slots=True)
 class State:
-    """Add metric state variable. Only used by subclasses.
+    """Marks an attribute that should be registered as a metric state.
+
+    Upon initialization of a metric, all attributes of the metric that
+    are marked with this class will be registered as metric states using
+    the `add_state` method. The state will be accessible as an attribute
+    of the metric instance.
 
     Metric state variables are either C{Tensor} or an empty list, which
     can be appended to by the metric. Each state variable must have a
