@@ -134,9 +134,9 @@ class LuxonisModel:
 
             self.loaders[view] = Loader(
                 splits={
-                    "train": self.cfg.loader.train_splits,
-                    "val": self.cfg.loader.train_splits,
-                    "test": self.cfg.loader.test_splits,
+                    "train": self.cfg.loader.train_view,
+                    "val": self.cfg.loader.train_view,
+                    "test": self.cfg.loader.test_view,
                 }[view],
                 image_source=self.cfg.loader.image_source,
                 height=self.cfg_preprocessing.train_image_size.height,

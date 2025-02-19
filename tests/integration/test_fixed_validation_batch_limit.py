@@ -40,9 +40,9 @@ def get_config() -> dict[str, Any]:
         },
         "loader": {
             "name": "LuxonisLoaderTorch",
-            "train_splits": "train",
-            "val_splits": "train",
-            "test_splits": "train",
+            "train_view": "train",
+            "val_view": "train",
+            "test_view": "train",
         },
         "trainer": {
             "n_validation_batches": 1,

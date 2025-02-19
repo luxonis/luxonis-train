@@ -20,10 +20,10 @@ def get_config() -> dict[str, Any]:
             },
         },
         "loader": {
-            "name": "PerlinNoiseDataset",
-            "train_splits": "train",
-            "val_splits": "val",
-            "test_splits": "val",
+            "name": "LuxonisLoaderPerlinNoise",
+            "train_view": "train",
+            "val_view": "val",
+            "test_view": "val",
             "params": {
                 "dataset_name": "dummy_mvtec",
                 "anomaly_source_path": str(

@@ -58,7 +58,7 @@ tracker:
   is_tensorboard: true
 
 loader:
-  train_splits: val
+  train_view: val
   params:
     dataset_name: D1ParkingLot
 

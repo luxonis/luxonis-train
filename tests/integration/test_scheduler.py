@@ -18,7 +18,7 @@ def create_model_config():
         },
         "loader": {
             "name": "LuxonisLoaderTorch",
-            "train_splits": "train",
+            "train_view": "train",
             "params": {"dataset_name": "coco_test"},
         },
         "model": {

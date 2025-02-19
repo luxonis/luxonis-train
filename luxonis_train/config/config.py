@@ -302,34 +302,12 @@ class TrackerConfig(BaseModelExtraForbid):
 class LoaderConfig(BaseModelExtraForbid):
     name: str = "LuxonisLoaderTorch"
     image_source: str = "image"
-    train_splits: list[str] = ["train"]
-    val_splits: list[str] = ["val"]
-    test_splits: list[str] = ["test"]
+    train_view: list[str] = ["train"]
+    val_view: list[str] = ["val"]
+    test_view: list[str] = ["test"]
     params: Params = {}
 
-    @model_validator(mode="before")
-    @classmethod
-    def validate_deprecated_views(cls, data: dict[str, Any]) -> dict[str, Any]:
-        if "train_view" in data:
-            warnings.warn(
-                "Field `train_view` is deprecated. Use `train_splits` instead."
-            )
-            data["train_splits"] = data.pop("train_view")
-        if "val_view" in data:
-            warnings.warn(
-                "Field `val_view` is deprecated. Use `val_splits` instead."
-            )
-            data["val_splits"] = data.pop("val_view")
-        if "test_view" in data:
-            warnings.warn(
-                "Field `test_view` is deprecated. Use `test_splits` instead."
-            )
-            data["test_splits"] = data.pop("test_view")
-        return data
-
-    @field_validator(
-        "train_splits", "val_splits", "test_splits", mode="before"
-    )
+    @field_validator("train_view", "val_view", "test_view", mode="before")
     @classmethod
     def validate_splits(cls, splits: Any) -> list[Any]:
         if isinstance(splits, str):
@@ -368,7 +346,7 @@ class AugmentationConfig(BaseModelExtraForbid):
 
 class PreprocessingConfig(BaseModelExtraForbid):
     train_image_size: Annotated[
-        ImageSize, Field(default=[256, 256], min_length=2, max_length=2)
+        ImageSize, Field(min_length=2, max_length=2)
     ] = ImageSize(256, 256)
     keep_aspect_ratio: bool = True
     color_space: Literal["RGB", "BGR"] = "RGB"
@@ -672,9 +650,9 @@ class Config(LuxonisConfig):
 
         # Rule: If train, val, and test views are the same, set n_validation_batches
         if (
-            instance.loader.train_splits
-            == instance.loader.val_splits
-            == instance.loader.test_splits
+            instance.loader.train_view
+            == instance.loader.val_view
+            == instance.loader.test_view
         ):
             if instance.trainer.n_validation_batches is None:
                 instance.trainer.n_validation_batches = 10

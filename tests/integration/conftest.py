@@ -171,7 +171,7 @@ def config(train_overfit: bool) -> dict[str, Any]:
             "save_directory": "tests/integration/save-directory",
         },
         "loader": {
-            "train_splits": "val",
+            "train_view": "val",
             "params": {
                 "dataset_name": "_ParkingLot",
             },
