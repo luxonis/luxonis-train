@@ -14,7 +14,7 @@ def create_model_config():
             "preprocessing": {"train_image_size": [32, 32]},
             "epochs": 2,
             "batch_size": 4,
-            "num_workers": mp.cpu_count(),
+            "n_workers": mp.cpu_count(),
         },
         "loader": {
             "name": "LuxonisLoaderTorch",

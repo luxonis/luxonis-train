@@ -136,5 +136,5 @@ class OCREncoder:
         return self._alphabet
 
     @property
-    def num_classes(self) -> int:
+    def n_classes(self) -> int:
         return len(self._alphabet)

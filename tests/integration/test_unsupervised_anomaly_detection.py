@@ -39,9 +39,9 @@ def get_config() -> dict[str, Any]:
             },
             "batch_size": 1,
             "epochs": 1,
-            "num_workers": 0,
+            "n_workers": 0,
             "validation_interval": 10,
-            "num_sanity_val_steps": 0,
+            "n_sanity_val_steps": 0,
         },
         "tracker": {
             "save_directory": "tests/integration/save-directory",
@@ -50,10 +50,10 @@ def get_config() -> dict[str, Any]:
 
 
 def create_dummy_anomaly_detection_dataset(paths: Path):
-    def random_square_mask(image_shape, num_squares=1):
+    def random_square_mask(image_shape, n_squares=1):
         mask = np.zeros(image_shape, dtype=np.uint8)
         h, w = image_shape
-        for _ in range(num_squares):
+        for _ in range(n_squares):
             top_left = (
                 np.random.randint(0, w // 2),
                 np.random.randint(0, h // 2),

@@ -30,9 +30,9 @@ trainer:
 
   batch_size: 2
   epochs: &epochs 1
-  num_workers: 8
+  n_workers: 8
   validation_interval: 10
-  num_log_images: 8
+  n_log_images: 8
 
   callbacks:
     - name: ExportOnTrainEnd
