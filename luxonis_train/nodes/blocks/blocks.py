@@ -673,7 +673,7 @@ class ModuleRepeater(nn.Sequential):
     def __init__(
         self,
         module: ModuleFactory,
-        num_repets: int,
+        n_repeats: int,
         **kwargs,
     ):
         """Module which repeats the block n times. First block accepts
@@ -682,12 +682,20 @@ class ModuleRepeater(nn.Sequential):
 
         @type module: C{type[nn.Module]}
         @param module: Module to repeat.
-        @type num_repets: int
-        @param num_repets: Number of blocks to repeat. Defaults to C{1}.
+        @type n_repeats: int
+        @param n_repeats: Number of blocks to repeat. Defaults to C{1}.
         @param kwargs: Additional keyword arguments to be passed to the
             module.
         """
-        super().__init__(*(module(**kwargs) for _ in range(num_repets)))
+        blocks = [module(**kwargs)]
+
+        if "out_channels" in kwargs:
+            kwargs["in_channels"] = kwargs["out_channels"]
+
+        for _ in range(n_repeats - 1):
+            blocks.append(module(**kwargs))
+
+        super().__init__(*blocks)
 
 
 class CSPStackRepBlock(nn.Module):
@@ -736,7 +744,7 @@ class CSPStackRepBlock(nn.Module):
             module=BottleRep,
             in_channels=intermediate_channels,
             out_channels=intermediate_channels,
-            num_repets=n_blocks // 2,
+            n_repeats=n_blocks // 2,
         )
 
     def forward(self, x: Tensor) -> Tensor:

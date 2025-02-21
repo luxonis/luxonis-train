@@ -91,7 +91,7 @@ class RepUpBlock(PANUpBlockBase):
             module=GeneralReparametrizableBlock,
             in_channels=in_channels_next + out_channels,
             out_channels=out_channels,
-            num_repets=num_repeats,
+            n_repeats=num_repeats,
         )
 
     @property
@@ -222,7 +222,7 @@ class RepDownBlock(PANDownBlockBase):
             module=GeneralReparametrizableBlock,
             in_channels=downsample_out_channels + in_channels_next,
             out_channels=out_channels,
-            num_repets=n_repeats,
+            n_repeats=n_repeats,
         )
 
     @property

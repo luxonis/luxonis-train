@@ -104,7 +104,7 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
                         module=GeneralReparametrizableBlock,
                         in_channels=channels_list[i + 1],
                         out_channels=channels_list[i + 1],
-                        num_repets=num_repeats[i + 1],
+                        n_repeats=num_repeats[i + 1],
                     )
                     if block == "RepBlock"
                     else CSPStackRepBlock(
