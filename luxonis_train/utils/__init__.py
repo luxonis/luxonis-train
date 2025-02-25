@@ -18,7 +18,12 @@ from .general import (
     to_shape_packet,
 )
 from .graph import traverse_graph
-from .keypoints import get_center_keypoints, get_sigmas, insert_class
+from .keypoints import (
+    compute_pose_oks,
+    get_center_keypoints,
+    get_sigmas,
+    insert_class,
+)
 from .logging import setup_logging
 from .ocr import OCRDecoder, OCREncoder
 from .tracker import LuxonisTrackerPL
@@ -47,6 +52,7 @@ __all__ = [
     "get_sigmas",
     "traverse_graph",
     "insert_class",
+    "compute_pose_oks",
     "get_attribute_check_none",
     "OCREncoder",
     "OCRDecoder",

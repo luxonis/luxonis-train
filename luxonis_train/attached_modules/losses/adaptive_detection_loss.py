@@ -184,7 +184,11 @@ class AdaptiveDetectionLoss(BaseLoss):
         mask_gt: Tensor,
         pred_bboxes: Tensor,
         pred_scores: Tensor,
-    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
+        pred_kpts: Tensor | None = None,
+        gt_kpts: Tensor | None = None,
+        sigmas: Tensor | None = None,
+        area_factor: Tensor | None = None,
+    ) -> tuple:
         if self._epoch < self.n_warmup_epochs:
             return self.atss_assigner(
                 self.anchors,
@@ -203,6 +207,10 @@ class AdaptiveDetectionLoss(BaseLoss):
                 gt_labels,
                 gt_xyxy,
                 mask_gt,
+                pred_kpts,
+                gt_kpts,
+                sigmas,
+                area_factor,
             )
 
     def _preprocess_bbox_target(

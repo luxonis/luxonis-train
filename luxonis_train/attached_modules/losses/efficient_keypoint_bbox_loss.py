@@ -97,6 +97,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         target_boundingbox: Tensor,
         target_keypoints: Tensor,
     ) -> tuple[Tensor, dict[str, Tensor]]:
+        device = keypoints_raw.device
         target_keypoints = insert_class(target_keypoints, target_boundingbox)
 
         batch_size = class_scores.shape[0]
@@ -117,6 +118,18 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         gt_bbox_labels = target_boundingbox[..., :1]
         gt_xyxy = target_boundingbox[..., 1:]
         mask_gt = (gt_xyxy.sum(-1, keepdim=True) > 0).float()
+
+        batched_kpts = self._preprocess_kpts_target(
+            target_keypoints, batch_size, self.gt_kpts_scale
+        )
+
+        scaled_keypoints_raw = keypoints_raw.clone()
+        scaled_keypoints_raw[..., :2] = scaled_keypoints_raw[
+            ..., :2
+        ] * self.stride_tensor.view(1, -1, 1, 1)
+
+        sigmas = self.sigmas.to(device)
+
         (
             assigned_labels,
             assigned_bboxes,
@@ -124,12 +137,17 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             mask_positive,
             assigned_gt_idx,
         ) = self._run_assigner(
-            gt_bbox_labels, gt_xyxy, mask_gt, pred_bboxes, class_scores
+            gt_bbox_labels,
+            gt_xyxy,
+            mask_gt,
+            pred_bboxes,
+            class_scores,
+            scaled_keypoints_raw,
+            batched_kpts,
+            sigmas,
+            self.area_factor,
         )
 
-        batched_kpts = self._preprocess_kpts_target(
-            target_keypoints, batch_size, self.gt_kpts_scale
-        )
         assigned_gt_idx_expanded = assigned_gt_idx.unsqueeze(-1).unsqueeze(-1)
         if batched_kpts.numel() == 0:
             logger.debug("No instances found in the batch")
@@ -166,8 +184,6 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             * self.area_factor
         )
 
-        device = pred_bboxes.device
-        sigmas = self.sigmas.to(device)
         d = (gt_kpts[..., 0] - keypoints_raw[..., 0]).pow(2) + (
             gt_kpts[..., 1] - keypoints_raw[..., 1]
         ).pow(2)
