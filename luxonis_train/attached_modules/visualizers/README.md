@@ -17,7 +17,7 @@ Visualizers are used to render the output of a node. They are used in the `visua
 
 ## `BBoxVisualizer`
 
-Visualizer for bounding boxes.
+Visualizer for bounding box detection task.
 
 **Parameters:**
 
@@ -47,6 +47,8 @@ Targets are in the format specified by the [`LuxonisLoaderTorch`](../../loaders/
 
 ## `KeypointVisualizer`
 
+Visualizer for instance keypoint detection task.
+
 **Parameters:**
 
 | Key                    | Type                                   | Default value | Description                                                                                                                     |
@@ -70,6 +72,8 @@ Targets are in the format specified by the [`LuxonisLoaderTorch`](../../loaders/
 
 ## `SegmentationVisualizer`
 
+Visualizer for segmentation tasks.
+
 **Parameters:**
 
 | Key     | Type                          | Default value | Description                           |
@@ -92,6 +96,8 @@ Targets are in the format specified by the [`LuxonisLoaderTorch`](../../loaders/
 
 ## `ClassificationVisualizer`
 
+Visualizer for classification tasks.
+
 **Parameters:**
 
 | Key            | Type                   | Default value | Description                                                                      |
@@ -113,6 +119,8 @@ Targets are in the format specified by the [`LuxonisLoaderTorch`](../../loaders/
 ![class_viz_example](../../../media/example_viz/class.png)
 
 ## `EmbeddingsVisualizer`
+
+Visualizer for embedding tasks.
 
 **Parameters:**
 

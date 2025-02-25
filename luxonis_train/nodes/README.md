@@ -33,7 +33,7 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [Bounding Box Detection Heads](#bounding-box-heads)
     - [`EfficientBBoxHead`](#efficientbboxhead)
     - [`PrecisionBBoxHead`](#precisionbboxhead)
-  - [Keypoint Detection Heads](#keypoint-detection-heads)
+  - [Instance Keypoint Detection Heads](#instance-keypoint-detection-heads)
     - [`EfficientKeypointBBoxHead`](#efficientkeypointbboxhead)
     - [`FOMOHead`](#fomohead)
   - [Instance Segmentation Heads](#instance-segmentation-heads)
@@ -335,7 +335,7 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf) and [here](https://arx
 | `iou_thres`  | `float` | `0.45`        | IoU threshold for non-maxima-suppression (used for evaluation)            |
 | `max_det`    | `int`   | `300`         | Max number of detections for non-maxima-suppression (used for evaluation) |
 
-## Keypoint Detection Heads
+## Instance Keypoint Detection Heads
 
 You can use various keypoint detection metrics with these heads, such as [`MeanAveragePrecisionKeypoints`](../attached_modules/metrics/README.md#meanaverageprecisionkeypoints), [`ObjectKeypointSimilarity`](../attached_modules/metrics/README.md#objectkeypointsimilarity) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`KeypointVisualizer`](../attached_modules/visualizers/README.md#keypointvisualizer).
 

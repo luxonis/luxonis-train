@@ -2,8 +2,6 @@
 
 Loss functions are organized based on the tasks they serve. This helps in quickly locating the loss that best suits your application—whether it be classification, detection, anomaly detection, OCR, or embedding learning.
 
-______________________________________________________________________
-
 ## Table Of Contents
 
 - [Classification & Segmentation Losses](#classification--segmentation-losses)
@@ -17,7 +15,7 @@ ______________________________________________________________________
 - [Bounding Box Detection Losses](#bounding-box-detection-losses)
   - [`AdaptiveDetectionLoss`](#adaptivedetectionloss)
   - [`PrecisionDFLDetectionLoss`](#precisiondfldetectionloss)
-- [Keypoint Detection Losses](#keypoint-detection-losses)
+- [Instance Keypoint Detection Losses](#instance-keypoint-detection-losses)
   - [`EfficientKeypointBBoxLoss`](#efficientkeypointbboxloss)
   - [`FOMOLocalizationLoss`](#fomolocalizationloss)
 - [Instance Segmentation Losses](#instance-segmentation-losses)
@@ -27,8 +25,6 @@ ______________________________________________________________________
 - [OCR Losses](#ocr-losses)
   - [`CTCLoss`](#ctcloss)
 - [Embedding Losses](#embedding-losses)
-
-______________________________________________________________________
 
 ## Classification & Segmentation Losses
 
@@ -46,8 +42,6 @@ Adapted from [PyTorch docs](https://pytorch.org/docs/stable/generated/torch.nn.C
 | `reduction`       | `Literal["none", "mean", "sum"]` | `"mean"`      | Specifies the reduction to apply to the output.                                                                                                                                                                       |
 | `label_smoothing` | `float` (0.0 to 1.0)             | `0.0`         | Smoothing factor applied to targets; creates a mix between the ground truth and a uniform distribution as described in [Rethinking the Inception Architecture for Computer Vision](https://arxiv.org/abs/1512.00567). |
 
-______________________________________________________________________
-
 ### `BCEWithLogitsLoss`
 
 Adapted from [PyTorch docs](https://pytorch.org/docs/stable/generated/torch.nn.BCEWithLogitsLoss.html).
@@ -60,8 +54,6 @@ Adapted from [PyTorch docs](https://pytorch.org/docs/stable/generated/torch.nn.B
 | `reduction`  | `Literal["none", "mean", "sum"]` | `"mean"`      | Specifies the reduction to apply to the output.                                                                 |
 | `pos_weight` | `Tensor \| None`                 | `None`        | Weight for positive examples to be broadcast with the target.                                                   |
 
-______________________________________________________________________
-
 ### `SmoothBCEWithLogitsLoss`
 
 **Parameters:**
@@ -72,8 +64,6 @@ ______________________________________________________________________
 | `reduction`       | `Literal["none", "mean", "sum"]` | `"mean"`      | Specifies the reduction to apply to the output.                                                                                                                                    |
 | `label_smoothing` | `float` (0.0 to 1.0)             | `0.0`         | Amount of label smoothing; mixes the ground truth with a uniform distribution as in [Rethinking the Inception Architecture for Computer Vision](https://arxiv.org/abs/1512.00567). |
 | `bce_pow`         | `float`                          | `1.0`         | Weight factor for positive samples.                                                                                                                                                |
-
-______________________________________________________________________
 
 ### `SigmoidFocalLoss`
 
@@ -87,8 +77,6 @@ Adapted from [TorchVision docs](https://pytorch.org/vision/stable/generated/torc
 | `gamma`     | `float`                          | `2.0`         | Exponent for the modulating factor `(1 - p_t)` balancing easy versus hard examples. |
 | `reduction` | `Literal["none", "mean", "sum"]` | `"mean"`      | Specifies the reduction method for the output.                                      |
 
-______________________________________________________________________
-
 ### `SoftmaxFocalLoss`
 
 **Parameters:**
@@ -99,8 +87,6 @@ ______________________________________________________________________
 | `gamma`     | `float`                          | `2.0`         | Exponent for the modulating factor `(1 - p_t)` balancing easy vs. hard examples.         |
 | `reduction` | `Literal["none", "mean", "sum"]` | `"mean"`      | Specifies the reduction method for the output.                                           |
 | `smooth`    | `float`                          | `1e-5`        | Smoothing constant added to labels to avoid zero probabilities.                          |
-
-______________________________________________________________________
 
 ### `OHEMCrossEntropyLoss`
 
@@ -116,8 +102,6 @@ Wraps the standard `CrossEntropyLoss` with Online Hard Example Mining (OHEM).
 | `reduction`       | `Literal["none", "mean", "sum"]` | `"mean"`      | (Forwarded to `CrossEntropyLoss`) Specifies the reduction method.                                                                          |
 | `label_smoothing` | `float` (0.0 to 1.0)             | `0.0`         | (Forwarded to `CrossEntropyLoss`) Amount of label smoothing to apply.                                                                      |
 
-______________________________________________________________________
-
 ### `OHEMBCEWithLogitsLoss`
 
 Wraps the standard `BCEWithLogitsLoss` with Online Hard Example Mining (OHEM).
@@ -131,8 +115,6 @@ Wraps the standard `BCEWithLogitsLoss` with Online Hard Example Mining (OHEM).
 | `weight`         | `list[float] \| None`            | `None`        | (Forwarded to `BCEWithLogitsLoss`) Manual rescaling weight for each class.                                                                   |
 | `reduction`      | `Literal["none", "mean", "sum"]` | `"mean"`      | (Forwarded to `BCEWithLogitsLoss`) Specifies the reduction method.                                                                           |
 | `pos_weight`     | `Tensor \| None`                 | `None`        | (Forwarded to `BCEWithLogitsLoss`) Weight for positive examples.                                                                             |
-
-______________________________________________________________________
 
 ### Bounding Box Detection Losses
 
@@ -151,8 +133,6 @@ Compatible with: [`EfficientBBoxHead`](../../nodes/README.md#efficientbboxhead)
 | `class_loss_weight` | `float`                                           | `1.0`         | Weight for the classification component of the loss.                           |
 | `iou_loss_weight`   | `float`                                           | `2.5`         | Weight for the IoU regression component of the loss.                           |
 
-______________________________________________________________________
-
 #### `PrecisionDFLDetectionLoss`
 
 Adapted from [this paper](https://arxiv.org/pdf/2207.02696.pdf) and [this paper](https://arxiv.org/pdf/2209.02976.pdf).
@@ -168,9 +148,7 @@ Compatible with: [`PrecisionBBoxHead`](../../nodes/README.md#precisionbboxhead)
 | `bbox_loss_weight`  | `float` | `7.5`         | Weight for the bounding box regression loss.   |
 | `dfl_loss_weigth`   | `float` | `1.5`         | Weight for the Distribution Focal Loss (DFL).  |
 
-______________________________________________________________________
-
-### Keypoint Detection Losses
+### Instance Keypoint Detection Losses
 
 #### `EfficientKeypointBBoxLoss`
 
@@ -192,8 +170,6 @@ Compatible with: [`EfficientKeypointBBoxHead`](../../nodes/README.md#efficientke
 | `sigmas`                | `list[float] \| None`                             | `None`        | Sigmas used in KeypointLoss for OKS; if `None`, defaults (e.g., COCO values) are used.         |
 | `area_factor`           | `float \| None`                                   | `None`        | Factor to multiply the bounding box area in KeypointLoss; if `None`, a default factor is used. |
 
-______________________________________________________________________
-
 #### `FOMOLocalizationLoss`
 
 Compatible with: [`FOMOHead`](../../nodes/README.md#fomohead)
@@ -203,8 +179,6 @@ Compatible with: [`FOMOHead`](../../nodes/README.md#fomohead)
 | Key             | Type    | Default value | Description                                                                                                                   |
 | --------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `object_weight` | `float` | `500`         | Weight for objects in the loss computation. Higher values may improve detection accuracy at the risk of more false positives. |
-
-______________________________________________________________________
 
 ### Instance Segmentation Losses
 
@@ -222,8 +196,6 @@ Compatible with: [`PrecisionSegmentBBoxHead`](../../nodes/README.md#precisionseg
 | `class_loss_weight` | `float` | `0.5`         | Weight for the classification loss.                |
 | `bbox_loss_weight`  | `float` | `7.5`         | Weight for the bounding box and segmentation loss. |
 | `dfl_loss_weigth`   | `float` | `1.5`         | Weight for the Distribution Focal Loss (DFL).      |
-
-______________________________________________________________________
 
 ## Anomaly Detection Losses
 
@@ -244,8 +216,6 @@ Compatible with: [`DiscSubNetHead`](../../nodes/README.md#discsubnethead)
 | `reduction` | `Literal["none", "mean", "sum"]` | `"mean"`      | Specifies the reduction method for the output.                              |
 | `smooth`    | `float`                          | `1e-5`        | Smoothing factor to prevent overconfidence in predictions.                  |
 
-______________________________________________________________________
-
 ## OCR Losses
 
 Tailored for Optical Character Recognition tasks.
@@ -261,8 +231,6 @@ Compatible with: [`OCRCTCHead`](../../nodes/README.md#ocrctchead)
 | Key              | Type   | Default value | Description                                            |
 | ---------------- | ------ | ------------- | ------------------------------------------------------ |
 | `use_focal_loss` | `bool` | `True`        | Whether to apply focal loss weighting to the CTC loss. |
-
-______________________________________________________________________
 
 ## Embedding Losses
 
@@ -307,5 +275,3 @@ In addition, the following parameters can be used with any embedding loss:
 | `reducer_params`     | `dict` | `None`        | Parameters for the reducer.                                                                                                                                                              |
 | `regularizer`        | `str`  | `None`        | Name of the regularizer to use with the loss. All regularizers from [pytorch-metric-learning](https://kevinmusgrave.github.io/pytorch-metric-learning/regularizers/) are supported.      |
 | `regularizer_params` | `dict` | `None`        | Parameters for the regularizer.                                                                                                                                                          |
-
-______________________________________________________________________
