@@ -2,7 +2,9 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
-from .utils import batch_iou, batch_pose_oks, candidates_in_gt, fix_collisions
+from luxonis_train.utils import compute_pose_oks
+
+from .utils import batch_iou, candidates_in_gt, fix_collisions
 
 
 class TaskAlignedAssigner(nn.Module):
@@ -231,8 +233,15 @@ class TaskAlignedAssigner(nn.Module):
 
         overlaps = batch_iou(gt_bboxes, pred_bboxes)
         if pred_kpts is not None and gt_kpts is not None:
-            pose_oks = batch_pose_oks(
-                gt_kpts, pred_kpts, gt_bboxes, sigmas, self.eps, area_factor
+            pose_oks = compute_pose_oks(
+                gt_kpts,
+                pred_kpts,
+                sigmas,
+                gt_bboxes,
+                eps=self.eps,
+                area_factor=area_factor,
+                use_cocoeval_oks=True,
+                pose_area=None,
             )
             overlaps = overlaps * pose_oks
 
