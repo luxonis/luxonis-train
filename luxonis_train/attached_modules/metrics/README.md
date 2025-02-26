@@ -21,31 +21,31 @@ List of all the available metrics.
 
 Accuracy metric from the [`torchmetrics`](https://lightning.ai/docs/torchmetrics/stable/classification/accuracy.html) module.
 
-Works with tasks such as classification, segmentation, and anomaly detection.
+Works with tasks such as **classification, segmentation, and anomaly detection.**
 
 ## JaccardIndex
 
 Jaccard Index (Intersection over Union) metric from the [`torchmetrics`](https://lightning.ai/docs/torchmetrics/stable/classification/jaccard_index.html) module.
 
-Works with tasks such as classification, segmentation, and anomaly detection.
+Works with tasks such as **classification, segmentation, and anomaly detection.**
 
 ## F1Score
 
 F1 Score metric from the [`torchmetrics`](https://lightning.ai/docs/torchmetrics/stable/classification/f1_score.html) module.
 
-Works with tasks such as classification, segmentation, and anomaly detection.
+Works with tasks such as **classification, segmentation, and anomaly detection.**
 
 ## Precision
 
 Precision metric from the [`torchmetrics`](https://lightning.ai/docs/torchmetrics/stable/classification/precision.html) module.
 
-Works with tasks such as classification, segmentation, and anomaly detection.
+Works with tasks such as **classification, segmentation, and anomaly detection.**
 
 ## Recall
 
 Recall metric from the [`torchmetrics`](https://lightning.ai/docs/torchmetrics/stable/classification/recall.html) module.
 
-Works with tasks such as classification, segmentation, and anomaly detection.
+Works with tasks such as **classification, segmentation, and anomaly detection.**
 
 > **Note:** For multi-label classification, ensure that you specify the `params.task` as `multilabel` when using these metrics.
 
@@ -53,7 +53,7 @@ Works with tasks such as classification, segmentation, and anomaly detection.
 
 For more information, see [object-keypoint-similarity](https://learnopencv.com/object-keypoint-similarity/).
 
-Works with keypoint detection task.
+Works with **keypoint detection task.**
 
 **Params**
 
@@ -70,7 +70,7 @@ Works with keypoint detection task.
 
 Compute the `Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)` for object detection or instance segmentation predictions. This metric is built upon [pycocotools](https://github.com/cocodataset/cocoapi), which provides robust tools for evaluating these tasks.
 
-Works with tasks such as detection and instance segmentation.
+Works with tasks such as **detection and instance segmentation.**
 
 ```math
 \text{mAP} = \frac{1}{n} \sum_{i=1}^{n} AP_i
@@ -87,7 +87,7 @@ Similar to [MeanAveragePrecision](#meanaverageprecision), but uses [OKS](#object
 For a deeper understanding of how OKS works, please refer to the detailed explanation provided [here](https://learnopencv.com/object-keypoint-similarity/).
 Evaluation leverages the [pycocotools](https://github.com/cocodataset/cocoapi) framework to assess mAP performance.
 
-Works with keypoint detection task.
+Works with **keypoint detection task.**
 
 **Params**
 
@@ -106,18 +106,18 @@ Works with keypoint detection task.
 Compute the accuracy of the closest positive sample to the query sample.
 Needs to be connected to the `GhostFaceNetHead` node.
 
-Works with embedding task.
+Works with **embedding task**.
 
 ## MedianDistances
 
 Compute the median distance between the query and the positive samples.
 Needs to be connected to the `GhostFaceNetHead` node.
 
-Works with embedding task.
+Works with **embedding task**.
 
 ## OCRAccuracy
 
-Accuracy metric for OCR tasks.
+Works with **OCR tasks**.
 
 **Params**
 
@@ -127,7 +127,7 @@ Accuracy metric for OCR tasks.
 
 ## ConfusionMatrix
 
-Compute the confusion matrix for various tasks including classification, segmentation, object detection, instance keypoint detection and instance segmentation.
+Works with **classification, segmentation, object detection, instance keypoint detection and instance segmentation tasks**
 
 > \[!NOTE\]
 > **Important:** Confusion Matrix is sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.

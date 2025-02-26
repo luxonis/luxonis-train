@@ -17,7 +17,7 @@ Visualizers are used to render the output of a node. They are used in the `visua
 
 ## `BBoxVisualizer`
 
-Visualizer for bounding box detection task.
+Visualizer for **bounding box detection task**.
 
 **Parameters:**
 
@@ -47,7 +47,7 @@ Targets are in the format specified by the [`LuxonisLoaderTorch`](../../loaders/
 
 ## `KeypointVisualizer`
 
-Visualizer for instance keypoint detection task.
+Visualizer for **instance keypoint detection task**.
 
 **Parameters:**
 
@@ -72,7 +72,7 @@ Targets are in the format specified by the [`LuxonisLoaderTorch`](../../loaders/
 
 ## `SegmentationVisualizer`
 
-Visualizer for segmentation tasks.
+Visualizer for **segmentation tasks**.
 
 **Parameters:**
 
@@ -96,7 +96,7 @@ Targets are in the format specified by the [`LuxonisLoaderTorch`](../../loaders/
 
 ## `ClassificationVisualizer`
 
-Visualizer for classification tasks.
+Visualizer for **classification tasks**.
 
 **Parameters:**
 
@@ -120,7 +120,7 @@ Targets are in the format specified by the [`LuxonisLoaderTorch`](../../loaders/
 
 ## `EmbeddingsVisualizer`
 
-Visualizer for embedding tasks.
+Visualizer for **embedding tasks**.
 
 **Parameters:**
 
@@ -141,7 +141,7 @@ Targets are in the format specified by the [`LuxonisLoaderTorch`](../../loaders/
 
 ## `OCRVisualizer`
 
-Visualizer for OCR tasks.
+Visualizer for **OCR tasks**.
 
 **Parameters:**
 
@@ -164,7 +164,7 @@ Targets are in the format specified by the [`LuxonisLoaderTorch`](../../loaders/
 
 ## `InstanceSegmentationVisualizer`
 
-Visualizer for instance segmentation tasks.
+Visualizer for **instance segmentation tasks**.
 
 **Parameters:**
 
