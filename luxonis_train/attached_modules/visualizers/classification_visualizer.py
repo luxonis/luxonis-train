@@ -18,7 +18,7 @@ class ClassificationVisualizer(BaseVisualizer):
         include_plot: bool = True,
         font_scale: float = 1.0,
         color: tuple[int, int, int] = (255, 0, 0),
-        thickness: int = 1,
+        thickness: int = 2,
         multilabel: bool = False,
         **kwargs,
     ):
@@ -53,8 +53,9 @@ class ClassificationVisualizer(BaseVisualizer):
             pred = prediction.softmax(-1).detach().cpu().numpy()
         fig, ax = plt.subplots(figsize=(width / 100, height / 100))
         ax.bar(np.arange(len(pred)), pred)
+        labels = [self.classes.inverse[i] for i in range(len(pred))]
         ax.set_xticks(np.arange(len(pred)))
-        ax.set_xticklabels(self.classes.inverse, rotation=90)
+        ax.set_xticklabels(labels, rotation=90)
         ax.set_ylim(0, 1)
         ax.set_xlabel("Class")
         ax.set_ylabel("Probability")
@@ -79,7 +80,7 @@ class ClassificationVisualizer(BaseVisualizer):
                 arr = cv2.putText(
                     arr,
                     f"GT: {gt}",
-                    (5, 10),
+                    (5, 50),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     self.font_scale,
                     self.color,
@@ -88,7 +89,7 @@ class ClassificationVisualizer(BaseVisualizer):
             arr = cv2.putText(
                 arr,
                 f"Pred: {curr_class}",
-                (5, 30),
+                (5, 75),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 self.font_scale,
                 self.color,

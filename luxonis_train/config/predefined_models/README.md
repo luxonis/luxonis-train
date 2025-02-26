@@ -12,6 +12,7 @@ models which can be used instead.
 - [`FOMOModel`](#fomomodel)
 - [`InstanceSegmentationModel`](#instancesegmentationmodel)
 - [`AnomalyDetectionModel`](#anomalydetectionmodel)
+- [`OCRRecognitionModel`](#ocrrecognitionmodel)
 
 **Parameters:**
 

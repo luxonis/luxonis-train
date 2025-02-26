@@ -20,9 +20,9 @@ class EmbeddingsVisualizer(BaseVisualizer):
     def __init__(self, z_score_threshold: float = 3, **kwargs):
         """Visualizer for embedding tasks like reID.
 
-        @type accumulate_n_batches: int
-        @param accumulate_n_batches: Number of batches to accumulate
-            before visualizing.
+        @type z_score_threshold: float
+        @param z_score_threshold: The threshold for filtering out
+            outliers.
         """
         super().__init__(**kwargs)
         self.colors = ColorMap()

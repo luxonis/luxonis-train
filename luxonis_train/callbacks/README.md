@@ -10,21 +10,23 @@ List of all supported callbacks.
 - [`MetadataLogger`](#metadatalogger)
 - [`TestOnTrainEnd`](#testontrainend)
 - [`UploadCheckpoint`](#uploadcheckpoint)
+- [`GradCamCallback`](#gradcamcallback)
+- [`EMACallback`](#emacallback)
 
 ## `PytorchLightning` Callbacks
 
 List of supported callbacks from `lightning.pytorch`.
 
-- [`GPUStatsMonitor`](https://pytorch-lightning.readthedocs.io/en/1.5.10/api/pytorch_lightning.callbacks.gpu_stats_monitor.html)
-- [`DeviceStatsMonitor`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.DeviceStatsMonitor.html#lightning.pytorch.callbacks.DeviceStatsMonitor)
-- [`EarlyStopping`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.EarlyStopping.html#lightning.pytorch.callbacks.EarlyStopping)
-- [`LearningRateMonitor`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.LearningRateMonitor.html#lightning.pytorch.callbacks.LearningRateMonitor)
-- [`ModelCheckpoint`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.ModelCheckpoint.html#lightning.pytorch.callbacks.ModelCheckpoint)
-- [`RichModelSummary`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.RichModelSummary.html#lightning.pytorch.callbacks.RichModelSummary)
-- [`GradientAccumulationScheduler`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.GradientAccumulationScheduler.html#lightning.pytorch.callbacks.GradientAccumulationScheduler)
-- [`StochasticWeightAveraging`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.StochasticWeightAveraging.html#lightning.pytorch.callbacks.StochasticWeightAveraging)
-- [`Timer`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.Timer.html#lightning.pytorch.callbacks.Timer)
-- [`ModelPruning`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.ModelPruning.html#lightning.pytorch.callbacks.ModelPruning)
+- [`GPUStatsMonitor`](https://pytorch-lightning.readthedocs.io/en/1.5.10/api/pytorch_lightning.callbacks.gpu_stats_monitor.html): Monitors and logs GPU stats during training.
+- [`DeviceStatsMonitor`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.DeviceStatsMonitor.html#lightning.pytorch.callbacks.DeviceStatsMonitor): Monitors and logs device stats (CPU/GPU) during training.
+- [`EarlyStopping`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.EarlyStopping.html#lightning.pytorch.callbacks.EarlyStopping): Stops training when a monitored metric has stopped improving.
+- [`LearningRateMonitor`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.LearningRateMonitor.html#lightning.pytorch.callbacks.LearningRateMonitor): Logs learning rate during training.
+- [`ModelCheckpoint`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.ModelCheckpoint.html#lightning.pytorch.callbacks.ModelCheckpoint): Saves model checkpoints during training.
+- [`RichModelSummary`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.RichModelSummary.html#lightning.pytorch.callbacks.RichModelSummary): Provides a detailed summary of the model.
+- [`GradientAccumulationScheduler`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.GradientAccumulationScheduler.html#lightning.pytorch.callbacks.GradientAccumulationScheduler): Adjusts gradient accumulation dynamically during training.
+- [`StochasticWeightAveraging`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.StochasticWeightAveraging.html#lightning.pytorch.callbacks.StochasticWeightAveraging): Averages model weights to improve generalization.
+- [`Timer`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.Timer.html#lightning.pytorch.callbacks.Timer): Times training, validation, and test loops.
+- [`ModelPruning`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.ModelPruning.html#lightning.pytorch.callbacks.ModelPruning): Prunes model weights during training.
 
 ## `ExportOnTrainEnd`
 
@@ -81,13 +83,12 @@ Callback to visualize gradients using Grad-CAM. Works only during validation.
 
 ## `EMACallback`
 
-Callback that updates the stored parameters using a moving average.
+A callback that maintains an exponential moving average (EMA) of the model's parameters. The EMA weights are employed during validation, testing, visualizations, and for exporting the model, ensuring the deployed model benefits from smoother, more stable parameters.
 
 **Parameters:**
 
-| Key                 | Type    | Default value | Description                                                                                     |
-| ------------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------- |
-| `decay`             | `float` | `0.5`         | Decay factor for the moving average.                                                            |
-| `use_dynamic_decay` | `bool`  | `True`        | Whether to use dynamic decay.                                                                   |
-| `decay_tau`         | `float` | `2000`        | Decay tau for dynamic decay.                                                                    |
-| `device`            | `str`   | `None`        | Device to use for the moving average. If `None`, the device is inferred from the model's device |
+| Key                 | Type    | Default value | Description                                                                        |
+| ------------------- | ------- | ------------- | ---------------------------------------------------------------------------------- |
+| `decay`             | `float` | `0.5`         | The decay factor for updating the EMA. Higher values yield slower updates.         |
+| `use_dynamic_decay` | `bool`  | `True`        | If enabled, adjusts the decay factor dynamically based on the training iteration.  |
+| `decay_tau`         | `float` | `2000`        | The time constant (tau) for dynamic decay, influencing how quickly the EMA adapts. |

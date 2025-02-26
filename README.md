@@ -16,6 +16,8 @@
 
 `LuxonisTrain` is a user-friendly tool designed to streamline the training of deep learning models, especially for edge devices. Built on top of `PyTorch Lightning`, it simplifies the process of training, testing, and exporting models with minimal coding required.
 
+![Title Image](media/example_viz/title.png)
+
 ### ✨ Key Features
 
 - **No Coding Required**: Define your training pipeline entirely through a single `YAML` configuration file.
@@ -317,6 +319,8 @@ loader:
 > ```
 >
 > **The `inspect` command is currently only available in the CLI**
+
+For additional information about the shapes of Luxonis ML data that the loader returns, please refer to the [Loaders README](luxonis_train/loaders/README.md).
 
 <a name="training"></a>
 
