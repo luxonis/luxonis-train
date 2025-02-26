@@ -320,6 +320,8 @@ loader:
 >
 > **The `inspect` command is currently only available in the CLI**
 
+For additional information about the shapes of Luxonis ML data that the loader returns, please refer to the [Loaders README](luxonis_train/loaders/README.md).
+
 <a name="training"></a>
 
 ## 🏋️‍♂️ Training
