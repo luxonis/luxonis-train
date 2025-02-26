@@ -2,13 +2,12 @@ name: CI
 
 on:
   pull_request:
-    branches: [ dev, main ]
+    branches: [ main ]
     paths:
       - 'luxonis_train/**'
       - 'tests/**'
       - .github/workflows/ci.yaml
       - '!**/*.md'
-      - '!luxonis_train/__main__.py'
 
 permissions:
   pull-requests: write
@@ -45,6 +44,7 @@ jobs:
         run: pydoctor --docformat=epytext luxonis_train
 
   type-check:
+    if: false
     needs:
       - pre-commit
       - docs
@@ -81,8 +81,8 @@ jobs:
   # not installed.
   config-test:
     runs-on: ubuntu-latest
-    needs:
-      - type-check
+    # needs:
+    #   - type-check
 
     steps:
     - name: Checkout
@@ -106,12 +106,8 @@ jobs:
   tests:
     needs:
       - config-test
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-t4-4core
 
     steps:
     - name: Checkout

@@ -126,12 +126,13 @@ Compatible with: [`EfficientBBoxHead`](../../nodes/README.md#efficientbboxhead)
 
 **Parameters:**
 
-| Key                 | Type                                              | Default value | Description                                                                    |
-| ------------------- | ------------------------------------------------- | ------------- | ------------------------------------------------------------------------------ |
-| `n_warmup_epochs`   | `int`                                             | `4`           | Number of epochs using the ATSS assigner before switching to the TAL assigner. |
-| `iou_type`          | `Literal["none", "giou", "diou", "ciou", "siou"]` | `"giou"`      | Type of IoU used for bounding box regression loss.                             |
-| `class_loss_weight` | `float`                                           | `1.0`         | Weight for the classification component of the loss.                           |
-| `iou_loss_weight`   | `float`                                           | `2.5`         | Weight for the IoU regression component of the loss.                           |
+| Key                 | Type                                              | Default value | Description                                                                                                                                                                                                                                              |
+| ------------------- | ------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `n_warmup_epochs`   | `int`                                             | `4`           | Number of epochs using the ATSS assigner before switching to the TAL assigner.                                                                                                                                                                           |
+| `iou_type`          | `Literal["none", "giou", "diou", "ciou", "siou"]` | `"giou"`      | Type of IoU used for bounding box regression loss.                                                                                                                                                                                                       |
+| `class_loss_weight` | `float`                                           | `1.0`         | Weight for the classification component of the loss.                                                                                                                                                                                                     |
+| `iou_loss_weight`   | `float`                                           | `2.5`         | Weight for the IoU regression component of the loss.                                                                                                                                                                                                     |
+| `per_class_weights` | `list`                                            | `None`        | A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes. |
 
 #### `PrecisionDFLDetectionLoss`
 
