@@ -4,6 +4,9 @@ The configuration is defined in a `YAML` file, which you must provide.
 The configuration file consists of a few major blocks that are described below.
 You can create your own config or use/edit one of the examples.
 
+> \[!NOTE\]
+> The current folder contains predefined configurations that are ready for immediate use. These configurations employ models that are optimized for speed and efficiency. For more information, see [Predefined models](../luxonis_train/config/predefined_models/README.md).
+
 ## Table Of Contents
 
 - [Top-level Options](#top-level-options)
@@ -16,13 +19,13 @@ You can create your own config or use/edit one of the examples.
 - [Loader](#loader)
   - [`LuxonisLoaderTorch`](#luxonisloadertorch)
 - [Trainer](#trainer)
-  - [Trainer Tips](#trainer-tips)
   - [Preprocessing](#preprocessing)
     - [Augmentations](#augmentations)
   - [Callbacks](#callbacks)
   - [Optimizer](#optimizer)
   - [Scheduler](#scheduler)
   - [Training Strategy](#training-strategy)
+  - [Trainer Tips](#trainer-tips)
 - [Exporter](#exporter)
   - [`ONNX`](#onnx)
   - [Blob](#blob)

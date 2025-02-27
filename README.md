@@ -195,10 +195,13 @@ trainer:
     name: ConstantLR
 ```
 
-For an extensive list of all the available options, see [Configuration](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md).
+### 📚 Configuration Reference
 
-We provide a set of predefined configuration files for the most common computer vision tasks.
-You can find them in the `configs` directory.
+**For a complete reference of all available configuration options, see our [Configuration Documentation](configs/README.md).**
+
+> \[!TIP\]
+> We provide a set of predefined configuration files for common computer vision tasks in the `configs` directory.
+> These are great starting points that you can customize for your specific needs.
 
 <a name="data-preparation"></a>
 
