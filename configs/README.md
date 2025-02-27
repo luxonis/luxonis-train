@@ -4,6 +4,9 @@ The configuration is defined in a `YAML` file, which you must provide.
 The configuration file consists of a few major blocks that are described below.
 You can create your own config or use/edit one of the examples.
 
+> \[!NOTE\]
+> The current folder contains predefined configurations that are ready for immediate use. These configurations employ models that are optimized for speed and efficiency. For more information, see [Predefined models](../luxonis_train/config/predefined_models/README.md).
+
 ## Table Of Contents
 
 - [Top-level Options](#top-level-options)
@@ -22,6 +25,7 @@ You can create your own config or use/edit one of the examples.
   - [Optimizer](#optimizer)
   - [Scheduler](#scheduler)
   - [Training Strategy](#training-strategy)
+  - [Trainer Tips](#trainer-tips)
 - [Exporter](#exporter)
   - [`ONNX`](#onnx)
   - [Blob](#blob)
@@ -35,7 +39,6 @@ You can create your own config or use/edit one of the examples.
 | ---------- | ----------------------- | ---------------- |
 | `model`    | [`model`](#model)       | Model section    |
 | `loader`   | [`loader`](#loader)     | Loader section   |
-| `train`    | [`train`](#train)       | Train section    |
 | `tracker`  | [`tracker`](#tracker)   | Tracker section  |
 | `trainer`  | [`trainer`](#trainer)   | Trainer section  |
 | `exporter` | [`exporter`](#exporter) | Exporter section |
@@ -43,23 +46,25 @@ You can create your own config or use/edit one of the examples.
 
 ## Model
 
-This is the most important block, that **must be always defined by the user**. There are two different ways you can create the model.
+The `Model` section is a crucial part of the configuration and **must always be defined by the user**. There are two ways to create a model:
 
-| Key                | Type   | Default value | Description                                                |
-| ------------------ | ------ | ------------- | ---------------------------------------------------------- |
-| `name`             | `str`  | `"model"`     | Name of the model                                          |
-| `weights`          | `path` | `None`        | Path to weights to load                                    |
-| `predefined_model` | `str`  | `None`        | Name of a predefined model to use                          |
-| `params`           | `dict` | `{}`          | Parameters for the predefined model                        |
-| `nodes`            | `list` | `[]`          | List of nodes (see [nodes](#nodes))                        |
-| `losses`           | `list` | `[]`          | List of losses (see [losses](#losses))                     |
-| `metrics`          | `list` | `[]`          | List of metrics (see [metrics](#metrics))                  |
-| `visualziers`      | `list` | `[]`          | List of visualizers (see [visualizers](#visualizers))      |
-| `outputs`          | `list` | `[]`          | List of outputs nodes, inferred from nodes if not provided |
+1. **Manual Configuration** – Define the model by specifying the appropriate nodes.
+1. **Predefined Model** – Use a predefined model by specifying its name and parameters (see [Predefined models](../luxonis_train/config/predefined_models/README.md)).
+
+### Configuration Options
+
+| Key                | Type   | Default Value | Description                                                                                        |
+| ------------------ | ------ | ------------- | -------------------------------------------------------------------------------------------------- |
+| `name`             | `str`  | `"model"`     | Name of the model                                                                                  |
+| `weights`          | `path` | `None`        | Path to a checkpoint file containing all model states, including weights, optimizer, and scheduler |
+| `nodes`            | `list` | `[]`          | List of nodes (see [Nodes](#nodes))                                                                |
+| `outputs`          | `list` | `[]`          | List of output nodes. If not specified, they are inferred from `nodes`                             |
+| `predefined_model` | `dict` | `None`        | Dictionary specifying the predefined model name and its parameters                                 |
+| `params`           | `dict` | `{}`          | Parameters for the predefined model                                                                |
 
 ### Nodes
 
-For list of all nodes, see [nodes](../luxonis_train/nodes/README.md).
+For all available node names and their `params`, see [nodes](../luxonis_train/nodes/README.md).
 
 | Key                       | Type                   | Default value | Description                                                                                                                                 |
 | ------------------------- | ---------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -70,17 +75,18 @@ For list of all nodes, see [nodes](../luxonis_train/nodes/README.md).
 | `freezing.active`         | `bool`                 | `False`       | whether to freeze the modules so the weights are not updated                                                                                |
 | `freezing.unfreeze_after` | `int \| float \| None` | `None`        | After how many epochs should the modules be unfrozen, can be `int` for a specific number of epochs or `float` for a portion of the training |
 | `remove_on_export`        | `bool`                 | `False`       | Whether the node should be removed when exporting                                                                                           |
-| `losses`                  | `list`                 | `[]`          | List of losses attached to this node                                                                                                        |
-| `metrics`                 | `list`                 | `[]`          | List of metrics attached to this node                                                                                                       |
-| `visualizers`             | `list`                 | `[]`          | List of visualizers attached to this node                                                                                                   |
+| `losses`                  | `list`                 | `[]`          | List of losses attached to this node (see [Losses](#losses))                                                                                |
+| `metrics`                 | `list`                 | `[]`          | List of metrics attached to this node (see [Metrics](#metrics))                                                                             |
+| `visualizers`             | `list`                 | `[]`          | List of visualizers attached to this node (see [Visualizers](#visualizers))                                                                 |
 
 #### Losses
 
 At least one node must have a loss attached to it.
-You can see the list of all currently supported loss functions and their parameters [here](../luxonis_train/attached_modules/losses/README.md).
+For all supported loss functions and their `params`, see [losses](../luxonis_train/attached_modules/losses/README.md).
 
 | Key      | Type    | Default value | Description                              |
 | -------- | ------- | ------------- | ---------------------------------------- |
+| `name`   | `str`   | -             | Name of the loss                         |
 | `weight` | `float` | `1.0`         | Weight of the loss used in the final sum |
 | `alias`  | `str`   | `None`        | Custom name for the loss                 |
 | `params` | `dict`  | `{}`          | Additional parameters for the loss       |
@@ -129,7 +135,10 @@ visualizers:
 
 ## Tracker
 
-This library uses [`LuxonisTrackerPL`](https://github.com/luxonis/luxonis-ml/blob/b2399335efa914ef142b1b1a5db52ad90985c539/src/luxonis_ml/ops/tracker.py#L152).
+Provides experiment tracking capabilities using [`LuxonisTrackerPL`](https://github.com/luxonis/luxonis-ml/blob/b2399335efa914ef142b1b1a5db52ad90985c539/src/luxonis_ml/ops/tracker.py#L152).
+
+It helps log and manage machine learning experiments by integrating with tools like **TensorBoard**, **Weights & Biases (WandB)**, and **MLFlow**, allowing users to store and organize project details, runs, and outputs efficiently.
+
 You can configure it like this:
 
 | Key              | Type          | Default value | Description                                                |
@@ -192,7 +201,7 @@ loader:
 
 ```yaml
 loader:
-  # using default loader with a directory
+  # Using the default loader with a directory from which the dataset will be parsed.
   params:
     dataset_name: "dataset_name"
     dataset_dir: "path/to/dataset"
@@ -202,36 +211,38 @@ loader:
 
 Here you can change everything related to actual training of the model.
 
-| Key                       | Type                                           | Default value | Description                                                                                                                                                                                            |
-| ------------------------- | ---------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `seed`                    | `int`                                          | `None`        | Seed for reproducibility                                                                                                                                                                               |
-| `deterministic`           | `bool \| "warn" \| None`                       | `None`        | Whether PyTorch should use deterministic backend                                                                                                                                                       |
-| `batch_size`              | `int`                                          | `32`          | Batch size used for training                                                                                                                                                                           |
-| `accumulate_grad_batches` | `int`                                          | `1`           | Number of batches for gradient accumulation                                                                                                                                                            |
-| `gradient_clip_val`       | `NonNegativeFloat \| None`                     | `None`        | Value for gradient clipping. If `None`, gradient clipping is disabled. Clipping can help prevent exploding gradients.                                                                                  |
-| `gradient_clip_algorithm` | `Literal["norm", "value"] \| None`             | `None`        | Algorithm to use for gradient clipping. Options are `"norm"` (clip by norm) or `"value"` (clip element-wise).                                                                                          |
-| `use_weighted_sampler`    | `bool`                                         | `False`       | Whether to use `WeightedRandomSampler` for training, only works with classification tasks                                                                                                              |
-| `epochs`                  | `int`                                          | `100`         | Number of training epochs                                                                                                                                                                              |
-| `n_workers`               | `int`                                          | `4`           | Number of workers for data loading                                                                                                                                                                     |
-| `validation_interval`     | `int`                                          | `5`           | Frequency of computing metrics on validation data                                                                                                                                                      |
-| `n_log_images`            | `int`                                          | `4`           | Maximum number of images to visualize and log                                                                                                                                                          |
-| `skip_last_batch`         | `bool`                                         | `True`        | Whether to skip last batch while training                                                                                                                                                              |
-| `accelerator`             | `Literal["auto", "cpu", "gpu"]`                | `"auto"`      | What accelerator to use for training                                                                                                                                                                   |
-| `devices`                 | `int \| list[int] \| str`                      | `"auto"`      | Either specify how many devices to use (int), list specific devices, or use "auto" for automatic configuration based on the selected accelerator                                                       |
-| `matmul_precision`        | `Literal["medium", "high", "highest"] \| None` | `None`        | Sets the internal precision of float32 matrix multiplications                                                                                                                                          |
-| `strategy`                | `Literal["auto", "ddp"]`                       | `"auto"`      | What strategy to use for training                                                                                                                                                                      |
-| `n_sanity_val_steps`      | `int`                                          | `2`           | Number of sanity validation steps performed before training                                                                                                                                            |
-| `profiler`                | `Literal["simple", "advanced"] \| None`        | `None`        | PL profiler for GPU/CPU/RAM utilization analysis                                                                                                                                                       |
-| `verbose`                 | `bool`                                         | `True`        | Print all intermediate results to console                                                                                                                                                              |
-| `pin_memory`              | `bool`                                         | `True`        | Whether to pin memory in the `DataLoader`                                                                                                                                                              |
-| `save_top_k`              | `-1 \| NonNegativeInt`                         | `3`           | Save top K checkpoints based on validation loss when training                                                                                                                                          |
-| `n_validation_batches`    | `PositiveInt \| None`                          | `None`        | Limits the number of validation/test batches and makes the val/test loaders deterministic                                                                                                              |
-| `smart_cfg_auto_populate` | `bool`                                         | `True`        | Automatically populate sensible default values for missing config fields and log warnings                                                                                                              |
-| `resume_training`         | `bool`                                         | `False`       | Whether to resume training from a checkpoint. Loads not only the weights from `model.weights` but also the `optimizer state`, `scheduler state`, and other training parameters to continue seamlessly. |
+| Key                       | Type                                           | Default value | Description                                                                                                                                      |
+| ------------------------- | ---------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `seed`                    | `int`                                          | `None`        | Seed for reproducibility                                                                                                                         |
+| `deterministic`           | `bool \| "warn" \| None`                       | `None`        | Whether PyTorch should use deterministic backend                                                                                                 |
+| `batch_size`              | `int`                                          | `32`          | Batch size used for training                                                                                                                     |
+| `accumulate_grad_batches` | `int`                                          | `1`           | Number of batches for gradient accumulation                                                                                                      |
+| `precision`               | `Literal["16-mixed", "32"]`                    | `32`          | Controls training precision. `"16-mixed"` can **significantly speed up training** on supported GPUs.                                             |
+| `gradient_clip_val`       | `NonNegativeFloat \| None`                     | `None`        | Value for gradient clipping. If `None`, gradient clipping is disabled. Clipping can help prevent exploding gradients.                            |
+| `gradient_clip_algorithm` | `Literal["norm", "value"] \| None`             | `None`        | Algorithm to use for gradient clipping. Options are `"norm"` (clip by norm) or `"value"` (clip element-wise).                                    |
+| `use_weighted_sampler`    | `bool`                                         | `False`       | Whether to use `WeightedRandomSampler` for training, only works with classification tasks                                                        |
+| `epochs`                  | `int`                                          | `100`         | Number of training epochs                                                                                                                        |
+| `n_workers`               | `int`                                          | `4`           | Number of workers for data loading                                                                                                               |
+| `validation_interval`     | `int`                                          | `5`           | Frequency at which metrics and visualizations are computed on validation data                                                                    |
+| `n_log_images`            | `int`                                          | `4`           | Maximum number of images to visualize and log                                                                                                    |
+| `skip_last_batch`         | `bool`                                         | `True`        | Whether to skip last batch while training                                                                                                        |
+| `accelerator`             | `Literal["auto", "cpu", "gpu"]`                | `"auto"`      | What accelerator to use for training                                                                                                             |
+| `devices`                 | `int \| list[int] \| str`                      | `"auto"`      | Either specify how many devices to use (int), list specific devices, or use "auto" for automatic configuration based on the selected accelerator |
+| `matmul_precision`        | `Literal["medium", "high", "highest"] \| None` | `None`        | Sets the internal precision of float32 matrix multiplications                                                                                    |
+| `strategy`                | `Literal["auto", "ddp"]`                       | `"auto"`      | What strategy to use for training                                                                                                                |
+| `n_sanity_val_steps`      | `int`                                          | `2`           | Number of sanity validation steps performed before training                                                                                      |
+| `profiler`                | `Literal["simple", "advanced"] \| None`        | `None`        | PL profiler for GPU/CPU/RAM utilization analysis                                                                                                 |
+| `verbose`                 | `bool`                                         | `True`        | Print all intermediate results to console                                                                                                        |
+| `pin_memory`              | `bool`                                         | `True`        | Whether to pin memory in the `DataLoader`                                                                                                        |
+| `save_top_k`              | `-1 \| NonNegativeInt`                         | `3`           | Save top K checkpoints based on validation loss when training                                                                                    |
+| `n_validation_batches`    | `PositiveInt \| None`                          | `None`        | Limits the number of validation/test batches and makes the val/test loaders deterministic                                                        |
+| `smart_cfg_auto_populate` | `bool`                                         | `True`        | Automatically populate sensible default values for missing config fields and log warnings. See [Trainer Tips](#trainer-tips) for more details    |
+| `resume_training`         | `bool`                                         | `False`       | Whether to resume training from a checkpoint. See [Trainer Tips](#trainer-tips) for more details                                                 |
 
 ```yaml
 
 trainer:
+  precision: "16-mixed"
   accelerator: "auto"
   devices: "auto"
   strategy: "auto"
@@ -250,45 +261,6 @@ trainer:
   save_top_k: 3
   smart_cfg_auto_populate: true
 ```
-
-### Model Fine-Tuning Options
-
-#### 1. **Fine-Tuning with Custom Configuration Example**
-
-- Do **not** set the `resume_training` flag to `true`.
-- Specify a **new LR** in the config (e.g., `0.1`), overriding the previous LR (e.g., `0.001`).
-- Training starts at the new LR, with the scheduler/optimizer reset (can use different schedulers/optimizers than the base run).
-
-#### 2. **Resume Training Continuously Example**
-
-- Use the `resume_training` flag to continue training from the last checkpoint specified in `model.weights`.
-- LR starts at the value where the previous run ended, maintaining continuity in the scheduler (e.g., combined LR plot would shows a seamless curve).
-- For example:
-  - Resuming training with extended epochs (e.g., 400 epochs after 300) and adjusted `T_max` (e.g., 400 after 300 for cosine annealing) and `eta_min` (e.g., 10x less than before) will use the final learning rate (LR) from the previous run. This ignores the initial LR specified in the config and finishes with the new `eta_min` LR.
-
-### Smart Configuration Auto-population
-
-When setting `trainer.smart_cfg_auto_populate = True`, the following set of rules will be applied:
-
-#### Auto-population Rules
-
-1. **Default Optimizer and Scheduler:**
-
-   - If `training_strategy` is not defined and neither `optimizer` nor `scheduler` is set, the following defaults are applied:
-     - Optimizer: `Adam`
-     - Scheduler: `ConstantLR`
-
-1. **CosineAnnealingLR Adjustment:**
-
-   - If the `CosineAnnealingLR` scheduler is used and `T_max` is not set, it is automatically set to the number of epochs.
-
-1. **Mosaic4 Augmentation:**
-
-   - If `Mosaic4` augmentation is used without `out_width` and `out_height` parameters, they are set to match the training image size.
-
-1. **Validation/Test Views:**
-
-   - If `train_view`, `val_view`, and `test_view` are the same, and `n_validation_batches` is not explicitly set, it defaults to `10` to prevent validation/testing on the entire training set.
 
 ### Preprocessing
 
@@ -312,6 +284,9 @@ Additionally, we support `Mosaic4` and `MixUp` batch augmentations and letterbox
 | `name`   | `str`  | -             | Name of the augmentation           |
 | `active` | `bool` | `True`        | Whether the augmentation is active |
 | `params` | `dict` | `{}`          | Parameters of the augmentation     |
+
+> \[!NOTE\]
+> **Important:** The `Flip` augmentation can disrupt the order of keypoints, which may break the training process if your task relies on a specific keypoint order.
 
 **Example:**
 
@@ -400,7 +375,7 @@ optimizer:
 ### Scheduler
 
 What scheduler to use for training.
-List of all optimizers can be found [here](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate).
+List of all schedulers can be found [here](https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate).
 
 | Key      | Type   | Default value  | Description                 |
 | -------- | ------ | -------------- | --------------------------- |
@@ -422,7 +397,6 @@ trainer:
 
 Defines the training strategy to be used.
 More information on training strategies and a list of available ones can be found [here](../luxonis_train/strategies/README.md).
-Each training strategy is a dictionary with the following fields:
 
 | Key      | Type   | Default value           | Description                   |
 | -------- | ------ | ----------------------- | ----------------------------- |
@@ -445,6 +419,58 @@ training_strategy:
     nesterov: True
     cosine_annealing: True
 ```
+
+### Trainer Tips
+
+- #### Model Fine-Tuning Options
+
+  ##### 1. **Fine-Tuning with Custom Configuration Example**
+
+  - Set `resume_training: false`.
+  - Override the previous learning rate (LR), e.g., use `0.1` instead of `0.001`.
+  - Training starts fresh with the new LR, resetting the scheduler/optimizer (can use different ones).
+
+  ##### 2. **Resume Training Continuously Example**
+
+  - Set `resume_training: true` to continue training from the last checkpoint in `model.weights`.
+  - LR continues from where the previous run ended, keeping scheduler continuity.
+  - Example: Extending training (e.g., 400 `epochs` after 300) while adjusting `T_max` (e.g., 400 after 300) and `eta_min` (e.g., reduced 10x). The final LR from the previous run is retained, overriding the initial config LR, and training LR completes with the new `eta_min` value.
+
+- #### Smart Configuration Auto-population
+
+  When setting `trainer.smart_cfg_auto_populate = True`, the following set of rules will be applied:
+
+  ##### 1. **Default Optimizer and Scheduler:**
+
+  - If `training_strategy` is not defined and neither `optimizer` nor `scheduler` is set, the following defaults are applied:
+    - Optimizer: `Adam`
+    - Scheduler: `ConstantLR`
+
+  ##### 2. **CosineAnnealingLR Adjustment:**
+
+  - If the `CosineAnnealingLR` scheduler is used and `T_max` is not set, it is automatically set to the number of epochs.
+
+  ##### 3. **Mosaic4 Augmentation:**
+
+  - If `Mosaic4` augmentation is used without `out_width` and `out_height` parameters, they are set to match the training image size.
+
+  ##### 4. **Validation/Test Views:**
+
+  - If `train_view`, `val_view`, and `test_view` are the same, and `n_validation_batches` is not explicitly set, it defaults to `10` to prevent validation/testing on the entire training set.
+
+  ##### 5. **Predefined Model Configuration Adjustment**
+
+  - If the model has a `predefined_model` attribute, the configuration is auto-adjusted for optimal training:
+
+    - **Accumulate Grad Batches:** Computed as `int(64 / trainer.batch_size)`.
+    - **InstanceSegmentationModel:**
+      - Updates `bbox_loss_weight`, `class_loss_weight`, and `dfl_loss_weight` (scaled by `accumulate_grad_batches`).
+      - Sets a gradient accumulation schedule: `{0: 1, 1: (1 + accumulate_grad_batches) // 2, 2: accumulate_grad_batches}`.
+    - **KeypointDetectionModel:**
+      - Updates `iou_loss_weight`, `class_loss_weight`, `regr_kpts_loss_weight`, and `vis_kpts_loss_weight` (scaled by `accumulate_grad_batches`).
+      - Sets the same gradient accumulation schedule.
+    - **DetectionModel:**
+      - Updates `iou_loss_weight` and `class_loss_weight` (scaled by `accumulate_grad_batches`).
 
 ## Exporter
 
@@ -508,6 +534,14 @@ Here you can specify options for tuning.
 > You can specify a set of augmentations defined in `trainer` to choose from.
 > Every run, only a subset of random $N$ augmentations will be active (`is_active` parameter will be `True` for chosen ones and `False` for the rest in the set).
 
+> \[!WARNING\]
+> When using the tuner, the following callbacks are unsupported and will be automatically removed from configurations:
+>
+> - `UploadCheckpoint`
+> - `ExportOnTrainEnd`
+> - `ArchiveOnTrainEnd`
+> - `TestOnTrainEnd`
+
 ### Storage
 
 | Key            | Type                         | Default value | Description                                         |
@@ -518,7 +552,7 @@ Here you can specify options for tuning.
 **Example:**
 
 ```yaml
-t uner:
+tuner:
   study_name: "seg_study"
   n_trials: 10
   storage:
