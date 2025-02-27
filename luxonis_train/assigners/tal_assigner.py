@@ -2,6 +2,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
+from luxonis_train.utils import compute_pose_oks
+
 from .utils import batch_iou, candidates_in_gt, fix_collisions
 
 
@@ -50,8 +52,16 @@ class TaskAlignedAssigner(nn.Module):
         gt_labels: Tensor,
         gt_bboxes: Tensor,
         mask_gt: Tensor,
-    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
+        pred_kpts: Tensor | None = None,
+        gt_kpts: Tensor | None = None,
+        sigmas: Tensor | None = None,
+        area_factor: float | None = None,
+    ) -> tuple:
         """Assigner's forward method which generates final assignments.
+
+        If both pred_kpts and gt_kpts are provided, a pose OKS is
+        computed and used in the alignment metric; the final tuple then
+        includes assigned poses.
 
         @type pred_scores: Tensor
         @param pred_scores: Predicted scores [bs, n_anchors, 1]
@@ -65,12 +75,33 @@ class TaskAlignedAssigner(nn.Module):
         @param gt_bboxes: Initial GT bboxes [bs, n_max_boxes, 4]
         @type mask_gt: Tensor
         @param mask_gt: Mask for valid GTs [bs, n_max_boxes, 1]
+        @type pred_kpts: Tensor | None
+        @param pred_kpts: Predicted keypoints [bs, n_anchors, num_kpts,
+            3] (optional)
+        @type gt_kpts: Tensor | None
+        @param gt_kpts: Ground truth keypoints [bs, n_max_boxes,
+            num_kpts, 3] (optional)
+        @type sigmas: Tensor | None
+        @param sigmas: Sigmas for OKS computation if keypoints are used.
+        @type area_factor: float | None
+        @param area_factor: Area factor for OKS computation. Defaults to
+            0.53.
         @rtype: tuple[Tensor, Tensor, Tensor, Tensor, Tensor]
         @return: Assigned labels of shape [bs, n_anchors], assigned
             bboxes of shape [bs, n_anchors, 4], assigned scores of shape
             [bs, n_anchors, n_classes] and output mask of shape [bs,
             n_anchors]
         """
+
+        if any(
+            x is not None for x in (pred_kpts, gt_kpts, sigmas, area_factor)
+        ) and not all(
+            x is not None for x in (pred_kpts, gt_kpts, sigmas, area_factor)
+        ):
+            raise ValueError(
+                "All pred_kpts, gt_kpts, sigmas, and area_factor must be provided together if OKS is to be computed."
+            )
+
         self.bs = pred_scores.size(0)
         self.n_max_boxes = gt_bboxes.size(1)
 
@@ -94,9 +125,16 @@ class TaskAlignedAssigner(nn.Module):
                 ),
             )
 
-        # Compute alignment metric between all bboxes (bboxes of all pyramid levels) and GT
+        # Compute alignment metric between all bboxes and optionally incorporate pose OKS
         align_metric, overlaps = self._get_alignment_metric(
-            pred_scores, pred_bboxes, gt_labels, gt_bboxes
+            pred_scores,
+            pred_bboxes,
+            gt_labels,
+            gt_bboxes,
+            pred_kpts,
+            gt_kpts,
+            sigmas,
+            area_factor,
         )
 
         # Select top-k bboxes as candidates for each GT
@@ -151,9 +189,13 @@ class TaskAlignedAssigner(nn.Module):
         pred_bboxes: Tensor,
         gt_labels: Tensor,
         gt_bboxes: Tensor,
+        pred_kpts: Tensor | None = None,
+        gt_kpts: Tensor | None = None,
+        sigmas: Tensor | None = None,
+        area_factor: float | None = None,
     ) -> tuple[Tensor, Tensor]:
         """Calculates anchor alignment metric and IoU between GTs and
-        predicted bboxes.
+        predicted bboxes (optionally incorporating pose OKS).
 
         @type pred_scores: Tensor
         @param pred_scores: Predicted scores [bs, n_anchors, 1]
@@ -163,9 +205,21 @@ class TaskAlignedAssigner(nn.Module):
         @param gt_labels: Initial GT labels [bs, n_max_boxes, 1]
         @type gt_bboxes: Tensor
         @param gt_bboxes: Initial GT bboxes [bs, n_max_boxes, 4]
+        @type pred_kpts: Tensor | None
+        @param pred_kpts: Predicted keypoints [bs, n_anchors, num_kpts,
+            3] (optional)
+        @type gt_kpts: Tensor | None
+        @param gt_kpts: Ground truth keypoints [bs, n_max_boxes,
+            num_kpts, 3] (optional)
+        @type sigmas: Tensor | None
+        @param sigmas: Sigmas for OKS computation if keypoints are used.
+            (optional)
+        @type area_factor: float | None
+        @param area_factor: Area factor for OKS computation if keypoints
+            are used.
         @rtype: tuple[Tensor, Tensor]
-        @return: Anchor alignment metric and IoU between GTs and
-            predicted bboxes.
+        @return: Alignment metric and IoU between GTs and predicted
+            bboxes, optionally incorporating pose OKS.
         """
 
         pred_scores = pred_scores.permute(0, 2, 1)
@@ -178,6 +232,19 @@ class TaskAlignedAssigner(nn.Module):
         bbox_scores = pred_scores[ind[0], ind[1]]
 
         overlaps = batch_iou(gt_bboxes, pred_bboxes)
+        if pred_kpts is not None and gt_kpts is not None:
+            pose_oks = compute_pose_oks(
+                gt_kpts,
+                pred_kpts,
+                sigmas,
+                gt_bboxes,
+                eps=self.eps,
+                area_factor=area_factor,
+                use_cocoeval_oks=True,
+                pose_area=None,
+            )
+            overlaps = overlaps * pose_oks
+
         align_metric = bbox_scores.pow(self.alpha) * overlaps.pow(self.beta)
 
         return align_metric, overlaps
