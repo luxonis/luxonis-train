@@ -28,10 +28,15 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         """Custom loader for Luxonis loaders that adds Perlin noise
         during training with a given probability.
 
+        @type anomaly_source_path: str
         @param anomaly_source_path: Path to the anomaly dataset from
             where random samples are drawn for noise.
+        @type noise_prob: float
         @param noise_prob: The probability with which to apply Perlin
-            noise (only used during training).
+            noise.
+        @type beta: float
+        @param beta: The opacity of the anomaly mask. If None, a random
+            value is chosen. It's advisable to set it to None.
         """
         super().__init__(*args, **kwargs)
 

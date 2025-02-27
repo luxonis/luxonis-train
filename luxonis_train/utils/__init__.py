@@ -17,7 +17,12 @@ from .general import (
     safe_download,
     to_shape_packet,
 )
-from .keypoints import get_center_keypoints, get_sigmas, insert_class
+from .keypoints import (
+    compute_pose_oks,
+    get_center_keypoints,
+    get_sigmas,
+    insert_class,
+)
 from .logging import setup_logging
 from .ocr import OCRDecoder, OCREncoder
 from .tracker import LuxonisTrackerPL
@@ -45,6 +50,7 @@ __all__ = [
     "compute_iou_loss",
     "get_sigmas",
     "insert_class",
+    "compute_pose_oks",
     "get_attribute_check_none",
     "OCREncoder",
     "OCRDecoder",

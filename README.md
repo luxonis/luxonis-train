@@ -16,6 +16,8 @@
 
 `LuxonisTrain` is a user-friendly tool designed to streamline the training of deep learning models, especially for edge devices. Built on top of `PyTorch Lightning`, it simplifies the process of training, testing, and exporting models with minimal coding required.
 
+![Title Image](media/example_viz/title.png)
+
 ### ✨ Key Features
 
 - **No Coding Required**: Define your training pipeline entirely through a single `YAML` configuration file.
@@ -193,10 +195,13 @@ trainer:
     name: ConstantLR
 ```
 
-For an extensive list of all the available options, see [Configuration](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md).
+### 📚 Configuration Reference
 
-We provide a set of predefined configuration files for the most common computer vision tasks.
-You can find them in the `configs` directory.
+**For a complete reference of all available configuration options, see our [Configuration Documentation](configs/README.md).**
+
+> \[!TIP\]
+> We provide a set of predefined configuration files for common computer vision tasks in the `configs` directory.
+> These are great starting points that you can customize for your specific needs.
 
 <a name="data-preparation"></a>
 
@@ -317,6 +322,8 @@ loader:
 > ```
 >
 > **The `inspect` command is currently only available in the CLI**
+
+For additional information about the shapes of Luxonis ML data that the loader returns, please refer to the [Loaders README](luxonis_train/loaders/README.md).
 
 <a name="training"></a>
 

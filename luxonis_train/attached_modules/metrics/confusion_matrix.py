@@ -1,5 +1,3 @@
-from typing import Literal
-
 import torch
 from torch import Tensor
 from torchmetrics import Metric
@@ -28,33 +26,11 @@ class ConfusionMatrix(BaseMetric):
 
     def __init__(
         self,
-        box_format: Literal["xyxy", "xywh", "cxcywh"] = "xyxy",
-        iou_threshold: float = 0.45,
-        confidence_threshold: float = 0.25,
         **kwargs,
     ):
         """Compute the confusion matrix for classification,
-        segmentation, and object detection tasks.
-
-        @type box_format: Literal["xyxy", "xywh", "cxcywh"]
-        @param box_format: The format of the bounding boxes. Can be one
-            of "xyxy", "xywh", or "cxcywh".
-        @type iou_threshold: float
-        @param iou_threshold: The IoU threshold for matching predictions
-            to ground truth.
-        @type confidence_threshold: float
-        @param confidence_threshold: The confidence threshold for
-            filtering predictions.
-        """
+        segmentation, and object detection tasks."""
         super().__init__(**kwargs)
-        allowed_box_formats = ("xyxy", "xywh", "cxcywh")
-        if box_format not in allowed_box_formats:
-            raise ValueError(
-                f"Expected argument `box_format` to be one of {allowed_box_formats} but got {box_format}"
-            )
-        self.box_format = box_format
-        self.iou_threshold = iou_threshold
-        self.confidence_threshold = confidence_threshold
         self.metric_cm: Metric | None = None
         self.detection_cm: Tensor | None = None
 
@@ -204,7 +180,6 @@ class ConfusionMatrix(BaseMetric):
                     cm[self.n_classes, gt_class] += 1
                 continue
 
-            pred = pred[pred[:, 4] > self.confidence_threshold]
             pred_boxes = pred[:, :4]
             pred_classes = pred[:, 5].int()
 
@@ -212,17 +187,14 @@ class ConfusionMatrix(BaseMetric):
             gt_classes = img_targets[:, 1].int()
 
             iou = box_iou(gt_boxes, pred_boxes)
-            iou_thresholded = iou > self.iou_threshold
 
-            if iou_thresholded.any():
-                iou_max, pred_max_idx = torch.max(iou, dim=1)
-                iou_gt_mask = iou_max > self.iou_threshold
+            if iou.any():
+                _, pred_max_idx = torch.max(iou, dim=1)
                 gt_match_idx = torch.arange(
                     len(gt_boxes), device=gt_boxes.device
-                )[iou_gt_mask]
-                pred_match_idx = pred_max_idx[iou_gt_mask]
+                )
 
-                for gt_idx, pred_idx in zip(gt_match_idx, pred_match_idx):
+                for gt_idx, pred_idx in zip(gt_match_idx, pred_max_idx):
                     gt_class = gt_classes[gt_idx]
                     pred_class = pred_classes[pred_idx]
                     cm[pred_class, gt_class] += 1
@@ -239,7 +211,7 @@ class ConfusionMatrix(BaseMetric):
 
                 unmatched_pred_mask = ~torch.isin(
                     torch.arange(len(pred_boxes), device=gt_boxes.device),
-                    pred_match_idx,
+                    pred_max_idx,
                 )
                 for pred_idx in torch.arange(
                     len(pred_boxes), device=gt_boxes.device

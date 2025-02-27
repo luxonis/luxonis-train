@@ -18,7 +18,7 @@ class ClassificationVisualizer(BaseVisualizer):
         include_plot: bool = True,
         font_scale: float = 1.0,
         color: tuple[int, int, int] = (255, 0, 0),
-        thickness: int = 1,
+        thickness: int = 2,
         multilabel: bool = False,
         **kwargs,
     ):
@@ -79,7 +79,7 @@ class ClassificationVisualizer(BaseVisualizer):
                 arr = cv2.putText(
                     arr,
                     f"GT: {gt}",
-                    (5, 10),
+                    (5, 50),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     self.font_scale,
                     self.color,
@@ -88,7 +88,7 @@ class ClassificationVisualizer(BaseVisualizer):
             arr = cv2.putText(
                 arr,
                 f"Pred: {curr_class}",
-                (5, 30),
+                (5, 75),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 self.font_scale,
                 self.color,

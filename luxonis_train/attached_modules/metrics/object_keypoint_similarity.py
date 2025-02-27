@@ -9,6 +9,7 @@ from typing_extensions import override
 
 from luxonis_train.tasks import Metadata, Tasks
 from luxonis_train.utils import (
+    compute_pose_oks,
     get_sigmas,
     get_with_default,
 )
@@ -147,13 +148,14 @@ class ObjectKeypointSimilarity(BaseMetric):
                 gt_kpts, (-1, self.n_keypoints, 3)
             )  # [N, K, 3]
 
-            image_ious = compute_oks(
-                pred_kpts,
-                gt_kpts,
-                gt_scales,
+            image_ious = compute_pose_oks(
+                gt_kpts.unsqueeze(0),
+                pred_kpts.unsqueeze(0),
                 self.sigmas,
-                self.use_cocoeval_oks,
-            )  # [M, N]
+                use_cocoeval_oks=self.use_cocoeval_oks,
+                pose_area=gt_scales.unsqueeze(0).unsqueeze(-1).unsqueeze(-1),
+                gt_bboxes=None,
+            ).squeeze(0)  # [N, M]
             gt_indices, pred_indices = linear_sum_assignment(
                 image_ious.cpu().numpy(), maximize=True
             )
@@ -173,50 +175,3 @@ class ObjectKeypointSimilarity(BaseMetric):
         if input_tensor.numel() == 0 and input_tensor.ndim == 1:
             return input_tensor.unsqueeze(0)
         return input_tensor
-
-
-def compute_oks(
-    pred: Tensor,
-    gt: Tensor,
-    scales: Tensor,
-    sigmas: Tensor,
-    use_cocoeval_oks: bool,
-) -> Tensor:
-    """Compute Object Keypoint Similarity between every GT and
-    prediction.
-
-    @type pred: Tensor[N, K, 3]
-    @param pred: Predicted keypoints.
-    @type gt: Tensor[M, K, 3]
-    @param gt: Ground truth keypoints.
-    @type scales: Tensor[M]
-    @param scales: Scales of the bounding boxes.
-    @type sigmas: Tensor
-    @param sigmas: Sigma for each keypoint to weigh its importance, if
-        C{None}, then use same weights for all.
-    @type use_cocoeval_oks: bool
-    @param use_cocoeval_oks: Whether to use same OKS formula as in
-        COCOeval or use the one from definition.
-    @rtype: Tensor
-    @return: Object Keypoint Similarity every pred and gt [M, N]
-    """
-    eps = 1e-7
-    distances = (gt[:, None, :, 0] - pred[..., 0]) ** 2 + (
-        gt[:, None, :, 1] - pred[..., 1]
-    ) ** 2
-    kpt_mask = gt[..., 2] != 0  # only compute on visible keypoints
-    if use_cocoeval_oks:
-        # use same formula as in COCOEval script here:
-        # https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L229
-        oks = distances / (2 * sigmas) ** 2 / (scales[:, None, None] + eps) / 2
-    else:
-        # use same formula as defined here: https://cocodataset.org/#keypoints-eval
-        oks = (
-            distances
-            / ((scales[:, None, None] + eps) * sigmas.to(scales.device)) ** 2
-            / 2
-        )
-
-    return (torch.exp(-oks) * kpt_mask[:, None]).sum(-1) / (
-        kpt_mask.sum(-1)[:, None] + eps
-    )
