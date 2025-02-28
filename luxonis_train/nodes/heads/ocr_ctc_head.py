@@ -111,10 +111,11 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
 
     def _construct_fc(self, in_channels: int, out_channels: int) -> nn.Linear:
         fc = nn.Linear(in_channels, out_channels)
+
         # TODO: Why * 1.0?
-        stdv = 1.0 / math.sqrt(in_channels * 1.0)
-        nn.init.uniform_(fc.weight, -stdv, stdv)
-        nn.init.uniform_(fc.bias, -stdv, stdv)
+        std = 1.0 / math.sqrt(in_channels * 1.0)
+        nn.init.uniform_(fc.weight, -std, std)
+        nn.init.uniform_(fc.bias, -std, std)
 
         # TODO: Doesn't seem to do anything, type checker
         # also hints that `regularizer` attribute doesn't exist
