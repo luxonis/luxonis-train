@@ -2,6 +2,7 @@ import math
 
 from torch import Tensor, nn
 from torch.nn import functional as F
+from typing_extensions import override
 
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
@@ -68,6 +69,7 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
 
         self._export_output_names = ["output_ocr_ctc"]
 
+    @override
     def forward(self, x: Tensor) -> Tensor | tuple[Tensor, Tensor]:
         x = x.squeeze(2).permute(0, 2, 1)
         predictions = self.block(x)
@@ -82,6 +84,7 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
 
         return result
 
+    @override
     def get_custom_head_config(self) -> dict:
         """Returns custom head configuration.
 
@@ -112,13 +115,15 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
     def _construct_fc(self, in_channels: int, out_channels: int) -> nn.Linear:
         fc = nn.Linear(in_channels, out_channels)
 
-        # TODO: Why * 1.0?
-        std = 1.0 / math.sqrt(in_channels * 1.0)
+        std = 1.0 / math.sqrt(in_channels)
         nn.init.uniform_(fc.weight, -std, std)
         nn.init.uniform_(fc.bias, -std, std)
 
-        # TODO: Doesn't seem to do anything, type checker
-        # also hints that `regularizer` attribute doesn't exist
+        # TODO: This doesn't work in PyTorch. In PyTorch,
+        # per-parameter regularizers are set by creating
+        # multiple paremeter groups in the optimizer.
+        # We need to first add support for this in
+        # `LuxonisLightningModule`.
         fc.weight.regularizer = self.fc_decay  # type: ignore
         fc.bias.regularizer = self.fc_decay  # type: ignore
 

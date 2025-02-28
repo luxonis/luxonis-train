@@ -833,8 +833,8 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
         def get_scheduler(
-            cfg: ConfigItem, optimizer: torch.optim.Optimizer
-        ) -> torch.optim.lr_scheduler.LRScheduler:
+            cfg: ConfigItem, optimizer: Optimizer
+        ) -> LRScheduler:
             return get_init(
                 SCHEDULERS, cfg.name, **cfg.params, optimizer=optimizer
             )
