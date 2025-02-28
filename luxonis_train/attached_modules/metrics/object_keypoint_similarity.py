@@ -149,8 +149,8 @@ class ObjectKeypointSimilarity(BaseMetric):
             )  # [N, K, 3]
 
             image_ious = compute_pose_oks(
-                gt_kpts.unsqueeze(0),
                 pred_kpts.unsqueeze(0),
+                gt_kpts.unsqueeze(0),
                 self.sigmas,
                 use_cocoeval_oks=self.use_cocoeval_oks,
                 pose_area=gt_scales.unsqueeze(0).unsqueeze(-1).unsqueeze(-1),
