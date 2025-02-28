@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
+from luxonis_train.typing import all_not_none, any_not_none
 from luxonis_train.utils import compute_pose_oks
 
 from .utils import batch_iou, candidates_in_gt, fix_collisions
@@ -56,7 +57,7 @@ class TaskAlignedAssigner(nn.Module):
         gt_kpts: Tensor | None = None,
         sigmas: Tensor | None = None,
         area_factor: float | None = None,
-    ) -> tuple:
+    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
         """Assigner's forward method which generates final assignments.
 
         If both pred_kpts and gt_kpts are provided, a pose OKS is
@@ -93,13 +94,13 @@ class TaskAlignedAssigner(nn.Module):
             n_anchors]
         """
 
-        if any(
-            x is not None for x in (pred_kpts, gt_kpts, sigmas, area_factor)
-        ) and not all(
-            x is not None for x in (pred_kpts, gt_kpts, sigmas, area_factor)
-        ):
+        if any_not_none(
+            [pred_kpts, gt_kpts, sigmas, area_factor]
+        ) and not all_not_none([pred_kpts, gt_kpts, sigmas, area_factor]):
             raise ValueError(
-                "All pred_kpts, gt_kpts, sigmas, and area_factor must be provided together if OKS is to be computed."
+                "All `pred_kpts`, `gt_kpts`, `sigmas`, and `area_factor` "
+                "must be provided if OKS is to be computed, "
+                "but only some of them have been provided."
             )
 
         self.bs = pred_scores.size(0)
@@ -232,16 +233,16 @@ class TaskAlignedAssigner(nn.Module):
         bbox_scores = pred_scores[ind[0], ind[1]]
 
         overlaps = batch_iou(gt_bboxes, pred_bboxes)
-        if pred_kpts is not None and gt_kpts is not None:
+        if all_not_none([pred_kpts, gt_kpts, sigmas, area_factor]):
             pose_oks = compute_pose_oks(
-                gt_kpts,
-                pred_kpts,
-                sigmas,
-                gt_bboxes,
-                eps=self.eps,
-                area_factor=area_factor,
-                use_cocoeval_oks=True,
+                pred_kpts=pred_kpts,  # type: ignore
+                gt_kpts=gt_kpts,  # type: ignore
+                sigmas=sigmas,  # type: ignore
+                gt_bboxes=gt_bboxes,
                 pose_area=None,
+                eps=self.eps,
+                area_factor=area_factor,  # type: ignore
+                use_cocoeval_oks=True,
             )
             overlaps = overlaps * pose_oks
 

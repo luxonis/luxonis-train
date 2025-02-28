@@ -8,7 +8,7 @@ import torch
 from loguru import logger
 from torch import Size, Tensor
 
-from luxonis_train.utils.types import Packet
+from luxonis_train.typing import Packet
 
 
 def make_divisible(x: int | float, divisor: int) -> int:

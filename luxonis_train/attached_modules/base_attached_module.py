@@ -14,7 +14,8 @@ from torch import Size, Tensor, nn
 
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Metadata, Task
-from luxonis_train.utils import IncompatibleException, Labels, Packet
+from luxonis_train.typing import Labels, Packet
+from luxonis_train.utils import IncompatibleException
 
 
 class BaseAttachedModule(

@@ -1,3 +1,4 @@
+import io
 import locale
 import os
 import subprocess
@@ -10,8 +11,11 @@ from luxonis_ml.utils import environ
 
 os.environ["PYTHONIOENCODING"] = "utf-8"
 
-sys.stdout.reconfigure(encoding="utf-8")  # type: ignore
-sys.stderr.reconfigure(encoding="utf-8")  # type: ignore
+if isinstance(sys.stdout, io.TextIOWrapper):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+if isinstance(sys.stderr, io.TextIOWrapper):
+    sys.stderr.reconfigure(encoding="utf-8")
 
 ONNX_PATH = Path("tests/integration/model.onnx")
 

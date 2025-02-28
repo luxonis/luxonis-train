@@ -1,10 +1,10 @@
 import sys
 import warnings
-from typing import Annotated, Any, Literal, NamedTuple, TypeAlias
+from typing import Annotated, Any, Literal, NamedTuple
 
 from loguru import logger
 from luxonis_ml.enums import DatasetType
-from luxonis_ml.typing import ConfigItem
+from luxonis_ml.typing import ConfigItem, Kwargs
 from luxonis_ml.utils import (
     BaseModelExtraForbid,
     Environ,
@@ -27,19 +27,15 @@ from typing_extensions import Self
 
 from luxonis_train.utils.registry import MODELS
 
-Params: TypeAlias = dict[str, Any]
-
 
 class ImageSize(NamedTuple):
     height: int
     width: int
 
 
-class AttachedModuleConfig(BaseModelExtraForbid):
-    name: str
+class AttachedModuleConfig(ConfigItem):
     attached_to: str
     alias: str | None = None
-    params: Params = {}
 
 
 class LossModuleConfig(AttachedModuleConfig):
@@ -64,25 +60,21 @@ class FreezingConfig(BaseModelExtraForbid):
     unfreeze_after: NonNegativeInt | NonNegativeFloat | None = None
 
 
-class ModelNodeConfig(BaseModelExtraForbid):
-    name: str
+class ModelNodeConfig(ConfigItem):
     alias: str | None = None
     inputs: list[str] = []  # From preceding nodes
     input_sources: list[str] = []  # From data loader
     freezing: FreezingConfig = FreezingConfig()
     remove_on_export: bool = False
-    task_name: str = ""
+    task_name: str | None = None
     metadata_task_override: str | dict[str, str] | None = None
-    params: Params = {}
 
 
-class PredefinedModelConfig(BaseModelExtraForbid):
-    name: str
+class PredefinedModelConfig(ConfigItem):
     include_nodes: bool = True
     include_losses: bool = True
     include_metrics: bool = True
     include_visualizers: bool = True
-    params: Params = {}
 
 
 class ModelConfig(BaseModelExtraForbid):
@@ -264,7 +256,7 @@ class ModelConfig(BaseModelExtraForbid):
 
     @model_validator(mode="before")
     @classmethod
-    def check_attached_modules(cls, data: Params) -> Params:
+    def check_attached_modules(cls, data: Kwargs) -> Kwargs:
         if "nodes" not in data:
             return data
         for section in ["losses", "metrics", "visualizers"]:
@@ -299,13 +291,12 @@ class TrackerConfig(BaseModelExtraForbid):
     is_mlflow: bool = False
 
 
-class LoaderConfig(BaseModelExtraForbid):
+class LoaderConfig(ConfigItem):
     name: str = "LuxonisLoaderTorch"
     image_source: str = "image"
     train_view: list[str] = ["train"]
     val_view: list[str] = ["val"]
     test_view: list[str] = ["test"]
-    params: Params = {}
 
     @field_validator("train_view", "val_view", "test_view", mode="before")
     @classmethod
@@ -319,6 +310,11 @@ class LoaderConfig(BaseModelExtraForbid):
         dataset_type = self.params.get("dataset_type")
         if dataset_type is None:
             return self
+        if not isinstance(dataset_type, str):
+            raise ValueError(
+                f"Invalid value for `dataset_type`: {dataset_type}. "
+                "Expected a string."
+            )
         dataset_type = dataset_type.upper()
 
         if dataset_type not in DatasetType.__members__:
@@ -338,10 +334,8 @@ class NormalizeAugmentationConfig(BaseModelExtraForbid):
     }
 
 
-class AugmentationConfig(BaseModelExtraForbid):
-    name: str
+class AugmentationConfig(ConfigItem):
     active: bool = True
-    params: Params = {}
 
 
 class PreprocessingConfig(BaseModelExtraForbid):
@@ -386,25 +380,8 @@ class PreprocessingConfig(BaseModelExtraForbid):
         ]
 
 
-class CallbackConfig(BaseModelExtraForbid):
-    name: str
+class CallbackConfig(ConfigItem):
     active: bool = True
-    params: Params = {}
-
-
-class OptimizerConfig(BaseModelExtraForbid):
-    name: str
-    params: Params = {}
-
-
-class SchedulerConfig(BaseModelExtraForbid):
-    name: str
-    params: Params = {}
-
-
-class TrainingStrategyConfig(BaseModelExtraForbid):
-    name: str
-    params: Params = {}
 
 
 class TrainerConfig(BaseModelExtraForbid):
@@ -441,27 +418,13 @@ class TrainerConfig(BaseModelExtraForbid):
 
     callbacks: list[CallbackConfig] = []
 
-    optimizer: OptimizerConfig | None = None
-    scheduler: SchedulerConfig | None = None
+    optimizer: ConfigItem = ConfigItem(name="Adam")
+    scheduler: ConfigItem = ConfigItem(name="ConstantLR")
 
-    training_strategy: TrainingStrategyConfig | None = None
-
-    @model_validator(mode="after")
-    def validate_optimizer(self) -> Self:
-        if self.optimizer is None and self.training_strategy is None:
-            self.optimizer = OptimizerConfig(name="Adam")
-            logger.warning("Optimizer not specified, setting to `Adam`")
-        return self
+    training_strategy: ConfigItem | None = None
 
     @model_validator(mode="after")
     def validate_scheduler(self) -> Self:
-        if self.scheduler is None and self.training_strategy is None:
-            self.scheduler = SchedulerConfig(name="ConstantLR")
-            logger.warning("Scheduler not specified, setting to `ConstantLR`")
-
-        if self.scheduler is None:
-            return self
-
         if self.scheduler.name == "CosineAnnealingLR":
             if "T_max" not in self.scheduler.params:
                 self.scheduler.params["T_max"] = self.epochs
@@ -688,6 +651,11 @@ class Config(LuxonisConfig):
                 instance.trainer.batch_size,
             )
             loss_params = predefined_model_cfg.params.get("loss_params", {})
+            if not isinstance(loss_params, dict):
+                raise ValueError(
+                    f"Invalid value for loss_params: {loss_params}. "
+                    "Expected a dictionary."
+                )
             gradient_accumulation_schedule = None
             if model_name == "InstanceSegmentationModel":
                 loss_params.update(
@@ -744,7 +712,7 @@ class Config(LuxonisConfig):
             if gradient_accumulation_schedule:
                 for callback in instance.trainer.callbacks:
                     if callback.name == "GradientAccumulationScheduler":
-                        callback.params["scheduling"] = (
+                        callback.params["scheduling"] = (  # type: ignore
                             gradient_accumulation_schedule
                         )
                         logger.info(

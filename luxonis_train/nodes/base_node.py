@@ -14,11 +14,10 @@ from typeguard import TypeCheckError, check_type
 
 from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
 from luxonis_train.tasks import Task
+from luxonis_train.typing import AttachIndexType, Packet
 from luxonis_train.utils import (
-    AttachIndexType,
     DatasetMetadata,
     IncompatibleException,
-    Packet,
     safe_download,
 )
 from luxonis_train.utils.registry import NODES

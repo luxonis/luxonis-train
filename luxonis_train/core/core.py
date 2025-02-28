@@ -16,10 +16,12 @@ import rich.traceback
 import torch
 import torch.utils.data as torch_data
 import yaml
+from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
+from luxonis_ml.typing import PathType
 from luxonis_ml.utils import LuxonisFileSystem
 from typeguard import typechecked
 
@@ -127,7 +129,7 @@ class LuxonisModel:
         for view in ("train", "val", "test"):
             if (
                 view != "train"
-                and isinstance(Loader, LuxonisLoaderTorch)
+                and issubclass(Loader, LuxonisLoaderTorch)
                 and self.cfg.loader.params.get("dataset_dir") is not None
             ):
                 self.cfg.loader.params["delete_existing"] = False
@@ -144,7 +146,7 @@ class LuxonisModel:
                 augmentation_config=self.cfg_preprocessing.get_active_augmentations(),
                 color_space=self.cfg_preprocessing.color_space,
                 keep_aspect_ratio=self.cfg_preprocessing.keep_aspect_ratio,
-                **self.cfg.loader.params,
+                **self.cfg.loader.params,  # type: ignore
             )
 
         self.loader_metadata_types = self.loaders["train"].get_metadata_types()
@@ -225,7 +227,7 @@ class LuxonisModel:
 
         self._exported_models: dict[str, Path] = {}
 
-    def _train(self, resume: str | None, *args, **kwargs) -> None:
+    def _train(self, resume: PathType | None, *args, **kwargs) -> None:
         status = "success"
         try:
             self.pl_trainer.fit(*args, ckpt_path=resume, **kwargs)
@@ -239,7 +241,7 @@ class LuxonisModel:
             self.tracker._finalize(status)
 
     def train(
-        self, new_thread: bool = False, resume_weights: str | None = None
+        self, new_thread: bool = False, resume_weights: PathType | None = None
     ) -> None:
         """Runs training.
 
@@ -259,8 +261,8 @@ class LuxonisModel:
             )
 
         if resume_weights is not None:
-            resume_weights = str(
-                LuxonisFileSystem.download(resume_weights, self.run_save_dir)
+            resume_weights = LuxonisFileSystem.download(
+                str(resume_weights), self.run_save_dir
             )
 
         def graceful_exit(signum: int, _: Any) -> None:  # pragma: no cover
@@ -284,7 +286,7 @@ class LuxonisModel:
                     logger.warning(
                         "Resume weights provided in the command line, but resume_training in config is set to True. Ignoring resume weights provided in the command line."
                     )
-                resume_weights = self.cfg.model.weights  # type: ignore
+                resume_weights = self.cfg.model.weights
             logger.info("Starting training...")
             self._train(
                 resume_weights,
@@ -615,7 +617,7 @@ class LuxonisModel:
 
             try:
                 pl_trainer.fit(
-                    lightning_module,  # type: ignore
+                    lightning_module,
                     self.pytorch_loaders["train"],
                     self.pytorch_loaders["val"],
                 )
@@ -851,9 +853,12 @@ class LuxonisModel:
         @return: Path to the best checkpoint with respect to minimal
             validation loss
         """
-        if not self.pl_trainer.checkpoint_callbacks:
-            return None
-        return self.pl_trainer.checkpoint_callbacks[0].best_model_path  # type: ignore
+        for callback in self.pl_trainer.checkpoint_callbacks:
+            if not isinstance(callback, ModelCheckpoint):
+                continue
+            if callback.monitor == "val/loss":
+                return callback.best_model_path
+        return None
 
     @rank_zero_only
     def get_best_metric_checkpoint_path(self) -> str | None:
@@ -864,6 +869,9 @@ class LuxonisModel:
         @return: Path to the best checkpoint with respect to best
             validation metric
         """
-        if len(self.pl_trainer.checkpoint_callbacks) < 2:
-            return None
-        return self.pl_trainer.checkpoint_callbacks[1].best_model_path  # type: ignore
+        for callback in self.pl_trainer.checkpoint_callbacks:
+            if not isinstance(callback, ModelCheckpoint):
+                continue
+            if callback.monitor and "val/metric/" in callback.monitor:
+                return callback.best_model_path
+        return None

@@ -15,7 +15,7 @@ from luxonis_ml.enums import DatasetType
 from torch import Size, Tensor
 from typing_extensions import override
 
-from luxonis_train.utils.types import Labels
+from luxonis_train.typing import Labels
 
 from .base_loader import BaseLoaderTorch
 

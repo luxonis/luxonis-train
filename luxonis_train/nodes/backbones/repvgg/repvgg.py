@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Literal
+from typing import Literal, cast
 
 import torch.utils.checkpoint as checkpoint
 from torch import Tensor, nn
@@ -90,11 +90,12 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
         outputs: list[Tensor] = []
         out = self.stage0(inputs)
         for block in self.blocks:
+            # TODO: What exactly does this do?
             if self.use_checkpoint:
-                out = checkpoint.checkpoint(block, out)
+                out = cast(Tensor, checkpoint.checkpoint(block, out))
             else:
                 out = block(out)
-            outputs.append(out)  # type: ignore
+            outputs.append(out)
         return outputs
 
     def _make_stage(

@@ -73,12 +73,7 @@ def test_bbox_iou(
     else:
         bbox2 = generate_random_bboxes(8, 640, 640, format)
 
-    iou = bbox_iou(
-        bbox1,
-        bbox2,
-        bbox_format=format,  # type: ignore
-        iou_type=iou_type,
-    )
+    iou = bbox_iou(bbox1, bbox2, bbox_format=format, iou_type=iou_type)
 
     assert iou.shape == (bbox1.shape[0], bbox2.shape[0])
     if iou_type == "none":

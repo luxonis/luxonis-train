@@ -35,7 +35,6 @@ class SoftmaxFocalLoss(BaseLoss):
         """
         super().__init__(**kwargs)
 
-        self.alpha = alpha
         self.gamma = gamma
         self.smooth = smooth
         self.reduction = reduction
@@ -80,7 +79,7 @@ class SoftmaxFocalLoss(BaseLoss):
 
             pt = torch.as_tensor(pt, dtype=torch.float32)
             focal_term = torch.pow(1.0 - pt, self.gamma)
-            loss = -alpha_t * focal_term * pt.log()  # type: ignore
+            loss = -alpha_t * focal_term * pt.log()
 
             if self.reduction == "mean":
                 return loss.mean()

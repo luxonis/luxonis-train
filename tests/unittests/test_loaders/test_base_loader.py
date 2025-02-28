@@ -51,7 +51,7 @@ def test_collate_fn(
 
     batch = [build_batch_element() for _ in range(batch_size)]
 
-    inputs, annotations = collate_fn(batch)  # type: ignore
+    inputs, annotations = collate_fn(batch)
 
     with subtests.test("inputs"):
         assert inputs["features"].shape == (batch_size, 3, 224, 224)

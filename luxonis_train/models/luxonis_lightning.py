@@ -1,7 +1,6 @@
 from collections import defaultdict
-from collections.abc import Mapping
 from pathlib import Path
-from typing import Literal, cast
+from typing import Callable, Literal, MutableMapping, TypeAlias, TypeVar, cast
 
 import lightning.pytorch as pl
 import torch
@@ -12,21 +11,16 @@ from lightning.pytorch.callbacks import (
 )
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
-from luxonis_ml.data import LuxonisDataset
-from luxonis_ml.typing import ConfigItem
+from luxonis_ml.typing import ConfigItem, Kwargs
 from luxonis_ml.utils import traverse_graph
 from torch import Size, Tensor, nn
+from torch.optim.lr_scheduler import LRScheduler, SequentialLR
+from torch.optim.optimizer import Optimizer
+from typing_extensions import override
 
 import luxonis_train
-from luxonis_train.attached_modules import (
-    BaseAttachedModule,
-    BaseLoss,
-    BaseMetric,
-    BaseVisualizer,
-)
-from luxonis_train.attached_modules.metrics.torchmetrics import (
-    TorchMetricWrapper,
-)
+import luxonis_train as lxt
+from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
 from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
     get_denormalized_images,
@@ -39,24 +33,29 @@ from luxonis_train.callbacks import (
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.heads import BaseHead
+from luxonis_train.strategies.base_strategy import BaseTrainingStrategy
 from luxonis_train.tasks import Metadata
+from luxonis_train.typing import Labels, Packet, check_type
 from luxonis_train.utils import (
     DatasetMetadata,
-    Kwargs,
-    Labels,
     LuxonisTrackerPL,
-    Packet,
     to_shape_packet,
 )
 from luxonis_train.utils.registry import (
     CALLBACKS,
+    NODES,
     OPTIMIZERS,
     SCHEDULERS,
     STRATEGIES,
     Registry,
+    get_init,
 )
 
 from .luxonis_output import LuxonisOutput
+
+A = TypeVar("A", BaseLoss, BaseMetric, BaseVisualizer)
+AttachedModulesDict: TypeAlias = MutableMapping[str, MutableMapping[str, A]]
+NodeName: TypeAlias = str
 
 
 class LuxonisLightningModule(pl.LightningModule):
@@ -104,10 +103,30 @@ class LuxonisLightningModule(pl.LightningModule):
     @type main_metric: str | None
     @ivar main_metric: Name of the main metric to be used for model checkpointing.
         If not set, the model with the best metric score won't be saved.
+
+    @type cfg: L{Config}
+    @param cfg: Config object.
+
+    @type save_dir: str
+    @param save_dir: Directory to save checkpoints.
+
+    @type input_shapes: dict[str, Size]
+    @param input_shapes: Dictionary of input shapes. Keys are input
+        names, values are shapes.
+
+    @type dataset_metadata: L{DatasetMetadata} | None
+    @param dataset_metadata: Dataset metadata.
+
+    @type kwargs: Any
+    @param kwargs: Additional arguments to pass to the
+        L{LightningModule} constructor.
     """
 
-    _trainer: pl.Trainer
     logger: LuxonisTrackerPL
+
+    _trainer: pl.Trainer
+
+    __call__: Callable[..., LuxonisOutput]
 
     def __init__(
         self,
@@ -116,211 +135,51 @@ class LuxonisLightningModule(pl.LightningModule):
         input_shapes: dict[str, Size],
         dataset_metadata: DatasetMetadata | None = None,
         *,
-        _core: "luxonis_train.core.LuxonisModel | None" = None,
+        _core: "lxt.LuxonisModel | None" = None,
         **kwargs,
     ):
-        """Constructs an instance of `LuxonisModel` from `Config`.
-
-        @type cfg: L{Config}
-        @param cfg: Config object.
-        @type save_dir: str
-        @param save_dir: Directory to save checkpoints.
-        @type input_shapes: dict[str, Size]
-        @param input_shapes: Dictionary of input shapes. Keys are input
-            names, values are shapes.
-        @type dataset_metadata: L{DatasetMetadata} | None
-        @param dataset_metadata: Dataset metadata.
-        @type kwargs: Any
-        @param kwargs: Additional arguments to pass to the
-            L{LightningModule} constructor.
-        """
         super().__init__(**kwargs)
 
         self._export: bool = False
         self._core = _core
+        self._logged_images = defaultdict(int)
 
         self.cfg = cfg
-        self.original_in_shapes = input_shapes
+        self.input_shapes = input_shapes
         self.image_source = cfg.loader.image_source
         self.dataset_metadata = dataset_metadata or DatasetMetadata()
         self.frozen_nodes: list[tuple[nn.Module, int]] = []
         self.graph: dict[str, list[str]] = {}
         self.loader_input_shapes: dict[str, dict[str, Size]] = {}
-        self.node_input_sources: dict[str, list[str]] = defaultdict(list)
-        self.loss_weights: dict[str, float] = {}
-        self.node_task_names: dict[str, str] = {}
-        self.main_metric: str | None = None
+        self.node_input_sources: dict[NodeName, list[str]] = defaultdict(list)
+        self.node_task_names: dict[NodeName, str] = {}
         self.save_dir = save_dir
         self.training_step_outputs: list[dict[str, Tensor]] = []
         self.validation_step_outputs: list[dict[str, Tensor]] = []
-        self.losses: dict[str, dict[str, BaseLoss]] = defaultdict(dict)
-        self.metrics: dict[str, dict[str, BaseMetric]] = defaultdict(dict)
-        self.visualizers: dict[str, dict[str, BaseVisualizer]] = defaultdict(
-            dict
-        )
-
-        self._logged_images = defaultdict(int)
-
-        frozen_nodes: list[tuple[str, int]] = []
-        nodes: dict[str, tuple[type[BaseNode], Kwargs]] = {}
-
-        for node_cfg in self.cfg.model.nodes:
-            node_name = node_cfg.name
-            Node = cast(type[BaseNode], BaseNode.REGISTRY.get(node_name))
-            node_name = node_cfg.alias or node_name
-            if node_cfg.freezing.active:
-                epochs = self.cfg.trainer.epochs
-                if node_cfg.freezing.unfreeze_after is None:
-                    unfreeze_after = epochs
-                elif isinstance(node_cfg.freezing.unfreeze_after, int):
-                    unfreeze_after = node_cfg.freezing.unfreeze_after
-                else:
-                    unfreeze_after = int(
-                        node_cfg.freezing.unfreeze_after * epochs
-                    )
-                frozen_nodes.append((node_name, unfreeze_after))
-            task_names = list(self.dataset_metadata.task_names)
-            if not node_cfg.task_name:
-                if len(task_names) == 1:
-                    node_cfg.task_name = task_names[0]
-                elif issubclass(Node, BaseHead):
-                    raise ValueError(
-                        f"Dataset contains multiple tasks: {task_names}. "
-                        f"Node {node_name} does not have the `task_name` parameter set. "
-                        "Please specify the `task_name` parameter for each head node. "
-                    )
-            self.node_task_names[node_name] = node_cfg.task_name
-
-            task_override = node_cfg.metadata_task_override
-            if Node.task is not None:
-                metadata = {
-                    label
-                    for label in Node.task.required_labels
-                    if isinstance(label, Metadata)
-                }
-                if task_override is not None:
-                    if isinstance(task_override, str):
-                        if len(metadata) != 1:
-                            raise ValueError(
-                                f"Task '{Node.task}' of node '{Node.__name__}' requires multiple metadata labels: {metadata}, "
-                                "so the `metadata_task_override` must be a dictionary."
-                            )
-                        task_override = {
-                            next(iter(metadata)).name: task_override
-                        }
-
-                    for m in metadata:
-                        m.name = task_override.get(m.name, m.name)
-
-                metadata_types = self.core.loader_metadata_types
-
-                for m in metadata:
-                    m_name = f"{node_cfg.task_name}/{m}"
-                    if m_name not in metadata_types:
-                        continue
-                    typ = metadata_types[m_name]
-                    if not m.check_type(typ):
-                        raise ValueError(
-                            f"Metadata type mismatch for label '{m}' in node '{node_name}'. "
-                            f"Expected type '{m.typ}', got '{typ.__name__}'."
-                        )
-
-            nodes[node_name] = (
-                Node,
-                {
-                    **node_cfg.params,
-                    "task_name": node_cfg.task_name,
-                    "remove_on_export": node_cfg.remove_on_export,
-                },
-            )
-
-            # Handle inputs for this node
-            if node_cfg.input_sources:
-                self.node_input_sources[node_name] = node_cfg.input_sources
-
-            if not node_cfg.inputs and not node_cfg.input_sources:
-                # If no inputs (= preceding nodes) nor any input_sources (= loader outputs) are specified,
-                # assume the node is the starting node and takes all inputs from the loader.
-
-                self.loader_input_shapes[node_name] = {
-                    k: Size(v) for k, v in input_shapes.items()
-                }
-                self.node_input_sources[node_name] = list(input_shapes.keys())
-            else:
-                # For each input_source, check if the loader provides the required output.
-                # If yes, add the shape to the input_shapes dict. If not, raise an error.
-                self.loader_input_shapes[node_name] = {}
-                for input_source in node_cfg.input_sources:
-                    if input_source not in input_shapes:
-                        raise ValueError(
-                            f"Node {node_name} requires input source {input_source}, "
-                            "which is not provided by the loader."
-                        )
-
-                    self.loader_input_shapes[node_name][input_source] = Size(
-                        input_shapes[input_source]
-                    )
-
-                # Inputs (= preceding nodes) are handled in the _initiate_nodes method.
-
-            self.graph[node_name] = node_cfg.inputs
-
-        self.nodes = self._initiate_nodes(nodes)
-
-        for loss_cfg in self.cfg.model.losses:
-            loss_name, _ = self._init_attached_module(
-                loss_cfg, BaseLoss.REGISTRY, self.losses
-            )
-            self.loss_weights[loss_name] = loss_cfg.weight
-
-        for metric_cfg in self.cfg.model.metrics:
-            metric_name, node_name = self._init_attached_module(
-                metric_cfg, BaseMetric.REGISTRY, self.metrics
-            )
-            if metric_cfg.is_main_metric:
-                if self.main_metric is not None:
-                    raise ValueError(
-                        "Multiple main metrics defined. Only one is allowed."
-                    )
-                self.main_metric = f"{node_name}/{metric_name}"
-
-        for visualizer_cfg in self.cfg.model.visualizers:
-            self._init_attached_module(
-                visualizer_cfg, BaseVisualizer.REGISTRY, self.visualizers
-            )
-
         self.outputs = self.cfg.model.outputs
-        self.frozen_nodes = [(self.nodes[name], e) for name, e in frozen_nodes]
-        self.losses = self._to_module_dict(self.losses)  # type: ignore
-        self.metrics = self._to_module_dict(self.metrics)  # type: ignore
-        self.visualizers = self._to_module_dict(self.visualizers)  # type: ignore
+
+        self.nodes, self.frozen_nodes = self._build_nodes()
+        self.losses, self.loss_weights = self._build_losses()
+        self.metrics, self.main_metric = self._build_metrics()
+        self.visualizers = self._build_visualizers()
+        self.training_strategy = self._build_training_strategy()
 
         self.load_checkpoint(self.cfg.model.weights)
 
-        if self.cfg.trainer.training_strategy is not None:
-            logger.info(
-                f"Using training strategy: '{self.cfg.trainer.training_strategy.name}'"
-            )
-            if (
-                self.cfg.trainer.optimizer is not None
-                or self.cfg.trainer.scheduler is not None
-            ):
-                raise ValueError(
-                    "Training strategy is defined, but optimizer or "
-                    "scheduler is also defined. Please remove optimizer "
-                    "and scheduler from the config."
-                )
-            Strategy = STRATEGIES.get(self.cfg.trainer.training_strategy.name)
-            self.training_strategy = Strategy(
-                pl_module=self,
-                **self.cfg.trainer.training_strategy.params,
-            )
-        else:
-            self.training_strategy = None
+    @property
+    def tracker(self) -> LuxonisTrackerPL:
+        """Returns the tracker.
+
+        @type: L{LuxonisTrackerPL}
+        """
+        return self.logger
 
     @property
     def core(self) -> "luxonis_train.core.LuxonisModel":
-        """Returns the core model."""
+        """Returns the core model.
+
+        @type: L{LuxonisModel}
+        """
         if self._core is None:  # pragma: no cover
             raise ValueError("Core reference is not set.")
         return self._core
@@ -371,7 +230,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
             node = Node(
                 input_shapes=node_input_shapes,
-                original_in_shape=self.original_in_shapes[self.image_source],
+                original_in_shape=self.input_shapes[self.image_source],
                 dataset_metadata=self.dataset_metadata,
                 **node_kwargs,
             )
@@ -841,7 +700,7 @@ class LuxonisLightningModule(pl.LightningModule):
                     name = f"{mode}/visualizations/{node_name}/{viz_name}"
                     if logged_images[name] >= self.cfg.trainer.n_log_images:
                         continue
-                    self.logger.log_image(
+                    self.tracker.log_image(
                         f"{name}/{logged_images[name]}",
                         viz.detach().cpu().numpy().transpose(1, 2, 0),
                         step=self.current_epoch,
@@ -863,7 +722,7 @@ class LuxonisLightningModule(pl.LightningModule):
         for node_name, metrics in computed_metrics.items():
             for metric_name, metric_value in metrics.items():
                 if "matrix" in metric_name.lower():
-                    self.logger.log_matrix(
+                    self.tracker.log_matrix(
                         matrix=metric_value.cpu().numpy(),
                         name=f"{mode}/metrics/{self.current_epoch}/{metric_name}",
                         step=self.current_epoch,
@@ -888,6 +747,7 @@ class LuxonisLightningModule(pl.LightningModule):
         self.validation_step_outputs.clear()
         self._logged_images.clear()
 
+    @override
     def configure_callbacks(self) -> list[pl.Callback]:
         """Configures Pytorch Lightning callbacks."""
         self.min_val_loss_checkpoints_path = f"{self.save_dir}/min_val_loss"
@@ -950,16 +810,14 @@ class LuxonisLightningModule(pl.LightningModule):
                 )
 
         if self.training_strategy is not None:
-            callbacks.append(TrainingManager(strategy=self.training_strategy))  # type: ignore
+            callbacks.append(TrainingManager(strategy=self.training_strategy))
 
         return callbacks
 
+    @override
     def configure_optimizers(
         self,
-    ) -> tuple[
-        list[torch.optim.Optimizer],
-        list[torch.optim.lr_scheduler.LRScheduler],
-    ]:
+    ) -> tuple[list[Optimizer], list[LRScheduler]]:
         """Configures model optimizers and schedulers."""
         if self.training_strategy is not None:
             return self.training_strategy.configure_optimizers()
@@ -967,35 +825,57 @@ class LuxonisLightningModule(pl.LightningModule):
         cfg_optimizer = self.cfg.trainer.optimizer
         cfg_scheduler = self.cfg.trainer.scheduler
 
-        optim_params = cfg_optimizer.params | {
-            "params": filter(lambda p: p.requires_grad, self.parameters()),
-        }
-        optimizer = OPTIMIZERS.get(cfg_optimizer.name)(**optim_params)
+        optimizer = get_init(
+            OPTIMIZERS,
+            cfg_optimizer.name,
+            **cfg_optimizer.params,
+            params=[p for p in self.parameters() if p.requires_grad],
+        )
 
         def get_scheduler(
-            scheduler_cfg: ConfigItem, optimizer: torch.optim.Optimizer
+            cfg: ConfigItem, optimizer: torch.optim.Optimizer
         ) -> torch.optim.lr_scheduler.LRScheduler:
-            scheduler_class = SCHEDULERS.get(scheduler_cfg.name)
-            scheduler_params = scheduler_cfg.params | {"optimizer": optimizer}
-            return scheduler_class(**scheduler_params)  # type: ignore
+            return get_init(
+                SCHEDULERS, cfg.name, **cfg.params, optimizer=optimizer
+            )
 
         if cfg_scheduler.name == "SequentialLR":
+            if "schedulers" not in cfg_scheduler.params:
+                raise ValueError(
+                    "'SequentialLR' scheduler requires 'schedulers' "
+                    "parameter containing the configurations of the "
+                    "individual schedulers."
+                )
+            schedulers = cfg_scheduler.params["schedulers"]
+            if not check_type(schedulers, list[dict]):
+                raise TypeError(
+                    "'schedulers' parameter of 'SequentialLR' scheduler "
+                    f"must be a list of dictionaries. Got `{schedulers}`."
+                )
             schedulers_list = [
                 get_scheduler(ConfigItem(**scheduler_cfg), optimizer)
-                for scheduler_cfg in cfg_scheduler.params["schedulers"]
+                for scheduler_cfg in schedulers
             ]
 
-            scheduler = torch.optim.lr_scheduler.SequentialLR(
+            if "milestones" not in cfg_scheduler.params:
+                raise ValueError(
+                    "'SequentialLR' scheduler requires 'milestones' parameter."
+                )
+
+            milestones = cfg_scheduler.params["milestones"]
+            if not check_type(milestones, list[int]):
+                raise TypeError(
+                    "'milestones' parameter of 'SequentialLR' scheduler must be a list of integers. "
+                    f"Got `{milestones}`."
+                )
+
+            scheduler = SequentialLR(
                 optimizer,
                 schedulers=schedulers_list,
-                milestones=cfg_scheduler.params["milestones"],
+                milestones=milestones,
             )
         else:
-            scheduler_class = SCHEDULERS.get(
-                cfg_scheduler.name
-            )  # Access as attribute for single scheduler
-            scheduler_params = cfg_scheduler.params | {"optimizer": optimizer}
-            scheduler = scheduler_class(**scheduler_params)
+            scheduler = get_scheduler(cfg_scheduler, optimizer)
 
         return [optimizer], [scheduler]
 
@@ -1047,42 +927,25 @@ class LuxonisLightningModule(pl.LightningModule):
         self,
         cfg: AttachedModuleConfig,
         registry: Registry,
-        storage: Mapping[str, Mapping[str, BaseAttachedModule]],
+        storage: AttachedModulesDict,
     ) -> tuple[str, str]:
         Module = registry.get(cfg.name)
         module_name = cfg.alias or cfg.name
         node_name = cfg.attached_to
-        node: BaseNode = self.nodes[node_name]  # type: ignore
-        if issubclass(Module, TorchMetricWrapper):
-            if "task" not in cfg.params and self._core is not None:
-                loader = self._core.loaders["train"]
-                dataset = getattr(loader, "dataset", None)
-                if isinstance(dataset, LuxonisDataset):
-                    n_classes = len(dataset.get_classes()[node.task_name])
-                    if n_classes == 1:
-                        cfg.params["task"] = "binary"
-                    else:
-                        cfg.params["task"] = "multiclass"
-                    logger.warning(
-                        f"Parameter 'task' not specified for `TorchMetric` based '{module_name}' metric. "
-                        f"Assuming task type based on the number of classes: {cfg.params['task']}. "
-                        "If this is incorrect, please specify the 'task' parameter in the config."
-                    )
-
-        module = Module(**cfg.params, node=node)
-        storage[node_name][module_name] = module  # type: ignore
+        module = Module(**cfg.params, node=self.nodes[node_name])
+        storage[node_name][module_name] = module
         return module_name, node_name
 
     @staticmethod
     def _to_module_dict(
-        modules: dict[str, dict[str, nn.Module]],
-    ) -> nn.ModuleDict:
+        modules: AttachedModulesDict,
+    ) -> AttachedModulesDict:
         return nn.ModuleDict(
             {
                 node_name: nn.ModuleDict(node_modules)
                 for node_name, node_modules in modules.items()
             }
-        )
+        )  # type: ignore
 
     @property
     def _progress_bar(self) -> BaseLuxonisProgressBar:
@@ -1123,3 +986,173 @@ class LuxonisLightningModule(pl.LightningModule):
         for key in avg_losses:
             avg_losses[key] /= len(step_outputs)
         return avg_losses
+
+    def _build_losses(
+        self,
+    ) -> tuple[AttachedModulesDict[BaseLoss], dict[str, float]]:
+        loss_weights = {}
+        losses: AttachedModulesDict[BaseLoss] = defaultdict(dict)
+        for loss_cfg in self.cfg.model.losses:
+            loss_name, _ = self._init_attached_module(
+                loss_cfg, BaseLoss.REGISTRY, losses
+            )
+            loss_weights[loss_name] = loss_cfg.weight
+        return self._to_module_dict(losses), loss_weights
+
+    def _build_visualizers(
+        self,
+    ) -> AttachedModulesDict[BaseVisualizer]:
+        visualizers: AttachedModulesDict[BaseVisualizer] = defaultdict(dict)
+        for visualizer_cfg in self.cfg.model.visualizers:
+            self._init_attached_module(
+                visualizer_cfg, BaseVisualizer.REGISTRY, visualizers
+            )
+        return self._to_module_dict(visualizers)
+
+    def _build_metrics(
+        self,
+    ) -> tuple[AttachedModulesDict[BaseMetric], str | None]:
+        metrics: AttachedModulesDict[BaseMetric] = defaultdict(dict)
+        main_metric = None
+        for metric_cfg in self.cfg.model.metrics:
+            metric_name, node_name = self._init_attached_module(
+                metric_cfg, BaseMetric.REGISTRY, metrics
+            )
+            if metric_cfg.is_main_metric:
+                if main_metric is not None:
+                    raise ValueError(
+                        "Multiple main metrics defined. Only one is allowed."
+                    )
+                main_metric = f"{node_name}/{metric_name}"
+        return self._to_module_dict(metrics), main_metric
+
+    def _build_nodes(
+        self,
+    ) -> tuple[dict[str, BaseNode], list[tuple[nn.Module, int]]]:
+        nodes: dict[str, tuple[type[BaseNode], Kwargs]] = {}
+        frozen_nodes: dict[str, int] = {}
+        for node_cfg in self.cfg.model.nodes:
+            Node = NODES.get(node_cfg.name)
+            node_name = node_cfg.alias or node_cfg.name
+            if node_cfg.freezing.active:
+                epochs = self.cfg.trainer.epochs
+                if node_cfg.freezing.unfreeze_after is None:
+                    unfreeze_after = epochs
+                elif isinstance(node_cfg.freezing.unfreeze_after, int):
+                    unfreeze_after = node_cfg.freezing.unfreeze_after
+                else:
+                    unfreeze_after = int(
+                        node_cfg.freezing.unfreeze_after * epochs
+                    )
+                frozen_nodes[node_name] = unfreeze_after
+            if issubclass(Node, BaseHead):
+                task_names = self.dataset_metadata.task_names
+                if node_cfg.task_name is None:
+                    if len(task_names) == 1:
+                        node_cfg.task_name = next(iter(task_names))
+                    else:
+                        raise ValueError(
+                            f"Dataset contains multiple tasks: {task_names}, "
+                            f"but node '{node_name}' does not have the "
+                            "`task_name` parameter specified. "
+                            "Please specify the `task_name` parameter "
+                            "for each head node. "
+                        )
+            self.node_task_names[node_name] = node_cfg.task_name or ""
+
+            metadata_override = node_cfg.metadata_task_override
+            if Node.task is not None:
+                metadata = {
+                    label
+                    for label in Node.task.required_labels
+                    if isinstance(label, Metadata)
+                }
+                if metadata_override is not None:
+                    if isinstance(metadata_override, str):
+                        if len(metadata) != 1:
+                            raise ValueError(
+                                f"Task '{Node.task}' of node '{Node.__name__}' requires multiple metadata labels: {metadata}, "
+                                "so the `metadata_task_override` must be a dictionary."
+                            )
+                        metadata_override = {
+                            next(iter(metadata)).name: metadata_override
+                        }
+
+                    for m in metadata:
+                        m.name = metadata_override.get(m.name, m.name)
+
+                metadata_types = self.core.loader_metadata_types
+
+                for m in metadata:
+                    m_name = f"{node_cfg.task_name}/{m}"
+                    if m_name not in metadata_types:
+                        continue
+                    typ = metadata_types[m_name]
+                    if not m.check_type(typ):
+                        raise ValueError(
+                            f"Metadata type mismatch for label '{m}' in node '{node_name}'. "
+                            f"Expected type '{m.typ}', got '{typ.__name__}'."
+                        )
+
+            nodes[node_name] = (
+                Node,
+                {
+                    **node_cfg.params,
+                    "task_name": node_cfg.task_name,
+                    "remove_on_export": node_cfg.remove_on_export,
+                },
+            )
+
+            # Handle inputs for this node
+            if node_cfg.input_sources:
+                self.node_input_sources[node_name] = node_cfg.input_sources
+
+            if not node_cfg.inputs and not node_cfg.input_sources:
+                # If no inputs (= preceding nodes) nor any input_sources (= loader outputs) are specified,
+                # assume the node is the starting node and takes all inputs from the loader.
+
+                self.loader_input_shapes[node_name] = {
+                    k: Size(v) for k, v in self.input_shapes.items()
+                }
+                self.node_input_sources[node_name] = list(
+                    self.input_shapes.keys()
+                )
+            else:
+                # For each input_source, check if the loader provides the required output.
+                # If yes, add the shape to the input_shapes dict. If not, raise an error.
+                self.loader_input_shapes[node_name] = {}
+                for input_source in node_cfg.input_sources:
+                    if input_source not in self.input_shapes:
+                        raise ValueError(
+                            f"Node {node_name} requires input source {input_source}, "
+                            "which is not provided by the loader."
+                        )
+
+                    self.loader_input_shapes[node_name][input_source] = Size(
+                        self.input_shapes[input_source]
+                    )
+
+                # Inputs (= preceding nodes) are handled in the _initiate_nodes method.
+
+            self.graph[node_name] = node_cfg.inputs
+
+        built_nodes = self._initiate_nodes(nodes)
+        return built_nodes, [
+            (built_nodes[name], epoch) for name, epoch in frozen_nodes.items()
+        ]
+
+    def _build_training_strategy(self) -> BaseTrainingStrategy | None:
+        training_strategy = self.cfg.trainer.training_strategy
+        if training_strategy is not None:
+            logger.info(f"Using training strategy '{training_strategy.name}'")
+            if (
+                self.cfg.trainer.optimizer is not None
+                or self.cfg.trainer.scheduler is not None
+            ):
+                logger.warning(
+                    "Training strategy is defined. It will override "
+                    "any specified optimizer or scheduler from the config."
+                )
+            Strategy = STRATEGIES.get(training_strategy.name)
+            return Strategy(pl_module=self, **training_strategy.params)
+        return None

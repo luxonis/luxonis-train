@@ -141,7 +141,7 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
         )
         features.append(
             ConvModule(
-                in_channels=c,  # type: ignore
+                in_channels=c,
                 out_channels=pen_channels,
                 kernel_size=1,
                 activation=nn.ReLU6(inplace=True),

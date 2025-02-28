@@ -51,7 +51,7 @@ def prepare_and_infer_image(
     model: "luxonis_train.core.LuxonisModel", img: Tensor
 ) -> LuxonisOutput:
     """Prepares the image for inference and runs the model."""
-    img = model.loaders["val"].augment_test_image(img)  # type: ignore
+    img = model.loaders["val"].augment_test_image(img)
 
     inputs = {
         "image": torch.tensor(img).unsqueeze(0).permute(0, 3, 1, 2).float()
@@ -145,6 +145,7 @@ def infer_from_loader(
     """
 
     predictions = model.pl_trainer.predict(model.lightning_module, loader)
+    assert isinstance(predictions, LuxonisOutput)
 
     broken = False
     if predictions is None:
@@ -153,7 +154,7 @@ def infer_from_loader(
     for i, outputs in enumerate(predictions):
         if broken:  # pragma: no cover
             break
-        visualizations = outputs.visualizations  # type: ignore
+        visualizations = outputs.visualizations
         batch_size = next(
             iter(next(iter(visualizations.values())).values())
         ).shape[0]

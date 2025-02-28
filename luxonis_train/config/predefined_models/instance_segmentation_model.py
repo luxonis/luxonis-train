@@ -1,5 +1,6 @@
 from typing import Literal, TypeAlias
 
+from luxonis_ml.typing import Kwargs
 from pydantic import BaseModel
 
 from luxonis_train.config import (
@@ -7,7 +8,6 @@ from luxonis_train.config import (
     LossModuleConfig,
     MetricModuleConfig,
     ModelNodeConfig,
-    Params,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -17,8 +17,8 @@ VariantLiteral: TypeAlias = Literal["light", "medium", "heavy"]
 
 class InstanceSegmentationVariant(BaseModel):
     backbone: str
-    backbone_params: Params
-    neck_params: Params
+    backbone_params: Kwargs
+    neck_params: Kwargs
 
 
 def get_variant(variant: VariantLiteral) -> InstanceSegmentationVariant:
@@ -56,14 +56,14 @@ class InstanceSegmentationModel(BasePredefinedModel):
         variant: VariantLiteral = "light",
         use_neck: bool = True,
         backbone: str | None = None,
-        backbone_params: Params | None = None,
-        neck_params: Params | None = None,
-        head_params: Params | None = None,
-        loss_params: Params | None = None,
-        visualizer_params: Params | None = None,
+        backbone_params: Kwargs | None = None,
+        neck_params: Kwargs | None = None,
+        head_params: Kwargs | None = None,
+        loss_params: Kwargs | None = None,
+        visualizer_params: Kwargs | None = None,
         task_name: str = "",
         enable_confusion_matrix: bool = True,
-        confusion_matrix_params: Params | None = None,
+        confusion_matrix_params: Kwargs | None = None,
     ):
         var_config = get_variant(variant)
 

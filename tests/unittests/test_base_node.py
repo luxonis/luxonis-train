@@ -2,8 +2,8 @@ import pytest
 import torch
 from torch import Size, Tensor
 
-from luxonis_train.nodes import AttachIndexType, BaseNode
-from luxonis_train.utils import Packet
+from luxonis_train.nodes import BaseNode
+from luxonis_train.typing import AttachIndexType, Packet
 from luxonis_train.utils.exceptions import IncompatibleException
 
 

@@ -4,8 +4,8 @@ from torch import Tensor
 
 from luxonis_train import BaseLoss, BaseNode
 from luxonis_train.tasks import Tasks
+from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils.exceptions import IncompatibleException
-from luxonis_train.utils.types import Labels, Packet
 
 SEGMENTATION_ARRAY = torch.tensor([0])
 KEYPOINT_ARRAY = torch.tensor([1])

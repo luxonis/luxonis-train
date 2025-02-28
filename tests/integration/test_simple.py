@@ -188,7 +188,7 @@ def test_infer(
         1,
         (256, 256),
     )
-    if img_dir.exists():
+    if img_dir.exists():  # pragma: no cover
         shutil.rmtree(img_dir)
     img_dir.mkdir()
     for i, (img, _) in enumerate(loader):

@@ -392,7 +392,7 @@ def anchors_for_fpn_features(
         curr_n_anchors = len(anchor)
         n_anchors_list.append(curr_n_anchors)
         stride_tensor.append(
-            torch.full((curr_n_anchors, 1), stride, dtype=feature.dtype)  # type: ignore
+            torch.full((curr_n_anchors, 1), stride.item(), dtype=feature.dtype)
         )
 
     device = features[0].device

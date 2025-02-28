@@ -2,6 +2,7 @@ from contextlib import suppress
 from functools import cached_property
 
 import torchmetrics
+from loguru import logger
 from torch import Tensor
 from typing_extensions import override
 
@@ -30,14 +31,25 @@ class TorchMetricWrapper(BaseMetric):
                         task = "binary"
                     else:
                         task = "multiclass"
+            if task is not None:
+                logger.warning(
+                    f"Parameter 'task' was not specified for `TorchMetric` "
+                    f"based '{self.name}'. "
+                    f"Assuming task type '{task}' based on the number of "
+                    f"classes ({self.n_classes}). "
+                    f"If this is incorrect, please specify the "
+                    f"'task' parameter in the config."
+                )
 
         if task is None:
             raise ValueError(
                 f"'{self.name}' does not have the 'task' parameter set. "
                 "and it is not possible to infer it from the other arguments. "
-                "You can either set the 'task' parameter explicitly, provide either 'num_classes' or 'num_labels' argument, "
+                "You can either set the 'task' parameter explicitly, "
+                "provide either 'num_classes' or 'num_labels' argument, "
                 "or use this metric with a node. "
-                "The 'task' can be one of 'binary', 'multiclass', or 'multilabel'. "
+                "The 'task' can be one of 'binary', 'multiclass', "
+                "or 'multilabel'. "
             )
         self._torchmetric_task = task
         kwargs["task"] = task

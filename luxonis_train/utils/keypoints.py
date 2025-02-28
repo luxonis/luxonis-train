@@ -109,30 +109,30 @@ def insert_class(keypoints: Tensor, bboxes: Tensor) -> Tensor:
 
 
 def compute_pose_oks(
-    gt_kps: torch.Tensor,
-    pred_kps: torch.Tensor,
-    kp_sigmas: torch.Tensor,
-    gt_bboxes: torch.Tensor | None = None,
-    pose_area: torch.Tensor | None = None,
+    pred_kpts: Tensor,
+    gt_kpts: Tensor,
+    sigmas: Tensor,
+    gt_bboxes: Tensor | None = None,
+    pose_area: Tensor | None = None,
     eps: float = 1e-9,
     area_factor: float = 0.53,
     use_cocoeval_oks: bool = True,
-) -> torch.Tensor:
+) -> Tensor:
     """Compute batched Object Keypoint Similarity (OKS) between ground
     truth and predicted keypoints.
 
-    @type gt_kps: torch.Tensor
-    @param gt_kps: Ground truth keypoints with shape [N, M1,
+    @type pred_kpts: Tensor
+    @param pred_kpts: Predicted keypoints with shape [N, M2,
         num_keypoints, 3]
-    @type pred_kps: torch.Tensor
-    @param pred_kps: Predicted keypoints with shape [N, M2,
+    @type gt_kpts: Tensor
+    @param gt_kpts: Ground truth keypoints with shape [N, M1,
         num_keypoints, 3]
-    @type kp_sigmas: torch.Tensor
-    @param kp_sigmas: Sigmas for each keypoint, shape [num_keypoints]
-    @type gt_bboxes: torch.Tensor
+    @type sigmas: Tensor
+    @param sigmas: Sigmas for each keypoint, shape [num_keypoints]
+    @type gt_bboxes: Tensor
     @param gt_bboxes: Ground truth bounding boxes in XYXY format with
         shape [N, M1, 4]
-    @type pose_area: torch.Tensor
+    @type pose_area: Tensor
     @param pose_area: Area of the pose, shape [N, M1, 1, 1]
     @type eps: float
     @param eps: A small constant to ensure numerical stability
@@ -141,7 +141,7 @@ def compute_pose_oks(
     @type use_cocoeval_oks: bool
     @param use_cocoeval_oks: Whether to use the same OKS formula as in
         COCOEval or use the one from the definition. Defaults to True.
-    @rtype: torch.Tensor
+    @rtype: Tensor
     @return: A tensor of OKS values with shape [N, M1, M2]
     """
 
@@ -156,10 +156,10 @@ def compute_pose_oks(
             (width * height * area_factor).unsqueeze(-1).unsqueeze(-1)
         )  # shape: [N, M1, 1, 1]
 
-    gt_xy = gt_kps[:, :, :, :2].unsqueeze(
+    gt_xy = gt_kpts[:, :, :, :2].unsqueeze(
         2
     )  # shape: [N, M1, 1, num_keypoints, 2]
-    pred_xy = pred_kps[:, :, :, :2].unsqueeze(
+    pred_xy = pred_kpts[:, :, :, :2].unsqueeze(
         1
     )  # shape: [N, 1, M2, num_keypoints, 2]
 
@@ -167,20 +167,20 @@ def compute_pose_oks(
         dim=-1
     )  # shape: [N, M1, M2, num_keypoints]
 
-    kp_sigmas = kp_sigmas.view(1, 1, 1, -1)  # shape: [1, 1, 1, num_keypoints]
+    sigmas = sigmas.view(1, 1, 1, -1)  # shape: [1, 1, 1, num_keypoints]
 
     if use_cocoeval_oks:
         # use same formula as in COCOEval script here:
         # https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L229
-        exp_term = sq_diff / ((2 * kp_sigmas) ** 2) / (pose_area + eps) / 2
+        exp_term = sq_diff / ((2 * sigmas) ** 2) / (pose_area + eps) / 2
     else:
         # use same formula as defined here: https://cocodataset.org/#keypoints-eval
-        exp_term = sq_diff / ((pose_area + eps) * kp_sigmas) ** 2 / 2
+        exp_term = sq_diff / ((pose_area + eps) * sigmas) ** 2 / 2
 
     oks_vals = torch.exp(-exp_term)  # shape: [N, M1, M2, num_keypoints]
 
     vis_mask = (
-        gt_kps[:, :, :, 2].gt(0).float().unsqueeze(2)
+        gt_kpts[:, :, :, 2].gt(0).float().unsqueeze(2)
     )  # shape: [N, M1, 1, num_keypoints]
     vis_count = vis_mask.sum(dim=-1)  # shape: [N, M1, M2]
 

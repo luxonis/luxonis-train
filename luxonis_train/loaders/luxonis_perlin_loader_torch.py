@@ -9,7 +9,7 @@ from luxonis_ml.utils import LuxonisFileSystem
 from torch import Tensor
 from typing_extensions import override
 
-from luxonis_train.utils.types import Labels
+from luxonis_train.typing import Labels
 
 from .luxonis_loader_torch import LuxonisLoaderTorch
 from .perlin import apply_anomaly_to_img

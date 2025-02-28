@@ -1,15 +1,15 @@
 import math
-from typing import Literal
+from typing import Literal, cast
 
 import torch
 from loguru import logger
-from torch import Tensor, nn
+from torch import Size, Tensor, nn
 
 from luxonis_train.nodes.blocks import DFL, ConvModule, DWConvModule
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
+from luxonis_train.typing import Packet
 from luxonis_train.utils import (
-    Packet,
     anchors_for_fpn_features,
     dist2bbox,
     non_max_suppression,
@@ -18,6 +18,7 @@ from luxonis_train.utils import (
 
 class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
     in_channels: list[int]
+    in_sizes: list[Size]
     task = Tasks.BOUNDINGBOX
     parser = "YOLO"
 
@@ -62,62 +63,67 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
         reg_channels = max((16, self.in_channels[0] // 4, reg_max * 4))
         cls_channels = max(self.in_channels[0], min(self.n_classes, 100))
 
-        self.detection_heads = nn.ModuleList(
-            nn.Sequential(
-                # Regression branch
+        self.detection_heads = cast(
+            list[nn.Sequential],
+            nn.ModuleList(
                 nn.Sequential(
-                    ConvModule(
-                        x,
-                        reg_channels,
-                        kernel_size=3,
-                        padding=1,
-                        activation=nn.SiLU(),
-                    ),
-                    ConvModule(
-                        reg_channels,
-                        reg_channels,
-                        kernel_size=3,
-                        padding=1,
-                        activation=nn.SiLU(),
-                    ),
-                    nn.Conv2d(reg_channels, 4 * self.reg_max, kernel_size=1),
-                ),
-                # Classification branch
-                nn.Sequential(
+                    # Regression branch
                     nn.Sequential(
-                        DWConvModule(
+                        ConvModule(
                             x,
-                            x,
+                            reg_channels,
                             kernel_size=3,
                             padding=1,
                             activation=nn.SiLU(),
                         ),
                         ConvModule(
-                            x,
-                            cls_channels,
-                            kernel_size=1,
-                            activation=nn.SiLU(),
-                        ),
-                    ),
-                    nn.Sequential(
-                        DWConvModule(
-                            cls_channels,
-                            cls_channels,
+                            reg_channels,
+                            reg_channels,
                             kernel_size=3,
                             padding=1,
                             activation=nn.SiLU(),
                         ),
-                        ConvModule(
-                            cls_channels,
-                            cls_channels,
-                            kernel_size=1,
-                            activation=nn.SiLU(),
+                        nn.Conv2d(
+                            reg_channels, 4 * self.reg_max, kernel_size=1
                         ),
                     ),
-                    nn.Conv2d(cls_channels, self.n_classes, kernel_size=1),
-                ),
-            )
-            for x in self.in_channels
+                    # Classification branch
+                    nn.Sequential(
+                        nn.Sequential(
+                            DWConvModule(
+                                x,
+                                x,
+                                kernel_size=3,
+                                padding=1,
+                                activation=nn.SiLU(),
+                            ),
+                            ConvModule(
+                                x,
+                                cls_channels,
+                                kernel_size=1,
+                                activation=nn.SiLU(),
+                            ),
+                        ),
+                        nn.Sequential(
+                            DWConvModule(
+                                cls_channels,
+                                cls_channels,
+                                kernel_size=3,
+                                padding=1,
+                                activation=nn.SiLU(),
+                            ),
+                            ConvModule(
+                                cls_channels,
+                                cls_channels,
+                                kernel_size=1,
+                                activation=nn.SiLU(),
+                            ),
+                        ),
+                        nn.Conv2d(cls_channels, self.n_classes, kernel_size=1),
+                    ),
+                )
+                for x in self.in_channels
+            ),
         )
 
         self.stride = self._fit_stride_to_n_heads()
@@ -149,8 +155,8 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
         cls_outputs = []
         reg_outputs = []
         for i in range(self.n_heads):
-            reg_output = self.detection_heads[i][0](x[i])  # type: ignore
-            cls_output = self.detection_heads[i][1](x[i])  # type: ignore
+            reg_output = self.detection_heads[i][0](x[i])
+            cls_output = self.detection_heads[i][1](x[i])
             reg_outputs.append(reg_output)
             cls_outputs.append(cls_output)
         return reg_outputs, cls_outputs
@@ -197,7 +203,7 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
         index."""
         stride = torch.tensor(
             [
-                self.original_in_shape[1] / x[2]  # type: ignore
+                self.original_in_shape[1] / x[2]
                 for x in self.in_sizes[: self.n_heads]
             ],
             dtype=torch.int,
@@ -275,16 +281,20 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
         classification branches.
         """
         for head, stride in zip(self.detection_heads, self.stride):
-            reg_branch = head[0]  # type: ignore
-            cls_branch = head[1]  # type: ignore
+            reg_branch = head[0]
+            cls_branch = head[1]
 
-            reg_conv = reg_branch[-1]
-            reg_conv.bias.data[:] = 1.0
+            reg_conv = cast(nn.Conv2d, reg_branch[-1])
+            if reg_conv.bias is not None:
+                reg_conv.bias.data[:] = 1.0
 
-            cls_conv = cls_branch[-1]
-            cls_conv.bias.data[: self.n_classes] = math.log(
-                5 / self.n_classes / (self.original_in_shape[1] / stride) ** 2
-            )
+            cls_conv = cast(nn.Conv2d, cls_branch[-1])
+            if cls_conv.bias is not None:
+                cls_conv.bias.data[: self.n_classes] = math.log(
+                    5
+                    / self.n_classes
+                    / (self.original_in_shape[1] / stride) ** 2
+                )
 
     def initialize_weights(self) -> None:
         for m in self.modules():

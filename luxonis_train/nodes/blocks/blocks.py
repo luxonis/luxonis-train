@@ -1,4 +1,5 @@
 import math
+from collections.abc import Callable
 from typing import Generic, Literal, Protocol, TypeVar, cast
 
 import torch
@@ -422,7 +423,13 @@ class SqueezeExciteBlock(nn.Module):
 RefB = TypeVar("RefB", bound=nn.Module)
 
 
-class GeneralReparametrizableBlock(Generic[RefB], Reparametrizable, nn.Module):
+class GeneralReparametrizableBlock(
+    nn.Module,
+    Reparametrizable,
+    Generic[RefB],
+):
+    __call__: Callable[[Tensor], Tensor]
+
     @typechecked
     def __init__(
         self,

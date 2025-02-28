@@ -2,7 +2,7 @@ import torch
 from luxonis_ml.data.utils import get_task_type, task_is_metadata
 from torch import Tensor
 
-from luxonis_train.utils.types import Labels
+from luxonis_train.typing import Labels
 
 DatasetOutput = tuple[dict[str, Tensor], Labels]
 """DatasetOutput is a tuple of source tensors and corresponding

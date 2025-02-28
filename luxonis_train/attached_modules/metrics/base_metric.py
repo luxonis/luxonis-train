@@ -10,7 +10,7 @@ from torchmetrics import Metric
 from typing_extensions import Annotated
 
 from luxonis_train.attached_modules import BaseAttachedModule
-from luxonis_train.utils import Labels, Packet
+from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils.registry import METRICS
 
 

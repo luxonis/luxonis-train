@@ -16,8 +16,8 @@ class ModuleFreezer(BaseFinetuning):
         super().__init__()
         self.frozen_modules = frozen_modules
 
-    def freeze_before_training(self, _: pl.LightningModule) -> None:
-        for module, _e in self.frozen_modules:
+    def freeze_before_training(self, pl_module: pl.LightningModule) -> None:
+        for module, _ in self.frozen_modules:
             logger.info(f"Freezing module {module.__class__.__name__}")
             self.freeze(module, train_bn=False)
 

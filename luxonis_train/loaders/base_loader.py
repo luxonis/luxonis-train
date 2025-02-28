@@ -12,9 +12,9 @@ from torch import Size, Tensor
 from torch.utils.data import Dataset
 from typing_extensions import deprecated
 
+from luxonis_train.typing import Labels
 from luxonis_train.utils.general import get_attribute_check_none
 from luxonis_train.utils.registry import LOADERS
-from luxonis_train.utils.types import Labels
 
 from .utils import DatasetOutput
 

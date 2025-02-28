@@ -5,7 +5,7 @@ from torch import Tensor
 
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
-from luxonis_train.utils import Packet
+from luxonis_train.typing import Packet
 
 from .blocks import Decoder, Encoder, NanoDecoder, NanoEncoder
 

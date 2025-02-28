@@ -4,6 +4,7 @@ from typing import Any
 
 import lightning.pytorch as pl
 import torch
+from lightning.pytorch.callbacks import ModelCheckpoint
 from loguru import logger
 
 import luxonis_train
@@ -35,9 +36,8 @@ class UploadCheckpoint(pl.Callback):
         if not self.last_logged_epoch == trainer.current_epoch:
             checkpoint_paths = [
                 c.best_model_path
-                for c in trainer.callbacks  # type: ignore
-                if isinstance(c, pl.callbacks.ModelCheckpoint)  # type: ignore
-                and c.best_model_path
+                for c in trainer.checkpoint_callbacks
+                if isinstance(c, ModelCheckpoint) and c.best_model_path
             ]
             for curr_best_checkpoint in checkpoint_paths:
                 if curr_best_checkpoint not in self.last_best_checkpoints:

@@ -17,14 +17,14 @@ class TestOnTrainEnd(pl.Callback):
         # `trainer.test` would delete the paths so we need to save them
         best_paths = {
             hash(callback.monitor): callback.best_model_path
-            for callback in trainer.callbacks  # type: ignore
+            for callback in trainer.checkpoint_callbacks
             if isinstance(callback, ModelCheckpoint)
         }
 
         trainer.test(pl_module, pl_module.core.pytorch_loaders["test"])
 
         # Restore the paths
-        for callback in trainer.callbacks:  # type: ignore
+        for callback in trainer.checkpoint_callbacks:
             if isinstance(callback, ModelCheckpoint):
                 if hash(callback.monitor) in best_paths:
                     callback.best_model_path = best_paths[

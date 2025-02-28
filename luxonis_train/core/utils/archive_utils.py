@@ -1,12 +1,9 @@
-from collections import defaultdict
 from pathlib import Path
 from typing import TypedDict
 
 import onnx
 from loguru import logger
-from luxonis_ml.nn_archive.config_building_blocks import (
-    DataType,
-)
+from luxonis_ml.nn_archive.config_building_blocks import DataType
 from onnx.onnx_pb import TensorProto
 
 from luxonis_train.models import LuxonisLightningModule
@@ -48,7 +45,7 @@ def get_outputs(path: Path) -> dict[str, ArchiveMetadataDict]:
         )
 
 
-def _from_onnx_dtype(dtype: int) -> DataType:
+def _from_onnx_dtype(dtype: TensorProto.DataType | int) -> DataType:
     dtype_map = {
         TensorProto.INT8: "int8",
         TensorProto.INT32: "int32",
@@ -56,6 +53,7 @@ def _from_onnx_dtype(dtype: int) -> DataType:
         TensorProto.FLOAT: "float32",
         TensorProto.FLOAT16: "float16",
     }
+    dtype = TensorProto.DataType(dtype)
     if dtype not in dtype_map:  # pragma: no cover
         raise ValueError(f"Unsupported ONNX data type: `{dtype}`")
 
@@ -71,14 +69,14 @@ def _load_onnx_model(onnx_path: Path) -> onnx.ModelProto:
 
 def _get_onnx_outputs(onnx_path: Path) -> dict[str, ArchiveMetadataDict]:
     model = _load_onnx_model(onnx_path)
-    outputs: dict[str, ArchiveMetadataDict] = defaultdict(dict)  # type: ignore
+    outputs: dict[str, ArchiveMetadataDict] = {}
 
     for output in model.graph.output:
         shape = [dim.dim_value for dim in output.type.tensor_type.shape.dim]
-        outputs[output.name]["shape"] = shape
-        outputs[output.name]["dtype"] = _from_onnx_dtype(
-            output.type.tensor_type.elem_type
-        )
+        outputs[output.name] = {
+            "shape": shape,
+            "dtype": _from_onnx_dtype(output.type.tensor_type.elem_type),
+        }
 
     return outputs
 
@@ -86,14 +84,14 @@ def _get_onnx_outputs(onnx_path: Path) -> dict[str, ArchiveMetadataDict]:
 def _get_onnx_inputs(onnx_path: Path) -> dict[str, ArchiveMetadataDict]:
     model = _load_onnx_model(onnx_path)
 
-    inputs: dict[str, ArchiveMetadataDict] = defaultdict(dict)  # type: ignore
+    inputs: dict[str, ArchiveMetadataDict] = {}
 
     for inp in model.graph.input:
         shape = [dim.dim_value for dim in inp.type.tensor_type.shape.dim]
-        inputs[inp.name]["shape"] = shape
-        inputs[inp.name]["dtype"] = _from_onnx_dtype(
-            inp.type.tensor_type.elem_type
-        )
+        inputs[inp.name] = {
+            "shape": shape,
+            "dtype": _from_onnx_dtype(inp.type.tensor_type.elem_type),
+        }
 
     return inputs
 

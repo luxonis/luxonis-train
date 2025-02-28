@@ -2,13 +2,13 @@ from typing import Literal
 
 import torch
 from loguru import logger
-from torch import Tensor, nn
+from torch import Size, Tensor, nn
 
 from luxonis_train.nodes.blocks import EfficientDecoupledBlock
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
+from luxonis_train.typing import Packet
 from luxonis_train.utils import (
-    Packet,
     anchors_for_fpn_features,
     dist2bbox,
     non_max_suppression,
@@ -22,6 +22,7 @@ class EfficientBBoxHead(
     parser = "YOLO"
 
     in_channels: list[int]
+    in_sizes: list[Size]
 
     def __init__(
         self,
@@ -211,7 +212,7 @@ class EfficientBBoxHead(
         index."""
         stride = torch.tensor(
             [
-                self.original_in_shape[1] / x[2]  # type: ignore
+                self.original_in_shape[1] / x[2]
                 for x in self.in_sizes[: self.n_heads]
             ],
             dtype=torch.int,

@@ -1,5 +1,6 @@
 from typing import Literal, TypeAlias
 
+from luxonis_ml.typing import Kwargs
 from pydantic import BaseModel
 
 from luxonis_train.config import (
@@ -7,7 +8,6 @@ from luxonis_train.config import (
     LossModuleConfig,
     MetricModuleConfig,
     ModelNodeConfig,
-    Params,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -17,8 +17,8 @@ VariantLiteral: TypeAlias = Literal["light", "heavy"]
 
 class AnomalyVariant(BaseModel):
     backbone: str
-    backbone_params: Params
-    head_params: Params
+    backbone_params: Kwargs
+    head_params: Kwargs
 
 
 def get_variant(variant: VariantLiteral) -> AnomalyVariant:
@@ -50,10 +50,10 @@ class AnomalyDetectionModel(BasePredefinedModel):
         self,
         variant: VariantLiteral = "light",
         backbone: str | None = None,
-        backbone_params: Params | None = None,
-        loss_params: Params | None = None,
-        visualizer_params: Params | None = None,
-        head_params: Params | None = None,
+        backbone_params: Kwargs | None = None,
+        loss_params: Kwargs | None = None,
+        visualizer_params: Kwargs | None = None,
+        head_params: Kwargs | None = None,
         task_name: str = "",
     ):
         var_config = get_variant(variant)

@@ -13,7 +13,7 @@ class OHEMLoss(BaseLoss):
 
     def __init__(
         self,
-        criterion: BaseLoss,
+        criterion: type[BaseLoss],
         ohem_ratio: float = 0.1,
         ohem_threshold: float = 0.7,
         **kwargs,
@@ -26,6 +26,8 @@ class OHEMLoss(BaseLoss):
         @param ohem_ratio: The ratio of pixels to keep.
         @type ohem_threshold: float
         @param ohem_threshold: The threshold for pixels to keep.
+        @param kwargs: Additional keyword arguments that are passed to
+            the criterion.
         """
         super().__init__(**kwargs)
         kwargs.update(reduction="none")

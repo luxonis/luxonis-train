@@ -1,6 +1,8 @@
 """This module implements a metaclass for automatic registration of
 classes."""
 
+from typing import TypeVar
+
 import lightning.pytorch as pl
 from luxonis_ml.utils.registry import Registry
 from torch.optim.lr_scheduler import LRScheduler
@@ -49,3 +51,19 @@ VISUALIZERS: Registry[type["lxt.visualizers.BaseVisualizer"]] = Registry(
     "visualizers"
 )
 """Registry for all visualizers."""
+
+
+T = TypeVar("T")
+
+
+def get_init(registry: Registry[type[T]], key: str, *args, **kwargs) -> T:
+    """Get an instance of the class registered under the given key.
+
+    @type registry: Registry[type[T]]
+    @param registry: Registry to get the class from.
+    @type key: str
+    @param key: Key to get the class for.
+    @rtype: T
+    @return: Instance of the class registered under the given key.
+    """
+    return registry.get(key)(*args, **kwargs)
