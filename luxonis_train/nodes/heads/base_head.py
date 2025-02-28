@@ -1,4 +1,3 @@
-from contextlib import suppress
 from typing import Any
 
 from luxonis_train.nodes.base_node import (
@@ -35,18 +34,13 @@ class BaseHead(BaseNode[ForwardInputT, ForwardOutputT]):
         @rtype: dict
         @return: Base head configuration.
         """
-        metadata = {
+        return {
             "parser": self.parser,
             "metadata": {
                 "classes": self.class_names,
                 "n_classes": self.n_classes,
             },
         }
-
-        with suppress(Exception):
-            metadata["metadata"]["n_keypoints"] = self.n_keypoints
-
-        return metadata
 
     def get_custom_head_config(self) -> dict[str, Any]:
         """Get custom head configuration.

@@ -57,7 +57,7 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         self.assigner = TaskAlignedAssigner(
             n_classes=self.n_classes, topk=tal_topk, alpha=0.5, beta=6.0
         )
-        self.bbox_loss = CustomBboxLoss(self.node.reg_max)
+        self.bbox_loss = BBoxLoss(self.node.reg_max)
         self.proj = torch.arange(self.node.reg_max, dtype=torch.float)
         self.bce = nn.BCEWithLogitsLoss(reduction="none")
 
@@ -187,7 +187,7 @@ class PrecisionDFLDetectionLoss(BaseLoss):
             )
 
 
-class CustomBboxLoss(nn.Module):
+class BBoxLoss(nn.Module):
     def __init__(self, reg_max: int = 16):
         """BBox loss that combines IoU and DFL losses.
 
@@ -196,7 +196,7 @@ class CustomBboxLoss(nn.Module):
             to 16.
         """
         super().__init__()
-        self.dist_loss = CustomDFLoss(reg_max) if reg_max > 1 else None
+        self.dist_loss = DFLoss(reg_max) if reg_max > 1 else None
 
     def forward(
         self,
@@ -236,7 +236,7 @@ class CustomBboxLoss(nn.Module):
         return iou_loss_val, dfl_loss_val
 
 
-class CustomDFLoss(nn.Module):
+class DFLoss(nn.Module):
     def __init__(self, reg_max: int = 16):
         """DFL loss that combines classification and regression losses.
 

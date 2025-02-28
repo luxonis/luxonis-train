@@ -2,8 +2,8 @@ from typing import Literal
 
 import torch
 import torch.nn.functional as F
-from loguru import logger
 from torch import Tensor, nn
+from typing_extensions import override
 
 from luxonis_train.nodes.blocks import ConvModule, SegProto
 from luxonis_train.tasks import Tasks
@@ -58,87 +58,87 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
             **kwargs,
         )
 
-        self.n_masks = n_masks
-        mid_ch = max(self.in_channels[0] // 4, self.n_masks)
-        self.mask_layers = nn.ModuleList(
+        mid_channels = max(self.in_channels[0] // 4, n_masks)
+
+        self.mask_heads = nn.ModuleList(
             nn.Sequential(
-                ConvModule(x, mid_ch, 3, 1, 1, activation=nn.SiLU()),
-                ConvModule(mid_ch, mid_ch, 3, 1, 1, activation=nn.SiLU()),
-                nn.Conv2d(mid_ch, self.n_masks, 1, 1),
+                ConvModule(
+                    in_channels=in_channels,
+                    out_channels=mid_channels,
+                    kernel_size=3,
+                    stride=1,
+                    padding=1,
+                    activation=nn.SiLU(),
+                ),
+                ConvModule(
+                    in_channels=mid_channels,
+                    out_channels=mid_channels,
+                    kernel_size=3,
+                    stride=1,
+                    padding=1,
+                    activation=nn.SiLU(),
+                ),
+                nn.Conv2d(mid_channels, self.n_masks, 1, 1),
             )
-            for x in self.in_channels
+            for in_channels in self.in_channels
         )
 
-        self.n_proto = n_proto
-        self.proto = SegProto(self.in_channels[0], self.n_proto, self.n_masks)
-
-        self.check_export_output_names()
-
-    def check_export_output_names(self) -> None:
-        if (
-            self.export_output_names is None
-            or len(self.export_output_names) != self.n_heads
-        ):
-            if (
-                self.export_output_names is not None
-                and len(self.export_output_names) != self.n_heads
-            ):
-                logger.warning(
-                    f"Number of provided output names ({len(self.export_output_names)}) "
-                    f"does not match number of heads ({self.n_heads}). "
-                    f"Using default names."
-                )
-            self._export_output_names = (
-                [f"output{i + 1}_yolov8" for i in range(self.n_heads)]
-                + [f"output{i + 1}_masks" for i in range(self.n_heads)]
-                + ["protos_output"]
-            )  # export names are applied on sorted output names
+        self.n_masks = n_masks
+        self.proto = SegProto(self.in_channels[0], n_proto, self.n_masks)
 
     def forward(
         self, inputs: list[Tensor]
-    ) -> tuple[tuple[list[Tensor], list[Tensor]], Tensor, list[Tensor]]:
+    ) -> tuple[list[Tensor], list[Tensor], list[Tensor], Tensor, list[Tensor]]:
         prototypes = self.proto(inputs[0])
         mask_coefficients = [
-            self.mask_layers[i](inputs[i]) for i in range(self.n_heads)
+            head(x) for head, x in zip(self.mask_heads, inputs, strict=True)
         ]
 
-        det_outs = super().forward(inputs)
+        return *super().forward(inputs), prototypes, mask_coefficients
 
-        return det_outs, prototypes, mask_coefficients
-
+    @override
     def wrap(
         self,
-        output: tuple[tuple[list[Tensor], list[Tensor]], Tensor, list[Tensor]],
+        output: tuple[
+            list[Tensor], list[Tensor], list[Tensor], Tensor, list[Tensor]
+        ],
     ) -> Packet[Tensor]:
-        det_feats, prototypes, mask_coefficients = output
+        (
+            features_list,
+            classes_list,
+            regressions_list,
+            prototypes,
+            mask_coefficients,
+        ) = output
 
         if self.export:
-            pred_bboxes = self._prepare_bbox_export(*det_feats)
+            pred_bboxes = self._construct_raw_bboxes(
+                classes_list, regressions_list
+            )
             return {
                 "boundingbox": pred_bboxes,
                 "masks": mask_coefficients,
                 "prototypes": prototypes,
             }
 
-        det_feats_combined = [
-            torch.cat((reg, cls), dim=1) for reg, cls in zip(*det_feats)
-        ]
         mask_coefficients = torch.cat(
             [
-                coef.view(coef.size(0), self.n_masks, -1)
-                for coef in mask_coefficients
+                coefficient.view(coefficient.size(0), self.n_masks, -1)
+                for coefficient in mask_coefficients
             ],
             dim=2,
         )
 
         if self.training:
             return {
-                "features": det_feats_combined,
+                "features": features_list,
                 "prototypes": prototypes,
                 "mask_coeficients": mask_coefficients,
             }
 
-        pred_bboxes = self._prepare_bbox_inference_output(*det_feats)
+        pred_bboxes = self._prepare_bbox_inference_output(
+            classes_list, regressions_list
+        )
         preds_combined = torch.cat(
             [pred_bboxes, mask_coefficients.permute(0, 2, 1)], dim=-1
         )
@@ -153,7 +153,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         )
 
         results = {
-            "features": det_feats_combined,
+            "features": features_list,
             "prototypes": prototypes,
             "mask_coeficients": mask_coefficients,
             "boundingbox": [],
@@ -176,18 +176,14 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
 
         return results
 
-    def get_custom_head_config(self) -> dict:
-        """Returns custom head configuration.
-
-        @rtype: dict
-        @return: Custom head configuration.
-        """
-        return {
-            "subtype": "yolov8",
-            "iou_threshold": self.iou_thres,
-            "conf_threshold": self.conf_thres,
-            "max_det": self.max_det,
-        }
+    @property
+    @override
+    def export_output_names(self) -> list[str] | None:
+        return self.get_output_names(
+            [f"output{i + 1}_yolov8" for i in range(self.n_heads)]
+            + [f"output{i + 1}_masks" for i in range(self.n_heads)]
+            + ["protos_output"]
+        )  # export names are applied on sorted output names
 
 
 def refine_and_apply_masks(

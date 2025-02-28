@@ -13,10 +13,84 @@ from luxonis_train.nodes.activations import HSigmoid
 from .reparametrizable import Reparametrizable
 
 
-class EfficientDecoupledBlock(nn.Module):
+class PreciseDecoupledBlock(nn.Module):
+    __call__: Callable[[Tensor], tuple[Tensor, Tensor, Tensor]]
+
     @typechecked
     def __init__(
-        self, n_classes: int, in_channels: int, prior_probability: float = 1e-2
+        self,
+        in_channels: int,
+        reg_channels: int,
+        cls_channels: int,
+        n_classes: int,
+        reg_max: int,
+    ):
+        super().__init__()
+        self.classification_branch = nn.Sequential(
+            ConvModule(
+                in_channels,
+                in_channels,
+                kernel_size=3,
+                padding=1,
+                activation=nn.SiLU(),
+                groups=in_channels,
+            ),
+            ConvModule(
+                in_channels,
+                cls_channels,
+                kernel_size=1,
+                activation=nn.SiLU(),
+            ),
+            ConvModule(
+                cls_channels,
+                cls_channels,
+                kernel_size=3,
+                padding=1,
+                activation=nn.SiLU(),
+                groups=cls_channels,
+            ),
+            ConvModule(
+                cls_channels,
+                cls_channels,
+                kernel_size=1,
+                activation=nn.SiLU(),
+            ),
+            nn.Conv2d(cls_channels, n_classes, kernel_size=1),
+        )
+        self.regression_branch = nn.Sequential(
+            ConvModule(
+                in_channels,
+                reg_channels,
+                kernel_size=3,
+                padding=1,
+                activation=nn.SiLU(),
+            ),
+            ConvModule(
+                reg_channels,
+                reg_channels,
+                kernel_size=3,
+                padding=1,
+                activation=nn.SiLU(),
+            ),
+            nn.Conv2d(reg_channels, 4 * reg_max, kernel_size=1),
+        )
+
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+        classes = self.classification_branch(x)
+        regressions = self.regression_branch(x)
+        features = torch.cat([classes, regressions], dim=1)
+        return features, classes, regressions
+
+
+class EfficientDecoupledBlock(nn.Module):
+    __call__: Callable[[Tensor], tuple[Tensor, Tensor, Tensor]]
+
+    @typechecked
+    def __init__(
+        self,
+        in_channels: int,
+        n_classes: int,
+        prior_probability: float = 1e-2,
     ):
         """Efficient Decoupled block used for class and regression
         predictions.
@@ -73,6 +147,7 @@ class EfficientDecoupledBlock(nn.Module):
 
         return features, classes, regressions
 
+    # TODO: Should be here or rather in the head?
     def _initialize_weights_and_biases(self, p: float) -> None:
         data = [
             (self.class_branch[-1], -math.log((1 - p) / p)),

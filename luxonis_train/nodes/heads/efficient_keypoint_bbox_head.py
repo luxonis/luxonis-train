@@ -13,8 +13,8 @@ from .efficient_bbox_head import EfficientBBoxHead
 
 
 class EfficientKeypointBBoxHead(EfficientBBoxHead):
+    parser = "YOLOExtendedParser"
     task = Tasks.INSTANCE_KEYPOINTS
-    parser: str = "YOLOExtendedParser"
 
     def __init__(
         self,
@@ -52,42 +52,60 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
 
         self.n_keypoints_flat = self.n_keypoints * 3
 
-        mid_ch = max(self.in_channels[0] // 4, self.n_keypoints_flat)
-        self.kpt_layers = nn.ModuleList(
+        mid_channels = max(self.in_channels[0] // 4, self.n_keypoints_flat)
+        self.keypoint_heads = nn.ModuleList(
             nn.Sequential(
-                ConvModule(x, mid_ch, 3, 1, 1, activation=nn.SiLU()),
-                ConvModule(mid_ch, mid_ch, 3, 1, 1, activation=nn.SiLU()),
-                nn.Conv2d(mid_ch, self.n_keypoints_flat, 1, 1),
+                ConvModule(
+                    in_channels=in_channels,
+                    out_channels=mid_channels,
+                    kernel_size=3,
+                    stride=1,
+                    padding=1,
+                    activation=nn.SiLU(),
+                ),
+                ConvModule(
+                    in_channels=mid_channels,
+                    out_channels=mid_channels,
+                    kernel_size=3,
+                    stride=1,
+                    padding=1,
+                    activation=nn.SiLU(),
+                ),
+                nn.Conv2d(
+                    in_channels=mid_channels,
+                    out_channels=self.n_keypoints_flat,
+                    kernel_size=1,
+                    stride=1,
+                ),
             )
-            for x in self.in_channels
+            for in_channels in self.in_channels
         )
 
     def forward(
         self, inputs: list[Tensor]
     ) -> tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]]:
-        features, cls_score_list, reg_distri_list = super().forward(inputs)
+        features_list, classes_list, regressions_list = super().forward(inputs)
+        keypoints_list: list[Tensor] = []
 
-        kpt_list: list[Tensor] = []
-        for i in range(self.n_heads):
-            kpt_pred = self.kpt_layers[i](inputs[i])
-            kpt_list.append(kpt_pred)
+        for head, x in zip(self.keypoint_heads, inputs, strict=True):
+            keypoints_list.append(head(x))
 
-        return features, cls_score_list, reg_distri_list, kpt_list
+        return features_list, classes_list, regressions_list, keypoints_list
 
     @override
     def wrap(
         self,
         output: tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]],
     ) -> Packet[Tensor]:
-        features, cls_score_list, reg_distri_list, kpt_list = output
+        features, classes_list, regressions_list, keypoints_list = output
         bs = features[0].shape[0]
         if self.export:
-            packet = self._wrap_export(cls_score_list, reg_distri_list)
+            packet = self._wrap_export(classes_list, regressions_list)
             keypoints = []
-            for i, kpt in enumerate(kpt_list):
+            for i, keypoint in enumerate(keypoints_list):
                 keypoints.append(
-                    self._dist2kpts(
-                        kpt.view(bs, self.n_keypoints_flat, -1),
+                    self._distributions_to_keypoints(
+                        keypoint.view(bs, self.n_keypoints_flat, -1),
                         features,
                         bs,
                         i,
@@ -96,29 +114,33 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
                 )
             return packet | {"keypoints": keypoints}
 
-        cls_tensor = self._postprocess(cls_score_list)
-        reg_tensor = self._postprocess(reg_distri_list)
-        kpt_tensor = self._postprocess(
-            out.view(bs, self.n_keypoints_flat, -1) for out in kpt_list
+        class_scores = self._postprocess(classes_list)
+        distributions = self._postprocess(regressions_list)
+        raw_keypoints = self._postprocess(
+            out.view(bs, self.n_keypoints_flat, -1) for out in keypoints_list
         )
 
         if self.training:
             return {
                 "features": features,
-                "class_scores": cls_tensor,
-                "distributions": reg_tensor,
-                "keypoints_raw": kpt_tensor,
+                "class_scores": class_scores,
+                "distributions": distributions,
+                "raw_keypoints": raw_keypoints,
             }
 
-        pred_kpt = torch.cat(
+        pred_keypoints = torch.cat(
             [
-                self._dist2kpts(
-                    kpt.view(bs, self.n_keypoints_flat, -1), features, bs, i
+                self._distributions_to_keypoints(
+                    keypoint.view(bs, self.n_keypoints_flat, -1),
+                    features,
+                    bs,
+                    i,
                 )
-                for i, kpt in enumerate(kpt_list)
+                for i, keypoint in enumerate(keypoints_list)
             ],
             dim=2,
         ).permute(0, 2, 1)
+
         _, anchor_points, _, stride_tensor = anchors_for_fpn_features(
             features,
             self.stride,
@@ -126,11 +148,11 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             self.grid_cell_offset,
             multiply_with_stride=False,
         )
-        boxes, kpts = self._postprocess_detections(
+        boxes, kpts = self._postprocess_keypoint_detections(
             features,
-            cls_tensor,
-            reg_tensor,
-            pred_kpt,
+            class_scores,
+            distributions,
+            pred_keypoints,
             anchor_points,
             stride_tensor,
         )
@@ -138,23 +160,20 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             "boundingbox": boxes,
             "keypoints": kpts,
             "features": features,
-            "class_scores": cls_tensor,
-            "distributions": reg_tensor,
-            "keypoints_raw": kpt_tensor,
+            "class_scores": class_scores,
+            "distributions": distributions,
+            "raw_keypoints": raw_keypoints,
         }
 
     @property
     @override
     def export_output_names(self) -> list[str] | None:
-        export_names = super().export_output_names
-        if self._check_output_names(export_names, self.n_heads):
-            return export_names
+        return self.get_output_names(
+            [f"output{i + 1}_yolov6" for i in range(self.n_heads)]
+            + [f"kpt_output{i + 1}" for i in range(self.n_heads)]
+        )
 
-        return [f"output{i + 1}_yolov6" for i in range(self.n_heads)] + [
-            f"kpt_output{i + 1}" for i in range(self.n_heads)
-        ]
-
-    def _dist2kpts(
+    def _distributions_to_keypoints(
         self,
         keypoints: Tensor,
         features: list[Tensor],
@@ -162,8 +181,6 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         index: int,
         apply_sigmoid: bool = True,
     ) -> Tensor:
-        """Decodes keypoints."""
-
         _, anchor_points, n_anchors_list, _ = anchors_for_fpn_features(
             features,
             self.stride,
@@ -186,13 +203,12 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             batch_size, self.n_keypoints_flat, -1
         )
 
-    @override
-    def _postprocess_detections(
+    def _postprocess_keypoint_detections(
         self,
         features: list[Tensor],
-        cls_tensor: Tensor,
-        reg_tensor: Tensor,
-        keypoints: Tensor,
+        class_scores: Tensor,
+        distributions: Tensor,
+        pred_keypoints: Tensor,
         anchor_points: Tensor,
         stride_tensor: Tensor,
     ) -> tuple[list[Tensor], list[Tensor]]:
@@ -201,16 +217,27 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
 
         detections = super()._postprocess_detections(
             features,
-            cls_tensor,
-            reg_tensor,
+            class_scores,
+            distributions,
             anchor_points,
             stride_tensor,
-            tail=[keypoints],
+            tail=[pred_keypoints],
         )
 
-        boxes = [detection[:, :6] for detection in detections]
-        kpts = [
+        bboxes = [detection[:, :6] for detection in detections]
+        keypoints = [
             detection[:, 6:].reshape(-1, self.n_keypoints, 3)
             for detection in detections
         ]
-        return boxes, kpts
+        return bboxes, keypoints
+
+    @override
+    def get_custom_head_config(self) -> dict:
+        """Returns custom head configuration.
+
+        @rtype: dict
+        @return: Custom head configuration.
+        """
+        return super().get_custom_head_config() | {
+            "n_keypoints": self.n_keypoints,
+        }

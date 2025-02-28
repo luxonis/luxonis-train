@@ -2,11 +2,11 @@ from typing import Iterable, Literal
 
 import torch
 from loguru import logger
-from torch import Size, Tensor, nn
+from torch import Tensor, nn
 from typing_extensions import override
 
 from luxonis_train.nodes.blocks import EfficientDecoupledBlock
-from luxonis_train.nodes.heads import BaseHead
+from luxonis_train.nodes.heads.precision_bbox_head import BaseDetectionHead
 from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
 from luxonis_train.utils import (
@@ -16,14 +16,8 @@ from luxonis_train.utils import (
 )
 
 
-class EfficientBBoxHead(
-    BaseHead[list[Tensor], tuple[list[Tensor], list[Tensor], list[Tensor]]],
-):
+class EfficientBBoxHead(BaseDetectionHead):
     task = Tasks.BOUNDINGBOX
-    parser = "YOLO"
-
-    in_channels: list[int]
-    in_sizes: list[Size]
 
     def __init__(
         self,
@@ -57,15 +51,14 @@ class EfficientBBoxHead(
         @type initialize_weights: bool
         @param initialize_weights: If True, initialize weights.
         """
-        super().__init__(**kwargs)
+        super().__init__(
+            n_heads=n_heads,
+            conf_thres=conf_thres,
+            iou_thres=iou_thres,
+            max_det=max_det,
+            **kwargs,
+        )
 
-        self.n_heads = n_heads
-
-        self.conf_thres = conf_thres
-        self.iou_thres = iou_thres
-        self.max_det = max_det
-
-        self.stride = self._fit_stride_to_n_heads()
         self.grid_cell_offset = 0.5
         self.grid_cell_size = 5.0
 
@@ -80,8 +73,8 @@ class EfficientBBoxHead(
         for i in range(self.n_heads):
             self.heads.append(
                 EfficientDecoupledBlock(
-                    n_classes=self.n_classes,
                     in_channels=self.in_channels[i],
+                    n_classes=self.n_classes,
                 )
             )
 
@@ -102,56 +95,35 @@ class EfficientBBoxHead(
     def forward(
         self, inputs: list[Tensor]
     ) -> tuple[list[Tensor], list[Tensor], list[Tensor]]:
-        features: list[Tensor] = []
-        cls_score_list: list[Tensor] = []
-        reg_distri_list: list[Tensor] = []
+        features_list: list[Tensor] = []
+        classes_list: list[Tensor] = []
+        regressions_list: list[Tensor] = []
 
         for head, x in zip(self.heads, inputs, strict=True):
-            out_feature, out_cls, out_reg = head(x)
-            features.append(out_feature)
-            out_cls = torch.sigmoid(out_cls)
-            cls_score_list.append(out_cls)
-            reg_distri_list.append(out_reg)
+            features, classes, regressions = head(x)
+            features_list.append(features)
+            classes_list.append(torch.sigmoid(classes))
+            regressions_list.append(regressions)
 
-        return features, cls_score_list, reg_distri_list
-
-    @staticmethod
-    def _wrap_export(
-        cls_score_list: list[Tensor], reg_distri_list: list[Tensor]
-    ) -> Packet[Tensor]:
-        outputs: list[Tensor] = []
-        for out_cls, out_reg in zip(
-            cls_score_list, reg_distri_list, strict=True
-        ):
-            conf, _ = out_cls.max(1, keepdim=True)
-            out = torch.cat([out_reg, conf, out_cls], dim=1)
-            outputs.append(out)
-        return {"boundingbox": outputs}
-
-    @staticmethod
-    def _postprocess(outputs: Iterable[Tensor]) -> Tensor:
-        return torch.cat(
-            [out.flatten(2) for out in outputs],
-            dim=2,
-        ).permute(0, 2, 1)
+        return features_list, classes_list, regressions_list
 
     @override
     def wrap(
         self, output: tuple[list[Tensor], list[Tensor], list[Tensor]]
     ) -> Packet[Tensor]:
-        features, cls_score_list, reg_distri_list = output
+        features, classes_list, regressions_list = output
 
         if self.export:
-            return self._wrap_export(cls_score_list, reg_distri_list)
+            return self._wrap_export(classes_list, regressions_list)
 
-        cls_tensor = self._postprocess(cls_score_list)
-        reg_tensor = self._postprocess(reg_distri_list)
+        class_scores = self._postprocess(classes_list)
+        distributions = self._postprocess(regressions_list)
 
         if self.training:
             return {
                 "features": features,
-                "class_scores": cls_tensor,
-                "distributions": reg_tensor,
+                "class_scores": class_scores,
+                "distributions": distributions,
             }
 
         else:
@@ -163,26 +135,40 @@ class EfficientBBoxHead(
                 multiply_with_stride=False,
             )
             boxes = self._postprocess_detections(
-                features, cls_tensor, reg_tensor, anchor_points, stride_tensor
+                features,
+                class_scores,
+                distributions,
+                anchor_points,
+                stride_tensor,
             )
             return {
                 "boundingbox": boxes,
                 "features": features,
-                "class_scores": cls_tensor,
-                "distributions": reg_tensor,
+                "class_scores": class_scores,
+                "distributions": distributions,
             }
 
-    def initialize_weights(self) -> None:
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                pass
-            elif isinstance(m, nn.BatchNorm2d):
-                m.eps = 0.001
-                m.momentum = 0.03
-            elif isinstance(
-                m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU)
-            ):
-                m.inplace = True
+    @staticmethod
+    def _wrap_export(
+        classes_list: list[Tensor], regressions_list: list[Tensor]
+    ) -> Packet[Tensor]:
+        bboxes: list[Tensor] = []
+        for classes, regressions in zip(
+            classes_list, regressions_list, strict=True
+        ):
+            conf, _ = classes.max(1, keepdim=True)
+            out = torch.cat([regressions, conf, classes], dim=1)
+            bboxes.append(out)
+        return {
+            "boundingbox": bboxes,
+        }
+
+    @staticmethod
+    def _postprocess(outputs: Iterable[Tensor]) -> Tensor:
+        return torch.cat(
+            [out.flatten(2) for out in outputs],
+            dim=2,
+        ).permute(0, 2, 1)
 
     def get_variant_weights(self, initialize_weights: bool) -> str | None:
         if self.in_channels == [32, 64, 128]:  # light predefined model
@@ -203,52 +189,18 @@ class EfficientBBoxHead(
         else:
             return None
 
-    @staticmethod
-    def _check_output_names(
-        export_names: list[str] | None, n_heads: int
-    ) -> bool:
-        if export_names is not None:
-            if len(export_names) == n_heads:
-                return True
-
-            logger.warning(
-                f"Number of provided output names ({len(export_names)}) "
-                f"does not match number of heads ({n_heads}). "
-                f"Using default names."
-            )
-        else:
-            logger.warning(
-                "No output names provided. "
-                "Using names compatible with DepthAI."
-            )
-        return False
-
     @property
     @override
     def export_output_names(self) -> list[str] | None:
-        export_names = super().export_output_names
-        if self._check_output_names(export_names, self.n_heads):
-            return export_names
-
-        return [f"output{i + 1}_yolov6r2" for i in range(self.n_heads)]
-
-    def _fit_stride_to_n_heads(self) -> Tensor:
-        """Returns correct stride for number of heads and attach
-        index."""
-        stride = torch.tensor(
-            [
-                self.original_in_shape[1] / x[2]
-                for x in self.in_sizes[: self.n_heads]
-            ],
-            dtype=torch.int,
+        return self.get_output_names(
+            [f"output{i + 1}_yolov6r2" for i in range(self.n_heads)]
         )
-        return stride
 
     def _postprocess_detections(
         self,
         features: list[Tensor],
-        cls_tensor: Tensor,
-        reg_tensor: Tensor,
+        class_scores: Tensor,
+        distributions: Tensor,
         anchor_points: Tensor,
         stride_tensor: Tensor,
         *,
@@ -258,18 +210,18 @@ class EfficientBBoxHead(
         after NMS."""
 
         tail = tail or []
-        pred_bboxes = dist2bbox(reg_tensor, anchor_points, out_format="xyxy")
+        bboxes = dist2bbox(distributions, anchor_points, out_format="xyxy")
 
-        pred_bboxes *= stride_tensor
+        bboxes *= stride_tensor
         output_merged = torch.cat(
             [
-                pred_bboxes,
+                bboxes,
                 torch.ones(
-                    (features[-1].shape[0], pred_bboxes.shape[1], 1),
-                    dtype=pred_bboxes.dtype,
-                    device=pred_bboxes.device,
+                    (features[-1].shape[0], bboxes.shape[1], 1),
+                    dtype=bboxes.dtype,
+                    device=bboxes.device,
                 ),
-                cls_tensor,
+                class_scores,
                 *tail,
             ],
             dim=-1,
@@ -292,9 +244,6 @@ class EfficientBBoxHead(
         @rtype: dict
         @return: Custom head configuration.
         """
-        return {
+        return super().get_custom_head_config() | {
             "subtype": "yolov6",
-            "iou_threshold": self.iou_thres,
-            "conf_threshold": self.conf_thres,
-            "max_det": self.max_det,
         }
