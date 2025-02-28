@@ -1,4 +1,5 @@
 from torch import Tensor, nn
+from typing_extensions import override
 
 from luxonis_train.nodes.blocks import ConvModule
 from luxonis_train.nodes.heads import BaseHead
@@ -56,6 +57,7 @@ class BiSeNetHead(BaseHead[Tensor, Tensor]):
         x = self.conv_1x1(x)
         return self.upscale(x)
 
+    @override
     def get_custom_head_config(self) -> dict:
         """Returns custom head configuration.
 

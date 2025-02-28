@@ -1,6 +1,5 @@
-from typing import Any, Iterable, Literal, TypeGuard, TypeVar
+from typing import Literal, TypeVar
 
-import typeguard
 from torch import Size, Tensor
 
 Labels = dict[str, Tensor]
@@ -22,35 +21,3 @@ Packet = dict[str, list[T] | T]
 
 It is used to pass data between different nodes of the network graph.
 """
-
-K = TypeVar("K")
-
-
-def check_type(value: Any, type_: type[K]) -> TypeGuard[K]:
-    """Checks if the value has the correct type.
-
-    Args:
-        value: The value to check.
-        type_: The expected type of the value.
-
-    Returns:
-        The value if the type is correct.
-
-    Raises:
-        TypeError: If the type is incorrect.
-    """
-    try:
-        typeguard.check_type(value, type_)
-    except typeguard.TypeCheckError:
-        return False
-    return True
-
-
-def all_not_none(values: Iterable[Any]) -> bool:
-    """Checks if none of the values in the iterable is C{None}"""
-    return all(v is not None for v in values)
-
-
-def any_not_none(values: Iterable[Any]) -> bool:
-    """Checks if at least one value in the iterable is not C{None}"""
-    return any(v is not None for v in values)

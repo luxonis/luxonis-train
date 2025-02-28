@@ -1,11 +1,12 @@
 import math
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import torch
 from loguru import logger
 from torch import Size, Tensor, nn
+from typing_extensions import override
 
-from luxonis_train.nodes.blocks import DFL, ConvModule, DWConvModule
+from luxonis_train.nodes.blocks import DFL, ConvModule
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
@@ -90,12 +91,13 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
                     # Classification branch
                     nn.Sequential(
                         nn.Sequential(
-                            DWConvModule(
+                            ConvModule(
                                 x,
                                 x,
                                 kernel_size=3,
                                 padding=1,
                                 activation=nn.SiLU(),
+                                groups=x,
                             ),
                             ConvModule(
                                 x,
@@ -105,12 +107,13 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
                             ),
                         ),
                         nn.Sequential(
-                            DWConvModule(
+                            ConvModule(
                                 cls_channels,
                                 cls_channels,
                                 kernel_size=3,
                                 padding=1,
                                 activation=nn.SiLU(),
+                                groups=cls_channels,
                             ),
                             ConvModule(
                                 cls_channels,
@@ -131,26 +134,6 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
         self.bias_init()
         self.initialize_weights()
 
-        self.check_export_output_names()
-
-    def check_export_output_names(self) -> None:
-        if (
-            self.export_output_names is None
-            or len(self.export_output_names) != self.n_heads
-        ):
-            if (
-                self.export_output_names is not None
-                and len(self.export_output_names) != self.n_heads
-            ):
-                logger.warning(
-                    f"Number of provided output names ({len(self.export_output_names)}) "
-                    f"does not match number of heads ({self.n_heads}). "
-                    f"Using default names."
-                )
-            self._export_output_names = [
-                f"output{i + 1}_yolov8" for i in range(self.n_heads)
-            ]
-
     def forward(self, x: list[Tensor]) -> tuple[list[Tensor], list[Tensor]]:
         cls_outputs = []
         reg_outputs = []
@@ -161,6 +144,7 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
             cls_outputs.append(cls_output)
         return reg_outputs, cls_outputs
 
+    @override
     def wrap(
         self, output: tuple[list[Tensor], list[Tensor]]
     ) -> Packet[Tensor]:
@@ -197,6 +181,27 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
             "features": features,
             "boundingbox": boxes,
         }
+
+    @property
+    @override
+    def export_output_names(self) -> list[str] | None:
+        export_names = super().export_output_names
+        if export_names is not None:
+            if len(export_names) == self.n_heads:
+                return export_names
+
+            logger.warning(
+                f"Number of provided output names ({len(export_names)}) "
+                f"does not match number of heads ({self.n_heads}). "
+                f"Using default names."
+            )
+        else:
+            logger.warning(
+                "No output names provided. "
+                "Using names compatible with DepthAI."
+            )
+
+        return [f"output{i + 1}_yolov8" for i in range(self.n_heads)]
 
     def _fit_stride_to_n_heads(self) -> Tensor:
         """Returns correct stride for number of heads and attach
@@ -308,7 +313,8 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
             ):
                 m.inplace = True
 
-    def get_custom_head_config(self) -> dict:
+    @override
+    def get_custom_head_config(self) -> dict[str, Any]:
         """Returns custom head configuration.
 
         @rtype: dict

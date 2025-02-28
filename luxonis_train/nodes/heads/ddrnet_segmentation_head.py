@@ -3,6 +3,7 @@ from typing import Literal
 import torch
 import torch.nn as nn
 from torch import Tensor
+from typing_extensions import override
 
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
@@ -120,7 +121,8 @@ class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
             return x.to(dtype=torch.int32)
         return x
 
-    def get_custom_head_config(self) -> dict:
+    @override
+    def get_custom_head_config(self) -> dict[str, bool]:
         """Returns custom head configuration.
 
         @rtype: dict

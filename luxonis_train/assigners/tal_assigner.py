@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
+from luxonis_ml.typing import all_not_none, any_not_none
 from torch import Tensor, nn
 
-from luxonis_train.typing import all_not_none, any_not_none
 from luxonis_train.utils import compute_pose_oks
 
 from .utils import batch_iou, candidates_in_gt, fix_collisions

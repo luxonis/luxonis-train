@@ -4,7 +4,6 @@ from .blocks import (
     ConvModule,
     CSPStackRepBlock,
     DropPath,
-    DWConvModule,
     EfficientDecoupledBlock,
     FeatureFusionBlock,
     GeneralReparametrizableBlock,
@@ -36,6 +35,5 @@ __all__ = [
     "UpscaleOnline",
     "DropPath",
     "SegProto",
-    "DWConvModule",
     "DFL",
 ]

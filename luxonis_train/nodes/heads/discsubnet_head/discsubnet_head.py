@@ -2,6 +2,7 @@ from typing import Literal, TypeAlias
 
 import torch
 from torch import Tensor
+from typing_extensions import override
 
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
@@ -90,6 +91,7 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
 
         return seg_out, reconstruction
 
+    @override
     def wrap(self, output: tuple[Tensor, Tensor]) -> Packet[Tensor]:
         """Wraps the output into a packet."""
         seg_out, recon = output
@@ -99,6 +101,7 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
             seg_out, recon = output
             return {"reconstructed": recon, "segmentation": seg_out}
 
+    @override
     def get_custom_head_config(self) -> dict:
         """Returns custom head configuration.
 

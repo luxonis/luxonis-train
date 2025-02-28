@@ -3,7 +3,7 @@ import io
 from typing import Annotated, Any, Literal
 
 import torch
-from pycocotools.coco import COCO, _Dataset
+from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from torch import Tensor
 from torchvision.ops import box_convert
@@ -166,13 +166,13 @@ class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
             self.groundtruth_labels,
             crowds=self.groundtruth_crowds,
             area=self.groundtruth_area,
-        )
+        )  # type: ignore
         coco_preds.dataset = self._get_coco_format(
             self.pred_boxes,
             self.pred_keypoints,
             self.pred_labels,
             scores=self.pred_scores,
-        )
+        )  # type: ignore
 
         with contextlib.redirect_stdout(io.StringIO()):
             coco_target.createIndex()
@@ -229,7 +229,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
         scores: list[Tensor] | None = None,
         crowds: list[Tensor] | None = None,
         area: list[Tensor] | None = None,
-    ) -> _Dataset:
+    ) -> dict[str, Any]:
         """Transforms and returns all cached targets or predictions in
         COCO format.
 
@@ -317,7 +317,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
             "images": images,
             "annotations": annotations,
             "categories": classes,
-        }  # type: ignore
+        }
 
     def _get_safe_item_values(
         self, item: dict[str, Tensor]

@@ -11,7 +11,7 @@ from lightning.pytorch.callbacks import (
 )
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
-from luxonis_ml.typing import ConfigItem, Kwargs
+from luxonis_ml.typing import ConfigItem, Kwargs, check_type
 from luxonis_ml.utils import traverse_graph
 from torch import Size, Tensor, nn
 from torch.optim.lr_scheduler import LRScheduler, SequentialLR
@@ -35,7 +35,7 @@ from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.strategies.base_strategy import BaseTrainingStrategy
 from luxonis_train.tasks import Metadata
-from luxonis_train.typing import Labels, Packet, check_type
+from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils import (
     DatasetMetadata,
     LuxonisTrackerPL,
@@ -239,7 +239,9 @@ class LuxonisLightningModule(pl.LightningModule):
                     node.get_custom_head_config()
                 except NotImplementedError:
                     logger.warning(
-                        f"Head {node_name} does not implement get_custom_head_config method. Archivation of this head will fail."
+                        f"Head {node_name} does not implement "
+                        "`get_custom_head_config` method. "
+                        "Archivation of this head will fail."
                     )
             node_outputs = node.run(node_dummy_inputs)
 

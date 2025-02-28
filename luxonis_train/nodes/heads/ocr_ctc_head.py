@@ -69,7 +69,6 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
 
         self._export_output_names = ["output_ocr_ctc"]
 
-    @override
     def forward(self, x: Tensor) -> Tensor | tuple[Tensor, Tensor]:
         x = x.squeeze(2).permute(0, 2, 1)
         predictions = self.block(x)
