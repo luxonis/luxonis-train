@@ -121,6 +121,11 @@ jobs:
         python-version: '3.10'
         cache: pip
 
+    - name: Install dev version of Luxonis ML
+      if: startsWith(github.head_ref, 'release/') == false
+      run: |
+        pip install "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@main"
+
     - name: Install dependencies
       run: pip install -e .[dev]
 
