@@ -10,17 +10,16 @@ from luxonis_ml.typing import ConfigItem
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor
 from torch.utils.data import Dataset
-from typing_extensions import deprecated
 
 from luxonis_train.typing import Labels
 from luxonis_train.utils.general import get_attribute_check_none
 from luxonis_train.utils.registry import LOADERS
 
-from .utils import DatasetOutput
+from .utils import LuxonisLoaderTorchOutput
 
 
 class BaseLoaderTorch(
-    Dataset[DatasetOutput],
+    Dataset[LuxonisLoaderTorchOutput],
     ABC,
     metaclass=AutoRegisterMeta,
     register=False,
@@ -28,7 +27,7 @@ class BaseLoaderTorch(
 ):
     def __init__(
         self,
-        splits: list[str],
+        view: list[str],
         height: int | None = None,
         width: int | None = None,
         augmentation_engine: str = "albumentations",
@@ -40,9 +39,9 @@ class BaseLoaderTorch(
         """Base abstract loader class that enforces
         LuxonisLoaderTorchOutput output label structure.
 
-        @type splits: list[str]
-        @param splits: List of splits. Single or multiple splits form
-            a view. Usually contains only one split, e.g. C{["train"]}
+        @type view: list[str]
+        @param view: List of splits that form the view.
+            Usually contains only one split, e.g. C{["train"]}
             or C{["test"]}. However, more complex datasets
             can make use of multi-split views, e.g. C{["train_synthetic",
             "train_real"]}.
@@ -86,7 +85,7 @@ class BaseLoaderTorch(
         @type color_space: Literal["RGB", "BGR"]
         @param color_space: Color space of the output image.
         """
-        self._splits = splits
+        self._view = view
         self._image_source = image_source
         self._augmentation_engine = augmentation_engine
         self._augmentation_config = augmentation_config
@@ -104,21 +103,12 @@ class BaseLoaderTorch(
         return self._getter_check_none("image_source")
 
     @property
-    @deprecated("`view` attribute is deprecated. Use `splits` instead.")
     def view(self) -> list[str]:
         """List of splits forming this dataset's view.
 
         @type: list[str]
         """
-        return self.splits
-
-    @property
-    def splits(self) -> list[str]:
-        """List of splits forming this dataset's view.
-
-        @type: list[str]
-        """
-        return self._splits
+        return self._view
 
     @property
     def augmentation_engine(self) -> str:
@@ -220,7 +210,7 @@ class BaseLoaderTorch(
             "`augment_test_image` method to expose this functionality."
         )
 
-    def __getitem__(self, idx: int) -> DatasetOutput:
+    def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
         img, labels = self.get(idx)
         if isinstance(img, Tensor):
             img = {self.image_source: img}

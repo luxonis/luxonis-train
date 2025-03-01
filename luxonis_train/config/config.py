@@ -307,7 +307,7 @@ class LoaderConfig(ConfigItem):
 
     @field_validator("train_view", "val_view", "test_view", mode="before")
     @classmethod
-    def validate_splits(cls, splits: ParamValue) -> list[Any]:
+    def validate_view(cls, splits: ParamValue) -> list[Any]:
         if isinstance(splits, str):
             return [splits]
         elif not isinstance(splits, list):

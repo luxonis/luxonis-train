@@ -130,7 +130,7 @@ class LuxonisModel:
                 self.cfg.loader.params["delete_existing"] = False
 
             self.loaders[view] = Loader(
-                splits={
+                view={
                     "train": self.cfg.loader.train_view,
                     "val": self.cfg.loader.train_view,
                     "test": self.cfg.loader.test_view,
@@ -148,7 +148,7 @@ class LuxonisModel:
 
         for name, loader in self.loaders.items():
             logger.info(
-                f"{name.capitalize()} loader - splits: {loader.splits}, size: {len(loader)}"
+                f"{name.capitalize()} loader - view: {loader.view}, size: {len(loader)}"
             )
             if len(loader) == 0:
                 logger.warning(f"{name.capitalize()} loader is empty!")
@@ -204,7 +204,7 @@ class LuxonisModel:
                 else None,
             )
 
-        self.dataset_metadata = DatasetMetadata.from_dataset(
+        self.dataset_metadata = DatasetMetadata.from_loader(
             self.loaders["train"]
         )
         self.config_file = osp.join(self.run_save_dir, "training_config.yaml")

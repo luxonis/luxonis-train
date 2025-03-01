@@ -25,8 +25,8 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         beta: float | None = None,
         **kwargs,
     ):
-        """Custom loader for Luxonis loaders that adds Perlin noise
-        during training with a given probability.
+        """Custom loader for LDF that adds Perlin noise during training
+        with a given probability.
 
         @type anomaly_source_path: str
         @param anomaly_source_path: Path to the anomaly dataset from
@@ -65,7 +65,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         if len(self.loader.dataset.get_tasks()) > 1:
             # TODO: Can be extended to multiple tasks
             raise ValueError(
-                "This loader only supports loaders with a single task."
+                "This loader only supports datasets with a single task."
             )
         self.beta = beta
         self.task_name = next(iter(self.loader.dataset.get_tasks()))
@@ -80,7 +80,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         tensor_img = torch.tensor(img)
         tensor_labels = self.dict_numpy_to_torch(labels)
 
-        if self.splits[0] == "train":
+        if self.view[0] == "train":
             if random.random() < self.noise_prob:
                 anomaly_path = random.choice(self.anomaly_files)
                 anomaly_img = self.read_image(str(anomaly_path))

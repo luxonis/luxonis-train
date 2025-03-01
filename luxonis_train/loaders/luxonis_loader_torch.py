@@ -86,7 +86,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             )
         self.loader = LuxonisLoader(
             dataset=self.dataset,
-            view=self.splits,
+            view=self.view,
             augmentation_engine=self.augmentation_engine,
             augmentation_config=[
                 aug.model_dump() for aug in self.augmentation_config

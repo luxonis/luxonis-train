@@ -1,7 +1,6 @@
 from typing import Set
 
 from bidict import bidict
-from typing_extensions import deprecated
 
 from luxonis_train.loaders import BaseLoaderTorch
 
@@ -126,12 +125,7 @@ class DatasetMetadata:
         return bidict(classes)
 
     @classmethod
-    @deprecated("`from_loader` is deprecated, use `from_dataset` instead.")
-    def from_loader(cls, loader: BaseLoaderTorch) -> "DatasetMetadata":
-        return cls.from_dataset(loader)
-
-    @classmethod
-    def from_dataset(cls, dataset: BaseLoaderTorch) -> "DatasetMetadata":
+    def from_loader(cls, dataset: BaseLoaderTorch) -> "DatasetMetadata":
         """Creates a L{DatasetMetadata} object from a L{LuxonisDataset}.
 
         @type dataset: LuxonisDataset
