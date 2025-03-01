@@ -67,7 +67,7 @@ class RepUpBlock(PANUpBlockBase):
         in_channels: int,
         in_channels_next: int,
         out_channels: int,
-        num_repeats: int,
+        n_repeats: int,
     ):
         """RepPANNeck up block for smaller networks that uses RepBlock.
 
@@ -91,7 +91,7 @@ class RepUpBlock(PANUpBlockBase):
             module=GeneralReparametrizableBlock,
             in_channels=in_channels_next + out_channels,
             out_channels=out_channels,
-            n_repeats=num_repeats,
+            n_repeats=n_repeats,
         )
 
     @property

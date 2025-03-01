@@ -461,7 +461,7 @@ class GeneralReparametrizableBlock(
         stride: int = 1,
         padding: int = 1,
         groups: int = 1,
-        num_branches: int = 1,
+        n_branches: int = 1,
         refine_block: RefB | Literal["se"] | None = None,
         activation: nn.Module | None | Literal[False] = None,
     ):
@@ -482,8 +482,8 @@ class GeneralReparametrizableBlock(
         @param padding: Padding. Defaults to C{1}.
         @type groups: int
         @param groups: Groups. Defaults to C{1}.
-        @type num_branches: int
-        @param num_branches: Number of convolutional branches.
+        @type n_branches: int
+        @param n_branches: Number of convolutional branches.
             During reparametrization, the branches are fused to a single
             convolutional layer. Defaults to C{1}.
         @type refine_block: nn.Module | Literal["se"] | None
@@ -534,7 +534,7 @@ class GeneralReparametrizableBlock(
                 groups=self.groups,
                 activation=False,
             )
-            for _ in range(num_branches)
+            for _ in range(n_branches)
         ]
 
         if refine_block == "se":

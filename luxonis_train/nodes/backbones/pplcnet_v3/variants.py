@@ -13,7 +13,7 @@ class BlockConfig(BaseModel):
 
 class PPLCNetV3Variant(BaseModel):
     scale: float
-    num_branches: int
+    n_branches: int
     use_detection_backbone: bool
     net_config: list[list[BlockConfig]]
 
@@ -22,7 +22,7 @@ def get_variant(variant: Literal["rec-light"]) -> PPLCNetV3Variant:
     variants = {
         "rec-light": PPLCNetV3Variant(
             scale=0.95,
-            num_branches=4,
+            n_branches=4,
             use_detection_backbone=False,
             net_config=[
                 [

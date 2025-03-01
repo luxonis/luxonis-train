@@ -362,11 +362,11 @@ Designed to be very fast. Simply attach it to one of the feature maps from the b
 
 **Parameters:**
 
-| Key               | Type   | Default value | Description                                                                              |
-| ----------------- | ------ | ------------- | ---------------------------------------------------------------------------------------- |
-| `num_conv_layers` | `int`  | `3`           | Number of convolutional layers to use in the model.                                      |
-| `conv_channels`   | `int`  | `16`          | Number of output channels for each convolutional layer.                                  |
-| `use_nms`         | `bool` | `False`       | If True, enable NMS. This can reduce FP, but it will also reduce TP for close neighbors. |
+| Key             | Type   | Default value | Description                                                                              |
+| --------------- | ------ | ------------- | ---------------------------------------------------------------------------------------- |
+| `n_conv_layers` | `int`  | `3`           | Number of convolutional layers to use in the model.                                      |
+| `conv_channels` | `int`  | `16`          | Number of output channels for each convolutional layer.                                  |
+| `use_nms`       | `bool` | `False`       | If True, enable NMS. This can reduce FP, but it will also reduce TP for close neighbors. |
 
 ## Instance Segmentation Heads
 

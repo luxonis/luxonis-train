@@ -166,7 +166,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                     ),
                     channels=highres_channels,
                     block=skip_block,
-                    num_blocks=self.additional_layers[1],
+                    n_blocks=self.additional_layers[1],
                 )
             )
 
@@ -203,13 +203,13 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             block=skip_block,
             in_channels=highres_channels,
             channels=highres_channels,
-            num_blocks=self.additional_layers[2],
+            n_blocks=self.additional_layers[2],
         )
         self.layer5_skip = make_layer(
             block=layer5_block,
             in_channels=highres_channels,
             channels=highres_channels,
-            num_blocks=self.additional_layers[3],
+            n_blocks=self.additional_layers[3],
             expansion=layer5_bottleneck_expansion,
         )
 
@@ -217,7 +217,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             block=layer5_block,
             in_channels=out_chan_backbone["layer4"],
             channels=out_chan_backbone["layer4"],
-            num_blocks=self.additional_layers[0],
+            n_blocks=self.additional_layers[0],
             stride=2,
             expansion=layer5_bottleneck_expansion,
         )

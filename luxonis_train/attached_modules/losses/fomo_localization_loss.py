@@ -24,10 +24,10 @@ class FOMOLocalizationLoss(BaseLoss):
         self.object_weight = object_weight
 
     def forward(self, heatmap: Tensor, target: Tensor) -> Tensor:
-        batch_size, num_classes, height, width = heatmap.shape
+        batch_size, n_classes, height, width = heatmap.shape
         target_keypoints = get_center_keypoints(target, height, width)
         target_heatmap = torch.zeros(
-            (batch_size, num_classes, height, width), device=heatmap.device
+            (batch_size, n_classes, height, width), device=heatmap.device
         )
 
         for kpt in target_keypoints:

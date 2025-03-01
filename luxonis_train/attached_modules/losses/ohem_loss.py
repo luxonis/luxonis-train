@@ -40,13 +40,13 @@ class OHEMLoss(BaseLoss):
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
         loss = self.criterion(predictions, target).view(-1)
 
-        num_pixels = loss.numel()
+        n_pixels = loss.numel()
 
-        if num_pixels == 0:
+        if n_pixels == 0:
             return loss
 
-        ohem_num = int(num_pixels * self.ohem_ratio)
-        ohem_num = min(ohem_num, num_pixels - 1)
+        ohem_num = int(n_pixels * self.ohem_ratio)
+        ohem_num = min(ohem_num, n_pixels - 1)
 
         loss, _ = loss.sort(descending=True)
         if loss[ohem_num] > self.ohem_threshold:

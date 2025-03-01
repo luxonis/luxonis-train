@@ -242,14 +242,14 @@ class BasicDDRBackbone(nn.Module):
             block=block,
             in_channels=stem_channels,
             channels=stem_channels,
-            num_blocks=layers[0],
+            n_blocks=layers[0],
         )
 
         self.layer2 = make_layer(
             block=block,
             in_channels=stem_channels,
             channels=stem_channels * 2,
-            num_blocks=layers[1],
+            n_blocks=layers[1],
             stride=2,
         )
 
@@ -259,7 +259,7 @@ class BasicDDRBackbone(nn.Module):
                     block=block,
                     in_channels=stem_channels * 2,
                     channels=stem_channels * 4,
-                    num_blocks=layers[2],
+                    n_blocks=layers[2],
                     stride=2,
                 )
             ]
@@ -268,7 +268,7 @@ class BasicDDRBackbone(nn.Module):
                     block=block,
                     in_channels=stem_channels * 4,
                     channels=stem_channels * 4,
-                    num_blocks=layers[2],
+                    n_blocks=layers[2],
                     stride=1,
                 )
                 for _ in range(layer3_repeats - 1)
@@ -279,7 +279,7 @@ class BasicDDRBackbone(nn.Module):
             block=block,
             in_channels=stem_channels * 4,
             channels=stem_channels * 8,
-            num_blocks=layers[3],
+            n_blocks=layers[3],
             stride=2,
         )
 
@@ -313,7 +313,7 @@ def make_layer(
     block: type[nn.Module],
     in_channels: int,
     channels: int,
-    num_blocks: int,
+    n_blocks: int,
     stride: int = 1,
     expansion: int = 1,
 ) -> nn.Sequential:
@@ -325,8 +325,8 @@ def make_layer(
     @param in_channels: Number of input channels.
     @type channels: int
     @param channels: Number of output channels.
-    @type num_blocks: int
-    @param num_blocks: Number of blocks in the layer.
+    @type n_blocks: int
+    @param n_blocks: Number of blocks in the layer.
     @type stride: int
     @param stride: Stride for the first block. Defaults to 1.
     @type expansion: int
@@ -340,16 +340,16 @@ def make_layer(
             in_channels,
             channels,
             stride,
-            final_relu=num_blocks > 1,
+            final_relu=n_blocks > 1,
             expansion=expansion,
         )
     )
 
     in_channels = channels * expansion
 
-    if num_blocks > 1:
-        for i in range(1, num_blocks):
-            final_relu = i != (num_blocks - 1)
+    if n_blocks > 1:
+        for i in range(1, n_blocks):
+            final_relu = i != (n_blocks - 1)
             layers.append(
                 block(
                     in_channels,

@@ -77,11 +77,11 @@ class TaskAlignedAssigner(nn.Module):
         @type mask_gt: Tensor
         @param mask_gt: Mask for valid GTs [bs, n_max_boxes, 1]
         @type pred_kpts: Tensor | None
-        @param pred_kpts: Predicted keypoints [bs, n_anchors, num_kpts,
+        @param pred_kpts: Predicted keypoints [bs, n_anchors, n_kpts,
             3] (optional)
         @type gt_kpts: Tensor | None
         @param gt_kpts: Ground truth keypoints [bs, n_max_boxes,
-            num_kpts, 3] (optional)
+            n_kpts, 3] (optional)
         @type sigmas: Tensor | None
         @param sigmas: Sigmas for OKS computation if keypoints are used.
         @type area_factor: float | None
@@ -207,11 +207,11 @@ class TaskAlignedAssigner(nn.Module):
         @type gt_bboxes: Tensor
         @param gt_bboxes: Initial GT bboxes [bs, n_max_boxes, 4]
         @type pred_kpts: Tensor | None
-        @param pred_kpts: Predicted keypoints [bs, n_anchors, num_kpts,
-            3] (optional)
+        @param pred_kpts: Predicted keypoints [bs, n_anchors, n_kpts, 3]
+            (optional)
         @type gt_kpts: Tensor | None
-        @param gt_kpts: Ground truth keypoints [bs, n_max_boxes,
-            num_kpts, 3] (optional)
+        @param gt_kpts: Ground truth keypoints [bs, n_max_boxes, n_kpts,
+            3] (optional)
         @type sigmas: Tensor | None
         @param sigmas: Sigmas for OKS computation if keypoints are used.
             (optional)

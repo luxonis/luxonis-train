@@ -123,12 +123,12 @@ def compute_pose_oks(
 
     @type pred_kpts: Tensor
     @param pred_kpts: Predicted keypoints with shape [N, M2,
-        num_keypoints, 3]
+        n_keypoints, 3]
     @type gt_kpts: Tensor
     @param gt_kpts: Ground truth keypoints with shape [N, M1,
-        num_keypoints, 3]
+        n_keypoints, 3]
     @type sigmas: Tensor
-    @param sigmas: Sigmas for each keypoint, shape [num_keypoints]
+    @param sigmas: Sigmas for each keypoint, shape [n_keypoints]
     @type gt_bboxes: Tensor
     @param gt_bboxes: Ground truth bounding boxes in XYXY format with
         shape [N, M1, 4]
@@ -158,16 +158,16 @@ def compute_pose_oks(
 
     gt_xy = gt_kpts[:, :, :, :2].unsqueeze(
         2
-    )  # shape: [N, M1, 1, num_keypoints, 2]
+    )  # shape: [N, M1, 1, n_keypoints, 2]
     pred_xy = pred_kpts[:, :, :, :2].unsqueeze(
         1
-    )  # shape: [N, 1, M2, num_keypoints, 2]
+    )  # shape: [N, 1, M2, n_keypoints, 2]
 
     sq_diff = ((gt_xy - pred_xy) ** 2).sum(
         dim=-1
-    )  # shape: [N, M1, M2, num_keypoints]
+    )  # shape: [N, M1, M2, n_keypoints]
 
-    sigmas = sigmas.view(1, 1, 1, -1)  # shape: [1, 1, 1, num_keypoints]
+    sigmas = sigmas.view(1, 1, 1, -1)  # shape: [1, 1, 1, n_keypoints]
 
     if use_cocoeval_oks:
         # use same formula as in COCOEval script here:
@@ -177,11 +177,11 @@ def compute_pose_oks(
         # use same formula as defined here: https://cocodataset.org/#keypoints-eval
         exp_term = sq_diff / ((pose_area + eps) * sigmas) ** 2 / 2
 
-    oks_vals = torch.exp(-exp_term)  # shape: [N, M1, M2, num_keypoints]
+    oks_vals = torch.exp(-exp_term)  # shape: [N, M1, M2, n_keypoints]
 
     vis_mask = (
         gt_kpts[:, :, :, 2].gt(0).float().unsqueeze(2)
-    )  # shape: [N, M1, 1, num_keypoints]
+    )  # shape: [N, M1, 1, n_keypoints]
     vis_count = vis_mask.sum(dim=-1)  # shape: [N, M1, M2]
 
     mean_oks = (oks_vals * vis_mask).sum(dim=-1) / (

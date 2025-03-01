@@ -40,7 +40,7 @@ class LCNetV3Block(nn.Sequential):
         kernel_size: int,
         stride: int,
         use_se: bool = False,
-        num_branches: int = 4,
+        n_branches: int = 4,
     ):
         blocks: list[nn.Module] = [
             GeneralReparametrizableBlock(
@@ -50,7 +50,7 @@ class LCNetV3Block(nn.Sequential):
                 stride=stride,
                 padding=(kernel_size - 1) // 2,
                 groups=in_channels,
-                num_branches=num_branches,
+                n_branches=n_branches,
                 refine_block=AffineBlock(),
                 activation=AffineActivation() if stride != 2 else False,
             )
@@ -71,7 +71,7 @@ class LCNetV3Block(nn.Sequential):
                 padding=0,
                 kernel_size=1,
                 stride=1,
-                num_branches=num_branches,
+                n_branches=n_branches,
                 refine_block=AffineBlock(),
                 activation=AffineActivation(),
             )

@@ -161,7 +161,7 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
                     stride=stride,
                     padding=1,
                     groups=self._in_channels,
-                    num_branches=self.n_conv_branches,
+                    n_branches=self.n_conv_branches,
                     refine_block=refine_block,
                 )
             )
@@ -174,7 +174,7 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
                     stride=1,
                     padding=0,
                     groups=1,
-                    num_branches=self.n_conv_branches,
+                    n_branches=self.n_conv_branches,
                     refine_block=refine_block,
                 )
             )

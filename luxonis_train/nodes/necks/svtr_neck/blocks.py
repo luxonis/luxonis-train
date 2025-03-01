@@ -49,7 +49,7 @@ class ConvMixer(nn.Module):
         dim: int,
         height: int,
         width: int,
-        num_heads: int,
+        n_heads: int,
         kernel_size: tuple[int, int] = (3, 3),
     ):
         super().__init__()
@@ -62,7 +62,7 @@ class ConvMixer(nn.Module):
             kernel_size,
             1,
             (kernel_size[0] // 2, kernel_size[1] // 2),
-            groups=num_heads,
+            groups=n_heads,
             bias=True,
         )
 
@@ -79,7 +79,7 @@ class Attention(nn.Module):
         dim: int,
         height: int | None = None,
         width: int | None = None,
-        num_heads: int = 8,
+        n_heads: int = 8,
         mixer: Literal["Global", "Local", "Conv"] = "Global",
         kernel_size: tuple[int, int] = (7, 11),
         qk_scale: float | None = None,
@@ -87,9 +87,9 @@ class Attention(nn.Module):
         proj_drop: float = 0.0,
     ):
         super().__init__()
-        self.num_heads = num_heads
+        self.n_heads = n_heads
         self.dim = dim
-        self.head_dim = dim // num_heads
+        self.head_dim = dim // n_heads
         self.scale = qk_scale or self.head_dim**-0.5
 
         self.qkv = nn.Linear(dim, dim * 3)
@@ -135,7 +135,7 @@ class Attention(nn.Module):
         batch_size = x.shape[0]
         qkv = (
             self.qkv(x)
-            .reshape((batch_size, -1, 3, self.num_heads, self.head_dim))  # 0
+            .reshape((batch_size, -1, 3, self.n_heads, self.head_dim))  # 0
             .permute(2, 0, 3, 1, 4)
         )
         q, k, v = qkv[0] * self.scale, qkv[1], qkv[2]
@@ -160,7 +160,7 @@ class SVTRBlock(nn.Module):
     def __init__(
         self,
         dim: int,
-        num_heads: int,
+        n_heads: int,
         height: int | None = None,
         width: int | None = None,
         mixer: Literal["Global", "Local", "Conv"] = "Global",
@@ -180,7 +180,7 @@ class SVTRBlock(nn.Module):
         if mixer == "Global" or mixer == "Local":
             self.mixer = Attention(
                 dim,
-                num_heads=num_heads,
+                n_heads=n_heads,
                 mixer=mixer,
                 height=height,
                 width=width,
@@ -197,7 +197,7 @@ class SVTRBlock(nn.Module):
                 )
             self.mixer = ConvMixer(
                 dim,
-                num_heads=num_heads,
+                n_heads=n_heads,
                 height=height,
                 width=width,
                 kernel_size=mixer_kernel_size,
@@ -238,7 +238,7 @@ class EncoderWithSVTR(nn.Module):
         depth: int = 2,
         hidden_dims: int = 120,
         use_guide: bool = False,
-        num_heads: int = 8,
+        n_heads: int = 8,
         mlp_ratio: float = 2.0,
         drop_rate: float = 0.1,
         attn_drop_rate: float = 0.1,
@@ -269,7 +269,7 @@ class EncoderWithSVTR(nn.Module):
             [
                 SVTRBlock(
                     dim=hidden_dims,
-                    num_heads=num_heads,
+                    n_heads=n_heads,
                     mixer="Global",
                     height=None,
                     width=None,

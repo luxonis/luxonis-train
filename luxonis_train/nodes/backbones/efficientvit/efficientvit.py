@@ -128,7 +128,7 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
             for _ in range(d):
                 encoder_blocks.append(
                     EfficientViTBlock(
-                        num_channels=in_channels,
+                        n_channels=in_channels,
                         head_dim=dim,
                         expansion_factor=expand_ratio,
                     )

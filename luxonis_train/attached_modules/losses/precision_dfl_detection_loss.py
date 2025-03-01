@@ -153,9 +153,9 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         @rtype: Tensor
         """
         if self.node.dfl:
-            batch_size, num_anchors, num_channels = pred_dist.shape
+            batch_size, n_anchors, n_channels = pred_dist.shape
             dist_probs = pred_dist.view(
-                batch_size, num_anchors, 4, num_channels // 4
+                batch_size, n_anchors, 4, n_channels // 4
             ).softmax(dim=3)
             dist_transformed = dist_probs.matmul(
                 self.proj.to(anchor_points.device).type(pred_dist.dtype)

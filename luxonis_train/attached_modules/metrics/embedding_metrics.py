@@ -54,9 +54,9 @@ class ClosestIsPositiveAccuracy(BaseMetric):
         closest_labels = labels[closest_indices]
 
         positive_mask = _get_anchor_positive_triplet_mask(labels)
-        num_positives = positive_mask.sum(dim=1)
-        has_at_least_one_positive_and_negative = (num_positives > 0) & (
-            num_positives < len(labels)
+        n_positives = positive_mask.sum(dim=1)
+        has_at_least_one_positive_and_negative = (n_positives > 0) & (
+            n_positives < len(labels)
         )
 
         filtered_labels = labels[has_at_least_one_positive_and_negative]

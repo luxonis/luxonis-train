@@ -28,7 +28,7 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
         self,
         variant: Literal["rec-light"] = "rec-light",
         scale: float | None = None,
-        num_branches: int | None = None,
+        n_branches: int | None = None,
         use_detection_backbone: bool | None = None,
         max_text_len: int = 40,
         **kwargs,
@@ -44,8 +44,8 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
             >}
         @type scale: float
         @param scale: Scale factor. Defaults to 0.95.
-        @type num_branches: int
-        @param num_branches: Number of convolution branches.
+        @type n_branches: int
+        @param n_branches: Number of convolution branches.
             Defaults to 4.
         @type use_detection_backbone: bool
         @param use_detection_backbone: Whether to use the detection backbone.
@@ -61,7 +61,7 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
         self.use_detection_backbone = (
             use_detection_backbone or var.use_detection_backbone
         )
-        self.num_branches = num_branches or var.num_branches
+        self.n_branches = n_branches or var.n_branches
         self.net_config = var.net_config
 
         self.max_text_len = max_text_len
@@ -89,7 +89,7 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
                             kernel_size=b.kernel_size,
                             stride=b.stride,
                             use_se=b.use_se,
-                            num_branches=self.num_branches,
+                            n_branches=self.n_branches,
                         )
                         for b in net_config
                     ]

@@ -162,7 +162,7 @@ class MobileBottleneckBlock(nn.Module):
 class EfficientViTBlock(nn.Module):
     def __init__(
         self,
-        num_channels: int,
+        n_channels: int,
         attention_ratio: float = 1.0,
         head_dim: int = 32,
         expansion_factor: float = 4.0,
@@ -172,8 +172,8 @@ class EfficientViTBlock(nn.Module):
         designed for multi-scale linear attention and local feature
         processing.
 
-        @type num_channels: int
-        @param num_channels: The number of input and output channels.
+        @type n_channels: int
+        @param n_channels: The number of input and output channels.
         @type attention_ratio: float
         @param attention_ratio: Ratio for determining the number of attention heads. Default is 1.0.
         @type head_dim: int
@@ -186,8 +186,8 @@ class EfficientViTBlock(nn.Module):
         super().__init__()
 
         self.attention_module = LightweightMLABlock(
-            input_channels=num_channels,
-            output_channels=num_channels,
+            input_channels=n_channels,
+            output_channels=n_channels,
             head_ratio=attention_ratio,
             dimension=head_dim,
             use_norm=[False, True],
@@ -196,8 +196,8 @@ class EfficientViTBlock(nn.Module):
         )
 
         self.feature_module = MobileBottleneckBlock(
-            in_channels=num_channels,
-            out_channels=num_channels,
+            in_channels=n_channels,
+            out_channels=n_channels,
             expand_ratio=expansion_factor,
             use_bias=[True, True, False],
             use_norm=[False, False, True],
@@ -223,7 +223,7 @@ class LightweightMLABlock(nn.Module):
         self,
         input_channels: int,
         output_channels: int,
-        num_heads: int | None = None,
+        n_heads: int | None = None,
         head_ratio: float = 1.0,
         dimension: int = 8,
         use_bias: list[bool] | None = None,
@@ -238,20 +238,30 @@ class LightweightMLABlock(nn.Module):
         EfficientViT framework. It facilitates efficient multi-scale
         linear attention.
 
+        @type input_channels: int
         @param input_channels: Number of input channels.
+        @type output_channels: int
         @param output_channels: Number of output channels.
-        @param num_heads: Number of attention heads. Default is None.
+        @type n_heads: int
+        @param n_heads: Number of attention heads. Default is None.
+        @type head_ratio: float
         @param head_ratio: Ratio to determine the number of heads.
             Default is 1.0.
+        @type dimension: int
         @param dimension: Size of each head. Default is 8.
+        @type use_bias: list[bool, bool]
         @param biases: List specifying if bias is used in qkv and
             projection layers.
+        @type use_norm: list[bool, bool]
         @param norms: List specifying if normalization is applied in qkv
             and projection layers.
+        @type activations: list[nn.Module, nn.Module]
         @param activations: List of activation functions for qkv and
             projection layers.
+        @type scale_factors: tuple[int, ...]
         @param scale_factors: Tuple defining scales for aggregation.
             Default is (5,).
+        @type epsilon: float
         @param epsilon: Epsilon value for numerical stability. Default
             is 1e-15.
         """
@@ -268,9 +278,9 @@ class LightweightMLABlock(nn.Module):
 
         self.epsilon = epsilon
         self.use_residual = use_residual
-        num_heads = num_heads or int(input_channels // dimension * head_ratio)
+        n_heads = n_heads or int(input_channels // dimension * head_ratio)
 
-        total_dim = num_heads * dimension
+        total_dim = n_heads * dimension
 
         self.dimension = dimension
         self.qkv_layer = ConvModule(
@@ -297,7 +307,7 @@ class LightweightMLABlock(nn.Module):
                         3 * total_dim,
                         3 * total_dim,
                         kernel_size=1,
-                        groups=3 * num_heads,
+                        groups=3 * n_heads,
                         bias=use_bias[0],
                     ),
                 )

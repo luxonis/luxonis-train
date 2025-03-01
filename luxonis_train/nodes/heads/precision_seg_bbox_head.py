@@ -201,10 +201,10 @@ def refine_and_apply_masks(
     @param mask_prototypes: Tensor of shape [mask_dim, mask_height,
         mask_width].
     @type predicted_masks: Tensor
-    @param predicted_masks: Tensor of shape [num_masks, mask_dim], where
-        num_masks is the number of detected masks.
+    @param predicted_masks: Tensor of shape [n_masks, mask_dim], where
+        n_masks is the number of detected masks.
     @type bounding_boxes: Tensor
-    @param bounding_boxes: Tensor of shape [num_masks, 4], containing
+    @param bounding_boxes: Tensor of shape [n_masks, 4], containing
         bounding box coordinates.
     @type height: int
     @param height: Height of the input image.
@@ -214,7 +214,7 @@ def refine_and_apply_masks(
     @param upsample: If True, upsample the masks to the target image
         dimensions. Default is False.
     @rtype: Tensor
-    @return: A binary mask tensor of shape [num_masks, height, width],
+    @return: A binary mask tensor of shape [n_masks, height, width],
         where the masks are cropped according to their respective
         bounding boxes.
     """

@@ -127,7 +127,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
                     in_channels=in_channels,
                     in_channels_next=in_channels_next,
                     out_channels=out_channels,
-                    num_repeats=curr_n_repeats,
+                    n_repeats=curr_n_repeats,
                 )
                 if block == "RepBlock"
                 else CSPUpBlock(
