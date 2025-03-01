@@ -441,7 +441,8 @@ def build_nodes(
             Node,
             {
                 **node_cfg.params,
-                "task_name": node_cfg.task_name,
+                # TODO: `task_name` only makes sense for heads.
+                "task_name": node_cfg.task_name or "",
                 "remove_on_export": node_cfg.remove_on_export,
             },
         )
