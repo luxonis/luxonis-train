@@ -223,13 +223,14 @@ def denormalize(
     return out_img
 
 
+# TODO: This should be left to the loader
 def get_denormalized_images(cfg: Config, images: Tensor) -> Tensor:
     normalize_params = cfg.trainer.preprocessing.normalize.params
     mean = std = None
     if cfg.trainer.preprocessing.normalize.active:
         mean = normalize_params.get("mean", [0.485, 0.456, 0.406])
         std = normalize_params.get("std", [0.229, 0.224, 0.225])
-    return preprocess_images(images, mean=mean, std=std)
+    return preprocess_images(images, mean=mean, std=std)  # type: ignore
 
 
 def number_to_hsl(seed: int) -> tuple[float, float, float]:

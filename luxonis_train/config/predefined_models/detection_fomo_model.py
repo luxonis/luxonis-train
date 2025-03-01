@@ -1,6 +1,6 @@
 from typing import Literal, TypeAlias
 
-from luxonis_ml.typing import Kwargs
+from luxonis_ml.typing import Params
 from pydantic import BaseModel
 
 from luxonis_train.config import (
@@ -17,8 +17,8 @@ VariantLiteral: TypeAlias = Literal["light", "heavy"]
 
 class FOMOVariant(BaseModel):
     backbone: str
-    head_params: Kwargs
-    backbone_params: Kwargs
+    head_params: Params
+    backbone_params: Params
 
 
 def get_variant(variant: VariantLiteral) -> FOMOVariant:
@@ -49,10 +49,10 @@ class FOMOModel(BasePredefinedModel):
         self,
         variant: VariantLiteral = "light",
         backbone: str | None = None,
-        backbone_params: Kwargs | None = None,
-        head_params: Kwargs | None = None,
-        loss_params: Kwargs | None = None,
-        visualizer_params: Kwargs | None = None,
+        backbone_params: Params | None = None,
+        head_params: Params | None = None,
+        loss_params: Params | None = None,
+        visualizer_params: Params | None = None,
         task_name: str = "",
     ):
         var_config = get_variant(variant)
@@ -70,7 +70,7 @@ class FOMOModel(BasePredefinedModel):
             ModelNodeConfig(
                 name=self.backbone,
                 alias=f"{self.task_name}-{self.backbone}",
-                freezing=self.backbone_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
             ),
             ModelNodeConfig(

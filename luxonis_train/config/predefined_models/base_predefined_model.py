@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from luxonis_ml.typing import Kwargs, Params, check_type
 from luxonis_ml.utils.registry import AutoRegisterMeta
 
 from luxonis_train.config import (
@@ -8,6 +9,7 @@ from luxonis_train.config import (
     MetricModuleConfig,
     ModelNodeConfig,
 )
+from luxonis_train.config.config import FreezingConfig
 from luxonis_train.utils.registry import MODELS
 
 
@@ -51,3 +53,17 @@ class BasePredefinedModel(
         visualizers = self.visualizers if include_visualizers else []
 
         return nodes, losses, metrics, visualizers
+
+    @staticmethod
+    def _get_freezing(params: Params) -> FreezingConfig:
+        if "freezing" not in params:
+            return FreezingConfig()
+        freezing = params["freezing"]
+        if isinstance(freezing, FreezingConfig):
+            return freezing
+        if not check_type(freezing, Kwargs):
+            raise ValueError(
+                f"`backbone_params.freezing` should be a dictionary, "
+                f"got '{freezing}' instead."
+            )
+        return FreezingConfig(**freezing)

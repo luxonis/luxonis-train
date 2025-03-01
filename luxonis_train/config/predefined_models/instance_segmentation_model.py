@@ -1,6 +1,6 @@
 from typing import Literal, TypeAlias
 
-from luxonis_ml.typing import Kwargs
+from luxonis_ml.typing import Params
 from pydantic import BaseModel
 
 from luxonis_train.config import (
@@ -17,8 +17,8 @@ VariantLiteral: TypeAlias = Literal["light", "medium", "heavy"]
 
 class InstanceSegmentationVariant(BaseModel):
     backbone: str
-    backbone_params: Kwargs
-    neck_params: Kwargs
+    backbone_params: Params
+    neck_params: Params
 
 
 def get_variant(variant: VariantLiteral) -> InstanceSegmentationVariant:
@@ -56,14 +56,14 @@ class InstanceSegmentationModel(BasePredefinedModel):
         variant: VariantLiteral = "light",
         use_neck: bool = True,
         backbone: str | None = None,
-        backbone_params: Kwargs | None = None,
-        neck_params: Kwargs | None = None,
-        head_params: Kwargs | None = None,
-        loss_params: Kwargs | None = None,
-        visualizer_params: Kwargs | None = None,
+        backbone_params: Params | None = None,
+        neck_params: Params | None = None,
+        head_params: Params | None = None,
+        loss_params: Params | None = None,
+        visualizer_params: Params | None = None,
         task_name: str = "",
         enable_confusion_matrix: bool = True,
-        confusion_matrix_params: Kwargs | None = None,
+        confusion_matrix_params: Params | None = None,
     ):
         var_config = get_variant(variant)
 
@@ -90,7 +90,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
             ModelNodeConfig(
                 name=self.backbone,
                 alias=f"{self.task_name}-{self.backbone}",
-                freezing=self.backbone_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
             ),
         ]
@@ -100,7 +100,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
                     name="RepPANNeck",
                     alias=f"{self.task_name}-RepPANNeck",
                     inputs=[f"{self.task_name}-{self.backbone}"],
-                    freezing=self.neck_params.pop("freezing", {}),
+                    freezing=self._get_freezing(self.neck_params),
                     params=self.neck_params,
                 )
             )
@@ -109,7 +109,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
             ModelNodeConfig(
                 name="PrecisionSegmentBBoxHead",
                 alias=f"{self.task_name}-PrecisionSegmentBBoxHead",
-                freezing=self.head_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.head_params),
                 inputs=[f"{self.task_name}-RepPANNeck"]
                 if self.use_neck
                 else [f"{self.backbone}-{self.task_name}"],

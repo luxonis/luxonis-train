@@ -16,7 +16,7 @@ from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
-from luxonis_ml.typing import Params, PathType, check_type
+from luxonis_ml.typing import Params, PathType
 from luxonis_ml.utils import LuxonisFileSystem
 from typeguard import typechecked
 
@@ -360,9 +360,22 @@ class LuxonisModel:
         try_onnx_simplify(onnx_save_path)
         self._exported_models["onnx"] = Path(onnx_save_path)
 
-        scale_values, mean_values, reverse_channels = get_preprocessing(
-            self.cfg
+        scale, mean, color_space = get_preprocessing(
+            self.cfg_preprocessing, "Model export"
         )
+        scale_values = self.cfg.exporter.scale_values or scale
+        mean_values = self.cfg.exporter.mean_values or mean
+        if self.cfg.exporter.reverse_input_channels is not None:
+            reverse_input_channels = self.cfg.exporter.reverse_input_channels
+        else:
+            logger.info(
+                "`exporter.reverse_input_channels` not specified. "
+                "Using the `trainer.preprocessing.color_space` value "
+                "to determine if the channels should be reversed. "
+                f"`color_space` = '{color_space}' -> "
+                f"`reverse_input_channels` = `{color_space == 'RGB'}`"
+            )
+            reverse_input_channels = color_space == "RGB"
 
         if self.cfg.exporter.blobconverter.active:
             try:
@@ -370,7 +383,7 @@ class LuxonisModel:
                     self.cfg.exporter,
                     scale_values,
                     mean_values,
-                    reverse_channels,
+                    reverse_input_channels,
                     str(export_save_dir),
                     onnx_save_path,
                 )
@@ -395,7 +408,7 @@ class LuxonisModel:
             "input_model": onnx_save_path,
             "scale_values": scale_values,
             "mean_values": mean_values,
-            "reverse_input_channels": reverse_channels,
+            "reverse_input_channels": reverse_input_channels,
             "shape": [1, *next(iter(self.input_shapes.values()))],
             "outputs": [{"name": name} for name in output_names],
         }
@@ -742,30 +755,15 @@ class LuxonisModel:
         executable_fname = path.name
         archive_name += path.suffix
 
-        def _get_norm_param(key: str) -> list[float] | None:
-            params = self.cfg_preprocessing.normalize.params
-            if key not in params:
-                logger.warning(
-                    "Exporting to NN Archive requires the "
-                    f" `{key}` parameter to be present in "
-                    "`trainer.preprocessing.normalize.params`"
-                )
-                return None
-            param = params[key]
-            if not check_type(param, list[float | int]):
-                logger.warning(
-                    f"Exporting to NN Archive requires the '{key}' parameter "
-                    "of `trainer.preprocessing.normalize.params` "
-                    f"to be a list of numbers. Got: {param}."
-                )
-                return None
-            return [round(x * 255.0, 5) for x in param]
+        mean, scale, color_space = get_preprocessing(
+            self.cfg_preprocessing, "Exporting to NN Archive"
+        )
 
         # TODO: keep preprocessing same for each input?
         preprocessing = {
-            "mean": _get_norm_param("mean"),
-            "scale": _get_norm_param("std"),
-            "dai_type": f"{self.cfg_preprocessing.color_space}888p",
+            "mean": mean,
+            "scale": scale,
+            "dai_type": f"{color_space}888p",
         }
 
         inputs_dict = get_inputs(path)

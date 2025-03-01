@@ -1,6 +1,6 @@
 from typing import Literal, TypeAlias
 
-from luxonis_ml.typing import Kwargs
+from luxonis_ml.typing import Params
 from pydantic import BaseModel
 
 from luxonis_train.config import (
@@ -17,7 +17,7 @@ VariantLiteral: TypeAlias = Literal["light", "heavy"]
 
 class ClassificationVariant(BaseModel):
     backbone: str
-    backbone_params: Kwargs
+    backbone_params: Params
 
 
 def get_variant(variant: VariantLiteral) -> ClassificationVariant:
@@ -47,14 +47,14 @@ class ClassificationModel(BasePredefinedModel):
         self,
         variant: VariantLiteral = "light",
         backbone: str | None = None,
-        backbone_params: Kwargs | None = None,
-        head_params: Kwargs | None = None,
-        loss_params: Kwargs | None = None,
-        visualizer_params: Kwargs | None = None,
+        backbone_params: Params | None = None,
+        head_params: Params | None = None,
+        loss_params: Params | None = None,
+        visualizer_params: Params | None = None,
         task: Literal["multiclass", "multilabel"] = "multiclass",
         task_name: str = "",
         enable_confusion_matrix: bool = True,
-        confusion_matrix_params: Kwargs | None = None,
+        confusion_matrix_params: Params | None = None,
     ):
         var_config = get_variant(variant)
 
@@ -79,14 +79,14 @@ class ClassificationModel(BasePredefinedModel):
             ModelNodeConfig(
                 name=self.backbone,
                 alias=f"{self.task_name}-{self.backbone}",
-                freezing=self.backbone_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="ClassificationHead",
                 alias=f"{self.task_name}-ClassificationHead",
                 inputs=[f"{self.task_name}-{self.backbone}"],
-                freezing=self.head_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.head_params),
                 params=self.head_params,
                 task_name=self.task_name,
             ),

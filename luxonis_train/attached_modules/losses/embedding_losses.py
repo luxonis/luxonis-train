@@ -4,7 +4,7 @@ import pytorch_metric_learning.miners as pml_miners
 import pytorch_metric_learning.reducers as pml_reducers
 import pytorch_metric_learning.regularizers as pml_regularizers
 from loguru import logger
-from luxonis_ml.typing import Kwargs
+from luxonis_ml.typing import Params
 from pytorch_metric_learning.losses import CrossBatchMemory
 from torch import Tensor
 
@@ -50,13 +50,13 @@ for _loss_name in EMBEDDING_LOSSES:
             self,
             *,
             miner: str | None = None,
-            miner_params: Kwargs | None = None,
+            miner_params: Params | None = None,
             distance: str | None = None,
-            distance_params: Kwargs | None = None,
+            distance_params: Params | None = None,
             reducer: str | None = None,
-            reducer_params: Kwargs | None = None,
+            reducer_params: Params | None = None,
             regularizer: str | None = None,
-            regularizer_params: Kwargs | None = None,
+            regularizer_params: Params | None = None,
             node: BaseNode | None = None,
             **kwargs,
         ):

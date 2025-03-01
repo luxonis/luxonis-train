@@ -1,7 +1,7 @@
 from typing import Literal, TypeAlias
 
 from loguru import logger
-from luxonis_ml.typing import Kwargs
+from luxonis_ml.typing import Params
 from pydantic import BaseModel
 
 from luxonis_train.config import (
@@ -29,9 +29,9 @@ VariantLiteral: TypeAlias = Literal["light", "heavy"]
 
 class OCRRecognitionVariant(BaseModel):
     backbone: str
-    backbone_params: Kwargs
-    neck_params: Kwargs
-    head_params: Kwargs
+    backbone_params: Params
+    neck_params: Params
+    head_params: Params
 
 
 def get_variant(variant: VariantLiteral) -> OCRRecognitionVariant:
@@ -61,11 +61,11 @@ class OCRRecognitionModel(BasePredefinedModel):
         self,
         variant: VariantLiteral = "light",
         backbone: str | None = None,
-        backbone_params: Kwargs | None = None,
-        neck_params: Kwargs | None = None,
-        head_params: Kwargs | None = None,
-        loss_params: Kwargs | None = None,
-        visualizer_params: Kwargs | None = None,
+        backbone_params: Params | None = None,
+        neck_params: Params | None = None,
+        head_params: Params | None = None,
+        loss_params: Params | None = None,
+        visualizer_params: Params | None = None,
         task_name: str | None = None,
         alphabet: list[str] | AlphabetName = "english",
         max_text_len: int = 40,
@@ -84,7 +84,9 @@ class OCRRecognitionModel(BasePredefinedModel):
 
         self.backbone_params["max_text_len"] = max_text_len
 
-        self.head_params["alphabet"] = self._generate_alphabet(alphabet)
+        self.head_params["alphabet"] = self._generate_alphabet(  # type: ignore
+            alphabet,
+        )
         self.head_params["ignore_unknown"] = ignore_unknown
         self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
@@ -97,21 +99,21 @@ class OCRRecognitionModel(BasePredefinedModel):
             ModelNodeConfig(
                 name=self.backbone,
                 alias=f"{self.task_name}-{self.backbone}",
-                freezing=self.backbone_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="SVTRNeck",
                 alias=f"{self.task_name}-SVTRNeck",
                 inputs=[f"{self.task_name}-{self.backbone}"],
-                freezing=self.neck_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.neck_params),
                 params=self.neck_params,
             ),
             ModelNodeConfig(
                 name="OCRCTCHead",
                 alias=f"{self.task_name}-OCRCTCHead",
                 inputs=[f"{self.task_name}-SVTRNeck"],
-                freezing=self.head_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.head_params),
                 params=self.head_params,
             ),
         ]

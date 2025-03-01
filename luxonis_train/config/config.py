@@ -520,7 +520,7 @@ class ExportConfig(ArchiveConfig):
     name: str | None = None
     input_shape: list[int] | None = None
     data_type: Literal["int8", "fp16", "fp32"] = "fp16"
-    reverse_input_channels: bool = True
+    reverse_input_channels: bool | None = None
     scale_values: list[float] | None = None
     mean_values: list[float] | None = None
     output_names: list[str] | None = None
