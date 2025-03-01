@@ -60,7 +60,7 @@ class ModelNodeConfig(ConfigItem):
     alias: str | None = None
     inputs: list[str] = []  # From preceding nodes
     input_sources: list[str] = []  # From data loader
-    freezing: FreezingConfig = FreezingConfig()
+    freezing: FreezingConfig = Field(default_factory=FreezingConfig)
     remove_on_export: bool = False
     task_name: str | None = None
     metadata_task_override: str | dict[str, str] | None = None
@@ -357,7 +357,9 @@ class PreprocessingConfig(BaseModelExtraForbid):
     ] = ImageSize(256, 256)
     keep_aspect_ratio: bool = True
     color_space: Literal["RGB", "BGR"] = "RGB"
-    normalize: NormalizeAugmentationConfig = NormalizeAugmentationConfig()
+    normalize: NormalizeAugmentationConfig = Field(
+        default_factory=NormalizeAugmentationConfig
+    )
     augmentations: list[AugmentationConfig] = []
 
     @model_validator(mode="before")
@@ -398,7 +400,9 @@ class CallbackConfig(ConfigItem):
 
 
 class TrainerConfig(BaseModelExtraForbid):
-    preprocessing: PreprocessingConfig = PreprocessingConfig()
+    preprocessing: PreprocessingConfig = Field(
+        default_factory=PreprocessingConfig
+    )
     use_rich_progress_bar: bool = True
 
     precision: Literal["16-mixed", "32"] = "32"
@@ -431,8 +435,12 @@ class TrainerConfig(BaseModelExtraForbid):
 
     callbacks: list[CallbackConfig] = []
 
-    optimizer: ConfigItem = ConfigItem(name="Adam")
-    scheduler: ConfigItem = ConfigItem(name="ConstantLR")
+    optimizer: ConfigItem = Field(
+        default_factory=lambda: ConfigItem(name="Adam")
+    )
+    scheduler: ConfigItem = Field(
+        default_factory=lambda: ConfigItem(name="ConstantLR")
+    )
 
     training_strategy: ConfigItem | None = None
 
@@ -524,8 +532,10 @@ class ExportConfig(ArchiveConfig):
     scale_values: list[float] | None = None
     mean_values: list[float] | None = None
     output_names: list[str] | None = None
-    onnx: OnnxExportConfig = OnnxExportConfig()
-    blobconverter: BlobconverterExportConfig = BlobconverterExportConfig()
+    onnx: OnnxExportConfig = Field(default_factory=OnnxExportConfig)
+    blobconverter: BlobconverterExportConfig = Field(
+        default_factory=BlobconverterExportConfig
+    )
 
     @model_validator(mode="after")
     def check_values(self) -> Self:
@@ -553,7 +563,7 @@ class TunerConfig(BaseModelExtraForbid):
     use_pruner: bool = True
     n_trials: PositiveInt | None = 15
     timeout: PositiveInt | None = None
-    storage: StorageConfig = StorageConfig()
+    storage: StorageConfig = Field(default_factory=StorageConfig)
     params: Annotated[
         dict[str, list[str | int | float | bool | list]],
         Field(default={}, min_length=1),
@@ -561,16 +571,16 @@ class TunerConfig(BaseModelExtraForbid):
 
 
 class Config(LuxonisConfig):
-    model: ModelConfig = ModelConfig()
+    model: ModelConfig = Field(default_factory=ModelConfig)
 
-    loader: LoaderConfig = LoaderConfig()
-    tracker: TrackerConfig = TrackerConfig()
+    loader: LoaderConfig = Field(default_factory=LoaderConfig)
+    tracker: TrackerConfig = Field(default_factory=TrackerConfig)
     trainer: TrainerConfig
-    exporter: ExportConfig = ExportConfig()
-    archiver: ArchiveConfig = ArchiveConfig()
+    exporter: ExportConfig = Field(default_factory=ExportConfig)
+    archiver: ArchiveConfig = Field(default_factory=ArchiveConfig)
     tuner: TunerConfig | None = None
 
-    ENVIRON: Environ = Field(Environ(), exclude=True)
+    ENVIRON: Environ = Field(exclude=True, default_factory=Environ)
 
     @model_validator(mode="before")
     @classmethod
