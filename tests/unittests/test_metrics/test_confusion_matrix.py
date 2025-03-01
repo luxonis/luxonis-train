@@ -13,9 +13,7 @@ def test_compute_detection_confusion_matrix_specific_case():
 
         def forward(self, _): ...
 
-    metric = ConfusionMatrix(
-        node=DummyNodeDetection(n_classes=3),
-    )
+    metric = ConfusionMatrix(node=DummyNodeDetection(n_classes=3))
 
     preds = [torch.empty((0, 6)) for _ in range(3)]
     preds.append(

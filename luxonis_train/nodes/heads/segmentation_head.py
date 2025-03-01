@@ -35,8 +35,7 @@ class SegmentationHead(BaseHead[Tensor, Tensor]):
             in_channels //= 2
 
         self.head = nn.Sequential(
-            *modules,
-            nn.Conv2d(in_channels, self.n_classes, kernel_size=1),
+            *modules, nn.Conv2d(in_channels, self.n_classes, kernel_size=1)
         )
 
     def forward(self, inputs: Tensor) -> Tensor:
@@ -48,6 +47,4 @@ class SegmentationHead(BaseHead[Tensor, Tensor]):
         @rtype: dict
         @return: Custom head configuration.
         """
-        return {
-            "is_softmax": False,
-        }
+        return {"is_softmax": False}

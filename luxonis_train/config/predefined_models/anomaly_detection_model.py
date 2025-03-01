@@ -108,7 +108,7 @@ class AnomalyDetectionModel(BasePredefinedModel):
                 attached_to=f"{self.task_name}-DiscSubNetHead",
                 params={"num_classes": 2, "task": "multiclass"},
                 is_main_metric=True,
-            ),
+            )
         ]
 
     @property

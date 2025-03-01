@@ -8,11 +8,7 @@ from torchvision.ops import box_convert
 from typing_extensions import override
 
 from luxonis_train.tasks import Metadata, Tasks
-from luxonis_train.utils import (
-    compute_pose_oks,
-    get_sigmas,
-    get_with_default,
-)
+from luxonis_train.utils import compute_pose_oks, get_sigmas, get_with_default
 from luxonis_train.utils.keypoints import get_center_keypoints, insert_class
 
 from .base_metric import BaseMetric, State

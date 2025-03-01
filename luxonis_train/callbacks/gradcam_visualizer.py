@@ -11,9 +11,7 @@ from pytorch_grad_cam.utils.model_targets import (
 from torch import Tensor
 
 import luxonis_train as lxt
-from luxonis_train.attached_modules.visualizers import (
-    get_denormalized_images,
-)
+from luxonis_train.attached_modules.visualizers import get_denormalized_images
 from luxonis_train.typing import Packet
 
 

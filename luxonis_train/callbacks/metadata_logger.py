@@ -27,9 +27,7 @@ class MetadataLogger(pl.Callback):
         self.hyperparams = hyperparams
 
     def on_fit_start(
-        self,
-        _: pl.Trainer,
-        pl_module: "lxt.LuxonisLightningModule",
+        self, _: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
         cfg: Config = pl_module.cfg
 

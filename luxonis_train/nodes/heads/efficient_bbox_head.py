@@ -74,8 +74,7 @@ class EfficientBBoxHead(BaseDetectionHead):
         for i in range(self.n_heads):
             self.heads.append(
                 EfficientDecoupledBlock(
-                    in_channels=self.in_channels[i],
-                    n_classes=self.n_classes,
+                    in_channels=self.in_channels[i], n_classes=self.n_classes
                 )
             )
 
@@ -135,11 +134,7 @@ class EfficientBBoxHead(BaseDetectionHead):
             multiply_with_stride=False,
         )
         boxes = self._postprocess_detections(
-            features,
-            class_scores,
-            distributions,
-            anchor_points,
-            stride_tensor,
+            features, class_scores, distributions, anchor_points, stride_tensor
         )
         return {
             "boundingbox": boxes,
@@ -159,16 +154,13 @@ class EfficientBBoxHead(BaseDetectionHead):
             conf, _ = classes.max(1, keepdim=True)
             out = torch.cat([regressions, conf, classes], dim=1)
             bboxes.append(out)
-        return {
-            "boundingbox": bboxes,
-        }
+        return {"boundingbox": bboxes}
 
     @staticmethod
     def _postprocess(outputs: Iterable[Tensor]) -> Tensor:
-        return torch.cat(
-            [out.flatten(2) for out in outputs],
-            dim=2,
-        ).permute(0, 2, 1)
+        return torch.cat([out.flatten(2) for out in outputs], dim=2).permute(
+            0, 2, 1
+        )
 
     def get_variant_weights(self, initialize_weights: bool) -> str | None:
         if self.in_channels == [32, 64, 128]:  # light predefined model
@@ -240,6 +232,4 @@ class EfficientBBoxHead(BaseDetectionHead):
         @rtype: dict
         @return: Custom head configuration.
         """
-        return super().get_custom_head_config() | {
-            "subtype": "yolov6",
-        }
+        return super().get_custom_head_config() | {"subtype": "yolov6"}

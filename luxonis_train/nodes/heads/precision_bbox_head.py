@@ -140,9 +140,7 @@ class PrecisionBBoxHead(BaseDetectionHead):
         @rtype: dict
         @return: Custom head configuration.
         """
-        return super().get_custom_head_config() | {
-            "subtype": "yolov8",
-        }
+        return super().get_custom_head_config() | {"subtype": "yolov8"}
 
     def _construct_raw_bboxes(
         self, classes_list: list[Tensor], regressions_list: list[Tensor]

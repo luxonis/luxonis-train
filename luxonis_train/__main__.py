@@ -200,11 +200,7 @@ def inspect(
         h, w, _ = main_image.shape
         new_h, new_w = int(h * size_multiplier), int(w * size_multiplier)
         main_image = cv2.resize(main_image, (new_w, new_h))
-        viz = visualize(
-            main_image,
-            np_labels,
-            loader.get_classes(),
-        )
+        viz = visualize(main_image, np_labels, loader.get_classes())
         cv2.imshow("Visualization", viz)
         if cv2.waitKey(0) in [ord("q"), 27]:
             break

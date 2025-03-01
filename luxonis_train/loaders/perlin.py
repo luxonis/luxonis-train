@@ -34,10 +34,7 @@ def tile_grads(
 
 
 def dot(
-    grad: Tensor,
-    shift: tuple[int, int],
-    grid: Tensor,
-    shape: tuple[int, int],
+    grad: Tensor, shift: tuple[int, int], grid: Tensor, shape: tuple[int, int]
 ) -> Tensor:
     return (
         torch.stack(
@@ -92,11 +89,7 @@ def rotate_noise(noise: Tensor) -> Tensor:  # pragma: no cover
     angle = torch.rand(1) * 2 * torch.pi
     h, w = noise.shape
     center_y, center_x = h // 2, w // 2
-    y, x = torch.meshgrid(
-        torch.arange(h),
-        torch.arange(w),
-        indexing="ij",
-    )
+    y, x = torch.meshgrid(torch.arange(h), torch.arange(w), indexing="ij")
     x_shifted = x - center_x
     y_shifted = y - center_y
     cos_a = torch.cos(angle)
@@ -132,9 +125,7 @@ def generate_perlin_noise(
 
 
 def apply_anomaly_to_img(
-    img: Tensor,
-    anomaly_img: Tensor,
-    beta: float | None = None,
+    img: Tensor, anomaly_img: Tensor, beta: float | None = None
 ) -> tuple[Tensor, Tensor]:
     """Applies Perlin noise-based anomalies to a single image (C, H, W).
 
@@ -153,9 +144,7 @@ def apply_anomaly_to_img(
         - perlin_mask (Tensor): The Perlin noise mask applied to the image.
     """
 
-    perlin_mask = generate_perlin_noise(
-        shape=(img.shape[1], img.shape[2]),
-    )
+    perlin_mask = generate_perlin_noise(shape=(img.shape[1], img.shape[2]))
 
     if beta is None:
         beta = torch.rand(1).item() * 0.8

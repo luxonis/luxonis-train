@@ -64,6 +64,4 @@ class BiSeNetHead(BaseHead[Tensor, Tensor]):
         @rtype: dict
         @return: Custom head configuration.
         """
-        return {
-            "is_softmax": False,
-        }
+        return {"is_softmax": False}

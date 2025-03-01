@@ -9,10 +9,7 @@ from luxonis_train.utils.registry import STRATEGIES
 
 
 class BaseTrainingStrategy(
-    ABC,
-    metaclass=AutoRegisterMeta,
-    register=False,
-    registry=STRATEGIES,
+    ABC, metaclass=AutoRegisterMeta, register=False, registry=STRATEGIES
 ):
     @abstractmethod
     def __init__(self, pl_module: "lxt.LuxonisLightningModule", **kwargs): ...

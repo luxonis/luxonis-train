@@ -1,6 +1,9 @@
+import pytest
+from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
+from luxonis_train.nodes.backbones import __all__ as BACKBONES
 
 
 def get_opts_backbone(backbone: str) -> Params:
@@ -87,11 +90,7 @@ def get_opts_variant(variant: str) -> Params:
     }
 
 
-def train_and_test(
-    config: Params,
-    opts: Params,
-    train_overfit: bool = False,
-):
+def train_and_test(config: Params, opts: Params, train_overfit: bool = False):
     model = LuxonisModel(config, opts)
     model.train()
     if train_overfit:  # pragma: no cover
@@ -101,25 +100,21 @@ def train_and_test(
                 assert value > 0.8, f"{name} = {value} (expected > 0.8)"
 
 
-# @pytest.mark.parametrize("backbone", BACKBONES)
-# def test_backbones(
-#     backbone: str,
-#     config: Params,
-#     parking_lot_dataset: LuxonisDataset,
-# ):
-#     opts = get_opts_backbone(backbone)
-#     opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
-#     opts["trainer.epochs"] = 1
-#     train_and_test(config, opts)
-#
-#
-# @pytest.mark.parametrize("variant", ["n", "s", "m", "l"])
-# def test_variants(
-#     variant: str,
-#     config: Params,
-#     parking_lot_dataset: LuxonisDataset,
-# ):
-#     opts = get_opts_variant(variant)
-#     opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
-#     opts["trainer.epochs"] = 1
-#     train_and_test(config, opts)
+@pytest.mark.parametrize("backbone", BACKBONES)
+def test_backbones(
+    backbone: str, config: Params, parking_lot_dataset: LuxonisDataset
+):
+    opts = get_opts_backbone(backbone)
+    opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
+    opts["trainer.epochs"] = 1
+    train_and_test(config, opts)
+
+
+@pytest.mark.parametrize("variant", ["n", "s", "m", "l"])
+def test_variants(
+    variant: str, config: Params, parking_lot_dataset: LuxonisDataset
+):
+    opts = get_opts_variant(variant)
+    opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
+    opts["trainer.epochs"] = 1
+    train_and_test(config, opts)

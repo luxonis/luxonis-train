@@ -111,12 +111,10 @@ class ATSSAssigner(nn.Module):
         )
 
         # Generate final assignments based on masks
-        (
-            assigned_labels,
-            assigned_bboxes,
-            assigned_scores,
-        ) = self._get_final_assignments(
-            gt_labels, gt_bboxes, assigned_gt_idx, mask_pos_sum
+        (assigned_labels, assigned_bboxes, assigned_scores) = (
+            self._get_final_assignments(
+                gt_labels, gt_bboxes, assigned_gt_idx, mask_pos_sum
+            )
         )
 
         # Soft label with IoU
@@ -186,10 +184,7 @@ class ATSSAssigner(nn.Module):
         return torch.cat(is_in_topk_list, dim=-1), torch.cat(topk_idxs, dim=-1)
 
     def _get_positive_samples(
-        self,
-        is_in_topk: Tensor,
-        topk_idxs: Tensor,
-        overlaps: Tensor,
+        self, is_in_topk: Tensor, topk_idxs: Tensor, overlaps: Tensor
     ) -> Tensor:
         """Computes threshold and returns mask for samples over
         threshold.

@@ -239,5 +239,5 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         @return: Custom head configuration.
         """
         return super().get_custom_head_config() | {
-            "n_keypoints": self.n_keypoints,
+            "n_keypoints": self.n_keypoints
         }

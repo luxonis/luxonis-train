@@ -25,9 +25,7 @@ def create_model_config() -> Params:
             "name": "detection_light_model",
             "predefined_model": {
                 "name": "DetectionModel",
-                "params": {
-                    "variant": "light",
-                },
+                "params": {"variant": "light"},
             },
         },
     }
@@ -54,8 +52,7 @@ def sequential_scheduler() -> ConfigItem:
 
 def cosine_annealing_scheduler() -> ConfigItem:
     return ConfigItem(
-        name="CosineAnnealingLR",
-        params={"T_max": 2, "eta_min": 0.001},
+        name="CosineAnnealingLR", params={"T_max": 2, "eta_min": 0.001}
     )
 
 

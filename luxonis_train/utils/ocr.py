@@ -76,11 +76,7 @@ class OCRDecoder:
 class OCREncoder:
     """OCR encoder for converting text to model targets."""
 
-    def __init__(
-        self,
-        alphabet: list[str],
-        ignore_unknown: bool = True,
-    ):
+    def __init__(self, alphabet: list[str], ignore_unknown: bool = True):
         """Initializes the OCR encoder.
 
         @type alphabet: list[str]

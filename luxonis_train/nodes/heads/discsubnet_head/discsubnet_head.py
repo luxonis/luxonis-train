@@ -15,10 +15,7 @@ VariantLiteral: TypeAlias = Literal["n", "l"]
 
 def get_variant(variant: VariantLiteral) -> int:
     """Returns the base width for the specified variant."""
-    variants = {
-        "n": 32,
-        "l": 64,
-    }
+    variants = {"n": 32, "l": 64}
 
     if variant not in variants:
         raise ValueError(

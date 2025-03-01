@@ -135,7 +135,7 @@ class SegmentationModel(BasePredefinedModel):
                 attached_to=f"{self.task_name}-DDRNetSegmentationHead",
                 params=self.loss_params,
                 weight=1.0,
-            ),
+            )
         ]
         if self.backbone_params.get("use_aux_heads", False):
             loss_list.append(

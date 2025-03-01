@@ -12,11 +12,7 @@ from luxonis_train.nodes.blocks import (
 
 
 class PANUpBlockBase(ABC, nn.Module):
-    def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-    ):
+    def __init__(self, in_channels: int, out_channels: int):
         """Base RepPANNeck up block.
 
         @type in_channels: int
@@ -81,10 +77,7 @@ class RepUpBlock(PANUpBlockBase):
         @param n_repeats: Number of RepVGGBlock repeats.
         """
 
-        super().__init__(
-            in_channels=in_channels,
-            out_channels=out_channels,
-        )
+        super().__init__(in_channels=in_channels, out_channels=out_channels)
 
         self._encode_block = ModuleRepeater(
             module=GeneralReparametrizableBlock,
@@ -122,10 +115,7 @@ class CSPUpBlock(PANUpBlockBase):
         @type e: float
         @param e: Factor that controls number of intermediate channels.
         """
-        super().__init__(
-            in_channels=in_channels,
-            out_channels=out_channels,
-        )
+        super().__init__(in_channels=in_channels, out_channels=out_channels)
         self._encode_block = CSPStackRepBlock(
             in_channels=in_channels_next + out_channels,
             out_channels=out_channels,
@@ -139,11 +129,7 @@ class CSPUpBlock(PANUpBlockBase):
 
 
 class PANDownBlockBase(ABC, nn.Module):
-    def __init__(
-        self,
-        in_channels: int,
-        downsample_out_channels: int,
-    ):
+    def __init__(self, in_channels: int, downsample_out_channels: int):
         """Base RepPANNeck up block.
 
         @type in_channels: int

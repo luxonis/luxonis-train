@@ -106,12 +106,9 @@ def test_anchors_for_fpn_features():
     features = [torch.rand(1, 256, 14, 14), torch.rand(1, 256, 28, 28)]
     strides = torch.tensor([8, 16])
 
-    (
-        anchors,
-        anchor_points,
-        n_anchors_list,
-        stride_tensor,
-    ) = anchors_for_fpn_features(features, strides)
+    (anchors, anchor_points, n_anchors_list, stride_tensor) = (
+        anchors_for_fpn_features(features, strides)
+    )
 
     assert isinstance(anchors, Tensor)
     assert isinstance(anchor_points, Tensor)

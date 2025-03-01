@@ -74,10 +74,7 @@ class SegmentationVisualizer(BaseVisualizer):
         for i in range(len(viz)):
             target = targets[i]
             viz[i] = draw_segmentation_labels(
-                canvas[i].clone(),
-                target,
-                colors=colors,
-                **kwargs,
+                canvas[i].clone(), target, colors=colors, **kwargs
             ).to(canvas.device)
 
         return viz

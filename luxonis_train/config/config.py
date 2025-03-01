@@ -261,7 +261,7 @@ class ModelConfig(BaseModelExtraForbid):
                 logger.warning(
                     f"Field `model.{section}` is deprecated. "
                     f"Please specify `{section}` under "
-                    "the node they are attached to.",
+                    "the node they are attached to."
                 )
             if not check_type(data["nodes"], list[dict[str, Any]]):
                 raise ValueError(

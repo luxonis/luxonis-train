@@ -156,8 +156,7 @@ def test_parsing_loader():
 
 
 @pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="Tuning not supported on Windows",
+    sys.platform == "win32", reason="Tuning not supported on Windows"
 )
 def test_tune(opts: Params, coco_dataset: LuxonisDataset):
     opts["tuner.params"] = {
@@ -258,9 +257,7 @@ def test_callbacks(opts: Params, parking_lot_dataset: LuxonisDataset):
             },
             {"name": "TestOnTrainEnd"},
             {"name": "UploadCheckpoint"},
-            {
-                "name": "ExportOnTrainEnd",
-            },
+            {"name": "ExportOnTrainEnd"},
             {
                 "name": "ExportOnTrainEnd",
                 "params": {"preferred_checkpoint": "loss"},
@@ -302,9 +299,7 @@ def test_smart_cfg_auto_populate(
     opts: Params, parking_lot_dataset: LuxonisDataset
 ):
     config_file = "tests/configs/smart_cfg_populate_config.yaml"
-    opts = {
-        "loader.params.dataset_name": parking_lot_dataset.dataset_name,
-    }
+    opts = {"loader.params.dataset_name": parking_lot_dataset.dataset_name}
     model = LuxonisModel(config_file, opts)
     assert (
         model.cfg.trainer.scheduler.params["T_max"] == model.cfg.trainer.epochs

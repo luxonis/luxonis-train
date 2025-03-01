@@ -143,9 +143,7 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
             C{"Value"}.
         """
         rich_table = Table(
-            title=title,
-            show_header=True,
-            header_style="bold magenta",
+            title=title, show_header=True, header_style="bold magenta"
         )
         rich_table.add_column(key_name, style="magenta")
         rich_table.add_column(value_name, style="white")

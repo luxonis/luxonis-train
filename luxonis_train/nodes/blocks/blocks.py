@@ -36,10 +36,7 @@ class PreciseDecoupledBlock(nn.Module):
                 groups=in_channels,
             ),
             ConvModule(
-                in_channels,
-                cls_channels,
-                kernel_size=1,
-                activation=nn.SiLU(),
+                in_channels, cls_channels, kernel_size=1, activation=nn.SiLU()
             ),
             ConvModule(
                 cls_channels,
@@ -50,10 +47,7 @@ class PreciseDecoupledBlock(nn.Module):
                 groups=cls_channels,
             ),
             ConvModule(
-                cls_channels,
-                cls_channels,
-                kernel_size=1,
-                activation=nn.SiLU(),
+                cls_channels, cls_channels, kernel_size=1, activation=nn.SiLU()
             ),
             nn.Conv2d(cls_channels, n_classes, kernel_size=1),
         )
@@ -87,10 +81,7 @@ class EfficientDecoupledBlock(nn.Module):
 
     @typechecked
     def __init__(
-        self,
-        in_channels: int,
-        n_classes: int,
-        prior_probability: float = 1e-2,
+        self, in_channels: int, n_classes: int, prior_probability: float = 1e-2
     ):
         """Efficient Decoupled block used for class and regression
         predictions.
@@ -444,11 +435,7 @@ class SqueezeExciteBlock(nn.Module):
 RefB = TypeVar("RefB", bound=nn.Module)
 
 
-class GeneralReparametrizableBlock(
-    nn.Module,
-    Reparametrizable,
-    Generic[RefB],
-):
+class GeneralReparametrizableBlock(nn.Module, Reparametrizable, Generic[RefB]):
     __call__: Callable[[Tensor], Tensor]
 
     @typechecked
@@ -638,12 +625,7 @@ class GeneralReparametrizableBlock(
         beta = module.bn.bias
         eps = module.bn.eps
         return self._postprocess_fusion(
-            running_var,
-            running_mean,
-            gamma,
-            beta,
-            kernel,
-            eps,
+            running_var, running_mean, gamma, beta, kernel, eps
         )
 
     def _fuse_batch_norm(
@@ -651,21 +633,13 @@ class GeneralReparametrizableBlock(
     ) -> tuple[Tensor, Tensor]:
         input_dim = self.in_channels // self.groups
         kernel = torch.zeros(
-            (
-                self.in_channels,
-                input_dim,
-                self.kernel_size,
-                self.kernel_size,
-            ),
+            (self.in_channels, input_dim, self.kernel_size, self.kernel_size),
             dtype=module.weight.dtype,
             device=module.weight.device,
         )
         for i in range(self.in_channels):
             kernel[
-                i,
-                i % input_dim,
-                self.kernel_size // 2,
-                self.kernel_size // 2,
+                i, i % input_dim, self.kernel_size // 2, self.kernel_size // 2
             ] = 1
 
         running_mean = module.running_mean
@@ -699,10 +673,7 @@ class GeneralReparametrizableBlock(
 class ModuleRepeater(nn.Sequential):
     @typechecked
     def __init__(
-        self,
-        module: Callable[..., nn.Module],
-        n_repeats: int,
-        **kwargs,
+        self, module: Callable[..., nn.Module], n_repeats: int, **kwargs
     ):
         """Module which repeats the block n times. First block accepts
         in_channels and outputs out_channels while subsequent blocks
@@ -1031,20 +1002,10 @@ class ResNetBottleneck(nn.Module):
         """
         super().__init__()
         self.expansion = expansion
-        self.conv1 = nn.Conv2d(
-            in_channels,
-            planes,
-            kernel_size=1,
-            bias=False,
-        )
+        self.conv1 = nn.Conv2d(in_channels, planes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(planes)
         self.conv2 = nn.Conv2d(
-            planes,
-            planes,
-            kernel_size=3,
-            stride=stride,
-            padding=1,
-            bias=False,
+            planes, planes, kernel_size=3, stride=stride, padding=1, bias=False
         )
         self.bn2 = nn.BatchNorm2d(planes)
         self.conv3 = nn.Conv2d(

@@ -88,10 +88,9 @@ class Nodes(dict[str, BaseNode] if TYPE_CHECKING else nn.ModuleDict):
             for input_name, shape in shapes.items()
         }
 
-        for node_name, (
-            Node,
-            kwargs,
-        ), node_input_names, _ in traverse_graph(graph, node_kwargs):
+        for node_name, (Node, kwargs), node_input_names, _ in traverse_graph(
+            graph, node_kwargs
+        ):
             node_dummy_inputs: list[Packet[Tensor]] = []
             node_input_shapes: list[Packet[Size]] = []
 
@@ -294,9 +293,7 @@ def build_optimizers(
             )
 
         scheduler = SequentialLR(
-            optimizer,
-            schedulers=schedulers_list,
-            milestones=milestones,
+            optimizer, schedulers=schedulers_list, milestones=milestones
         )
     else:
         scheduler = _get_scheduler(cfg_scheduler, optimizer)

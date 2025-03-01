@@ -209,7 +209,7 @@ class LuxonisLightningModule(pl.LightningModule):
                     node_name
                 ].items():
                     viz = combine_visualizations(
-                        visualizer.run(images, images, outputs, labels),
+                        visualizer.run(images, images, outputs, labels)
                     )
                     visualizations[node_name][viz_name] = viz
 

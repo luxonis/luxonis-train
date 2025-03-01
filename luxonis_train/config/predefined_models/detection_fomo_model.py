@@ -100,7 +100,7 @@ class FOMOModel(BasePredefinedModel):
                 name="ObjectKeypointSimilarity",
                 attached_to=f"{self.task_name}-FOMOHead",
                 is_main_metric=True,
-            ),
+            )
         ]
 
     @property

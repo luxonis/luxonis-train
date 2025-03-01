@@ -17,8 +17,7 @@ class NeedsCheckpoint(pl.Callback):
 
     @staticmethod
     def _get_checkpoint(
-        checkpoint_type: str,
-        pl_module: "lxt.LuxonisLightningModule",
+        checkpoint_type: str, pl_module: "lxt.LuxonisLightningModule"
     ) -> str | None:
         if checkpoint_type == "loss":
             path = pl_module.core.get_min_loss_checkpoint_path()

@@ -95,8 +95,7 @@ class ConfusionMatrix(BaseMetric):
             target[..., 2:6] *= scale_factors
 
             self.detection_cm += self._compute_detection_confusion_matrix(
-                predictions,
-                target,
+                predictions, target
             )
             return
 

@@ -25,12 +25,10 @@ def get_variant(variant: VariantLiteral) -> ClassificationVariant:
     ClassificationModel."""
     variants = {
         "light": ClassificationVariant(
-            backbone="ResNet",
-            backbone_params={"variant": "18"},
+            backbone="ResNet", backbone_params={"variant": "18"}
         ),
         "heavy": ClassificationVariant(
-            backbone="ResNet",
-            backbone_params={"variant": "50"},
+            backbone="ResNet", backbone_params={"variant": "50"}
         ),
     }
 

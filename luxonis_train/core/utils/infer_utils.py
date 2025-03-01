@@ -68,9 +68,7 @@ def window_closed() -> bool:  # pragma: no cover
 
 
 def infer_from_video(
-    model: "lxt.LuxonisModel",
-    video_path: str | Path,
-    save_dir: Path | None,
+    model: "lxt.LuxonisModel", video_path: str | Path, save_dir: Path | None
 ) -> None:
     """Runs inference on individual frames from a video.
 
@@ -157,10 +155,7 @@ def infer_from_loader(
         batch_size = next(
             iter(next(iter(visualizations.values())).values())
         ).shape[0]
-        renders = process_visualizations(
-            visualizations,
-            batch_size=batch_size,
-        )
+        renders = process_visualizations(visualizations, batch_size=batch_size)
         for j in range(batch_size):
             for (node_name, viz_name), visualizations in renders.items():
                 viz = visualizations[j]
@@ -183,9 +178,7 @@ def infer_from_loader(
 
 
 def infer_from_directory(
-    model: "lxt.LuxonisModel",
-    img_paths: Iterable[Path],
-    save_dir: Path | None,
+    model: "lxt.LuxonisModel", img_paths: Iterable[Path], save_dir: Path | None
 ) -> None:
     """Runs inference on individual images from a directory.
 
@@ -200,9 +193,7 @@ def infer_from_directory(
 
     def generator() -> DatasetIterator:
         for img_path in img_paths:
-            yield {
-                "file": img_path,
-            }
+            yield {"file": img_path}
 
     dataset_name = "infer_from_directory"
     dataset = LuxonisDataset(dataset_name=dataset_name, delete_existing=True)

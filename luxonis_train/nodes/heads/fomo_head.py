@@ -83,12 +83,7 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         if not self.use_nms:
             return heatmap
 
-        return F.max_pool2d(
-            heatmap,
-            kernel_size=3,
-            stride=1,
-            padding=1,
-        )
+        return F.max_pool2d(heatmap, kernel_size=3, stride=1, padding=1)
 
     def _heatmap_to_kpts(self, heatmap: Tensor) -> list[Tensor]:
         """Convert heatmap to keypoint pairs using local-max NMS so that

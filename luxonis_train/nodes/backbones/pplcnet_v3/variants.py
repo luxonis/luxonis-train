@@ -134,7 +134,7 @@ def get_variant(variant: Literal["rec-light"]) -> PPLCNetV3Variant:
                     ),
                 ],
             ],
-        ),
+        )
     }
     if variant not in variants:  # pragma: no cover
         raise ValueError(

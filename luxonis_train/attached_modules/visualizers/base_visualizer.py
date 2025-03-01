@@ -12,11 +12,7 @@ from luxonis_train.utils.registry import VISUALIZERS
 Ts = TypeVarTuple("Ts")
 
 
-class BaseVisualizer(
-    BaseAttachedModule,
-    register=False,
-    registry=VISUALIZERS,
-):
+class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
     """A base class for all visualizers.
 
     This class defines the basic interface for all visualizers. It

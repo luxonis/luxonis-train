@@ -10,9 +10,7 @@ from .needs_checkpoint import NeedsCheckpoint
 @CALLBACKS.register()
 class ArchiveOnTrainEnd(NeedsCheckpoint):
     def on_train_end(
-        self,
-        _: pl.Trainer,
-        pl_module: "lxt.LuxonisLightningModule",
+        self, _: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
         """Archives the model on train end.
 

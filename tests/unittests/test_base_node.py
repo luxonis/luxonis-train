@@ -13,9 +13,7 @@ class DummyNode(BaseNode, register=False):
 
 @pytest.fixture
 def packet() -> Packet[Tensor]:
-    return {
-        "features": [torch.rand(3, 224, 224)],
-    }
+    return {"features": [torch.rand(3, 224, 224)]}
 
 
 @pytest.mark.parametrize(

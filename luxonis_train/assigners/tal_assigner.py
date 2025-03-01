@@ -155,12 +155,10 @@ class TaskAlignedAssigner(nn.Module):
         )
 
         # Generate final targets based on masks
-        (
-            assigned_labels,
-            assigned_bboxes,
-            assigned_scores,
-        ) = self._get_final_assignments(
-            gt_labels, gt_bboxes, assigned_gt_idx, mask_pos_sum
+        (assigned_labels, assigned_bboxes, assigned_scores) = (
+            self._get_final_assignments(
+                gt_labels, gt_bboxes, assigned_gt_idx, mask_pos_sum
+            )
         )
 
         # normalize

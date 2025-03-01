@@ -16,7 +16,7 @@ class MeanAveragePrecisionSegmentation(
         super().__init__(**kwargs)
 
         self.metric = detection.MeanAveragePrecision(
-            iou_type=("bbox", "segm"),  # type: ignore
+            iou_type=("bbox", "segm")  # type: ignore
         )
 
     def update(

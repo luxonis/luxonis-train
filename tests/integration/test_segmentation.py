@@ -1,5 +1,7 @@
 from typing import cast
 
+import pytest
+from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
@@ -13,9 +15,7 @@ def get_opts(backbone: str) -> Params:
     opts = {
         "model": {
             "nodes": [
-                {
-                    "name": backbone,
-                },
+                {"name": backbone},
                 {
                     "name": "SegmentationHead",
                     "alias": "seg-color-segmentation",
@@ -125,12 +125,10 @@ def train_and_test(
                 assert value > 0.8, f"{name} = {value} (expected > 0.8)"
 
 
-# @pytest.mark.parametrize("backbone", BACKBONES)
-# def test_backbones(
-#     backbone: str,
-#     config: Params,
-#     parking_lot_dataset: LuxonisDataset,
-# ):
-#     opts = get_opts(backbone)
-#     opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
-#     train_and_test(config, opts)
+@pytest.mark.parametrize("backbone", BACKBONES)
+def test_backbones(
+    backbone: str, config: Params, parking_lot_dataset: LuxonisDataset
+):
+    opts = get_opts(backbone)
+    opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
+    train_and_test(config, opts)

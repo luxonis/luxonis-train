@@ -14,10 +14,7 @@ from luxonis_train.utils.registry import MODELS
 
 
 class BasePredefinedModel(
-    ABC,
-    metaclass=AutoRegisterMeta,
-    registry=MODELS,
-    register=False,
+    ABC, metaclass=AutoRegisterMeta, registry=MODELS, register=False
 ):
     @property
     @abstractmethod

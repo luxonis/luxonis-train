@@ -121,9 +121,7 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
                         bias=True,
                     )
                     for in_channels, out_channels in zip(
-                        blocks_out_channels,
-                        detecion_out_channels,
-                        strict=True,
+                        blocks_out_channels, detecion_out_channels, strict=True
                     )
                 ]
             )

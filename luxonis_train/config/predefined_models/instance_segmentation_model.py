@@ -92,7 +92,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
                 alias=f"{self.task_name}-{self.backbone}",
                 freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
-            ),
+            )
         ]
         if self.use_neck:
             nodes.append(
@@ -139,7 +139,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
                 name="MeanAveragePrecision",
                 attached_to=f"{self.task_name}-PrecisionSegmentBBoxHead",
                 is_main_metric=True,
-            ),
+            )
         ]
         if self.enable_confusion_matrix:
             metrics.append(

@@ -13,8 +13,7 @@ from luxonis_train.config.config import PreprocessingConfig
 
 @contextmanager
 def replace_weights(
-    module: "lxt.LuxonisLightningModule",
-    weights: str | Path | None = None,
+    module: "lxt.LuxonisLightningModule", weights: str | Path | None = None
 ) -> Generator:
     old_weights = None
     if weights is not None:

@@ -43,7 +43,7 @@ def get_variant(variant: VariantLiteral) -> OCRRecognitionVariant:
             backbone_params={"variant": "rec-light"},
             neck_params={},
             head_params={},
-        ),
+        )
     }
 
     if variant not in variants:
@@ -85,7 +85,7 @@ class OCRRecognitionModel(BasePredefinedModel):
         self.backbone_params["max_text_len"] = max_text_len
 
         self.head_params["alphabet"] = self._generate_alphabet(  # type: ignore
-            alphabet,
+            alphabet
         )
         self.head_params["ignore_unknown"] = ignore_unknown
         self.loss_params = loss_params or {}
@@ -139,7 +139,7 @@ class OCRRecognitionModel(BasePredefinedModel):
                 name="OCRAccuracy",
                 attached_to=f"{self.task_name}-OCRCTCHead",
                 is_main_metric=True,
-            ),
+            )
         ]
 
     @property

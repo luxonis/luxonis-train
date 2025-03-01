@@ -19,10 +19,7 @@ from luxonis_train.utils import IncompatibleError
 
 
 class BaseAttachedModule(
-    nn.Module,
-    ABC,
-    metaclass=AutoRegisterMeta,
-    register=False,
+    nn.Module, ABC, metaclass=AutoRegisterMeta, register=False
 ):
     """Base class for all modules that are attached to a L{LuxonisNode}.
 

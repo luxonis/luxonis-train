@@ -702,9 +702,7 @@ class LuxonisModel:
             wandb_parent_tracker.log_hyperparams(study.best_params)
 
     def archive(
-        self,
-        path: str | Path | None = None,
-        weights: str | Path | None = None,
+        self, path: str | Path | None = None, weights: str | Path | None = None
     ) -> Path:
         """Generates an NN Archive out of a model executable.
 

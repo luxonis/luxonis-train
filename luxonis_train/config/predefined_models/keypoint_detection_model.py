@@ -92,7 +92,7 @@ class KeypointDetectionModel(BasePredefinedModel):
                 alias=f"{self.task_name}-{self.backbone}",
                 freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
-            ),
+            )
         ]
         if self.use_neck:
             nodes.append(
