@@ -33,12 +33,11 @@ class TorchMetricWrapper(BaseMetric):
                         task = "multiclass"
             if task is not None:
                 logger.warning(
-                    f"Parameter 'task' was not specified for `TorchMetric` "
-                    f"based '{self.name}'. "
-                    f"Assuming task type '{task}' based on the number of "
-                    f"classes ({self.n_classes}). "
-                    f"If this is incorrect, please specify the "
-                    f"'task' parameter in the config."
+                    "Parameter 'task' was not specified for `TorchMetric` "
+                    f"based '{self.name}'. Assuming task type '{task}' "
+                    "based on the number of classes. "
+                    "If this is incorrect, please specify the "
+                    "'task' parameter in the config."
                 )
 
         if task is None:
