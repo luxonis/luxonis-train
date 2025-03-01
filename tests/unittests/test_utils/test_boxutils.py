@@ -84,7 +84,7 @@ def test_bbox_iou(
     assert iou.max() <= 1
 
     if iou_type == "none":
-        with pytest.raises(ValueError, match="Unsupported Bounding Box"):
+        with pytest.raises(ValueError, match="'invalid' not supported"):
             bbox_iou(bbox1, bbox2, iou_type="invalid")  # type: ignore
 
 

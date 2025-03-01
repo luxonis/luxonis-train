@@ -31,8 +31,8 @@ def test_infer_upscale_factor(
     [
         ((1, 1), (2, 1), "are different"),
         ((1, 1), (1, 2), "are different"),
-        ((2, 3), (16, 16), "but height"),
-        ((3, 2), (16, 16), "but width"),
+        ((2, 3), (16, 16), "but width"),
+        ((3, 2), (16, 16), "but height"),
         ((3, 3), (16, 16), "are not integers"),
     ],
 )
