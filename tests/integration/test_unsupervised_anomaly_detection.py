@@ -3,12 +3,12 @@ from pathlib import Path
 import cv2
 import numpy as np
 from luxonis_ml.data import BucketStorage, LuxonisDataset
-from luxonis_ml.typing import Params
+from luxonis_ml.typing import Kwargs
 
 from luxonis_train.core import LuxonisModel
 
 
-def get_config() -> Params:
+def get_config(image_size: tuple[int, int], batch_size: int) -> Kwargs:
     return {
         "model": {
             "name": "DREAM",
@@ -31,11 +31,11 @@ def get_config() -> Params:
         },
         "trainer": {
             "preprocessing": {
-                "train_image_size": [256, 256],
+                "train_image_size": image_size,
                 "keep_aspect_ratio": False,
                 "normalize": {"active": True},
             },
-            "batch_size": 1,
+            "batch_size": batch_size,
             "epochs": 1,
             "n_workers": 0,
             "validation_interval": 10,

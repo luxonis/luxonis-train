@@ -10,10 +10,20 @@ import pytest
 import torchvision
 from luxonis_ml.data import Category, LuxonisDataset
 from luxonis_ml.data.parsers import LuxonisParser
-from luxonis_ml.typing import Params
+from luxonis_ml.typing import Kwargs
 from luxonis_ml.utils import environ
 
 WORK_DIR = Path("tests", "data").absolute()
+
+
+@pytest.fixture(scope="session")
+def image_size() -> tuple[int, int]:
+    return 128, 180
+
+
+@pytest.fixture(scope="session")
+def batch_size() -> int:
+    return 2
 
 
 @pytest.fixture(scope="session")
@@ -160,7 +170,9 @@ def mnist_dataset() -> LuxonisDataset:
 
 
 @pytest.fixture
-def config(train_overfit: bool) -> Params:
+def config(
+    train_overfit: bool, image_size: tuple[int, int], batch_size: int
+) -> Kwargs:
     if train_overfit:  # pragma: no cover
         epochs = 100
     else:
@@ -172,18 +184,15 @@ def config(train_overfit: bool) -> Params:
         },
         "loader": {
             "train_view": "val",
-            "params": {
-                "dataset_name": "_ParkingLot",
-            },
         },
         "trainer": {
-            "batch_size": 4,
+            "batch_size": batch_size,
             "epochs": epochs,
             "n_workers": mp.cpu_count(),
             "validation_interval": epochs,
             "save_top_k": 0,
             "preprocessing": {
-                "train_image_size": [256, 320],
+                "train_image_size": image_size,
                 "keep_aspect_ratio": False,
                 "normalize": {"active": True},
             },
