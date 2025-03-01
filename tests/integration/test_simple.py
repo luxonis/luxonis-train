@@ -126,9 +126,9 @@ def test_custom_tasks(
         with tarfile.open(archive_path) as tar:
             extracted_cfg = tar.extractfile("config.json")
 
-            assert (
-                extracted_cfg is not None
-            ), "Config JSON not found in the archive."
+            assert extracted_cfg is not None, (
+                "Config JSON not found in the archive."
+            )
             generated_config = json.loads(extracted_cfg.read().decode())
 
         # Sort the fields in the config to make the comparison consistent

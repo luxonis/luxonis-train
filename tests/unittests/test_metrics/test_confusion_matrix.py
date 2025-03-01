@@ -52,6 +52,6 @@ def test_compute_detection_confusion_matrix_specific_case():
 
     computed_cm = metric._compute_detection_confusion_matrix(preds, targets)
 
-    assert torch.equal(
-        computed_cm, expected_cm
-    ), f"Expected {expected_cm}, but got {computed_cm}"
+    assert torch.equal(computed_cm, expected_cm), (
+        f"Expected {expected_cm}, but got {computed_cm}"
+    )

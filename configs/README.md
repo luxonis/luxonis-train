@@ -4,7 +4,7 @@ The configuration is defined in a `YAML` file, which you must provide.
 The configuration file consists of a few major blocks that are described below.
 You can create your own config or use/edit one of the examples.
 
-> \[!NOTE\]
+> [!NOTE]
 > The current folder contains predefined configurations that are ready for immediate use. These configurations employ models that are optimized for speed and efficiency. For more information, see [Predefined models](../luxonis_train/config/predefined_models/README.md).
 
 ## Table Of Contents
@@ -285,7 +285,7 @@ Additionally, we support `Mosaic4` and `MixUp` batch augmentations and letterbox
 | `active` | `bool` | `True`        | Whether the augmentation is active |
 | `params` | `dict` | `{}`          | Parameters of the augmentation     |
 
-> \[!NOTE\]
+> [!NOTE]
 > **Important:** The `Flip` augmentation can disrupt the order of keypoints, which may break the training process if your task relies on a specific keypoint order.
 
 **Example:**
@@ -529,12 +529,12 @@ Here you can specify options for tuning.
 | `timeout`                | `int \| None`     | `None`         | Stop study after the given number of seconds                                                                                                                                                                                                                                                                                |
 | `params`                 | `dict[str, list]` | `{}`           | Which parameters to tune. The keys should be in the format `key1.key2.key3_<type>`. Type can be one of `[categorical, float, int, longuniform, uniform, subset]`. For more information about the types, visit [`Optuna` documentation](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.trial.Trial.html) |
 
-> \[!NOTE\]
+> [!NOTE]
 > `"subset"` sampling is currently only supported for augmentations.
 > You can specify a set of augmentations defined in `trainer` to choose from.
 > Every run, only a subset of random $N$ augmentations will be active (`is_active` parameter will be `True` for chosen ones and `False` for the rest in the set).
 
-> \[!WARNING\]
+> [!WARNING]
 > When using the tuner, the following callbacks are unsupported and will be automatically removed from configurations:
 >
 > - `UploadCheckpoint`
@@ -570,7 +570,7 @@ tuner:
 A special section of the config file where you can specify environment variables.
 For more info on the variables, see [Credentials](../README.md#credentials).
 
-> \[!WARNING\]
+> [!WARNING]
 > This is not a recommended way due to possible leakage of secrets!
 > This section is intended for testing purposes only!
 > Use environment variables or `.env` files instead.
