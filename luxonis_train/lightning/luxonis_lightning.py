@@ -79,7 +79,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         self._export: bool = False
         self._core = _core
-        self._logged_images = defaultdict(int)
+        self._n_logged_images = 0
         self._loss_accumulator = LossAccumulator()
 
         self.cfg = cfg
@@ -281,27 +281,32 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def on_train_epoch_start(self) -> None:
-        """Performs train epoch start operations."""
         for module in self.modules():
             if isinstance(module, BaseNode):
                 module.current_epoch = self.current_epoch
 
-    @override
-    def on_train_epoch_end(self) -> None:
-        """Performs train epoch end operations."""
-        for key, value in self._loss_accumulator.items():
-            self.log(f"train/{key}", value, sync_dist=True)
-
         self._loss_accumulator.clear()
 
     @override
+    def on_train_epoch_end(self) -> None:
+        for key, value in self._loss_accumulator.items():
+            self.log(f"train/{key}", value, sync_dist=True)
+
+    @override
+    def on_validation_epoch_start(self) -> None:
+        self._loss_accumulator.clear()
+        self._n_logged_images = 0
+
+    @override
     def on_validation_epoch_end(self) -> None:
-        """Performs validation epoch end operations."""
         return self._evaluation_epoch_end("val")
 
     @override
+    def on_test_epoch_start(self) -> None:
+        self.on_validation_epoch_start()
+
+    @override
     def on_test_epoch_end(self) -> None:
-        """Performs test epoch end operations."""
         return self._evaluation_epoch_end("test")
 
     # TODO: Parameter groups
@@ -309,14 +314,12 @@ class LuxonisLightningModule(pl.LightningModule):
     def configure_optimizers(
         self,
     ) -> tuple[list[Optimizer], list[LRScheduler]]:
-        """Configures model optimizers and schedulers."""
         if self.training_strategy is not None:
             return self.training_strategy.configure_optimizers()
         return build_optimizers(self.cfg, self.parameters())
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:
-        """Configures Pytorch Lightning callbacks."""
         return build_callbacks(self.cfg, self.main_metric, self.save_dir)
 
     def set_export_mode(self, /, mode: bool) -> None:
@@ -343,17 +346,11 @@ class LuxonisLightningModule(pl.LightningModule):
             for shapes in self.nodes.input_shapes.values()
             for input_name, shape in shapes.items()
         }
-
-        inputs_deep_clone = {
-            k: torch.zeros(elem.shape).to(self.device)
-            for k, elem in inputs.items()
-        }
-
-        inputs_for_onnx = {"inputs": inputs_deep_clone}
+        input_names = list(inputs.keys())
 
         self.set_export_mode(True)
 
-        outputs = self.forward(inputs_deep_clone).outputs
+        outputs = self.forward(inputs).outputs
         output_order = sorted(
             [
                 (node_name, output_name, i)
@@ -367,6 +364,7 @@ class LuxonisLightningModule(pl.LightningModule):
         for node_name, outs in outputs.items():
             output_counts[node_name] = sum(len(out) for out in outs.values())
 
+        # TODO: Remove
         if self.cfg.exporter.output_names is not None:
             logger.warning(
                 "The use of 'exporter.output_names' is deprecated and will be removed in a future version. "
@@ -433,8 +431,6 @@ class LuxonisLightningModule(pl.LightningModule):
                         f"{self.nodes.task_names[node_name]}/{node_name}/{output_name}/{i}"
                     )
 
-        old_forward = self.forward
-
         def export_forward(inputs: dict[str, Tensor]) -> tuple[Tensor, ...]:
             old_outputs = old_forward(
                 inputs,
@@ -452,14 +448,16 @@ class LuxonisLightningModule(pl.LightningModule):
                     outputs.append(node_output[i])
             return tuple(outputs)
 
+        old_forward = self.forward
         self.forward = export_forward  # type: ignore
 
         if "input_names" not in kwargs:
-            kwargs["input_names"] = list(inputs.keys())
+            assert set(input_names) == set(inputs.keys())
+            kwargs["input_names"] = input_names
         if "output_names" not in kwargs:
             kwargs["output_names"] = output_names
 
-        self.to_onnx(save_path, inputs_for_onnx, **kwargs)
+        self.to_onnx(save_path, {"inputs": inputs}, **kwargs)
 
         self.forward = old_forward  # type: ignore
 
@@ -471,7 +469,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         return output_names
 
-    def load_checkpoint(self, path: str | Path | None) -> None:
+    def load_checkpoint(self, path: PathType | None) -> None:
         """Loads checkpoint weights from provided path.
 
         Loads the checkpoints gracefully, ignoring keys that are not
@@ -484,36 +482,35 @@ class LuxonisLightningModule(pl.LightningModule):
         if path is None:
             return
 
-        path = str(path)
-
-        checkpoint = torch.load(  # nosemgrep
-            path, map_location=self.device
+        checkpoint = torch.load(
+            path, map_location=self.device, weights_only=True
         )
 
         if "state_dict" not in checkpoint:
-            raise ValueError("Checkpoint does not contain state_dict.")
+            raise ValueError("Checkpoint does not contain `state_dict`.")
+
         state_dict = {}
         self_state_dict = self.state_dict()
         for key, value in checkpoint["state_dict"].items():
             if key not in self_state_dict.keys():
                 logger.warning(
-                    f"Key `{key}` from checkpoint not found in model state dict."
+                    f"Key '{key}' from checkpoint not found in model state dict."
                 )
             else:
                 state_dict[key] = value
 
         for key in self_state_dict:
             if key not in state_dict.keys():
-                logger.warning(f"Key `{key}` was not found in checkpoint.")
+                logger.warning(f"Key '{key}' was not found in checkpoint.")
             else:
                 try:
                     self_state_dict[key].copy_(state_dict[key])
                 except Exception:
                     logger.warning(
-                        f"Key `{key}` from checkpoint could not be loaded into model."
+                        f"Key '{key}' from checkpoint could not be loaded into model."
                     )
 
-        logger.info(f"Loaded checkpoint from {path}.")
+        logger.info(f"Loaded checkpoint from '{path}'.")
 
     def _evaluation_step(
         self,
@@ -522,13 +519,11 @@ class LuxonisLightningModule(pl.LightningModule):
         labels: Labels,
     ) -> dict[str, Tensor]:
         input_image = inputs[self.image_source]
-        images = None
-        if not self._logged_images:
+
+        if self._n_logged_images < self.cfg.trainer.n_log_images:
             images = get_denormalized_images(self.cfg, input_image)
-        for value in self._logged_images.values():
-            if value < self.cfg.trainer.n_log_images:
-                images = get_denormalized_images(self.cfg, input_image)
-                break
+        else:
+            images = None
 
         outputs = self.forward(
             inputs,
@@ -543,21 +538,18 @@ class LuxonisLightningModule(pl.LightningModule):
         )
         self._loss_accumulator.update(losses)
 
-        logged_images = self._logged_images
         for node_name, visualizations in outputs.visualizations.items():
             for viz_name, viz_batch in visualizations.items():
-                # if viz_batch is None:
-                #     continue
                 for viz in viz_batch:
                     name = f"{mode}/visualizations/{node_name}/{viz_name}"
-                    if logged_images[name] >= self.cfg.trainer.n_log_images:
+                    if self._n_logged_images >= self.cfg.trainer.n_log_images:
                         continue
                     self.tracker.log_image(
-                        f"{name}/{logged_images[name]}",
+                        f"{name}/{self._n_logged_images}",
                         viz.detach().cpu().numpy().transpose(1, 2, 0),
                         step=self.current_epoch,
                     )
-                    logged_images[name] += 1
+                    self._n_logged_images += 1
 
         return losses
 
@@ -593,9 +585,6 @@ class LuxonisLightningModule(pl.LightningModule):
             loss=self._loss_accumulator["loss"],
             metrics=table,
         )
-
-        self._loss_accumulator.clear()
-        self._logged_images.clear()
 
     @rank_zero_only
     def _print_results(

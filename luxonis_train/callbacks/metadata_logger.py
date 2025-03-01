@@ -63,23 +63,21 @@ class MetadataLogger(pl.Callback):
         """
         try:
             distribution = pkg_resources.get_distribution(package_name)
-            if distribution.location is None:
-                return None
-            package_location = Path(distribution.location, package_name)
-
-            git_dir = package_location / ".git"
-            if git_dir.exists():
-                git_command = ["git", "rev-parse", "HEAD"]
-                try:
-                    return subprocess.check_output(
-                        git_command,
-                        cwd=package_location,
-                        stderr=subprocess.DEVNULL,
-                        universal_newlines=True,
-                    ).strip()
-                except subprocess.CalledProcessError:
-                    return None
-            else:
-                return None
         except pkg_resources.DistributionNotFound:
+            return None
+
+        if distribution.location is None:
+            return None
+
+        package_location = Path(distribution.location, package_name)
+
+        try:
+            return subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=package_location,
+                stderr=subprocess.DEVNULL,
+                universal_newlines=True,
+            ).strip()
+
+        except subprocess.CalledProcessError:
             return None

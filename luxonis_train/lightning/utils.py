@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Iterable, Iterator, MutableMapping
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Mapping, TypeAlias, TypeVar
 
@@ -41,7 +41,7 @@ from luxonis_train.utils.registry import (
 
 A = TypeVar("A", BaseLoss, BaseMetric, BaseVisualizer)
 
-AttachedModulesDict: TypeAlias = MutableMapping[str, MutableMapping[str, A]]
+AttachedModulesDict: TypeAlias = dict[str, dict[str, A]]
 
 
 class LossAccumulator(defaultdict[str, float]):
