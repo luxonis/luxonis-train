@@ -175,7 +175,7 @@ def bbox_iou(
 
         iou = box_iou(bbox1, bbox2) - 0.5 * (distance_cost + shape_cost)
     else:
-        raise ValueError(f"IoU type `{iou_type}` not supported.")
+        raise ValueError(f"IoU type '{iou_type}' not supported.")
 
     iou = torch.nan_to_num(iou, 0)
 
