@@ -23,45 +23,42 @@ def get_sigmas(
     if sigmas is not None:
         if len(sigmas) == n_keypoints:
             return torch.tensor(sigmas, dtype=torch.float32)
-        else:
-            error_msg = "The length of the sigmas list must be the same as the number of keypoints."
-            if caller_name:
-                error_msg = f"[{caller_name}] {error_msg}"
-            raise ValueError(error_msg)
-    else:
-        if n_keypoints == 17:
-            msg = "Default COCO sigmas are being used."
-            if caller_name:
-                msg = f"[{caller_name}] {msg}"
-            logger.warning(msg)
-            return torch.tensor(
-                [
-                    0.026,
-                    0.025,
-                    0.025,
-                    0.035,
-                    0.035,
-                    0.079,
-                    0.079,
-                    0.072,
-                    0.072,
-                    0.062,
-                    0.062,
-                    0.107,
-                    0.107,
-                    0.087,
-                    0.087,
-                    0.089,
-                    0.089,
-                ],
-                dtype=torch.float32,
-            )
-        else:
-            msg = "Default sigma of 0.04 is being used for each keypoint."
-            if caller_name:
-                msg = f"[{caller_name}] {msg}"
-            logger.info(msg)
-            return torch.tensor([0.04] * n_keypoints, dtype=torch.float32)
+        error_msg = "The length of the sigmas list must be the same as the number of keypoints."
+        if caller_name:
+            error_msg = f"[{caller_name}] {error_msg}"
+        raise ValueError(error_msg)
+    if n_keypoints == 17:
+        msg = "Default COCO sigmas are being used."
+        if caller_name:
+            msg = f"[{caller_name}] {msg}"
+        logger.warning(msg)
+        return torch.tensor(
+            [
+                0.026,
+                0.025,
+                0.025,
+                0.035,
+                0.035,
+                0.079,
+                0.079,
+                0.072,
+                0.072,
+                0.062,
+                0.062,
+                0.107,
+                0.107,
+                0.087,
+                0.087,
+                0.089,
+                0.089,
+            ],
+            dtype=torch.float32,
+        )
+    msg = "Default sigma of 0.04 is being used for each keypoint."
+    if caller_name:
+        msg = f"[{caller_name}] {msg}"
+    logger.info(msg)
+    return torch.tensor([0.04] * n_keypoints, dtype=torch.float32)
 
 
 def get_center_keypoints(
@@ -184,8 +181,6 @@ def compute_pose_oks(
     )  # shape: [N, M1, 1, n_keypoints]
     vis_count = vis_mask.sum(dim=-1)  # shape: [N, M1, M2]
 
-    mean_oks = (oks_vals * vis_mask).sum(dim=-1) / (
+    return (oks_vals * vis_mask).sum(dim=-1) / (
         vis_count + eps
     )  # shape: [N, M1, M2]
-
-    return mean_oks

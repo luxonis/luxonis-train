@@ -58,10 +58,9 @@ def prepare_and_infer_image(
     }
     images = get_denormalized_images(model.cfg, inputs["image"])
 
-    outputs = model.lightning_module.forward(
+    return model.lightning_module.forward(
         inputs, images=images, compute_visualizations=True
     )
-    return outputs
 
 
 def window_closed() -> bool:  # pragma: no cover

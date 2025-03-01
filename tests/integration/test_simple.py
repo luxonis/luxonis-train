@@ -41,7 +41,7 @@ def opts(test_output_dir: Path) -> Params:
     }
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(autouse=True)
 def clear_files():
     yield
     STUDY_PATH.unlink(missing_ok=True)
@@ -219,7 +219,7 @@ def test_infer(
         model.infer(save_dir=infer_path, view="train")
         assert len(list(infer_path.glob("*.png"))) == len(loader) * 3 * 2
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="is not a valid file or directory"):
         model.infer(source_path="tests/data/invalid.jpg", save_dir=infer_path)
 
 

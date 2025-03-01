@@ -50,6 +50,12 @@ class TorchMetricWrapper(BaseMetric):
                 "The 'task' can be one of 'binary', 'multiclass', "
                 "or 'multilabel'. "
             )
+        if task not in {"binary", "multiclass", "multilabel"}:
+            raise ValueError(
+                f"Invalid task type '{task}' for '{self.name}'. "
+                "The 'task' can be one of 'binary', 'multiclass', "
+                "or 'multilabel'."
+            )
         self._torchmetric_task = task
         kwargs["task"] = task
 
@@ -74,7 +80,7 @@ class TorchMetricWrapper(BaseMetric):
                 f"Task type set to '{task}', but the dataset has more than 1 class. "
                 f"Set the `task` argument of '{self.name}' to either 'multiclass' or 'multilabel'."
             )
-        elif task != "binary" and n_classes == 1:
+        if task != "binary" and n_classes == 1:
             raise ValueError(
                 f"Task type set to '{task}', but the dataset has only 1 class. "
                 f"Set the `task` argument of '{self.name}' to 'binary'."

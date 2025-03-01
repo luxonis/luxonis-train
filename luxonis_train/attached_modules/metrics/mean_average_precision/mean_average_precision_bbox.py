@@ -1,6 +1,6 @@
 import torch
-import torchmetrics.detection as detection
 from torch import Tensor
+from torchmetrics import detection
 from torchvision.ops import box_convert
 
 from luxonis_train.attached_modules.metrics import BaseMetric

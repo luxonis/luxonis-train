@@ -53,8 +53,7 @@ class Encoder(nn.Module):
         enc3_pool = self.pool3(enc3)
         enc4 = self.encoder_block4(enc3_pool)
         enc4_pool = self.pool4(enc4)
-        enc5 = self.encoder_block5(enc4_pool)
-        return enc5
+        return self.encoder_block5(enc4_pool)
 
 
 class Decoder(nn.Module):
@@ -104,8 +103,7 @@ class Decoder(nn.Module):
         up4 = self.upscale4(dec3)
         dec4 = self.decoder_block4(up4)
 
-        output = self.output_layer(dec4)
-        return output
+        return self.output_layer(dec4)
 
 
 class NanoEncoder(nn.Module):
@@ -122,8 +120,7 @@ class NanoEncoder(nn.Module):
         enc1 = self.encoder_block1(x)
         enc1_pool = self.pool1(enc1)
         enc2 = self.encoder_block2(enc1_pool)
-        enc2_pool = self.pool2(enc2)
-        return enc2_pool
+        return self.pool2(enc2)
 
 
 class NanoDecoder(nn.Module):
@@ -156,5 +153,4 @@ class NanoDecoder(nn.Module):
         up2 = self.upscale2(dec1)
         dec2 = self.decoder_block2(up2)
 
-        output = self.output_layer(dec2)
-        return output
+        return self.output_layer(dec2)

@@ -68,7 +68,9 @@ class ModelEma(nn.Module):
             ema_lerp_values = []
             model_lerp_values = []
             for ema_v, model_v in zip(
-                self.state_dict_ema.values(), model.state_dict().values()
+                self.state_dict_ema.values(),
+                model.state_dict().values(),
+                strict=True,
             ):
                 if ema_v.is_floating_point():
                     ema_lerp_values.append(ema_v)
@@ -163,9 +165,11 @@ class EMACallback(pl.Callback):
         @type batch_idx: int
         @param batch_idx: Batch index.
         """
-        if batch_idx % trainer.accumulate_grad_batches == 0:
-            if self.ema is not None:
-                self.ema.update(pl_module)
+        if (
+            self.ema is not None
+            and batch_idx % trainer.accumulate_grad_batches == 0
+        ):
+            self.ema.update(pl_module)
 
     def on_validation_epoch_start(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule

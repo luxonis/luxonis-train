@@ -1,8 +1,7 @@
 from typing import Literal
 
 import torch
-import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, nn
 from typing_extensions import override
 
 from luxonis_train.nodes.heads import BaseHead
@@ -105,10 +104,9 @@ class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
     def get_variant_weights(self) -> str | None:
         if self.in_channels == 128:  # light predefined model
             return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/ddrnet_head_23slim_coco.ckpt"
-        elif self.in_channels == 256:  # heavy predefined model
+        if self.in_channels == 256:  # heavy predefined model
             return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/ddrnet_head_23_coco.ckpt"
-        else:
-            return None
+        return None
 
     def forward(self, inputs: Tensor) -> Tensor:
         x: Tensor = self.relu(self.bn1(inputs))

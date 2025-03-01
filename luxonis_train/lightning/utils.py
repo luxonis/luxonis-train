@@ -1,7 +1,7 @@
 from collections import defaultdict
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Mapping, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Any, TypeAlias, TypeVar
 
 import lightning.pytorch as pl
 import torch
@@ -372,7 +372,6 @@ def build_nodes(
     dataset_metadata: DatasetMetadata,
     input_shapes: dict[str, Size],
 ) -> Nodes:
-    # nodes = Nodes.empty()
     frozen_nodes: dict[str, int] = {}
     node_task_names: dict[str, str] = {}
     node_kwargs: dict[str, tuple[type[BaseNode], Kwargs]] = {}

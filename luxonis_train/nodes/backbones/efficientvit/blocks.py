@@ -214,8 +214,7 @@ class EfficientViTBlock(nn.Module):
             processing.
         """
         output = self.attention_module(inputs)
-        output = self.feature_module(output)
-        return output
+        return self.feature_module(output)
 
 
 class LightweightMLABlock(nn.Module):
@@ -356,8 +355,7 @@ class LightweightMLABlock(nn.Module):
             output = output.float()
 
         output = output[:, :, :-1] / (output[:, :, -1:] + self.epsilon)
-        output = torch.reshape(output, (batch, -1, height, width))
-        return output
+        return torch.reshape(output, (batch, -1, height, width))
 
     @torch.autocast(device_type="cuda", enabled=False)
     def quadratic_attention(self, qkv_tensor: Tensor) -> Tensor:
@@ -388,8 +386,7 @@ class LightweightMLABlock(nn.Module):
         attention_map = attention_map.to(original_dtype)
 
         output = torch.matmul(value, attention_map)
-        output = torch.reshape(output, (batch, -1, height, width))
-        return output
+        return torch.reshape(output, (batch, -1, height, width))
 
     def forward(self, inputs: Tensor) -> Tensor:
         identity = inputs

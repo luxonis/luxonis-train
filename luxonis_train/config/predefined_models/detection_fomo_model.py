@@ -66,7 +66,7 @@ class FOMOModel(BasePredefinedModel):
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
-        nodes = [
+        return [
             ModelNodeConfig(
                 name=self.backbone,
                 alias=f"{self.task_name}-{self.backbone}",
@@ -81,7 +81,6 @@ class FOMOModel(BasePredefinedModel):
                 task_name=self.task_name,
             ),
         ]
-        return nodes
 
     @property
     def losses(self) -> list[LossModuleConfig]:

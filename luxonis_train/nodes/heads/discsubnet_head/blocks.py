@@ -125,8 +125,7 @@ class Decoder(nn.Module):
         cat2 = torch.cat((up2, e1), dim=1)
         dec2 = self.dec_block2(cat2)
 
-        output = self.output_conv(dec2)
-        return output
+        return self.output_conv(dec2)
 
 
 class NanoEncoder(nn.Module):
@@ -162,5 +161,4 @@ class NanoDecoder(nn.Module):
         cat2 = torch.cat((up2, e1), dim=1)
         dec2 = self.dec_block2(cat2)
 
-        output = self.output_conv(dec2)
-        return output
+        return self.output_conv(dec2)

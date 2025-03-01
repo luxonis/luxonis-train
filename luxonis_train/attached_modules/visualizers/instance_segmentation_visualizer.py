@@ -1,4 +1,4 @@
-from typing import Mapping
+from collections.abc import Mapping
 
 import torch
 from loguru import logger
@@ -59,7 +59,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         super().__init__(**kwargs)
 
         if isinstance(labels, list):
-            labels = {i: label for i, label in enumerate(labels)}
+            labels = dict(enumerate(labels))
 
         self.bbox_labels = labels or self.classes.inverse
 

@@ -115,10 +115,7 @@ class SSIM(nn.Module):
 def create_window(window_size: int, channel: int = 1) -> Tensor:
     window_1d = gaussian(window_size, 1.5).unsqueeze(1)
     widnow_2d = window_1d.mm(window_1d.t()).float().unsqueeze(0).unsqueeze(0)
-    window = widnow_2d.expand(
-        channel, 1, window_size, window_size
-    ).contiguous()
-    return window
+    return widnow_2d.expand(channel, 1, window_size, window_size).contiguous()
 
 
 def gaussian(window_size: int, sigma: float) -> Tensor:

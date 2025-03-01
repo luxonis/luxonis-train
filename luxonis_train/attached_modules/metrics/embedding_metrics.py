@@ -1,6 +1,7 @@
+from typing import Annotated
+
 import torch
 from torch import Tensor
-from typing_extensions import Annotated
 
 from luxonis_train.nodes.heads.ghostfacenet_head import GhostFaceNetHead
 from luxonis_train.tasks import Tasks
@@ -33,7 +34,9 @@ class ClosestIsPositiveAccuracy(BaseMetric):
         embeddings, labels = predictions, target
 
         if self.cross_batch_memory_size is not None:
-            self.cross_batch_memory.extend(list(zip(embeddings, labels)))
+            self.cross_batch_memory.extend(
+                list(zip(embeddings, labels, strict=True))
+            )
 
             if len(self.cross_batch_memory) > self.cross_batch_memory_size:
                 self.cross_batch_memory = self.cross_batch_memory[
@@ -43,7 +46,7 @@ class ClosestIsPositiveAccuracy(BaseMetric):
             if len(self.cross_batch_memory) < self.cross_batch_memory_size:
                 return
 
-            embeddings, labels = zip(*self.cross_batch_memory)
+            embeddings, labels = zip(*self.cross_batch_memory, strict=True)
             embeddings = torch.stack(embeddings)
             labels = torch.stack(labels)
 
@@ -79,7 +82,6 @@ class MedianDistances(BaseMetric):
     supported_tasks = [Tasks.EMBEDDINGS]
     node: GhostFaceNetHead
 
-    # cross_batch_memory: list[tuple[Tensor, Tensor]]
     cross_batch_memory: Annotated[
         list[tuple[Tensor, Tensor]], State(default=[], dist_reduce_fx="cat")
     ]
@@ -102,7 +104,9 @@ class MedianDistances(BaseMetric):
 
     def update(self, embeddings: Tensor, target: Tensor) -> None:
         if self.cross_batch_memory_size is not None:
-            self.cross_batch_memory.extend(list(zip(embeddings, target)))
+            self.cross_batch_memory.extend(
+                list(zip(embeddings, target, strict=True))
+            )
 
             if len(self.cross_batch_memory) > self.cross_batch_memory_size:
                 self.cross_batch_memory = self.cross_batch_memory[
@@ -112,7 +116,9 @@ class MedianDistances(BaseMetric):
             if len(self.cross_batch_memory) < self.cross_batch_memory_size:
                 return
 
-            embeddings_list, target_list = zip(*self.cross_batch_memory)
+            embeddings_list, target_list = zip(
+                *self.cross_batch_memory, strict=True
+            )
             embeddings = torch.stack(embeddings_list)
             target = torch.stack(target_list)
 
@@ -214,5 +220,4 @@ def _get_anchor_positive_triplet_mask(labels: Tensor) -> Tensor:
     )
     indices_not_equal = ~indices_equal
     labels_equal = labels.unsqueeze(0) == labels.unsqueeze(1)
-    mask = indices_not_equal & labels_equal
-    return mask
+    return indices_not_equal & labels_equal

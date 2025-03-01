@@ -3,11 +3,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
 from inspect import Parameter
-from typing import Literal, get_args, get_origin, get_type_hints
+from typing import Annotated, Literal, get_args, get_origin, get_type_hints
 
 from torch import Tensor
 from torchmetrics import Metric
-from typing_extensions import Annotated
 
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.typing import Labels, Packet

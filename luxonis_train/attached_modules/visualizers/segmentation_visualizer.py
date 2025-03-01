@@ -51,18 +51,12 @@ class SegmentationVisualizer(BaseVisualizer):
         self.background_color = background_color
         self.alpha = alpha
 
+        self._warn_colors = True
+
     @staticmethod
     def draw_predictions(
-        canvas: Tensor,
-        predictions: Tensor,
-        colors: list[Color] | None = None,
-        background_class: int | None = None,
-        background_color: Color = "#000000",
-        **kwargs,
+        canvas: Tensor, predictions: Tensor, colors: list[Color], **kwargs
     ) -> Tensor:
-        colors = SegmentationVisualizer._adjust_colors(
-            predictions, colors, background_class, background_color
-        )
         viz = torch.zeros_like(canvas)
         for i in range(len(canvas)):
             prediction = predictions[i]
@@ -74,16 +68,8 @@ class SegmentationVisualizer(BaseVisualizer):
 
     @staticmethod
     def draw_targets(
-        canvas: Tensor,
-        targets: Tensor,
-        colors: list[Color] | None = None,
-        background_class: int | None = None,
-        background_color: Color = "#000000",
-        **kwargs,
+        canvas: Tensor, targets: Tensor, colors: list[Color], **kwargs
     ) -> Tensor:
-        colors = SegmentationVisualizer._adjust_colors(
-            targets, colors, background_class, background_color
-        )
         viz = torch.zeros_like(canvas)
         for i in range(len(viz)):
             target = targets[i]
@@ -118,14 +104,15 @@ class SegmentationVisualizer(BaseVisualizer):
         @rtype: tuple[Tensor, Tensor]
         @return: A tuple of the label and prediction visualizations.
         """
+        colors = self._adjust_colors(
+            self.colors, self.background_class, self.background_color
+        )
 
         predictions_vis = self.draw_predictions(
             prediction_canvas,
             predictions,
-            colors=self.colors,
+            colors=colors,
             alpha=self.alpha,
-            background_class=self.background_class,
-            background_color=self.background_color,
             **kwargs,
         )
         if target is None:
@@ -142,30 +129,27 @@ class SegmentationVisualizer(BaseVisualizer):
         )
         return targets_vis, predictions_vis
 
-    @staticmethod
     def _adjust_colors(
-        data: Tensor,
+        self,
         colors: list[Color] | None = None,
         background_class: int | None = None,
         background_color: Color = "#000000",
     ) -> list[Color]:
-        global log_disable
-        n_classes = data.size(1)
-        if colors is not None and len(colors) == n_classes:
+        if colors and len(colors) == self.n_classes:
             return colors
 
-        if not log_disable:
+        if self._warn_colors:
             if colors is None:
                 logger.warning(
                     "No colors provided. Using random colors instead."
                 )
-            elif data.size(1) != len(colors):
+            elif len(colors) != self.n_classes:
                 logger.warning(
                     f"Number of colors ({len(colors)}) does not match number of "
-                    f"classes ({data.size(1)}). Using random colors instead."
+                    f"classes ({self.n_classes}). Using random colors instead."
                 )
-        log_disable = True
-        colors = [get_color(i) for i in range(data.size(1))]
+            self._warn_colors = False
+        colors = [get_color(i) for i in range(self.n_classes)]
         if background_class is not None:
             colors[background_class] = background_color
         return colors

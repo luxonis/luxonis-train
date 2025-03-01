@@ -44,8 +44,7 @@ class TripleLRScheduler:
             )
 
     def create_scheduler(self) -> LambdaLR:
-        scheduler = LambdaLR(self.optimizer, lr_lambda=self.lf)
-        return scheduler
+        return LambdaLR(self.optimizer, lr_lambda=self.lf)
 
     def update_learning_rate(self, current_epoch: int) -> None:
         self.step = self.step % self.max_stepnum
@@ -95,7 +94,7 @@ class TripleLRSGD:
             ):
                 regular_weights.append(module.weight)
 
-        optimizer = SGD(
+        return SGD(
             [
                 {
                     "params": batch_norm_weights,
@@ -113,8 +112,6 @@ class TripleLRSGD:
             momentum=self.momentum,
             nesterov=self.nesterov,
         )
-
-        return optimizer
 
 
 class TripleLRSGDStrategy(BaseTrainingStrategy):

@@ -28,12 +28,12 @@ def prepare():
 
 
 def run_command(command: str) -> tuple[str, str, int]:
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S602
         command,
         shell=True,  # nosemgrep
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        check=False,
+        capture_output=True,
         encoding=locale.getpreferredencoding(),
         errors="replace",
         env=os.environ,

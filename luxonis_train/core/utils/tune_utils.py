@@ -44,7 +44,7 @@ def get_trial_params(
                 subset = random.sample(whole_set_indices, subset_size)
                 for aug_id in whole_set_indices:
                     new_params[f"{key_name}.{aug_id}.active"] = (
-                        True if aug_id in subset else False
+                        aug_id in subset
                     )
                 continue
             case "categorical", list(lst):
@@ -59,7 +59,7 @@ def get_trial_params(
             case "int", [int(low), int(high), *tail]:
                 step = tail[0] if tail else 1
                 if not isinstance(step, int):
-                    raise ValueError(
+                    raise TypeError(
                         f"Step for int type must be int, but got {step}"
                     )
                 new_value = trial.suggest_int(key_name, low, high, step=step)

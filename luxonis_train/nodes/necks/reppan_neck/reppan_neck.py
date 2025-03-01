@@ -208,7 +208,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
                 m.eps = 0.001
                 m.momentum = 0.03
             elif isinstance(
-                m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU)
+                m, nn.Hardswish | nn.LeakyReLU | nn.ReLU | nn.ReLU6 | nn.SiLU
             ):
                 m.inplace = True
 
@@ -223,7 +223,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
 
         outs = [x]
         for down_block, up_out in zip(
-            self.down_blocks, reversed(up_block_outs)
+            self.down_blocks, reversed(up_block_outs), strict=True
         ):
             x = down_block(x, up_out)
             outs.append(x)

@@ -197,10 +197,7 @@ class PrecisionBBoxHead(BaseDetectionHead):
             class_probabilities.permute(0, 2, 1),  # [BS, H*W, n_classes]
         ]
 
-        output_merged = torch.cat(
-            base_output, dim=-1
-        )  # [BS, H*W, 4 + 1 + n_classes]
-        return output_merged
+        return torch.cat(base_output, dim=-1)  # [BS, H*W, 4 + 1 + n_classes]
 
     def bias_init(self) -> None:
         """Initialize biases for the detection heads.
@@ -208,7 +205,9 @@ class PrecisionBBoxHead(BaseDetectionHead):
         Assumes detection_heads structure with separate regression and
         classification branches.
         """
-        for head, stride in zip(self.detection_heads, self.stride):
+        for head, stride in zip(
+            self.detection_heads, self.stride, strict=True
+        ):
             reg_conv = head.regression_branch[-1]
             assert isinstance(reg_conv, nn.Conv2d)
             if reg_conv.bias is not None:

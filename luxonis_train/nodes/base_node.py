@@ -17,7 +17,7 @@ from luxonis_train.tasks import Task
 from luxonis_train.typing import AttachIndexType, Packet
 from luxonis_train.utils import (
     DatasetMetadata,
-    IncompatibleException,
+    IncompatibleError,
     safe_download,
 )
 from luxonis_train.utils.registry import NODES
@@ -169,13 +169,12 @@ class BaseNode(
 
             if len(parameters) > 1 or annotation is inspect.Parameter.empty:
                 logger.warning(self._missing_attach_index_message())
+            elif annotation == Tensor:
+                self.attach_index = -1
+            elif annotation == list[Tensor]:
+                self.attach_index = "all"
             else:
-                if annotation == Tensor:
-                    self.attach_index = -1
-                elif annotation == list[Tensor]:
-                    self.attach_index = "all"
-                else:
-                    logger.warning(self._missing_attach_index_message())
+                logger.warning(self._missing_attach_index_message())
 
         if task_name is None and dataset_metadata is not None:
             if len(dataset_metadata.task_names) == 1:
@@ -213,7 +212,7 @@ class BaseNode(
                     try:
                         check_type(value, typ)
                     except TypeCheckError as e:
-                        raise IncompatibleException(
+                        raise IncompatibleError(
                             f"Node '{self.name}' specifies the type of the property `{name}` as `{typ}`, "
                             f"but received `{type(value)}`. "
                             f"This may indicate that the '{self.name}' node is "
@@ -299,10 +298,7 @@ class BaseNode(
             during initialization.
         """
         if self._dataset_metadata is None:
-            raise RuntimeError(
-                f"{self._non_set_error('dataset_metadata')}"
-                "Either provide `dataset_metadata` or `n_classes`."
-            )
+            raise RuntimeError(self._non_set_error("dataset_metadata"))
         return self._dataset_metadata
 
     @property
@@ -519,7 +515,7 @@ class BaseNode(
 
         if isinstance(output, Tensor):
             outputs = output
-        elif isinstance(output, (list, tuple)) and all(
+        elif isinstance(output, list | tuple) and all(
             isinstance(t, Tensor) for t in output
         ):
             outputs = list(output)

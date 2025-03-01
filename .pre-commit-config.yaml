@@ -21,3 +21,9 @@ repos:
       - id: mdformat
         additional_dependencies:
           - mdformat-gfm==0.3.6
+
+  - repo: https://github.com/ComPWA/taplo-pre-commit
+    rev: v0.9.3
+    hooks:
+      - id: taplo-format
+      - id: taplo-lint

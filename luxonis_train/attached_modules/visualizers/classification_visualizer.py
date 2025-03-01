@@ -40,9 +40,8 @@ class ClassificationVisualizer(BaseVisualizer):
         if self.multilabel:
             idxs = (pred > 0.5).nonzero(as_tuple=True)[0].tolist()
             return ", ".join([self.classes.inverse[idx] for idx in idxs])
-        else:
-            idx = int((pred.argmax()).item())
-            return self.classes.inverse[idx]
+        idx = int((pred.argmax()).item())
+        return self.classes.inverse[idx]
 
     def _generate_plot(
         self, prediction: Tensor, width: int, height: int

@@ -155,13 +155,12 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         if LuxonisDataset.exists(dataset_name):
             if not delete_existing:
                 return LuxonisDataset(dataset_name=dataset_name)
-            else:
-                logger.warning(
-                    f"Dataset '{dataset_name}' already exists. "
-                    "The dataset will be generated again to ensure "
-                    "the latest data are used. If you don't want to regenerate "
-                    "the dataset each time, set `delete_existing` to `False`"
-                )
+            logger.warning(
+                f"Dataset '{dataset_name}' already exists. "
+                "The dataset will be generated again to ensure "
+                "the latest data are used. If you don't want to regenerate "
+                "the dataset each time, set `delete_existing` to `False`"
+            )
 
         if dataset_type is None:
             logger.warning(

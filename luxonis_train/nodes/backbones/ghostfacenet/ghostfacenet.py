@@ -2,8 +2,7 @@
 import math
 from typing import Literal
 
-import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, nn
 
 from luxonis_train.nodes.backbones.ghostfacenet.variants import get_variant
 from luxonis_train.nodes.backbones.micronet.blocks import _make_divisible
@@ -89,7 +88,7 @@ class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
 
     def _init_weights(self) -> None:
         for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+            if isinstance(m, nn.Conv2d | nn.Linear):
                 fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
                 negative_slope = 0.25
                 m.weight.data.normal_(

@@ -1,10 +1,9 @@
-import glob
 from pathlib import Path
 
 import cv2
 import numpy as np
 from luxonis_ml.data import BucketStorage, LuxonisDataset
-from luxonis_ml.typing import Params, PathType
+from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
 
@@ -64,9 +63,7 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
             cv2.rectangle(mask, top_left, bottom_right, 255, -1)
         return mask
 
-    def dummy_generator(
-        train_paths: list[PathType], test_paths: list[PathType]
-    ):
+    def dummy_generator(train_paths: list[Path], test_paths: list[Path]):
         for path in train_paths:
             img = cv2.imread(str(path))
             img_h, img_w, _ = img.shape
@@ -104,11 +101,9 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
                 },
             }
 
-    paths_total: list[PathType] = [
-        Path(p) for p in glob.glob(str(paths), recursive=True)[:10]
-    ]
-    train_paths: list[PathType] = paths_total[:5]
-    test_paths: list[PathType] = paths_total[5:]
+    paths_total = list(paths.rglob("*.jpg"))
+    train_paths = paths_total[:5]
+    test_paths = paths_total[5:]
 
     dataset = LuxonisDataset(
         "dummy_mvtec",
@@ -117,13 +112,14 @@ def create_dummy_anomaly_detection_dataset(paths: Path):
         delete_remote=True,
     )
     dataset.add(dummy_generator(train_paths, test_paths))
-    definitions: dict[str, list[PathType]] = {
+    definitions = {
         "train": train_paths,
         "val": test_paths,
     }
-    dataset.make_splits(definitions=definitions)
+    dataset.make_splits(definitions=definitions)  # type: ignore
 
 
+# FIXME: Will break if it runs before the dataset is created
 def test_anomaly_detection():
     create_dummy_anomaly_detection_dataset(
         Path("tests/data/COCO_people_subset/person_val2017_subset/*")

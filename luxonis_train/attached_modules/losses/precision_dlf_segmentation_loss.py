@@ -183,8 +183,17 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             [w, h, w, h], device=proto.device
         )
 
+        # FIXME
         for img_idx, data in enumerate(
-            zip(fg_mask, gt_idx, pred_masks, proto, bboxes_scaled, bbox_area)
+            zip(
+                fg_mask,
+                gt_idx,
+                pred_masks,
+                proto,
+                bboxes_scaled,
+                bbox_area,
+                strict=True,
+            )
         ):
             fg, gt, pred, pr, bbox, area = data
             if fg.any():

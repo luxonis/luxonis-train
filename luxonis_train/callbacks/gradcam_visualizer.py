@@ -51,16 +51,15 @@ class PLModuleWrapper(pl.LightningModule):
 
         if self.task == "segmentation":
             return output.outputs["segmentation_head"]["segmentation"][0]
-        elif self.task == "detection":
+        if self.task == "detection":
             scores = output.outputs["detection_head"]["class_scores"][0]
             return scores.sum(dim=1)
-        elif self.task == "classification":
+        if self.task == "classification":
             return output.outputs["classification_head"]["classification"][0]
-        elif self.task == "keypoint_detection":
+        if self.task == "keypoint_detection":
             scores = output.outputs["kpt_detection_head"]["class_scores"][0]
             return scores.sum(dim=1)
-        else:
-            raise ValueError(f"Unknown task: {self.task}")
+        raise ValueError(f"Unknown task: {self.task}")
 
 
 class GradCamCallback(pl.Callback):
@@ -189,7 +188,7 @@ class GradCamCallback(pl.Callback):
             get_denormalized_images(pl_module.cfg, images).cpu().numpy()
         )
         for zip_idx, (image, grayscale_cam) in enumerate(
-            zip(np_images, grayscale_cams)
+            zip(np_images, grayscale_cams, strict=True)
         ):
             image = image / 255.0
             image = image.transpose(1, 2, 0)

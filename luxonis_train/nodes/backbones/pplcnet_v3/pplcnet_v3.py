@@ -11,7 +11,7 @@ from .variants import get_variant
 
 
 def make_divisible(
-    v: int | float, divisor: int = 16, min_value: int | None = None
+    v: float, divisor: int = 16, min_value: int | None = None
 ) -> int:
     if min_value is None:
         min_value = divisor
@@ -121,7 +121,9 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
                         bias=True,
                     )
                     for in_channels, out_channels in zip(
-                        blocks_out_channels, detecion_out_channels
+                        blocks_out_channels,
+                        detecion_out_channels,
+                        strict=True,
                     )
                 ]
             )

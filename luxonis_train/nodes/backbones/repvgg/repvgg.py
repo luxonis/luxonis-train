@@ -1,8 +1,8 @@
 from collections import defaultdict
 from typing import Literal, cast
 
-import torch.utils.checkpoint as checkpoint
 from torch import Tensor, nn
+from torch.utils import checkpoint
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import GeneralReparametrizableBlock
@@ -78,8 +78,7 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
                 for i in range(4)
                 for block in self._make_stage(
                     int(2**i * 64 * width_multiplier[i]),
-                    n_blocks[i],
-                    stride=2,
+                    strides=[2] + [1] * (n_blocks[i] - 1),
                     groups=override_groups_map[i],
                 )
             ]
@@ -99,9 +98,8 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
         return outputs
 
     def _make_stage(
-        self, channels: int, n_blocks: int, stride: int, groups: int
+        self, channels: int, strides: list[int], groups: int
     ) -> nn.ModuleList:
-        strides = [stride] + [1] * (n_blocks - 1)
         blocks: list[nn.Module] = []
         for stride in strides:
             blocks.append(

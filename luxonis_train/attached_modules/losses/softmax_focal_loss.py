@@ -44,9 +44,8 @@ class SoftmaxFocalLoss(BaseLoss):
         else:
             self.alpha = alpha
 
-        if self.smooth is not None:
-            if self.smooth < 0 or self.smooth > 1.0:
-                raise ValueError("smooth value should be in [0,1]")
+        if self.smooth is not None and not (0 <= self.smooth <= 1.0):
+            raise ValueError("smooth value should be in [0,1]")
 
     def forward(self, predictions: Tensor, targets: Tensor) -> Tensor:
         if predictions.shape != targets.shape:
@@ -83,7 +82,6 @@ class SoftmaxFocalLoss(BaseLoss):
 
             if self.reduction == "mean":
                 return loss.mean()
-            elif self.reduction == "sum":
+            if self.reduction == "sum":
                 return loss.sum()
-            else:
-                return loss
+            return loss

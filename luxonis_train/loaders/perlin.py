@@ -6,8 +6,7 @@ from torch import Tensor
 
 def compute_gradients(res: tuple[int, int]) -> Tensor:
     angles = 2 * torch.pi * torch.rand(res[0] + 1, res[1] + 1)
-    gradients = torch.stack((torch.cos(angles), torch.sin(angles)), dim=-1)
-    return gradients
+    return torch.stack((torch.cos(angles), torch.sin(angles)), dim=-1)
 
 
 @torch.jit.script
@@ -129,8 +128,7 @@ def generate_perlin_noise(
         torch.ones_like(perlin_noise, dtype=torch.float32),
         torch.zeros_like(perlin_noise, dtype=torch.float32),
     )
-    perlin_mask = rotate_noise(perlin_mask)
-    return perlin_mask
+    return rotate_noise(perlin_mask)
 
 
 def apply_anomaly_to_img(

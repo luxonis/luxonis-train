@@ -1,7 +1,7 @@
+from luxonis_train.attached_modules.metrics import BaseMetric
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Tasks
 
-from ..base_metric import BaseMetric
 from .mean_average_precision_bbox import MeanAveragePrecisionBBox
 from .mean_average_precision_keypoints import MeanAveragePrecisionKeypoints
 from .mean_average_precision_segmentation import (

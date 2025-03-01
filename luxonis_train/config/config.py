@@ -1,5 +1,4 @@
 import sys
-import warnings
 from pathlib import Path
 from typing import Annotated, Any, Literal, NamedTuple
 
@@ -168,13 +167,12 @@ class ModelConfig(BaseModelExtraForbid):
                 "No valid main metric can be set as all "
                 "metrics contain 'matrix' in their names."
             )
-        else:
-            logger.warning(
-                "[Ignore if using predefined model] "
-                "No metrics specified. "
-                "This is likely unintended unless "
-                "the configuration is not used for training."
-            )
+        logger.warning(
+            "[Ignore if using predefined model] "
+            "No metrics specified. "
+            "This is likely unintended unless "
+            "the configuration is not used for training."
+        )
         return self
 
     @model_validator(mode="after")
@@ -184,9 +182,9 @@ class ModelConfig(BaseModelExtraForbid):
             raise ValueError("Model graph is not acyclic.")
         if not self.outputs:
             outputs: list[str] = []  # nodes which are not inputs to any nodes
-            inputs = set(
+            inputs = {
                 node_name for node in self.nodes for node_name in node.inputs
-            )
+            }
             for node in self.nodes:
                 name = node.alias or node.name
                 if name not in inputs:
@@ -260,10 +258,10 @@ class ModelConfig(BaseModelExtraForbid):
             if section not in data:
                 data[section] = []
             else:
-                warnings.warn(
+                logger.warning(
                     f"Field `model.{section}` is deprecated. "
                     f"Please specify `{section}` under "
-                    "the node they are attached to."
+                    "the node they are attached to.",
                 )
             if not check_type(data["nodes"], list[dict[str, Any]]):
                 raise ValueError(
@@ -311,8 +309,8 @@ class LoaderConfig(ConfigItem):
     def validate_view(cls, splits: ParamValue) -> list[Any]:
         if isinstance(splits, str):
             return [splits]
-        elif not isinstance(splits, list):
-            raise ValueError(
+        if not isinstance(splits, list):
+            raise TypeError(
                 "Invalid value for `train_view`, `val_view`, "
                 f"or `test_view`: {splits}. "
                 "Expected a string or a list of strings."
@@ -325,7 +323,7 @@ class LoaderConfig(ConfigItem):
         if dataset_type is None:
             return self
         if not isinstance(dataset_type, str):
-            raise ValueError(
+            raise TypeError(
                 f"Invalid value for `dataset_type`: {dataset_type}. "
                 "Expected a string."
             )
@@ -367,7 +365,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
     @classmethod
     def validate_train_rgb(cls, data: Params) -> Params:
         if "train_rgb" in data:
-            warnings.warn(
+            logger.warning(
                 "Field `train_rgb` is deprecated. Use `color_space` instead."
             )
             data["color_space"] = "RGB" if data.pop("train_rgb") else "BGR"
@@ -537,19 +535,12 @@ class ExportConfig(ArchiveConfig):
         default_factory=BlobconverterExportConfig
     )
 
-    @model_validator(mode="after")
-    def check_values(self) -> Self:
-        def pad_values(
-            values: float | list[float] | None,
-        ) -> list[float] | None:
-            if values is None:
-                return None
-            if isinstance(values, float):
-                return [values] * 3
-
-        self.scale_values = pad_values(self.scale_values)
-        self.mean_values = pad_values(self.mean_values)
-        return self
+    @field_validator("scale_values", "mean_values", mode="before")
+    @classmethod
+    def check_values(cls, values: ParamValue) -> Any:
+        if isinstance(values, float | int):
+            return [values] * 3
+        return values
 
 
 class StorageConfig(BaseModelExtraForbid):

@@ -73,12 +73,14 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
 
         strides = [
             s if i == 0 else 1
-            for layer, s in zip(layers, strides)
+            for layer, s in zip(layers, strides, strict=True)
             for i in range(layer)
         ]
         ts = [1] * layers[0] + [6] * sum(layers[1:])
         kernel_sizes = [
-            ks for ks, layer in zip(kernel_sizes, layers) for _ in range(layer)
+            ks
+            for ks, layer in zip(kernel_sizes, layers, strict=True)
+            for _ in range(layer)
         ]
 
         features: list[nn.Module] = []
@@ -215,7 +217,6 @@ class LinearBottleneck(nn.Module):
             b = x
             a = a + b
             c = out[:, self.in_channels :]
-            d = torch.concat([a, c], dim=1)
-            return d
+            return torch.concat([a, c], dim=1)
 
         return out

@@ -1,6 +1,7 @@
 from collections import defaultdict
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Literal, cast
+from typing import Literal, cast
 
 import lightning.pytorch as pl
 import torch
@@ -269,7 +270,7 @@ class LuxonisLightningModule(pl.LightningModule):
         """Performs one step of prediction with provided batch."""
         inputs, labels = batch
         images = get_denormalized_images(self.cfg, inputs[self.image_source])
-        outputs = self.forward(
+        return self.forward(
             inputs,
             labels,
             images=images,
@@ -277,7 +278,6 @@ class LuxonisLightningModule(pl.LightningModule):
             compute_loss=False,
             compute_metrics=False,
         )
-        return outputs
 
     @override
     def on_train_epoch_start(self) -> None:
@@ -492,7 +492,7 @@ class LuxonisLightningModule(pl.LightningModule):
         state_dict = {}
         self_state_dict = self.state_dict()
         for key, value in checkpoint["state_dict"].items():
-            if key not in self_state_dict.keys():
+            if key not in self_state_dict:
                 logger.warning(
                     f"Key '{key}' from checkpoint not found in model state dict."
                 )
@@ -500,7 +500,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 state_dict[key] = value
 
         for key in self_state_dict:
-            if key not in state_dict.keys():
+            if key not in state_dict:
                 logger.warning(f"Key '{key}' was not found in checkpoint.")
             else:
                 try:

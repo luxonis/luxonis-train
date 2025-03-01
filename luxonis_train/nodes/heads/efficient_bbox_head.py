@@ -1,4 +1,5 @@
-from typing import Iterable, Literal
+from collections.abc import Iterable
+from typing import Literal
 
 import torch
 from loguru import logger
@@ -126,27 +127,26 @@ class EfficientBBoxHead(BaseDetectionHead):
                 "distributions": distributions,
             }
 
-        else:
-            _, anchor_points, _, stride_tensor = anchors_for_fpn_features(
-                features,
-                self.stride,
-                self.grid_cell_size,
-                self.grid_cell_offset,
-                multiply_with_stride=False,
-            )
-            boxes = self._postprocess_detections(
-                features,
-                class_scores,
-                distributions,
-                anchor_points,
-                stride_tensor,
-            )
-            return {
-                "boundingbox": boxes,
-                "features": features,
-                "class_scores": class_scores,
-                "distributions": distributions,
-            }
+        _, anchor_points, _, stride_tensor = anchors_for_fpn_features(
+            features,
+            self.stride,
+            self.grid_cell_size,
+            self.grid_cell_offset,
+            multiply_with_stride=False,
+        )
+        boxes = self._postprocess_detections(
+            features,
+            class_scores,
+            distributions,
+            anchor_points,
+            stride_tensor,
+        )
+        return {
+            "boundingbox": boxes,
+            "features": features,
+            "class_scores": class_scores,
+            "distributions": distributions,
+        }
 
     @staticmethod
     def _wrap_export(
@@ -174,20 +174,16 @@ class EfficientBBoxHead(BaseDetectionHead):
         if self.in_channels == [32, 64, 128]:  # light predefined model
             if initialize_weights:
                 return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/efficientbbox_head_n_coco.ckpt"
-            else:
-                return "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientbbox_head_n_coco.ckpt"
-        elif self.in_channels == [64, 128, 256]:  # medium predefined model
+            return "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientbbox_head_n_coco.ckpt"
+        if self.in_channels == [64, 128, 256]:  # medium predefined model
             if initialize_weights:
                 return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/efficientbbox_head_s_coco.ckpt"
-            else:
-                return None
-        elif self.in_channels == [128, 256, 512]:  # heavy predefined model
+            return None
+        if self.in_channels == [128, 256, 512]:  # heavy predefined model
             if initialize_weights:
                 return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/efficientbbox_head_l_coco.ckpt"
-            else:
-                return None
-        else:
             return None
+        return None
 
     @property
     @override

@@ -24,10 +24,9 @@ def get_inputs(path: Path) -> dict[str, ArchiveMetadataDict]:
 
     if path.suffix == ".onnx":
         return _get_onnx_inputs(path)
-    else:
-        raise NotImplementedError(
-            f"Missing input reading function for {path.suffix} models."
-        )
+    raise NotImplementedError(
+        f"Missing input reading function for {path.suffix} models."
+    )
 
 
 def get_outputs(path: Path) -> dict[str, ArchiveMetadataDict]:
@@ -39,21 +38,19 @@ def get_outputs(path: Path) -> dict[str, ArchiveMetadataDict]:
 
     if path.suffix == ".onnx":
         return _get_onnx_outputs(path)
-    else:
-        raise NotImplementedError(
-            f"Missing input reading function for {path.suffix} models."
-        )
+    raise NotImplementedError(
+        f"Missing input reading function for {path.suffix} models."
+    )
 
 
 def _from_onnx_dtype(dtype: TensorProto.DataType | int) -> DataType:
-    dtype_map = {
+    dtype_map: dict[int, str] = {
         TensorProto.INT8: "int8",
         TensorProto.INT32: "int32",
         TensorProto.UINT8: "uint8",
         TensorProto.FLOAT: "float32",
         TensorProto.FLOAT16: "float16",
     }
-    dtype = TensorProto.DataType(dtype)
     if dtype not in dtype_map:  # pragma: no cover
         raise ValueError(f"Unsupported ONNX data type: `{dtype}`")
 

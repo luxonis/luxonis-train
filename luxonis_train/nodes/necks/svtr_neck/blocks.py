@@ -3,7 +3,7 @@ from typing import Literal
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.nodes.blocks import ConvModule, DropPath
+from luxonis_train.nodes.blocks import DropPath
 
 
 class Im2Seq(nn.Module):
@@ -39,8 +39,7 @@ class Mlp(nn.Module):
         x = self.act(x)
         x = self.drop(x)
         x = self.fc2(x)
-        x = self.drop(x)
-        return x
+        return self.drop(x)
 
 
 class ConvMixer(nn.Module):
@@ -69,8 +68,7 @@ class ConvMixer(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         x = x.permute(0, 2, 1).reshape([0, self.dim, self.height, self.width])
         x = self.local_mixer(x)
-        x = x.flatten(2).permute(0, 2, 1)
-        return x
+        return x.flatten(2).permute(0, 2, 1)
 
 
 class Attention(nn.Module):
@@ -80,7 +78,7 @@ class Attention(nn.Module):
         height: int | None = None,
         width: int | None = None,
         n_heads: int = 8,
-        mixer: Literal["Global", "Local", "Conv"] = "Global",
+        mixer: Literal["global", "local", "conv"] = "global",
         kernel_size: tuple[int, int] = (7, 11),
         qk_scale: float | None = None,
         attn_drop: float = 0.0,
@@ -98,7 +96,7 @@ class Attention(nn.Module):
         self.proj_drop = nn.Dropout(proj_drop)
         self.height = height
         self.width = width
-        if mixer == "Local":
+        if mixer == "local":
             if self.height is None or self.width is None:
                 raise ValueError(
                     "Height and width must be provided when using "
@@ -141,7 +139,7 @@ class Attention(nn.Module):
         q, k, v = qkv[0] * self.scale, qkv[1], qkv[2]
 
         attn = q.matmul(k.permute(0, 1, 3, 2))
-        if self.mixer == "Local":
+        if self.mixer == "local":
             attn += self.mask
         attn = nn.functional.log_softmax(attn, dim=-1).exp()
         attn = self.attn_drop(attn)
@@ -152,8 +150,7 @@ class Attention(nn.Module):
             .reshape((batch_size, -1, self.dim))
         )
         x = self.proj(x)
-        x = self.proj_drop(x)
-        return x
+        return self.proj_drop(x)
 
 
 class SVTRBlock(nn.Module):
@@ -163,7 +160,7 @@ class SVTRBlock(nn.Module):
         n_heads: int,
         height: int | None = None,
         width: int | None = None,
-        mixer: Literal["Global", "Local", "Conv"] = "Global",
+        mixer: Literal["global", "local", "conv"] = "global",
         mixer_kernel_size: tuple[int, int] = (7, 11),
         mlp_ratio: float = 4.0,
         qk_scale: float | None = None,
@@ -177,7 +174,7 @@ class SVTRBlock(nn.Module):
     ):
         super().__init__()
         self.norm1 = norm_layer(dim, eps=epsilon)
-        if mixer == "Global" or mixer == "Local":
+        if mixer in {"global", "local"}:
             self.mixer = Attention(
                 dim,
                 n_heads=n_heads,
@@ -189,7 +186,7 @@ class SVTRBlock(nn.Module):
                 attn_drop=attn_drop,
                 proj_drop=drop,
             )
-        elif mixer == "Conv":
+        elif mixer == "conv":
             if height is None or width is None:
                 raise ValueError(
                     "Height and width must be provided when using "
@@ -228,118 +225,3 @@ class SVTRBlock(nn.Module):
             x = x + self.drop_path(self.mixer(self.norm1(x)))
             x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x
-
-
-class EncoderWithSVTR(nn.Module):
-    def __init__(
-        self,
-        in_channels: int,
-        dims: int = 64,
-        depth: int = 2,
-        hidden_dims: int = 120,
-        use_guide: bool = False,
-        n_heads: int = 8,
-        mlp_ratio: float = 2.0,
-        drop_rate: float = 0.1,
-        attn_drop_rate: float = 0.1,
-        drop_path: float = 0.0,
-        kernel_size: tuple[int, int] = (3, 3),
-        qk_scale: float | None = None,
-    ):
-        super(EncoderWithSVTR, self).__init__()
-        self.depth = depth
-        self.use_guide = use_guide
-        self.conv1 = ConvModule(
-            in_channels,
-            in_channels // 8,
-            kernel_size=kernel_size,
-            padding=kernel_size[0] // 2,
-            bias=True,
-            activation=nn.ReLU(),
-        )
-        self.conv2 = ConvModule(
-            in_channels // 8,
-            hidden_dims,
-            kernel_size=1,
-            bias=True,
-            activation=nn.ReLU(),
-        )
-
-        self.svtr_block = nn.ModuleList(
-            [
-                SVTRBlock(
-                    dim=hidden_dims,
-                    n_heads=n_heads,
-                    mixer="Global",
-                    height=None,
-                    width=None,
-                    mlp_ratio=mlp_ratio,
-                    qk_scale=qk_scale,
-                    drop=drop_rate,
-                    act_layer=nn.ReLU,
-                    attn_drop=attn_drop_rate,
-                    drop_path=drop_path,
-                    norm_layer=nn.LayerNorm,
-                    epsilon=1e-05,
-                    prenorm=False,
-                )
-                for _ in range(depth)
-            ]
-        )
-        self.norm = nn.LayerNorm(hidden_dims, eps=1e-6)
-        self.conv3 = ConvModule(
-            hidden_dims,
-            in_channels,
-            kernel_size=1,
-            bias=True,
-            activation=nn.ReLU(),
-        )
-        self.conv4 = ConvModule(
-            2 * in_channels,
-            in_channels // 8,
-            kernel_size=kernel_size,
-            padding=kernel_size[0] // 2,
-            bias=True,
-            activation=nn.ReLU(),
-        )
-
-        self.conv1x1 = ConvModule(
-            in_channels // 8,
-            dims,
-            kernel_size=1,
-            bias=True,
-            activation=nn.ReLU(),
-        )
-        self.out_channels = dims
-        self.apply(self._init_weights)
-
-    def _init_weights(self, m: nn.Module) -> None:
-        if isinstance(m, nn.Linear):
-            nn.init.trunc_normal_(m.weight, std=0.02)
-            if m.bias is not None:
-                nn.init.zeros_(m.bias)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.zeros_(m.bias)
-            nn.init.ones_(m.weight)
-
-    def forward(self, x: Tensor) -> Tensor:
-        if self.use_guide:
-            z = x.clone().detach()
-        else:
-            z = x
-        h = z
-
-        z = self.conv1(z)
-        z = self.conv2(z)
-
-        B, C, H, W = z.shape
-        z = z.flatten(2).permute(0, 2, 1)
-        for blk in self.svtr_block:
-            z = blk(z)
-        z = self.norm(z)
-
-        z = z.reshape([B, H, W, C]).permute(0, 3, 1, 2)
-        z = self.conv3(z)
-        z = torch.cat((h, z), dim=1)
-        z = self.conv1x1(self.conv4(z))
-        return z

@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 
 import torch
-import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks import (
     ConvModule,
@@ -184,8 +183,7 @@ class PANDownBlockBase(ABC, nn.Module):
     def forward(self, x0: Tensor, x1: Tensor) -> Tensor:
         x = self.downsample(x0)
         x = torch.cat([x, x1], dim=1)
-        x = self.encode_block(x)
-        return x
+        return self.encode_block(x)
 
 
 class RepDownBlock(PANDownBlockBase):

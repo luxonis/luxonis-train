@@ -1,5 +1,3 @@
-import os
-
 import pytest
 
 from luxonis_train.utils.general import infer_upscale_factor, safe_download
@@ -29,20 +27,21 @@ def test_infer_upscale_factor(
 
 
 @pytest.mark.parametrize(
-    ("in_size", "orig_size"),
+    ("in_size", "orig_size", "match_error"),
     [
-        ((1, 1), (2, 1)),
-        ((1, 1), (1, 2)),
-        ((2, 3), (16, 16)),
-        ((3, 2), (16, 16)),
-        ((3, 3), (16, 16)),
+        ((1, 1), (2, 1), "are different"),
+        ((1, 1), (1, 2), "are different"),
+        ((2, 3), (16, 16), "but height"),
+        ((3, 2), (16, 16), "but width"),
+        ((3, 3), (16, 16), "are not integers"),
     ],
 )
 def test_infer_upscale_factor_fail(
     in_size: tuple[int, int] | int,
     orig_size: tuple[int, int] | int,
+    match_error: str,
 ):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=match_error):
         infer_upscale_factor(in_size, orig_size)
 
 
@@ -51,7 +50,7 @@ def test_safe_download():
     local_path = safe_download(url=url, file="test.ckpt", dir=".", force=True)
     if local_path is not None:
         assert local_path.is_file()
-        os.remove(local_path)
+        local_path.unlink()
 
 
 def test_safe_download_failed():

@@ -93,7 +93,7 @@ def test_validation_epoch_start_and_end(model, ema_callback):
     assert ema_callback.collected_state_dict is not None
 
     ema_callback.on_validation_end(trainer, model)
-    for k in ema_callback.collected_state_dict.keys():
+    for k in ema_callback.collected_state_dict:
         assert torch.equal(
             ema_callback.collected_state_dict[k], model.state_dict()[k]
         )

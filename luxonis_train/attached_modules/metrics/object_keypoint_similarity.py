@@ -142,6 +142,7 @@ class ObjectKeypointSimilarity(BaseMetric):
                 self.pred_keypoints,
                 self.groundtruth_keypoints,
                 self.groundtruth_scales,
+                strict=True,
             )
         ):
             gt_kpts = torch.reshape(
@@ -160,13 +161,12 @@ class ObjectKeypointSimilarity(BaseMetric):
                 image_ious.cpu().numpy(), maximize=True
             )
             matched_ious = [
-                image_ious[n, m] for n, m in zip(gt_indices, pred_indices)
+                image_ious[n, m]
+                for n, m in zip(gt_indices, pred_indices, strict=True)
             ]
             image_mean_oks[i] = torch.tensor(matched_ious).mean()
 
-        final_oks = image_mean_oks.nanmean()
-
-        return final_oks
+        return image_mean_oks.nanmean()
 
     @staticmethod
     def _fix_empty_tensors(input_tensor: Tensor) -> Tensor:

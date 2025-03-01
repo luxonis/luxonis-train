@@ -24,10 +24,7 @@ class ConfusionMatrix(BaseMetric):
         Tasks.INSTANCE_KEYPOINTS,
     ]
 
-    def __init__(
-        self,
-        **kwargs,
-    ):
+    def __init__(self, **kwargs):
         """Compute the confusion matrix for classification,
         segmentation, and object detection tasks."""
         super().__init__(**kwargs)
@@ -194,7 +191,9 @@ class ConfusionMatrix(BaseMetric):
                     len(gt_boxes), device=gt_boxes.device
                 )
 
-                for gt_idx, pred_idx in zip(gt_match_idx, pred_max_idx):
+                for gt_idx, pred_idx in zip(
+                    gt_match_idx, pred_max_idx, strict=True
+                ):
                     gt_class = gt_classes[gt_idx]
                     pred_class = pred_classes[pred_idx]
                     cm[pred_class, gt_class] += 1

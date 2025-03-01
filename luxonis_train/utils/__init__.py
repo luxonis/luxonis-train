@@ -8,7 +8,7 @@ from .boundingbox import (
     non_max_suppression,
 )
 from .dataset_metadata import DatasetMetadata
-from .exceptions import IncompatibleException
+from .exceptions import IncompatibleError
 from .general import (
     get_attribute_check_none,
     get_with_default,
@@ -29,7 +29,7 @@ from .tracker import LuxonisTrackerPL
 
 __all__ = [
     "DatasetMetadata",
-    "IncompatibleException",
+    "IncompatibleError",
     "LuxonisTrackerPL",
     "OCRDecoder",
     "OCREncoder",

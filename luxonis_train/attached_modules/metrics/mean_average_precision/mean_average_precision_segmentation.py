@@ -1,6 +1,6 @@
 import torch
-import torchmetrics.detection as detection
 from torch import Tensor
+from torchmetrics import detection
 
 from luxonis_train.tasks import Tasks
 

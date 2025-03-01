@@ -117,7 +117,7 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
                         y.item() / height * self.original_img_size[0],
                         float(prob_map[y, x]),
                     ]
-                    for y, x in zip(y_indices, x_indices)
+                    for y, x in zip(y_indices, x_indices, strict=True)
                 ]
 
                 kpts_per_img.append(kpts)

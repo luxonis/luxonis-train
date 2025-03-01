@@ -57,23 +57,19 @@ def get_variant(variant: VariantLiteral) -> RepPANNeckVariant:
 def get_variant_weights(
     variant: VariantLiteral, intialize_weights: bool
 ) -> str | None:
-    if variant == "n" or variant == "nano":
+    if variant in {"n", "nano"}:
         if intialize_weights:
             return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/reppanneck_n_coco.ckpt"
-        else:
-            return "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/reppanneck_n_coco.ckpt"
-    elif variant == "s" or variant == "small":
+        return "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/reppanneck_n_coco.ckpt"
+    if variant in {"s", "small"}:
         if intialize_weights:
             return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/reppanneck_s_coco.ckpt"
-        else:
-            return None
-    elif variant == "m" or variant == "medium":
+        return None
+    if variant in {"m", "medium"}:
         if intialize_weights:
             return None
-        else:
-            return None
-    elif variant == "l" or variant == "large":
+        return None
+    if variant in {"l", "large"}:
         if intialize_weights:
             return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/reppanneck_l_coco.ckpt"
-        else:
-            return None
+        return None

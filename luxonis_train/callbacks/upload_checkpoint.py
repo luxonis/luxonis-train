@@ -1,5 +1,4 @@
-import os
-from pathlib import Path
+import tempfile
 from typing import Any
 
 import lightning.pytorch as pl
@@ -33,7 +32,7 @@ class UploadCheckpoint(pl.Callback):
         checkpoint: dict[str, Any],
     ) -> None:
         # Log only once per epoch in case there are multiple ModelCheckpoint callbacks
-        if not self.last_logged_epoch == trainer.current_epoch:
+        if self.last_logged_epoch != trainer.current_epoch:
             checkpoint_paths = [
                 c.best_model_path
                 for c in trainer.checkpoint_callbacks
@@ -42,19 +41,11 @@ class UploadCheckpoint(pl.Callback):
             for curr_best_checkpoint in checkpoint_paths:
                 if curr_best_checkpoint not in self.last_best_checkpoints:
                     logger.info("Uploading checkpoint...")
-                    temp_filename = (
-                        Path(curr_best_checkpoint)
-                        .parent.with_suffix(".ckpt")
-                        .name
-                    )
-                    torch.save(  # nosemgrep
-                        checkpoint, temp_filename
-                    )
-                    module.tracker.upload_artifact(
-                        temp_filename, typ="weights"
-                    )
-
-                    os.remove(temp_filename)
+                    with tempfile.NamedTemporaryFile() as temp_file:
+                        torch.save(checkpoint, temp_file.name)  # nosemgrep
+                        module.tracker.upload_artifact(
+                            temp_file.name, typ="weights"
+                        )
 
                     logger.info("Checkpoint upload finished")
                     self.last_best_checkpoints.add(curr_best_checkpoint)

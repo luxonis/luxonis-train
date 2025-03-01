@@ -131,7 +131,7 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         c_max = int(counts.max()) if counts.numel() > 0 else 0
         out_target = torch.zeros(batch_size, c_max, 5, device=target.device)
         out_target[:, :, 0] = -1
-        for id, count in zip(sample_ids, counts):
+        for id, count in zip(sample_ids, counts, strict=True):
             out_target[id, :count] = target[target[:, 0] == id][:, 1:]
 
         scaled_target = out_target[:, :, 1:5] * self.gt_bboxes_scale

@@ -30,23 +30,23 @@ def test_torchmetrics():
 
     assert DummyMetric(task="binary")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="not possible to infer"):
         DummyMetric()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="not have the 'num_classes'"):
         DummyMetric(task="multiclass")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Invalid task type"):
         DummyMetric(task="invalid")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="more than 1 class"):
         DummyMetric(task="binary", node=node_2_classes)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="only 1 class"):
         DummyMetric(task="multiclass", node=node_1_class)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="not have the 'num_classes'"):
         DummyMetric(task="multiclass", node=node)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="not have the 'num_labels'"):
         DummyMetric(task="multilabel", node=node)

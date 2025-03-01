@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -71,12 +72,17 @@ class MetadataLogger(pl.Callback):
 
         package_location = Path(distribution.location, package_name)
 
+        git = shutil.which("git")
+        if git is None:
+            return None
+
         try:
             return subprocess.check_output(
-                ["git", "rev-parse", "HEAD"],
+                [git, "rev-parse", "HEAD"],
                 cwd=package_location,
                 stderr=subprocess.DEVNULL,
                 universal_newlines=True,
+                shell=False,
             ).strip()
 
         except subprocess.CalledProcessError:

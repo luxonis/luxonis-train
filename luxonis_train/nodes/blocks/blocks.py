@@ -438,8 +438,7 @@ class SqueezeExciteBlock(nn.Module):
         weights = self.activation(weights)
         weights = self.conv_up(weights)
         weights = self.sigmoid(weights)
-        x = x * weights
-        return x
+        return x * weights
 
 
 RefB = TypeVar("RefB", bound=nn.Module)
@@ -858,8 +857,7 @@ class SpatialPyramidPoolingBlock(nn.Module):
         y3 = self.max_pool(y2)
 
         x = torch.cat([x, y1, y2, y3], dim=1)
-        x = self.conv2(x)
-        return x
+        return self.conv2(x)
 
 
 class AttentionRefinmentBlock(nn.Module):
@@ -890,8 +888,7 @@ class AttentionRefinmentBlock(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         x = self.conv_3x3(x)
         attention = self.attention(x)
-        out = x * attention
-        return out
+        return x * attention
 
 
 class FeatureFusionBlock(nn.Module):
@@ -932,8 +929,7 @@ class FeatureFusionBlock(nn.Module):
         fusion = torch.cat([x1, x2], dim=1)
         x = self.conv_1x1(fusion)
         attention = self.attention(x)
-        out = x + x * attention
-        return out
+        return x + x * attention
 
 
 class ResNetBlock(nn.Module):

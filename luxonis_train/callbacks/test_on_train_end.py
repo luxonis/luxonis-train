@@ -25,8 +25,8 @@ class TestOnTrainEnd(pl.Callback):
 
         # Restore the paths
         for callback in trainer.checkpoint_callbacks:
-            if isinstance(callback, ModelCheckpoint):
-                if hash(callback.monitor) in best_paths:
-                    callback.best_model_path = best_paths[
-                        hash(callback.monitor)
-                    ]
+            if (
+                isinstance(callback, ModelCheckpoint)
+                and hash(callback.monitor) in best_paths
+            ):
+                callback.best_model_path = best_paths[hash(callback.monitor)]

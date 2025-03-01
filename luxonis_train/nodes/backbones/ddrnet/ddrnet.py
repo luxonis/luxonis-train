@@ -289,8 +289,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
 
         if self._use_aux_heads:
             return [x_extra, x]
-        else:
-            return [x]
+        return [x]
 
     def init_params(self) -> None:
         for m in self.modules():

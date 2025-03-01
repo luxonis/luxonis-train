@@ -134,14 +134,13 @@ class OCRRecognitionModel(BasePredefinedModel):
     @property
     def metrics(self) -> list[MetricModuleConfig]:
         """Defines the metrics used for evaluation."""
-        metrics = [
+        return [
             MetricModuleConfig(
                 name="OCRAccuracy",
                 attached_to=f"{self.task_name}-OCRCTCHead",
                 is_main_metric=True,
             ),
         ]
-        return metrics
 
     @property
     def visualizers(self) -> list[AttachedModuleConfig]:

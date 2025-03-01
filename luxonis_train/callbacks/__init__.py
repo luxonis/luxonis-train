@@ -16,7 +16,7 @@ from .archive_on_train_end import ArchiveOnTrainEnd
 from .ema import EMACallback
 from .export_on_train_end import ExportOnTrainEnd
 from .gpu_stats_monitor import GPUStatsMonitor
-from .gradcam_visializer import GradCamCallback
+from .gradcam_visualizer import GradCamCallback
 from .luxonis_progress_bar import (
     BaseLuxonisProgressBar,
     LuxonisRichProgressBar,

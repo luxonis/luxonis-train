@@ -50,13 +50,12 @@ class OCRDecoder:
             for idx in range(len(pred_ids[batch_idx])):
                 if pred_ids[batch_idx][idx] in self.ignored_tokens:
                     continue
-                if self.is_remove_duplicate:
-                    if (
-                        idx > 0
-                        and pred_ids[batch_idx][idx - 1]
-                        == pred_ids[batch_idx][idx]
-                    ):
-                        continue
+                if self.is_remove_duplicate and (
+                    idx > 0
+                    and pred_ids[batch_idx][idx - 1]
+                    == pred_ids[batch_idx][idx]
+                ):
+                    continue
                 char_list.append(
                     self.int_to_char[int(pred_ids[batch_idx][idx])]
                 )
@@ -91,7 +90,7 @@ class OCREncoder:
             Defaults to True.
         """
 
-        self._alphabet = [""] + list(np.unique(alphabet))
+        self._alphabet = ["", *np.unique(alphabet)]
         self.char_to_int = {char: i for i, char in enumerate(self._alphabet)}
 
         self.ignore_unknown = ignore_unknown
@@ -125,8 +124,7 @@ class OCREncoder:
 
             encoded_targets.append(encoded_target)
 
-        encoded_targets = torch.tensor(encoded_targets)
-        return encoded_targets
+        return torch.tensor(encoded_targets)
 
     def __call__(self, targets: Tensor) -> Tensor:
         return self.encode(targets)

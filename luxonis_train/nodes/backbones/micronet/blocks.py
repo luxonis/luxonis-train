@@ -130,7 +130,7 @@ class MicroBlock(nn.Module):
                 intermediate_channels,
                 init_a,
                 init_b,
-                True if use_dy2 == 2 else False,
+                use_dy2 == 2,
                 group1,
                 reduction,
             )
@@ -224,7 +224,7 @@ class MicroBlock(nn.Module):
                 intermediate_channels,
                 init_a,
                 init_b,
-                True if use_dy1 == 2 else False,
+                use_dy1 == 2,
                 groups_1[1],
                 reduction,
             )
@@ -239,7 +239,7 @@ class MicroBlock(nn.Module):
                 intermediate_channels,
                 init_a,
                 init_b,
-                True if use_dy2 == 2 else False,
+                use_dy2 == 2,
                 groups_1[1],
                 reduction,
                 True,
@@ -304,8 +304,7 @@ class ChannelShuffle(nn.Module):
         channels_per_group = channels // self.groups
         x = x.view(batch_size, self.groups, channels_per_group, height, width)
         x = torch.transpose(x, 1, 2).contiguous()
-        out = x.view(batch_size, -1, height, width)
-        return out
+        return x.view(batch_size, -1, height, width)
 
 
 class DYShiftMax(nn.Module):

@@ -243,7 +243,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
         )
 
         for image_id, (image_boxes, image_kpts, image_labels) in enumerate(
-            zip(boxes, keypoints, labels)
+            zip(boxes, keypoints, labels, strict=True)
         ):
             image_boxes_list: list[list[float]] = image_boxes.cpu().tolist()
             image_kpts_list: list[list[float]] = image_kpts.cpu().tolist()
@@ -252,7 +252,12 @@ class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
             images.append({"id": image_id})
 
             for k, (image_box, image_kpt, image_label) in enumerate(
-                zip(image_boxes_list, image_kpts_list, image_labels_list)
+                zip(
+                    image_boxes_list,
+                    image_kpts_list,
+                    image_labels_list,
+                    strict=True,
+                )
             ):
                 if len(image_box) != 4:
                     raise ValueError(
@@ -267,7 +272,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
                     )
 
                 if not isinstance(image_label, int):
-                    raise ValueError(
+                    raise TypeError(
                         f"Invalid input class of sample {image_id}, element {k} "
                         f"(expected value of type integer, got type {type(image_label)})"
                     )

@@ -154,7 +154,9 @@ class DAPPM(nn.Module):
                     branch_channels=branch_channels,
                     inter_mode=inter_mode,
                 )
-                for kernel_size, stride in zip(kernel_sizes, strides)
+                for kernel_size, stride in zip(
+                    kernel_sizes, strides, strict=True
+                )
             ]
         )
 
@@ -187,8 +189,7 @@ class DAPPM(nn.Module):
         for i in range(1, len(self.branches)):
             x_list.append(self.branches[i]([x, x_list[i - 1]]))
 
-        out = self.compression(torch.cat(x_list, dim=1)) + self.shortcut(x)
-        return out
+        return self.compression(torch.cat(x_list, dim=1)) + self.shortcut(x)
 
 
 class BasicDDRBackbone(nn.Module):

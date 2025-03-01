@@ -28,8 +28,10 @@ def replace_weights(
             module.load_state_dict(old_weights)
         except RuntimeError:
             logger.error(
-                "Failed to strictly load old weights. The model likely underwent re-parametrization, "
-                "which is a destructive operation. Loading old weights with strict=False."
+                "Failed to strictly load old weights. "
+                "The model likely underwent re-parametrization, "
+                "which is a destructive operation. "
+                "Loading old weights with `strict=False`."
             )
             module.load_state_dict(old_weights, strict=False)
         del old_weights
@@ -41,24 +43,24 @@ def try_onnx_simplify(onnx_path: str) -> None:
     try:
         import onnxsim
 
-        logger.info("Simplifying ONNX model...")
-        model_onnx = onnx.load(onnx_path)
-        onnx_model, check = onnxsim.simplify(model_onnx)
-        if not check:
-            raise RuntimeError("ONNX simplify failed.")  # pragma: no cover
-        onnx.save(onnx_model, onnx_path)
-        logger.info(f"ONNX model saved to {onnx_path}")
-
     except ImportError:
         logger.error("Failed to import `onnxsim`")
         logger.warning(
             "`onnxsim` not installed. Skipping ONNX model simplification. "
             "Ensure `onnxsim` is installed in your environment."
         )
-    except RuntimeError:  # pragma: no cover
+        return
+
+    logger.info("Simplifying ONNX model...")
+    model_onnx = onnx.load(onnx_path)
+    onnx_model, check = onnxsim.simplify(model_onnx)
+    if not check:
         logger.error(
             "Failed to simplify ONNX model. Proceeding without simplification."
         )
+        return
+    onnx.save(onnx_model, onnx_path)
+    logger.info(f"ONNX model saved to {onnx_path}")
 
 
 def get_preprocessing(

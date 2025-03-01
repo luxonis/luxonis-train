@@ -49,19 +49,18 @@ class BaseDetectionHead(BaseHead[list[Tensor], tuple[list[Tensor], ...]]):
                 m.eps = 0.001
                 m.momentum = 0.03
             elif isinstance(
-                m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU)
+                m, nn.Hardswish | nn.LeakyReLU | nn.ReLU | nn.ReLU6 | nn.SiLU
             ):
                 m.inplace = True
 
     def fit_stride_to_heads(self) -> Tensor:
-        stride = torch.tensor(
+        return torch.tensor(
             [
                 self.original_in_shape[1] / x[2]
                 for x in self.in_sizes[: self.n_heads]
             ],
             dtype=torch.int,
         )
-        return stride
 
     @override
     def get_custom_head_config(self) -> dict[str, Any]:

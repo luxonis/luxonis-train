@@ -1,7 +1,9 @@
 import signal
+import sys
 import threading
 from collections.abc import Mapping
 from pathlib import Path
+from threading import ExceptHookArgs
 from typing import Any, Literal, TypeAlias, overload
 
 import lightning.pytorch as pl
@@ -223,10 +225,10 @@ class LuxonisModel:
         status = "success"
         try:
             self.pl_trainer.fit(*args, ckpt_path=resume, **kwargs)
-        except Exception as e:  # pragma: no cover
+        except Exception:  # pragma: no cover
             logger.exception("Encountered an exception during training.")
             status = "failed"
-            raise e
+            raise
         finally:
             self.tracker.upload_artifact(self.log_file, typ="logs")
             self.tracker.upload_artifact(self.config_file, typ="config")
@@ -267,7 +269,7 @@ class LuxonisModel:
                 ckpt_path, typ="checkpoints", name="resume.ckpt"
             )
             self.tracker._finalize(status="failed")
-            exit()
+            sys.exit()
 
         signal.signal(signal.SIGTERM, graceful_exit)
 
@@ -291,7 +293,7 @@ class LuxonisModel:
 
         else:  # pragma: no cover
             # Every time exception happens in the Thread, this hook will activate
-            def thread_exception_hook(args):
+            def thread_exception_hook(args: ExceptHookArgs) -> None:
                 self.error_message = str(args.exc_value)
 
             threading.excepthook = thread_exception_hook
@@ -467,15 +469,14 @@ class LuxonisModel:
         loader = self.pytorch_loaders[view]
 
         with replace_weights(self.lightning_module, weights):
-            if not new_thread:
-                return self.pl_trainer.test(self.lightning_module, loader)[0]
-            else:  # pragma: no cover
+            if new_thread:  # pragma: no cover
                 self.thread = threading.Thread(
                     target=self.pl_trainer.test,
                     args=(self.lightning_module, loader),
                     daemon=True,
                 )
-                self.thread.start()
+                return self.thread.start()
+            return self.pl_trainer.test(self.lightning_module, loader)[0]
 
     def infer(
         self,
@@ -666,14 +667,13 @@ class LuxonisModel:
             if cfg_tuner.storage.storage_type == "local":
                 storage = "sqlite:///study_local.db"
             else:  # pragma: no cover
-                storage = "postgresql://{}:{}@{}:{}/{}".format(
+                storage = "postgresql://{}:{}@{}:{}/{}".format(  # noqa: UP032
                     self.cfg.ENVIRON.POSTGRES_USER,
                     self.cfg.ENVIRON.POSTGRES_PASSWORD,
                     self.cfg.ENVIRON.POSTGRES_HOST,
                     self.cfg.ENVIRON.POSTGRES_PORT,
                     self.cfg.ENVIRON.POSTGRES_DB,
                 )
-
         study = optuna.create_study(
             study_name=cfg_tuner.study_name,
             storage=storage,
@@ -844,10 +844,8 @@ class LuxonisModel:
         if early_stopping is not None:
             if early_stopping.stopped_epoch == 0:
                 return (current_epoch / self.cfg.trainer.epochs) * 100
-            else:
-                return 100.0
-        else:
-            return (current_epoch / self.cfg.trainer.epochs) * 100
+            return 100.0
+        return (current_epoch / self.cfg.trainer.epochs) * 100
 
     @rank_zero_only
     def get_error_message(self) -> str | None:

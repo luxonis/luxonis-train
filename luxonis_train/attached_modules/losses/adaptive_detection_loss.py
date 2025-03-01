@@ -198,20 +198,19 @@ class AdaptiveDetectionLoss(BaseLoss):
                 mask_gt,
                 pred_bboxes.detach() * self.stride_tensor,
             )
-        else:
-            self._log_assigner_change()
-            return self.tal_assigner(
-                pred_scores.detach(),
-                pred_bboxes.detach() * self.stride_tensor,
-                self.anchor_points,
-                gt_labels,
-                gt_xyxy,
-                mask_gt,
-                pred_kpts,
-                gt_kpts,
-                sigmas,
-                area_factor,
-            )
+        self._log_assigner_change()
+        return self.tal_assigner(
+            pred_scores.detach(),
+            pred_bboxes.detach() * self.stride_tensor,
+            self.anchor_points,
+            gt_labels,
+            gt_xyxy,
+            mask_gt,
+            pred_kpts,
+            gt_kpts,
+            sigmas,
+            area_factor,
+        )
 
     def _preprocess_bbox_target(
         self, target: Tensor, batch_size: int
@@ -225,7 +224,7 @@ class AdaptiveDetectionLoss(BaseLoss):
         c_max = int(counts.max()) if counts.numel() > 0 else 0
         out_target = torch.zeros(batch_size, c_max, 5, device=target.device)
         out_target[:, :, 0] = -1
-        for id, count in zip(sample_ids, counts):
+        for id, count in zip(sample_ids, counts, strict=True):
             out_target[id, :count] = target[target[:, 0] == id][:, 1:]
 
         scaled_target = out_target[:, :, 1:5] * self.gt_bboxes_scale
@@ -292,5 +291,4 @@ class VarifocalLoss(nn.Module):
             ce_loss = F.binary_cross_entropy(
                 pred_score.float(), target_score.float(), reduction="none"
             )
-        loss = (ce_loss * weight).sum()
-        return loss
+        return (ce_loss * weight).sum()

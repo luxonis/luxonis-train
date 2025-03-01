@@ -1,5 +1,3 @@
-from typing import Set
-
 from bidict import bidict
 from luxonis_ml.data import Category
 
@@ -38,7 +36,7 @@ class DatasetMetadata:
         self._loader = loader
 
     @property
-    def task_names(self) -> Set[str]:
+    def task_names(self) -> set[str]:
         """Gets the names of the tasks present in the dataset.
 
         @rtype: set[str]
@@ -65,7 +63,7 @@ class DatasetMetadata:
                     f"Task '{task_name}' is not present in the dataset."
                 )
             return len(self._classes[task_name])
-        n_classes = len(list(self._classes.values())[0])
+        n_classes = len(next(iter(self._classes.values())))
         for classes in self._classes.values():
             if len(classes) != n_classes:
                 raise RuntimeError(
@@ -118,7 +116,7 @@ class DatasetMetadata:
         if task_name is not None:
             if task_name not in self._classes:
                 raise ValueError(
-                    f"Task type {task_name} is not present in the dataset."
+                    f"Task '{task_name}' is not present in the dataset."
                 )
             return bidict(self._classes[task_name])
         classes = next(iter(self._classes.values()))

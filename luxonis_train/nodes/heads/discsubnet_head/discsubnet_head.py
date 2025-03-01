@@ -97,9 +97,8 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
         seg_out, recon = output
         if self.export:
             return {"segmentation": seg_out}
-        else:
-            seg_out, recon = output
-            return {"reconstructed": recon, "segmentation": seg_out}
+        seg_out, recon = output
+        return {"reconstructed": recon, "segmentation": seg_out}
 
     @override
     def get_custom_head_config(self) -> dict:

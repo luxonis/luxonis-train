@@ -1,5 +1,4 @@
-import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvModule
@@ -85,7 +84,7 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
         # encoder_blocks
         in_channels = width_list[0]
         self.encoder_blocks = nn.ModuleList()
-        for w, d in zip(width_list[1:3], depth_list[1:3]):
+        for w, d in zip(width_list[1:3], depth_list[1:3], strict=True):
             encoder_blocks = nn.ModuleList()
             for i in range(d):
                 stride = 2 if i == 0 else 1
@@ -101,13 +100,13 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
                         nn.Identity(),
                     ],
                     use_bias=[False, False, False],
-                    use_residual=True if stride == 1 else False,
+                    use_residual=stride == 1,
                 )
                 encoder_blocks.append(block)
                 in_channels = w
             self.encoder_blocks.append(encoder_blocks)
 
-        for w, d in zip(width_list[3:], depth_list[3:]):
+        for w, d in zip(width_list[3:], depth_list[3:], strict=True):
             encoder_blocks = nn.ModuleList()
             block = MobileBottleneckBlock(
                 in_channels=in_channels,
