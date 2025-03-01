@@ -2,12 +2,12 @@ import multiprocessing as mp
 
 import pytest
 from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.typing import ConfigItem, Params
 
-from luxonis_train.config.config import SchedulerConfig
 from luxonis_train.core import LuxonisModel
 
 
-def create_model_config():
+def create_model_config() -> Params:
     return {
         "trainer": {
             "n_sanity_val_steps": 0,
@@ -33,8 +33,8 @@ def create_model_config():
     }
 
 
-def sequential_scheduler() -> SchedulerConfig:
-    return SchedulerConfig(
+def sequential_scheduler() -> ConfigItem:
+    return ConfigItem(
         name="SequentialLR",
         params={
             "schedulers": [
@@ -52,8 +52,8 @@ def sequential_scheduler() -> SchedulerConfig:
     )
 
 
-def cosine_annealing_scheduler() -> SchedulerConfig:
-    return SchedulerConfig(
+def cosine_annealing_scheduler() -> ConfigItem:
+    return ConfigItem(
         name="CosineAnnealingLR",
         params={"T_max": 2, "eta_min": 0.001},
     )
