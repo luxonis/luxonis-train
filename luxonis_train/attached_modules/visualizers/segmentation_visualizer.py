@@ -10,7 +10,7 @@ from luxonis_train.tasks import Metadata, Tasks
 from .base_visualizer import BaseVisualizer
 from .utils import (
     Color,
-    draw_segmentation_labels,
+    draw_segmentation_targets,
     get_color,
     seg_output_to_bool,
 )
@@ -55,26 +55,26 @@ class SegmentationVisualizer(BaseVisualizer):
 
     @staticmethod
     def draw_predictions(
-        canvas: Tensor, predictions: Tensor, colors: list[Color], **kwargs
+        canvas: Tensor, predictions: Tensor, alpha: float, colors: list[Color]
     ) -> Tensor:
         viz = torch.zeros_like(canvas)
         for i in range(len(canvas)):
             prediction = predictions[i]
             mask = seg_output_to_bool(prediction)
-            viz[i] = draw_segmentation_labels(
-                canvas[i].clone(), mask, colors=colors, **kwargs
+            viz[i] = draw_segmentation_targets(
+                canvas[i].clone(), mask, alpha=alpha, colors=colors
             ).to(canvas.device)
         return viz
 
     @staticmethod
     def draw_targets(
-        canvas: Tensor, targets: Tensor, colors: list[Color], **kwargs
+        canvas: Tensor, targets: Tensor, alpha: float, colors: list[Color]
     ) -> Tensor:
         viz = torch.zeros_like(canvas)
         for i in range(len(viz)):
             target = targets[i]
-            viz[i] = draw_segmentation_labels(
-                canvas[i].clone(), target, colors=colors, **kwargs
+            viz[i] = draw_segmentation_targets(
+                canvas[i].clone(), target, alpha=alpha, colors=colors
             ).to(canvas.device)
 
         return viz
@@ -108,9 +108,8 @@ class SegmentationVisualizer(BaseVisualizer):
         predictions_vis = self.draw_predictions(
             prediction_canvas,
             predictions,
-            colors=colors,
             alpha=self.alpha,
-            **kwargs,
+            colors=colors,
         )
         if target is None:
             return predictions_vis
@@ -118,11 +117,8 @@ class SegmentationVisualizer(BaseVisualizer):
         targets_vis = self.draw_targets(
             target_canvas,
             target,
-            colors=self.colors,
             alpha=self.alpha,
-            background_class=self.background_class,
-            background_color=self.background_color,
-            **kwargs,
+            colors=self.colors,
         )
         return targets_vis, predictions_vis
 

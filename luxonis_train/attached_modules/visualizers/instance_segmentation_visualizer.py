@@ -11,7 +11,7 @@ from .utils import (
     Color,
     draw_bounding_box_labels,
     draw_bounding_boxes,
-    draw_segmentation_labels,
+    draw_segmentation_targets,
     get_color,
 )
 
@@ -114,7 +114,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             width = width or max(1, int(min(H, W) / 100))
 
             try:
-                viz[i] = draw_segmentation_labels(
+                viz[i] = draw_segmentation_targets(
                     viz[i], image_masks, colors=cls_colors, alpha=alpha
                 ).to(canvas.device)
 
@@ -166,7 +166,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             *_, H, W = canvas.shape
             width = width or max(1, int(min(H, W) / 100))
 
-            viz[i] = draw_segmentation_labels(
+            viz[i] = draw_segmentation_targets(
                 viz[i], image_masks, alpha=alpha, colors=cls_colors
             ).to(canvas.device)
             viz[i] = draw_bounding_box_labels(

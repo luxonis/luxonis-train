@@ -97,27 +97,27 @@ def preprocess_images(
     return torch.stack(out_imgs)
 
 
-def draw_segmentation_labels(
-    img: Tensor,
-    label: Tensor,
+def draw_segmentation_targets(
+    image: Tensor,
+    target: Tensor,
     alpha: float = 0.4,
     colors: Color | list[Color] | None = None,
 ) -> Tensor:
     """Draws segmentation labels on an image.
 
-    @type img: Tensor
-    @param img: Image to draw on.
-    @type label: Tensor
-    @param label: Segmentation label.
+    @type image: Tensor
+    @param image: Image to draw on.
+    @type target: Tensor
+    @param target: Segmentation label.
     @type alpha: float
     @param alpha: Alpha value for blending. Defaults to C{0.4}.
     @rtype: Tensor
     @return: Image with segmentation labels drawn on.
     """
-    masks = label.bool()
+    masks = target.bool()
     masks = masks.cpu()
-    img = img.cpu()
-    return draw_segmentation_masks(img, masks, alpha=alpha, colors=colors)
+    image = image.cpu()
+    return draw_segmentation_masks(image, masks, alpha=alpha, colors=colors)
 
 
 def draw_bounding_box_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
