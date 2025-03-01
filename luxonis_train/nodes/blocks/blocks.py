@@ -797,7 +797,7 @@ class BottleRep(nn.Module):
     ):
         """RepVGG bottleneck module.
 
-        @type block: L{type[nn.Module]}
+        @type block: Callable[..., nn.Module]
         @param block: Block to use. Defaults to
             L{GeneralReparametrizableBlock}.
         @type in_channels: int
