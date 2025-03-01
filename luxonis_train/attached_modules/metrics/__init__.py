@@ -8,15 +8,15 @@ from .torchmetrics import Accuracy, F1Score, JaccardIndex, Precision, Recall
 
 __all__ = [
     "Accuracy",
+    "BaseMetric",
+    "ClosestIsPositiveAccuracy",
+    "ConfusionMatrix",
     "F1Score",
     "JaccardIndex",
-    "BaseMetric",
     "MeanAveragePrecision",
+    "MedianDistances",
+    "OCRAccuracy",
     "ObjectKeypointSimilarity",
     "Precision",
     "Recall",
-    "ClosestIsPositiveAccuracy",
-    "ConfusionMatrix",
-    "MedianDistances",
-    "OCRAccuracy",
 ]

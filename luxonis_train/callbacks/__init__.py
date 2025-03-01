@@ -43,15 +43,15 @@ CALLBACKS.register(module=TrainingManager)
 
 __all__ = [
     "ArchiveOnTrainEnd",
-    "ExportOnTrainEnd",
-    "LuxonisTQDMProgressBar",
-    "LuxonisRichProgressBar",
     "BaseLuxonisProgressBar",
-    "MetadataLogger",
-    "TestOnTrainEnd",
-    "UploadCheckpoint",
+    "EMACallback",
+    "ExportOnTrainEnd",
     "GPUStatsMonitor",
     "GradCamCallback",
-    "EMACallback",
+    "LuxonisRichProgressBar",
+    "LuxonisTQDMProgressBar",
+    "MetadataLogger",
+    "TestOnTrainEnd",
     "TrainingManager",
+    "UploadCheckpoint",
 ]

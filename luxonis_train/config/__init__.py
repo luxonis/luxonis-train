@@ -10,12 +10,12 @@ from .config import (
 from .predefined_models import BasePredefinedModel
 
 __all__ = [
-    "Config",
     "AttachedModuleConfig",
+    "BasePredefinedModel",
+    "Config",
+    "ExportConfig",
     "LossModuleConfig",
     "MetricModuleConfig",
     "ModelNodeConfig",
-    "ExportConfig",
     "TrainerConfig",
-    "BasePredefinedModel",
 ]
