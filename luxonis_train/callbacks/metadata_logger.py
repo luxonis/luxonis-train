@@ -1,5 +1,5 @@
-import os.path as osp
 import subprocess
+from pathlib import Path
 
 import lightning.pytorch as pl
 import pkg_resources
@@ -48,6 +48,7 @@ class MetadataLogger(pl.Callback):
         with open(pl_module.save_dir / "metadata.yaml", "w") as f:
             yaml.dump(hparams, f, default_flow_style=False)
 
+    # TODO: Is this any useful?
     @staticmethod
     def _get_editable_package_git_hash(
         package_name: str,
@@ -64,24 +65,18 @@ class MetadataLogger(pl.Callback):
             distribution = pkg_resources.get_distribution(package_name)
             if distribution.location is None:
                 return None
-            package_location = osp.join(distribution.location, package_name)
+            package_location = Path(distribution.location, package_name)
 
-            # remove any additional folders in path (e.g. "/src")
-            if "src" in package_location:
-                package_location = package_location.replace("src", "")
-
-            # Check if the package location is a Git repository
-            git_dir = osp.join(package_location, ".git")
-            if osp.exists(git_dir):
+            git_dir = package_location / ".git"
+            if git_dir.exists():
                 git_command = ["git", "rev-parse", "HEAD"]
                 try:
-                    git_hash = subprocess.check_output(
+                    return subprocess.check_output(
                         git_command,
                         cwd=package_location,
                         stderr=subprocess.DEVNULL,
                         universal_newlines=True,
                     ).strip()
-                    return git_hash
                 except subprocess.CalledProcessError:
                     return None
             else:

@@ -1,4 +1,3 @@
-import os.path as osp
 import signal
 import threading
 from collections.abc import Mapping
@@ -96,7 +95,7 @@ class LuxonisModel:
         self.run_save_dir = (
             self.cfg.tracker.save_directory / self.tracker.run_name
         )
-        self.log_file = osp.join(self.run_save_dir, "luxonis_train.log")
+        self.log_file = self.run_save_dir / "luxonis_train.log"
         self.error_message = None
 
         setup_logging(file=self.log_file)
@@ -262,7 +261,7 @@ class LuxonisModel:
             logger.info(
                 f"{signal.Signals(signum).name} received, stopping training..."
             )
-            ckpt_path = osp.join(self.run_save_dir, "resume.ckpt")
+            ckpt_path = self.run_save_dir / "resume.ckpt"
             self.pl_trainer.save_checkpoint(ckpt_path)
             self.tracker.upload_artifact(
                 ckpt_path, typ="checkpoints", name="resume.ckpt"
@@ -551,9 +550,7 @@ class LuxonisModel:
                 **tracker_params,
             )
 
-            run_save_dir = osp.join(
-                cfg_tracker.save_directory, child_tracker.run_name
-            )
+            run_save_dir = cfg_tracker.save_directory / child_tracker.run_name
 
             assert self.cfg.tuner is not None
             curr_params = get_trial_params(
@@ -591,7 +588,7 @@ class LuxonisModel:
 
             child_tracker.log_hyperparams(curr_params)
 
-            cfg.save_data(osp.join(run_save_dir, "training_config.yaml"))
+            cfg.save_data(run_save_dir / "training_config.yaml")
 
             lightning_module = LuxonisLightningModule(
                 cfg=cfg,
