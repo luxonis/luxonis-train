@@ -1,7 +1,7 @@
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import ModelCheckpoint
 
-import luxonis_train
+import luxonis_train as lxt
 from luxonis_train.utils.registry import CALLBACKS
 
 
@@ -12,7 +12,7 @@ class TestOnTrainEnd(pl.Callback):
     def on_train_end(
         self,
         trainer: pl.Trainer,
-        pl_module: "luxonis_train.models.LuxonisLightningModule",
+        pl_module: "lxt.LuxonisLightningModule",
     ) -> None:
         # `trainer.test` would delete the paths so we need to save them
         best_paths = {

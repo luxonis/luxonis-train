@@ -7,7 +7,7 @@ import torch
 from lightning.pytorch.callbacks import ModelCheckpoint
 from loguru import logger
 
-import luxonis_train
+import luxonis_train as lxt
 from luxonis_train.utils.registry import CALLBACKS
 
 
@@ -29,7 +29,7 @@ class UploadCheckpoint(pl.Callback):
     def on_save_checkpoint(
         self,
         trainer: pl.Trainer,
-        module: "luxonis_train.models.LuxonisLightningModule",
+        module: "lxt.LuxonisLightningModule",
         checkpoint: dict[str, Any],
     ) -> None:
         # Log only once per epoch in case there are multiple ModelCheckpoint callbacks

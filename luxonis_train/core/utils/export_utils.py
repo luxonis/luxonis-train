@@ -6,14 +6,14 @@ from typing import Literal
 from loguru import logger
 from luxonis_ml.typing import check_type
 
-import luxonis_train
+import luxonis_train as lxt
 from luxonis_train.config import ExportConfig
 from luxonis_train.config.config import PreprocessingConfig
 
 
 @contextmanager
 def replace_weights(
-    module: "luxonis_train.models.LuxonisLightningModule",
+    module: "lxt.LuxonisLightningModule",
     weights: str | Path | None = None,
 ) -> Generator:
     old_weights = None

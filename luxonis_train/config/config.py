@@ -255,7 +255,7 @@ class ModelConfig(BaseModelExtraForbid):
     def check_attached_modules(cls, data: Params) -> Params:
         if "nodes" not in data:
             return data
-        for section in ("losses", "metrics", "visualizers"):
+        for section in ["losses", "metrics", "visualizers"]:
             if section not in data:
                 data[section] = []
             else:
@@ -450,12 +450,12 @@ class TrainerConfig(BaseModelExtraForbid):
             if "T_max" not in self.scheduler.params:
                 self.scheduler.params["T_max"] = self.epochs
                 logger.warning(
-                    "`T_max` was not set for `CosineAnnealingLR`"
-                    "Automatically set `T_max` to number of epochs."
+                    "`T_max` was not set for 'CosineAnnealingLR'"
+                    "Automatically setting `T_max` to number of epochs."
                 )
             elif self.scheduler.params["T_max"] != self.epochs:
                 logger.warning(
-                    "Parameter `T_max` of `CosineAnnealingLR` is "
+                    "Parameter `T_max` of 'CosineAnnealingLR' is "
                     "not equal to the number of epochs. "
                     "Make sure this is intended."
                     f"`T_max`: {self.scheduler.params['T_max']}, "
@@ -468,10 +468,10 @@ class TrainerConfig(BaseModelExtraForbid):
     def validate_deterministic(self) -> Self:
         if self.seed is not None and self.deterministic is None:
             logger.warning(
-                "Setting `trainer.deterministic` to True because "
+                "Setting `trainer.deterministic` to `True` because "
                 "`trainer.seed` is set. This can cause certain "
                 "layers to fail. In such cases, set "
-                "`trainer.deterministic` to `'warn'`."
+                "`trainer.deterministic` to 'warn'."
             )
             self.deterministic = True
         return self

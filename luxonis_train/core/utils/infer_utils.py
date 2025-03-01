@@ -10,10 +10,10 @@ import torch.utils.data as torch_data
 from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from torch import Tensor
 
-import luxonis_train
+import luxonis_train as lxt
 from luxonis_train.attached_modules.visualizers import get_denormalized_images
+from luxonis_train.lightning import LuxonisOutput
 from luxonis_train.loaders import LuxonisLoaderTorch
-from luxonis_train.models.luxonis_output import LuxonisOutput
 
 IMAGE_FORMATS = {
     ".bmp",
@@ -48,7 +48,7 @@ def process_visualizations(
 
 
 def prepare_and_infer_image(
-    model: "luxonis_train.core.LuxonisModel", img: Tensor
+    model: "lxt.LuxonisModel", img: Tensor
 ) -> LuxonisOutput:
     """Prepares the image for inference and runs the model."""
     img = model.loaders["val"].augment_test_image(img)
@@ -69,7 +69,7 @@ def window_closed() -> bool:  # pragma: no cover
 
 
 def infer_from_video(
-    model: "luxonis_train.core.LuxonisModel",
+    model: "lxt.LuxonisModel",
     video_path: str | Path,
     save_dir: Path | None,
 ) -> None:
@@ -127,7 +127,7 @@ def infer_from_video(
 
 
 def infer_from_loader(
-    model: "luxonis_train.core.LuxonisModel",
+    model: "lxt.LuxonisModel",
     loader: torch_data.DataLoader,
     save_dir: Path | None,
     img_paths: list[Path] | None = None,
@@ -184,7 +184,7 @@ def infer_from_loader(
 
 
 def infer_from_directory(
-    model: "luxonis_train.core.LuxonisModel",
+    model: "lxt.LuxonisModel",
     img_paths: Iterable[Path],
     save_dir: Path | None,
 ) -> None:
@@ -231,7 +231,7 @@ def infer_from_directory(
 
 
 def infer_from_dataset(
-    model: "luxonis_train.core.LuxonisModel",
+    model: "lxt.LuxonisModel",
     view: Literal["train", "val", "test"],
     save_dir: Path | None,
 ) -> None:

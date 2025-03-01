@@ -9,8 +9,8 @@ if not sys.argv or sys.argv[0] != shutil.which("luxonis_train"):
         from .attached_modules import *
         from .config import *
         from .core import *
+        from .lightning import *
         from .loaders import *
-        from .models import *
         from .nodes import *
         from .optimizers import *
         from .schedulers import *

@@ -18,7 +18,6 @@ from torch.optim.lr_scheduler import LRScheduler, SequentialLR
 from torch.optim.optimizer import Optimizer
 from typing_extensions import override
 
-import luxonis_train
 import luxonis_train as lxt
 from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
 from luxonis_train.attached_modules.visualizers import (
@@ -138,6 +137,21 @@ class LuxonisLightningModule(pl.LightningModule):
         _core: "lxt.LuxonisModel | None" = None,
         **kwargs,
     ):
+        """Constructs an instance of `LuxonisModel` from `Config`.
+
+        @type cfg: L{Config}
+        @param cfg: Config object.
+        @type save_dir: str
+        @param save_dir: Directory to save checkpoints.
+        @type input_shapes: dict[str, Size]
+        @param input_shapes: Dictionary of input shapes. Keys are input
+            names, values are shapes.
+        @type dataset_metadata: L{DatasetMetadata} | None
+        @param dataset_metadata: Dataset metadata.
+        @type kwargs: Any
+        @param kwargs: Additional arguments to pass to the
+            L{LightningModule} constructor.
+        """
         super().__init__(**kwargs)
 
         self._export: bool = False
@@ -175,7 +189,7 @@ class LuxonisLightningModule(pl.LightningModule):
         return self.logger
 
     @property
-    def core(self) -> "luxonis_train.core.LuxonisModel":
+    def core(self) -> "lxt.LuxonisModel":
         """Returns the core model.
 
         @type: L{LuxonisModel}
@@ -1105,7 +1119,6 @@ class LuxonisLightningModule(pl.LightningModule):
                 },
             )
 
-            # Handle inputs for this node
             if node_cfg.input_sources:
                 self.node_input_sources[node_name] = node_cfg.input_sources
 
