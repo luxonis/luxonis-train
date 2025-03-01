@@ -17,7 +17,8 @@ of indices of the output (specifying a range of outputs).
 
 T = TypeVar("T", Tensor, Size)
 Packet: TypeAlias = dict[str, list[T] | T]
-"""Packet is a dictionary containing a list of objects of type T.
+"""Packet is a dictionary containing either a single instance of a list
+of either `torch.Tensor`s or `torch.Size`s.
 
-It is used to pass data between different nodes of the network graph.
+Packets are used to pass data between nodes of the network graph.
 """

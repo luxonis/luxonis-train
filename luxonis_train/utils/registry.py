@@ -10,47 +10,27 @@ from torch.optim.optimizer import Optimizer
 
 import luxonis_train as lxt
 
-MODELS: Registry[type["lxt.config.BasePredefinedModel"]] = Registry(
-    name="models"
-)
-"""Registry for all models."""
-
 CALLBACKS: Registry[type[pl.Callback]] = Registry(name="callbacks")
-"""Registry for all callbacks."""
 
-LOADERS: Registry[type["lxt.loaders.BaseLoaderTorch"]] = Registry(
-    name="loaders"
-)
-"""Registry for all loaders."""
+LOADERS: Registry[type["lxt.BaseLoaderTorch"]] = Registry(name="loaders")
 
-LOSSES: Registry[type["lxt.attached_modules.BaseLoss"]] = Registry(
-    name="losses"
-)
-"""Registry for all losses."""
+LOSSES: Registry[type["lxt.BaseLoss"]] = Registry(name="losses")
 
-METRICS: Registry[type["lxt.attached_modules.BaseMetric"]] = Registry(
-    name="metrics"
-)
-"""Registry for all metrics."""
+METRICS: Registry[type["lxt.BaseMetric"]] = Registry(name="metrics")
 
-NODES: Registry[type["lxt.nodes.BaseNode"]] = Registry(name="nodes")
-"""Registry for all nodes."""
+MODELS: Registry[type["lxt.BasePredefinedModel"]] = Registry(name="models")
+
+NODES: Registry[type["lxt.BaseNode"]] = Registry(name="nodes")
 
 OPTIMIZERS: Registry[type[Optimizer]] = Registry(name="optimizers")
-"""Registry for all optimizers."""
 
 SCHEDULERS: Registry[type[LRScheduler]] = Registry(name="schedulers")
-"""Registry for all schedulers."""
 
-STRATEGIES: Registry[type["lxt.strategies.BaseTrainingStrategy"]] = Registry(
+STRATEGIES: Registry[type["lxt.BaseTrainingStrategy"]] = Registry(
     name="strategies"
 )
-"""Registry for all strategies."""
 
-VISUALIZERS: Registry[type["lxt.visualizers.BaseVisualizer"]] = Registry(
-    "visualizers"
-)
-"""Registry for all visualizers."""
+VISUALIZERS: Registry[type["lxt.BaseVisualizer"]] = Registry("visualizers")
 
 
 T = TypeVar("T")

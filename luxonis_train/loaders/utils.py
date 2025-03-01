@@ -5,7 +5,6 @@ from torch import Tensor
 from luxonis_train.typing import Labels
 
 LuxonisLoaderTorchOutput = tuple[dict[str, Tensor], Labels]
-"""Tuple of source tensors and corresponding labels."""
 
 
 def collate_fn(

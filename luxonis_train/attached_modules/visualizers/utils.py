@@ -22,10 +22,6 @@ from torchvision.utils import (
 from luxonis_train.config import Config
 
 Color = str | tuple[int, int, int]
-"""Color type alias.
-
-Can be either a string (e.g. "red", "#FF5512") or a tuple of RGB values.
-"""
 
 
 def figure_to_torch(fig: Figure, width: int, height: int) -> Tensor:

@@ -96,4 +96,3 @@ trainer:
   callbacks:
     - name: ExportOnTrainEnd
     - name: ArchiveOnTrainEnd
-
