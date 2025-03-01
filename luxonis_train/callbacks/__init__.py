@@ -23,7 +23,6 @@ from .luxonis_progress_bar import (
     LuxonisTQDMProgressBar,
 )
 from .metadata_logger import MetadataLogger
-from .module_freezer import ModuleFreezer
 from .test_on_train_end import TestOnTrainEnd
 from .training_manager import TrainingManager
 from .upload_checkpoint import UploadCheckpoint
@@ -49,7 +48,6 @@ __all__ = [
     "LuxonisRichProgressBar",
     "BaseLuxonisProgressBar",
     "MetadataLogger",
-    "ModuleFreezer",
     "TestOnTrainEnd",
     "UploadCheckpoint",
     "GPUStatsMonitor",

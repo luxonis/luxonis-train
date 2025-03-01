@@ -195,8 +195,9 @@ class BaseNode(
         self._export = False
         self._remove_on_export = remove_on_export
         self._export_output_names = export_output_names
-        self._epoch = 0
         self._in_sizes = in_sizes
+
+        self.current_epoch = 0
 
         self._check_type_overrides()
 

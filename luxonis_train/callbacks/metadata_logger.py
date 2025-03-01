@@ -44,8 +44,8 @@ class MetadataLogger(pl.Callback):
         if luxonis_train_hash:  # pragma: no cover
             hparams["luxonis_train"] = luxonis_train_hash
 
-        pl_module.logger.log_hyperparams(hparams)
-        with open(osp.join(pl_module.save_dir, "metadata.yaml"), "w") as f:
+        pl_module.tracker.log_hyperparams(hparams)
+        with open(pl_module.save_dir / "metadata.yaml", "w") as f:
             yaml.dump(hparams, f, default_flow_style=False)
 
     @staticmethod

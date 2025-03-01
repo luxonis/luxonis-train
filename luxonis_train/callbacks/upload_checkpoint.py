@@ -50,7 +50,9 @@ class UploadCheckpoint(pl.Callback):
                     torch.save(  # nosemgrep
                         checkpoint, temp_filename
                     )
-                    module.logger.upload_artifact(temp_filename, typ="weights")
+                    module.tracker.upload_artifact(
+                        temp_filename, typ="weights"
+                    )
 
                     os.remove(temp_filename)
 

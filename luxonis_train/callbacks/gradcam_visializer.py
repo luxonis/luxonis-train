@@ -196,7 +196,7 @@ class GradCamCallback(pl.Callback):
             visualization = show_cam_on_image(
                 image, grayscale_cam, use_rgb=True
             )
-            pl_module.logger.log_image(
+            pl_module.tracker.log_image(
                 f"gradcam/gradcam_{batch_idx}_{zip_idx}",
                 visualization,
                 step=trainer.global_step,

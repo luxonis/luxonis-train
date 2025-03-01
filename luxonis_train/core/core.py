@@ -93,8 +93,8 @@ class LuxonisModel:
             **self.cfg.tracker.model_dump(),
         )
 
-        self.run_save_dir = osp.join(
-            self.cfg.tracker.save_directory, self.tracker.run_name
+        self.run_save_dir = (
+            self.cfg.tracker.save_directory / self.tracker.run_name
         )
         self.log_file = osp.join(self.run_save_dir, "luxonis_train.log")
         self.error_message = None
@@ -143,8 +143,6 @@ class LuxonisModel:
                 keep_aspect_ratio=self.cfg_preprocessing.keep_aspect_ratio,
                 **self.cfg.loader.params,  # type: ignore
             )
-
-        self.loader_metadata_types = self.loaders["train"].get_metadata_types()
 
         for name, loader in self.loaders.items():
             logger.info(
@@ -207,7 +205,7 @@ class LuxonisModel:
         self.dataset_metadata = DatasetMetadata.from_loader(
             self.loaders["train"]
         )
-        self.config_file = osp.join(self.run_save_dir, "training_config.yaml")
+        self.config_file = self.run_save_dir / "training_config.yaml"
         self.cfg.save_data(self.config_file)
 
         self.input_shapes = self.loaders["train"].input_shapes
@@ -480,7 +478,6 @@ class LuxonisModel:
                 )
                 self.thread.start()
 
-    @typechecked
     def infer(
         self,
         view: Literal["train", "val", "test"] = "val",
@@ -824,6 +821,7 @@ class LuxonisModel:
 
         return Path(archive_path)
 
+    # TODO: Where are these methods used? Can they be removed?
     @rank_zero_only
     def get_status(self) -> tuple[int, int]:
         """Get current status of training.
@@ -832,7 +830,7 @@ class LuxonisModel:
         @return: First element is the current epoch, second element is
             the total number of epochs.
         """
-        return self.lightning_module.get_status()
+        return self.lightning_module.current_epoch, self.cfg.trainer.epochs
 
     @rank_zero_only
     def get_status_percentage(self) -> float:
@@ -842,7 +840,17 @@ class LuxonisModel:
         @rtype: float
         @return: Percentage of current training in range 0-100.
         """
-        return self.lightning_module.get_status_percentage()
+
+        current_epoch = self.lightning_module.current_epoch
+        early_stopping = self.pl_trainer.early_stopping_callback
+
+        if early_stopping is not None:
+            if early_stopping.stopped_epoch == 0:
+                return (current_epoch / self.cfg.trainer.epochs) * 100
+            else:
+                return 100.0
+        else:
+            return (current_epoch / self.cfg.trainer.epochs) * 100
 
     @rank_zero_only
     def get_error_message(self) -> str | None:

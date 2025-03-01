@@ -56,7 +56,7 @@ VISUALIZERS: Registry[type["lxt.visualizers.BaseVisualizer"]] = Registry(
 T = TypeVar("T")
 
 
-def get_init(registry: Registry[type[T]], key: str, *args, **kwargs) -> T:
+def from_registry(registry: Registry[type[T]], key: str, *args, **kwargs) -> T:
     """Get an instance of the class registered under the given key.
 
     @type registry: Registry[type[T]]

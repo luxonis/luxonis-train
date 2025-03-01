@@ -1,5 +1,6 @@
 import sys
 import warnings
+from pathlib import Path
 from typing import Annotated, Any, Literal, NamedTuple
 
 from loguru import logger
@@ -291,7 +292,7 @@ class TrackerConfig(BaseModelExtraForbid):
     project_id: str | None = None
     run_name: str | None = None
     run_id: str | None = None
-    save_directory: str = "output"
+    save_directory: Path = Path("output")
     is_tensorboard: bool = True
     is_wandb: bool = False
     wandb_entity: str | None = None
@@ -412,7 +413,6 @@ class TrainerConfig(BaseModelExtraForbid):
     n_sanity_val_steps: int = 2
     profiler: Literal["simple", "advanced"] | None = None
     matmul_precision: Literal["medium", "high", "highest"] | None = None
-    verbose: bool = True
 
     seed: int | None = None
     n_validation_batches: PositiveInt | Literal[-1] | None = None

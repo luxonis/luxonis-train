@@ -56,7 +56,6 @@ class BaseAttachedModule(
     def __init__(self, *, node: BaseNode | None = None):
         super().__init__()
         self._node = node
-        self._epoch = 0
 
         if node is not None and node.task is not None:
             if self.supported_tasks is not None:
@@ -78,6 +77,10 @@ class BaseAttachedModule(
             self._task = None
 
         self._check_node_type_override()
+
+    @property
+    def current_epoch(self) -> int:
+        return self.node.current_epoch
 
     @staticmethod
     def _get_signature(

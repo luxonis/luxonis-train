@@ -189,7 +189,7 @@ class AdaptiveDetectionLoss(BaseLoss):
         sigmas: Tensor | None = None,
         area_factor: float | None = None,
     ) -> tuple:
-        if self._epoch < self.n_warmup_epochs:
+        if self.current_epoch < self.n_warmup_epochs:
             return self.atss_assigner(
                 self.anchors,
                 self.n_anchors_list,

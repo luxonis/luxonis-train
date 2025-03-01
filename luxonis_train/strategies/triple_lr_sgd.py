@@ -7,6 +7,7 @@ import torch
 from torch.optim import SGD
 from torch.optim.lr_scheduler import LambdaLR
 from torch.optim.optimizer import Optimizer
+from typing_extensions import override
 
 import luxonis_train as lxt
 
@@ -172,11 +173,11 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
             max_stepnum=max_stepnum,
         )
 
+    @override
     def configure_optimizers(self) -> tuple[list[Optimizer], list[LambdaLR]]:
         return [self.optimizer], [self.scheduler.create_scheduler()]
 
-    def update_parameters(
-        self, pl_module: "lxt.LuxonisLightningModule"
-    ) -> None:
+    @override
+    def update_parameters(self) -> None:
         current_epoch = self.model.current_epoch
         self.scheduler.update_learning_rate(current_epoch)
