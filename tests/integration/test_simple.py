@@ -4,11 +4,11 @@ import sys
 import tarfile
 from copy import deepcopy
 from pathlib import Path
-from typing import Any
 
 import cv2
 import pytest
 from luxonis_ml.data import LuxonisDataset, LuxonisLoader
+from luxonis_ml.typing import Params
 from luxonis_ml.utils import environ
 from pytest_subtests import SubTests
 
@@ -30,7 +30,7 @@ def infer_path() -> Path:
 
 
 @pytest.fixture
-def opts(test_output_dir: Path) -> dict[str, Any]:
+def opts(test_output_dir: Path) -> Params:
     return {
         "trainer.epochs": 1,
         "trainer.batch_size": 1,
@@ -66,7 +66,7 @@ def clear_files():
     ],
 )
 def test_predefined_models(
-    opts: dict[str, Any],
+    opts: Params,
     config_file: str,
     coco_dataset: LuxonisDataset,
     cifar10_dataset: LuxonisDataset,
@@ -88,7 +88,7 @@ def test_predefined_models(
     model.test(view="train")
 
 
-def test_multi_input(opts: dict[str, Any], infer_path: Path):
+def test_multi_input(opts: Params, infer_path: Path):
     config_file = "tests/configs/multi_input.yaml"
     model = LuxonisModel(config_file, opts)
     model.train()
@@ -104,7 +104,7 @@ def test_multi_input(opts: dict[str, Any], infer_path: Path):
 
 
 def test_custom_tasks(
-    opts: dict[str, Any], parking_lot_dataset: LuxonisDataset, subtests
+    opts: Params, parking_lot_dataset: LuxonisDataset, subtests
 ):
     config_file = "tests/configs/parking_lot_config.yaml"
     opts |= {
@@ -159,7 +159,7 @@ def test_parsing_loader():
     sys.platform == "win32",
     reason="Tuning not supported on Windows",
 )
-def test_tune(opts: dict[str, Any], coco_dataset: LuxonisDataset):
+def test_tune(opts: Params, coco_dataset: LuxonisDataset):
     opts["tuner.params"] = {
         "trainer.optimizer.name_categorical": ["Adam", "SGD"],
         "trainer.optimizer.params.lr_float": [0.0001, 0.001],
@@ -224,7 +224,7 @@ def test_infer(
 
 
 def test_archive(test_output_dir: Path, coco_dataset: LuxonisDataset):
-    opts = {
+    opts: Params = {
         "tracker.save_directory": str(test_output_dir),
         "loader.params.dataset_name": coco_dataset.identifier,
     }
@@ -241,7 +241,7 @@ def test_archive(test_output_dir: Path, coco_dataset: LuxonisDataset):
     )
 
 
-def test_callbacks(opts: dict[str, Any], parking_lot_dataset: LuxonisDataset):
+def test_callbacks(opts: Params, parking_lot_dataset: LuxonisDataset):
     config_file = "tests/configs/parking_lot_config.yaml"
     opts = deepcopy(opts)
     del opts["trainer.callbacks"]
@@ -279,7 +279,7 @@ def test_callbacks(opts: dict[str, Any], parking_lot_dataset: LuxonisDataset):
     model.train()
 
 
-def test_freezing(opts: dict[str, Any], coco_dataset: LuxonisDataset):
+def test_freezing(opts: Params, coco_dataset: LuxonisDataset):
     config_file = "configs/segmentation_light_model.yaml"
     opts = deepcopy(opts)
     opts |= {
@@ -299,7 +299,7 @@ def test_freezing(opts: dict[str, Any], coco_dataset: LuxonisDataset):
 
 
 def test_smart_cfg_auto_populate(
-    opts: dict[str, Any], parking_lot_dataset: LuxonisDataset
+    opts: Params, parking_lot_dataset: LuxonisDataset
 ):
     config_file = "tests/configs/smart_cfg_populate_config.yaml"
     opts = {

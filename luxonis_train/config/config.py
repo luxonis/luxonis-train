@@ -4,7 +4,7 @@ from typing import Annotated, Any, Literal, NamedTuple
 
 from loguru import logger
 from luxonis_ml.enums import DatasetType
-from luxonis_ml.typing import ConfigItem, Kwargs
+from luxonis_ml.typing import ConfigItem, Params, ParamValue, check_type
 from luxonis_ml.utils import (
     BaseModelExtraForbid,
     Environ,
@@ -12,11 +12,7 @@ from luxonis_ml.utils import (
     LuxonisFileSystem,
     is_acyclic,
 )
-from pydantic import (
-    Field,
-    field_validator,
-    model_validator,
-)
+from pydantic import Field, field_validator, model_validator
 from pydantic.types import (
     FilePath,
     NonNegativeFloat,
@@ -89,9 +85,9 @@ class ModelConfig(BaseModelExtraForbid):
 
     @field_validator("nodes", mode="before")
     @classmethod
-    def validate_nodes(cls, nodes: Any) -> Any:
+    def validate_nodes(cls, nodes: ParamValue) -> Any:
         logged_general_warning = False
-        if not isinstance(nodes, list):
+        if not check_type(nodes, list[dict]):
             return nodes
         names = []
         last_body_index: int | None = None
@@ -256,10 +252,10 @@ class ModelConfig(BaseModelExtraForbid):
 
     @model_validator(mode="before")
     @classmethod
-    def check_attached_modules(cls, data: Kwargs) -> Kwargs:
+    def check_attached_modules(cls, data: Params) -> Params:
         if "nodes" not in data:
             return data
-        for section in ["losses", "metrics", "visualizers"]:
+        for section in ("losses", "metrics", "visualizers"):
             if section not in data:
                 data[section] = []
             else:
@@ -268,6 +264,11 @@ class ModelConfig(BaseModelExtraForbid):
                     f"Please specify `{section}` under "
                     "the node they are attached to."
                 )
+            if not check_type(data["nodes"], list[dict[str, Any]]):
+                raise ValueError(
+                    "Invalid value for `model.nodes`. "
+                    "Expected a list of dictionaries."
+                )
             for node in data["nodes"]:
                 if section in node:
                     cfg = node.pop(section)
@@ -275,7 +276,13 @@ class ModelConfig(BaseModelExtraForbid):
                         cfg = [cfg]
                     for c in cfg:
                         c["attached_to"] = node.get("alias", node.get("name"))
-                    data[section] += cfg
+                    section_data = data[section]
+                    if not check_type(section_data, list[dict]):
+                        raise ValueError(
+                            f"Invalid value for `model.{section}`. "
+                            "Expected a list of dictionaries."
+                        )
+                    section_data.extend(cfg)
         return data
 
 
@@ -300,9 +307,15 @@ class LoaderConfig(ConfigItem):
 
     @field_validator("train_view", "val_view", "test_view", mode="before")
     @classmethod
-    def validate_splits(cls, splits: Any) -> list[Any]:
+    def validate_splits(cls, splits: ParamValue) -> list[Any]:
         if isinstance(splits, str):
             return [splits]
+        elif not isinstance(splits, list):
+            raise ValueError(
+                "Invalid value for `train_view`, `val_view`, "
+                f"or `test_view`: {splits}. "
+                "Expected a string or a list of strings."
+            )
         return splits
 
     @model_validator(mode="after")
@@ -328,7 +341,7 @@ class LoaderConfig(ConfigItem):
 
 class NormalizeAugmentationConfig(BaseModelExtraForbid):
     active: bool = True
-    params: dict[str, Any] = {
+    params: Params = {
         "mean": [0.485, 0.456, 0.406],
         "std": [0.229, 0.224, 0.225],
     }
@@ -349,7 +362,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_train_rgb(cls, data: dict[str, Any]) -> dict[str, Any]:
+    def validate_train_rgb(cls, data: Params) -> Params:
         if "train_rgb" in data:
             warnings.warn(
                 "Field `train_rgb` is deprecated. Use `color_space` instead."
@@ -486,7 +499,7 @@ class TrainerConfig(BaseModelExtraForbid):
 
 class OnnxExportConfig(BaseModelExtraForbid):
     opset_version: PositiveInt = 12
-    dynamic_axes: dict[str, Any] | None = None
+    dynamic_axes: Params | None = None
 
 
 class BlobconverterExportConfig(BaseModelExtraForbid):
@@ -561,10 +574,11 @@ class Config(LuxonisConfig):
 
     @model_validator(mode="before")
     @classmethod
-    def check_environment(cls, data: Any) -> Any:
+    def check_environment(cls, data: Params) -> Params:
         if "ENVIRON" in data:
             logger.warning(
-                "Specifying `ENVIRON` section in config file is not recommended. "
+                "Specifying `ENVIRON` section in config file is not "
+                "recommended due to security reasons. "
                 "Please use environment variables or `.env` file instead."
             )
         return data
@@ -572,8 +586,8 @@ class Config(LuxonisConfig):
     @classmethod
     def get_config(
         cls,
-        cfg: str | dict[str, Any] | None = None,
-        overrides: dict[str, Any] | list[str] | tuple[str, ...] | None = None,
+        cfg: str | Params | None = None,
+        overrides: Params | list[str] | tuple[str, ...] | None = None,
     ) -> "Config":
         instance = super().get_config(cfg, overrides)
         if not isinstance(cfg, str):

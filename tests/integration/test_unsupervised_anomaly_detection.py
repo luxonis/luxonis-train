@@ -1,16 +1,15 @@
 import glob
 from pathlib import Path
-from typing import Any
 
 import cv2
 import numpy as np
 from luxonis_ml.data import BucketStorage, LuxonisDataset
-from luxonis_ml.typing import PathType
+from luxonis_ml.typing import Params, PathType
 
 from luxonis_train.core import LuxonisModel
 
 
-def get_config() -> dict[str, Any]:
+def get_config() -> Params:
     return {
         "model": {
             "name": "DREAM",

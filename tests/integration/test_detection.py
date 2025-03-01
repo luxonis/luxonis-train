@@ -1,9 +1,9 @@
-from typing import Any
+from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
 
 
-def get_opts_backbone(backbone: str) -> dict[str, Any]:
+def get_opts_backbone(backbone: str) -> Params:
     return {
         "model": {
             "nodes": [
@@ -50,7 +50,7 @@ def get_opts_backbone(backbone: str) -> dict[str, Any]:
     }
 
 
-def get_opts_variant(variant: str) -> dict[str, Any]:
+def get_opts_variant(variant: str) -> Params:
     return {
         "model": {
             "nodes": [
@@ -88,8 +88,8 @@ def get_opts_variant(variant: str) -> dict[str, Any]:
 
 
 def train_and_test(
-    config: dict[str, Any],
-    opts: dict[str, Any],
+    config: Params,
+    opts: Params,
     train_overfit: bool = False,
 ):
     model = LuxonisModel(config, opts)
@@ -104,7 +104,7 @@ def train_and_test(
 # @pytest.mark.parametrize("backbone", BACKBONES)
 # def test_backbones(
 #     backbone: str,
-#     config: dict[str, Any],
+#     config: Params,
 #     parking_lot_dataset: LuxonisDataset,
 # ):
 #     opts = get_opts_backbone(backbone)
@@ -116,7 +116,7 @@ def train_and_test(
 # @pytest.mark.parametrize("variant", ["n", "s", "m", "l"])
 # def test_variants(
 #     variant: str,
-#     config: dict[str, Any],
+#     config: Params,
 #     parking_lot_dataset: LuxonisDataset,
 # ):
 #     opts = get_opts_variant(variant)

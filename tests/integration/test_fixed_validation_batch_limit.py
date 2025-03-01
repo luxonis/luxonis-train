@@ -1,11 +1,10 @@
-from typing import Any
-
 from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
 
 
-def get_config() -> dict[str, Any]:
+def get_config() -> Params:
     return {
         "model": {
             "nodes": [
@@ -52,7 +51,9 @@ def get_config() -> dict[str, Any]:
 
 def test_fixed_validation_batch_limit(parking_lot_dataset: LuxonisDataset):
     config = get_config()
-    opts = {"loader.params.dataset_name": parking_lot_dataset.identifier}
+    opts: Params = {
+        "loader.params.dataset_name": parking_lot_dataset.identifier
+    }
     model = LuxonisModel(config, opts)
     assert (
         len(model.pytorch_loaders["val"]) == 1
@@ -60,7 +61,7 @@ def test_fixed_validation_batch_limit(parking_lot_dataset: LuxonisDataset):
     assert (
         len(model.pytorch_loaders["test"]) == 1
     ), "Test loader should contain exactly 1 batch"
-    config["trainer"]["n_validation_batches"] = None
+    config["trainer.n_validation_batches"] = None
     model = LuxonisModel(config, opts)
     assert (
         len(model.pytorch_loaders["val"]) > 1

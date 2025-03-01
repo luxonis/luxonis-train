@@ -2,7 +2,6 @@ import multiprocessing as mp
 import os
 import shutil
 from pathlib import Path
-from typing import Any
 
 import cv2
 import gdown
@@ -11,6 +10,7 @@ import pytest
 import torchvision
 from luxonis_ml.data import Category, LuxonisDataset
 from luxonis_ml.data.parsers import LuxonisParser
+from luxonis_ml.typing import Params
 from luxonis_ml.utils import environ
 
 WORK_DIR = Path("tests", "data").absolute()
@@ -160,7 +160,7 @@ def mnist_dataset() -> LuxonisDataset:
 
 
 @pytest.fixture
-def config(train_overfit: bool) -> dict[str, Any]:
+def config(train_overfit: bool) -> Params:
     if train_overfit:  # pragma: no cover
         epochs = 100
     else:
