@@ -25,7 +25,7 @@ def replace_weights(
         try:
             module.load_state_dict(old_weights)
         except RuntimeError:
-            logger.error(
+            logger.opt(depth=2).error(
                 "Failed to strictly load old weights. "
                 "The model likely underwent re-parametrization, "
                 "which is a destructive operation. "
