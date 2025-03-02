@@ -356,7 +356,8 @@ def anchors_for_fpn_features(
     anchor_points: list[Tensor] = []
     n_anchors_list: list[int] = []
     stride_tensor: list[Tensor] = []
-    for feature, stride in zip(features, strides, strict=True):
+    # FIXME: strict=True
+    for feature, stride in zip(features, strides, strict=False):
         _, _, h, w = feature.shape
         cell_half_size = grid_cell_size * stride * 0.5
         shift_x = torch.arange(end=w) + grid_cell_offset

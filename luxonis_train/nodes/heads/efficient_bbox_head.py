@@ -64,10 +64,13 @@ class EfficientBBoxHead(BaseDetectionHead):
         self.grid_cell_size = 5.0
 
         self.heads = nn.ModuleList()
+        # TODO: What to do if inputs are longer than heads? Create
+        # more heads or discard some inputs? If discard, do we discared
+        # the deeper features or the shallower ones?
         if len(self.in_channels) < self.n_heads:
             logger.warning(
                 f"Head '{self.name}' was set to use {self.n_heads} heads, "
-                f"but received only {len(self.in_channels)} inputs. "
+                f"but received {len(self.in_channels)} inputs. "
                 f"Changing number of heads to {len(self.in_channels)}."
             )
             self.n_heads = len(self.in_channels)
@@ -99,7 +102,8 @@ class EfficientBBoxHead(BaseDetectionHead):
         classes_list: list[Tensor] = []
         regressions_list: list[Tensor] = []
 
-        for head, x in zip(self.heads, inputs, strict=True):
+        # FIXME: strict=True, related to the TODO above
+        for head, x in zip(self.heads, inputs, strict=False):
             features, classes, regressions = head(x)
             features_list.append(features)
             classes_list.append(torch.sigmoid(classes))

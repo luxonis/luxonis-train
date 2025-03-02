@@ -6,13 +6,6 @@ from torch import Tensor, nn
 from luxonis_train.nodes.base_node import BaseNode
 
 
-class GenEfficientNet(nn.Module):
-    conv_stem: nn.Module
-    bn1: nn.Module
-    act1: nn.Module
-    blocks: nn.ModuleList
-
-
 class EfficientNet(BaseNode[Tensor, list[Tensor]]):
     attach_index: int = -1
 
@@ -42,6 +35,12 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
         @param out_indices: Indices of the output layers. Defaults to [0, 1, 2, 4, 6].
         """
         super().__init__(**kwargs)
+
+        class GenEfficientNet(nn.Module):
+            conv_stem: nn.Module
+            bn1: nn.Module
+            act1: nn.Module
+            blocks: nn.ModuleList
 
         self.backbone = cast(
             GenEfficientNet,
