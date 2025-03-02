@@ -1,10 +1,9 @@
 from collections.abc import Generator
 from contextlib import contextmanager
-from pathlib import Path
 from typing import Literal
 
 from loguru import logger
-from luxonis_ml.typing import check_type
+from luxonis_ml.typing import PathType, check_type
 
 import luxonis_train as lxt
 from luxonis_train.config import ExportConfig
@@ -13,7 +12,7 @@ from luxonis_train.config.config import PreprocessingConfig
 
 @contextmanager
 def replace_weights(
-    module: "lxt.LuxonisLightningModule", weights: str | Path | None = None
+    module: "lxt.LuxonisLightningModule", weights: PathType | None = None
 ) -> Generator:
     old_weights = None
     if weights is not None:

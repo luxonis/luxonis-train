@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import torch.utils.data as torch_data
 from luxonis_ml.data import DatasetIterator, LuxonisDataset
+from luxonis_ml.typing import PathType
 from torch import Tensor
 
 import luxonis_train as lxt
@@ -68,13 +69,13 @@ def window_closed() -> bool:  # pragma: no cover
 
 
 def infer_from_video(
-    model: "lxt.LuxonisModel", video_path: str | Path, save_dir: Path | None
+    model: "lxt.LuxonisModel", video_path: PathType, save_dir: Path | None
 ) -> None:
     """Runs inference on individual frames from a video.
 
     @type model: L{LuxonisModel}
     @param model: The model to use for inference.
-    @type video_path: str | Path
+    @type video_path: PathType
     @param video_path: The path to the video.
     @type save_dir: Path | None
     @param save_dir: The directory to save the visualizations to.
@@ -126,8 +127,8 @@ def infer_from_video(
 def infer_from_loader(
     model: "lxt.LuxonisModel",
     loader: torch_data.DataLoader,
-    save_dir: Path | None,
-    img_paths: list[Path] | None = None,
+    save_dir: PathType | None,
+    img_paths: list[PathType] | None = None,
 ) -> None:
     """Runs inference on images from the dataset.
 
@@ -135,7 +136,7 @@ def infer_from_loader(
     @param model: The model to use for inference.
     @type loader: torch_data.DataLoader
     @param loader: The loader to use for inference.
-    @type save_dir: str | Path | None
+    @type save_dir: PathType | None
     @param save_dir: The directory to save the visualizations to.
     @type img_paths: list[Path] | None
     @param img_paths: The paths to the images.
@@ -160,6 +161,7 @@ def infer_from_loader(
             for (node_name, viz_name), visualizations in renders.items():
                 viz = visualizations[j]
                 if save_dir is not None:
+                    save_dir = Path(save_dir)
                     if img_paths is not None:
                         img_path = img_paths[i * batch_size + j]
                         name = f"{img_path.stem}_{node_name}_{viz_name}"
@@ -178,7 +180,9 @@ def infer_from_loader(
 
 
 def infer_from_directory(
-    model: "lxt.LuxonisModel", img_paths: Iterable[Path], save_dir: Path | None
+    model: "lxt.LuxonisModel",
+    img_paths: Iterable[PathType],
+    save_dir: Path | None,
 ) -> None:
     """Runs inference on individual images from a directory.
 
@@ -223,7 +227,7 @@ def infer_from_directory(
 def infer_from_dataset(
     model: "lxt.LuxonisModel",
     view: Literal["train", "val", "test"],
-    save_dir: Path | None,
+    save_dir: PathType | None,
 ) -> None:
     """Runs inference on images from the dataset.
 
@@ -231,7 +235,7 @@ def infer_from_dataset(
     @param model: The model to use for inference.
     @type view: Literal["train", "val", "test"]
     @param view: The view of the dataset to use.
-    @type save_dir: str | Path | None
+    @type save_dir: PathType | None
     @param save_dir: The directory to save the visualizations to.
     """
 

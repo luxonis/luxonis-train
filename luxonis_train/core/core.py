@@ -312,17 +312,17 @@ class LuxonisModel:
 
     def export(
         self,
-        onnx_save_path: str | Path | None = None,
-        weights: str | Path | None = None,
+        onnx_save_path: PathType | None = None,
+        weights: PathType | None = None,
         ignore_missing_weights: bool = False,
     ) -> None:
         """Runs export.
 
-        @type onnx_save_path: str | Path | None
+        @type onnx_save_path: PathType | None
         @param onnx_save_path: Path to where the exported ONNX model will be saved.
             If not specified, model will be saved to the export directory
             with the name specified in config file.
-        @type weights: str | Path | None
+        @type weights: PathType | None
         @param weights: Path to the checkpoint from which to load weights.
             If not specified, the value of `model.weights` from the
             configuration file will be used. The current weights of the
@@ -430,7 +430,7 @@ class LuxonisModel:
         self,
         new_thread: Literal[False] = ...,
         view: Literal["train", "test", "val"] = "val",
-        weights: str | Path | None = ...,
+        weights: PathType | None = ...,
     ) -> Mapping[str, float]: ...
 
     @overload
@@ -438,7 +438,7 @@ class LuxonisModel:
         self,
         new_thread: Literal[True] = ...,
         view: Literal["train", "test", "val"] = "val",
-        weights: str | Path | None = ...,
+        weights: PathType | None = ...,
     ) -> None: ...
 
     @typechecked
@@ -446,7 +446,7 @@ class LuxonisModel:
         self,
         new_thread: bool = False,
         view: Literal["train", "val", "test"] = "val",
-        weights: str | Path | None = None,
+        weights: PathType | None = None,
     ) -> Mapping[str, float] | None:
         """Runs testing.
 
@@ -457,7 +457,7 @@ class LuxonisModel:
         @rtype: Mapping[str, float] | None
         @return: If new_thread is False, returns a dictionary test
             results.
-        @type weights: str | Path | None
+        @type weights: PathType | None
         @param weights: Path to the checkpoint from which to load weights.
             If not specified, the value of `model.weights` from the
             configuration file will be used. The current weights of the
@@ -481,23 +481,23 @@ class LuxonisModel:
     def infer(
         self,
         view: Literal["train", "val", "test"] = "val",
-        save_dir: str | Path | None = None,
-        source_path: str | Path | None = None,
-        weights: str | Path | None = None,
+        save_dir: PathType | None = None,
+        source_path: PathType | None = None,
+        weights: PathType | None = None,
     ) -> None:
         """Runs inference.
 
         @type view: str
         @param view: Which split to run the inference on. Valid values
             are: C{"train"}, C{"val"}, C{"test"}. Defaults to C{"val"}.
-        @type save_dir: str | Path | None
+        @type save_dir: PathType | None
         @param save_dir: Directory where to save the visualizations. If
             not specified, visualizations will be rendered on the
             screen.
-        @type source_path: str | Path | None
+        @type source_path: PathType | None
         @param source_path: Path to the image file, video file or directory.
             If None, defaults to using dataset images.
-        @type weights: str | Path | None
+        @type weights: PathType | None
         @param weights: Path to the checkpoint from which to load weights.
             If not specified, the value of `model.weights` from the
             configuration file will be used. The current weights of the
@@ -702,14 +702,14 @@ class LuxonisModel:
             wandb_parent_tracker.log_hyperparams(study.best_params)
 
     def archive(
-        self, path: str | Path | None = None, weights: str | Path | None = None
+        self, path: PathType | None = None, weights: PathType | None = None
     ) -> Path:
         """Generates an NN Archive out of a model executable.
 
-        @type path: str | Path | None
+        @type path: PathType | None
         @param path: Path to the model executable. If not specified, the
             model will be exported first.
-        @type weights: str | Path | None
+        @type weights: PathType | None
         @param weights: Path to the checkpoint from which to load weights.
             If not specified, the value of `model.weights` from the
             configuration file will be used. The current weights of the
@@ -722,7 +722,7 @@ class LuxonisModel:
         with replace_weights(self.lightning_module, weights):
             return self._archive(path)
 
-    def _archive(self, path: str | Path | None = None) -> Path:
+    def _archive(self, path: PathType | None = None) -> Path:
         from .utils.archive_utils import (
             get_head_configs,
             get_inputs,
