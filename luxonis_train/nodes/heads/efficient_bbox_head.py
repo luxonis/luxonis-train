@@ -211,7 +211,9 @@ class EfficientBBoxHead(
         index."""
         stride = torch.tensor(
             [
-                self.original_in_shape[1] / x[2]  # type: ignore
+                round(
+                    self.original_in_shape[1] / x[2]
+                )  # Ensure proper rounding of the stride
                 for x in self.in_sizes[: self.n_heads]
             ],
             dtype=torch.int,
