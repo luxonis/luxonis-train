@@ -267,7 +267,7 @@ class EfficientBBoxHead(
         @return: Custom head configuration.
         """
         return {
-            "subtype": "yolov6",
+            "subtype": "yolov6r2",
             "iou_threshold": self.iou_thres,
             "conf_threshold": self.conf_thres,
             "max_det": self.max_det,
