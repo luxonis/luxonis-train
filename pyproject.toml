@@ -50,7 +50,7 @@ select = [
   "C4",
   "DTZ",
   "E",
-  # "ERA",
+  "ERA",
   "F",
   "FLY",
   "FURB",
@@ -111,8 +111,8 @@ ignore = [
 unfixable = ["B905"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["ANN"]
-"__main__.py" = ["ANN"]
+"tests/*" = ["ANN201"]
+"__main__.py" = ["ANN201"]
 
 [tool.docformatter]
 black = true
@@ -143,7 +143,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-omit = ["**/__main__.py", "**/gpu_stats_monitor.py"]
+omit = ["**/__main__.py", "**/gpu_stats_monitor.py", "config.py", "config-3.py"]
 
 [tool.coverage.report]
 exclude_also = [
