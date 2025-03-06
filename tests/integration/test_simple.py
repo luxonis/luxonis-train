@@ -31,14 +31,16 @@ def infer_path() -> Path:
 
 @pytest.fixture
 def opts(test_output_dir: Path) -> Params:
-    return {
-        "trainer.epochs": 1,
-        "trainer.batch_size": 1,
-        "trainer.validation_interval": 1,
-        "trainer.callbacks": "[]",
-        "tracker.save_directory": str(test_output_dir),
-        "tuner.n_trials": 4,
-    }
+    return deepcopy(
+        {
+            "trainer.epochs": 1,
+            "trainer.batch_size": 1,
+            "trainer.validation_interval": 1,
+            "trainer.callbacks": "[]",
+            "tracker.save_directory": str(test_output_dir),
+            "tuner.n_trials": 4,
+        }
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -71,6 +73,7 @@ def test_predefined_models(
     coco_dataset: LuxonisDataset,
     cifar10_dataset: LuxonisDataset,
     mnist_dataset: LuxonisDataset,
+    image_size: tuple[int, int],
 ):
     config_file = f"configs/{config_file}.yaml"
     opts |= {
@@ -82,7 +85,8 @@ def test_predefined_models(
             else coco_dataset.identifier
         ),
         "trainer.epochs": 1,
-    }
+        "trainer.preprocessing.train_image_size": image_size,
+    }  # type: ignore
     model = LuxonisModel(config_file, opts)
     model.train()
     model.test(view="train")
@@ -104,7 +108,7 @@ def test_multi_input(opts: Params, infer_path: Path):
 
 
 def test_custom_tasks(
-    opts: Params, parking_lot_dataset: LuxonisDataset, subtests
+    opts: Params, parking_lot_dataset: LuxonisDataset, subtests: SubTests
 ):
     config_file = "tests/configs/parking_lot_config.yaml"
     opts |= {
@@ -132,7 +136,7 @@ def test_custom_tasks(
             generated_config = json.loads(extracted_cfg.read().decode())
 
         # Sort the fields in the config to make the comparison consistent
-        def sort_by_name(config: dict, keys: list[str]):
+        def sort_by_name(config: dict, keys: list[str]) -> None:
             for key in keys:
                 if key in config["model"]:
                     config["model"][key] = sorted(
@@ -142,6 +146,9 @@ def test_custom_tasks(
         keys_to_sort = ["inputs", "outputs", "heads"]
         sort_by_name(generated_config, keys_to_sort)
         sort_by_name(correct_archive_config, keys_to_sort)
+        from rich import print
+
+        print(generated_config)
 
         assert generated_config == correct_archive_config
 
@@ -240,8 +247,8 @@ def test_archive(test_output_dir: Path, coco_dataset: LuxonisDataset):
     )
 
 
-def test_callbacks(opts: Params, parking_lot_dataset: LuxonisDataset):
-    config_file = "tests/configs/parking_lot_config.yaml"
+def test_callbacks(opts: Params, coco_dataset: LuxonisDataset):
+    config_file = "tests/configs/config_simple.yaml"
     opts = deepcopy(opts)
     del opts["trainer.callbacks"]
     opts |= {
@@ -270,8 +277,8 @@ def test_callbacks(opts: Params, parking_lot_dataset: LuxonisDataset):
         "exporter.scale_values": [0.5, 0.5, 0.5],
         "exporter.mean_values": [0.5, 0.5, 0.5],
         "exporter.blobconverter.active": True,
+        "loader.params.dataset_name": coco_dataset.identifier,
     }
-    opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
     model = LuxonisModel(config_file, opts)
     model.train()
 

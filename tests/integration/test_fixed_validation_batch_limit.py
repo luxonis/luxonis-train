@@ -11,7 +11,7 @@ def get_config() -> Params:
                 {
                     "name": "EfficientRep",
                     "alias": "backbone",
-                    "params": {"variant": "n"},
+                    "variant": "n",
                 },
                 {
                     "name": "RepPANNeck",
@@ -61,7 +61,7 @@ def test_fixed_validation_batch_limit(parking_lot_dataset: LuxonisDataset):
     assert len(model.pytorch_loaders["test"]) == 1, (
         "Test loader should contain exactly 1 batch"
     )
-    config["trainer.n_validation_batches"] = None
+    opts["trainer.n_validation_batches"] = None
     model = LuxonisModel(config, opts)
     assert len(model.pytorch_loaders["val"]) > 1, (
         "Validation loader should contain all validation samples"

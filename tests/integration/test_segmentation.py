@@ -6,16 +6,21 @@ from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
+from luxonis_train.utils.registry import NODES
 
 # TODO: Remove the following line after the incompatibility issue is resolved
 BACKBONES = [backbone for backbone in BACKBONES if backbone != "PPLCNetV3"]
 
 
 def get_opts(backbone: str) -> Params:
+    Node = NODES.get(backbone)
     opts = {
         "model": {
             "nodes": [
-                {"name": backbone},
+                {
+                    "name": backbone,
+                    "variant": getattr(Node, "default_variant", None),
+                },
                 {
                     "name": "SegmentationHead",
                     "alias": "seg-color-segmentation",

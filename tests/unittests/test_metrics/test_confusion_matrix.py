@@ -1,4 +1,5 @@
 import torch
+from torch import Tensor
 
 from luxonis_train.attached_modules.metrics.confusion_matrix import (
     ConfusionMatrix,
@@ -11,7 +12,7 @@ def test_compute_detection_confusion_matrix_specific_case():
     class DummyNodeDetection(BaseNode):
         task = Tasks.BOUNDINGBOX
 
-        def forward(self, _): ...
+        def forward(self, _: Tensor) -> Tensor: ...
 
     metric = ConfusionMatrix(node=DummyNodeDetection(n_classes=3))
 

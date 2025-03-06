@@ -15,35 +15,35 @@ FEATURES_ARRAY = torch.tensor([4])
 
 
 class DummyBackbone(BaseNode):
-    def forward(self, _): ...
+    def forward(self, _: Tensor) -> Tensor: ...
 
 
 class DummySegmentationHead(BaseNode):
     task = Tasks.SEGMENTATION
 
-    def forward(self, _): ...
+    def forward(self, _: Tensor) -> Tensor: ...
 
 
 class DummyBBoxHead(BaseNode):
     task = Tasks.BOUNDINGBOX
 
-    def forward(self, _): ...
+    def forward(self, _: Tensor) -> Tensor: ...
 
 
 class DummyDetectionHead(BaseNode):
     task = Tasks.INSTANCE_KEYPOINTS
 
-    def forward(self, _): ...
+    def forward(self, _: Tensor) -> Tensor: ...
 
 
 class DummyLoss(BaseLoss):
     supported_tasks = [Tasks.SEGMENTATION, Tasks.INSTANCE_KEYPOINTS]
 
-    def forward(self, _): ...
+    def forward(self, _: Tensor) -> Tensor: ...
 
 
 class NoLabelLoss(BaseLoss):
-    def forward(self, _): ...
+    def forward(self, _: Tensor) -> Tensor: ...
 
 
 @pytest.fixture

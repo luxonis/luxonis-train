@@ -59,7 +59,7 @@ def cosine_annealing_scheduler() -> ConfigItem:
 @pytest.mark.parametrize(
     "scheduler_config", [sequential_scheduler(), cosine_annealing_scheduler()]
 )
-def test_scheduler(coco_dataset: LuxonisDataset, scheduler_config):
+def test_scheduler(coco_dataset: LuxonisDataset, scheduler_config: Params):
     config = create_model_config()
     opts = {
         "loader.params.dataset_name": coco_dataset.dataset_name,

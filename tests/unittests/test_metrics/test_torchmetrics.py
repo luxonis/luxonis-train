@@ -1,5 +1,6 @@
 import pytest
 import torchmetrics
+from torch import Tensor
 
 from luxonis_train.attached_modules.metrics.torchmetrics import (
     TorchMetricWrapper,
@@ -12,7 +13,7 @@ def test_torchmetrics():
     class DummyNode(BaseNode):
         task = Tasks.CLASSIFICATION
 
-        def forward(self, _): ...
+        def forward(self, _: Tensor) -> Tensor: ...
 
     class DummyMetric(TorchMetricWrapper):
         supported_tasks = [Tasks.CLASSIFICATION, Tasks.SEGMENTATION]

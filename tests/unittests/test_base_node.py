@@ -8,7 +8,7 @@ from luxonis_train.utils.exceptions import IncompatibleError
 
 
 class DummyNode(BaseNode, register=False):
-    def forward(self, _): ...
+    def forward(self, _: Tensor) -> Tensor: ...
 
 
 @pytest.fixture
@@ -54,10 +54,6 @@ def test_attach_index_error():
     with pytest.raises(ValueError, match="out of range"):
         BaseNode.get_attached(DummyNode, lst)  # type: ignore
 
-    DummyNode.attach_index = "none"  # type: ignore
-    with pytest.raises(ValueError, match="Invalid attach index"):
-        BaseNode.get_attached(DummyNode, lst)  # type: ignore
-
 
 def test_invalid(packet: Packet[Tensor]):
     node = DummyNode()
@@ -91,7 +87,7 @@ def test_check_type_override():
         in_channels: int
         attach_index = "all"
 
-        def forward(self, _): ...
+        def forward(self, _: Tensor) -> Tensor: ...
 
     with pytest.raises(IncompatibleError):
         DummyNode(

@@ -21,30 +21,16 @@ model:
       name: CrossEntropyLoss
 trainer:
   preprocessing:
-    train_image_size:
-      - 128
-      - 128
+    train_image_size: [128, 128]
     keep_aspect_ratio: false
     normalize:
       active: true
 
   batch_size: 2
-  epochs: &epochs 1
+  epochs: 1
   n_workers: 8
   validation_interval: 10
   n_log_images: 8
 
   callbacks:
     - name: ExportOnTrainEnd
-
-  optimizer:
-    name: SGD
-    params:
-      lr: 0.01
-      momentum: 0.9
-      weight_decay: 0.0005
-
-  scheduler:
-    name: CosineAnnealingLR
-    params:
-      T_max: *epochs

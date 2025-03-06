@@ -3,6 +3,7 @@ from torch import Tensor, nn
 from typing_extensions import override
 
 from luxonis_train.loaders import BaseLoaderTorch
+from luxonis_train.loaders.utils import LuxonisLoaderTorchOutput
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
@@ -23,8 +24,7 @@ class CustomMultiInputLoader(BaseLoaderTorch):
             "pointcloud": torch.Size([1000, 3]),
         }
 
-    def get(self, _):  # pragma: no cover
-        # Fake data
+    def get(self, _: int) -> LuxonisLoaderTorchOutput:
         left = torch.rand(3, 224, 224, dtype=torch.float32)
         right = torch.rand(3, 224, 224, dtype=torch.float32)
         disparity = torch.rand(1, 224, 224, dtype=torch.float32)
@@ -36,7 +36,6 @@ class CustomMultiInputLoader(BaseLoaderTorch):
             "pointcloud": pointcloud,
         }
 
-        # Fake labels
         segmap = torch.zeros(1, 224, 224, dtype=torch.float32)
         segmap[0, 100:150, 100:150] = 1
         labels = {"/segmentation": segmap}

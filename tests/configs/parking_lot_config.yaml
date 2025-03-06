@@ -4,8 +4,10 @@ model:
   nodes:
 
     - name: EfficientRep
+      variant: n
 
     - name: RepPANNeck
+      variant: n
 
     - name: EfficientBBoxHead
       task_name: vehicle_type
@@ -69,7 +71,6 @@ trainer:
 
   n_sanity_val_steps: 1
   profiler: null
-  verbose: true
   batch_size: 2
   accumulate_grad_batches: 1
   epochs: 200
@@ -81,7 +82,7 @@ trainer:
   save_top_k: 3
 
   preprocessing:
-    train_image_size: [256, 320]
+    train_image_size: [128, 160]
     keep_aspect_ratio: false
     normalize:
       active: true
