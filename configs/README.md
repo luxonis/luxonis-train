@@ -232,7 +232,6 @@ Here you can change everything related to actual training of the model.
 | `strategy`                | `Literal["auto", "ddp"]`                       | `"auto"`      | What strategy to use for training                                                                                                                |
 | `n_sanity_val_steps`      | `int`                                          | `2`           | Number of sanity validation steps performed before training                                                                                      |
 | `profiler`                | `Literal["simple", "advanced"] \| None`        | `None`        | PL profiler for GPU/CPU/RAM utilization analysis                                                                                                 |
-| `verbose`                 | `bool`                                         | `True`        | Print all intermediate results to console                                                                                                        |
 | `pin_memory`              | `bool`                                         | `True`        | Whether to pin memory in the `DataLoader`                                                                                                        |
 | `save_top_k`              | `-1 \| NonNegativeInt`                         | `3`           | Save top K checkpoints based on validation loss when training                                                                                    |
 | `n_validation_batches`    | `PositiveInt \| None`                          | `None`        | Limits the number of validation/test batches and makes the val/test loaders deterministic                                                        |
@@ -249,7 +248,6 @@ trainer:
   resume_training: true
   n_sanity_val_steps: 1
   profiler: null
-  verbose: true
   batch_size: 8
   accumulate_grad_batches: 1
   epochs: 200
@@ -345,7 +343,6 @@ trainer:
         patience: 3
         monitor: "val/loss"
         mode: "min"
-        verbose: true
     - name: "ExportOnTrainEnd"
     - name: "TestOnTrainEnd"
 ```

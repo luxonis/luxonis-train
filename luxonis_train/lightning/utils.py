@@ -125,6 +125,10 @@ class Nodes(dict[str, BaseNode] if TYPE_CHECKING else nn.ModuleDict):
 
         super().__init__(initiated_nodes)
 
+    @property
+    def any_frozen(self) -> bool:
+        return bool(self.unfreeze_after)
+
     def is_frozen(self, node_name: str) -> bool:
         return self.unfreeze_after.get(node_name, 0) == 0
 
@@ -134,10 +138,6 @@ class Nodes(dict[str, BaseNode] if TYPE_CHECKING else nn.ModuleDict):
 
     def traverse(self) -> Iterator[tuple[str, BaseNode, list[str], list[str]]]:
         yield from traverse_graph(self.graph, self)
-
-    @property
-    def any_frozen(self) -> bool:
-        return bool(self.unfreeze_after)
 
 
 def compute_losses(
