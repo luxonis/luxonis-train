@@ -56,7 +56,7 @@ class BaseDetectionHead(BaseHead[list[Tensor], tuple[list[Tensor], ...]]):
     def fit_stride_to_heads(self) -> Tensor:
         return torch.tensor(
             [
-                self.original_in_shape[1] / x[2]
+                round(self.original_in_shape[1] / x[2])
                 for x in self.in_sizes[: self.n_heads]
             ],
             dtype=torch.int,

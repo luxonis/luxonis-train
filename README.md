@@ -640,6 +640,8 @@ class CustomLoss(BaseLoss):
         return value.abs()
 ```
 
+For additional examples of creating custom components, please refer to the [examples section](examples/README.md).
+
 **Using custom components in the configuration file:**
 
 ```yaml

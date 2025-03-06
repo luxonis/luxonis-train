@@ -14,8 +14,16 @@
                 "shape": [1, 3, 128, 160],
                 "layout": "NCHW",
                 "preprocessing": {
-                    "mean": [123.675, 116.28, 103.53],
-                    "scale": [58.395, 57.12, 57.375],
+                    "mean": [
+                        123.675,
+                        116.28,
+                        103.53
+                    ],
+                    "scale": [
+                        58.395,
+                        57.12,
+                        57.375
+                    ],
                     "reverse_channels": null,
                     "interleaved_to_planar": null,
                     "dai_type": "RGB888p"
@@ -99,7 +107,9 @@
                     "n_classes": 23,
                     "is_softmax": false
                 },
-                "outputs": ["brand/BiSeNetHead/segmentation/0"]
+                "outputs": [
+                    "brand/BiSeNetHead/segmentation/0"
+                ]
             },
             {
                 "name": "BiSeNetHead_0",
@@ -123,7 +133,7 @@
                     "conf_threshold": 0.25,
                     "max_det": 300,
                     "anchors": null,
-                    "subtype": "yolov6"
+                    "subtype": "yolov6r2"
                 },
                 "outputs": ["output1_yolov6r2", "output2_yolov6r2", "output3_yolov6r2"]
             },
@@ -132,13 +142,15 @@
                 "parser": "YOLOExtendedParser",
                 "metadata": {
                     "postprocessor_path": null,
-                    "classes": ["motorbike"],
+                    "classes": [
+                        "motorbike"
+                    ],
                     "n_classes": 1,
                     "iou_threshold": 0.45,
                     "conf_threshold": 0.25,
                     "max_det": 300,
                     "anchors": null,
-                    "subtype": "yolov6",
+                    "subtype": "yolov6r2",
                     "n_keypoints": 3
                 },
                 "outputs": [
@@ -159,7 +171,9 @@
                     "n_classes": 4,
                     "is_softmax": false
                 },
-                "outputs": ["color/SegmentationHead/segmentation/0"]
+                "outputs": [
+                    "color/SegmentationHead/segmentation/0"
+                ]
             }
         ]
     }

@@ -237,4 +237,4 @@ class EfficientBBoxHead(BaseDetectionHead):
         @rtype: dict
         @return: Custom head configuration.
         """
-        return super().get_custom_head_config() | {"subtype": "yolov6"}
+        return super().get_custom_head_config() | {"subtype": "yolov6r2"}

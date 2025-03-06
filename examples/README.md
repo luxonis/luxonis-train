@@ -217,8 +217,6 @@ class ResNet(BaseNode[Tensor, list[Tensor]]):
 #### Segmentation Head
 
 ```python
-from luxonis
-
 from typing import override
 
 from torch import Tensor, nn
