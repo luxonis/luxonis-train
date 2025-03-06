@@ -143,7 +143,6 @@ def infer_from_loader(
     """
 
     predictions = model.pl_trainer.predict(model.lightning_module, loader)
-    assert isinstance(predictions, LuxonisOutput)
 
     broken = False
     if predictions is None:
@@ -152,6 +151,7 @@ def infer_from_loader(
     for i, outputs in enumerate(predictions):
         if broken:  # pragma: no cover
             break
+        assert isinstance(outputs, LuxonisOutput)
         visualizations = outputs.visualizations
         batch_size = next(
             iter(next(iter(visualizations.values())).values())
@@ -163,7 +163,7 @@ def infer_from_loader(
                 if save_dir is not None:
                     save_dir = Path(save_dir)
                     if img_paths is not None:
-                        img_path = img_paths[i * batch_size + j]
+                        img_path = Path(img_paths[i * batch_size + j])
                         name = f"{img_path.stem}_{node_name}_{viz_name}"
                     else:
                         name = f"{node_name}_{viz_name}_{i * batch_size + j}"

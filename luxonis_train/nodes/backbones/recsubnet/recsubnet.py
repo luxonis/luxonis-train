@@ -1,37 +1,23 @@
-from typing import Literal, TypeAlias
-
-from torch import Tensor
+from luxonis_ml.typing import Kwargs
+from torch import Tensor, nn
+from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
 
 from .blocks import Decoder, Encoder, NanoDecoder, NanoEncoder
 
-VariantLiteral: TypeAlias = Literal["n", "l"]
-
-
-def get_variant(variant: VariantLiteral) -> int:
-    """Returns the base width for the specified variant."""
-    variants = {"n": 64, "l": 128}
-
-    if variant not in variants:
-        raise ValueError(
-            f"Variant should be one of {list(variants.keys())}, got '{variant}'."
-        )
-
-    return variants[variant]
-
 
 class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
+    default_variant = "n"
+
     in_channels: int
-    out_channels: int
-    base_width: int
 
     def __init__(
         self,
-        in_channels: int = 3,
+        base_channels: int = 64,
         out_channels: int = 3,
-        base_width: int | None = None,
-        variant: VariantLiteral = "l",
+        encoder: type[nn.Module] = Encoder,
+        decoder: type[nn.Module] = Decoder,
         **kwargs,
     ):
         """
@@ -44,32 +30,23 @@ class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
         This architecture is based on the paper:
         "Data-Efficient Image Transformers: A Deeper Look" (https://arxiv.org/abs/2108.07610).
 
-        @type in_channels: int
-        @param in_channels: Number of input channels for the encoder. Defaults to 3.
-
         @type out_channels: int
         @param out_channels: Number of output channels for the decoder. Defaults to 3.
 
-        @type base_width: int
-        @param base_width: The base width of the network. Determines the number of filters in the encoder and decoder.
+        @type base_channels: int
+        @param base_channels: The base width of the network.
+            Determines the number of filters in the encoder and decoder.
 
-        @type variant: Literal["n", "l"]
-        @param variant: The variant of the RecSubNet to use. "l" for large, "n" for nano (lightweight). Defaults to "l".
+        @type encoder: nn.Module
+        @param encoder: The encoder block to use. Defaults to Encoder.
+
+        @type decoder: nn.Module
+        @param decoder: The decoder block to use. Defaults to Decoder.
         """
         super().__init__(**kwargs)
 
-        self.base_width = (
-            base_width if base_width is not None else get_variant(variant)
-        )
-
-        if variant == "l":
-            self.encoder = Encoder(in_channels, self.base_width)
-            self.decoder = Decoder(self.base_width, out_channels=out_channels)
-        elif variant == "n":
-            self.encoder = NanoEncoder(in_channels, self.base_width)
-            self.decoder = NanoDecoder(
-                self.base_width, out_channels=out_channels
-            )
+        self.encoder = encoder(self.in_channels, base_channels)
+        self.decoder = decoder(base_channels, out_channels=out_channels)
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """Performs the forward pass through the encoder and decoder."""
@@ -77,3 +54,19 @@ class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
         output = self.decoder(b5)
 
         return output, x
+
+    @override
+    @staticmethod
+    def get_variants() -> dict[str, Kwargs]:
+        return {
+            "n": {
+                "base_channels": 64,
+                "encoder": NanoEncoder,
+                "decoder": NanoDecoder,
+            },
+            "l": {
+                "base_channels": 128,
+                "encoder": Encoder,
+                "decoder": Decoder,
+            },
+        }

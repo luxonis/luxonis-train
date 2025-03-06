@@ -56,13 +56,14 @@ class FreezingConfig(BaseModelExtraForbid):
     unfreeze_after: NonNegativeInt | NonNegativeFloat | None = None
 
 
-class ModelNodeConfig(ConfigItem):
+class NodeConfig(ConfigItem):
     alias: str | None = None
     inputs: list[str] = []  # From preceding nodes
     input_sources: list[str] = []  # From data loader
     freezing: FreezingConfig = Field(default_factory=FreezingConfig)
     remove_on_export: bool = False
     task_name: str | None = None
+    variant: str | None = None
     metadata_task_override: str | dict[str, str] | None = None
 
 
@@ -77,7 +78,7 @@ class ModelConfig(BaseModelExtraForbid):
     name: str = "model"
     predefined_model: PredefinedModelConfig | None = None
     weights: FilePath | None = None
-    nodes: list[ModelNodeConfig] = []
+    nodes: list[NodeConfig] = []
     losses: list[LossModuleConfig] = []
     metrics: list[MetricModuleConfig] = []
     visualizers: list[AttachedModuleConfig] = []
@@ -229,11 +230,11 @@ class ModelConfig(BaseModelExtraForbid):
             names: set[str] = set()
             node_index = 0
             for module in modules:
-                module: AttachedModuleConfig | ModelNodeConfig
+                module: AttachedModuleConfig | NodeConfig
                 name = module.alias or module.name
                 if name in names:
                     if module.alias is None:
-                        if isinstance(module, ModelNodeConfig):
+                        if isinstance(module, NodeConfig):
                             module.alias = module.name
                         else:
                             module.alias = f"{name}_{module.attached_to}"
@@ -566,7 +567,7 @@ class Config(LuxonisConfig):
 
     loader: LoaderConfig = Field(default_factory=LoaderConfig)
     tracker: TrackerConfig = Field(default_factory=TrackerConfig)
-    trainer: TrainerConfig
+    trainer: TrainerConfig = Field(default_factory=TrainerConfig)
     exporter: ExportConfig = Field(default_factory=ExportConfig)
     archiver: ArchiveConfig = Field(default_factory=ArchiveConfig)
     tuner: TunerConfig | None = None

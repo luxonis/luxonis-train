@@ -4,7 +4,7 @@ import math
 from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks.blocks import ConvModule
-from luxonis_train.nodes.heads import BaseHead
+from luxonis_train.nodes.heads.base_head import BaseHead
 from luxonis_train.tasks import Tasks
 
 
@@ -54,7 +54,7 @@ class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
                     W // 32 if W % 32 == 0 else W // 32 + 1,
                 ),
                 groups=self.in_channels,
-                activation=False,
+                activation=None,
             ),
             nn.Dropout(dropout),
             nn.Conv2d(

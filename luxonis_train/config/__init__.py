@@ -4,7 +4,7 @@ from .config import (
     ExportConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
+    NodeConfig,
     TrainerConfig,
 )
 from .predefined_models import BasePredefinedModel
@@ -16,6 +16,6 @@ __all__ = [
     "ExportConfig",
     "LossModuleConfig",
     "MetricModuleConfig",
-    "ModelNodeConfig",
+    "NodeConfig",
     "TrainerConfig",
 ]

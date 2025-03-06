@@ -1,7 +1,7 @@
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Any, TypeAlias, TypeVar, cast
 
 import lightning.pytorch as pl
 import torch
@@ -64,13 +64,10 @@ class LossAccumulator(defaultdict[str, float]):
 class Nodes(dict[str, BaseNode] if TYPE_CHECKING else nn.ModuleDict):
     def __init__(
         self,
-        node_kwargs: dict[str, tuple[type[BaseNode], Kwargs]],
+        node_kwargs: dict[str, tuple[type[BaseNode], str | None, Kwargs]],
         loader_input_shapes: dict[str, dict[str, Size]],
         inputs: dict[str, list[str]],
-        input_shapes: dict[str, Size],
         graph: dict[str, list[str]],
-        image_source: str,
-        dataset_metadata: DatasetMetadata,
         task_names: dict[str, str],
         frozen_nodes: dict[str, int],
     ):
@@ -88,9 +85,11 @@ class Nodes(dict[str, BaseNode] if TYPE_CHECKING else nn.ModuleDict):
             for input_name, shape in shapes.items()
         }
 
-        for node_name, (Node, kwargs), node_input_names, _ in traverse_graph(
-            graph, node_kwargs
-        ):
+        for node_name, (
+            Node,
+            variant,
+            kwargs,
+        ), node_input_names, _ in traverse_graph(graph, node_kwargs):
             node_dummy_inputs: list[Packet[Tensor]] = []
             node_input_shapes: list[Packet[Size]] = []
 
@@ -103,12 +102,12 @@ class Nodes(dict[str, BaseNode] if TYPE_CHECKING else nn.ModuleDict):
                 shape_packet = to_shape_packet(dummy_input)
                 node_input_shapes.append(shape_packet)
 
-            node = Node(
-                input_shapes=node_input_shapes,
-                original_in_shape=input_shapes[image_source],
-                dataset_metadata=dataset_metadata,
-                **kwargs,
-            )
+            if variant is not None:
+                node = Node.from_variant(
+                    variant, input_shapes=node_input_shapes, **kwargs
+                )
+            else:
+                node = Node(input_shapes=node_input_shapes, **kwargs)
             if isinstance(node, BaseHead):
                 try:
                     node.get_custom_head_config()
@@ -371,7 +370,7 @@ def build_nodes(
 ) -> Nodes:
     frozen_nodes: dict[str, int] = {}
     node_task_names: dict[str, str] = {}
-    node_kwargs: dict[str, tuple[type[BaseNode], Kwargs]] = {}
+    node_kwargs: dict[str, tuple[type[BaseNode], str | None, Kwargs]] = {}
     node_inputs: dict[str, list[str]] = {}
     graph: dict[str, list[str]] = {}
     loader_input_shapes: dict[str, dict[str, Size]] = {}
@@ -437,13 +436,20 @@ def build_nodes(
                         f"Expected type '{m.typ}', got '{typ.__name__}'."
                     )
 
+        # FIXME: Remove when refactoring predefined models
+        variant = node_cfg.variant or cast(
+            str | None, node_cfg.params.pop("variant", None)
+        )
         node_kwargs[node_name] = (
             Node,
+            variant,
             {
                 **node_cfg.params,
                 # TODO: `task_name` only makes sense for heads.
                 "task_name": node_cfg.task_name or "",
                 "remove_on_export": node_cfg.remove_on_export,
+                "dataset_metadata": dataset_metadata,
+                "original_in_shape": input_shapes[cfg.loader.image_source],
             },
         )
 
@@ -481,10 +487,7 @@ def build_nodes(
         node_kwargs,
         loader_input_shapes,
         node_inputs,
-        input_shapes,
         graph,
-        cfg.loader.image_source,
-        dataset_metadata,
         node_task_names,
         frozen_nodes,
     )

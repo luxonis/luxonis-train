@@ -1,13 +1,17 @@
 from typing import Literal
 
 import torchvision
+from luxonis_ml.typing import Kwargs
 from torch import Tensor
 from torchvision.models import ResNet as TorchResNet
+from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
 
 
 class ResNet(BaseNode[Tensor, list[Tensor]]):
+    default_variant = "18"
+
     def __init__(
         self,
         variant: Literal["18", "34", "50", "101", "152"] = "18",
@@ -90,6 +94,17 @@ class ResNet(BaseNode[Tensor, list[Tensor]]):
             width_per_group=width_per_group,
             replace_stride_with_dilation=replace_stride_with_dilation,
         )
+
+    @staticmethod
+    @override
+    def get_variants() -> Kwargs:
+        return {
+            "18": {"variant": "18"},
+            "34": {"variant": "34"},
+            "50": {"variant": "50"},
+            "101": {"variant": "101"},
+            "152": {"variant": "152"},
+        }
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         outs: list[Tensor] = []

@@ -30,7 +30,6 @@ class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
             "area",
             "pixel_shuffle",
         ] = "bilinear",
-        download_weights: bool = False,
         **kwargs,
     ):
         """DDRNet segmentation head.
@@ -48,9 +47,6 @@ class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
         @param inter_mode: Upsampling method. One of nearest, linear, bilinear, bicubic,
             trilinear, area or pixel_shuffle. If pixel_shuffle is set, nn.PixelShuffle
             is used for scaling. Defaults to "bilinear".
-        @type download_weights: bool
-        @param download_weights: If True download weights from COCO.
-            Defaults to False.
         """
         super().__init__(**kwargs)
         model_in_h, model_in_w = self.original_in_shape[1:]
@@ -63,7 +59,8 @@ class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
             and inter_channels % (scale_factor**2) != 0
         ):
             raise ValueError(
-                "For pixel_shuffle, inter_channels must be a multiple of scale_factor^2."
+                "For `pixel_shuffle`, inter_channels must be a "
+                "multiple of scale_factor^2."
             )
 
         self.bn1 = nn.BatchNorm2d(self.in_channels)
@@ -92,21 +89,18 @@ class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
             else nn.Upsample(scale_factor=scale_factor, mode=inter_mode)
         )
 
-        # if download_weights:
-        #     weights_path = self.get_variant_weights()
-        #     if weights_path:
-        #         self.load_checkpoint(path=weights_path, strict=False)
-        #     else:
-        #         logger.warning(
-        #             f"No checkpoint available for {self.name}, skipping."
-        #         )
-
-    def get_variant_weights(self) -> str | None:
-        if self.in_channels == 128:  # light predefined model
-            return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/ddrnet_head_23slim_coco.ckpt"
-        if self.in_channels == 256:  # heavy predefined model
-            return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/ddrnet_head_23_coco.ckpt"
-        return None
+    @override
+    def get_weights_url(self) -> str | None:
+        if self.in_channels == 128:
+            variant = "slim"
+        elif self.in_channels == 256:
+            variant = ""
+        else:
+            raise ValueError(
+                f"No online weights available for '{self.name}' "
+                "with the chosen parameters"
+            )
+        return f"{{github}}/ddrnet_head_23{variant}_coco.ckpt"
 
     def forward(self, inputs: Tensor) -> Tensor:
         x: Tensor = self.relu(self.bn1(inputs))

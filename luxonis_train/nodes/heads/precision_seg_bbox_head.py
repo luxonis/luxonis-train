@@ -78,13 +78,13 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
                     padding=1,
                     activation=nn.SiLU(),
                 ),
-                nn.Conv2d(mid_channels, self.n_masks, 1, 1),
+                nn.Conv2d(mid_channels, n_masks, 1, 1),
             )
             for in_channels in self.in_channels
         )
 
+        self.proto = SegProto(self.in_channels[0], n_proto, n_masks)
         self.n_masks = n_masks
-        self.proto = SegProto(self.in_channels[0], n_proto, self.n_masks)
 
     def forward(
         self, inputs: list[Tensor]

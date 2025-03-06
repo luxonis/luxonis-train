@@ -14,10 +14,13 @@ class Reparametrizable(ABC):
 
     @abstractmethod
     def reparametrize(self) -> None:
-        """Reparametrize the module.
+        """Reparametrizes the module.
 
-        This method is called before exporting the model. It is expected
-        to be destructive and to modify the module's parameters in-
-        place.
+        This method is typically called before exporting the model.
         """
+        ...
+
+    @abstractmethod
+    def restore(self) -> None:
+        """Resores the module to its original state."""
         ...

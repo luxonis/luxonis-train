@@ -7,7 +7,7 @@ from torch import Tensor, nn
 from typing_extensions import override
 
 from luxonis_train.nodes.blocks import EfficientDecoupledBlock
-from luxonis_train.nodes.heads.precision_bbox_head import BaseDetectionHead
+from luxonis_train.nodes.heads.base_detection_head import BaseDetectionHead
 from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
 from luxonis_train.utils import (
@@ -74,6 +74,7 @@ class EfficientBBoxHead(BaseDetectionHead):
                 f"Changing number of heads to {len(self.in_channels)}."
             )
             self.n_heads = len(self.in_channels)
+
         for i in range(self.n_heads):
             self.heads.append(
                 EfficientDecoupledBlock(

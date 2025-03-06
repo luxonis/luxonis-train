@@ -1,11 +1,12 @@
 import math
 import urllib.parse
+from collections.abc import Collection
 from pathlib import Path, PurePosixPath
-from typing import Any, TypeVar
+from typing import Any, Literal, TypeVar
 
 import torch
 from loguru import logger
-from luxonis_ml.typing import PathType
+from luxonis_ml.typing import Kwargs, PathType
 from torch import Size, Tensor
 
 from luxonis_train.typing import Packet
@@ -191,12 +192,10 @@ def safe_download(
 
 def clean_url(url: str) -> str:
     """Strip auth from URL, i.e. https://url.com/file.txt?auth -> https://url.com/file.txt."""
-    url = str(PurePosixPath(url)).replace(
-        ":/", "://"
-    )  # Pathlib turns :// -> :/, PurePosixPath for Windows
-    return urllib.parse.unquote(url).split("?")[
-        0
-    ]  # '%2F' to '/', split https://url.com/file.txt?auth
+    # Pathlib turns :// -> :/, PurePosixPath for Windows
+    url = str(PurePosixPath(url)).replace(":/", "://")
+    # '%2F' to '/', split https://url.com/file.txt?auth
+    return urllib.parse.unquote(url).split("?")[0]
 
 
 def url2file(url: str) -> str:
@@ -241,3 +240,23 @@ def get_attribute_check_none(obj: object, attribute: str) -> Any:
     if value is None:
         raise ValueError(f"attribute '{attribute}' was not set")
     return value
+
+
+def add_variant_aliases(
+    variants: dict[str, Kwargs],
+    aliases: dict[str, Collection[str]] | Literal["yolo"] = "yolo",
+) -> dict[str, Kwargs]:
+    if aliases == "yolo":
+        for name, alias in zip(
+            ("t", "n", "s", "m", "l"),
+            ("tiny", "nano", "small", "medium", "large"),
+            strict=True,
+        ):
+            if name in variants:
+                variants[alias] = variants[name]
+    else:
+        for alias, names in aliases.items():
+            for name in names:
+                variants[alias] = variants[name]
+
+    return variants

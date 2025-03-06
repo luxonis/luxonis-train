@@ -52,7 +52,7 @@ class LCNetV3Block(nn.Sequential):
                 groups=in_channels,
                 n_branches=n_branches,
                 refine_block=AffineBlock(),
-                activation=AffineActivation() if stride != 2 else False,
+                activation=AffineActivation() if stride != 2 else None,
             )
         ]
         if use_se:

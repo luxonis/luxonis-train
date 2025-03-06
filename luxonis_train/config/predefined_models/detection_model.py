@@ -7,7 +7,7 @@ from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
+    NodeConfig,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -87,11 +87,11 @@ class DetectionModel(BasePredefinedModel):
         self.confusion_matrix_params = confusion_matrix_params or {}
 
     @property
-    def nodes(self) -> list[ModelNodeConfig]:
+    def nodes(self) -> list[NodeConfig]:
         """Defines the model nodes, including backbone, neck, and
         head."""
         nodes = [
-            ModelNodeConfig(
+            NodeConfig(
                 name=self.backbone,
                 alias=f"{self.task_name}-{self.backbone}",
                 freezing=self._get_freezing(self.backbone_params),
@@ -100,7 +100,7 @@ class DetectionModel(BasePredefinedModel):
         ]
         if self.use_neck:
             nodes.append(
-                ModelNodeConfig(
+                NodeConfig(
                     name="RepPANNeck",
                     alias=f"{self.task_name}-RepPANNeck",
                     inputs=[f"{self.task_name}-{self.backbone}"],
@@ -110,7 +110,7 @@ class DetectionModel(BasePredefinedModel):
             )
 
         nodes.append(
-            ModelNodeConfig(
+            NodeConfig(
                 name="EfficientBBoxHead",
                 alias=f"{self.task_name}-EfficientBBoxHead",
                 freezing=self._get_freezing(self.head_params),

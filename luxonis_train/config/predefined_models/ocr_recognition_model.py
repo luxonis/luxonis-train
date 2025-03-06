@@ -8,7 +8,7 @@ from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
+    NodeConfig,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -93,23 +93,23 @@ class OCRRecognitionModel(BasePredefinedModel):
         self.task_name = task_name or "ocr_recognition"
 
     @property
-    def nodes(self) -> list[ModelNodeConfig]:
+    def nodes(self) -> list[NodeConfig]:
         """Defines the model nodes, including backbone and head."""
         return [
-            ModelNodeConfig(
+            NodeConfig(
                 name=self.backbone,
                 alias=f"{self.task_name}-{self.backbone}",
                 freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
             ),
-            ModelNodeConfig(
+            NodeConfig(
                 name="SVTRNeck",
                 alias=f"{self.task_name}-SVTRNeck",
                 inputs=[f"{self.task_name}-{self.backbone}"],
                 freezing=self._get_freezing(self.neck_params),
                 params=self.neck_params,
             ),
-            ModelNodeConfig(
+            NodeConfig(
                 name="OCRCTCHead",
                 alias=f"{self.task_name}-OCRCTCHead",
                 inputs=[f"{self.task_name}-SVTRNeck"],

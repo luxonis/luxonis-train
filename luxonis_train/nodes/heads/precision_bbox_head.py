@@ -151,7 +151,7 @@ class PrecisionBBoxHead(BaseDetectionHead):
             bbox = self.dfl(regressions_list[i])
             classes = classes_list[i].sigmoid()
             confidence = classes.max(1, keepdim=True)[0]
-            # [bs, 4 + 1 + n_classes, h_f, w_f]
+            # @shape: [bs, 4 + 1 + n_classes, h_f, w_f]
             bboxes.append(torch.cat([bbox, confidence, classes], dim=1))
         return bboxes
 

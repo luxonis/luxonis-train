@@ -7,7 +7,7 @@ from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
+    NodeConfig,
 )
 from luxonis_train.config.config import FreezingConfig
 from luxonis_train.utils.registry import MODELS
@@ -18,7 +18,7 @@ class BasePredefinedModel(
 ):
     @property
     @abstractmethod
-    def nodes(self) -> list[ModelNodeConfig]: ...
+    def nodes(self) -> list[NodeConfig]: ...
 
     @property
     @abstractmethod
@@ -39,7 +39,7 @@ class BasePredefinedModel(
         include_metrics: bool = True,
         include_visualizers: bool = True,
     ) -> tuple[
-        list[ModelNodeConfig],
+        list[NodeConfig],
         list[LossModuleConfig],
         list[MetricModuleConfig],
         list[AttachedModuleConfig],
@@ -55,7 +55,7 @@ class BasePredefinedModel(
     def _get_freezing(params: Params) -> FreezingConfig:
         if "freezing" not in params:
             return FreezingConfig()
-        freezing = params["freezing"]
+        freezing = params.pop("freezing")
         if isinstance(freezing, FreezingConfig):
             return freezing
         if not check_type(freezing, Kwargs):

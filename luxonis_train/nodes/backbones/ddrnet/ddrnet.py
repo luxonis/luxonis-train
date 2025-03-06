@@ -1,6 +1,6 @@
-from typing import Literal
-
+from luxonis_ml.typing import Kwargs
 from torch import Tensor, nn
+from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import (
@@ -11,17 +11,25 @@ from luxonis_train.nodes.blocks import (
 )
 
 from .blocks import DAPPM, BasicDDRBackbone, make_layer
-from .variants import get_variant
 
 
 class DDRNet(BaseNode[Tensor, list[Tensor]]):
+    """
+    Variants
+    --------
+    The variant determines the number of channels and high resolution channels.
+    The following variants are available:
+        - "23-slim" (default): channels=32, high_resolution_channels=64
+        - "23": channels=64, high_resolution_channels=128
+    """
+
+    default_variant = "23-slim"
     in_channels: int
 
     def __init__(
         self,
-        variant: Literal["23-slim", "23"] = "23-slim",
-        channels: int | None = None,
-        highres_channels: int | None = None,
+        channels: int = 32,
+        high_resolution_channels: int = 64,
         use_aux_heads: bool = True,
         upscale_module: nn.Module | None = None,
         spp_width: int = 128,
@@ -36,7 +44,6 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         spp_strides: list[int] | None = None,
         layer3_repeats: int = 1,
         layers: list[int] | None = None,
-        download_weights: bool = True,
         **kwargs,
     ):
         """DDRNet backbone.
@@ -49,14 +56,14 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             gradients/blob/master/LICENSE.md>}
         @type variant: Literal["23-slim", "23"]
         @param variant: DDRNet variant. Defaults to "23-slim".
-            The variant determines the number of channels and highres_channels.
+            The variant determines the number of channels and high_resolution_channels.
             The following variants are available:
-                - "23-slim" (default): channels=32, highres_channels=64
-                - "23": channels=64, highres_channels=128
+                - "23-slim" (default): channels=32, high_resolution_channels=64
+                - "23": channels=64, high_resolution_channels=128
         @type channels: int | None
         @param channels: Base number of channels. If provided, overrides the variant values.
-        @type highres_channels: int | None
-        @param highres_channels: Number of channels in the high resolution net. If provided, overrides the variant values.
+        @type high_resolution_channels: int | None
+        @param high_resolution_channels: Number of channels in the high resolution net. If provided, overrides the variant values.
         @type use_aux_heads: bool
         @param use_aux_heads: Whether to use auxiliary heads. Defaults to True.
         @type upscale_module: nn.Module
@@ -93,8 +100,6 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         @type layers: list[int]
         @param layers: Number of blocks in each layer of the backbone. Defaults to [2,
             2, 2, 2, 1, 2, 2, 1].
-        @type download_weights: bool
-        @param download_weights: If True download weights from COCO (if available for specified variant). Defaults to True.
         """
         super().__init__(**kwargs)
 
@@ -102,11 +107,6 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         spp_kernel_sizes = spp_kernel_sizes or [1, 5, 9, 17, 0]
         spp_strides = spp_strides or [1, 2, 4, 8, 0]
         layers = layers or [2, 2, 2, 2, 1, 2, 2, 1]
-
-        var = get_variant(variant)
-
-        channels = channels or var.channels
-        highres_channels = highres_channels or var.highres_channels
 
         self._use_aux_heads = use_aux_heads
         self.upscale = upscale_module
@@ -140,21 +140,21 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             self.compression3.append(
                 ConvModule(
                     in_channels=out_chan_backbone["layer3"],
-                    out_channels=highres_channels,
+                    out_channels=high_resolution_channels,
                     kernel_size=1,
                     bias=False,
-                    activation=False,
+                    activation=None,
                 )
             )
             self.down3.append(
                 ConvModule(
-                    in_channels=highres_channels,
+                    in_channels=high_resolution_channels,
                     out_channels=out_chan_backbone["layer3"],
                     kernel_size=3,
                     stride=2,
                     padding=1,
                     bias=False,
-                    activation=False,
+                    activation=None,
                 )
             )
             self.layer3_skip.append(
@@ -162,9 +162,9 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                     in_channels=(
                         out_chan_backbone["layer2"]
                         if i == 0
-                        else highres_channels
+                        else high_resolution_channels
                     ),
-                    channels=highres_channels,
+                    channels=high_resolution_channels,
                     block=skip_block,
                     n_blocks=self.additional_layers[1],
                 )
@@ -172,16 +172,16 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
 
         self.compression4 = ConvModule(
             in_channels=out_chan_backbone["layer4"],
-            out_channels=highres_channels,
+            out_channels=high_resolution_channels,
             kernel_size=1,
             bias=False,
-            activation=False,
+            activation=None,
         )
 
         self.down4 = nn.Sequential(
             ConvModule(
-                in_channels=highres_channels,
-                out_channels=highres_channels * 2,
+                in_channels=high_resolution_channels,
+                out_channels=high_resolution_channels * 2,
                 kernel_size=3,
                 stride=2,
                 padding=1,
@@ -189,26 +189,26 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                 activation=nn.ReLU(inplace=True),
             ),
             ConvModule(
-                in_channels=highres_channels * 2,
+                in_channels=high_resolution_channels * 2,
                 out_channels=out_chan_backbone["layer4"],
                 kernel_size=3,
                 stride=2,
                 padding=1,
                 bias=False,
-                activation=False,
+                activation=None,
             ),
         )
 
         self.layer4_skip = make_layer(
             block=skip_block,
-            in_channels=highres_channels,
-            channels=highres_channels,
+            in_channels=high_resolution_channels,
+            channels=high_resolution_channels,
             n_blocks=self.additional_layers[2],
         )
         self.layer5_skip = make_layer(
             block=layer5_block,
-            in_channels=highres_channels,
-            channels=highres_channels,
+            in_channels=high_resolution_channels,
+            channels=high_resolution_channels,
             n_blocks=self.additional_layers[3],
             expansion=layer5_bottleneck_expansion,
         )
@@ -226,23 +226,14 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             in_channels=out_chan_backbone["layer4"]
             * layer5_bottleneck_expansion,
             branch_channels=spp_width,
-            out_channels=highres_channels * layer5_bottleneck_expansion,
+            out_channels=high_resolution_channels
+            * layer5_bottleneck_expansion,
             inter_mode=self.ssp_inter_mode,
             kernel_sizes=spp_kernel_sizes,
             strides=spp_strides,
         )
 
-        self.highres_channels = highres_channels
-        self.layer5_bottleneck_expansion = layer5_bottleneck_expansion
         self.init_params()
-
-        # if download_weights:
-        #     if var.weights_path:
-        #         self.load_checkpoint(var.weights_path)
-        #     else:
-        #         logger.warning(
-        #             f"No checkpoint available for {self.name}, skipping."
-        #         )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         width_output = inputs.shape[-1] // 8
@@ -302,3 +293,27 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
+
+    @override
+    def get_weights_url(self) -> str:
+        if self._variant is None:
+            raise ValueError(
+                f"Online weights are available for '{self.name}' "
+                "only when it's used with a predefined variant."
+            )
+        variant = self._variant.replace("-", "")
+        return f"{{github}}/ddrnet_{variant}_coco.ckpt"
+
+    @override
+    def get_variants() -> dict[str, Kwargs]:
+        # TODO: The other init parameters could be here too?
+        return {
+            "23-slim": {
+                "channels": 32,
+                "high_resolution_channels": 64,
+            },
+            "23": {
+                "channels": 64,
+                "high_resolution_channels": 128,
+            },
+        }

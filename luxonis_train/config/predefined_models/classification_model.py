@@ -7,7 +7,7 @@ from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
+    NodeConfig,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -71,16 +71,16 @@ class ClassificationModel(BasePredefinedModel):
         self.confusion_matrix_params = confusion_matrix_params or {}
 
     @property
-    def nodes(self) -> list[ModelNodeConfig]:
+    def nodes(self) -> list[NodeConfig]:
         """Defines the model nodes, including backbone and head."""
         return [
-            ModelNodeConfig(
+            NodeConfig(
                 name=self.backbone,
                 alias=f"{self.task_name}-{self.backbone}",
                 freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
             ),
-            ModelNodeConfig(
+            NodeConfig(
                 name="ClassificationHead",
                 alias=f"{self.task_name}-ClassificationHead",
                 inputs=[f"{self.task_name}-{self.backbone}"],

@@ -7,7 +7,7 @@ from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
+    NodeConfig,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -28,12 +28,12 @@ def get_variant(variant: VariantLiteral) -> SegmentationVariant:
         "light": SegmentationVariant(
             backbone="DDRNet",
             backbone_params={"variant": "23-slim"},
-            head_params={"download_weights": True},
+            head_params={},
         ),
         "heavy": SegmentationVariant(
             backbone="DDRNet",
             backbone_params={"variant": "23"},
-            head_params={"download_weights": True},
+            head_params={},
         ),
     }
 
@@ -78,20 +78,20 @@ class SegmentationModel(BasePredefinedModel):
         self.confusion_matrix_params = confusion_matrix_params or {}
 
     @property
-    def nodes(self) -> list[ModelNodeConfig]:
+    def nodes(self) -> list[NodeConfig]:
         """Defines the model nodes, including backbone and head."""
         self.head_params.update({"attach_index": -1})
         self.aux_head_params.update({"attach_index": -2})
 
         node_list = [
-            ModelNodeConfig(
+            NodeConfig(
                 name=self.backbone,
                 alias=f"{self.task_name}-{self.backbone}",
                 freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
                 task_name=self.task_name,
             ),
-            ModelNodeConfig(
+            NodeConfig(
                 name="DDRNetSegmentationHead",
                 alias=f"{self.task_name}-DDRNetSegmentationHead",
                 inputs=[f"{self.task_name}-{self.backbone}"],
@@ -110,7 +110,7 @@ class SegmentationModel(BasePredefinedModel):
                     f"Got `{remove_on_export}`."
                 )
             node_list.append(
-                ModelNodeConfig(
+                NodeConfig(
                     name="DDRNetSegmentationHead",
                     alias=f"{self.task_name}-DDRNetSegmentationHead_aux",
                     inputs=[f"{self.task_name}-{self.backbone}"],

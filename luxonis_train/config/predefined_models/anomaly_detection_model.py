@@ -7,7 +7,7 @@ from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
+    NodeConfig,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -70,16 +70,16 @@ class AnomalyDetectionModel(BasePredefinedModel):
         self.task_name = task_name or "anomaly_detection"
 
     @property
-    def nodes(self) -> list[ModelNodeConfig]:
+    def nodes(self) -> list[NodeConfig]:
         """Defines the model nodes, including RecSubNet and
         DiscSubNetHead."""
         return [
-            ModelNodeConfig(
+            NodeConfig(
                 name=self.backbone,
                 alias=f"{self.task_name}-{self.backbone}",
                 params=self.backbone_params,
             ),
-            ModelNodeConfig(
+            NodeConfig(
                 name="DiscSubNetHead",
                 alias=f"{self.task_name}-DiscSubNetHead",
                 inputs=[f"{self.task_name}-{self.backbone}"],

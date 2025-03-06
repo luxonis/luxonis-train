@@ -1,6 +1,8 @@
 from typing import Literal, cast
 
+from luxonis_ml.typing import Kwargs
 from torch import Tensor, nn
+from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import (
@@ -10,23 +12,37 @@ from luxonis_train.nodes.blocks import (
     SpatialPyramidPoolingBlock,
 )
 from luxonis_train.utils import make_divisible
-
-from .variants import VariantLiteral, get_variant
+from luxonis_train.utils.general import add_variant_aliases
 
 
 class EfficientRep(BaseNode[Tensor, list[Tensor]]):
+    """
+    Variants
+    --------
+
+        The variant determines the depth and width multipliers,
+        block used and intermediate channel scaling factor.
+
+        The depth multiplier determines the number of blocks in each stage and the width multiplier determines the number of channels.
+
+        The following variants are available:
+          - "n" or "nano" (default): depth_multiplier=0.33, width_multiplier=0.25, block=RepBlock, e=None
+          - "s" or "small": depth_multiplier=0.33, width_multiplier=0.50, block=RepBlock, e=None
+          - "m" or "medium": depth_multiplier=0.60, width_multiplier=0.75, block=CSPStackRepBlock, e=2/3
+          - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0, block=CSPStackRepBlock, e=1/2
+    """
+
     in_channels: int
+    default_variant = "n"
 
     def __init__(
         self,
-        variant: VariantLiteral = "nano",
         channels_list: list[int] | None = None,
         n_repeats: list[int] | None = None,
-        depth_mul: float | None = None,
-        width_mul: float | None = None,
-        block: Literal["RepBlock", "CSPStackRepBlock"] | None = None,
-        csp_e: float | None = None,
-        download_weights: bool = True,
+        depth_multiplier: float = 0.33,
+        width_multiplier: float = 0.25,
+        block: Literal["RepBlock", "CSPStackRepBlock"] = "RepBlock",
+        csp_e: float = 0.5,
         initialize_weights: bool = True,
         **kwargs,
     ):
@@ -37,50 +53,42 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         for Industrial Applications
         <https://arxiv.org/pdf/2209.02976.pdf>}.
 
-        @type variant: Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]
-        @param variant: EfficientRep variant. Defaults to "nano".
-            The variant determines the depth and width multipliers, block used and intermediate channel scaling factor.
-            The depth multiplier determines the number of blocks in each stage and the width multiplier determines the number of channels.
-            The following variants are available:
-                - "n" or "nano" (default): depth_multiplier=0.33, width_multiplier=0.25, block=RepBlock, e=None
-                - "s" or "small": depth_multiplier=0.33, width_multiplier=0.50, block=RepBlock, e=None
-                - "m" or "medium": depth_multiplier=0.60, width_multiplier=0.75, block=CSPStackRepBlock, e=2/3
-                - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0, block=CSPStackRepBlock, e=1/2
         @type channels_list: list[int] | None
-        @param channels_list: List of number of channels for each block. If unspecified,
-            defaults to [64, 128, 256, 512, 1024].
+        @param channels_list: List of number of channels for each block.
+            If unspecified, defaults to [64, 128, 256, 512, 1024].
         @type n_repeats: list[int] | None
-        @param n_repeats: List of number of repeats of RepVGGBlock. If unspecified,
-            defaults to [1, 6, 12, 18, 6].
+        @param n_repeats: List of number of repeats of RepVGGBlock. If
+            unspecified, defaults to [1, 6, 12, 18, 6].
         @type depth_mul: float
-        @param depth_mul: Depth multiplier. If provided, overrides the variant value.
+        @param depth_mul: Depth multiplier. If provided, overrides the
+            variant value.
         @type width_mul: float
-        @param width_mul: Width multiplier. If provided, overrides the variant value.
+        @param width_mul: Width multiplier. If provided, overrides the
+            variant value.
         @type block: Literal["RepBlock", "CSPStackRepBlock"] | None
-        @param block: Base block used when building the backbone. If provided, overrides the variant value.
+        @param block: Base block used when building the backbone. If
+            provided, overrides the variant value.
         @type csp_e: float | None
-        @param csp_e: Factor that controls number of intermediate channels if block="CSPStackRepBlock". If provided,
-            overrides the variant value.
+        @param csp_e: Factor that controls number of intermediate
+            channels if block="CSPStackRepBlock". If provided, overrides
+            the variant value.
         @type download_weights: bool
-        @param download_weights: If True download weights from COCO (if available for specified variant). Defaults to True.
+        @param download_weights: If True download weights from COCO (if
+            available for specified variant). Defaults to True.
         @type initialize_weights: bool
-        @param initialize_weights: If True, initialize weights of the model.
+        @param initialize_weights: If True, initialize weights of the
+            model.
         """
         super().__init__(**kwargs)
-
-        var = get_variant(variant)
-        depth_mul = depth_mul or var.depth_multiplier
-        width_mul = width_mul or var.width_multiplier
-        block = block or var.block
-        csp_e = csp_e or var.csp_e or 0.5
 
         channels_list = channels_list or [64, 128, 256, 512, 1024]
         n_repeats = n_repeats or [1, 6, 12, 18, 6]
         channels_list = [
-            make_divisible(i * width_mul, 8) for i in channels_list
+            make_divisible(i * width_multiplier, 8) for i in channels_list
         ]
         n_repeats = [
-            (max(round(i * depth_mul), 1) if i > 1 else i) for i in n_repeats
+            (max(round(i * depth_multiplier), 1) if i > 1 else i)
+            for i in n_repeats
         ]
 
         self.repvgg_encoder = GeneralReparametrizableBlock(
@@ -128,27 +136,14 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         if initialize_weights:
             self.initialize_weights()
 
-        # if download_weights:
-        #     weights_path = get_variant_weights(variant, initialize_weights)
-        #     if weights_path:
-        #         self.load_checkpoint(path=weights_path)
-        #     else:
-        #         logger.warning(
-        #             f"No checkpoint available for {self.name}, skipping."
-        #         )
-
     # TODO: Could be generalized?
+    # TODO: Make a unified API for weight initialization
+    # this would include loading online pretrained weights too
     def initialize_weights(self) -> None:
         for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                pass
-            elif isinstance(m, nn.BatchNorm2d):
+            if isinstance(m, nn.BatchNorm2d):
                 m.eps = 0.001
                 m.momentum = 0.03
-            elif isinstance(
-                m, nn.Hardswish | nn.LeakyReLU | nn.ReLU | nn.ReLU6 | nn.SiLU
-            ):
-                m.inplace = True
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         outputs: list[Tensor] = []
@@ -157,3 +152,45 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
             x = block(x)
             outputs.append(x)
         return outputs
+
+    @override
+    def get_weights_url(self) -> str | None:
+        if self._variant is None:
+            raise ValueError(
+                f"Online weights are available for '{self.name}' "
+                "only when it's used with a predefined variant."
+            )
+
+        return f"{{github}}/efficientrep_{self._variant}_coco.ckpt"
+
+    @staticmethod
+    @override
+    def get_variants() -> Kwargs:
+        return add_variant_aliases(
+            {
+                "n": {
+                    "depth_multiplier": 0.33,
+                    "width_multiplier": 0.25,
+                    "block": "RepBlock",
+                    "csp_e": None,
+                },
+                "s": {
+                    "depth_multiplier": 0.33,
+                    "width_multiplier": 0.50,
+                    "block": "RepBlock",
+                    "csp_e": None,
+                },
+                "m": {
+                    "depth_multiplier": 0.60,
+                    "width_multiplier": 0.75,
+                    "block": "CSPStackRepBlock",
+                    "csp_e": 2 / 3,
+                },
+                "l": {
+                    "depth_multiplier": 1.0,
+                    "width_multiplier": 1.0,
+                    "block": "CSPStackRepBlock",
+                    "csp_e": 1 / 2,
+                },
+            }
+        )

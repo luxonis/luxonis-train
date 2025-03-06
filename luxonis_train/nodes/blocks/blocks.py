@@ -1,5 +1,6 @@
 import math
 from collections.abc import Callable
+from types import EllipsisType
 from typing import Generic, Literal, TypeVar, cast
 
 import torch
@@ -253,7 +254,7 @@ class ConvModule(nn.Module):
         dilation: int | tuple[int, int] = 1,
         groups: int = 1,
         bias: bool = False,
-        activation: nn.Module | None | Literal[False] = None,
+        activation: EllipsisType | nn.Module | None = ...,
         use_norm: bool = True,
     ):
         """Conv2d + Optional BN + Activation.
@@ -275,8 +276,8 @@ class ConvModule(nn.Module):
         @type bias: bool
         @param bias: Whether to use bias. Defaults to False.
         @type activation: L{nn.Module} | None | Literal[False]
-        @param activation: Activation function. If None then nn.ReLU. If
-            False then no activation. Defaults to None.
+        @param activation: Activation function. Defaults to `nn.Relu`
+            of not explicitly set to C{None}
         @type use_norm: bool
         @param use_norm: Whether to use batch normalization. Defaults to
             True.
@@ -307,17 +308,18 @@ class ConvModule(nn.Module):
         if use_norm:
             self.bn = nn.BatchNorm2d(out_channels)
 
-        self.activation: nn.Module | None = None
-        if activation is not False:
-            self.activation = activation or nn.ReLU()
+        if activation is ...:
+            self.activation = nn.ReLU()
+        elif activation is None:
+            self.activation = nn.Identity()
+        else:
+            self.activation = activation
 
     def forward(self, x: Tensor) -> Tensor:
         x = self.conv(x)
         if self.bn is not None:
             x = self.bn(x)
-        if self.activation is not None:
-            x = self.activation(x)
-        return x
+        return self.activation(x)
 
 
 class UpBlock(nn.Sequential):
@@ -449,7 +451,7 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable, Generic[RefB]):
         groups: int = 1,
         n_branches: int = 1,
         refine_block: RefB | Literal["se"] | None = None,
-        activation: nn.Module | None | Literal[False] = None,
+        activation: nn.Module | None | EllipsisType = ...,
     ):
         """GeneralReparametrizableBlock is a basic rep-style block,
         including training and deploy status.
@@ -491,8 +493,6 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable, Generic[RefB]):
         self.kernel_size = kernel_size
         self.groups = groups
 
-        self._reparametrized = False
-
         self.skip_layer: nn.BatchNorm2d | None = None
         if out_channels == in_channels and stride == 1:
             self.skip_layer = nn.BatchNorm2d(in_channels)
@@ -507,7 +507,7 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable, Generic[RefB]):
                 stride=stride,
                 padding=padding_scale,
                 groups=self.groups,
-                activation=False,
+                activation=None,
             )
 
         branches = [
@@ -518,7 +518,7 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable, Generic[RefB]):
                 stride=stride,
                 padding=padding,
                 groups=self.groups,
-                activation=False,
+                activation=None,
             )
             for _ in range(n_branches)
         ]
@@ -531,12 +531,15 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable, Generic[RefB]):
         else:
             self.refine_block = refine_block or nn.Identity()
 
-        if activation is False:
+        if activation is ...:
+            self.activation = nn.ReLU()
+        elif activation is None:
             self.activation = nn.Identity()
         else:
             self.activation = activation or nn.ReLU()
 
         self.branches = cast(list[ConvModule], nn.ModuleList(branches))
+        self.fused_branch: nn.Conv2d | None = None
 
     def forward(self, x: Tensor) -> Tensor:
         out = 0
@@ -552,13 +555,13 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable, Generic[RefB]):
 
     @override
     def reparametrize(self) -> None:
-        if self._reparametrized:
+        if self.fused_branch is not None:
             raise RuntimeError(
                 f"{self.__class__.__name__} is already reparametrized"
             )
 
         kernel, bias = self._fuse_parameters()
-        rep_dense_block = nn.Conv2d(
+        fused_branch = nn.Conv2d(
             in_channels=self.branches[0].in_channels,
             out_channels=self.branches[0].out_channels,
             kernel_size=self.branches[0].kernel_size,
@@ -568,27 +571,26 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable, Generic[RefB]):
             groups=self.branches[0].groups,
             bias=True,
         )
-        rep_dense_block.weight.data = kernel
-        if rep_dense_block.bias is not None:
-            rep_dense_block.bias.data = bias
+        fused_branch.weight.data = kernel
+        assert fused_branch.bias is not None
+        fused_branch.bias.data = bias
 
-        # NOTE: Not sure if the explicit `detach_` and
-        # deletions are necessary. Some of the reference
-        # implementations include it and some don't.
-        for para in self.parameters():
-            para.detach_()
+        self.fused_branch = fused_branch
 
-        del self.branches
-        del self.scale_layer
-        del self.skip_layer
+    @override
+    def restore(self) -> None:
+        if self.fused_branch is None:
+            raise RuntimeError(
+                f"Cannot restore '{self.__class__.__name__}' "
+                "that has not yet been reparametrized."
+            )
 
-        self.branches = cast(
-            list[ConvModule], nn.ModuleList([rep_dense_block])
-        )
-        self.scale_layer = None
-        self.skip_layer = None
+        # Not sure if this is necessary
+        for param in self.fused_branch.parameters():
+            param.detach_()
 
-        self._reparametrized = True
+        del self.fused_branch
+        self.fused_branch = None
 
     def _fuse_parameters(self) -> tuple[Tensor, Tensor]:
         kernel = torch.tensor(0)
@@ -851,7 +853,7 @@ class AttentionRefinmentBlock(nn.Module):
                 in_channels=out_channels,
                 out_channels=out_channels,
                 kernel_size=1,
-                activation=False,
+                activation=None,
             ),
             nn.Sigmoid(),
         )
@@ -891,7 +893,7 @@ class FeatureFusionBlock(nn.Module):
                 in_channels=out_channels,
                 out_channels=out_channels // reduction,
                 kernel_size=1,
-                activation=False,
+                activation=None,
             ),
             nn.Sigmoid(),
         )

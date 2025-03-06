@@ -56,7 +56,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         self.keypoint_heads = nn.ModuleList(
             nn.Sequential(
                 ConvModule(
-                    in_channels=in_channels,
+                    in_channels=self.in_channels[i],
                     out_channels=mid_channels,
                     kernel_size=3,
                     stride=1,
@@ -78,7 +78,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
                     stride=1,
                 ),
             )
-            for in_channels in self.in_channels
+            for i in range(len(self.heads))
         )
 
     def forward(
@@ -87,7 +87,9 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         features_list, classes_list, regressions_list = super().forward(inputs)
         keypoints_list: list[Tensor] = []
 
-        for head, x in zip(self.keypoint_heads, inputs, strict=True):
+        # FIXME: What when lenghts not match? Deeper or shallower features
+        # should be discarded?
+        for head, x in zip(self.keypoint_heads, inputs, strict=False):
             keypoints_list.append(head(x))
 
         return features_list, classes_list, regressions_list, keypoints_list
