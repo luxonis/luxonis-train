@@ -23,7 +23,7 @@ class SegmentationVisualizer(BaseVisualizer):
 
     def __init__(
         self,
-        colors: Color | list[Color] = "#5050FF",
+        colors: Color | list[Color] | None = None,
         background_class: int | None = 0,
         background_color: Color = "#000000",
         alpha: float = 0.6,
@@ -43,7 +43,7 @@ class SegmentationVisualizer(BaseVisualizer):
         @param alpha: Alpha value of the segmentation masks. Defaults to C{0.6}.
         """
         super().__init__(**kwargs)
-        if not isinstance(colors, list):
+        if colors is not None and not isinstance(colors, list):
             colors = [colors]
 
         self.colors = colors
@@ -118,7 +118,7 @@ class SegmentationVisualizer(BaseVisualizer):
             target_canvas,
             target,
             alpha=self.alpha,
-            colors=self.colors,
+            colors=colors,
         )
         return targets_vis, predictions_vis
 
