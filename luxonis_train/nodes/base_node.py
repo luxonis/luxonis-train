@@ -597,7 +597,7 @@ class BaseNode(
         if self.task is None:
             name = "features"
         else:
-            name = self.task.name
+            name = self.task.main_output
         return {name: outputs}
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:
