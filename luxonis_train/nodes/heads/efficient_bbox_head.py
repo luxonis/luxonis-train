@@ -167,20 +167,18 @@ class EfficientBBoxHead(BaseDetectionHead):
             0, 2, 1
         )
 
-    def get_variant_weights(self, initialize_weights: bool) -> str | None:
-        if self.in_channels == [32, 64, 128]:  # light predefined model
-            if initialize_weights:
-                return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/efficientbbox_head_n_coco.ckpt"
-            return "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientbbox_head_n_coco.ckpt"
-        if self.in_channels == [64, 128, 256]:  # medium predefined model
-            if initialize_weights:
-                return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/efficientbbox_head_s_coco.ckpt"
+    @override
+    def get_weights_url(self) -> str | None:
+        if self.in_channels == [32, 64, 128]:
+            variant = "n"
+        elif self.in_channels == [64, 128, 256]:
+            variant = "s"
+        elif self.in_channels == [128, 256, 512]:
+            variant = "l"
+        else:
             return None
-        if self.in_channels == [128, 256, 512]:  # heavy predefined model
-            if initialize_weights:
-                return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/efficientbbox_head_l_coco.ckpt"
-            return None
-        return None
+
+        return f"{{github}}/efficientbbox_head_{variant}_coco.ckpt"
 
     @property
     @override
