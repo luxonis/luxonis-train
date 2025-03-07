@@ -1,15 +1,13 @@
 import math
 from collections.abc import Callable
 from types import EllipsisType
-from typing import Generic, Literal, TypeVar, cast
+from typing import Literal, TypeVar, cast
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 from typeguard import typechecked
 from typing_extensions import override
-
-from luxonis_train.nodes.activations import HSigmoid
 
 from .reparametrizable import Reparametrizable
 
@@ -277,7 +275,7 @@ class ConvModule(nn.Module):
         @param bias: Whether to use bias. Defaults to False.
         @type activation: L{nn.Module} | None | Literal[False]
         @param activation: Activation function. Defaults to `nn.Relu`
-            of not explicitly set to C{None}
+            if not explicitly set to C{None}
         @type use_norm: bool
         @param use_norm: Whether to use batch normalization. Defaults to
             True.
@@ -423,7 +421,7 @@ class SqueezeExciteBlock(nn.Module):
             kernel_size=1,
             bias=True,
         )
-        self.sigmoid = HSigmoid() if approx_sigmoid else nn.Sigmoid()
+        self.sigmoid = nn.Hardsigmoid() if approx_sigmoid else nn.Sigmoid()
 
     def forward(self, x: Tensor) -> Tensor:
         weights = self.pool(x)
@@ -434,10 +432,7 @@ class SqueezeExciteBlock(nn.Module):
         return x * weights
 
 
-RefB = TypeVar("RefB", bound=nn.Module)
-
-
-class GeneralReparametrizableBlock(nn.Module, Reparametrizable, Generic[RefB]):
+class GeneralReparametrizableBlock(nn.Module, Reparametrizable):
     __call__: Callable[[Tensor], Tensor]
 
     @typechecked
@@ -450,7 +445,7 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable, Generic[RefB]):
         padding: int = 1,
         groups: int = 1,
         n_branches: int = 1,
-        refine_block: RefB | Literal["se"] | None = None,
+        refine_block: nn.Module | Literal["se"] | None = None,
         activation: nn.Module | None | EllipsisType = ...,
     ):
         """GeneralReparametrizableBlock is a basic rep-style block,
@@ -553,12 +548,14 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable, Generic[RefB]):
 
         return self.activation(self.refine_block(out))
 
+    @property
+    def name(self) -> str:
+        return self.__class__.__name__
+
     @override
     def reparametrize(self) -> None:
         if self.fused_branch is not None:
-            raise RuntimeError(
-                f"{self.__class__.__name__} is already reparametrized"
-            )
+            raise RuntimeError(f"{self.name} is already reparametrized")
 
         kernel, bias = self._fuse_parameters()
         fused_branch = nn.Conv2d(
@@ -581,7 +578,7 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable, Generic[RefB]):
     def restore(self) -> None:
         if self.fused_branch is None:
             raise RuntimeError(
-                f"Cannot restore '{self.__class__.__name__}' "
+                f"Cannot restore '{self.name}' "
                 "that has not yet been reparametrized."
             )
 
@@ -626,7 +623,7 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable, Generic[RefB]):
         gamma = module.bn.weight
         beta = module.bn.bias
         eps = module.bn.eps
-        return self._postprocess_fusion(
+        return self._postprocess_fused(
             running_var, running_mean, gamma, beta, kernel, eps
         )
 
@@ -649,11 +646,11 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable, Generic[RefB]):
         gamma = module.weight
         beta = module.bias
         eps = module.eps
-        return self._postprocess_fusion(
+        return self._postprocess_fused(
             running_var, running_mean, gamma, beta, kernel, eps
         )
 
-    def _postprocess_fusion(
+    def _postprocess_fused(
         self,
         running_var: Tensor | None,
         running_mean: Tensor | None,

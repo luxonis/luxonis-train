@@ -12,10 +12,10 @@ class AffineActivation(nn.Module):
     def __init__(self):
         super().__init__()
         self.activation = nn.Hardswish()
-        # WARN: Is this correct?
         self.affine = AffineBlock()
 
     def forward(self, x: Tensor) -> Tensor:
+        # WARN: Is the order correct (activation -> affine)?
         return self.affine(self.activation(x))
 
 

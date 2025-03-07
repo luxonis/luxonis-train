@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 
 import torch
 from torch import Tensor, nn
@@ -12,13 +12,17 @@ from luxonis_train.nodes.blocks import (
 
 
 class PANUpBlockBase(ABC, nn.Module):
-    def __init__(self, in_channels: int, out_channels: int):
+    def __init__(
+        self, in_channels: int, out_channels: int, encode_block: nn.Module
+    ):
         """Base RepPANNeck up block.
 
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type out_channels: int
         @param out_channels: Number of output channels.
+        @type encode_block: nn.Module
+        @param encode_block: Encode block that is used.
         """
 
         super().__init__()
@@ -36,17 +40,7 @@ class PANUpBlockBase(ABC, nn.Module):
             stride=2,
             bias=True,
         )
-
-    @property
-    @abstractmethod
-    def encode_block(self) -> nn.Module:
-        """Encode block that is used.
-
-        Make sure actual module is initialized in the __init__ and not
-        inside this function otherwise it will be reinitialized every
-        time
-        """
-        ...
+        self.encode_block = encode_block
 
     def forward(self, x0: Tensor, x1: Tensor) -> tuple[Tensor, Tensor]:
         conv_out = self.conv(x0)
@@ -77,18 +71,16 @@ class RepUpBlock(PANUpBlockBase):
         @param n_repeats: Number of RepVGGBlock repeats.
         """
 
-        super().__init__(in_channels=in_channels, out_channels=out_channels)
-
-        self._encode_block = ModuleRepeater(
-            module=GeneralReparametrizableBlock,
-            in_channels=in_channels_next + out_channels,
+        super().__init__(
+            in_channels=in_channels,
             out_channels=out_channels,
-            n_repeats=n_repeats,
+            encode_block=ModuleRepeater(
+                module=GeneralReparametrizableBlock,
+                in_channels=in_channels_next + out_channels,
+                out_channels=out_channels,
+                n_repeats=n_repeats,
+            ),
         )
-
-    @property
-    def encode_block(self) -> nn.Module:
-        return self._encode_block
 
 
 class CSPUpBlock(PANUpBlockBase):
@@ -115,21 +107,25 @@ class CSPUpBlock(PANUpBlockBase):
         @type e: float
         @param e: Factor that controls number of intermediate channels.
         """
-        super().__init__(in_channels=in_channels, out_channels=out_channels)
-        self._encode_block = CSPStackRepBlock(
-            in_channels=in_channels_next + out_channels,
+        super().__init__(
+            in_channels=in_channels,
             out_channels=out_channels,
-            n_blocks=n_repeats,
-            e=e,
+            encode_block=CSPStackRepBlock(
+                in_channels=in_channels_next + out_channels,
+                out_channels=out_channels,
+                n_blocks=n_repeats,
+                e=e,
+            ),
         )
-
-    @property
-    def encode_block(self) -> nn.Module:
-        return self._encode_block
 
 
 class PANDownBlockBase(ABC, nn.Module):
-    def __init__(self, in_channels: int, downsample_out_channels: int):
+    def __init__(
+        self,
+        in_channels: int,
+        downsample_out_channels: int,
+        encode_block: nn.Module,
+    ):
         """Base RepPANNeck up block.
 
         @type in_channels: int
@@ -154,17 +150,7 @@ class PANDownBlockBase(ABC, nn.Module):
             stride=2,
             padding=3 // 2,
         )
-
-    @property
-    @abstractmethod
-    def encode_block(self) -> nn.Module:
-        """Encode block that is used.
-
-        Make sure actual module is initialized in the __init__ and not
-        inside this function otherwise it will be reinitialized every
-        time
-        """
-        ...
+        self.encode_block = encode_block
 
     def forward(self, x0: Tensor, x1: Tensor) -> Tensor:
         x = self.downsample(x0)
@@ -200,18 +186,13 @@ class RepDownBlock(PANDownBlockBase):
         super().__init__(
             in_channels=in_channels,
             downsample_out_channels=downsample_out_channels,
+            encode_block=ModuleRepeater(
+                module=GeneralReparametrizableBlock,
+                in_channels=downsample_out_channels + in_channels_next,
+                out_channels=out_channels,
+                n_repeats=n_repeats,
+            ),
         )
-
-        self._encode_block = ModuleRepeater(
-            module=GeneralReparametrizableBlock,
-            in_channels=downsample_out_channels + in_channels_next,
-            out_channels=out_channels,
-            n_repeats=n_repeats,
-        )
-
-    @property
-    def encode_block(self) -> nn.Module:
-        return self._encode_block
 
 
 class CSPDownBlock(PANDownBlockBase):
@@ -245,15 +226,10 @@ class CSPDownBlock(PANDownBlockBase):
         super().__init__(
             in_channels=in_channels,
             downsample_out_channels=downsample_out_channels,
+            encode_block=CSPStackRepBlock(
+                in_channels=downsample_out_channels + in_channels_next,
+                out_channels=out_channels,
+                n_blocks=n_repeats,
+                e=e,
+            ),
         )
-
-        self._encode_block = CSPStackRepBlock(
-            in_channels=downsample_out_channels + in_channels_next,
-            out_channels=out_channels,
-            n_blocks=n_repeats,
-            e=e,
-        )
-
-    @property
-    def encode_block(self) -> nn.Module:
-        return self._encode_block

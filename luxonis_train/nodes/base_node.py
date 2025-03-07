@@ -64,7 +64,8 @@ class BaseNode(
 
     Additionally, the following class attributes can be defined:
         - L{attach_index}: Index of previous output that this node attaches to.
-        - L{task}: An instance of `luxonis_train.tasks.Task` that specifies the task of the node. Usually defined for head nodes.
+        - L{task}: An instance of `luxonis_train.tasks.Task` that specifies the
+            task of the node. Usually defined for head nodes.
 
     Example::
         class MyNode(BaseNode):
@@ -487,14 +488,18 @@ class BaseNode(
         @param mode: Value to set the export mode to.
         """
         self._export = mode
+        if mode:
+            logger.info(f"Reparametrizing '{self.name}'")
+        else:
+            logger.info(f"Restoring reparametrized '{self.name}'")
 
         for name, module in self.named_modules():
             if isinstance(module, Reparametrizable):
                 if mode:
-                    logger.info(f"Reparametrizing '{name}' in '{self.name}'")
+                    logger.debug(f"Reparametrizing '{name}' in '{self.name}'")
                     module.reparametrize()
                 else:
-                    logger.info(
+                    logger.debug(
                         f"Restoring reparametrized '{name}' in '{self.name}'"
                     )
                     module.restore()

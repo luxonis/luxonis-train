@@ -3,7 +3,6 @@ from typing import Literal
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.nodes.activations import HSigmoid
 from luxonis_train.nodes.blocks import ConvModule
 
 
@@ -360,9 +359,9 @@ class DYShiftMax(nn.Module):
 
         self.fc = nn.Sequential(
             nn.Linear(in_channels, squeeze_channels),
-            nn.ReLU(True),
+            nn.ReLU(),
             nn.Linear(squeeze_channels, out_channels * self.exp),
-            HSigmoid(),
+            nn.Hardsigmoid(),
         )
 
         if groups != 1 and expansion:
