@@ -6,6 +6,7 @@ from .ctc_loss import CTCLoss
 from .efficient_keypoint_bbox_loss import EfficientKeypointBBoxLoss
 from .embedding_losses import EmbeddingLossWrapper
 from .fomo_localization_loss import FOMOLocalizationLoss
+from .mobileseg_loss import MobileSegLoss
 from .ohem_bce_with_logits import OHEMBCEWithLogitsLoss
 from .ohem_cross_entropy import OHEMCrossEntropyLoss
 from .ohem_loss import OHEMLoss
@@ -30,6 +31,7 @@ __all__ = [
     "OHEMCrossEntropyLoss",
     "OHEMBCEWithLogitsLoss",
     "FOMOLocalizationLoss",
+    "MobileSegLoss",
     "EmbeddingLossWrapper",
     "CTCLoss",
     "PrecisionDFLDetectionLoss",

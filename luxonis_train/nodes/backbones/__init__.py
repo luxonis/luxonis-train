@@ -7,6 +7,7 @@ from .ghostfacenet import GhostFaceNetV2
 from .micronet import MicroNet
 from .mobilenetv2 import MobileNetV2
 from .mobileone import MobileOne
+from .mobileseg import MobileNetV3
 from .pplcnet_v3 import PPLCNetV3
 from .recsubnet import RecSubNet
 from .repvgg import RepVGG
@@ -19,6 +20,7 @@ __all__ = [
     "EfficientRep",
     "MicroNet",
     "MobileNetV2",
+    "MobileNetV3",
     "MobileOne",
     "ReXNetV1_lite",
     "RepVGG",
