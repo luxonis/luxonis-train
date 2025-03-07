@@ -26,7 +26,6 @@ class EfficientBBoxHead(BaseDetectionHead):
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
-        download_weights: bool = False,
         initialize_weights: bool = True,
         **kwargs,
     ):
@@ -46,9 +45,6 @@ class EfficientBBoxHead(BaseDetectionHead):
         @type max_det: int
         @param max_det: Maximum number of detections retained after NMS.
             Defaults to C{300}.
-        @type download_weights: bool
-        @param download_weights: If True download weights from COCO.
-            Defaults to False.
         @type initialize_weights: bool
         @param initialize_weights: If True, initialize weights.
         """
@@ -84,17 +80,6 @@ class EfficientBBoxHead(BaseDetectionHead):
 
         if initialize_weights:
             self.initialize_weights()
-
-        if (
-            download_weights and self.name == "EfficientBBoxHead"
-        ):  # skip download on classes that inherit this one
-            weights_path = self.get_variant_weights(initialize_weights)
-            if weights_path:
-                self.load_checkpoint(path=weights_path, strict=False)
-            else:
-                logger.warning(
-                    f"No checkpoint available for {self.name}, skipping."
-                )
 
     def forward(
         self, inputs: list[Tensor]

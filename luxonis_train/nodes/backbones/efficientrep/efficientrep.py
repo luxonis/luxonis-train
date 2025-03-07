@@ -72,9 +72,6 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         @param csp_e: Factor that controls number of intermediate
             channels if block="CSPStackRepBlock". If provided, overrides
             the variant value.
-        @type download_weights: bool
-        @param download_weights: If True download weights from COCO (if
-            available for specified variant). Defaults to True.
         @type initialize_weights: bool
         @param initialize_weights: If True, initialize weights of the
             model.

@@ -45,7 +45,6 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         block: Literal["RepBlock", "CSPStackRepBlock"] = "RepBlock",
         e: float | None = None,
         initialize_weights: bool = True,
-        download_weights: bool = True,
         **kwargs,
     ):
         """
