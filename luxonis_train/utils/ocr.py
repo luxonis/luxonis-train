@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch import Tensor
 
 
@@ -39,7 +40,7 @@ class OCRDecoder:
         @return: A list of tuples containing the decoded text and
             confidence score.
         """
-        preds = torch.nn.functional.softmax(preds, dim=-1)
+        preds = F.softmax(preds, dim=-1)
         pred_probs, pred_ids = torch.max(preds, dim=-1)
 
         result_list = []

@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from torch import Tensor
 
 from luxonis_train.nodes import OCRCTCHead
@@ -62,9 +63,7 @@ class OCRAccuracy(BaseMetric):
                     unique_cons_classes
                 )
 
-        target = torch.nn.functional.pad(
-            target, (0, T - target.shape[1]), value=self.blank_cls
-        )
+        target = F.pad(target, (0, T - target.shape[1]), value=self.blank_cls)
         errors = predictions != target
         errors = errors.sum(dim=1)
 

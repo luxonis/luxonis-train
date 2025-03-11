@@ -2,18 +2,14 @@ from functools import cached_property
 
 import torch
 from loguru import logger
+from luxonis_ml.data.utils.visualizations import ColorMap
 from torch import Tensor
 from typing_extensions import override
 
 from luxonis_train.tasks import Metadata, Tasks
 
 from .base_visualizer import BaseVisualizer
-from .utils import (
-    Color,
-    draw_segmentation_targets,
-    get_color,
-    seg_output_to_bool,
-)
+from .utils import Color, draw_segmentation_targets, seg_output_to_bool
 
 log_disable = False
 
@@ -50,6 +46,7 @@ class SegmentationVisualizer(BaseVisualizer):
         self.background_class = background_class
         self.background_color = background_color
         self.alpha = alpha
+        self.colormap = ColorMap()
 
         self._warn_colors = True
 
@@ -85,7 +82,6 @@ class SegmentationVisualizer(BaseVisualizer):
         target_canvas: Tensor,
         predictions: Tensor,
         target: Tensor | None,
-        **kwargs,
     ) -> tuple[Tensor, Tensor] | Tensor:
         """Creates a visualization of the segmentation predictions and
         labels.
@@ -142,8 +138,8 @@ class SegmentationVisualizer(BaseVisualizer):
                     f"classes ({self.n_classes}). Using random colors instead."
                 )
             self._warn_colors = False
-        colors = [get_color(i) for i in range(self.n_classes)]
-        if background_class is not None:
+        colors = [self.colormap[i] for i in range(self.n_classes)]
+        if background_class is not None and self.n_classes > 1:
             colors[background_class] = background_color
         return colors
 

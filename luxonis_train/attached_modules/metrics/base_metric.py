@@ -28,9 +28,9 @@ class State:
     attributes of the metric i.e, if C{name} is C{"my_state"} then its
     value can be accessed from an instance C{metric} as
     C{metric.my_state}. Metric states behave like buffers and parameters
-    of C{torch.nn.Module} as they are also updated when C{.to()} is
+    of C{nn.Module} as they are also updated when C{.to()} is
     called. Unlike parameters and buffers, metric states are not by
-    default saved in the modules C{torch.nn.Module.state_dict}.
+    default saved in the modules C{nn.Module.state_dict}.
 
     @type name: str
     @param name: The name of the state variable. The variable will then

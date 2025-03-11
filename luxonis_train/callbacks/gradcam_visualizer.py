@@ -1,6 +1,7 @@
 import lightning.pytorch as pl
 import numpy as np
 import torch
+import torch.nn.functional as F
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 from pytorch_grad_cam import HiResCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
@@ -164,7 +165,7 @@ class GradCamCallback(pl.Callback):
 
         if self.task == "segmentation":
             output = self.pl_module(model_input)
-            normalized_masks = torch.nn.functional.softmax(output, dim=1).cpu()
+            normalized_masks = F.softmax(output, dim=1).cpu()
             mask = normalized_masks.argmax(dim=1).detach().cpu().numpy()
             mask_float = (mask == self.class_idx).astype(np.float32)
             targets = [

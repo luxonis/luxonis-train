@@ -1,8 +1,8 @@
 from typing import Literal
 
 import torch
+import torch.nn.functional as F
 from torch import Tensor, amp
-from torch.nn import functional as F
 
 from luxonis_train.attached_modules.losses import BaseLoss
 from luxonis_train.tasks import Tasks

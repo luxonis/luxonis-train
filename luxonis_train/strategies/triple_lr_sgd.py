@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import cast
 
 import numpy as np
-import torch
+from torch import nn
 from torch.optim import SGD
 from torch.optim.lr_scheduler import LambdaLR
 from torch.optim.optimizer import Optimizer
@@ -16,7 +16,7 @@ from .base_strategy import BaseTrainingStrategy
 
 @dataclass
 class TripleLRScheduler:
-    optimizer: torch.optim.Optimizer
+    optimizer: Optimizer
     warmup_epochs: int
     warmup_bias_lr: float
     warmup_momentum: float
@@ -73,24 +73,24 @@ class TripleLRScheduler:
 
 @dataclass
 class TripleLRSGD:
-    model: torch.nn.Module
+    model: nn.Module
     lr: float
     momentum: float
     weight_decay: float
     nesterov: bool
 
-    def create_optimizer(self) -> torch.optim.Optimizer:
+    def create_optimizer(self) -> Optimizer:
         batch_norm_weights, regular_weights, biases = [], [], []
 
         for module in self.model.modules():
             if hasattr(module, "bias") and isinstance(
-                module.bias, torch.nn.Parameter
+                module.bias, nn.Parameter
             ):
                 biases.append(module.bias)
-            if isinstance(module, torch.nn.BatchNorm2d):
+            if isinstance(module, nn.BatchNorm2d):
                 batch_norm_weights.append(module.weight)
             elif hasattr(module, "weight") and isinstance(
-                module.weight, torch.nn.Parameter
+                module.weight, nn.Parameter
             ):
                 regular_weights.append(module.weight)
 
