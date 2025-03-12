@@ -30,13 +30,13 @@ def infer_path() -> Path:
 
 
 @pytest.fixture
-def opts(test_output_dir: Path) -> dict[str, Any]:
+def opts(output_dir: Path) -> dict[str, Any]:
     return {
         "trainer.epochs": 1,
         "trainer.batch_size": 1,
         "trainer.validation_interval": 1,
         "trainer.callbacks": "[]",
-        "tracker.save_directory": str(test_output_dir),
+        "tracker.save_directory": str(output_dir),
         "tuner.n_trials": 4,
     }
 
@@ -49,7 +49,7 @@ def clear_files():
 
 
 @pytest.mark.parametrize(
-    "config_file",
+    "config_name",
     [
         "classification_heavy_model",
         "classification_light_model",
@@ -67,12 +67,14 @@ def clear_files():
 )
 def test_predefined_models(
     opts: dict[str, Any],
-    config_file: str,
+    config_name: str,
     coco_dataset: LuxonisDataset,
     cifar10_dataset: LuxonisDataset,
     mnist_dataset: LuxonisDataset,
+    output_dir: Path,
+    subtests: SubTests,
 ):
-    config_file = f"configs/{config_file}.yaml"
+    config_file = f"configs/{config_name}.yaml"
     opts |= {
         "loader.params.dataset_name": (
             cifar10_dataset.identifier
@@ -82,10 +84,18 @@ def test_predefined_models(
             else coco_dataset.identifier
         ),
         "trainer.epochs": 1,
+        "tracker.run_name": config_name,
     }
-    model = LuxonisModel(config_file, opts)
-    model.train()
-    model.test(view="train")
+    with subtests.test("original_config"):
+        model = LuxonisModel(config_file, opts)
+        model.train()
+        model.test()
+    with subtests.test("saved_config"):
+        opts["tracker.run_name"] = f"{config_name}_reload"
+        model = LuxonisModel(
+            str(output_dir / config_name / "training_config.yaml"), opts
+        )
+        model.test()
 
 
 def test_multi_input(opts: dict[str, Any], infer_path: Path):
@@ -223,9 +233,9 @@ def test_infer(
         model.infer(source_path="tests/data/invalid.jpg", save_dir=infer_path)
 
 
-def test_archive(test_output_dir: Path, coco_dataset: LuxonisDataset):
+def test_archive(output_dir: Path, coco_dataset: LuxonisDataset):
     opts = {
-        "tracker.save_directory": str(test_output_dir),
+        "tracker.save_directory": str(output_dir),
         "loader.params.dataset_name": coco_dataset.identifier,
     }
     model = LuxonisModel("tests/configs/archive_config.yaml", opts)
