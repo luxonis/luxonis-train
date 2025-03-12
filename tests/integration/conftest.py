@@ -126,7 +126,7 @@ def cifar10_dataset() -> LuxonisDataset:
 
     def CIFAR10_subset_generator() -> DatasetIterator:
         for i, (image, label) in enumerate(cifar10_torch):  # type: ignore
-            if i == 1000:
+            if i == 20:
                 break
             path = output_folder / f"cifar_{i}.png"
             image.save(path)
