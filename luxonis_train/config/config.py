@@ -80,7 +80,9 @@ class PredefinedModelConfig(BaseModelExtraForbid):
 
 class ModelConfig(BaseModelExtraForbid):
     name: str = "model"
-    predefined_model: PredefinedModelConfig | None = None
+    predefined_model: Annotated[
+        PredefinedModelConfig | None, Field(exclude=True)
+    ] = None
     weights: FilePath | None = None
     nodes: list[ModelNodeConfig] = []
     losses: list[LossModuleConfig] = []
