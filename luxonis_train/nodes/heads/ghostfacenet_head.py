@@ -3,7 +3,7 @@ import math
 
 from torch import Tensor, nn
 
-from luxonis_train.nodes.blocks.blocks import ConvModule
+from luxonis_train.nodes.blocks.blocks import ConvBlock
 from luxonis_train.nodes.heads.base_head import BaseHead
 from luxonis_train.tasks import Tasks
 
@@ -46,7 +46,7 @@ class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
         _, H, W = self.original_in_shape
 
         self.head = nn.Sequential(
-            ConvModule(
+            ConvBlock(
                 self.in_channels,
                 self.in_channels,
                 kernel_size=(

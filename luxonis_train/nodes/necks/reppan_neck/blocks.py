@@ -4,7 +4,7 @@ import torch
 from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks import (
-    ConvModule,
+    ConvBlock,
     CSPStackRepBlock,
     GeneralReparametrizableBlock,
     ModuleRepeater,
@@ -27,13 +27,13 @@ class PANUpBlockBase(ABC, nn.Module):
 
         super().__init__()
 
-        self.conv = ConvModule(
+        self.conv = ConvBlock(
             in_channels=in_channels,
             out_channels=out_channels,
             kernel_size=1,
             stride=1,
         )
-        self.upsample = torch.nn.ConvTranspose2d(
+        self.upsample = nn.ConvTranspose2d(
             in_channels=out_channels,
             out_channels=out_channels,
             kernel_size=2,
@@ -75,7 +75,7 @@ class RepUpBlock(PANUpBlockBase):
             in_channels=in_channels,
             out_channels=out_channels,
             encode_block=ModuleRepeater(
-                module=GeneralReparametrizableBlock,
+                GeneralReparametrizableBlock,
                 in_channels=in_channels_next + out_channels,
                 out_channels=out_channels,
                 n_repeats=n_repeats,
@@ -143,7 +143,7 @@ class PANDownBlockBase(ABC, nn.Module):
         """
         super().__init__()
 
-        self.downsample = ConvModule(
+        self.downsample = ConvBlock(
             in_channels=in_channels,
             out_channels=downsample_out_channels,
             kernel_size=3,
@@ -187,10 +187,10 @@ class RepDownBlock(PANDownBlockBase):
             in_channels=in_channels,
             downsample_out_channels=downsample_out_channels,
             encode_block=ModuleRepeater(
-                module=GeneralReparametrizableBlock,
+                GeneralReparametrizableBlock,
+                n_repeats=n_repeats,
                 in_channels=downsample_out_channels + in_channels_next,
                 out_channels=out_channels,
-                n_repeats=n_repeats,
             ),
         )
 

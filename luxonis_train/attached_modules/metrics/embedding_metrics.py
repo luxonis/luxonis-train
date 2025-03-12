@@ -1,3 +1,4 @@
+import math
 from typing import Annotated
 
 import torch
@@ -51,7 +52,7 @@ class ClosestIsPositiveAccuracy(BaseMetric):
             labels = torch.stack(labels)
 
         pairwise_distances = _pairwise_distances(embeddings)
-        pairwise_distances.fill_diagonal_(float("inf"))
+        pairwise_distances.fill_diagonal_(math.inf)
 
         closest_indices = torch.argmin(pairwise_distances, dim=1)
         closest_labels = labels[closest_indices]
@@ -130,7 +131,7 @@ class MedianDistances(BaseMetric):
             ].flatten()
         )
 
-        pairwise_distances.fill_diagonal_(float("inf"))
+        pairwise_distances.fill_diagonal_(math.inf)
 
         closest_distances, _ = torch.min(pairwise_distances, dim=1)
         self.closest_distances.append(closest_distances)
@@ -138,13 +139,13 @@ class MedianDistances(BaseMetric):
         positive_mask = _get_anchor_positive_triplet_mask(target).bool()
 
         only_positive_distances = pairwise_distances.clone()
-        only_positive_distances[~positive_mask] = float("inf")
+        only_positive_distances[~positive_mask] = math.inf
 
         closest_positive_distances, _ = torch.min(
             only_positive_distances, dim=1
         )
 
-        non_inf_mask = closest_positive_distances != float("inf")
+        non_inf_mask = closest_positive_distances != math.inf
         difference = closest_positive_distances - closest_distances
         difference = difference[non_inf_mask]
 
@@ -156,11 +157,11 @@ class MedianDistances(BaseMetric):
     def compute(self) -> dict[str, Tensor]:
         if len(self.all_distances) == 0:
             return {
-                "MedianDistance": torch.tensor(float("nan")),
-                "MedianClosestDistance": torch.tensor(float("nan")),
-                "MedianClosestPositiveDistance": torch.tensor(float("nan")),
+                "MedianDistance": torch.tensor(math.nan),
+                "MedianClosestDistance": torch.tensor(math.nan),
+                "MedianClosestPositiveDistance": torch.tensor(math.nan),
                 "MedianClosestVsClosestPositiveDistance": torch.tensor(
-                    float("nan")
+                    math.nan
                 ),
             }
 
@@ -194,7 +195,7 @@ def _pairwise_distances(embeddings: Tensor, squared: bool = False) -> Tensor:
         batch_size)
     @rtype: Tensor
     """
-    dot_product = torch.matmul(embeddings, embeddings.t())
+    dot_product = embeddings @ embeddings.T
 
     square_norm = torch.diag(dot_product)
 

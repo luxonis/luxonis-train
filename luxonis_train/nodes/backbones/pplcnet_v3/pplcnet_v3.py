@@ -4,7 +4,7 @@ from typeguard import typechecked
 from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.nodes.blocks import ConvBlock
 
 from .blocks import LCNetV3Block
 
@@ -60,7 +60,7 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
         self.use_detection_backbone = use_detection_backbone
         self.n_branches = n_branches
 
-        self.conv = ConvModule(
+        self.conv = ConvBlock(
             in_channels=self.in_channels,
             out_channels=_make_divisible(16 * self.scale),
             kernel_size=3,

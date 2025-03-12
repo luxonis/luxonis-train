@@ -2,7 +2,7 @@ import torch
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.nodes.blocks import ConvBlock
 from luxonis_train.utils import make_divisible
 
 
@@ -96,7 +96,7 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
         channels_group: list[int] = []
 
         features.append(
-            ConvModule(
+            ConvBlock(
                 3,
                 first_channel,
                 kernel_size=3,
@@ -142,7 +142,7 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
             else 1280
         )
         features.append(
-            ConvModule(
+            ConvBlock(
                 in_channels=c,
                 out_channels=pen_channels,
                 kernel_size=1,
@@ -177,7 +177,7 @@ class LinearBottleneck(nn.Module):
         if t != 1:
             dw_channels = in_channels * t
             out.append(
-                ConvModule(
+                ConvBlock(
                     in_channels=in_channels,
                     out_channels=dw_channels,
                     kernel_size=1,
@@ -187,7 +187,7 @@ class LinearBottleneck(nn.Module):
         else:
             dw_channels = in_channels
         out.append(
-            ConvModule(
+            ConvBlock(
                 in_channels=dw_channels,
                 out_channels=dw_channels * 1,
                 kernel_size=kernel_size,
@@ -198,7 +198,7 @@ class LinearBottleneck(nn.Module):
             )
         )
         out.append(
-            ConvModule(
+            ConvBlock(
                 in_channels=dw_channels,
                 out_channels=channels,
                 kernel_size=1,

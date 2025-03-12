@@ -1,11 +1,13 @@
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
+from typeguard import typechecked
 
-from luxonis_train.nodes.blocks import ConvModule, autopad
+from luxonis_train.nodes.blocks import ConvBlock, autopad
 
 
-class DepthwiseSeparableConv(nn.Module):
+class DepthWiseSeparableConv(nn.Module):
+    @typechecked
     def __init__(
         self,
         in_channels: int,
@@ -45,7 +47,7 @@ class DepthwiseSeparableConv(nn.Module):
 
         self.use_residual = use_residual
 
-        self.depthwise_conv = ConvModule(
+        self.depthwise_conv = ConvBlock(
             in_channels,
             in_channels,
             kernel_size,
@@ -55,7 +57,7 @@ class DepthwiseSeparableConv(nn.Module):
             activation=depthwise_activation or nn.ReLU6(),
             bias=depthwise_bias,
         )
-        self.pointwise_conv = ConvModule(
+        self.pointwise_conv = ConvBlock(
             in_channels,
             out_channels,
             kernel_size=1,
@@ -72,6 +74,7 @@ class DepthwiseSeparableConv(nn.Module):
 
 
 class MobileBottleneckBlock(nn.Module):
+    @typechecked
     def __init__(
         self,
         in_channels: int,
@@ -122,7 +125,7 @@ class MobileBottleneckBlock(nn.Module):
         self.use_residual = use_residual
         mid_channels = round(in_channels * expand_ratio)
 
-        self.expand_conv = ConvModule(
+        self.expand_conv = ConvBlock(
             in_channels,
             mid_channels,
             1,
@@ -131,7 +134,7 @@ class MobileBottleneckBlock(nn.Module):
             activation=activation[0],
             bias=use_bias[0],
         )
-        self.depthwise_conv = ConvModule(
+        self.depthwise_conv = ConvBlock(
             mid_channels,
             mid_channels,
             kernel_size,
@@ -142,7 +145,7 @@ class MobileBottleneckBlock(nn.Module):
             activation=activation[1],
             bias=use_bias[1],
         )
-        self.project_conv = ConvModule(
+        self.project_conv = ConvBlock(
             mid_channels,
             out_channels,
             1,
@@ -162,6 +165,7 @@ class MobileBottleneckBlock(nn.Module):
 
 
 class EfficientViTBlock(nn.Module):
+    @typechecked
     def __init__(
         self,
         n_channels: int,
@@ -219,6 +223,7 @@ class EfficientViTBlock(nn.Module):
 
 
 class LightweightMLABlock(nn.Module):
+    @typechecked
     def __init__(
         self,
         input_channels: int,
@@ -283,7 +288,7 @@ class LightweightMLABlock(nn.Module):
         total_dim = n_heads * dimension
 
         self.dimension = dimension
-        self.qkv_layer = ConvModule(
+        self.qkv_layer = ConvBlock(
             input_channels,
             3 * total_dim,
             kernel_size=1,
@@ -317,7 +322,7 @@ class LightweightMLABlock(nn.Module):
 
         self.kernel_activation = kernel_activation
 
-        self.projection_layer = ConvModule(
+        self.projection_layer = ConvBlock(
             total_dim * (1 + len(scale_factors)),
             output_channels,
             kernel_size=1,
@@ -349,8 +354,7 @@ class LightweightMLABlock(nn.Module):
         key_transpose = key.transpose(-1, -2)
 
         value = F.pad(value, (0, 0, 0, 1), mode="constant", value=1)
-        value_key_product = torch.matmul(value, key_transpose)
-        output = torch.matmul(value_key_product, query)
+        output = value @ key_transpose @ query
 
         if output.dtype == torch.bfloat16:
             output = output.float()
@@ -375,7 +379,7 @@ class LightweightMLABlock(nn.Module):
         query = self.kernel_activation(query)
         key = self.kernel_activation(key)
 
-        attention_map = torch.matmul(key.transpose(-1, -2), query)
+        attention_map = key.transpose(-1, -2) @ query
         original_dtype = attention_map.dtype
 
         if original_dtype in [torch.float16, torch.bfloat16]:
@@ -386,7 +390,7 @@ class LightweightMLABlock(nn.Module):
         )
         attention_map = attention_map.to(original_dtype)
 
-        output = torch.matmul(value, attention_map)
+        output = value @ attention_map
         return torch.reshape(output, (batch, -1, height, width))
 
     def forward(self, x: Tensor) -> Tensor:

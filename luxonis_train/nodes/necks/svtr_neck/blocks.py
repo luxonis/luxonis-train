@@ -1,12 +1,17 @@
+import math
 from typing import Literal
 
 import torch
+import torch.nn.functional as F
 from torch import Tensor, nn
+from torchvision.ops import MLP
+from typeguard import typechecked
 
 from luxonis_train.nodes.blocks import DropPath
 
 
 class Im2Seq(nn.Module):
+    @typechecked
     def __init__(self, in_channels: int):
         super().__init__()
         self.out_channels = in_channels
@@ -17,32 +22,8 @@ class Im2Seq(nn.Module):
         return x.squeeze(2).permute(0, 2, 1)
 
 
-class Mlp(nn.Module):
-    def __init__(
-        self,
-        in_features: int,
-        hidden_features: int | None = None,
-        out_features: int | None = None,
-        act_layer: type[nn.Module] = nn.GELU,
-        drop: float = 0.0,
-    ):
-        super().__init__()
-        out_features = out_features or in_features
-        hidden_features = hidden_features or in_features
-        self.fc1 = nn.Linear(in_features, hidden_features)
-        self.act = act_layer()
-        self.fc2 = nn.Linear(hidden_features, out_features)
-        self.drop = nn.Dropout(drop)
-
-    def forward(self, x: Tensor) -> Tensor:
-        x = self.fc1(x)
-        x = self.act(x)
-        x = self.drop(x)
-        x = self.fc2(x)
-        return self.drop(x)
-
-
 class ConvMixer(nn.Module):
+    @typechecked
     def __init__(
         self,
         dim: int,
@@ -72,62 +53,68 @@ class ConvMixer(nn.Module):
 
 
 class Attention(nn.Module):
+    @typechecked
     def __init__(
         self,
         dim: int,
         height: int | None = None,
         width: int | None = None,
         n_heads: int = 8,
-        mixer: Literal["global", "local", "conv"] = "global",
-        kernel_size: tuple[int, int] = (7, 11),
+        mixer: Literal["global", "local"] = "global",
+        kernel_size: tuple[int, int] | int = (7, 11),
         qk_scale: float | None = None,
         attn_drop: float = 0.0,
         proj_drop: float = 0.0,
     ):
         super().__init__()
+
+        if isinstance(kernel_size, int):
+            kernel_size = (kernel_size, kernel_size)
+
         self.n_heads = n_heads
         self.dim = dim
         self.head_dim = dim // n_heads
-        self.scale = qk_scale or self.head_dim**-0.5
+        self.scale = qk_scale or 1 / math.sqrt(self.head_dim)
 
         self.qkv = nn.Linear(dim, dim * 3)
         self.attn_drop = nn.Dropout(attn_drop)
         self.proj = nn.Linear(dim, dim)
         self.proj_drop = nn.Dropout(proj_drop)
-        self.height = height
-        self.width = width
+        self.mask = None
         if mixer == "local":
-            if self.height is None or self.width is None:
+            if height is None or width is None:
                 raise ValueError(
                     "Height and width must be provided when using "
-                    "'Attention' with 'Local' mixer."
+                    "'Attention' with the 'local' mixer."
                 )
-            hk = kernel_size[0]
-            wk = kernel_size[1]
+            kernel_height, kernel_width = kernel_size
             mask = torch.ones(
                 (
-                    self.height * self.width,
-                    self.height + hk - 1,
-                    self.width + wk - 1,
+                    height * width,
+                    height + kernel_height - 1,
+                    width + kernel_width - 1,
                 ),
                 dtype=torch.float32,
             )
-            for h in range(self.height):
-                for w in range(self.width):
-                    mask[h * self.width + w, h : h + hk, w : w + wk] = 0.0
+            for h in range(height):
+                for w in range(width):
+                    mask[
+                        h * width + w,
+                        h : h + kernel_height,
+                        w : w + kernel_width,
+                    ] = 0.0
             mask_paddle = mask[
                 :,
-                hk // 2 : self.height + hk // 2,
-                wk // 2 : self.width + wk // 2,
+                kernel_height // 2 : height + kernel_height // 2,
+                kernel_width // 2 : width + kernel_width // 2,
             ].flatten(1)
             mask_inf = torch.full(
-                (self.height * self.width, self.height * self.width),
-                float("-inf"),
+                (height * width, height * width),
+                -math.inf,
                 dtype=torch.float32,
             )
             mask = torch.where(mask_paddle < 1, mask_paddle, mask_inf)
             self.mask = mask.unsqueeze(0).unsqueeze(0)
-        self.mixer = mixer
 
     def forward(self, x: Tensor) -> Tensor:
         batch_size = x.shape[0]
@@ -138,22 +125,19 @@ class Attention(nn.Module):
         )
         q, k, v = qkv[0] * self.scale, qkv[1], qkv[2]
 
-        attn = q.matmul(k.permute(0, 1, 3, 2))
-        if self.mixer == "local":
+        attn = q @ k.permute(0, 1, 3, 2)
+        if self.mask is not None:
             attn += self.mask
-        attn = nn.functional.log_softmax(attn, dim=-1).exp()
-        attn = self.attn_drop(attn)
+        attn = F.log_softmax(attn, dim=-1).exp()
+        attn: Tensor = self.attn_drop(attn)
 
-        x = (
-            (attn.matmul(v))
-            .permute(0, 2, 1, 3)
-            .reshape((batch_size, -1, self.dim))
-        )
+        x = (attn @ v).permute(0, 2, 1, 3).reshape((batch_size, -1, self.dim))
         x = self.proj(x)
         return self.proj_drop(x)
 
 
 class SVTRBlock(nn.Module):
+    @typechecked
     def __init__(
         self,
         dim: int,
@@ -164,7 +148,7 @@ class SVTRBlock(nn.Module):
         mixer_kernel_size: tuple[int, int] = (7, 11),
         mlp_ratio: float = 4.0,
         qk_scale: float | None = None,
-        drop: float = 0.0,
+        dropout: float = 0.0,
         attn_drop: float = 0.0,
         drop_path: float = 0.0,
         act_layer: type[nn.Module] = nn.GELU,
@@ -174,7 +158,7 @@ class SVTRBlock(nn.Module):
     ):
         super().__init__()
         self.norm1 = norm_layer(dim, eps=epsilon)
-        if mixer in {"global", "local"}:
+        if mixer in ("global", "local"):
             self.mixer = Attention(
                 dim,
                 n_heads=n_heads,
@@ -184,13 +168,13 @@ class SVTRBlock(nn.Module):
                 kernel_size=mixer_kernel_size,
                 qk_scale=qk_scale,
                 attn_drop=attn_drop,
-                proj_drop=drop,
+                proj_drop=dropout,
             )
         elif mixer == "conv":
             if height is None or width is None:
                 raise ValueError(
                     "Height and width must be provided when using "
-                    "'SVTRBlock' with 'Conv' mixer."
+                    "'SVTRBlock' with the 'conv' mixer."
                 )
             self.mixer = ConvMixer(
                 dim,
@@ -199,21 +183,17 @@ class SVTRBlock(nn.Module):
                 width=width,
                 kernel_size=mixer_kernel_size,
             )
-        else:
-            raise TypeError("The mixer must be one of [Global, Local, Conv]")
 
         self.drop_path = (
             DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         )
 
         self.norm2 = norm_layer(dim, eps=epsilon)
-        mlp_hidden_dim = int(dim * mlp_ratio)
-        self.mlp_ratio = mlp_ratio
-        self.mlp = Mlp(
-            in_features=dim,
-            hidden_features=mlp_hidden_dim,
-            act_layer=act_layer,
-            drop=drop,
+        self.mlp = MLP(
+            in_channels=dim,
+            hidden_channels=[int(dim * mlp_ratio), dim],
+            activation_layer=act_layer,
+            dropout=dropout,
         )
         self.prenorm = prenorm
 

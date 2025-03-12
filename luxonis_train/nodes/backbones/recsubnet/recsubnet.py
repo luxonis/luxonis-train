@@ -1,10 +1,9 @@
 from luxonis_ml.typing import Kwargs
-from torch import Tensor, nn
+from torch import Tensor
 from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
-
-from .blocks import Decoder, Encoder, NanoDecoder, NanoEncoder
+from luxonis_train.nodes.blocks import SimpleDecoder, SimpleEncoder
 
 
 class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
@@ -14,10 +13,9 @@ class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
 
     def __init__(
         self,
-        base_channels: int = 64,
+        base_channels: int,
+        width_multipliers: list[float],
         out_channels: int = 3,
-        encoder: type[nn.Module] = Encoder,
-        decoder: type[nn.Module] = Decoder,
         **kwargs,
     ):
         """
@@ -45,8 +43,17 @@ class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
         """
         super().__init__(**kwargs)
 
-        self.encoder = encoder(self.in_channels, base_channels)
-        self.decoder = decoder(base_channels, out_channels=out_channels)
+        self.encoder = SimpleEncoder(
+            self.in_channels,
+            base_channels,
+            width_multipliers,
+            n_convolutions=1,
+        )
+        self.decoder = SimpleDecoder(
+            base_channels,
+            out_channels=out_channels,
+            encoder_width_multipliers=width_multipliers,
+        )
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """Performs the forward pass through the encoder and decoder."""
@@ -61,12 +68,10 @@ class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
         return {
             "n": {
                 "base_channels": 64,
-                "encoder": NanoEncoder,
-                "decoder": NanoDecoder,
+                "width_multipliers": [1, 1.1],
             },
             "l": {
                 "base_channels": 128,
-                "encoder": Encoder,
-                "decoder": Decoder,
+                "width_multipliers": [1, 2, 4, 8],
             },
         }

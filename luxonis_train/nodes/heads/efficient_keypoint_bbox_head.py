@@ -4,7 +4,7 @@ import torch
 from torch import Tensor, nn
 from typing_extensions import override
 
-from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.nodes.blocks import ConvBlock
 from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
 from luxonis_train.utils import anchors_for_fpn_features
@@ -55,7 +55,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         mid_channels = max(self.in_channels[0] // 4, self.n_keypoints_flat)
         self.keypoint_heads = nn.ModuleList(
             nn.Sequential(
-                ConvModule(
+                ConvBlock(
                     in_channels=self.in_channels[i],
                     out_channels=mid_channels,
                     kernel_size=3,
@@ -63,7 +63,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
                     padding=1,
                     activation=nn.SiLU(),
                 ),
-                ConvModule(
+                ConvBlock(
                     in_channels=mid_channels,
                     out_channels=mid_channels,
                     kernel_size=3,

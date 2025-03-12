@@ -4,11 +4,11 @@ from typeguard import typechecked
 from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.nodes.blocks import ConvBlock
 from luxonis_train.utils.general import add_variant_aliases
 
 from .blocks import (
-    DepthwiseSeparableConv,
+    DepthWiseSeparableConv,
     EfficientViTBlock,
     MobileBottleneckBlock,
 )
@@ -61,7 +61,7 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
 
         self.feature_extractor = nn.ModuleList(
             [
-                ConvModule(
+                ConvBlock(
                     in_channels=self.in_channels,
                     out_channels=width_list[0],
                     kernel_size=3,
@@ -72,13 +72,12 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
             ]
         )
         for _ in range(depth_list[0]):
-            block = DepthwiseSeparableConv(
+            block = DepthWiseSeparableConv(
                 in_channels=width_list[0],
                 out_channels=width_list[0],
                 stride=1,
-                activation=[nn.Hardswish(), nn.Identity()],
+                depthwise_activation=nn.Hardswish(),
                 use_residual=True,
-                use_bias=[False, False],
             )
             self.feature_extractor.append(block)
 

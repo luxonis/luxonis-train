@@ -106,7 +106,7 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
                 ),
                 (
                     ModuleRepeater(
-                        module=GeneralReparametrizableBlock,
+                        GeneralReparametrizableBlock,
                         in_channels=channels_list[i + 1],
                         out_channels=channels_list[i + 1],
                         n_repeats=n_repeats[i + 1],

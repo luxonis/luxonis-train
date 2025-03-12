@@ -7,7 +7,7 @@ from typing_extensions import override
 
 from luxonis_train.nodes.backbones.micronet.blocks import _make_divisible
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.nodes.blocks import ConvBlock
 
 from .blocks import GhostBottleneckV2
 
@@ -66,7 +66,7 @@ class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
         input_channel = output_channel
 
         blocks: list[nn.Module] = [
-            ConvModule(
+            ConvBlock(
                 self.in_channels,
                 output_channel,
                 kernel_size=3,
@@ -111,7 +111,7 @@ class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
             blocks.append(nn.Sequential(*layers))
         output_channel = _make_divisible(ex * width_multiplier, 4)
         blocks.append(
-            ConvModule(
+            ConvBlock(
                 input_channel,
                 output_channel,
                 kernel_size=1,

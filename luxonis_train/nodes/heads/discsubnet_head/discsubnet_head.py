@@ -1,13 +1,12 @@
 import torch
 from luxonis_ml.typing import Kwargs
-from torch import Tensor, nn
+from torch import Tensor
 from typing_extensions import override
 
+from luxonis_train.nodes.blocks import UNetDecoder, UNetEncoder
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
-
-from .blocks import Decoder, Encoder, NanoDecoder, NanoEncoder
 
 
 class DiscSubNetHead(BaseHead[Tensor, Tensor]):
@@ -20,10 +19,9 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
     def __init__(
         self,
         base_channels: int,
+        width_multipliers: list[float],
         in_channels: list[int] | int = 6,
         out_channels: int = 2,
-        encoder: type[nn.Module] = Encoder,
-        decoder: type[nn.Module] = Decoder,
         **kwargs,
     ):
         """
@@ -49,15 +47,19 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
         if isinstance(in_channels, list):
             in_channels = in_channels[0] * 2
 
-        self.encoder_segment = encoder(in_channels, base_channels)
-        self.decoder_segment = decoder(base_channels, out_channels)
+        self.encoder_segment = UNetEncoder(
+            in_channels, base_channels, width_multipliers
+        )
+        self.decoder_segment = UNetDecoder(
+            base_channels, out_channels, width_multipliers
+        )
 
     def forward(self, inputs: list[Tensor]) -> tuple[Tensor, Tensor]:
         """Performs the forward pass through the encoder and decoder."""
 
         reconstruction, x = inputs
         x = torch.cat([reconstruction, x], dim=1)
-        seg_out = self.decoder_segment(*self.encoder_segment(x))
+        seg_out = self.decoder_segment(self.encoder_segment(x))
 
         return seg_out, reconstruction
 
@@ -85,12 +87,10 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
         return {
             "n": {
                 "base_channels": 32,
-                "encoder": NanoEncoder,
-                "decoder": NanoDecoder,
+                "width_multipliers": [1, 1.1],
             },
             "l": {
                 "base_channels": 64,
-                "encoder": Encoder,
-                "decoder": Decoder,
+                "width_multipliers": [1, 2, 4, 8, 8],
             },
         }

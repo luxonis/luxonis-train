@@ -2,7 +2,7 @@ import torch
 from torch import Tensor, nn
 
 from luxonis_train.nodes import BaseNode
-from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.nodes.blocks import ConvBlock
 from luxonis_train.nodes.necks.svtr_neck.blocks import SVTRBlock
 
 
@@ -42,7 +42,7 @@ class SVTRNeck(BaseNode[list[Tensor], list[Tensor]]):
         super().__init__(**kwargs)
         self.depth = depth
         self.use_guide = use_guide
-        self.conv1 = ConvModule(
+        self.conv1 = ConvBlock(
             self.in_channels,
             self.in_channels // 8,
             kernel_size=kernel_size,
@@ -50,7 +50,7 @@ class SVTRNeck(BaseNode[list[Tensor], list[Tensor]]):
             bias=True,
             activation=nn.ReLU(),
         )
-        self.conv2 = ConvModule(
+        self.conv2 = ConvBlock(
             self.in_channels // 8,
             mid_channels,
             kernel_size=1,
@@ -68,7 +68,7 @@ class SVTRNeck(BaseNode[list[Tensor], list[Tensor]]):
                     width=None,
                     mlp_ratio=mlp_ratio,
                     qk_scale=qk_scale,
-                    drop=drop_rate,
+                    dropout=drop_rate,
                     act_layer=nn.ReLU,
                     attn_drop=attn_drop_rate,
                     drop_path=drop_path,
@@ -80,14 +80,14 @@ class SVTRNeck(BaseNode[list[Tensor], list[Tensor]]):
             ]
         )
         self.norm = nn.LayerNorm(mid_channels, eps=1e-6)
-        self.conv3 = ConvModule(
+        self.conv3 = ConvBlock(
             mid_channels,
             self.in_channels,
             kernel_size=1,
             bias=True,
             activation=nn.ReLU(),
         )
-        self.conv4 = ConvModule(
+        self.conv4 = ConvBlock(
             2 * self.in_channels,
             self.in_channels // 8,
             kernel_size=kernel_size,
@@ -96,7 +96,7 @@ class SVTRNeck(BaseNode[list[Tensor], list[Tensor]]):
             activation=nn.ReLU(),
         )
 
-        self.conv1x1 = ConvModule(
+        self.conv1x1 = ConvBlock(
             self.in_channels // 8,
             dims,
             kernel_size=1,

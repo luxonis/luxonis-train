@@ -3,7 +3,7 @@ from typing import Literal
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.nodes.blocks import ConvBlock
 
 
 class MicroBlock(nn.Module):
@@ -104,6 +104,12 @@ class MicroBlock(nn.Module):
                 init_b,
             )
 
+    def forward(self, inputs: Tensor) -> Tensor:
+        out = self.layers(inputs)
+        if self.use_residual:
+            out += inputs
+        return out
+
     def _create_lite_block(
         self,
         in_channels: int,
@@ -139,7 +145,7 @@ class MicroBlock(nn.Module):
             ChannelShuffle(intermediate_channels // 2)
             if use_dy2 != 0
             else nn.Sequential(),
-            ConvModule(
+            ConvBlock(
                 in_channels=intermediate_channels,
                 out_channels=out_channels,
                 kernel_size=1,
@@ -173,7 +179,7 @@ class MicroBlock(nn.Module):
         reduction: int,
     ) -> nn.Sequential:
         return nn.Sequential(
-            ConvModule(
+            ConvBlock(
                 in_channels=in_channels,
                 out_channels=intermediate_channels,
                 kernel_size=1,
@@ -211,7 +217,7 @@ class MicroBlock(nn.Module):
         init_b: tuple[float, float],
     ) -> nn.Sequential:
         return nn.Sequential(
-            ConvModule(
+            ConvBlock(
                 in_channels=in_channels,
                 out_channels=intermediate_channels,
                 kernel_size=1,
@@ -250,7 +256,7 @@ class MicroBlock(nn.Module):
             else nn.Sequential()
             if use_dy1 == 0 and use_dy2 == 0
             else ChannelShuffle(intermediate_channels // 2),
-            ConvModule(
+            ConvBlock(
                 in_channels=intermediate_channels,
                 out_channels=out_channels,
                 kernel_size=1,
@@ -275,12 +281,6 @@ class MicroBlock(nn.Module):
             if use_dy3 != 0
             else nn.Sequential(),
         )
-
-    def forward(self, inputs: Tensor) -> Tensor:
-        out = self.layers(inputs)
-        if self.use_residual:
-            out += inputs
-        return out
 
 
 class ChannelShuffle(nn.Module):

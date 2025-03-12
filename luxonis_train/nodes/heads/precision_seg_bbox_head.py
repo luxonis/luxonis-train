@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 from typing_extensions import override
 
-from luxonis_train.nodes.blocks import ConvModule, SegProto
+from luxonis_train.nodes.blocks import ConvBlock, SegProto
 from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
 from luxonis_train.utils import (
@@ -62,7 +62,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
 
         self.mask_heads = nn.ModuleList(
             nn.Sequential(
-                ConvModule(
+                ConvBlock(
                     in_channels=in_channels,
                     out_channels=mid_channels,
                     kernel_size=3,
@@ -70,7 +70,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
                     padding=1,
                     activation=nn.SiLU(),
                 ),
-                ConvModule(
+                ConvBlock(
                     in_channels=mid_channels,
                     out_channels=mid_channels,
                     kernel_size=3,

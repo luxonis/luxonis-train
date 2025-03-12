@@ -157,8 +157,8 @@ class PrecisionDFLDetectionLoss(BaseLoss):
             dist_probs = pred_dist.view(
                 batch_size, n_anchors, 4, n_channels // 4
             ).softmax(dim=3)
-            dist_transformed = dist_probs.matmul(
-                self.proj.to(anchor_points.device).type(pred_dist.dtype)
+            dist_transformed = dist_probs @ self.proj.to(
+                anchor_points.device, dtype=pred_dist.dtype
             )
         return dist2bbox(dist_transformed, anchor_points, out_format="xyxy")
 

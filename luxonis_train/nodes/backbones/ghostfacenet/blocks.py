@@ -7,7 +7,7 @@ from torch import Tensor, nn
 
 from luxonis_train.nodes.backbones.micronet.blocks import _make_divisible
 from luxonis_train.nodes.blocks import SqueezeExciteBlock
-from luxonis_train.nodes.blocks.blocks import ConvModule
+from luxonis_train.nodes.blocks.blocks import ConvBlock
 
 
 class GhostModuleV2(nn.Module):
@@ -27,7 +27,7 @@ class GhostModuleV2(nn.Module):
         self.out_channels = out_channels
         intermediate_channels = math.ceil(out_channels / ratio)
         new_channels = intermediate_channels * (ratio - 1)
-        self.primary_conv = ConvModule(
+        self.primary_conv = ConvBlock(
             in_channels,
             intermediate_channels,
             kernel_size,
@@ -35,7 +35,7 @@ class GhostModuleV2(nn.Module):
             kernel_size // 2,
             activation=nn.PReLU() if use_prelu else None,
         )
-        self.cheap_operation = ConvModule(
+        self.cheap_operation = ConvBlock(
             intermediate_channels,
             new_channels,
             dw_size,
@@ -47,7 +47,7 @@ class GhostModuleV2(nn.Module):
 
         if self.mode == "attn":
             self.short_conv = nn.Sequential(
-                ConvModule(
+                ConvBlock(
                     in_channels,
                     out_channels,
                     kernel_size,
@@ -55,7 +55,7 @@ class GhostModuleV2(nn.Module):
                     kernel_size // 2,
                     activation=None,
                 ),
-                ConvModule(
+                ConvBlock(
                     out_channels,
                     out_channels,
                     kernel_size=(1, 5),
@@ -64,7 +64,7 @@ class GhostModuleV2(nn.Module):
                     groups=out_channels,
                     activation=None,
                 ),
-                ConvModule(
+                ConvBlock(
                     out_channels,
                     out_channels,
                     kernel_size=(5, 1),
@@ -137,7 +137,10 @@ class GhostBottleneckV2(nn.Module):
         if has_se:
             reduced_chs = _make_divisible(int(hidden_channels * se_ratio), 4)
             self.se = SqueezeExciteBlock(
-                hidden_channels, reduced_chs, True, activation=nn.PReLU()
+                hidden_channels,
+                reduced_chs,
+                hard_sigmoid=True,
+                activation=nn.PReLU(),
             )
         else:
             self.se = None

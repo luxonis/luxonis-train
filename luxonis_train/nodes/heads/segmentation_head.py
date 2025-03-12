@@ -30,7 +30,16 @@ class SegmentationHead(BaseHead[Tensor, Tensor]):
         in_channels = self.in_channels
         for _ in range(int(n_up)):
             modules.append(
-                UpBlock(in_channels=in_channels, out_channels=in_channels // 2)
+                UpBlock(
+                    in_channels=in_channels,
+                    out_channels=in_channels // 2,
+                    kernel_size=2,
+                    stride=2,
+                    upsample_mode="conv_upsample",
+                    interpolation_mode="bilinear",
+                    align_corners=False,
+                    use_norm=True,
+                )
             )
             in_channels //= 2
 

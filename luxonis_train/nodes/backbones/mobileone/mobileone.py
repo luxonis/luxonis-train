@@ -4,8 +4,10 @@ from typeguard import typechecked
 from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.nodes.blocks import GeneralReparametrizableBlock
-from luxonis_train.nodes.blocks.blocks import SqueezeExciteBlock
+from luxonis_train.nodes.blocks import (
+    GeneralReparametrizableBlock,
+    SqueezeExciteBlock,
+)
 
 
 class MobileOne(BaseNode[Tensor, list[Tensor]]):

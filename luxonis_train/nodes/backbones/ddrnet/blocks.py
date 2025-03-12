@@ -9,20 +9,22 @@ Paper: U{https://arxiv.org/pdf/2101.06085.pdf}
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.nodes.blocks import ConvModule, UpscaleOnline
+from luxonis_train.nodes.blocks import ConvBlock, UpscaleOnline
 
 
 class DAPPMBranch(nn.Module):
     def __init__(
         self,
+        in_channels: int,
         kernel_size: int,
         stride: int,
-        in_channels: int,
         branch_channels: int,
-        inter_mode: str = "bilinear",
+        interpolation_mode: str = "bilinear",
     ):
         """A DAPPM branch.
 
+        @type in_channels: int
+        @param in_channels: Number of input channels.
         @type kernel_size: int
         @param kernel_size: The kernel size. When stride=0, this
             parameter is omitted, and AdaptiveAvgPool2d over all the
@@ -33,13 +35,11 @@ class DAPPMBranch(nn.Module):
             performed (output is 1x1). When set to 1, no operation is
             performed. When stride>1, a convolution with
             C{stride=stride} is performed.
-        @type in_channels: int
-        @param in_channels: Number of input channels.
         @type branch_channels: int
         @param branch_channels: Width after the first convolution.
-        @type inter_mode: str
-        @param inter_mode: Interpolation mode for upscaling. Defaults to
-            "bilinear".
+        @type interpolation_mode: str
+        @param interpolation_mode: Interpolation mode for upscaling.
+            Defaults to "bilinear".
         """
         super().__init__()
 
@@ -66,47 +66,67 @@ class DAPPMBranch(nn.Module):
         )
 
         self.down_scale = nn.Sequential(*down_list)
-        self.up_scale = UpscaleOnline(inter_mode)
+        self.up_scale = UpscaleOnline(interpolation_mode)
 
-        if stride != 1:
-            self.process = nn.Sequential(
-                nn.BatchNorm2d(branch_channels),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(
-                    branch_channels,
-                    branch_channels,
-                    kernel_size=3,
-                    padding=1,
-                    bias=False,
-                ),
-            )
-
-    def forward(self, x: Tensor | list[Tensor]) -> Tensor:
-        """Process input through the DAPPM branch.
-
-        @type x: Tensor or list[Tensor]
-        @param x: In branch 0 - the original input of the DAPPM. In other branches - a list containing the original
-                  input and the output of the previous branch.
-
-        @return: Processed output tensor.
-        """
-        if isinstance(x, list):
-            output_of_prev_branch = x[1]
-            x = x[0]
-        else:
-            output_of_prev_branch = None
-
-        in_width = x.shape[-1]
-        in_height = x.shape[-2]
+    def forward(self, x: Tensor) -> Tensor:
+        h, w = x.shape[-2], x.shape[-1]
         out = self.down_scale(x)
-        out = self.up_scale(
-            out, output_height=in_height, output_width=in_width
+        return self.up_scale(out, output_height=h, output_width=w)
+
+
+class MergeDAPPMBranch(DAPPMBranch):
+    def __init__(
+        self,
+        in_channels: int,
+        kernel_size: int,
+        stride: int,
+        branch_channels: int,
+        interpolation_mode: str = "bilinear",
+    ):
+        """A DAPPM branch working with an input from the previous
+        branch.
+
+        @type kernel_size: int
+        @param kernel_size: The kernel size. When stride=0, this
+            parameter is omitted, and AdaptiveAvgPool2d over all the
+            input is performed.
+        @type stride: int
+        @param stride: Stride for the first convolution. When stride is
+            set to 0, C{AdaptiveAvgPool2d} over all the input is
+            performed (output is 1x1). When set to 1, no operation is
+            performed. When stride>1, a convolution with
+            C{stride=stride} is performed.
+        @type in_channels: int
+        @param in_channels: Number of input channels.
+        @type branch_channels: int
+        @param branch_channels: Width after the first convolution.
+        @type interpolation_mode: str
+        @param interpolation_mode: Interpolation mode for upscaling.
+            Defaults to "bilinear".
+        """
+        super().__init__(
+            kernel_size=kernel_size,
+            stride=stride,
+            in_channels=in_channels,
+            branch_channels=branch_channels,
+            interpolation_mode=interpolation_mode,
         )
 
-        if output_of_prev_branch is not None:
-            out = self.process(out + output_of_prev_branch)
+        self.process = nn.Sequential(
+            nn.BatchNorm2d(branch_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(
+                branch_channels,
+                branch_channels,
+                kernel_size=3,
+                padding=1,
+                bias=False,
+            ),
+        )
 
-        return out
+    def forward(self, x: Tensor, skip_x: Tensor) -> Tensor:
+        out = super().forward(x)
+        return self.process(out + skip_x)
 
 
 class DAPPM(nn.Module):
@@ -117,7 +137,7 @@ class DAPPM(nn.Module):
         out_channels: int,
         kernel_sizes: list[int],
         strides: list[int],
-        inter_mode: str = "bilinear",
+        interpolation_mode: str = "bilinear",
     ):
         """DAPPM (Dynamic Attention Pyramid Pooling Module).
 
@@ -132,39 +152,42 @@ class DAPPM(nn.Module):
         @param kernel_sizes: List of kernel sizes for each branch.
         @type strides: list[int]
         @param strides: List of strides for each branch.
-        @type inter_mode: str
-        @param inter_mode: Interpolation mode for upscaling. Defaults to
-            "bilinear".
+        @type interpolation_mode: str
+        @param interpolation_mode: Interpolation mode for upscaling.
+            Defaults to "bilinear".
         @raises ValueError: If the lengths of C{kernel_sizes} and
             C{strides} are not the same.
         """
         super().__init__()
 
-        if len(kernel_sizes) != len(strides):  # pragma: no cover
-            raise ValueError(
-                "The lenghts of `kernel_sizes` and `strides` must be the same"
-            )
-
+        self.start_branch = DAPPMBranch(
+            in_channels=in_channels,
+            kernel_size=kernel_sizes[0],
+            stride=strides[0],
+            branch_channels=branch_channels,
+            interpolation_mode=interpolation_mode,
+        )
         self.branches = nn.ModuleList(
             [
-                DAPPMBranch(
+                MergeDAPPMBranch(
+                    in_channels=in_channels,
                     kernel_size=kernel_size,
                     stride=stride,
-                    in_channels=in_channels,
                     branch_channels=branch_channels,
-                    inter_mode=inter_mode,
+                    interpolation_mode=interpolation_mode,
                 )
                 for kernel_size, stride in zip(
-                    kernel_sizes, strides, strict=True
+                    kernel_sizes[1:], strides[1:], strict=True
                 )
             ]
         )
 
+        compression_channels = branch_channels * (len(self.branches) + 1)
         self.compression = nn.Sequential(
-            nn.BatchNorm2d(branch_channels * len(self.branches)),
+            nn.BatchNorm2d(compression_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(
-                branch_channels * len(self.branches),
+                compression_channels,
                 out_channels,
                 kernel_size=1,
                 bias=False,
@@ -184,10 +207,10 @@ class DAPPM(nn.Module):
         @return: Output tensor after processing through all branches and
             compression.
         """
-        x_list = [self.branches[0](x)]
+        x_list = [self.start_branch(x)]
 
-        for i in range(1, len(self.branches)):
-            x_list.append(self.branches[i]([x, x_list[i - 1]]))
+        for i, branch in enumerate(self.branches):
+            x_list.append(branch(x, x_list[i]))
 
         return self.compression(torch.cat(x_list, dim=1)) + self.shortcut(x)
 
@@ -219,23 +242,21 @@ class BasicDDRBackbone(nn.Module):
         self.input_channels = in_channels
 
         self.stem = nn.Sequential(
-            ConvModule(
+            ConvBlock(
                 in_channels=in_channels,
                 out_channels=stem_channels,
                 kernel_size=3,
                 stride=2,
                 padding=1,
                 bias=True,
-                activation=nn.ReLU(inplace=True),
             ),
-            ConvModule(
+            ConvBlock(
                 in_channels=stem_channels,
                 out_channels=stem_channels,
                 kernel_size=3,
                 stride=2,
                 padding=1,
                 bias=True,
-                activation=nn.ReLU(inplace=True),
             ),
         )
 
@@ -340,7 +361,7 @@ def make_layer(
         block(
             in_channels,
             channels,
-            stride,
+            stride=stride,
             final_relu=n_blocks > 1,
             expansion=expansion,
         )
@@ -348,17 +369,16 @@ def make_layer(
 
     in_channels = channels * expansion
 
-    if n_blocks > 1:
-        for i in range(1, n_blocks):
-            final_relu = i != (n_blocks - 1)
-            layers.append(
-                block(
-                    in_channels,
-                    channels,
-                    stride=1,
-                    final_relu=final_relu,
-                    expansion=expansion,
-                )
+    for i in range(1, n_blocks):
+        final_relu = i != (n_blocks - 1)
+        layers.append(
+            block(
+                in_channels,
+                channels,
+                stride=1,
+                final_relu=final_relu,
+                expansion=expansion,
             )
+        )
 
     return nn.Sequential(*layers)

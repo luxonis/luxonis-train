@@ -60,7 +60,7 @@ class LCNetV3Block(nn.Sequential):
                 SqueezeExciteBlock(
                     in_channels=in_channels,
                     intermediate_channels=in_channels // 4,
-                    approx_sigmoid=True,
+                    hard_sigmoid=True,
                 )
             )
 
