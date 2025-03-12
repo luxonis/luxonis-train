@@ -143,7 +143,14 @@ markers = [
 ]
 
 [tool.coverage.run]
-omit = ["**/__main__.py", "**/gpu_stats_monitor.py", "config.py", "config-3.py"]
+omit = [
+  "**/__main__.py",
+  "**/gpu_stats_monitor.py",
+  # These are not related to our `config.py`,
+  # see https://github.com/nedbat/coveragepy/issues/1653
+  "config.py",
+  "config-3.py",
+]
 
 [tool.coverage.report]
 exclude_also = [
