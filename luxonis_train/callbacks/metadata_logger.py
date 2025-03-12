@@ -71,6 +71,7 @@ class MetadataLogger(pl.Callback):
         package_location = Path(distribution.location, package_name)
 
         git = shutil.which("git")
+
         if git is None:
             return None
 
@@ -83,5 +84,5 @@ class MetadataLogger(pl.Callback):
                 shell=False,
             ).strip()
 
-        except subprocess.CalledProcessError:
+        except Exception:
             return None
