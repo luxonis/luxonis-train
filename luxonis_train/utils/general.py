@@ -247,13 +247,13 @@ def add_variant_aliases(
     aliases: dict[str, Collection[str]] | Literal["yolo"] = "yolo",
 ) -> dict[str, Kwargs]:
     if aliases == "yolo":
-        for name, alias in zip(
-            ("t", "n", "s", "m", "l"),
-            ("tiny", "nano", "small", "medium", "large"),
-            strict=True,
-        ):
-            if name in variants:
-                variants[alias] = variants[name]
+        aliases = {
+            "tiny": ["t"],
+            "nano": ["n"],
+            "small": ["s"],
+            "medium": ["m"],
+            "large": ["l"],
+        }
     else:
         for alias, names in aliases.items():
             for name in names:
