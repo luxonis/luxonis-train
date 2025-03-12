@@ -79,7 +79,6 @@ trainer:
 
   n_sanity_val_steps: 1
   profiler: null
-  verbose: true
   batch_size: 8
   accumulate_grad_batches: 1
   epochs: &epochs 200
@@ -121,7 +120,6 @@ trainer:
         patience: 3
         monitor: val/loss
         mode: min
-        verbose: true
     - name: ExportOnTrainEnd
     - name: ArchiveOnTrainEnd
     - name: TestOnTrainEnd
