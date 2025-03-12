@@ -3,7 +3,7 @@ from copy import deepcopy
 import pytest
 import torch
 from lightning.pytorch import LightningModule, Trainer
-from torch import Tensor
+from torch import Tensor, nn
 
 from luxonis_train.callbacks.ema import EMACallback, ModelEma
 
@@ -11,7 +11,7 @@ from luxonis_train.callbacks.ema import EMACallback, ModelEma
 class SimpleModel(LightningModule):
     def __init__(self):
         super().__init__()
-        self.layer = torch.nn.Linear(2, 2)
+        self.layer = nn.Linear(2, 2)
 
     def forward(self, x: Tensor) -> Tensor:
         return self.layer(x)

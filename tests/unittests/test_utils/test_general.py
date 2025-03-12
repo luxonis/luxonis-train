@@ -1,6 +1,9 @@
 import pytest
 
-from luxonis_train.utils.general import infer_upscale_factor, safe_download
+from luxonis_train.utils.general import (
+    infer_upscale_factor,
+    safe_download,
+)
 
 
 @pytest.mark.parametrize(
