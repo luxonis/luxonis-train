@@ -233,9 +233,9 @@ def test_infer(
         model.infer(source_path="tests/data/invalid.jpg", save_dir=infer_path)
 
 
-def test_archive(test_output_dir: Path, coco_dataset: LuxonisDataset):
+def test_archive(output_dir: Path, coco_dataset: LuxonisDataset):
     opts = {
-        "tracker.save_directory": str(test_output_dir),
+        "tracker.save_directory": str(output_dir),
         "loader.params.dataset_name": coco_dataset.identifier,
     }
     model = LuxonisModel("tests/configs/archive_config.yaml", opts)
