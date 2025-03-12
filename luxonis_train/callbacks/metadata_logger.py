@@ -46,7 +46,7 @@ class MetadataLogger(pl.Callback):
 
         pl_module.logger.log_hyperparams(hparams)
         with open(osp.join(pl_module.save_dir, "metadata.yaml"), "w") as f:
-            yaml.dump(hparams, f, default_flow_style=False)
+            yaml.safe_dump(hparams, f, default_flow_style=False)
 
     @staticmethod
     def _get_editable_package_git_hash(
