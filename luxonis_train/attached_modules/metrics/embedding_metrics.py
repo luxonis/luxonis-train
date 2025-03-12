@@ -20,10 +20,10 @@ class ClosestIsPositiveAccuracy(BaseMetric):
     cross_batch_memory: Annotated[
         list[tuple[Tensor, Tensor]], State(default=[], dist_reduce_fx="cat")
     ]
-    correct_predictions: Annotated[
+    correct: Annotated[
         Tensor, State(default=torch.tensor(0), dist_reduce_fx="sum")
     ]
-    total_predictions: Annotated[
+    total: Annotated[
         Tensor, State(default=torch.tensor(0), dist_reduce_fx="sum")
     ]
 
@@ -72,11 +72,11 @@ class ClosestIsPositiveAccuracy(BaseMetric):
             filtered_labels == filtered_closest_labels
         ).sum()
 
-        self.correct_predictions += correct_predictions
-        self.total_predictions += len(filtered_labels)
+        self.correct += correct_predictions
+        self.total += len(filtered_labels)
 
     def compute(self) -> Tensor:
-        return self.correct_predictions / self.total_predictions
+        return self.correct / self.total
 
 
 class MedianDistances(BaseMetric):
@@ -147,9 +147,8 @@ class MedianDistances(BaseMetric):
 
         non_inf_mask = closest_positive_distances != math.inf
         difference = closest_positive_distances - closest_distances
-        difference = difference[non_inf_mask]
 
-        self.closest_vs_positive_distances.append(difference)
+        self.closest_vs_positive_distances.append(difference[non_inf_mask])
         self.positive_distances.append(
             closest_positive_distances[non_inf_mask]
         )
@@ -182,18 +181,14 @@ class MedianDistances(BaseMetric):
         }
 
 
-def _pairwise_distances(embeddings: Tensor, squared: bool = False) -> Tensor:
+def _pairwise_distances(embeddings: Tensor) -> Tensor:
     """Compute the 2D matrix of distances between all the embeddings.
 
-    @param embeddings: tensor of shape (batch_size, embed_dim)
     @type embeddings: Tensor
-    @param squared: If true, output is the pairwise squared euclidean
-        distance matrix. If false, output is the pairwise euclidean
-        distance matrix.
-    @type squared: bool
+    @param embeddings: Tensor of shape (batch_size, embed_dim)
+    @rtype: Tensor
     @return: pairwise_distances: tensor of shape (batch_size,
         batch_size)
-    @rtype: Tensor
     """
     dot_product = embeddings @ embeddings.T
 
@@ -204,15 +199,10 @@ def _pairwise_distances(embeddings: Tensor, squared: bool = False) -> Tensor:
     )
     distances = torch.max(distances, torch.tensor(0.0))
 
-    if not squared:
-        mask = (distances == 0.0).float()
-        distances = distances + mask * 1e-16
+    mask = (distances == 0.0).float()
+    distances = distances + mask * 1e-16
 
-        distances = torch.sqrt(distances)
-
-        distances = distances * (1.0 - mask)
-
-    return distances
+    return torch.sqrt(distances) * (1.0 - mask)
 
 
 def _get_anchor_positive_triplet_mask(labels: Tensor) -> Tensor:

@@ -14,7 +14,6 @@ from torch.optim.optimizer import Optimizer
 from typing_extensions import override
 
 import luxonis_train as lxt
-from luxonis_train.attached_modules import ConfusionMatrix
 from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
     get_denormalized_images,
@@ -565,10 +564,9 @@ class LuxonisLightningModule(pl.LightningModule):
                 metric.reset()
 
                 for name, value in values.items():
-                    if isinstance(metric, ConfusionMatrix):
+                    if value.dim() > 0:
                         self.tracker.log_matrix(
                             matrix=value.cpu().numpy(),
-                            # TODO: Is the name correct?
                             name=f"{mode}/metrics/{self.current_epoch}/{name}",
                             step=self.current_epoch,
                         )
