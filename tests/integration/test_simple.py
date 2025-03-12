@@ -71,6 +71,8 @@ def test_predefined_models(
     coco_dataset: LuxonisDataset,
     cifar10_dataset: LuxonisDataset,
     mnist_dataset: LuxonisDataset,
+    output_dir: Path,
+    subtests: SubTests,
 ):
     config_file = f"configs/{config_file}.yaml"
     opts |= {
@@ -82,10 +84,17 @@ def test_predefined_models(
             else coco_dataset.identifier
         ),
         "trainer.epochs": 1,
+        "tracker.run_name": config_file,
     }
-    model = LuxonisModel(config_file, opts)
-    model.train()
-    model.test(view="train")
+    with subtests.test("original_config"):
+        model = LuxonisModel(config_file, opts)
+        model.train()
+        model.test(view="train")
+    with subtests.test("saved_config"):
+        model = LuxonisModel(
+            str(output_dir / config_file / "training_config.yaml"), opts
+        )
+        model.test(view="train")
 
 
 def test_multi_input(opts: dict[str, Any], infer_path: Path):
@@ -126,9 +135,9 @@ def test_custom_tasks(
         with tarfile.open(archive_path) as tar:
             extracted_cfg = tar.extractfile("config.json")
 
-            assert (
-                extracted_cfg is not None
-            ), "Config JSON not found in the archive."
+            assert extracted_cfg is not None, (
+                "Config JSON not found in the archive."
+            )
             generated_config = json.loads(extracted_cfg.read().decode())
 
         # Sort the fields in the config to make the comparison consistent
