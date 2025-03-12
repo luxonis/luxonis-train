@@ -89,13 +89,13 @@ def test_predefined_models(
     with subtests.test("original_config"):
         model = LuxonisModel(config_file, opts)
         model.train()
-        model.test(view="train")
+        model.test()
     with subtests.test("saved_config"):
         opts["tracker.run_name"] = f"{config_name}_reload"
         model = LuxonisModel(
             str(output_dir / config_name / "training_config.yaml"), opts
         )
-        model.test(view="train")
+        model.test()
 
 
 def test_multi_input(opts: dict[str, Any], infer_path: Path):
