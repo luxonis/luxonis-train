@@ -14,7 +14,7 @@ class MeanAveragePrecision(BaseMetric):
         match node.task:
             case None:
                 raise ValueError(
-                    f"Node {node.name} does not have the 'task' parameter set."
+                    f"Node {node.name} does not have the 'task' parameter set"
                 )
             case Tasks.BOUNDINGBOX:
                 return MeanAveragePrecisionBBox(node=node, **kwargs)
@@ -24,5 +24,5 @@ class MeanAveragePrecision(BaseMetric):
                 return MeanAveragePrecisionKeypoints(node=node, **kwargs)
             case _:
                 raise ValueError(
-                    f"MeanAveragePrecision does not support task {node.task}."
+                    f"'MeanAveragePrecision' does not support task '{node.task.name}'"
                 )
