@@ -1,4 +1,4 @@
-from .base_metric import BaseMetric
+from .base_metric import BaseMetric, State
 from .confusion_matrix import ConfusionMatrix
 from .embedding_metrics import ClosestIsPositiveAccuracy, MedianDistances
 from .mean_average_precision import MeanAveragePrecision
@@ -8,15 +8,16 @@ from .torchmetrics import Accuracy, F1Score, JaccardIndex, Precision, Recall
 
 __all__ = [
     "Accuracy",
+    "BaseMetric",
+    "ClosestIsPositiveAccuracy",
+    "ConfusionMatrix",
     "F1Score",
     "JaccardIndex",
-    "BaseMetric",
     "MeanAveragePrecision",
+    "MedianDistances",
+    "OCRAccuracy",
     "ObjectKeypointSimilarity",
     "Precision",
     "Recall",
-    "ClosestIsPositiveAccuracy",
-    "ConfusionMatrix",
-    "MedianDistances",
-    "OCRAccuracy",
+    "State",
 ]

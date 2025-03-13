@@ -1,23 +1,20 @@
 import torch
-import torchmetrics.detection as detection
 from torch import Tensor
+from torchmetrics.detection import MeanAveragePrecision
 
+from luxonis_train.attached_modules.metrics import BaseMetric
 from luxonis_train.tasks import Tasks
 
-from .mean_average_precision_bbox import MeanAveragePrecisionBBox
+from .utils import compute_update_lists
 
 
-class MeanAveragePrecisionSegmentation(
-    MeanAveragePrecisionBBox, register=False
-):
+class MeanAveragePrecisionSegmentation(BaseMetric):
     supported_tasks = [Tasks.INSTANCE_SEGMENTATION]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.metric = detection.MeanAveragePrecision(
-            iou_type=("bbox", "segm"),  # type: ignore
-        )
+        self.metric = MeanAveragePrecision(iou_type=("bbox", "segm"))
 
     def update(
         self,
@@ -26,8 +23,8 @@ class MeanAveragePrecisionSegmentation(
         target_boundingbox: Tensor,
         target_instance_segmentation: Tensor,
     ) -> None:
-        output_list, label_list = self.compute_update_lists(
-            boundingbox, target_boundingbox
+        output_list, label_list = compute_update_lists(
+            boundingbox, target_boundingbox, *self.original_in_shape[1:]
         )
 
         for i in range(len(instance_segmentation)):

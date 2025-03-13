@@ -224,7 +224,7 @@ class BaseAttachedModule(
                 input_names.append(pred_name)
             target_names.append(target_name)
         else:
-            for name in self._signature.keys():
+            for name in self._signature:
                 if name.startswith("target"):
                     target_names.append(name)
                 elif name in {"predictions", "prediction", "preds", "pred"}:
@@ -234,10 +234,16 @@ class BaseAttachedModule(
                     input_names.append(name)
                 else:
                     raise RuntimeError(
-                        f"To make use of automatic parameter extraction, the signature of `{self.name}.forward` (or `update` for subclasses of `BaseMetric`) must follow "
-                        "one of the following rules: "
-                        "1. Exactly two arguments, first one for predictions and second one for targets. "
-                        "2. Predictions argument named 'predictions', 'prediction', 'preds', or 'pred' and a target arguments with names starting with 'target'. The predictions argument will be matched to the main output of the node (output named the same as the node's task). "
+                        f"To make use of automatic parameter extraction, "
+                        f"the signature of `{self.name}.forward` (or `update` "
+                        "for subclasses of `BaseMetric`) must follow "
+                        "one of the following rules:\n"
+                        "1. Exactly two arguments, first one for predictions "
+                        "and second one for targets.\n"
+                        "2. Predictions argument named 'predictions', 'prediction', "
+                        "'preds', or 'pred' and a target arguments with names starting "
+                        "with 'target'. The predictions argument will be matched "
+                        "to the main output of the node (output named the same as the node's task).\n"
                         "3. Prediction arguments named the same way as "
                         "keys in the node outputs and target arguments with names starting with 'target'. "
                         f"The node outputs are: {list(inputs.keys())}."
@@ -261,6 +267,16 @@ class BaseAttachedModule(
                 targets = {}
                 for name in target_names:
                     label_name = name.replace("target_", "")
+                    if label_name in {"target", "targets"}:
+                        raise RuntimeError(
+                            f"Module '{self.name}' is using the wildcard '{label_name}' "
+                            f"argument in the `forward` or `update` signature, "
+                            f"but its task '{self.task.name}' requires more than one label "
+                            f"({self.required_labels}). "
+                            "Unable to determine which label to use. Please specify "
+                            "the labels using the 'target_{task_type}' pattern "
+                            f"({[f'target_{label}' for label in self.required_labels]})."
+                        )
                     if label_name not in labels:
                         if self._argument_is_optional(name):
                             targets[name] = None

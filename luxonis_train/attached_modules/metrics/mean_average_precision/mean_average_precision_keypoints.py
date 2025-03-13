@@ -1,6 +1,6 @@
 import contextlib
 import io
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import torch
 from pycocotools.coco import COCO
@@ -9,12 +9,13 @@ from torch import Tensor
 from torchvision.ops import box_convert
 
 from luxonis_train.attached_modules.metrics import BaseMetric
+from luxonis_train.attached_modules.metrics.base_metric import State
 from luxonis_train.tasks import Tasks
 from luxonis_train.utils import get_sigmas, get_with_default
 from luxonis_train.utils.keypoints import insert_class
 
 
-class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
+class MeanAveragePrecisionKeypoints(BaseMetric):
     """Mean Average Precision metric for keypoints.
 
     Uses C{OKS} as IoU measure.
@@ -26,16 +27,16 @@ class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
     higher_is_better: bool = True
     full_state_update: bool = True
 
-    pred_boxes: list[Tensor]
-    pred_scores: list[Tensor]
-    pred_labels: list[Tensor]
-    pred_keypoints: list[Tensor]
+    pred_boxes: Annotated[list[Tensor], State(default=[])]
+    pred_scores: Annotated[list[Tensor], State(default=[])]
+    pred_labels: Annotated[list[Tensor], State(default=[])]
+    pred_keypoints: Annotated[list[Tensor], State(default=[])]
 
-    groundtruth_boxes: list[Tensor]
-    groundtruth_labels: list[Tensor]
-    groundtruth_area: list[Tensor]
-    groundtruth_crowds: list[Tensor]
-    groundtruth_keypoints: list[Tensor]
+    groundtruth_boxes: Annotated[list[Tensor], State(default=[])]
+    groundtruth_labels: Annotated[list[Tensor], State(default=[])]
+    groundtruth_area: Annotated[list[Tensor], State(default=[])]
+    groundtruth_crowds: Annotated[list[Tensor], State(default=[])]
+    groundtruth_keypoints: Annotated[list[Tensor], State(default=[])]
 
     def __init__(
         self,
@@ -74,25 +75,12 @@ class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
         )
         self.max_dets = max_dets
 
-        allowed_box_formats = ("xyxy", "xywh", "cxcywh")
+        allowed_box_formats = {"xyxy", "xywh", "cxcywh"}
         if box_format not in allowed_box_formats:
             raise ValueError(
                 f"Expected argument `box_format` to be one of {allowed_box_formats} but got {box_format}"
             )
         self.box_format = box_format
-
-        self.add_state("pred_boxes", default=[], dist_reduce_fx=None)
-        self.add_state("pred_scores", default=[], dist_reduce_fx=None)
-        self.add_state("pred_labels", default=[], dist_reduce_fx=None)
-        self.add_state("pred_keypoints", default=[], dist_reduce_fx=None)
-
-        self.add_state("groundtruth_boxes", default=[], dist_reduce_fx=None)
-        self.add_state("groundtruth_labels", default=[], dist_reduce_fx=None)
-        self.add_state("groundtruth_area", default=[], dist_reduce_fx=None)
-        self.add_state("groundtruth_crowds", default=[], dist_reduce_fx=None)
-        self.add_state(
-            "groundtruth_keypoints", default=[], dist_reduce_fx=None
-        )
 
     def update(
         self,
@@ -241,7 +229,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
         scores: list[Tensor] | None = None,
         crowds: list[Tensor] | None = None,
         area: list[Tensor] | None = None,
-    ) -> dict[str, list[dict[str, Any]]]:
+    ) -> dict[str, Any]:
         """Transforms and returns all cached targets or predictions in
         COCO format.
 
@@ -255,7 +243,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
         )
 
         for image_id, (image_boxes, image_kpts, image_labels) in enumerate(
-            zip(boxes, keypoints, labels)
+            zip(boxes, keypoints, labels, strict=True)
         ):
             image_boxes_list: list[list[float]] = image_boxes.cpu().tolist()
             image_kpts_list: list[list[float]] = image_kpts.cpu().tolist()
@@ -264,7 +252,12 @@ class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
             images.append({"id": image_id})
 
             for k, (image_box, image_kpt, image_label) in enumerate(
-                zip(image_boxes_list, image_kpts_list, image_labels_list)
+                zip(
+                    image_boxes_list,
+                    image_kpts_list,
+                    image_labels_list,
+                    strict=True,
+                )
             ):
                 if len(image_box) != 4:
                     raise ValueError(
@@ -279,7 +272,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
                     )
 
                 if not isinstance(image_label, int):
-                    raise ValueError(
+                    raise TypeError(
                         f"Invalid input class of sample {image_id}, element {k} "
                         f"(expected value of type integer, got type {type(image_label)})"
                     )
