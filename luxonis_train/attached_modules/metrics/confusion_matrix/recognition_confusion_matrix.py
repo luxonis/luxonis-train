@@ -40,4 +40,5 @@ class RecognitionConfusionMatrix(BaseMetric):
 
     @override
     def reset(self) -> None:
+        super().reset()
         self.confusion_matrix.reset()

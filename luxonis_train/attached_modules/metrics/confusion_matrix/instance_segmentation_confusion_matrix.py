@@ -41,11 +41,6 @@ class InstanceSegmentationConfusionMatrix(
             self
         ) | RecognitionConfusionMatrix.compute(self)
 
-    @override
-    def reset(self) -> None:
-        DetectionConfusionMatrix.reset(self)
-        RecognitionConfusionMatrix.reset(self)
-
     def _merge_predicted_masks(
         self,
         boundingbox: list[Tensor],

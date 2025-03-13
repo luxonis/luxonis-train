@@ -1,6 +1,7 @@
 import torch
 from torch import Tensor
 from torchmetrics.detection import MeanAveragePrecision
+from typing_extensions import override
 
 from luxonis_train.attached_modules.metrics import BaseMetric
 from luxonis_train.tasks import Tasks
@@ -24,6 +25,7 @@ class MeanAveragePrecisionBBox(BaseMetric):
 
         self.metric = MeanAveragePrecision(iou_type="bbox")
 
+    @override
     def update(self, predictions: list[Tensor], targets: Tensor) -> None:
         self.metric.update(
             *compute_update_lists(
@@ -31,9 +33,12 @@ class MeanAveragePrecisionBBox(BaseMetric):
             )
         )
 
+    @override
     def reset(self) -> None:
+        super().reset()
         self.metric.reset()
 
+    @override
     def compute(self) -> tuple[Tensor, dict[str, Tensor]]:
         metric_dict: dict[str, Tensor] = self.metric.compute()
 

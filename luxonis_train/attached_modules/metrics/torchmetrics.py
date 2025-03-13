@@ -105,6 +105,7 @@ class TorchMetricWrapper(BaseMetric):
 
     @override
     def reset(self) -> None:
+        super().reset()
         self.metric.reset()
 
     @cached_property

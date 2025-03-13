@@ -7,6 +7,7 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from torch import Tensor
 from torchvision.ops import box_convert
+from typeguard import typechecked
 
 from luxonis_train.attached_modules.metrics import BaseMetric
 from luxonis_train.attached_modules.metrics.base_metric import MetricState
@@ -23,21 +24,18 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
     supported_tasks = [Tasks.INSTANCE_KEYPOINTS]
 
-    is_differentiable: bool = False
-    higher_is_better: bool = True
-    full_state_update: bool = True
+    pred_boxes: Annotated[list[Tensor], MetricState()]
+    pred_scores: Annotated[list[Tensor], MetricState()]
+    pred_labels: Annotated[list[Tensor], MetricState()]
+    pred_keypoints: Annotated[list[Tensor], MetricState()]
 
-    pred_boxes: Annotated[list[Tensor], MetricState(default=[])]
-    pred_scores: Annotated[list[Tensor], MetricState(default=[])]
-    pred_labels: Annotated[list[Tensor], MetricState(default=[])]
-    pred_keypoints: Annotated[list[Tensor], MetricState(default=[])]
+    groundtruth_boxes: Annotated[list[Tensor], MetricState()]
+    groundtruth_labels: Annotated[list[Tensor], MetricState()]
+    groundtruth_area: Annotated[list[Tensor], MetricState()]
+    groundtruth_crowds: Annotated[list[Tensor], MetricState()]
+    groundtruth_keypoints: Annotated[list[Tensor], MetricState()]
 
-    groundtruth_boxes: Annotated[list[Tensor], MetricState(default=[])]
-    groundtruth_labels: Annotated[list[Tensor], MetricState(default=[])]
-    groundtruth_area: Annotated[list[Tensor], MetricState(default=[])]
-    groundtruth_crowds: Annotated[list[Tensor], MetricState(default=[])]
-    groundtruth_keypoints: Annotated[list[Tensor], MetricState(default=[])]
-
+    @typechecked
     def __init__(
         self,
         sigmas: list[float] | None = None,
@@ -74,12 +72,6 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
             area_factor, "bbox area scaling", self.name, default=0.53
         )
         self.max_dets = max_dets
-
-        allowed_box_formats = {"xyxy", "xywh", "cxcywh"}
-        if box_format not in allowed_box_formats:
-            raise ValueError(
-                f"Expected argument `box_format` to be one of {allowed_box_formats} but got {box_format}"
-            )
         self.box_format = box_format
 
     def update(

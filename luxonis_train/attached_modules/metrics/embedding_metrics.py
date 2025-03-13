@@ -18,11 +18,9 @@ class ClosestIsPositiveAccuracy(BaseMetric):
     supported_tasks = [Tasks.EMBEDDINGS]
     node: GhostFaceNetHead
 
-    cross_batch_memory: Annotated[
-        list[tuple[Tensor, Tensor]], MetricState(default=[])
-    ]
-    correct: Annotated[Tensor, MetricState(default=0)]
-    total: Annotated[Tensor, MetricState(default=0)]
+    cross_batch_memory: Annotated[list[tuple[Tensor, Tensor]], MetricState()]
+    correct: Annotated[Tensor, MetricState()]
+    total: Annotated[Tensor, MetricState()]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -82,15 +80,11 @@ class MedianDistances(BaseMetric):
     supported_tasks = [Tasks.EMBEDDINGS]
     node: GhostFaceNetHead
 
-    cross_batch_memory: Annotated[
-        list[tuple[Tensor, Tensor]], MetricState(default=[])
-    ]
-    all_distances: Annotated[list[Tensor], MetricState(default=[])]
-    closest_distances: Annotated[list[Tensor], MetricState(default=[])]
-    positive_distances: Annotated[list[Tensor], MetricState(default=[])]
-    closest_vs_positive_distances: Annotated[
-        list[Tensor], MetricState(default=[])
-    ]
+    cross_batch_memory: Annotated[list[tuple[Tensor, Tensor]], MetricState()]
+    all_distances: Annotated[list[Tensor], MetricState()]
+    closest_distances: Annotated[list[Tensor], MetricState()]
+    positive_distances: Annotated[list[Tensor], MetricState()]
+    closest_vs_positive_distances: Annotated[list[Tensor], MetricState()]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

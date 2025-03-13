@@ -18,10 +18,10 @@ class OCRAccuracy(BaseMetric):
 
     node: OCRCTCHead
 
-    rank_0: Annotated[Tensor, MetricState(default=0.0)]
-    rank_1: Annotated[Tensor, MetricState(default=0.0)]
-    rank_2: Annotated[Tensor, MetricState(default=0.0)]
-    total: Annotated[Tensor, MetricState(default=0)]
+    rank_0: Annotated[Tensor, MetricState()]
+    rank_1: Annotated[Tensor, MetricState()]
+    rank_2: Annotated[Tensor, MetricState()]
+    total: Annotated[Tensor, MetricState()]
 
     def __init__(self, blank_class: int = 0, **kwargs):
         """Initializes the OCR accuracy metric.

@@ -17,9 +17,9 @@ from .base_metric import BaseMetric, MetricState
 class ObjectKeypointSimilarity(BaseMetric):
     supported_tasks = [Tasks.KEYPOINTS, Tasks.INSTANCE_KEYPOINTS, Tasks.FOMO]
 
-    pred_keypoints: Annotated[list[Tensor], MetricState(default=[])]
-    target_keypoints: Annotated[list[Tensor], MetricState(default=[])]
-    target_scales: Annotated[list[Tensor], MetricState(default=[])]
+    pred_keypoints: Annotated[list[Tensor], MetricState()]
+    target_keypoints: Annotated[list[Tensor], MetricState()]
+    target_scales: Annotated[list[Tensor], MetricState()]
 
     def __init__(
         self,

@@ -1,6 +1,7 @@
 import torch
 from torch import Tensor
 from torchmetrics.detection import MeanAveragePrecision
+from typing_extensions import override
 
 from luxonis_train.attached_modules.metrics import BaseMetric
 from luxonis_train.tasks import Tasks
@@ -16,6 +17,7 @@ class MeanAveragePrecisionSegmentation(BaseMetric):
 
         self.metric = MeanAveragePrecision(iou_type=("bbox", "segm"))
 
+    @override
     def update(
         self,
         boundingbox: list[Tensor],
@@ -38,9 +40,7 @@ class MeanAveragePrecisionSegmentation(BaseMetric):
 
         self.metric.update(output_list, label_list)
 
-    def reset(self) -> None:
-        self.metric.reset()
-
+    @override
     def compute(self) -> tuple[Tensor, dict[str, Tensor]]:
         metric_dict: dict[str, Tensor] = self.metric.compute()
 
@@ -74,3 +74,8 @@ class MeanAveragePrecisionSegmentation(BaseMetric):
         scalar = scalar.to(self.device)
 
         return scalar, metric_dict
+
+    @override
+    def reset(self) -> None:
+        super().reset()
+        self.metric.reset()

@@ -1,5 +1,4 @@
 from abc import abstractmethod
-import torch
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
@@ -7,6 +6,7 @@ from inspect import Parameter
 from types import EllipsisType
 from typing import Annotated, Literal, get_args, get_origin, get_type_hints
 
+import torch
 from torch import Tensor
 from torch.types import Number
 from torchmetrics import Metric
@@ -19,26 +19,35 @@ from luxonis_train.utils.registry import METRICS
 @dataclass(kw_only=True, slots=True)
 class MetricState:
     """Marks an attribute that should be registered as a metric state.
+    Intended to be used as a type hint for class attributes using the
+    `Annotated` type.
 
     Upon initialization of a metric, all attributes of the metric that
-    are marked with this class will be registered as metric states using
-    the `add_state` method. The state will be accessible as an attribute
+    are marked as metric states will be registered using the
+    `add_state` method. The state will be accessible as an attribute
     of the metric instance.
 
     Metric state variables are either C{Tensor} or an empty list, which
-    can be appended to by the metric. Each state variable must have a
-    unique name associated with it. State variables are accessible as
-    attributes of the metric i.e, if C{name} is C{"my_state"} then its
-    value can be accessed from an instance C{metric} as
-    C{metric.my_state}. Metric states behave like buffers and parameters
-    of C{nn.Module} as they are also updated when C{.to()} is
-    called. Unlike parameters and buffers, metric states are not by
+    can be appended to by the metric.  Metric states behave like buffers
+    and parameters of C{nn.Module} as they are also updated when C{.to()}
+    is called. Unlike parameters and buffers, metric states are not by
     default saved in the modules C{nn.Module.state_dict}.
+
+    The metric state variables are automatically reset to their default
+    values when the metric's C{reset()} method is called.
+
+    Example usage::
+
+        class MyMetric(BaseMetric):
+            true_positives: Annotated[Tensor, MetricState(default=0)]
+            false_positives: Annotated[Tensor, MetricState(default=0)]
+            total: Annotated[Tensor, MetricState(default=0)]
+
 
     @type name: str
     @param name: The name of the state variable. The variable will then
         be accessible at C{self.name}.
-    @type default: Tensor | float | list
+    @type default: Tensor | Number | list
     @param default: Default value of the state; can either be a
         C{Tensor} or an empty list. The state will be reset to this
         value when C{self.reset()} is called. If the default value is a
@@ -61,7 +70,7 @@ class MetricState:
         modules C{state_dict}. Default is C{False}.
     """
 
-    default: Tensor | Number | list
+    default: Tensor | Number | list | None = None
     dist_reduce_fx: (
         Literal["sum", "mean", "cat", "min", "max"]
         | Callable[[Tensor], Tensor]
@@ -88,12 +97,22 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         for attr_name, attr_type in hints.items():
             if get_origin(attr_type) is Annotated:
                 type_args = get_args(attr_type)
+                main_type = type_args[0]
                 state = next(
                     (arg for arg in type_args if isinstance(arg, MetricState)),
                     None,
                 )
                 if state is not None:
                     default = state.default
+                    if default is None:
+                        if main_type is Tensor:
+                            default = 0
+                        elif main_type is list:
+                            default = []
+                        else:
+                            raise ValueError(
+                                f"Unsupported type of a metric state: `{main_type}`"
+                            )
                     if isinstance(default, Number):
                         default = torch.tensor(default)
 
