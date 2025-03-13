@@ -54,13 +54,13 @@ class OCRAccuracy(BaseMetric):
             dtype=torch.int64,
             device=predictions.device,
         )
-        for rank in range(batch_size):
-            unique_cons_classes = torch.unique_consecutive(pred_classes[rank])
+        for i in range(batch_size):
+            unique_cons_classes = torch.unique_consecutive(pred_classes[i])
             unique_cons_classes = unique_cons_classes[
                 unique_cons_classes != self.blank_class
             ]
             if len(unique_cons_classes) != 0:
-                predictions[rank, : unique_cons_classes.shape[0]] = (
+                predictions[i, : unique_cons_classes.shape[0]] = (
                     unique_cons_classes
                 )
 
