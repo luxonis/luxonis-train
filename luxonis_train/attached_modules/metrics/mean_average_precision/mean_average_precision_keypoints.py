@@ -9,7 +9,7 @@ from torch import Tensor
 from torchvision.ops import box_convert
 
 from luxonis_train.attached_modules.metrics import BaseMetric
-from luxonis_train.attached_modules.metrics.base_metric import State
+from luxonis_train.attached_modules.metrics.base_metric import MetricState
 from luxonis_train.tasks import Tasks
 from luxonis_train.utils import get_sigmas, get_with_default
 from luxonis_train.utils.keypoints import insert_class
@@ -27,16 +27,16 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
     higher_is_better: bool = True
     full_state_update: bool = True
 
-    pred_boxes: Annotated[list[Tensor], State(default=[])]
-    pred_scores: Annotated[list[Tensor], State(default=[])]
-    pred_labels: Annotated[list[Tensor], State(default=[])]
-    pred_keypoints: Annotated[list[Tensor], State(default=[])]
+    pred_boxes: Annotated[list[Tensor], MetricState(default=[])]
+    pred_scores: Annotated[list[Tensor], MetricState(default=[])]
+    pred_labels: Annotated[list[Tensor], MetricState(default=[])]
+    pred_keypoints: Annotated[list[Tensor], MetricState(default=[])]
 
-    groundtruth_boxes: Annotated[list[Tensor], State(default=[])]
-    groundtruth_labels: Annotated[list[Tensor], State(default=[])]
-    groundtruth_area: Annotated[list[Tensor], State(default=[])]
-    groundtruth_crowds: Annotated[list[Tensor], State(default=[])]
-    groundtruth_keypoints: Annotated[list[Tensor], State(default=[])]
+    groundtruth_boxes: Annotated[list[Tensor], MetricState(default=[])]
+    groundtruth_labels: Annotated[list[Tensor], MetricState(default=[])]
+    groundtruth_area: Annotated[list[Tensor], MetricState(default=[])]
+    groundtruth_crowds: Annotated[list[Tensor], MetricState(default=[])]
+    groundtruth_keypoints: Annotated[list[Tensor], MetricState(default=[])]
 
     def __init__(
         self,

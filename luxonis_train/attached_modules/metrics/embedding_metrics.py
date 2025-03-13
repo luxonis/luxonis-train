@@ -8,7 +8,7 @@ from typing_extensions import override
 from luxonis_train.nodes.heads.ghostfacenet_head import GhostFaceNetHead
 from luxonis_train.tasks import Tasks
 
-from .base_metric import BaseMetric, State
+from .base_metric import BaseMetric, MetricState
 
 # Converted from https://omoindrot.github.io/triplet-loss#offline-and-online-triplet-mining
 # to PyTorch from TensorFlow
@@ -19,14 +19,10 @@ class ClosestIsPositiveAccuracy(BaseMetric):
     node: GhostFaceNetHead
 
     cross_batch_memory: Annotated[
-        list[tuple[Tensor, Tensor]], State(default=[], dist_reduce_fx="cat")
+        list[tuple[Tensor, Tensor]], MetricState(default=[])
     ]
-    correct: Annotated[
-        Tensor, State(default=torch.tensor(0), dist_reduce_fx="sum")
-    ]
-    total: Annotated[
-        Tensor, State(default=torch.tensor(0), dist_reduce_fx="sum")
-    ]
+    correct: Annotated[Tensor, MetricState(default=0)]
+    total: Annotated[Tensor, MetricState(default=0)]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -87,19 +83,13 @@ class MedianDistances(BaseMetric):
     node: GhostFaceNetHead
 
     cross_batch_memory: Annotated[
-        list[tuple[Tensor, Tensor]], State(default=[], dist_reduce_fx="cat")
+        list[tuple[Tensor, Tensor]], MetricState(default=[])
     ]
-    all_distances: Annotated[
-        list[Tensor], State(default=[], dist_reduce_fx="cat")
-    ]
-    closest_distances: Annotated[
-        list[Tensor], State(default=[], dist_reduce_fx="cat")
-    ]
-    positive_distances: Annotated[
-        list[Tensor], State(default=[], dist_reduce_fx="cat")
-    ]
+    all_distances: Annotated[list[Tensor], MetricState(default=[])]
+    closest_distances: Annotated[list[Tensor], MetricState(default=[])]
+    positive_distances: Annotated[list[Tensor], MetricState(default=[])]
     closest_vs_positive_distances: Annotated[
-        list[Tensor], State(default=[], dist_reduce_fx="cat")
+        list[Tensor], MetricState(default=[])
     ]
 
     def __init__(self, **kwargs):

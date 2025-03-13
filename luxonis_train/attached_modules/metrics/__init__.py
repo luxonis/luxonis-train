@@ -1,4 +1,4 @@
-from .base_metric import BaseMetric, State
+from .base_metric import BaseMetric, MetricState
 from .confusion_matrix import ConfusionMatrix
 from .embedding_metrics import ClosestIsPositiveAccuracy, MedianDistances
 from .mean_average_precision import MeanAveragePrecision
@@ -19,5 +19,5 @@ __all__ = [
     "ObjectKeypointSimilarity",
     "Precision",
     "Recall",
-    "State",
+    "MetricState",
 ]

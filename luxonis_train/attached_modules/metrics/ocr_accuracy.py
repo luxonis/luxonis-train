@@ -8,7 +8,7 @@ from typing_extensions import override
 from luxonis_train.nodes import OCRCTCHead
 from luxonis_train.tasks import Tasks
 
-from .base_metric import BaseMetric, State
+from .base_metric import BaseMetric, MetricState
 
 
 class OCRAccuracy(BaseMetric):
@@ -18,18 +18,10 @@ class OCRAccuracy(BaseMetric):
 
     node: OCRCTCHead
 
-    rank_0: Annotated[
-        Tensor, State(default=torch.tensor(0.0), dist_reduce_fx="sum")
-    ]
-    rank_1: Annotated[
-        Tensor, State(default=torch.tensor(0.0), dist_reduce_fx="sum")
-    ]
-    rank_2: Annotated[
-        Tensor, State(default=torch.tensor(0.0), dist_reduce_fx="sum")
-    ]
-    total: Annotated[
-        Tensor, State(default=torch.tensor(0.0), dist_reduce_fx="sum")
-    ]
+    rank_0: Annotated[Tensor, MetricState(default=0.0)]
+    rank_1: Annotated[Tensor, MetricState(default=0.0)]
+    rank_2: Annotated[Tensor, MetricState(default=0.0)]
+    total: Annotated[Tensor, MetricState(default=0)]
 
     def __init__(self, blank_class: int = 0, **kwargs):
         """Initializes the OCR accuracy metric.

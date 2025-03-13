@@ -11,7 +11,7 @@ class RecognitionConfusionMatrix(BaseMetric):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.metric_cm = ConfusionMatrix(
+        self.confusion_matrix = ConfusionMatrix(
             num_classes=self.n_classes,
             task="binary" if self.n_classes == 1 else "multiclass",
         )
@@ -30,12 +30,14 @@ class RecognitionConfusionMatrix(BaseMetric):
             else targets.squeeze(1).round().int()
         ).view(-1)
 
-        self.metric_cm.update(predictions, targets)
+        self.confusion_matrix.update(predictions, targets)
 
     @override
     def compute(self) -> dict[str, Tensor]:
-        return {f"{self.task.name}_confusion_matrix": self.metric_cm.compute()}
+        return {
+            f"{self.task.name}_confusion_matrix": self.confusion_matrix.compute()
+        }
 
     @override
     def reset(self) -> None:
-        self.metric_cm.reset()
+        self.confusion_matrix.reset()
