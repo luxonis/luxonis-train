@@ -13,6 +13,7 @@ from luxonis_ml.utils import (
 )
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic.types import (
+    FilePath,
     NonNegativeFloat,
     NonNegativeInt,
     PositiveInt,
@@ -82,7 +83,7 @@ class ModelConfig(BaseModelExtraForbid):
     predefined_model: Annotated[
         PredefinedModelConfig | None, Field(exclude=True)
     ] = None
-    weights: str | None = None
+    weights: FilePath | None = None
     nodes: list[ModelNodeConfig] = []
     losses: list[LossModuleConfig] = []
     metrics: list[MetricModuleConfig] = []
