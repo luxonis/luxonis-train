@@ -339,8 +339,8 @@ class LightweightMLABlock(nn.Module):
         if qkv_tensor.dtype == torch.float16:
             qkv_tensor = qkv_tensor.float()
 
-        qkv_tensor = torch.reshape(
-            qkv_tensor, (batch, -1, 3 * self.dimension, height * width)
+        qkv_tensor = qkv_tensor.reshape(
+            batch, -1, 3 * self.dimension, height * width
         )
         query, key, value = (
             qkv_tensor[:, :, : self.dimension],
@@ -360,15 +360,15 @@ class LightweightMLABlock(nn.Module):
             output = output.float()
 
         output = output[:, :, :-1] / (output[:, :, -1:] + self.epsilon)
-        return torch.reshape(output, (batch, -1, height, width))
+        return output.reshape(batch, -1, height, width)
 
     @torch.autocast(device_type="cuda", enabled=False)
     def quadratic_attention(self, qkv_tensor: Tensor) -> Tensor:
         """Implements ReLU-based quadratic attention."""
         batch, _, height, width = qkv_tensor.size()
 
-        qkv_tensor = torch.reshape(
-            qkv_tensor, (batch, -1, 3 * self.dimension, height * width)
+        qkv_tensor = qkv_tensor.reshape(
+            batch, -1, 3 * self.dimension, height * width
         )
         query, key, value = (
             qkv_tensor[:, :, : self.dimension],
@@ -391,7 +391,7 @@ class LightweightMLABlock(nn.Module):
         attention_map = attention_map.to(original_dtype)
 
         output = value @ attention_map
-        return torch.reshape(output, (batch, -1, height, width))
+        return output.reshape(batch, -1, height, width)
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x

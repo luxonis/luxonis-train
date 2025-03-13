@@ -383,7 +383,7 @@ class DYShiftMax(nn.Module):
         x_out = x
 
         y = self.avg_pool(x).view(batch_size, channels)
-        y = self.fc(y).view(batch_size, -1, 1, 1)
+        y: Tensor = self.fc(y).view(batch_size, -1, 1, 1)
         y = (y - 0.5) * 4.0
 
         x2 = x_out[:, self.index, :, :]
@@ -402,7 +402,7 @@ class DYShiftMax(nn.Module):
             out = torch.max(z1, z2)
 
         elif self.exp == 2:
-            a1, b1 = torch.split(y, self.out_channels, dim=1)
+            a1, b1 = y.split(self.out_channels, dim=1)
             a1 = a1 + self.init_a[0]
             b1 = b1 + self.init_b[0]
             out = x_out * a1 + x2 * b1

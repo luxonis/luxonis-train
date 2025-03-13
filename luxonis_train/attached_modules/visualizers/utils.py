@@ -174,10 +174,10 @@ def seg_output_to_bool(data: Tensor, binary_threshold: float = 0.5) -> Tensor:
     """Converts seg head output to 2D boolean mask for visualization."""
     masks = torch.empty_like(data, dtype=torch.bool, device=data.device)
     if data.shape[0] == 1:
-        classes = torch.sigmoid(data)
+        classes = data.sigmoid()
         masks[0] = classes >= binary_threshold
     else:
-        classes = torch.argmax(data, dim=0)
+        classes = data.argmax(dim=0)
         for i in range(masks.shape[0]):
             masks[i] = classes == i
     return masks
@@ -215,7 +215,7 @@ def denormalize(
     new_std = 1 / std_tensor
     out_img = F.normalize(img, mean=new_mean.tolist(), std=new_std.tolist())
     if to_uint8:
-        out_img = torch.clamp(out_img.mul(255), 0, 255).to(torch.uint8)
+        out_img = out_img.mul_(255).clamp_(0, 255).to(torch.uint8)
     return out_img
 
 

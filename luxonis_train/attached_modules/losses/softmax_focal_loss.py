@@ -59,8 +59,7 @@ class SoftmaxFocalLoss(BaseLoss):
             predictions = F.softmax(predictions, dim=1)
 
             if self.smooth:
-                targets = torch.clamp(
-                    targets,
+                targets = targets.clamp(
                     self.smooth / (predictions.size(1) - 1),
                     1.0 - self.smooth,
                 )
@@ -70,7 +69,8 @@ class SoftmaxFocalLoss(BaseLoss):
             if isinstance(self.alpha, Tensor):
                 if self.alpha.size(0) != predictions.size(1):
                     raise ValueError(
-                        f"Alpha length {self.alpha.size(0)} does not match number of classes {predictions.size(1)}"
+                        f"Alpha length {self.alpha.size(0)} does not "
+                        f"match number of classes {predictions.size(1)}"
                     )
                 alpha_t = self.alpha[targets.argmax(dim=1)]
             else:

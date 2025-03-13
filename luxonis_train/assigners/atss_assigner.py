@@ -100,7 +100,7 @@ class ATSSAssigner(nn.Module):
 
         # Select candidates inside GT
         is_in_gts = candidates_in_gt(anchor_centers, gt_bboxes_flat)
-        is_in_gts = torch.reshape(is_in_gts, (self.bs, self.n_max_boxes, -1))
+        is_in_gts = is_in_gts.reshape(self.bs, self.n_max_boxes, -1)
 
         # Final positive candidates
         mask_pos = is_pos * is_in_gts * mask_gt
@@ -154,7 +154,7 @@ class ATSSAssigner(nn.Module):
             anchors.
         """
         mask_gt = mask_gt.repeat(1, 1, self.topk).bool()
-        level_distances = torch.split(distances, n_level_bboxes, dim=-1)
+        level_distances = distances.split(n_level_bboxes, dim=-1)
         is_in_topk_list: list[Tensor] = []
         topk_idxs: list[Tensor] = []
         start_idx = 0

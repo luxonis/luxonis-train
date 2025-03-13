@@ -139,11 +139,11 @@ class TaskAlignedAssigner(nn.Module):
         )
 
         # Select top-k bboxes as candidates for each GT
-        is_in_gts = candidates_in_gt(anchor_points, gt_bboxes.reshape([-1, 4]))
-        is_in_gts = torch.reshape(is_in_gts, (self.bs, self.n_max_boxes, -1))
+        is_in_gts = candidates_in_gt(anchor_points, gt_bboxes.reshape(-1, 4))
+        is_in_gts = is_in_gts.reshape(self.bs, self.n_max_boxes, -1)
         is_in_topk = self._select_topk_candidates(
             align_metric * is_in_gts,
-            topk_mask=mask_gt.repeat([1, 1, self.topk]).bool(),
+            topk_mask=mask_gt.repeat(1, 1, self.topk).bool(),
         )
 
         # Final positive candidates

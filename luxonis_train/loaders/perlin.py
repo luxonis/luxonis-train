@@ -1,3 +1,4 @@
+import math
 from collections.abc import Callable
 
 import torch
@@ -77,7 +78,7 @@ def rand_perlin_2d(
 
     t = fade(grid[: shape[0], : shape[1]])
 
-    return torch.sqrt(torch.tensor(2.0)) * lerp_torch(
+    return torch.tensor(math.sqrt(2.0)) * lerp_torch(
         lerp_torch(n00, n10, t[..., 0]),
         lerp_torch(n01, n11, t[..., 0]),
         t[..., 1],
@@ -92,12 +93,12 @@ def rotate_noise(noise: Tensor) -> Tensor:  # pragma: no cover
     y, x = torch.meshgrid(torch.arange(h), torch.arange(w), indexing="ij")
     x_shifted = x - center_x
     y_shifted = y - center_y
-    cos_a = torch.cos(angle)
-    sin_a = torch.sin(angle)
+    cos_a = angle.cos()
+    sin_a = angle.sin()
     rot_x = cos_a * x_shifted - sin_a * y_shifted + center_x
     rot_y = sin_a * x_shifted + cos_a * y_shifted + center_y
-    rot_x = torch.clamp(rot_x, 0, w - 1).long()
-    rot_y = torch.clamp(rot_y, 0, h - 1).long()
+    rot_x = rot_x.clamp_(0, w - 1).long()
+    rot_y = rot_y.clamp_(0, h - 1).long()
     return noise[rot_y, rot_x]
 
 
