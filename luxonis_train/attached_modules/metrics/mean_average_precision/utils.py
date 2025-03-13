@@ -1,20 +1,52 @@
+from collections.abc import Mapping
+
+import torch
 from luxonis_ml.typing import all_not_none, any_not_none
 from torch import Tensor
 from torchvision.ops import box_convert
 
 
-def add_f1_metrics(metric_dict: dict[str, Tensor]) -> dict[str, Tensor]:
-    """Add F1 metrics to the metric dictionary."""
-    for key in list(metric_dict.keys()):
+def postprocess_metrics(
+    metrics: dict[str, Tensor],
+    class_names: Mapping[int, str],
+    main_metric: str,
+    device: torch.device,
+) -> tuple[Tensor, dict[str, Tensor]]:
+    metrics = process_class_metrics(add_f1_metrics(metrics), class_names)
+    main_metric_value = metrics.pop(
+        main_metric, torch.tensor(0.0, device=device)
+    )
+    return main_metric_value, metrics
+
+
+def add_f1_metrics(metrics: dict[str, Tensor]) -> dict[str, Tensor]:
+    for key in list(metrics.keys()):
         if "map" in key:
-            map_metric = metric_dict[key]
+            map_metric = metrics[key]
             mar_key = key.replace("map", "mar")
-            if mar_key in metric_dict:
-                mar_metric = metric_dict[mar_key]
-                metric_dict[key.replace("map", "f1")] = (
+            if mar_key in metrics:
+                mar_metric = metrics[mar_key]
+                metrics[key.replace("map", "f1")] = (
                     2 * (map_metric * mar_metric) / (map_metric + mar_metric)
                 )
-    return metric_dict
+    return metrics
+
+
+def process_class_metrics(
+    metrics: dict[str, Tensor], class_names: Mapping[int, str]
+) -> dict[str, Tensor]:
+    classes = metrics.pop("classes")
+    per_class_metrics = [key for key in metrics if key.endswith("_per_class")]
+
+    for metric_name in per_class_metrics:
+        metric = metrics.pop(metric_name)
+
+        if metric.ndim > 1:
+            for i, class_id in enumerate(classes):
+                class_name = class_names[int(class_id)].replace(" ", "_")
+                metrics[f"{metric_name}_{class_name}"] = metric[i]
+
+    return metrics
 
 
 def compute_update_lists(
