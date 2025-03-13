@@ -6,7 +6,7 @@ from torch import Tensor, nn
 from typing_extensions import override
 
 from luxonis_train.nodes.blocks import ConvBlock, SegProto
-from luxonis_train.tasks import Tasks
+from luxonis_train.tasks import Task, Tasks
 from luxonis_train.typing import Packet
 from luxonis_train.utils import (
     apply_bounding_box_to_masks,
@@ -17,7 +17,7 @@ from .precision_bbox_head import PrecisionBBoxHead
 
 
 class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
-    task = Tasks.INSTANCE_SEGMENTATION
+    task: Task = Tasks.INSTANCE_SEGMENTATION
     parser: str = "YOLOExtendedParser"
 
     def __init__(
@@ -157,12 +157,12 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
             "prototypes": prototypes,
             "mask_coeficients": mask_coefficients,
             "boundingbox": [],
-            "instance_segmentation": [],
+            self.task.main_output: [],
         }
 
         for i, pred in enumerate(preds):
             height, width = self.original_in_shape[-2:]
-            results["instance_segmentation"].append(
+            results[self.task.main_output].append(
                 refine_and_apply_masks(
                     prototypes[i],
                     pred[:, 6:],
@@ -219,7 +219,9 @@ def refine_and_apply_masks(
         bounding boxes.
     """
     if predicted_masks.size(0) == 0 or bounding_boxes.size(0) == 0:
-        return torch.zeros(0, height, width, dtype=torch.uint8)
+        return torch.zeros(
+            0, height, width, dtype=torch.uint8, device=predicted_masks.device
+        )
 
     channels, proto_h, proto_w = mask_prototypes.shape
     masks_combined = (
