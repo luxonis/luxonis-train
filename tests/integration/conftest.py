@@ -153,7 +153,7 @@ def mnist_dataset() -> LuxonisDataset:
 
     def MNIST_subset_generator() -> DatasetIterator:
         for i, (image, label) in enumerate(mnist_torch):  # type: ignore
-            if i == 1000:
+            if i == 20:
                 break
             path = output_folder / f"mnist_{i}.png"
             image.save(path)
