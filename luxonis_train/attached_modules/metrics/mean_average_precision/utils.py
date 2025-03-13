@@ -3,6 +3,20 @@ from torch import Tensor
 from torchvision.ops import box_convert
 
 
+def add_f1_metrics(metric_dict: dict[str, Tensor]) -> dict[str, Tensor]:
+    """Add F1 metrics to the metric dictionary."""
+    for key in list(metric_dict.keys()):
+        if "map" in key:
+            map_metric = metric_dict[key]
+            mar_key = key.replace("map", "mar")
+            if mar_key in metric_dict:
+                mar_metric = metric_dict[mar_key]
+                metric_dict[key.replace("map", "f1")] = (
+                    2 * (map_metric * mar_metric) / (map_metric + mar_metric)
+                )
+    return metric_dict
+
+
 def compute_update_lists(
     boundinbox: list[Tensor],
     targets: Tensor,
