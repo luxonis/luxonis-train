@@ -5,6 +5,7 @@ from .mean_average_precision import MeanAveragePrecision
 from .object_keypoint_similarity import ObjectKeypointSimilarity
 from .ocr_accuracy import OCRAccuracy
 from .torchmetrics import Accuracy, F1Score, JaccardIndex, Precision, Recall
+from .utils import fix_empty_tensor, merge_bbox_kpt_targets
 
 __all__ = [
     "Accuracy",
@@ -13,6 +14,7 @@ __all__ = [
     "ConfusionMatrix",
     "F1Score",
     "JaccardIndex",
+    "fix_empty_tensor",
     "MeanAveragePrecision",
     "MedianDistances",
     "OCRAccuracy",
@@ -20,4 +22,5 @@ __all__ = [
     "Precision",
     "Recall",
     "MetricState",
+    "merge_bbox_kpt_targets",
 ]
