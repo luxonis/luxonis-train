@@ -4,7 +4,7 @@ from torchvision.ops import box_convert, box_iou
 from typing_extensions import override
 
 from luxonis_train.attached_modules.metrics import BaseMetric
-from luxonis_train.tasks import Metadata, Tasks
+from luxonis_train.tasks import Tasks
 
 
 class DetectionConfusionMatrix(BaseMetric):
@@ -23,25 +23,13 @@ class DetectionConfusionMatrix(BaseMetric):
             dist_reduce_fx="sum",
         )
 
-    @property
     @override
-    def required_labels(self) -> set[str | Metadata]:
-        return super().required_labels - {"keypoints"}
-
-    @override
-    def update(self, predictions: list[Tensor], targets: Tensor) -> None:
-        """Prepare data for classification, segmentation, and detection
-        tasks.
-
-        @type inputs: Packet[Tensor]
-        @param inputs: The inputs to the model.
-        @type labels: Labels
-        @param labels: The ground-truth labels.
-        @return: A tuple of two dictionaries: one for predictions and
-            one for targets.
-        """
-
-        targets[..., 2:6] = box_convert(targets[..., 2:6], "xywh", "xyxy")
+    def update(
+        self, boundingbox: list[Tensor], target_boundingbox: Tensor
+    ) -> None:
+        target_boundingbox[..., 2:6] = box_convert(
+            target_boundingbox[..., 2:6], "xywh", "xyxy"
+        )
         scale_factors = torch.tensor(
             [
                 self.original_in_shape[2],
@@ -49,12 +37,12 @@ class DetectionConfusionMatrix(BaseMetric):
                 self.original_in_shape[2],
                 self.original_in_shape[1],
             ],
-            device=targets.device,
+            device=self.device,
         )
-        targets[..., 2:6] *= scale_factors
+        target_boundingbox[..., 2:6] *= scale_factors
 
         self.confusion_matrix += self._compute_detection_confusion_matrix(
-            predictions, targets
+            boundingbox, target_boundingbox
         )
 
     @override
@@ -78,7 +66,7 @@ class DetectionConfusionMatrix(BaseMetric):
             self.n_classes + 1,
             self.n_classes + 1,
             dtype=torch.int64,
-            device=predictions[0].device,
+            device=self.device,
         )
 
         for i, pred in enumerate(predictions):
@@ -105,7 +93,7 @@ class DetectionConfusionMatrix(BaseMetric):
             if iou.any():
                 _, pred_max_idx = torch.max(iou, dim=1)
                 target_match_idx = torch.arange(
-                    len(target_boxes), device=target_boxes.device
+                    len(target_boxes), device=self.device
                 )
 
                 for target_idx, pred_idx in zip(
@@ -116,23 +104,21 @@ class DetectionConfusionMatrix(BaseMetric):
                     conf_matrix[pred_class, target_class] += 1
 
                 unmatched_gt_mask = ~torch.isin(
-                    torch.arange(
-                        len(target_boxes), device=target_boxes.device
-                    ),
+                    torch.arange(len(target_boxes), device=self.device),
                     target_match_idx,
                 )
                 for target_idx in torch.arange(
-                    len(target_boxes), device=target_boxes.device
+                    len(target_boxes), device=self.device
                 )[unmatched_gt_mask]:
                     target_class = target_classes[target_idx]
                     conf_matrix[self.n_classes, target_class] += 1
 
                 unmatched_pred_mask = ~torch.isin(
-                    torch.arange(len(pred_boxes), device=target_boxes.device),
+                    torch.arange(len(pred_boxes), device=self.device),
                     pred_max_idx,
                 )
                 for pred_idx in torch.arange(
-                    len(pred_boxes), device=target_boxes.device
+                    len(pred_boxes), device=self.device
                 )[unmatched_pred_mask]:
                     pred_class = pred_classes[pred_idx]
                     conf_matrix[pred_class, self.n_classes] += 1
