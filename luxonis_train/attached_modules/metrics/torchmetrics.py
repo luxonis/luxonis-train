@@ -93,14 +93,17 @@ class TorchMetricWrapper(BaseMetric):
 
         self.metric = self.Metric(**kwargs)
 
+    @override
     def update(self, predictions: Tensor, target: Tensor) -> None:
         if self._torchmetric_task in ["multiclass"]:
             target = target.argmax(dim=1)
         self.metric.update(predictions, target)
 
+    @override
     def compute(self) -> Tensor:
         return self.metric.compute()
 
+    @override
     def reset(self) -> None:
         self.metric.reset()
 

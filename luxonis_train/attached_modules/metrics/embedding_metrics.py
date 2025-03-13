@@ -3,6 +3,7 @@ from typing import Annotated
 
 import torch
 from torch import Tensor
+from typing_extensions import override
 
 from luxonis_train.nodes.heads.ghostfacenet_head import GhostFaceNetHead
 from luxonis_train.tasks import Tasks
@@ -31,6 +32,7 @@ class ClosestIsPositiveAccuracy(BaseMetric):
         super().__init__(**kwargs)
         self.cross_batch_memory_size = self.node.cross_batch_memory_size
 
+    @override
     def update(self, predictions: Tensor, target: Tensor) -> None:
         embeddings, labels = predictions, target
 
@@ -51,7 +53,7 @@ class ClosestIsPositiveAccuracy(BaseMetric):
             embeddings = torch.stack(embeddings)
             labels = torch.stack(labels)
 
-        pairwise_distances = _pairwise_distances(embeddings)
+        pairwise_distances = _get_pairwise_distances(embeddings)
         pairwise_distances.fill_diagonal_(math.inf)
 
         closest_indices = torch.argmin(pairwise_distances, dim=1)
@@ -75,6 +77,7 @@ class ClosestIsPositiveAccuracy(BaseMetric):
         self.correct += correct_predictions
         self.total += len(filtered_labels)
 
+    @override
     def compute(self) -> Tensor:
         return self.correct / self.total
 
@@ -103,6 +106,7 @@ class MedianDistances(BaseMetric):
         super().__init__(**kwargs)
         self.cross_batch_memory_size = self.node.cross_batch_memory_size
 
+    @override
     def update(self, embeddings: Tensor, target: Tensor) -> None:
         if self.cross_batch_memory_size is not None:
             self.cross_batch_memory.extend(
@@ -123,7 +127,7 @@ class MedianDistances(BaseMetric):
             embeddings = torch.stack(embeddings_list)
             target = torch.stack(target_list)
 
-        pairwise_distances = _pairwise_distances(embeddings)
+        pairwise_distances = _get_pairwise_distances(embeddings)
         self.all_distances.append(
             pairwise_distances[
                 torch.triu(torch.ones_like(pairwise_distances), diagonal=1)
@@ -153,6 +157,7 @@ class MedianDistances(BaseMetric):
             closest_positive_distances[non_inf_mask]
         )
 
+    @override
     def compute(self) -> dict[str, Tensor]:
         if len(self.all_distances) == 0:
             return {
@@ -181,7 +186,7 @@ class MedianDistances(BaseMetric):
         }
 
 
-def _pairwise_distances(embeddings: Tensor) -> Tensor:
+def _get_pairwise_distances(embeddings: Tensor) -> Tensor:
     """Compute the 2D matrix of distances between all the embeddings.
 
     @type embeddings: Tensor
@@ -202,7 +207,7 @@ def _pairwise_distances(embeddings: Tensor) -> Tensor:
     mask = (distances == 0.0).float()
     distances = distances + mask * 1e-16
 
-    return torch.sqrt(distances) * (1.0 - mask)
+    return distances.sqrt_() * (1.0 - mask)
 
 
 def _get_anchor_positive_triplet_mask(labels: Tensor) -> Tensor:

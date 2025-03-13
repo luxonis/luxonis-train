@@ -1,13 +1,14 @@
 import torch
 from torch import Tensor
-from torchmetrics import detection
-from torchvision.ops import box_convert
+from torchmetrics.detection import MeanAveragePrecision
 
 from luxonis_train.attached_modules.metrics import BaseMetric
 from luxonis_train.tasks import Tasks
 
+from .utils import compute_update_lists
 
-class MeanAveragePrecisionBBox(BaseMetric, register=False):
+
+class MeanAveragePrecisionBBox(BaseMetric):
     """Compute the Mean-Average-Precision (mAP) and Mean-Average-Recall
     (mAR) for object detection predictions and instance segmentation.
 
@@ -21,38 +22,14 @@ class MeanAveragePrecisionBBox(BaseMetric, register=False):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.metric = detection.MeanAveragePrecision(iou_type="bbox")
-
-    def compute_update_lists(
-        self, predictions: list[Tensor], targets: Tensor
-    ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
-        image_size = self.original_in_shape[1:]
-
-        output_list: list[dict[str, Tensor]] = []
-        label_list: list[dict[str, Tensor]] = []
-        for i in range(len(predictions)):
-            pred = {
-                "boxes": predictions[i][:, :4],
-                "scores": predictions[i][:, 4],
-                "labels": predictions[i][:, 5].int(),
-            }
-            output_list.append(pred)
-
-            curr_label = targets[targets[:, 0] == i]
-            curr_bboxs = box_convert(curr_label[:, 2:], "xywh", "xyxy")
-            curr_bboxs[:, 0::2] *= image_size[1]
-            curr_bboxs[:, 1::2] *= image_size[0]
-
-            gt = {
-                "boxes": curr_bboxs,
-                "labels": curr_label[:, 1].int(),
-            }
-            label_list.append(gt)
-
-        return output_list, label_list
+        self.metric = MeanAveragePrecision(iou_type="bbox")
 
     def update(self, predictions: list[Tensor], targets: Tensor) -> None:
-        self.metric.update(*self.compute_update_lists(predictions, targets))
+        self.metric.update(
+            *compute_update_lists(
+                predictions, targets, *self.original_in_shape[1:]
+            )
+        )
 
     def reset(self) -> None:
         self.metric.reset()

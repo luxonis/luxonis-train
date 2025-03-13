@@ -15,7 +15,7 @@ from luxonis_train.utils import get_sigmas, get_with_default
 from luxonis_train.utils.keypoints import insert_class
 
 
-class MeanAveragePrecisionKeypoints(BaseMetric, register=False):
+class MeanAveragePrecisionKeypoints(BaseMetric):
     """Mean Average Precision metric for keypoints.
 
     Uses C{OKS} as IoU measure.

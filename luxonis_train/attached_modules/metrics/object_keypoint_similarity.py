@@ -15,17 +15,11 @@ from .base_metric import BaseMetric, State
 
 
 class ObjectKeypointSimilarity(BaseMetric):
-    is_differentiable: bool = False
-    higher_is_better: bool = True
-    full_state_update: bool = True
-    plot_lower_bound: float = 0.0
-    plot_upper_bound: float = 1.0
+    supported_tasks = [Tasks.KEYPOINTS, Tasks.INSTANCE_KEYPOINTS, Tasks.FOMO]
 
     pred_keypoints: Annotated[list[Tensor], State(default=[])]
-    groundtruth_keypoints: Annotated[list[Tensor], State(default=[])]
-    groundtruth_scales: Annotated[list[Tensor], State(default=[])]
-
-    supported_tasks = [Tasks.KEYPOINTS, Tasks.INSTANCE_KEYPOINTS, Tasks.FOMO]
+    target_keypoints: Annotated[list[Tensor], State(default=[])]
+    target_scales: Annotated[list[Tensor], State(default=[])]
 
     def __init__(
         self,
@@ -66,6 +60,7 @@ class ObjectKeypointSimilarity(BaseMetric):
             return Tasks.BOUNDINGBOX.required_labels
         return self.task.required_labels
 
+    @override
     def update(
         self,
         keypoints: list[Tensor],
@@ -79,86 +74,70 @@ class ObjectKeypointSimilarity(BaseMetric):
                     " with FOMO task."
                 )
             target_keypoints = get_center_keypoints(target_boundingbox)
-        target_keypoints = insert_class(target_keypoints, target_boundingbox)
-        n_keypoints = (target_keypoints.shape[1] - 2) // 3
-        label = torch.zeros((len(target_boundingbox), n_keypoints * 3 + 6))
-        label[:, :2] = target_boundingbox[:, :2]
-        label[:, 2:6] = box_convert(target_boundingbox[:, 2:], "xywh", "xyxy")
-        label[:, 6::3] = target_keypoints[:, 2::3]  # insert kp x coordinates
-        label[:, 7::3] = target_keypoints[:, 3::3]  # insert kp y coordinates
-        label[:, 8::3] = target_keypoints[:, 4::3]  # insert kp visibility
 
-        prediction_oks = []
-        target_oks = []
-        image_size = self.original_in_shape[1:]
+        target_keypoints = insert_class(target_keypoints, target_boundingbox)
+        targets = self._construct_targets(target_boundingbox, target_keypoints)
+
+        h, w = self.original_in_shape[1:]
 
         for i, pred_kpt in enumerate(keypoints):
-            prediction_oks.append({"keypoints": pred_kpt})
+            target = targets[targets[:, 0] == i].to(pred_kpt.device)
 
-            curr_label = label[label[:, 0] == i].to(pred_kpt.device)
-            curr_bboxs = curr_label[:, 2:6]
-            curr_bboxs[:, 0::2] = (
-                (curr_bboxs[:, 0::2] * image_size[1]).round().int()
-            )
-            curr_bboxs[:, 1::2] = (
-                (curr_bboxs[:, 1::2] * image_size[0]).round().int()
-            )
-            curr_kpts = curr_label[:, 6:]
-            curr_kpts[:, 0::3] = (
-                (curr_kpts[:, 0::3] * image_size[1]).round().int()
-            )
-            curr_kpts[:, 1::3] = (
-                (curr_kpts[:, 1::3] * image_size[0]).round().int()
-            )
-            curr_bboxs_widths = curr_bboxs[:, 2] - curr_bboxs[:, 0]
-            curr_bboxs_heights = curr_bboxs[:, 3] - curr_bboxs[:, 1]
-            curr_scales = (
-                curr_bboxs_widths * curr_bboxs_heights * self.area_factor
-            )
-            target_oks.append({"keypoints": curr_kpts, "scales": curr_scales})
+            self.pred_keypoints.append(self._fix_empty_tensors(pred_kpt))
 
-        for item in prediction_oks:
-            self.pred_keypoints.append(
-                self._fix_empty_tensors(item["keypoints"])
+            kpts = target[:, 6:]
+            kpts[:, 0::3] *= w
+            kpts[:, 1::3] *= h
+
+            self.target_keypoints.append(
+                self._fix_empty_tensors(kpts.round().int())
             )
 
-        for item in target_oks:
-            self.groundtruth_keypoints.append(
-                self._fix_empty_tensors(item["keypoints"])
-            )
-            self.groundtruth_scales.append(item["scales"])
+            bbox = target[:, 2:6]
+            bbox[:, 0::2] *= w
+            bbox[:, 1::2] *= h
 
+            bbox_widths = bbox[:, 2] - bbox[:, 0]
+            bbox_heights = bbox[:, 3] - bbox[:, 1]
+            bbox_scales = bbox_widths * bbox_heights * self.area_factor
+
+            self.target_scales.append(bbox_scales.round().int())
+
+    @override
     def compute(self) -> Tensor:
         """Computes the OKS metric based on the inner state."""
 
         self.sigmas = self.sigmas.to(self.device)
-        image_mean_oks = torch.zeros(len(self.groundtruth_keypoints))
-        for i, (pred_kpts, gt_kpts, gt_scales) in enumerate(
+        image_mean_oks = torch.zeros(len(self.target_keypoints))
+        for i, (pred_keypoints, target_keypoints, target_scales) in enumerate(
             zip(
                 self.pred_keypoints,
-                self.groundtruth_keypoints,
-                self.groundtruth_scales,
+                self.target_keypoints,
+                self.target_scales,
                 strict=True,
             )
         ):
-            gt_kpts = torch.reshape(
-                gt_kpts, (-1, self.n_keypoints, 3)
-            )  # [N, K, 3]
+            target_keypoints = target_keypoints.reshape(
+                -1, self.n_keypoints, 3
+            )
 
             image_ious = compute_pose_oks(
-                pred_kpts.unsqueeze(0),
-                gt_kpts.unsqueeze(0),
+                pred_keypoints.unsqueeze(0),
+                target_keypoints.unsqueeze(0),
                 self.sigmas,
                 use_cocoeval_oks=self.use_cocoeval_oks,
-                pose_area=gt_scales.unsqueeze(0).unsqueeze(-1).unsqueeze(-1),
+                pose_area=target_scales.unsqueeze(0)
+                .unsqueeze(-1)
+                .unsqueeze(-1),
                 gt_bboxes=None,
             ).squeeze(0)  # [N, M]
-            gt_indices, pred_indices = linear_sum_assignment(
+
+            target_indices, pred_indices = linear_sum_assignment(
                 image_ious.cpu().numpy(), maximize=True
             )
             matched_ious = [
                 image_ious[n, m]
-                for n, m in zip(gt_indices, pred_indices, strict=True)
+                for n, m in zip(target_indices, pred_indices, strict=True)
             ]
             image_mean_oks[i] = torch.tensor(matched_ious).mean()
 
@@ -171,3 +150,17 @@ class ObjectKeypointSimilarity(BaseMetric):
         if input_tensor.numel() == 0 and input_tensor.ndim == 1:
             return input_tensor.unsqueeze(0)
         return input_tensor
+
+    @staticmethod
+    def _construct_targets(
+        target_boundingbox: Tensor, target_keypoints: Tensor
+    ) -> Tensor:
+        n_keypoints = (target_keypoints.shape[1] - 2) // 3
+
+        target = torch.zeros((len(target_boundingbox), n_keypoints * 3 + 6))
+        target[:, :2] = target_boundingbox[:, :2]
+        target[:, 2:6] = box_convert(target_boundingbox[:, 2:], "xywh", "xyxy")
+        target[:, 6::3] = target_keypoints[:, 2::3]  # insert x coordinates
+        target[:, 7::3] = target_keypoints[:, 3::3]  # insert y coordinates
+        target[:, 8::3] = target_keypoints[:, 4::3]  # insert visibility
+        return target

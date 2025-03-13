@@ -4,19 +4,19 @@ from torchvision.ops import box_convert, box_iou
 from typing_extensions import override
 
 from luxonis_train.attached_modules.metrics import BaseMetric
-from luxonis_train.tasks import Metadata, Task, Tasks
+from luxonis_train.tasks import Metadata, Tasks
 
 
-class DetectionConfusionMatrix(BaseMetric, register=False):
+class DetectionConfusionMatrix(BaseMetric):
     supported_tasks = [Tasks.BOUNDINGBOX, Tasks.INSTANCE_KEYPOINTS]
 
-    detection_cm: Tensor
+    confusion_matrix: Tensor
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
         self.add_state(
-            "detection_cm",
+            "confusion_matrix",
             # +1 for background
             default=torch.zeros(
                 self.n_classes + 1, self.n_classes + 1, dtype=torch.int64
@@ -26,17 +26,11 @@ class DetectionConfusionMatrix(BaseMetric, register=False):
 
     @property
     @override
-    def task(self) -> Task:
-        # We don't care about the predicted keypoints
-        return Tasks.BOUNDINGBOX
-
-    @property
-    @override
     def required_labels(self) -> set[str | Metadata]:
         return super().required_labels - {"keypoints"}
 
     @override
-    def update(self, predictions: list[Tensor], target: Tensor) -> None:
+    def update(self, predictions: list[Tensor], targets: Tensor) -> None:
         """Prepare data for classification, segmentation, and detection
         tasks.
 
@@ -48,7 +42,7 @@ class DetectionConfusionMatrix(BaseMetric, register=False):
             one for targets.
         """
 
-        target[..., 2:6] = box_convert(target[..., 2:6], "xywh", "xyxy")
+        targets[..., 2:6] = box_convert(targets[..., 2:6], "xywh", "xyxy")
         scale_factors = torch.tensor(
             [
                 self.original_in_shape[2],
@@ -56,17 +50,17 @@ class DetectionConfusionMatrix(BaseMetric, register=False):
                 self.original_in_shape[2],
                 self.original_in_shape[1],
             ],
-            device=target.device,
+            device=targets.device,
         )
-        target[..., 2:6] *= scale_factors
+        targets[..., 2:6] *= scale_factors
 
-        self.detection_cm += self._compute_detection_confusion_matrix(
-            predictions, target
+        self.confusion_matrix += self._compute_detection_confusion_matrix(
+            predictions, targets
         )
 
     @override
     def compute(self) -> dict[str, Tensor]:
-        return {"detection_confusion_matrix": self.detection_cm}
+        return {"detection_confusion_matrix": self.confusion_matrix}
 
     def _compute_detection_confusion_matrix(
         self, predictions: list[Tensor], targets: Tensor
