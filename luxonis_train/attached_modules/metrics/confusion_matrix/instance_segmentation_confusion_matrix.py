@@ -8,7 +8,7 @@ from .detection_confusion_matrix import DetectionConfusionMatrix
 from .recognition_confusion_matrix import RecognitionConfusionMatrix
 
 
-class InstanceConfusionMatrix(
+class InstanceSegmentationConfusionMatrix(
     RecognitionConfusionMatrix, DetectionConfusionMatrix
 ):
     supported_tasks = [Tasks.INSTANCE_SEGMENTATION]

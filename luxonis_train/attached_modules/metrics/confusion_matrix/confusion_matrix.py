@@ -3,7 +3,7 @@ from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.tasks import Tasks
 
 from .detection_confusion_matrix import DetectionConfusionMatrix
-from .instance_segmentation_confusion_matrix import InstanceConfusionMatrix
+from .instance_segmentation_confusion_matrix import InstanceSegmentationConfusionMatrix
 from .recognition_confusion_matrix import RecognitionConfusionMatrix
 
 
@@ -19,7 +19,7 @@ class ConfusionMatrix(BaseMetric):
             case Tasks.BOUNDINGBOX | Tasks.INSTANCE_KEYPOINTS:
                 return DetectionConfusionMatrix(node=node, **kwargs)
             case Tasks.INSTANCE_SEGMENTATION:
-                return InstanceConfusionMatrix(node=node, **kwargs)
+                return InstanceSegmentationConfusionMatrix(node=node, **kwargs)
             case _:
                 raise ValueError(
                     f"ConfusionMatrix does not support task {node.task}."
