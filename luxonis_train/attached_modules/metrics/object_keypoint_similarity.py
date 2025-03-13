@@ -11,15 +11,15 @@ from luxonis_train.tasks import Metadata, Tasks
 from luxonis_train.utils import compute_pose_oks, get_sigmas, get_with_default
 from luxonis_train.utils.keypoints import get_center_keypoints, insert_class
 
-from .base_metric import BaseMetric, State
+from .base_metric import BaseMetric, MetricState
 
 
 class ObjectKeypointSimilarity(BaseMetric):
     supported_tasks = [Tasks.KEYPOINTS, Tasks.INSTANCE_KEYPOINTS, Tasks.FOMO]
 
-    pred_keypoints: Annotated[list[Tensor], State(default=[])]
-    target_keypoints: Annotated[list[Tensor], State(default=[])]
-    target_scales: Annotated[list[Tensor], State(default=[])]
+    pred_keypoints: Annotated[list[Tensor], MetricState(default=[])]
+    target_keypoints: Annotated[list[Tensor], MetricState(default=[])]
+    target_scales: Annotated[list[Tensor], MetricState(default=[])]
 
     def __init__(
         self,
