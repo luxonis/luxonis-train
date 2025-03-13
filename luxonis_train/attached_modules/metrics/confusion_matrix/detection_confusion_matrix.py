@@ -17,7 +17,6 @@ class DetectionConfusionMatrix(BaseMetric):
 
         self.add_state(
             "confusion_matrix",
-            # +1 for background
             default=torch.zeros(
                 self.n_classes + 1, self.n_classes + 1, dtype=torch.int64
             ),
@@ -60,7 +59,7 @@ class DetectionConfusionMatrix(BaseMetric):
 
     @override
     def compute(self) -> dict[str, Tensor]:
-        return {"detection_confusion_matrix": self.confusion_matrix}
+        return {f"{self.task.name}_confusion_matrix": self.confusion_matrix}
 
     def _compute_detection_confusion_matrix(
         self, predictions: list[Tensor], targets: Tensor
