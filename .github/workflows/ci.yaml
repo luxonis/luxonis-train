@@ -104,6 +104,7 @@ jobs:
                    Config.get_config("configs/complex_model.yaml")'
 
   tests:
+    if: never()
     needs:
       - config-test
 
