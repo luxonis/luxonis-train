@@ -43,16 +43,14 @@ class OCRAccuracy(BaseMetric):
         @param targets: A tensor containing the target labels.
         """
 
-        target = self.node.encoder(target).to(predictions.device)
+        target = self.node.encoder(target)
 
         batch_size, text_length, _ = predictions.shape
 
         pred_classes = predictions.argmax(dim=-1)
 
         predictions = torch.zeros(
-            (batch_size, text_length),
-            dtype=torch.int64,
-            device=predictions.device,
+            (batch_size, text_length), dtype=torch.int64, device=self.device
         )
         for i in range(batch_size):
             unique_cons_classes = torch.unique_consecutive(pred_classes[i])

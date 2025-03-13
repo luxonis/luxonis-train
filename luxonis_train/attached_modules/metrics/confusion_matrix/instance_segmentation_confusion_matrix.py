@@ -51,7 +51,7 @@ class InstanceSegmentationConfusionMatrix(
             self.n_classes,
             *self.original_in_shape[1:],
             dtype=torch.bool,
-            device=instance_segmentation[0].device,
+            device=self.device,
         )
         for i, (bboxes, segs) in enumerate(
             zip(boundingbox, instance_segmentation, strict=True)
@@ -73,7 +73,7 @@ class InstanceSegmentationConfusionMatrix(
             self.n_classes,
             *self.original_in_shape[1:],
             dtype=torch.bool,
-            device=target_instance_segmentation.device,
+            device=self.device,
         )
         for bboxes, segs in zip(
             target_boundingbox, target_instance_segmentation, strict=True
