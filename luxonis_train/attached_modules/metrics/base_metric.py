@@ -4,7 +4,13 @@ from dataclasses import dataclass
 from functools import cached_property
 from inspect import Parameter
 from types import EllipsisType
-from typing import Annotated, Literal, get_args, get_origin, get_type_hints
+from typing import (
+    Annotated,
+    Literal,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 
 import torch
 from torch import Tensor
@@ -98,6 +104,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
             if get_origin(attr_type) is Annotated:
                 type_args = get_args(attr_type)
                 main_type = type_args[0]
+
                 state = next(
                     (arg for arg in type_args if isinstance(arg, MetricState)),
                     None,
@@ -107,7 +114,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
                     if default is None:
                         if main_type is Tensor:
                             default = 0
-                        elif main_type is list:
+                        elif getattr(main_type, "__origin__", None) is list:
                             default = []
                         else:
                             raise ValueError(
