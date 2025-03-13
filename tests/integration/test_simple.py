@@ -308,22 +308,50 @@ def test_freezing(opts: dict[str, Any], coco_dataset: LuxonisDataset):
     model.train()
 
 
-def test_smart_cfg_auto_populate(
-    opts: dict[str, Any], parking_lot_dataset: LuxonisDataset
-):
-    config_file = "tests/configs/smart_cfg_populate_config.yaml"
-    opts = {
-        "loader.params.dataset_name": parking_lot_dataset.dataset_name,
+def test_smart_cfg_auto_populate(coco_dataset: LuxonisDataset):
+    base_opts = {
+        "loader.params.dataset_name": coco_dataset.dataset_name,
+        "model.predefined_model.params.loss_params": {
+            "iou_loss_weight": 14,
+            "class_loss_weight": 1,
+        },
     }
+
+    config_path = "tests/configs/smart_cfg_populate_config.yaml"
+    model = LuxonisModel(config_path, base_opts)
+
+    scheduler_params = model.cfg.trainer.scheduler.params
+    assert scheduler_params["T_max"] == model.cfg.trainer.epochs
+
+    augmentations = model.cfg.trainer.preprocessing.augmentations[0].params
+    img_width, img_height = model.cfg.trainer.preprocessing.train_image_size
+    assert augmentations["out_width"] == img_width
+    assert augmentations["out_height"] == img_height
+
+    batch_size = model.cfg.trainer.batch_size
+    grad_accumulation = 64 // batch_size
+
+    loss_params = model.cfg.model.predefined_model.params["loss_params"]
+    expected_iou_weight = 2.5 * grad_accumulation
+    expected_class_weight = 1.0 * grad_accumulation
+
+    assert loss_params["iou_loss_weight"] == expected_iou_weight
+    assert loss_params["class_loss_weight"] == expected_class_weight
+
+
+def test_weight_loading(coco_dataset: LuxonisDataset):
+    config_file = "tests/configs/ddrnet.yaml"
+    opts = {
+        "loader.params.dataset_name": coco_dataset.dataset_name,
+        "trainer.epochs": 1,
+        "trainer.n_validation_batches": 1,
+        "trainer.batch_size": 1,
+        "loader.train_view": "val",
+        "loader.val_view": "val",
+        "loader.test_view": "val",
+    }
+
     model = LuxonisModel(config_file, opts)
-    assert (
-        model.cfg.trainer.scheduler.params["T_max"] == model.cfg.trainer.epochs  # type: ignore
-    )
-    assert (
-        model.cfg.trainer.preprocessing.augmentations[0].params["out_width"]
-        == model.cfg.trainer.preprocessing.train_image_size[0]
-    )
-    assert (
-        model.cfg.trainer.preprocessing.augmentations[0].params["out_height"]
-        == model.cfg.trainer.preprocessing.train_image_size[1]
-    )
+    model.train()
+    weights = model.get_min_loss_checkpoint_path()
+    model.test(weights=weights)

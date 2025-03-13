@@ -7,18 +7,19 @@ model:
       alias: "segmentation_head"
       params:
         attach_index: -1
+      losses:
+        - name: CrossEntropyLoss
+      metrics:
+        - name: JaccardIndex
     - name: DDRNetSegmentationHead
       inputs: ["DDRNet"]
       alias: "aux_segmentation_head"
       params:
         attach_index: -2
       remove_on_export: true
+      losses:
+        - name: CrossEntropyLoss
 
-  losses:
-    - attached_to: segmentation_head
-      name: CrossEntropyLoss
-    - attached_to: aux_segmentation_head
-      name: CrossEntropyLoss
 trainer:
   preprocessing:
     train_image_size:
