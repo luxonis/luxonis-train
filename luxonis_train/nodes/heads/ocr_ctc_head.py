@@ -67,21 +67,19 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
                 self._construct_fc(mid_channels, self.out_channels),
             )
 
-        self._export_output_names = ["output_ocr_ctc"]
-
-    def forward(self, x: Tensor) -> Tensor | tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> Tensor:
         x = x.squeeze(2).permute(0, 2, 1)
         predictions = self.block(x)
 
-        if self.return_feats:
-            result = (x, predictions)
-        else:
-            result = predictions
-
         if self.export:
-            return F.softmax(predictions, dim=-1)
+            predictions = F.softmax(predictions, dim=-1)
 
-        return result
+        return predictions
+
+    @property
+    @override
+    def export_output_names(self) -> list[str]:
+        return ["output_ocr_ctc"]
 
     @override
     def get_custom_head_config(self) -> dict:
