@@ -5,6 +5,7 @@ from typing_extensions import override
 
 from luxonis_train.attached_modules.metrics import BaseMetric
 from luxonis_train.tasks import Tasks
+from luxonis_train.utils.general import instance_generator
 
 
 class DetectionConfusionMatrix(BaseMetric):
@@ -27,105 +28,66 @@ class DetectionConfusionMatrix(BaseMetric):
     def update(
         self, boundingbox: list[Tensor], target_boundingbox: Tensor
     ) -> None:
-        target_boundingbox[..., 2:6] = box_convert(
-            target_boundingbox[..., 2:6], "xywh", "xyxy"
+        target_boundingbox[:, 2:6] = box_convert(
+            target_boundingbox[:, 2:6], "xywh", "xyxy"
         )
-        scale_factors = torch.tensor(
-            [
-                self.original_in_shape[2],
-                self.original_in_shape[1],
-                self.original_in_shape[2],
-                self.original_in_shape[1],
-            ],
-            device=self.device,
-        )
-        target_boundingbox[..., 2:6] *= scale_factors
+        target_boundingbox[:, [2, 4]] *= self.original_in_shape[2]
+        target_boundingbox[:, [3, 5]] *= self.original_in_shape[1]
 
-        self.confusion_matrix += self._compute_detection_confusion_matrix(
-            boundingbox, target_boundingbox
-        )
+        self._update(boundingbox, target_boundingbox)
 
     @override
     def compute(self) -> dict[str, Tensor]:
         return {f"{self.task.name}_confusion_matrix": self.confusion_matrix}
 
-    def _compute_detection_confusion_matrix(
-        self, predictions: list[Tensor], targets: Tensor
-    ) -> Tensor:
-        """Compute a confusion matrix for object detection tasks.
-
-        @type predictions: list[Tensor]
-        @param predictions: List of predictions for each image. Each
-            tensor has shape [N, 6] where 6 is for [x1, y1, x2, y2,
-            score, class]
-        @type targets: Tensor
-        @param targets: Ground truth boxes and classes. Shape [M, 6]
-            where first column is image index.
-        """
-        conf_matrix = torch.zeros(
-            self.n_classes + 1,
-            self.n_classes + 1,
-            dtype=torch.int64,
-            device=self.device,
-        )
-
-        for i, pred in enumerate(predictions):
-            target = targets[targets[:, 0] == i]
-
-            if target.numel() == 0:
-                for pred_class in pred[:, 5].int():
-                    conf_matrix[pred_class, self.n_classes] += 1
-                continue
-
-            if pred.numel() == 0:
-                for target_class in target[:, 1].int():
-                    conf_matrix[self.n_classes, target_class] += 1
-                continue
-
-            pred_boxes = pred[:, :4]
+    def _update(self, predictions: list[Tensor], targets: Tensor) -> None:
+        for pred, target in zip(
+            predictions, instance_generator(targets), strict=True
+        ):
             pred_classes = pred[:, 5].int()
+            target_classes = target[:, 0].int()
 
-            target_boxes = target[:, 2:]
-            target_classes = target[:, 1].int()
+            # True Negatives
+            if target.numel() == 0 and pred.numel() == 0:
+                self.confusion_matrix[self.n_classes, self.n_classes] += 1
 
-            iou = box_iou(target_boxes, pred_boxes)
+            # False Positives
+            elif target.numel() == 0:
+                self.confusion_matrix[pred_classes, self.n_classes] += 1
 
-            if iou.any():
-                _, pred_max_idx = torch.max(iou, dim=1)
-                target_match_idx = torch.arange(
-                    len(target_boxes), device=self.device
-                )
+            # False Negatives
+            elif pred.numel() == 0:
+                self.confusion_matrix[self.n_classes, target_classes] += 1
 
-                for target_idx, pred_idx in zip(
-                    target_match_idx, pred_max_idx, strict=True
-                ):
-                    target_class = target_classes[target_idx]
-                    pred_class = pred_classes[pred_idx]
-                    conf_matrix[pred_class, target_class] += 1
-
-                unmatched_gt_mask = ~torch.isin(
-                    torch.arange(len(target_boxes), device=self.device),
-                    target_match_idx,
-                )
-                for target_idx in torch.arange(
-                    len(target_boxes), device=self.device
-                )[unmatched_gt_mask]:
-                    target_class = target_classes[target_idx]
-                    conf_matrix[self.n_classes, target_class] += 1
-
-                unmatched_pred_mask = ~torch.isin(
-                    torch.arange(len(pred_boxes), device=self.device),
-                    pred_max_idx,
-                )
-                for pred_idx in torch.arange(
-                    len(pred_boxes), device=self.device
-                )[unmatched_pred_mask]:
-                    pred_class = pred_classes[pred_idx]
-                    conf_matrix[pred_class, self.n_classes] += 1
             else:
-                for target_class in target_classes:
-                    conf_matrix[self.n_classes, target_class] += 1
-                for pred_class in pred_classes:
-                    conf_matrix[pred_class, self.n_classes] += 1
+                matched = box_iou(target[:, 1:], pred[:, :4]).argmax(dim=1)
 
-        return conf_matrix
+                # True Positives
+                self.confusion_matrix.index_put_(
+                    [pred_classes[matched], target_classes],
+                    torch.ones_like(matched),
+                    accumulate=True,
+                )
+
+                # False Positives
+                self.confusion_matrix[
+                    self._not_matched(pred_classes, pred, matched),
+                    self.n_classes,
+                ] += 1
+
+                # False Negatives
+                self.confusion_matrix[
+                    self.n_classes,
+                    self._not_matched(target_classes, target, matched),
+                ] += 1
+
+    def _not_matched(
+        self, classes: Tensor, tensor: Tensor, indices: Tensor
+    ) -> Tensor:
+        return classes[
+            torch.isin(
+                torch.arange(len(tensor), device=self.device),
+                indices,
+                invert=True,
+            )
+        ]
