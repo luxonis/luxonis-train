@@ -22,12 +22,12 @@ def postprocess_metrics(
 def add_f1_metrics(metrics: dict[str, Tensor]) -> dict[str, Tensor]:
     for key in list(metrics.keys()):
         if "map" in key:
-            map_metric = metrics[key]
+            map = metrics[key]
             mar_key = key.replace("map", "mar")
             if mar_key in metrics:
-                mar_metric = metrics[mar_key]
+                mar = metrics[mar_key]
                 metrics[key.replace("map", "f1")] = (
-                    2 * (map_metric * mar_metric) / (map_metric + mar_metric)
+                    2 * (map * mar) / (map + mar)
                 )
     return metrics
 
@@ -49,44 +49,45 @@ def process_class_metrics(
     return metrics
 
 
-def compute_update_lists(
+def compute_metric_lists(
     boundinbox: list[Tensor],
-    targets: Tensor,
+    target_boundingbox: Tensor,
     height: int,
     width: int,
     *,
-    keypoints: list[Tensor] | None = None,
-    n_keypoints: int | None = None,
+    masks: list[Tensor] | None = None,
+    target_masks: Tensor | None = None,
 ) -> tuple[list[dict[str, Tensor]], list[dict[str, Tensor]]]:
-    if any_not_none([keypoints, n_keypoints]) and not all_not_none(
-        [keypoints, n_keypoints]
+    if any_not_none([masks, target_masks]) and not all_not_none(
+        [masks, target_masks]
     ):
         raise ValueError(
-            "Either both `keypoints` and `n_keypoints` "
+            "Either both `masks` and `target_masks` "
             "must be provided, or neither."
         )
-    output_list: list[dict[str, Tensor]] = []
-    label_list: list[dict[str, Tensor]] = []
+    predictions: list[dict[str, Tensor]] = []
+    targets: list[dict[str, Tensor]] = []
     for i in range(len(boundinbox)):
         pred = {
             "boxes": boundinbox[i][:, :4],
             "scores": boundinbox[i][:, 4],
             "labels": boundinbox[i][:, 5].int(),
         }
-        if keypoints is not None and n_keypoints is not None:
-            pred["keypoints"] = keypoints[i].reshape(-1, n_keypoints * 3)
 
-        output_list.append(pred)
+        bboxes_target = target_boundingbox[target_boundingbox[:, 0] == i]
+        bboxes = box_convert(bboxes_target[:, 2:6], "xywh", "xyxy")
+        bboxes[:, 0::2] *= width
+        bboxes[:, 1::2] *= height
 
-        target = targets[targets[:, 0] == i]
-        bboxs = box_convert(target[:, 2:6], "xywh", "xyxy")
-        bboxs[:, 0::2] *= width
-        bboxs[:, 1::2] *= height
+        target = {"boxes": bboxes, "labels": bboxes_target[:, 1].int()}
 
-        gt = {
-            "boxes": bboxs,
-            "labels": target[:, 1].int(),
-        }
-        label_list.append(gt)
+        if masks is not None and target_masks is not None:
+            pred["masks"] = masks[i].bool()
+            target["masks"] = target_masks[
+                target_boundingbox[:, 0] == i
+            ].bool()
 
-    return output_list, label_list
+        targets.append(target)
+        predictions.append(pred)
+
+    return predictions, targets

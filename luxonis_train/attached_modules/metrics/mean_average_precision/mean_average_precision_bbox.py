@@ -5,18 +5,10 @@ from typing_extensions import override
 from luxonis_train.attached_modules.metrics import BaseMetric
 from luxonis_train.tasks import Tasks
 
-from .utils import compute_update_lists, postprocess_metrics
+from .utils import compute_metric_lists, postprocess_metrics
 
 
 class MeanAveragePrecisionBBox(MeanAveragePrecision, BaseMetric):
-    """Compute the Mean-Average-Precision (mAP) and Mean-Average-Recall
-    (mAR) for object detection predictions and instance segmentation.
-
-    Adapted from U{Mean-Average-Precision (mAP) and Mean-Average-Recall
-    (mAR)
-    <https://lightning.ai/docs/torchmetrics/stable/detection/mean_average_precision.html>}.
-    """
-
     supported_tasks = [Tasks.BOUNDINGBOX]
 
     def __init__(self, **kwargs):
@@ -25,7 +17,7 @@ class MeanAveragePrecisionBBox(MeanAveragePrecision, BaseMetric):
     @override
     def update(self, predictions: list[Tensor], targets: Tensor) -> None:
         super().update(
-            *compute_update_lists(
+            *compute_metric_lists(
                 predictions, targets, *self.original_in_shape[1:]
             )
         )

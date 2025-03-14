@@ -10,6 +10,11 @@ from .mean_average_precision_segmentation import (
 
 
 class MeanAveragePrecision(BaseMetric):
+    """Factory class for Mean Average Precision (mAP) metrics.
+
+    Creates the appropriate mAP metric based on the task of the node.
+    """
+
     def __new__(cls, node: BaseNode, **kwargs) -> BaseMetric:
         match node.task:
             case None:

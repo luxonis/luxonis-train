@@ -5,7 +5,7 @@ from typing_extensions import override
 from luxonis_train.attached_modules.metrics import BaseMetric
 from luxonis_train.tasks import Tasks
 
-from .utils import compute_update_lists, postprocess_metrics
+from .utils import compute_metric_lists, postprocess_metrics
 
 
 class MeanAveragePrecisionSegmentation(MeanAveragePrecision, BaseMetric):
@@ -22,17 +22,15 @@ class MeanAveragePrecisionSegmentation(MeanAveragePrecision, BaseMetric):
         target_boundingbox: Tensor,
         target_instance_segmentation: Tensor,
     ) -> None:
-        output_list, label_list = compute_update_lists(
-            boundingbox, target_boundingbox, *self.original_in_shape[1:]
+        super().update(
+            *compute_metric_lists(
+                boundingbox,
+                target_boundingbox,
+                *self.original_in_shape[1:],
+                masks=instance_segmentation,
+                target_masks=target_instance_segmentation,
+            )
         )
-
-        for i in range(len(instance_segmentation)):
-            output_list[i]["masks"] = instance_segmentation[i].bool()
-            label_list[i]["masks"] = target_instance_segmentation[
-                target_boundingbox[:, 0] == i
-            ].bool()
-
-        super().update(output_list, label_list)
 
     @override
     def compute(self) -> tuple[Tensor, dict[str, Tensor]]:
