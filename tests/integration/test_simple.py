@@ -320,6 +320,7 @@ def test_smart_cfg_auto_populate(coco_dataset: LuxonisDataset):
     config_path = "tests/configs/smart_cfg_populate_config.yaml"
     model = LuxonisModel(config_path, base_opts)
 
+    assert model.cfg.trainer.scheduler is not None
     scheduler_params = model.cfg.trainer.scheduler.params
     assert scheduler_params["T_max"] == model.cfg.trainer.epochs
 
@@ -331,6 +332,7 @@ def test_smart_cfg_auto_populate(coco_dataset: LuxonisDataset):
     batch_size = model.cfg.trainer.batch_size
     grad_accumulation = 64 // batch_size
 
+    assert model.cfg.model.predefined_model is not None
     loss_params = model.cfg.model.predefined_model.params["loss_params"]
     expected_iou_weight = 2.5 * grad_accumulation
     expected_class_weight = 1.0 * grad_accumulation
@@ -343,6 +345,7 @@ def test_weight_loading(coco_dataset: LuxonisDataset):
     config_file = "tests/configs/ddrnet.yaml"
     opts = {
         "loader.params.dataset_name": coco_dataset.dataset_name,
+        "trainer.deterministic": False,
         "trainer.epochs": 1,
         "trainer.n_validation_batches": 1,
         "trainer.batch_size": 1,
