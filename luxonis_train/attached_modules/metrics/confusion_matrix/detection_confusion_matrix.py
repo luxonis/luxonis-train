@@ -28,8 +28,8 @@ class DetectionConfusionMatrix(BaseMetric):
     def update(
         self, boundingbox: list[Tensor], target_boundingbox: Tensor
     ) -> None:
-        target_boundingbox[:, 2:6] = box_convert(
-            target_boundingbox[:, 2:6], "xywh", "xyxy"
+        target_boundingbox[:, 2:] = box_convert(
+            target_boundingbox[:, 2:], "xywh", "xyxy"
         )
         target_boundingbox[:, [2, 4]] *= self.original_in_shape[2]
         target_boundingbox[:, [3, 5]] *= self.original_in_shape[1]
@@ -37,8 +37,8 @@ class DetectionConfusionMatrix(BaseMetric):
         self._update(boundingbox, target_boundingbox)
 
     @override
-    def compute(self) -> dict[str, Tensor]:
-        return {f"{self.task.name}_confusion_matrix": self.confusion_matrix}
+    def compute(self) -> Tensor:
+        return self.confusion_matrix
 
     def _update(self, predictions: list[Tensor], targets: Tensor) -> None:
         for pred, target in zip(

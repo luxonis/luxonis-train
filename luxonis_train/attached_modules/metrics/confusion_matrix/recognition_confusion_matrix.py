@@ -26,37 +26,27 @@ class RecognitionConfusionMatrix:
         )
 
 
-class BaseRecognitionConfusionMatrix(BaseMetric):
+class _BaseRecognitionConfusionMatrix(BaseMetric):
     """Base class for shared Recognition Confusion Matrix behavior."""
 
     supported_tasks = [Tasks.CLASSIFICATION, Tasks.SEGMENTATION]
-
-    @property
-    def metric_name(self) -> str:
-        return f"{self.task.name}_confusion_matrix"
 
     @override
     def update(self, predictions: Tensor, targets: Tensor) -> None:
         super().update(*self.preprocess(predictions, targets))
 
     @override
-    def compute(self) -> dict[str, Tensor]:
-        return {self.metric_name: super().compute()}  # type: ignore
+    def compute(self) -> Tensor:
+        return super().compute()  # type: ignore
 
     def preprocess(
         self, predictions: Tensor, targets: Tensor
     ) -> tuple[Tensor, Tensor]:
-        """Preprocesses the predictions and targets tensors before
-        passing them to the confusion matrix computation.
-
-        By default, this method does nothing and returns the predictions
-        and targets unchanged.
-        """
         return predictions, targets
 
 
 class MulticlassRecognitionConfusionMatrix(
-    BaseRecognitionConfusionMatrix, MulticlassConfusionMatrix
+    _BaseRecognitionConfusionMatrix, MulticlassConfusionMatrix
 ):
     """Multiclass specialization of RecognitionConfusionMatrix."""
 
@@ -68,6 +58,6 @@ class MulticlassRecognitionConfusionMatrix(
 
 
 class BinaryRecognitionConfusionMatrix(
-    BaseRecognitionConfusionMatrix, BinaryConfusionMatrix
+    _BaseRecognitionConfusionMatrix, BinaryConfusionMatrix
 ):
     """Binary specialization of RecognitionConfusionMatrix."""

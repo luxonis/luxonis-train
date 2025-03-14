@@ -1,22 +1,33 @@
-import torch
 from torch import Tensor
-from typing_extensions import override
 
+from luxonis_train.attached_modules.metrics.base_metric import BaseMetric
+from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.tasks import Tasks
 
 from .detection_confusion_matrix import DetectionConfusionMatrix
-from .recognition_confusion_matrix import RecognitionConfusionMatrix
+from .recognition_confusion_matrix import (
+    BinaryRecognitionConfusionMatrix,
+    MulticlassRecognitionConfusionMatrix,
+    _BaseRecognitionConfusionMatrix,
+)
+from .utils import preprocess_instance_masks
 
 
-class InstanceSegmentationConfusionMatrix(
-    RecognitionConfusionMatrix, DetectionConfusionMatrix
-):
+class InstanceSegmentationConfusionMatrix(BaseMetric):
+    def __new__(cls, node: BaseNode, **kwargs) -> BaseMetric:
+        n_classes = node.n_classes
+        if n_classes == 1:
+            return BinaryInstanceSegmentationConfusionMatrix(
+                node=node, **kwargs
+            )
+        return MulticlassInstanceSegmentationConfusionMatrix(
+            node=node, num_classes=n_classes, **kwargs
+        )
+
+
+class _BaseInstanceSegmentationConfusionMatrix(DetectionConfusionMatrix):
     supported_tasks = [Tasks.INSTANCE_SEGMENTATION]
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    @override
     def update(
         self,
         boundingbox: list[Tensor],
@@ -25,61 +36,47 @@ class InstanceSegmentationConfusionMatrix(
         target_instance_segmentation: Tensor,
     ) -> None:
         DetectionConfusionMatrix.update(self, boundingbox, target_boundingbox)
-        RecognitionConfusionMatrix.update(
-            self,
-            self._merge_predicted_masks(boundingbox, instance_segmentation),
-            self._merge_target_masks(
+        self.RecognitionMatrix.update(
+            self,  # type: ignore
+            *preprocess_instance_masks(
+                boundingbox,
+                instance_segmentation,
                 target_boundingbox,
                 target_instance_segmentation,
-                len(boundingbox),
+                self.n_classes,
+                *self.original_in_shape[1:],
+                device=self.device,
             ),
         )
 
-    @override
-    def compute(self) -> dict[str, Tensor]:
-        return DetectionConfusionMatrix.compute(
-            self
-        ) | RecognitionConfusionMatrix.compute(self)
-
-    def _merge_predicted_masks(
+    def compute(
         self,
-        boundingbox: list[Tensor],
-        instance_segmentation: list[Tensor],
-    ) -> Tensor:
-        mask = torch.zeros(
-            len(boundingbox),
-            self.n_classes,
-            *self.original_in_shape[1:],
-            dtype=torch.bool,
-            device=self.device,
-        )
-        for i, (bboxes, segs) in enumerate(
-            zip(boundingbox, instance_segmentation, strict=True)
-        ):
-            for j, seg in enumerate(segs):
-                class_id = bboxes[j][5:].argmax()
-                mask[i][class_id] |= seg.bool()
+    ) -> dict[str, Tensor]:
+        return {
+            "detection": DetectionConfusionMatrix.compute(self),
+            "segmentation": self.RecognitionMatrix.compute(self),
+        }
 
-        return mask.to(instance_segmentation[0].dtype)
-
-    def _merge_target_masks(
+    @property
+    def RecognitionMatrix(
         self,
-        target_boundingbox: Tensor,
-        target_instance_segmentation: Tensor,
-        batch_size: int,
-    ) -> Tensor:
-        mask = torch.zeros(
-            batch_size,
-            self.n_classes,
-            *self.original_in_shape[1:],
-            dtype=torch.bool,
-            device=self.device,
-        )
-        for bboxes, segs in zip(
-            target_boundingbox, target_instance_segmentation, strict=True
-        ):
-            batch_idx = bboxes[0].int()
-            class_id = bboxes[1].int()
-            mask[batch_idx][class_id] |= segs.bool()
+    ) -> type[_BaseRecognitionConfusionMatrix]:
+        for base in self.__class__.__bases__:
+            if issubclass(base, _BaseRecognitionConfusionMatrix):
+                return base
+        raise RuntimeError("Internal error: no base recognition matrix found.")
 
-        return mask.to(target_instance_segmentation.dtype)
+
+class MulticlassInstanceSegmentationConfusionMatrix(
+    _BaseInstanceSegmentationConfusionMatrix,
+    MulticlassRecognitionConfusionMatrix,
+):
+    """Multiclass specialization of
+    InstanceSegmentationConfusionMatrix."""
+
+
+class BinaryInstanceSegmentationConfusionMatrix(
+    _BaseInstanceSegmentationConfusionMatrix,
+    BinaryRecognitionConfusionMatrix,
+):
+    """Binary specialization of InstanceSegmentationConfusionMatrix."""
