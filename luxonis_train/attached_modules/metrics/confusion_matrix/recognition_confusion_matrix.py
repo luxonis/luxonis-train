@@ -1,44 +1,73 @@
 from torch import Tensor
-from torchmetrics.classification import ConfusionMatrix
+from torchmetrics.classification import (
+    BinaryConfusionMatrix,
+    MulticlassConfusionMatrix,
+)
 from typing_extensions import override
 
 from luxonis_train.attached_modules.metrics import BaseMetric
+from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.tasks import Tasks
 
 
-class RecognitionConfusionMatrix(BaseMetric):
+class RecognitionConfusionMatrix:
+    """Factory class for Recognition Confusion Matrix metrics.
+
+    Creates the appropriate confusion matrix metric based on the number
+    of classes of the node.
+    """
+
+    def __new__(cls, node: BaseNode, **kwargs) -> BaseMetric:
+        n_classes = node.n_classes
+        if n_classes == 1:
+            return BinaryRecognitionConfusionMatrix(node=node, **kwargs)
+        return MulticlassRecognitionConfusionMatrix(
+            node=node, num_classes=n_classes, **kwargs
+        )
+
+
+class BaseRecognitionConfusionMatrix(BaseMetric):
+    """Base class for shared Recognition Confusion Matrix behavior."""
+
     supported_tasks = [Tasks.CLASSIFICATION, Tasks.SEGMENTATION]
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.confusion_matrix = ConfusionMatrix(
-            num_classes=self.n_classes,
-            task="binary" if self.n_classes == 1 else "multiclass",
-        )
+    @property
+    def metric_name(self) -> str:
+        return f"{self.task.name}_confusion_matrix"
 
     @override
     def update(self, predictions: Tensor, targets: Tensor) -> None:
-        predictions = (
-            predictions.argmax(dim=1)
-            if predictions.shape[1] > 1
-            else predictions.squeeze(1).sigmoid().round().int()
-        ).view(-1)
-
-        targets = (
-            targets.argmax(dim=1)
-            if targets.shape[1] > 1
-            else targets.squeeze(1).round().int()
-        ).view(-1)
-
-        self.confusion_matrix.update(predictions, targets)
+        super().update(*self.preprocess(predictions, targets))
 
     @override
     def compute(self) -> dict[str, Tensor]:
-        return {
-            f"{self.task.name}_confusion_matrix": self.confusion_matrix.compute()
-        }
+        return {self.metric_name: super().compute()}  # type: ignore
+
+    def preprocess(
+        self, predictions: Tensor, targets: Tensor
+    ) -> tuple[Tensor, Tensor]:
+        """Preprocesses the predictions and targets tensors before
+        passing them to the confusion matrix computation.
+
+        By default, this method does nothing and returns the predictions
+        and targets unchanged.
+        """
+        return predictions, targets
+
+
+class MulticlassRecognitionConfusionMatrix(
+    BaseRecognitionConfusionMatrix, MulticlassConfusionMatrix
+):
+    """Multiclass specialization of RecognitionConfusionMatrix."""
 
     @override
-    def reset(self) -> None:
-        super().reset()
-        self.confusion_matrix.reset()
+    def preprocess(
+        self, predictions: Tensor, targets: Tensor
+    ) -> tuple[Tensor, Tensor]:
+        return predictions.argmax(dim=1), targets.argmax(dim=1)
+
+
+class BinaryRecognitionConfusionMatrix(
+    BaseRecognitionConfusionMatrix, BinaryConfusionMatrix
+):
+    """Binary specialization of RecognitionConfusionMatrix."""
