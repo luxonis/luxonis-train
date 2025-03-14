@@ -188,6 +188,14 @@ class LuxonisLightningModule(pl.LightningModule):
             task_names = list(self.dataset_metadata.task_names)
             if not node_cfg.task_name:
                 if len(task_names) == 1:
+                    if node_cfg.task_name != task_names[0] and issubclass(
+                        Node, BaseHead
+                    ):
+                        raise ValueError(
+                            f"Dataset contains a single task: {task_names}. "
+                            f"Node {node_name} does not have the `task_name` parameter set. "
+                            "Please specify the `task_name` parameter for each head node."
+                        )
                     node_cfg.task_name = task_names[0]
                 elif issubclass(Node, BaseHead):
                     raise ValueError(
@@ -502,17 +510,16 @@ class LuxonisLightningModule(pl.LightningModule):
             outputs=outputs_dict, losses=losses, visualizations=visualizations
         )
 
-    def format_node_name(self, node_name: str) -> str:
-        """Format node name with task name if available.
+    def _format_node_name(self, node_name: str) -> str:
+        """Format node name with task name.
 
         @type node_name: str
         @param node_name: Original node name
         @rtype: str
         @return: Formatted node name with task name prefix if available
         """
-        clean_node_name = node_name.lstrip("-")
         task_name = self.node_task_names[node_name]
-        return f"{task_name}-{clean_node_name}"
+        return f"{task_name}-{node_name}"
 
     def compute_metrics(self) -> dict[str, dict[str, Tensor]]:
         """Computes metrics and returns their values.
@@ -722,7 +729,7 @@ class LuxonisLightningModule(pl.LightningModule):
         final_loss = torch.zeros(1, device=self.device)
         training_step_output: dict[str, Tensor] = {}
         for node_name, losses in losses_dict.items():
-            formatted_node_name = self.format_node_name(node_name)
+            formatted_node_name = self._format_node_name(node_name)
             for loss_name, loss_values in losses.items():
                 if isinstance(loss_values, tuple):
                     loss, sublosses = loss_values
@@ -847,7 +854,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         logged_images = self._logged_images
         for node_name, visualizations in outputs.visualizations.items():
-            formatted_node_name = self.format_node_name(node_name)
+            formatted_node_name = self._format_node_name(node_name)
             for viz_name, viz_batch in visualizations.items():
                 # if viz_batch is None:
                 #     continue
@@ -875,7 +882,7 @@ class LuxonisLightningModule(pl.LightningModule):
         computed_metrics = self.compute_metrics()
         logger.info("Metrics computed.")
         for node_name, metrics in computed_metrics.items():
-            formatted_node_name = self.format_node_name(node_name)
+            formatted_node_name = self._format_node_name(node_name)
             for metric_name, metric_value in metrics.items():
                 if "matrix" in metric_name.lower():
                     self.logger.log_matrix(
@@ -926,7 +933,7 @@ class LuxonisLightningModule(pl.LightningModule):
         if self.main_metric is not None:
             *node_parts, metric_name = self.main_metric.split("/")
             node_name = "/".join(node_parts)
-            formatted_node = self.format_node_name(node_name)
+            formatted_node = self._format_node_name(node_name)
 
             metric_path = f"{formatted_node}/{metric_name}"
             filename_path = metric_path.replace("/", "_")
@@ -1130,7 +1137,7 @@ class LuxonisLightningModule(pl.LightningModule):
         if self.main_metric is not None:
             *main_metric_node, main_metric_name = self.main_metric.split("/")
             main_metric_node = "/".join(main_metric_node)
-            formatted_main_metric_node_name = self.format_node_name(
+            formatted_main_metric_node_name = self._format_node_name(
                 main_metric_node
             )
             main_metric = metrics[formatted_main_metric_node_name][

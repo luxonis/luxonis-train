@@ -96,23 +96,21 @@ class OCRRecognitionModel(BasePredefinedModel):
         return [
             ModelNodeConfig(
                 name=self.backbone,
-                alias=f"{self.task_name}-{self.backbone}",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="SVTRNeck",
-                alias=f"{self.task_name}-SVTRNeck",
-                inputs=[f"{self.task_name}-{self.backbone}"],
+                inputs=[f"{self.backbone}"],
                 freezing=self.neck_params.pop("freezing", {}),
                 params=self.neck_params,
             ),
             ModelNodeConfig(
                 name="OCRCTCHead",
-                alias=f"{self.task_name}-OCRCTCHead",
-                inputs=[f"{self.task_name}-SVTRNeck"],
+                inputs=["SVTRNeck"],
                 freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
+                task_name=self.task_name,
             ),
         ]
 
@@ -122,8 +120,7 @@ class OCRRecognitionModel(BasePredefinedModel):
         return [
             LossModuleConfig(
                 name="CTCLoss",
-                alias=f"{self.task_name}-CTCLoss",
-                attached_to=f"{self.task_name}-OCRCTCHead",
+                attached_to="OCRCTCHead",
                 params=self.loss_params,
                 weight=1.0,
             )
@@ -135,7 +132,7 @@ class OCRRecognitionModel(BasePredefinedModel):
         metrics = [
             MetricModuleConfig(
                 name="OCRAccuracy",
-                attached_to=f"{self.task_name}-OCRCTCHead",
+                attached_to="OCRCTCHead",
                 is_main_metric=True,
             ),
         ]
@@ -147,7 +144,7 @@ class OCRRecognitionModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="OCRVisualizer",
-                attached_to=f"{self.task_name}-OCRCTCHead",
+                attached_to="OCRCTCHead",
                 params=self.visualizer_params,
             )
         ]
