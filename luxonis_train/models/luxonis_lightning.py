@@ -567,7 +567,6 @@ class LuxonisLightningModule(pl.LightningModule):
             if isinstance(module, BaseNode):
                 module.set_export_mode()
 
-        # print([inputs_deep_clone[i].device for i in inputs_deep_clone])
         outputs = self.forward(inputs_deep_clone).outputs
         output_order = sorted(
             [
