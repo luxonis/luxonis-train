@@ -66,7 +66,7 @@ class OCRRecognitionModel(BasePredefinedModel):
         head_params: Params | None = None,
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
-        task_name: str | None = None,
+        task_name: str = "",
         alphabet: list[str] | AlphabetName = "english",
         max_text_len: int = 40,
         ignore_unknown: bool = True,
@@ -88,7 +88,7 @@ class OCRRecognitionModel(BasePredefinedModel):
         self.head_params["ignore_unknown"] = ignore_unknown
         self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
-        self.task_name = task_name or "ocr_recognition"
+        self.task_name = task_name
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
