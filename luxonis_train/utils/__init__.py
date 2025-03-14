@@ -11,8 +11,10 @@ from .dataset_metadata import DatasetMetadata
 from .exceptions import IncompatibleException
 from .general import (
     get_attribute_check_none,
+    get_batch_instances,
     get_with_default,
     infer_upscale_factor,
+    instance_generator,
     make_divisible,
     safe_download,
     to_shape_packet,
@@ -33,8 +35,10 @@ __all__ = [
     "AttachIndexType",
     "Kwargs",
     "Labels",
+    "instance_generator",
     "Packet",
     "IncompatibleException",
+    "get_batch_instances",
     "DatasetMetadata",
     "make_divisible",
     "setup_logging",
