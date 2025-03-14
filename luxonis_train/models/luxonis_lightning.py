@@ -502,6 +502,18 @@ class LuxonisLightningModule(pl.LightningModule):
             outputs=outputs_dict, losses=losses, visualizations=visualizations
         )
 
+    def format_node_name(self, node_name: str) -> str:
+        """Format node name with task name if available.
+
+        @type node_name: str
+        @param node_name: Original node name
+        @rtype: str
+        @return: Formatted node name with task name prefix if available
+        """
+        clean_node_name = node_name.lstrip("-")
+        task_name = self.node_task_names[node_name]
+        return f"{task_name}-{clean_node_name}"
+
     def compute_metrics(self) -> dict[str, dict[str, Tensor]]:
         """Computes metrics and returns their values.
 
@@ -710,6 +722,7 @@ class LuxonisLightningModule(pl.LightningModule):
         final_loss = torch.zeros(1, device=self.device)
         training_step_output: dict[str, Tensor] = {}
         for node_name, losses in losses_dict.items():
+            formatted_node_name = self.format_node_name(node_name)
             for loss_name, loss_values in losses.items():
                 if isinstance(loss_values, tuple):
                     loss, sublosses = loss_values
@@ -719,13 +732,13 @@ class LuxonisLightningModule(pl.LightningModule):
 
                 loss *= self.loss_weights[loss_name]
                 final_loss += loss
-                training_step_output[f"loss/{node_name}/{loss_name}"] = (
-                    loss.detach().cpu()
-                )
+                training_step_output[
+                    f"loss/{formatted_node_name}/{loss_name}"
+                ] = loss.detach().cpu()
                 if self.cfg.trainer.log_sub_losses and sublosses:
                     for subloss_name, subloss_value in sublosses.items():
                         training_step_output[
-                            f"loss/{node_name}/{loss_name}/{subloss_name}"
+                            f"loss/{formatted_node_name}/{loss_name}/{subloss_name}"
                         ] = subloss_value.detach().cpu()
         training_step_output["loss"] = final_loss.detach().cpu()
         return final_loss, training_step_output
@@ -834,11 +847,12 @@ class LuxonisLightningModule(pl.LightningModule):
 
         logged_images = self._logged_images
         for node_name, visualizations in outputs.visualizations.items():
+            formatted_node_name = self.format_node_name(node_name)
             for viz_name, viz_batch in visualizations.items():
                 # if viz_batch is None:
                 #     continue
                 for viz in viz_batch:
-                    name = f"{mode}/visualizations/{node_name}/{viz_name}"
+                    name = f"{mode}/visualizations/{formatted_node_name}/{viz_name}"
                     if logged_images[name] >= self.cfg.trainer.n_log_images:
                         continue
                     self.logger.log_image(
@@ -861,19 +875,20 @@ class LuxonisLightningModule(pl.LightningModule):
         computed_metrics = self.compute_metrics()
         logger.info("Metrics computed.")
         for node_name, metrics in computed_metrics.items():
+            formatted_node_name = self.format_node_name(node_name)
             for metric_name, metric_value in metrics.items():
                 if "matrix" in metric_name.lower():
                     self.logger.log_matrix(
                         matrix=metric_value.cpu().numpy(),
-                        name=f"{mode}/metrics/{self.current_epoch}/{metric_name}",
+                        name=f"{mode}/metrics/{self.current_epoch}/{formatted_node_name}/{metric_name}",
                         step=self.current_epoch,
                     )
                 else:
-                    metric_results[node_name][metric_name] = (
+                    metric_results[formatted_node_name][metric_name] = (
                         metric_value.cpu().item()
                     )
                     self.log(
-                        f"{mode}/metric/{node_name}/{metric_name}",
+                        f"{mode}/metric/{formatted_node_name}/{metric_name}",
                         metric_value,
                         sync_dist=True,
                     )
@@ -909,13 +924,18 @@ class LuxonisLightningModule(pl.LightningModule):
         ]
 
         if self.main_metric is not None:
-            main_metric = self.main_metric.replace("/", "_")
+            *node_parts, metric_name = self.main_metric.split("/")
+            node_name = "/".join(node_parts)
+            formatted_node = self.format_node_name(node_name)
+
+            metric_path = f"{formatted_node}/{metric_name}"
+            filename_path = metric_path.replace("/", "_")
+
             callbacks.append(
                 ModelCheckpoint(
-                    monitor=f"val/metric/{self.main_metric}",
+                    monitor=f"val/metric/{metric_path}",
                     dirpath=self.best_val_metric_checkpoints_path,
-                    filename=f"{model_name}_{main_metric}={{val/metric/{self.main_metric}:.4f}}"
-                    f"_loss={{val/loss:.4f}}_{{epoch:02d}}",
+                    filename=f"{model_name}_{filename_path}={{val/metric/{metric_path}:.4f}}_loss={{val/loss:.4f}}_{{epoch:02d}}",
                     auto_insert_metric_name=False,
                     save_top_k=self.cfg.trainer.save_top_k,
                     mode="max",
@@ -1110,8 +1130,12 @@ class LuxonisLightningModule(pl.LightningModule):
         if self.main_metric is not None:
             *main_metric_node, main_metric_name = self.main_metric.split("/")
             main_metric_node = "/".join(main_metric_node)
-
-            main_metric = metrics[main_metric_node][main_metric_name]
+            formatted_main_metric_node_name = self.format_node_name(
+                main_metric_node
+            )
+            main_metric = metrics[formatted_main_metric_node_name][
+                main_metric_name
+            ]
             logger.info(
                 f"{stage} main metric ({self.main_metric}): {main_metric:.4f}"
             )
