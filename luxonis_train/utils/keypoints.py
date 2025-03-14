@@ -79,11 +79,15 @@ def get_center_keypoints(
     @return: Tensor of center keypoints.
     """
     keypoints = torch.empty(
-        (bboxes.shape[0], 4), device=bboxes.device, dtype=torch.int
+        (bboxes.shape[0], 4), device=bboxes.device, dtype=torch.float32
     )
     keypoints[:, :2] = bboxes[:, :2]
-    keypoints[:, 2] = (bboxes[:, 2] + bboxes[:, 4] / 2) * width
-    keypoints[:, 3] = (bboxes[:, 3] + bboxes[:, 5] / 2) * height
+    keypoints[:, 2] = torch.round(
+        (bboxes[:, 2] + bboxes[:, 4] / 2) * width
+    ).int()
+    keypoints[:, 3] = torch.round(
+        (bboxes[:, 3] + bboxes[:, 5] / 2) * height
+    ).int()
     return keypoints
 
 
