@@ -862,10 +862,11 @@ class LuxonisLightningModule(pl.LightningModule):
         logger.info("Metrics computed.")
         for node_name, metrics in computed_metrics.items():
             for metric_name, metric_value in metrics.items():
-                if "matrix" in metric_name.lower():
+                if metric_value.dim() == 2:
                     self.logger.log_matrix(
                         matrix=metric_value.cpu().numpy(),
-                        name=f"{mode}/metrics/{self.current_epoch}/{metric_name}",
+                        name=f"{mode}/metrics/{self.current_epoch}/"
+                        f"{metric_name}_confusion_matrix",
                         step=self.current_epoch,
                     )
                 else:
