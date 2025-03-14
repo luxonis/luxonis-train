@@ -144,7 +144,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         @type args: Unpack[Ts]
         @param args: Prepared inputs from the L{prepare} method.
         """
-        ...
+        super().update(*args)
 
     @abstractmethod
     def compute(
@@ -159,7 +159,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
            - A dictionary of sub-metrics. If this is the case, then the metric
               cannot be used as the main metric of the model.
         """
-        ...
+        return super().compute()
 
     @cached_property
     def _signature(self) -> dict[str, Parameter]:

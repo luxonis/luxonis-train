@@ -52,8 +52,8 @@ class BaseAttachedModule(
 
     supported_tasks: Sequence[Task] | None = None
 
-    def __init__(self, *, node: BaseNode | None = None):
-        super().__init__()
+    def __init__(self, *, node: BaseNode | None = None, **kwargs):
+        super().__init__(**kwargs)
         self._node = node
         self._epoch = 0
 
