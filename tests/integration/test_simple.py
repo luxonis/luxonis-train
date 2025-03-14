@@ -345,7 +345,6 @@ def test_weight_loading(coco_dataset: LuxonisDataset):
     config_file = "tests/configs/ddrnet.yaml"
     opts = {
         "loader.params.dataset_name": coco_dataset.dataset_name,
-        "trainer.deterministic": False,
         "trainer.epochs": 1,
         "trainer.n_validation_batches": 1,
         "trainer.batch_size": 1,
