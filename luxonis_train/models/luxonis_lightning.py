@@ -12,7 +12,6 @@ from lightning.pytorch.callbacks import (
 )
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
 from loguru import logger
-from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import ConfigItem
 from torch import Size, Tensor, nn
 
@@ -22,9 +21,6 @@ from luxonis_train.attached_modules import (
     BaseLoss,
     BaseMetric,
     BaseVisualizer,
-)
-from luxonis_train.attached_modules.metrics.torchmetrics import (
-    TorchMetricWrapper,
 )
 from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
@@ -1059,21 +1055,6 @@ class LuxonisLightningModule(pl.LightningModule):
         module_name = cfg.alias or cfg.name
         node_name = cfg.attached_to
         node: BaseNode = self.nodes[node_name]  # type: ignore
-        if issubclass(Module, TorchMetricWrapper):
-            if "task" not in cfg.params and self._core is not None:
-                loader = self._core.loaders["train"]
-                dataset = getattr(loader, "dataset", None)
-                if isinstance(dataset, LuxonisDataset):
-                    n_classes = len(dataset.get_classes()[node.task_name])
-                    if n_classes == 1:
-                        cfg.params["task"] = "binary"
-                    else:
-                        cfg.params["task"] = "multiclass"
-                    logger.warning(
-                        f"Parameter 'task' not specified for `TorchMetric` based '{module_name}' metric. "
-                        f"Assuming task type based on the number of classes: {cfg.params['task']}. "
-                        "If this is incorrect, please specify the 'task' parameter in the config."
-                    )
 
         module = Module(**cfg.params, node=node)
         storage[node_name][module_name] = module  # type: ignore
