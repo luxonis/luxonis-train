@@ -243,7 +243,7 @@ def archive(
 
 @app.command(group=management_group)
 def upgrade():
-    """Update LuxonisTrain to latest stable version."""
+    """Update LuxonisTrain to the latest stable version."""
 
     def get_latest_version() -> str | None:
         url = "https://pypi.org/pypi/luxonis_train/json"
