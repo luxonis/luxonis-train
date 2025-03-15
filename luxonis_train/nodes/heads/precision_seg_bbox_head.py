@@ -70,7 +70,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         )
 
         self.n_proto = n_proto
-        self.proto = SegProto(self.in_channels[0], self.n_proto, self.n_masks)
+        self.proto = SegProto(self.in_channels[-1], self.n_proto, self.n_masks)
 
         self.check_export_output_names()
 
@@ -97,7 +97,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
     def forward(
         self, inputs: list[Tensor]
     ) -> tuple[tuple[list[Tensor], list[Tensor]], Tensor, list[Tensor]]:
-        prototypes = self.proto(inputs[0])
+        prototypes = self.proto(inputs[-1])
         mask_coefficients = [
             self.mask_layers[i](inputs[i]) for i in range(self.n_heads)
         ]

@@ -112,7 +112,7 @@ class DatasetMetadata:
         if task_name is not None:
             if task_name not in self._classes:
                 raise ValueError(
-                    f"Task type {task_name} is not present in the dataset."
+                    f"Task '{task_name}' is not present in the dataset."
                 )
             return bidict(self._classes[task_name])
         classes = next(iter(self._classes.values()))

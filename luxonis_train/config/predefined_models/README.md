@@ -254,9 +254,9 @@ FPS (frames per second) for `light`, `medium` and `heavy` variants on different 
 
 | Variant      | RVC2 FPS | RVC4 FPS |
 | ------------ | -------- | -------- |
-| **`light`**  | 15       | 131      |
-| **`medium`** | 9        | 116      |
-| **`heavy`**  | 3        | 82       |
+| **`light`**  | 35       | 223      |
+| **`medium`** | 15       | 184      |
+| **`heavy`**  | 5        | 107      |
 
 **Components:**
 
