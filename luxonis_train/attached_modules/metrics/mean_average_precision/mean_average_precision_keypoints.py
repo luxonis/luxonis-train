@@ -1,10 +1,7 @@
-import contextlib
-import io
 from typing import Annotated, Literal
 
 import torch
-from pycocotools.coco import COCO
-from pycocotools.cocoeval import COCOeval
+from faster_coco_eval.core import COCO, COCOeval_faster
 from torch import Tensor
 from torchvision.ops import box_convert
 from typeguard import typechecked
@@ -130,22 +127,17 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
             self.pred_scores,
         )
 
-        with contextlib.redirect_stdout(io.StringIO()):
-            coco_target.createIndex()
-            coco_preds.createIndex()
+        self.coco_eval = COCOeval_faster(
+            coco_target, coco_preds, iouType="keypoints"
+        )
+        self.coco_eval.params.kpt_oks_sigmas = self.sigmas.cpu().numpy()
+        self.coco_eval.params.maxDets = [self.max_dets]
 
-            self.coco_eval = COCOeval(
-                coco_target, coco_preds, iouType="keypoints"
-            )
-            self.coco_eval.params.kpt_oks_sigmas = self.sigmas.cpu().numpy()
-            self.coco_eval.params.maxDets = [self.max_dets]
+        self.coco_eval.run()
 
-            self.coco_eval.evaluate()
-            self.coco_eval.accumulate()
-            self.coco_eval.summarize()
-            stats = torch.tensor(
-                self.coco_eval.stats, dtype=torch.float32, device=self.device
-            )
+        stats = torch.tensor(
+            self.coco_eval.stats, dtype=torch.float32, device=self.device
+        )
 
         return stats[0], add_f1_metrics(
             {
@@ -204,6 +196,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
             "images": [{"id": i} for i in range(len(bboxes_list))],
             "categories": self._get_classes(),  # type: ignore
         }
+        coco.createIndex()
         return coco
 
     def _get_classes(self) -> list[dict]:
