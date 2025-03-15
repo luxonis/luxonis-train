@@ -245,7 +245,7 @@ def archive(
 def upgrade():
     """Update LuxonisTrain to latest stable version."""
 
-    def get_latest_version():
+    def get_latest_version() -> str | None:
         url = "https://pypi.org/pypi/luxonis_train/json"
         response = requests.get(url)
         if response.status_code == 200:
@@ -253,9 +253,13 @@ def upgrade():
             versions = list(data["releases"].keys())
             versions.sort(key=lambda s: [int(u) for u in s.split(".")])
             return versions[-1]
+        return None
 
     current_version = version("luxonis_train")
     latest_version = get_latest_version()
+    if latest_version is None:
+        print("Failed to check for updates. Try again later.")
+        return
     if current_version == latest_version:
         print(f"LuxonisTrain is up-to-date (v{current_version}).")
     else:
