@@ -11,7 +11,6 @@ List of all the available metrics.
 - [Recall](#recall)
 - [ObjectKeypointSimilarity](#objectkeypointsimilarity)
 - [MeanAveragePrecision](#meanaverageprecision)
-- [MeanAveragePrecisionKeypoints](#meanaverageprecisionkeypoints)
 - [ClosestIsPositiveAccuracy](#closestispositiveaccuracy)
 - [MedianDistances](#mediandistances)
 - [OCRAccuracy](#ocraccuracy)
@@ -68,9 +67,9 @@ Works with **keypoint detection task.**
 
 ## MeanAveragePrecision
 
-Compute the `Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)` for object detection or instance segmentation predictions. This metric is built upon [pycocotools](https://github.com/cocodataset/cocoapi), which provides robust tools for evaluating these tasks.
+Compute the `Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)` for object detection tasks. This metric is built upon [pycocotools](https://github.com/cocodataset/cocoapi), which provides robust tools for evaluating these tasks.
 
-Works with tasks such as **detection and instance segmentation.**
+Is compatible with **object and keypoint detection** and **instance segmentation tasks.**
 
 ```math
 \text{mAP} = \frac{1}{n} \sum_{i=1}^{n} AP_i
@@ -81,15 +80,10 @@ where $AP_i$ is the average precision for class $i$ and $n$ is the number of cla
 > \[!NOTE\]
 > **Important:** Mean Average Precision metric is sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.
 
-## MeanAveragePrecisionKeypoints
+**Detection and Instance Segmentation Params**
+See [Mean Average Precision](https://lightning.ai/docs/torchmetrics/stable/detection/mean_average_precision.html) for more information.
 
-Similar to [MeanAveragePrecision](#meanaverageprecision), but uses [OKS](#objectkeypointsimilarity) as `IoU` measure.
-For a deeper understanding of how OKS works, please refer to the detailed explanation provided [here](https://learnopencv.com/object-keypoint-similarity/).
-Evaluation leverages the [pycocotools](https://github.com/cocodataset/cocoapi) framework to assess mAP performance.
-
-Works with **keypoint detection task.**
-
-**Params**
+**Instance Keypoint Params**
 
 | Key           | Type                                | Default value | Description                                                           |
 | ------------- | ----------------------------------- | ------------- | --------------------------------------------------------------------- |
