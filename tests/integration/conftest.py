@@ -28,17 +28,17 @@ def batch_size() -> int:
 
 
 @pytest.fixture(scope="session")
-def test_output_dir() -> Path:
+def output_dir() -> Path:
     return Path("tests/integration/save-directory")
 
 
 @pytest.fixture(scope="session", autouse=True)
-def setup(test_output_dir: Path):
+def setup(output_dir: Path):
     WORK_DIR.mkdir(parents=True, exist_ok=True)
     shutil.rmtree(WORK_DIR / "luxonisml", ignore_errors=True)
-    shutil.rmtree(test_output_dir, ignore_errors=True)
+    shutil.rmtree(output_dir, ignore_errors=True)
     environ.LUXONISML_BASE_PATH = WORK_DIR / "luxonisml"
-    test_output_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(exist_ok=True)
 
 
 @pytest.fixture
