@@ -115,6 +115,7 @@ FPS (frames per second) for `light`, `medium` and `heavy` variants on different 
 | `loss_params`       | `dict`                                | `{}`             | Additional parameters to the loss                                                                  |
 | `visualizer_params` | `dict`                                | `{}`             | Additional parameters to the visualizer                                                            |
 | `task_name`         | `str \| None`                         | `None`           | Custom task name for the head                                                                      |
+| `per_class_metrics` | `bool`                                | `True`           | Whether to calculate class-specific mAP                                                            |
 
 ## `KeypointDetectionModel`
 
@@ -281,6 +282,7 @@ FPS (frames per second) for `light`, `medium` and `heavy` variants on different 
 | `loss_params`       | `dict`                                | `{}`             | Additional parameters to the loss function                                                                                           |
 | `visualizer_params` | `dict`                                | `{}`             | Additional parameters to the visualizer                                                                                              |
 | `task_name`         | `str \| None`                         | `None`           | Custom task name for the head                                                                                                        |
+| `per_class_metrics` | `bool`                                | `True`           | Whether to calculate class-specific mAP                                                                                              |
 
 ## `AnomalyDetectionModel`
 
