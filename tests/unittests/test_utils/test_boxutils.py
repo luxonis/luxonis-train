@@ -48,7 +48,7 @@ def test_dist2bbox():
     bbox = dist2bbox(distance, anchor_points)
 
     assert bbox.shape == distance.shape
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="`invalid`"):
         dist2bbox(distance, anchor_points, out_format="invalid")  # type: ignore
 
 
@@ -73,22 +73,18 @@ def test_bbox_iou(
     else:
         bbox2 = generate_random_bboxes(8, 640, 640, format)
 
-    iou = bbox_iou(
-        bbox1,
-        bbox2,
-        bbox_format=format,  # type: ignore
-        iou_type=iou_type,
-    )
+    iou = bbox_iou(bbox1, bbox2, bbox_format=format, iou_type=iou_type)
 
     assert iou.shape == (bbox1.shape[0], bbox2.shape[0])
     if iou_type == "none":
         min = 0
     else:
         min = -1.5
-    assert iou.min() >= min and iou.max() <= 1
+    assert iou.min() >= min
+    assert iou.max() <= 1
 
     if iou_type == "none":
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="`invalid` not supported"):
             bbox_iou(bbox1, bbox2, iou_type="invalid")  # type: ignore
 
 
@@ -102,19 +98,17 @@ def test_compute_iou_loss():
 
     assert isinstance(loss_iou, Tensor)
     assert isinstance(iou, Tensor)
-    assert 0 <= iou.min() and iou.max() <= 1
+    assert iou.min() >= 0
+    assert iou.max() <= 1
 
 
 def test_anchors_for_fpn_features():
     features = [torch.rand(1, 256, 14, 14), torch.rand(1, 256, 28, 28)]
     strides = torch.tensor([8, 16])
 
-    (
-        anchors,
-        anchor_points,
-        n_anchors_list,
-        stride_tensor,
-    ) = anchors_for_fpn_features(features, strides)
+    (anchors, anchor_points, n_anchors_list, stride_tensor) = (
+        anchors_for_fpn_features(features, strides)
+    )
 
     assert isinstance(anchors, Tensor)
     assert isinstance(anchor_points, Tensor)

@@ -4,8 +4,8 @@ from torch import Tensor
 
 from luxonis_train import BaseLoss, BaseNode
 from luxonis_train.tasks import Tasks
+from luxonis_train.utils import Labels, Packet
 from luxonis_train.utils.exceptions import IncompatibleException
-from luxonis_train.utils.types import Labels, Packet
 
 SEGMENTATION_ARRAY = torch.tensor([0])
 KEYPOINT_ARRAY = torch.tensor([1])
@@ -15,35 +15,35 @@ FEATURES_ARRAY = torch.tensor([4])
 
 
 class DummyBackbone(BaseNode):
-    def forward(self, _): ...
+    def forward(self, _: Tensor) -> Tensor: ...
 
 
 class DummySegmentationHead(BaseNode):
     task = Tasks.SEGMENTATION
 
-    def forward(self, _): ...
+    def forward(self, _: Tensor) -> Tensor: ...
 
 
 class DummyBBoxHead(BaseNode):
     task = Tasks.BOUNDINGBOX
 
-    def forward(self, _): ...
+    def forward(self, _: Tensor) -> Tensor: ...
 
 
 class DummyDetectionHead(BaseNode):
     task = Tasks.INSTANCE_KEYPOINTS
 
-    def forward(self, _): ...
+    def forward(self, _: Tensor) -> Tensor: ...
 
 
 class DummyLoss(BaseLoss):
     supported_tasks = [Tasks.SEGMENTATION, Tasks.INSTANCE_KEYPOINTS]
 
-    def forward(self, _): ...
+    def forward(self, _: Tensor) -> Tensor: ...
 
 
 class NoLabelLoss(BaseLoss):
-    def forward(self, _): ...
+    def forward(self, _: Tensor) -> Tensor: ...
 
 
 @pytest.fixture

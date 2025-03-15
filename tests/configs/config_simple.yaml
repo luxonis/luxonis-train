@@ -49,7 +49,7 @@ trainer:
   validation_interval: 1
 
   preprocessing:
-    train_image_size: [256, 320]
+    train_image_size: [128, 160]
     keep_aspect_ratio: true
     normalize:
       active: true
@@ -57,4 +57,3 @@ trainer:
   callbacks:
     - name: ExportOnTrainEnd
     - name: ArchiveOnTrainEnd
-

@@ -6,6 +6,8 @@ model:
     name: SegmentationModel
     params:
       backbone: MicroNet
+      backbone_params:
+        variant: M1
       task: multiclass
 
 loader:
@@ -15,13 +17,13 @@ loader:
 
 trainer:
   preprocessing:
-    train_image_size: [&height 128, &width 128]
+    train_image_size: [128, 128]
     keep_aspect_ratio: false
     normalize:
       active: true
 
   batch_size: 4
-  epochs: &epochs 1
+  epochs: 1
   n_workers: 4
   validation_interval: 1
   n_log_images: 8
