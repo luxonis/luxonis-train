@@ -3,6 +3,7 @@ from copy import deepcopy
 import pytest
 import torch
 from lightning.pytorch import LightningModule, Trainer
+from torch import Tensor, nn
 
 from luxonis_train.callbacks.ema import EMACallback, ModelEma
 
@@ -10,23 +11,23 @@ from luxonis_train.callbacks.ema import EMACallback, ModelEma
 class SimpleModel(LightningModule):
     def __init__(self):
         super().__init__()
-        self.layer = torch.nn.Linear(2, 2)
+        self.layer = nn.Linear(2, 2)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return self.layer(x)
 
 
 @pytest.fixture
-def model():
+def model() -> SimpleModel:
     return SimpleModel()
 
 
 @pytest.fixture
-def ema_callback():
+def ema_callback() -> EMACallback:
     return EMACallback()
 
 
-def test_ema_initialization(model, ema_callback):
+def test_ema_initialization(model: LightningModule, ema_callback: EMACallback):
     trainer = Trainer()
     ema_callback.on_fit_start(trainer, model)
 
@@ -35,7 +36,9 @@ def test_ema_initialization(model, ema_callback):
     assert ema_callback.ema.use_dynamic_decay == ema_callback.use_dynamic_decay
 
 
-def test_ema_update_on_batch_end(model, ema_callback):
+def test_ema_update_on_batch_end(
+    model: LightningModule, ema_callback: EMACallback
+):
     trainer = Trainer()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     ema_callback.on_fit_start(trainer, model)
@@ -63,7 +66,9 @@ def test_ema_update_on_batch_end(model, ema_callback):
     )
 
 
-def test_ema_state_saved_to_checkpoint(model, ema_callback):
+def test_ema_state_saved_to_checkpoint(
+    model: LightningModule, ema_callback: EMACallback
+):
     trainer = Trainer()
     ema_callback.on_fit_start(trainer, model)
 
@@ -73,7 +78,9 @@ def test_ema_state_saved_to_checkpoint(model, ema_callback):
     assert "state_dict" in checkpoint or "state_dict_ema" in checkpoint
 
 
-def test_load_from_checkpoint(model, ema_callback):
+def test_load_from_checkpoint(
+    model: LightningModule, ema_callback: EMACallback
+):
     trainer = Trainer()
 
     checkpoint = {"state_dict": deepcopy(model.state_dict())}
@@ -85,7 +92,9 @@ def test_load_from_checkpoint(model, ema_callback):
     )
 
 
-def test_validation_epoch_start_and_end(model, ema_callback):
+def test_validation_epoch_start_and_end(
+    model: LightningModule, ema_callback: EMACallback
+):
     trainer = Trainer()
     ema_callback.on_fit_start(trainer, model)
 
@@ -93,7 +102,7 @@ def test_validation_epoch_start_and_end(model, ema_callback):
     assert ema_callback.collected_state_dict is not None
 
     ema_callback.on_validation_end(trainer, model)
-    for k in ema_callback.collected_state_dict.keys():
+    for k in ema_callback.collected_state_dict:
         assert torch.equal(
             ema_callback.collected_state_dict[k], model.state_dict()[k]
         )

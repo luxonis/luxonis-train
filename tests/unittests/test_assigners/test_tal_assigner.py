@@ -36,11 +36,7 @@ def test_forward():
 
     assert labels.shape == (batch_size, n_anchors)
     assert bboxes.shape == (batch_size, n_anchors, 4)
-    assert scores.shape == (
-        batch_size,
-        n_anchors,
-        n_classes,
-    )
+    assert scores.shape == (batch_size, n_anchors, n_classes)
     assert mask.shape == (batch_size, n_anchors)
     assert assigned_gt_idx.shape == (batch_size, n_anchors)
 
@@ -79,8 +75,10 @@ def test_get_alignment_metric():
     assert overlaps.shape == (batch_size, n_max_boxes, n_anchors)
     assert align_metric.dtype == torch.float32
     assert overlaps.dtype == torch.float32
-    assert align_metric.min() >= 0 and align_metric.max() <= 1
-    assert overlaps.min() >= 0 and overlaps.max() <= 1
+    assert align_metric.min() >= 0
+    assert align_metric.max() <= 1
+    assert overlaps.min() >= 0
+    assert overlaps.max() <= 1
 
 
 def test_select_topk_candidates():
@@ -121,15 +119,14 @@ def test_get_final_assignments():
     assigner.bs = batch_size  # Set batch size
     assigner.n_max_boxes = gt_bboxes.size(1)
 
-    (
-        assigned_labels,
-        assigned_bboxes,
-        assigned_scores,
-    ) = assigner._get_final_assignments(
-        gt_labels, gt_bboxes, assigned_gt_idx, mask_pos_sum
+    (assigned_labels, assigned_bboxes, assigned_scores) = (
+        assigner._get_final_assignments(
+            gt_labels, gt_bboxes, assigned_gt_idx, mask_pos_sum
+        )
     )
 
     assert assigned_labels.shape == (batch_size, n_anchors)
     assert assigned_bboxes.shape == (batch_size, n_anchors, 4)
     assert assigned_scores.shape == (batch_size, n_anchors, n_classes)
-    assert assigned_labels.min() >= 0 and assigned_labels.max() <= n_classes
+    assert assigned_labels.min() >= 0
+    assert assigned_labels.max() <= n_classes
