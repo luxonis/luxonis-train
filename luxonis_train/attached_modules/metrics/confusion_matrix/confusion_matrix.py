@@ -1,6 +1,6 @@
-from luxonis_train.attached_modules.metrics import BaseMetric
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.tasks import Tasks
+from luxonis_train.utils.registry import METRICS
 
 from .detection_confusion_matrix import DetectionConfusionMatrix
 from .instance_segmentation_confusion_matrix import (
@@ -9,8 +9,21 @@ from .instance_segmentation_confusion_matrix import (
 from .recognition_confusion_matrix import RecognitionConfusionMatrix
 
 
-class ConfusionMatrix(BaseMetric):
-    def __new__(cls, node: BaseNode, **kwargs) -> BaseMetric:
+@METRICS.register()  # type: ignore
+class ConfusionMatrix:
+    """Factory class for Confusion Matrix metrics.
+
+    Creates the appropriate Confusion Matrix based on the task of the
+    node.
+    """
+
+    def __new__(
+        cls, node: BaseNode, **kwargs
+    ) -> (
+        RecognitionConfusionMatrix
+        | DetectionConfusionMatrix
+        | InstanceSegmentationConfusionMatrix
+    ):
         match node.task:
             case None:
                 raise ValueError(
