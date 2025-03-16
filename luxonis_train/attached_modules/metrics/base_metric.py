@@ -113,7 +113,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
                     default = state.default
                     if default is None:
                         if main_type is Tensor:
-                            default = 0
+                            default = 0.0
                         elif getattr(main_type, "__origin__", None) is list:
                             default = []
                         else:
