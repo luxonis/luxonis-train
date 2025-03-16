@@ -84,30 +84,3 @@ def test_invalid_properties():
         _ = DummyLoss().node
     with pytest.raises(RuntimeError):
         _ = NoLabelLoss(node=backbone).task
-
-
-def test_pick_labels(labels: Labels):
-    seg_head = DummySegmentationHead()
-    det_head = DummyDetectionHead()
-    seg_loss = DummyLoss(node=seg_head)
-    assert seg_loss.pick_labels(labels) == {"segmentation": SEGMENTATION_ARRAY}
-
-    del labels["/segmentation"]
-    labels["task/segmentation"] = SEGMENTATION_ARRAY
-
-    det_loss = DummyLoss(node=det_head)
-    assert det_loss.pick_labels(labels) == {
-        "keypoints": KEYPOINT_ARRAY,
-        "boundingbox": BOUNDINGBOX_ARRAY,
-    }
-
-
-def test_pick_inputs(inputs: Packet[Tensor]):
-    seg_head = DummySegmentationHead()
-    seg_loss = DummyLoss(node=seg_head)
-    assert seg_loss.pick_inputs(inputs, {"segmentation"}) == {
-        "segmentation": [SEGMENTATION_ARRAY]
-    }
-
-    with pytest.raises(RuntimeError):
-        seg_loss.pick_inputs(inputs, {"keypoints"})

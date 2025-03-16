@@ -1,4 +1,3 @@
-from functools import cached_property
 from typing import Annotated
 
 import torch
@@ -6,7 +5,7 @@ from scipy.optimize import linear_sum_assignment
 from torch import Tensor
 from typing_extensions import override
 
-from luxonis_train.tasks import Metadata, Tasks
+from luxonis_train.tasks import Tasks
 from luxonis_train.utils import (
     compute_pose_oks,
     get_sigmas,
@@ -57,13 +56,6 @@ class ObjectKeypointSimilarity(BaseMetric):
             area_factor, "bbox area scaling", self.name, default=0.53
         )
         self.use_cocoeval_oks = use_cocoeval_oks
-
-    @cached_property
-    @override
-    def required_labels(self) -> set[str | Metadata]:
-        if self.task == Tasks.FOMO:
-            return Tasks.BOUNDINGBOX.required_labels
-        return self.task.required_labels
 
     @override
     def update(
@@ -124,11 +116,11 @@ class ObjectKeypointSimilarity(BaseMetric):
         target_boundingbox: Tensor,
         target_keypoints: Tensor | None,
     ) -> tuple[list[Tensor], Tensor]:
-        if target_keypoints is None:
-            if self.task != Tasks.FOMO:
-                raise ValueError(
-                    "The target keypoints are not required only when used "
-                    " with the 'FOMO' task."
-                )
+        if self.task == Tasks.FOMO:
             target_keypoints = get_center_keypoints(target_boundingbox)
+        elif target_keypoints is None:
+            raise ValueError(
+                "The target keypoints are not required only when used "
+                " with the 'FOMO' task."
+            )
         return keypoints, target_keypoints
