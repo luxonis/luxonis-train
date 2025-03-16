@@ -448,6 +448,37 @@ class InstanceKeypointsLoss(BaseLoss):
 
 The rules for defining the `update` method are the same as for the `forward` method of the loss.
 
+**Metric States**
+
+For better integration with distributed training and easier handling of the metric state,
+the metric attributes that are used to store the state of the metric should be
+registered using the `add_state` method, see the [torchmetrics documentation](https://lightning.ai/docs/torchmetrics/stable/pages/implement.html).
+In order for type checking to pass, the attributes defined using `add_state` should be also added as a class-level annotations.
+To streamline this process, `LuxonisTrain` offers a simpler way to define the metric state using the `MetricState` class.
+The `MetricState` is intended to be used inside an `Annotated` type for class-level declarations of the metric states.
+
+**Example:**
+
+```python
+
+from luxonis_train import BaseMetric, MetricState
+
+class MyMetric(BaseMetric):
+    true_positives: Annotated[Tensor, MetricState(default=0)]
+    false_positives: Annotated[Tensor, MetricState(default=0)]
+    total: Annotated[Tensor, MetricState(default=0)]
+
+```
+
+The `MetricState` takes the same arguments as `add_state` method, but also specifies some sane default values and conversions:
+
+- If `default` is not specified:
+  - If the state is a `Tensor`, the default value is `torch.tensor(0, dtype=torch.float32)`
+  - If the state is a `list`, the default value is an empty list
+- If `dist_reduce_fx` is not specified:
+  - If the state is a `Tensor`, the default value is `"sum"`
+  - If the state is a `list`, the default value is `"cat"`
+
 #### Visualizer
 
 The rules for defining the `forward` method are the same as for the `forward` method of the loss.
