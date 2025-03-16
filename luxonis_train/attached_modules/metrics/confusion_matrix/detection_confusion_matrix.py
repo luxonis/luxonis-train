@@ -9,7 +9,11 @@ from luxonis_train.utils.general import instances_from_batch
 
 
 class DetectionConfusionMatrix(BaseMetric):
-    supported_tasks = [Tasks.BOUNDINGBOX, Tasks.INSTANCE_KEYPOINTS]
+    supported_tasks = [
+        Tasks.BOUNDINGBOX,
+        Tasks.INSTANCE_KEYPOINTS,
+        Tasks.INSTANCE_SEGMENTATION,
+    ]
 
     confusion_matrix: Tensor
 
