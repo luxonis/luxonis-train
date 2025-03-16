@@ -182,21 +182,23 @@ class BaseAttachedModule(
 
         def _add_to_kwargs(
             name: str,
+            kwarg_name: str,
             data: Mapping[str, list[Tensor] | Tensor],
             parameter: Parameter,
             kind: Literal["label", "prediction"],
         ) -> None:
             if name not in data:
                 if self._argument_is_optional(parameter):
-                    kwargs[name] = None
+                    kwargs[kwarg_name] = None
                 elif parameter.default is Parameter.empty:
                     raise RuntimeError(
-                        f"Module '{self.name}' requires {kind} {name}, "
+                        f"Module '{self.name}' requires {kind} '{name}', "
                         f"but it is not present in the "
                         f"{'dataset' if kind == 'label' else 'predictions'}. "
                         f"All available {kind}s: {list(data.keys())}. "
                     )
-            kwargs[name] = data[name]
+            else:
+                kwargs[kwarg_name] = data[name]
 
         for kwarg_name, parameter in self._signature.items():
             if kwarg_name.startswith("target"):
@@ -217,7 +219,9 @@ class BaseAttachedModule(
                             "the labels using the 'target_{task_type}' pattern "
                             f"({[f'target_{label}' for label in self.required_labels]})."
                         )
-                _add_to_kwargs(label_name, labels, parameter, "label")
+                _add_to_kwargs(
+                    label_name, kwarg_name, labels, parameter, "label"
+                )
             else:
                 if kwarg_name.startswith("pred"):
                     _, *prediction_name = kwarg_name.split("_", 1)
@@ -228,7 +232,11 @@ class BaseAttachedModule(
                 else:
                     prediction_name = kwarg_name
                 _add_to_kwargs(
-                    prediction_name, predictions, parameter, "prediction"
+                    prediction_name,
+                    kwarg_name,
+                    predictions,
+                    parameter,
+                    "prediction",
                 )
 
         for kwarg_name, parameter in self._signature.items():
