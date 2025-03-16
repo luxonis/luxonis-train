@@ -136,7 +136,7 @@ def get_with_default(
     if value is not None:
         return value
 
-    msg = f"Default value of {value} is being used for {action_name}."
+    msg = f"Default value `{default}` is being used for {action_name}."
 
     if caller_name:
         msg = f"[{caller_name}] {msg}"
