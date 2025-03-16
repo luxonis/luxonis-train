@@ -2,7 +2,7 @@ import torch
 from torch import Tensor
 
 from luxonis_train.attached_modules.metrics.confusion_matrix import (
-    ConfusionMatrix,
+    DetectionConfusionMatrix,
 )
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Tasks
@@ -14,7 +14,7 @@ def test_compute_detection_confusion_matrix_specific_case():
 
         def forward(self, _: Tensor) -> Tensor: ...
 
-    metric = ConfusionMatrix(node=DummyNodeDetection(n_classes=3))
+    metric = DetectionConfusionMatrix(node=DummyNodeDetection(n_classes=3))
 
     preds = [torch.empty((0, 6)) for _ in range(3)]
     preds.append(
@@ -39,18 +39,15 @@ def test_compute_detection_confusion_matrix_specific_case():
         ]
     )
 
-    expected_cm = torch.tensor(
-        [
-            [0, 0, 0, 0],
-            [0, 0, 0, 2],
-            [0, 1, 1, 0],
-            [0, 1, 2, 0],
-        ],
-        dtype=torch.int64,
-    )
+    expected_cm = [
+        [0, 0, 0, 0],
+        [0, 0, 0, 1],
+        [0, 1, 1, 0],
+        [0, 1, 3, 1],
+    ]
+    metric._update(preds, targets)
+    metric._update([torch.empty(0, 6)], torch.empty((0, 6)))
 
-    computed_cm = metric._compute_detection_confusion_matrix(preds, targets)
+    computed_cm = metric.compute().tolist()
 
-    assert torch.equal(
-        computed_cm, expected_cm
-    ), f"Expected {expected_cm}, but got {computed_cm}"
+    assert computed_cm == expected_cm

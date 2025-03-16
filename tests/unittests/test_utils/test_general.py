@@ -84,6 +84,10 @@ def test_instances_from_batch(subtests: SubTests):
         bboxes = torch.empty((0, 2))
         instances = [t.tolist() for t in instances_from_batch(bboxes)]
         assert instances == []
+        instances = [
+            t.tolist() for t in instances_from_batch(bboxes, batch_size=4)
+        ]
+        assert instances == [[] for _ in range(4)]
     with subtests.test("fail"):
         with pytest.raises(
             ValueError, match="All tensors must have the same length"
