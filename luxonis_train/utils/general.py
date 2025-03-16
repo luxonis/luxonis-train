@@ -272,16 +272,16 @@ def get_batch_instances(
 
 
 @overload
-def instance_generator(bboxes: Tensor) -> Iterator[Tensor]: ...
+def instances_from_batch(bboxes: Tensor) -> Iterator[Tensor]: ...
 
 
 @overload
-def instance_generator(
+def instances_from_batch(
     bboxes: Tensor, *args: Tensor
 ) -> Iterator[tuple[Tensor, ...]]: ...
 
 
-def instance_generator(
+def instances_from_batch(
     bboxes: Tensor, *args: Tensor
 ) -> Iterator[tuple[Tensor, ...]] | Iterator[Tensor]:
     """Generate instances from batched data, where the batch index is
@@ -290,9 +290,10 @@ def instance_generator(
     Example::
         >>> bboxes = torch.tensor([[0, 1], [0, 2], [1, 3]])
         >>> keypoints = torch.tensor([[0.1], [0.2], [0.3]])
-        >>> for bbox, kpt in instance_generator(bboxes, keypoints):
+        >>> for bbox, kpt in instances_from_batch(bboxes, keypoints):
         ...     print(bbox, kpt)
-        tensor([[1], [1]]) tensor([[0.1], [0.2]])
+        tensor([[1], [2]]) tensor([[0.1], [0.2]])
+        tensor([[3]]) tensor([[0.3]])
 
     @type bboxes: Tensor
     @param bboxes: Tensor of bounding boxes. Must have the batch index
@@ -306,6 +307,10 @@ def instance_generator(
         bounding box tensor (with the batch index stripped) and the
         rest are the additional tensors (keypoints, masks, etc.).
     """
+    if not all(len(arg) == len(bboxes) for arg in args):
+        raise ValueError("All tensors must have the same length.")
+    if not bboxes.numel():
+        return
     for i in range(int(bboxes[:, 0].max()) + 1):
         if not args:
             yield get_batch_instances(i, bboxes)

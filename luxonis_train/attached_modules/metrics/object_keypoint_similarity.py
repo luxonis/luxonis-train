@@ -11,7 +11,7 @@ from luxonis_train.utils import (
     compute_pose_oks,
     get_sigmas,
     get_with_default,
-    instance_generator,
+    instances_from_batch,
 )
 from luxonis_train.utils.keypoints import get_center_keypoints
 
@@ -80,7 +80,7 @@ class ObjectKeypointSimilarity(BaseMetric):
 
         self.pred_keypoints.extend(map(fix_empty_tensor, keypoints))
 
-        for bboxes, kpts in instance_generator(
+        for bboxes, kpts in instances_from_batch(
             target_boundingbox, target_keypoints
         ):
             bbox_w = bboxes[:, 3] * w

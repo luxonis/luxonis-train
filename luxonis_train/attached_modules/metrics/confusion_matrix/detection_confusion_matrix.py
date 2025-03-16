@@ -5,7 +5,7 @@ from typing_extensions import override
 
 from luxonis_train.attached_modules.metrics import BaseMetric
 from luxonis_train.tasks import Tasks
-from luxonis_train.utils.general import instance_generator
+from luxonis_train.utils.general import instances_from_batch
 
 
 class DetectionConfusionMatrix(BaseMetric):
@@ -42,7 +42,7 @@ class DetectionConfusionMatrix(BaseMetric):
 
     def _update(self, predictions: list[Tensor], targets: Tensor) -> None:
         for pred, target in zip(
-            predictions, instance_generator(targets), strict=True
+            predictions, instances_from_batch(targets), strict=True
         ):
             pred_classes = pred[:, 5].int()
             target_classes = target[:, 0].int()

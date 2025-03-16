@@ -1,7 +1,10 @@
 import pytest
+import torch
+from pytest_subtests import SubTests
 
 from luxonis_train.utils.general import (
     infer_upscale_factor,
+    instances_from_batch,
     safe_download,
 )
 
@@ -60,3 +63,34 @@ def test_safe_download_failed():
     url = "fake_url.fake"
     local_path = safe_download(url=url, file="test.ckpt", dir=".", force=True)
     assert local_path is None
+
+
+def test_instances_from_batch(subtests: SubTests):
+    with subtests.test("bboxes"):
+        bboxes = torch.tensor([[0, 1], [0, 2], [1, 3]])
+        instances = [t.tolist() for t in instances_from_batch(bboxes)]
+        assert len(instances) == 2
+        assert instances == [[[1], [2]], [[3]]]
+    with subtests.test("combined"):
+        bboxes = torch.tensor([[0, 1], [0, 2], [1, 3]])
+        keypoints = torch.tensor([[10], [20], [30]])
+        instances = [
+            (b.tolist(), k.tolist())
+            for b, k in instances_from_batch(bboxes, keypoints)
+        ]
+        assert len(instances) == 2
+        assert instances == [([[1], [2]], [[10], [20]]), ([[3]], [[30]])]
+    with subtests.test("empty"):
+        bboxes = torch.empty((0, 2))
+        instances = [t.tolist() for t in instances_from_batch(bboxes)]
+        assert instances == []
+    with subtests.test("fail"):
+        with pytest.raises(
+            ValueError, match="All tensors must have the same length"
+        ):
+            list(
+                instances_from_batch(
+                    torch.tensor([[0, 1], [0, 2], [1, 3]]),
+                    torch.tensor([[10], [20]]),
+                )
+            )
