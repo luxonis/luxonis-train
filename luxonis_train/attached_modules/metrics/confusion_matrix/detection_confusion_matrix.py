@@ -42,7 +42,9 @@ class DetectionConfusionMatrix(BaseMetric):
 
     def _update(self, predictions: list[Tensor], targets: Tensor) -> None:
         for pred, target in zip(
-            predictions, instances_from_batch(targets), strict=True
+            predictions,
+            instances_from_batch(targets, batch_size=len(predictions)),
+            strict=True,
         ):
             pred_classes = pred[:, 5].int()
             target_classes = target[:, 0].int()

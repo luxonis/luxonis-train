@@ -272,17 +272,19 @@ def get_batch_instances(
 
 
 @overload
-def instances_from_batch(bboxes: Tensor) -> Iterator[Tensor]: ...
+def instances_from_batch(
+    bboxes: Tensor, *, batch_size: int | None = ...
+) -> Iterator[Tensor]: ...
 
 
 @overload
 def instances_from_batch(
-    bboxes: Tensor, *args: Tensor
+    bboxes: Tensor, *args: Tensor, batch_size: int | None = ...
 ) -> Iterator[tuple[Tensor, ...]]: ...
 
 
 def instances_from_batch(
-    bboxes: Tensor, *args: Tensor
+    bboxes: Tensor, *args: Tensor, batch_size: int | None = None
 ) -> Iterator[tuple[Tensor, ...]] | Iterator[Tensor]:
     """Generate instances from batched data, where the batch index is
     encoded as the first column of the bounding boxes.
@@ -302,6 +304,11 @@ def instances_from_batch(
     @param *args: Additional tensors to be batched with the bounding
         boxes. These tensors are in the same batch order, but don't
         contain the batch index themselves.
+    @type batch_size: int
+    @param batch_size: The batch size. Important in case of empty
+        tensors. If provided and the tensors are empty, the generator
+        will yield C{batch_size} empty tensors. If not provided, the
+        generator will yield nothing. Defaults to C{None}.
     @rtype: Iterator[tuple[Tensor, ...]]
     @return: Generator of instances, where the first element is the
         bounding box tensor (with the batch index stripped) and the
@@ -310,6 +317,14 @@ def instances_from_batch(
     if not all(len(arg) == len(bboxes) for arg in args):
         raise ValueError("All tensors must have the same length.")
     if not bboxes.numel():
+        if batch_size is not None:
+            for _ in range(batch_size):
+                if not args:
+                    yield torch.empty_like(bboxes)
+                else:
+                    yield tuple(
+                        torch.empty_like(bboxes) for _ in [bboxes, *args]
+                    )
         return
     for i in range(int(bboxes[:, 0].max()) + 1):
         if not args:
