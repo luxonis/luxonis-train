@@ -1,6 +1,6 @@
 blobconverter>=1.4.2
 lightning>=2.4.0
-luxonis-ml[data,tracker]>=0.6.2
+luxonis-ml[data,tracker]==0.6.3
 onnx<1.16.2; sys_platform == "win32"
 onnx>=1.16.2; sys_platform != "win32"
 onnxruntime>=1.13.1
