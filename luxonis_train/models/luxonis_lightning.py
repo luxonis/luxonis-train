@@ -564,7 +564,10 @@ class LuxonisLightningModule(pl.LightningModule):
         @rtype: list[str]
         @return: List of output names.
         """
+        device_before = self.device
+
         self.eval()
+        self.to("cpu")  # move to CPU to support deterministic .to_onnx()
 
         inputs = {
             input_name: torch.zeros([1, *shape]).to(self.device)
@@ -700,6 +703,7 @@ class LuxonisLightningModule(pl.LightningModule):
         logger.info(f"Model exported to {save_path}")
 
         self.train()
+        self.to(device_before)  # reset device after export
 
         return output_names
 
