@@ -54,53 +54,50 @@ class DetectionConfusionMatrix(BaseMetric):
             pred_classes = pred[:, 5].int()
             target_classes = target[:, 0].int()
 
-            # True Negatives
             if target.numel() == pred.numel() == 0:
                 self.confusion_matrix[self.n_classes, self.n_classes] += 1
 
-            # False Positives
             elif target.numel() == 0:
                 self.confusion_matrix[pred_classes, self.n_classes] += 1
 
-            # False Negatives
             elif pred.numel() == 0:
                 self.confusion_matrix[self.n_classes, target_classes] += 1
 
+            elif (
+                iou := box_iou(target[:, 1:], pred[:, :4]) > self.iou_threshold
+            ).any():
+                iou_max, pred_max_idx = torch.max(iou, dim=1)
+                iou_target_mask = iou_max > self.iou_threshold
+                targets_kept = torch.arange(len(target), device=self.device)[
+                    iou_target_mask
+                ]
+                predictions_kept = pred_max_idx[iou_target_mask]
+
+                self.confusion_matrix.index_put_(
+                    (
+                        pred_classes[predictions_kept],
+                        target_classes[targets_kept],
+                    ),
+                    torch.tensor(1),
+                    accumulate=True,
+                )
+
+                for target_idx in self._get_unmatched(
+                    targets_kept, len(target)
+                ):
+                    self.confusion_matrix[
+                        self.n_classes, target_classes[target_idx]
+                    ] += 1
+
+                for pred_idx in self._get_unmatched(
+                    predictions_kept, len(pred)
+                ):
+                    self.confusion_matrix[
+                        pred_classes[pred_idx], self.n_classes
+                    ] += 1
             else:
-                iou = box_iou(target[:, 1:], pred[:, :4])
-                if (iou > self.iou_threshold).any():
-                    iou_max, pred_max_idx = torch.max(iou, dim=1)
-                    iou_target_mask = iou_max > self.iou_threshold
-                    target_match_idx = torch.arange(
-                        len(target), device=self.device
-                    )[iou_target_mask]
-                    pred_match_idx = pred_max_idx[iou_target_mask]
-
-                    self.confusion_matrix.index_put_(
-                        (
-                            pred_classes[pred_match_idx],
-                            target_classes[target_match_idx],
-                        ),
-                        torch.tensor(1),
-                        accumulate=True,
-                    )
-
-                    for target_idx in self._get_unmatched(
-                        target_match_idx, len(target)
-                    ):
-                        self.confusion_matrix[
-                            self.n_classes, target_classes[target_idx]
-                        ] += 1
-
-                    for pred_idx in self._get_unmatched(
-                        pred_match_idx, len(pred)
-                    ):
-                        self.confusion_matrix[
-                            pred_classes[pred_idx], self.n_classes
-                        ] += 1
-                else:
-                    self.confusion_matrix[self.n_classes, target_classes] += 1
-                    self.confusion_matrix[pred_classes, self.n_classes] += 1
+                self.confusion_matrix[self.n_classes, target_classes] += 1
+                self.confusion_matrix[pred_classes, self.n_classes] += 1
 
     def _get_unmatched(self, index: Tensor, size: int) -> Tensor:
         return torch.arange(size, device=self.device)[
