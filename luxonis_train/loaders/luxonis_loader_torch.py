@@ -3,13 +3,7 @@ from typing import Literal
 import numpy as np
 import torch
 from loguru import logger
-from luxonis_ml.data import (
-    BucketStorage,
-    BucketType,
-    Category,
-    LuxonisDataset,
-    LuxonisLoader,
-)
+from luxonis_ml.data import Category, LuxonisDataset, LuxonisLoader
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.enums import DatasetType
 from torch import Size, Tensor
@@ -29,6 +23,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         team_id: str | None = None,
         bucket_type: Literal["internal", "external"] = "internal",
         bucket_storage: Literal["local", "s3", "gcs", "azure"] = "local",
+        update_mode: Literal["always", "if_empty"] = "always",
         delete_existing: bool = True,
         **kwargs,
     ):
@@ -81,8 +76,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             self.dataset = LuxonisDataset(
                 dataset_name=dataset_name,
                 team_id=team_id,
-                bucket_type=BucketType(bucket_type),
-                bucket_storage=BucketStorage(bucket_storage),
+                bucket_type=bucket_type,
+                bucket_storage=bucket_storage,
             )
         self.loader = LuxonisLoader(
             dataset=self.dataset,
@@ -95,6 +90,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             width=self.width,
             keep_aspect_ratio=self.keep_aspect_ratio,
             color_space=self.color_space,
+            update_mode=update_mode,
         )
 
     @override

@@ -19,7 +19,12 @@ class TestOnTrainEnd(pl.Callback):
             if isinstance(callback, ModelCheckpoint)
         }
 
+        device_before = pl_module.device
+
         trainer.test(pl_module, pl_module.core.pytorch_loaders["test"])
+
+        # .test() moves pl_module to "cpu", we move it back to original device after
+        pl_module.to(device_before)
 
         # Restore the paths
         for callback in trainer.checkpoint_callbacks:

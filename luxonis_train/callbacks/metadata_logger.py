@@ -43,11 +43,12 @@ class MetadataLogger(pl.Callback):
         if luxonis_train_hash:  # pragma: no cover
             hparams["luxonis_train"] = luxonis_train_hash
 
-        pl_module.tracker.log_hyperparams(hparams)
-        with open(pl_module.save_dir / "metadata.yaml", "w") as f:
-            yaml.dump(hparams, f, default_flow_style=False)
+        pl_module.logger.log_hyperparams(hparams)
+        # TODO: Remove
+        with open(Path(pl_module.save_dir) / "metadata.yaml", "w") as f:
+            yaml.safe_dump(hparams, f, default_flow_style=False)
 
-    # TODO: Is this any useful?
+    # TODO: Is this any useful anymore?
     @staticmethod
     def _get_editable_package_git_hash(
         package_name: str,

@@ -75,7 +75,9 @@ class PredefinedModelConfig(ConfigItem):
 
 class ModelConfig(BaseModelExtraForbid):
     name: str = "model"
-    predefined_model: PredefinedModelConfig | None = None
+    predefined_model: Annotated[
+        PredefinedModelConfig | None, Field(exclude=True)
+    ] = None
     weights: FilePath | None = None
     nodes: list[NodeConfig] = []
     losses: list[LossModuleConfig] = []
@@ -555,10 +557,7 @@ class TunerConfig(BaseModelExtraForbid):
     n_trials: PositiveInt | None = 15
     timeout: PositiveInt | None = None
     storage: StorageConfig = Field(default_factory=StorageConfig)
-    params: Annotated[
-        dict[str, list[str | int | float | bool | list]],
-        Field(default={}, min_length=1),
-    ]
+    params: dict[str, list[str | int | float | bool | list]] = {}
 
 
 class Config(LuxonisConfig):
