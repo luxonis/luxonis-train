@@ -17,8 +17,9 @@ class DetectionConfusionMatrix(BaseMetric):
 
     confusion_matrix: Tensor
 
-    def __init__(self, **kwargs):
+    def __init__(self, iou_threshold: float = 0.45, **kwargs):
         super().__init__(**kwargs)
+        self.iou_threshold = iou_threshold
 
         self.add_state(
             "confusion_matrix",
@@ -54,7 +55,7 @@ class DetectionConfusionMatrix(BaseMetric):
             target_classes = target[:, 0].int()
 
             # True Negatives
-            if target.numel() == 0 and pred.numel() == 0:
+            if target.numel() == pred.numel() == 0:
                 self.confusion_matrix[self.n_classes, self.n_classes] += 1
 
             # False Positives
@@ -66,34 +67,46 @@ class DetectionConfusionMatrix(BaseMetric):
                 self.confusion_matrix[self.n_classes, target_classes] += 1
 
             else:
-                matched = box_iou(target[:, 1:], pred[:, :4]).argmax(dim=1)
+                iou = box_iou(target[:, 1:], pred[:, :4])
+                if (iou > self.iou_threshold).any():
+                    iou_max, pred_max_idx = torch.max(iou, dim=1)
+                    iou_target_mask = iou_max > self.iou_threshold
+                    target_match_idx = torch.arange(
+                        len(target), device=self.device
+                    )[iou_target_mask]
+                    pred_match_idx = pred_max_idx[iou_target_mask]
 
-                # True Positives
-                self.confusion_matrix.index_put_(
-                    [pred_classes[matched], target_classes],
-                    torch.ones_like(matched),
-                    accumulate=True,
-                )
+                    self.confusion_matrix.index_put_(
+                        (
+                            pred_classes[pred_match_idx],
+                            target_classes[target_match_idx],
+                        ),
+                        torch.tensor(1),
+                        accumulate=True,
+                    )
 
-                # False Positives
-                self.confusion_matrix[
-                    self._not_matched(pred_classes, pred, matched),
-                    self.n_classes,
-                ] += 1
+                    for target_idx in self._get_unmatched(
+                        target_match_idx, len(target)
+                    ):
+                        self.confusion_matrix[
+                            self.n_classes, target_classes[target_idx]
+                        ] += 1
 
-                # False Negatives
-                self.confusion_matrix[
-                    self.n_classes,
-                    self._not_matched(target_classes, target, matched),
-                ] += 1
+                    for pred_idx in self._get_unmatched(
+                        pred_match_idx, len(pred)
+                    ):
+                        self.confusion_matrix[
+                            pred_classes[pred_idx], self.n_classes
+                        ] += 1
+                else:
+                    self.confusion_matrix[self.n_classes, target_classes] += 1
+                    self.confusion_matrix[pred_classes, self.n_classes] += 1
 
-    def _not_matched(
-        self, classes: Tensor, tensor: Tensor, indices: Tensor
-    ) -> Tensor:
-        return classes[
+    def _get_unmatched(self, index: Tensor, size: int) -> Tensor:
+        return torch.arange(size, device=self.device)[
             torch.isin(
-                torch.arange(len(tensor), device=self.device),
-                indices,
+                torch.arange(size, device=self.device),
+                index,
                 invert=True,
             )
         ]
