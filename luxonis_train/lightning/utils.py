@@ -24,7 +24,6 @@ from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.nodes import BaseHead, BaseNode
 from luxonis_train.strategies import BaseTrainingStrategy
 from luxonis_train.tasks import Metadata
-from luxonis_train.typing import Packet
 from luxonis_train.utils import DatasetMetadata
 from luxonis_train.utils.general import to_shape_packet
 from luxonis_train.utils.registry import (
@@ -38,6 +37,7 @@ from luxonis_train.utils.registry import (
     VISUALIZERS,
     from_registry,
 )
+from luxonis_train.utils.types import Packet
 
 A = TypeVar("A", BaseLoss, BaseMetric, BaseVisualizer)
 
