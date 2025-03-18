@@ -6,17 +6,13 @@ from torch import Tensor
 from typing_extensions import TypeVarTuple, Unpack
 
 from luxonis_train.attached_modules import BaseAttachedModule
-from luxonis_train.utils import Labels, Packet
+from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils.registry import VISUALIZERS
 
 Ts = TypeVarTuple("Ts")
 
 
-class BaseVisualizer(
-    BaseAttachedModule,
-    register=False,
-    registry=VISUALIZERS,
-):
+class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
     """A base class for all visualizers.
 
     This class defines the basic interface for all visualizers. It

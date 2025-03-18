@@ -1,13 +1,13 @@
 from typing import Literal, TypeAlias
 
+from luxonis_ml.typing import Params
 from pydantic import BaseModel
 
 from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
-    Params,
+    NodeConfig,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -83,33 +83,33 @@ class InstanceSegmentationModel(BasePredefinedModel):
         self.confusion_matrix_params = confusion_matrix_params or {}
 
     @property
-    def nodes(self) -> list[ModelNodeConfig]:
+    def nodes(self) -> list[NodeConfig]:
         """Defines the model nodes, including backbone, neck, and
         head."""
         nodes = [
-            ModelNodeConfig(
+            NodeConfig(
                 name=self.backbone,
                 alias=f"{self.task_name}-{self.backbone}",
-                freezing=self.backbone_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
-            ),
+            )
         ]
         if self.use_neck:
             nodes.append(
-                ModelNodeConfig(
+                NodeConfig(
                     name="RepPANNeck",
                     alias=f"{self.task_name}-RepPANNeck",
                     inputs=[f"{self.task_name}-{self.backbone}"],
-                    freezing=self.neck_params.pop("freezing", {}),
+                    freezing=self._get_freezing(self.neck_params),
                     params=self.neck_params,
                 )
             )
 
         nodes.append(
-            ModelNodeConfig(
+            NodeConfig(
                 name="PrecisionSegmentBBoxHead",
                 alias=f"{self.task_name}-PrecisionSegmentBBoxHead",
-                freezing=self.head_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.head_params),
                 inputs=[f"{self.task_name}-RepPANNeck"]
                 if self.use_neck
                 else [f"{self.backbone}-{self.task_name}"],
@@ -139,7 +139,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
                 name="MeanAveragePrecision",
                 attached_to=f"{self.task_name}-PrecisionSegmentBBoxHead",
                 is_main_metric=True,
-            ),
+            )
         ]
         if self.enable_confusion_matrix:
             metrics.append(

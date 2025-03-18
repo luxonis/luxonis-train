@@ -14,14 +14,12 @@ from torch import Size, Tensor, nn
 
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Metadata, Task
-from luxonis_train.utils import IncompatibleException, Labels, Packet
+from luxonis_train.typing import Labels, Packet
+from luxonis_train.utils import IncompatibleError
 
 
 class BaseAttachedModule(
-    nn.Module,
-    ABC,
-    metaclass=AutoRegisterMeta,
-    register=False,
+    nn.Module, ABC, metaclass=AutoRegisterMeta, register=False
 ):
     """Base class for all modules that are attached to a L{LuxonisNode}.
 
@@ -55,17 +53,18 @@ class BaseAttachedModule(
     def __init__(self, *, node: BaseNode | None = None):
         super().__init__()
         self._node = node
-        self._epoch = 0
 
         if node is not None and node.task is not None:
-            if self.supported_tasks is not None:
-                if node.task not in self.supported_tasks:
-                    raise IncompatibleException(
-                        f"Module '{self.name}' is not compatible with the "
-                        f"'{node.name}' node. '{self.name}' supports "
-                        f" {self.supported_tasks}, but the node's "
-                        f"task is '{node.task}'."
-                    )
+            if (
+                self.supported_tasks is not None
+                and node.task not in self.supported_tasks
+            ):
+                raise IncompatibleError(
+                    f"Module '{self.name}' is not compatible with the "
+                    f"'{node.name}' node. '{self.name}' supports "
+                    f" {self.supported_tasks}, but the node's "
+                    f"task is '{node.task}'."
+                )
             self._task = node.task
 
         elif (
@@ -77,6 +76,10 @@ class BaseAttachedModule(
             self._task = None
 
         self._check_node_type_override()
+
+    @property
+    def current_epoch(self) -> int:
+        return self.node.current_epoch
 
     @staticmethod
     def _get_signature(
@@ -224,7 +227,7 @@ class BaseAttachedModule(
                 input_names.append(pred_name)
             target_names.append(target_name)
         else:
-            for name in self._signature.keys():
+            for name in self._signature:
                 if name.startswith("target"):
                     target_names.append(name)
                 elif name in {"predictions", "prediction", "preds", "pred"}:
@@ -234,10 +237,16 @@ class BaseAttachedModule(
                     input_names.append(name)
                 else:
                     raise RuntimeError(
-                        f"To make use of automatic parameter extraction, the signature of `{self.name}.forward` (or `update` for subclasses of `BaseMetric`) must follow "
-                        "one of the following rules: "
-                        "1. Exactly two arguments, first one for predictions and second one for targets. "
-                        "2. Predictions argument named 'predictions', 'prediction', 'preds', or 'pred' and a target arguments with names starting with 'target'. The predictions argument will be matched to the main output of the node (output named the same as the node's task). "
+                        f"To make use of automatic parameter extraction, "
+                        f"the signature of `{self.name}.forward` (or `update` "
+                        "for subclasses of `BaseMetric`) must follow "
+                        "one of the following rules:\n"
+                        "1. Exactly two arguments, first one for predictions "
+                        "and second one for targets.\n"
+                        "2. Predictions argument named 'predictions', 'prediction', "
+                        "'preds', or 'pred' and a target arguments with names starting "
+                        "with 'target'. The predictions argument will be matched "
+                        "to the main output of the node (output named the same as the node's task).\n"
                         "3. Prediction arguments named the same way as "
                         "keys in the node outputs and target arguments with names starting with 'target'. "
                         f"The node outputs are: {list(inputs.keys())}."
@@ -261,6 +270,16 @@ class BaseAttachedModule(
                 targets = {}
                 for name in target_names:
                     label_name = name.replace("target_", "")
+                    if label_name in {"target", "targets"}:
+                        raise RuntimeError(
+                            f"Module '{self.name}' requires labels using the "
+                            f"wildcard '{label_name}' argument in the signature, "
+                            f"but its task '{self.task.name}' requires more than one label "
+                            f"({self.required_labels}). "
+                            "Unable to determine which label to use. Please specify "
+                            "the labels using the 'target_{task_type}' pattern "
+                            f"({[f'target_{label}' for label in self.required_labels]})."
+                        )
                     if label_name not in labels:
                         if self._argument_is_optional(name):
                             targets[name] = None
@@ -296,7 +315,7 @@ class BaseAttachedModule(
                     "the node is returning the correct values."
                 )
 
-            elif typ == list[Tensor] and not isinstance(kwargs[name], list):
+            if typ == list[Tensor] and not isinstance(kwargs[name], list):
                 raise RuntimeError(
                     f"Module '{self.name}' expects a list of tensors for input '{name}', "
                     f"but the node '{self.node.name}' returned a single tensor. Please make sure "
@@ -311,7 +330,7 @@ class BaseAttachedModule(
         node_type = self.__annotations__["node"]
         with suppress(RuntimeError):
             if not isinstance(self.node, node_type):
-                raise IncompatibleException(
+                raise IncompatibleError(
                     f"Module '{self.name}' is attached to the '{self.node.name}' node, "
                     f"but '{self.name}' is only compatible with nodes of type '{node_type.__name__}'."
                 )

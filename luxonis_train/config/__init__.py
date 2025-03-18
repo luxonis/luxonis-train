@@ -4,18 +4,16 @@ from .config import (
     ExportConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
-    Params,
+    NodeConfig,
     TrainerConfig,
 )
 
 __all__ = [
-    "Config",
     "AttachedModuleConfig",
+    "Config",
+    "ExportConfig",
     "LossModuleConfig",
     "MetricModuleConfig",
-    "ModelNodeConfig",
-    "Params",
-    "ExportConfig",
+    "NodeConfig",
     "TrainerConfig",
 ]

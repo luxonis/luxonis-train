@@ -1,7 +1,7 @@
 import lightning.pytorch as pl
 from loguru import logger
 
-import luxonis_train
+import luxonis_train as lxt
 from luxonis_train.utils.registry import CALLBACKS
 
 from .needs_checkpoint import NeedsCheckpoint
@@ -10,9 +10,7 @@ from .needs_checkpoint import NeedsCheckpoint
 @CALLBACKS.register()
 class ExportOnTrainEnd(NeedsCheckpoint):
     def on_train_end(
-        self,
-        _: pl.Trainer,
-        pl_module: "luxonis_train.models.LuxonisLightningModule",
+        self, _: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
         """Exports the model on train end.
 

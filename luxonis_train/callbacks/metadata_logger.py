@@ -1,11 +1,12 @@
-import os.path as osp
+import shutil
 import subprocess
+from pathlib import Path
 
 import lightning.pytorch as pl
 import pkg_resources
 import yaml
 
-import luxonis_train
+import luxonis_train as lxt
 from luxonis_train.config import Config
 from luxonis_train.utils.registry import CALLBACKS
 
@@ -26,9 +27,7 @@ class MetadataLogger(pl.Callback):
         self.hyperparams = hyperparams
 
     def on_fit_start(
-        self,
-        _: pl.Trainer,
-        pl_module: "luxonis_train.models.LuxonisLightningModule",
+        self, _: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
         cfg: Config = pl_module.cfg
 
@@ -44,10 +43,11 @@ class MetadataLogger(pl.Callback):
         if luxonis_train_hash:  # pragma: no cover
             hparams["luxonis_train"] = luxonis_train_hash
 
-        pl_module.logger.log_hyperparams(hparams)
-        with open(osp.join(pl_module.save_dir, "metadata.yaml"), "w") as f:
+        pl_module.tracker.log_hyperparams(hparams)
+        with open(pl_module.save_dir / "metadata.yaml", "w") as f:
             yaml.dump(hparams, f, default_flow_style=False)
 
+    # TODO: Is this any useful?
     @staticmethod
     def _get_editable_package_git_hash(
         package_name: str,
@@ -62,29 +62,27 @@ class MetadataLogger(pl.Callback):
         """
         try:
             distribution = pkg_resources.get_distribution(package_name)
-            if distribution.location is None:
-                return None
-            package_location = osp.join(distribution.location, package_name)
-
-            # remove any additional folders in path (e.g. "/src")
-            if "src" in package_location:
-                package_location = package_location.replace("src", "")
-
-            # Check if the package location is a Git repository
-            git_dir = osp.join(package_location, ".git")
-            if osp.exists(git_dir):
-                git_command = ["git", "rev-parse", "HEAD"]
-                try:
-                    git_hash = subprocess.check_output(
-                        git_command,
-                        cwd=package_location,
-                        stderr=subprocess.DEVNULL,
-                        universal_newlines=True,
-                    ).strip()
-                    return git_hash
-                except subprocess.CalledProcessError:
-                    return None
-            else:
-                return None
         except pkg_resources.DistributionNotFound:
+            return None
+
+        if distribution.location is None:
+            return None
+
+        package_location = Path(distribution.location, package_name)
+
+        git = shutil.which("git")
+
+        if git is None:
+            return None
+
+        try:
+            return subprocess.check_output(
+                [git, "rev-parse", "HEAD"],
+                cwd=package_location,
+                stderr=subprocess.DEVNULL,
+                universal_newlines=True,
+                shell=False,
+            ).strip()
+
+        except Exception:
             return None

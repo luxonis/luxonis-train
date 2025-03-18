@@ -38,7 +38,7 @@ def dist2bbox(
     x1y1 = anchor_points - lt
     x2y2 = anchor_points + rb
     bbox = torch.cat([x1y1, x2y2], dim=dim)
-    if out_format in ["xyxy", "xywh", "cxcywh"]:
+    if out_format in {"xyxy", "xywh", "cxcywh"}:
         bbox = box_convert(bbox, in_fmt="xyxy", out_fmt=out_format)
     else:
         raise ValueError(f"Out format `{out_format}` for bbox not supported")
@@ -60,10 +60,10 @@ def bbox2dist(bbox: Tensor, anchor_points: Tensor, reg_max: float) -> Tensor:
     x1y1, x2y2 = torch.split(bbox, 2, -1)
     lt = anchor_points - x1y1
     rb = x2y2 - anchor_points
-    dist = torch.cat([lt, rb], -1).clip(0, reg_max - 0.01)
-    return dist
+    return torch.cat([lt, rb], -1).clip(0, reg_max - 0.01)
 
 
+# CLEAN:
 def bbox_iou(
     bbox1: Tensor,
     bbox2: Tensor,
@@ -175,14 +175,13 @@ def bbox_iou(
 
         iou = box_iou(bbox1, bbox2) - 0.5 * (distance_cost + shape_cost)
     else:
-        raise ValueError(f"IoU type `{iou_type}` not supported.")
+        raise ValueError(f"IoU type '{iou_type}' not supported.")
 
     iou = torch.nan_to_num(iou, 0)
 
     if element_wise:
         return iou.diag()
-    else:
-        return iou
+    return iou
 
 
 def non_max_suppression(
@@ -357,7 +356,8 @@ def anchors_for_fpn_features(
     anchor_points: list[Tensor] = []
     n_anchors_list: list[int] = []
     stride_tensor: list[Tensor] = []
-    for feature, stride in zip(features, strides):
+    # FIXME: strict=True
+    for feature, stride in zip(features, strides, strict=False):
         _, _, h, w = feature.shape
         cell_half_size = grid_cell_size * stride * 0.5
         shift_x = torch.arange(end=w) + grid_cell_offset
@@ -392,7 +392,7 @@ def anchors_for_fpn_features(
         curr_n_anchors = len(anchor)
         n_anchors_list.append(curr_n_anchors)
         stride_tensor.append(
-            torch.full((curr_n_anchors, 1), stride, dtype=feature.dtype)  # type: ignore
+            torch.full((curr_n_anchors, 1), stride.item(), dtype=feature.dtype)
         )
 
     device = features[0].device
@@ -428,13 +428,12 @@ def apply_bounding_box_to_masks(
         mask_height, device=masks.device, dtype=left.dtype
     )[None, :, None]
 
-    cropped_masks = masks * (
+    return masks * (
         (width_indices >= left)
         & (width_indices < right)
         & (height_indices >= top)
         & (height_indices < bottom)
     )
-    return cropped_masks
 
 
 def compute_iou_loss(

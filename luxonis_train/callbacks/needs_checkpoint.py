@@ -3,7 +3,7 @@ from typing import Literal
 import lightning.pytorch as pl
 from loguru import logger
 
-import luxonis_train
+import luxonis_train as lxt
 
 
 class NeedsCheckpoint(pl.Callback):
@@ -17,8 +17,7 @@ class NeedsCheckpoint(pl.Callback):
 
     @staticmethod
     def _get_checkpoint(
-        checkpoint_type: str,
-        pl_module: "luxonis_train.models.LuxonisLightningModule",
+        checkpoint_type: str, pl_module: "lxt.LuxonisLightningModule"
     ) -> str | None:
         if checkpoint_type == "loss":
             path = pl_module.core.get_min_loss_checkpoint_path()
@@ -29,16 +28,15 @@ class NeedsCheckpoint(pl.Callback):
                     "and at least one validation epoch has been performed."
                 )
             return path
-        else:
-            path = pl_module.core.get_best_metric_checkpoint_path()
-            if not path:
-                logger.error(
-                    "No checkpoint for best metric found. "
-                    "Make sure that `ModelCheckpoint` callback is present, "
-                    "at least one validation epoch has been performed and "
-                    "the model has at least one metric."
-                )
-            return path
+        path = pl_module.core.get_best_metric_checkpoint_path()
+        if not path:
+            logger.error(
+                "No checkpoint for best metric found. "
+                "Make sure that `ModelCheckpoint` callback is present, "
+                "at least one validation epoch has been performed and "
+                "the model has at least one metric."
+            )
+        return path
 
     @staticmethod
     def _get_other_type(checkpoint_type: str) -> str:
@@ -47,7 +45,7 @@ class NeedsCheckpoint(pl.Callback):
         return "loss"
 
     def get_checkpoint(
-        self, pl_module: "luxonis_train.models.LuxonisLightningModule"
+        self, pl_module: "lxt.LuxonisLightningModule"
     ) -> str | None:
         path = self._get_checkpoint(self.preferred_checkpoint, pl_module)
         if path is not None:

@@ -57,7 +57,7 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         self.assigner = TaskAlignedAssigner(
             n_classes=self.n_classes, topk=tal_topk, alpha=0.5, beta=6.0
         )
-        self.bbox_loss = CustomBboxLoss(self.node.reg_max)
+        self.bbox_loss = BBoxLoss(self.node.reg_max)
         self.proj = torch.arange(self.node.reg_max, dtype=torch.float)
         self.bce = nn.BCEWithLogitsLoss(reduction="none")
 
@@ -131,7 +131,7 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         c_max = int(counts.max()) if counts.numel() > 0 else 0
         out_target = torch.zeros(batch_size, c_max, 5, device=target.device)
         out_target[:, :, 0] = -1
-        for id, count in zip(sample_ids, counts):
+        for id, count in zip(sample_ids, counts, strict=True):
             out_target[id, :count] = target[target[:, 0] == id][:, 1:]
 
         scaled_target = out_target[:, :, 1:5] * self.gt_bboxes_scale
@@ -153,12 +153,12 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         @rtype: Tensor
         """
         if self.node.dfl:
-            batch_size, num_anchors, num_channels = pred_dist.shape
+            batch_size, n_anchors, n_channels = pred_dist.shape
             dist_probs = pred_dist.view(
-                batch_size, num_anchors, 4, num_channels // 4
+                batch_size, n_anchors, 4, n_channels // 4
             ).softmax(dim=3)
-            dist_transformed = dist_probs.matmul(
-                self.proj.to(anchor_points.device).type(pred_dist.dtype)
+            dist_transformed = dist_probs @ self.proj.to(
+                anchor_points.device, dtype=pred_dist.dtype
             )
         return dist2bbox(dist_transformed, anchor_points, out_format="xyxy")
 
@@ -187,7 +187,7 @@ class PrecisionDFLDetectionLoss(BaseLoss):
             )
 
 
-class CustomBboxLoss(nn.Module):
+class BBoxLoss(nn.Module):
     def __init__(self, reg_max: int = 16):
         """BBox loss that combines IoU and DFL losses.
 
@@ -196,7 +196,7 @@ class CustomBboxLoss(nn.Module):
             to 16.
         """
         super().__init__()
-        self.dist_loss = CustomDFLoss(reg_max) if reg_max > 1 else None
+        self.dist_loss = DFLoss(reg_max) if reg_max > 1 else None
 
     def forward(
         self,
@@ -236,7 +236,7 @@ class CustomBboxLoss(nn.Module):
         return iou_loss_val, dfl_loss_val
 
 
-class CustomDFLoss(nn.Module):
+class DFLoss(nn.Module):
     def __init__(self, reg_max: int = 16):
         """DFL loss that combines classification and regression losses.
 

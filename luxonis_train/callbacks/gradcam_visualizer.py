@@ -1,8 +1,7 @@
-from typing import Any
-
 import lightning.pytorch as pl
 import numpy as np
 import torch
+import torch.nn.functional as F
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 from pytorch_grad_cam import HiResCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
@@ -12,23 +11,25 @@ from pytorch_grad_cam.utils.model_targets import (
 )
 from torch import Tensor
 
-from luxonis_train.attached_modules.visualizers import (
-    get_denormalized_images,
-)
+import luxonis_train as lxt
+from luxonis_train.attached_modules.visualizers import get_denormalized_images
+from luxonis_train.typing import Packet
 
 
-class ModelWrapper(pl.LightningModule):
-    def __init__(self, model: pl.LightningModule, task: str) -> None:
+class PLModuleWrapper(pl.LightningModule):
+    def __init__(
+        self, pl_module: "lxt.LuxonisLightningModule", task: str
+    ) -> None:
         """Constructs `ModelWrapper`.
 
-        @type model: pl.LightningModule
-        @param model: The model to be wrapped.
+        @type pl_module: LuxonisLightningModule
+        @param pl_module: The model to be wrapped.
         @type task: str
         @param task: The type of task (e.g., segmentation, detection,
             classification, keypoint_detection).
         """
         super().__init__()
-        self.model = model
+        self.pl_module = pl_module
         self.task = task
 
     def forward(self, inputs: Tensor, *args, **kwargs) -> Tensor:
@@ -44,21 +45,20 @@ class ModelWrapper(pl.LightningModule):
         @rtype: Tensor
         @return: The processed output based on the task type.
         """
-        input_dict = dict(image=inputs)
-        output = self.model(input_dict, *args, **kwargs)
+        input_dict = {"image": inputs}
+        output = self.pl_module(input_dict, *args, **kwargs)
 
         if self.task == "segmentation":
             return output.outputs["segmentation_head"]["segmentation"][0]
-        elif self.task == "detection":
+        if self.task == "detection":
             scores = output.outputs["detection_head"]["class_scores"][0]
             return scores.sum(dim=1)
-        elif self.task == "classification":
+        if self.task == "classification":
             return output.outputs["classification_head"]["classification"][0]
-        elif self.task == "keypoint_detection":
+        if self.task == "keypoint_detection":
             scores = output.outputs["kpt_detection_head"]["class_scores"][0]
             return scores.sum(dim=1)
-        else:
-            raise ValueError(f"Unknown task: {self.task}")
+        raise ValueError(f"Unknown task: {self.task}")
 
 
 class GradCamCallback(pl.Callback):
@@ -93,26 +93,29 @@ class GradCamCallback(pl.Callback):
         self.task = task
 
     def setup(
-        self, trainer: pl.Trainer, pl_module: pl.LightningModule, stage: str
+        self,
+        trainer: pl.Trainer,
+        pl_module: "lxt.LuxonisLightningModule",
+        stage: str,
     ) -> None:
         """Initializes the model wrapper.
 
         @type trainer: pl.Trainer
         @param trainer: The PyTorch Lightning trainer.
-        @type pl_module: pl.LightningModule
-        @param pl_module: The PyTorch Lightning module.
+        @type pl_module: LuxonisLightningModule
+        @param pl_module: The LuxonisLightningModule.
         @type stage: str
         @param stage: The stage of the training loop.
         """
 
-        self.model = ModelWrapper(pl_module, self.task)
+        self.pl_module = PLModuleWrapper(pl_module, self.task)
 
     def on_validation_batch_end(
         self,
         trainer: pl.Trainer,
-        pl_module: pl.LightningModule,
+        pl_module: "lxt.LuxonisLightningModule",
         outputs: STEP_OUTPUT,
-        batch: Any,
+        batch: tuple[dict[str, Tensor], Packet[Tensor]],
         batch_idx: int,
     ) -> None:
         """At the end of first n batches, visualize the gradients using
@@ -120,7 +123,7 @@ class GradCamCallback(pl.Callback):
 
         @type trainer: pl.Trainer
         @param trainer: The PyTorch Lightning trainer.
-        @type pl_module: pl.LightningModule
+        @type pl_module: LuxonisLightningModule
         @param pl_module: The PyTorch Lightning module.
         @type outputs: STEP_OUTPUT
         @param outputs: The output of the model.
@@ -131,13 +134,14 @@ class GradCamCallback(pl.Callback):
         """
 
         if batch_idx < self.log_n_batches:
-            self.visualize_gradients(trainer, pl_module, batch, batch_idx)
+            images = batch[0][pl_module.image_source]
+            self.visualize_gradients(trainer, pl_module, images, batch_idx)
 
     def visualize_gradients(
         self,
         trainer: pl.Trainer,
-        pl_module: pl.LightningModule,
-        batch: Any,
+        pl_module: "lxt.LuxonisLightningModule",
+        images: Tensor,
         batch_idx: int,
     ) -> None:
         """Visualizes the gradients using Grad-CAM.
@@ -146,8 +150,8 @@ class GradCamCallback(pl.Callback):
         @param trainer: The PyTorch Lightning trainer.
         @type pl_module: pl.LightningModule
         @param pl_module: The PyTorch Lightning module.
-        @type batch: Any
-        @param batch: The input batch.
+        @type images: Tensor
+        @param images: The input images.
         @type batch_idx: int
         @param batch_idx: The index of the batch.
         """
@@ -155,14 +159,13 @@ class GradCamCallback(pl.Callback):
         target_layers = [m[1] for m in pl_module.named_modules()][
             self.target_layer : self.target_layer + 1
         ]
-        self.gradcam = HiResCAM(self.model, target_layers)
+        self.gradcam = HiResCAM(self.pl_module, target_layers)
 
-        x, y = batch
-        model_input = x["image"]
+        model_input = images.clone()
 
         if self.task == "segmentation":
-            output = self.model(model_input)
-            normalized_masks = torch.nn.functional.softmax(output, dim=1).cpu()
+            output = self.pl_module(model_input)
+            normalized_masks = F.softmax(output, dim=1).cpu()
             mask = normalized_masks.argmax(dim=1).detach().cpu().numpy()
             mask_float = (mask == self.class_idx).astype(np.float32)
             targets = [
@@ -180,16 +183,18 @@ class GradCamCallback(pl.Callback):
                 targets=targets,  # type: ignore
             )
 
-        images = get_denormalized_images(pl_module.cfg, x).cpu().numpy()
+        np_images = (
+            get_denormalized_images(pl_module.cfg, images).cpu().numpy()
+        )
         for zip_idx, (image, grayscale_cam) in enumerate(
-            zip(images, grayscale_cams)
+            zip(np_images, grayscale_cams, strict=True)
         ):
             image = image / 255.0
             image = image.transpose(1, 2, 0)
             visualization = show_cam_on_image(
                 image, grayscale_cam, use_rgb=True
             )
-            trainer.logger.log_image(  # type: ignore
+            pl_module.tracker.log_image(
                 f"gradcam/gradcam_{batch_idx}_{zip_idx}",
                 visualization,
                 step=trainer.global_step,

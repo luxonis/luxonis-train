@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+from luxonis_ml.typing import all_not_none, any_not_none
 from torch import Tensor, nn
 
 from luxonis_train.utils import compute_pose_oks
@@ -56,7 +57,7 @@ class TaskAlignedAssigner(nn.Module):
         gt_kpts: Tensor | None = None,
         sigmas: Tensor | None = None,
         area_factor: float | None = None,
-    ) -> tuple:
+    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
         """Assigner's forward method which generates final assignments.
 
         If both pred_kpts and gt_kpts are provided, a pose OKS is
@@ -76,11 +77,11 @@ class TaskAlignedAssigner(nn.Module):
         @type mask_gt: Tensor
         @param mask_gt: Mask for valid GTs [bs, n_max_boxes, 1]
         @type pred_kpts: Tensor | None
-        @param pred_kpts: Predicted keypoints [bs, n_anchors, num_kpts,
+        @param pred_kpts: Predicted keypoints [bs, n_anchors, n_kpts,
             3] (optional)
         @type gt_kpts: Tensor | None
         @param gt_kpts: Ground truth keypoints [bs, n_max_boxes,
-            num_kpts, 3] (optional)
+            n_kpts, 3] (optional)
         @type sigmas: Tensor | None
         @param sigmas: Sigmas for OKS computation if keypoints are used.
         @type area_factor: float | None
@@ -93,13 +94,13 @@ class TaskAlignedAssigner(nn.Module):
             n_anchors]
         """
 
-        if any(
-            x is not None for x in (pred_kpts, gt_kpts, sigmas, area_factor)
-        ) and not all(
-            x is not None for x in (pred_kpts, gt_kpts, sigmas, area_factor)
-        ):
+        if any_not_none(
+            [pred_kpts, gt_kpts, sigmas, area_factor]
+        ) and not all_not_none([pred_kpts, gt_kpts, sigmas, area_factor]):
             raise ValueError(
-                "All pred_kpts, gt_kpts, sigmas, and area_factor must be provided together if OKS is to be computed."
+                "All `pred_kpts`, `gt_kpts`, `sigmas`, and `area_factor` "
+                "must be provided if OKS is to be computed, "
+                "but only some of them have been provided."
             )
 
         self.bs = pred_scores.size(0)
@@ -138,11 +139,11 @@ class TaskAlignedAssigner(nn.Module):
         )
 
         # Select top-k bboxes as candidates for each GT
-        is_in_gts = candidates_in_gt(anchor_points, gt_bboxes.reshape([-1, 4]))
-        is_in_gts = torch.reshape(is_in_gts, (self.bs, self.n_max_boxes, -1))
+        is_in_gts = candidates_in_gt(anchor_points, gt_bboxes.reshape(-1, 4))
+        is_in_gts = is_in_gts.reshape(self.bs, self.n_max_boxes, -1)
         is_in_topk = self._select_topk_candidates(
             align_metric * is_in_gts,
-            topk_mask=mask_gt.repeat([1, 1, self.topk]).bool(),
+            topk_mask=mask_gt.repeat(1, 1, self.topk).bool(),
         )
 
         # Final positive candidates
@@ -154,12 +155,10 @@ class TaskAlignedAssigner(nn.Module):
         )
 
         # Generate final targets based on masks
-        (
-            assigned_labels,
-            assigned_bboxes,
-            assigned_scores,
-        ) = self._get_final_assignments(
-            gt_labels, gt_bboxes, assigned_gt_idx, mask_pos_sum
+        (assigned_labels, assigned_bboxes, assigned_scores) = (
+            self._get_final_assignments(
+                gt_labels, gt_bboxes, assigned_gt_idx, mask_pos_sum
+            )
         )
 
         # normalize
@@ -206,11 +205,11 @@ class TaskAlignedAssigner(nn.Module):
         @type gt_bboxes: Tensor
         @param gt_bboxes: Initial GT bboxes [bs, n_max_boxes, 4]
         @type pred_kpts: Tensor | None
-        @param pred_kpts: Predicted keypoints [bs, n_anchors, num_kpts,
-            3] (optional)
+        @param pred_kpts: Predicted keypoints [bs, n_anchors, n_kpts, 3]
+            (optional)
         @type gt_kpts: Tensor | None
-        @param gt_kpts: Ground truth keypoints [bs, n_max_boxes,
-            num_kpts, 3] (optional)
+        @param gt_kpts: Ground truth keypoints [bs, n_max_boxes, n_kpts,
+            3] (optional)
         @type sigmas: Tensor | None
         @param sigmas: Sigmas for OKS computation if keypoints are used.
             (optional)
@@ -232,16 +231,16 @@ class TaskAlignedAssigner(nn.Module):
         bbox_scores = pred_scores[ind[0], ind[1]]
 
         overlaps = batch_iou(gt_bboxes, pred_bboxes)
-        if pred_kpts is not None and gt_kpts is not None:
+        if all_not_none([pred_kpts, gt_kpts, sigmas, area_factor]):
             pose_oks = compute_pose_oks(
-                gt_kpts,
-                pred_kpts,
-                sigmas,
-                gt_bboxes,
-                eps=self.eps,
-                area_factor=area_factor,
-                use_cocoeval_oks=True,
+                pred_kpts=pred_kpts,  # type: ignore
+                gt_kpts=gt_kpts,  # type: ignore
+                sigmas=sigmas,  # type: ignore
+                gt_bboxes=gt_bboxes,
                 pose_area=None,
+                eps=self.eps,
+                area_factor=area_factor,  # type: ignore
+                use_cocoeval_oks=True,
             )
             overlaps = overlaps * pose_oks
 
