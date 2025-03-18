@@ -4,9 +4,10 @@ import warnings
 
 try:
     from .attached_modules import *
+    from .config import *
     from .core import *
+    from .lightning import *
     from .loaders import *
-    from .models import *
     from .nodes import *
     from .optimizers import *
     from .schedulers import *
