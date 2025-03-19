@@ -3,13 +3,14 @@ from pathlib import Path
 import onnxruntime as rt
 import pytest
 from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
 
 ONNX_PATH = Path("tests/integration/_ddrnet_model.onnx")
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(autouse=True)
 def clear_files():
     yield
     ONNX_PATH.unlink(missing_ok=True)
@@ -18,7 +19,7 @@ def clear_files():
 def test_train_only_heads(coco_dataset: LuxonisDataset):
     config_file = "tests/configs/ddrnet.yaml"
 
-    opts = {"loader.params.dataset_name": coco_dataset.dataset_name}
+    opts: Params = {"loader.params.dataset_name": coco_dataset.dataset_name}
 
     model = LuxonisModel(config_file, opts)
     results = model.test()
