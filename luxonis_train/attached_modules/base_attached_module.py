@@ -198,7 +198,13 @@ class BaseAttachedModule(
                         f"All available {kind}s: {list(data.keys())}. "
                     )
             else:
-                kwargs[kwarg_name] = data[name]
+                val = data[name]
+                if isinstance(val, Tensor):
+                    kwargs[kwarg_name] = val.clone()
+                elif isinstance(val, list):
+                    kwargs[kwarg_name] = [v.clone() for v in val]
+                else:
+                    kwargs[kwarg_name] = val
 
         for kwarg_name, parameter in self._signature.items():
             if kwarg_name.startswith("target"):
