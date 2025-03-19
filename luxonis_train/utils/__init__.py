@@ -16,8 +16,10 @@ from .dataset_metadata import DatasetMetadata
 from .exceptions import IncompatibleError
 from .general import (
     get_attribute_check_none,
+    get_batch_instances,
     get_with_default,
     infer_upscale_factor,
+    instances_from_batch,
     make_divisible,
     safe_download,
     to_shape_packet,
@@ -33,6 +35,9 @@ from .ocr import OCRDecoder, OCREncoder
 from .tracker import LuxonisTrackerPL
 
 __all__ = [
+    "Kwargs",
+    "instances_from_batch",
+    "get_batch_instances",
     "DatasetMetadata",
     "IncompatibleError",
     "LuxonisTrackerPL",

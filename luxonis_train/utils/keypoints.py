@@ -62,7 +62,7 @@ def get_sigmas(
 
 
 def get_center_keypoints(
-    bboxes: Tensor, height: int = 1, width: int = 1
+    bboxes: Tensor, *, height: int = 1, width: int = 1
 ) -> Tensor:
     """Get center keypoints from bounding boxes.
 
@@ -75,12 +75,12 @@ def get_center_keypoints(
     @rtype: Tensor
     @return: Tensor of center keypoints.
     """
-    keypoints = torch.empty(
-        (bboxes.shape[0], 4), device=bboxes.device, dtype=torch.int
+    keypoints = torch.full(
+        (bboxes.shape[0], 4), 2, device=bboxes.device, dtype=bboxes.dtype
     )
-    keypoints[:, :2] = bboxes[:, :2]
-    keypoints[:, 2] = (bboxes[:, 2] + bboxes[:, 4] / 2) * width
-    keypoints[:, 3] = (bboxes[:, 3] + bboxes[:, 5] / 2) * height
+    keypoints[:, 0] = bboxes[:, 0]
+    keypoints[:, 1] = (bboxes[:, 2] + bboxes[:, 4] / 2) * width
+    keypoints[:, 2] = (bboxes[:, 3] + bboxes[:, 5] / 2) * height
     return keypoints
 
 

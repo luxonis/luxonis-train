@@ -55,7 +55,7 @@ class SegmentationModel(BasePredefinedModel):
         aux_head_params: Params | None = None,
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
-        task: Literal["binary", "multiclass"] = "binary",
+        task: Literal["binary", "multiclass"] | None = None,
         task_name: str = "",
         enable_confusion_matrix: bool = True,
         confusion_matrix_params: Params | None = None,
