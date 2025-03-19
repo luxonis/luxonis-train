@@ -95,7 +95,7 @@ def blobconverter_export(
     reverse_channels: bool,
     export_path: str,
     onnx_path: str,
-) -> str:
+) -> Path:
     import blobconverter
 
     logger.info("Converting ONNX to .blob")
@@ -118,4 +118,4 @@ def blobconverter_export(
         output_dir=export_path,
     )
     logger.info(f".blob model saved to {blob_path}")
-    return blob_path
+    return Path(blob_path)
