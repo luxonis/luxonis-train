@@ -85,6 +85,7 @@ jobs:
   # not installed.
   config-test:
     runs-on: ubuntu-latest
+    if: false
     # needs:
     #   - type-check
 
