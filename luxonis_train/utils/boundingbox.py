@@ -41,7 +41,7 @@ def dist2bbox(
     if out_format in {"xyxy", "xywh", "cxcywh"}:
         bbox = box_convert(bbox, in_fmt="xyxy", out_fmt=out_format)
     else:
-        raise ValueError(f"Out format `{out_format}` for bbox not supported")
+        raise ValueError(f"Out format '{out_format}' for bbox not supported")
     return bbox
 
 

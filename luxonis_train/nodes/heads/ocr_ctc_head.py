@@ -54,7 +54,7 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
         self._encoder = OCREncoder(alphabet, ignore_unknown)
         self._decoder = OCRDecoder(self.encoder.char_to_int)
 
-        self.out_channels = self._encoder.num_classes
+        self.out_channels = self._encoder.n_classes
         if mid_channels is None:
             weight_attr, bias_attr = get_para_bias_attr(
                 fc_decay, self.in_channels
@@ -108,7 +108,7 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
         """
         return {
             "classes": self.encoder.alphabet,
-            "n_classes": self.encoder.num_classes,
+            "n_classes": self.encoder.n_classes,
             "is_softmax": True,
             "concatenate_classes": True,
             "ignored_indexes": [0],
