@@ -91,11 +91,11 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         features: list[Tensor],
         class_scores: Tensor,
         distributions: Tensor,
-        raw_keypoints: Tensor,
+        keypoints_raw: Tensor,
         target_boundingbox: Tensor,
         target_keypoints: Tensor,
     ) -> tuple[Tensor, dict[str, Tensor]]:
-        device = raw_keypoints.device
+        device = keypoints_raw.device
         target_keypoints = insert_class(target_keypoints, target_boundingbox)
 
         batch_size = class_scores.shape[0]
@@ -104,9 +104,9 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         self._init_parameters(features)
 
         pred_bboxes = dist2bbox(distributions, self.anchor_points_strided)
-        raw_keypoints = self.dist2kpts_noscale(
+        keypoints_raw = self.dist2kpts_noscale(
             self.anchor_points_strided,
-            raw_keypoints.view(batch_size, -1, n_kpts, 3),
+            keypoints_raw.view(batch_size, -1, n_kpts, 3),
         )
 
         target_boundingbox = self._preprocess_bbox_target(
@@ -121,7 +121,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             target_keypoints, batch_size, self.gt_kpts_scale
         )
 
-        scaled_raw_keypoints = raw_keypoints.clone()
+        scaled_raw_keypoints = keypoints_raw.clone()
         scaled_raw_keypoints[..., :2] = scaled_raw_keypoints[
             ..., :2
         ] * self.stride_tensor.view(1, -1, 1, 1)
@@ -167,7 +167,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             (normalized_xy, selected_keypoints[..., 2:]), dim=-1
         )
         gt_kpts = selected_keypoints[mask_positive]
-        raw_keypoints = raw_keypoints[mask_positive]
+        keypoints_raw = keypoints_raw[mask_positive]
         assigned_bboxes = assigned_bboxes / self.stride_tensor
 
         area = (
@@ -182,8 +182,8 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             * self.area_factor
         )
 
-        d = (gt_kpts[..., 0] - raw_keypoints[..., 0]).pow(2) + (
-            gt_kpts[..., 1] - raw_keypoints[..., 1]
+        d = (gt_kpts[..., 0] - keypoints_raw[..., 0]).pow(2) + (
+            gt_kpts[..., 1] - keypoints_raw[..., 1]
         ).pow(2)
         e = d / ((2 * sigmas).pow(2) * ((area.view(-1, 1) + 1e-9) * 2))
         mask = (gt_kpts[..., 2] > 0).float()
@@ -191,7 +191,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             ((1 - torch.exp(-e)) * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-9)
         ).mean()
         visibility_loss = self.b_cross_entropy.forward(
-            raw_keypoints[..., 2], mask
+            keypoints_raw[..., 2], mask
         )
 
         one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[

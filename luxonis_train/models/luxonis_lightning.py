@@ -306,15 +306,15 @@ class LuxonisLightningModule(pl.LightningModule):
                 self.cfg.trainer.optimizer is not None
                 or self.cfg.trainer.scheduler is not None
             ):
-                raise ValueError(
-                    "Training strategy is defined, but optimizer or scheduler is also defined. "
-                    "Please remove optimizer and scheduler from the config."
+                logger.warning(
+                    "Training strategy is defined. It will override "
+                    "any specified optimizer or scheduler from the config."
                 )
             self.training_strategy = STRATEGIES.get(
                 self.cfg.trainer.training_strategy.name
             )(
                 pl_module=self,
-                params=self.cfg.trainer.training_strategy.params,  # type: ignore
+                params=self.cfg.trainer.training_strategy.params,
             )
         else:
             self.training_strategy = None

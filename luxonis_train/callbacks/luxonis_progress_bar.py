@@ -22,8 +22,9 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
     ) -> dict[str, int | str | float | dict[str, float]]:
         items = super().get_metrics(trainer, pl_module)
         items.pop("v_num", None)
-        if "loss" in pl_module._loss_accumulator:
-            items["Loss"] = pl_module._loss_accumulator["loss"]
+        # TODO: Loss accumulator
+        if trainer.training and pl_module.training_step_outputs:
+            items["Loss"] = float(pl_module.training_step_outputs[-1]["loss"])
         return items
 
     @abstractmethod
