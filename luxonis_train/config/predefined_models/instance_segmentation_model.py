@@ -91,7 +91,6 @@ class InstanceSegmentationModel(BasePredefinedModel):
         nodes = [
             ModelNodeConfig(
                 name=self.backbone,
-                alias=f"{self.task_name}-{self.backbone}",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
@@ -100,8 +99,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
             nodes.append(
                 ModelNodeConfig(
                     name="RepPANNeck",
-                    alias=f"{self.task_name}-RepPANNeck",
-                    inputs=[f"{self.task_name}-{self.backbone}"],
+                    inputs=[f"{self.backbone}"],
                     freezing=self.neck_params.pop("freezing", {}),
                     params=self.neck_params,
                 )
@@ -110,12 +108,12 @@ class InstanceSegmentationModel(BasePredefinedModel):
         nodes.append(
             ModelNodeConfig(
                 name="PrecisionSegmentBBoxHead",
-                alias=f"{self.task_name}-PrecisionSegmentBBoxHead",
                 freezing=self.head_params.pop("freezing", {}),
-                inputs=[f"{self.task_name}-RepPANNeck"]
+                inputs=["RepPANNeck"]
                 if self.use_neck
-                else [f"{self.backbone}-{self.task_name}"],
+                else [f"{self.backbone}"],
                 params=self.head_params,
+                task_name=self.task_name,
             )
         )
         return nodes
@@ -127,7 +125,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
         return [
             LossModuleConfig(
                 name="PrecisionDFLSegmentationLoss",
-                attached_to=f"{self.task_name}-PrecisionSegmentBBoxHead",
+                attached_to="PrecisionSegmentBBoxHead",
                 params=self.loss_params,
                 weight=1.0,
             )
@@ -139,7 +137,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
         metrics = [
             MetricModuleConfig(
                 name="MeanAveragePrecision",
-                attached_to=f"{self.task_name}-PrecisionSegmentBBoxHead",
+                attached_to="PrecisionSegmentBBoxHead",
                 is_main_metric=True,
                 params={"class_metrics": self.per_class_metrics},
             ),
@@ -148,8 +146,8 @@ class InstanceSegmentationModel(BasePredefinedModel):
             metrics.append(
                 MetricModuleConfig(
                     name="ConfusionMatrix",
-                    alias=f"{self.task_name}-ConfusionMatrix",
-                    attached_to=f"{self.task_name}-PrecisionSegmentBBoxHead",
+                    alias="ConfusionMatrix",
+                    attached_to="PrecisionSegmentBBoxHead",
                     params={**self.confusion_matrix_params},
                 )
             )
@@ -162,7 +160,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="InstanceSegmentationVisualizer",
-                attached_to=f"{self.task_name}-PrecisionSegmentBBoxHead",
+                attached_to="PrecisionSegmentBBoxHead",
                 params=self.visualizer_params,
             )
         ]
