@@ -1,8 +1,10 @@
 import pytest
 import torch
+from pytest_subtests import SubTests
 from torch import Size
 
 from luxonis_train.loaders import collate_fn
+from luxonis_train.loaders.utils import LuxonisLoaderTorchOutput
 
 
 @pytest.mark.parametrize(
@@ -31,9 +33,11 @@ from luxonis_train.loaders import collate_fn
 )
 @pytest.mark.parametrize("batch_size", [1, 2])
 def test_collate_fn(
-    input_names_and_shapes: list[tuple[str, Size]], batch_size: int, subtests
+    input_names_and_shapes: list[tuple[str, Size]],
+    batch_size: int,
+    subtests: SubTests,
 ):
-    def build_batch_element():
+    def build_batch_element() -> LuxonisLoaderTorchOutput:
         inputs = {}
         for name, shape in input_names_and_shapes:
             inputs[name] = torch.rand(shape, dtype=torch.float32)
@@ -51,7 +55,7 @@ def test_collate_fn(
 
     batch = [build_batch_element() for _ in range(batch_size)]
 
-    inputs, annotations = collate_fn(batch)  # type: ignore
+    inputs, annotations = collate_fn(batch)
 
     with subtests.test("inputs"):
         assert inputs["features"].shape == (batch_size, 3, 224, 224)
@@ -64,12 +68,7 @@ def test_collate_fn(
 
     with subtests.test("segmentation"):
         assert "/segmentation" in annotations
-        assert annotations["/segmentation"].shape == (
-            batch_size,
-            1,
-            224,
-            224,
-        )
+        assert annotations["/segmentation"].shape == (batch_size, 1, 224, 224)
         assert annotations["/segmentation"].dtype == torch.int64
 
     with subtests.test("keypoints"):
