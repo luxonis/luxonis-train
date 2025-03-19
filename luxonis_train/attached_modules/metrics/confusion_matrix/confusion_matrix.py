@@ -31,7 +31,7 @@ class ConfusionMatrix:
                 )
             case Tasks.CLASSIFICATION | Tasks.SEGMENTATION:
                 return RecognitionConfusionMatrix(node=node, **kwargs)
-            case Tasks.BOUNDINGBOX | Tasks.INSTANCE_KEYPOINTS:
+            case Tasks.BOUNDINGBOX | Tasks.INSTANCE_KEYPOINTS | Tasks.FOMO:
                 return DetectionConfusionMatrix(node=node, **kwargs)
             case Tasks.INSTANCE_SEGMENTATION:
                 return InstanceSegmentationConfusionMatrix(node=node, **kwargs)

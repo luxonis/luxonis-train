@@ -13,6 +13,7 @@ class DetectionConfusionMatrix(BaseMetric):
         Tasks.BOUNDINGBOX,
         Tasks.INSTANCE_KEYPOINTS,
         Tasks.INSTANCE_SEGMENTATION,
+        Tasks.FOMO,
     ]
 
     confusion_matrix: Tensor
