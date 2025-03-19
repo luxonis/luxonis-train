@@ -35,9 +35,9 @@ def test_train_only_heads(coco_dataset: LuxonisDataset):
         name_to_check in name for name in onnx_output_names
     )
 
-    assert (
-        is_in_results
-    ), "'aux_segmentation_head' should be in the test results"
-    assert (
-        not is_in_output_names
-    ), "'aux_segmentation_head' should not be in the ONNX output names"
+    assert is_in_results, (
+        "'aux_segmentation_head' should be in the test results"
+    )
+    assert not is_in_output_names, (
+        "'aux_segmentation_head' should not be in the ONNX output names"
+    )
