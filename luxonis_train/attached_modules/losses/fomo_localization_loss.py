@@ -13,15 +13,28 @@ class FOMOLocalizationLoss(BaseLoss):
     node: FOMOHead
     supported_tasks = [Tasks.FOMO]
 
-    def __init__(self, object_weight: float = 500, **kwargs):
+    def __init__(
+        self, object_weight: float = 500, alpha=0.45, gamma=2, **kwargs
+    ):
         """FOMO Localization Loss for object detection using heatmaps.
 
         @type object_weight: float
-        @param object_weight: Weight for object in loss calculation.
+        @param object_weight: Weight multiplier for keypoint pixels in
+            loss calculation. Typical values range from 100-1000
+            depending on keypoint sparsity.
+        @type alpha: float
+        @param alpha: Focal loss alpha parameter for class balance (0-1
+            range). Lower values reduce positive example weighting.
+        @type gamma: float
+        @param gamma: Focal loss gamma parameter for hard example
+            focusing (γ >= 0). Higher values focus more on hard
+            misclassified examples.
         """
         super().__init__(**kwargs)
         self.original_img_size = self.original_in_shape[1:]
         self.object_weight = object_weight
+        self.alpha = alpha
+        self.gamma = gamma
 
     def forward(self, heatmap: Tensor, target: Tensor) -> Tensor:
         batch_size, num_classes, height, width = heatmap.shape
@@ -39,6 +52,11 @@ class FOMOLocalizationLoss(BaseLoss):
 
         weight_matrix = torch.ones_like(target_heatmap)
         weight_matrix[target_heatmap == 1] = self.object_weight
-        return F.binary_cross_entropy_with_logits(
-            heatmap, target_heatmap, weight=weight_matrix
+        bce = F.binary_cross_entropy_with_logits(
+            heatmap, target_heatmap, reduction="none"
         )
+        pt = torch.exp(-bce)
+        focal = self.alpha * (1 - pt) ** self.gamma
+
+        weighted_loss = focal * bce * weight_matrix
+        return weighted_loss.mean()
