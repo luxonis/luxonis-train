@@ -72,10 +72,13 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
 
         keypoints = self._heatmap_to_kpts(heatmap)
         return {
-            "keypoints": keypoints,  # format is list of tensors of shape [N,nk,4] where 4 because of x,y,v, cls_id
+            "keypoints": keypoints,
             self.task.main_output: heatmap,
-            "boundingbox": self._keypoints_to_bboxes(  # Bboxes are in list of tesnors of shape [N,6] where 6 because of cls_id, score, x,y,x,y,score, cls_id
-                keypoints, self.original_img_size[0], self.original_img_size[1]
+            "boundingbox": self._keypoints_to_bboxes(
+                keypoints,
+                self.original_img_size[0],
+                self.original_img_size[1],
+                box_width=5,
             ),
         }
 
@@ -181,7 +184,7 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
             a keypoint. Defaults to 0.5.
         @rtype: list[Tensor]
         @return: List of tensors of bounding boxes with shape [N, 6]
-            (cls_id, score, x_min, y_min, x_max, y_max).
+            (x_min, y_min, x_max, y_max, score, cls_id).
         """
         half_box = box_width / 2
         bboxes_list = []
@@ -209,12 +212,12 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
             scores = keypoints_per_image[:, 2]
             cls_ids = keypoints_per_image[:, 3]
 
-            x_min = (x_coords - half_box).clamp(min=0) / img_width
-            y_min = (y_coords - half_box).clamp(min=0) / img_height
-            x_max = (x_coords + half_box).clamp(max=img_width) / img_width
-            y_max = (y_coords + half_box).clamp(max=img_height) / img_height
+            x_min = (x_coords - half_box).clamp(min=0)
+            y_min = (y_coords - half_box).clamp(min=0)
+            x_max = (x_coords + half_box).clamp(max=img_width)
+            y_max = (y_coords + half_box).clamp(max=img_height)
             bboxes = torch.stack(
-                [cls_ids, scores, x_min, y_min, x_max, y_max], dim=-1
+                [x_min, y_min, x_max, y_max, scores, cls_ids], dim=-1
             )
             bboxes_list.append(bboxes)
 
