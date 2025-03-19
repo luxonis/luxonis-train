@@ -66,7 +66,7 @@ class OCRRecognitionModel(BasePredefinedModel):
         head_params: Params | None = None,
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
-        task_name: str | None = None,
+        task_name: str = "",
         alphabet: list[str] | AlphabetName = "english",
         max_text_len: int = 40,
         ignore_unknown: bool = True,
@@ -88,7 +88,7 @@ class OCRRecognitionModel(BasePredefinedModel):
         self.head_params["ignore_unknown"] = ignore_unknown
         self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
-        self.task_name = task_name or "ocr_recognition"
+        self.task_name = task_name
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
@@ -96,23 +96,21 @@ class OCRRecognitionModel(BasePredefinedModel):
         return [
             ModelNodeConfig(
                 name=self.backbone,
-                alias=f"{self.task_name}-{self.backbone}",
                 freezing=self.backbone_params.pop("freezing", {}),
                 params=self.backbone_params,
             ),
             ModelNodeConfig(
                 name="SVTRNeck",
-                alias=f"{self.task_name}-SVTRNeck",
-                inputs=[f"{self.task_name}-{self.backbone}"],
+                inputs=[f"{self.backbone}"],
                 freezing=self.neck_params.pop("freezing", {}),
                 params=self.neck_params,
             ),
             ModelNodeConfig(
                 name="OCRCTCHead",
-                alias=f"{self.task_name}-OCRCTCHead",
-                inputs=[f"{self.task_name}-SVTRNeck"],
+                inputs=["SVTRNeck"],
                 freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
+                task_name=self.task_name,
             ),
         ]
 
@@ -122,8 +120,7 @@ class OCRRecognitionModel(BasePredefinedModel):
         return [
             LossModuleConfig(
                 name="CTCLoss",
-                alias=f"{self.task_name}-CTCLoss",
-                attached_to=f"{self.task_name}-OCRCTCHead",
+                attached_to="OCRCTCHead",
                 params=self.loss_params,
                 weight=1.0,
             )
@@ -135,7 +132,7 @@ class OCRRecognitionModel(BasePredefinedModel):
         metrics = [
             MetricModuleConfig(
                 name="OCRAccuracy",
-                attached_to=f"{self.task_name}-OCRCTCHead",
+                attached_to="OCRCTCHead",
                 is_main_metric=True,
             ),
         ]
@@ -147,7 +144,7 @@ class OCRRecognitionModel(BasePredefinedModel):
         return [
             AttachedModuleConfig(
                 name="OCRVisualizer",
-                attached_to=f"{self.task_name}-OCRCTCHead",
+                attached_to="OCRCTCHead",
                 params=self.visualizer_params,
             )
         ]
