@@ -56,7 +56,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         @param inputs: The outputs of the model.
         @type labels: Labels
         @param labels: The labels of the model. @raises
-            L{IncompatibleException}: If the inputs are not compatible
-            with the module.
+            L{IncompatibleError}: If the inputs are not compatible with
+            the module.
         """
         self.update(**self.get_parameters(inputs, labels))

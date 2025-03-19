@@ -4,6 +4,7 @@ import warnings
 
 try:
     from .attached_modules import *
+    from .config.predefined_models import *
     from .core import *
     from .loaders import *
     from .models import *

@@ -244,7 +244,7 @@ class CustomSegmentationHead(BaseHead):
     # a `list[int]` depending on the value of `attach_index`.
     # By specifying its type here, the constructor of `BaseNode`
     # will automatically check if the value is correct and will
-    # raise `IncompatibleException` if it is not.
+    # raise `IncompatibleError` if it is not.
     # (e.g. if `attach_index` is set to "all" and `in_channels`
     # is annotated as `int`, an exception will be raised)
     in_channels: int

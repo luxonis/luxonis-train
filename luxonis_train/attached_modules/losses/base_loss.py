@@ -51,7 +51,7 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
         @return: The main loss and optional a dictionary of sub-losses
             (for logging). Only the main loss is used for
             backpropagation.
-        @raises IncompatibleException: If the inputs are not compatible
-            with the module.
+        @raises IncompatibleError: If the inputs are not compatible with
+            the module.
         """
         return self(**self.get_parameters(inputs, labels))

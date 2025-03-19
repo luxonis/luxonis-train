@@ -45,7 +45,7 @@ class MetadataLogger(pl.Callback):
 
         pl_module.logger.log_hyperparams(hparams)
         # TODO: Remove
-        with open(Path(pl_module.save_dir) / "metadata.yaml", "w") as f:
+        with open(pl_module.save_dir / "metadata.yaml", "w") as f:
             yaml.safe_dump(hparams, f, default_flow_style=False)
 
     # TODO: Is this any useful anymore?

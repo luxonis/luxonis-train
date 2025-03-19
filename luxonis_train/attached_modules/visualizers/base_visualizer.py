@@ -55,7 +55,7 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
         @rtype: Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]] | list[Tensor]
         @return: Visualizations.
 
-        @raise IncompatibleException: If the inputs are not compatible with the module.
+        @raise IncompatibleError: If the inputs are not compatible with the module.
         """
         ...
 
