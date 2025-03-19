@@ -353,7 +353,7 @@ class LuxonisModel:
 
         if self.cfg.exporter.blobconverter.active:
             try:
-                blobconverter_export(
+                blob_path = blobconverter_export(
                     self.cfg.exporter,
                     scale_values,
                     mean_values,
@@ -361,9 +361,8 @@ class LuxonisModel:
                     str(export_save_dir),
                     onnx_save_path,
                 )
-                self._exported_models["blob"] = export_path.with_suffix(
-                    ".blob"
-                )
+                self._exported_models["blob"] = blob_path
+
             except ImportError:
                 logger.error("Failed to import `blobconverter`")
                 logger.warning(
