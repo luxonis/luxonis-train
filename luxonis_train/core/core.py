@@ -353,16 +353,13 @@ class LuxonisModel:
 
         if self.cfg.exporter.blobconverter.active:
             try:
-                blobconverter_export(
+                self._exported_models["blob"] = blobconverter_export(
                     self.cfg.exporter,
                     scale_values,
                     mean_values,
                     reverse_channels,
                     str(export_save_dir),
                     onnx_save_path,
-                )
-                self._exported_models["blob"] = export_path.with_suffix(
-                    ".blob"
                 )
             except ImportError:
                 logger.error("Failed to import `blobconverter`")
@@ -394,7 +391,7 @@ class LuxonisModel:
                 LuxonisFileSystem.upload(path, self.cfg.exporter.upload_url)
 
         with open(export_path.with_suffix(".yaml"), "w") as f:
-            yaml.dump(modelconverter_config, f)
+            yaml.safe_dump(modelconverter_config, f)
             if self.cfg.exporter.upload_to_run:
                 self.tracker.upload_artifact(f.name, name=f.name, typ="export")
             if self.cfg.exporter.upload_url is not None:  # pragma: no cover

@@ -1,26 +1,32 @@
-__version__ = "0.3.0"
+__version__ = "0.3.3"
+import sys
 
-import warnings
+# Do not run imports when first importing from within the CLI
+# This is to make the CLI more responsive
+if "_unlocked" in locals() or not sys.argv[0].endswith("/luxonis_train"):
+    import warnings
 
-try:
-    from .attached_modules import *
-    from .core import *
-    from .loaders import *
-    from .models import *
-    from .nodes import *
-    from .optimizers import *
-    from .schedulers import *
-    from .strategies import *
-    from .tasks import *
-    from .utils import *
-    from .utils import setup_logging
+    try:
+        from .attached_modules import *
+        from .core import *
+        from .loaders import *
+        from .models import *
+        from .nodes import *
+        from .optimizers import *
+        from .schedulers import *
+        from .strategies import *
+        from .tasks import *
+        from .utils import *
+        from .utils import setup_logging
 
-    setup_logging()
+        setup_logging()
 
-except ImportError as e:
-    warnings.warn(
-        "Failed to import submodules. "
-        "Some functionality of `luxonis-train` may be unavailable. "
-        f"Error: `{e}`",
-        stacklevel=2,
-    )
+    except ImportError as e:
+        warnings.warn(
+            "Failed to import submodules. "
+            "Some functionality of `luxonis-train` may be unavailable. "
+            f"Error: `{e}`",
+            stacklevel=2,
+        )
+else:
+    _unlocked = ...

@@ -1,193 +1,108 @@
+import importlib
 import importlib.util
-from enum import Enum
+import subprocess
+import sys
 from importlib.metadata import version
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated, Literal
 
-import numpy as np
-import typer
+import requests
+from cyclopts import App, Group, Parameter
 
+if TYPE_CHECKING:
+    from luxonis_train import LuxonisModel
 
-class _ViewType(str, Enum):
-    TRAIN = "train"
-    VAL = "val"
-    TEST = "test"
-
-
-app = typer.Typer(
+app = App(
     help="Luxonis Train CLI",
-    add_completion=False,
-    pretty_exceptions_show_locals=False,
+    version=lambda: f"LuxonisTrain v{version('luxonis_train')}",
 )
+app.meta.group_parameters = Group("Global Parameters", sort_key=0)
+app["--help"].group = app.meta.group_parameters
+app["--version"].group = app.meta.group_parameters
+
+training_group = Group.create_ordered("Training")
+evaluation_group = Group.create_ordered("Evaluation")
+export_group = Group.create_ordered("Export")
+management_group = Group.create_ordered("Management")
 
 
-ConfigType = Annotated[
-    str | None,
-    typer.Option(
-        help="Path to the configuration file.",
-        show_default=False,
-        metavar="FILE",
-    ),
-]
+def create_model(config: str | None, opts: list[str] | None) -> "LuxonisModel":
+    importlib.reload(sys.modules["luxonis_train"])
+    from luxonis_train import LuxonisModel
 
-OptsType = Annotated[
-    list[str] | None,
-    typer.Argument(
-        help="A list of optional CLI overrides of the config file.",
-        show_default=False,
-    ),
-]
-
-WeightsType = Annotated[
-    Path | None,
-    typer.Option(
-        help="Path to the model weights.",
-        show_default=False,
-        metavar="FILE",
-    ),
-]
-
-ViewType = Annotated[
-    _ViewType, typer.Option(help="Which dataset view to use.")
-]
-
-SaveDirType = Annotated[
-    Path | None,
-    typer.Option(help="Where to save the inference results."),
-]
-
-SourcePathType = Annotated[
-    str | None,
-    typer.Option(
-        help="Path to an image file, a directory containing images or a video file for inference.",
-    ),
-]
+    return LuxonisModel(config, opts)
 
 
-@app.command()
+@app.command(group=training_group, sort_key=1)
 def train(
-    config: ConfigType = None,
-    resume_weights: Annotated[
-        str | None,
-        typer.Option(help="Resume training from this checkpoint."),
-    ] = None,
-    opts: OptsType = None,
+    opts: list[str] | None = None,
+    /,
+    *,
+    config: str | None = None,
+    resume_weights: str | None = None,
 ):
-    """Start training."""
-    from luxonis_train.core import LuxonisModel
+    """Start the training process.
 
-    LuxonisModel(config, opts).train(resume_weights=resume_weights)
-
-
-@app.command()
-def test(
-    config: ConfigType = None,
-    view: ViewType = _ViewType.VAL,
-    weights: WeightsType = None,
-    opts: OptsType = None,
-):
-    """Evaluate model."""
-    from luxonis_train.core import LuxonisModel
-
-    LuxonisModel(config, opts).test(view=view.value, weights=weights)
+    @type config: str
+    @param config: Path to the configuration file.
+    @type resume_weights: str
+    @param resume_weights: Path to the model weights to resume training
+        from. @type *opts: tuple[str, str]
+    @param opts: A list of optional CLI overrides of the config file.
+    """
+    create_model(config, opts).train(resume_weights=resume_weights)
 
 
-@app.command()
-def tune(config: ConfigType = None, opts: OptsType = None):
-    """Start hyperparameter tuning."""
-    from luxonis_train.core import LuxonisModel
+@app.command(group=training_group, sort_key=2)
+def tune(opts: list[str] | None = None, /, *, config: str | None = None):
+    """Start hyperparameter tuning.
 
-    LuxonisModel(config, opts).tune()
-
-
-@app.command()
-def export(
-    config: ConfigType = None,
-    save_path: Annotated[
-        Path | None,
-        typer.Option(help="Path where to save the exported model."),
-    ] = None,
-    weights: WeightsType = None,
-    opts: OptsType = None,
-):
-    """Export model."""
-    from luxonis_train.core import LuxonisModel
-
-    LuxonisModel(config, opts).export(
-        onnx_save_path=save_path, weights=weights
-    )
+    @type config: str
+    @param config: Path to the configuration file.
+    @type opts: list[str]
+    @param opts: A list of optional CLI overrides of the config file.
+    """
+    create_model(config, opts).tune()
 
 
-@app.command()
-def infer(
-    config: ConfigType = None,
-    view: ViewType = _ViewType.VAL,
-    save_dir: SaveDirType = None,
-    source_path: SourcePathType = None,
-    weights: WeightsType = None,
-    opts: OptsType = None,
-):
-    """Run inference."""
-    from luxonis_train.core import LuxonisModel
-
-    LuxonisModel(config, opts).infer(
-        view=view.value,
-        save_dir=save_dir,
-        source_path=source_path,
-        weights=weights,
-    )
-
-
-@app.command()
+@app.command(group=training_group, sort_key=3)
 def inspect(
-    config: ConfigType = None,
-    view: Annotated[
-        _ViewType,
-        typer.Option(
-            ...,
-            "--view",
-            "-v",
-            help="Which split of the dataset to inspect.",
-            case_sensitive=False,
-        ),
-    ] = "train",  # type: ignore
+    opts: list[str] | None = None,
+    /,
+    *,
+    config: str | None = None,
+    view: Literal["train", "val", "test"] = "train",
     size_multiplier: Annotated[
-        float,
-        typer.Option(
-            ...,
-            "--size-multiplier",
-            "-s",
-            help=(
-                "Multiplier for the image size. "
-                "By default the images are shown in their original size. "
-                "Use this option to scale them."
-            ),
-            show_default=False,
-        ),
+        float, Parameter(["--size_multiplier", "-s"])
     ] = 1.0,
-    opts: OptsType = None,
 ):
-    """Inspect the dataset.
+    """Inspect the dataset as specified in the configuration.
 
     To close the window press 'q' or 'Esc'.
+
+    @type config: str
+    @param config: Path to the configuration file.
+    @type view: Literal["train", "val", "test"]
+    @param view: Which dataset view to use. Only relevant when the
+        source_path is not provided.
+    @type size_multiplier: float
+    @param size_multiplier: Multiplier for the image size. By default
+        the images are shown in their original size. Use this option to
+        scale them.
+    @type opts: list[str]
+    @param opts: A list of optional CLI overrides of the config file.
     """
     import cv2
+    import numpy as np
     from luxonis_ml.data.utils.visualizations import visualize
-
-    from luxonis_train.core import LuxonisModel
 
     opts = opts or []
     opts.extend(["trainer.preprocessing.normalize.active", "False"])
 
-    model = LuxonisModel(config, opts)
+    model = create_model(config, opts)
 
-    loader = model.loaders[view.value]
+    loader = model.loaders[view]
     for images, labels in loader:
-        for img in images.values():
-            if len(img.shape) != 3:
-                raise ValueError(
-                    "Only 3D images are supported for visualization."
-                )
         np_images = {
             k: v.numpy().transpose(1, 2, 0) for k, v in images.items()
         }
@@ -206,51 +121,167 @@ def inspect(
             loader.get_classes(),
         )
         cv2.imshow("Visualization", viz)
-        if cv2.waitKey(0) in [ord("q"), 27]:
+        if cv2.waitKey() in {ord("q"), 27}:
             break
     cv2.destroyAllWindows()
 
 
-@app.command()
-def archive(
-    config: ConfigType = None,
-    executable: Annotated[
-        str | None,
-        typer.Option(
-            help="Path to the model file.", show_default=False, metavar="FILE"
-        ),
-    ] = None,
-    weights: WeightsType = None,
-    opts: OptsType = None,
+@app.command(group=evaluation_group, sort_key=1)
+def test(
+    opts: list[str] | None = None,
+    /,
+    *,
+    config: str | None = None,
+    view: Literal["train", "val", "test"] = "val",
+    weights: str | None = None,
 ):
-    """Generate NN archive."""
-    from luxonis_train.core import LuxonisModel
+    """Evaluate a trained model.
 
-    LuxonisModel(str(config), opts).archive(path=executable, weights=weights)
+    @type config: str
+    @param config: Path to the configuration file or a name of a
+        predefined model.
+    @type view: str
+    @param view: Which dataset view to use. Only relevant when the
+        source_path is not provided.
+    @type weights: str
+    @param weights: Path to the model weights.
+    @type opts: list[str]
+    @param opts: A list of optional CLI overrides of the config file.
+    """
+    create_model(config, opts).test(view=view, weights=weights)
 
 
-def version_callback(value: bool):
-    if value:
-        typer.echo(f"LuxonisTrain Version: {version('luxonis_train')}")
-        raise typer.Exit()
+@app.command(group=evaluation_group, sort_key=2)
+def infer(
+    opts: list[str] | None = None,
+    /,
+    *,
+    config: str | None = None,
+    view: Literal["train", "val", "test"] = "val",
+    save_dir: Path | None = None,
+    source_path: str | None = None,
+    weights: Path | None = None,
+):
+    """Run inference on a dataset view or a custom source.
+
+    Supports both images and video files.
+
+    @type config: str
+    @param config: Path to the configuration file or a name of a
+        predefined model.
+    @type view: str
+    @param view: Which dataset view to use. Only relevant when the
+        source_path is not provided.
+    @type save_dir: Path
+    @param save_dir: Where to save the inference results.
+    @type source_path: str
+    @param source_path: Path to an image file, a directory containing
+        images or a video file for inference. If not provided, the
+        loader from the configuation file will be used.
+    @type weights: Path
+    @param weights: Path to the model weights.
+    @type opts: list[str]
+    @param opts: A list of optional CLI overrides of the config file.
+    """
+    create_model(config, opts).infer(
+        view=view,
+        save_dir=save_dir,
+        source_path=source_path,
+        weights=weights,
+    )
 
 
-@app.callback()
-def common(
-    _: Annotated[
-        bool,
-        typer.Option(
-            "--version",
-            callback=version_callback,
-            help="Show version and exit.",
-        ),
-    ] = False,
+@app.command(group=export_group, sort_key=1)
+def export(
+    opts: list[str] | None = None,
+    /,
+    *,
+    config: str | None = None,
+    save_path: str | None = None,
+    weights: str | None = None,
+):
+    """Export the model to ONNX or BLOB format.
+
+    @type config: str
+    @param config: Path to the configuration file or a name of a
+        predefined model.
+    @type save_path: str
+    @param save_path: Path to save the exported model.
+    @type weights: str
+    @param weights: Path to the model weights.
+    @type opts: list[str]
+    @param opts: A list of optional CLI overrides of the
+    """
+    create_model(config, opts).export(
+        onnx_save_path=save_path, weights=weights
+    )
+
+
+@app.command(group=export_group, sort_key=2)
+def archive(
+    opts: list[str] | None = None,
+    /,
+    *,
+    config: str | None,
+    executable: str | None = None,
+    weights: str | None = None,
+):
+    """Convert the model to an NN Archive format.
+
+    @type config: str
+    @param config: Path to the configuration file.
+    @type executable: str
+    @param executable: Path to the exported model, usually an ONNX file.
+        If not provided, the model will be exported first.
+    @type weights: str
+    @param weights: Path to the model weights.
+    @type opts: list[str]
+    @param opts: A list of optional CLI overrides of the config file.
+    """
+    create_model(str(config), opts).archive(path=executable, weights=weights)
+
+
+@app.command(group=management_group)
+def upgrade():
+    """Update LuxonisTrain to the latest stable version."""
+
+    def get_latest_version() -> str | None:
+        url = "https://pypi.org/pypi/luxonis_train/json"
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            versions = list(data["releases"].keys())
+            versions.sort(key=lambda s: [int(u) for u in s.split(".")])
+            return versions[-1]
+        return None
+
+    current_version = version("luxonis_train")
+    latest_version = get_latest_version()
+    if latest_version is None:
+        print("Failed to check for updates. Try again later.")
+        return
+    if current_version == latest_version:
+        print(f"LuxonisTrain is up-to-date (v{current_version}).")
+    else:
+        subprocess.check_output(
+            f"{sys.executable} -m pip install -U pip".split()
+        )
+        subprocess.check_output(
+            f"{sys.executable} -m pip install -U luxonis_train".split()
+        )
+        print(
+            f"LuxonisTrain updated from v{current_version} to v{latest_version}."
+        )
+
+
+@app.meta.default
+def launcher(
+    *tokens: Annotated[str, Parameter(show=False, allow_leading_hyphen=True)],
     source: Annotated[
         Path | None,
-        typer.Option(
-            help="Path to a python file with custom components. "
-            "Will be sourced before running the command.",
-            metavar="FILE",
+        Parameter(
+            help="Path to a python module with custom components. "
+            "This module will be sourced before running a command."
         ),
     ] = None,
 ):
@@ -260,7 +291,8 @@ def common(
             module = importlib.util.module_from_spec(spec=spec)
             if spec.loader:
                 spec.loader.exec_module(module)
+    app(tokens)
 
 
 if __name__ == "__main__":
-    app()
+    app.meta()

@@ -106,12 +106,10 @@ def test_get_final_assignments():
     assigned_gt_idx = torch.randint(0, n_max_boxes, (batch_size, n_anchors))
     mask_pos_sum = torch.randint(0, 2, (batch_size, n_anchors))
 
-    (
-        assigned_labels,
-        assigned_bboxes,
-        assigned_scores,
-    ) = assigner._get_final_assignments(
-        gt_labels, gt_bboxes, assigned_gt_idx, mask_pos_sum
+    (assigned_labels, assigned_bboxes, assigned_scores) = (
+        assigner._get_final_assignments(
+            gt_labels, gt_bboxes, assigned_gt_idx, mask_pos_sum
+        )
     )
 
     assert assigned_labels.shape == (batch_size, n_anchors)

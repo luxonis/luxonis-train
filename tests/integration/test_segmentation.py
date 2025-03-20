@@ -1,4 +1,8 @@
-from typing import Any
+from typing import cast
+
+import pytest
+from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
@@ -7,7 +11,7 @@ from luxonis_train.nodes.backbones import __all__ as BACKBONES
 BACKBONES = [backbone for backbone in BACKBONES if backbone != "PPLCNetV3"]
 
 
-def get_opts(backbone: str) -> dict[str, Any]:
+def get_opts(backbone: str) -> Params:
     opts = {
         "model": {
             "nodes": [
@@ -106,12 +110,12 @@ def get_opts(backbone: str) -> dict[str, Any]:
                 "attached_to": alias,
             }
         )
-    return opts
+    return cast(Params, opts)
 
 
 def train_and_test(
-    config: dict[str, Any],
-    opts: dict[str, Any],
+    config: Params,
+    opts: Params,
     train_overfit: bool = False,
 ):
     model = LuxonisModel(config, opts)
@@ -123,12 +127,10 @@ def train_and_test(
                 assert value > 0.8, f"{name} = {value} (expected > 0.8)"
 
 
-# @pytest.mark.parametrize("backbone", BACKBONES)
-# def test_backbones(
-#     backbone: str,
-#     config: dict[str, Any],
-#     parking_lot_dataset: LuxonisDataset,
-# ):
-#     opts = get_opts(backbone)
-#     opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
-#     train_and_test(config, opts)
+@pytest.mark.parametrize("backbone", BACKBONES)
+def test_backbones(
+    backbone: str, config: Params, parking_lot_dataset: LuxonisDataset
+):
+    opts = get_opts(backbone)
+    opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
+    train_and_test(config, opts)
