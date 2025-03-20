@@ -70,9 +70,8 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         if self.export:
             return {"outputs": [self._apply_nms_if_needed(heatmap)]}
 
-        keypoints = self._heatmap_to_kpts(heatmap)
         return {
-            "keypoints": keypoints,
+            "keypoints": self._heatmap_to_kpts(heatmap),
             self.task.main_output: heatmap,
         }
 

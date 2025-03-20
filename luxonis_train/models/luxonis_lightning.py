@@ -755,9 +755,9 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> Tensor:
         """Performs one step of training with provided batch."""
         outputs = self.forward(*train_batch)
-        assert (
-            outputs.losses
-        ), "Losses are empty, check if you have defined any loss"
+        assert outputs.losses, (
+            "Losses are empty, check if you have defined any loss"
+        )
 
         loss, training_step_output = self.process_losses(outputs.losses)
         self.training_step_outputs.append(training_step_output)

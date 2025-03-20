@@ -1,6 +1,6 @@
 # Visualizers
 
-> \[!NOTE\]
+> [!NOTE]
 > **Important:** In all visualizations, the left side always displays the **Ground Truth (GT)** and the right side shows the **Prediction**.
 
 Visualizers are used to render the output of a node. They are used in the `visualizers` field of the `Node` configuration.
@@ -30,7 +30,7 @@ Visualizer for **bounding box detection task**.
 | `font`      | `str \| None`                                                                         | `None`        | A filename containing a `TrueType` font                                                                                                                                 |
 | `font_size` | `int \| None`                                                                         | `None`        | Font size used for the labels                                                                                                                                           |
 
-The `BBoxVisualizer` uses predictions as a list of \[N, 6\] tensors, where each tensor in the list corresponds to one image. Each row in the tensor represents a detected object and contains the following columns:
+The `BBoxVisualizer` uses predictions as a list of [N, 6] tensors, where each tensor in the list corresponds to one image. Each row in the tensor represents a detected object and contains the following columns:
 
 - `x_min`: The x-coordinate of the top-left corner of the bounding box.
 - `y_min`: The y-coordinate of the top-left corner of the bounding box.
@@ -58,7 +58,7 @@ Visualizer for **instance keypoint detection task**.
 | `visible_color`        | `str \| tuple[int, int, int]`          | `"red"`       | Color of visible keypoints                                                                                                      |
 | `nonvisible_color`     | `str \| tuple[int, int, int ] \| None` | `None`        | Color of non-visible keypoints. If `None`, non-visible keypoints are not drawn                                                  |
 
-The `KeypointVisualizer` uses predictions in the form of a list of \[N, N_keypoints, 3\] tensors, where each tensor in the list corresponds to one image. Each tensor entry includes:
+The `KeypointVisualizer` uses predictions in the form of a list of [N, N_keypoints, 3] tensors, where each tensor in the list corresponds to one image. Each tensor entry includes:
 
 - `x`: The x-coordinate of the keypoint.
 - `y`: The y-coordinate of the keypoint.
