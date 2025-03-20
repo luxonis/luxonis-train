@@ -29,7 +29,7 @@ Install the development dependencies by running `pip install -r requirements-dev
 pip install -e .[dev]
 ```
 
-> \[!NOTE\]
+> [!NOTE]
 > This will install the package in editable mode (`-e`),
 > so you can make changes to the code and run them immediately.
 
@@ -83,14 +83,14 @@ pytest --cov=luxonis_train --cov-report=html
 
 This command will run all tests and generate HTML coverage report.
 
-> \[!TIP\]
+> [!TIP]
 > The coverage report will be saved to `htmlcov` directory.
 > If you want to inspect the coverage in more detail, open `htmlcov/index.html` in a browser.
 
-> \[!TIP\]
+> [!TIP]
 > You can choose to run only the unit-tests or only the integration tests by adding `-m unit` or `-m integration` to the `pytest` command.
 
-> \[!IMPORTANT\]
+> [!IMPORTANT]
 > If a new feature is added, a new test should be added to cover it.
 > The minimum overall test coverage for a PR to be merged is 90%.
 > The minimum coverage for new files is 80%.
@@ -103,10 +103,10 @@ Our GitHub Actions workflow is run when a new PR is opened.
 1. Next, the [type checking](#type-checking) is run.
 1. If all previous checks pass, the [tests](#tests) are run.
 
-> \[!TIP\]
+> [!TIP]
 > Review the GitHub Actions output if your PR fails.
 
-> \[!IMPORTANT\]
+> [!IMPORTANT]
 > Successful completion of all the workflow checks is required for merging a PR.
 
 ## Making and Submitting Changes
