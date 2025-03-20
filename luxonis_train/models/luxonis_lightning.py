@@ -10,7 +10,7 @@ from lightning.pytorch.callbacks import (
     ModelCheckpoint,
     RichModelSummary,
 )
-from lightning.pytorch.utilities import rank_zero_only  # type: ignore
+from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
 from luxonis_ml.typing import ConfigItem, Kwargs, PathType
 from luxonis_ml.utils import traverse_graph
@@ -1079,7 +1079,7 @@ class LuxonisLightningModule(pl.LightningModule):
         Module = registry.get(cfg.name)
         module_name = cfg.alias or cfg.name
         node_name = cfg.attached_to
-        node: BaseNode = self.nodes[node_name]  # type: ignore
+        node: BaseNode = self.nodes[node_name]
 
         module = Module(**cfg.params, node=node)
         storage[node_name][module_name] = module  # type: ignore
