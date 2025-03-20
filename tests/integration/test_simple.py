@@ -36,7 +36,11 @@ def opts(output_dir: Path) -> dict[str, Any]:
         "trainer.epochs": 1,
         "trainer.batch_size": 1,
         "trainer.validation_interval": 1,
-        "trainer.callbacks": "[]",
+        "trainer.callbacks": [
+            {"name": "ExportOnTrainEnd"},
+            {"name": "ArchiveOnTrainEnd"},
+            {"name": "TestOnTrainEnd"},
+        ],
         "tracker.save_directory": str(output_dir),
         "tuner.n_trials": 4,
     }

@@ -1,13 +1,13 @@
 from typing import Literal, TypeAlias
 
+from luxonis_ml.typing import Params
 from pydantic import BaseModel
 
 from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
-    Params,
+    NodeConfig,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -83,33 +83,31 @@ class KeypointDetectionModel(BasePredefinedModel):
         self.confusion_matrix_params = confusion_matrix_params or {}
 
     @property
-    def nodes(self) -> list[ModelNodeConfig]:
+    def nodes(self) -> list[NodeConfig]:
         """Defines the model nodes, including backbone, neck, and
         head."""
         nodes = [
-            ModelNodeConfig(
+            NodeConfig(
                 name=self.backbone,
-                freezing=self.backbone_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
-            ),
+            )
         ]
         if self.use_neck:
             nodes.append(
-                ModelNodeConfig(
+                NodeConfig(
                     name="RepPANNeck",
-                    inputs=[f"{self.backbone}"],
-                    freezing=self.neck_params.pop("freezing", {}),
+                    freezing=self._get_freezing(self.neck_params),
+                    inputs=[self.backbone],
                     params=self.neck_params,
                 )
             )
 
         nodes.append(
-            ModelNodeConfig(
+            NodeConfig(
                 name="EfficientKeypointBBoxHead",
-                inputs=(
-                    ["RepPANNeck"] if self.use_neck else [f"{self.backbone}"]
-                ),
-                freezing=self.head_params.pop("freezing", {}),
+                inputs=["RepPANNeck" if self.use_neck else self.backbone],
+                freezing=self._get_freezing(self.head_params),
                 params=self.head_params,
                 task_name=self.task_name,
             )

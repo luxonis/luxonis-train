@@ -40,9 +40,7 @@ class ClassificationVisualizer(BaseVisualizer):
         if self.multilabel:
             idxs = (pred > 0.5).nonzero(as_tuple=True)[0].tolist()
             return ", ".join([self.classes.inverse[idx] for idx in idxs])
-        else:
-            idx = int((pred.argmax()).item())
-            return self.classes.inverse[idx]
+        return self.classes.inverse[int(pred.argmax().item())]
 
     def _generate_plot(
         self, prediction: Tensor, width: int, height: int
@@ -53,9 +51,8 @@ class ClassificationVisualizer(BaseVisualizer):
             pred = prediction.softmax(-1).detach().cpu().numpy()
         fig, ax = plt.subplots(figsize=(width / 100, height / 100))
         ax.bar(np.arange(len(pred)), pred)
-        labels = [self.classes.inverse[i] for i in range(len(pred))]
         ax.set_xticks(np.arange(len(pred)))
-        ax.set_xticklabels(labels, rotation=90)
+        ax.set_xticklabels(self.classes.keys(), rotation=90)
         ax.set_ylim(0, 1)
         ax.set_xlabel("Class")
         ax.set_ylabel("Probability")

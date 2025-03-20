@@ -14,9 +14,6 @@ loader:
   params:
     dataset_name: toy_ocr
 
-  val_view: train
-  test_view: train
-
 trainer:
   preprocessing:
     train_image_size: [48, 320]

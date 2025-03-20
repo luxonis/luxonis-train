@@ -5,7 +5,7 @@ from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.tasks import Task, Tasks
-from luxonis_train.utils import Packet
+from luxonis_train.typing import Packet
 
 
 class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):

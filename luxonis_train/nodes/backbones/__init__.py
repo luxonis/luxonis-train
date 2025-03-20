@@ -15,17 +15,17 @@ from .rexnetv1 import ReXNetV1_lite
 
 __all__ = [
     "ContextSpatial",
+    "DDRNet",
     "EfficientNet",
     "EfficientRep",
+    "EfficientViT",
+    "GhostFaceNetV2",
     "MicroNet",
     "MobileNetV2",
     "MobileOne",
+    "PPLCNetV3",
     "ReXNetV1_lite",
+    "RecSubNet",
     "RepVGG",
     "ResNet",
-    "DDRNet",
-    "RecSubNet",
-    "GhostFaceNetV2",
-    "PPLCNetV3",
-    "EfficientViT",
 ]

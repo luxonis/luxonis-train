@@ -48,7 +48,7 @@ def test_dist2bbox():
     bbox = dist2bbox(distance, anchor_points)
 
     assert bbox.shape == distance.shape
-    with pytest.raises(ValueError, match="`invalid`"):
+    with pytest.raises(ValueError, match="'invalid'"):
         dist2bbox(distance, anchor_points, out_format="invalid")  # type: ignore
 
 
@@ -84,7 +84,7 @@ def test_bbox_iou(
     assert iou.max() <= 1
 
     if iou_type == "none":
-        with pytest.raises(ValueError, match="`invalid` not supported"):
+        with pytest.raises(ValueError, match="'invalid' not supported"):
             bbox_iou(bbox1, bbox2, iou_type="invalid")  # type: ignore
 
 

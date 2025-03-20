@@ -1,13 +1,13 @@
 from typing import Literal, TypeAlias
 
+from luxonis_ml.typing import Params
 from pydantic import BaseModel
 
 from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
-    Params,
+    NodeConfig,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -70,15 +70,15 @@ class AnomalyDetectionModel(BasePredefinedModel):
         self.task_name = task_name
 
     @property
-    def nodes(self) -> list[ModelNodeConfig]:
+    def nodes(self) -> list[NodeConfig]:
         """Defines the model nodes, including RecSubNet and
         DiscSubNetHead."""
         return [
-            ModelNodeConfig(
+            NodeConfig(
                 name=self.backbone,
                 params=self.backbone_params,
             ),
-            ModelNodeConfig(
+            NodeConfig(
                 name="DiscSubNetHead",
                 inputs=[f"{self.backbone}"],
                 params=self.head_params,
@@ -107,7 +107,7 @@ class AnomalyDetectionModel(BasePredefinedModel):
                 attached_to="DiscSubNetHead",
                 params={"num_classes": 2, "task": "multiclass"},
                 is_main_metric=True,
-            ),
+            )
         ]
 
     @property

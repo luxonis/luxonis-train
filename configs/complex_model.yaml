@@ -78,11 +78,9 @@ trainer:
   strategy: auto
 
   n_sanity_val_steps: 1
-  profiler: null
-  verbose: true
   batch_size: 8
   accumulate_grad_batches: 1
-  epochs: &epochs 200
+  epochs: 200
   n_workers: 8
   validation_interval: 10
   n_log_images: 8
@@ -91,7 +89,7 @@ trainer:
   save_top_k: 3
 
   preprocessing:
-    train_image_size: [&height 384, &width 384]
+    train_image_size: [384, 384]
     keep_aspect_ratio: true
     normalize:
       active: true
@@ -105,9 +103,6 @@ trainer:
       - name: Flip
       - name: RandomRotate90
       - name: Mosaic4
-        params:
-          out_width: *width
-          out_height: *height
 
   callbacks:
     - name: LearningRateMonitor
@@ -121,7 +116,6 @@ trainer:
         patience: 3
         monitor: val/loss
         mode: min
-        verbose: true
     - name: ExportOnTrainEnd
     - name: ArchiveOnTrainEnd
     - name: TestOnTrainEnd
@@ -137,7 +131,6 @@ trainer:
   scheduler:
     name: CosineAnnealingLR
     params:
-      T_max: *epochs
       eta_min: 0
 
 exporter:

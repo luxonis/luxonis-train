@@ -39,8 +39,8 @@ trainer:
   callbacks:
     - name: EMACallback
       params:
-        decay: 0.9999 
-        use_dynamic_decay: True 
+        decay: 0.9999
+        use_dynamic_decay: True
         decay_tau: 2000
     - name: ExportOnTrainEnd
     - name: TestOnTrainEnd
@@ -53,13 +53,13 @@ trainer:
 
   training_strategy:
     name: "TripleLRSGDStrategy"
-    params: 
+    params:
       warmup_epochs: 3
       warmup_bias_lr: 0.0
       warmup_momentum: 0.8
       lr: 0.01
       lre: 0.0001
-      momentum: 0.937     
+      momentum: 0.937
       weight_decay: 0.0005
       nesterov: True
       cosine_annealing: False

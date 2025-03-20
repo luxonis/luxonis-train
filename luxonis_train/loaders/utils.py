@@ -2,11 +2,9 @@ import torch
 from luxonis_ml.data.utils import get_task_type, task_is_metadata
 from torch import Tensor
 
-from luxonis_train.utils.types import Labels
+from luxonis_train.typing import Labels
 
 LuxonisLoaderTorchOutput = tuple[dict[str, Tensor], Labels]
-"""LuxonisLoaderTorchOutput is a tuple of source tensors and
-corresponding labels."""
 
 
 def collate_fn(
@@ -23,15 +21,13 @@ def collate_fn(
     """
     inputs: tuple[dict[str, Tensor], ...]
     labels: tuple[Labels, ...]
-    inputs, labels = zip(*batch)
+    inputs, labels = zip(*batch, strict=True)
 
-    out_inputs = {
-        k: torch.stack([i[k] for i in inputs], 0) for k in inputs[0].keys()
-    }
+    out_inputs = {k: torch.stack([i[k] for i in inputs], 0) for k in inputs[0]}
 
     out_labels: Labels = {}
 
-    for task in labels[0].keys():
+    for task in labels[0]:
         task_type = get_task_type(task)
         annos = [label[task] for label in labels]
 

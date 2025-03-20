@@ -10,14 +10,13 @@ from bidict import bidict
 from loguru import logger
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
-from typeguard import TypeCheckError, check_type
+from typeguard import TypeCheckError, check_type, typechecked
 
 from luxonis_train.tasks import Task
+from luxonis_train.typing import AttachIndexType, Packet
 from luxonis_train.utils import (
-    AttachIndexType,
     DatasetMetadata,
-    IncompatibleException,
-    Packet,
+    IncompatibleError,
     safe_download,
 )
 from luxonis_train.utils.registry import NODES
@@ -63,7 +62,8 @@ class BaseNode(
 
     Additionally, the following class attributes can be defined:
         - L{attach_index}: Index of previous output that this node attaches to.
-        - L{task}: An instance of `luxonis_train.tasks.Task` that specifies the task of the node. Usually defined for head nodes.
+        - L{task}: An instance of `luxonis_train.tasks.Task` that specifies the
+            task of the node. Usually defined for head nodes.
 
     Example::
         class MyNode(BaseNode):
@@ -103,6 +103,7 @@ class BaseNode(
     attach_index: AttachIndexType = None
     task: Task | None = None
 
+    @typechecked
     def __init__(
         self,
         *,
@@ -169,13 +170,12 @@ class BaseNode(
 
             if len(parameters) > 1 or annotation is inspect.Parameter.empty:
                 logger.warning(self._missing_attach_index_message())
+            elif annotation == Tensor:
+                self.attach_index = -1
+            elif annotation == list[Tensor]:
+                self.attach_index = "all"
             else:
-                if annotation == Tensor:
-                    self.attach_index = -1
-                elif annotation == list[Tensor]:
-                    self.attach_index = "all"
-                else:
-                    logger.warning(self._missing_attach_index_message())
+                logger.warning(self._missing_attach_index_message())
 
         if task_name is None and dataset_metadata is not None:
             if len(dataset_metadata.task_names) == 1:
@@ -198,26 +198,9 @@ class BaseNode(
         self._epoch = 0
         self._in_sizes = in_sizes
 
-        self._check_type_overrides()
+        self.current_epoch = 0
 
-    def _check_type_overrides(self) -> None:
-        properties = []
-        for name, value in inspect.getmembers(self.__class__):
-            if isinstance(value, property):
-                properties.append(name)
-        for name, typ in self.__annotations__.items():
-            if name in properties:
-                with suppress(RuntimeError):
-                    value = getattr(self, name)
-                    try:
-                        check_type(value, typ)
-                    except TypeCheckError as e:
-                        raise IncompatibleException(
-                            f"Node '{self.name}' specifies the type of the property `{name}` as `{typ}`, "
-                            f"but received `{type(value)}`. "
-                            f"This may indicate that the '{self.name}' node is "
-                            "not compatible with its predecessor."
-                        ) from e
+        self._check_type_overrides()
 
     @property
     def name(self) -> str:
@@ -298,10 +281,7 @@ class BaseNode(
             during initialization.
         """
         if self._dataset_metadata is None:
-            raise RuntimeError(
-                f"{self._non_set_error('dataset_metadata')}"
-                "Either provide `dataset_metadata` or `n_classes`."
-            )
+            raise RuntimeError(self._non_set_error("dataset_metadata"))
         return self._dataset_metadata
 
     @property
@@ -384,7 +364,9 @@ class BaseNode(
         """
         return self._get_nth_size(-1)
 
-    def load_checkpoint(self, path: str, strict: bool = True) -> None:
+    def load_checkpoint(
+        self, path: str | None = None, strict: bool = True
+    ) -> None:
         """Loads checkpoint for the module. If path is url then it
         downloads it locally and stores it in cache.
 
@@ -394,6 +376,14 @@ class BaseNode(
         @param strict: Whether to load weights strictly or not. Defaults
             to True.
         """
+        path = path or self.get_weights_url()
+        if path is None:
+            raise ValueError(
+                f"Attempting to load weights for '{self.name}' "
+                f"node, but the `path` argument was not provided and "
+                "the node does not implement the `get_weights_url` method."
+            )
+
         local_path = safe_download(url=path)
         if local_path:
             # load explicitly to cpu, PL takes care of transfering to CUDA is needed
@@ -439,8 +429,7 @@ class BaseNode(
         returns the tensor or tensors at the C{attach_index} position.
 
         For most cases the default implementation should be sufficient.
-        Exceptions are modules with multiple inputs or producing more
-        complex outputs. This is typically the case for output nodes.
+        Exceptions are modules with multiple inputs.
 
         @type inputs: list[Packet[Tensor]]
         @param inputs: Inputs to the node.
@@ -452,8 +441,10 @@ class BaseNode(
         """
         if len(inputs) > 1:
             raise ValueError(
-                f"Node {self.name} expects a single input, but got {len(inputs)} inputs instead. "
-                "If the node expects multiple inputs, the `unwrap` method should be overridden."
+                f"Node {self.name} expects a single input, "
+                f"but got {len(inputs)} inputs instead. "
+                "If the node expects multiple inputs, "
+                "the `unwrap` method should be overridden."
             )
         inp = inputs[0]["features"]
         if isinstance(inp, Tensor):
@@ -506,7 +497,7 @@ class BaseNode(
 
         if isinstance(output, Tensor):
             outputs = output
-        elif isinstance(output, (list, tuple)) and all(
+        elif isinstance(output, list | tuple) and all(
             isinstance(t, Tensor) for t in output
         ):
             outputs = list(output)
@@ -517,7 +508,7 @@ class BaseNode(
         if self.task is None:
             name = "features"
         else:
-            name = self.task.name
+            name = self.task.main_output
         return {name: outputs}
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:
@@ -577,7 +568,8 @@ class BaseNode(
                 i = _normalize_index(i)
                 if i >= len(lst):
                     raise ValueError(
-                        f"Attach index {i} is out of range for list of length {len(lst)}."
+                        f"Attach index {i} is out of range "
+                        f"for list of length {len(lst)}."
                     )
                 return lst[i]
             case (int(i), int(j)):
@@ -586,10 +578,6 @@ class BaseNode(
                 return lst[_normalize_slice(i, j, k)]
             case None:
                 raise RuntimeError(self._missing_attach_index_message())
-            case _:  # pragma: no cover
-                raise ValueError(
-                    f"Invalid attach index: `{self.attach_index}`"
-                )
 
     def _get_nth_size(self, idx: int) -> int | list[int]:
         match self.in_sizes:
@@ -613,3 +601,23 @@ class BaseNode(
             "define it as a class atrribute, or provide proper "
             "type hints for the `forward` method for implicit inference"
         )
+
+    def _check_type_overrides(self) -> None:
+        properties = []
+        for name, value in inspect.getmembers(self.__class__):
+            if isinstance(value, property):
+                properties.append(name)
+        for name, typ in self.__annotations__.items():
+            if name in properties:
+                with suppress(RuntimeError):
+                    value = getattr(self, name)
+                    try:
+                        check_type(value, typ)
+                    except TypeCheckError as e:
+                        raise IncompatibleError(
+                            f"Node '{self.name}' specifies the type of "
+                            f"the property `{name}` as `{typ}`, "
+                            f"but received `{type(value)}`. "
+                            f"This may indicate that the '{self.name}' node is "
+                            "not compatible with its predecessor."
+                        ) from e

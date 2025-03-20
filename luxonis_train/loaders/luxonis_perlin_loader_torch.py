@@ -9,7 +9,7 @@ from luxonis_ml.utils import LuxonisFileSystem
 from torch import Tensor
 from typing_extensions import override
 
-from luxonis_train.utils.types import Labels
+from luxonis_train.typing import Labels
 
 from .luxonis_loader_torch import LuxonisLoaderTorch
 from .perlin import apply_anomaly_to_img
@@ -25,8 +25,8 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         beta: float | None = None,
         **kwargs,
     ):
-        """Custom loader for Luxonis datasets that adds Perlin noise
-        during training with a given probability.
+        """Custom loader for LDF that adds Perlin noise during training
+        with a given probability.
 
         @type anomaly_source_path: str
         @param anomaly_source_path: Path to the anomaly dataset from

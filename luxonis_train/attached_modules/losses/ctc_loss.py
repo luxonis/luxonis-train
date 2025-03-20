@@ -1,6 +1,5 @@
 import torch
-import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, nn
 
 from luxonis_train.nodes import OCRCTCHead
 

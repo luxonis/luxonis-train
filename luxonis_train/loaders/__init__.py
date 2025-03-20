@@ -4,9 +4,9 @@ from .luxonis_perlin_loader_torch import LuxonisLoaderPerlinNoise
 from .utils import LuxonisLoaderTorchOutput, collate_fn
 
 __all__ = [
-    "LuxonisLoaderTorch",
-    "collate_fn",
     "BaseLoaderTorch",
-    "LuxonisLoaderTorchOutput",
     "LuxonisLoaderPerlinNoise",
+    "LuxonisLoaderTorch",
+    "LuxonisLoaderTorchOutput",
+    "collate_fn",
 ]

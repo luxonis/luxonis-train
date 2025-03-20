@@ -1,27 +1,24 @@
 from abc import ABC, abstractmethod
 
-from luxonis_ml.utils.registry import AutoRegisterMeta, Registry
+from luxonis_ml.typing import Kwargs, Params, check_type
+from luxonis_ml.utils.registry import AutoRegisterMeta
 
 from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
+    NodeConfig,
 )
-
-MODELS: Registry[type["BasePredefinedModel"]] = Registry(name="models")
-"""Registry for all models."""
+from luxonis_train.config.config import FreezingConfig
+from luxonis_train.utils.registry import MODELS
 
 
 class BasePredefinedModel(
-    ABC,
-    metaclass=AutoRegisterMeta,
-    registry=MODELS,
-    register=False,
+    ABC, metaclass=AutoRegisterMeta, registry=MODELS, register=False
 ):
     @property
     @abstractmethod
-    def nodes(self) -> list[ModelNodeConfig]: ...
+    def nodes(self) -> list[NodeConfig]: ...
 
     @property
     @abstractmethod
@@ -42,7 +39,7 @@ class BasePredefinedModel(
         include_metrics: bool = True,
         include_visualizers: bool = True,
     ) -> tuple[
-        list[ModelNodeConfig],
+        list[NodeConfig],
         list[LossModuleConfig],
         list[MetricModuleConfig],
         list[AttachedModuleConfig],
@@ -53,3 +50,17 @@ class BasePredefinedModel(
         visualizers = self.visualizers if include_visualizers else []
 
         return nodes, losses, metrics, visualizers
+
+    @staticmethod
+    def _get_freezing(params: Params) -> FreezingConfig:
+        if "freezing" not in params:
+            return FreezingConfig()
+        freezing = params.pop("freezing")
+        if isinstance(freezing, FreezingConfig):
+            return freezing
+        if not check_type(freezing, Kwargs):
+            raise ValueError(
+                f"`backbone_params.freezing` should be a dictionary, "
+                f"got '{freezing}' instead."
+            )
+        return FreezingConfig(**freezing)

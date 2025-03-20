@@ -56,7 +56,7 @@ class BBoxVisualizer(BaseVisualizer):
         """
         super().__init__(**kwargs)
         if isinstance(labels, list):
-            labels = {i: label for i, label in enumerate(labels)}
+            labels = dict(enumerate(labels))
 
         self.label_dict = labels or self.classes.inverse
 

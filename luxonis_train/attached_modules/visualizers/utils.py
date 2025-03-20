@@ -22,10 +22,6 @@ from torchvision.utils import (
 from luxonis_train.config import Config
 
 Color = str | tuple[int, int, int]
-"""Color type alias.
-
-Can be either a string (e.g. "red", "#FF5512") or a tuple of RGB values.
-"""
 
 
 def figure_to_torch(fig: Figure, width: int, height: int) -> Tensor:
@@ -101,27 +97,27 @@ def preprocess_images(
     return torch.stack(out_imgs)
 
 
-def draw_segmentation_labels(
-    img: Tensor,
-    label: Tensor,
+def draw_segmentation_targets(
+    image: Tensor,
+    target: Tensor,
     alpha: float = 0.4,
     colors: Color | list[Color] | None = None,
 ) -> Tensor:
     """Draws segmentation labels on an image.
 
-    @type img: Tensor
-    @param img: Image to draw on.
-    @type label: Tensor
-    @param label: Segmentation label.
+    @type image: Tensor
+    @param image: Image to draw on.
+    @type target: Tensor
+    @param target: Segmentation label.
     @type alpha: float
     @param alpha: Alpha value for blending. Defaults to C{0.4}.
     @rtype: Tensor
     @return: Image with segmentation labels drawn on.
     """
-    masks = label.bool()
+    masks = target.bool()
     masks = masks.cpu()
-    img = img.cpu()
-    return draw_segmentation_masks(img, masks, alpha=alpha, colors=colors)
+    image = image.cpu()
+    return draw_segmentation_masks(image, masks, alpha=alpha, colors=colors)
 
 
 def draw_bounding_box_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
@@ -178,10 +174,10 @@ def seg_output_to_bool(data: Tensor, binary_threshold: float = 0.5) -> Tensor:
     """Converts seg head output to 2D boolean mask for visualization."""
     masks = torch.empty_like(data, dtype=torch.bool, device=data.device)
     if data.shape[0] == 1:
-        classes = torch.sigmoid(data)
+        classes = data.sigmoid()
         masks[0] = classes >= binary_threshold
     else:
-        classes = torch.argmax(data, dim=0)
+        classes = data.argmax(dim=0)
         for i in range(masks.shape[0]):
             masks[i] = classes == i
     return masks
@@ -219,20 +215,18 @@ def denormalize(
     new_std = 1 / std_tensor
     out_img = F.normalize(img, mean=new_mean.tolist(), std=new_std.tolist())
     if to_uint8:
-        out_img = torch.clamp(out_img.mul(255), 0, 255).to(torch.uint8)
+        out_img = out_img.mul_(255).clamp_(0, 255).to(torch.uint8)
     return out_img
 
 
-def get_denormalized_images(cfg: Config, inputs: dict[str, Tensor]) -> Tensor:
-    # Get images from inputs according to config
-    images = inputs[cfg.loader.image_source]
-
+# TODO: This should be left to the loader
+def get_denormalized_images(cfg: Config, images: Tensor) -> Tensor:
     normalize_params = cfg.trainer.preprocessing.normalize.params
     mean = std = None
     if cfg.trainer.preprocessing.normalize.active:
         mean = normalize_params.get("mean", [0.485, 0.456, 0.406])
         std = normalize_params.get("std", [0.229, 0.224, 0.225])
-    return preprocess_images(images, mean=mean, std=std)
+    return preprocess_images(images, mean=mean, std=std)  # type: ignore
 
 
 def number_to_hsl(seed: int) -> tuple[float, float, float]:

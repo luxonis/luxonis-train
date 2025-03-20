@@ -1,5 +1,5 @@
 from lightning.pytorch.loggers.logger import Logger
-from lightning.pytorch.utilities import rank_zero_only  # type: ignore
+from lightning.pytorch.utilities import rank_zero_only
 from luxonis_ml.tracker import LuxonisTracker
 
 

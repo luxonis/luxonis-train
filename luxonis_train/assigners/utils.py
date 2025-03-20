@@ -28,8 +28,7 @@ def candidates_in_gt(
     bbox_delta_lt = anchor_centers - gt_bboxes_lt
     bbox_delta_rb = gt_bboxes_rb - anchor_centers
     bbox_delta = torch.cat([bbox_delta_lt, bbox_delta_rb], dim=-1)
-    candidates = (bbox_delta.min(dim=-1)[0] > eps).to(gt_bboxes.dtype)
-    return candidates
+    return (bbox_delta.min(dim=-1)[0] > eps).to(gt_bboxes.dtype)
 
 
 def fix_collisions(
@@ -74,7 +73,6 @@ def batch_iou(batch1: Tensor, batch2: Tensor) -> Tensor:
     @rtype: Tensor
     @return: Per image box IoU of shape C{[bs, N, M]}
     """
-    ious = torch.stack(
+    return torch.stack(
         [bbox_iou(batch1[i], batch2[i]) for i in range(batch1.size(0))], dim=0
     )
-    return ious

@@ -30,4 +30,3 @@ trainer:
   callbacks:
     - name: ExportOnTrainEnd
     - name: TestOnTrainEnd
-

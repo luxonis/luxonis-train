@@ -3,8 +3,8 @@ import torch
 from torch import Size, Tensor
 
 from luxonis_train.nodes import BaseNode
-from luxonis_train.utils import AttachIndexType, Packet
-from luxonis_train.utils.exceptions import IncompatibleException
+from luxonis_train.typing import AttachIndexType, Packet
+from luxonis_train.utils import IncompatibleError
 
 
 class DummyNode(BaseNode, register=False):
@@ -89,7 +89,7 @@ def test_check_type_override():
 
         def forward(self, _: Tensor) -> Tensor: ...
 
-    with pytest.raises(IncompatibleException):
+    with pytest.raises(IncompatibleError):
         DummyNode(
             input_shapes=[
                 {"features": [Size((3, 224, 224)) for _ in range(3)]}
