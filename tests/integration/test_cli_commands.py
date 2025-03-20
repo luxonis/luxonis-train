@@ -8,7 +8,6 @@ from luxonis_ml.typing import Kwargs
 from luxonis_ml.utils import environ
 
 from luxonis_train.__main__ import (
-    _ViewType,
     archive,
     export,
     inspect,
@@ -34,7 +33,7 @@ def prepare():
             _test,
             {
                 "config": "tests/configs/config_simple.yaml",
-                "view": _ViewType.VAL,
+                "view": "val",
             },
         ),
         (
@@ -56,9 +55,7 @@ def prepare():
 def test_cli_command_success(
     command: Callable, kwargs: Kwargs, coco_dataset: LuxonisDataset
 ) -> None:
-    command(
-        **kwargs, opts=["loader.params.dataset_name", coco_dataset.identifier]
-    )
+    command(["loader.params.dataset_name", coco_dataset.identifier], **kwargs)
 
 
 @pytest.mark.parametrize(
@@ -86,6 +83,6 @@ def test_cli_command_failure(
 ) -> None:
     with pytest.raises(Exception):  # noqa: B017 PT011
         command(
+            ["loader.params.dataset_name", coco_dataset.identifier],
             **kwargs,
-            opts=["loader.params.dataset_name", coco_dataset.identifier],
         )
