@@ -3,8 +3,8 @@ import torch
 from torch import Size, Tensor
 
 from luxonis_train.nodes import BaseNode
-from luxonis_train.utils import AttachIndexType, Packet
-from luxonis_train.utils.exceptions import IncompatibleError
+from luxonis_train.typing import AttachIndexType, Packet
+from luxonis_train.utils import IncompatibleError
 
 
 class DummyNode(BaseNode, register=False):
