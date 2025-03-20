@@ -85,6 +85,8 @@ jobs:
   # not installed.
   config-test:
     runs-on: ubuntu-latest
+    needs:
+      - pre-commit
     # needs:
     #   - type-check
 
