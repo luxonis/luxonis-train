@@ -1,8 +1,3 @@
-# REMOVE AFTER ALL CLEANUP MERGED
-from luxonis_ml.typing import Kwargs
-
-from luxonis_train.typing import *
-
 from .boundingbox import (
     anchors_for_fpn_features,
     apply_bounding_box_to_masks,
@@ -35,7 +30,7 @@ from .ocr import OCRDecoder, OCREncoder
 from .tracker import LuxonisTrackerPL
 
 __all__ = [
-    "Kwargs",
+    "instances_from_batch",
     "instances_from_batch",
     "get_batch_instances",
     "DatasetMetadata",
@@ -61,5 +56,4 @@ __all__ = [
     "safe_download",
     "setup_logging",
     "to_shape_packet",
-    "Kwargs",
 ]

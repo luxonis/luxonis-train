@@ -881,7 +881,8 @@ class LuxonisLightningModule(pl.LightningModule):
                 if metric_value.dim() == 2:
                     self.logger.log_matrix(
                         matrix=metric_value.cpu().numpy(),
-                        name=f"{mode}/metrics/{self.current_epoch}/{formatted_node_name}/{metric_name}_confusion_matrix",
+                        name=f"{mode}/metrics/{self.current_epoch}/"
+                        f"{formatted_node_name}/{metric_name}_confusion_matrix",
                         step=self.current_epoch,
                     )
                 else:
