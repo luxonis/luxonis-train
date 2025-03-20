@@ -25,7 +25,7 @@
 - **Customizable**: Extend functionality with custom components using an intuitive Python API.
 - **Edge Optimized**: Focus on models optimized for deployment on edge devices with limited compute resources.
 
-> \[!WARNING\]
+> [!WARNING]
 > **The project is in a beta state and might be unstable or contain bugs - please report any feedback.**
 
 <a name="quick-start"></a>
@@ -199,7 +199,7 @@ trainer:
 
 **For a complete reference of all available configuration options, see our [Configuration Documentation](configs/README.md).**
 
-> \[!TIP\]
+> [!TIP]
 > We provide a set of predefined configuration files for common computer vision tasks in the `configs` directory.
 > These are great starting points that you can customize for your specific needs.
 
@@ -314,7 +314,7 @@ loader:
     bucket_storage: "local"
 ```
 
-> \[!TIP\]
+> [!TIP]
 > To inspect the loader output, use the `luxonis_train inspect` command:
 >
 > ```bash
@@ -337,7 +337,7 @@ Once your configuration file and dataset are ready, start the training process.
 luxonis_train train --config configs/detection_light_model.yaml
 ```
 
-> \[!TIP\]
+> [!TIP]
 > To change a configuration parameter from the command line, use the following syntax:
 >
 > ```bash
@@ -660,7 +660,7 @@ trainer:
         lr: "Hello from the custom callback!"
 ```
 
-> \[!NOTE\]
+> [!NOTE]
 > Files containing the custom components must be sourced before the training script is run.
 > To do that in CLI, you can use the `--source` argument:
 >

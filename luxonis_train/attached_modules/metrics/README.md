@@ -11,7 +11,6 @@ List of all the available metrics.
 - [Recall](#recall)
 - [ObjectKeypointSimilarity](#objectkeypointsimilarity)
 - [MeanAveragePrecision](#meanaverageprecision)
-- [MeanAveragePrecisionKeypoints](#meanaverageprecisionkeypoints)
 - [ClosestIsPositiveAccuracy](#closestispositiveaccuracy)
 - [MedianDistances](#mediandistances)
 - [OCRAccuracy](#ocraccuracy)
@@ -63,14 +62,14 @@ Works with **keypoint detection task.**
 | `area_factor`      | `float`               | `0.53`        | Factor by which to multiply the bounding box area                                                                                                                   |
 | `use_cocoeval_oks` | `bool`                | `True`        | Whether to use the same OKS formula as in COCO evaluation                                                                                                           |
 
-> \[!NOTE\]
+> [!NOTE]
 > **Important:** The ObjectKeypointSimilarity metric is sensitive to NMS parameters, such as confidence and IoU thresholds, as well as to sigmas that are also set in the loss computation and represent the uncertainty in keypoints. Make sure to adjust these settings appropriately for your specific use case.
 
 ## MeanAveragePrecision
 
-Compute the `Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)` for object detection or instance segmentation predictions. This metric is built upon [pycocotools](https://github.com/cocodataset/cocoapi), which provides robust tools for evaluating these tasks.
+Compute the `Mean-Average-Precision (mAP) and Mean-Average-Recall (mAR)` for object detection tasks. This metric is built upon [pycocotools](https://github.com/cocodataset/cocoapi), which provides robust tools for evaluating these tasks.
 
-Works with tasks such as **detection and instance segmentation.**
+Is compatible with **object and keypoint detection** and **instance segmentation tasks.**
 
 ```math
 \text{mAP} = \frac{1}{n} \sum_{i=1}^{n} AP_i
@@ -78,18 +77,13 @@ Works with tasks such as **detection and instance segmentation.**
 
 where $AP_i$ is the average precision for class $i$ and $n$ is the number of classes. Average precision is the area under the precision-recall curve. For both detection and segmentation tasks, precision and recall are computed based on the Intersection over Union (IoU) between predicted and ground truth regions (bounding boxes or masks). A prediction is considered a true positive if its IoU exceeds a threshold $t$. Precision is defined as the ratio of true positives to all detections, and recall as the ratio of true positives to all ground truth instances.
 
-> \[!NOTE\]
+> [!NOTE]
 > **Important:** Mean Average Precision metric is sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.
 
-## MeanAveragePrecisionKeypoints
+**Detection and Instance Segmentation Params**
+See [Mean Average Precision](https://lightning.ai/docs/torchmetrics/stable/detection/mean_average_precision.html) for more information.
 
-Similar to [MeanAveragePrecision](#meanaverageprecision), but uses [OKS](#objectkeypointsimilarity) as `IoU` measure.
-For a deeper understanding of how OKS works, please refer to the detailed explanation provided [here](https://learnopencv.com/object-keypoint-similarity/).
-Evaluation leverages the [pycocotools](https://github.com/cocodataset/cocoapi) framework to assess mAP performance.
-
-Works with **keypoint detection task.**
-
-**Params**
+**Instance Keypoint Params**
 
 | Key           | Type                                | Default value | Description                                                           |
 | ------------- | ----------------------------------- | ------------- | --------------------------------------------------------------------- |
@@ -98,7 +92,7 @@ Works with **keypoint detection task.**
 | `max_dets`    | `int`                               | `20`          | Maximum number of detections per image                                |
 | `box_fotmat`  | `Literal["xyxy", "xywh", "cxcywh"]` | `"xyxy"`      | Format of the bounding boxes                                          |
 
-> \[!NOTE\]
+> [!NOTE]
 > **Important:** Mean Average Precision Keypoints metric is sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.
 
 ## ClosestIsPositiveAccuracy
@@ -129,7 +123,11 @@ Works with **OCR tasks**.
 
 Works with **classification, segmentation, object detection, instance keypoint detection and instance segmentation tasks**
 
-> \[!NOTE\]
+> [!NOTE]
 > **Important:** Confusion Matrix is sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.
 >
 > **Note:** The Confusion Matrix should not be used as the primary metric for model evaluation.
+
+| Key             | Type    | Default value | Description                                                                |
+| --------------- | ------- | ------------- | -------------------------------------------------------------------------- |
+| `iou_threshold` | `float` | `0.45`        | `IoU` threshold for bounding boxes. Only relevant for `BOUNDIBGBOX` tasks. |

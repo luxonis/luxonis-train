@@ -1,14 +1,14 @@
 import inspect
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Collection, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from contextlib import suppress
 from functools import cached_property
 from inspect import Parameter
 from types import UnionType
-from typing import Union, get_args, get_origin
+from typing import Literal, Union, get_args, get_origin
 
 from bidict import bidict
-from luxonis_ml.data.utils import get_task_type
+from luxonis_ml.typing import check_type
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
 
@@ -52,8 +52,8 @@ class BaseAttachedModule(
 
     supported_tasks: Sequence[Task] | None = None
 
-    def __init__(self, *, node: BaseNode | None = None):
-        super().__init__()
+    def __init__(self, *, node: BaseNode | None = None, **kwargs):
+        super().__init__(**kwargs)
         self._node = node
         self._epoch = 0
 
@@ -174,134 +174,85 @@ class BaseAttachedModule(
         """
         return self.node.classes
 
-    def pick_labels(self, labels: Labels) -> Labels:
-        required_labels = {
-            f"{self.node.task_name}/{label}" for label in self.required_labels
-        }
-        return {
-            get_task_type(label): labels[label]
-            for label in required_labels
-            if label in labels
-        }
-
-    def pick_inputs(
-        self, inputs: Packet[Tensor], keys: Collection[str]
-    ) -> Packet[Tensor]:
-        out = {}
-        for expected in keys:
-            if expected in inputs:
-                out[expected] = inputs[expected]
-
-        missing = set(keys) - set(out.keys())
-        if missing:
-            raise RuntimeError(
-                f"Module '{self.name}' requires the following outputs from the node: "
-                f"{list(missing)}, but the node does not provide them. "
-                f"All available outputs: {list(inputs.keys())}. "
-                "Please make sure you're using the correct node."
-            )
-        return out
-
-    def _argument_is_optional(self, name: str) -> bool:
-        annotation = self._signature[name].annotation
-        origin = get_origin(annotation)
-        args = get_args(annotation)
-        return origin in {Union, UnionType} and type(None) in args
-
     def get_parameters(
-        self, inputs: Packet[Tensor], labels: Labels | None = None
-    ) -> Packet[Tensor]:
-        input_names = []
-        target_names = []
-        pred_name = None
-        if len(self._signature) == 2:
-            pred_name, target_name = self._signature.keys()
-            if pred_name in inputs:
-                input_names.append(pred_name)
-            elif self.task.main_output in inputs:
-                input_names.append(self.task.main_output)
-            else:
-                input_names.append(pred_name)
-            target_names.append(target_name)
-        else:
-            for name in self._signature.keys():
-                if name.startswith("target"):
-                    target_names.append(name)
-                elif name in {"predictions", "prediction", "preds", "pred"}:
-                    input_names.append(self.task.main_output)
-                    pred_name = name
-                elif name in inputs:
-                    input_names.append(name)
-                else:
+        self, predictions: Packet[Tensor], labels: Labels | None = None
+    ) -> dict[str, Tensor | list[Tensor]]:
+        kwargs = {}
+        labels = labels or {}
+
+        def _add_to_kwargs(
+            name: str,
+            kwarg_name: str,
+            data: Mapping[str, list[Tensor] | Tensor],
+            parameter: Parameter,
+            kind: Literal["label", "prediction"],
+        ) -> None:
+            if name not in data:
+                if self._argument_is_optional(parameter):
+                    kwargs[kwarg_name] = None
+                elif parameter.default is Parameter.empty:
                     raise RuntimeError(
-                        f"To make use of automatic parameter extraction, the signature of `{self.name}.forward` (or `update` for subclasses of `BaseMetric`) must follow "
-                        "one of the following rules: "
-                        "1. Exactly two arguments, first one for predictions and second one for targets. "
-                        "2. Predictions argument named 'predictions', 'prediction', 'preds', or 'pred' and a target arguments with names starting with 'target'. The predictions argument will be matched to the main output of the node (output named the same as the node's task). "
-                        "3. Prediction arguments named the same way as "
-                        "keys in the node outputs and target arguments with names starting with 'target'. "
-                        f"The node outputs are: {list(inputs.keys())}."
+                        f"Module '{self.name}' requires {kind} '{name}', "
+                        f"but it is not present in the "
+                        f"{'dataset' if kind == 'label' else 'predictions'}. "
+                        f"All available {kind}s: {list(data.keys())}. "
                     )
-
-        predictions = self.pick_inputs(inputs, input_names)
-        if pred_name is not None and self.task.main_output in predictions:
-            predictions[pred_name] = predictions.pop(self.task.main_output)
-
-        if labels is None:
-            targets = {}
-            for name in target_names:
-                if self._argument_is_optional(name):
-                    targets[name] = None
-        else:
-            all_labels = set(labels.keys())
-            labels = self.pick_labels(labels)
-            if len(target_names) == len(labels) == 1:
-                targets = {target_names[0]: next(iter(labels.values()))}
             else:
-                targets = {}
-                for name in target_names:
-                    label_name = name.replace("target_", "")
-                    if label_name not in labels:
-                        if self._argument_is_optional(name):
-                            targets[name] = None
-                        elif self._signature[name].default is Parameter.empty:
-                            required = {
-                                f"{self.node.task_name}/{name}"
-                                for name in self.required_labels
-                            }
-                            raise RuntimeError(
-                                f"Module '{self.name}' requires labels {required}, "
-                                f"but some of them are not present in the dataset. "
-                                f"All available labels: {all_labels}. "
-                            )
+                val = data[name]
+                if isinstance(val, Tensor):
+                    kwargs[kwarg_name] = val.clone()
+                elif isinstance(val, list):
+                    kwargs[kwarg_name] = [v.clone() for v in val]
+                else:
+                    kwargs[kwarg_name] = val
+
+        for kwarg_name, parameter in self._signature.items():
+            if kwarg_name.startswith("target"):
+                _, *target_name = kwarg_name.split("_", 1)
+                if target_name:
+                    label_name = f"{self.node.task_name}/{target_name[0]}"
+                else:
+                    required_labels = self.required_labels
+                    if len(required_labels) == 1:
+                        label_name = f"{self.node.task_name}/{next(iter(required_labels))}"
                     else:
-                        targets[name] = labels[label_name]
-
-        kwargs = predictions | targets
-
-        for key, val in kwargs.items():
-            if isinstance(val, Tensor):
-                kwargs[key] = val.clone()
-            elif isinstance(val, list):
-                for i, item in enumerate(val):
-                    if isinstance(item, Tensor):
-                        val[i] = item.clone()
-
-        for name, param in self._signature.items():
-            typ = param.annotation
-            if typ == Tensor and not isinstance(kwargs[name], Tensor):
-                raise RuntimeError(
-                    f"Module '{self.name}' expects a tensor for input '{name}', "
-                    f"but the node '{self.node.name}' returned a list. Please make sure "
-                    "the node is returning the correct values."
+                        raise RuntimeError(
+                            f"Module '{self.name}' is using the wildcard '{kwarg_name}' "
+                            f"argument in the `forward` or `update` signature, "
+                            f"but its task '{self.task.name}' requires more than one label "
+                            f"({self.required_labels}). "
+                            "Unable to determine which of the labels to use. Please specify "
+                            "the labels using the 'target_{task_type}' pattern "
+                            f"({[f'target_{label}' for label in self.required_labels]})."
+                        )
+                _add_to_kwargs(
+                    label_name, kwarg_name, labels, parameter, "label"
+                )
+            else:
+                if kwarg_name.startswith("pred"):
+                    _, *prediction_name = kwarg_name.split("_", 1)
+                    if prediction_name:
+                        prediction_name = prediction_name[0]
+                    else:
+                        prediction_name = self.task.main_output
+                else:
+                    prediction_name = kwarg_name
+                _add_to_kwargs(
+                    prediction_name,
+                    kwarg_name,
+                    predictions,
+                    parameter,
+                    "prediction",
                 )
 
-            elif typ == list[Tensor] and not isinstance(kwargs[name], list):
-                raise RuntimeError(
-                    f"Module '{self.name}' expects a list of tensors for input '{name}', "
-                    f"but the node '{self.node.name}' returned a single tensor. Please make sure "
-                    "the node is returning the correct values."
+        for kwarg_name, parameter in self._signature.items():
+            if not check_type(kwargs[kwarg_name], parameter.annotation):
+                raise TypeError(
+                    f"Module '{self.name}' requires argument '{kwarg_name}' "
+                    f"to be of type '{parameter.annotation}', but got "
+                    f"'{type(kwargs[kwarg_name]).__name__}'."
                 )
+
         return kwargs
 
     def _check_node_type_override(self) -> None:
@@ -315,3 +266,9 @@ class BaseAttachedModule(
                     f"Module '{self.name}' is attached to the '{self.node.name}' node, "
                     f"but '{self.name}' is only compatible with nodes of type '{node_type.__name__}'."
                 )
+
+    def _argument_is_optional(self, parameter: Parameter) -> bool:
+        annotation = parameter.annotation
+        origin = get_origin(annotation)
+        args = get_args(annotation)
+        return origin in {Union, UnionType} and type(None) in args

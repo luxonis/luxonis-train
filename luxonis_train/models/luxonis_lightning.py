@@ -12,7 +12,6 @@ from lightning.pytorch.callbacks import (
 )
 from lightning.pytorch.utilities import rank_zero_only  # type: ignore
 from loguru import logger
-from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import ConfigItem
 from torch import Size, Tensor, nn
 
@@ -22,9 +21,6 @@ from luxonis_train.attached_modules import (
     BaseLoss,
     BaseMetric,
     BaseVisualizer,
-)
-from luxonis_train.attached_modules.metrics.torchmetrics import (
-    TorchMetricWrapper,
 )
 from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
@@ -759,9 +755,9 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> Tensor:
         """Performs one step of training with provided batch."""
         outputs = self.forward(*train_batch)
-        assert (
-            outputs.losses
-        ), "Losses are empty, check if you have defined any loss"
+        assert outputs.losses, (
+            "Losses are empty, check if you have defined any loss"
+        )
 
         loss, training_step_output = self.process_losses(outputs.losses)
         self.training_step_outputs.append(training_step_output)
@@ -888,10 +884,11 @@ class LuxonisLightningModule(pl.LightningModule):
         for node_name, metrics in computed_metrics.items():
             formatted_node_name = self._format_node_name(node_name)
             for metric_name, metric_value in metrics.items():
-                if "matrix" in metric_name.lower():
+                if metric_value.dim() == 2:
                     self.logger.log_matrix(
                         matrix=metric_value.cpu().numpy(),
-                        name=f"{mode}/metrics/{self.current_epoch}/{formatted_node_name}/{metric_name}",
+                        name=f"{mode}/metrics/{self.current_epoch}/"
+                        f"{formatted_node_name}/{metric_name}_confusion_matrix",
                         step=self.current_epoch,
                     )
                 else:
@@ -1089,21 +1086,6 @@ class LuxonisLightningModule(pl.LightningModule):
         module_name = cfg.alias or cfg.name
         node_name = cfg.attached_to
         node: BaseNode = self.nodes[node_name]  # type: ignore
-        if issubclass(Module, TorchMetricWrapper):
-            if "task" not in cfg.params and self._core is not None:
-                loader = self._core.loaders["train"]
-                dataset = getattr(loader, "dataset", None)
-                if isinstance(dataset, LuxonisDataset):
-                    n_classes = len(dataset.get_classes()[node.task_name])
-                    if n_classes == 1:
-                        cfg.params["task"] = "binary"
-                    else:
-                        cfg.params["task"] = "multiclass"
-                    logger.warning(
-                        f"Parameter 'task' not specified for `TorchMetric` based '{module_name}' metric. "
-                        f"Assuming task type based on the number of classes: {cfg.params['task']}. "
-                        "If this is incorrect, please specify the 'task' parameter in the config."
-                    )
 
         module = Module(**cfg.params, node=node)
         storage[node_name][module_name] = module  # type: ignore

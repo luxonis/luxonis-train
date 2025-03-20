@@ -64,6 +64,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
         task_name: str = "",
         enable_confusion_matrix: bool = True,
         confusion_matrix_params: Params | None = None,
+        per_class_metrics: bool = True,
     ):
         var_config = get_variant(variant)
 
@@ -81,6 +82,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
         self.task_name = task_name
         self.enable_confusion_matrix = enable_confusion_matrix
         self.confusion_matrix_params = confusion_matrix_params or {}
+        self.per_class_metrics = per_class_metrics
 
     @property
     def nodes(self) -> list[ModelNodeConfig]:
@@ -137,6 +139,7 @@ class InstanceSegmentationModel(BasePredefinedModel):
                 name="MeanAveragePrecision",
                 attached_to="PrecisionSegmentBBoxHead",
                 is_main_metric=True,
+                params={"class_metrics": self.per_class_metrics},
             ),
         ]
         if self.enable_confusion_matrix:
