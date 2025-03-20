@@ -127,3 +127,7 @@ Works with **classification, segmentation, object detection, instance keypoint d
 > **Important:** Confusion Matrix is sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.
 >
 > **Note:** The Confusion Matrix should not be used as the primary metric for model evaluation.
+
+| Key             | Type    | Default value | Description                                                                |
+| --------------- | ------- | ------------- | -------------------------------------------------------------------------- |
+| `iou_threshold` | `float` | `0.45`        | `IoU` threshold for bounding boxes. Only relevant for `BOUNDIBGBOX` tasks. |
