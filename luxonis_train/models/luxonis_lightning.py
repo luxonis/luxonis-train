@@ -310,14 +310,18 @@ class LuxonisLightningModule(pl.LightningModule):
                     "Training strategy is defined. It will override "
                     "any specified optimizer or scheduler from the config."
                 )
-            self.training_strategy = STRATEGIES.get(
-                self.cfg.trainer.training_strategy.name
-            )(
+            self.training_strategy = from_registry(
+                STRATEGIES,
+                self.cfg.trainer.training_strategy.name,
+                **self.cfg.trainer.training_strategy.params,
                 pl_module=self,
-                params=self.cfg.trainer.training_strategy.params,
             )
         else:
             self.training_strategy = None
+
+    @property
+    def tracker(self) -> LuxonisTrackerPL:
+        return self.logger
 
     @property
     def core(self) -> "luxonis_train.core.LuxonisModel":
