@@ -48,7 +48,7 @@ def compute_mcc(cm: Tensor) -> Tensor:
     """
     N = cm.sum()
     if N == 0:
-        return torch.tensor(0.0)
+        return torch.tensor(0.0, device=cm.device)
 
     sum_diag = torch.diag(cm).sum()
     sum_rows = cm.sum(dim=1)
