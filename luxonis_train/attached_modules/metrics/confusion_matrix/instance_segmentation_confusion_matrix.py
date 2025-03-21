@@ -5,7 +5,7 @@ from luxonis_train.tasks import Tasks
 
 from .detection_confusion_matrix import DetectionConfusionMatrix
 from .recognition_confusion_matrix import RecognitionConfusionMatrix
-from .utils import compute_mcc, preprocess_instance_masks
+from .utils import preprocess_instance_masks
 
 
 class InstanceSegmentationConfusionMatrix(
@@ -37,13 +37,15 @@ class InstanceSegmentationConfusionMatrix(
 
     @override
     def compute(self) -> dict[str, Tensor]:
-        det_cm = DetectionConfusionMatrix.compute(self)
-        rec_cm = RecognitionConfusionMatrix.compute(self)
-        return {
-            "detection_mcc": compute_mcc(det_cm["confusion_matrix"].float()),
-            "segmentation_mcc": compute_mcc(
-                rec_cm["confusion_matrix"].float()
-            ),
-            "detection_confusion_matrix": det_cm,
-            "segmentation_confusion_matrix": rec_cm,
+        det_result = DetectionConfusionMatrix.compute(self)
+        rec_result = RecognitionConfusionMatrix.compute(self)
+        det_renamed = {
+            "detection_mcc": det_result["mcc"],
+            "detection_confusion_matrix": det_result["confusion_matrix"],
         }
+        rec_renamed = {
+            "segmentation_mcc": rec_result["mcc"],
+            "segmentation_confusion_matrix": rec_result["confusion_matrix"],
+        }
+
+        return {**det_renamed, **rec_renamed}
