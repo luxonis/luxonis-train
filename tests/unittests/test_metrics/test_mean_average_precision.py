@@ -232,9 +232,7 @@ def test_compute_mean_average_precision_bbox(
         )
     )
 
-    targets = convert_bboxes_to_xyxy_and_normalize(
-        targets, torch.Size([3, 200, 200])
-    )
+    targets = convert_bboxes_to_xyxy_and_normalize(targets, image_size)
 
     metric.update(predictions, targets)
     result = metric.compute()[0]
@@ -251,11 +249,9 @@ def test_compute_mean_average_precision_bbox(
     ),
     [
         (
-            # in List[Tensor], where each tensor has [m, n_keypoints, 3] format
-            # (we will use 4 keypoints)
             [
                 torch.tensor(
-                    [  # 2,4,3 tensor for 1. img
+                    [
                         [
                             [10, 10, 1],
                             [20, 20, 1],
@@ -271,7 +267,7 @@ def test_compute_mean_average_precision_bbox(
                     ]
                 ),
                 torch.tensor(
-                    [  # 2,4,3 tensor for 2. img
+                    [
                         [
                             [10, 10, 1],
                             [20, 20, 1],
@@ -289,13 +285,13 @@ def test_compute_mean_average_precision_bbox(
             ],
             [
                 torch.tensor(
-                    [  # boundingbox in [x,y,x,y,v,cls] format
+                    [
                         [12, 12, 48, 48, 0.9, 0],
                         [62, 60, 98, 100, 0.8, 1],
                     ]
                 ),
                 torch.tensor(
-                    [  # boundingbox in [x,y,x,y,v,cls] format
+                    [
                         [15, 15, 45, 45, 0.75, 0],
                         [65, 65, 95, 95, 0.85, 1],
                     ]
@@ -303,30 +299,19 @@ def test_compute_mean_average_precision_bbox(
             ],
             # Target keypoints
             torch.tensor(
-                [  # In N, 1 + n_kpts*3 shape, where N is number of kpts object sintances, 1 is for img_idx and kpts are in x,y,v,x,y,v,... format
+                [
                     [0, 10, 10, 1, 20, 20, 1, 30, 30, 1, 40, 40, 1],
                     [0, 19, 12, 2, 20, 30, 2, 30, 40, 2, 40, 50, 2],
                 ]
             ),
             torch.tensor(
-                [  # target_boundingbox in [img_idx, cls, x,y,x,y] format
+                [
                     [0, 0, 10, 10, 50, 50],
                     [0, 1, 60, 60, 100, 100],
                 ]
             ),
             torch.tensor(0.5),
         ),
-    ],
-)
-@pytest.mark.parametrize(
-    (
-        "keypoints",
-        "boundingbox",
-        "target_keypoints",
-        "target_boundingbox",
-        "expected",
-    ),
-    [
         (
             [
                 torch.tensor(
@@ -390,7 +375,6 @@ def test_compute_mean_average_precision_bbox(
             ),
             torch.tensor(0.5),
         ),
-        # 2nd test case
         (
             [
                 torch.tensor(
@@ -458,7 +442,6 @@ def test_compute_mean_average_precision_bbox(
             ),
             torch.tensor(1.0),
         ),
-        # 3rd test case
         (
             [
                 torch.tensor(
@@ -491,7 +474,6 @@ def test_compute_mean_average_precision_bbox(
             ),
             torch.tensor(0.30),
         ),
-        # 4th test case
         (
             [
                 torch.tensor(
@@ -559,7 +541,6 @@ def test_compute_mean_average_precision_bbox(
             ),
             torch.tensor(0.75),
         ),
-        # 5th test case
         (
             [
                 torch.tensor(
@@ -655,13 +636,10 @@ def test_compute_mean_average_precision_keypoints(
     )
 
     target_boundingbox = convert_bboxes_to_xyxy_and_normalize(
-        target_boundingbox, torch.Size([3, 200, 200])
+        target_boundingbox, image_size
     )
-    target_keypoints = normalize_kpts(
-        target_keypoints, torch.Size([3, 200, 200])
-    )
+    target_keypoints = normalize_kpts(target_keypoints, image_size)
 
     metric.update(keypoints, boundingbox, target_keypoints, target_boundingbox)
     result = metric.compute()[0]
-    print(f"expected: {expected}, result: {result}")
     assert torch.isclose(result, expected, atol=5e-3)
