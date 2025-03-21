@@ -7,6 +7,8 @@ from luxonis_train.attached_modules.metrics import BaseMetric
 from luxonis_train.tasks import Tasks
 from luxonis_train.utils.general import instances_from_batch
 
+from .utils import compute_mcc
+
 
 class DetectionConfusionMatrix(BaseMetric):
     supported_tasks = [
@@ -43,7 +45,10 @@ class DetectionConfusionMatrix(BaseMetric):
 
     @override
     def compute(self) -> Tensor:
-        return self.confusion_matrix
+        return {
+            "mcc": compute_mcc(self.confusion_matrix.float()),
+            "confusion_matrix": self.confusion_matrix,
+        }
 
     def _update(self, predictions: list[Tensor], targets: Tensor) -> None:
         for pred, target in zip(

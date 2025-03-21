@@ -17,7 +17,7 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         self,
         num_conv_layers: int = 3,
         conv_channels: int = 16,
-        use_nms: bool = False,
+        use_nms: bool = True,
         **kwargs,
     ):
         """FOMO Head for object detection using heatmaps.

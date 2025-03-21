@@ -8,6 +8,8 @@ from typing_extensions import override
 from luxonis_train.attached_modules.metrics import BaseMetric
 from luxonis_train.tasks import Tasks
 
+from .utils import compute_mcc
+
 
 class RecognitionConfusionMatrix(BaseMetric):
     """Factory class for Recognition Confusion Matrix metrics.
@@ -36,7 +38,9 @@ class RecognitionConfusionMatrix(BaseMetric):
 
     @override
     def compute(self) -> Tensor:
-        return self.metric.compute()
+        cm = self.metric.compute()
+        mcc = compute_mcc(cm.float())
+        return {"mcc": mcc, "confusion_matrix": cm}
 
     @override
     def reset(self) -> None:

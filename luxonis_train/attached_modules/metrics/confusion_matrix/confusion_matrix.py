@@ -3,6 +3,7 @@ from luxonis_train.tasks import Tasks
 from luxonis_train.utils.registry import METRICS
 
 from .detection_confusion_matrix import DetectionConfusionMatrix
+from .fomo_confusion_matrix import FomoConfusionMatrix
 from .instance_segmentation_confusion_matrix import (
     InstanceSegmentationConfusionMatrix,
 )
@@ -35,6 +36,8 @@ class ConfusionMatrix:
                 return DetectionConfusionMatrix(node=node, **kwargs)
             case Tasks.INSTANCE_SEGMENTATION:
                 return InstanceSegmentationConfusionMatrix(node=node, **kwargs)
+            case Tasks.FOMO:
+                return FomoConfusionMatrix(node=node, **kwargs)
             case _:
                 raise ValueError(
                     f"'ConfusionMatrix' does not support task '{node.task.name}'"

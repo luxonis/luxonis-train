@@ -37,6 +37,33 @@ def preprocess_instance_masks(
     )
 
 
+def compute_mcc(cm: Tensor) -> Tensor:
+    """ " Compute the Matthews correlation coefficient from a confusion
+    matrix.
+
+    @type cm: Tensor
+    @param cm: Confusion matrix.
+    @rtype: Tensor
+    @return: Matthews correlation coefficient.
+    """
+    N = cm.sum()
+    if N == 0:
+        return torch.tensor(0.0, device=cm.device)
+
+    sum_diag = torch.diag(cm).sum()
+    sum_rows = cm.sum(dim=1)
+    sum_cols = cm.sum(dim=0)
+    numerator = sum_diag * N - torch.dot(sum_rows, sum_cols)
+    denominator = torch.sqrt(
+        (N**2 - (sum_rows**2).sum()) * (N**2 - (sum_cols**2).sum())
+    )
+
+    if denominator == 0:
+        return torch.tensor(0.0)
+
+    return numerator / denominator
+
+
 def _merge_predicted_masks(
     boundingbox: list[Tensor],
     instance_segmentation: list[Tensor],
