@@ -1,7 +1,6 @@
 import pytest
 import torch
 from torch import Size, Tensor
-from torchvision.ops import box_convert
 
 from luxonis_train.attached_modules.metrics.mean_average_precision import (
     MeanAveragePrecisionBBox,
@@ -11,23 +10,7 @@ from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Tasks
 from luxonis_train.utils.dataset_metadata import DatasetMetadata
 
-
-def convert_bboxes_to_xyxy_and_normalize(
-    targets: Tensor, original_in_shape: Size
-) -> Tensor:
-    """ " Converts the targets to xyxy format and normalizes them."""
-    targets = targets.float()
-    targets[:, 2:] = box_convert(targets[:, 2:], "xyxy", "xywh")
-    targets[:, [2, 4]] /= original_in_shape[2]
-    targets[:, [3, 5]] /= original_in_shape[1]
-    return targets
-
-
-def normalize_kpts(kpts: Tensor, original_in_shape: Size) -> Tensor:
-    kpts = kpts.float()
-    kpts[:, 1::3] /= original_in_shape[2]
-    kpts[:, 2::3] /= original_in_shape[1]
-    return kpts
+from .test_utils import convert_bboxes_to_xyxy_and_normalize, normalize_kpts
 
 
 @pytest.mark.parametrize(
@@ -221,7 +204,7 @@ def test_compute_mean_average_precision_bbox(
 
         def forward(self, _: Tensor) -> Tensor: ...
 
-    image_size = torch.Size([3, 200, 200])
+    image_size = Size([3, 200, 200])
     metric = MeanAveragePrecisionBBox(
         node=DummyNodeBBox(
             n_classes=2,
@@ -619,7 +602,7 @@ def test_compute_mean_average_precision_keypoints(
 
         def forward(self, _: Tensor) -> Tensor: ...
 
-    image_size = torch.Size([3, 200, 200])
+    image_size = Size([3, 200, 200])
     sigmas = [0.04, 0.04, 0.04, 0.04]
     area_factor = 0.53
     metric = MeanAveragePrecisionKeypoints(
