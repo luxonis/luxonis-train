@@ -111,7 +111,7 @@ unfixable = ["B905"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN201"]
-"__main__.py" = ["ANN201"]
+"__main__.py" = ["ANN201", "T201"]
 
 [tool.docformatter]
 black = true
