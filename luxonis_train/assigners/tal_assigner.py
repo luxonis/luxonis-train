@@ -233,8 +233,8 @@ class TaskAlignedAssigner(nn.Module):
         overlaps = batch_iou(gt_bboxes, pred_bboxes)
         if all_not_none([pred_kpts, gt_kpts, sigmas, area_factor]):
             pose_oks = compute_pose_oks(
-                pred_kpts=pred_kpts,  # type: ignore
-                gt_kpts=gt_kpts,  # type: ignore
+                pred_kpts,  # type: ignore
+                gt_kpts,  # type: ignore
                 sigmas=sigmas,  # type: ignore
                 gt_bboxes=gt_bboxes,
                 pose_area=None,
