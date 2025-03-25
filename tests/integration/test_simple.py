@@ -39,7 +39,6 @@ def opts(output_dir: Path) -> dict[str, Any]:
         "trainer.callbacks": [
             {"name": "ExportOnTrainEnd"},
             {"name": "ArchiveOnTrainEnd"},
-            {"name": "TestOnTrainEnd"},
         ],
         "tracker.save_directory": str(output_dir),
         "tuner.n_trials": 4,
