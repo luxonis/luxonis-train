@@ -5,7 +5,7 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 
 import luxonis_train as lxt
-from luxonis_train.utils.registry import STRATEGIES
+from luxonis_train.registry import STRATEGIES
 
 
 class BaseTrainingStrategy(

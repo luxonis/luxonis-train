@@ -1,6 +1,6 @@
 from torch import optim
 
-from luxonis_train.utils.registry import OPTIMIZERS
+from luxonis_train.registry import OPTIMIZERS
 
 for optimizer in [
     optim.Adadelta,

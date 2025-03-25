@@ -10,7 +10,7 @@ from lightning.pytorch.callbacks import (
     Timer,
 )
 
-from luxonis_train.utils.registry import CALLBACKS
+from luxonis_train.registry import CALLBACKS
 
 from .archive_on_train_end import ArchiveOnTrainEnd
 from .ema import EMACallback

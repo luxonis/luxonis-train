@@ -1,14 +1,15 @@
 """This module implements a metaclass for automatic registration of
 classes."""
 
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 import lightning.pytorch as pl
 from luxonis_ml.utils.registry import Registry
 from torch.optim.lr_scheduler import LRScheduler
 from torch.optim.optimizer import Optimizer
 
-import luxonis_train as lxt
+if TYPE_CHECKING:
+    import luxonis_train as lxt
 
 CALLBACKS: Registry[type[pl.Callback]] = Registry(name="callbacks")
 

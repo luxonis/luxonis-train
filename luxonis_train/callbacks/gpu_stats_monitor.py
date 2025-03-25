@@ -33,7 +33,7 @@ from lightning.pytorch.utilities.parsing import AttributeDict
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 from lightning_fabric.utilities.exceptions import MisconfigurationException
 
-from luxonis_train.utils.registry import CALLBACKS
+from luxonis_train.registry import CALLBACKS
 
 
 @CALLBACKS.register()

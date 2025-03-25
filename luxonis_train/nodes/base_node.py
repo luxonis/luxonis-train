@@ -19,7 +19,7 @@ from luxonis_train.utils import (
     IncompatibleError,
     safe_download,
 )
-from luxonis_train.utils.registry import NODES
+from luxonis_train.registry import NODES
 
 ForwardOutputT = TypeVar("ForwardOutputT")
 ForwardInputT = TypeVar("ForwardInputT")

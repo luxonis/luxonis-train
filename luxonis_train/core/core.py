@@ -34,7 +34,7 @@ from luxonis_train.utils import (
     LuxonisTrackerPL,
     setup_logging,
 )
-from luxonis_train.utils.registry import LOADERS
+from luxonis_train.registry import LOADERS
 
 from .utils.export_utils import (
     blobconverter_export,

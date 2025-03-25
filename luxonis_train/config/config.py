@@ -21,7 +21,7 @@ from pydantic.types import (
 )
 from typing_extensions import Self
 
-from luxonis_train.utils.registry import MODELS
+from luxonis_train.registry import MODELS
 
 
 class ImageSize(NamedTuple):

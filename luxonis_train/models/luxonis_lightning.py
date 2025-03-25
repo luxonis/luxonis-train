@@ -38,7 +38,7 @@ from luxonis_train.utils import (
     LuxonisTrackerPL,
     to_shape_packet,
 )
-from luxonis_train.utils.registry import (
+from luxonis_train.registry import (
     CALLBACKS,
     OPTIMIZERS,
     SCHEDULERS,

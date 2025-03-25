@@ -13,7 +13,7 @@ from rich.console import Console
 from rich.table import Table
 
 import luxonis_train as lxt
-from luxonis_train.utils.registry import CALLBACKS
+from luxonis_train.registry import CALLBACKS
 
 
 class BaseLuxonisProgressBar(ABC, ProgressBar):

@@ -19,7 +19,7 @@ from torchmetrics import Metric
 
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.typing import Labels, Packet
-from luxonis_train.utils.registry import METRICS
+from luxonis_train.registry import METRICS
 
 
 @dataclass(kw_only=True, slots=True)

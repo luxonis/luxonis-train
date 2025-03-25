@@ -2,7 +2,7 @@ import lightning.pytorch as pl
 from loguru import logger
 
 import luxonis_train as lxt
-from luxonis_train.utils.registry import CALLBACKS
+from luxonis_train.registry import CALLBACKS
 
 from .needs_checkpoint import NeedsCheckpoint
 

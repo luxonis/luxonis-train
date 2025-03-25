@@ -7,7 +7,7 @@ from typing_extensions import TypeVarTuple, Unpack
 
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.typing import Labels, Packet
-from luxonis_train.utils.registry import VISUALIZERS
+from luxonis_train.registry import VISUALIZERS
 
 Ts = TypeVarTuple("Ts")
 

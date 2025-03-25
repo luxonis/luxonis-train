@@ -1,6 +1,6 @@
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.tasks import Tasks
-from luxonis_train.utils.registry import METRICS
+from luxonis_train.registry import METRICS
 
 from .detection_confusion_matrix import DetectionConfusionMatrix
 from .instance_segmentation_confusion_matrix import (

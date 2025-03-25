@@ -599,7 +599,7 @@ Registered components can be referenced in the config file. Custom components ne
 import lightning.pytorch as pl
 
 from luxonis_train import LuxonisLightningModule
-from luxonis_train.utils.registry import CALLBACKS
+from luxonis_train.registry import CALLBACKS
 
 
 @CALLBACKS.register()
