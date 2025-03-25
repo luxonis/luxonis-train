@@ -1,4 +1,5 @@
 import multiprocessing as mp
+import random
 import os
 import shutil
 from copy import deepcopy
@@ -81,6 +82,42 @@ def embedding_dataset() -> LuxonisDataset:
 
     dataset = LuxonisDataset("embedding_test", delete_existing=True)
     dataset.add(generator())
+    dataset.make_splits()
+    return dataset
+
+
+@pytest.fixture(scope="session")
+def toy_ocr_dataset() -> LuxonisDataset:
+    def generator():
+        path = WORK_DIR / "toy_ocr"
+        path.mkdir(parents=True, exist_ok=True)
+        alphabet = "abcdefghijklmnopqrstuvwxyz"
+        for _ in range(50):
+            random_word = "".join(
+                random.choices(alphabet, k=random.randint(3, 10))
+            )
+            img = np.full((64, 320, 3), 255, dtype=np.uint8)
+            cv2.putText(
+                img,
+                random_word,
+                (10, 50),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (0, 0, 0),
+                2,
+                cv2.LINE_AA,
+            )
+            cv2.imwrite(str(path / f"{random_word}.png"), img)
+            yield {
+                "file": path / f"{random_word}.png",
+                "annotation": {
+                    "metadata": {"text": random_word},
+                },
+            }
+
+    dataset = LuxonisDataset("toy_ocr", delete_existing=True)
+    dataset.add(generator())
+
     dataset.make_splits()
     return dataset
 

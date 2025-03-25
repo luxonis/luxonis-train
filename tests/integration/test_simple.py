@@ -75,7 +75,8 @@ def test_predefined_models(
     config_name: str,
     coco_dataset: LuxonisDataset,
     cifar10_dataset: LuxonisDataset,
-    mnist_dataset: LuxonisDataset,
+    # mnist_dataset: LuxonisDataset,
+    toy_ocr_dataset: LuxonisDataset,
     image_size: tuple[int, int],
     output_dir: Path,
     subtests: SubTests,
@@ -85,7 +86,7 @@ def test_predefined_models(
         "loader.params.dataset_name": (
             cifar10_dataset.identifier
             if "classification" in config_file
-            else mnist_dataset.identifier
+            else toy_ocr_dataset.identifier
             if "ocr_recognition" in config_file
             else coco_dataset.identifier
         ),
@@ -93,6 +94,8 @@ def test_predefined_models(
         "trainer.epochs": 1,
         "trainer.preprocessing.train_image_size": image_size,
     }
+    if "ocr_recognition" in config_file:
+        opts["trainer.preprocessing.train_image_size"] = [48, 320]
 
     model = LuxonisModel(config_file, opts)
     model.train()
