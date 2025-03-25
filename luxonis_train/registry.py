@@ -3,35 +3,35 @@ classes."""
 
 from typing import TYPE_CHECKING, TypeVar
 
-import lightning.pytorch as pl
 from luxonis_ml.utils.registry import Registry
-from torch.optim.lr_scheduler import LRScheduler
-from torch.optim.optimizer import Optimizer
 
 if TYPE_CHECKING:
     import luxonis_train as lxt
+    import lightning.pytorch as pl
+    from torch.optim.lr_scheduler import LRScheduler
+    from torch.optim.optimizer import Optimizer
 
 CALLBACKS: Registry[type[pl.Callback]] = Registry(name="callbacks")
 
-LOADERS: Registry[type["lxt.BaseLoaderTorch"]] = Registry(name="loaders")
+LOADERS: Registry[type[lxt.BaseLoaderTorch]] = Registry(name="loaders")
 
-LOSSES: Registry[type["lxt.BaseLoss"]] = Registry(name="losses")
+LOSSES: Registry[type[lxt.BaseLoss]] = Registry(name="losses")
 
-METRICS: Registry[type["lxt.BaseMetric"]] = Registry(name="metrics")
+METRICS: Registry[type[lxt.BaseMetric]] = Registry(name="metrics")
 
-MODELS: Registry[type["lxt.BasePredefinedModel"]] = Registry(name="models")
+MODELS: Registry[type[lxt.BasePredefinedModel]] = Registry(name="models")
 
-NODES: Registry[type["lxt.BaseNode"]] = Registry(name="nodes")
+NODES: Registry[type[lxt.BaseNode]] = Registry(name="nodes")
 
 OPTIMIZERS: Registry[type[Optimizer]] = Registry(name="optimizers")
 
 SCHEDULERS: Registry[type[LRScheduler]] = Registry(name="schedulers")
 
-STRATEGIES: Registry[type["lxt.BaseTrainingStrategy"]] = Registry(
+STRATEGIES: Registry[type[lxt.BaseTrainingStrategy]] = Registry(
     name="strategies"
 )
 
-VISUALIZERS: Registry[type["lxt.BaseVisualizer"]] = Registry("visualizers")
+VISUALIZERS: Registry[type[lxt.BaseVisualizer]] = Registry("visualizers")
 
 
 T = TypeVar("T")
