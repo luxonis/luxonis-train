@@ -75,7 +75,6 @@ def test_predefined_models(
     config_name: str,
     coco_dataset: LuxonisDataset,
     cifar10_dataset: LuxonisDataset,
-    # mnist_dataset: LuxonisDataset,
     toy_ocr_dataset: LuxonisDataset,
     image_size: tuple[int, int],
     output_dir: Path,
