@@ -100,7 +100,7 @@ class ATSSAssigner(nn.Module):
 
         # Select candidates inside GT
         is_in_gts = candidates_in_gt(anchor_centers, gt_bboxes_flat)
-        is_in_gts = torch.reshape(is_in_gts, (self.bs, self.n_max_boxes, -1))
+        is_in_gts = is_in_gts.reshape(self.bs, self.n_max_boxes, -1)
 
         # Final positive candidates
         mask_pos = is_pos * is_in_gts * mask_gt
@@ -156,12 +156,12 @@ class ATSSAssigner(nn.Module):
             anchors.
         """
         mask_gt = mask_gt.repeat(1, 1, self.topk).bool()
-        level_distances = torch.split(distances, n_level_bboxes, dim=-1)
+        level_distances = distances.split(n_level_bboxes, dim=-1)
         is_in_topk_list: list[Tensor] = []
         topk_idxs: list[Tensor] = []
         start_idx = 0
         for per_level_distances, per_level_boxes in zip(
-            level_distances, n_level_bboxes
+            level_distances, n_level_bboxes, strict=True
         ):
             end_idx = start_idx + per_level_boxes
             selected_k = min(self.topk, per_level_boxes)
@@ -225,13 +225,12 @@ class ATSSAssigner(nn.Module):
         overlaps_std_per_gt = candidate_overlaps.std(dim=-1, keepdim=True)
         overlaps_thr_per_gt = overlaps_mean_per_gt + overlaps_std_per_gt
 
-        is_pos = torch.where(
+        return torch.where(
             _candidate_overlaps
             > overlaps_thr_per_gt.repeat([1, 1, self.n_anchors]),
             is_in_topk,
             torch.zeros_like(is_in_topk),
         )
-        return is_pos
 
     def _get_final_assignments(
         self,
