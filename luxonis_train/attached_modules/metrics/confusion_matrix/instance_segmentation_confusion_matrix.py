@@ -48,4 +48,4 @@ class InstanceSegmentationConfusionMatrix(
             "segmentation_confusion_matrix": rec_result["confusion_matrix"],
         }
 
-        return {**det_renamed, **rec_renamed}
+        return det_renamed | rec_renamed

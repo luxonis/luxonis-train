@@ -5,6 +5,7 @@ from .boundingbox import (
     bbox_iou,
     compute_iou_loss,
     dist2bbox,
+    keypoints_to_bboxes,
     non_max_suppression,
 )
 from .dataset_metadata import DatasetMetadata
@@ -62,4 +63,5 @@ __all__ = [
     "OCRDecoder",
     "apply_bounding_box_to_masks",
     "get_center_keypoints",
+    "keypoints_to_bboxes",
 ]
