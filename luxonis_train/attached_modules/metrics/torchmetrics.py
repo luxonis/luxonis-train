@@ -101,7 +101,20 @@ class TorchMetricWrapper(BaseMetric):
 
     @override
     def compute(self) -> Tensor:
-        return self.metric.compute()
+        x = self.metric.compute()
+        if not (isinstance(x, Tensor) and x.ndim > 0 and x.numel() > 1):
+            return x
+        if getattr(self, "classes", None):
+            metric_name = type(self.metric).__name__
+            class_names = {v: k for k, v in self.classes.items()}
+            return x.mean(), {
+                metric_name + "_" + class_names[i]: x[i]
+                for i in range(x.numel())
+            }
+        else:
+            ValueError(
+                f"Metric '{self.name}' does not have 'classes' attribute set."
+            )
 
     @override
     def reset(self) -> None:
