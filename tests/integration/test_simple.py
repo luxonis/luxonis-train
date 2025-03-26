@@ -251,7 +251,7 @@ def test_infer(
 
 
 def test_archive(output_dir: Path, coco_dataset: LuxonisDataset):
-    opts = {
+    opts: Params = {
         "tracker.save_directory": str(output_dir),
         "loader.params.dataset_name": coco_dataset.identifier,
     }
@@ -351,6 +351,7 @@ def test_smart_cfg_auto_populate(coco_dataset: LuxonisDataset):
     loss_params = model.cfg.model.predefined_model.params["loss_params"]
     expected_iou_weight = 2.5 * grad_accumulation
     expected_class_weight = 1.0 * grad_accumulation
+    assert isinstance(loss_params, dict)
 
     assert loss_params["iou_loss_weight"] == expected_iou_weight
     assert loss_params["class_loss_weight"] == expected_class_weight
