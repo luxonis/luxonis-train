@@ -212,6 +212,8 @@ def build_metrics(
                 raise ValueError(
                     "Multiple main metrics defined. Only one is allowed."
                 )
+            if metric_name == "ConfusionMatrix":
+                metric_name = "mcc"
             main_metric = (node_name, metric_name)
     return _to_module_dict(metrics), main_metric
 
