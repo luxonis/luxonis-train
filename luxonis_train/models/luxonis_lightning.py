@@ -1,55 +1,29 @@
 from collections import defaultdict
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Literal, cast
-from typing_extensions import override
 
 import lightning.pytorch as pl
 import torch
-from lightning.pytorch.callbacks import (
-    GradientAccumulationScheduler,
-    ModelCheckpoint,
-    RichModelSummary,
-)
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
-from luxonis_ml.typing import ConfigItem, Kwargs, PathType
-from luxonis_ml.utils import traverse_graph
-from torch import Size, Tensor, nn
+from luxonis_ml.typing import PathType
+from torch import Size, Tensor
+from typing_extensions import override
 
 import luxonis_train
-from luxonis_train.attached_modules import (
-    BaseAttachedModule,
-    BaseLoss,
-    BaseMetric,
-    BaseVisualizer,
-)
 from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
     get_denormalized_images,
 )
-from luxonis_train.callbacks import BaseLuxonisProgressBar, TrainingManager
-from luxonis_train.config import AttachedModuleConfig, Config
+from luxonis_train.callbacks import BaseLuxonisProgressBar
+from luxonis_train.config import Config
 from luxonis_train.nodes import BaseNode
-from luxonis_train.nodes.heads import BaseHead
-from luxonis_train.tasks import Metadata
-from luxonis_train.typing import Labels, Packet
-from luxonis_train.utils import (
-    DatasetMetadata,
-    LuxonisTrackerPL,
-    to_shape_packet,
-)
-from luxonis_train.registry import (
-    CALLBACKS,
-    OPTIMIZERS,
-    SCHEDULERS,
-    STRATEGIES,
-    Registry,
-    from_registry,
-)
+from luxonis_train.typing import Packet, Labels
+from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
 
 from .luxonis_output import LuxonisOutput
 from .utils import (
+    LossAccumulator,
     build_callbacks,
     build_losses,
     build_metrics,
@@ -59,7 +33,6 @@ from .utils import (
     build_visualizers,
     compute_losses,
     postprocess_metrics,
-    LossAccumulator,
 )
 
 
