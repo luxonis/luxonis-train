@@ -1,3 +1,4 @@
+from .tracker import LuxonisTrackerPL
 from .boundingbox import (
     anchors_for_fpn_features,
     apply_bounding_box_to_masks,
@@ -5,6 +6,7 @@ from .boundingbox import (
     bbox_iou,
     compute_iou_loss,
     dist2bbox,
+    keypoints_to_bboxes,
     non_max_suppression,
 )
 from .dataset_metadata import DatasetMetadata
@@ -27,7 +29,7 @@ from .keypoints import (
 )
 from .logging import setup_logging
 from .ocr import OCRDecoder, OCREncoder
-from .tracker import LuxonisTrackerPL
+
 
 __all__ = [
     "instances_from_batch",
@@ -56,4 +58,5 @@ __all__ = [
     "safe_download",
     "setup_logging",
     "to_shape_packet",
+    "keypoints_to_bboxes",
 ]
