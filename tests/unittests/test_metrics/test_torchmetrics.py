@@ -12,7 +12,7 @@ from luxonis_train.utils.dataset_metadata import DatasetMetadata
 
 
 def test_torchmetrics():
-    class DummyNode(BaseNode):
+    class DummyNode(BaseNode, register=False):
         task = Tasks.CLASSIFICATION
 
         def forward(self, _: Tensor) -> Tensor: ...
@@ -53,7 +53,7 @@ def test_torchmetrics():
 
 
 def test_per_class_torchmetrics():
-    class DummyNode(BaseNode):
+    class DummyNode(BaseNode, register=False):
         task = Tasks.SEGMENTATION
 
         def forward(self, _: Tensor) -> Tensor: ...
