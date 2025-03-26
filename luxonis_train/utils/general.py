@@ -323,7 +323,7 @@ def instances_from_batch(
                         torch.empty_like(bboxes) for _ in [bboxes, *args]
                     )
         return
-    for i in range(int(bboxes[:, 0].max()) + 1):
+    for i in range(batch_size or int(bboxes[:, 0].max()) + 1):
         if not args:
             yield get_batch_instances(i, bboxes)
         else:
