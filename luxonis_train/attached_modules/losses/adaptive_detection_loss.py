@@ -6,7 +6,7 @@ from loguru import logger
 from torch import Tensor, amp, nn
 from torchvision.ops import box_convert
 
-from luxonis_train.assigners import TaskAlignedAssigner
+from luxonis_train.assigners import ATSSAssigner, TaskAlignedAssigner
 from luxonis_train.nodes import EfficientBBoxHead
 from luxonis_train.tasks import Tasks
 from luxonis_train.utils import (
@@ -32,6 +32,7 @@ class AdaptiveDetectionLoss(BaseLoss):
 
     def __init__(
         self,
+        n_warmup_epochs: int = 0,
         iou_type: IoUType = "giou",
         reduction: Literal["sum", "mean"] = "mean",
         class_loss_weight: float = 1.0,
@@ -44,6 +45,8 @@ class AdaptiveDetectionLoss(BaseLoss):
         for classification.
         Code is adapted from U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models}.
 
+        @type n_warmup_epochs: int
+        @param n_warmup_epochs: Number of epochs where ATSS assigner is used, after that we switch to TAL assigner.
         @type iou_type: L{IoUType}
         @param iou_type: IoU type used for bbox regression loss.
         @type reduction: Literal["sum", "mean"]
@@ -64,6 +67,8 @@ class AdaptiveDetectionLoss(BaseLoss):
         self.grid_cell_offset = self.node.grid_cell_offset
         self.original_img_size = self.original_in_shape[1:]
 
+        self.n_warmup_epochs = n_warmup_epochs
+        self.atss_assigner = ATSSAssigner(topk=9, n_classes=self.n_classes)
         self.tal_assigner = TaskAlignedAssigner(
             topk=13, n_classes=self.n_classes, alpha=1.0, beta=6.0
         )
@@ -182,20 +187,31 @@ class AdaptiveDetectionLoss(BaseLoss):
         pred_kpts: Tensor | None = None,
         gt_kpts: Tensor | None = None,
         sigmas: Tensor | None = None,
-        area_factor: float | None = None,
-    ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
-        return self.tal_assigner(
-            pred_scores.detach(),
-            pred_bboxes.detach() * self.stride_tensor,
-            self.anchor_points,
-            gt_labels,
-            gt_xyxy,
-            mask_gt,
-            pred_kpts,
-            gt_kpts,
-            sigmas,
-            area_factor,
-        )
+        area_factor: Tensor | None = None,
+    ) -> tuple:
+        if self._epoch < self.n_warmup_epochs:
+            return self.atss_assigner(
+                self.anchors,
+                self.n_anchors_list,
+                gt_labels,
+                gt_xyxy,
+                mask_gt,
+                pred_bboxes.detach() * self.stride_tensor,
+            )
+        else:
+            self._log_assigner_change()
+            return self.tal_assigner(
+                pred_scores.detach(),
+                pred_bboxes.detach() * self.stride_tensor,
+                self.anchor_points,
+                gt_labels,
+                gt_xyxy,
+                mask_gt,
+                pred_kpts,
+                gt_kpts,
+                sigmas,
+                area_factor,
+            )
 
     def _preprocess_bbox_target(
         self, target: Tensor, batch_size: int
@@ -209,12 +225,22 @@ class AdaptiveDetectionLoss(BaseLoss):
         c_max = int(counts.max()) if counts.numel() > 0 else 0
         out_target = torch.zeros(batch_size, c_max, 5, device=target.device)
         out_target[:, :, 0] = -1
-        for id, count in zip(sample_ids, counts, strict=True):
+        for id, count in zip(sample_ids, counts):
             out_target[id, :count] = target[target[:, 0] == id][:, 1:]
 
         scaled_target = out_target[:, :, 1:5] * self.gt_bboxes_scale
         out_target[..., 1:] = box_convert(scaled_target, "xywh", "xyxy")
         return out_target
+
+    def _log_assigner_change(self) -> None:
+        if self._logged_assigner_change:
+            return
+
+        logger.info(
+            f"Switching to Task Aligned Assigner after {self.n_warmup_epochs} warmup epochs.",
+            stacklevel=2,
+        )
+        self._logged_assigner_change = True
 
 
 class VarifocalLoss(nn.Module):
@@ -243,7 +269,10 @@ class VarifocalLoss(nn.Module):
         self.per_class_weights = per_class_weights
 
     def forward(
-        self, pred_score: Tensor, target_score: Tensor, label: Tensor
+        self,
+        pred_score: Tensor,
+        target_score: Tensor,
+        label: Tensor,
     ) -> Tensor:
         weight = (
             self.alpha * pred_score.pow(self.gamma) * (1 - label)
@@ -263,4 +292,5 @@ class VarifocalLoss(nn.Module):
             ce_loss = F.binary_cross_entropy(
                 pred_score.float(), target_score.float(), reduction="none"
             )
-        return (ce_loss * weight).sum()
+        loss = (ce_loss * weight).sum()
+        return loss

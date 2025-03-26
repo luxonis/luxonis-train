@@ -128,6 +128,7 @@ Compatible with: [`EfficientBBoxHead`](../../nodes/README.md#efficientbboxhead)
 
 | Key                 | Type                                              | Default value | Description                                                                                                                                                                                                                                              |
 | ------------------- | ------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `n_warmup_epochs`   | `int`                                             | `0`           | Number of epochs using the ATSS assigner before switching to the TAL assigner.                                                                                                                                                                           |
 | `iou_type`          | `Literal["none", "giou", "diou", "ciou", "siou"]` | `"giou"`      | Type of IoU used for bounding box regression loss.                                                                                                                                                                                                       |
 | `class_loss_weight` | `float`                                           | `1.0`         | Weight for the classification component of the loss.                                                                                                                                                                                                     |
 | `iou_loss_weight`   | `float`                                           | `2.5`         | Weight for the IoU regression component of the loss.                                                                                                                                                                                                     |
@@ -168,6 +169,7 @@ Compatible with: [`EfficientKeypointBBoxHead`](../../nodes/README.md#efficientke
 | `vis_kpts_loss_weight`  | `float`                                           | `2.0`         | Weight for the keypoint visibility sub-loss.                                                   |
 | `sigmas`                | `list[float] \| None`                             | `None`        | Sigmas used in KeypointLoss for OKS; if `None`, defaults (e.g., COCO values) are used.         |
 | `area_factor`           | `float \| None`                                   | `None`        | Factor to multiply the bounding box area in KeypointLoss; if `None`, a default factor is used. |
+| `n_warmup_epochs`       | `int`                                             | `0`           | Number of epochs using the ATSS assigner before switching to the TAL assigner.                 |
 
 #### `FOMOLocalizationLoss`
 
