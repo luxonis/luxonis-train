@@ -20,7 +20,7 @@ model:
         regr_kpts_loss_weight: 96
 
         # Should be 1 * accumulate_grad_batches for the best results
-        vis_kpts_loss_weight: 8\
+        vis_kpts_loss_weight: 8
 
 loader:
   params:
