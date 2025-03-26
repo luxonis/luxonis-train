@@ -514,19 +514,66 @@ class LuxonisLightningModule(pl.LightningModule):
     def on_test_epoch_end(self) -> None:
         return self._evaluation_epoch_end("test")
 
-    def get_status(self) -> tuple[int, int]:
-        """Returns current epoch and number of all epochs."""
-        return self.current_epoch, self.cfg.trainer.epochs
+    @override
+    def configure_callbacks(self) -> list[pl.Callback]:
+        return build_callbacks(
+            self.cfg, self.main_metric, self.save_dir, self.nodes
+        )
 
-    def get_status_percentage(self) -> float:
-        """Returns percentage of current training, takes into account
-        early stopping."""
-        if self._trainer.early_stopping_callback:
-            # model haven't yet stop from early stopping callback
-            if self._trainer.early_stopping_callback.stopped_epoch == 0:
-                return (self.current_epoch / self.cfg.trainer.epochs) * 100
-            return 100.0
-        return (self.current_epoch / self.cfg.trainer.epochs) * 100
+    @override
+    def configure_optimizers(
+        self,
+    ) -> tuple[
+        list[torch.optim.Optimizer],
+        list[torch.optim.lr_scheduler.LRScheduler],
+    ]:
+        if self.training_strategy is not None:
+            return self.training_strategy.configure_optimizers()
+        return build_optimizers(self.cfg, self.parameters())
+
+    def load_checkpoint(self, path: str | Path | None) -> None:
+        """Loads checkpoint weights from provided path.
+
+        Loads the checkpoints gracefully, ignoring keys that are not
+        found in the model state dict or in the checkpoint.
+
+        @type path: str | None
+        @param path: Path to the checkpoint. If C{None}, no checkpoint
+            will be loaded.
+        """
+        if path is None:
+            return
+
+        path = str(path)
+
+        checkpoint = torch.load(  # nosemgrep
+            path, map_location=self.device
+        )
+
+        if "state_dict" not in checkpoint:
+            raise ValueError("Checkpoint does not contain state_dict.")
+        state_dict = {}
+        self_state_dict = self.state_dict()
+        for key, value in checkpoint["state_dict"].items():
+            if key not in self_state_dict.keys():
+                logger.warning(
+                    f"Key `{key}` from checkpoint not found in model state dict."
+                )
+            else:
+                state_dict[key] = value
+
+        for key in self_state_dict:
+            if key not in state_dict:
+                logger.warning(f"Key `{key}` was not found in checkpoint.")
+            else:
+                try:
+                    self_state_dict[key].copy_(state_dict[key])
+                except Exception:
+                    logger.warning(
+                        f"Key `{key}` from checkpoint could not be loaded into model."
+                    )
+
+        logger.info(f"Loaded checkpoint from {path}.")
 
     def _evaluation_step(
         self,
@@ -601,67 +648,6 @@ class LuxonisLightningModule(pl.LightningModule):
             loss=self._loss_accumulator["loss"],
             metrics=table,
         )
-
-    @override
-    def configure_callbacks(self) -> list[pl.Callback]:
-        return build_callbacks(
-            self.cfg, self.main_metric, self.save_dir, self.nodes
-        )
-
-    @override
-    def configure_optimizers(
-        self,
-    ) -> tuple[
-        list[torch.optim.Optimizer],
-        list[torch.optim.lr_scheduler.LRScheduler],
-    ]:
-        if self.training_strategy is not None:
-            return self.training_strategy.configure_optimizers()
-        return build_optimizers(self.cfg, self.parameters())
-
-    def load_checkpoint(self, path: str | Path | None) -> None:
-        """Loads checkpoint weights from provided path.
-
-        Loads the checkpoints gracefully, ignoring keys that are not
-        found in the model state dict or in the checkpoint.
-
-        @type path: str | None
-        @param path: Path to the checkpoint. If C{None}, no checkpoint
-            will be loaded.
-        """
-        if path is None:
-            return
-
-        path = str(path)
-
-        checkpoint = torch.load(  # nosemgrep
-            path, map_location=self.device
-        )
-
-        if "state_dict" not in checkpoint:
-            raise ValueError("Checkpoint does not contain state_dict.")
-        state_dict = {}
-        self_state_dict = self.state_dict()
-        for key, value in checkpoint["state_dict"].items():
-            if key not in self_state_dict.keys():
-                logger.warning(
-                    f"Key `{key}` from checkpoint not found in model state dict."
-                )
-            else:
-                state_dict[key] = value
-
-        for key in self_state_dict:
-            if key not in state_dict:
-                logger.warning(f"Key `{key}` was not found in checkpoint.")
-            else:
-                try:
-                    self_state_dict[key].copy_(state_dict[key])
-                except Exception:
-                    logger.warning(
-                        f"Key `{key}` from checkpoint could not be loaded into model."
-                    )
-
-        logger.info(f"Loaded checkpoint from {path}.")
 
     @rank_zero_only
     def _print_results(
