@@ -123,8 +123,8 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             target_keypoints, batch_size, self.gt_kpts_scale
         )
 
-        scaled_keypoints_raw = keypoints_raw.clone()
-        scaled_keypoints_raw[..., :2] = scaled_keypoints_raw[
+        scaled_raw_keypoints = keypoints_raw.clone()
+        scaled_raw_keypoints[..., :2] = scaled_raw_keypoints[
             ..., :2
         ] * self.stride_tensor.view(1, -1, 1, 1)
 
@@ -142,7 +142,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             mask_gt,
             pred_bboxes,
             class_scores,
-            scaled_keypoints_raw,
+            scaled_raw_keypoints,
             batched_kpts,
             sigmas,
             self.area_factor,
