@@ -233,6 +233,18 @@ class EMACallback(pl.Callback):
         """
         self._swap_to_ema_weights(pl_module)
 
+    def on_train_epoch_start(
+        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+    ) -> None:
+        """Restore the original model weights at the start of training.
+
+        @type trainer: L{pl.Trainer}
+        @param trainer: Pytorch Lightning trainer.
+        @type pl_module: L{pl.LightningModule}
+        @param pl_module: Pytorch Lightning module.
+        """
+        self._restore_original_weights(pl_module)
+
     def on_save_checkpoint(
         self,
         trainer: pl.Trainer,

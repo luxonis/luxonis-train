@@ -31,30 +31,26 @@ class UploadCheckpoint(pl.Callback):
         module: "luxonis_train.models.LuxonisLightningModule",
         checkpoint: dict[str, Any],
     ) -> None:
-        # Log only once per epoch in case there are multiple ModelCheckpoint callbacks
-        if not self.last_logged_epoch == trainer.current_epoch:
-            checkpoint_paths = [
-                c.best_model_path
-                for c in trainer.callbacks  # type: ignore
-                if isinstance(c, pl.callbacks.ModelCheckpoint)  # type: ignore
-                and c.best_model_path
-            ]
-            for curr_best_checkpoint in checkpoint_paths:
-                if curr_best_checkpoint not in self.last_best_checkpoints:
-                    logger.info("Uploading checkpoint...")
-                    temp_filename = (
-                        Path(curr_best_checkpoint)
-                        .parent.with_suffix(".ckpt")
-                        .name
-                    )
-                    torch.save(  # nosemgrep
-                        checkpoint, temp_filename
-                    )
-                    module.logger.upload_artifact(temp_filename, typ="weights")
+        checkpoint_paths = [
+            c.best_model_path
+            for c in trainer.callbacks  # type: ignore
+            if isinstance(c, pl.callbacks.ModelCheckpoint)  # type: ignore
+            and c.best_model_path
+        ]
+        for curr_best_checkpoint in checkpoint_paths:
+            if curr_best_checkpoint not in self.last_best_checkpoints:
+                logger.info("Uploading checkpoint...")
+                temp_filename = (
+                    Path(curr_best_checkpoint).parent.with_suffix(".ckpt").name
+                )
+                torch.save(  # nosemgrep
+                    checkpoint, temp_filename
+                )
+                module.logger.upload_artifact(temp_filename, typ="weights")
 
-                    os.remove(temp_filename)
+                os.remove(temp_filename)
 
-                    logger.info("Checkpoint upload finished")
-                    self.last_best_checkpoints.add(curr_best_checkpoint)
+                logger.info("Checkpoint upload finished")
+                self.last_best_checkpoints.add(curr_best_checkpoint)
 
-            self.last_logged_epoch = trainer.current_epoch
+        self.last_logged_epoch = trainer.current_epoch
