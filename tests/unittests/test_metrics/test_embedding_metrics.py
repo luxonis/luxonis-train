@@ -116,13 +116,5 @@ def test_median_distances(
     metric.update(embeddings, labels)
     results = metric.compute()
 
-    expected_keys = [
-        "MedianDistance",
-        "MedianClosestDistance",
-        "MedianClosestPositiveDistance",
-        "MedianClosestVsClosestPositiveDistance",
-    ]
-    for key in expected_keys:
-        assert torch.isclose(
-            results[key], torch.tensor(expected[key]), atol=1e-2
-        )
+    for key, value in expected.items():
+        assert torch.isclose(results[key], torch.tensor(value), atol=1e-2)

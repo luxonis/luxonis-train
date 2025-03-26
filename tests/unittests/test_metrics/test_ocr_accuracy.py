@@ -58,7 +58,7 @@ from luxonis_train.tasks import Tasks
         (
             torch.tensor(
                 [
-                    [  # ehlow
+                    [
                         [0.1, 0.3, 0.4, 0.1, 0.1, 0.0],  # h
                         [0.01, 0.9, 0.09, 0.0, 0.0, 0.0],  # e
                         [0.1, 0.2, 0.3, 0.4, 0.0, 0.0],  # l
