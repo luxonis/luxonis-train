@@ -37,7 +37,15 @@ class InstanceSegmentationConfusionMatrix(
 
     @override
     def compute(self) -> dict[str, Tensor]:
-        return {
-            "detection": DetectionConfusionMatrix.compute(self),
-            "segmentation": RecognitionConfusionMatrix.compute(self),
+        det_result = DetectionConfusionMatrix.compute(self)
+        rec_result = RecognitionConfusionMatrix.compute(self)
+        det_renamed = {
+            "detection_mcc": det_result["mcc"],
+            "detection_confusion_matrix": det_result["confusion_matrix"],
         }
+        rec_renamed = {
+            "segmentation_mcc": rec_result["mcc"],
+            "segmentation_confusion_matrix": rec_result["confusion_matrix"],
+        }
+
+        return det_renamed | rec_renamed
