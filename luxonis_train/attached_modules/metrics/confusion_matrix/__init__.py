@@ -9,7 +9,7 @@ from .recognition_confusion_matrix import RecognitionConfusionMatrix
 __all__ = [
     "ConfusionMatrix",
     "DetectionConfusionMatrix",
+    "FomoConfusionMatrix",
     "InstanceSegmentationConfusionMatrix",
     "RecognitionConfusionMatrix",
-    "FomoConfusionMatrix",
 ]

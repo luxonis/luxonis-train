@@ -1,4 +1,3 @@
-from .tracker import LuxonisTrackerPL
 from .boundingbox import (
     anchors_for_fpn_features,
     apply_bounding_box_to_masks,
@@ -29,12 +28,9 @@ from .keypoints import (
 )
 from .logging import setup_logging
 from .ocr import OCRDecoder, OCREncoder
-
+from .tracker import LuxonisTrackerPL
 
 __all__ = [
-    "instances_from_batch",
-    "instances_from_batch",
-    "get_batch_instances",
     "DatasetMetadata",
     "IncompatibleError",
     "LuxonisTrackerPL",
@@ -48,15 +44,18 @@ __all__ = [
     "compute_pose_oks",
     "dist2bbox",
     "get_attribute_check_none",
+    "get_batch_instances",
     "get_center_keypoints",
     "get_sigmas",
     "get_with_default",
     "infer_upscale_factor",
     "insert_class",
+    "instances_from_batch",
+    "instances_from_batch",
+    "keypoints_to_bboxes",
     "make_divisible",
     "non_max_suppression",
     "safe_download",
     "setup_logging",
     "to_shape_packet",
-    "keypoints_to_bboxes",
 ]

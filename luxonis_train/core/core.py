@@ -29,12 +29,12 @@ from luxonis_train.config import Config
 from luxonis_train.loaders import BaseLoaderTorch, collate_fn
 from luxonis_train.loaders.luxonis_loader_torch import LuxonisLoaderTorch
 from luxonis_train.models import LuxonisLightningModule
+from luxonis_train.registry import LOADERS
 from luxonis_train.utils import (
     DatasetMetadata,
     LuxonisTrackerPL,
     setup_logging,
 )
-from luxonis_train.registry import LOADERS
 
 from .utils.export_utils import (
     blobconverter_export,
@@ -664,7 +664,7 @@ class LuxonisModel:
             if cfg_tuner.storage.storage_type == "local":
                 storage = "sqlite:///study_local.db"
             else:  # pragma: no cover
-                storage = "postgresql://{}:{}@{}:{}/{}".format(  # noqa: UP032
+                storage = "postgresql://{}:{}@{}:{}/{}".format(
                     self.cfg.ENVIRON.POSTGRES_USER,
                     self.cfg.ENVIRON.POSTGRES_PASSWORD,
                     self.cfg.ENVIRON.POSTGRES_HOST,

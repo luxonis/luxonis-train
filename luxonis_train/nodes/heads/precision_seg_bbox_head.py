@@ -7,12 +7,12 @@ from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks import ConvModule, SegProto
 from luxonis_train.tasks import Tasks
+from luxonis_train.typing import Packet
 from luxonis_train.utils import (
     apply_bounding_box_to_masks,
     non_max_suppression,
 )
 
-from luxonis_train.typing import Packet
 from .precision_bbox_head import PrecisionBBoxHead
 
 

@@ -31,13 +31,6 @@ from luxonis_train.callbacks import BaseLuxonisProgressBar, TrainingManager
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.heads import BaseHead
-from luxonis_train.tasks import Metadata
-from luxonis_train.typing import Labels, Packet
-from luxonis_train.utils import (
-    DatasetMetadata,
-    LuxonisTrackerPL,
-    to_shape_packet,
-)
 from luxonis_train.registry import (
     CALLBACKS,
     OPTIMIZERS,
@@ -45,6 +38,13 @@ from luxonis_train.registry import (
     STRATEGIES,
     Registry,
     from_registry,
+)
+from luxonis_train.tasks import Metadata
+from luxonis_train.typing import Labels, Packet
+from luxonis_train.utils import (
+    DatasetMetadata,
+    LuxonisTrackerPL,
+    to_shape_packet,
 )
 
 from .luxonis_output import LuxonisOutput

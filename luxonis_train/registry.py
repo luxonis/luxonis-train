@@ -6,10 +6,11 @@ from typing import TYPE_CHECKING, TypeVar
 from luxonis_ml.utils.registry import Registry
 
 if TYPE_CHECKING:
-    import luxonis_train as lxt
     import lightning.pytorch as pl
     from torch.optim.lr_scheduler import LRScheduler
     from torch.optim.optimizer import Optimizer
+
+    import luxonis_train as lxt
 
 CALLBACKS: Registry[type["pl.Callback"]] = Registry(name="callbacks")
 

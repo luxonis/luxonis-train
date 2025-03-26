@@ -5,8 +5,8 @@ from inspect import Parameter
 from torch import Tensor
 
 from luxonis_train.attached_modules import BaseAttachedModule
-from luxonis_train.typing import Labels, Packet
 from luxonis_train.registry import LOSSES
+from luxonis_train.typing import Labels, Packet
 
 
 class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
