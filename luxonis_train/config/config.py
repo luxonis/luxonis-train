@@ -150,10 +150,6 @@ class ModelConfig(BaseModelExtraForbid):
     def check_main_metric(self) -> Self:
         for metric in self.metrics:
             if metric.is_main_metric:
-                if "matrix" in metric.name.lower():
-                    raise ValueError(
-                        f"Main metric cannot contain 'matrix' in its name: `{metric.name}`"
-                    )
                 logger.info(f"Main metric: `{metric.name}`")
                 return self
 

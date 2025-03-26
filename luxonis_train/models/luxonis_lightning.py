@@ -286,7 +286,7 @@ class LuxonisLightningModule(pl.LightningModule):
                     raise ValueError(
                         "Multiple main metrics defined. Only one is allowed."
                     )
-                self.main_metric = f"{node_name}/{metric_name}"
+                self.main_metric = f"{node_name}/{'mcc' if metric_name == 'ConfusionMatrix' else metric_name}"
 
         for visualizer_cfg in self.cfg.model.visualizers:
             self._init_attached_module(
@@ -886,7 +886,7 @@ class LuxonisLightningModule(pl.LightningModule):
                     self.logger.log_matrix(
                         matrix=metric_value.cpu().numpy(),
                         name=f"{mode}/metrics/{self.current_epoch}/"
-                        f"{formatted_node_name}/{metric_name}_confusion_matrix",
+                        f"{formatted_node_name}/{metric_name}",
                         step=self.current_epoch,
                     )
                 else:

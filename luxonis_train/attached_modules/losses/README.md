@@ -177,9 +177,11 @@ Compatible with: [`FOMOHead`](../../nodes/README.md#fomohead)
 
 **Parameters:**
 
-| Key             | Type    | Default value | Description                                                                                                                   |
-| --------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `object_weight` | `float` | `500`         | Weight for objects in the loss computation. Higher values may improve detection accuracy at the risk of more false positives. |
+| Key             | Type    | Default Value | Description                                                                                                                      |
+| --------------- | ------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `object_weight` | `float` | `500`         | Weight applied to object (positive) regions in the loss. Higher values can help detect objects but may increase false positives. |
+| `alpha`         | `float` | `0.45`        | Balances the importance of positive vs. negative examples in Focal loss.                                                         |
+| `gamma`         | `float` | `2`           | Exponent that modulates the difficulty weighting in Focal loss.                                                                  |
 
 ### Instance Segmentation Losses
 

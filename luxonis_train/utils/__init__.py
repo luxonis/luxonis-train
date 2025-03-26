@@ -5,6 +5,7 @@ from .boundingbox import (
     bbox_iou,
     compute_iou_loss,
     dist2bbox,
+    keypoints_to_bboxes,
     non_max_suppression,
 )
 from .dataset_metadata import DatasetMetadata
@@ -56,4 +57,5 @@ __all__ = [
     "safe_download",
     "setup_logging",
     "to_shape_packet",
+    "keypoints_to_bboxes",
 ]
