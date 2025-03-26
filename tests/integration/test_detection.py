@@ -71,4 +71,5 @@ def test_backbones(
     opts = get_opts_backbone(backbone)
     opts["loader.params.dataset_name"] = coco_dataset.identifier
     opts["trainer.epochs"] = 1
+    opts["trainer.callbacks"] = []
     train_and_test(config, opts)
