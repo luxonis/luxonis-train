@@ -813,45 +813,6 @@ class LuxonisModel:
 
         return Path(archive_path)
 
-    # TODO: Where are these methods used? Can they be removed?
-    @rank_zero_only
-    def get_status(self) -> tuple[int, int]:
-        """Get current status of training.
-
-        @rtype: tuple[int, int]
-        @return: First element is the current epoch, second element is
-            the total number of epochs.
-        """
-        return self.lightning_module.current_epoch, self.cfg.trainer.epochs
-
-    @rank_zero_only
-    def get_status_percentage(self) -> float:
-        """Return percentage of current training, takes into account
-        early stopping.
-
-        @rtype: float
-        @return: Percentage of current training in range 0-100.
-        """
-
-        current_epoch = self.lightning_module.current_epoch
-        early_stopping = self.pl_trainer.early_stopping_callback
-
-        if early_stopping is not None:
-            if early_stopping.stopped_epoch == 0:
-                return (current_epoch / self.cfg.trainer.epochs) * 100
-            return 100.0
-        return (current_epoch / self.cfg.trainer.epochs) * 100
-
-    @rank_zero_only
-    def get_error_message(self) -> str | None:
-        """Return error message if one occurs while running in thread,
-        otherwise None.
-
-        @rtype: str | None
-        @return: Error message
-        """
-        return self.error_message
-
     @rank_zero_only
     def get_min_loss_checkpoint_path(self) -> str | None:
         """Return best checkpoint path with respect to minimal
