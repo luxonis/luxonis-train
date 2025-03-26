@@ -9,8 +9,6 @@ model:
       variant: light
       loss_params:
         iou_type: "siou"
-        # No assigner warmup
-        n_warmup_epochs: 0
         # Should be 2.5 * accumulate_grad_batches for best results
         iou_loss_weight: 20
         # Should be 1 * accumulate_grad_batches for best results
