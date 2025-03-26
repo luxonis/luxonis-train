@@ -6,7 +6,7 @@ from loguru import logger
 from torch import Tensor, amp, nn
 from torchvision.ops import box_convert
 
-from luxonis_train.assigners import ATSSAssigner, TaskAlignedAssigner
+from luxonis_train.assigners import TaskAlignedAssigner
 from luxonis_train.nodes import EfficientBBoxHead
 from luxonis_train.tasks import Tasks
 from luxonis_train.utils import (
@@ -32,7 +32,6 @@ class AdaptiveDetectionLoss(BaseLoss):
 
     def __init__(
         self,
-        n_warmup_epochs: int = 4,
         iou_type: IoUType = "giou",
         reduction: Literal["sum", "mean"] = "mean",
         class_loss_weight: float = 1.0,
@@ -45,8 +44,6 @@ class AdaptiveDetectionLoss(BaseLoss):
         for classification.
         Code is adapted from U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models}.
 
-        @type n_warmup_epochs: int
-        @param n_warmup_epochs: Number of epochs where ATSS assigner is used, after that we switch to TAL assigner.
         @type iou_type: L{IoUType}
         @param iou_type: IoU type used for bbox regression loss.
         @type reduction: Literal["sum", "mean"]
@@ -67,8 +64,6 @@ class AdaptiveDetectionLoss(BaseLoss):
         self.grid_cell_offset = self.node.grid_cell_offset
         self.original_img_size = self.original_in_shape[1:]
 
-        self.n_warmup_epochs = n_warmup_epochs
-        self.atss_assigner = ATSSAssigner(topk=9, n_classes=self.n_classes)
         self.tal_assigner = TaskAlignedAssigner(
             topk=13, n_classes=self.n_classes, alpha=1.0, beta=6.0
         )
@@ -189,16 +184,6 @@ class AdaptiveDetectionLoss(BaseLoss):
         sigmas: Tensor | None = None,
         area_factor: float | None = None,
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
-        if self.current_epoch < self.n_warmup_epochs:
-            return self.atss_assigner(
-                self.anchors,
-                self.n_anchors_list,
-                gt_labels,
-                gt_xyxy,
-                mask_gt,
-                pred_bboxes.detach() * self.stride_tensor,
-            )
-        self._log_assigner_change()
         return self.tal_assigner(
             pred_scores.detach(),
             pred_bboxes.detach() * self.stride_tensor,
@@ -230,16 +215,6 @@ class AdaptiveDetectionLoss(BaseLoss):
         scaled_target = out_target[:, :, 1:5] * self.gt_bboxes_scale
         out_target[..., 1:] = box_convert(scaled_target, "xywh", "xyxy")
         return out_target
-
-    def _log_assigner_change(self) -> None:
-        if self._logged_assigner_change:
-            return
-
-        logger.info(
-            f"Switching to Task Aligned Assigner after {self.n_warmup_epochs} warmup epochs.",
-            stacklevel=2,
-        )
-        self._logged_assigner_change = True
 
 
 class VarifocalLoss(nn.Module):

@@ -28,7 +28,6 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
 
     def __init__(
         self,
-        n_warmup_epochs: int = 4,
         iou_type: IoUType = "giou",
         reduction: Literal["sum", "mean"] = "mean",
         class_loss_weight: float = 0.5,
@@ -45,8 +44,6 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         for classification.
         Code is adapted from U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models}.
 
-        @type n_warmup_epochs: int
-        @param n_warmup_epochs: Number of epochs where ATSS assigner is used, after that we switch to TAL assigner.
         @type iou_type: Literal["none", "giou", "diou", "ciou", "siou"]
         @param iou_type: IoU type used for bbox regression loss.
         @type reduction: Literal["sum", "mean"]
@@ -66,7 +63,6 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             If not set, the default factor of `0.53` is used.
         """
         super().__init__(
-            n_warmup_epochs=n_warmup_epochs,
             iou_type=iou_type,
             reduction=reduction,
             class_loss_weight=class_loss_weight,
