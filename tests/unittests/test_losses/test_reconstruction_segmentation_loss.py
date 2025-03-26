@@ -7,6 +7,8 @@ from luxonis_train.attached_modules.losses import (
 from luxonis_train.nodes import DiscSubNetHead
 from luxonis_train.tasks import Tasks
 
+from .test_utils import load_checkpoint
+
 
 class DummyPrecisionSegmentBBoxHead(DiscSubNetHead, register=False):
     task = Tasks.ANOMALY_DETECTION
@@ -23,7 +25,7 @@ def test_reconstruction_segmentation_loss():
         target_original_segmentation,
         target_segmentation,
         expected_sub_losses,
-    ) = torch.load("tests/fixtures/reconstruction_segmentation_loss_data.pt")
+    ) = load_checkpoint("reconstruction_segmentation_loss_data.pt")
     result = loss(
         predictions,
         reconstructed,

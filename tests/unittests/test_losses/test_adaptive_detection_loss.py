@@ -5,6 +5,8 @@ from luxonis_train.attached_modules.losses import AdaptiveDetectionLoss
 from luxonis_train.nodes import EfficientBBoxHead
 from luxonis_train.tasks import Tasks
 
+from .test_utils import load_checkpoint
+
 
 class DummyEfficientBBoxHead(EfficientBBoxHead, register=False):
     task = Tasks.BOUNDINGBOX
@@ -33,7 +35,7 @@ def test_adaptive_detection_loss():
         node=DummyEfficientBBoxHead(), iou_type="siou", n_warmup_epochs=0
     )
     features, class_scores, distributions, target, expected_sub_losses = (
-        torch.load("tests/fixtures/adaptive_detection_loss_data.pt")
+        load_checkpoint("adaptive_detection_loss_data.pt")
     )
     result = loss(features, class_scores, distributions, target)[1]
     for key, value in result.items():

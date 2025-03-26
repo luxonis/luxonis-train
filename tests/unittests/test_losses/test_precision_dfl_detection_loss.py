@@ -5,6 +5,8 @@ from luxonis_train.attached_modules.losses import PrecisionDFLDetectionLoss
 from luxonis_train.nodes import PrecisionBBoxHead
 from luxonis_train.tasks import Tasks
 
+from .test_utils import load_checkpoint
+
 
 class DummyPrecisionBBoxHead(PrecisionBBoxHead, register=False):
     task = Tasks.BOUNDINGBOX
@@ -30,8 +32,8 @@ class DummyPrecisionBBoxHead(PrecisionBBoxHead, register=False):
 
 def test_precision_detection_loss():
     loss = PrecisionDFLDetectionLoss(node=DummyPrecisionBBoxHead())
-    features, target, expected_sub_losses = torch.load(
-        "tests/fixtures/precision_dfl_detection_loss_data.pt"
+    features, target, expected_sub_losses = load_checkpoint(
+        "precision_dfl_detection_loss_data.pt"
     )
     result = loss(features, target)[1]
     for key, value in result.items():

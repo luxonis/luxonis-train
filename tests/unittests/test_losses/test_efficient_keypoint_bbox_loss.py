@@ -5,6 +5,8 @@ from luxonis_train.attached_modules.losses import EfficientKeypointBBoxLoss
 from luxonis_train.nodes import EfficientKeypointBBoxHead
 from luxonis_train.tasks import Tasks
 
+from .test_utils import load_checkpoint
+
 
 class DummyEfficientKeypointBBoxHead(
     EfficientKeypointBBoxHead, register=False
@@ -45,7 +47,7 @@ def test_efficient_keypoint_bbox_loss():
         target_boundingbox,
         target_keypoints,
         expected_sub_losses,
-    ) = torch.load("tests/fixtures/efficient_keypoint_bbox_loss_data.pt")
+    ) = load_checkpoint("efficient_keypoint_bbox_loss_data.pt")
     result = loss(
         features,
         class_scores,

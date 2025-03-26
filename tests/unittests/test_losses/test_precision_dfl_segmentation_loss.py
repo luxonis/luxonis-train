@@ -5,6 +5,8 @@ from luxonis_train.attached_modules.losses import PrecisionDFLSegmentationLoss
 from luxonis_train.nodes import PrecisionSegmentBBoxHead
 from luxonis_train.tasks import Tasks
 
+from .test_utils import load_checkpoint
+
 
 class DummyPrecisionSegmentBBoxHead(PrecisionSegmentBBoxHead, register=False):
     task = Tasks.INSTANCE_SEGMENTATION
@@ -37,7 +39,7 @@ def test_precision_segmentation_loss():
         target_boundingbox,
         target_instance_segmentation,
         expected_sub_losses,
-    ) = torch.load("tests/fixtures/precision_dfl_segmentation_loss_data.pt")
+    ) = load_checkpoint("precision_dfl_segmentation_loss_data.pt")
     result = loss(
         features,
         prototypes,

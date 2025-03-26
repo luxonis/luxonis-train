@@ -5,6 +5,8 @@ from luxonis_train.attached_modules.losses import FOMOLocalizationLoss
 from luxonis_train.nodes.heads import FOMOHead
 from luxonis_train.tasks import Tasks
 
+from .test_utils import load_checkpoint
+
 
 class DummyFOMOHead(FOMOHead, register=False):
     task = Tasks.FOMO
@@ -26,8 +28,8 @@ class DummyFOMOHead(FOMOHead, register=False):
 
 def test_fomo_localization_loss():
     loss = FOMOLocalizationLoss(node=DummyFOMOHead())
-    heatmap, target, expected_loss = torch.load(
-        "tests/fixtures/fomo_localization_loss_data.pt"
+    heatmap, target, expected_loss = load_checkpoint(
+        "fomo_localization_loss_data.pt"
     )
     result = loss(heatmap, target)
     assert torch.isclose(result, expected_loss, atol=1e-3)
