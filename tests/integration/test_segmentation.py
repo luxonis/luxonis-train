@@ -119,7 +119,6 @@ def train_and_test(
     train_overfit: bool = False,
 ):
     model = LuxonisModel(config, opts)
-    opts["trainer.callbacks"] = []
     model.train()
     if train_overfit:  # pragma: no cover
         results = model.test(view="val")

@@ -36,10 +36,7 @@ def opts(output_dir: Path) -> dict[str, Any]:
         "trainer.epochs": 1,
         "trainer.batch_size": 1,
         "trainer.validation_interval": 1,
-        "trainer.callbacks": [
-            {"name": "ExportOnTrainEnd"},
-            {"name": "ArchiveOnTrainEnd"},
-        ],
+        "trainer.callbacks": [],
         "tracker.save_directory": str(output_dir),
         "tuner.n_trials": 4,
     }
@@ -91,6 +88,11 @@ def test_predefined_models(
         "tracker.run_name": config_name,
         "trainer.epochs": 1,
         "trainer.preprocessing.train_image_size": image_size,
+        "trainer.callbacks": [
+            {"name": "ExportOnTrainEnd"},
+            {"name": "ArchiveOnTrainEnd"},
+            {"name": "TestOnTrainEnd"},
+        ],
     }
     if "ocr_recognition" in config_file:
         opts["trainer.preprocessing.train_image_size"] = [48, 320]
