@@ -28,7 +28,7 @@ from luxonis_train.callbacks import (
 from luxonis_train.config import Config
 from luxonis_train.loaders import BaseLoaderTorch, collate_fn
 from luxonis_train.loaders.luxonis_loader_torch import LuxonisLoaderTorch
-from luxonis_train.models import LuxonisLightningModule
+from luxonis_train.lightning import LuxonisLightningModule
 from luxonis_train.utils import (
     DatasetMetadata,
     LuxonisTrackerPL,
