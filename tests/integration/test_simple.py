@@ -96,7 +96,6 @@ def test_predefined_models(
     if "ocr_recognition" in config_file:
         opts["trainer.preprocessing.train_image_size"] = [48, 320]
 
-    model = LuxonisModel(config_file, opts)
     with subtests.test("original_config"):
         model = LuxonisModel(config_file, opts)
         model.train()
