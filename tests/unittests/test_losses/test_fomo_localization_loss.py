@@ -20,7 +20,7 @@ class DummyFOMOHead(FOMOHead, register=False):
                 Size([2, 256, 12, 16]),
             ]
         }
-    ]
+    ]  # type: ignore
     n_classes: int = 1
 
     def forward(self, _: Tensor) -> Tensor: ...

@@ -1,5 +1,6 @@
 gdown>=4.2.0
-# pre-commit>=3.2.1,<4.0.0 # NOTE: Causes issues with `filelock` dependency on luxonis-ml, should be handled on luxonis-ml side
+# NOTE: Causes issues with `filelock` dependency on luxonis-ml, should be handled on luxonis-ml side
+# pre-commit>=3.2.1,<4.0.0
 pre-commit
 opencv-stubs>=0.0.8
 pytest-cov>=4.1.0

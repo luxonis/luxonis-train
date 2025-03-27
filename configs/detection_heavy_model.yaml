@@ -10,8 +10,12 @@ model:
       loss_params:
         iou_type: "siou"
         n_warmup_epochs: 0 # No assigner warmup
-        iou_loss_weight: 20 # Should be 2.5 * accumulate_grad_batches for best results
-        class_loss_weight: 8 # Should be 1 * accumulate_grad_batches for best results
+
+        # Should be 2.5 * accumulate_grad_batches for the best results
+        iou_loss_weight: 20
+
+        # Should be the same as accumulate_grad_batches for the best results
+        class_loss_weight: 8
 
 loader:
   params:
@@ -29,8 +33,10 @@ trainer:
         std: [1, 1, 1]
 
   batch_size: 8
-  epochs: &epochs 300
-  accumulate_grad_batches: 8 # For best results, always accumulate gradients to effectively use 64 batch size
+  epochs: 300
+  # For best results, always accumulate gradients to
+  # effectively use 64 batch size
+  accumulate_grad_batches: 8
   n_workers: 8
   validation_interval: 10
   n_log_images: 8
@@ -38,20 +44,21 @@ trainer:
   callbacks:
     - name: EMACallback
       params:
-        decay: 0.9999 
-        use_dynamic_decay: True 
+        decay: 0.9999
+        use_dynamic_decay: True
         decay_tau: 2000
     - name: ExportOnTrainEnd
     - name: TestOnTrainEnd
 
-  training_strategy: # Fine tuning params
-    name: "TripleLRSGDStrategy"
-    params: 
+  training_strategy:
+    # Finetuned parameters
+    name: TripleLRSGDStrategy
+    params:
       warmup_epochs: 2
       warmup_bias_lr: 0.05
       warmup_momentum: 0.5
       lr: 0.0032
       lre: 0.000384
-      momentum: 0.843     
-      weight_decay: 0.00036   
+      momentum: 0.843
+      weight_decay: 0.00036
       nesterov: True

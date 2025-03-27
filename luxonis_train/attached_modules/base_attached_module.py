@@ -14,14 +14,12 @@ from torch import Size, Tensor, nn
 
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Metadata, Task
-from luxonis_train.utils import IncompatibleException, Labels, Packet
+from luxonis_train.typing import Labels, Packet
+from luxonis_train.utils import IncompatibleError
 
 
 class BaseAttachedModule(
-    nn.Module,
-    ABC,
-    metaclass=AutoRegisterMeta,
-    register=False,
+    nn.Module, ABC, metaclass=AutoRegisterMeta, register=False
 ):
     """Base class for all modules that are attached to a L{LuxonisNode}.
 
@@ -55,17 +53,18 @@ class BaseAttachedModule(
     def __init__(self, *, node: BaseNode | None = None, **kwargs):
         super().__init__(**kwargs)
         self._node = node
-        self._epoch = 0
 
         if node is not None and node.task is not None:
-            if self.supported_tasks is not None:
-                if node.task not in self.supported_tasks:
-                    raise IncompatibleException(
-                        f"Module '{self.name}' is not compatible with the "
-                        f"'{node.name}' node. '{self.name}' supports "
-                        f" {self.supported_tasks}, but the node's "
-                        f"task is '{node.task}'."
-                    )
+            if (
+                self.supported_tasks is not None
+                and node.task not in self.supported_tasks
+            ):
+                raise IncompatibleError(
+                    f"Module '{self.name}' is not compatible with the "
+                    f"'{node.name}' node. '{self.name}' supports "
+                    f" {self.supported_tasks}, but the node's "
+                    f"task is '{node.task}'."
+                )
             self._task = node.task
 
         elif (
@@ -77,6 +76,10 @@ class BaseAttachedModule(
             self._task = None
 
         self._check_node_type_override()
+
+    @property
+    def current_epoch(self) -> int:
+        return self.node.current_epoch
 
     @staticmethod
     def _get_signature(
@@ -262,7 +265,7 @@ class BaseAttachedModule(
         node_type = self.__annotations__["node"]
         with suppress(RuntimeError):
             if not isinstance(self.node, node_type):
-                raise IncompatibleException(
+                raise IncompatibleError(
                     f"Module '{self.name}' is attached to the '{self.node.name}' node, "
                     f"but '{self.name}' is only compatible with nodes of type '{node_type.__name__}'."
                 )

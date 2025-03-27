@@ -45,9 +45,7 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
         self.positive_smooth_const = 1.0 - label_smoothing
         self.negative_smooth_const = label_smoothing
         self.criterion = BCEWithLogitsLoss(
-            pos_weight=torch.tensor(
-                [bce_pow],
-            ),
+            pos_weight=torch.tensor([bce_pow]),
             weight=weight,
             reduction=reduction,
         )

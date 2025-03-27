@@ -9,13 +9,13 @@ from .ocr_recognition_model import OCRRecognitionModel
 from .segmentation_model import SegmentationModel
 
 __all__ = [
-    "BasePredefinedModel",
-    "DetectionModel",
-    "KeypointDetectionModel",
-    "ClassificationModel",
-    "SegmentationModel",
     "AnomalyDetectionModel",
+    "BasePredefinedModel",
+    "ClassificationModel",
+    "DetectionModel",
     "FOMOModel",
-    "OCRRecognitionModel",
     "InstanceSegmentationModel",
+    "KeypointDetectionModel",
+    "OCRRecognitionModel",
+    "SegmentationModel",
 ]

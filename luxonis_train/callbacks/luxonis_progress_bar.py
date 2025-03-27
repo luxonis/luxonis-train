@@ -1,3 +1,4 @@
+# ruff: noqa: T201
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 
@@ -11,17 +12,19 @@ from lightning.pytorch.callbacks import (
 from rich.console import Console
 from rich.table import Table
 
-from luxonis_train.utils.registry import CALLBACKS
+import luxonis_train as lxt
+from luxonis_train.registry import CALLBACKS
 
 
 class BaseLuxonisProgressBar(ABC, ProgressBar):
     def get_metrics(
-        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> dict[str, int | str | float | dict[str, float]]:
         items = super().get_metrics(trainer, pl_module)
         items.pop("v_num", None)
+        # TODO: Loss accumulator
         if trainer.training and pl_module.training_step_outputs:
-            items["Loss"] = pl_module.training_step_outputs[-1]["loss"].item()
+            items["Loss"] = float(pl_module.training_step_outputs[-1]["loss"])
         return items
 
     @abstractmethod
@@ -141,9 +144,7 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
             C{"Value"}.
         """
         rich_table = Table(
-            title=title,
-            show_header=True,
-            header_style="bold magenta",
+            title=title, show_header=True, header_style="bold magenta"
         )
         rich_table.add_column(key_name, style="magenta")
         rich_table.add_column(value_name, style="white")

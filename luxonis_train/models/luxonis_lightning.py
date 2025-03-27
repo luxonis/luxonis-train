@@ -10,9 +10,10 @@ from lightning.pytorch.callbacks import (
     ModelCheckpoint,
     RichModelSummary,
 )
-from lightning.pytorch.utilities import rank_zero_only  # type: ignore
+from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
-from luxonis_ml.typing import ConfigItem
+from luxonis_ml.typing import ConfigItem, Kwargs, PathType
+from luxonis_ml.utils import traverse_graph
 from torch import Size, Tensor, nn
 
 import luxonis_train
@@ -26,31 +27,24 @@ from luxonis_train.attached_modules.visualizers import (
     combine_visualizations,
     get_denormalized_images,
 )
-from luxonis_train.callbacks import (
-    BaseLuxonisProgressBar,
-    ModuleFreezer,
-    TrainingManager,
-)
+from luxonis_train.callbacks import BaseLuxonisProgressBar, TrainingManager
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.heads import BaseHead
-from luxonis_train.tasks import Metadata
-from luxonis_train.utils import (
-    DatasetMetadata,
-    Kwargs,
-    Labels,
-    LuxonisTrackerPL,
-    Packet,
-    to_shape_packet,
-    traverse_graph,
-)
-from luxonis_train.utils.graph import Graph
-from luxonis_train.utils.registry import (
+from luxonis_train.registry import (
     CALLBACKS,
     OPTIMIZERS,
     SCHEDULERS,
     STRATEGIES,
     Registry,
+    from_registry,
+)
+from luxonis_train.tasks import Metadata
+from luxonis_train.typing import Labels, Packet
+from luxonis_train.utils import (
+    DatasetMetadata,
+    LuxonisTrackerPL,
+    to_shape_packet,
 )
 
 from .luxonis_output import LuxonisOutput
@@ -109,7 +103,7 @@ class LuxonisLightningModule(pl.LightningModule):
     def __init__(
         self,
         cfg: Config,
-        save_dir: str,
+        save_dir: PathType,
         input_shapes: dict[str, Size],
         dataset_metadata: DatasetMetadata | None = None,
         *,
@@ -140,14 +134,14 @@ class LuxonisLightningModule(pl.LightningModule):
         self.original_in_shapes = input_shapes
         self.image_source = cfg.loader.image_source
         self.dataset_metadata = dataset_metadata or DatasetMetadata()
-        self.frozen_nodes: list[tuple[nn.Module, int]] = []
-        self.graph: Graph = {}
+        self.frozen_nodes: list[tuple[BaseNode, int]] = []
+        self.graph: dict[str, list[str]] = {}
         self.loader_input_shapes: dict[str, dict[str, Size]] = {}
         self.node_input_sources: dict[str, list[str]] = defaultdict(list)
         self.loss_weights: dict[str, float] = {}
         self.node_task_names: dict[str, str] = {}
         self.main_metric: str | None = None
-        self.save_dir = save_dir
+        self.save_dir = Path(save_dir)
         self.test_step_outputs: list[Mapping[str, Tensor | float | int]] = []
         self.training_step_outputs: list[
             Mapping[str, Tensor | float | int]
@@ -222,7 +216,7 @@ class LuxonisLightningModule(pl.LightningModule):
                     for m in metadata:
                         m.name = task_override.get(m.name, m.name)
 
-                metadata_types = self.core.loader_metadata_types
+                metadata_types = self.dataset_metadata.metadata_types
 
                 for m in metadata:
                     m_name = f"{node_cfg.task_name}/{m}"
@@ -275,7 +269,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
             self.graph[node_name] = node_cfg.inputs
 
-        self.nodes = self._initiate_nodes(nodes)
+        self.nodes = cast(dict[str, BaseNode], self._initiate_nodes(nodes))
 
         for loss_cfg in self.cfg.model.losses:
             loss_name, _ = self._init_attached_module(
@@ -312,18 +306,22 @@ class LuxonisLightningModule(pl.LightningModule):
                 self.cfg.trainer.optimizer is not None
                 or self.cfg.trainer.scheduler is not None
             ):
-                raise ValueError(
-                    "Training strategy is defined, but optimizer or scheduler is also defined. "
-                    "Please remove optimizer and scheduler from the config."
+                logger.warning(
+                    "Training strategy is defined. It will override "
+                    "any specified optimizer or scheduler from the config."
                 )
-            self.training_strategy = STRATEGIES.get(
-                self.cfg.trainer.training_strategy.name
-            )(
+            self.training_strategy = from_registry(
+                STRATEGIES,
+                self.cfg.trainer.training_strategy.name,
+                **self.cfg.trainer.training_strategy.params,
                 pl_module=self,
-                params=self.cfg.trainer.training_strategy.params,  # type: ignore
             )
         else:
             self.training_strategy = None
+
+    @property
+    def tracker(self) -> LuxonisTrackerPL:
+        return self.logger
 
     @property
     def core(self) -> "luxonis_train.core.LuxonisModel":
@@ -780,7 +778,7 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> LuxonisOutput:
         """Performs one step of prediction with provided batch."""
         inputs, labels = batch
-        images = get_denormalized_images(self.cfg, inputs)
+        images = get_denormalized_images(self.cfg, inputs[self.image_source])
         outputs = self.forward(
             inputs,
             labels,
@@ -795,7 +793,7 @@ class LuxonisLightningModule(pl.LightningModule):
         """Performs train epoch end operations."""
         epoch_train_losses = self._average_losses(self.training_step_outputs)
         for module in self.modules():
-            if isinstance(module, (BaseNode, BaseLoss)):
+            if isinstance(module, BaseNode):
                 module._epoch = self.current_epoch
 
         for key, value in epoch_train_losses.items():
@@ -822,10 +820,8 @@ class LuxonisLightningModule(pl.LightningModule):
             # model haven't yet stop from early stopping callback
             if self._trainer.early_stopping_callback.stopped_epoch == 0:
                 return (self.current_epoch / self.cfg.trainer.epochs) * 100
-            else:
-                return 100.0
-        else:
-            return (self.current_epoch / self.cfg.trainer.epochs) * 100
+            return 100.0
+        return (self.current_epoch / self.cfg.trainer.epochs) * 100
 
     def _evaluation_step(
         self,
@@ -835,10 +831,14 @@ class LuxonisLightningModule(pl.LightningModule):
         inputs, labels = batch
         images = None
         if not self._logged_images:
-            images = get_denormalized_images(self.cfg, inputs)
+            images = get_denormalized_images(
+                self.cfg, inputs[self.image_source]
+            )
         for value in self._logged_images.values():
             if value < self.cfg.trainer.n_log_images:
-                images = get_denormalized_images(self.cfg, inputs)
+                images = get_denormalized_images(
+                    self.cfg, inputs[self.image_source]
+                )
                 break
 
         outputs = self.forward(
@@ -856,8 +856,6 @@ class LuxonisLightningModule(pl.LightningModule):
         for node_name, visualizations in outputs.visualizations.items():
             formatted_node_name = self._format_node_name(node_name)
             for viz_name, viz_batch in visualizations.items():
-                # if viz_batch is None:
-                #     continue
                 for viz in viz_batch:
                     name = f"{mode}/visualizations/{formatted_node_name}/{viz_name}"
                     if logged_images[name] >= self.cfg.trainer.n_log_images:
@@ -901,25 +899,26 @@ class LuxonisLightningModule(pl.LightningModule):
                         sync_dist=True,
                     )
 
-        if self.cfg.trainer.verbose:
-            self._print_results(
-                stage="Validation" if mode == "val" else "Test",
-                loss=epoch_val_losses["loss"],
-                metrics=metric_results,
-            )
+        self._print_results(
+            stage="Validation" if mode == "val" else "Test",
+            loss=epoch_val_losses["loss"],
+            metrics=metric_results,
+        )
 
         self.validation_step_outputs.clear()
         self._logged_images.clear()
 
     def configure_callbacks(self) -> list[pl.Callback]:
         """Configures Pytorch Lightning callbacks."""
-        self.min_val_loss_checkpoints_path = f"{self.save_dir}/min_val_loss"
+        self.min_val_loss_checkpoints_path = self.save_dir / "min_val_loss"
         self.best_val_metric_checkpoints_path = (
-            f"{self.save_dir}/best_val_metric"
+            self.save_dir / "best_val_metric"
         )
+
         model_name = self.cfg.model.name
 
         callbacks: list[pl.Callback] = [
+            TrainingManager(),
             ModelCheckpoint(
                 monitor="val/loss",
                 dirpath=self.min_val_loss_checkpoints_path,
@@ -950,13 +949,10 @@ class LuxonisLightningModule(pl.LightningModule):
                 )
             )
 
-        if self.frozen_nodes:
-            callbacks.append(ModuleFreezer(self.frozen_nodes))
-
         for callback in self.cfg.trainer.callbacks:
             if callback.active:
                 callbacks.append(
-                    CALLBACKS.get(callback.name)(**callback.params)
+                    from_registry(CALLBACKS, callback.name, **callback.params)
                 )
 
         accumulate_grad_batches = getattr(
@@ -976,9 +972,6 @@ class LuxonisLightningModule(pl.LightningModule):
                     "Gradient accumulation scheduler is already present in the callbacks list. "
                     "The 'accumulate_grad_batches' parameter in the config will be ignored."
                 )
-
-        if self.training_strategy is not None:
-            callbacks.append(TrainingManager(strategy=self.training_strategy))  # type: ignore
 
         return callbacks
 
@@ -1003,32 +996,33 @@ class LuxonisLightningModule(pl.LightningModule):
         optim_params = cfg_optimizer.params | {
             "params": filter(lambda p: p.requires_grad, self.parameters()),
         }
-        optimizer = OPTIMIZERS.get(cfg_optimizer.name)(**optim_params)
+        optimizer = from_registry(
+            OPTIMIZERS, cfg_optimizer.name, **optim_params
+        )
 
         def get_scheduler(
             scheduler_cfg: ConfigItem, optimizer: torch.optim.Optimizer
         ) -> torch.optim.lr_scheduler.LRScheduler:
-            scheduler_class = SCHEDULERS.get(scheduler_cfg.name)
-            scheduler_params = scheduler_cfg.params | {"optimizer": optimizer}
-            return scheduler_class(**scheduler_params)  # type: ignore
+            return from_registry(
+                SCHEDULERS,
+                scheduler_cfg.name,
+                **scheduler_cfg.params,
+                optimizer=optimizer,
+            )
 
         if cfg_scheduler.name == "SequentialLR":
             schedulers_list = [
                 get_scheduler(ConfigItem(**scheduler_cfg), optimizer)
-                for scheduler_cfg in cfg_scheduler.params["schedulers"]
+                for scheduler_cfg in cfg_scheduler.params["schedulers"]  # type: ignore
             ]
 
             scheduler = torch.optim.lr_scheduler.SequentialLR(
                 optimizer,
                 schedulers=schedulers_list,
-                milestones=cfg_scheduler.params["milestones"],
+                milestones=cfg_scheduler.params["milestones"],  # type: ignore
             )
         else:
-            scheduler_class = SCHEDULERS.get(
-                cfg_scheduler.name
-            )  # Access as attribute for single scheduler
-            scheduler_params = cfg_scheduler.params | {"optimizer": optimizer}
-            scheduler = scheduler_class(**scheduler_params)
+            scheduler = get_scheduler(cfg_scheduler, optimizer)
 
         return [optimizer], [scheduler]
 
@@ -1064,7 +1058,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 state_dict[key] = value
 
         for key in self_state_dict:
-            if key not in state_dict.keys():
+            if key not in state_dict:
                 logger.warning(f"Key `{key}` was not found in checkpoint.")
             else:
                 try:
@@ -1085,7 +1079,7 @@ class LuxonisLightningModule(pl.LightningModule):
         Module = registry.get(cfg.name)
         module_name = cfg.alias or cfg.name
         node_name = cfg.attached_to
-        node: BaseNode = self.nodes[node_name]  # type: ignore
+        node: BaseNode = self.nodes[node_name]
 
         module = Module(**cfg.params, node=node)
         storage[node_name][module_name] = module  # type: ignore

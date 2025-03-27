@@ -7,8 +7,8 @@ from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks import ConvModule, SegProto
 from luxonis_train.tasks import Tasks
+from luxonis_train.typing import Packet
 from luxonis_train.utils import (
-    Packet,
     apply_bounding_box_to_masks,
     non_max_suppression,
 )

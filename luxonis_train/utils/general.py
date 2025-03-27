@@ -1,5 +1,4 @@
 import math
-import os
 import urllib.parse
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
@@ -7,13 +6,14 @@ from typing import Any, TypeVar
 
 import torch
 from loguru import logger
+from luxonis_ml.typing import PathType
 from torch import Size, Tensor
 from typing_extensions import overload
 
-from luxonis_train.utils.types import Packet
+from luxonis_train.typing import Packet
 
 
-def make_divisible(x: int | float, divisor: int) -> int:
+def make_divisible(x: float, divisor: int) -> int:
     """Upward revision the value x to make it evenly divisible by the
     divisor.
 
@@ -64,6 +64,7 @@ def infer_upscale_factor(
     width_factor = _infer_upscale_factor(in_width, orig_width)
     height_factor = _infer_upscale_factor(in_height, orig_height)
 
+    # TODO: Better error messages, suggest possible solutions
     match (width_factor, height_factor):
         case (int(wf), int(hf)) if wf == hf:
             return wf
@@ -148,7 +149,7 @@ def get_with_default(
 def safe_download(
     url: str,
     file: str | None = None,
-    dir: str = ".cache/luxonis_train",
+    dir: PathType = ".cache/luxonis_train",
     retry: int = 3,
     force: bool = False,
 ) -> Path | None:
@@ -171,35 +172,31 @@ def safe_download(
     @rtype: Path | None
     @return: Path to local file or None if downloading failed.
     """
-    os.makedirs(dir, exist_ok=True)
+    dir = Path(dir)
+    dir.mkdir(parents=True, exist_ok=True)
     f = Path(dir or ".") / (file or url2file(url))
     if f.is_file() and not force:
         logger.warning(f"File {f} is already cached, using that one.")
         return f
-    else:
-        uri = clean_url(url)
-        logger.info(f"Downloading `{uri}` to `{f}`")
-        for i in range(retry + 1):
-            try:
-                torch.hub.download_url_to_file(url, str(f), progress=True)
-                return f
-            except Exception:
-                if i == retry:
-                    logger.warning("Download failed, retry limit reached.")
-                    return None
-                logger.warning(
-                    f"Download failed, retrying {i + 1}/{retry} ..."
-                )
+    uri = clean_url(url)
+    logger.info(f"Downloading `{uri}` to `{f}`")
+    for i in range(retry + 1):
+        try:
+            torch.hub.download_url_to_file(url, str(f), progress=True)
+        except Exception:
+            logger.warning(f"Download failed, retrying {i + 1}/{retry} ...")
+        else:
+            return f
+    logger.warning("Download failed, retry limit reached.")
+    return None
 
 
 def clean_url(url: str) -> str:
     """Strip auth from URL, i.e. https://url.com/file.txt?auth -> https://url.com/file.txt."""
-    url = str(PurePosixPath(url)).replace(
-        ":/", "://"
-    )  # Pathlib turns :// -> :/, PurePosixPath for Windows
-    return urllib.parse.unquote(url).split("?")[
-        0
-    ]  # '%2F' to '/', split https://url.com/file.txt?auth
+    # Pathlib turns :// -> :/, PurePosixPath for Windows
+    url = str(PurePosixPath(url)).replace(":/", "://")
+    # '%2F' to '/', split https://url.com/file.txt?auth
+    return urllib.parse.unquote(url).split("?")[0]
 
 
 def url2file(url: str) -> str:
@@ -326,7 +323,7 @@ def instances_from_batch(
                         torch.empty_like(bboxes) for _ in [bboxes, *args]
                     )
         return
-    for i in range(int(bboxes[:, 0].max()) + 1):
+    for i in range(batch_size or int(bboxes[:, 0].max()) + 1):
         if not args:
             yield get_batch_instances(i, bboxes)
         else:

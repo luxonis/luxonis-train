@@ -1,20 +1,36 @@
 import lightning.pytorch as pl
+from lightning.pytorch.callbacks import BaseFinetuning
+from loguru import logger
+from torch.optim.optimizer import Optimizer
+from typing_extensions import override
 
-from luxonis_train.strategies.base_strategy import BaseTrainingStrategy
+import luxonis_train as lxt
 
 
-class TrainingManager(pl.Callback):
-    def __init__(self, strategy: BaseTrainingStrategy | None = None):
-        """Training manager callback that updates the parameters of the
-        training strategy.
+class TrainingManager(BaseFinetuning):
+    @override
+    def freeze_before_training(
+        self, pl_module: "lxt.LuxonisLightningModule"
+    ) -> None:
+        for node, _ in pl_module.frozen_nodes:
+            logger.info(f"Freezing node '{node.name}'")
+            self.freeze(node, train_bn=False)
 
-        @type strategy: BaseTrainingStrategy
-        @param strategy: The strategy to be used.
-        """
-        self.strategy = strategy
+    @override
+    def finetune_function(
+        self,
+        pl_module: "lxt.LuxonisLightningModule",
+        epoch: int,
+        optimizer: Optimizer,
+    ) -> None:
+        for node, e in pl_module.frozen_nodes:
+            if e == epoch:
+                logger.info(f"Unfreezing node '{node.name}'")
+                self.unfreeze_and_add_param_group(node, optimizer)
 
+    @override
     def on_after_backward(
-        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
         """PyTorch Lightning hook that is called after the backward
         pass.
@@ -24,5 +40,5 @@ class TrainingManager(pl.Callback):
         @type pl_module: pl.LightningModule
         @param pl_module: The pl_module object.
         """
-        if self.strategy is not None:
-            self.strategy.update_parameters(pl_module)
+        if pl_module.training_strategy is not None:
+            pl_module.training_strategy.update_parameters()

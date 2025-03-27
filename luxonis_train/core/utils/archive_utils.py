@@ -1,16 +1,13 @@
-from collections import defaultdict
 from pathlib import Path
 from typing import TypedDict
 
 import onnx
 from loguru import logger
-from luxonis_ml.nn_archive.config_building_blocks import (
-    DataType,
-)
+from luxonis_ml.nn_archive.config_building_blocks import DataType
 from onnx.onnx_pb import TensorProto
 
 from luxonis_train.models import LuxonisLightningModule
-from luxonis_train.nodes.heads import BaseHead
+from luxonis_train.nodes import BaseHead
 
 
 class ArchiveMetadataDict(TypedDict):
@@ -27,10 +24,9 @@ def get_inputs(path: Path) -> dict[str, ArchiveMetadataDict]:
 
     if path.suffix == ".onnx":
         return _get_onnx_inputs(path)
-    else:
-        raise NotImplementedError(
-            f"Missing input reading function for {path.suffix} models."
-        )
+    raise NotImplementedError(
+        f"Missing input reading function for {path.suffix} models."
+    )
 
 
 def get_outputs(path: Path) -> dict[str, ArchiveMetadataDict]:
@@ -42,14 +38,13 @@ def get_outputs(path: Path) -> dict[str, ArchiveMetadataDict]:
 
     if path.suffix == ".onnx":
         return _get_onnx_outputs(path)
-    else:
-        raise NotImplementedError(
-            f"Missing input reading function for {path.suffix} models."
-        )
+    raise NotImplementedError(
+        f"Missing input reading function for {path.suffix} models."
+    )
 
 
-def _from_onnx_dtype(dtype: int) -> DataType:
-    dtype_map = {
+def _from_onnx_dtype(dtype: TensorProto.DataType | int) -> DataType:
+    dtype_map: dict[int, str] = {
         TensorProto.INT8: "int8",
         TensorProto.INT32: "int32",
         TensorProto.UINT8: "uint8",
@@ -71,14 +66,14 @@ def _load_onnx_model(onnx_path: Path) -> onnx.ModelProto:
 
 def _get_onnx_outputs(onnx_path: Path) -> dict[str, ArchiveMetadataDict]:
     model = _load_onnx_model(onnx_path)
-    outputs: dict[str, ArchiveMetadataDict] = defaultdict(dict)  # type: ignore
+    outputs: dict[str, ArchiveMetadataDict] = {}
 
     for output in model.graph.output:
         shape = [dim.dim_value for dim in output.type.tensor_type.shape.dim]
-        outputs[output.name]["shape"] = shape
-        outputs[output.name]["dtype"] = _from_onnx_dtype(
-            output.type.tensor_type.elem_type
-        )
+        outputs[output.name] = {
+            "shape": shape,
+            "dtype": _from_onnx_dtype(output.type.tensor_type.elem_type),
+        }
 
     return outputs
 
@@ -86,14 +81,14 @@ def _get_onnx_outputs(onnx_path: Path) -> dict[str, ArchiveMetadataDict]:
 def _get_onnx_inputs(onnx_path: Path) -> dict[str, ArchiveMetadataDict]:
     model = _load_onnx_model(onnx_path)
 
-    inputs: dict[str, ArchiveMetadataDict] = defaultdict(dict)  # type: ignore
+    inputs: dict[str, ArchiveMetadataDict] = {}
 
     for inp in model.graph.input:
         shape = [dim.dim_value for dim in inp.type.tensor_type.shape.dim]
-        inputs[inp.name]["shape"] = shape
-        inputs[inp.name]["dtype"] = _from_onnx_dtype(
-            inp.type.tensor_type.elem_type
-        )
+        inputs[inp.name] = {
+            "shape": shape,
+            "dtype": _from_onnx_dtype(inp.type.tensor_type.elem_type),
+        }
 
     return inputs
 
