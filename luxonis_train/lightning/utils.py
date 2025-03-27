@@ -518,6 +518,8 @@ def _init_attached_module(
     module_name = cfg.alias or cfg.name
     node_name = cfg.attached_to
     module = Module(**cfg.params, node=nodes[node_name])
+    if module_name == "ConfusionMatrix":
+        module_name = "mcc"
     storage[node_name][module_name] = module
     return module_name, node_name
 
