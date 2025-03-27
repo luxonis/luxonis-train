@@ -1,6 +1,6 @@
 from luxonis_train.nodes import BaseNode
-from luxonis_train.tasks import Tasks
 from luxonis_train.registry import METRICS
+from luxonis_train.tasks import Tasks
 
 from .mean_average_precision_bbox import MeanAveragePrecisionBBox
 from .mean_average_precision_keypoints import MeanAveragePrecisionKeypoints

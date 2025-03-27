@@ -176,4 +176,4 @@ def test_compute_detection_confusion_matrix_specific_case(
     metric = DetectionConfusionMatrix(node=DummyNodeDetection(n_classes=3))
 
     metric._update(predictions, targets)
-    assert metric.compute().tolist() == expected
+    assert metric.compute()["confusion_matrix"].tolist() == expected

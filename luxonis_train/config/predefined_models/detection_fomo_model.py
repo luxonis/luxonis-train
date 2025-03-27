@@ -95,7 +95,7 @@ class FOMOModel(BasePredefinedModel):
     def metrics(self) -> list[MetricModuleConfig]:
         return [
             MetricModuleConfig(
-                name="ObjectKeypointSimilarity",
+                name="ConfusionMatrix",
                 attached_to="FOMOHead",
                 is_main_metric=True,
             )

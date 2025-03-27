@@ -18,7 +18,7 @@ from luxonis_train.attached_modules.visualizers import (
 from luxonis_train.callbacks import BaseLuxonisProgressBar
 from luxonis_train.config import Config
 from luxonis_train.nodes import BaseNode
-from luxonis_train.typing import Packet, Labels
+from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
 
 from .luxonis_output import LuxonisOutput

@@ -1,7 +1,6 @@
 # ruff: noqa: T201
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing_extensions import override
 
 import lightning.pytorch as pl
 import tabulate
@@ -12,6 +11,7 @@ from lightning.pytorch.callbacks import (
 )
 from rich.console import Console
 from rich.table import Table
+from typing_extensions import override
 
 import luxonis_train as lxt
 from luxonis_train.registry import CALLBACKS

@@ -1,6 +1,6 @@
 import multiprocessing as mp
-import random
 import os
+import random
 import shutil
 from copy import deepcopy
 from pathlib import Path

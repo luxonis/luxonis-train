@@ -22,11 +22,6 @@ from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
 from luxonis_train.callbacks import TrainingManager
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.nodes import BaseHead, BaseNode
-from luxonis_train.strategies import BaseTrainingStrategy
-from luxonis_train.tasks import Metadata
-from luxonis_train.typing import Packet
-from luxonis_train.utils import DatasetMetadata
-from luxonis_train.utils.general import to_shape_packet
 from luxonis_train.registry import (
     CALLBACKS,
     LOSSES,
@@ -38,6 +33,11 @@ from luxonis_train.registry import (
     VISUALIZERS,
     from_registry,
 )
+from luxonis_train.strategies import BaseTrainingStrategy
+from luxonis_train.tasks import Metadata
+from luxonis_train.typing import Packet
+from luxonis_train.utils import DatasetMetadata
+from luxonis_train.utils.general import to_shape_packet
 
 A = TypeVar("A", BaseLoss, BaseMetric, BaseVisualizer)
 

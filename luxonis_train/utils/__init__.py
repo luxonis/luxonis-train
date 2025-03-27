@@ -5,6 +5,7 @@ from .boundingbox import (
     bbox_iou,
     compute_iou_loss,
     dist2bbox,
+    keypoints_to_bboxes,
     non_max_suppression,
 )
 from .dataset_metadata import DatasetMetadata
@@ -46,11 +47,15 @@ __all__ = [
     "compute_pose_oks",
     "dist2bbox",
     "get_attribute_check_none",
+    "get_batch_instances",
     "get_center_keypoints",
     "get_sigmas",
     "get_with_default",
     "infer_upscale_factor",
     "insert_class",
+    "instances_from_batch",
+    "instances_from_batch",
+    "keypoints_to_bboxes",
     "make_divisible",
     "non_max_suppression",
     "safe_download",
