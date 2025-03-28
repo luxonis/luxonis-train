@@ -61,7 +61,7 @@ for _loss_name in EMBEDDING_LOSSES:
             **kwargs,
         ):
             super().__init__(node=node)
-            loss_name = _loss_name  # noqa: B023
+            loss_name = _loss_name
 
             if not hasattr(pml_losses, loss_name):
                 raise ValueError(
@@ -126,4 +126,4 @@ for _loss_name in EMBEDDING_LOSSES:
 
         @property
         def name(self) -> str:
-            return _loss_name  # noqa: B023
+            return _loss_name

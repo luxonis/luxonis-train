@@ -22,7 +22,8 @@ def test_segmentation_visualizer():
             dataset_metadata=DatasetMetadata(
                 classes={"": {"class1": 0, "class2": 1}}
             ),
-        )
+        ),
+        colors=["black", (229, 100, 25)],
     )
 
     canvas = torch.zeros(2, 3, 10, 10, dtype=torch.uint8)

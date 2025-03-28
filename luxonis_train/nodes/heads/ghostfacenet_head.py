@@ -1,8 +1,7 @@
 # Original source: https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py
 import math
 
-import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks.blocks import ConvModule
 from luxonis_train.nodes.heads import BaseHead

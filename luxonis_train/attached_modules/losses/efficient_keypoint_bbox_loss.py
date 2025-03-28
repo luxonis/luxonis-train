@@ -78,9 +78,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             pos_weight=torch.tensor([viz_pw])
         )
         self.sigmas = get_sigmas(
-            sigmas=sigmas,
-            n_keypoints=self.n_keypoints,
-            caller_name=self.name,
+            sigmas=sigmas, n_keypoints=self.n_keypoints, caller_name=self.name
         )
         self.area_factor = get_with_default(
             area_factor, "bbox area scaling", self.name, default=0.53

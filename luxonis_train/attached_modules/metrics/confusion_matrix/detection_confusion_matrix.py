@@ -44,7 +44,7 @@ class DetectionConfusionMatrix(BaseMetric):
         self._update(boundingbox, target_boundingbox)
 
     @override
-    def compute(self) -> Tensor:
+    def compute(self) -> dict[str, Tensor]:
         return {
             "mcc": compute_mcc(self.confusion_matrix.float()),
             "confusion_matrix": self.confusion_matrix,

@@ -11,7 +11,7 @@ from luxonis_train.nodes.blocks import ConvModule, SqueezeExciteBlock
 
 
 def make_divisible(
-    v: int | float, divisor: int = 16, min_value: int | None = None
+    v: float, divisor: int = 16, min_value: int | None = None
 ) -> int:
     if min_value is None:
         min_value = divisor

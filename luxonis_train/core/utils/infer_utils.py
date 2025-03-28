@@ -13,8 +13,8 @@ from torch import Tensor
 
 import luxonis_train as lxt
 from luxonis_train.attached_modules.visualizers import get_denormalized_images
+from luxonis_train.lightning import LuxonisOutput
 from luxonis_train.loaders import LuxonisLoaderTorch
-from luxonis_train.models import LuxonisOutput
 
 IMAGE_FORMATS = {
     ".bmp",

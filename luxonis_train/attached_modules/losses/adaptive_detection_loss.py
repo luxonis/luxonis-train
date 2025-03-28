@@ -268,10 +268,7 @@ class VarifocalLoss(nn.Module):
         self.per_class_weights = per_class_weights
 
     def forward(
-        self,
-        pred_score: Tensor,
-        target_score: Tensor,
-        label: Tensor,
+        self, pred_score: Tensor, target_score: Tensor, label: Tensor
     ) -> Tensor:
         weight = (
             self.alpha * pred_score.pow(self.gamma) * (1 - label)

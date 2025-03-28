@@ -11,9 +11,9 @@ from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor
 from torch.utils.data import Dataset
 
+from luxonis_train.registry import LOADERS
 from luxonis_train.typing import Labels
 from luxonis_train.utils.general import get_attribute_check_none
-from luxonis_train.registry import LOADERS
 
 from .utils import LuxonisLoaderTorchOutput
 

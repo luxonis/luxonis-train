@@ -81,7 +81,7 @@ def test_cli_command_success(
 def test_cli_command_failure(
     command: Callable, kwargs: Kwargs, coco_dataset: LuxonisDataset
 ) -> None:
-    with pytest.raises(Exception):  # noqa: B017 PT011
+    with pytest.raises(Exception):  # noqa: PT011
         command(
             ["loader.params.dataset_name", coco_dataset.identifier],
             **kwargs,
