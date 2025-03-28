@@ -37,12 +37,12 @@ class FOMOLocalizationLoss(BaseLoss):
         self.gamma = gamma
 
     def forward(self, heatmap: Tensor, target: Tensor) -> Tensor:
-        batch_size, num_classes, height, width = heatmap.shape
+        batch_size, n_classes, height, width = heatmap.shape
         target_keypoints = get_center_keypoints(
             target, height=height, width=width
         ).int()
         target_heatmap = torch.zeros(
-            (batch_size, num_classes, height, width), device=heatmap.device
+            (batch_size, n_classes, height, width), device=heatmap.device
         )
 
         for bbox, kpt in zip(target, target_keypoints, strict=True):

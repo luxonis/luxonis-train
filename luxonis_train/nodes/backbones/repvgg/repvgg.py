@@ -1,9 +1,9 @@
 from collections import defaultdict
 from typing import Literal
 
-import torch.utils.checkpoint as checkpoint
 from loguru import logger
 from torch import Tensor, nn
+from torch.utils import checkpoint
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import RepVGGBlock

@@ -6,7 +6,7 @@ from luxonis_train.loaders import BaseLoaderTorch
 from luxonis_train.loaders.utils import LuxonisLoaderTorchOutput
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Tasks
-from luxonis_train.utils import Packet
+from luxonis_train.typing import Packet
 
 
 class CustomMultiInputLoader(BaseLoaderTorch):

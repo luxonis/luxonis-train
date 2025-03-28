@@ -11,9 +11,9 @@ from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor
 from torch.utils.data import Dataset
 
+from luxonis_train.registry import LOADERS
+from luxonis_train.typing import Labels
 from luxonis_train.utils.general import get_attribute_check_none
-from luxonis_train.utils.registry import LOADERS
-from luxonis_train.utils.types import Labels
 
 from .utils import LuxonisLoaderTorchOutput
 
@@ -40,10 +40,11 @@ class BaseLoaderTorch(
         LuxonisLoaderTorchOutput output label structure.
 
         @type view: list[str]
-        @param view: List of view names. Usually contains only one element,
-            e.g. C{["train"]} or C{["test"]}. However, more complex datasets
-            can make use of multiple views, e.g. C{["train_synthetic",
-            "train_real"]}
+        @param view: List of splits that form the view.
+            Usually contains only one split, e.g. C{["train"]}
+            or C{["test"]}. However, more complex datasets
+            can make use of multi-split views, e.g. C{["train_synthetic",
+            "train_real"]}.
 
         @type height: int
         @param height: Height of the output image.
@@ -103,7 +104,7 @@ class BaseLoaderTorch(
 
     @property
     def view(self) -> list[str]:
-        """List of view names.
+        """List of splits forming this dataset's view.
 
         @type: list[str]
         """

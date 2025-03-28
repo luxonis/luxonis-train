@@ -93,9 +93,9 @@ class ObjectKeypointSimilarity(BaseMetric):
             zip(self.pred_keypoints, self.target_keypoints, self.scales)
         ):
             image_ious = compute_pose_oks(
-                target_kpts.reshape(-1, self.n_keypoints, 3).unsqueeze(0),
                 pred_kpts.unsqueeze(0),
-                self.sigmas,
+                target_kpts.reshape(-1, self.n_keypoints, 3).unsqueeze(0),
+                sigmas=self.sigmas,
                 use_cocoeval_oks=self.use_cocoeval_oks,
                 pose_area=scales[None, :, None, None],
             ).squeeze(0)

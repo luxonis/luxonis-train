@@ -18,8 +18,8 @@ from torch.types import Number
 from torchmetrics import Metric
 
 from luxonis_train.attached_modules import BaseAttachedModule
-from luxonis_train.utils.registry import METRICS
-from luxonis_train.utils.types import Labels, Packet
+from luxonis_train.registry import METRICS
+from luxonis_train.typing import Labels, Packet
 
 
 @dataclass(kw_only=True, slots=True)
@@ -175,7 +175,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         @param inputs: The outputs of the model.
         @type labels: Labels
         @param labels: The labels of the model. @raises
-            L{IncompatibleException}: If the inputs are not compatible
-            with the module.
+            L{IncompatibleError}: If the inputs are not compatible with
+            the module.
         """
         self.update(**self.get_parameters(inputs, labels))

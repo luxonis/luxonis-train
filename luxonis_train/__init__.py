@@ -8,9 +8,10 @@ if "_unlocked" in locals() or not sys.argv[0].endswith("/luxonis_train"):
 
     try:
         from .attached_modules import *
+        from .config.predefined_models import *
         from .core import *
+        from .lightning import *
         from .loaders import *
-        from .models import *
         from .nodes import *
         from .optimizers import *
         from .schedulers import *

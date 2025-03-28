@@ -247,7 +247,7 @@ def upgrade():
 
     def get_latest_version() -> str | None:
         url = "https://pypi.org/pypi/luxonis_train/json"
-        response = requests.get(url)
+        response = requests.get(url, timeout=5)
         if response.status_code == 200:
             data = response.json()
             versions = list(data["releases"].keys())

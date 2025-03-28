@@ -1,6 +1,6 @@
 from torch.optim import lr_scheduler
 
-from luxonis_train.utils.registry import SCHEDULERS
+from luxonis_train.registry import SCHEDULERS
 
 for scheduler in [
     lr_scheduler.LambdaLR,

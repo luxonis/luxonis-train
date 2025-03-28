@@ -68,7 +68,9 @@ class ModelEma(nn.Module):
             ema_lerp_values = []
             model_lerp_values = []
             for ema_v, model_v in zip(
-                self.state_dict_ema.values(), model.state_dict().values()
+                self.state_dict_ema.values(),
+                model.state_dict().values(),
+                strict=True,
             ):
                 if ema_v.is_floating_point():
                     ema_lerp_values.append(ema_v)
@@ -111,9 +113,15 @@ class EMACallback(pl.Callback):
         self.use_dynamic_decay = use_dynamic_decay
         self.decay_tau = decay_tau
 
-        self.ema = None
+        self._ema = None
         self.loaded_ema_state_dict = None
         self.collected_state_dict = None
+
+    @property
+    def ema(self) -> ModelEma:
+        if self._ema is None:
+            raise ValueError("Ema model not yet initalized.")
+        return self._ema
 
     def on_fit_start(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
@@ -127,19 +135,21 @@ class EMACallback(pl.Callback):
         @param pl_module: Pytorch Lightning module.
         """
 
-        self.ema = ModelEma(
+        self._ema = ModelEma(
             pl_module,
             decay=self.decay,
             use_dynamic_decay=self.use_dynamic_decay,
             decay_tau=self.decay_tau,
         )
         if self.loaded_ema_state_dict is not None:
-            target_device = next(iter(self.ema.state_dict_ema.values())).device
+            target_device = next(
+                iter(self._ema.state_dict_ema.values())
+            ).device
             self.loaded_ema_state_dict = {
                 k: v.to(target_device)
                 for k, v in self.loaded_ema_state_dict.items()
             }
-            self.ema.state_dict_ema = self.loaded_ema_state_dict
+            self._ema.state_dict_ema = self.loaded_ema_state_dict
             self.loaded_ema_state_dict = None
 
     def on_train_batch_end(
@@ -163,9 +173,11 @@ class EMACallback(pl.Callback):
         @type batch_idx: int
         @param batch_idx: Batch index.
         """
-        if batch_idx % trainer.accumulate_grad_batches == 0:
-            if self.ema is not None:
-                self.ema.update(pl_module)
+        if (
+            self._ema is not None
+            and batch_idx % trainer.accumulate_grad_batches == 0
+        ):
+            self._ema.update(pl_module)
 
     def on_validation_epoch_start(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
@@ -260,8 +272,8 @@ class EMACallback(pl.Callback):
         @type checkpoint: dict
         @param checkpoint: Pytorch Lightning checkpoint.
         """
-        if self.ema is not None:
-            checkpoint["state_dict"] = self.ema.state_dict_ema
+        if self._ema is not None:
+            checkpoint["state_dict"] = self._ema.state_dict_ema
 
     def on_load_checkpoint(
         self,
@@ -283,8 +295,8 @@ class EMACallback(pl.Callback):
         The current state is saved so that it can be restored later.
         """
         self.collected_state_dict = deepcopy(pl_module.state_dict())
-        if self.ema is not None:
-            pl_module.load_state_dict(self.ema.state_dict_ema)
+        if self._ema is not None:
+            pl_module.load_state_dict(self._ema.state_dict_ema)
 
     def _restore_original_weights(self, pl_module: pl.LightningModule) -> None:
         """Restore the model's original weights.
