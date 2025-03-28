@@ -100,17 +100,17 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
 **Parameters:**
 
-| Key                  | Type                                                              | Default value               | Description                                                                |
-| -------------------- | ----------------------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------- |
-| `variant`            | `Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]` | `"nano"`                    | Variant of the network                                                     |
-| `channels_list`      | `list[int]`                                                       | \[64, 128, 256, 512, 1024\] | List of number of channels for each block                                  |
-| `n_repeats`          | `list[int]`                                                       | \[1, 6, 12, 18, 6\]         | List of number of repeats of `RepVGGBlock`                                 |
-| `depth_mul`          | `float`                                                           | `0.33`                      | Depth multiplier                                                           |
-| `width_mul`          | `float`                                                           | `0.25`                      | Width multiplier                                                           |
-| `block`              | `Literal["RepBlock", "CSPStackRepBlock"]`                         | `"RepBlock"`                | Base block used                                                            |
-| `csp_e`              | `float`                                                           | `0.5`                       | Factor for intermediate channels when block is set to `"CSPStackRepBlock"` |
-| `download_weights`   | `bool`                                                            | `True`                      | If True download weights from COCO (if available for specified variant)    |
-| `initialize_weights` | `bool`                                                            | `True`                      | If True, initialize weights.                                               |
+| Key                  | Type                                                              | Default value             | Description                                                                |
+| -------------------- | ----------------------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------- |
+| `variant`            | `Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]` | `"nano"`                  | Variant of the network                                                     |
+| `channels_list`      | `list[int]`                                                       | [64, 128, 256, 512, 1024] | List of number of channels for each block                                  |
+| `n_repeats`          | `list[int]`                                                       | [1, 6, 12, 18, 6]         | List of number of repeats of `RepVGGBlock`                                 |
+| `depth_mul`          | `float`                                                           | `0.33`                    | Depth multiplier                                                           |
+| `width_mul`          | `float`                                                           | `0.25`                    | Width multiplier                                                           |
+| `block`              | `Literal["RepBlock", "CSPStackRepBlock"]`                         | `"RepBlock"`              | Base block used                                                            |
+| `csp_e`              | `float`                                                           | `0.5`                     | Factor for intermediate channels when block is set to `"CSPStackRepBlock"` |
+| `download_weights`   | `bool`                                                            | `True`                    | If True download weights from COCO (if available for specified variant)    |
+| `initialize_weights` | `bool`                                                            | `True`                    | If True, initialize weights.                                               |
 
 ### RexNetV1_lite
 
@@ -184,14 +184,14 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR)
 
 **Parameters:**
 
-| Key            | Type                   | Default value | Description                    |
-| -------------- | ---------------------- | ------------- | ------------------------------ |
-| `variant`      | Literal\["rec-light"\] | `"rec-light"` | Variant of the network         |
-| `scale`        | `float`                | `0.95`        | Scale factor for the model     |
-| `conv_kxk_num` | `int`                  | `4`           | Number of convolutional layers |
-| `det`          | `bool`                 | `False`       | Whether to use for detection   |
-| `net_config`   | `dict`                 | `None`        | Configuration for the network  |
-| `max_text_len` | `int`                  | `40`          | Maximum length of the text     |
+| Key            | Type                 | Default value | Description                    |
+| -------------- | -------------------- | ------------- | ------------------------------ |
+| `variant`      | Literal["rec-light"] | `"rec-light"` | Variant of the network         |
+| `scale`        | `float`              | `0.95`        | Scale factor for the model     |
+| `conv_kxk_num` | `int`                | `4`           | Number of convolutional layers |
+| `det`          | `bool`               | `False`       | Whether to use for detection   |
+| `net_config`   | `dict`               | `None`        | Configuration for the network  |
+| `max_text_len` | `int`                | `40`          | Maximum length of the text     |
 
 ### `RecSubNet`
 
@@ -264,9 +264,9 @@ For predefined model that utilizes it, see [`ClassificationModel`](../config/pre
 
 **Parameters:**
 
-| Key          | Type    | Default value | Description                                      |
-| ------------ | ------- | ------------- | ------------------------------------------------ |
-| `fc_dropout` | `float` | `0.2`         | Dropout rate before last layer, range $\[0, 1\]$ |
+| Key          | Type    | Default value | Description                                    |
+| ------------ | ------- | ------------- | ---------------------------------------------- |
+| `fc_dropout` | `float` | `0.2`         | Dropout rate before last layer, range $[0, 1]$ |
 
 ## Segmentation Heads
 

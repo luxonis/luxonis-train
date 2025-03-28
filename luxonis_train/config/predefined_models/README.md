@@ -115,6 +115,7 @@ FPS (frames per second) for `light`, `medium` and `heavy` variants on different 
 | `loss_params`       | `dict`                                | `{}`             | Additional parameters to the loss                                                                  |
 | `visualizer_params` | `dict`                                | `{}`             | Additional parameters to the visualizer                                                            |
 | `task_name`         | `str \| None`                         | `None`           | Custom task name for the head                                                                      |
+| `per_class_metrics` | `bool`                                | `True`           | Whether to calculate class-specific mAP                                                            |
 
 ## `KeypointDetectionModel`
 
@@ -214,7 +215,7 @@ FPS (frames per second) for `light` and `heavy` variants on different devices wi
 | **`light`** | 140      | 243      |
 | **`heavy`** | 34       | 230      |
 
-There is a trade-off in this simple model: training with a larger `object_weight` in the loss parameters may result in more false positives (FP), but it will improve accuracy. You can also use `use_nms: True` in the `head_params` to enable NMS which can reduce FP, but it will also reduce TP for close neighbors.
+There is a trade-off in this simple model: training with a larger `object_weight` in the loss parameters may result in more false positives (FP), but it will improve accuracy. NMS is enabled by default (`use_nms: True` in `head_params`). It reduces false positives but may also lower true positives for close neighbors.
 
 For larger heatmaps and improved accuracy, you can adjust the `attach_index` in the `head_params` to a lower value. This will connect the head to an earlier layer in the backbone, resulting in larger heatmaps. However, be aware that this may lead to slower inference times.
 
@@ -253,9 +254,9 @@ FPS (frames per second) for `light`, `medium` and `heavy` variants on different 
 
 | Variant      | RVC2 FPS | RVC4 FPS |
 | ------------ | -------- | -------- |
-| **`light`**  | 15       | 131      |
-| **`medium`** | 9        | 116      |
-| **`heavy`**  | 3        | 82       |
+| **`light`**  | 35       | 223      |
+| **`medium`** | 15       | 184      |
+| **`heavy`**  | 5        | 107      |
 
 **Components:**
 
@@ -281,6 +282,7 @@ FPS (frames per second) for `light`, `medium` and `heavy` variants on different 
 | `loss_params`       | `dict`                                | `{}`             | Additional parameters to the loss function                                                                                           |
 | `visualizer_params` | `dict`                                | `{}`             | Additional parameters to the visualizer                                                                                              |
 | `task_name`         | `str \| None`                         | `None`           | Custom task name for the head                                                                                                        |
+| `per_class_metrics` | `bool`                                | `True`           | Whether to calculate class-specific mAP                                                                                              |
 
 ## `AnomalyDetectionModel`
 

@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch import Tensor
 
 
@@ -39,7 +40,7 @@ class OCRDecoder:
         @return: A list of tuples containing the decoded text and
             confidence score.
         """
-        preds = torch.nn.functional.softmax(preds, dim=-1)
+        preds = F.softmax(preds, dim=-1)
         pred_probs, pred_ids = torch.max(preds, dim=-1)
 
         result_list = []
@@ -50,13 +51,12 @@ class OCRDecoder:
             for idx in range(len(pred_ids[batch_idx])):
                 if pred_ids[batch_idx][idx] in self.ignored_tokens:
                     continue
-                if self.is_remove_duplicate:
-                    if (
-                        idx > 0
-                        and pred_ids[batch_idx][idx - 1]
-                        == pred_ids[batch_idx][idx]
-                    ):
-                        continue
+                if self.is_remove_duplicate and (
+                    idx > 0
+                    and pred_ids[batch_idx][idx - 1]
+                    == pred_ids[batch_idx][idx]
+                ):
+                    continue
                 char_list.append(
                     self.int_to_char[int(pred_ids[batch_idx][idx])]
                 )
@@ -77,11 +77,7 @@ class OCRDecoder:
 class OCREncoder:
     """OCR encoder for converting text to model targets."""
 
-    def __init__(
-        self,
-        alphabet: list[str],
-        ignore_unknown: bool = True,
-    ):
+    def __init__(self, alphabet: list[str], ignore_unknown: bool = True):
         """Initializes the OCR encoder.
 
         @type alphabet: list[str]
@@ -91,7 +87,7 @@ class OCREncoder:
             Defaults to True.
         """
 
-        self._alphabet = [""] + list(np.unique(alphabet))
+        self._alphabet = ["", *np.unique(alphabet)]
         self.char_to_int = {char: i for i, char in enumerate(self._alphabet)}
 
         self.ignore_unknown = ignore_unknown
@@ -125,8 +121,7 @@ class OCREncoder:
 
             encoded_targets.append(encoded_target)
 
-        encoded_targets = torch.tensor(encoded_targets)
-        return encoded_targets
+        return torch.tensor(encoded_targets)
 
     def __call__(self, targets: Tensor) -> Tensor:
         return self.encode(targets)
@@ -136,5 +131,5 @@ class OCREncoder:
         return self._alphabet
 
     @property
-    def num_classes(self) -> int:
+    def n_classes(self) -> int:
         return len(self._alphabet)

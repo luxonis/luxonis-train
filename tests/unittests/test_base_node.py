@@ -2,20 +2,18 @@ import pytest
 import torch
 from torch import Size, Tensor
 
-from luxonis_train.nodes import AttachIndexType, BaseNode
-from luxonis_train.utils import Packet
-from luxonis_train.utils.exceptions import IncompatibleException
+from luxonis_train.nodes import BaseNode
+from luxonis_train.typing import AttachIndexType, Packet
+from luxonis_train.utils import IncompatibleError
 
 
 class DummyNode(BaseNode, register=False):
-    def forward(self, _): ...
+    def forward(self, _: Tensor) -> Tensor: ...
 
 
 @pytest.fixture
 def packet() -> Packet[Tensor]:
-    return {
-        "features": [torch.rand(3, 224, 224)],
-    }
+    return {"features": [torch.rand(3, 224, 224)]}
 
 
 @pytest.mark.parametrize(
@@ -52,26 +50,22 @@ def test_attach_index_error():
     class DummyNode(BaseNode, register=False):
         attach_index: AttachIndexType
 
-    with pytest.raises(ValueError):
-        DummyNode.attach_index = 10
-        BaseNode.get_attached(DummyNode, lst)  # type: ignore
-
-    with pytest.raises(ValueError):
-        DummyNode.attach_index = "none"  # type: ignore
+    DummyNode.attach_index = 10
+    with pytest.raises(ValueError, match="out of range"):
         BaseNode.get_attached(DummyNode, lst)  # type: ignore
 
 
 def test_invalid(packet: Packet[Tensor]):
     node = DummyNode()
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="`input_shapes`"):
         _ = node.input_shapes
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="`original_in_shape`"):
         _ = node.original_in_shape
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError, match="`dataset_metadata`"):
         _ = node.dataset_metadata
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="`unwrap`"):
         node.unwrap([packet, packet])
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="`wrap`"):
         node.wrap({"inp": torch.rand(3, 224, 224)})
 
 
@@ -83,8 +77,8 @@ def test_in_sizes():
     assert node.in_sizes == [Size((3, 224, 224)) for _ in range(3)]
     node = DummyNode(in_sizes=Size((3, 224, 224)))
     assert node.in_sizes == Size((3, 224, 224))
+    node = DummyNode(input_shapes=[{"feats": [Size((3, 224, 224))]}])
     with pytest.raises(RuntimeError):
-        node = DummyNode(input_shapes=[{"feats": [Size((3, 224, 224))]}])
         _ = node.in_sizes
 
 
@@ -93,9 +87,9 @@ def test_check_type_override():
         in_channels: int
         attach_index = "all"
 
-        def forward(self, _): ...
+        def forward(self, _: Tensor) -> Tensor: ...
 
-    with pytest.raises(IncompatibleException):
+    with pytest.raises(IncompatibleError):
         DummyNode(
             input_shapes=[
                 {"features": [Size((3, 224, 224)) for _ in range(3)]}

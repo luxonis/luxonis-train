@@ -1,6 +1,5 @@
-from typing import Set
-
 from bidict import bidict
+from luxonis_ml.data import Category
 
 from luxonis_train.loaders import BaseLoaderTorch
 
@@ -13,6 +12,10 @@ class DatasetMetadata:
         *,
         classes: dict[str, dict[str, int]] | None = None,
         n_keypoints: dict[str, int] | None = None,
+        metadata_types: dict[
+            str, type[int] | type[Category] | type[float] | type[str]
+        ]
+        | None = None,
         loader: BaseLoaderTorch | None = None,
     ):
         """An object containing metadata about the dataset. Used to
@@ -29,10 +32,11 @@ class DatasetMetadata:
         """
         self._classes = classes or {}
         self._n_keypoints = n_keypoints or {}
+        self._metadata_types = metadata_types or {}
         self._loader = loader
 
     @property
-    def task_names(self) -> Set[str]:
+    def task_names(self) -> set[str]:
         """Gets the names of the tasks present in the dataset.
 
         @rtype: set[str]
@@ -59,7 +63,7 @@ class DatasetMetadata:
                     f"Task '{task_name}' is not present in the dataset."
                 )
             return len(self._classes[task_name])
-        n_classes = len(list(self._classes.values())[0])
+        n_classes = len(next(iter(self._classes.values())))
         for classes in self._classes.values():
             if len(classes) != n_classes:
                 raise RuntimeError(
@@ -112,7 +116,7 @@ class DatasetMetadata:
         if task_name is not None:
             if task_name not in self._classes:
                 raise ValueError(
-                    f"Task type {task_name} is not present in the dataset."
+                    f"Task '{task_name}' is not present in the dataset."
                 )
             return bidict(self._classes[task_name])
         classes = next(iter(self._classes.values()))
@@ -124,18 +128,34 @@ class DatasetMetadata:
                 )
         return bidict(classes)
 
+    @property
+    def metadata_types(
+        self,
+    ) -> dict[str, type[int] | type[Category] | type[float] | type[str]]:
+        """Gets the types of metadata for the dataset.
+
+        @rtype: dict[str, type[int] | type[Category] | type[float] |
+            type[str]
+        @return: Dictionary mapping metadata names to their types.
+        """
+        if self._metadata_types is None:
+            raise RuntimeError("The dataset does define metadata types.")
+        return self._metadata_types
+
     @classmethod
     def from_loader(cls, loader: BaseLoaderTorch) -> "DatasetMetadata":
         """Creates a L{DatasetMetadata} object from a L{LuxonisDataset}.
 
-        @type dataset: LuxonisDataset
-        @param dataset: Dataset to create the metadata from.
+        @type loader: LuxonisDataset
+        @param loader: Loader to read the metadata from.
         @rtype: DatasetMetadata
         @return: Instance of L{DatasetMetadata} created from the
             provided dataset.
         """
-        classes = loader.get_classes()
-        n_keypoints = loader.get_n_keypoints()
 
-        instance = cls(classes=classes, n_keypoints=n_keypoints, loader=loader)
-        return instance
+        return cls(
+            classes=loader.get_classes(),
+            n_keypoints=loader.get_n_keypoints(),
+            metadata_types=loader.get_metadata_types(),
+            loader=loader,
+        )

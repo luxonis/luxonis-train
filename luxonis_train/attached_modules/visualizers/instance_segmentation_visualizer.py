@@ -1,4 +1,4 @@
-from typing import Mapping
+from collections.abc import Mapping
 
 import torch
 from loguru import logger
@@ -11,7 +11,7 @@ from .utils import (
     Color,
     draw_bounding_box_labels,
     draw_bounding_boxes,
-    draw_segmentation_labels,
+    draw_segmentation_targets,
     get_color,
 )
 
@@ -59,7 +59,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         super().__init__(**kwargs)
 
         if isinstance(labels, list):
-            labels = {i: label for i, label in enumerate(labels)}
+            labels = dict(enumerate(labels))
 
         self.bbox_labels = labels or self.classes.inverse
 
@@ -114,11 +114,8 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             width = width or max(1, int(min(H, W) / 100))
 
             try:
-                viz[i] = draw_segmentation_labels(
-                    viz[i],
-                    image_masks,
-                    colors=cls_colors,
-                    alpha=alpha,
+                viz[i] = draw_segmentation_targets(
+                    viz[i], image_masks, colors=cls_colors, alpha=alpha
                 ).to(canvas.device)
 
                 viz[i] = draw_bounding_boxes(
@@ -169,11 +166,8 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             *_, H, W = canvas.shape
             width = width or max(1, int(min(H, W) / 100))
 
-            viz[i] = draw_segmentation_labels(
-                viz[i],
-                image_masks,
-                alpha=alpha,
-                colors=cls_colors,
+            viz[i] = draw_segmentation_targets(
+                viz[i], image_masks, alpha=alpha, colors=cls_colors
             ).to(canvas.device)
             viz[i] = draw_bounding_box_labels(
                 viz[i],

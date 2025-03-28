@@ -7,7 +7,11 @@ from typing_extensions import override
 from luxonis_train.nodes.blocks import ConvBlock
 from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
-from luxonis_train.utils import anchors_for_fpn_features
+from luxonis_train.utils import (
+    anchors_for_fpn_features,
+    dist2bbox,
+    non_max_suppression,
+)
 
 from .efficient_bbox_head import EfficientBBoxHead
 

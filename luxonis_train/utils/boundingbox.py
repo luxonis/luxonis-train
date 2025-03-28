@@ -38,10 +38,10 @@ def dist2bbox(
     x1y1 = anchor_points - lt
     x2y2 = anchor_points + rb
     bbox = torch.cat([x1y1, x2y2], dim=dim)
-    if out_format in ["xyxy", "xywh", "cxcywh"]:
+    if out_format in {"xyxy", "xywh", "cxcywh"}:
         bbox = box_convert(bbox, in_fmt="xyxy", out_fmt=out_format)
     else:
-        raise ValueError(f"Out format `{out_format}` for bbox not supported")
+        raise ValueError(f"Out format '{out_format}' for bbox not supported")
     return bbox
 
 
@@ -60,10 +60,10 @@ def bbox2dist(bbox: Tensor, anchor_points: Tensor, reg_max: float) -> Tensor:
     x1y1, x2y2 = torch.split(bbox, 2, -1)
     lt = anchor_points - x1y1
     rb = x2y2 - anchor_points
-    dist = torch.cat([lt, rb], -1).clip(0, reg_max - 0.01)
-    return dist
+    return torch.cat([lt, rb], -1).clip(0, reg_max - 0.01)
 
 
+# CLEAN:
 def bbox_iou(
     bbox1: Tensor,
     bbox2: Tensor,
@@ -175,14 +175,13 @@ def bbox_iou(
 
         iou = box_iou(bbox1, bbox2) - 0.5 * (distance_cost + shape_cost)
     else:
-        raise ValueError(f"IoU type `{iou_type}` not supported.")
+        raise ValueError(f"IoU type '{iou_type}' not supported.")
 
     iou = torch.nan_to_num(iou, 0)
 
     if element_wise:
         return iou.diag()
-    else:
-        return iou
+    return iou
 
 
 def non_max_suppression(
@@ -357,7 +356,8 @@ def anchors_for_fpn_features(
     anchor_points: list[Tensor] = []
     n_anchors_list: list[int] = []
     stride_tensor: list[Tensor] = []
-    for feature, stride in zip(features, strides):
+    # FIXME: strict=True
+    for feature, stride in zip(features, strides, strict=False):
         _, _, h, w = feature.shape
         cell_half_size = grid_cell_size * stride * 0.5
         shift_x = torch.arange(end=w) + grid_cell_offset
@@ -392,7 +392,7 @@ def anchors_for_fpn_features(
         curr_n_anchors = len(anchor)
         n_anchors_list.append(curr_n_anchors)
         stride_tensor.append(
-            torch.full((curr_n_anchors, 1), stride, dtype=feature.dtype)  # type: ignore
+            torch.full((curr_n_anchors, 1), stride.item(), dtype=feature.dtype)
         )
 
     device = features[0].device
@@ -428,13 +428,12 @@ def apply_bounding_box_to_masks(
         mask_height, device=masks.device, dtype=left.dtype
     )[None, :, None]
 
-    cropped_masks = masks * (
+    return masks * (
         (width_indices >= left)
         & (width_indices < right)
         & (height_indices >= top)
         & (height_indices < bottom)
     )
-    return cropped_masks
 
 
 def compute_iou_loss(
@@ -518,3 +517,68 @@ def compute_iou_loss(
         iou = torch.zeros([target_bboxes.shape[0]]).to(pred_bboxes.device)
 
     return loss_iou, iou.detach().clamp(0)
+
+
+def keypoints_to_bboxes(
+    keypoints: list[Tensor],
+    img_height: int,
+    img_width: int,
+    box_width: int = 5,
+    visibility_threshold: float = 0.5,
+) -> list[Tensor]:
+    """Convert keypoints to bounding boxes in xyxy format with cls_id
+    and score, filtering low-visibility keypoints.
+
+    @type keypoints: list[Tensor]
+    @param keypoints: List of tensors of keypoints with shape [N, 1, 4]
+        (x, y, v, cls_id).
+    @type img_height: int
+    @param img_height: Height of the image.
+    @type img_width: int
+    @param img_width: Width of the image.
+    @type box_width: int
+    @param box_width: Width of the bounding box in pixels. Defaults to
+        2.
+    @type visibility_threshold: float
+    @param visibility_threshold: Minimum visibility score to include a
+        keypoint. Defaults to 0.5.
+    @rtype: list[Tensor]
+    @return: List of tensors of bounding boxes with shape [N, 6] (x_min,
+        y_min, x_max, y_max, score, cls_id).
+    """
+    half_box = box_width / 2
+    bboxes_list = []
+
+    for keypoints_per_image in keypoints:
+        if keypoints_per_image.numel() == 0:
+            bboxes_list.append(
+                torch.zeros((0, 6), device=keypoints_per_image.device)
+            )
+            continue
+
+        keypoints_per_image = keypoints_per_image.squeeze(1)
+
+        visible_mask = keypoints_per_image[:, 2] >= visibility_threshold
+        keypoints_per_image = keypoints_per_image[visible_mask]
+
+        if keypoints_per_image.numel() == 0:
+            bboxes_list.append(
+                torch.zeros((0, 6), device=keypoints_per_image.device)
+            )
+            continue
+
+        x_coords = keypoints_per_image[:, 0]
+        y_coords = keypoints_per_image[:, 1]
+        scores = keypoints_per_image[:, 2]
+        cls_ids = keypoints_per_image[:, 3]
+
+        x_min = (x_coords - half_box).clamp(min=0)
+        y_min = (y_coords - half_box).clamp(min=0)
+        x_max = (x_coords + half_box).clamp(max=img_width)
+        y_max = (y_coords + half_box).clamp(max=img_height)
+        bboxes = torch.stack(
+            [x_min, y_min, x_max, y_max, scores, cls_ids], dim=-1
+        )
+        bboxes_list.append(bboxes)
+
+    return bboxes_list

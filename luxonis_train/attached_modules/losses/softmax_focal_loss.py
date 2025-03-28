@@ -1,8 +1,8 @@
 from typing import Literal
 
 import torch
+import torch.nn.functional as F
 from torch import Tensor, amp
-from torch.nn import functional as F
 
 from luxonis_train.attached_modules.losses import BaseLoss
 from luxonis_train.tasks import Tasks
@@ -35,7 +35,6 @@ class SoftmaxFocalLoss(BaseLoss):
         """
         super().__init__(**kwargs)
 
-        self.alpha = alpha
         self.gamma = gamma
         self.smooth = smooth
         self.reduction = reduction
@@ -45,9 +44,8 @@ class SoftmaxFocalLoss(BaseLoss):
         else:
             self.alpha = alpha
 
-        if self.smooth is not None:
-            if self.smooth < 0 or self.smooth > 1.0:
-                raise ValueError("smooth value should be in [0,1]")
+        if self.smooth is not None and not (0 <= self.smooth <= 1.0):
+            raise ValueError("smooth value should be in [0,1]")
 
     def forward(self, predictions: Tensor, targets: Tensor) -> Tensor:
         if predictions.shape != targets.shape:
@@ -61,8 +59,7 @@ class SoftmaxFocalLoss(BaseLoss):
             predictions = F.softmax(predictions, dim=1)
 
             if self.smooth:
-                targets = torch.clamp(
-                    targets,
+                targets = targets.clamp(
                     self.smooth / (predictions.size(1) - 1),
                     1.0 - self.smooth,
                 )
@@ -72,7 +69,8 @@ class SoftmaxFocalLoss(BaseLoss):
             if isinstance(self.alpha, Tensor):
                 if self.alpha.size(0) != predictions.size(1):
                     raise ValueError(
-                        f"Alpha length {self.alpha.size(0)} does not match number of classes {predictions.size(1)}"
+                        f"Alpha length {self.alpha.size(0)} does not "
+                        f"match number of classes {predictions.size(1)}"
                     )
                 alpha_t = self.alpha[targets.argmax(dim=1)]
             else:
@@ -80,11 +78,10 @@ class SoftmaxFocalLoss(BaseLoss):
 
             pt = torch.as_tensor(pt, dtype=torch.float32)
             focal_term = torch.pow(1.0 - pt, self.gamma)
-            loss = -alpha_t * focal_term * pt.log()  # type: ignore
+            loss = -alpha_t * focal_term * pt.log()
 
             if self.reduction == "mean":
                 return loss.mean()
-            elif self.reduction == "sum":
+            if self.reduction == "sum":
                 return loss.sum()
-            else:
-                return loss
+            return loss

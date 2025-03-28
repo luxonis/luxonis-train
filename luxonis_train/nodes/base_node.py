@@ -14,6 +14,7 @@ from torch import Size, Tensor, nn
 from typeguard import TypeCheckError, check_type, typechecked
 
 from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
+from luxonis_train.registry import NODES
 from luxonis_train.tasks import Task
 from luxonis_train.typing import AttachIndexType, Packet
 from luxonis_train.utils import (
@@ -21,7 +22,6 @@ from luxonis_train.utils import (
     IncompatibleError,
     safe_download,
 )
-from luxonis_train.utils.registry import NODES
 
 ForwardOutputT = TypeVar("ForwardOutputT")
 ForwardInputT = TypeVar("ForwardInputT")

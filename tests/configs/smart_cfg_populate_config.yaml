@@ -1,28 +1,11 @@
 model:
-  nodes:
-    - name: EfficientRep
-      params:
-        variant: "n"
-
-    - name: RepPANNeck
-      inputs:
-        - EfficientRep
-
-    - name: EfficientBBoxHead
-      task_name: vehicle_type
-      inputs:
-        - RepPANNeck
-
-  losses:
-    - name: AdaptiveDetectionLoss
-      attached_to: EfficientBBoxHead
-      params:
-        n_warmup_epochs: 0
-
-loader:
-  train_view: val
-  params:
-    dataset_name: D1ParkingLot
+  name: detection_light
+  predefined_model:
+    name: DetectionModel
+    params:
+      variant: light
+      loss_params:
+        iou_type: "siou"
 
 trainer:
   batch_size: 2

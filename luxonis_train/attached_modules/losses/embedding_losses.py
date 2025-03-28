@@ -4,13 +4,13 @@ import pytorch_metric_learning.miners as pml_miners
 import pytorch_metric_learning.reducers as pml_reducers
 import pytorch_metric_learning.regularizers as pml_regularizers
 from loguru import logger
+from luxonis_ml.typing import Params
 from pytorch_metric_learning.losses import CrossBatchMemory
 from torch import Tensor
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.heads.ghostfacenet_head import GhostFaceNetHead
 from luxonis_train.tasks import Tasks
-from luxonis_train.utils.types import Kwargs
 
 from .base_loss import BaseLoss
 
@@ -50,18 +50,18 @@ for _loss_name in EMBEDDING_LOSSES:
             self,
             *,
             miner: str | None = None,
-            miner_params: Kwargs | None = None,
+            miner_params: Params | None = None,
             distance: str | None = None,
-            distance_params: Kwargs | None = None,
+            distance_params: Params | None = None,
             reducer: str | None = None,
-            reducer_params: Kwargs | None = None,
+            reducer_params: Params | None = None,
             regularizer: str | None = None,
-            regularizer_params: Kwargs | None = None,
+            regularizer_params: Params | None = None,
             node: BaseNode | None = None,
             **kwargs,
         ):
             super().__init__(node=node)
-            loss_name = _loss_name  # noqa: B023
+            loss_name = _loss_name
 
             if not hasattr(pml_losses, loss_name):
                 raise ValueError(
@@ -126,4 +126,4 @@ for _loss_name in EMBEDDING_LOSSES:
 
         @property
         def name(self) -> str:
-            return _loss_name  # noqa: B023
+            return _loss_name
