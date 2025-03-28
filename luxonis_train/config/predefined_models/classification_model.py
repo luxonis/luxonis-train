@@ -1,13 +1,13 @@
 from typing import Literal, TypeAlias
 
+from luxonis_ml.typing import Params
 from pydantic import BaseModel
 
 from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
-    Params,
+    NodeConfig,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -25,12 +25,10 @@ def get_variant(variant: VariantLiteral) -> ClassificationVariant:
     ClassificationModel."""
     variants = {
         "light": ClassificationVariant(
-            backbone="ResNet",
-            backbone_params={"variant": "18"},
+            backbone="ResNet", backbone_params={"variant": "18"}
         ),
         "heavy": ClassificationVariant(
-            backbone="ResNet",
-            backbone_params={"variant": "50"},
+            backbone="ResNet", backbone_params={"variant": "50"}
         ),
     }
 
@@ -73,20 +71,20 @@ class ClassificationModel(BasePredefinedModel):
         self.confusion_matrix_params = confusion_matrix_params or {}
 
     @property
-    def nodes(self) -> list[ModelNodeConfig]:
+    def nodes(self) -> list[NodeConfig]:
         """Defines the model nodes, including backbone and head."""
         return [
-            ModelNodeConfig(
+            NodeConfig(
                 name=self.backbone,
                 alias=f"{self.task_name}-{self.backbone}",
-                freezing=self.backbone_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
             ),
-            ModelNodeConfig(
+            NodeConfig(
                 name="ClassificationHead",
                 alias=f"{self.task_name}-ClassificationHead",
                 inputs=[f"{self.task_name}-{self.backbone}"],
-                freezing=self.head_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.head_params),
                 params=self.head_params,
                 task_name=self.task_name,
             ),

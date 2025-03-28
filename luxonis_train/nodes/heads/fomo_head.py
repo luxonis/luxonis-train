@@ -5,7 +5,7 @@ from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.tasks import Tasks
-from luxonis_train.utils import Packet
+from luxonis_train.typing import Packet
 
 
 class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
@@ -15,29 +15,29 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
 
     def __init__(
         self,
-        num_conv_layers: int = 3,
+        n_conv_layers: int = 3,
         conv_channels: int = 16,
         use_nms: bool = False,
         **kwargs,
     ):
         """FOMO Head for object detection using heatmaps.
 
-        @type num_conv_layers: int
-        @param num_conv_layers: Number of convolutional layers to use.
+        @type n_conv_layers: int
+        @param n_conv_layers: Number of convolutional layers to use.
         @type conv_channels: int
         @param conv_channels: Number of channels to use in the
             convolutional layers.
         """
         super().__init__(**kwargs)
         self.original_img_size = self.original_in_shape[1:]
-        self.num_conv_layers = num_conv_layers
+        self.n_conv_layers = n_conv_layers
         self.conv_channels = conv_channels
         self.use_nms = use_nms
 
         current_channels = self.in_channels
 
         layers = []
-        for _ in range(self.num_conv_layers - 1):
+        for _ in range(self.n_conv_layers - 1):
             layers.append(
                 nn.Conv2d(
                     current_channels,
@@ -83,12 +83,7 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         if not self.use_nms:
             return heatmap
 
-        return F.max_pool2d(
-            heatmap,
-            kernel_size=3,
-            stride=1,
-            padding=1,
-        )
+        return F.max_pool2d(heatmap, kernel_size=3, stride=1, padding=1)
 
     def _heatmap_to_kpts(self, heatmap: Tensor) -> list[Tensor]:
         """Convert heatmap to keypoint pairs using local-max NMS so that
@@ -98,13 +93,13 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         @param heatmap: Heatmap to convert to keypoints.
         """
         device = heatmap.device
-        batch_size, num_classes, height, width = heatmap.shape
+        batch_size, n_classes, height, width = heatmap.shape
 
         batch_kpts = []
         for batch_idx in range(batch_size):
             kpts_per_img = []
 
-            for c in range(num_classes):
+            for c in range(n_classes):
                 prob_map = torch.sigmoid(heatmap[batch_idx, c, :, :])
 
                 keep = self._get_keypoint_mask(prob_map)
@@ -117,7 +112,7 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
                         y.item() / height * self.original_img_size[0],
                         float(prob_map[y, x]),
                     ]
-                    for y, x in zip(y_indices, x_indices)
+                    for y, x in zip(y_indices, x_indices, strict=True)
                 ]
 
                 kpts_per_img.append(kpts)

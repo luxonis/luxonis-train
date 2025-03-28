@@ -356,17 +356,17 @@ Adapted from [here](https://arxiv.org/pdf/2207.02696.pdf). It works best with wi
 
 ### `FOMOHead`
 
-Designed to be very fast. Simply attach it to one of the feature maps from the backbone and use [`FOMOLocalizationLoss`](../attached_modules/losses/README#fomolocalizationloss).  It is used to predict a keypoint per object, and only the OKS metric should be applicable for evaluating this head. For predefined model that utilizes it, see [`FOMOModel`](../config/predefined_models/README.md#fomomodel).
+Designed to be very fast. Simply attach it to one of the feature maps from the backbone and use [`FOMOLocalizationLoss`](../attached_modules/losses/README#fomolocalizationloss). It is used to predict a keypoint per object, and only the OKS metric should be applicable for evaluating this head. For predefined model that utilizes it, see [`FOMOModel`](../config/predefined_models/README.md#fomomodel).
 
 ![fomo_viz_example](../../media/example_viz/fomo.png)
 
 **Parameters:**
 
-| Key               | Type   | Default value | Description                                                                              |
-| ----------------- | ------ | ------------- | ---------------------------------------------------------------------------------------- |
-| `num_conv_layers` | `int`  | `3`           | Number of convolutional layers to use in the model.                                      |
-| `conv_channels`   | `int`  | `16`          | Number of output channels for each convolutional layer.                                  |
-| `use_nms`         | `bool` | `False`       | If True, enable NMS. This can reduce FP, but it will also reduce TP for close neighbors. |
+| Key             | Type   | Default value | Description                                                                              |
+| --------------- | ------ | ------------- | ---------------------------------------------------------------------------------------- |
+| `n_conv_layers` | `int`  | `3`           | Number of convolutional layers to use in the model.                                      |
+| `conv_channels` | `int`  | `16`          | Number of output channels for each convolutional layer.                                  |
+| `use_nms`       | `bool` | `False`       | If True, enable NMS. This can reduce FP, but it will also reduce TP for close neighbors. |
 
 ## Instance Segmentation Heads
 
@@ -398,7 +398,7 @@ You can use various segmentation metrics with these heads, such as [`F1Score, Ja
 
 ### `DiscSubNetHead`
 
-Adapted from [here](https://arxiv.org/abs/2108.07610). It currently only works with the [`RecSubNet`](#recsubnet) backbone, which reconstructs the image without anomalies and the  [`ReconstructionSegmentationLoss`](../attached_modules/losses/README.md#reconstructionsegmentationloss) loss. For predefined model that utilizes it, see [`AnomalyDetectionModel`](../config/predefined_models/README.md#anomalydetectionmodel).
+Adapted from [here](https://arxiv.org/abs/2108.07610). It currently only works with the [`RecSubNet`](#recsubnet) backbone, which reconstructs the image without anomalies and the [`ReconstructionSegmentationLoss`](../attached_modules/losses/README.md#reconstructionsegmentationloss) loss. For predefined model that utilizes it, see [`AnomalyDetectionModel`](../config/predefined_models/README.md#anomalydetectionmodel).
 
 **Parameters:**
 

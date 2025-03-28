@@ -1,67 +1,67 @@
-import torch.nn as nn
-from torch import Tensor
+from luxonis_ml.typing import Kwargs
+from torch import Tensor, nn
+from typeguard import typechecked
+from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.nodes.blocks import ConvBlock
+from luxonis_train.utils.general import add_variant_aliases
 
 from .blocks import (
-    DepthwiseSeparableConv,
+    DepthWiseSeparableConv,
     EfficientViTBlock,
     MobileBottleneckBlock,
 )
-from .variants import VariantLiteral, get_variant
 
 
 class EfficientViT(BaseNode[Tensor, list[Tensor]]):
+    """EfficientViT backbone implementation based on a lightweight
+    transformer architecture.
+
+    This implementation is inspired by the architecture described in the paper:
+    "EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction"
+    (https://arxiv.org/abs/2205.14756).
+
+    The EfficientViT model is designed to provide a balance between computational efficiency
+    and performance, making it suitable for deployment on edge devices with limited resources.
+
+    Variants
+    --------
+    The variant determines the width, depth, and dimension of the network.
+    Available variants are:
+      - "n" or "nano" (default): width_list=[8, 16, 32, 64, 128], depth_list=[1, 2, 2, 2, 2], dim=16
+      - "s" or "small": width_list=[16, 32, 64, 128, 256], depth_list=[1, 2, 3, 3, 4], dim=16
+      - "m" or "medium": width_list=[24, 48, 96, 192, 384], depth_list=[1, 3, 4, 4, 6], dim=32
+      - "l" or "large": width_list=[32, 64, 128, 256, 512], depth_list=[1, 4, 6, 6, 9], dim=32
+    """
+
+    default_variant = "n"
     in_channels: int
 
+    @typechecked
     def __init__(
         self,
-        variant: VariantLiteral = "n",
-        width_list: list[int] | None = None,
-        depth_list: list[int] | None = None,
+        width_list: list[int],
+        depth_list: list[int],
+        dim: int,
         expand_ratio: int = 4,
-        dim: int | None = None,
         **kwargs,
     ):
-        """EfficientViT backbone implementation based on a lightweight
-        transformer architecture.
-
-        This implementation is inspired by the architecture described in the paper:
-        "EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction"
-        (https://arxiv.org/abs/2205.14756).
-
-        The EfficientViT model is designed to provide a balance between computational efficiency
-        and performance, making it suitable for deployment on edge devices with limited resources.
-
-        @type variant: Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]
-        @param variant: EfficientViT variant. Defaults to "nano".
-            The variant determines the width, depth, and dimension of the network. The following variants are available:
-                - "n" or "nano" (default): width_list=[8, 16, 32, 64, 128], depth_list=[1, 2, 2, 2, 2], dim=16
-                - "s" or "small": width_list=[16, 32, 64, 128, 256], depth_list=[1, 2, 3, 3, 4], dim=16
-                - "m" or "medium": width_list=[24, 48, 96, 192, 384], depth_list=[1, 3, 4, 4, 6], dim=32
-                - "l" or "large": width_list=[32, 64, 128, 256, 512], depth_list=[1, 4, 6, 6, 9], dim=32
-
-        @type width_list: list[int] | None
-        @param width_list: List of number of channels for each block. If unspecified, defaults to the variant's width_list.
-        @type depth_list: list[int] | None
-        @param depth_list: List of number of layers in each block. If unspecified, defaults to the variant's depth_list.
-        @type expand_ratio: int
-        @param expand_ratio: Expansion ratio for the MobileBottleneckBlock. Defaults to 4.
+        """
+        @type width_list: list[int]
+        @param width_list: List of number of channels for each block.
+        @type depth_list: list[int]
+        @param depth_list: List of number of layers in each block.
         @type dim: int | None
-        @param dim: Dimension of the transformer. Defaults to the variant's dim.
+        @param dim: Dimension of the transformer.
+        @type expand_ratio: int
+        @param expand_ratio: Expansion ratio for the L{MobileBottleneckBlock}. Defaults to C{4}.
         """
         super().__init__(**kwargs)
 
-        var = get_variant(variant)
-        width_list = width_list or var.width_list
-        depth_list = depth_list or var.depth_list
-        dim = dim or var.dim
-
-        # feature_extractor
         self.feature_extractor = nn.ModuleList(
             [
-                ConvModule(
+                ConvBlock(
                     in_channels=self.in_channels,
                     out_channels=width_list[0],
                     kernel_size=3,
@@ -72,20 +72,18 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
             ]
         )
         for _ in range(depth_list[0]):
-            block = DepthwiseSeparableConv(
+            block = DepthWiseSeparableConv(
                 in_channels=width_list[0],
                 out_channels=width_list[0],
                 stride=1,
-                activation=[nn.Hardswish(), nn.Identity()],
+                depthwise_activation=nn.Hardswish(),
                 use_residual=True,
-                use_bias=[False, False],
             )
             self.feature_extractor.append(block)
 
-        # encoder_blocks
         in_channels = width_list[0]
         self.encoder_blocks = nn.ModuleList()
-        for w, d in zip(width_list[1:3], depth_list[1:3]):
+        for w, d in zip(width_list[1:3], depth_list[1:3], strict=True):
             encoder_blocks = nn.ModuleList()
             for i in range(d):
                 stride = 2 if i == 0 else 1
@@ -101,13 +99,13 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
                         nn.Identity(),
                     ],
                     use_bias=[False, False, False],
-                    use_residual=True if stride == 1 else False,
+                    use_residual=stride == 1,
                 )
                 encoder_blocks.append(block)
                 in_channels = w
             self.encoder_blocks.append(encoder_blocks)
 
-        for w, d in zip(width_list[3:], depth_list[3:]):
+        for w, d in zip(width_list[3:], depth_list[3:], strict=True):
             encoder_blocks = nn.ModuleList()
             block = MobileBottleneckBlock(
                 in_channels=in_channels,
@@ -128,7 +126,7 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
             for _ in range(d):
                 encoder_blocks.append(
                     EfficientViTBlock(
-                        num_channels=in_channels,
+                        n_channels=in_channels,
                         head_dim=dim,
                         expansion_factor=expand_ratio,
                     )
@@ -145,3 +143,31 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
                 x = block(x)
             outputs.append(x)
         return outputs
+
+    @override
+    @staticmethod
+    def get_variants() -> dict[str, Kwargs]:
+        return add_variant_aliases(
+            {
+                "n": {
+                    "width_list": [8, 16, 32, 64, 128],
+                    "depth_list": [1, 2, 2, 2, 2],
+                    "dim": 16,
+                },
+                "s": {
+                    "width_list": [16, 32, 64, 128, 256],
+                    "depth_list": [1, 2, 3, 3, 4],
+                    "dim": 16,
+                },
+                "m": {
+                    "width_list": [24, 48, 96, 192, 384],
+                    "depth_list": [1, 3, 4, 4, 6],
+                    "dim": 32,
+                },
+                "l": {
+                    "width_list": [32, 64, 128, 256, 512],
+                    "depth_list": [1, 4, 6, 6, 9],
+                    "dim": 32,
+                },
+            }
+        )

@@ -1,13 +1,13 @@
 from typing import Literal, TypeAlias
 
+from luxonis_ml.typing import Params
 from pydantic import BaseModel
 
 from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
-    Params,
+    NodeConfig,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -28,17 +28,17 @@ def get_variant(variant: VariantLiteral) -> KeypointDetectionVariant:
         "light": KeypointDetectionVariant(
             backbone="EfficientRep",
             backbone_params={"variant": "n"},
-            neck_params={"variant": "n", "download_weights": True},
+            neck_params={"variant": "n"},
         ),
         "medium": KeypointDetectionVariant(
             backbone="EfficientRep",
             backbone_params={"variant": "s"},
-            neck_params={"variant": "s", "download_weights": True},
+            neck_params={"variant": "s"},
         ),
         "heavy": KeypointDetectionVariant(
             backbone="EfficientRep",
             backbone_params={"variant": "l"},
-            neck_params={"variant": "l", "download_weights": True},
+            neck_params={"variant": "l"},
         ),
     }
 
@@ -83,30 +83,30 @@ class KeypointDetectionModel(BasePredefinedModel):
         self.confusion_matrix_params = confusion_matrix_params or {}
 
     @property
-    def nodes(self) -> list[ModelNodeConfig]:
+    def nodes(self) -> list[NodeConfig]:
         """Defines the model nodes, including backbone, neck, and
         head."""
         nodes = [
-            ModelNodeConfig(
+            NodeConfig(
                 name=self.backbone,
                 alias=f"{self.task_name}-{self.backbone}",
-                freezing=self.backbone_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
-            ),
+            )
         ]
         if self.use_neck:
             nodes.append(
-                ModelNodeConfig(
+                NodeConfig(
                     name="RepPANNeck",
                     alias=f"{self.task_name}-RepPANNeck",
                     inputs=[f"{self.task_name}-{self.backbone}"],
-                    freezing=self.neck_params.pop("freezing", {}),
+                    freezing=self._get_freezing(self.neck_params),
                     params=self.neck_params,
                 )
             )
 
         nodes.append(
-            ModelNodeConfig(
+            NodeConfig(
                 name="EfficientKeypointBBoxHead",
                 alias=f"{self.task_name}-EfficientKeypointBBoxHead",
                 inputs=(
@@ -114,7 +114,7 @@ class KeypointDetectionModel(BasePredefinedModel):
                     if self.use_neck
                     else [f"{self.task_name}-{self.backbone}"]
                 ),
-                freezing=self.head_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.head_params),
                 params=self.head_params,
                 task_name=self.task_name,
             )

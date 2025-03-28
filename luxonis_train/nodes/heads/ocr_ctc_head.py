@@ -1,8 +1,8 @@
 import math
-from collections.abc import Callable
 
 from torch import Tensor, nn
 from torch.nn import functional as F
+from typing_extensions import override
 
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
@@ -49,57 +49,39 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
         """
 
         super().__init__(**kwargs)
+
         self.return_feats = return_feats
+        self.fc_decay = fc_decay
 
         self._encoder = OCREncoder(alphabet, ignore_unknown)
         self._decoder = OCRDecoder(self.encoder.char_to_int)
 
-        self.out_channels = self._encoder.num_classes
         if mid_channels is None:
-            weight_attr, bias_attr = get_para_bias_attr(
-                fc_decay, self.in_channels
+            self.block = self._construct_fc(
+                self.in_channels, self.out_channels
             )
-            self.fc = nn.Linear(self.in_channels, self.out_channels)
-            weight_attr(self.fc.weight)
-            bias_attr(self.fc.bias)
         else:
-            weight_attr1, bias_attr1 = get_para_bias_attr(
-                fc_decay, self.in_channels
+            self.block = nn.Sequential(
+                self._construct_fc(self.in_channels, mid_channels),
+                nn.ReLU(),
+                self._construct_fc(mid_channels, self.out_channels),
             )
-            self.fc1 = nn.Linear(self.in_channels, mid_channels)
-            weight_attr1(self.fc1.weight)
-            bias_attr1(self.fc1.bias)
 
-            weight_attr2, bias_attr2 = get_para_bias_attr(
-                fc_decay, mid_channels
-            )
-            self.fc2 = nn.Linear(mid_channels, self.out_channels)
-            weight_attr2(self.fc2.weight)
-            bias_attr2(self.fc2.bias)
-
-        self.mid_channels = mid_channels
-
-        self._export_output_names = ["output_ocr_ctc"]
-
-    def forward(self, x: Tensor) -> Tensor | tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> Tensor:
         x = x.squeeze(2).permute(0, 2, 1)
-        if self.mid_channels is None:
-            predictions = self.fc(x)
-        else:
-            x = self.fc1(x)
-            x = F.relu(x)
-            predictions = self.fc2(x)
-
-        if self.return_feats:
-            result = (x, predictions)
-        else:
-            result = predictions
+        predictions = self.block(x)
 
         if self.export:
-            return F.softmax(predictions, dim=-1)
+            predictions = F.softmax(predictions, dim=-1)
 
-        return result
+        return predictions
 
+    @property
+    @override
+    def export_output_names(self) -> list[str]:
+        return ["output_ocr_ctc"]
+
+    @override
     def get_custom_head_config(self) -> dict:
         """Returns custom head configuration.
 
@@ -108,7 +90,7 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
         """
         return {
             "classes": self.encoder.alphabet,
-            "n_classes": self.encoder.num_classes,
+            "n_classes": self.encoder.n_classes,
             "is_softmax": True,
             "concatenate_classes": True,
             "ignored_indexes": [0],
@@ -123,16 +105,23 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
     def decoder(self) -> OCRDecoder:
         return self._decoder
 
+    @property
+    def out_channels(self) -> int:
+        return self._encoder.n_classes
 
-def get_para_bias_attr(l2_decay: float, k: int) -> tuple[Callable, Callable]:
-    stdv = 1.0 / math.sqrt(k * 1.0)
+    def _construct_fc(self, in_channels: int, out_channels: int) -> nn.Linear:
+        fc = nn.Linear(in_channels, out_channels)
 
-    def weight_attr(param: nn.Parameter) -> None:
-        nn.init.uniform_(param, -stdv, stdv)
-        param.regularizer = l2_decay  # type: ignore
+        std = 1.0 / math.sqrt(in_channels)
+        nn.init.uniform_(fc.weight, -std, std)
+        nn.init.uniform_(fc.bias, -std, std)
 
-    def bias_attr(param: nn.Parameter) -> None:
-        nn.init.uniform_(param, -stdv, stdv)
-        param.regularizer = l2_decay  # type: ignore
+        # TODO: This doesn't work in PyTorch. In PyTorch,
+        # per-parameter regularizers are set by creating
+        # multiple paremeter groups in the optimizer.
+        # We need to first add support for this in
+        # `LuxonisLightningModule`.
+        fc.weight.regularizer = self.fc_decay  # type: ignore
+        fc.bias.regularizer = self.fc_decay  # type: ignore
 
-    return weight_attr, bias_attr
+        return fc

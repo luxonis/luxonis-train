@@ -4,18 +4,18 @@ from .config import (
     ExportConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
-    Params,
+    NodeConfig,
     TrainerConfig,
 )
+from .predefined_models import BasePredefinedModel
 
 __all__ = [
-    "Config",
     "AttachedModuleConfig",
+    "BasePredefinedModel",
+    "Config",
+    "ExportConfig",
     "LossModuleConfig",
     "MetricModuleConfig",
-    "ModelNodeConfig",
-    "Params",
-    "ExportConfig",
+    "NodeConfig",
     "TrainerConfig",
 ]
