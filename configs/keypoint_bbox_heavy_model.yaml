@@ -8,7 +8,6 @@ model:
       variant: heavy
       loss_params:
         iou_type: "ciou"
-        n_warmup_epochs: 0 # No assigner warmup
 
         # Should be 7.5 * accumulate_grad_batches for the best results
         iou_loss_weight: 60

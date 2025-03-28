@@ -81,7 +81,7 @@ class DetectionModel(BasePredefinedModel):
         self.backbone = backbone or var_config.backbone
         self.neck_params = neck_params or var_config.neck_params
         self.head_params = head_params or var_config.head_params
-        self.loss_params = loss_params or {"n_warmup_epochs": 0}
+        self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
         self.task_name = task_name
         self.enable_confusion_matrix = enable_confusion_matrix
