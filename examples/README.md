@@ -327,18 +327,20 @@ The framework provides a way to automatically extract the correct values from th
 
 **Rules for Automatic Parameters:**
 
-The signature of the `forward` or `update` method must follow one of these rules to make use of the automatic parameter extraction:
+The signature of the `forward` or `update` can use the following special argument names:
 
-- It has only 2 arguments, first one for predictions and second for targets.
-  - The first argument will be taken from the node output based on the value of `Task.main_output` property.
-  - The second argument will be taken from the dataset based on the value of `Task.required_labels` property.
-  - Works only for tasks that require a single label, _i.e._ wouldn't work for `Task.KEYPOINTS` because it requires both `"boundingbox"` and `"keypoints"` labels
-- Single prediction argument named one of `pred`, `preds`, `prediction`, or `predictions`. One or more target arguments.
-  - If one target argument, it has to start with `target`
-  - If more than one (_e.g._ for `Tasks.KEYPOINTS`) the name should be `target_{name_of_label}`
-    - `target_boundingbox`, `target_keypoints`
-- Multiple prediction arguments named the same way as keys in the node output (output of the `BaseNode.wrap` method)
-  - Same rules for target arguments as in the rule above.
+- `predictions` - used to extract the main output of the connected node
+  - e.g. if the node's `task` is `Tasks.SEGMENTATION`, the `predictions` argument will be extracted from the node output dictionary using the key `Task.Segmentation.main_output` ("segmentation" in this case)
+  - `preds`, `pred`, and `prediction` can also be used
+- `target` - used to extract the required label from the dataset
+  - e.g. if the node's `task` is `Tasks.SEGMENTATION`, the `target` argument will be extracted from the dataset based on the value of `Task.Segmentation.required_labels` (label of type "segmentation" in this case)
+  - Can only be used if the task requires only one label type
+    - e.g. cannot be used for instance segmentation
+  - `targets` can also be used
+- `target_{label_type}` - used to extract a specific label from the dataset
+  - e.g. `target_segmentation` will extract the label of type "segmentation" from the dataset
+- any other argument will be extracted from the node output dictionary based on the argument name
+  - e.g. if the argument is named `features`, the value will be extracted from the node output dictionary using the key `"features"`
 
 > [!NOTE]
 > If the arguments are annotated (either `Tensor` or `list[Tensor]`), the framework will check if the types are correct and raise an exception if they are not.
