@@ -235,15 +235,16 @@ class LuxonisModel:
             self.tracker._finalize(status)
 
     def train(
-        self, new_thread: bool = False, resume_weights: PathType | None = None
+        self, new_thread: bool = False, weights: PathType | None = None
     ) -> None:
         """Runs training.
 
         @type new_thread: bool
         @param new_thread: Runs training in new thread if set to True.
-        @type resume_weights: str | None
-        @param resume_weights: Path to the checkpoint from which to to
-            resume the training.
+        @type weights: str | None
+        @param weights: Path to the weights. If user specifies weights
+            in the config file, the weights provided here will take
+            precedence.
         """
 
         if self.cfg.trainer.matmul_precision is not None:
@@ -254,9 +255,25 @@ class LuxonisModel:
                 self.cfg.trainer.matmul_precision
             )
 
-        if resume_weights is not None:
-            resume_weights = LuxonisFileSystem.download(
-                str(resume_weights), self.run_save_dir
+        if weights is not None:
+            weights = LuxonisFileSystem.download(
+                str(weights), self.run_save_dir
+            )
+            if self.cfg.model.weights is not None:
+                logger.warning(
+                    "Weights provided in the command line, but config weights are set. "
+                    "Ignoring weights provided in config."
+                )
+            self.lightning_module.load_checkpoint(weights)
+        else:
+            weights = self.cfg.model.weights
+
+        resume_weights = weights if self.cfg.trainer.resume_training else None
+
+        if self.cfg.trainer.resume_training and resume_weights is None:
+            logger.warning(
+                "Resume training is enabled but no weights were provided. "
+                "Training will start from scratch."
             )
 
         def graceful_exit(signum: int, _: Any) -> None:  # pragma: no cover
@@ -275,12 +292,6 @@ class LuxonisModel:
 
         if not new_thread:
             logger.info(f"Checkpoints will be saved in: {self.run_save_dir}")
-            if self.cfg.trainer.resume_training:
-                if resume_weights is not None:
-                    logger.warning(
-                        "Resume weights provided in the command line, but resume_training in config is set to True. Ignoring resume weights provided in the command line."
-                    )
-                resume_weights = self.cfg.model.weights
             logger.info("Starting training...")
             self._train(
                 resume_weights,
