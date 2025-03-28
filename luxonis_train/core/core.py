@@ -270,6 +270,12 @@ class LuxonisModel:
 
         resume_weights = weights if self.cfg.trainer.resume_training else None
 
+        if self.cfg.trainer.resume_training and resume_weights is None:
+            logger.warning(
+                "Resume training is enabled but no weights were provided. "
+                "Training will start from scratch."
+            )
+
         def graceful_exit(signum: int, _: Any) -> None:  # pragma: no cover
             logger.info(
                 f"{signal.Signals(signum).name} received, stopping training..."

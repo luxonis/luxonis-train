@@ -46,8 +46,8 @@ def train(
     @type config: str
     @param config: Path to the configuration file.
     @type weights: str
-    @param weights: Path to the model weights. from. @type *opts:
-        tuple[str, str]
+    @param weights: Path to the model weights.
+    @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
     create_model(config, opts).train(weights=weights)
