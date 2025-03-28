@@ -2,6 +2,7 @@
 # NOTE: This example downloads pretrained COCO weights and training parameters are already prepared for fine tuning
 
 model:
+  weights:  "C:\\Users\\jerne\\Desktop\\luxonis-train-ml\\luxonis-train\\output\\197-salmon-swan\\best_val_metric\\detection_light_EfficientBBoxHead_MeanAveragePrecision=nan_loss=24.4528_09.ckpt"
   name: detection_light
   predefined_model:
     name: DetectionModel
@@ -25,6 +26,7 @@ loader:
 
 trainer:
   precision: "16-mixed"
+  # resume_training: true
   preprocessing:
     train_image_size: [384, 512]
     keep_aspect_ratio: true
@@ -35,7 +37,7 @@ trainer:
         std: [1, 1, 1]
 
   batch_size: 8
-  epochs: 300
+  epochs: 15
   # For best results, always accumulate gradients to
   # effectively use 64 batch size
   accumulate_grad_batches: 8
@@ -44,6 +46,7 @@ trainer:
   n_log_images: 8
 
   callbacks:
+    # - name: UploadCheckpoint
     - name: EMACallback
       params:
         decay: 0.9999
@@ -51,6 +54,7 @@ trainer:
         decay_tau: 2000
     - name: ExportOnTrainEnd
     - name: TestOnTrainEnd
+
 
   training_strategy:
     name: "TripleLRSGDStrategy"
@@ -63,3 +67,9 @@ trainer:
       momentum: 0.843
       weight_decay: 0.00036
       nesterov: True
+
+
+# tracker:
+#   is_mlflow: true
+#   is_wandb: false
+#   project_name: test_tuner
