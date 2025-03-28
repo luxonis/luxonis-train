@@ -31,6 +31,9 @@ from .ocr import OCRDecoder, OCREncoder
 from .tracker import LuxonisTrackerPL
 
 __all__ = [
+    "instances_from_batch",
+    "instances_from_batch",
+    "get_batch_instances",
     "DatasetMetadata",
     "IncompatibleError",
     "LuxonisTrackerPL",

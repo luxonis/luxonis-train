@@ -26,9 +26,9 @@ from luxonis_train.callbacks import (
     LuxonisTQDMProgressBar,
 )
 from luxonis_train.config import Config
+from luxonis_train.lightning import LuxonisLightningModule
 from luxonis_train.loaders import BaseLoaderTorch, collate_fn
 from luxonis_train.loaders.luxonis_loader_torch import LuxonisLoaderTorch
-from luxonis_train.models import LuxonisLightningModule
 from luxonis_train.registry import LOADERS
 from luxonis_train.utils import (
     DatasetMetadata,
@@ -664,7 +664,7 @@ class LuxonisModel:
             if cfg_tuner.storage.storage_type == "local":
                 storage = "sqlite:///study_local.db"
             else:  # pragma: no cover
-                storage = "postgresql://{}:{}@{}:{}/{}".format(
+                storage = "postgresql://{}:{}@{}:{}/{}".format(  # noqa: UP032
                     self.cfg.ENVIRON.POSTGRES_USER,
                     self.cfg.ENVIRON.POSTGRES_PASSWORD,
                     self.cfg.ENVIRON.POSTGRES_HOST,

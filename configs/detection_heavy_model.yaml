@@ -51,8 +51,8 @@ trainer:
     - name: TestOnTrainEnd
 
   training_strategy:
-    # Finetuned parameters
     name: TripleLRSGDStrategy
+    # Finetuned parameters
     params:
       warmup_epochs: 2
       warmup_bias_lr: 0.05

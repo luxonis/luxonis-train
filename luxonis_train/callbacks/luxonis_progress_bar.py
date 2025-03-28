@@ -11,20 +11,21 @@ from lightning.pytorch.callbacks import (
 )
 from rich.console import Console
 from rich.table import Table
+from typing_extensions import override
 
 import luxonis_train as lxt
 from luxonis_train.registry import CALLBACKS
 
 
 class BaseLuxonisProgressBar(ABC, ProgressBar):
+    @override
     def get_metrics(
         self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> dict[str, int | str | float | dict[str, float]]:
         items = super().get_metrics(trainer, pl_module)
         items.pop("v_num", None)
-        # TODO: Loss accumulator
-        if trainer.training and pl_module.training_step_outputs:
-            items["Loss"] = float(pl_module.training_step_outputs[-1]["loss"])
+        if "loss" in pl_module._loss_accumulator:
+            items["Loss"] = pl_module._loss_accumulator["loss"]
         return items
 
     @abstractmethod
@@ -56,6 +57,20 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
 
     def __init__(self):
         super().__init__(leave=True)
+
+    @override
+    def print_results(
+        self,
+        stage: str,
+        loss: float,
+        metrics: Mapping[str, Mapping[str, int | str | float]],
+    ) -> None:
+        self._rule(stage)
+        print(f"Loss: {loss}")
+        print("Metrics:")
+        for table_name, table in metrics.items():
+            self._print_table(table_name, table)
+        self._rule()
 
     def _rule(self, title: str | None = None) -> None:
         if title is not None:
@@ -93,19 +108,6 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         )
         print()
 
-    def print_results(
-        self,
-        stage: str,
-        loss: float,
-        metrics: Mapping[str, Mapping[str, int | str | float]],
-    ) -> None:
-        self._rule(stage)
-        print(f"Loss: {loss}")
-        print("Metrics:")
-        for table_name, table in metrics.items():
-            self._print_table(table_name, table)
-        self._rule()
-
 
 @CALLBACKS.register()
 class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
@@ -124,7 +126,23 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
             )
         return self._console
 
-    def print_table(
+    @override
+    def print_results(
+        self,
+        stage: str,
+        loss: float,
+        metrics: Mapping[str, Mapping[str, int | str | float]],
+    ) -> None:
+        self.console.rule(f"{stage}", style="bold magenta")
+        self.console.print(
+            f"[bold magenta]Loss:[/bold magenta] [white]{loss}[/white]"
+        )
+        self.console.print("[bold magenta]Metrics:[/bold magenta]")
+        for table_name, table in metrics.items():
+            self._print_table(table_name, table)
+        self.console.rule(style="bold magenta")
+
+    def _print_table(
         self,
         title: str,
         table: Mapping[str, int | str | float],
@@ -151,18 +169,3 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         for name, value in table.items():
             rich_table.add_row(name, f"{value:.5f}")
         self.console.print(rich_table)
-
-    def print_results(
-        self,
-        stage: str,
-        loss: float,
-        metrics: Mapping[str, Mapping[str, int | str | float]],
-    ) -> None:
-        self.console.rule(f"{stage}", style="bold magenta")
-        self.console.print(
-            f"[bold magenta]Loss:[/bold magenta] [white]{loss}[/white]"
-        )
-        self.console.print("[bold magenta]Metrics:[/bold magenta]")
-        for table_name, table in metrics.items():
-            self.print_table(table_name, table)
-        self.console.rule(style="bold magenta")
