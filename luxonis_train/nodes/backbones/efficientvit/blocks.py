@@ -1,19 +1,23 @@
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
+from typeguard import typechecked
 
-from luxonis_train.nodes.blocks import ConvModule, autopad
+from luxonis_train.nodes.blocks import ConvBlock, autopad
 
 
-class DepthwiseSeparableConv(nn.Module):
+class DepthWiseSeparableConv(nn.Module):
+    @typechecked
     def __init__(
         self,
         in_channels: int,
         out_channels: int,
         kernel_size: int = 3,
         stride: int = 1,
-        use_bias: list[bool] | None = None,
-        activation: list[nn.Module] | None = None,
+        depthwise_bias: bool = False,
+        pointwise_bias: bool = False,
+        depthwise_activation: nn.Module | None = None,
+        pointwise_activation: nn.Module | None = None,
         use_residual: bool = False,
     ):
         """Depthwise separable convolution.
@@ -26,50 +30,51 @@ class DepthwiseSeparableConv(nn.Module):
         @param kernel_size: Kernel size. Defaults to 3.
         @type stride: int
         @param stride: Stride. Defaults to 1.
-        @type use_bias: list[bool, bool]
-        @param use_bias: Whether to use bias for the depthwise and
-            pointwise convolutions.
-        @type activation: list[nn.Module, nn.Module]
-        @param activation: Activation functions for the depthwise and
-            pointwise convolutions.
+        @type depthwise_bias: bool
+        @param depthwise_bias: Whether to use bias for the depthwise
+            convolution.
+        @type pointwise_bias: bool
+        @param pointwise_bias: Whether to use bias for the pointwise
+            convolution.
+        @type depthwise_activation: nn.Module
+        @param depthwise_activation: Activation function for the
+            depthwise convolution. Defaults to nn.ReLU6().
+        @type pointwise_activation: nn.Module
+        @param pointwise_activation: Activation function for the
+            pointwise convolution.
         """
         super().__init__()
 
-        if use_bias is None:
-            use_bias = [False, False]
-        if activation is None:
-            activation = [nn.ReLU6(), nn.Identity()]
-
         self.use_residual = use_residual
 
-        self.depthwise_conv = ConvModule(
+        self.depthwise_conv = ConvBlock(
             in_channels,
             in_channels,
             kernel_size,
             stride,
             padding=autopad(kernel_size),
             groups=in_channels,
-            activation=activation[0],
-            bias=use_bias[0],
+            activation=depthwise_activation or nn.ReLU6(),
+            bias=depthwise_bias,
         )
-        self.pointwise_conv = ConvModule(
+        self.pointwise_conv = ConvBlock(
             in_channels,
             out_channels,
             kernel_size=1,
-            activation=activation[1],
-            bias=use_bias[1],
+            activation=pointwise_activation,
+            bias=pointwise_bias,
         )
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
-        x = self.depthwise_conv(x)
-        x = self.pointwise_conv(x)
+        x = self.pointwise_conv(self.depthwise_conv(x))
         if self.use_residual:
             x = x + identity
         return x
 
 
 class MobileBottleneckBlock(nn.Module):
+    @typechecked
     def __init__(
         self,
         in_channels: int,
@@ -120,7 +125,7 @@ class MobileBottleneckBlock(nn.Module):
         self.use_residual = use_residual
         mid_channels = round(in_channels * expand_ratio)
 
-        self.expand_conv = ConvModule(
+        self.expand_conv = ConvBlock(
             in_channels,
             mid_channels,
             1,
@@ -129,7 +134,7 @@ class MobileBottleneckBlock(nn.Module):
             activation=activation[0],
             bias=use_bias[0],
         )
-        self.depthwise_conv = ConvModule(
+        self.depthwise_conv = ConvBlock(
             mid_channels,
             mid_channels,
             kernel_size,
@@ -140,7 +145,7 @@ class MobileBottleneckBlock(nn.Module):
             activation=activation[1],
             bias=use_bias[1],
         )
-        self.project_conv = ConvModule(
+        self.project_conv = ConvBlock(
             mid_channels,
             out_channels,
             1,
@@ -160,9 +165,10 @@ class MobileBottleneckBlock(nn.Module):
 
 
 class EfficientViTBlock(nn.Module):
+    @typechecked
     def __init__(
         self,
-        num_channels: int,
+        n_channels: int,
         attention_ratio: float = 1.0,
         head_dim: int = 32,
         expansion_factor: float = 4.0,
@@ -172,8 +178,8 @@ class EfficientViTBlock(nn.Module):
         designed for multi-scale linear attention and local feature
         processing.
 
-        @type num_channels: int
-        @param num_channels: The number of input and output channels.
+        @type n_channels: int
+        @param n_channels: The number of input and output channels.
         @type attention_ratio: float
         @param attention_ratio: Ratio for determining the number of attention heads. Default is 1.0.
         @type head_dim: int
@@ -186,8 +192,8 @@ class EfficientViTBlock(nn.Module):
         super().__init__()
 
         self.attention_module = LightweightMLABlock(
-            input_channels=num_channels,
-            output_channels=num_channels,
+            input_channels=n_channels,
+            output_channels=n_channels,
             head_ratio=attention_ratio,
             dimension=head_dim,
             use_norm=[False, True],
@@ -196,8 +202,8 @@ class EfficientViTBlock(nn.Module):
         )
 
         self.feature_module = MobileBottleneckBlock(
-            in_channels=num_channels,
-            out_channels=num_channels,
+            in_channels=n_channels,
+            out_channels=n_channels,
             expand_ratio=expansion_factor,
             use_bias=[True, True, False],
             use_norm=[False, False, True],
@@ -205,25 +211,24 @@ class EfficientViTBlock(nn.Module):
             use_residual=True,
         )
 
-    def forward(self, inputs: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         """Forward pass of the block.
 
-        @param inputs: Input tensor with shape [batch, channels, height,
+        @param x: Input tensor with shape [batch, channels, height,
             width].
         @return: Output tensor after attention and local feature
             processing.
         """
-        output = self.attention_module(inputs)
-        output = self.feature_module(output)
-        return output
+        return self.feature_module(self.attention_module(x))
 
 
 class LightweightMLABlock(nn.Module):
+    @typechecked
     def __init__(
         self,
         input_channels: int,
         output_channels: int,
-        num_heads: int | None = None,
+        n_heads: int | None = None,
         head_ratio: float = 1.0,
         dimension: int = 8,
         use_bias: list[bool] | None = None,
@@ -238,20 +243,30 @@ class LightweightMLABlock(nn.Module):
         EfficientViT framework. It facilitates efficient multi-scale
         linear attention.
 
+        @type input_channels: int
         @param input_channels: Number of input channels.
+        @type output_channels: int
         @param output_channels: Number of output channels.
-        @param num_heads: Number of attention heads. Default is None.
+        @type n_heads: int
+        @param n_heads: Number of attention heads. Default is None.
+        @type head_ratio: float
         @param head_ratio: Ratio to determine the number of heads.
             Default is 1.0.
+        @type dimension: int
         @param dimension: Size of each head. Default is 8.
+        @type use_bias: list[bool, bool]
         @param biases: List specifying if bias is used in qkv and
             projection layers.
+        @type use_norm: list[bool, bool]
         @param norms: List specifying if normalization is applied in qkv
             and projection layers.
+        @type activations: list[nn.Module, nn.Module]
         @param activations: List of activation functions for qkv and
             projection layers.
+        @type scale_factors: tuple[int, ...]
         @param scale_factors: Tuple defining scales for aggregation.
             Default is (5,).
+        @type epsilon: float
         @param epsilon: Epsilon value for numerical stability. Default
             is 1e-15.
         """
@@ -268,12 +283,12 @@ class LightweightMLABlock(nn.Module):
 
         self.epsilon = epsilon
         self.use_residual = use_residual
-        num_heads = num_heads or int(input_channels // dimension * head_ratio)
+        n_heads = n_heads or int(input_channels // dimension * head_ratio)
 
-        total_dim = num_heads * dimension
+        total_dim = n_heads * dimension
 
         self.dimension = dimension
-        self.qkv_layer = ConvModule(
+        self.qkv_layer = ConvBlock(
             input_channels,
             3 * total_dim,
             kernel_size=1,
@@ -297,7 +312,7 @@ class LightweightMLABlock(nn.Module):
                         3 * total_dim,
                         3 * total_dim,
                         kernel_size=1,
-                        groups=3 * num_heads,
+                        groups=3 * n_heads,
                         bias=use_bias[0],
                     ),
                 )
@@ -307,7 +322,7 @@ class LightweightMLABlock(nn.Module):
 
         self.kernel_activation = kernel_activation
 
-        self.projection_layer = ConvModule(
+        self.projection_layer = ConvBlock(
             total_dim * (1 + len(scale_factors)),
             output_channels,
             kernel_size=1,
@@ -324,8 +339,8 @@ class LightweightMLABlock(nn.Module):
         if qkv_tensor.dtype == torch.float16:
             qkv_tensor = qkv_tensor.float()
 
-        qkv_tensor = torch.reshape(
-            qkv_tensor, (batch, -1, 3 * self.dimension, height * width)
+        qkv_tensor = qkv_tensor.reshape(
+            batch, -1, 3 * self.dimension, height * width
         )
         query, key, value = (
             qkv_tensor[:, :, : self.dimension],
@@ -339,23 +354,21 @@ class LightweightMLABlock(nn.Module):
         key_transpose = key.transpose(-1, -2)
 
         value = F.pad(value, (0, 0, 0, 1), mode="constant", value=1)
-        value_key_product = torch.matmul(value, key_transpose)
-        output = torch.matmul(value_key_product, query)
+        output = value @ key_transpose @ query
 
         if output.dtype == torch.bfloat16:
             output = output.float()
 
         output = output[:, :, :-1] / (output[:, :, -1:] + self.epsilon)
-        output = torch.reshape(output, (batch, -1, height, width))
-        return output
+        return output.reshape(batch, -1, height, width)
 
     @torch.autocast(device_type="cuda", enabled=False)
     def quadratic_attention(self, qkv_tensor: Tensor) -> Tensor:
         """Implements ReLU-based quadratic attention."""
         batch, _, height, width = qkv_tensor.size()
 
-        qkv_tensor = torch.reshape(
-            qkv_tensor, (batch, -1, 3 * self.dimension, height * width)
+        qkv_tensor = qkv_tensor.reshape(
+            batch, -1, 3 * self.dimension, height * width
         )
         query, key, value = (
             qkv_tensor[:, :, : self.dimension],
@@ -366,7 +379,7 @@ class LightweightMLABlock(nn.Module):
         query = self.kernel_activation(query)
         key = self.kernel_activation(key)
 
-        attention_map = torch.matmul(key.transpose(-1, -2), query)
+        attention_map = key.transpose(-1, -2) @ query
         original_dtype = attention_map.dtype
 
         if original_dtype in [torch.float16, torch.bfloat16]:
@@ -377,13 +390,12 @@ class LightweightMLABlock(nn.Module):
         )
         attention_map = attention_map.to(original_dtype)
 
-        output = torch.matmul(value, attention_map)
-        output = torch.reshape(output, (batch, -1, height, width))
-        return output
+        output = value @ attention_map
+        return output.reshape(batch, -1, height, width)
 
-    def forward(self, inputs: Tensor) -> Tensor:
-        identity = inputs
-        qkv_output = self.qkv_layer(inputs)
+    def forward(self, x: Tensor) -> Tensor:
+        identity = x
+        qkv_output = self.qkv_layer(x)
 
         multi_scale_outputs = [qkv_output]
         for aggregator in self.multi_scale_aggregators:
