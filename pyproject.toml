@@ -71,7 +71,7 @@ select = [
   "Q",
   # "RET",
   # "RSE",
-  # "RUF",
+  "RUF022",
   "S",
   # "SIM",
   "T10",
