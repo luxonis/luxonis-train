@@ -649,6 +649,8 @@ class LuxonisLightningModule(pl.LightningModule):
             metrics=table,
         )
 
+        self._n_logged_images = 0
+
     @rank_zero_only
     def _print_results(
         self, stage: str, loss: float, metrics: dict[str, dict[str, float]]
