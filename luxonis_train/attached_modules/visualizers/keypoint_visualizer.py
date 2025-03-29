@@ -97,8 +97,10 @@ class KeypointVisualizer(BBoxVisualizer):
         target_boundingbox: Tensor | None,
         **kwargs,
     ) -> tuple[Tensor, Tensor] | Tensor:
+        pred_viz = super().draw_predictions(prediction_canvas, boundingbox)
+
         pred_viz = self.draw_predictions(
-            prediction_canvas,
+            pred_viz,
             keypoints,
             connectivity=self.connectivity,
             colors=self.visible_color,
@@ -106,7 +108,6 @@ class KeypointVisualizer(BBoxVisualizer):
             visibility_threshold=self.visibility_threshold,
             **kwargs,
         )
-        pred_viz = super().draw_predictions(pred_viz, boundingbox)
 
         if target_keypoints is None and target_boundingbox is None:
             return pred_viz
