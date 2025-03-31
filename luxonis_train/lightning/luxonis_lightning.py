@@ -638,7 +638,7 @@ class LuxonisLightningModule(pl.LightningModule):
                     else:
                         table[node_name][name] = value.cpu().item()
                         self.log(
-                            f"{mode}/metric/{formatted_node_name}/{metric_name}",
+                            f"{mode}/metric/{formatted_node_name}/{name}",
                             value,
                             sync_dist=True,
                         )
