@@ -624,7 +624,8 @@ class LuxonisLightningModule(pl.LightningModule):
         for node_name, node_metrics in self.metrics.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
             for metric_name, metric in node_metrics.items():
-                values = postprocess_metrics(metric_name, metric.compute())
+                computed_metrics = metric.compute()
+                values = postprocess_metrics(metric_name, computed_metrics)
                 metric.reset()
 
                 for name, value in values.items():
@@ -636,7 +637,7 @@ class LuxonisLightningModule(pl.LightningModule):
                             step=self.current_epoch,
                         )
                     else:
-                        table[node_name][metric_name] = value.cpu().item()
+                        table[node_name][name] = value.cpu().item()
                         self.log(
                             f"{mode}/metric/{formatted_node_name}/{metric_name}",
                             value,
