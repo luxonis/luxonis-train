@@ -632,7 +632,7 @@ class LuxonisLightningModule(pl.LightningModule):
                         self.tracker.log_matrix(
                             matrix=value.cpu().numpy(),
                             name=f"{mode}/metrics/{self.current_epoch}/"
-                            f"{formatted_node_name}/{metric_name}",
+                            f"{formatted_node_name}/{name}",
                             step=self.current_epoch,
                         )
                     else:
