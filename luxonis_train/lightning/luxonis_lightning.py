@@ -636,7 +636,7 @@ class LuxonisLightningModule(pl.LightningModule):
                             step=self.current_epoch,
                         )
                     else:
-                        table[node_name][metric_name] = value.cpu().item()
+                        table[node_name][name] = value.cpu().item()
                         self.log(
                             f"{mode}/metric/{formatted_node_name}/{metric_name}",
                             value,

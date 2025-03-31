@@ -133,11 +133,11 @@ class KeypointDetectionModel(BasePredefinedModel):
             MetricModuleConfig(
                 name="ObjectKeypointSimilarity",
                 attached_to="EfficientKeypointBBoxHead",
-                is_main_metric=True,
             ),
             MetricModuleConfig(
                 name="MeanAveragePrecision",
                 attached_to="EfficientKeypointBBoxHead",
+                is_main_metric=True,
             ),
         ]
         if self.enable_confusion_matrix:
