@@ -133,7 +133,7 @@ class LuxonisModel:
             self.loaders[view] = Loader(
                 view={
                     "train": self.cfg.loader.train_view,
-                    "val": self.cfg.loader.train_view,
+                    "val": self.cfg.loader.val_view,
                     "test": self.cfg.loader.test_view,
                 }[view],
                 image_source=self.cfg.loader.image_source,
