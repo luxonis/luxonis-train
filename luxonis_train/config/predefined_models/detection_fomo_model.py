@@ -26,12 +26,12 @@ def get_variant(variant: VariantLiteral) -> FOMOVariant:
     variants = {
         "light": FOMOVariant(
             backbone="EfficientRep",
-            head_params={"num_conv_layers": 2, "conv_channels": 16},
+            head_params={"n_conv_layers": 2, "conv_channels": 16},
             backbone_params={"variant": "n"},
         ),
         "heavy": FOMOVariant(
             backbone="MobileNetV2",
-            head_params={"num_conv_layers": 2, "conv_channels": 16},
+            head_params={"n_conv_layers": 2, "conv_channels": 16},
             backbone_params={},
         ),
     }

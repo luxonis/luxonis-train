@@ -289,7 +289,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         for module in self.modules():
             if isinstance(module, BaseNode):
-                module.set_export_mode()
+                module.set_export_mode(True)
 
         outputs = self.forward(inputs_deep_clone).outputs
         output_order = sorted(
