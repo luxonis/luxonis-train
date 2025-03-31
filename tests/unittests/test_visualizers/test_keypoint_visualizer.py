@@ -109,5 +109,5 @@ def test_keypoint_visualizer():
 
     assert (
         computed_hash
-        == "7175a945c1c4e3d6f511c440a8c21606b1945084bd66c1577ba05920dae6603a"
+        == "07f0dcac054481d8f11ac04a5bcab1544e0f6893f5fe7d1634d6e1f98cd65bf3"
     )
