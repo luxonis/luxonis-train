@@ -133,7 +133,7 @@ class LuxonisModel:
             self.loaders[view] = Loader(
                 view={
                     "train": self.cfg.loader.train_view,
-                    "val": self.cfg.loader.train_view,
+                    "val": self.cfg.loader.val_view,
                     "test": self.cfg.loader.test_view,
                 }[view],
                 image_source=self.cfg.loader.image_source,
@@ -445,7 +445,7 @@ class LuxonisModel:
     def test(
         self,
         new_thread: Literal[True] = ...,
-        view: Literal["train", "test", "val"] = "val",
+        view: Literal["train", "test", "val"] = "test",
         weights: PathType | None = ...,
     ) -> None: ...
 
@@ -453,7 +453,7 @@ class LuxonisModel:
     def test(
         self,
         new_thread: bool = False,
-        view: Literal["train", "val", "test"] = "val",
+        view: Literal["train", "val", "test"] = "test",
         weights: PathType | None = None,
     ) -> Mapping[str, float] | None:
         """Runs testing.
@@ -461,7 +461,7 @@ class LuxonisModel:
         @type new_thread: bool
         @param new_thread: Runs testing in a new thread if set to True.
         @type view: Literal["train", "test", "val"]
-        @param view: Which view to run the testing on. Defauls to "val".
+        @param view: Which view to run the testing on. Defauls to "test".
         @rtype: Mapping[str, float] | None
         @return: If new_thread is False, returns a dictionary test
             results.
