@@ -440,6 +440,14 @@ class TrainerConfig(BaseModelExtraForbid):
 
     training_strategy: ConfigItem | None = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def deprecate_params(cls, data: Params) -> Params:
+        if "verbose" in data:
+            logger.warning("`trainer.verbose` is deprecated and won't be used")
+            data.pop("verbose")
+        return data
+
     @model_validator(mode="after")
     def validate_scheduler(self) -> Self:
         if self.scheduler.name == "CosineAnnealingLR":
