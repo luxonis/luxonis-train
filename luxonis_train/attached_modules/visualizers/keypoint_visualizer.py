@@ -57,11 +57,11 @@ class KeypointVisualizer(BBoxVisualizer):
             prediction = predictions[i]
             mask = prediction[..., 2] < visibility_threshold
             visible_kpts = prediction[..., :2] * (~mask).unsqueeze(-1).float()
-            visible_kpts[..., 0] = torch.clamp(
-                visible_kpts[..., 0], 0, canvas.size(-1) - 1
+            visible_kpts[..., 0] = visible_kpts[..., 0].clamp(
+                0, canvas.size(-1) - 1
             )
-            visible_kpts[..., 1] = torch.clamp(
-                visible_kpts[..., 1], 0, canvas.size(-2) - 1
+            visible_kpts[..., 1] = visible_kpts[..., 1].clamp(
+                0, canvas.size(-2) - 1
             )
             viz[i] = draw_keypoints(
                 canvas[i].clone(), visible_kpts[..., :2].int(), **kwargs
@@ -97,8 +97,10 @@ class KeypointVisualizer(BBoxVisualizer):
         target_boundingbox: Tensor | None,
         **kwargs,
     ) -> tuple[Tensor, Tensor] | Tensor:
+        pred_viz = super().draw_predictions(prediction_canvas, boundingbox)
+
         pred_viz = self.draw_predictions(
-            prediction_canvas,
+            pred_viz,
             keypoints,
             connectivity=self.connectivity,
             colors=self.visible_color,
@@ -106,7 +108,6 @@ class KeypointVisualizer(BBoxVisualizer):
             visibility_threshold=self.visibility_threshold,
             **kwargs,
         )
-        pred_viz = super().draw_predictions(pred_viz, boundingbox)
 
         if target_keypoints is None and target_boundingbox is None:
             return pred_viz

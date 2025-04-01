@@ -1,3 +1,4 @@
+from luxonis_ml.typing import Kwargs
 from torch import Tensor, nn
 from torch.nn import functional as F
 
@@ -7,8 +8,7 @@ from luxonis_train.nodes.blocks import (
     ConvModule,
     FeatureFusionBlock,
 )
-from luxonis_train.utils import Kwargs
-from luxonis_train.utils.registry import NODES
+from luxonis_train.registry import NODES
 
 
 class ContextSpatial(BaseNode[Tensor, list[Tensor]]):

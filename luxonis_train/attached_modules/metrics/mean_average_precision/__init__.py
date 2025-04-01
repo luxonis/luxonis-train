@@ -6,8 +6,8 @@ from .mean_average_precision_segmentation import (
 )
 
 __all__ = [
+    "MeanAveragePrecision",
+    "MeanAveragePrecisionBBox",
     "MeanAveragePrecisionKeypoints",
     "MeanAveragePrecisionSegmentation",
-    "MeanAveragePrecisionBBox",
-    "MeanAveragePrecision",
 ]

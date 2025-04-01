@@ -1,9 +1,8 @@
 from typing import Literal
 
 import torch
-import torch.nn as nn
 from loguru import logger
-from torch import Tensor
+from torch import Tensor, nn
 
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks

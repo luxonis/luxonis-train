@@ -18,8 +18,6 @@ model:
   losses:
     - name: AdaptiveDetectionLoss
       attached_to: EfficientBBoxHead
-      params:
-        n_warmup_epochs: 0
 
 
   metrics:

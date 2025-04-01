@@ -1,13 +1,13 @@
 from typing import Literal, TypeAlias
 
+from luxonis_ml.typing import Params
 from pydantic import BaseModel
 
 from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
-    Params,
+    NodeConfig,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -76,40 +76,38 @@ class KeypointDetectionModel(BasePredefinedModel):
         ) or {}
         self.neck_params = neck_params or var_config.neck_params
         self.head_params = head_params or {}
-        self.loss_params = loss_params or {"n_warmup_epochs": 0}
+        self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
         self.task_name = task_name
         self.enable_confusion_matrix = enable_confusion_matrix
         self.confusion_matrix_params = confusion_matrix_params or {}
 
     @property
-    def nodes(self) -> list[ModelNodeConfig]:
+    def nodes(self) -> list[NodeConfig]:
         """Defines the model nodes, including backbone, neck, and
         head."""
         nodes = [
-            ModelNodeConfig(
+            NodeConfig(
                 name=self.backbone,
-                freezing=self.backbone_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
-            ),
+            )
         ]
         if self.use_neck:
             nodes.append(
-                ModelNodeConfig(
+                NodeConfig(
                     name="RepPANNeck",
-                    inputs=[f"{self.backbone}"],
-                    freezing=self.neck_params.pop("freezing", {}),
+                    freezing=self._get_freezing(self.neck_params),
+                    inputs=[self.backbone],
                     params=self.neck_params,
                 )
             )
 
         nodes.append(
-            ModelNodeConfig(
+            NodeConfig(
                 name="EfficientKeypointBBoxHead",
-                inputs=(
-                    ["RepPANNeck"] if self.use_neck else [f"{self.backbone}"]
-                ),
-                freezing=self.head_params.pop("freezing", {}),
+                inputs=["RepPANNeck" if self.use_neck else self.backbone],
+                freezing=self._get_freezing(self.head_params),
                 params=self.head_params,
                 task_name=self.task_name,
             )
@@ -135,11 +133,11 @@ class KeypointDetectionModel(BasePredefinedModel):
             MetricModuleConfig(
                 name="ObjectKeypointSimilarity",
                 attached_to="EfficientKeypointBBoxHead",
-                is_main_metric=True,
             ),
             MetricModuleConfig(
                 name="MeanAveragePrecision",
                 attached_to="EfficientKeypointBBoxHead",
+                is_main_metric=True,
             ),
         ]
         if self.enable_confusion_matrix:

@@ -2,6 +2,8 @@
 
 List of all supported callbacks.
 
+**Note**: The order of callbacks being called is determined by the order in which they are defined in the configuration file.
+
 ## Table Of Contents
 
 - [`PytorchLightning` Callbacks](#pytorchlightning-callbacks)

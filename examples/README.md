@@ -72,7 +72,7 @@ To make the most use out of the framework, the nodes should define the following
 - `original_in_shape: torch.Size` - shape of the original input image
   - Useful for segmentation heads that need to upsample the output to the original image size
 
-> \[!TIP\]
+> [!TIP]
 > You can add a class-level type hint to `in_channels`, `in_width`, and `in_height`. This will cause the values to be checked at initialization time and an exception will be raised if the annotation is incompatible with the outputs of the preceding node. (_e.g._ setting `attach_index` to `"all"` and annotating `in_channels` as `int` will raise an exception)
 
 The main methods of the node are:
@@ -244,7 +244,7 @@ class CustomSegmentationHead(BaseHead):
     # a `list[int]` depending on the value of `attach_index`.
     # By specifying its type here, the constructor of `BaseNode`
     # will automatically check if the value is correct and will
-    # raise `IncompatibleException` if it is not.
+    # raise `IncompatibleError` if it is not.
     # (e.g. if `attach_index` is set to "all" and `in_channels`
     # is annotated as `int`, an exception will be raised)
     in_channels: int
@@ -327,26 +327,28 @@ The framework provides a way to automatically extract the correct values from th
 
 **Rules for Automatic Parameters:**
 
-The signature of the `forward` or `update` method must follow one of these rules to make use of the automatic parameter extraction:
+The signature of the `forward` or `update` can use the following special argument names:
 
-- It has only 2 arguments, first one for predictions and second for targets.
-  - The first argument will be taken from the node output based on the value of `Task.main_output` property.
-  - The second argument will be taken from the dataset based on the value of `Task.required_labels` property.
-  - Works only for tasks that require a single label, _i.e._ wouldn't work for `Task.KEYPOINTS` because it requires both `"boundingbox"` and `"keypoints"` labels
-- Single prediction argument named one of `pred`, `preds`, `prediction`, or `predictions`. One or more target arguments.
-  - If one target argument, it has to start with `target`
-  - If more than one (_e.g._ for `Tasks.KEYPOINTS`) the name should be `target_{name_of_label}`
-    - `target_boundingbox`, `target_keypoints`
-- Multiple prediction arguments named the same way as keys in the node output (output of the `BaseNode.wrap` method)
-  - Same rules for target arguments as in the rule above.
+- `predictions` - used to extract the main output of the connected node
+  - e.g. if the node's `task` is `Tasks.SEGMENTATION`, the `predictions` argument will be extracted from the node output dictionary using the key `Task.Segmentation.main_output` ("segmentation" in this case)
+  - `preds`, `pred`, and `prediction` can also be used
+- `target` - used to extract the required label from the dataset
+  - e.g. if the node's `task` is `Tasks.SEGMENTATION`, the `target` argument will be extracted from the dataset based on the value of `Task.Segmentation.required_labels` (label of type "segmentation" in this case)
+  - Can only be used if the task requires only one label type
+    - e.g. cannot be used for instance segmentation
+  - `targets` can also be used
+- `target_{label_type}` - used to extract a specific label from the dataset
+  - e.g. `target_segmentation` will extract the label of type "segmentation" from the dataset
+- any other argument will be extracted from the node output dictionary based on the argument name
+  - e.g. if the argument is named `features`, the value will be extracted from the node output dictionary using the key `"features"`
 
-> \[!NOTE\]
+> [!NOTE]
 > If the arguments are annotated (either `Tensor` or `list[Tensor]`), the framework will check if the types are correct and raise an exception if they are not.
 
-> \[!IMPORTANT\]
+> [!IMPORTANT]
 > If the argument is annotated as optional and cannot be extracted, its value will be set to `None`.
 
-> \[!TIP\]
+> [!TIP]
 > Need more control? If the automatic extraction doesn't work for your use case, you can override `run` (or `run_update`) method. These methods are called with 2 arguments; the raw output packet from the connected node and the full label dictionary from the dataset. The return type of these methods is equivalent to the return type of the corresponding `forward` or `update`. Note that this is not recommended and should not be necessary in the vast majority of cases.
 
 ### Attached Modules Examples
@@ -448,12 +450,43 @@ class InstanceKeypointsLoss(BaseLoss):
 
 The rules for defining the `update` method are the same as for the `forward` method of the loss.
 
+**Metric States**
+
+For better integration with distributed training and easier handling of the metric state,
+the metric attributes that are used to store the state of the metric should be
+registered using the `add_state` method, see the [torchmetrics documentation](https://lightning.ai/docs/torchmetrics/stable/pages/implement.html).
+In order for type checking to pass, the attributes defined using `add_state` should be also added as a class-level annotations.
+To streamline this process, `LuxonisTrain` offers a simpler way to define the metric state using the `MetricState` class.
+The `MetricState` is intended to be used inside an `Annotated` type for class-level declarations of the metric states.
+
+**Example:**
+
+```python
+
+from luxonis_train import BaseMetric, MetricState
+
+class MyMetric(BaseMetric):
+    true_positives: Annotated[Tensor, MetricState(default=0)]
+    false_positives: Annotated[Tensor, MetricState(default=0)]
+    total: Annotated[Tensor, MetricState(default=0)]
+
+```
+
+The `MetricState` takes the same arguments as `add_state` method, but also specifies some sane default values and conversions:
+
+- If `default` is not specified:
+  - If the state is a `Tensor`, the default value is `torch.tensor(0, dtype=torch.float32)`
+  - If the state is a `list`, the default value is an empty list
+- If `dist_reduce_fx` is not specified:
+  - If the state is a `Tensor`, the default value is `"sum"`
+  - If the state is a `list`, the default value is `"cat"`
+
 #### Visualizer
 
 The rules for defining the `forward` method are the same as for the `forward` method of the loss.
 In addition to the standard set of arguments, the `forward` method also always receives `target_canvas` and `prediction_canvas` arguments containing the original image. The visualizer can use these to overlay the predictions and targets on top of the input image.
 
-> \[!IMPORTANT\]
+> [!IMPORTANT]
 > The target arguments should be optional in order for the visualizer to work with predictions only.
 
 ```python

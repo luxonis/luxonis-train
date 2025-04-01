@@ -6,17 +6,13 @@ from torch import Tensor
 from typing_extensions import TypeVarTuple, Unpack
 
 from luxonis_train.attached_modules import BaseAttachedModule
-from luxonis_train.utils import Labels, Packet
-from luxonis_train.utils.registry import VISUALIZERS
+from luxonis_train.registry import VISUALIZERS
+from luxonis_train.typing import Labels, Packet
 
 Ts = TypeVarTuple("Ts")
 
 
-class BaseVisualizer(
-    BaseAttachedModule,
-    register=False,
-    registry=VISUALIZERS,
-):
+class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
     """A base class for all visualizers.
 
     This class defines the basic interface for all visualizers. It
@@ -59,7 +55,7 @@ class BaseVisualizer(
         @rtype: Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]] | list[Tensor]
         @return: Visualizations.
 
-        @raise IncompatibleException: If the inputs are not compatible with the module.
+        @raise IncompatibleError: If the inputs are not compatible with the module.
         """
         ...
 

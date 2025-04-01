@@ -2,6 +2,7 @@ from contextlib import suppress
 from functools import cached_property
 
 import torchmetrics
+from loguru import logger
 from torch import Tensor
 from typing_extensions import override
 
@@ -30,14 +31,30 @@ class TorchMetricWrapper(BaseMetric):
                         task = "binary"
                     else:
                         task = "multiclass"
+            if task is not None:
+                logger.warning(
+                    "Parameter 'task' was not specified for `TorchMetric` "
+                    f"based '{self.name}'. Assuming task type '{task}' "
+                    "based on the number of classes. "
+                    "If this is incorrect, please specify the "
+                    "'task' parameter in the config."
+                )
 
         if task is None:
             raise ValueError(
                 f"'{self.name}' does not have the 'task' parameter set. "
                 "and it is not possible to infer it from the other arguments. "
-                "You can either set the 'task' parameter explicitly, provide either 'num_classes' or 'num_labels' argument, "
+                "You can either set the 'task' parameter explicitly, "
+                "provide either 'num_classes' or 'num_labels' argument, "
                 "or use this metric with a node. "
-                "The 'task' can be one of 'binary', 'multiclass', or 'multilabel'. "
+                "The 'task' can be one of 'binary', 'multiclass', "
+                "or 'multilabel'. "
+            )
+        if task not in {"binary", "multiclass", "multilabel"}:
+            raise ValueError(
+                f"Invalid task type '{task}' for '{self.name}'. "
+                "The 'task' can be one of 'binary', 'multiclass', "
+                "or 'multilabel'."
             )
         self._torchmetric_task = task
         kwargs["task"] = task
@@ -63,7 +80,7 @@ class TorchMetricWrapper(BaseMetric):
                 f"Task type set to '{task}', but the dataset has more than 1 class. "
                 f"Set the `task` argument of '{self.name}' to either 'multiclass' or 'multilabel'."
             )
-        elif task != "binary" and n_classes == 1:
+        if task != "binary" and n_classes == 1:
             raise ValueError(
                 f"Task type set to '{task}', but the dataset has only 1 class. "
                 f"Set the `task` argument of '{self.name}' to 'binary'."
@@ -76,14 +93,30 @@ class TorchMetricWrapper(BaseMetric):
 
         self.metric = self.Metric(**kwargs)
 
+    @override
     def update(self, predictions: Tensor, target: Tensor) -> None:
         if self._torchmetric_task in ["multiclass"]:
             target = target.argmax(dim=1)
         self.metric.update(predictions, target)
 
+    @override
     def compute(self) -> Tensor:
-        return self.metric.compute()
+        x = self.metric.compute()
+        if not (isinstance(x, Tensor) and x.ndim > 0 and x.numel() > 1):
+            return x
+        if getattr(self, "classes", None):
+            metric_name = type(self.metric).__name__
+            class_names = {v: k for k, v in self.classes.items()}
+            return x.mean(), {
+                metric_name + "_" + class_names[i]: x[i]
+                for i in range(x.numel())
+            }
+        else:
+            ValueError(
+                f"Metric '{self.name}' does not have 'classes' attribute set."
+            )
 
+    @override
     def reset(self) -> None:
         self.metric.reset()
 

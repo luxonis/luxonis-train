@@ -2,8 +2,7 @@
 import math
 from typing import Literal
 
-import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, nn
 
 from luxonis_train.nodes.backbones.ghostfacenet.variants import get_variant
 from luxonis_train.nodes.backbones.micronet.blocks import _make_divisible

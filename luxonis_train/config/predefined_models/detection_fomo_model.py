@@ -1,13 +1,13 @@
 from typing import Literal, TypeAlias
 
+from luxonis_ml.typing import Params
 from pydantic import BaseModel
 
 from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
-    Params,
+    NodeConfig,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -65,21 +65,20 @@ class FOMOModel(BasePredefinedModel):
         self.task_name = task_name
 
     @property
-    def nodes(self) -> list[ModelNodeConfig]:
-        nodes = [
-            ModelNodeConfig(
+    def nodes(self) -> list[NodeConfig]:
+        return [
+            NodeConfig(
                 name=self.backbone,
-                freezing=self.backbone_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
             ),
-            ModelNodeConfig(
+            NodeConfig(
                 name="FOMOHead",
-                inputs=[f"{self.backbone}"],
+                inputs=[self.backbone],
                 params=self.head_params,
                 task_name=self.task_name,
             ),
         ]
-        return nodes
 
     @property
     def losses(self) -> list[LossModuleConfig]:
@@ -96,10 +95,10 @@ class FOMOModel(BasePredefinedModel):
     def metrics(self) -> list[MetricModuleConfig]:
         return [
             MetricModuleConfig(
-                name="ObjectKeypointSimilarity",
+                name="ConfusionMatrix",
                 attached_to="FOMOHead",
                 is_main_metric=True,
-            ),
+            )
         ]
 
     @property

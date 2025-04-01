@@ -1,13 +1,13 @@
 from typing import Literal
 
+from luxonis_ml.typing import Params
 from pydantic import BaseModel
 
 from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
-    Params,
+    NodeConfig,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -55,7 +55,7 @@ class SegmentationModel(BasePredefinedModel):
         aux_head_params: Params | None = None,
         loss_params: Params | None = None,
         visualizer_params: Params | None = None,
-        task: Literal["binary", "multiclass"] = "binary",
+        task: Literal["binary", "multiclass"] | None = None,
         task_name: str = "",
         enable_confusion_matrix: bool = True,
         confusion_matrix_params: Params | None = None,
@@ -78,37 +78,43 @@ class SegmentationModel(BasePredefinedModel):
         self.confusion_matrix_params = confusion_matrix_params or {}
 
     @property
-    def nodes(self) -> list[ModelNodeConfig]:
+    def nodes(self) -> list[NodeConfig]:
         """Defines the model nodes, including backbone and head."""
         self.head_params.update({"attach_index": -1})
         self.aux_head_params.update({"attach_index": -2})
 
         node_list = [
-            ModelNodeConfig(
+            NodeConfig(
                 name=self.backbone,
-                freezing=self.backbone_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
                 task_name=self.task_name,
             ),
-            ModelNodeConfig(
+            NodeConfig(
                 name="DDRNetSegmentationHead",
-                inputs=[f"{self.backbone}"],
-                freezing=self.head_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.head_params),
+                inputs=[self.backbone],
                 params=self.head_params,
                 task_name=self.task_name,
             ),
         ]
         if self.backbone_params.get("use_aux_heads", True):
+            remove_on_export = self.aux_head_params.pop(
+                "remove_on_export", True
+            )
+            if not isinstance(remove_on_export, bool):
+                raise ValueError(
+                    "The 'remove_on_export' parameter must be a boolean. "
+                    f"Got `{remove_on_export}`."
+                )
             node_list.append(
-                ModelNodeConfig(
+                NodeConfig(
                     name="DDRNetSegmentationHead",
-                    inputs=[f"{self.backbone}"],
-                    freezing=self.aux_head_params.pop("freezing", {}),
+                    freezing=self._get_freezing(self.aux_head_params),
+                    inputs=[self.backbone],
                     params=self.aux_head_params,
                     task_name=self.task_name,
-                    remove_on_export=self.aux_head_params.pop(
-                        "remove_on_export", True
-                    ),
+                    remove_on_export=remove_on_export,
                 )
             )
         return node_list
@@ -126,7 +132,7 @@ class SegmentationModel(BasePredefinedModel):
                 attached_to="DDRNetSegmentationHead",
                 params=self.loss_params,
                 weight=1.0,
-            ),
+            )
         ]
         if self.backbone_params.get("use_aux_heads", False):
             loss_list.append(

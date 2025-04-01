@@ -36,7 +36,7 @@ where = ["."]
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
 optional-dependencies = { dev = { file = ["requirements-dev.txt"] } }
-version = {attr = "luxonis_train.__version__"}
+version = { attr = "luxonis_train.__version__" }
 
 [tool.ruff]
 target-version = "py310"
@@ -44,8 +44,74 @@ line-length = 79
 indent-width = 4
 
 [tool.ruff.lint]
-ignore = ["F403", "B028", "B905", "D1", "W191"]
-select = ["E4", "E7", "E9", "F", "W", "B", "I"]
+select = [
+  # "ANN",
+  # "B",
+  "C4",
+  "DTZ",
+  "E",
+  # "ERA",
+  # "F",
+  "FLY",
+  "FURB",
+  "I",
+  "ICN",
+  "INP",
+  "INT",
+  "ISC",
+  "NPY",
+  "PERF101",
+  "PERF102",
+  "PERF402",
+  "PIE",
+  # "PL",
+  "PT",
+  # "PTH",
+  "PYI",
+  "Q",
+  # "RET",
+  # "RSE",
+  "RUF022",
+  "S",
+  # "SIM",
+  "T10",
+  "T20",
+  "TID",
+  "TRY",
+  # "UP",
+  "W",
+]
+ignore = [
+  "ANN002",
+  "ANN003",
+  "ANN204",
+  "ANN401",
+  "D1",
+  "E501",
+  "F403",
+  "ICN002",
+  "NPY002",
+  "PLR0911",
+  "PLR0912",
+  "PLR0913",
+  "PLR0915",
+  "PLR2004",
+  "PLW2901",
+  "PTH123",
+  "RET503",
+  "RUF012",
+  "S101",
+  "S311",
+  "S603",
+  "SIM108",
+  "TRY003",
+  "W191",
+]
+unfixable = ["B905"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN201"]
+"__main__.py" = ["ANN201", "T201"]
 
 [tool.docformatter]
 black = true
@@ -65,37 +131,39 @@ reportMatchNotExhaustive = "error"
 
 [tool.pyleft]
 paths = ["luxonis_train"]
-exclude = [
-    "__main__.py"
-]
+exclude = ["__main__.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--disable-warnings"
 markers = [
-    "unit: mark a test as a unit test",
-    "integration: mark a test as an integration test",
+  "unit: mark a test as a unit test",
+  "integration: mark a test as an integration test",
 ]
 
 [tool.coverage.run]
 omit = [
-    "**/__main__.py",
-    "**/gpu_stats_monitor.py"
+  "**/__main__.py",
+  "**/gpu_stats_monitor.py",
+  # These are not related to our `config.py`,
+  # see https://github.com/nedbat/coveragepy/issues/1653
+  "config.py",
+  "config-3.py",
 ]
 
 [tool.coverage.report]
 exclude_also = [
-    "def __repr__",
-    "def __rich_repr__",
-    "def __str__",
-    "assert",
-    "raise NotImplementedError",
-    "except NotImplementedError",
-    "except ImportError",
-    "@abstractmethod",
-    "@overload",
-    "exit\\(\\)",
-    "cv2\\.imshow",
-    "cv2\\.waitKey",
-    "logger\\.",
+  "def __repr__",
+  "def __rich_repr__",
+  "def __str__",
+  "assert",
+  "raise NotImplementedError",
+  "except NotImplementedError",
+  "except ImportError",
+  "@abstractmethod",
+  "@overload",
+  "exit\\(\\)",
+  "cv2\\.imshow",
+  "cv2\\.waitKey",
+  "logger\\.",
 ]

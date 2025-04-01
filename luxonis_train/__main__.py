@@ -39,18 +39,18 @@ def train(
     /,
     *,
     config: str | None = None,
-    resume_weights: str | None = None,
+    weights: str | None = None,
 ):
     """Start the training process.
 
     @type config: str
     @param config: Path to the configuration file.
-    @type resume_weights: str
-    @param resume_weights: Path to the model weights to resume training
-        from. @type *opts: tuple[str, str]
+    @type weights: str
+    @param weights: Path to the model weights.
+    @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    create_model(config, opts).train(resume_weights=resume_weights)
+    create_model(config, opts).train(weights=weights)
 
 
 @app.command(group=training_group, sort_key=2)
@@ -247,7 +247,7 @@ def upgrade():
 
     def get_latest_version() -> str | None:
         url = "https://pypi.org/pypi/luxonis_train/json"
-        response = requests.get(url)
+        response = requests.get(url, timeout=5)
         if response.status_code == 200:
             data = response.json()
             versions = list(data["releases"].keys())

@@ -1,14 +1,14 @@
 from typing import Literal, TypeAlias
 
 from loguru import logger
+from luxonis_ml.typing import Params
 from pydantic import BaseModel
 
 from luxonis_train.config import (
     AttachedModuleConfig,
     LossModuleConfig,
     MetricModuleConfig,
-    ModelNodeConfig,
-    Params,
+    NodeConfig,
 )
 
 from .base_predefined_model import BasePredefinedModel
@@ -43,7 +43,7 @@ def get_variant(variant: VariantLiteral) -> OCRRecognitionVariant:
             backbone_params={"variant": "rec-light"},
             neck_params={},
             head_params={},
-        ),
+        )
     }
 
     if variant not in variants:
@@ -84,31 +84,33 @@ class OCRRecognitionModel(BasePredefinedModel):
 
         self.backbone_params["max_text_len"] = max_text_len
 
-        self.head_params["alphabet"] = self._generate_alphabet(alphabet)
+        self.head_params["alphabet"] = self._generate_alphabet(  # type: ignore
+            alphabet
+        )
         self.head_params["ignore_unknown"] = ignore_unknown
         self.loss_params = loss_params or {}
         self.visualizer_params = visualizer_params or {}
         self.task_name = task_name
 
     @property
-    def nodes(self) -> list[ModelNodeConfig]:
+    def nodes(self) -> list[NodeConfig]:
         """Defines the model nodes, including backbone and head."""
         return [
-            ModelNodeConfig(
+            NodeConfig(
                 name=self.backbone,
-                freezing=self.backbone_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.backbone_params),
                 params=self.backbone_params,
             ),
-            ModelNodeConfig(
+            NodeConfig(
                 name="SVTRNeck",
-                inputs=[f"{self.backbone}"],
-                freezing=self.neck_params.pop("freezing", {}),
+                freezing=self._get_freezing(self.neck_params),
+                inputs=[self.backbone],
                 params=self.neck_params,
             ),
-            ModelNodeConfig(
+            NodeConfig(
                 name="OCRCTCHead",
+                freezing=self._get_freezing(self.head_params),
                 inputs=["SVTRNeck"],
-                freezing=self.head_params.pop("freezing", {}),
                 params=self.head_params,
                 task_name=self.task_name,
             ),
@@ -129,14 +131,13 @@ class OCRRecognitionModel(BasePredefinedModel):
     @property
     def metrics(self) -> list[MetricModuleConfig]:
         """Defines the metrics used for evaluation."""
-        metrics = [
+        return [
             MetricModuleConfig(
                 name="OCRAccuracy",
                 attached_to="OCRCTCHead",
                 is_main_metric=True,
-            ),
+            )
         ]
-        return metrics
 
     @property
     def visualizers(self) -> list[AttachedModuleConfig]:

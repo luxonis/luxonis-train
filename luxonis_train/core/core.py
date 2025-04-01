@@ -1,9 +1,10 @@
-import os.path as osp
 import signal
+import sys
 import threading
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Literal, overload
+from threading import ExceptHookArgs
+from typing import Any, Literal, TypeAlias, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -11,10 +12,12 @@ import rich.traceback
 import torch
 import torch.utils.data as torch_data
 import yaml
+from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
+from luxonis_ml.typing import Params, PathType
 from luxonis_ml.utils import LuxonisFileSystem
 from typeguard import typechecked
 
@@ -23,14 +26,15 @@ from luxonis_train.callbacks import (
     LuxonisTQDMProgressBar,
 )
 from luxonis_train.config import Config
+from luxonis_train.lightning import LuxonisLightningModule
 from luxonis_train.loaders import BaseLoaderTorch, collate_fn
-from luxonis_train.models import LuxonisLightningModule
+from luxonis_train.loaders.luxonis_loader_torch import LuxonisLoaderTorch
+from luxonis_train.registry import LOADERS
 from luxonis_train.utils import (
     DatasetMetadata,
     LuxonisTrackerPL,
     setup_logging,
 )
-from luxonis_train.utils.registry import LOADERS
 
 from .utils.export_utils import (
     blobconverter_export,
@@ -47,6 +51,8 @@ from .utils.infer_utils import (
 )
 from .utils.train_utils import create_trainer
 
+View: TypeAlias = Literal["train", "val", "test"]
+
 
 class LuxonisModel:
     """Common logic of the core components.
@@ -57,12 +63,12 @@ class LuxonisModel:
 
     def __init__(
         self,
-        cfg: str | dict[str, Any] | Config | None,
-        opts: list[str] | tuple[str, ...] | dict[str, Any] | None = None,
+        cfg: str | Params | Config | None,
+        opts: Params | list[str] | tuple[str, ...] | None = None,
     ):
         """Constructs a new Core instance.
 
-        Loads the config and initializes datasets, dataloaders, augmentations,
+        Loads the config and initializes loaders, dataloaders, augmentations,
         lightning components, etc.
 
         @type cfg: str | dict[str, Any] | Config
@@ -88,10 +94,10 @@ class LuxonisModel:
             **self.cfg.tracker.model_dump(),
         )
 
-        self.run_save_dir = osp.join(
-            self.cfg.tracker.save_directory, self.tracker.run_name
+        self.run_save_dir = (
+            self.cfg.tracker.save_directory / self.tracker.run_name
         )
-        self.log_file = osp.join(self.run_save_dir, "luxonis_train.log")
+        self.log_file = self.run_save_dir / "luxonis_train.log"
         self.error_message = None
 
         setup_logging(file=self.log_file)
@@ -113,11 +119,15 @@ class LuxonisModel:
             precision=self.cfg.trainer.precision,
         )
 
-        self.loaders: dict[str, BaseLoaderTorch] = {}
-        for view in ["train", "val", "test"]:
-            loader_name = self.cfg.loader.name
-            Loader = LOADERS.get(loader_name)
-            if loader_name == "LuxonisLoaderTorch" and view != "train":
+        self.loaders: dict[View, BaseLoaderTorch] = {}
+        loader_name = self.cfg.loader.name
+        Loader = LOADERS.get(loader_name)
+        for view in ("train", "val", "test"):
+            if (
+                view != "train"
+                and issubclass(Loader, LuxonisLoaderTorch)
+                and self.cfg.loader.params.get("dataset_dir") is not None
+            ):
                 self.cfg.loader.params["delete_existing"] = False
 
             self.loaders[view] = Loader(
@@ -135,11 +145,9 @@ class LuxonisModel:
                 **self.cfg.loader.params,  # type: ignore
             )
 
-        self.loader_metadata_types = self.loaders["train"].get_metadata_types()
-
         for name, loader in self.loaders.items():
             logger.info(
-                f"{name.capitalize()} loader - splits: {loader.view}, size: {len(loader)}"
+                f"{name.capitalize()} loader - view: {loader.view}, size: {len(loader)}"
             )
             if len(loader) == 0:
                 logger.warning(f"{name.capitalize()} loader is empty!")
@@ -151,25 +159,31 @@ class LuxonisModel:
                 "Weighted sampler is not implemented yet."
             )
 
-        if self.cfg.trainer.n_validation_batches:
-            generator = torch.Generator()
-            generator.manual_seed(self.cfg.trainer.seed or 42)
-            n_samples = (
-                self.cfg.trainer.n_validation_batches
-                * self.cfg.trainer.batch_size
-            )
-            for view in ["val", "test"]:
-                if view in self.loaders:
-                    indices = list(
-                        range(min(n_samples, len(self.loaders[view])))
+        self.pytorch_loaders: dict[View, torch_data.DataLoader] = {}
+        for view in ("train", "val", "test"):
+            if self.cfg.trainer.n_validation_batches is not None and view in {
+                "val",
+                "test",
+            }:
+                generator = torch.Generator()
+                generator.manual_seed(self.cfg.trainer.seed or 42)
+                if self.cfg.trainer.n_validation_batches == -1:
+                    self.cfg.trainer.n_validation_batches = len(
+                        self.loaders["val"]
                     )
-                    self.loaders[view] = torch_data.Subset(  # type: ignore
-                        self.loaders[view], indices
+                    n_samples = len(self.loaders[view])
+                else:
+                    n_samples = (
+                        self.cfg.trainer.n_validation_batches
+                        * self.cfg.trainer.batch_size
                     )
+                indices = range(min(n_samples, len(self.loaders[view])))
+                loader = torch_data.Subset(self.loaders[view], indices)
+            else:
+                loader = self.loaders[view]
 
-        self.pytorch_loaders = {
-            view: torch_data.DataLoader(
-                self.loaders[view],
+            self.pytorch_loaders[view] = torch_data.DataLoader(
+                loader,
                 batch_size=self.cfg.trainer.batch_size,
                 num_workers=self.cfg.trainer.n_workers,
                 collate_fn=collate_fn,
@@ -188,13 +202,11 @@ class LuxonisModel:
                 )
                 else None,
             )
-            for view in ["train", "val", "test"]
-        }
 
         self.dataset_metadata = DatasetMetadata.from_loader(
             self.loaders["train"]
         )
-        self.config_file = osp.join(self.run_save_dir, "training_config.yaml")
+        self.config_file = self.run_save_dir / "training_config.yaml"
         self.cfg.save_data(self.config_file)
 
         self.input_shapes = self.loaders["train"].input_shapes
@@ -209,29 +221,30 @@ class LuxonisModel:
 
         self._exported_models: dict[str, Path] = {}
 
-    def _train(self, resume: str | None, *args, **kwargs) -> None:
+    def _train(self, resume: PathType | None, *args, **kwargs) -> None:
         status = "success"
         try:
             self.pl_trainer.fit(*args, ckpt_path=resume, **kwargs)
-        except Exception as e:  # pragma: no cover
+        except Exception:  # pragma: no cover
             logger.exception("Encountered an exception during training.")
             status = "failed"
-            raise e
+            raise
         finally:
             self.tracker.upload_artifact(self.log_file, typ="logs")
             self.tracker.upload_artifact(self.config_file, typ="config")
             self.tracker._finalize(status)
 
     def train(
-        self, new_thread: bool = False, resume_weights: str | None = None
+        self, new_thread: bool = False, weights: PathType | None = None
     ) -> None:
         """Runs training.
 
         @type new_thread: bool
         @param new_thread: Runs training in new thread if set to True.
-        @type resume_weights: str | None
-        @param resume_weights: Path to the checkpoint from which to to
-            resume the training.
+        @type weights: str | None
+        @param weights: Path to the weights. If user specifies weights
+            in the config file, the weights provided here will take
+            precedence.
         """
 
         if self.cfg.trainer.matmul_precision is not None:
@@ -242,33 +255,43 @@ class LuxonisModel:
                 self.cfg.trainer.matmul_precision
             )
 
-        if resume_weights is not None:
-            resume_weights = str(
-                LuxonisFileSystem.download(resume_weights, self.run_save_dir)
+        if weights is not None:
+            weights = LuxonisFileSystem.download(
+                str(weights), self.run_save_dir
+            )
+            if self.cfg.model.weights is not None:
+                logger.warning(
+                    "Weights provided in the command line, but config weights are set. "
+                    "Ignoring weights provided in config."
+                )
+            self.lightning_module.load_checkpoint(weights)
+        else:
+            weights = self.cfg.model.weights
+
+        resume_weights = weights if self.cfg.trainer.resume_training else None
+
+        if self.cfg.trainer.resume_training and resume_weights is None:
+            logger.warning(
+                "Resume training is enabled but no weights were provided. "
+                "Training will start from scratch."
             )
 
         def graceful_exit(signum: int, _: Any) -> None:  # pragma: no cover
             logger.info(
                 f"{signal.Signals(signum).name} received, stopping training..."
             )
-            ckpt_path = osp.join(self.run_save_dir, "resume.ckpt")
+            ckpt_path = self.run_save_dir / "resume.ckpt"
             self.pl_trainer.save_checkpoint(ckpt_path)
             self.tracker.upload_artifact(
                 ckpt_path, typ="checkpoints", name="resume.ckpt"
             )
             self.tracker._finalize(status="failed")
-            exit()
+            sys.exit()
 
         signal.signal(signal.SIGTERM, graceful_exit)
 
         if not new_thread:
             logger.info(f"Checkpoints will be saved in: {self.run_save_dir}")
-            if self.cfg.trainer.resume_training:
-                if resume_weights is not None:
-                    logger.warning(
-                        "Resume weights provided in the command line, but resume_training in config is set to True. Ignoring resume weights provided in the command line."
-                    )
-                resume_weights = self.cfg.model.weights  # type: ignore
             logger.info("Starting training...")
             self._train(
                 resume_weights,
@@ -281,7 +304,7 @@ class LuxonisModel:
 
         else:  # pragma: no cover
             # Every time exception happens in the Thread, this hook will activate
-            def thread_exception_hook(args):
+            def thread_exception_hook(args: ExceptHookArgs) -> None:
                 self.error_message = str(args.exc_value)
 
             threading.excepthook = thread_exception_hook
@@ -300,17 +323,17 @@ class LuxonisModel:
 
     def export(
         self,
-        onnx_save_path: str | Path | None = None,
-        weights: str | Path | None = None,
+        onnx_save_path: PathType | None = None,
+        weights: PathType | None = None,
         ignore_missing_weights: bool = False,
     ) -> None:
         """Runs export.
 
-        @type onnx_save_path: str | Path | None
+        @type onnx_save_path: PathType | None
         @param onnx_save_path: Path to where the exported ONNX model will be saved.
             If not specified, model will be saved to the export directory
             with the name specified in config file.
-        @type weights: str | Path | None
+        @type weights: PathType | None
         @param weights: Path to the checkpoint from which to load weights.
             If not specified, the value of `model.weights` from the
             configuration file will be used. The current weights of the
@@ -347,9 +370,22 @@ class LuxonisModel:
         try_onnx_simplify(onnx_save_path)
         self._exported_models["onnx"] = Path(onnx_save_path)
 
-        scale_values, mean_values, reverse_channels = get_preprocessing(
-            self.cfg
+        scale, mean, color_space = get_preprocessing(
+            self.cfg_preprocessing, "Model export"
         )
+        scale_values = self.cfg.exporter.scale_values or scale
+        mean_values = self.cfg.exporter.mean_values or mean
+        if self.cfg.exporter.reverse_input_channels is not None:
+            reverse_input_channels = self.cfg.exporter.reverse_input_channels
+        else:
+            logger.info(
+                "`exporter.reverse_input_channels` not specified. "
+                "Using the `trainer.preprocessing.color_space` value "
+                "to determine if the channels should be reversed. "
+                f"`color_space` = '{color_space}' -> "
+                f"`reverse_input_channels` = `{color_space == 'RGB'}`"
+            )
+            reverse_input_channels = color_space == "RGB"
 
         if self.cfg.exporter.blobconverter.active:
             try:
@@ -357,7 +393,7 @@ class LuxonisModel:
                     self.cfg.exporter,
                     scale_values,
                     mean_values,
-                    reverse_channels,
+                    reverse_input_channels,
                     str(export_save_dir),
                     onnx_save_path,
                 )
@@ -379,7 +415,7 @@ class LuxonisModel:
             "input_model": onnx_save_path,
             "scale_values": scale_values,
             "mean_values": mean_values,
-            "reverse_input_channels": reverse_channels,
+            "reverse_input_channels": reverse_input_channels,
             "shape": [1, *next(iter(self.input_shapes.values()))],
             "outputs": [{"name": name} for name in output_names],
         }
@@ -402,34 +438,34 @@ class LuxonisModel:
         self,
         new_thread: Literal[False] = ...,
         view: Literal["train", "test", "val"] = "val",
-        weights: str | Path | None = ...,
+        weights: PathType | None = ...,
     ) -> Mapping[str, float]: ...
 
     @overload
     def test(
         self,
         new_thread: Literal[True] = ...,
-        view: Literal["train", "test", "val"] = "val",
-        weights: str | Path | None = ...,
+        view: Literal["train", "test", "val"] = "test",
+        weights: PathType | None = ...,
     ) -> None: ...
 
     @typechecked
     def test(
         self,
         new_thread: bool = False,
-        view: Literal["train", "val", "test"] = "val",
-        weights: str | Path | None = None,
+        view: Literal["train", "val", "test"] = "test",
+        weights: PathType | None = None,
     ) -> Mapping[str, float] | None:
         """Runs testing.
 
         @type new_thread: bool
         @param new_thread: Runs testing in a new thread if set to True.
         @type view: Literal["train", "test", "val"]
-        @param view: Which view to run the testing on. Defauls to "val".
+        @param view: Which view to run the testing on. Defauls to "test".
         @rtype: Mapping[str, float] | None
         @return: If new_thread is False, returns a dictionary test
             results.
-        @type weights: str | Path | None
+        @type weights: PathType | None
         @param weights: Path to the checkpoint from which to load weights.
             If not specified, the value of `model.weights` from the
             configuration file will be used. The current weights of the
@@ -441,37 +477,35 @@ class LuxonisModel:
         loader = self.pytorch_loaders[view]
 
         with replace_weights(self.lightning_module, weights):
-            if not new_thread:
-                return self.pl_trainer.test(self.lightning_module, loader)[0]
-            else:  # pragma: no cover
+            if new_thread:  # pragma: no cover
                 self.thread = threading.Thread(
                     target=self.pl_trainer.test,
                     args=(self.lightning_module, loader),
                     daemon=True,
                 )
-                self.thread.start()
+                return self.thread.start()
+            return self.pl_trainer.test(self.lightning_module, loader)[0]
 
-    @typechecked
     def infer(
         self,
         view: Literal["train", "val", "test"] = "val",
-        save_dir: str | Path | None = None,
-        source_path: str | Path | None = None,
-        weights: str | Path | None = None,
+        save_dir: PathType | None = None,
+        source_path: PathType | None = None,
+        weights: PathType | None = None,
     ) -> None:
         """Runs inference.
 
         @type view: str
         @param view: Which split to run the inference on. Valid values
             are: C{"train"}, C{"val"}, C{"test"}. Defaults to C{"val"}.
-        @type save_dir: str | Path | None
+        @type save_dir: PathType | None
         @param save_dir: Directory where to save the visualizations. If
             not specified, visualizations will be rendered on the
             screen.
-        @type source_path: str | Path | None
+        @type source_path: PathType | None
         @param source_path: Path to the image file, video file or directory.
             If None, defaults to using dataset images.
-        @type weights: str | Path | None
+        @type weights: PathType | None
         @param weights: Path to the checkpoint from which to load weights.
             If not specified, the value of `model.weights` from the
             configuration file will be used. The current weights of the
@@ -525,9 +559,7 @@ class LuxonisModel:
                 **tracker_params,
             )
 
-            run_save_dir = osp.join(
-                cfg_tracker.save_directory, child_tracker.run_name
-            )
+            run_save_dir = cfg_tracker.save_directory / child_tracker.run_name
 
             assert self.cfg.tuner is not None
             curr_params = get_trial_params(
@@ -565,7 +597,7 @@ class LuxonisModel:
 
             child_tracker.log_hyperparams(curr_params)
 
-            cfg.save_data(osp.join(run_save_dir, "training_config.yaml"))
+            cfg.save_data(run_save_dir / "training_config.yaml")
 
             lightning_module = LuxonisLightningModule(
                 cfg=cfg,
@@ -596,7 +628,7 @@ class LuxonisModel:
 
             try:
                 pl_trainer.fit(
-                    lightning_module,  # type: ignore
+                    lightning_module,
                     self.pytorch_loaders["train"],
                     self.pytorch_loaders["val"],
                 )
@@ -643,14 +675,13 @@ class LuxonisModel:
             if cfg_tuner.storage.storage_type == "local":
                 storage = "sqlite:///study_local.db"
             else:  # pragma: no cover
-                storage = "postgresql://{}:{}@{}:{}/{}".format(
+                storage = "postgresql://{}:{}@{}:{}/{}".format(  # noqa: UP032
                     self.cfg.ENVIRON.POSTGRES_USER,
                     self.cfg.ENVIRON.POSTGRES_PASSWORD,
                     self.cfg.ENVIRON.POSTGRES_HOST,
                     self.cfg.ENVIRON.POSTGRES_PORT,
                     self.cfg.ENVIRON.POSTGRES_DB,
                 )
-
         study = optuna.create_study(
             study_name=cfg_tuner.study_name,
             storage=storage,
@@ -679,16 +710,14 @@ class LuxonisModel:
             wandb_parent_tracker.log_hyperparams(study.best_params)
 
     def archive(
-        self,
-        path: str | Path | None = None,
-        weights: str | Path | None = None,
+        self, path: PathType | None = None, weights: PathType | None = None
     ) -> Path:
         """Generates an NN Archive out of a model executable.
 
-        @type path: str | Path | None
+        @type path: PathType | None
         @param path: Path to the model executable. If not specified, the
             model will be exported first.
-        @type weights: str | Path | None
+        @type weights: PathType | None
         @param weights: Path to the checkpoint from which to load weights.
             If not specified, the value of `model.weights` from the
             configuration file will be used. The current weights of the
@@ -701,7 +730,7 @@ class LuxonisModel:
         with replace_weights(self.lightning_module, weights):
             return self._archive(path)
 
-    def _archive(self, path: str | Path | None = None) -> Path:
+    def _archive(self, path: PathType | None = None) -> Path:
         from .utils.archive_utils import (
             get_head_configs,
             get_inputs,
@@ -726,13 +755,15 @@ class LuxonisModel:
         executable_fname = path.name
         archive_name += path.suffix
 
-        def _mult(lst: list[float | int]) -> list[float]:
-            return [round(x * 255.0, 5) for x in lst]
+        mean, scale, color_space = get_preprocessing(
+            self.cfg_preprocessing, "Exporting to NN Archive"
+        )
 
-        preprocessing = {  # TODO: keep preprocessing same for each input?
-            "mean": _mult(self.cfg_preprocessing.normalize.params["mean"]),
-            "scale": _mult(self.cfg_preprocessing.normalize.params["std"]),
-            "dai_type": f"{self.cfg_preprocessing.color_space}888p",
+        # TODO: keep preprocessing same for each input?
+        preprocessing = {
+            "mean": mean,
+            "scale": scale,
+            "dai_type": f"{color_space}888p",
         }
 
         inputs_dict = get_inputs(path)
@@ -794,36 +825,6 @@ class LuxonisModel:
         return Path(archive_path)
 
     @rank_zero_only
-    def get_status(self) -> tuple[int, int]:
-        """Get current status of training.
-
-        @rtype: tuple[int, int]
-        @return: First element is the current epoch, second element is
-            the total number of epochs.
-        """
-        return self.lightning_module.get_status()
-
-    @rank_zero_only
-    def get_status_percentage(self) -> float:
-        """Return percentage of current training, takes into account
-        early stopping.
-
-        @rtype: float
-        @return: Percentage of current training in range 0-100.
-        """
-        return self.lightning_module.get_status_percentage()
-
-    @rank_zero_only
-    def get_error_message(self) -> str | None:
-        """Return error message if one occurs while running in thread,
-        otherwise None.
-
-        @rtype: str | None
-        @return: Error message
-        """
-        return self.error_message
-
-    @rank_zero_only
     def get_min_loss_checkpoint_path(self) -> str | None:
         """Return best checkpoint path with respect to minimal
         validation loss.
@@ -832,9 +833,12 @@ class LuxonisModel:
         @return: Path to the best checkpoint with respect to minimal
             validation loss
         """
-        if not self.pl_trainer.checkpoint_callbacks:
-            return None
-        return self.pl_trainer.checkpoint_callbacks[0].best_model_path  # type: ignore
+        for callback in self.pl_trainer.checkpoint_callbacks:
+            if not isinstance(callback, ModelCheckpoint):
+                continue
+            if callback.monitor == "val/loss":
+                return callback.best_model_path
+        return None
 
     @rank_zero_only
     def get_best_metric_checkpoint_path(self) -> str | None:
@@ -845,6 +849,9 @@ class LuxonisModel:
         @return: Path to the best checkpoint with respect to best
             validation metric
         """
-        if len(self.pl_trainer.checkpoint_callbacks) < 2:
-            return None
-        return self.pl_trainer.checkpoint_callbacks[1].best_model_path  # type: ignore
+        for callback in self.pl_trainer.checkpoint_callbacks:
+            if not isinstance(callback, ModelCheckpoint):
+                continue
+            if callback.monitor and "val/metric/" in callback.monitor:
+                return callback.best_model_path
+        return None

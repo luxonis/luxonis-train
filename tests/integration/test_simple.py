@@ -2,7 +2,6 @@ import json
 import shutil
 import sys
 import tarfile
-from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -36,7 +35,7 @@ def opts(output_dir: Path) -> dict[str, Any]:
         "trainer.epochs": 1,
         "trainer.batch_size": 1,
         "trainer.validation_interval": 1,
-        "trainer.callbacks": "[]",
+        "trainer.callbacks": [],
         "tracker.save_directory": str(output_dir),
         "tuner.n_trials": 4,
     }
@@ -71,32 +70,35 @@ def test_predefined_models(
     config_name: str,
     coco_dataset: LuxonisDataset,
     cifar10_dataset: LuxonisDataset,
-    mnist_dataset: LuxonisDataset,
+    toy_ocr_dataset: LuxonisDataset,
     image_size: tuple[int, int],
     output_dir: Path,
     subtests: SubTests,
 ):
     config_file = f"configs/{config_name}.yaml"
-    opts |= {
+    opts = opts | {
         "loader.params.dataset_name": (
             cifar10_dataset.identifier
             if "classification" in config_file
-            else mnist_dataset.identifier
+            else toy_ocr_dataset.identifier
             if "ocr_recognition" in config_file
             else coco_dataset.identifier
         ),
         "tracker.run_name": config_name,
         "trainer.epochs": 1,
         "trainer.preprocessing.train_image_size": image_size,
+        "trainer.callbacks": [
+            {"name": "ExportOnTrainEnd"},
+            {"name": "ArchiveOnTrainEnd"},
+            {"name": "TestOnTrainEnd"},
+        ],
     }
+    if "ocr_recognition" in config_file:
+        opts["trainer.preprocessing.train_image_size"] = [48, 320]
 
-    model = LuxonisModel(config_file, opts)
-    model.train()
-    model.test(view="train")
     with subtests.test("original_config"):
         model = LuxonisModel(config_file, opts)
         model.train()
-        model.test()
     with subtests.test("saved_config"):
         opts["tracker.run_name"] = f"{config_name}_reload"
         model = LuxonisModel(
@@ -124,7 +126,7 @@ def test_custom_tasks(
     opts: Params, parking_lot_dataset: LuxonisDataset, subtests: SubTests
 ):
     config_file = "tests/configs/parking_lot_config.yaml"
-    opts |= {
+    opts = opts | {
         "loader.params.dataset_name": parking_lot_dataset.dataset_name,
         "trainer.preprocessing.train_image_size": [128, 160],
         "trainer.batch_size": 2,
@@ -144,9 +146,9 @@ def test_custom_tasks(
         with tarfile.open(archive_path) as tar:
             extracted_cfg = tar.extractfile("config.json")
 
-            assert (
-                extracted_cfg is not None
-            ), "Config JSON not found in the archive."
+            assert extracted_cfg is not None, (
+                "Config JSON not found in the archive."
+            )
             generated_config = json.loads(extracted_cfg.read().decode())
 
         # Sort the fields in the config to make the comparison consistent
@@ -244,7 +246,7 @@ def test_infer(
 
 
 def test_archive(output_dir: Path, coco_dataset: LuxonisDataset):
-    opts = {
+    opts: Params = {
         "tracker.save_directory": str(output_dir),
         "loader.params.dataset_name": coco_dataset.identifier,
     }
@@ -263,9 +265,7 @@ def test_archive(output_dir: Path, coco_dataset: LuxonisDataset):
 
 def test_callbacks(opts: Params, coco_dataset: LuxonisDataset):
     config_file = "tests/configs/config_simple.yaml"
-    opts = deepcopy(opts)
-    del opts["trainer.callbacks"]
-    opts |= {
+    opts = opts | {
         "trainer.use_rich_progress_bar": False,
         "trainer.seed": 42,
         "trainer.deterministic": "warn",
@@ -299,8 +299,7 @@ def test_callbacks(opts: Params, coco_dataset: LuxonisDataset):
 
 def test_freezing(opts: Params, coco_dataset: LuxonisDataset):
     config_file = "configs/segmentation_light_model.yaml"
-    opts = deepcopy(opts)
-    opts |= {
+    opts = opts | {
         "model.predefined_model.params": {
             "head_params": {
                 "freezing": {
@@ -308,10 +307,10 @@ def test_freezing(opts: Params, coco_dataset: LuxonisDataset):
                     "unfreeze_after": 2,
                 },
             }
-        }
+        },
+        "trainer.epochs": 3,
+        "loader.params.dataset_name": coco_dataset.identifier,
     }
-    opts["trainer.epochs"] = 3
-    opts["loader.params.dataset_name"] = coco_dataset.identifier
     model = LuxonisModel(config_file, opts)
     model.train()
 
@@ -344,6 +343,7 @@ def test_smart_cfg_auto_populate(coco_dataset: LuxonisDataset):
     loss_params = model.cfg.model.predefined_model.params["loss_params"]
     expected_iou_weight = 2.5 * grad_accumulation
     expected_class_weight = 1.0 * grad_accumulation
+    assert isinstance(loss_params, dict)
 
     assert loss_params["iou_loss_weight"] == expected_iou_weight
     assert loss_params["class_loss_weight"] == expected_class_weight

@@ -9,13 +9,12 @@ from luxonis_ml.enums import DatasetType
 from torch import Size, Tensor
 from typing_extensions import override
 
-from luxonis_train.utils.types import Labels
+from luxonis_train.typing import Labels
 
 from .base_loader import BaseLoaderTorch
 
 
 class LuxonisLoaderTorch(BaseLoaderTorch):
-    @override
     def __init__(
         self,
         dataset_name: str | None = None,
@@ -131,6 +130,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             for k, v in self.dataset.get_metadata_types().items()
         }
 
+    @override
     def augment_test_image(self, img: Tensor) -> Tensor:
         if self.loader.augmentations is None:
             return img
@@ -151,19 +151,19 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         if LuxonisDataset.exists(dataset_name):
             if not delete_existing:
                 return LuxonisDataset(dataset_name=dataset_name)
-            else:
-                logger.warning(
-                    f"Dataset {dataset_name} already exists. "
-                    "The dataset will be generated again to ensure the latest data are used. "
-                    "If you don't want to regenerate the dataset every time, set `delete_existing=False`'"
-                )
+            logger.warning(
+                f"Dataset '{dataset_name}' already exists. "
+                "The dataset will be generated again to ensure "
+                "the latest data are used. If you don't want to regenerate "
+                "the dataset each time, set `delete_existing` to `False`"
+            )
 
         if dataset_type is None:
             logger.warning(
                 "Dataset type is not set. "
                 "Attempting to infer it from the directory structure. "
                 "If this fails, please set the dataset type manually. "
-                f"Supported types are: {', '.join(DatasetType.__members__)}."
+                f"Supported types are: {list(DatasetType.__members__)}."
             )
 
         logger.info(

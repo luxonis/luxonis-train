@@ -36,12 +36,10 @@ class SigmoidFocalLoss(BaseLoss):
         self.reduction = reduction
 
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
-        loss = sigmoid_focal_loss(
+        return sigmoid_focal_loss(
             predictions,
             target,
             alpha=self.alpha,
             gamma=self.gamma,
             reduction=self.reduction,
         )
-
-        return loss

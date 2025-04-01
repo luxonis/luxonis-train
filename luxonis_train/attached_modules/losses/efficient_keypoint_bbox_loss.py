@@ -28,7 +28,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
 
     def __init__(
         self,
-        n_warmup_epochs: int = 4,
+        n_warmup_epochs: int = 0,
         iou_type: IoUType = "giou",
         reduction: Literal["sum", "mean"] = "mean",
         class_loss_weight: float = 0.5,
@@ -78,9 +78,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             pos_weight=torch.tensor([viz_pw])
         )
         self.sigmas = get_sigmas(
-            sigmas=sigmas,
-            n_keypoints=self.n_keypoints,
-            caller_name=self.name,
+            sigmas=sigmas, n_keypoints=self.n_keypoints, caller_name=self.name
         )
         self.area_factor = get_with_default(
             area_factor, "bbox area scaling", self.name, default=0.53
@@ -123,8 +121,8 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             target_keypoints, batch_size, self.gt_kpts_scale
         )
 
-        scaled_keypoints_raw = keypoints_raw.clone()
-        scaled_keypoints_raw[..., :2] = scaled_keypoints_raw[
+        scaled_raw_keypoints = keypoints_raw.clone()
+        scaled_raw_keypoints[..., :2] = scaled_raw_keypoints[
             ..., :2
         ] * self.stride_tensor.view(1, -1, 1, 1)
 
@@ -142,7 +140,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             mask_gt,
             pred_bboxes,
             class_scores,
-            scaled_keypoints_raw,
+            scaled_raw_keypoints,
             batched_kpts,
             sigmas,
             self.area_factor,
@@ -196,10 +194,9 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             keypoints_raw[..., 2], mask
         )
 
-        one_hot_label = F.one_hot(
-            assigned_labels.long(),
-            self.n_classes + 1,
-        )[..., :-1]
+        one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[
+            ..., :-1
+        ]
         loss_cls = self.varifocal_loss(
             class_scores, assigned_scores, one_hot_label
         )
@@ -274,9 +271,6 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             return
         super()._init_parameters(features)
         self.gt_kpts_scale = torch.tensor(
-            [
-                self.original_img_size[1],
-                self.original_img_size[0],
-            ],
+            [self.original_img_size[1], self.original_img_size[0]],
             device=features[0].device,
         )

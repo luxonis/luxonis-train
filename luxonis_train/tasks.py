@@ -88,10 +88,6 @@ class InstanceSegmentation(InstanceBaseTask):
     def required_labels(self) -> set[str | Metadata]:
         return super().required_labels | {"instance_segmentation"}
 
-    @property
-    def main_output(self) -> str:
-        return "segmentation"
-
 
 class InstanceKeypoints(InstanceBaseTask):
     def __init__(self):
@@ -100,10 +96,6 @@ class InstanceKeypoints(InstanceBaseTask):
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
         return super().required_labels | {"keypoints"}
-
-    @property
-    def main_output(self) -> str:
-        return "keypoints"
 
 
 class Keypoints(Task):

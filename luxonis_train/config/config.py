@@ -1,17 +1,18 @@
 import sys
-import warnings
-from typing import Annotated, Any, Literal, NamedTuple, TypeAlias
+from pathlib import Path
+from typing import Annotated, Any, Literal, NamedTuple
 
 from loguru import logger
 from luxonis_ml.enums import DatasetType
-from luxonis_ml.typing import ConfigItem
+from luxonis_ml.typing import ConfigItem, Params, ParamValue, check_type
 from luxonis_ml.utils import (
     BaseModelExtraForbid,
     Environ,
     LuxonisConfig,
     LuxonisFileSystem,
+    is_acyclic,
 )
-from pydantic import AliasChoices, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic.types import (
     FilePath,
     NonNegativeFloat,
@@ -20,7 +21,7 @@ from pydantic.types import (
 )
 from typing_extensions import Self
 
-Params: TypeAlias = dict[str, Any]
+from luxonis_train.registry import MODELS
 
 
 class ImageSize(NamedTuple):
@@ -28,11 +29,9 @@ class ImageSize(NamedTuple):
     width: int
 
 
-class AttachedModuleConfig(BaseModelExtraForbid):
-    name: str
+class AttachedModuleConfig(ConfigItem):
     attached_to: str
     alias: str | None = None
-    params: Params = {}
 
 
 class LossModuleConfig(AttachedModuleConfig):
@@ -57,25 +56,21 @@ class FreezingConfig(BaseModelExtraForbid):
     unfreeze_after: NonNegativeInt | NonNegativeFloat | None = None
 
 
-class ModelNodeConfig(BaseModelExtraForbid):
-    name: str
+class NodeConfig(ConfigItem):
     alias: str | None = None
     inputs: list[str] = []  # From preceding nodes
     input_sources: list[str] = []  # From data loader
-    freezing: FreezingConfig = FreezingConfig()
+    freezing: FreezingConfig = Field(default_factory=FreezingConfig)
     remove_on_export: bool = False
     task_name: str = ""
     metadata_task_override: str | dict[str, str] | None = None
-    params: Params = {}
 
 
-class PredefinedModelConfig(BaseModelExtraForbid):
-    name: str
+class PredefinedModelConfig(ConfigItem):
     include_nodes: bool = True
     include_losses: bool = True
     include_metrics: bool = True
     include_visualizers: bool = True
-    params: Params = {}
 
 
 class ModelConfig(BaseModelExtraForbid):
@@ -84,7 +79,7 @@ class ModelConfig(BaseModelExtraForbid):
         PredefinedModelConfig | None, Field(exclude=True)
     ] = None
     weights: FilePath | None = None
-    nodes: list[ModelNodeConfig] = []
+    nodes: list[NodeConfig] = []
     losses: list[LossModuleConfig] = []
     metrics: list[MetricModuleConfig] = []
     visualizers: list[AttachedModuleConfig] = []
@@ -92,9 +87,9 @@ class ModelConfig(BaseModelExtraForbid):
 
     @field_validator("nodes", mode="before")
     @classmethod
-    def validate_nodes(cls, nodes: Any) -> Any:
+    def validate_nodes(cls, nodes: ParamValue) -> Any:
         logged_general_warning = False
-        if not isinstance(nodes, list):
+        if not check_type(nodes, list[dict]):
             return nodes
         names = []
         last_body_index: int | None = None
@@ -131,9 +126,7 @@ class ModelConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_predefined_model(self) -> Self:
-        from .predefined_models.base_predefined_model import MODELS
-
-        if self.predefined_model:
+        if self.predefined_model is not None:
             logger.info(
                 f"Using predefined model: `{self.predefined_model.name}`"
             )
@@ -157,10 +150,6 @@ class ModelConfig(BaseModelExtraForbid):
     def check_main_metric(self) -> Self:
         for metric in self.metrics:
             if metric.is_main_metric:
-                if "matrix" in metric.name.lower():
-                    raise ValueError(
-                        f"Main metric cannot contain 'matrix' in its name: `{metric.name}`"
-                    )
                 logger.info(f"Main metric: `{metric.name}`")
                 return self
 
@@ -173,15 +162,15 @@ class ModelConfig(BaseModelExtraForbid):
                     logger.info(f"Setting '{name}' as main metric.")
                     return self
             raise ValueError(
-                "[Configuration Error] No valid main metric can be set as all metrics contain 'matrix' in their names."
+                "No valid main metric can be set as all "
+                "metrics contain 'matrix' in their names."
             )
-        else:
-            logger.warning(
-                "[Ignore if using predefined model] "
-                "No metrics specified. "
-                "This is likely unintended unless "
-                "the configuration is not used for training."
-            )
+        logger.warning(
+            "[Ignore if using predefined model] "
+            "No metrics specified. "
+            "This is likely unintended unless "
+            "the configuration is not used for training."
+        )
         return self
 
     @model_validator(mode="after")
@@ -191,9 +180,9 @@ class ModelConfig(BaseModelExtraForbid):
             raise ValueError("Model graph is not acyclic.")
         if not self.outputs:
             outputs: list[str] = []  # nodes which are not inputs to any nodes
-            inputs = set(
+            inputs = {
                 node_name for node in self.nodes for node_name in node.inputs
-            )
+            }
             for node in self.nodes:
                 name = node.alias or node.name
                 if name not in inputs:
@@ -238,11 +227,11 @@ class ModelConfig(BaseModelExtraForbid):
             names: set[str] = set()
             node_index = 0
             for module in modules:
-                module: AttachedModuleConfig | ModelNodeConfig
+                module: AttachedModuleConfig | NodeConfig
                 name = module.alias or module.name
                 if name in names:
                     if module.alias is None:
-                        if isinstance(module, ModelNodeConfig):
+                        if isinstance(module, NodeConfig):
                             module.alias = module.name
                         else:
                             module.alias = f"{name}_{module.attached_to}"
@@ -267,10 +256,15 @@ class ModelConfig(BaseModelExtraForbid):
             if section not in data:
                 data[section] = []
             else:
-                warnings.warn(
+                logger.warning(
                     f"Field `model.{section}` is deprecated. "
                     f"Please specify `{section}` under "
                     "the node they are attached to."
+                )
+            if not check_type(data["nodes"], list[dict[str, Any]]):
+                raise ValueError(
+                    "Invalid value for `model.nodes`. "
+                    "Expected a list of dictionaries."
                 )
             for node in data["nodes"]:
                 if section in node:
@@ -279,7 +273,13 @@ class ModelConfig(BaseModelExtraForbid):
                         cfg = [cfg]
                     for c in cfg:
                         c["attached_to"] = node.get("alias", node.get("name"))
-                    data[section] += cfg
+                    section_data = data[section]
+                    if not check_type(section_data, list[dict]):
+                        raise ValueError(
+                            f"Invalid value for `model.{section}`. "
+                            "Expected a list of dictionaries."
+                        )
+                    section_data.extend(cfg)
         return data
 
 
@@ -288,26 +288,31 @@ class TrackerConfig(BaseModelExtraForbid):
     project_id: str | None = None
     run_name: str | None = None
     run_id: str | None = None
-    save_directory: str = "output"
+    save_directory: Path = Path("output")
     is_tensorboard: bool = True
     is_wandb: bool = False
     wandb_entity: str | None = None
     is_mlflow: bool = False
 
 
-class LoaderConfig(BaseModelExtraForbid):
+class LoaderConfig(ConfigItem):
     name: str = "LuxonisLoaderTorch"
     image_source: str = "image"
     train_view: list[str] = ["train"]
     val_view: list[str] = ["val"]
     test_view: list[str] = ["test"]
-    params: Params = {}
 
     @field_validator("train_view", "val_view", "test_view", mode="before")
     @classmethod
-    def validate_splits(cls, splits: Any) -> list[Any]:
+    def validate_view(cls, splits: ParamValue) -> list[Any]:
         if isinstance(splits, str):
             return [splits]
+        if not isinstance(splits, list):
+            raise TypeError(
+                "Invalid value for `train_view`, `val_view`, "
+                f"or `test_view`: {splits}. "
+                "Expected a string or a list of strings."
+            )
         return splits
 
     @model_validator(mode="after")
@@ -315,6 +320,11 @@ class LoaderConfig(BaseModelExtraForbid):
         dataset_type = self.params.get("dataset_type")
         if dataset_type is None:
             return self
+        if not isinstance(dataset_type, str):
+            raise TypeError(
+                f"Invalid value for `dataset_type`: {dataset_type}. "
+                "Expected a string."
+            )
         dataset_type = dataset_type.upper()
 
         if dataset_type not in DatasetType.__members__:
@@ -328,32 +338,32 @@ class LoaderConfig(BaseModelExtraForbid):
 
 class NormalizeAugmentationConfig(BaseModelExtraForbid):
     active: bool = True
-    params: dict[str, Any] = {
+    params: Params = {
         "mean": [0.485, 0.456, 0.406],
         "std": [0.229, 0.224, 0.225],
     }
 
 
-class AugmentationConfig(BaseModelExtraForbid):
-    name: str
+class AugmentationConfig(ConfigItem):
     active: bool = True
-    params: Params = {}
 
 
 class PreprocessingConfig(BaseModelExtraForbid):
     train_image_size: Annotated[
-        ImageSize, Field(default=[256, 256], min_length=2, max_length=2)
+        ImageSize, Field(min_length=2, max_length=2)
     ] = ImageSize(256, 256)
     keep_aspect_ratio: bool = True
     color_space: Literal["RGB", "BGR"] = "RGB"
-    normalize: NormalizeAugmentationConfig = NormalizeAugmentationConfig()
+    normalize: NormalizeAugmentationConfig = Field(
+        default_factory=NormalizeAugmentationConfig
+    )
     augmentations: list[AugmentationConfig] = []
 
     @model_validator(mode="before")
     @classmethod
-    def validate_train_rgb(cls, data: dict[str, Any]) -> dict[str, Any]:
+    def validate_train_rgb(cls, data: Params) -> Params:
         if "train_rgb" in data:
-            warnings.warn(
+            logger.warning(
                 "Field `train_rgb` is deprecated. Use `color_space` instead."
             )
             data["color_space"] = "RGB" if data.pop("train_rgb") else "BGR"
@@ -382,49 +392,26 @@ class PreprocessingConfig(BaseModelExtraForbid):
         ]
 
 
-class CallbackConfig(BaseModelExtraForbid):
-    name: str
+class CallbackConfig(ConfigItem):
     active: bool = True
-    params: Params = {}
-
-
-class OptimizerConfig(BaseModelExtraForbid):
-    name: str
-    params: Params = {}
-
-
-class SchedulerConfig(BaseModelExtraForbid):
-    name: str
-    params: Params = {}
-
-
-class TrainingStrategyConfig(BaseModelExtraForbid):
-    name: str
-    params: Params = {}
 
 
 class TrainerConfig(BaseModelExtraForbid):
-    preprocessing: PreprocessingConfig = PreprocessingConfig()
+    preprocessing: PreprocessingConfig = Field(
+        default_factory=PreprocessingConfig
+    )
     use_rich_progress_bar: bool = True
 
     precision: Literal["16-mixed", "32"] = "32"
     accelerator: Literal["auto", "cpu", "gpu", "tpu"] = "auto"
     devices: int | list[int] | str = "auto"
     strategy: Literal["auto", "ddp"] = "auto"
-    n_sanity_val_steps: Annotated[
-        int,
-        Field(
-            validation_alias=AliasChoices(
-                "n_sanity_val_steps", "num_sanity_val_steps"
-            )
-        ),
-    ] = 2
+    n_sanity_val_steps: int = 2
     profiler: Literal["simple", "advanced"] | None = None
     matmul_precision: Literal["medium", "high", "highest"] | None = None
-    verbose: bool = True
 
     seed: int | None = None
-    n_validation_batches: PositiveInt | None = None
+    n_validation_batches: PositiveInt | Literal[-1] | None = None
     deterministic: bool | Literal["warn"] | None = None
     smart_cfg_auto_populate: bool = True
     batch_size: PositiveInt = 32
@@ -434,15 +421,9 @@ class TrainerConfig(BaseModelExtraForbid):
     use_weighted_sampler: bool = False
     epochs: PositiveInt = 100
     resume_training: bool = False
-    n_workers: Annotated[
-        NonNegativeInt,
-        Field(validation_alias=AliasChoices("n_workers", "num_workers")),
-    ] = 4
+    n_workers: NonNegativeInt = 4
     validation_interval: Literal[-1] | PositiveInt = 5
-    n_log_images: Annotated[
-        NonNegativeInt,
-        Field(validation_alias=AliasChoices("n_log_images", "num_log_images")),
-    ] = 4
+    n_log_images: NonNegativeInt = 4
     skip_last_batch: bool = True
     pin_memory: bool = True
     log_sub_losses: bool = True
@@ -450,17 +431,43 @@ class TrainerConfig(BaseModelExtraForbid):
 
     callbacks: list[CallbackConfig] = []
 
-    optimizer: OptimizerConfig | None = None
-    scheduler: SchedulerConfig | None = None
-    training_strategy: TrainingStrategyConfig | None = None
+    optimizer: ConfigItem = Field(
+        default_factory=lambda: ConfigItem(name="Adam")
+    )
+    scheduler: ConfigItem = Field(
+        default_factory=lambda: ConfigItem(name="ConstantLR")
+    )
+
+    training_strategy: ConfigItem | None = None
+
+    @model_validator(mode="after")
+    def validate_scheduler(self) -> Self:
+        if self.scheduler.name == "CosineAnnealingLR":
+            if "T_max" not in self.scheduler.params:
+                self.scheduler.params["T_max"] = self.epochs
+                logger.warning(
+                    "`T_max` was not set for 'CosineAnnealingLR'"
+                    "Automatically setting `T_max` to number of epochs."
+                )
+            elif self.scheduler.params["T_max"] != self.epochs:
+                logger.warning(
+                    "Parameter `T_max` of 'CosineAnnealingLR' is "
+                    "not equal to the number of epochs. "
+                    "Make sure this is intended."
+                    f"`T_max`: {self.scheduler.params['T_max']}, "
+                    f"Number of epochs: {self.epochs}"
+                )
+
+        return self
 
     @model_validator(mode="after")
     def validate_deterministic(self) -> Self:
         if self.seed is not None and self.deterministic is None:
             logger.warning(
-                "Setting `trainer.deterministic` to True because `trainer.seed` is set. "
-                "This can cause certain layers to fail. "
-                "In such cases, set `trainer.deterministic` to `'warn'`."
+                "Setting `trainer.deterministic` to `True` because "
+                "`trainer.seed` is set. This can cause certain "
+                "layers to fail. In such cases, set "
+                "`trainer.deterministic` to 'warn'."
             )
             self.deterministic = True
         return self
@@ -480,7 +487,8 @@ class TrainerConfig(BaseModelExtraForbid):
     def check_validation_interval(self) -> Self:
         if self.validation_interval > self.epochs:
             logger.warning(
-                "Setting `validation_interval` same as `epochs` otherwise no checkpoint would be generated."
+                "Setting `validation_interval` same as `epochs`, "
+                "otherwise no checkpoint would be generated."
             )
             self.validation_interval = self.epochs
         return self
@@ -495,7 +503,7 @@ class TrainerConfig(BaseModelExtraForbid):
 
 class OnnxExportConfig(BaseModelExtraForbid):
     opset_version: PositiveInt = 12
-    dynamic_axes: dict[str, Any] | None = None
+    dynamic_axes: Params | None = None
 
 
 class BlobconverterExportConfig(BaseModelExtraForbid):
@@ -516,26 +524,21 @@ class ExportConfig(ArchiveConfig):
     name: str | None = None
     input_shape: list[int] | None = None
     data_type: Literal["int8", "fp16", "fp32"] = "fp16"
-    reverse_input_channels: bool = True
+    reverse_input_channels: bool | None = None
     scale_values: list[float] | None = None
     mean_values: list[float] | None = None
     output_names: list[str] | None = None
-    onnx: OnnxExportConfig = OnnxExportConfig()
-    blobconverter: BlobconverterExportConfig = BlobconverterExportConfig()
+    onnx: OnnxExportConfig = Field(default_factory=OnnxExportConfig)
+    blobconverter: BlobconverterExportConfig = Field(
+        default_factory=BlobconverterExportConfig
+    )
 
-    @model_validator(mode="after")
-    def check_values(self) -> Self:
-        def pad_values(
-            values: float | list[float] | None,
-        ) -> list[float] | None:
-            if values is None:
-                return None
-            if isinstance(values, float):
-                return [values] * 3
-
-        self.scale_values = pad_values(self.scale_values)
-        self.mean_values = pad_values(self.mean_values)
-        return self
+    @field_validator("scale_values", "mean_values", mode="before")
+    @classmethod
+    def check_values(cls, values: ParamValue) -> Any:
+        if isinstance(values, float | int):
+            return [values] * 3
+        return values
 
 
 class StorageConfig(BaseModelExtraForbid):
@@ -549,26 +552,29 @@ class TunerConfig(BaseModelExtraForbid):
     use_pruner: bool = True
     n_trials: PositiveInt | None = 15
     timeout: PositiveInt | None = None
-    storage: StorageConfig = StorageConfig()
+    storage: StorageConfig = Field(default_factory=StorageConfig)
     params: dict[str, list[str | int | float | bool | list]] = {}
 
 
 class Config(LuxonisConfig):
-    model: Annotated[ModelConfig, Field(default_factory=ModelConfig)]
-    loader: Annotated[LoaderConfig, Field(default_factory=LoaderConfig)]
-    tracker: Annotated[TrackerConfig, Field(default_factory=TrackerConfig)]
-    trainer: Annotated[TrainerConfig, Field(default_factory=TrainerConfig)]
-    exporter: Annotated[ExportConfig, Field(default_factory=ExportConfig)]
-    archiver: Annotated[ArchiveConfig, Field(default_factory=ArchiveConfig)]
+    model: ModelConfig = Field(default_factory=ModelConfig)
+
+    loader: LoaderConfig = Field(default_factory=LoaderConfig)
+    tracker: TrackerConfig = Field(default_factory=TrackerConfig)
+    trainer: TrainerConfig = Field(default_factory=TrainerConfig)
+    exporter: ExportConfig = Field(default_factory=ExportConfig)
+    archiver: ArchiveConfig = Field(default_factory=ArchiveConfig)
     tuner: TunerConfig | None = None
-    ENVIRON: Environ = Field(Environ(), exclude=True)
+
+    ENVIRON: Environ = Field(exclude=True, default_factory=Environ)
 
     @model_validator(mode="before")
     @classmethod
-    def check_environment(cls, data: Any) -> Any:
+    def check_environment(cls, data: Params) -> Params:
         if "ENVIRON" in data:
             logger.warning(
-                "Specifying `ENVIRON` section in config file is not recommended. "
+                "Specifying `ENVIRON` section in config file is not "
+                "recommended due to security reasons. "
                 "Please use environment variables or `.env` file instead."
             )
         return data
@@ -576,8 +582,8 @@ class Config(LuxonisConfig):
     @classmethod
     def get_config(
         cls,
-        cfg: str | dict[str, Any] | None = None,
-        overrides: dict[str, Any] | list[str] | tuple[str, ...] | None = None,
+        cfg: str | Params | None = None,
+        overrides: Params | list[str] | tuple[str, ...] | None = None,
     ) -> "Config":
         instance = super().get_config(cfg, overrides)
         if not isinstance(cfg, str):
@@ -601,35 +607,6 @@ class Config(LuxonisConfig):
         """Automatically populates config fields based on rules, with
         warnings."""
 
-        # Rule: Set default optimizer and scheduler if training_strategy is not defined and optimizer and scheduler are None
-        if instance.trainer.training_strategy is None:
-            if instance.trainer.optimizer is None:
-                instance.trainer.optimizer = OptimizerConfig(
-                    name="Adam", params={}
-                )
-                logger.warning(
-                    "Optimizer not specified. Automatically set to `Adam`."
-                )
-            if instance.trainer.scheduler is None:
-                instance.trainer.scheduler = SchedulerConfig(
-                    name="ConstantLR", params={}
-                )
-                logger.warning(
-                    "Scheduler not specified. Automatically set to `ConstantLR`."
-                )
-
-        # Rule: CosineAnnealingLR should have T_max set to the number of epochs if not provided
-        if instance.trainer.scheduler is not None:
-            scheduler = instance.trainer.scheduler
-            if (
-                scheduler.name == "CosineAnnealingLR"
-                and "T_max" not in scheduler.params
-            ):
-                scheduler.params["T_max"] = instance.trainer.epochs
-                logger.warning(
-                    "`T_max` was not set for `CosineAnnealingLR`. Automatically set `T_max` to number of epochs."
-                )
-
         # Rule: Mosaic4 should have out_width and out_height matching train_image_size if not provided
         for augmentation in instance.trainer.preprocessing.augmentations:
             if augmentation.name == "Mosaic4" and (
@@ -649,30 +626,46 @@ class Config(LuxonisConfig):
             instance.loader.train_view
             == instance.loader.val_view
             == instance.loader.test_view
-            and instance.trainer.n_validation_batches is None
         ):
-            instance.trainer.n_validation_batches = 10
-            logger.warning(
-                "Train, validation, and test views are the same. Automatically set `n_validation_batches` to 10 to prevent validation/testing on the full train set. "
-                "If this behavior is not desired, set `smart_cfg_auto_populate` to `False`."
-            )
+            if instance.trainer.n_validation_batches is None:
+                instance.trainer.n_validation_batches = 10
+                logger.warning(
+                    "Train, validation, and test views are the same. "
+                    "Automatically setting `n_validation_batches` to 10 "
+                    "to prevent validation/testing on the full train set. "
+                    "If this behavior is not desired, set "
+                    "`smart_cfg_auto_populate` to `False`."
+                )
+            else:
+                logger.warning(
+                    "Train, validation, and test views are the same. "
+                    "Make sure this is intended."
+                )
 
         # Rule: Check if a predefined model is set and adjust config accordingly to achieve best training results
-        predefined_model_cfg = getattr(
-            instance.model, "predefined_model", None
-        )
-        if predefined_model_cfg:
+        predefined_model_cfg = instance.model.predefined_model
+        if predefined_model_cfg is not None:
             logger.info(
-                "Predefined model detected. Applying predefined model configuration rules."
+                "Predefined model detected. "
+                "Adjusting  parameters for best training results."
+                "If this behavior is not desired, set "
+                "`smart_cfg_auto_populate` to `False`."
             )
             model_name = predefined_model_cfg.name
             accumulate_grad_batches = int(64 / instance.trainer.batch_size)
             logger.info(
-                "Setting accumulate_grad_batches to %d (trainer.batch_size=%d)",
+                f"Setting 'accumulate_grad_batches' to "
+                f"{accumulate_grad_batches} "
+                f"(trainer.batch_size={instance.trainer.batch_size})",
                 accumulate_grad_batches,
                 instance.trainer.batch_size,
             )
             loss_params = predefined_model_cfg.params.get("loss_params", {})
+            if not isinstance(loss_params, dict):
+                raise ValueError(
+                    f"Invalid value for loss_params: {loss_params}. "
+                    "Expected a dictionary."
+                )
             gradient_accumulation_schedule = None
             if model_name == "InstanceSegmentationModel":
                 loss_params.update(
@@ -688,12 +681,11 @@ class Config(LuxonisConfig):
                     2: accumulate_grad_batches,
                 }
                 logger.info(
-                    "InstanceSegmentationModel: Updated loss_params: %s",
-                    loss_params,
+                    f"InstanceSegmentationModel: Updated loss_params: {loss_params}"
                 )
                 logger.info(
-                    "InstanceSegmentationModel: Set gradient accumulation schedule to: %s",
-                    gradient_accumulation_schedule,
+                    f"InstanceSegmentationModel: Set gradient "
+                    f"accumulation schedule to: {gradient_accumulation_schedule}"
                 )
             elif model_name == "KeypointDetectionModel":
                 loss_params.update(
@@ -710,12 +702,11 @@ class Config(LuxonisConfig):
                     2: accumulate_grad_batches,
                 }
                 logger.info(
-                    "KeypointDetectionModel: Updated loss_params: %s",
-                    loss_params,
+                    f"KeypointDetectionModel: Updated loss_params: {loss_params}"
                 )
                 logger.info(
-                    "KeypointDetectionModel: Set gradient accumulation schedule to: %s",
-                    gradient_accumulation_schedule,
+                    f"KeypointDetectionModel: Set gradient accumulation "
+                    f"schedule to: {gradient_accumulation_schedule}"
                 )
             elif model_name == "DetectionModel":
                 loss_params.update(
@@ -725,54 +716,17 @@ class Config(LuxonisConfig):
                     }
                 )
                 logger.info(
-                    "DetectionModel: Updated loss_params: %s", loss_params
+                    f"DetectionModel: Updated loss_params: {loss_params}"
                 )
             predefined_model_cfg.params["loss_params"] = loss_params
             if gradient_accumulation_schedule:
                 for callback in instance.trainer.callbacks:
                     if callback.name == "GradientAccumulationScheduler":
-                        callback.params["scheduling"] = (
+                        callback.params["scheduling"] = (  # type: ignore
                             gradient_accumulation_schedule
                         )
                         logger.info(
-                            "GradientAccumulationScheduler callback updated with scheduling: %s",
-                            gradient_accumulation_schedule,
+                            f"GradientAccumulationScheduler callback "
+                            f"updated with scheduling: {gradient_accumulation_schedule}"
                         )
                         break
-
-
-def is_acyclic(graph: dict[str, list[str]]) -> bool:
-    """Tests if graph is acyclic.
-
-    @type graph: dict[str, list[str]]
-    @param graph: Graph in a format of a dictionary of predecessors.
-        Keys are node names, values are inputs to the node (list of node
-        names).
-    @rtype: bool
-    @return: True if graph is acyclic, False otherwise.
-    """
-    graph = graph.copy()
-
-    def dfs(node: str, visited: set[str], recursion_stack: set[str]) -> bool:
-        visited.add(node)
-        recursion_stack.add(node)
-
-        for predecessor in graph.get(node, []):
-            if predecessor in recursion_stack:
-                return True
-            if predecessor not in visited:
-                if dfs(predecessor, visited, recursion_stack):
-                    return True
-
-        recursion_stack.remove(node)
-        return False
-
-    visited: set[str] = set()
-    recursion_stack: set[str] = set()
-
-    for node in graph.keys():
-        if node not in visited:
-            if dfs(node, visited, recursion_stack):
-                return False
-
-    return True
