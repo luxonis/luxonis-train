@@ -502,6 +502,11 @@ class LuxonisLightningModule(pl.LightningModule):
         return outputs
 
     @override
+    def on_train_epoch_start(self):
+        for node in self.nodes.values():
+            node.current_epoch = self.current_epoch
+
+    @override
     def on_train_epoch_end(self) -> None:
         for key, value in self._loss_accumulator.items():
             self.log(f"train/{key}", value, sync_dist=True)
