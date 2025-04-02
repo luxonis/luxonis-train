@@ -7,6 +7,7 @@ from .config import (
     NodeConfig,
     TrainerConfig,
 )
+from .predefined_models import *  # so predefined models get registered
 
 __all__ = [
     "AttachedModuleConfig",
