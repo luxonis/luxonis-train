@@ -502,9 +502,15 @@ class LuxonisLightningModule(pl.LightningModule):
         return outputs
 
     @override
+    def on_train_epoch_start(self):
+        for node in self.nodes.values():
+            node.current_epoch = self.current_epoch
+
+    @override
     def on_train_epoch_end(self) -> None:
         for key, value in self._loss_accumulator.items():
             self.log(f"train/{key}", value, sync_dist=True)
+        self._loss_accumulator.clear()
 
     @override
     def on_validation_epoch_end(self) -> None:
@@ -650,6 +656,7 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
         self._n_logged_images = 0
+        self._loss_accumulator.clear()
 
     @rank_zero_only
     def _print_results(
