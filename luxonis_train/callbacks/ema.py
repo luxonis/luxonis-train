@@ -306,3 +306,4 @@ class EMACallback(pl.Callback):
         """
         if self.collected_state_dict is not None:
             pl_module.load_state_dict(self.collected_state_dict)
+            self.collected_state_dict = None
