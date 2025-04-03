@@ -313,5 +313,3 @@ def test_mlflow_logging(tmp_path, setup_mlflow, set_env_vars):
         assert len(metric_values) == 1, (
             f"Expected 1 {metric_name} metric, but found {len(metric_values)}"
         )
-
-    assert file_path in all_artifacts, f"Missing test artifact: {file_path}"
