@@ -115,7 +115,12 @@ class LuxonisLightningModule(pl.LightningModule):
         self._export: bool = False
         self._core = _core
         self._n_logged_images = 0
-        self._loss_accumulator = LossAccumulator()
+
+        self._loss_accumulators = {
+            "train": LossAccumulator(),
+            "val": LossAccumulator(),
+            "test": LossAccumulator(),
+        }
 
         self.cfg = cfg
         self.image_source = cfg.loader.image_source
@@ -470,7 +475,7 @@ class LuxonisLightningModule(pl.LightningModule):
         loss, losses = compute_losses(
             self.cfg, outputs.losses, self.loss_weights, self.device
         )
-        self._loss_accumulator.update(losses)
+        self._loss_accumulators["train"].update(losses)
         return loss
 
     @override
@@ -508,9 +513,9 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def on_train_epoch_end(self) -> None:
-        for key, value in self._loss_accumulator.items():
+        for key, value in self._loss_accumulators["train"].items():
             self.log(f"train/{key}", value, sync_dist=True)
-        self._loss_accumulator.clear()
+        self._loss_accumulators["train"].clear()
 
     @override
     def on_validation_epoch_end(self) -> None:
@@ -605,7 +610,8 @@ class LuxonisLightningModule(pl.LightningModule):
         _, losses = compute_losses(
             self.cfg, outputs.losses, self.loss_weights, self.device
         )
-        self._loss_accumulator.update(losses)
+
+        self._loss_accumulators[mode].update(losses)
 
         for node_name, visualizations in outputs.visualizations.items():
             for viz_name, viz_batch in visualizations.items():
@@ -623,7 +629,7 @@ class LuxonisLightningModule(pl.LightningModule):
         return losses
 
     def _evaluation_epoch_end(self, mode: Literal["test", "val"]) -> None:
-        for name, value in self._loss_accumulator.items():
+        for name, value in self._loss_accumulators[mode].items():
             self.log(f"{mode}/{name}", value, sync_dist=True)
 
         table = defaultdict(dict)
@@ -651,12 +657,12 @@ class LuxonisLightningModule(pl.LightningModule):
 
         self._print_results(
             stage="Validation" if mode == "val" else "Test",
-            loss=self._loss_accumulator["loss"],
+            loss=self._loss_accumulators[mode]["loss"],
             metrics=table,
         )
 
         self._n_logged_images = 0
-        self._loss_accumulator.clear()
+        self._loss_accumulators[mode].clear()
 
     @rank_zero_only
     def _print_results(
