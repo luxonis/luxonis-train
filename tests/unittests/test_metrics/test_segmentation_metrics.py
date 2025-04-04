@@ -2,7 +2,9 @@ import pytest
 import torch
 from torch import Tensor
 
-from luxonis_train.attached_modules.metrics.dice_coefficient import DiceCoefficient
+from luxonis_train.attached_modules.metrics.dice_coefficient import (
+    DiceCoefficient,
+)
 from luxonis_train.attached_modules.metrics.mean_iou import MIoU
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Tasks
@@ -97,7 +99,6 @@ class DummyNodeSegmentation(BaseNode, register=False):
 def test_dice_coefficient_one_hot(
     predictions: Tensor, targets: Tensor, expected: Tensor
 ):
-
     num_classes = predictions.shape[1]
 
     metric = DiceCoefficient(
@@ -110,9 +111,9 @@ def test_dice_coefficient_one_hot(
 
     metric.update(predictions, targets)
     result = metric.compute()
-    assert torch.isclose(
-        result, expected, atol=1e-4
-    ), f"Expected {expected}, got {result}"
+    assert torch.isclose(result, expected, atol=1e-4), (
+        f"Expected {expected}, got {result}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -165,8 +166,9 @@ def test_dice_coefficient_one_hot(
         ),
     ],
 )
-def test_dice_coefficient_index(predictions: Tensor, targets: Tensor, expected: Tensor):
-
+def test_dice_coefficient_index(
+    predictions: Tensor, targets: Tensor, expected: Tensor
+):
     metric = DiceCoefficient(
         num_classes=2,
         include_background=True,
@@ -177,9 +179,9 @@ def test_dice_coefficient_index(predictions: Tensor, targets: Tensor, expected: 
 
     metric.update(predictions, targets)
     result = metric.compute()
-    assert torch.isclose(
-        result, expected, atol=1e-4
-    ), f"Expected {expected}, got {result}"
+    assert torch.isclose(result, expected, atol=1e-4), (
+        f"Expected {expected}, got {result}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -238,7 +240,6 @@ def test_dice_coefficient_index(predictions: Tensor, targets: Tensor, expected: 
 def test_dice_coefficient_averaging(
     predictions: Tensor, targets: Tensor, average, expected: Tensor
 ):
-
     metric = DiceCoefficient(
         num_classes=2,
         include_background=True,
@@ -251,13 +252,13 @@ def test_dice_coefficient_averaging(
     result = metric.compute()
 
     if average is None:
-        assert torch.allclose(
-            result, expected, atol=1e-4
-        ), f"Expected {expected}, got {result}"
+        assert torch.allclose(result, expected, atol=1e-4), (
+            f"Expected {expected}, got {result}"
+        )
     else:
-        assert torch.isclose(
-            result, expected, atol=1e-4
-        ), f"Expected {expected}, got {result}"
+        assert torch.isclose(result, expected, atol=1e-4), (
+            f"Expected {expected}, got {result}"
+        )
 
 
 @pytest.mark.parametrize(
@@ -298,9 +299,11 @@ def test_dice_coefficient_averaging(
     ],
 )
 def test_dice_coefficient_background(
-    predictions: Tensor, targets: Tensor, include_background: bool, expected: Tensor
+    predictions: Tensor,
+    targets: Tensor,
+    include_background: bool,
+    expected: Tensor,
 ):
-
     metric = DiceCoefficient(
         num_classes=2,
         include_background=include_background,
@@ -311,9 +314,9 @@ def test_dice_coefficient_background(
 
     metric.update(predictions, targets)
     result = metric.compute()
-    assert torch.isclose(
-        result, expected, atol=1e-4
-    ), f"Expected {expected}, got {result}"
+    assert torch.isclose(result, expected, atol=1e-4), (
+        f"Expected {expected}, got {result}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -366,8 +369,9 @@ def test_dice_coefficient_background(
         ),
     ],
 )
-def test_mean_iou_one_hot(predictions: Tensor, targets: Tensor, expected: Tensor):
-
+def test_mean_iou_one_hot(
+    predictions: Tensor, targets: Tensor, expected: Tensor
+):
     num_classes = predictions.shape[1]
 
     metric = MIoU(
@@ -379,9 +383,9 @@ def test_mean_iou_one_hot(predictions: Tensor, targets: Tensor, expected: Tensor
 
     metric.update(predictions, targets)
     result = metric.compute()
-    assert torch.isclose(
-        result, expected, atol=1e-4
-    ), f"Expected {expected}, got {result}"
+    assert torch.isclose(result, expected, atol=1e-4), (
+        f"Expected {expected}, got {result}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -434,8 +438,9 @@ def test_mean_iou_one_hot(predictions: Tensor, targets: Tensor, expected: Tensor
         ),
     ],
 )
-def test_mean_iou_index(predictions: Tensor, targets: Tensor, expected: Tensor):
-
+def test_mean_iou_index(
+    predictions: Tensor, targets: Tensor, expected: Tensor
+):
     metric = MIoU(
         num_classes=2,
         include_background=True,
@@ -445,9 +450,9 @@ def test_mean_iou_index(predictions: Tensor, targets: Tensor, expected: Tensor):
 
     metric.update(predictions, targets)
     result = metric.compute()
-    assert torch.isclose(
-        result, expected, atol=1e-4
-    ), f"Expected {expected}, got {result}"
+    assert torch.isclose(result, expected, atol=1e-4), (
+        f"Expected {expected}, got {result}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -488,9 +493,11 @@ def test_mean_iou_index(predictions: Tensor, targets: Tensor, expected: Tensor):
     ],
 )
 def test_mean_iou_background(
-    predictions: Tensor, targets: Tensor, include_background: bool, expected: Tensor
+    predictions: Tensor,
+    targets: Tensor,
+    include_background: bool,
+    expected: Tensor,
 ):
-
     metric = MIoU(
         num_classes=2,
         include_background=include_background,
@@ -500,9 +507,9 @@ def test_mean_iou_background(
 
     metric.update(predictions, targets)
     result = metric.compute()
-    assert torch.isclose(
-        result, expected, atol=1e-4
-    ), f"Expected {expected}, got {result}"
+    assert torch.isclose(result, expected, atol=1e-4), (
+        f"Expected {expected}, got {result}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -543,7 +550,9 @@ def test_mean_iou_background(
         ),
     ],
 )
-def test_mean_iou_per_class(predictions: Tensor, targets: Tensor, expected: Tensor):
+def test_mean_iou_per_class(
+    predictions: Tensor, targets: Tensor, expected: Tensor
+):
     metric = MIoU(
         num_classes=2,
         include_background=True,
@@ -554,13 +563,12 @@ def test_mean_iou_per_class(predictions: Tensor, targets: Tensor, expected: Tens
 
     metric.update(predictions, targets)
     result = metric.compute()
-    assert torch.allclose(
-        result, expected, atol=1e-4
-    ), f"Expected {expected}, got {result}"
+    assert torch.allclose(result, expected, atol=1e-4), (
+        f"Expected {expected}, got {result}"
+    )
 
 
 def test_batch_updates():
-
     batch1_pred = torch.tensor(
         [
             [[1.0, 0.0], [0.0, 1.0]],
@@ -661,9 +669,11 @@ def test_batch_updates():
     ],
 )
 def test_edge_cases(
-    predictions: Tensor, targets: Tensor, expected_dice: Tensor, expected_iou: Tensor
+    predictions: Tensor,
+    targets: Tensor,
+    expected_dice: Tensor,
+    expected_iou: Tensor,
 ):
-
     dice_metric = DiceCoefficient(
         num_classes=2,
         include_background=True,
