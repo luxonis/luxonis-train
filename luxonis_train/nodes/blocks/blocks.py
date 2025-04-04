@@ -169,12 +169,13 @@ class ConvModule(nn.Sequential):
         out_channels: int,
         kernel_size: int | tuple[int, int],
         stride: int | tuple[int, int] = 1,
-        padding: int | tuple[int, int] = 0,
+        padding: int | tuple[int, int] | str = 0,
         dilation: int | tuple[int, int] = 1,
         groups: int = 1,
         bias: bool = False,
         activation: nn.Module | None | Literal[False] = None,
         use_norm: bool = True,
+        norm_momentum: float = 0.1,
     ):
         """Conv2d + Optional BN + Activation.
 
@@ -186,7 +187,7 @@ class ConvModule(nn.Sequential):
         @param kernel_size: Kernel size.
         @type stride: int
         @param stride: Stride. Defaults to 1.
-        @type padding: int
+        @type padding: int | str
         @param padding: Padding. Defaults to 0.
         @type dilation: int
         @param dilation: Dilation. Defaults to 1.
@@ -214,7 +215,7 @@ class ConvModule(nn.Sequential):
         ]
 
         if use_norm:
-            blocks.append(nn.BatchNorm2d(out_channels))
+            blocks.append(nn.BatchNorm2d(out_channels, momentum=norm_momentum))
 
         if activation is not False:
             blocks.append(activation or nn.ReLU())
