@@ -513,8 +513,16 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def on_train_epoch_end(self) -> None:
-        for key, value in self._loss_accumulators["train"].items():
-            self.log(f"train/{key}", value, sync_dist=True)
+        for name, value in self._loss_accumulators["train"].items():
+            formated_name = (
+                name.replace(
+                    name.split("/")[1],
+                    self.nodes.formatted_name(name.split("/")[1]),
+                )
+                if "/" in name
+                else name
+            )
+            self.log(f"train/{formated_name}", value, sync_dist=True)
         self._loss_accumulators["train"].clear()
 
     @override
@@ -614,9 +622,10 @@ class LuxonisLightningModule(pl.LightningModule):
         self._loss_accumulators[mode].update(losses)
 
         for node_name, visualizations in outputs.visualizations.items():
+            formatted_node_name = self.nodes.formatted_name(node_name)
             for viz_name, viz_batch in visualizations.items():
                 for viz in viz_batch:
-                    name = f"{mode}/visualizations/{node_name}/{viz_name}"
+                    name = f"{mode}/visualizations/{formatted_node_name}/{viz_name}"
                     if self._n_logged_images >= self.cfg.trainer.n_log_images:
                         continue
                     self.tracker.log_image(
@@ -630,7 +639,15 @@ class LuxonisLightningModule(pl.LightningModule):
 
     def _evaluation_epoch_end(self, mode: Literal["test", "val"]) -> None:
         for name, value in self._loss_accumulators[mode].items():
-            self.log(f"{mode}/{name}", value, sync_dist=True)
+            formated_name = (
+                name.replace(
+                    name.split("/")[1],
+                    self.nodes.formatted_name(name.split("/")[1]),
+                )
+                if "/" in name
+                else name
+            )
+            self.log(f"{mode}/{formated_name}", value, sync_dist=True)
 
         table = defaultdict(dict)
         for node_name, node_metrics in self.metrics.items():
