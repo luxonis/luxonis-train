@@ -1,11 +1,13 @@
 import os
 import shutil
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 
 import mlflow
 import numpy as np
+import psutil
 import pytest
 import torch.nn as nn
 from luxonis_ml.data import DatasetIterator, LuxonisDataset
@@ -24,16 +26,24 @@ def set_env_vars():
 
 
 @pytest.fixture
-def setup_mlflow(tmp_path):
-    start_time = time.time()
-    timeout = 60
+def temp_dir():
+    tmp_dir = Path(tempfile.mkdtemp())
+    try:
+        yield tmp_dir
+    finally:
+        shutil.rmtree(str(tmp_dir), ignore_errors=True)
 
-    backend_store_uri = f"sqlite:///{tmp_path}/mlflow.db"
-    artifact_root = tmp_path / "mlflow-artifacts"
+
+@pytest.fixture
+def setup_mlflow(temp_dir):
+    start_time = time.time()
+    timeout = 30
+
+    backend_store_uri = f"sqlite:///{temp_dir}/mlflow.db"
+    artifact_root = temp_dir / "mlflow-artifacts"
     artifact_root.mkdir(parents=True, exist_ok=True)
 
     mlflow_executable = shutil.which("mlflow")
-
     artifact_root_uri = artifact_root.as_uri()
 
     process = subprocess.Popen(
@@ -64,15 +74,14 @@ def setup_mlflow(tmp_path):
             time.sleep(0.5)
     yield
     process.terminate()
-    try:
-        process.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        process.kill()
-    time.sleep(1)
+    for conn in psutil.net_connections(kind="inet"):
+        if conn.laddr.port == 5001 and conn.pid:
+            proc = psutil.Process(conn.pid)
+            proc.kill()
 
 
 @pytest.mark.timeout(30)
-def test_mlflow_logging(tmp_path, setup_mlflow, set_env_vars):
+def test_mlflow_logging(temp_dir, setup_mlflow, set_env_vars):
     class XORHead(BaseHead):
         task = Tasks.CLASSIFICATION
 
@@ -90,11 +99,10 @@ def test_mlflow_logging(tmp_path, setup_mlflow, set_env_vars):
 
     for task_name in task_names:
 
-        def generator(tmp_path: Path) -> DatasetIterator:
+        def generator(tmp_dir: Path) -> DatasetIterator:
             """Generate XOR dataset as images with 2 pixels representing
             XOR inputs."""
-
-            data_dir = tmp_path / "xor_data"
+            data_dir = tmp_dir / "xor_data"
             os.makedirs(data_dir, exist_ok=True)
 
             inputs = [
@@ -111,9 +119,7 @@ def test_mlflow_logging(tmp_path, setup_mlflow, set_env_vars):
                 img_array = np.array(pixel_values, dtype=np.uint8).reshape(
                     1, 2
                 )
-
                 img = Image.fromarray(img_array, mode="L")
-
                 img_path = data_dir / f"xor_{i}.png"
                 img.save(img_path)
 
@@ -130,7 +136,7 @@ def test_mlflow_logging(tmp_path, setup_mlflow, set_env_vars):
                     }
 
         dataset = LuxonisDataset("xor_dataset", delete_existing=True)
-        dataset.add(generator(tmp_path))
+        dataset.add(generator(temp_dir))
         dataset.make_splits((1, 0, 0))
 
         config = {
@@ -143,9 +149,7 @@ def test_mlflow_logging(tmp_path, setup_mlflow, set_env_vars):
                         "losses": [{"name": "CrossEntropyLoss"}],
                         "metrics": [
                             {"name": "Accuracy", "is_main_metric": True},
-                            {
-                                "name": "ConfusionMatrix",
-                            },
+                            {"name": "ConfusionMatrix"},
                             {"name": "F1Score", "params": {"average": None}},
                         ],
                         "visualizers": [{"name": "ClassificationVisualizer"}],
