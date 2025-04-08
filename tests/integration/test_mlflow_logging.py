@@ -74,6 +74,8 @@ def setup_mlflow(temp_dir):
             time.sleep(0.5)
     yield
     process.terminate()
+    # On Windows, an open connection to mlflow.db may prevent deletion of the temp folder.
+    # Kill any remaining process listening on port 5001 to ensure the file is unlocked.
     for conn in psutil.net_connections(kind="inet"):
         if conn.laddr.port == 5001 and conn.pid:
             proc = psutil.Process(conn.pid)
