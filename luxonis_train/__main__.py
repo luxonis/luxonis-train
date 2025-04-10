@@ -206,7 +206,7 @@ def export(
     @param config: Path to the configuration file or a name of a
         predefined model.
     @type save_path: str
-    @param save_path: Path to save the exported model.
+    @param save_path: Path (absolute or relative, e.g., `model.onnx` or `/path/to/model.onnx`) to save the exported ONNX model. Must end with `.onnx`.
     @type weights: str
     @param weights: Path to the model weights.
     @type opts: list[str]
