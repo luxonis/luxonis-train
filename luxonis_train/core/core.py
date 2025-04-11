@@ -323,16 +323,16 @@ class LuxonisModel:
 
     def export(
         self,
-        onnx_save_path: PathType | None = None,
+        save_path: PathType | None = None,
         weights: PathType | None = None,
         ignore_missing_weights: bool = False,
     ) -> None:
         """Runs export.
 
-        @type onnx_save_path: PathType | None
-        @param onnx_save_path: Path to where the exported ONNX model will be saved.
-            If not specified, model will be saved to the export directory
-            with the name specified in config file.
+        @type save_path: PathType | None
+        @param save_path: Directory where to save all exported model files.
+        If not specified, files will be saved to the "export" directory
+        in the run save directory.
         @type weights: PathType | None
         @param weights: Path to the checkpoint from which to load weights.
             If not specified, the value of `model.weights` from the
@@ -352,15 +352,17 @@ class LuxonisModel:
                 "No model weights specified. Exporting model without weights."
             )
 
-        export_save_dir = Path(self.run_save_dir, "export")
+        export_save_dir = (
+            Path(save_path)
+            if save_path is not None
+            else Path(self.run_save_dir, "export")
+        )
         export_save_dir.mkdir(parents=True, exist_ok=True)
 
         export_path = export_save_dir / (
             self.cfg.exporter.name or self.cfg.model.name
         )
-        onnx_save_path = str(
-            onnx_save_path or export_path.with_suffix(".onnx")
-        )
+        onnx_save_path = str(export_path.with_suffix(".onnx"))
 
         with replace_weights(self.lightning_module, weights):
             output_names = self.lightning_module.export_onnx(
