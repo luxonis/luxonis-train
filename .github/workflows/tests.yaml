@@ -35,9 +35,6 @@ jobs:
     - name: Install latest luxonis-ml
       run: pip install luxonis-ml[all]@git+https://github.com/luxonis/luxonis-ml.git@main --upgrade --force-reinstall
 
-    - name: Force correct torchmetrics version
-      run: pip install --force-reinstall torchmetrics==1.16.3
-
     - name: Authenticate to Google Cloud
       id: google-auth
       uses: google-github-actions/auth@v2
