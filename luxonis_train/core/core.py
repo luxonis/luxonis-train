@@ -552,6 +552,9 @@ class LuxonisModel:
             """Objective function used to optimize Optuna study."""
             cfg_tracker = self.cfg.tracker
             tracker_params = cfg_tracker.model_dump()
+            tracker_params["run_name"] = (
+                tracker_params["run_name"] or self.tracker.run_name
+            )
             child_tracker = LuxonisTrackerPL(
                 rank=rank_zero_only.rank,
                 mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
@@ -598,7 +601,7 @@ class LuxonisModel:
             child_tracker.log_hyperparams(curr_params)
 
             cfg.save_data(run_save_dir / "training_config.yaml")
-
+            cfg.trainer.n_sanity_val_steps = 0
             lightning_module = LuxonisLightningModule(
                 cfg=cfg,
                 dataset_metadata=self.dataset_metadata,
@@ -652,6 +655,9 @@ class LuxonisModel:
         tracker_params = cfg_tracker.model_dump()
         # NOTE: wandb doesn't allow multiple concurrent runs, handle this separately
         tracker_params["is_wandb"] = False
+        tracker_params["run_name"] = (
+            tracker_params["run_name"] or self.tracker.run_name
+        )
         self.parent_tracker = LuxonisTrackerPL(
             rank=rank,
             mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
@@ -693,8 +699,9 @@ class LuxonisModel:
         study.optimize(
             _objective, n_trials=cfg_tuner.n_trials, timeout=cfg_tuner.timeout
         )
-
-        logger.info(f"Best study parameters: {study.best_params}")
+        logger.info(
+            f"Best study parameters: {study.best_params}. Cost: {study.best_value}."
+        )
 
         self.parent_tracker.log_hyperparams(study.best_params)
 
