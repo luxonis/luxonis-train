@@ -15,7 +15,7 @@ from luxonis_train.__main__ import (
 )
 from luxonis_train.__main__ import test as _test
 
-ONNX_PATH = Path("tests/integration/model.onnx")
+ONNX_PATH = Path("tests/integration/client_commands_test_model.onnx")
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -40,7 +40,7 @@ def prepare():
             export,
             {
                 "config": "tests/configs/config_simple.yaml",
-                "save_path": ONNX_PATH,
+                "save_path": ONNX_PATH.parent,
             },
         ),
         (
