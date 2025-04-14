@@ -17,7 +17,7 @@ from luxonis_train.core import LuxonisModel
 from .multi_input_modules import *
 
 INFER_PATH = Path("tests/integration/infer-save-directory")
-ONNX_PATH = Path("tests/integration/_model.onnx")
+ONNX_PATH = Path("tests/integration/example_multi_input.onnx")
 STUDY_PATH = Path("study_local.db")
 
 
@@ -114,7 +114,7 @@ def test_multi_input(opts: Params, infer_path: Path):
     model.test(view="val")
 
     assert not ONNX_PATH.exists()
-    model.export(str(ONNX_PATH))
+    model.export(str(ONNX_PATH.parent))
     assert ONNX_PATH.exists()
 
     assert len(list(infer_path.iterdir())) == 0
