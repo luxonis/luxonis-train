@@ -899,4 +899,9 @@ class LuxonisModel:
         return None
 
     def get_mlflow_logging_keys(self):
+        """
+        Returns a dictionary with two lists of keys:
+        1) "metrics"    -> Keys expected to be logged as standard metrics
+        2) "artifacts"  -> Keys expected to be logged as artifacts (e.g. confusion_matrix.json, visualizations)
+        """
         return self.lightning_module.get_mlflow_logging_keys()
