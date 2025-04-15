@@ -7,7 +7,7 @@ from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
 
-ONNX_PATH = Path("tests/integration/_ddrnet_model.onnx")
+ONNX_PATH = Path("tests/integration/ddrnet_segmentation.onnx")
 
 
 @pytest.fixture(autouse=True)
@@ -27,7 +27,7 @@ def test_train_only_heads(coco_dataset: LuxonisDataset):
     name_to_check = "aux_segmentation_head"
     is_in_results = any(name_to_check in key for key in results)
 
-    model.export(str(ONNX_PATH))
+    model.export(str(ONNX_PATH.parent))
 
     sess = rt.InferenceSession(str(ONNX_PATH))
     onnx_output_names = [output.name for output in sess.get_outputs()]
