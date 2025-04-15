@@ -208,6 +208,8 @@ def test_mlflow_logging(temp_dir, setup_mlflow, set_env_vars):
         model = LuxonisModel(config)
         model.train()
 
+        all_mlflow_logging_keys = model.get_mlflow_logging_keys()
+
         client = mlflow.tracking.MlflowClient()
         experiments = mlflow.search_experiments()
         experiment_id = experiments[0].experiment_id
@@ -265,6 +267,10 @@ def test_mlflow_logging(temp_dir, setup_mlflow, set_env_vars):
             f"val/visualizations/{formated_node_name}/ClassificationVisualizer/29/3.png",
         ]
 
+        assert set(validation_files).issubset(
+            set(all_mlflow_logging_keys["artifacts"])
+        ), f"Missing validation artifacts: {validation_files}"
+
         for file_path in validation_files:
             assert file_path in all_artifacts, (
                 f"Missing validation artifact: {file_path}"
@@ -279,6 +285,12 @@ def test_mlflow_logging(temp_dir, setup_mlflow, set_env_vars):
             "xor_model.onnx.tar.xz",
             "xor_model.yaml",
         ]
+
+        assert set(model_files).issubset(
+            set(all_mlflow_logging_keys["artifacts"])
+        ), (
+            f"Missing model artifacts: {set(model_files)} in {set(all_mlflow_logging_keys['artifacts'])}"
+        )
 
         for file_path in model_files:
             assert file_path in all_artifacts, (
@@ -324,6 +336,10 @@ def test_mlflow_logging(temp_dir, setup_mlflow, set_env_vars):
                 f"Expected {metric_name} steps {expected_val_steps}, but found {metric_steps}"
             )
 
+            assert metric_name in all_mlflow_logging_keys["metrics"], (
+                f"Missing {metric_name} in logging keys"
+            )
+
         for metric_name in [
             f"test/loss/{formated_node_name}/CrossEntropyLoss",
             "test/loss",
@@ -336,4 +352,8 @@ def test_mlflow_logging(temp_dir, setup_mlflow, set_env_vars):
             metric_values = client.get_metric_history(run_id, metric_name)
             assert len(metric_values) == 1, (
                 f"Expected 1 {metric_name} metric, but found {len(metric_values)}"
+            )
+
+            assert metric_name in all_mlflow_logging_keys["metrics"], (
+                f"Missing {metric_name} in logging keys"
             )

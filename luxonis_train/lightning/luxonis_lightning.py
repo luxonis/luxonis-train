@@ -700,3 +700,91 @@ class LuxonisLightningModule(pl.LightningModule):
             logger.info(
                 f"{stage} main metric ({node_name}/{metric_name}): {value:.4f}"
             )
+
+    def get_mlflow_logging_keys(self) -> dict[str, list[str]]:
+        """
+        Returns a dictionary with two lists of keys:
+        1) "metrics"    -> Keys expected to be logged as standard metrics
+        2) "artifacts"  -> Keys expected to be logged as artifacts (e.g. confusion_matrix.json, visualizations)
+        """
+        artifact_keys = set()
+        metric_keys = set()
+
+        val_eval_epochs = []
+        for i in range(
+            self.cfg.trainer.validation_interval,
+            self.cfg.trainer.epochs + 1,
+            self.cfg.trainer.validation_interval,
+        ):
+            val_eval_epochs.append(max(0, i - 1))
+        test_eval_epoch = self.cfg.trainer.epochs
+
+        for mode in ["train", "val", "test"]:
+            metric_keys.add(f"{mode}/loss")
+            for node_name, node_losses in self.losses.items():
+                formatted_node_name = self.nodes.formatted_name(node_name)
+                for loss_name in node_losses.keys():
+                    metric_keys.add(
+                        f"{mode}/loss/{formatted_node_name}/{loss_name}"
+                    )
+
+        for node_name, node_metrics in self.metrics.items():
+            formatted_node_name = self.nodes.formatted_name(node_name)
+            for metric_name, metric in node_metrics.items():
+                values = postprocess_metrics(metric_name, metric.compute())
+                for sub_name in values.keys():
+                    if "confusion_matrix" in sub_name:
+                        for epoch_idx in sorted([0] + val_eval_epochs):
+                            artifact_keys.add(
+                                f"val/metrics/{epoch_idx}/{formatted_node_name}/confusion_matrix.json"
+                            )
+                        artifact_keys.add(
+                            f"test/metrics/{test_eval_epoch}/{formatted_node_name}/confusion_matrix.json"
+                        )
+                    else:
+                        for epoch_idx in sorted(val_eval_epochs):
+                            metric_keys.add(
+                                f"val/metric/{formatted_node_name}/{sub_name}"
+                            )
+                        metric_keys.add(
+                            f"test/metric/{formatted_node_name}/{sub_name}"
+                        )
+
+        for node_name, visualizations in self.visualizers.items():
+            formatted_node_name = self.nodes.formatted_name(node_name)
+            for viz_name in visualizations.keys():
+                for epoch_idx in sorted([0] + val_eval_epochs):
+                    for i in range(self.cfg.trainer.n_log_images):
+                        artifact_keys.add(
+                            f"val/visualizations/{formatted_node_name}/{viz_name}/{epoch_idx}/{i}.png"
+                        )
+                for i in range(self.cfg.trainer.n_log_images):
+                    artifact_keys.add(
+                        f"test/visualizations/{formatted_node_name}/{viz_name}/{test_eval_epoch}/{i}.png"
+                    )
+        for callback in self.cfg.trainer.callbacks:
+            if callback.name == "UploadCheckpoint":
+                artifact_keys.update(
+                    {"best_val_metric.ckpt", "min_val_loss.ckpt"}
+                )
+            elif callback.name == "ExportOnTrainEnd":
+                artifact_keys.add(
+                    f"{self.cfg.exporter.name or self.cfg.model.name}.onnx"
+                )
+            elif callback.name == "ArchiveOnTrainEnd":
+                artifact_keys.add(
+                    f"{self.cfg.exporter.name or self.cfg.model.name}.onnx.tar.xz"
+                )
+
+        artifact_keys.update(
+            {
+                "luxonis_train.log",
+                "training_config.yaml",
+                f"{self.cfg.model.name}.yaml",
+            }
+        )
+
+        return {
+            "metrics": sorted(metric_keys),
+            "artifacts": sorted(artifact_keys),
+        }

@@ -554,6 +554,7 @@ class TunerConfig(BaseModelExtraForbid):
     timeout: PositiveInt | None = None
     storage: StorageConfig = Field(default_factory=StorageConfig)
     params: dict[str, list[str | int | float | bool | list]] = {}
+    monitor: Literal["metric", "loss"] = "loss"
 
 
 class Config(LuxonisConfig):
