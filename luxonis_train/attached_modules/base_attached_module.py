@@ -38,8 +38,6 @@ class BaseAttachedModule(
           Used to determine which labels to extract from the dataset and to validate
           compatibility with the node based on the node's tasks.
 
-    @type node: BaseNode
-    @param node: Reference to the node that this module is attached to.
 
     @type supported_tasks: list[Task] | None
     @ivar supported_tasks: List of task types that the module supports.
@@ -51,6 +49,13 @@ class BaseAttachedModule(
     supported_tasks: Sequence[Task] | None = None
 
     def __init__(self, *, node: BaseNode | None = None, **kwargs):
+        """Constructor for teh C{BaseAttachedModule}
+
+        @type node: BaseNode
+        @param node: Reference to the node that this module is attached
+            to.
+        @param kwargs: Additional keyword arguments.
+        """
         super().__init__(**kwargs)
         self._node = node
 
