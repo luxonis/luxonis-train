@@ -49,19 +49,13 @@ class MetricState:
             false_positives: Annotated[Tensor, MetricState(default=0)]
             total: Annotated[Tensor, MetricState(default=0)]
 
-
-    @type name: str
-    @param name: The name of the state variable. The variable will then
+    @keyword name: The name of the state variable. The variable will then
         be accessible at C{self.name}.
-    @type default: Tensor | Number | list
-    @param default: Default value of the state; can either be a
+    @keyword default: Default value of the state; can either be a
         C{Tensor} or an empty list. The state will be reset to this
         value when C{self.reset()} is called. If the default value is a
         float, it will be converted to a C{Tensor}.
-    @type dist_reduce_fx: Literal["sum", "mean", "cat", "min", "max"] |
-        Callable[[Tensor], Tensor] | Callable[[list[Tensor]], Tensor] |
-        | EllipsisType | None
-    @param dist_reduce_fx: Function to reduce state across multiple
+    @keyword dist_reduce_fx: Function to reduce state across multiple
         processes in distributed mode. If value is C{"sum"}, C{"mean"},
         C{"cat"}, C{"min"} or C{"max"} we will use C{torch.sum},
         C{torch.mean}, C{torch.cat}, C{torch.min} and C{torch.max}
@@ -71,8 +65,7 @@ class MetricState:
         parameter.
         If not specified, the default is C{"sum"} if the default value
         is a tensor, and C{"cat"} if the default value is a list.
-    @type persistent: bool
-    @param persistent: whether the state will be saved as part of the
+    @keyword persistent: Whether the state will be saved as part of the
         modules C{state_dict}. Default is C{False}.
     """
 
