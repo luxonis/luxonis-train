@@ -862,3 +862,6 @@ class LuxonisModel:
             if callback.monitor and "val/metric/" in callback.monitor:
                 return callback.best_model_path
         return None
+
+    def get_mlflow_logging_keys(self):
+        return self.lightning_module.get_mlflow_logging_keys()
