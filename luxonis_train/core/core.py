@@ -732,6 +732,10 @@ class LuxonisModel:
         study_df = study.trials_dataframe()
         study_df.to_csv(self.run_save_dir / "tuner_study.csv", index=False)
 
+        logger.info(
+            f"Optuna study results saved to {self.run_save_dir / 'tuner_study.csv'}."
+        )
+
         self.parent_tracker.log_hyperparams(study.best_params)
 
         if self.cfg.tracker.is_wandb:  # pragma: no cover
