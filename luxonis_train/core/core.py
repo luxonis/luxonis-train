@@ -617,8 +617,32 @@ class LuxonisModel:
                 )
             ]
 
+            if cfg.tuner.monitor == "loss":
+                monitor = "val/loss"
+            elif cfg.tuner.monitor == "metric":
+                main_metric = next(
+                    (m for m in cfg.model.metrics if m.is_main_metric), None
+                )
+                if main_metric:
+                    all_mlflow_logging_keys = self.get_mlflow_logging_keys()
+                    search_name = (
+                        "mcc"
+                        if main_metric.name == "ConfusionMatrix"
+                        else main_metric.name
+                    )
+                    monitor = next(
+                        (
+                            k
+                            for k in all_mlflow_logging_keys["metrics"]
+                            if search_name in k
+                            and main_metric.attached_to in k
+                            and "val" in k
+                        ),
+                        None,
+                    )
+
             pruner_callback = PyTorchLightningPruningCallback(
-                trial, monitor="val/loss"
+                trial, monitor=monitor
             )
             callbacks.append(pruner_callback)
 
@@ -641,7 +665,7 @@ class LuxonisModel:
             except optuna.TrialPruned as e:
                 logger.info(e)
 
-            return pl_trainer.callback_metrics["val/loss"].item()
+            return pl_trainer.callback_metrics[monitor].item()
 
         cfg_tuner = self.cfg.tuner
         if cfg_tuner is None:
@@ -691,7 +715,9 @@ class LuxonisModel:
         study = optuna.create_study(
             study_name=cfg_tuner.study_name,
             storage=storage,
-            direction="minimize",
+            direction="minimize"
+            if cfg_tuner.monitor == "loss"
+            else "maximize",
             pruner=pruner,
             load_if_exists=cfg_tuner.continue_existing_study,
         )
@@ -702,6 +728,9 @@ class LuxonisModel:
         logger.info(
             f"Best study parameters: {study.best_params}. Cost: {study.best_value}."
         )
+
+        study_df = study.trials_dataframe()
+        study_df.to_csv(self.run_save_dir / "tuner_study.csv", index=False)
 
         self.parent_tracker.log_hyperparams(study.best_params)
 
