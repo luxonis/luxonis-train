@@ -746,3 +746,19 @@ class Config(LuxonisConfig):
                             f"updated with scheduling: {gradient_accumulation_schedule}"
                         )
                         break
+
+    def model_dump(self, *args, **kwargs):
+        """Exclude Normalize augmentation during serialization."""
+        data = super().model_dump(*args, **kwargs)
+
+        augmentations = (
+            data.get("trainer", {})
+            .get("preprocessing", {})
+            .get("augmentations", [])
+        )
+        if isinstance(augmentations, list):
+            data["trainer"]["preprocessing"]["augmentations"] = [
+                aug for aug in augmentations if aug.get("name") != "Normalize"
+            ]
+
+        return data
