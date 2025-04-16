@@ -12,7 +12,13 @@ from luxonis_ml.utils import (
     LuxonisFileSystem,
     is_acyclic,
 )
-from pydantic import Field, field_validator, model_validator
+from pydantic import (
+    Field,
+    SerializationInfo,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 from pydantic.types import (
     FilePath,
     NonNegativeFloat,
@@ -394,6 +400,22 @@ class PreprocessingConfig(BaseModelExtraForbid):
             )
         return self
 
+    @model_serializer
+    def serialize_model(self, info: SerializationInfo):
+        data = {
+            key: value
+            for key, value in self.__dict__.items()
+            if not key.startswith("_")
+        }
+        if "augmentations" in data and isinstance(data["augmentations"], list):
+            data["augmentations"] = [
+                aug
+                for aug in data["augmentations"]
+                if getattr(aug, "name", "") != "Normalize"
+            ]
+
+        return data
+
     def get_active_augmentations(self) -> list[ConfigItem]:
         """Returns list of augmentations that are active.
 
@@ -746,19 +768,3 @@ class Config(LuxonisConfig):
                             f"updated with scheduling: {gradient_accumulation_schedule}"
                         )
                         break
-
-    def model_dump(self, *args, **kwargs):
-        """Exclude Normalize augmentation during serialization."""
-        data = super().model_dump(*args, **kwargs)
-
-        augmentations = (
-            data.get("trainer", {})
-            .get("preprocessing", {})
-            .get("augmentations", [])
-        )
-        if isinstance(augmentations, list):
-            data["trainer"]["preprocessing"]["augmentations"] = [
-                aug for aug in augmentations if aug.get("name") != "Normalize"
-            ]
-
-        return data
