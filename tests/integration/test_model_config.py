@@ -36,7 +36,7 @@ def test_config_dump(coco_dataset: LuxonisDataset):
         model2_config = normalize_dict(model2.cfg.model_dump())
 
         assert model1_config == model2_config, "Model configs are not the same"
-        assert "Noramlize" not in [
+        assert "Normalize" not in [
             aug["name"]
             for aug in model1_config["trainer"]["preprocessing"][
                 "augmentations"
