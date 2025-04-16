@@ -32,6 +32,8 @@ from .utils import (
     build_training_strategy,
     build_visualizers,
     compute_losses,
+    log_balanced_class_images,
+    log_sequential_images,
     postprocess_metrics,
 )
 
@@ -602,10 +604,12 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> dict[str, Tensor]:
         input_image = inputs[self.image_source]
 
+        cls_key = next(
+            (key for key in labels if "/classification" in key), None
+        )
+        images = None
         if self._n_logged_images < self.cfg.trainer.n_log_images:
             images = get_denormalized_images(self.cfg, input_image)
-        else:
-            images = None
 
         outputs = self.forward(
             inputs,
@@ -621,19 +625,43 @@ class LuxonisLightningModule(pl.LightningModule):
 
         self._loss_accumulators[mode].update(losses)
 
-        for node_name, visualizations in outputs.visualizations.items():
-            formatted_node_name = self.nodes.formatted_name(node_name)
-            for viz_name, viz_batch in visualizations.items():
-                for viz in viz_batch:
-                    name = f"{mode}/visualizations/{formatted_node_name}/{viz_name}"
-                    if self._n_logged_images >= self.cfg.trainer.n_log_images:
-                        continue
-                    self.tracker.log_image(
-                        f"{name}/{self._n_logged_images}",
-                        viz.detach().cpu().numpy().transpose(1, 2, 0),
-                        step=self.current_epoch,
+        max_log_images = self.cfg.trainer.n_log_images
+
+        if outputs.visualizations:
+            if cls_key is not None:
+                # Smart logging: balance class representation
+                n_classes = labels[cls_key].shape[1]
+                if not hasattr(self, "_class_log_counts"):
+                    self._class_log_counts = [0] * n_classes
+                class_log_counts = getattr(
+                    self, "_class_log_counts", [0] * n_classes
+                )
+
+                self._n_logged_images, self._class_log_counts = (
+                    log_balanced_class_images(
+                        self.tracker,
+                        self.nodes,
+                        outputs.visualizations,
+                        labels,
+                        cls_key,
+                        class_log_counts,
+                        self._n_logged_images,
+                        max_log_images,
+                        mode,
+                        self.current_epoch,
                     )
-                    self._n_logged_images += 1
+                )
+            else:
+                # just log first N images
+                self._n_logged_images = log_sequential_images(
+                    self.tracker,
+                    self.nodes,
+                    outputs.visualizations,
+                    self._n_logged_images,
+                    max_log_images,
+                    mode,
+                    self.current_epoch,
+                )
 
         return losses
 
@@ -679,6 +707,8 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
         self._n_logged_images = 0
+        if hasattr(self, "_class_log_counts"):
+            self._class_log_counts = [0] * len(self._class_log_counts)
         self._loss_accumulators[mode].clear()
 
     @rank_zero_only
