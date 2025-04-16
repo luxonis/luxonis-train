@@ -25,6 +25,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         bucket_storage: Literal["local", "s3", "gcs", "azure"] = "local",
         update_mode: Literal["always", "if_empty"] = "always",
         delete_existing: bool = True,
+        filter_task_names: list[str] | None = None,
         **kwargs,
     ):
         """Torch-compatible loader for Luxonis datasets.
@@ -55,6 +56,12 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         @type bucket_storage: Literal["local", "s3", "gcs", "azure"]
         @param bucket_storage: Type of the bucket storage. Defaults to
             'local'.
+        @type update_mode: Literal["always", "if_empty"]
+        @param update_mode: Update mode for the dataset. Only applicable
+            for remote datasets. If set to 'always', the dataset will be
+            updated every time the loader is created. If set to 'if_empty',
+            the dataset will only be updated if it is empty. Defaults to
+            'always'.
         @type delete_existing: bool
         @param delete_existing: Only relevant when C{dataset_dir} is
             provided. By default, the dataset is parsed again every time
@@ -62,6 +69,11 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             changed. If C{delete_existing} is set to C{False} and a
             dataset of the same name already exists, the existing
             dataset will be used instead of re-parsing the data.
+        @type filter_task_names: list[str] | None
+        @param filter_task_names: List of task names to filter the
+            dataset by. If provided, only the tasks with the specified
+            names will be loaded. If not provided, all tasks will be
+            loaded.
         """
         super().__init__(**kwargs)
         if dataset_dir is not None:
@@ -91,6 +103,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             keep_aspect_ratio=self.keep_aspect_ratio,
             color_space=self.color_space,
             update_mode=update_mode,
+            filter_task_names=filter_task_names,
         )
 
     @override
