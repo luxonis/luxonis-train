@@ -371,6 +371,21 @@ class PreprocessingConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_normalize(self) -> Self:
+        norm = next(
+            (aug for aug in self.augmentations if aug.name == "Normalize"),
+            None,
+        )
+        if norm:
+            if self.normalize.active:
+                logger.warning(
+                    "Normalize is being used in both trainer.preprocessing.augmentations "
+                    "and trainer.preprocessing.normalize. "
+                    "Parameters from trainer.preprocessing.augmentations list will override "
+                    "those in trainer.preprocessing.normalize."
+                )
+            self.normalize.params = norm.params
+            self.augmentations.remove(norm)
+
         if self.normalize.active:
             self.augmentations.append(
                 AugmentationConfig(
