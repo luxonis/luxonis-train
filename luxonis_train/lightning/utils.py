@@ -1,7 +1,7 @@
 from collections import defaultdict  # noqa: INP001
 from collections.abc import Iterable, Iterator, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypeVar
 
 import lightning.pytorch as pl
 import torch
@@ -35,8 +35,8 @@ from luxonis_train.registry import (
 )
 from luxonis_train.strategies import BaseTrainingStrategy
 from luxonis_train.tasks import Metadata
-from luxonis_train.typing import Packet
-from luxonis_train.utils import DatasetMetadata
+from luxonis_train.typing import Labels, Packet
+from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
 from luxonis_train.utils.general import to_shape_packet
 
 A = TypeVar("A", BaseLoss, BaseMetric, BaseVisualizer)
@@ -531,3 +531,76 @@ def _to_module_dict(modules: AttachedModulesDict[A]) -> AttachedModulesDict[A]:
             for node_name, node_modules in modules.items()
         }
     )  # type: ignore
+
+
+def log_balanced_class_images(
+    tracker: LuxonisTrackerPL,
+    nodes: Mapping[str, BaseNode],
+    visualizations: dict[str, dict[str, Tensor]],
+    labels: Labels,
+    cls_key: str,
+    class_log_counts: list[int],
+    n_logged_images: int,
+    max_log_images: int,
+    mode: Literal["test", "val"],
+    current_epoch: int,
+) -> tuple[int, list[int]]:
+    """Log images with balanced class distribution."""
+    for node_name, node_visualizations in visualizations.items():
+        formatted_node_name = nodes.formatted_name(node_name)
+        for viz_name, viz_batch in node_visualizations.items():
+            for idx, viz in enumerate(viz_batch):
+                if n_logged_images >= max_log_images:
+                    break
+                present_classes = (
+                    (labels[cls_key][idx] > 0)
+                    .nonzero(as_tuple=True)[0]
+                    .tolist()
+                )
+                if present_classes:
+                    min_logged_class = min(
+                        present_classes, key=lambda c: class_log_counts[c]
+                    )
+                    if class_log_counts[min_logged_class] == min(
+                        class_log_counts
+                    ):
+                        name = f"{mode}/visualizations/{formatted_node_name}/{viz_name}"
+                        tracker.log_image(
+                            f"{name}/{n_logged_images}",
+                            viz.detach().cpu().numpy().transpose(1, 2, 0),
+                            step=current_epoch,
+                        )
+                        n_logged_images += 1
+                        for c in present_classes:
+                            class_log_counts[c] += 1
+
+    return n_logged_images, class_log_counts
+
+
+def log_sequential_images(
+    tracker: LuxonisTrackerPL,
+    nodes: Mapping[str, BaseNode],
+    visualizations: dict[str, dict[str, Tensor]],
+    n_logged_images: int,
+    max_log_images: int,
+    mode: Literal["test", "val"],
+    current_epoch: int,
+) -> int:
+    """Log first N images sequentially."""
+    for node_name, node_visualizations in visualizations.items():
+        formatted_node_name = nodes.formatted_name(node_name)
+        for viz_name, viz_batch in node_visualizations.items():
+            for viz in viz_batch:
+                if n_logged_images >= max_log_images:
+                    break
+                name = (
+                    f"{mode}/visualizations/{formatted_node_name}/{viz_name}"
+                )
+                tracker.log_image(
+                    f"{name}/{n_logged_images}",
+                    viz.detach().cpu().numpy().transpose(1, 2, 0),
+                    step=current_epoch,
+                )
+                n_logged_images += 1
+
+    return n_logged_images
