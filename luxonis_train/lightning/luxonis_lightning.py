@@ -117,6 +117,7 @@ class LuxonisLightningModule(pl.LightningModule):
         self._export: bool = False
         self._core = _core
         self._n_logged_images = 0
+        self._class_log_counts: list[int] = []
 
         self._loss_accumulators = {
             "train": LossAccumulator(),
@@ -631,7 +632,10 @@ class LuxonisLightningModule(pl.LightningModule):
             if cls_key is not None:
                 # Smart logging: balance class representation
                 n_classes = labels[cls_key].shape[1]
-                if not hasattr(self, "_class_log_counts"):
+                if (
+                    not self._class_log_counts
+                    or len(self._class_log_counts) != n_classes
+                ):
                     self._class_log_counts = [0] * n_classes
                 class_log_counts = getattr(
                     self, "_class_log_counts", [0] * n_classes
@@ -707,7 +711,7 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
         self._n_logged_images = 0
-        if hasattr(self, "_class_log_counts"):
+        if self._class_log_counts:
             self._class_log_counts = [0] * len(self._class_log_counts)
         self._loss_accumulators[mode].clear()
 
