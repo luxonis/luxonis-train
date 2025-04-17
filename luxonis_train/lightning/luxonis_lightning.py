@@ -637,9 +637,6 @@ class LuxonisLightningModule(pl.LightningModule):
                     or len(self._class_log_counts) != n_classes
                 ):
                     self._class_log_counts = [0] * n_classes
-                class_log_counts = getattr(
-                    self, "_class_log_counts", [0] * n_classes
-                )
 
                 self._n_logged_images, self._class_log_counts = (
                     log_balanced_class_images(
@@ -648,7 +645,7 @@ class LuxonisLightningModule(pl.LightningModule):
                         outputs.visualizations,
                         labels,
                         cls_key,
-                        class_log_counts,
+                        self._class_log_counts,
                         self._n_logged_images,
                         max_log_images,
                         mode,
