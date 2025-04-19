@@ -53,7 +53,7 @@ def parking_lot_dataset() -> LuxonisDataset:
     parser = LuxonisParser(
         url,
         dataset_name="D1_ParkingLot",
-        delete_existing=True,
+        delete_local=True,
         save_dir=WORK_DIR,
     )
     return parser.parse(random_split=True)
@@ -80,7 +80,7 @@ def embedding_dataset() -> LuxonisDataset:
                 },
             }
 
-    dataset = LuxonisDataset("embedding_test", delete_existing=True)
+    dataset = LuxonisDataset("embedding_test", delete_local=True)
     dataset.add(generator())
     dataset.make_splits()
     return dataset
@@ -115,7 +115,7 @@ def toy_ocr_dataset() -> LuxonisDataset:
                 },
             }
 
-    dataset = LuxonisDataset("toy_ocr", delete_existing=True)
+    dataset = LuxonisDataset("toy_ocr", delete_local=True)
     dataset.add(generator())
 
     dataset.make_splits()
@@ -135,14 +135,14 @@ def coco_dataset() -> LuxonisDataset:
         gdown.download(url, str(output_zip), quiet=False)
 
     parser = LuxonisParser(
-        str(output_zip), dataset_name=dataset_name, delete_existing=True
+        str(output_zip), dataset_name=dataset_name, delete_local=True
     )
     return parser.parse(random_split=True)
 
 
 @pytest.fixture(scope="session")
 def cifar10_dataset() -> LuxonisDataset:
-    dataset = LuxonisDataset("cifar10_test", delete_existing=True)
+    dataset = LuxonisDataset("cifar10_test", delete_local=True)
     output_folder = WORK_DIR / "cifar10"
     output_folder.mkdir(parents=True, exist_ok=True)
     cifar10_torch = torchvision.datasets.CIFAR10(
@@ -181,7 +181,7 @@ def cifar10_dataset() -> LuxonisDataset:
 
 @pytest.fixture(scope="session")
 def mnist_dataset() -> LuxonisDataset:
-    dataset = LuxonisDataset("mnist_test", delete_existing=True)
+    dataset = LuxonisDataset("mnist_test", delete_local=True)
     output_folder = WORK_DIR / "mnist"
     output_folder.mkdir(parents=True, exist_ok=True)
     mnist_torch = torchvision.datasets.MNIST(
@@ -279,7 +279,7 @@ def anomaly_detection_dataset() -> LuxonisDataset:
     train_paths = paths_total[:5]
     test_paths = paths_total[5:]
 
-    dataset = LuxonisDataset("dummy_mvtec", delete_existing=True)
+    dataset = LuxonisDataset("dummy_mvtec", delete_local=True)
     dataset.add(dummy_generator(train_paths, test_paths))
     definitions = {
         "train": train_paths,

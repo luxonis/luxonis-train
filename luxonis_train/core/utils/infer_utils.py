@@ -200,7 +200,7 @@ def infer_from_directory(
             yield {"file": img_path}
 
     dataset_name = "infer_from_directory"
-    dataset = LuxonisDataset(dataset_name=dataset_name, delete_existing=True)
+    dataset = LuxonisDataset(dataset_name=dataset_name, delete_local=True)
     dataset.add(generator())
     dataset.make_splits(
         {"train": 0.0, "val": 0.0, "test": 1.0}, replace_old_splits=True

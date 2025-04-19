@@ -175,5 +175,5 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             dataset_name=dataset_name,
             dataset_type=dataset_type,
             save_dir="data",
-            delete_existing=True,
+            delete_local=True,
         ).parse()
