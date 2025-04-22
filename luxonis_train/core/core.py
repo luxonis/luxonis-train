@@ -122,7 +122,12 @@ class LuxonisModel:
         self.loaders: dict[View, BaseLoaderTorch] = {}
         loader_name = self.cfg.loader.name
         Loader = LOADERS.get(loader_name)
-        model_tasks = sorted({node.task_name for node in self.cfg.model.nodes})
+        if issubclass(Loader, LuxonisLoaderTorch):
+            model_tasks = sorted(
+                {node.task_name for node in self.cfg.model.nodes}
+            )
+            self.cfg.loader.params["filter_task_names"] = model_tasks
+
         for view in ("train", "val", "test"):
             if (
                 view != "train"
@@ -143,7 +148,6 @@ class LuxonisModel:
                 augmentation_config=self.cfg_preprocessing.get_active_augmentations(),
                 color_space=self.cfg_preprocessing.color_space,
                 keep_aspect_ratio=self.cfg_preprocessing.keep_aspect_ratio,
-                filter_task_names=model_tasks,
                 **self.cfg.loader.params,  # type: ignore
             )
 
