@@ -180,7 +180,7 @@ def test_mlflow_logging(temp_dir, setup_mlflow, set_env_vars):
                 },
                 "batch_size": 4,
                 "epochs": 30,
-                "n_log_images": 4,
+                "n_log_images": 3,
                 "validation_interval": 15,
                 "optimizer": {
                     "name": "Adam",
@@ -241,7 +241,6 @@ def test_mlflow_logging(temp_dir, setup_mlflow, set_env_vars):
             f"test/visualizations/{formated_node_name}/ClassificationVisualizer/30/0.png",
             f"test/visualizations/{formated_node_name}/ClassificationVisualizer/30/1.png",
             f"test/visualizations/{formated_node_name}/ClassificationVisualizer/30/2.png",
-            f"test/visualizations/{formated_node_name}/ClassificationVisualizer/30/3.png",
         ]
 
         for file_path in test_files:
@@ -256,15 +255,12 @@ def test_mlflow_logging(temp_dir, setup_mlflow, set_env_vars):
             f"val/visualizations/{formated_node_name}/ClassificationVisualizer/0/0.png",
             f"val/visualizations/{formated_node_name}/ClassificationVisualizer/0/1.png",
             f"val/visualizations/{formated_node_name}/ClassificationVisualizer/0/2.png",
-            f"val/visualizations/{formated_node_name}/ClassificationVisualizer/0/3.png",
             f"val/visualizations/{formated_node_name}/ClassificationVisualizer/14/0.png",
             f"val/visualizations/{formated_node_name}/ClassificationVisualizer/14/1.png",
             f"val/visualizations/{formated_node_name}/ClassificationVisualizer/14/2.png",
-            f"val/visualizations/{formated_node_name}/ClassificationVisualizer/14/3.png",
             f"val/visualizations/{formated_node_name}/ClassificationVisualizer/29/0.png",
             f"val/visualizations/{formated_node_name}/ClassificationVisualizer/29/1.png",
             f"val/visualizations/{formated_node_name}/ClassificationVisualizer/29/2.png",
-            f"val/visualizations/{formated_node_name}/ClassificationVisualizer/29/3.png",
         ]
 
         assert set(validation_files).issubset(
