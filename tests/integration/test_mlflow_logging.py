@@ -137,7 +137,7 @@ def test_mlflow_logging(temp_dir, setup_mlflow, set_env_vars):
                         "annotation": {"class": f"xor_{y_value}"},
                     }
 
-        dataset = LuxonisDataset("xor_dataset", delete_existing=True)
+        dataset = LuxonisDataset("xor_dataset", delete_local=True)
         dataset.add(generator(temp_dir))
         dataset.make_splits((1, 0, 0))
 

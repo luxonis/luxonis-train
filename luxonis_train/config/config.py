@@ -12,7 +12,13 @@ from luxonis_ml.utils import (
     LuxonisFileSystem,
     is_acyclic,
 )
-from pydantic import Field, field_validator, model_validator
+from pydantic import (
+    Field,
+    SerializationInfo,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 from pydantic.types import (
     FilePath,
     NonNegativeFloat,
@@ -371,6 +377,21 @@ class PreprocessingConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_normalize(self) -> Self:
+        norm = next(
+            (aug for aug in self.augmentations if aug.name == "Normalize"),
+            None,
+        )
+        if norm:
+            if self.normalize.active:
+                logger.warning(
+                    "Normalize is being used in both trainer.preprocessing.augmentations "
+                    "and trainer.preprocessing.normalize. "
+                    "Parameters from trainer.preprocessing.augmentations list will override "
+                    "those in trainer.preprocessing.normalize."
+                )
+            self.normalize.params = norm.params
+            self.augmentations.remove(norm)
+
         if self.normalize.active:
             self.augmentations.append(
                 AugmentationConfig(
@@ -378,6 +399,22 @@ class PreprocessingConfig(BaseModelExtraForbid):
                 )
             )
         return self
+
+    @model_serializer
+    def serialize_model(self, info: SerializationInfo):
+        data = {
+            key: value
+            for key, value in self.__dict__.items()
+            if not key.startswith("_")
+        }
+        if "augmentations" in data and isinstance(data["augmentations"], list):
+            data["augmentations"] = [
+                aug
+                for aug in data["augmentations"]
+                if getattr(aug, "name", "") != "Normalize"
+            ]
+
+        return data
 
     def get_active_augmentations(self) -> list[ConfigItem]:
         """Returns list of augmentations that are active.
