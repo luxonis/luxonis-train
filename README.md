@@ -70,6 +70,9 @@ Get started with `LuxonisTrain` in just a few steps:
 
    Open the provided URL in your browser to visualize the training progress
 
+> [!NOTE]
+> For hands-on examples of how to prepare data with `LuxonisML` and train AI models using `LuxonisTrain`, check out [this guide](https://github.com/luxonis/depthai-ml-training/tree/main/training#-luxonis-train-tutorials).
+
 ## 📜 Table Of Contents
 
 - [🌟 Overview](#overview)
