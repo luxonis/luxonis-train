@@ -23,7 +23,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         team_id: str | None = None,
         bucket_type: Literal["internal", "external"] = "internal",
         bucket_storage: Literal["local", "s3", "gcs", "azure"] = "local",
-        update_mode: Literal["always", "if_empty"] = "always",
+        update_mode: Literal["all", "missing"] = "all",
         delete_existing: bool = True,
         filter_task_names: list[str] | None = None,
         **kwargs,
@@ -56,12 +56,10 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         @type bucket_storage: Literal["local", "s3", "gcs", "azure"]
         @param bucket_storage: Type of the bucket storage. Defaults to
             'local'.
-        @type update_mode: Literal["always", "if_empty"]
-        @param update_mode: Update mode for the dataset. Only applicable
-            for remote datasets. If set to 'always', the dataset will be
-            updated every time the loader is created. If set to 'if_empty',
-            the dataset will only be updated if it is empty. Defaults to
-            'always'.
+        @type update_mode: Literal["all", "missing"]
+        @param update_mode: Enum that determines the sync mode for media files of the remote dataset (annotations and metadata are always overwritten):
+            - UpdateMode.MISSING: Downloads only the missing media files for the dataset.
+            - UpdateMode.ALL: Always downloads and overwrites all media files in the local dataset.
         @type delete_existing: bool
         @param delete_existing: Only relevant when C{dataset_dir} is
             provided. By default, the dataset is parsed again every time
@@ -189,4 +187,5 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             dataset_type=dataset_type,
             save_dir="data",
             delete_local=True,
+            delete_remote=True,
         ).parse()
