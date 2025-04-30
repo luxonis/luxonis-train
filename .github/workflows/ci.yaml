@@ -103,11 +103,11 @@ jobs:
         cache: pip
 
     - name: Install released version of LuxonisML
-      if: startsWith(github.head_ref, 'release/') == false
+      if: startsWith(github.head_ref, 'release/') == true
       run: pip install -e .[utils]
 
     - name: Install dev version of LuxonisML
-      if: startsWith(github.head_ref, 'release/') == true
+      if: startsWith(github.head_ref, 'release/') == false
       run: |
         pip install "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@main"
 
