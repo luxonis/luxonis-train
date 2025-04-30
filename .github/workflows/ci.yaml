@@ -104,7 +104,7 @@ jobs:
 
     - name: Install released version of LuxonisML
       if: startsWith(github.head_ref, 'release/') == true
-      run: pip install -e .[utils]
+      run: pip install luxonis-ml[utils]
 
     - name: Install dev version of LuxonisML
       if: startsWith(github.head_ref, 'release/') == false
