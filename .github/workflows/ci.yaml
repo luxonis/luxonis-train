@@ -102,9 +102,17 @@ jobs:
         python-version: '3.10'
         cache: pip
 
+    - name: Install released version of LuxonisML
+      if: startsWith(github.head_ref, 'release/') == false
+      run: pip install -e .[utils]
+
+    - name: Install dev version of LuxonisML
+      if: startsWith(github.head_ref, 'release/') == true
+      run: |
+        pip install "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@main"
+
     - name: Test config without dependencies
       run: |
-        pip install luxonis-ml[utils]
         pip install -e . --no-deps
         python -c 'from luxonis_train.config import Config; \
                    Config.get_config("configs/complex_model.yaml")'
@@ -130,7 +138,7 @@ jobs:
     - name: Install dependencies
       run: pip install -e .[dev]
 
-    - name: Install dev version of Luxonis ML
+    - name: Install dev version of LuxonisML
       if: startsWith(github.head_ref, 'release/') == false
       run: |
         pip uninstall luxonis-ml -y
