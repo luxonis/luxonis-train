@@ -5,14 +5,12 @@ on:
     inputs:
       ml_ref:
         description: 'luxonis-ml version (branch/tag/SHA)'
-        required: false
-        default: 'main'
-  workflow_call:
-    inputs:
-      ml_ref:
-        description: 'luxonis-ml version (branch/tag/SHA)'
         required: true
-        type: string
+        default: 'main'
+      train_ref_mode:
+        description: 'Run luxonis-train on "main" or "latest-release"'
+        required: true
+        default: 'main'
 
 permissions:
   pull-requests: write
