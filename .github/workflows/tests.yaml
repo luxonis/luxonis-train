@@ -46,7 +46,7 @@ jobs:
     - name: Install specified luxonis-ml
       run: |
         pip uninstall luxonis-ml -y || true
-        pip install "luxonis-ml[all] @ git+https://github.com/luxonis/luxonis-ml.git@${{ inputs.ml_ref || github.event.inputs.ml_ref }}" \
+        pip install "luxonis-ml[all] @ git+https://github.com/luxonis/luxonis-ml.git@${{ inputs.ml_ref }}" \
           --upgrade --force-reinstall
 
     - name: Authenticate to Google Cloud
