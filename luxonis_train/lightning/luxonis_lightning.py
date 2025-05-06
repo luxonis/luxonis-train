@@ -707,10 +707,11 @@ class LuxonisLightningModule(pl.LightningModule):
             metrics=table,
         )
 
-        logger.warning(
-            f"Logged images ({self._n_logged_images}) != expected ({self.cfg.trainer.n_log_images}). Possible reasons: "
-            f"class imbalance or a small number of images in the split."
-        )
+        if self._n_logged_images != self.cfg.trainer.n_log_images:
+            logger.warning(
+                f"Logged images ({self._n_logged_images}) != expected ({self.cfg.trainer.n_log_images}). Possible reasons: "
+                f"class imbalance or a small number of images in the split."
+            )
 
         self._n_logged_images = 0
         if self._class_log_counts:
