@@ -60,6 +60,7 @@ class MetricModuleConfig(AttachedModuleConfig):
 class FreezingConfig(BaseModelExtraForbid):
     active: bool = False
     unfreeze_after: NonNegativeInt | NonNegativeFloat | None = None
+    lr_after_unfreeze: NonNegativeFloat | None = None
 
 
 class NodeConfig(ConfigItem):

@@ -69,7 +69,7 @@ class Nodes(dict[str, BaseNode] if TYPE_CHECKING else nn.ModuleDict):
         inputs: dict[str, list[str]],
         graph: dict[str, list[str]],
         task_names: dict[str, str],
-        frozen_nodes: dict[str, int],
+        frozen_nodes: dict[str, tuple[int, float]],
     ):
         self.graph = graph
         self.task_names = task_names
@@ -129,9 +129,12 @@ class Nodes(dict[str, BaseNode] if TYPE_CHECKING else nn.ModuleDict):
     def is_frozen(self, node_name: str) -> bool:
         return self.unfreeze_after.get(node_name, 0) == 0
 
-    def frozen_nodes(self) -> Iterator[tuple[str, BaseNode, int]]:
-        for node_name, unfreeze_after in self.unfreeze_after.items():
-            yield node_name, self[node_name], unfreeze_after
+    def frozen_nodes(self) -> Iterator[tuple[str, BaseNode, int, float]]:
+        for node_name, (
+            unfreeze_after,
+            lr_after_unfreeze,
+        ) in self.unfreeze_after.items():
+            yield node_name, self[node_name], unfreeze_after, lr_after_unfreeze
 
     def traverse(self) -> Iterator[tuple[str, BaseNode, list[str], list[str]]]:
         yield from traverse_graph(self.graph, self)
@@ -390,7 +393,10 @@ def build_nodes(
                 unfreeze_after = node_cfg.freezing.unfreeze_after
             else:
                 unfreeze_after = int(node_cfg.freezing.unfreeze_after * epochs)
-            frozen_nodes[node_name] = unfreeze_after
+            frozen_nodes[node_name] = (
+                unfreeze_after,
+                node_cfg.freezing.lr_after_unfreeze,
+            )
         if issubclass(Node, BaseHead):
             task_names = dataset_metadata.task_names
             if node_cfg.task_name is None:

@@ -12,7 +12,7 @@ class TrainingManager(BaseFinetuning):
     def freeze_before_training(
         self, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
-        for node_name, node, _ in pl_module.nodes.frozen_nodes():
+        for node_name, node, _, _ in pl_module.nodes.frozen_nodes():
             logger.info(f"Freezing node '{node_name}'")
             self.freeze(node, train_bn=False)
 
@@ -23,10 +23,17 @@ class TrainingManager(BaseFinetuning):
         epoch: int,
         optimizer: Optimizer,
     ) -> None:
-        for node_name, node, e in pl_module.nodes.frozen_nodes():
+        for (
+            node_name,
+            node,
+            e,
+            lr_after_unfreeze,
+        ) in pl_module.nodes.frozen_nodes():
             if e == epoch:
                 logger.info(f"Unfreezing node '{node_name}'")
-                self.unfreeze_and_add_param_group(node, optimizer)
+                self.unfreeze_and_add_param_group(
+                    node, optimizer, lr_after_unfreeze, initial_denom_lr=1.0
+                )
 
     @override
     def on_after_backward(
