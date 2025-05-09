@@ -195,7 +195,6 @@ def test_mlflow_logging(temp_dir, setup_mlflow, set_env_vars):
                     {"name": "ExportOnTrainEnd"},
                     {"name": "ArchiveOnTrainEnd"},
                     {"name": "UploadCheckpoint"},
-                    {"name": "GPUStatsMonitor"},
                     {"name": "DeviceStatsMonitor"},
                 ],
             },
