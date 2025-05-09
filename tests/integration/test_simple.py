@@ -463,3 +463,28 @@ def test_weight_loading(coco_dataset: LuxonisDataset):
     model.train()
     weights = model.get_min_loss_checkpoint_path()
     model.test(weights=weights)
+
+
+def test_precision_fallback_to_bf16_on_cpu(coco_dataset: LuxonisDataset):
+    config_files = [
+        "configs/segmentation_light_model.yaml",
+        "configs/detection_light_model.yaml",
+        "configs/keypoint_bbox_light_model.yaml",
+        "configs/instance_segmentation_light_model.yaml",
+    ]
+    opts = {
+        "loader.params.dataset_name": coco_dataset.dataset_name,
+        "trainer.epochs": 1,
+        "trainer.n_validation_batches": 1,
+        "trainer.batch_size": 1,
+        "loader.train_view": "val",
+        "loader.val_view": "val",
+        "loader.test_view": "val",
+        "trainer.precision": "16-mixed",
+        "trainer.accelerator": "cpu",
+        "trainer.callbacks": [],
+    }
+
+    for config_file in config_files:
+        model = LuxonisModel(config_file, opts)
+        model.test()

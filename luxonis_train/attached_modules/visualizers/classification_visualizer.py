@@ -45,6 +45,7 @@ class ClassificationVisualizer(BaseVisualizer):
     def _generate_plot(
         self, prediction: Tensor, width: int, height: int
     ) -> Tensor:
+        prediction = prediction.to(torch.float32)
         if self.multilabel:
             pred = prediction.sigmoid().detach().cpu().numpy()
         else:
