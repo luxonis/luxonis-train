@@ -20,7 +20,7 @@ classifiers = [
 ]
 
 [project.scripts]
-luxonis_train = "luxonis_train.__main__:app"
+luxonis_train = "luxonis_train.__main__:app.meta"
 
 [project.urls]
 repository = "https://github.com/luxonis/luxonis-train"
