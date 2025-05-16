@@ -293,7 +293,6 @@ def launcher(
                 module = importlib.util.module_from_spec(spec=spec)
                 if spec.loader:
                     spec.loader.exec_module(module)
-                    logger.info(f"Loaded custom module: '{src}'")
     app(tokens)
 
 
