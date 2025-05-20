@@ -309,6 +309,11 @@ def build_optimizers(
 
     if isinstance(scheduler, ReduceLROnPlateau):
         if cfg_scheduler.params.get("mode") == "max":
+            if main_metric is None:
+                raise ValueError(
+                    "ReduceLROnPlateau scheduler with 'max' mode "
+                    "requires a main metric to monitor."
+                )
             node_name, metric_name = main_metric
             formatted_node = nodes.formatted_name(node_name)
             monitor = f"val/metric/{formatted_node}/{metric_name}"
