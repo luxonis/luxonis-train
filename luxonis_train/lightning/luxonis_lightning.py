@@ -551,7 +551,9 @@ class LuxonisLightningModule(pl.LightningModule):
     ]:
         if self.training_strategy is not None:
             return self.training_strategy.configure_optimizers()
-        return build_optimizers(self.cfg, self.parameters())
+        return build_optimizers(
+            self.cfg, self.parameters(), self.main_metric, self.nodes
+        )
 
     def load_checkpoint(self, path: str | Path | None) -> None:
         """Loads checkpoint weights from provided path.

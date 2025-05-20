@@ -3,8 +3,7 @@ import torch
 from pytest_subtests import SubTests
 from torch import Size
 
-from luxonis_train.loaders import collate_fn
-from luxonis_train.loaders.utils import LuxonisLoaderTorchOutput
+from luxonis_train.loaders import BaseLoaderTorch, LuxonisLoaderTorchOutput
 
 
 @pytest.mark.parametrize(
@@ -55,7 +54,7 @@ def test_collate_fn(
 
     batch = [build_batch_element() for _ in range(batch_size)]
 
-    inputs, annotations = collate_fn(batch)
+    inputs, annotations = BaseLoaderTorch.collate_fn(batch)
 
     with subtests.test("inputs"):
         assert inputs["features"].shape == (batch_size, 3, 224, 224)

@@ -2,8 +2,7 @@ import torch
 from torch import Tensor, nn
 from typing_extensions import override
 
-from luxonis_train.loaders import BaseLoaderTorch
-from luxonis_train.loaders.utils import LuxonisLoaderTorchOutput
+from luxonis_train.loaders import BaseLoaderTorch, LuxonisLoaderTorchOutput
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
