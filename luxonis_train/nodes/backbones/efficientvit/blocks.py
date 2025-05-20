@@ -13,6 +13,7 @@ class DepthwiseSeparableConv(nn.Module):
         kernel_size: int = 3,
         stride: int = 1,
         padding: int | str | None = None,
+        dilation: int | tuple[int, int] = 1,
         use_bias: list[bool] | None = None,
         activation: list[nn.Module] | None = None,
         use_residual: bool = False,
@@ -27,6 +28,10 @@ class DepthwiseSeparableConv(nn.Module):
         @param kernel_size: Kernel size. Defaults to 3.
         @type stride: int
         @param stride: Stride. Defaults to 1.
+        @type padding: int | str | None
+        @param padding: Padding. Defaults to None.
+        @type dilation: int | tuple[int, int]
+        @param dilation: Dilation. Defaults to 1.
         @type use_bias: list[bool, bool]
         @param use_bias: Whether to use bias for the depthwise and
             pointwise convolutions.
@@ -49,6 +54,7 @@ class DepthwiseSeparableConv(nn.Module):
             kernel_size,
             stride,
             padding=autopad(kernel_size) if padding is None else padding,
+            dilation=dilation,
             groups=in_channels,
             activation=activation[0],
             bias=use_bias[0],
