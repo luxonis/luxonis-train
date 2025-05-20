@@ -14,12 +14,15 @@ def create_model_config() -> dict[str, Any]:
             "n_sanity_val_steps": 0,
             "preprocessing": {"train_image_size": [32, 32]},
             "epochs": 2,
-            "batch_size": 4,
+            "batch_size": 2,
             "n_workers": mp.cpu_count(),
+            "validation_interval": 1,
         },
         "loader": {
             "name": "LuxonisLoaderTorch",
-            "train_view": "train",
+            "train_view": "val",
+            "val_view": "val",
+            "test_view": "val",
             "params": {"dataset_name": "coco_test"},
         },
         "model": {
@@ -55,6 +58,13 @@ def cosine_annealing_scheduler() -> dict[str, Any]:
     return {
         "name": "CosineAnnealingLR",
         "params": {"T_max": 2, "eta_min": 0.001},
+    }
+
+
+def sequential_with_reduce_on_plateau_scheduler() -> dict[str, Any]:
+    return {
+        "name": "ReduceLROnPlateau",
+        "params": {"mode": "max", "factor": 0.1, "patience": 2},
     }
 
 

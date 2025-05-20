@@ -15,7 +15,11 @@ from luxonis_ml.typing import ConfigItem, Kwargs, check_type
 from luxonis_ml.utils import traverse_graph
 from luxonis_ml.utils.registry import Registry
 from torch import Size, Tensor, nn
-from torch.optim.lr_scheduler import LRScheduler, SequentialLR
+from torch.optim.lr_scheduler import (
+    LRScheduler,
+    ReduceLROnPlateau,
+    SequentialLR,
+)
 from torch.optim.optimizer import Optimizer
 
 from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
@@ -245,7 +249,10 @@ def build_training_strategy(
 
 
 def build_optimizers(
-    cfg: Config, parameters: Iterable[nn.Parameter]
+    cfg: Config,
+    parameters: Iterable[nn.Parameter],
+    main_metric: tuple[str, str] | None,
+    nodes: Nodes,
 ) -> tuple[list[Optimizer], list[LRScheduler]]:
     """Configures model optimizers and schedulers."""
 
@@ -299,6 +306,24 @@ def build_optimizers(
         )
     else:
         scheduler = _get_scheduler(cfg_scheduler, optimizer)
+
+    if isinstance(scheduler, ReduceLROnPlateau):
+        if cfg_scheduler.params.get("mode") == "max":
+            node_name, metric_name = main_metric
+            formatted_node = nodes.formatted_name(node_name)
+            monitor = f"val/metric/{formatted_node}/{metric_name}"
+        else:
+            monitor = "val/loss"
+
+        return [optimizer], [
+            {
+                "scheduler": scheduler,
+                "monitor": monitor,
+                "interval": cfg_scheduler.params.get("interval", "epoch"),
+                "frequency": cfg_scheduler.params.get("frequency", 1),
+                "strict": cfg_scheduler.params.get("strict", True),
+            }
+        ]
 
     return [optimizer], [scheduler]
 
