@@ -25,6 +25,8 @@ def test_source(work_dir: Path, coco_dataset: LuxonisDataset):
             "tests/configs/config_simple.yaml",
             "loader.params.dataset_name",
             coco_dataset.identifier,
+            "--view",
+            "train",
         ],
         capture_output=True,
         text=True,
