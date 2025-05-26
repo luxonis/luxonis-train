@@ -6,6 +6,16 @@ from torch import Size
 from luxonis_train.loaders import BaseLoaderTorch, LuxonisLoaderTorchOutput
 
 
+class DummyLoader(BaseLoaderTorch):
+    def __len__(self) -> int: ...
+
+    def get(self, idx: int) -> LuxonisLoaderTorchOutput: ...
+
+    def get_classes(self) -> dict[str, dict[str, int]]: ...
+
+    def input_shapes(self) -> dict[str, Size]: ...
+
+
 @pytest.mark.parametrize(
     "input_names_and_shapes",
     [
@@ -54,7 +64,8 @@ def test_collate_fn(
 
     batch = [build_batch_element() for _ in range(batch_size)]
 
-    inputs, annotations = BaseLoaderTorch.collate_fn(batch)
+    loader = DummyLoader(view="train")
+    inputs, annotations = loader.collate_fn(batch)
 
     with subtests.test("inputs"):
         assert inputs["features"].shape == (batch_size, 3, 224, 224)
