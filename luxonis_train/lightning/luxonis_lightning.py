@@ -633,7 +633,7 @@ class LuxonisLightningModule(pl.LightningModule):
         if outputs.visualizations:
             if cls_key is not None:
                 # Smart logging: balance class representation
-                n_classes = self.dataset_metadata.n_classes()
+                n_classes = labels[cls_key].shape[1]
                 if (
                     not self._class_log_counts
                     or len(self._class_log_counts) != n_classes
