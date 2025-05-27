@@ -304,19 +304,17 @@ def build_optimizers(
         scheduler = SequentialLR(
             optimizer, schedulers=schedulers_list, milestones=milestones
         )
-    else:
-        scheduler = _get_scheduler(cfg_scheduler, optimizer)
 
-    if isinstance(scheduler, ReduceLROnPlateau):
+    elif cfg_scheduler.name == "ReduceLROnPlateau":
+        scheduler = _get_scheduler(cfg_scheduler, optimizer)
         if cfg_scheduler.params.get("mode") == "max":
             if main_metric is None:
                 raise ValueError(
-                    "ReduceLROnPlateau scheduler with 'max' mode "
-                    "requires a main metric to monitor."
+                    "ReduceLROnPlateau with 'max' mode requires a main_metric."
                 )
             node_name, metric_name = main_metric
-            formatted_node = nodes.formatted_name(node_name)
-            monitor = f"val/metric/{formatted_node}/{metric_name}"
+            formatted = nodes.formatted_name(node_name)
+            monitor = f"val/metric/{formatted}/{metric_name}"
         else:
             monitor = "val/loss"
 
@@ -331,6 +329,9 @@ def build_optimizers(
                 "strict": cfg_scheduler.params.get("strict", True),
             }
         ]
+
+    else:
+        scheduler = _get_scheduler(cfg_scheduler, optimizer)
 
     return [optimizer], [scheduler]
 
