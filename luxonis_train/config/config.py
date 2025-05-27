@@ -769,3 +769,18 @@ class Config(LuxonisConfig):
                             f"updated with scheduling: {gradient_accumulation_schedule}"
                         )
                         break
+
+        # Rule: Set default callbacks UploadCheckpoint, TestOnTrainEnd, ExportOnTrainEnd, ArchiveOnTrainEnd
+        default_callbacks = [
+            "UploadCheckpoint",
+            "TestOnTrainEnd",
+            "ExportOnTrainEnd",
+            "ArchiveOnTrainEnd",
+        ]
+
+        for cb_name in default_callbacks:
+            if not any(
+                cb.name == cb_name for cb in instance.trainer.callbacks
+            ):
+                instance.trainer.callbacks.append(CallbackConfig(name=cb_name))
+                logger.info(f"Added {cb_name} callback.")
