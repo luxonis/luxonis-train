@@ -35,7 +35,7 @@ class BaseLoaderTorch(
         augmentation_config: list[ConfigItem] | None = None,
         image_source: str = "image",
         keep_aspect_ratio: bool = True,
-        color_space: Literal["RGB", "BGR"] = "RGB",
+        color_space: Literal["RGB", "BGR", "GRAY"] = "RGB",
     ):
         """Base abstract loader class that enforces
         LuxonisLoaderTorchOutput output label structure.
@@ -83,7 +83,7 @@ class BaseLoaderTorch(
         @type keep_aspect_ratio: bool
         @param keep_aspect_ratio: Whether to keep the aspect ratio of the output image after resizing.
 
-        @type color_space: Literal["RGB", "BGR"]
+        @type color_space: Literal["RGB", "BGR", "GRAY"]
         @param color_space: Color space of the output image.
         """
         self._view = view
@@ -290,6 +290,8 @@ class BaseLoaderTorch(
         img = cv2.imread(path, cv2.IMREAD_COLOR)
         if self.color_space == "RGB":
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        elif self.color_space == "GRAY":
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         return img
 
     def _getter_check_none(
