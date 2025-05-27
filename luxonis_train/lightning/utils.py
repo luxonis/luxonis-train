@@ -590,13 +590,11 @@ def log_balanced_class_images(
             for idx, viz in enumerate(viz_batch):
                 if n_logged_images >= max_log_images:
                     break
-                label = labels[cls_key][idx]
-                if label.ndim == 0 or label.numel() == 1:
-                    present_classes = [int(label.item())]
-                else:
-                    present_classes = (
-                        (label > 0).nonzero(as_tuple=True)[0].tolist()
-                    )
+                present_classes = (
+                    (labels[cls_key][idx] > 0)
+                    .nonzero(as_tuple=True)[0]
+                    .tolist()
+                )
                 if present_classes:
                     min_logged_class = min(
                         present_classes, key=lambda c: class_log_counts[c]
