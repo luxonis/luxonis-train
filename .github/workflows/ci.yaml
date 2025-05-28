@@ -68,6 +68,9 @@ jobs:
     - name: Install dependencies
       run: pip install -e .[dev]
 
+    - name: Install semver
+      run: pip install semver~=3.0
+
     - name: Pyright check
       uses: jakebailey/pyright-action@v2
       with:
