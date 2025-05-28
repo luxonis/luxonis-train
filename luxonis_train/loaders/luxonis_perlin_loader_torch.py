@@ -5,6 +5,7 @@ from contextlib import contextmanager
 import numpy as np
 import torch
 import torch.nn.functional as F
+from bidict import bidict
 from luxonis_ml.utils import LuxonisFileSystem
 from torch import Tensor
 from typing_extensions import override
@@ -114,7 +115,9 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
 
     @override
     def get_classes(self) -> dict[str, list[str]]:
-        return {self.task_name: ["background", "anomaly"]}
+        names = ["background", "anomaly"]
+        idx_map = bidict({name: i for i, name in enumerate(names)})
+        return {self.task_name: idx_map}
 
 
 @contextmanager
