@@ -24,6 +24,7 @@ training_group = Group.create_ordered("Training")
 evaluation_group = Group.create_ordered("Evaluation")
 export_group = Group.create_ordered("Export")
 management_group = Group.create_ordered("Management")
+annotation_group = Group.create_ordered("Annotation")
 
 
 def create_model(config: str | None, opts: list[str] | None) -> "LuxonisModel":
@@ -188,6 +189,60 @@ def infer(
         save_dir=save_dir,
         source_path=source_path,
         weights=weights,
+    )
+
+
+@app.command(group=annotation_group, sort_key=0)
+def annotate(
+    opts: list[str] | None = None,
+    /,
+    *,
+    config: str,
+    dir_path: Path,
+    dataset_name: str,
+    weights: Path | None = None,
+    bucket_storage: Literal["local", "gcs"] = "local",
+    delete_local: bool = True,
+    delete_remote: bool = True,
+    team_id: str | None = None,
+):
+    """Run annotation on a custom directory of images.
+
+    @type config: str
+    @param config: Path to the configuration file used by the model to
+        annotate images.
+    @type dir_path: str
+    @param dir_path: Path to the directory containing images to
+        annotate.
+    @type dataset_name: str
+    @param dataset_name: Name of the dataset for the annotated images.
+    @type weights: Path | None
+    @param weights: Path to the model weights. If provided, the model
+        will use these weights instead of those in the configuration
+        file.
+    @type bucket_storage: Literal["local", "gcs"]
+    @param bucket_storage: Storage type for the new annotated dataset.
+    @type delete_local: bool
+    @param delete_local: Whether to delete local dataset or append data
+        to existing dataset.
+    @type delete_remote: bool
+    @param delete_remote: Whether to delete remote dataset or append
+        data to existing dataset.
+    @type team_id: str | None
+    @param team_id: Optional team ID for the dataset.
+    @type opts: list[str]
+    @param opts: A list of optional CLI overrides of the config file.
+    """
+    model = create_model(config, opts)
+
+    model.annotate(
+        dir_path=dir_path,
+        dataset_name=dataset_name,
+        weights=weights,
+        bucket_storage=bucket_storage,
+        delete_local=delete_local,
+        delete_remote=delete_remote,
+        team_id=team_id,
     )
 
 

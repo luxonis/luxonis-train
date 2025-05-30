@@ -488,3 +488,32 @@ def test_precision_fallback_to_bf16_on_cpu(coco_dataset: LuxonisDataset):
     for config_file in config_files:
         model = LuxonisModel(config_file, opts)
         model.test()
+
+
+@pytest.mark.parametrize(
+    "config_name",
+    [
+        "segmentation_light_model",
+        "detection_light_model",
+        "keypoint_bbox_light_model",
+        "instance_segmentation_light_model",
+    ],
+)
+def test_annotate_from_directory(
+    opts: dict[str, Any], config_name: str, coco_dataset: LuxonisDataset
+):
+    config_file = f"configs/{config_name}.yaml"
+    opts = opts | {"loader.params.dataset_name": coco_dataset.identifier}
+    model = LuxonisModel(config_file, opts)
+    dir_path = Path(
+        "tests", "data", "COCO_people_subset", "person_val2017_subset"
+    ).absolute()
+    annotated_dataset = model.annotate(
+        dir_path=dir_path,
+        dataset_name="test_annotated_dataset",
+        bucket_storage="local",
+        delete_local=True,
+        delete_remote=True,
+        team_id="test_team",
+    )
+    assert isinstance(annotated_dataset, LuxonisDataset)
