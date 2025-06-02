@@ -27,6 +27,7 @@ from pydantic.types import (
 )
 from typing_extensions import Self
 
+from luxonis_train.config.constants import CONFIG_VERSION
 from luxonis_train.registry import MODELS
 
 
@@ -604,6 +605,8 @@ class Config(LuxonisConfig):
     exporter: ExportConfig = Field(default_factory=ExportConfig)
     archiver: ArchiveConfig = Field(default_factory=ArchiveConfig)
     tuner: TunerConfig | None = None
+
+    config_version: str = str(CONFIG_VERSION)
 
     ENVIRON: Environ = Field(exclude=True, default_factory=Environ)
 
