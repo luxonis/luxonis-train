@@ -71,7 +71,7 @@ class BaseHead(BaseNode[ForwardInputT, ForwardOutputT]):
         @type head_output: dict[str, Packet[Tensor]]
         @param head_output: Raw outputs from this head.
         @type image_paths: list[Path]
-        @param image_paths: List of original image file paths.
+        @param image_paths: List of original image file paths to annotate.
         @type config_preprocessing: PreprocessingConfig
         @param config_preprocessing: Config containing train_image_size, keep_aspect_ratio, etc.
         @rtype: DatasetIterator
