@@ -46,7 +46,7 @@ from luxonis_train import BaseLoss, Tasks
 class CustomLoss(BaseLoss):
     supported_tasks = [Tasks.CLASSIFICATION, Tasks.SEGMENTATION]
 
-    def __init__(self, smoothing: float, **kwargs):
+    def __init__(self, smoothing: float = 0.5, **kwargs):
         super().__init__(**kwargs)
         self.smoothing = smoothing
 
