@@ -42,7 +42,10 @@ def default_annotate(
     train_size = config_preprocessing.train_image_size
     keep_aspect_ratio = config_preprocessing.keep_aspect_ratio
     batch_size = len(image_paths)
-    required_labels = {task.name for task in head.task.required_labels}
+    required_labels = {
+        task if isinstance(task, str) else task.name
+        for task in head.task.required_labels
+    }
 
     for i in range(batch_size):
         img_path = image_paths[i]
