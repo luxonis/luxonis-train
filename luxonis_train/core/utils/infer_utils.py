@@ -182,6 +182,7 @@ def infer_from_loader(
 def create_loader_from_directory(
     img_paths: Iterable[PathType],
     model: "lxt.LuxonisModel",
+    add_path_annotation: bool = False,
 ) -> torch_data.DataLoader:
     """Creates a DataLoader from a directory of images.
 
@@ -189,6 +190,9 @@ def create_loader_from_directory(
     @param img_paths: Iterable of paths to the images.
     @type model: L{LuxonisModel}
     @param model: The model to use for inference.
+    @type add_path_annotation: bool
+    @param add_path_annotation: Whether to add the image path as an
+        annotation in the dataset.
     @rtype: torch_data.DataLoader
     @return: The DataLoader for the images.
     """
@@ -197,14 +201,10 @@ def create_loader_from_directory(
 
     def generator() -> DatasetIterator:
         for img_path in img_paths:
-            yield {
-                "file": img_path,
-                "annotation": {
-                    "metadata": {
-                        "path": str(img_path),
-                    },
-                },
-            }
+            data = {"file": img_path}
+            if add_path_annotation:
+                data["annotation"] = {"metadata": {"path": str(img_path)}}
+            yield data
 
     dataset.add(generator())
     dataset.make_splits(

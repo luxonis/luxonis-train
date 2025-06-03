@@ -11,7 +11,7 @@ from luxonis_train.nodes.base_node import (
     ForwardOutputT,
 )
 from luxonis_train.typing import Packet
-from luxonis_train.utils.annotation import default_to_annotate
+from luxonis_train.utils.annotation import default_annotate
 
 
 # TODO: We shouldn't skip the head completely
@@ -59,7 +59,7 @@ class BaseHead(BaseNode[ForwardInputT, ForwardOutputT]):
             "get_custom_head_config method must be implemented."
         )
 
-    def to_annotate(
+    def annotate(
         self,
         head_output: dict[str, Packet[Tensor]],
         image_paths: list[Path],
@@ -77,6 +77,6 @@ class BaseHead(BaseNode[ForwardInputT, ForwardOutputT]):
         @rtype: DatasetIterator
         @return: Iterator yielding annotation records in luxonis-ml format.
         """
-        return default_to_annotate(
+        return default_annotate(
             self, head_output, image_paths, config_preprocessing
         )

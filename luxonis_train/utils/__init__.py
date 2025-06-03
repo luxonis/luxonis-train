@@ -1,4 +1,4 @@
-from .annotation import default_to_annotate
+from .annotation import default_annotate
 from .boundingbox import (
     anchors_for_fpn_features,
     apply_bounding_box_to_masks,
@@ -51,7 +51,7 @@ __all__ = [
     "bbox_iou",
     "compute_iou_loss",
     "compute_pose_oks",
-    "default_to_annotate",
+    "default_annotate",
     "dist2bbox",
     "get_attribute_check_none",
     "get_batch_instances",

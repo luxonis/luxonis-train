@@ -44,7 +44,9 @@ def annotate_from_directory(
 
     img_paths = list(img_paths)
 
-    loader = create_loader_from_directory(img_paths, model)
+    loader = create_loader_from_directory(
+        img_paths, model, add_path_annotation=True
+    )
 
     annotated_dataset = LuxonisDataset(
         dataset_name=dataset_name,
@@ -81,6 +83,6 @@ def annotated_dataset_generator(
                 Path("".join(chr(int(c.item())) for c in raw_meta))
                 for raw_meta in metas["/metadata/path"]
             ]
-            yield from lm.nodes[head_name].to_annotate(
+            yield from lm.nodes[head_name].annotate(
                 head_output, img_paths, model.cfg_preprocessing
             )

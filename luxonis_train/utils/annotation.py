@@ -16,7 +16,7 @@ from .spatial_transforms import (
 )
 
 
-def default_to_annotate(
+def default_annotate(
     head,  # type: BaseHead
     head_output: dict[str, Packet[Tensor]],
     image_paths: list[Path],
@@ -42,6 +42,7 @@ def default_to_annotate(
     train_size = config_preprocessing.train_image_size
     keep_aspect_ratio = config_preprocessing.keep_aspect_ratio
     batch_size = len(image_paths)
+    required_labels = {task.name for task in head.task.required_labels}
 
     for i in range(batch_size):
         img_path = image_paths[i]
@@ -52,31 +53,35 @@ def default_to_annotate(
         orig_h, orig_w = img.shape[:2]
 
         preds_for_image = {
-            task: head_output[task][i] for task in head.task.required_labels
+            task: head_output["ocr"][i]
+            if task == "text"
+            else head_output[task][i]
+            for task in required_labels
         }
 
         if all(
             len(preds_for_image[task]) == 0
-            for task in head.task.required_labels
+            for task in required_labels
+            if task != "text"
         ):
             yield {"file": str(img_path)}
             return
 
-        if "boundingbox" in head.task.required_labels:
+        if "boundingbox" in required_labels:
             raw_boxes = (
                 preds_for_image["boundingbox"][:, :4].detach().cpu().numpy()
             )
             norm_boxes = transform_boxes(
                 raw_boxes, orig_h, orig_w, train_size, keep_aspect_ratio
             )
-        if "keypoints" in head.task.required_labels:
+        if "keypoints" in required_labels:
             raw_kpts = (
                 preds_for_image["keypoints"].detach().cpu().float().numpy()
             )
             norm_kpts = transform_keypoints(
                 raw_kpts, orig_h, orig_w, train_size, keep_aspect_ratio
             )
-        if "instance_segmentation" in head.task.required_labels:
+        if "instance_segmentation" in required_labels:
             raw_masks = (
                 preds_for_image["instance_segmentation"]
                 .detach()
@@ -87,7 +92,7 @@ def default_to_annotate(
             norm_masks = transform_masks(
                 raw_masks, orig_h, orig_w, train_size, keep_aspect_ratio
             )
-        if "segmentation" in head.task.required_labels:
+        if "segmentation" in required_labels:
             bin_mask = (
                 seg_output_to_bool(preds_for_image["segmentation"])
                 .detach()
@@ -98,8 +103,18 @@ def default_to_annotate(
             norm_masks = transform_masks(
                 bin_mask, orig_h, orig_w, train_size, keep_aspect_ratio
             )
+        if "classification" in required_labels:
+            pred_classes = (
+                preds_for_image["classification"]
+                .detach()
+                .cpu()
+                .float()
+                .numpy()
+            )
+        if "text" in required_labels:
+            pred_text = head.decoder(preds_for_image["text"])
 
-        for task in head.task.required_labels:
+        for task in required_labels:
             if task == "boundingbox":
                 for idx, inst in enumerate(preds_for_image["boundingbox"]):
                     x, y, w, h = norm_boxes[idx]
@@ -147,6 +162,26 @@ def default_to_annotate(
                             "segmentation": {"mask": mask.astype(np.bool_)},
                         },
                     }
+            elif task == "classification":
+                yield {
+                    "file": str(img_path),
+                    "task_name": head.task_name,
+                    "annotation": {
+                        "class": head.classes.inverse[
+                            int(pred_classes[i].argmax())
+                        ],
+                    },
+                }
+            elif task == "text":
+                yield {
+                    "file": str(img_path),
+                    "task_name": head.task_name,
+                    "annotation": {
+                        "metadata": {
+                            "text": pred_text[i][0],
+                        }
+                    },
+                }
             else:
                 raise ValueError(
                     f"Unsupported task: {task}, please create a custom to_annotate method for this head."
