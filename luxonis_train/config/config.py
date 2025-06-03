@@ -27,6 +27,7 @@ from pydantic.types import (
 )
 from typing_extensions import Self
 
+from luxonis_train.config.constants import CONFIG_VERSION
 from luxonis_train.registry import MODELS
 
 
@@ -605,6 +606,8 @@ class Config(LuxonisConfig):
     archiver: ArchiveConfig = Field(default_factory=ArchiveConfig)
     tuner: TunerConfig | None = None
 
+    config_version: str = str(CONFIG_VERSION)
+
     ENVIRON: Environ = Field(exclude=True, default_factory=Environ)
 
     @model_validator(mode="before")
@@ -769,3 +772,18 @@ class Config(LuxonisConfig):
                             f"updated with scheduling: {gradient_accumulation_schedule}"
                         )
                         break
+
+        # Rule: Set default callbacks UploadCheckpoint, TestOnTrainEnd, ExportOnTrainEnd, ArchiveOnTrainEnd
+        default_callbacks = [
+            "UploadCheckpoint",
+            "TestOnTrainEnd",
+            "ExportOnTrainEnd",
+            "ArchiveOnTrainEnd",
+        ]
+
+        for cb_name in default_callbacks:
+            if not any(
+                cb.name == cb_name for cb in instance.trainer.callbacks
+            ):
+                instance.trainer.callbacks.append(CallbackConfig(name=cb_name))
+                logger.info(f"Added {cb_name} callback.")

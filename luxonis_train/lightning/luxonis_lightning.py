@@ -6,6 +6,7 @@ import lightning.pytorch as pl
 import torch
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
+from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
 from torch import Size, Tensor
 from typing_extensions import override
@@ -139,6 +140,13 @@ class LuxonisLightningModule(pl.LightningModule):
         self.training_strategy = build_training_strategy(self.cfg, self)
 
         self.load_checkpoint(self.cfg.model.weights)
+
+        self.save_hyperparameters(
+            {
+                "luxonis_train_version": luxonis_train.__version__,
+                "luxonis_ml_version": luxonis_ml_version,
+            }
+        )
 
     @property
     def progress_bar(self) -> BaseLuxonisProgressBar:
