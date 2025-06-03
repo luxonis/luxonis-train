@@ -13,6 +13,10 @@ def test_source(work_dir: Path, coco_dataset: LuxonisDataset):
     with open(work_dir / "source_2.py", "w") as f:
         f.write("print('sourcing 2')")
 
+    with open(work_dir / "source_3.py", "w") as f:
+        f.write("from luxonis_train import BaseLoss, BaseNode\n")
+        f.write("print('sourcing 3')\n")
+
     result = subprocess.run(
         [  # noqa: S607
             "python",
@@ -25,6 +29,8 @@ def test_source(work_dir: Path, coco_dataset: LuxonisDataset):
             str(work_dir / "source_2.py"),
             "--config",
             "tests/configs/config_simple.yaml",
+            "--source",
+            str(work_dir / "source_3.py"),
             "loader.params.dataset_name",
             coco_dataset.identifier,
         ],
@@ -39,3 +45,4 @@ def test_source(work_dir: Path, coco_dataset: LuxonisDataset):
 
     assert "sourcing 1" in result.stdout
     assert "sourcing 2" in result.stdout
+    assert "sourcing 3" in result.stdout

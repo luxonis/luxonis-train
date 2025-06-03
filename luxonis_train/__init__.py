@@ -3,7 +3,11 @@ import sys
 
 # Do not run imports when first importing from within the CLI
 # This is to make the CLI more responsive
-if "_unlocked" in locals() or not sys.argv[0].endswith("/luxonis_train"):
+if (
+    "_unlocked" in locals()
+    or "--source" in sys.argv
+    or not sys.argv[0].endswith("/luxonis_train")
+):
     import warnings
 
     try:
