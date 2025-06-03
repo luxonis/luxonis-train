@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 
@@ -28,6 +29,7 @@ def test_source(work_dir: Path, coco_dataset: LuxonisDataset):
         ],
         capture_output=True,
         text=True,
+        env=os.environ,
     )
 
     assert result.returncode == 0, (
