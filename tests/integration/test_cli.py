@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 
 from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.utils import environ
 
 
 def test_source(work_dir: Path, coco_dataset: LuxonisDataset):
@@ -29,7 +30,7 @@ def test_source(work_dir: Path, coco_dataset: LuxonisDataset):
         ],
         capture_output=True,
         text=True,
-        env=os.environ,
+        env=os.environ | {"LUXONISML_BASE_PATH": environ.LUXONISML_BASE_PATH},
     )
 
     assert result.returncode == 0, (
