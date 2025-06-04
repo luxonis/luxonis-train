@@ -9,12 +9,15 @@ model:
 
   losses:
     - name: CrossEntropyLoss
+      attached_to: ClassificationHead
 
   metrics:
     - name: Accuracy
+      attached_to: ClassificationHead
 
   visualizers:
     - name: ClassificationVisualizer
+      attached_to: ClassificationHead
 
 loader:
   train_view: val
