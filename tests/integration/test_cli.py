@@ -44,16 +44,14 @@ from torch import Tensor
 from luxonis_train import BaseLoss, Tasks
 
 class CustomLoss(BaseLoss):
-    supported_tasks = [Tasks.CLASSIFICATION, Tasks.SEGMENTATION]
+    supported_tasks = [Tasks.BOUNDINGBOX]
 
     def __init__(self, smoothing: float = 0.5, **kwargs):
         super().__init__(**kwargs)
         self.smoothing = smoothing
 
     def forward(self, predictions: Tensor, targets: Tensor) -> Tensor:
-        # Implement the actual loss logic here
-        value = predictions.sum() * self.smoothing
-        return value.abs()
+        return predictions.sum() * self.smoothing
 """
         )
 
