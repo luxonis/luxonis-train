@@ -1,4 +1,5 @@
 import os
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 
@@ -7,12 +8,7 @@ from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import Kwargs
 from luxonis_ml.utils import environ
 
-from luxonis_train.__main__ import (
-    archive,
-    export,
-    inspect,
-    train,
-)
+from luxonis_train.__main__ import archive, export, inspect, train
 from luxonis_train.__main__ import test as _test
 
 ONNX_PATH = Path("tests/integration/client_commands_test_model.onnx")
