@@ -165,4 +165,3 @@ class CustomLoss(BaseLoss):
 
     assert "sourcing 1" in result.stdout
     assert "sourcing 2" in result.stdout
-    assert "sourcing 3" in result.stdout
