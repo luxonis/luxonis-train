@@ -156,7 +156,8 @@ class CustomLoss(BaseLoss):
         ],
         capture_output=True,
         text=True,
-        env=os.environ | {"LUXONISML_BASE_PATH": environ.LUXONISML_BASE_PATH},
+        env=os.environ
+        | {"LUXONISML_BASE_PATH": str(environ.LUXONISML_BASE_PATH.absolute())},
     )
 
     assert result.returncode == 0, (
