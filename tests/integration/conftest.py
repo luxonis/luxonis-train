@@ -13,8 +13,7 @@ import torchvision
 from luxonis_ml.data import Category, DatasetIterator, LuxonisDataset
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.typing import Kwargs
-from luxonis_ml.utils import environ
-
+from luxonis_ml.utils import environ, LuxonisFileSystem
 
 @pytest.fixture(scope="session")
 def work_dir() -> Path:
@@ -147,9 +146,10 @@ def coco_dataset(work_dir: Path) -> LuxonisDataset:
 def cifar10_dataset(work_dir: Path) -> LuxonisDataset:
     dataset = LuxonisDataset("cifar10_test", delete_local=True)
     output_folder = work_dir / "cifar10"
-    output_folder.mkdir(parents=True, exist_ok=True)
+    if not os.path.exists(output_folder) or not os.listdir(output_folder):
+        output_folder = LuxonisFileSystem.download("gs://luxonis-test-bucket/luxonis-train-test-data/datasets/cifar10", work_dir)
     cifar10_torch = torchvision.datasets.CIFAR10(
-        root=output_folder, train=False, download=True
+        root=output_folder, train=False, download=False
     )
     classes = [
         "airplane",
