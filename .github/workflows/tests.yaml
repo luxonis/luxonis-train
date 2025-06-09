@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-t4-4core, windows-latest]
 
     runs-on: ${{ matrix.os }}
 
