@@ -67,7 +67,6 @@ jobs:
       env:
         ML_REF: ${{ inputs.ml_ref }}
       run: |
-        pip uninstall luxonis-ml -y
         pip install \
           "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}" \
           --upgrade --force-reinstall
