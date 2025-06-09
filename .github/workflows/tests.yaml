@@ -52,6 +52,13 @@ jobs:
         ref:        ${{ inputs.train_ref }}
         path:       luxonis-train
 
+    - name: Free Disk Space (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: false
+        large-packages: false
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
