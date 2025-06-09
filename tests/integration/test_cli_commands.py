@@ -1,5 +1,6 @@
 import os
 import subprocess
+import sys
 from collections.abc import Callable
 from pathlib import Path
 
@@ -135,7 +136,7 @@ class CustomLoss(BaseLoss):
 
     result = subprocess.run(
         [  # noqa: S607
-            "python",
+            sys.executable,
             "-m",
             "luxonis_train",
             "--source",
@@ -156,12 +157,18 @@ class CustomLoss(BaseLoss):
         ],
         capture_output=True,
         text=True,
-        env=os.environ | {"LUXONISML_BASE_PATH": environ.LUXONISML_BASE_PATH},
+        encoding="utf-8",
+        env=os.environ
+        | {
+            "LUXONISML_BASE_PATH": str(environ.LUXONISML_BASE_PATH),
+            "PYTHONIOENCODING": "utf-8",
+        },
     )
 
     assert result.returncode == 0, (
-        f"Command failed with error: {result.stderr}"
+        f"Command failed with return code {result.returncode}:\n{result.stderr}"
     )
 
-    assert "sourcing 1" in result.stdout
-    assert "sourcing 2" in result.stdout
+    assert result.stdout is not None, "No stdout captured from subprocess"
+    assert "sourcing 1" in result.stdout, "'sourcing 1' not found in output"
+    assert "sourcing 2" in result.stdout, "'sourcing 2' not found in output"
