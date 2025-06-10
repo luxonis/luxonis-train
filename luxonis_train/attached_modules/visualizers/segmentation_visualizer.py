@@ -7,9 +7,10 @@ from torch import Tensor
 from typing_extensions import override
 
 from luxonis_train.tasks import Metadata, Tasks
+from luxonis_train.utils import seg_output_to_bool
 
 from .base_visualizer import BaseVisualizer
-from .utils import Color, draw_segmentation_targets, seg_output_to_bool
+from .utils import Color, draw_segmentation_targets
 
 log_disable = False
 
