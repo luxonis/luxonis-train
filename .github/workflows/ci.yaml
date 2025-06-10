@@ -113,6 +113,7 @@ jobs:
 
     - name: Test config without dependencies
       run: |
+        pip install semver~=3.0
         pip install -e . --no-deps
         python -c 'from luxonis_train.config import Config; \
                    Config.get_config("configs/complex_model.yaml")'

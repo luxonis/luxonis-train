@@ -13,9 +13,12 @@ import torchvision
 from luxonis_ml.data import Category, DatasetIterator, LuxonisDataset
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.typing import Kwargs
-from luxonis_ml.utils import environ
+from luxonis_ml.utils import LuxonisFileSystem, environ
 
-WORK_DIR = Path("tests", "data").absolute()
+
+@pytest.fixture(scope="session")
+def work_dir() -> Path:
+    return Path("tests", "data").absolute()
 
 
 @pytest.fixture(scope="session")
@@ -34,11 +37,11 @@ def output_dir() -> Path:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def setup(output_dir: Path):
-    WORK_DIR.mkdir(parents=True, exist_ok=True)
-    shutil.rmtree(WORK_DIR / "luxonisml", ignore_errors=True)
+def setup(output_dir: Path, work_dir: Path):
+    work_dir.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(work_dir / "luxonisml", ignore_errors=True)
     shutil.rmtree(output_dir, ignore_errors=True)
-    environ.LUXONISML_BASE_PATH = WORK_DIR / "luxonisml"
+    environ.LUXONISML_BASE_PATH = work_dir / "luxonisml"
     output_dir.mkdir(exist_ok=True)
 
 
@@ -48,20 +51,20 @@ def train_overfit() -> bool:
 
 
 @pytest.fixture(scope="session")
-def parking_lot_dataset() -> LuxonisDataset:
+def parking_lot_dataset(work_dir: Path) -> LuxonisDataset:
     url = "gs://luxonis-test-bucket/luxonis-ml-test-data/D1_ParkingLot_Native.zip"
     parser = LuxonisParser(
         url,
         dataset_name="D1_ParkingLot",
         delete_local=True,
-        save_dir=WORK_DIR,
+        save_dir=work_dir,
     )
     return parser.parse(random_split=True)
 
 
 @pytest.fixture(scope="session")
-def embedding_dataset() -> LuxonisDataset:
-    img_dir = WORK_DIR / "embedding_images"
+def embedding_dataset(work_dir: Path) -> LuxonisDataset:
+    img_dir = work_dir / "embedding_images"
     img_dir.mkdir(exist_ok=True)
 
     def generator() -> DatasetIterator:
@@ -87,9 +90,9 @@ def embedding_dataset() -> LuxonisDataset:
 
 
 @pytest.fixture(scope="session")
-def toy_ocr_dataset() -> LuxonisDataset:
+def toy_ocr_dataset(work_dir: Path) -> LuxonisDataset:
     def generator():
-        path = WORK_DIR / "toy_ocr"
+        path = work_dir / "toy_ocr"
         path.mkdir(parents=True, exist_ok=True)
         alphabet = "abcdefghijklmnopqrstuvwxyz"
         for _ in range(50):
@@ -123,14 +126,14 @@ def toy_ocr_dataset() -> LuxonisDataset:
 
 
 @pytest.fixture(scope="session")
-def coco_dataset() -> LuxonisDataset:
+def coco_dataset(work_dir: Path) -> LuxonisDataset:
     dataset_name = "coco_test"
     url = "https://drive.google.com/uc?id=1XlvFK7aRmt8op6-hHkWVKIJQeDtOwoRT"
-    output_zip = WORK_DIR / "COCO_people_subset.zip"
+    output_zip = work_dir / "COCO_people_subset.zip"
 
     if (
         not output_zip.exists()
-        and not (WORK_DIR / "COCO_people_subset").exists()
+        and not (work_dir / "COCO_people_subset").exists()
     ):
         gdown.download(url, str(output_zip), quiet=False)
 
@@ -141,12 +144,16 @@ def coco_dataset() -> LuxonisDataset:
 
 
 @pytest.fixture(scope="session")
-def cifar10_dataset() -> LuxonisDataset:
+def cifar10_dataset(work_dir: Path) -> LuxonisDataset:
     dataset = LuxonisDataset("cifar10_test", delete_local=True)
-    output_folder = WORK_DIR / "cifar10"
-    output_folder.mkdir(parents=True, exist_ok=True)
+    output_folder = work_dir / "cifar10"
+    if not os.path.exists(output_folder) or not os.listdir(output_folder):
+        output_folder = LuxonisFileSystem.download(
+            "gs://luxonis-test-bucket/luxonis-train-test-data/datasets/cifar10",
+            work_dir,
+        )
     cifar10_torch = torchvision.datasets.CIFAR10(
-        root=output_folder, train=False, download=True
+        root=output_folder, train=False, download=False
     )
     classes = [
         "airplane",
@@ -180,9 +187,9 @@ def cifar10_dataset() -> LuxonisDataset:
 
 
 @pytest.fixture(scope="session")
-def mnist_dataset() -> LuxonisDataset:
+def mnist_dataset(work_dir: Path) -> LuxonisDataset:
     dataset = LuxonisDataset("mnist_test", delete_local=True)
-    output_folder = WORK_DIR / "mnist"
+    output_folder = work_dir / "mnist"
     output_folder.mkdir(parents=True, exist_ok=True)
     mnist_torch = torchvision.datasets.MNIST(
         root=output_folder, train=False, download=True
@@ -208,13 +215,13 @@ def mnist_dataset() -> LuxonisDataset:
 
 
 @pytest.fixture(scope="session")
-def anomaly_detection_dataset() -> LuxonisDataset:
+def anomaly_detection_dataset(work_dir: Path) -> LuxonisDataset:
     url = "https://drive.google.com/uc?id=1XlvFK7aRmt8op6-hHkWVKIJQeDtOwoRT"
-    output_zip = WORK_DIR / "COCO_people_subset.zip"
+    output_zip = work_dir / "COCO_people_subset.zip"
 
     if (
         not output_zip.exists()
-        and not (WORK_DIR / "COCO_people_subset").exists()
+        and not (work_dir / "COCO_people_subset").exists()
     ):
         gdown.download(url, str(output_zip), quiet=False)
 
@@ -275,7 +282,7 @@ def anomaly_detection_dataset() -> LuxonisDataset:
                 },
             }
 
-    paths_total = list((WORK_DIR / "COCO_people_subset/").rglob("*.jpg"))
+    paths_total = list((work_dir / "COCO_people_subset/").rglob("*.jpg"))
     train_paths = paths_total[:5]
     test_paths = paths_total[5:]
 
