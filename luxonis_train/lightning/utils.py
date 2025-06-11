@@ -253,7 +253,7 @@ def build_optimizers(
     parameters: Iterable[nn.Parameter],
     main_metric: tuple[str, str] | None,
     nodes: Nodes,
-) -> tuple[list[Optimizer], list[LRScheduler]]:
+) -> tuple[list[Optimizer], list[LRScheduler | dict[str, Any]]]:
     """Configures model optimizers and schedulers."""
 
     cfg_optimizer = cfg.trainer.optimizer
