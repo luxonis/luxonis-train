@@ -321,11 +321,7 @@ def build_optimizers(
         scheduler = {
             "scheduler": scheduler,
             "monitor": monitor,
-            "interval": cfg_scheduler.params.get("interval", "epoch"),
-            "frequency": cfg_scheduler.params.get(
-                "frequency", cfg.trainer.validation_interval
-            ),
-            "strict": cfg_scheduler.params.get("strict", True),
+            "frequency": cfg.trainer.validation_interval,
         }
 
     else:
