@@ -318,17 +318,15 @@ def build_optimizers(
         else:
             monitor = "val/loss"
 
-        return [optimizer], [
-            {
-                "scheduler": scheduler,
-                "monitor": monitor,
-                "interval": cfg_scheduler.params.get("interval", "epoch"),
-                "frequency": cfg_scheduler.params.get(
-                    "frequency", cfg.trainer.validation_interval
-                ),
-                "strict": cfg_scheduler.params.get("strict", True),
-            }
-        ]
+        scheduler = {
+            "scheduler": scheduler,
+            "monitor": monitor,
+            "interval": cfg_scheduler.params.get("interval", "epoch"),
+            "frequency": cfg_scheduler.params.get(
+                "frequency", cfg.trainer.validation_interval
+            ),
+            "strict": cfg_scheduler.params.get("strict", True),
+        }
 
     else:
         scheduler = _get_scheduler(cfg_scheduler, optimizer)
