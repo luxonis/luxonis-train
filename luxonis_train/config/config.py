@@ -361,7 +361,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
         ImageSize, Field(min_length=2, max_length=2)
     ] = ImageSize(256, 256)
     keep_aspect_ratio: bool = True
-    color_space: Literal["RGB", "BGR"] = "RGB"
+    color_space: Literal["RGB", "BGR", "GRAY"] = "RGB"
     normalize: NormalizeAugmentationConfig = Field(
         default_factory=NormalizeAugmentationConfig
     )

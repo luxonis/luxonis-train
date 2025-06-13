@@ -27,7 +27,7 @@ from luxonis_train.callbacks import (
 )
 from luxonis_train.config import Config
 from luxonis_train.lightning import LuxonisLightningModule
-from luxonis_train.loaders import BaseLoaderTorch, collate_fn
+from luxonis_train.loaders import BaseLoaderTorch
 from luxonis_train.loaders.luxonis_loader_torch import LuxonisLoaderTorch
 from luxonis_train.registry import LOADERS
 from luxonis_train.utils import (
@@ -192,7 +192,7 @@ class LuxonisModel:
                 loader,
                 batch_size=self.cfg.trainer.batch_size,
                 num_workers=self.cfg.trainer.n_workers,
-                collate_fn=collate_fn,
+                collate_fn=self.loaders[view].collate_fn,
                 shuffle=view == "train",
                 drop_last=(
                     self.cfg.trainer.skip_last_batch

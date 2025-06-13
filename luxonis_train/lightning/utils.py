@@ -15,7 +15,11 @@ from luxonis_ml.typing import ConfigItem, Kwargs, check_type
 from luxonis_ml.utils import traverse_graph
 from luxonis_ml.utils.registry import Registry
 from torch import Size, Tensor, nn
-from torch.optim.lr_scheduler import LRScheduler, SequentialLR
+from torch.optim.lr_scheduler import (
+    LRScheduler,
+    ReduceLROnPlateau,
+    SequentialLR,
+)
 from torch.optim.optimizer import Optimizer
 
 from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
@@ -245,8 +249,11 @@ def build_training_strategy(
 
 
 def build_optimizers(
-    cfg: Config, parameters: Iterable[nn.Parameter]
-) -> tuple[list[Optimizer], list[LRScheduler]]:
+    cfg: Config,
+    parameters: Iterable[nn.Parameter],
+    main_metric: tuple[str, str] | None,
+    nodes: Nodes,
+) -> tuple[list[Optimizer], list[LRScheduler | dict[str, Any]]]:
     """Configures model optimizers and schedulers."""
 
     cfg_optimizer = cfg.trainer.optimizer
@@ -297,6 +304,26 @@ def build_optimizers(
         scheduler = SequentialLR(
             optimizer, schedulers=schedulers_list, milestones=milestones
         )
+
+    elif cfg_scheduler.name == "ReduceLROnPlateau":
+        scheduler = _get_scheduler(cfg_scheduler, optimizer)
+        if cfg_scheduler.params.get("mode") == "max":
+            if main_metric is None:
+                raise ValueError(
+                    "ReduceLROnPlateau with 'max' mode requires a main_metric."
+                )
+            node_name, metric_name = main_metric
+            formatted = nodes.formatted_name(node_name)
+            monitor = f"val/metric/{formatted}/{metric_name}"
+        else:
+            monitor = "val/loss"
+
+        scheduler = {
+            "scheduler": scheduler,
+            "monitor": monitor,
+            "frequency": cfg.trainer.validation_interval,
+        }
+
     else:
         scheduler = _get_scheduler(cfg_scheduler, optimizer)
 

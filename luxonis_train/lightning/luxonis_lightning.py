@@ -1,6 +1,6 @@
 from collections import defaultdict
 from pathlib import Path
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import lightning.pytorch as pl
 import torch
@@ -555,11 +555,13 @@ class LuxonisLightningModule(pl.LightningModule):
         self,
     ) -> tuple[
         list[torch.optim.Optimizer],
-        list[torch.optim.lr_scheduler.LRScheduler],
+        list[torch.optim.lr_scheduler.LRScheduler | dict[str, Any]],
     ]:
         if self.training_strategy is not None:
             return self.training_strategy.configure_optimizers()
-        return build_optimizers(self.cfg, self.parameters())
+        return build_optimizers(
+            self.cfg, self.parameters(), self.main_metric, self.nodes
+        )
 
     def load_checkpoint(self, path: str | Path | None) -> None:
         """Loads checkpoint weights from provided path.
