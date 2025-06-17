@@ -8,7 +8,7 @@
 
 ## `LuxonisLoaderTorch`
 
-The default loader used with `LuxonisTrain`. It can either load data from an already created dataset in the `LuxonisDataFormat` or create a new dataset automatically from a set of supported formats.
+The default loader used with `LuxonisTrain`. It can either load data from an already created dataset in the `LuxonisDataFormat` or automatically create a new dataset using the luxonis-ml parser from a set of supported dataset formats.
 
 **Parameters:**
 
@@ -24,6 +24,8 @@ The default loader used with `LuxonisTrain`. It can either load data from an alr
 
 **Data Shape Definitions:**
 
+Below we list the output shapes of `LuxonisTorchLoader` returned by the `collate_fn` function. These are the shapes used during model training.
+
 | Task Type               | Data Shape                                         | Description                                                                                                                                                   |
 | ----------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `bboxes`                | `torch.Tensor` of shape `(N, 6)`                   | N is the number of bounding boxes in the batch. The columns represent: batch index, class index, x-min, y-min, width, and height.                             |
@@ -36,12 +38,13 @@ The default loader used with `LuxonisTrain`. It can either load data from an alr
 
 ### Implementing a custom loader
 
-To implement a loader, you need to create a class that inherits from `BaseLoaderTorch` and implement the following methods:
+To implement a loader, you need to create a class that inherits from [`BaseLoaderTorch`](./base_loader.py) and implement the following methods:
 
 - `input_shapes(self) -> dict[str, torch.Size]`: Returns a dictionary with input shapes for each input image.
 - `__len__(self) -> int`: Returns the number of samples in the dataset.
 - `__getitem__(self, idx: int) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]`: Returns a dictionary with input tensors for each input image.
 - `get_classes(self) -> dict[str, list[str]]`: Returns a dictionary with class names for each task in the dataset.
+- `collate_fn(self, batch: list[LuxonisLoaderTorchOutput]) -> tuple[dict[str, Tensor], Labels]`: A custom collation function that merges a list of samples into a single batch. It prepares inputs and labels in the format expected by the models during training.
 
 For loaders yielding keypoint tasks, you also have to implement `get_n_keypoints(self) -> dict[str, int]` method.
 
