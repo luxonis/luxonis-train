@@ -1,6 +1,8 @@
 # ruff: noqa: T201
+import time
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
+from io import StringIO
 
 import lightning.pytorch as pl
 import tabulate
@@ -9,6 +11,7 @@ from lightning.pytorch.callbacks import (
     RichProgressBar,
     TQDMProgressBar,
 )
+from loguru import logger
 from rich.console import Console
 from rich.table import Table
 from typing_extensions import override
@@ -66,17 +69,17 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         metrics: Mapping[str, Mapping[str, int | str | float]],
     ) -> None:
         self._rule(stage)
-        print(f"Loss: {loss}")
-        print("Metrics:")
+        logger.info(f"Loss: {loss}")
+        logger.info("Metrics:")
         for table_name, table in metrics.items():
             self._print_table(table_name, table)
         self._rule()
 
     def _rule(self, title: str | None = None) -> None:
         if title is not None:
-            print(f"------{title}-----")
+            logger.info(f"------{title}-----")
         else:
-            print("-----------------")
+            logger.info("-----------------")
 
     def _print_table(
         self,
@@ -98,15 +101,35 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
             C{"Value"}.
         """
         self._rule(title)
-        print(
-            tabulate.tabulate(
-                table.items(),
-                headers=[key_name, value_name],
-                tablefmt="fancy_grid",
-                numalign="right",
-            )
+        formatted = tabulate.tabulate(
+            table.items(),
+            headers=[key_name, value_name],
+            tablefmt="fancy_grid",
+            numalign="right",
         )
-        print()
+        logger.info(f"\n{formatted}")
+
+    def on_train_epoch_start(self, trainer, pl_module):
+        super().on_train_epoch_start(trainer, pl_module)
+        self._epoch_start_time = time.time()
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        super().on_train_epoch_end(trainer, pl_module)
+        # Get duration
+        duration = (
+            time.time() - self._epoch_start_time
+            if self._epoch_start_time
+            else 0.0
+        )
+        # Get last loss
+        metrics = trainer.callback_metrics
+        loss = metrics.get("train/loss")
+        loss_str = f"{loss:.4f}" if loss else "N/A"
+
+        # Log only to file
+        logger.bind(file_only=True).info(
+            f"[Epoch {trainer.current_epoch}/{trainer.max_epochs}] Duration: {duration:.2f}s | Train Loss: {loss_str}"
+        )
 
 
 @CALLBACKS.register()
@@ -116,6 +139,10 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
 
     def __init__(self):
         super().__init__(leave=True)
+        self._log_buffer = StringIO()
+        self._log_console = Console(
+            file=self._log_buffer, force_terminal=False
+        )
 
     @property
     def console(self) -> Console:
@@ -133,6 +160,7 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         loss: float,
         metrics: Mapping[str, Mapping[str, int | str | float]],
     ) -> None:
+        # Terminal output
         self.console.rule(f"{stage}", style="bold magenta")
         self.console.print(
             f"[bold magenta]Loss:[/bold magenta] [white]{loss}[/white]"
@@ -142,12 +170,26 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
             self._print_table(table_name, table)
         self.console.rule(style="bold magenta")
 
+        # Log file output
+        self._log_console.rule(f"{stage}")
+        self._log_console.print(f"Loss: {loss}")
+        self._log_console.print("Metrics:")
+        for table_name, table in metrics.items():
+            self._print_table(table_name, table, console=self._log_console)
+        self._log_console.rule()
+
+        # Dump to logger
+        logger.bind(file_only=True).info("\n" + self._log_buffer.getvalue())
+        self._log_buffer.seek(0)
+        self._log_buffer.truncate(0)
+
     def _print_table(
         self,
         title: str,
         table: Mapping[str, int | str | float],
         key_name: str = "Name",
         value_name: str = "Value",
+        console: Console | None = None,
     ) -> None:
         """Prints table to the console using rich text.
 
@@ -160,7 +202,11 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         @type value_name: str
         @param value_name: Name of the value column. Defaults to
             C{"Value"}.
+        @param console: Console instance to use, if None use default
+            console. Defaults to None.
+        @type console: Console | None
         """
+        console = console or self.console
         rich_table = Table(
             title=title, show_header=True, header_style="bold magenta"
         )
@@ -168,4 +214,26 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         rich_table.add_column(value_name, style="white")
         for name, value in table.items():
             rich_table.add_row(name, f"{value:.5f}")
-        self.console.print(rich_table)
+        console.print(rich_table)
+
+    def on_train_epoch_start(self, trainer, pl_module):
+        super().on_train_epoch_start(trainer, pl_module)
+        self._epoch_start_time = time.time()
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        super().on_train_epoch_end(trainer, pl_module)
+        # Get duration
+        duration = (
+            time.time() - self._epoch_start_time
+            if self._epoch_start_time
+            else 0.0
+        )
+        # Get last loss
+        metrics = trainer.callback_metrics
+        loss = metrics.get("train/loss")
+        loss_str = f"{loss:.4f}" if loss else "N/A"
+
+        # Log only to file
+        logger.bind(file_only=True).info(
+            f"[Epoch {trainer.current_epoch}/{trainer.max_epochs}] Duration: {duration:.2f}s | Train Loss: {loss_str}"
+        )
