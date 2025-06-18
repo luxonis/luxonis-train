@@ -1,13 +1,7 @@
 from io import StringIO
 from typing import Any
 
-from lightning.pytorch.callbacks import (
-    GradientAccumulationScheduler,
-    ModelCheckpoint,
-    ModelSummary,
-    RichModelSummary,
-)
-from lightning.pytorch.callbacks.progress.rich_progress import _RICH_AVAILABLE
+from lightning.pytorch.callbacks import RichModelSummary
 from lightning.pytorch.utilities.model_summary import get_human_readable_count
 from loguru import logger
 from rich.console import Console
