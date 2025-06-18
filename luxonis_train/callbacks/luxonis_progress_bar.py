@@ -52,6 +52,32 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         """
         ...
 
+    def on_train_epoch_start(
+        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
+    ):
+        super().on_train_epoch_start(trainer, pl_module)
+        self._epoch_start_time = time.time()
+
+    def on_train_epoch_end(
+        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
+    ):
+        super().on_train_epoch_end(trainer, pl_module)
+        # Get duration
+        duration = (
+            time.time() - self._epoch_start_time
+            if self._epoch_start_time
+            else 0.0
+        )
+        # Get last loss
+        metrics = trainer.callback_metrics
+        loss = metrics.get("train/loss")
+        loss_str = f"{loss:.4f}" if loss else "N/A"
+
+        # Log only to file
+        logger.bind(file_only=True).info(
+            f"[Epoch {trainer.current_epoch}/{trainer.max_epochs}] Duration: {duration:.2f}s | Train Loss: {loss_str}"
+        )
+
 
 @CALLBACKS.register()
 class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
@@ -108,28 +134,6 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
             numalign="right",
         )
         logger.info(f"\n{formatted}")
-
-    def on_train_epoch_start(self, trainer, pl_module):
-        super().on_train_epoch_start(trainer, pl_module)
-        self._epoch_start_time = time.time()
-
-    def on_train_epoch_end(self, trainer, pl_module):
-        super().on_train_epoch_end(trainer, pl_module)
-        # Get duration
-        duration = (
-            time.time() - self._epoch_start_time
-            if self._epoch_start_time
-            else 0.0
-        )
-        # Get last loss
-        metrics = trainer.callback_metrics
-        loss = metrics.get("train/loss")
-        loss_str = f"{loss:.4f}" if loss else "N/A"
-
-        # Log only to file
-        logger.bind(file_only=True).info(
-            f"[Epoch {trainer.current_epoch}/{trainer.max_epochs}] Duration: {duration:.2f}s | Train Loss: {loss_str}"
-        )
 
 
 @CALLBACKS.register()
@@ -215,25 +219,3 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         for name, value in table.items():
             rich_table.add_row(name, f"{value:.5f}")
         console.print(rich_table)
-
-    def on_train_epoch_start(self, trainer, pl_module):
-        super().on_train_epoch_start(trainer, pl_module)
-        self._epoch_start_time = time.time()
-
-    def on_train_epoch_end(self, trainer, pl_module):
-        super().on_train_epoch_end(trainer, pl_module)
-        # Get duration
-        duration = (
-            time.time() - self._epoch_start_time
-            if self._epoch_start_time
-            else 0.0
-        )
-        # Get last loss
-        metrics = trainer.callback_metrics
-        loss = metrics.get("train/loss")
-        loss_str = f"{loss:.4f}" if loss else "N/A"
-
-        # Log only to file
-        logger.bind(file_only=True).info(
-            f"[Epoch {trainer.current_epoch}/{trainer.max_epochs}] Duration: {duration:.2f}s | Train Loss: {loss_str}"
-        )
