@@ -21,6 +21,8 @@ from luxonis_train.registry import CALLBACKS
 
 
 class BaseLuxonisProgressBar(ABC, ProgressBar):
+    _epoch_start_time: float
+
     @override
     def get_metrics(
         self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
@@ -52,17 +54,7 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         """
         ...
 
-    def on_train_epoch_start(
-        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
-    ):
-        super().on_train_epoch_start(trainer, pl_module)
-        self._epoch_start_time = time.time()
-
-    def on_train_epoch_end(
-        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
-    ):
-        super().on_train_epoch_end(trainer, pl_module)
-        # Get duration
+    def _log_progress(self, trainer: pl.Trainer) -> None:
         duration = (
             time.time() - self._epoch_start_time
             if self._epoch_start_time
@@ -134,6 +126,14 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
             numalign="right",
         )
         logger.info(f"\n{formatted}")
+
+    def on_train_epoch_start(self, trainer, pl_module):
+        super().on_train_epoch_start(trainer, pl_module)
+        self._epoch_start_time = time.time()
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        super().on_train_epoch_end(trainer, pl_module)
+        super()._log_progress(trainer)
 
 
 @CALLBACKS.register()
@@ -219,3 +219,11 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         for name, value in table.items():
             rich_table.add_row(name, f"{value:.5f}")
         console.print(rich_table)
+
+    def on_train_epoch_start(self, trainer, pl_module):
+        super().on_train_epoch_start(trainer, pl_module)
+        self._epoch_start_time = time.time()
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        super().on_train_epoch_end(trainer, pl_module)
+        super()._log_progress(trainer)
