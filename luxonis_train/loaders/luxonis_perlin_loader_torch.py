@@ -114,7 +114,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         return aug_tensor_img, tensor_labels
 
     @override
-    def get_classes(self) -> dict[str, list[str]]:
+    def get_classes(self) -> dict[str, bidict[str, int]]:
         names = ["background", "anomaly"]
         idx_map = bidict({name: i for i, name in enumerate(names)})
         return {self.task_name: idx_map}

@@ -14,11 +14,7 @@ from luxonis_ml.typing import ConfigItem, Kwargs, check_type
 from luxonis_ml.utils import traverse_graph
 from luxonis_ml.utils.registry import Registry
 from torch import Size, Tensor, nn
-from torch.optim.lr_scheduler import (
-    LRScheduler,
-    ReduceLROnPlateau,
-    SequentialLR,
-)
+from torch.optim.lr_scheduler import LRScheduler, SequentialLR
 from torch.optim.optimizer import Optimizer
 
 from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
@@ -72,7 +68,7 @@ class Nodes(dict[str, BaseNode] if TYPE_CHECKING else nn.ModuleDict):
         inputs: dict[str, list[str]],
         graph: dict[str, list[str]],
         task_names: dict[str, str],
-        frozen_nodes: dict[str, tuple[int, float]],
+        frozen_nodes: dict[str, tuple[int, float | None]],
     ):
         self.graph = graph
         self.task_names = task_names
@@ -103,7 +99,13 @@ class Nodes(dict[str, BaseNode] if TYPE_CHECKING else nn.ModuleDict):
                 shape_packet = to_shape_packet(dummy_input)
                 node_input_shapes.append(shape_packet)
 
-            node = Node(input_shapes=node_input_shapes, **kwargs)
+            variant = kwargs.pop("variant", None)
+            if variant is not None:
+                node = Node.from_variant(
+                    variant, input_shapes=node_input_shapes, **kwargs
+                )
+            else:
+                node = Node(input_shapes=node_input_shapes, **kwargs)
 
             if isinstance(node, BaseHead):
                 try:
@@ -132,7 +134,9 @@ class Nodes(dict[str, BaseNode] if TYPE_CHECKING else nn.ModuleDict):
     def is_frozen(self, node_name: str) -> bool:
         return self.unfreeze_after.get(node_name, 0) == 0
 
-    def frozen_nodes(self) -> Iterator[tuple[str, BaseNode, int, float]]:
+    def frozen_nodes(
+        self,
+    ) -> Iterator[tuple[str, BaseNode, int, float | None]]:
         for node_name, (
             unfreeze_after,
             lr_after_unfreeze,
@@ -401,7 +405,7 @@ def build_nodes(
     dataset_metadata: DatasetMetadata,
     input_shapes: dict[str, Size],
 ) -> Nodes:
-    frozen_nodes: dict[str, int] = {}
+    frozen_nodes: dict[str, tuple[int, float | None]] = {}
     node_task_names: dict[str, str] = {}
     node_kwargs: dict[str, tuple[type[BaseNode], Kwargs]] = {}
     node_inputs: dict[str, list[str]] = {}
@@ -567,7 +571,7 @@ def _to_module_dict(modules: AttachedModulesDict[A]) -> AttachedModulesDict[A]:
 
 def log_balanced_class_images(
     tracker: LuxonisTrackerPL,
-    nodes: Mapping[str, BaseNode],
+    nodes: Nodes,
     visualizations: dict[str, dict[str, Tensor]],
     labels: Labels,
     cls_key: str,
@@ -612,7 +616,7 @@ def log_balanced_class_images(
 
 def log_sequential_images(
     tracker: LuxonisTrackerPL,
-    nodes: Mapping[str, BaseNode],
+    nodes: Nodes,
     visualizations: dict[str, dict[str, Tensor]],
     n_logged_images: int,
     max_log_images: int,
