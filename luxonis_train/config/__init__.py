@@ -7,10 +7,13 @@ from .config import (
     NodeConfig,
     TrainerConfig,
 )
-from .predefined_models import *  # so predefined models get registered
+
+# So predefined models get registered
+from .predefined_models import *
 
 __all__ = [
     "AttachedModuleConfig",
+    "BasePredefinedModel",
     "Config",
     "ExportConfig",
     "LossModuleConfig",

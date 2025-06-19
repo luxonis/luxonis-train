@@ -8,10 +8,12 @@ from typing import Generic, TypeVar
 import torch
 from bidict import bidict
 from loguru import logger
+from luxonis_ml.typing import Kwargs
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
 from typeguard import TypeCheckError, check_type, typechecked
 
+from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
 from luxonis_train.registry import NODES
 from luxonis_train.tasks import Task
 from luxonis_train.typing import AttachIndexType, Packet
@@ -117,6 +119,7 @@ class BaseNode(
         export_output_names: list[str] | None = None,
         attach_index: AttachIndexType | None = None,
         task_name: str | None = None,
+        _variant: str | None = None,
     ):
         """Constructor for the C{BaseNode}.
 
@@ -195,16 +198,71 @@ class BaseNode(
         self._export = False
         self._remove_on_export = remove_on_export
         self._export_output_names = export_output_names
-        self._epoch = 0
         self._in_sizes = in_sizes
+        self._variant = _variant
 
         self.current_epoch = 0
 
         self._check_type_overrides()
 
+    @classmethod
+    def from_variant(cls, variant: str, **kwargs) -> "BaseNode":
+        """Creates a node from a predefined variant.
+
+        @type variant: str
+        @param variant: Variant of the node. The available variants
+            depend on the node implementation.
+        @param kwargs: Additional keyword arguments to be passed to the
+            node constructor. In case of a conflict between the variant
+            parameters and the keyword arguments, the keyword arguments
+            take precedence.
+        @raises NotImplementedError: If the node does not support
+            variants.
+        @raises ValueError: If an error occurs while getting the variant
+            parameters (e.g. due to an invalid variant name).
+        """
+        try:
+            variants = cls.get_variants()
+        except NotImplementedError:
+            raise NotImplementedError(
+                f"Node '{cls.__name__}' does not support variants. "
+                "To support predefined variants, implement the "
+                "`get_variant_params` method."
+            ) from None
+        if variant not in variants:
+            raise ValueError(
+                f"Invalid variant name '{variant}'."
+                f"Available variants are: {list(variants.keys())}"
+            )
+        params = variants[variant]
+        for key in list(params.keys()):
+            if key in kwargs:
+                logger.warning(
+                    f"Parameter '{key}' provided explicitly in the "
+                    f"constructor with value `{kwargs[key]}`."
+                    f"Overriding the variant value `{params[key]}`."
+                )
+                del params[key]
+
+        return cls(**params, **kwargs, _variant=variant)
+
+    @staticmethod
+    def get_variants() -> dict[str, Kwargs]:
+        raise NotImplementedError
+
     @property
     def name(self) -> str:
         return self.__class__.__name__
+
+    @property
+    def variant(self) -> str:
+        if self._variant is None:
+            raise RuntimeError(
+                f"Variant not set for node '{self.name}'. "
+                "Variant is only set if the node was created "
+                "using the `from_variant` class method."
+            )
+        return self._variant
 
     @property
     def n_keypoints(self) -> int:
@@ -364,6 +422,22 @@ class BaseNode(
         """
         return self._get_nth_size(-1)
 
+    def get_weights_url(self) -> str | None:
+        """Returns the URL to the weights of the node.
+
+        Subclasses can override this method to provide a URL to support
+        loading weights from a remote location.
+
+        It is possible to use a special placeholder C{{github}} in the
+        URL, which will be replaced with
+        C{"https://github.com/luxonis/luxonis-train/releases/download/{version}"},
+        where C{{version}} is the version of `luxonis-train` library.
+
+        The file pointed to by the URL should be a C{.ckpt} file
+        that is directly loadable using C{nn.Module.load_state_dict}.
+        """
+        return None
+
     def load_checkpoint(
         self, path: str | None = None, strict: bool = True
     ) -> None:
@@ -402,13 +476,33 @@ class BaseNode(
         """Getter for the export mode."""
         return self._export
 
-    def set_export_mode(self, mode: bool = True) -> None:
+    @export.setter
+    def export(self, mode: bool) -> None:
+        """Sets the module to export mode."""
+        self.set_export_mode(mode)
+
+    def set_export_mode(self, /, mode: bool) -> None:
         """Sets the module to export mode.
 
         @type mode: bool
-        @param mode: Value to set the export mode to. Defaults to True.
+        @param mode: Value to set the export mode to.
         """
         self._export = mode
+        if mode:
+            logger.info(f"Reparametrizing '{self.name}'")
+        else:
+            logger.info(f"Restoring reparametrized '{self.name}'")
+
+        for name, module in self.named_modules():
+            if isinstance(module, Reparametrizable):
+                if mode:
+                    logger.debug(f"Reparametrizing '{name}' in '{self.name}'")
+                    module.reparametrize()
+                else:
+                    logger.debug(
+                        f"Restoring reparametrized '{name}' in '{self.name}'"
+                    )
+                    module.restore()
 
     @property
     def remove_on_export(self) -> bool:
