@@ -19,17 +19,16 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
     """
     Variants
     --------
+    The variant determines the depth and width multipliers,
+    block used and intermediate channel scaling factor.
 
-        The variant determines the depth and width multipliers,
-        block used and intermediate channel scaling factor.
+    The depth multiplier determines the number of blocks in each stage and the width multiplier determines the number of channels.
 
-        The depth multiplier determines the number of blocks in each stage and the width multiplier determines the number of channels.
-
-        The following variants are available:
-          - "n" or "nano" (default): depth_multiplier=0.33, width_multiplier=0.25, block=RepBlock, e=None
-          - "s" or "small": depth_multiplier=0.33, width_multiplier=0.50, block=RepBlock, e=None
-          - "m" or "medium": depth_multiplier=0.60, width_multiplier=0.75, block=CSPStackRepBlock, e=2/3
-          - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0, block=CSPStackRepBlock, e=1/2
+    The following variants are available:
+      - "n" or "nano" (default): depth_multiplier=0.33, width_multiplier=0.25, block=RepBlock, e=None
+      - "s" or "small": depth_multiplier=0.33, width_multiplier=0.50, block=RepBlock, e=None
+      - "m" or "medium": depth_multiplier=0.60, width_multiplier=0.75, block=CSPStackRepBlock, e=2/3
+      - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0, block=CSPStackRepBlock, e=1/2
     """
 
     in_channels: int
