@@ -30,19 +30,19 @@ def get_variant(variant: VariantLiteral) -> DetectionVariant:
             backbone="EfficientRep",
             backbone_params={"variant": "n"},
             neck_params={"variant": "n"},
-            head_params={},
+            head_params={"download_weights": True},
         ),
         "medium": DetectionVariant(
             backbone="EfficientRep",
             backbone_params={"variant": "s"},
             neck_params={"variant": "s"},
-            head_params={},
+            head_params={"download_weights": True},
         ),
         "heavy": DetectionVariant(
             backbone="EfficientRep",
             backbone_params={"variant": "l"},
             neck_params={"variant": "l"},
-            head_params={},
+            head_params={"download_weights": True},
         ),
     }
 

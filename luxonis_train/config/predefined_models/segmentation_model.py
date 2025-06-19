@@ -28,12 +28,12 @@ def get_variant(variant: VariantLiteral) -> SegmentationVariant:
         "light": SegmentationVariant(
             backbone="DDRNet",
             backbone_params={"variant": "23-slim"},
-            head_params={},
+            head_params={"download_weights": True},
         ),
         "heavy": SegmentationVariant(
             backbone="DDRNet",
             backbone_params={"variant": "23"},
-            head_params={},
+            head_params={"download_weights": True},
         ),
     }
 
