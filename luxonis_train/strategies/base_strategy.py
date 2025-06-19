@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any
 
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch.optim import Optimizer
@@ -17,7 +18,7 @@ class BaseTrainingStrategy(
     @abstractmethod
     def configure_optimizers(
         self,
-    ) -> tuple[list[Optimizer], list[LRScheduler]]: ...
+    ) -> tuple[list[Optimizer], list[LRScheduler | dict[str, Any]]]: ...
 
     @abstractmethod
     def update_parameters(self) -> None: ...

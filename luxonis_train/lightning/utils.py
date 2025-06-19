@@ -1,25 +1,28 @@
 from collections import defaultdict  # noqa: INP001
 from collections.abc import Iterable, Iterator, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypeVar
 
 import lightning.pytorch as pl
 import torch
 from lightning.pytorch.callbacks import (
     GradientAccumulationScheduler,
     ModelCheckpoint,
-    RichModelSummary,
 )
 from loguru import logger
 from luxonis_ml.typing import ConfigItem, Kwargs, check_type
 from luxonis_ml.utils import traverse_graph
 from luxonis_ml.utils.registry import Registry
 from torch import Size, Tensor, nn
-from torch.optim.lr_scheduler import LRScheduler, SequentialLR
+from torch.optim.lr_scheduler import (
+    LRScheduler,
+    ReduceLROnPlateau,
+    SequentialLR,
+)
 from torch.optim.optimizer import Optimizer
 
 from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
-from luxonis_train.callbacks import TrainingManager
+from luxonis_train.callbacks import LuxonisRichModelSummary, TrainingManager
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.nodes import BaseHead, BaseNode
 from luxonis_train.registry import (
@@ -35,8 +38,8 @@ from luxonis_train.registry import (
 )
 from luxonis_train.strategies import BaseTrainingStrategy
 from luxonis_train.tasks import Metadata
-from luxonis_train.typing import Packet
-from luxonis_train.utils import DatasetMetadata
+from luxonis_train.typing import Labels, Packet
+from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
 from luxonis_train.utils.general import to_shape_packet
 
 A = TypeVar("A", BaseLoss, BaseMetric, BaseVisualizer)
@@ -69,7 +72,7 @@ class Nodes(dict[str, BaseNode] if TYPE_CHECKING else nn.ModuleDict):
         inputs: dict[str, list[str]],
         graph: dict[str, list[str]],
         task_names: dict[str, str],
-        frozen_nodes: dict[str, int],
+        frozen_nodes: dict[str, tuple[int, float]],
     ):
         self.graph = graph
         self.task_names = task_names
@@ -129,9 +132,12 @@ class Nodes(dict[str, BaseNode] if TYPE_CHECKING else nn.ModuleDict):
     def is_frozen(self, node_name: str) -> bool:
         return self.unfreeze_after.get(node_name, 0) == 0
 
-    def frozen_nodes(self) -> Iterator[tuple[str, BaseNode, int]]:
-        for node_name, unfreeze_after in self.unfreeze_after.items():
-            yield node_name, self[node_name], unfreeze_after
+    def frozen_nodes(self) -> Iterator[tuple[str, BaseNode, int, float]]:
+        for node_name, (
+            unfreeze_after,
+            lr_after_unfreeze,
+        ) in self.unfreeze_after.items():
+            yield node_name, self[node_name], unfreeze_after, lr_after_unfreeze
 
     def traverse(self) -> Iterator[tuple[str, BaseNode, list[str], list[str]]]:
         yield from traverse_graph(self.graph, self)
@@ -242,8 +248,11 @@ def build_training_strategy(
 
 
 def build_optimizers(
-    cfg: Config, parameters: Iterable[nn.Parameter]
-) -> tuple[list[Optimizer], list[LRScheduler]]:
+    cfg: Config,
+    parameters: Iterable[nn.Parameter],
+    main_metric: tuple[str, str] | None,
+    nodes: Nodes,
+) -> tuple[list[Optimizer], list[LRScheduler | dict[str, Any]]]:
     """Configures model optimizers and schedulers."""
 
     cfg_optimizer = cfg.trainer.optimizer
@@ -294,6 +303,26 @@ def build_optimizers(
         scheduler = SequentialLR(
             optimizer, schedulers=schedulers_list, milestones=milestones
         )
+
+    elif cfg_scheduler.name == "ReduceLROnPlateau":
+        scheduler = _get_scheduler(cfg_scheduler, optimizer)
+        if cfg_scheduler.params.get("mode") == "max":
+            if main_metric is None:
+                raise ValueError(
+                    "ReduceLROnPlateau with 'max' mode requires a main_metric."
+                )
+            node_name, metric_name = main_metric
+            formatted = nodes.formatted_name(node_name)
+            monitor = f"val/metric/{formatted}/{metric_name}"
+        else:
+            monitor = "val/loss"
+
+        scheduler = {
+            "scheduler": scheduler,
+            "monitor": monitor,
+            "frequency": cfg.trainer.validation_interval,
+        }
+
     else:
         scheduler = _get_scheduler(cfg_scheduler, optimizer)
 
@@ -312,7 +341,7 @@ def build_callbacks(
 
     callbacks: list[pl.Callback] = [
         TrainingManager(),
-        RichModelSummary(max_depth=2),
+        LuxonisRichModelSummary(max_depth=2),
         ModelCheckpoint(
             dirpath=save_dir / "min_val_loss",
             filename=f"{model_name}_loss={{val/loss:.4f}}_{{epoch:02d}}",
@@ -390,7 +419,10 @@ def build_nodes(
                 unfreeze_after = node_cfg.freezing.unfreeze_after
             else:
                 unfreeze_after = int(node_cfg.freezing.unfreeze_after * epochs)
-            frozen_nodes[node_name] = unfreeze_after
+            frozen_nodes[node_name] = (
+                unfreeze_after,
+                node_cfg.freezing.lr_after_unfreeze,
+            )
         if issubclass(Node, BaseHead):
             task_names = dataset_metadata.task_names
             if node_cfg.task_name is None:
@@ -531,3 +563,78 @@ def _to_module_dict(modules: AttachedModulesDict[A]) -> AttachedModulesDict[A]:
             for node_name, node_modules in modules.items()
         }
     )  # type: ignore
+
+
+def log_balanced_class_images(
+    tracker: LuxonisTrackerPL,
+    nodes: Mapping[str, BaseNode],
+    visualizations: dict[str, dict[str, Tensor]],
+    labels: Labels,
+    cls_key: str,
+    class_log_counts: list[int],
+    n_logged_images: int,
+    max_log_images: int,
+    mode: Literal["test", "val"],
+    current_epoch: int,
+) -> tuple[int, list[int]]:
+    """Log images with balanced class distribution."""
+    for node_name, node_visualizations in visualizations.items():
+        node_logged_images = n_logged_images
+        formatted_node_name = nodes.formatted_name(node_name)
+        for viz_name, viz_batch in node_visualizations.items():
+            for idx, viz in enumerate(viz_batch):
+                if node_logged_images >= max_log_images:
+                    break
+                present_classes = (
+                    (labels[cls_key][idx] > 0)
+                    .nonzero(as_tuple=True)[0]
+                    .tolist()
+                )
+                if present_classes:
+                    min_logged_class = min(
+                        present_classes, key=lambda c: class_log_counts[c]
+                    )
+                    if class_log_counts[min_logged_class] == min(
+                        class_log_counts
+                    ):
+                        name = f"{mode}/visualizations/{formatted_node_name}/{viz_name}"
+                        tracker.log_image(
+                            f"{name}/{node_logged_images}",
+                            viz.detach().cpu().numpy().transpose(1, 2, 0),
+                            step=current_epoch,
+                        )
+                        node_logged_images += 1
+                        for c in present_classes:
+                            class_log_counts[c] += 1
+
+    return node_logged_images, class_log_counts
+
+
+def log_sequential_images(
+    tracker: LuxonisTrackerPL,
+    nodes: Mapping[str, BaseNode],
+    visualizations: dict[str, dict[str, Tensor]],
+    n_logged_images: int,
+    max_log_images: int,
+    mode: Literal["test", "val"],
+    current_epoch: int,
+) -> int:
+    """Log first N images sequentially."""
+    for node_name, node_visualizations in visualizations.items():
+        node_logged_images = n_logged_images
+        formatted_node_name = nodes.formatted_name(node_name)
+        for viz_name, viz_batch in node_visualizations.items():
+            for viz in viz_batch:
+                if node_logged_images >= max_log_images:
+                    break
+                name = (
+                    f"{mode}/visualizations/{formatted_node_name}/{viz_name}"
+                )
+                tracker.log_image(
+                    f"{name}/{node_logged_images}",
+                    viz.detach().cpu().numpy().transpose(1, 2, 0),
+                    step=current_epoch,
+                )
+                node_logged_images += 1
+
+    return node_logged_images

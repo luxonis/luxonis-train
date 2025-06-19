@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Annotated, Literal
 
 import requests
 from cyclopts import App, Group, Parameter
+from loguru import logger
 
 if TYPE_CHECKING:
     from luxonis_train import LuxonisModel
@@ -206,15 +207,15 @@ def export(
     @param config: Path to the configuration file or a name of a
         predefined model.
     @type save_path: str
-    @param save_path: Path to save the exported model.
+    @param save_path: Directory where to save all exported model files.
+        If not specified, files will be saved to the 'export' directory
+        in the run save directory.
     @type weights: str
     @param weights: Path to the model weights.
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the
     """
-    create_model(config, opts).export(
-        onnx_save_path=save_path, weights=weights
-    )
+    create_model(config, opts).export(save_path=save_path, weights=weights)
 
 
 @app.command(group=export_group, sort_key=2)
@@ -278,7 +279,7 @@ def upgrade():
 def launcher(
     *tokens: Annotated[str, Parameter(show=False, allow_leading_hyphen=True)],
     source: Annotated[
-        Path | None,
+        list[Path] | None,
         Parameter(
             help="Path to a python module with custom components. "
             "This module will be sourced before running a command."
@@ -286,11 +287,12 @@ def launcher(
     ] = None,
 ):
     if source:
-        spec = importlib.util.spec_from_file_location(source.stem, source)
-        if spec:
-            module = importlib.util.module_from_spec(spec=spec)
-            if spec.loader:
-                spec.loader.exec_module(module)
+        for src in source:
+            spec = importlib.util.spec_from_file_location(src.stem, src)
+            if spec:
+                module = importlib.util.module_from_spec(spec=spec)
+                if spec.loader:
+                    spec.loader.exec_module(module)
     app(tokens)
 
 

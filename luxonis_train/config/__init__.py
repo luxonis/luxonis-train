@@ -7,7 +7,9 @@ from .config import (
     NodeConfig,
     TrainerConfig,
 )
-from .predefined_models import BasePredefinedModel
+
+# So predefined models get registered
+from .predefined_models import *
 
 __all__ = [
     "AttachedModuleConfig",

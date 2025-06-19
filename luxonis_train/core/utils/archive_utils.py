@@ -43,7 +43,7 @@ def get_outputs(path: Path) -> dict[str, ArchiveMetadataDict]:
     )
 
 
-def _from_onnx_dtype(dtype: TensorProto.DataType | int) -> DataType:
+def _from_onnx_dtype(dtype: int) -> DataType:
     dtype_map: dict[int, str] = {
         TensorProto.INT8: "int8",
         TensorProto.INT32: "int32",

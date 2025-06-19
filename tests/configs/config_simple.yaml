@@ -1,37 +1,23 @@
-
-
 model:
   name: client_commands_test_model
   nodes:
-    - name: EfficientRep
+    - name: ResNet
       params:
-        variant: "n"
+        variant: "18"
 
-    - name: RepPANNeck
-      inputs:
-        - EfficientRep
-
-    - name: EfficientBBoxHead
-      inputs:
-        - RepPANNeck
+    - name: ClassificationHead
 
   losses:
-    - name: AdaptiveDetectionLoss
-      attached_to: EfficientBBoxHead
-
+    - name: CrossEntropyLoss
+      attached_to: ClassificationHead
 
   metrics:
-    - name: MeanAveragePrecision
-      is_main_metric: true
-      attached_to: EfficientBBoxHead
+    - name: Accuracy
+      attached_to: ClassificationHead
 
   visualizers:
-    - name: BBoxVisualizer
-      attached_to: EfficientBBoxHead
-
-tracker:
-  project_name: Parking_Lot
-  is_tensorboard: true
+    - name: ClassificationVisualizer
+      attached_to: ClassificationHead
 
 loader:
   train_view: val

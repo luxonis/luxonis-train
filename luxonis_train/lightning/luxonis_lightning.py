@@ -1,11 +1,12 @@
 from collections import defaultdict
 from pathlib import Path
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import lightning.pytorch as pl
 import torch
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
+from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
 from torch import Size, Tensor
 from typing_extensions import override
@@ -32,6 +33,8 @@ from .utils import (
     build_training_strategy,
     build_visualizers,
     compute_losses,
+    log_balanced_class_images,
+    log_sequential_images,
     postprocess_metrics,
 )
 
@@ -115,7 +118,13 @@ class LuxonisLightningModule(pl.LightningModule):
         self._export: bool = False
         self._core = _core
         self._n_logged_images = 0
-        self._loss_accumulator = LossAccumulator()
+        self._class_log_counts: list[int] = []
+
+        self._loss_accumulators = {
+            "train": LossAccumulator(),
+            "val": LossAccumulator(),
+            "test": LossAccumulator(),
+        }
 
         self.cfg = cfg
         self.image_source = cfg.loader.image_source
@@ -131,6 +140,13 @@ class LuxonisLightningModule(pl.LightningModule):
         self.training_strategy = build_training_strategy(self.cfg, self)
 
         self.load_checkpoint(self.cfg.model.weights)
+
+        self.save_hyperparameters(
+            {
+                "luxonis_train_version": luxonis_train.__version__,
+                "luxonis_ml_version": luxonis_ml_version,
+            }
+        )
 
     @property
     def progress_bar(self) -> BaseLuxonisProgressBar:
@@ -470,7 +486,7 @@ class LuxonisLightningModule(pl.LightningModule):
         loss, losses = compute_losses(
             self.cfg, outputs.losses, self.loss_weights, self.device
         )
-        self._loss_accumulator.update(losses)
+        self._loss_accumulators["train"].update(losses)
         return loss
 
     @override
@@ -502,9 +518,23 @@ class LuxonisLightningModule(pl.LightningModule):
         return outputs
 
     @override
+    def on_train_epoch_start(self):
+        for node in self.nodes.values():
+            node.current_epoch = self.current_epoch
+
+    @override
     def on_train_epoch_end(self) -> None:
-        for key, value in self._loss_accumulator.items():
-            self.log(f"train/{key}", value, sync_dist=True)
+        for name, value in self._loss_accumulators["train"].items():
+            formated_name = (
+                name.replace(
+                    name.split("/")[1],
+                    self.nodes.formatted_name(name.split("/")[1]),
+                )
+                if "/" in name
+                else name
+            )
+            self.log(f"train/{formated_name}", value, sync_dist=True)
+        self._loss_accumulators["train"].clear()
 
     @override
     def on_validation_epoch_end(self) -> None:
@@ -525,11 +555,13 @@ class LuxonisLightningModule(pl.LightningModule):
         self,
     ) -> tuple[
         list[torch.optim.Optimizer],
-        list[torch.optim.lr_scheduler.LRScheduler],
+        list[torch.optim.lr_scheduler.LRScheduler | dict[str, Any]],
     ]:
         if self.training_strategy is not None:
             return self.training_strategy.configure_optimizers()
-        return build_optimizers(self.cfg, self.parameters())
+        return build_optimizers(
+            self.cfg, self.parameters(), self.main_metric, self.nodes
+        )
 
     def load_checkpoint(self, path: str | Path | None) -> None:
         """Loads checkpoint weights from provided path.
@@ -581,12 +613,15 @@ class LuxonisLightningModule(pl.LightningModule):
         inputs: dict[str, Tensor],
         labels: Labels,
     ) -> dict[str, Tensor]:
+        max_log_images = self.cfg.trainer.n_log_images
         input_image = inputs[self.image_source]
 
-        if self._n_logged_images < self.cfg.trainer.n_log_images:
+        cls_key = next(
+            (key for key in labels if "/classification" in key), None
+        )
+        images = None
+        if self._n_logged_images < max_log_images:
             images = get_denormalized_images(self.cfg, input_image)
-        else:
-            images = None
 
         outputs = self.forward(
             inputs,
@@ -599,26 +634,58 @@ class LuxonisLightningModule(pl.LightningModule):
         _, losses = compute_losses(
             self.cfg, outputs.losses, self.loss_weights, self.device
         )
-        self._loss_accumulator.update(losses)
 
-        for node_name, visualizations in outputs.visualizations.items():
-            for viz_name, viz_batch in visualizations.items():
-                for viz in viz_batch:
-                    name = f"{mode}/visualizations/{node_name}/{viz_name}"
-                    if self._n_logged_images >= self.cfg.trainer.n_log_images:
-                        continue
-                    self.tracker.log_image(
-                        f"{name}/{self._n_logged_images}",
-                        viz.detach().cpu().numpy().transpose(1, 2, 0),
-                        step=self.current_epoch,
+        self._loss_accumulators[mode].update(losses)
+
+        if outputs.visualizations:
+            if cls_key is not None:
+                # Smart logging: balance class representation
+                n_classes = labels[cls_key].shape[1]
+                if (
+                    not self._class_log_counts
+                    or len(self._class_log_counts) != n_classes
+                ):
+                    self._class_log_counts = [0] * n_classes
+
+                self._n_logged_images, self._class_log_counts = (
+                    log_balanced_class_images(
+                        self.tracker,
+                        self.nodes,
+                        outputs.visualizations,
+                        labels,
+                        cls_key,
+                        self._class_log_counts,
+                        self._n_logged_images,
+                        max_log_images,
+                        mode,
+                        self.current_epoch,
                     )
-                    self._n_logged_images += 1
+                )
+            else:
+                # just log first N images
+                self._n_logged_images = log_sequential_images(
+                    self.tracker,
+                    self.nodes,
+                    outputs.visualizations,
+                    self._n_logged_images,
+                    max_log_images,
+                    mode,
+                    self.current_epoch,
+                )
 
         return losses
 
     def _evaluation_epoch_end(self, mode: Literal["test", "val"]) -> None:
-        for name, value in self._loss_accumulator.items():
-            self.log(f"{mode}/{name}", value, sync_dist=True)
+        for name, value in self._loss_accumulators[mode].items():
+            formated_name = (
+                name.replace(
+                    name.split("/")[1],
+                    self.nodes.formatted_name(name.split("/")[1]),
+                )
+                if "/" in name
+                else name
+            )
+            self.log(f"{mode}/{formated_name}", value, sync_dist=True)
 
         table = defaultdict(dict)
         for node_name, node_metrics in self.metrics.items():
@@ -632,22 +699,33 @@ class LuxonisLightningModule(pl.LightningModule):
                         self.tracker.log_matrix(
                             matrix=value.cpu().numpy(),
                             name=f"{mode}/metrics/{self.current_epoch}/"
-                            f"{formatted_node_name}/{metric_name}",
+                            f"{formatted_node_name}/{name}",
                             step=self.current_epoch,
                         )
                     else:
-                        table[node_name][metric_name] = value.cpu().item()
+                        table[node_name][name] = value.cpu().item()
                         self.log(
-                            f"{mode}/metric/{formatted_node_name}/{metric_name}",
+                            f"{mode}/metric/{formatted_node_name}/{name}",
                             value,
                             sync_dist=True,
                         )
 
         self._print_results(
             stage="Validation" if mode == "val" else "Test",
-            loss=self._loss_accumulator["loss"],
+            loss=self._loss_accumulators[mode]["loss"],
             metrics=table,
         )
+
+        if self._n_logged_images != self.cfg.trainer.n_log_images:
+            logger.warning(
+                f"Logged images ({self._n_logged_images}) != expected ({self.cfg.trainer.n_log_images}). Possible reasons: "
+                f"class imbalance or a small number of images in the split."
+            )
+
+        self._n_logged_images = 0
+        if self._class_log_counts:
+            self._class_log_counts = [0] * len(self._class_log_counts)
+        self._loss_accumulators[mode].clear()
 
     @rank_zero_only
     def _print_results(
@@ -668,3 +746,91 @@ class LuxonisLightningModule(pl.LightningModule):
             logger.info(
                 f"{stage} main metric ({node_name}/{metric_name}): {value:.4f}"
             )
+
+    def get_mlflow_logging_keys(self) -> dict[str, list[str]]:
+        """
+        Returns a dictionary with two lists of keys:
+        1) "metrics"    -> Keys expected to be logged as standard metrics
+        2) "artifacts"  -> Keys expected to be logged as artifacts (e.g. confusion_matrix.json, visualizations)
+        """
+        artifact_keys = set()
+        metric_keys = set()
+
+        val_eval_epochs = []
+        for i in range(
+            self.cfg.trainer.validation_interval,
+            self.cfg.trainer.epochs + 1,
+            self.cfg.trainer.validation_interval,
+        ):
+            val_eval_epochs.append(max(0, i - 1))
+        test_eval_epoch = self.cfg.trainer.epochs
+
+        for mode in ["train", "val", "test"]:
+            metric_keys.add(f"{mode}/loss")
+            for node_name, node_losses in self.losses.items():
+                formatted_node_name = self.nodes.formatted_name(node_name)
+                for loss_name in node_losses.keys():
+                    metric_keys.add(
+                        f"{mode}/loss/{formatted_node_name}/{loss_name}"
+                    )
+
+        for node_name, node_metrics in self.metrics.items():
+            formatted_node_name = self.nodes.formatted_name(node_name)
+            for metric_name, metric in node_metrics.items():
+                values = postprocess_metrics(metric_name, metric.compute())
+                for sub_name in values.keys():
+                    if "confusion_matrix" in sub_name:
+                        for epoch_idx in sorted([0] + val_eval_epochs):
+                            artifact_keys.add(
+                                f"val/metrics/{epoch_idx}/{formatted_node_name}/confusion_matrix.json"
+                            )
+                        artifact_keys.add(
+                            f"test/metrics/{test_eval_epoch}/{formatted_node_name}/confusion_matrix.json"
+                        )
+                    else:
+                        for epoch_idx in sorted(val_eval_epochs):
+                            metric_keys.add(
+                                f"val/metric/{formatted_node_name}/{sub_name}"
+                            )
+                        metric_keys.add(
+                            f"test/metric/{formatted_node_name}/{sub_name}"
+                        )
+
+        for node_name, visualizations in self.visualizers.items():
+            formatted_node_name = self.nodes.formatted_name(node_name)
+            for viz_name in visualizations.keys():
+                for epoch_idx in sorted([0] + val_eval_epochs):
+                    for i in range(self.cfg.trainer.n_log_images):
+                        artifact_keys.add(
+                            f"val/visualizations/{formatted_node_name}/{viz_name}/{epoch_idx}/{i}.png"
+                        )
+                for i in range(self.cfg.trainer.n_log_images):
+                    artifact_keys.add(
+                        f"test/visualizations/{formatted_node_name}/{viz_name}/{test_eval_epoch}/{i}.png"
+                    )
+        for callback in self.cfg.trainer.callbacks:
+            if callback.name == "UploadCheckpoint":
+                artifact_keys.update(
+                    {"best_val_metric.ckpt", "min_val_loss.ckpt"}
+                )
+            elif callback.name == "ExportOnTrainEnd":
+                artifact_keys.add(
+                    f"{self.cfg.exporter.name or self.cfg.model.name}.onnx"
+                )
+            elif callback.name == "ArchiveOnTrainEnd":
+                artifact_keys.add(
+                    f"{self.cfg.exporter.name or self.cfg.model.name}.onnx.tar.xz"
+                )
+
+        artifact_keys.update(
+            {
+                "luxonis_train.log",
+                "training_config.yaml",
+                f"{self.cfg.model.name}.yaml",
+            }
+        )
+
+        return {
+            "metrics": sorted(metric_keys),
+            "artifacts": sorted(artifact_keys),
+        }

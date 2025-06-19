@@ -18,6 +18,10 @@ class DepthWiseSeparableConv(nn.Module):
         pointwise_bias: bool = False,
         depthwise_activation: nn.Module | None = None,
         pointwise_activation: nn.Module | None = None,
+        padding: int | str | None = None,
+        dilation: int | tuple[int, int] = 1,
+        use_bias: list[bool] | None = None,
+        activation: list[nn.Module] | None = None,
         use_residual: bool = False,
     ):
         """Depthwise separable convolution.
@@ -42,6 +46,16 @@ class DepthWiseSeparableConv(nn.Module):
         @type pointwise_activation: nn.Module
         @param pointwise_activation: Activation function for the
             pointwise convolution.
+        @type padding: int | str | None
+        @param padding: Padding. Defaults to None.
+        @type dilation: int | tuple[int, int]
+        @param dilation: Dilation. Defaults to 1.
+        @type use_bias: list[bool, bool]
+        @param use_bias: Whether to use bias for the depthwise and
+            pointwise convolutions.
+        @type activation: list[nn.Module, nn.Module]
+        @param activation: Activation functions for the depthwise and
+            pointwise convolutions.
         """
         super().__init__()
 
@@ -52,7 +66,8 @@ class DepthWiseSeparableConv(nn.Module):
             in_channels,
             kernel_size,
             stride,
-            padding=autopad(kernel_size),
+            padding=autopad(kernel_size) if padding is None else padding,
+            dilation=dilation,
             groups=in_channels,
             activation=depthwise_activation or nn.ReLU6(),
             bias=depthwise_bias,

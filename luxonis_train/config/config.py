@@ -12,7 +12,13 @@ from luxonis_ml.utils import (
     LuxonisFileSystem,
     is_acyclic,
 )
-from pydantic import Field, field_validator, model_validator
+from pydantic import (
+    Field,
+    SerializationInfo,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 from pydantic.types import (
     FilePath,
     NonNegativeFloat,
@@ -21,6 +27,7 @@ from pydantic.types import (
 )
 from typing_extensions import Self
 
+from luxonis_train.config.constants import CONFIG_VERSION
 from luxonis_train.registry import MODELS
 
 
@@ -54,6 +61,7 @@ class MetricModuleConfig(AttachedModuleConfig):
 class FreezingConfig(BaseModelExtraForbid):
     active: bool = False
     unfreeze_after: NonNegativeInt | NonNegativeFloat | None = None
+    lr_after_unfreeze: NonNegativeFloat | None = None
 
 
 class NodeConfig(ConfigItem):
@@ -353,7 +361,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
         ImageSize, Field(min_length=2, max_length=2)
     ] = ImageSize(256, 256)
     keep_aspect_ratio: bool = True
-    color_space: Literal["RGB", "BGR"] = "RGB"
+    color_space: Literal["RGB", "BGR", "GRAY"] = "RGB"
     normalize: NormalizeAugmentationConfig = Field(
         default_factory=NormalizeAugmentationConfig
     )
@@ -371,6 +379,21 @@ class PreprocessingConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_normalize(self) -> Self:
+        norm = next(
+            (aug for aug in self.augmentations if aug.name == "Normalize"),
+            None,
+        )
+        if norm:
+            if self.normalize.active:
+                logger.warning(
+                    "Normalize is being used in both trainer.preprocessing.augmentations "
+                    "and trainer.preprocessing.normalize. "
+                    "Parameters from trainer.preprocessing.augmentations list will override "
+                    "those in trainer.preprocessing.normalize."
+                )
+            self.normalize.params = norm.params
+            self.augmentations.remove(norm)
+
         if self.normalize.active:
             self.augmentations.append(
                 AugmentationConfig(
@@ -378,6 +401,22 @@ class PreprocessingConfig(BaseModelExtraForbid):
                 )
             )
         return self
+
+    @model_serializer
+    def serialize_model(self, info: SerializationInfo):
+        data = {
+            key: value
+            for key, value in self.__dict__.items()
+            if not key.startswith("_")
+        }
+        if "augmentations" in data and isinstance(data["augmentations"], list):
+            data["augmentations"] = [
+                aug
+                for aug in data["augmentations"]
+                if getattr(aug, "name", "") != "Normalize"
+            ]
+
+        return data
 
     def get_active_augmentations(self) -> list[ConfigItem]:
         """Returns list of augmentations that are active.
@@ -554,6 +593,7 @@ class TunerConfig(BaseModelExtraForbid):
     timeout: PositiveInt | None = None
     storage: StorageConfig = Field(default_factory=StorageConfig)
     params: dict[str, list[str | int | float | bool | list]] = {}
+    monitor: Literal["metric", "loss"] = "loss"
 
 
 class Config(LuxonisConfig):
@@ -565,6 +605,8 @@ class Config(LuxonisConfig):
     exporter: ExportConfig = Field(default_factory=ExportConfig)
     archiver: ArchiveConfig = Field(default_factory=ArchiveConfig)
     tuner: TunerConfig | None = None
+
+    config_version: str = str(CONFIG_VERSION)
 
     ENVIRON: Environ = Field(exclude=True, default_factory=Environ)
 
@@ -730,3 +772,18 @@ class Config(LuxonisConfig):
                             f"updated with scheduling: {gradient_accumulation_schedule}"
                         )
                         break
+
+        # Rule: Set default callbacks UploadCheckpoint, TestOnTrainEnd, ExportOnTrainEnd, ArchiveOnTrainEnd
+        default_callbacks = [
+            "UploadCheckpoint",
+            "TestOnTrainEnd",
+            "ExportOnTrainEnd",
+            "ArchiveOnTrainEnd",
+        ]
+
+        for cb_name in default_callbacks:
+            if not any(
+                cb.name == cb_name for cb in instance.trainer.callbacks
+            ):
+                instance.trainer.callbacks.append(CallbackConfig(name=cb_name))
+                logger.info(f"Added {cb_name} callback.")
