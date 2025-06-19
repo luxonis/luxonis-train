@@ -8,7 +8,7 @@
 
 ## `LuxonisLoaderTorch`
 
-The default loader used with `LuxonisTrain`. It can either load data from an already created dataset in the `LuxonisDataFormat` or automatically create a new dataset using the luxonis-ml parser from a set of supported dataset formats.
+The default loader used with `LuxonisTrain`. It can either load data from an already created dataset in the `LuxonisDataFormat` or create a new dataset automatically from a set of supported formats.
 
 **Parameters:**
 
