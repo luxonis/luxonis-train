@@ -613,13 +613,14 @@ class LuxonisLightningModule(pl.LightningModule):
         inputs: dict[str, Tensor],
         labels: Labels,
     ) -> dict[str, Tensor]:
+        max_log_images = self.cfg.trainer.n_log_images
         input_image = inputs[self.image_source]
 
         cls_key = next(
             (key for key in labels if "/classification" in key), None
         )
         images = None
-        if self._n_logged_images < self.cfg.trainer.n_log_images:
+        if self._n_logged_images < max_log_images:
             images = get_denormalized_images(self.cfg, input_image)
 
         outputs = self.forward(
@@ -635,8 +636,6 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
         self._loss_accumulators[mode].update(losses)
-
-        max_log_images = self.cfg.trainer.n_log_images
 
         if outputs.visualizations:
             if cls_key is not None:
