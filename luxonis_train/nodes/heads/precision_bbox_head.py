@@ -84,35 +84,19 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
                 ),
                 # Classification branch
                 nn.Sequential(
-                    nn.Sequential(
-                        DWConvModule(
-                            x,
-                            x,
-                            kernel_size=3,
-                            padding=1,
-                            activation=nn.SiLU(),
-                        ),
-                        ConvModule(
-                            x,
-                            cls_channels,
-                            kernel_size=1,
-                            activation=nn.SiLU(),
-                        ),
+                    ConvModule(
+                        x,
+                        cls_channels,
+                        kernel_size=3,
+                        padding=1,
+                        activation=nn.SiLU(),
                     ),
-                    nn.Sequential(
-                        DWConvModule(
-                            cls_channels,
-                            cls_channels,
-                            kernel_size=3,
-                            padding=1,
-                            activation=nn.SiLU(),
-                        ),
-                        ConvModule(
-                            cls_channels,
-                            cls_channels,
-                            kernel_size=1,
-                            activation=nn.SiLU(),
-                        ),
+                    ConvModule(
+                        cls_channels,
+                        cls_channels,
+                        kernel_size=3,
+                        padding=1,
+                        activation=nn.SiLU(),
                     ),
                     nn.Conv2d(cls_channels, self.n_classes, kernel_size=1),
                 ),
