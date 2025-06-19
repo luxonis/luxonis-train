@@ -604,7 +604,7 @@ class Config(LuxonisConfig):
     trainer: TrainerConfig = Field(default_factory=TrainerConfig)
     exporter: ExportConfig = Field(default_factory=ExportConfig)
     archiver: ArchiveConfig = Field(default_factory=ArchiveConfig)
-    tuner: TunerConfig | None = None
+    tuner: TunerConfig = Field(default_factory=TunerConfig)
 
     config_version: str = str(CONFIG_VERSION)
 

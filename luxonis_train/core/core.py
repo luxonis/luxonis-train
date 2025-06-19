@@ -126,7 +126,7 @@ class LuxonisModel:
             model_tasks = sorted(
                 {node.task_name for node in self.cfg.model.nodes}
             )
-            self.cfg.loader.params["filter_task_names"] = model_tasks
+            self.cfg.loader.params["filter_task_names"] = model_tasks  # type: ignore
 
         for view in ("train", "val", "test"):
             if (
@@ -627,7 +627,7 @@ class LuxonisModel:
 
             if cfg.tuner.monitor == "loss":
                 monitor = "val/loss"
-            elif cfg.tuner.monitor == "metric":
+            else:
                 main_metric = next(
                     (m for m in cfg.model.metrics if m.is_main_metric), None
                 )
@@ -648,6 +648,13 @@ class LuxonisModel:
                         ),
                         None,
                     )
+                    if monitor is None:
+                        raise ValueError(
+                            f"Could not find monitor key for main metric '{main_metric.name}' "
+                            f"attached to '{main_metric.attached_to}' in the MLFlow logging keys."
+                        )
+                else:
+                    raise AssertionError
 
             pruner_callback = PyTorchLightningPruningCallback(
                 trial, monitor=monitor
