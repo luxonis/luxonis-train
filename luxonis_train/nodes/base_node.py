@@ -119,6 +119,7 @@ class BaseNode(
         export_output_names: list[str] | None = None,
         attach_index: AttachIndexType | None = None,
         task_name: str | None = None,
+        download_weights: bool = False,
         _variant: str | None = None,
     ):
         """Constructor for the C{BaseNode}.
@@ -204,6 +205,9 @@ class BaseNode(
         self.current_epoch = 0
 
         self._check_type_overrides()
+
+        if download_weights:
+            self.load_checkpoint()
 
     @classmethod
     def from_variant(cls, variant: str, **kwargs) -> "BaseNode":
@@ -438,6 +442,17 @@ class BaseNode(
         """
         return None
 
+    def _get_weights_url(self) -> str | None:
+        url = self.get_weights_url()
+        if url is None:
+            return None
+
+        return url.replace(
+            "{github}",
+            "https://github.com/luxonis/luxonis-train/"
+            "releases/download/v0.2.1-beta",
+        )
+
     def load_checkpoint(
         self, path: str | None = None, strict: bool = True
     ) -> None:
@@ -450,7 +465,8 @@ class BaseNode(
         @param strict: Whether to load weights strictly or not. Defaults
             to True.
         """
-        path = path or self.get_weights_url()
+        path = path or self._get_weights_url()
+        logger.info(f"Loading weights from '{path}'")
         if path is None:
             raise ValueError(
                 f"Attempting to load weights for '{self.name}' "
