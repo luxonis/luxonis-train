@@ -538,6 +538,7 @@ in the same way as luxonis-train does it internally.
 from luxonis_train import Tasks, BaseHead, BaseNode
 from luxonis_train.utils.dataset_metadata import DatasetMetadata
 from luxonis_train.attached_modules import CrossEntropyLoss
+from luxonis_train.typing import Packet
 
 import torch
 from torch import nn, Tensor, Size
@@ -549,7 +550,7 @@ class XORBackbone(BaseNode):
             nn.Linear(2, 10), nn.ReLU()
         )
 
-    def unwrap(self, x: dict[str, Tensor]) -> Tensor:
+    def unwrap(self, x: list[Packet[Tensor]]) -> Tensor:
         x = x[0]["features"][0]
         x = x.view(-1, 2)
         return x
@@ -566,7 +567,7 @@ class XORHead(BaseHead):
     def forward(self, x: Tensor) -> Tensor:
         return self.head(x)
 
-    def wrap(self, x: Tensor):
+    def wrap(self, x: Tensor) -> Packet[Tensor]:
          return {
              "classification": x,
          }
