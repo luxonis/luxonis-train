@@ -608,8 +608,8 @@ logits = head_node.forward(unwraped_features)
 wrapped_logits = head_node.wrap(logits)
 
 # 3) Loss
-loss_data = loss.get_parameters(wrapped_logits, target)
-loss_value = loss.forward(loss_data['predictions'], loss_data['target'])
+loss_input_data = loss.get_parameters(wrapped_logits, target)
+loss_value = loss.forward(loss_input_data['predictions'], loss_input_data['target'])
 
 print(f"Loss value: {loss_value.item()}")
 ```
