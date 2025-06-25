@@ -911,7 +911,7 @@ class LuxonisModel:
                 return callback.best_model_path
         return None
 
-    def get_mlflow_logging_keys(self):
+    def get_mlflow_logging_keys(self) -> dict[str, list[str]]:
         """
         Returns a dictionary with two lists of keys:
         1) "metrics"    -> Keys expected to be logged as standard metrics

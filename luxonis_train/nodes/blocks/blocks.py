@@ -1,4 +1,3 @@
-import math
 from collections.abc import Callable
 from types import EllipsisType
 from typing import Literal, cast

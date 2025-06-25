@@ -2,7 +2,7 @@ from typing import Any
 
 import torch
 from loguru import logger
-from torch import Size, Tensor, nn
+from torch import Size, Tensor
 from typing_extensions import override
 
 from luxonis_train.nodes.heads import BaseHead

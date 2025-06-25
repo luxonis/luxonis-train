@@ -507,7 +507,7 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> LuxonisOutput:
         inputs, labels = batch
         images = get_denormalized_images(self.cfg, inputs[self.image_source])
-        outputs = self.forward(
+        return self.forward(
             inputs,
             labels,
             images=images,
@@ -515,10 +515,9 @@ class LuxonisLightningModule(pl.LightningModule):
             compute_loss=False,
             compute_metrics=False,
         )
-        return outputs
 
     @override
-    def on_train_epoch_start(self):
+    def on_train_epoch_start(self) -> None:
         for node in self.nodes.values():
             node.current_epoch = self.current_epoch
 
@@ -587,7 +586,7 @@ class LuxonisLightningModule(pl.LightningModule):
         state_dict = {}
         self_state_dict = self.state_dict()
         for key, value in checkpoint["state_dict"].items():
-            if key not in self_state_dict.keys():
+            if key not in self_state_dict:
                 logger.warning(
                     f"Key `{key}` from checkpoint not found in model state dict."
                 )
@@ -769,7 +768,7 @@ class LuxonisLightningModule(pl.LightningModule):
             metric_keys.add(f"{mode}/loss")
             for node_name, node_losses in self.losses.items():
                 formatted_node_name = self.nodes.formatted_name(node_name)
-                for loss_name in node_losses.keys():
+                for loss_name in node_losses:
                     metric_keys.add(
                         f"{mode}/loss/{formatted_node_name}/{loss_name}"
                     )
@@ -778,7 +777,7 @@ class LuxonisLightningModule(pl.LightningModule):
             formatted_node_name = self.nodes.formatted_name(node_name)
             for metric_name, metric in node_metrics.items():
                 values = postprocess_metrics(metric_name, metric.compute())
-                for sub_name in values.keys():
+                for sub_name in values:
                     if "confusion_matrix" in sub_name:
                         for epoch_idx in sorted([0] + val_eval_epochs):
                             artifact_keys.add(
@@ -788,7 +787,7 @@ class LuxonisLightningModule(pl.LightningModule):
                             f"test/metrics/{test_eval_epoch}/{formatted_node_name}/confusion_matrix.json"
                         )
                     else:
-                        for epoch_idx in sorted(val_eval_epochs):
+                        for _ in sorted(val_eval_epochs):
                             metric_keys.add(
                                 f"val/metric/{formatted_node_name}/{sub_name}"
                             )
@@ -798,7 +797,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         for node_name, visualizations in self.visualizers.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
-            for viz_name in visualizations.keys():
+            for viz_name in visualizations:
                 for epoch_idx in sorted([0] + val_eval_epochs):
                     for i in range(self.cfg.trainer.n_log_images):
                         artifact_keys.add(

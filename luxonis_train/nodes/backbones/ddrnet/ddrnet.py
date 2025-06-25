@@ -1,5 +1,3 @@
-from collections.abc import Callable
-
 from luxonis_ml.typing import Kwargs
 from torch import Tensor, nn
 from typing_extensions import override

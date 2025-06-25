@@ -77,7 +77,6 @@ class PrecisionBBoxHead(BaseDetectionHead):
         )
 
         self.dfl = DFL(reg_max) if reg_max > 1 else nn.Identity()
-        self.bias_init()
 
     def forward(
         self, inputs: list[Tensor]
@@ -150,7 +149,7 @@ class PrecisionBBoxHead(BaseDetectionHead):
             bbox = self.dfl(regressions_list[i])
             classes = classes_list[i].sigmoid()
             confidence = classes.max(1, keepdim=True)[0]
-            # [N, 4 + 1 + n_classes, h_f, w_f]
+            # @shape: [N, 4 + 1 + n_classes, h_f, w_f]
             bboxes.append(torch.cat([bbox, confidence, classes], dim=1))
         return bboxes
 
@@ -185,18 +184,18 @@ class PrecisionBBoxHead(BaseDetectionHead):
         ) * strides.transpose(0, 1)
 
         base_output = [
-            # [N, H * W, 4]
+            # @shape: [N, H * W, 4]
             pred_bboxes.permute(0, 2, 1),
             torch.ones(
                 (bbox_distributions.shape[0], pred_bboxes.shape[2], 1),
                 dtype=pred_bboxes.dtype,
                 device=pred_bboxes.device,
             ),
-            # [N, H * W, n_classes]
+            # @shape: [N, H * W, n_classes]
             class_probabilities.permute(0, 2, 1),
         ]
 
-        # [N, H * W, 4 + 1 + n_classes]
+        # @shape: [N, H * W, 4 + 1 + n_classes]
         return torch.cat(base_output, dim=-1)
 
     @override

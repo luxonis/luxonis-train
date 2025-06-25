@@ -4,7 +4,13 @@ from typing import Annotated, Any, Literal, NamedTuple
 
 from loguru import logger
 from luxonis_ml.enums import DatasetType
-from luxonis_ml.typing import ConfigItem, Params, ParamValue, check_type
+from luxonis_ml.typing import (
+    ConfigItem,
+    Kwargs,
+    Params,
+    ParamValue,
+    check_type,
+)
 from luxonis_ml.utils import (
     BaseModelExtraForbid,
     Environ,
@@ -403,7 +409,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
         return self
 
     @model_serializer
-    def serialize_model(self, info: SerializationInfo):
+    def serialize_model(self, info: SerializationInfo) -> Kwargs:
         data = {
             key: value
             for key, value in self.__dict__.items()

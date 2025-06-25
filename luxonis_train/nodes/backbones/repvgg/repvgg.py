@@ -1,7 +1,6 @@
 from collections import defaultdict
 from typing import cast
 
-from loguru import logger
 from luxonis_ml.typing import Kwargs
 from torch import Tensor, nn
 from torch.utils import checkpoint

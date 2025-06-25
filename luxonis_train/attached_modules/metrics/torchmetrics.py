@@ -111,10 +111,9 @@ class TorchMetricWrapper(BaseMetric):
                 metric_name + "_" + class_names[i]: x[i]
                 for i in range(x.numel())
             }
-        else:
-            raise ValueError(
-                f"Metric '{self.name}' does not have 'classes' attribute set."
-            )
+        raise ValueError(
+            f"Metric '{self.name}' does not have 'classes' attribute set."
+        )
 
     @override
     def reset(self) -> None:

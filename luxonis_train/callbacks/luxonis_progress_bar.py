@@ -127,11 +127,15 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         )
         logger.info(f"\n{formatted}")
 
-    def on_train_epoch_start(self, trainer, pl_module):
+    def on_train_epoch_start(
+        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
+    ) -> None:
         super().on_train_epoch_start(trainer, pl_module)
         self._epoch_start_time = time.time()
 
-    def on_train_epoch_end(self, trainer, pl_module):
+    def on_train_epoch_end(
+        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
+    ) -> None:
         super().on_train_epoch_end(trainer, pl_module)
         super()._log_progress(trainer)
 
@@ -220,10 +224,14 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
             rich_table.add_row(name, f"{value:.5f}")
         console.print(rich_table)
 
-    def on_train_epoch_start(self, trainer, pl_module):
+    def on_train_epoch_start(
+        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
+    ) -> None:
         super().on_train_epoch_start(trainer, pl_module)
         self._epoch_start_time = time.time()
 
-    def on_train_epoch_end(self, trainer, pl_module):
+    def on_train_epoch_end(
+        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
+    ) -> None:
         super().on_train_epoch_end(trainer, pl_module)
         super()._log_progress(trainer)
