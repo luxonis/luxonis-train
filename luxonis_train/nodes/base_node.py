@@ -2,10 +2,8 @@ import inspect
 import logging
 from abc import ABC, abstractmethod
 from contextlib import suppress
-from copy import copy
 from operator import itemgetter
-from pathlib import Path
-from typing import Any, Generic, Literal, TypeVar
+from typing import Generic, Literal, TypeVar
 
 import torch
 from bidict import bidict
@@ -232,7 +230,7 @@ class BaseNode(
             self.initialize_weights()
 
     def initialize_weights(
-        self, *, method: Literal["yolo"] | None = None
+        self, *, method: Literal["yolo"] | str | None = None
     ) -> None:
         """Initializes the weights of the module.
 
@@ -254,11 +252,6 @@ class BaseNode(
                     nn.Hardswish | nn.LeakyReLU | nn.ReLU | nn.ReLU6 | nn.SiLU,
                 ):
                     m.inplace = True
-        else:
-            raise ValueError(
-                f"Unknown weight initialization method '{method}' for node "
-                f"'{self.name}'. Supported methods are: 'yolo'."
-            )
 
     @classmethod
     def from_variant(cls, variant: str, **kwargs) -> "BaseNode":
