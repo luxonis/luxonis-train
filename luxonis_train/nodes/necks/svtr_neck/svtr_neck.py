@@ -1,5 +1,6 @@
 import torch
 from torch import Tensor, nn
+from typing_extensions import override
 
 from luxonis_train.nodes import BaseNode
 from luxonis_train.nodes.blocks import ConvBlock
@@ -104,16 +105,6 @@ class SVTRNeck(BaseNode[list[Tensor], list[Tensor]]):
             activation=nn.ReLU(),
         )
         self.out_channels = dims
-        self.apply(self._init_weights)
-
-    def _init_weights(self, m: nn.Module) -> None:
-        if isinstance(m, nn.Linear):
-            nn.init.trunc_normal_(m.weight, std=0.02)
-            if m.bias is not None:
-                nn.init.zeros_(m.bias)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.zeros_(m.bias)
-            nn.init.ones_(m.weight)
 
     def forward(self, x: Tensor) -> Tensor:
         if self.use_guide:
@@ -135,3 +126,14 @@ class SVTRNeck(BaseNode[list[Tensor], list[Tensor]]):
         z = self.conv3(z)
         z = torch.cat((h, z), dim=1)
         return self.conv1x1(self.conv4(z))
+
+    @override
+    def initialize_weights(self) -> None:
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.trunc_normal_(m.weight, std=0.02)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+            elif isinstance(m, nn.LayerNorm):
+                nn.init.zeros_(m.bias)
+                nn.init.ones_(m.weight)

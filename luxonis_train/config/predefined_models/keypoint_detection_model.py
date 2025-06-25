@@ -27,18 +27,18 @@ def get_variant(variant: VariantLiteral) -> KeypointDetectionVariant:
     variants = {
         "light": KeypointDetectionVariant(
             backbone="EfficientRep",
-            backbone_params={"variant": "n"},
-            neck_params={"variant": "n", "download_weights": True},
+            backbone_params={"variant": "n", "weights": "download"},
+            neck_params={"variant": "n", "weights": "download"},
         ),
         "medium": KeypointDetectionVariant(
             backbone="EfficientRep",
-            backbone_params={"variant": "s"},
-            neck_params={"variant": "s", "download_weights": True},
+            backbone_params={"variant": "s", "weights": "download"},
+            neck_params={"variant": "s", "weights": "download"},
         ),
         "heavy": KeypointDetectionVariant(
             backbone="EfficientRep",
-            backbone_params={"variant": "l"},
-            neck_params={"variant": "l", "download_weights": True},
+            backbone_params={"variant": "l", "weights": "download"},
+            neck_params={"variant": "l", "weights": "download"},
         ),
     }
 

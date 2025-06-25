@@ -43,16 +43,6 @@ class BaseDetectionHead(BaseHead[list[Tensor], tuple[list[Tensor], ...]]):
 
         self.stride = self.fit_stride_to_heads()
 
-    def initialize_weights(self) -> None:
-        for m in self.modules():
-            if isinstance(m, nn.BatchNorm2d):
-                m.eps = 0.001
-                m.momentum = 0.03
-            elif isinstance(
-                m, nn.Hardswish | nn.LeakyReLU | nn.ReLU | nn.ReLU6 | nn.SiLU
-            ):
-                m.inplace = True
-
     def fit_stride_to_heads(self) -> Tensor:
         return torch.tensor(
             [

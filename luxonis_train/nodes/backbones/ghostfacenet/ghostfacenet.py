@@ -121,9 +121,8 @@ class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
 
         self.blocks = nn.ModuleList(blocks)
 
-        self._init_weights()
-
-    def _init_weights(self) -> None:
+    @override
+    def initialize_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d | nn.Linear):
                 fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)

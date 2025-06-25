@@ -236,8 +236,6 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             strides=spp_strides,
         )
 
-        self.init_params()
-
     def forward(self, inputs: Tensor) -> list[Tensor]:
         width_output = inputs.shape[-1] // 8
         height_output = inputs.shape[-2] // 8
@@ -285,7 +283,8 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             return [x_extra, x]
         return [x]
 
-    def init_params(self) -> None:
+    @override
+    def initialize_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(

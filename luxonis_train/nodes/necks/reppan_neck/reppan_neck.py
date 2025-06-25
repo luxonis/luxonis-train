@@ -44,7 +44,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         width_multiplier: float = 0.25,
         block: Literal["RepBlock", "CSPStackRepBlock"] = "RepBlock",
         e: float | None = None,
-        initialize_weights: bool = True,
+        weights: str = "yolo",
         **kwargs,
     ):
         """
@@ -67,11 +67,9 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         @tpe e: float | None
         @param e: Factor that controls number of intermediate channels.
             Only used when block="CSPStackRepBlock". Defaults to C{None}.
-        @type initialize_weights: bool
-        @param initialize_weights: If True, initialize weights of the model.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(weights=weights, **kwargs)
 
         if (
             self.original_in_shape[-1] % 32 != 0
@@ -100,7 +98,6 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
                 )
 
         self.n_heads = n_heads
-        self._initialize_weights = initialize_weights
 
         channels_list = channels_list or [256, 128, 128, 256, 256, 512]
         n_repeats = n_repeats or [12, 12, 12, 12]
@@ -191,9 +188,6 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
             out_channels = channels_list_down_blocks[2 * i + 1]
             curr_n_repeats = n_repeats_down_blocks[i]
 
-        if initialize_weights:
-            self.initialize_weights()
-
     @override
     def get_weights_url(self) -> str | None:
         if self._variant is None:
@@ -232,13 +226,6 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
                 },
             }
         )
-
-    def initialize_weights(self) -> None:
-        logger.info("Initializing weights for 'RepPANNeck'")
-        for m in self.modules():
-            if isinstance(m, nn.BatchNorm2d):
-                m.eps = 0.001
-                m.momentum = 0.03
 
     def forward(self, inputs: list[Tensor]) -> list[Tensor]:
         x = inputs[-1]

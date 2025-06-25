@@ -1,5 +1,6 @@
+import math
 from collections.abc import Iterable
-from typing import Literal
+from typing import Literal, cast
 
 import torch
 from loguru import logger
@@ -26,7 +27,7 @@ class EfficientBBoxHead(BaseDetectionHead):
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,
-        initialize_weights: bool = True,
+        bias_init_p: float = 1e-2,
         **kwargs,
     ):
         """Head for object detection.
@@ -45,8 +46,6 @@ class EfficientBBoxHead(BaseDetectionHead):
         @type max_det: int
         @param max_det: Maximum number of detections retained after NMS.
             Defaults to C{300}.
-        @type initialize_weights: bool
-        @param initialize_weights: If True, initialize weights.
         """
         super().__init__(
             n_heads=n_heads,
@@ -59,7 +58,7 @@ class EfficientBBoxHead(BaseDetectionHead):
         self.grid_cell_offset = 0.5
         self.grid_cell_size = 5.0
 
-        self.heads = nn.ModuleList()
+        self.heads = cast(list[EfficientDecoupledBlock], nn.ModuleList())
         # TODO: What to do if inputs are longer than heads? Create
         # more heads or discard some inputs? If discard, do we discared
         # the deeper features or the shallower ones?
@@ -77,9 +76,25 @@ class EfficientBBoxHead(BaseDetectionHead):
                     in_channels=self.in_channels[i], n_classes=self.n_classes
                 )
             )
+        self.bias_init_p = bias_init_p
 
-        if initialize_weights:
-            self.initialize_weights()
+    @override
+    def initialize_weights(self) -> None:
+        super().initialize_weights(method="yolo")
+        for head in self.heads:
+            data = [
+                (
+                    head.class_branch[-1],
+                    -math.log((1 - self.bias_init_p) / self.bias_init_p),
+                ),
+                (head.regression_branch[-1], 1.0),
+            ]
+            for module, fill_value in data:
+                assert isinstance(module, nn.Conv2d)
+                assert module.bias is not None
+
+                nn.init.constant_(module.weight, 0)
+                nn.init.constant_(module.bias, fill_value)
 
     def forward(
         self, inputs: list[Tensor]

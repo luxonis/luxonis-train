@@ -42,7 +42,7 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         width_multiplier: float = 0.25,
         block: Literal["RepBlock", "CSPStackRepBlock"] = "RepBlock",
         csp_e: float = 0.5,
-        initialize_weights: bool = True,
+        weights: str = "yolo",
         **kwargs,
     ):
         """Implementation of the EfficientRep backbone. Supports the
@@ -71,11 +71,8 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         @param csp_e: Factor that controls number of intermediate
             channels if block="CSPStackRepBlock". If provided, overrides
             the variant value.
-        @type initialize_weights: bool
-        @param initialize_weights: If True, initialize weights of the
-            model.
         """
-        super().__init__(**kwargs)
+        super().__init__(weights=weights, **kwargs)
 
         channels_list = channels_list or [64, 128, 256, 512, 1024]
         n_repeats = n_repeats or [1, 6, 12, 18, 6]
@@ -129,18 +126,6 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
             )
         )
 
-        if initialize_weights:
-            self.initialize_weights()
-
-    # TODO: Could be generalized?
-    # TODO: Make a unified API for weight initialization
-    # this would include loading online pretrained weights too
-    def initialize_weights(self) -> None:
-        for m in self.modules():
-            if isinstance(m, nn.BatchNorm2d):
-                m.eps = 0.001
-                m.momentum = 0.03
-
     def forward(self, inputs: Tensor) -> list[Tensor]:
         outputs: list[Tensor] = []
         x = self.repvgg_encoder(inputs)
@@ -154,7 +139,7 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         if self._variant is None:
             raise ValueError(
                 f"Online weights are available for '{self.name}' "
-                "only when it's used with a predefined variant."
+                "only when used with a predefined variant."
             )
 
         return f"{{github}}/efficientrep_{self._variant}_coco.ckpt"

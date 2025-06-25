@@ -78,7 +78,6 @@ class PrecisionBBoxHead(BaseDetectionHead):
 
         self.dfl = DFL(reg_max) if reg_max > 1 else nn.Identity()
         self.bias_init()
-        self.initialize_weights()
 
     def forward(
         self, inputs: list[Tensor]
@@ -151,7 +150,7 @@ class PrecisionBBoxHead(BaseDetectionHead):
             bbox = self.dfl(regressions_list[i])
             classes = classes_list[i].sigmoid()
             confidence = classes.max(1, keepdim=True)[0]
-            # @shape: [bs, 4 + 1 + n_classes, h_f, w_f]
+            # [N, 4 + 1 + n_classes, h_f, w_f]
             bboxes.append(torch.cat([bbox, confidence, classes], dim=1))
         return bboxes
 
@@ -186,30 +185,35 @@ class PrecisionBBoxHead(BaseDetectionHead):
         ) * strides.transpose(0, 1)
 
         base_output = [
-            pred_bboxes.permute(0, 2, 1),  # [BS, H*W, 4]
+            # [N, H * W, 4]
+            pred_bboxes.permute(0, 2, 1),
             torch.ones(
                 (bbox_distributions.shape[0], pred_bboxes.shape[2], 1),
                 dtype=pred_bboxes.dtype,
                 device=pred_bboxes.device,
             ),
-            class_probabilities.permute(0, 2, 1),  # [BS, H*W, n_classes]
+            # [N, H * W, n_classes]
+            class_probabilities.permute(0, 2, 1),
         ]
 
-        return torch.cat(base_output, dim=-1)  # [BS, H*W, 4 + 1 + n_classes]
+        # [N, H * W, 4 + 1 + n_classes]
+        return torch.cat(base_output, dim=-1)
 
-    def bias_init(self) -> None:
+    @override
+    def initialize_weights(self) -> None:
         """Initialize biases for the detection heads.
 
         Assumes detection_heads structure with separate regression and
         classification branches.
         """
+        super().initialize_weights(method="yolo")
         for head, stride in zip(
             self.detection_heads, self.stride, strict=True
         ):
             reg_conv = head.regression_branch[-1]
             assert isinstance(reg_conv, nn.Conv2d)
             if reg_conv.bias is not None:
-                reg_conv.bias.data[:] = 1.0
+                nn.init.constant_(reg_conv.bias, 1.0)
 
             cls_conv = head.classification_branch[-1]
             assert isinstance(cls_conv, nn.Conv2d)

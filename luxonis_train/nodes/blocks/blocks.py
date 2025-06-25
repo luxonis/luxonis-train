@@ -80,9 +80,7 @@ class EfficientDecoupledBlock(nn.Module):
     __call__: Callable[[Tensor], tuple[Tensor, Tensor, Tensor]]
 
     @typechecked
-    def __init__(
-        self, in_channels: int, n_classes: int, prior_probability: float = 1e-2
-    ):
+    def __init__(self, in_channels: int, n_classes: int):
         """Efficient Decoupled block used for class and regression
         predictions.
 
@@ -128,8 +126,6 @@ class EfficientDecoupledBlock(nn.Module):
             nn.Conv2d(in_channels=in_channels, out_channels=4, kernel_size=1),
         )
 
-        self._initialize_weights_and_biases(prior_probability)
-
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         features = self.decoder(x)
 
@@ -137,24 +133,6 @@ class EfficientDecoupledBlock(nn.Module):
         regressions = self.regression_branch(features)
 
         return features, classes, regressions
-
-    # TODO: Should be here or rather in the head?
-    def _initialize_weights_and_biases(self, p: float) -> None:
-        data = [
-            (self.class_branch[-1], -math.log((1 - p) / p)),
-            (self.regression_branch[-1], 1.0),
-        ]
-        for module, fill_value in data:
-            assert isinstance(module, nn.Conv2d)
-            assert module.bias is not None
-
-            b = module.bias.view(-1)
-            b.data.fill_(fill_value)
-            module.bias = nn.Parameter(b, requires_grad=True)
-
-            w = module.weight
-            w.data.fill_(0.0)
-            module.weight = nn.Parameter(w, requires_grad=True)
 
 
 class SegProto(nn.Sequential):
@@ -422,16 +400,17 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable):
 
         self.scale_layer: ConvBlock | None = None
         padding_scale = padding - kernel_size // 2
-        if padding_scale > 0:
-            self.scale_layer = ConvBlock(
-                in_channels=self.in_channels,
-                out_channels=self.out_channels,
-                kernel_size=1,
-                stride=stride,
-                padding=padding_scale,
-                groups=self.groups,
-                activation=None,
-            )
+
+        # if padding_scale > 0:
+        self.scale_layer = ConvBlock(
+            in_channels=self.in_channels,
+            out_channels=self.out_channels,
+            kernel_size=1,
+            stride=stride,
+            padding=padding_scale,
+            groups=self.groups,
+            activation=None,
+        )
 
         branches = [
             ConvBlock(
@@ -466,13 +445,15 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable):
 
     def forward(self, x: Tensor) -> Tensor:
         out = 0
+
         if self.skip_layer is not None:
             out += self.skip_layer(x)
 
-        if self.scale_layer is not None:
-            out += self.scale_layer(x)
         for branch in self.branches:
             out += branch(x)
+
+        if self.scale_layer is not None:
+            out += self.scale_layer(x)
 
         return self.activation(self.refine_block(out))
 

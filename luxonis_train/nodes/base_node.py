@@ -2,8 +2,10 @@ import inspect
 import logging
 from abc import ABC, abstractmethod
 from contextlib import suppress
+from copy import copy
 from operator import itemgetter
-from typing import Generic, TypeVar
+from pathlib import Path
+from typing import Any, Generic, Literal, TypeVar
 
 import torch
 from bidict import bidict
@@ -27,11 +29,22 @@ ForwardOutputT = TypeVar("ForwardOutputT")
 ForwardInputT = TypeVar("ForwardInputT")
 
 
+class PostInitMeta(AutoRegisterMeta):
+    def __call__(cls, *args, **kwargs):
+        obj = cls.__new__(cls, *args, **kwargs)  # type: ignore
+        if isinstance(obj, cls):
+            cls.__init__(obj, *args, **kwargs)
+            post_init = getattr(obj, "_post_init", None)
+            if callable(post_init):
+                post_init()
+        return obj
+
+
 class BaseNode(
     nn.Module,
     ABC,
     Generic[ForwardInputT, ForwardOutputT],
-    metaclass=AutoRegisterMeta,
+    metaclass=PostInitMeta,
     register=False,
     registry=NODES,
 ):
@@ -119,7 +132,7 @@ class BaseNode(
         export_output_names: list[str] | None = None,
         attach_index: AttachIndexType | None = None,
         task_name: str | None = None,
-        download_weights: bool = False,
+        weights: str | Literal["download", "yolo", "default", "auto"] = "auto",
         _variant: str | None = None,
     ):
         """Constructor for the C{BaseNode}.
@@ -201,13 +214,51 @@ class BaseNode(
         self._export_output_names = export_output_names
         self._in_sizes = in_sizes
         self._variant = _variant
+        self._weights = weights
 
         self.current_epoch = 0
 
         self._check_type_overrides()
 
-        if download_weights:
+    def _post_init(self) -> None:
+        if self._weights == "default":
+            return
+
+        if self._weights == "download":
             self.load_checkpoint()
+        elif self._weights.startswith("http"):
+            self.load_checkpoint(path=self._weights)
+        else:
+            self.initialize_weights()
+
+    def initialize_weights(
+        self, *, method: Literal["yolo"] | None = None
+    ) -> None:
+        """Initializes the weights of the module.
+
+        This method should be overridden in subclasses to provide custom
+        weight initialization.
+        """
+        method = method or self._weights  # type: ignore
+        if method == "yolo":
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+                    nn.init.kaiming_normal_(
+                        m.weight, mode="fan_out", nonlinearity="relu"
+                    )
+                elif isinstance(m, nn.BatchNorm2d):
+                    m.eps = 1e-3
+                    m.momentum = 3e-2
+                elif isinstance(
+                    m,
+                    nn.Hardswish | nn.LeakyReLU | nn.ReLU | nn.ReLU6 | nn.SiLU,
+                ):
+                    m.inplace = True
+        else:
+            raise ValueError(
+                f"Unknown weight initialization method '{method}' for node "
+                f"'{self.name}'. Supported methods are: 'yolo'."
+            )
 
     @classmethod
     def from_variant(cls, variant: str, **kwargs) -> "BaseNode":

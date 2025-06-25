@@ -57,14 +57,12 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
         self._decoder = OCRDecoder(self.encoder.char_to_int)
 
         if mid_channels is None:
-            self.block = self._construct_fc(
-                self.in_channels, self.out_channels
-            )
+            self.block = nn.Linear(self.in_channels, self.out_channels)
         else:
             self.block = nn.Sequential(
-                self._construct_fc(self.in_channels, mid_channels),
+                nn.Linear(self.in_channels, mid_channels),
                 nn.ReLU(),
-                self._construct_fc(mid_channels, self.out_channels),
+                nn.Linear(mid_channels, self.out_channels),
             )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -109,19 +107,18 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
     def out_channels(self) -> int:
         return self._encoder.n_classes
 
-    def _construct_fc(self, in_channels: int, out_channels: int) -> nn.Linear:
-        fc = nn.Linear(in_channels, out_channels)
+    @override
+    def initialize_weights(self) -> None:
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                std = 1.0 / math.sqrt(m.in_features)
+                nn.init.uniform_(m.weight, -std, std)
+                nn.init.uniform_(m.bias, -std, std)
 
-        std = 1.0 / math.sqrt(in_channels)
-        nn.init.uniform_(fc.weight, -std, std)
-        nn.init.uniform_(fc.bias, -std, std)
-
-        # TODO: This doesn't work in PyTorch. In PyTorch,
-        # per-parameter regularizers are set by creating
-        # multiple paremeter groups in the optimizer.
-        # We need to first add support for this in
-        # `LuxonisLightningModule`.
-        fc.weight.regularizer = self.fc_decay  # type: ignore
-        fc.bias.regularizer = self.fc_decay  # type: ignore
-
-        return fc
+                # TODO: This doesn't work in PyTorch. In PyTorch,
+                # per-parameter regularizers are set by creating
+                # multiple paremeter groups in the optimizer.
+                # We need to first add support for this in
+                # `LuxonisLightningModule`.
+                m.weight.regularizer = self.fc_decay  # type: ignore
+                m.bias.regularizer = self.fc_decay  # type: ignore

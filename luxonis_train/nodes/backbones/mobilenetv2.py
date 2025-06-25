@@ -5,12 +5,7 @@ from luxonis_train.nodes.base_node import BaseNode
 
 
 class MobileNetV2(BaseNode[Tensor, list[Tensor]]):
-    def __init__(
-        self,
-        download_weights: bool = True,
-        out_indices: list[int] | None = None,
-        **kwargs,
-    ):
+    def __init__(self, out_indices: list[int] | None = None, **kwargs):
         """MobileNetV2 backbone.
 
         This class implements the MobileNetV2 model as described in:
@@ -26,16 +21,13 @@ class MobileNetV2(BaseNode[Tensor, list[Tensor]]):
             - Depth-wise separable convolutions for efficiency
             - Configurable width multiplier and input resolution
 
-        @type download_weights: bool
-        @param download_weights: If True download weights from imagenet. Defaults to
-            True.
         @type out_indices: list[int] | None
         @param out_indices: Indices of the output layers. Defaults to [3, 6, 13, 18].
         """
         super().__init__(**kwargs)
 
         self.backbone = torchvision.models.mobilenet_v2(
-            weights="DEFAULT" if download_weights else None
+            weights="DEFAULT" if self._weights == "download" else None
         )
         self.out_indices = out_indices or [3, 6, 13, 18]
 

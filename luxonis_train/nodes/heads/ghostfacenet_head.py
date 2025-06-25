@@ -2,6 +2,7 @@
 import math
 
 from torch import Tensor, nn
+from typing_extensions import override
 
 from luxonis_train.nodes.blocks.blocks import ConvBlock
 from luxonis_train.nodes.heads.base_head import BaseHead
@@ -63,9 +64,9 @@ class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
             nn.Flatten(),
             nn.BatchNorm1d(embedding_size),
         )
-        self._init_weights()
 
-    def _init_weights(self) -> None:
+    @override
+    def initialize_weights(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d | nn.Linear):
                 fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
