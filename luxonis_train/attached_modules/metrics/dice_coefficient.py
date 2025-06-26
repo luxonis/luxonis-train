@@ -18,7 +18,8 @@ class DiceCoefficient(BaseMetric):
         self,
         num_classes: int,
         include_background: bool = True,
-        average: Literal["micro", "macro", "weighted", "none"] = "micro",
+        average: Literal["micro", "macro", "weighted", "none"]
+        | None = "micro",
         input_format: Literal["one-hot", "index"] = "index",
         **kwargs,
     ):

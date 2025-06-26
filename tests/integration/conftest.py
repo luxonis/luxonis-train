@@ -91,7 +91,7 @@ def embedding_dataset(work_dir: Path) -> LuxonisDataset:
 
 @pytest.fixture(scope="session")
 def toy_ocr_dataset(work_dir: Path) -> LuxonisDataset:
-    def generator():
+    def generator() -> DatasetIterator:
         path = work_dir / "toy_ocr"
         path.mkdir(parents=True, exist_ok=True)
         alphabet = "abcdefghijklmnopqrstuvwxyz"
@@ -147,7 +147,7 @@ def coco_dataset(work_dir: Path) -> LuxonisDataset:
 def cifar10_dataset(work_dir: Path) -> LuxonisDataset:
     dataset = LuxonisDataset("cifar10_test", delete_local=True)
     output_folder = work_dir / "cifar10"
-    if not os.path.exists(output_folder) or not os.listdir(output_folder):
+    if not output_folder.exists() or not list(output_folder.iterdir()):
         output_folder = LuxonisFileSystem.download(
             "gs://luxonis-test-bucket/luxonis-train-test-data/datasets/cifar10",
             work_dir,

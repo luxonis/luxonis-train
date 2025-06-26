@@ -79,6 +79,7 @@ select = [
   "TID",
   "TRY",
   "UP",
+  "YTT",
   "W",
 ]
 ignore = [
@@ -88,7 +89,6 @@ ignore = [
   "ANN401",
   "D1",
   "E501",
-  "F403",
   "ICN002",
   "NPY002",
   "PLR0911",
@@ -104,15 +104,15 @@ ignore = [
   "S101",
   "S311",
   "S603",
-  "SIM108",
+  # "SIM108",
   "TRY003",
-  "W191",
 ]
 unfixable = ["B905"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN201"]
 "__main__.py" = ["ANN201", "T201"]
+"__init__.py" = ["F403"]
 
 [tool.docformatter]
 black = true

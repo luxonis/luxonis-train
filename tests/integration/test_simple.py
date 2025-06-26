@@ -15,7 +15,7 @@ from tensorboard.backend.event_processing import event_accumulator
 
 from luxonis_train.core import LuxonisModel
 
-from .multi_input_modules import *
+from .multi_input_modules import *  # noqa: F403
 
 INFER_PATH = Path("tests/integration/infer-save-directory")
 ONNX_PATH = Path("tests/integration/example_multi_input.onnx")
@@ -403,7 +403,9 @@ def test_freezing_parametrized(
         assert len(actual_vals) == len(expected_seq), (
             f"{tag}: expected {len(expected_seq)} entries, got {len(actual_vals)}"
         )
-        for (exp_step, exp_val), actual in zip(expected_seq, actual_vals):
+        for (exp_step, exp_val), actual in zip(
+            expected_seq, actual_vals, strict=True
+        ):
             act_step, act_val = actual.step, actual.value
             assert act_step == exp_step, (
                 f"{tag}: expected step {exp_step}, got {act_step}"
