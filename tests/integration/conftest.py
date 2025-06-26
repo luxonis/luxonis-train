@@ -230,14 +230,15 @@ def anomaly_detection_dataset(work_dir: Path) -> LuxonisDataset:
     ) -> np.ndarray:
         mask = np.zeros(image_shape, dtype=np.uint8)
         h, w = image_shape
+        rng = np.random.default_rng()
         for _ in range(n_squares):
             top_left = (
-                np.random.randint(0, w // 2),
-                np.random.randint(0, h // 2),
+                rng.integers(0, w // 2),
+                rng.integers(0, h // 2),
             )
             bottom_right = (
-                np.random.randint(w // 2, w),
-                np.random.randint(h // 2, h),
+                rng.integers(w // 2, w),
+                rng.integers(h // 2, h),
             )
             cv2.rectangle(mask, top_left, bottom_right, 255, -1)
         return mask
@@ -300,10 +301,7 @@ def anomaly_detection_dataset(work_dir: Path) -> LuxonisDataset:
 def config(
     train_overfit: bool, image_size: tuple[int, int], batch_size: int
 ) -> Kwargs:
-    if train_overfit:  # pragma: no cover
-        epochs = 100
-    else:
-        epochs = 1
+    epochs = 100 if train_overfit else 1
 
     return deepcopy(
         {

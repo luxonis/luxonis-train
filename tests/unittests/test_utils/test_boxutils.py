@@ -76,10 +76,7 @@ def test_bbox_iou(
     iou = bbox_iou(bbox1, bbox2, bbox_format=format, iou_type=iou_type)
 
     assert iou.shape == (bbox1.shape[0], bbox2.shape[0])
-    if iou_type == "none":
-        min = 0
-    else:
-        min = -1.5
+    min = 0 if iou_type == "none" else -1.5
     assert iou.min() >= min
     assert iou.max() <= 1
 

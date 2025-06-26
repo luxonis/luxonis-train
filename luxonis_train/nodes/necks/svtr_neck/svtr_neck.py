@@ -107,10 +107,7 @@ class SVTRNeck(BaseNode[list[Tensor], list[Tensor]]):
         self.out_channels = dims
 
     def forward(self, x: Tensor) -> Tensor:
-        if self.use_guide:
-            z = x.clone().detach()
-        else:
-            z = x
+        z = x.clone().detach() if self.use_guide else x
         h = z
 
         z = self.conv1(z)

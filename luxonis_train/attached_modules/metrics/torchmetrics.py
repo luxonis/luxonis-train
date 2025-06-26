@@ -19,18 +19,12 @@ class TorchMetricWrapper(BaseMetric):
         task = kwargs.get("task")
         if task is None:
             if "num_classes" in kwargs:
-                if kwargs["num_classes"] == 1:
-                    task = "binary"
-                else:
-                    task = "multiclass"
+                task = "binary" if kwargs["num_classes"] == 1 else "multiclass"
             elif "num_labels" in kwargs:
                 task = "multilabel"
             else:
                 with suppress(RuntimeError, ValueError):
-                    if self.n_classes == 1:
-                        task = "binary"
-                    else:
-                        task = "multiclass"
+                    task = "binary" if self.n_classes == 1 else "multiclass"
             if task is not None:
                 logger.warning(
                     "Parameter 'task' was not specified for `TorchMetric` "
