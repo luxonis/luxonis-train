@@ -55,12 +55,18 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         ...
 
     def _log_progress(self, trainer: pl.Trainer) -> None:
-        duration = (
-            time.time() - self._epoch_start_time
-            if self._epoch_start_time
-            else 0.0
-        )
-        # Get last loss
+        if hasattr(self, "_epoch_start_time"):
+            start = self._epoch_start_time
+            logger.info(
+                f"[ProgressBar._log_progress] _epoch_start_time exists: {start}"
+            )
+            duration = time.time() - start
+        else:
+            logger.warning(
+                "[ProgressBar._log_progress] _epoch_start_time is MISSING; defaulting duration=0"
+            )
+            duration = 0.0
+
         metrics = trainer.callback_metrics
         loss = metrics.get("train/loss")
         loss_str = f"{loss:.4f}" if loss else "N/A"
@@ -221,9 +227,17 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         console.print(rich_table)
 
     def on_train_epoch_start(self, trainer, pl_module):
+        logger.info("[ProgressBar] on_train_epoch_start called")
         super().on_train_epoch_start(trainer, pl_module)
         self._epoch_start_time = time.time()
+        logger.info(
+            f"[ProgressBar] _epoch_start_time set to {self._epoch_start_time}"
+        )
 
     def on_train_epoch_end(self, trainer, pl_module):
+        logger.info("[ProgressBar] on_train_epoch_end called")
         super().on_train_epoch_end(trainer, pl_module)
+        logger.info(
+            f"[ProgressBar] About to log progress; _epoch_start_time = {getattr(self, '_epoch_start_time', None)}"
+        )
         super()._log_progress(trainer)
