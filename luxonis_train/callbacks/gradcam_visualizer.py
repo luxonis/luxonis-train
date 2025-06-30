@@ -61,7 +61,7 @@ class PLModuleWrapper(pl.LightningModule):
             return scores.sum(dim=1)
         if self.task == "classification":
             return first_head_dict["classification"]
-        if self.task == "keypoint_detection":
+        if self.task == "keypoints":
             scores = first_head_dict["class_scores"]
             return scores.sum(dim=1)
         raise ValueError(f"Unknown task: {self.task}")
