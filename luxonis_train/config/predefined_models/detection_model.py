@@ -29,20 +29,20 @@ def get_variant(variant: VariantLiteral) -> DetectionVariant:
         "light": DetectionVariant(
             backbone="EfficientRep",
             backbone_params={"variant": "n"},
-            neck_params={"variant": "n", "download_weights": True},
-            head_params={"download_weights": True},
+            neck_params={"variant": "n"},
+            head_params={},
         ),
         "medium": DetectionVariant(
             backbone="EfficientRep",
             backbone_params={"variant": "s"},
-            neck_params={"variant": "s", "download_weights": True},
-            head_params={"download_weights": True},
+            neck_params={"variant": "s"},
+            head_params={},
         ),
         "heavy": DetectionVariant(
             backbone="EfficientRep",
             backbone_params={"variant": "l"},
-            neck_params={"variant": "l", "download_weights": True},
-            head_params={"download_weights": True},
+            neck_params={"variant": "l"},
+            head_params={},
         ),
     }
 
@@ -141,7 +141,7 @@ class DetectionModel(BasePredefinedModel):
                 attached_to="EfficientBBoxHead",
                 is_main_metric=True,
                 params={"class_metrics": self.per_class_metrics},
-            ),
+            )
         ]
         if self.enable_confusion_matrix:
             metrics.append(
