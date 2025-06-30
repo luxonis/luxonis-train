@@ -55,14 +55,14 @@ class PLModuleWrapper(pl.LightningModule):
         first_head_dict = next(iter(output.outputs.values()))
 
         if self.task == "segmentation":
-            return first_head_dict["segmentation"][0]
+            return first_head_dict["segmentation"]
         if self.task == "detection":
             scores = first_head_dict["class_scores"]
             return scores.sum(dim=1)
         if self.task == "classification":
-            return first_head_dict["classification"][0]
+            return first_head_dict["classification"]
         if self.task == "keypoint_detection":
-            scores = first_head_dict["class_scores"][0]
+            scores = first_head_dict["class_scores"]
             return scores.sum(dim=1)
         raise ValueError(f"Unknown task: {self.task}")
 
