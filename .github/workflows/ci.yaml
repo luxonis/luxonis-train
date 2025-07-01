@@ -34,6 +34,8 @@ jobs:
       uses: pre-commit/action@v3.0.1
 
   docs:
+    needs:
+      - pre-commit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -50,7 +52,6 @@ jobs:
   type-check:
     needs:
       - pre-commit
-      - docs
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -83,6 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - type-check
+      - docs
 
     steps:
     - name: Checkout
