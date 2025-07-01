@@ -9,6 +9,7 @@ from luxonis_ml.typing import (
     Kwargs,
     Params,
     ParamValue,
+    PathType,
     check_type,
 )
 from luxonis_ml.utils import (
@@ -630,9 +631,11 @@ class Config(LuxonisConfig):
     @classmethod
     def get_config(
         cls,
-        cfg: str | Params | None = None,
+        cfg: PathType | Params | None = None,
         overrides: Params | list[str] | tuple[str, ...] | None = None,
     ) -> "Config":
+        if isinstance(cfg, Path):
+            cfg = str(cfg)
         instance = super().get_config(cfg, overrides)
         if not isinstance(cfg, str):
             cls.smart_auto_populate(instance)

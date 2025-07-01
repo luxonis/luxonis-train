@@ -659,10 +659,7 @@ class BaseNode(
             raise ValueError(
                 "Default `wrap` expects a single tensor or a list of tensors."
             )
-        if self.task is None:
-            name = "features"
-        else:
-            name = self.task.main_output
+        name = "features" if self.task is None else self.task.main_output
         return {name: outputs}
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:

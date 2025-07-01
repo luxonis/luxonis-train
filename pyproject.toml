@@ -90,6 +90,7 @@ ignore = [
   "D1",
   "E501",
   "ICN002",
+  "PLC0415",
   "PLR0911",
   "PLR0912",
   "PLR0913",
@@ -107,7 +108,7 @@ unfixable = ["B905"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN201"]
-"__main__.py" = ["ANN201", "T201"]
+"__main__.py" = ["ANN201", "T201", "PT028"]
 "__init__.py" = ["F403"]
 
 [tool.docformatter]

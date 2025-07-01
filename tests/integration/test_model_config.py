@@ -12,15 +12,15 @@ def test_config_dump(coco_dataset: LuxonisDataset):
     temp_config_path = Path("tests", "integration", "test_saved_config.yaml")
 
     try:
-        config = LuxonisTrainConfig().get_config(str(model_config_path))
+        config = LuxonisTrainConfig().get_config(model_config_path)
         config.save_data(temp_config_path)
 
         opts: Params = {
             "loader.params.dataset_name": coco_dataset.identifier,
         }
 
-        model1 = LuxonisModel(cfg=str(temp_config_path), opts=opts)
-        model2 = LuxonisModel(cfg=str(model_config_path), opts=opts)
+        model1 = LuxonisModel(cfg=temp_config_path, opts=opts)
+        model2 = LuxonisModel(cfg=model_config_path, opts=opts)
 
         model1_config = model1.cfg.model_dump()
         model2_config = model2.cfg.model_dump()

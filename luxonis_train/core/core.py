@@ -63,7 +63,7 @@ class LuxonisModel:
 
     def __init__(
         self,
-        cfg: str | Params | Config | None,
+        cfg: PathType | Params | Config | None,
         opts: Params | list[str] | tuple[str, ...] | None = None,
     ):
         """Constructs a new Core instance.

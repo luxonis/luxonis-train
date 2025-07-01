@@ -11,6 +11,7 @@ import psutil
 import pytest
 from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from luxonis_ml.typing import Params
+from luxonis_ml.utils.environ import environ
 from PIL import Image
 from torch import Tensor, nn
 
@@ -26,16 +27,11 @@ def temp_dir():
         shutil.rmtree(str(tmp_dir), ignore_errors=True)
 
 
-@pytest.fixture(scope="module", autouse=True)
-def set_env_vars():
-    from luxonis_ml.utils.environ import environ
-
+@pytest.fixture(autouse=True)
+def setup(temp_dir: Path):
     environ.MLFLOW_TRACKING_URI = "http://127.0.0.1:5001"
     os.environ["MLFLOW_TRACKING_URI"] = "http://127.0.0.1:5001"
 
-
-@pytest.fixture(scope="module", autouse=True)
-def setup_mlflow(temp_dir: Path):
     start_time = time.time()
     timeout = 30
 
