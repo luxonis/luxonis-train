@@ -85,9 +85,7 @@ jobs:
   config-test:
     runs-on: ubuntu-latest
     needs:
-      - pre-commit
-    # needs:
-    #   - type-check
+      - type-check
 
     steps:
     - name: Checkout
