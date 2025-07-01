@@ -1,14 +1,23 @@
+import shutil
 from copy import deepcopy
+from typing import Any
 
+import lightning.pytorch as pl
 import pytest
 import torch
 from lightning.pytorch import LightningModule, Trainer
+from lightning.pytorch.callbacks import ModelCheckpoint
 from torch import Tensor, nn
+from torch.utils.data import DataLoader, TensorDataset
 
 from luxonis_train.callbacks.ema import EMACallback, ModelEma
 
 
-class SimpleModel(LightningModule):
+class DummyLightningModule(pl.LightningModule):
+    training_weights_on_train_epoch_start: dict[str, Tensor]
+    training_weights_on_val_start: dict[str, Tensor]
+    training_weights_on_save_ckpt: dict[str, Tensor]
+
     def __init__(self):
         super().__init__()
         self.layer = nn.Linear(2, 2)
@@ -16,10 +25,23 @@ class SimpleModel(LightningModule):
     def forward(self, x: Tensor) -> Tensor:
         return self.layer(x)
 
+    def training_step(self, batch: tuple[Tensor, Tensor], batch_idx: int):
+        x, y = batch
+        return nn.MSELoss()(self(x), y)
+
+    def validation_step(self, batch: tuple[Tensor, Tensor], batch_idx: int):
+        x, y = batch
+        loss = nn.MSELoss()(self(x), y)
+        self.log("val_loss", loss, prog_bar=True)
+        self.log("val_metric", -loss, prog_bar=True)
+
+    def configure_optimizers(self):
+        return torch.optim.SGD(self.parameters(), lr=0.1)
+
 
 @pytest.fixture
-def model() -> SimpleModel:
-    return SimpleModel()
+def model() -> DummyLightningModule:
+    return DummyLightningModule()
 
 
 @pytest.fixture
@@ -77,7 +99,7 @@ def test_ema_state_saved_to_checkpoint(
     checkpoint = {}
     ema_callback.on_save_checkpoint(trainer, model, checkpoint)
 
-    assert "state_dict" in checkpoint or "state_dict_ema" in checkpoint
+    assert "state_dict" in checkpoint
 
 
 def test_load_from_checkpoint(
@@ -100,11 +122,143 @@ def test_validation_epoch_start_and_end(
     trainer = Trainer()
     ema_callback.on_fit_start(trainer, model)
 
+    # Slightly modify the EMA state dict to simulate a different state
+    for param_key in ema_callback.ema.state_dict_ema:
+        ema_callback.ema.state_dict_ema[param_key] += 0.1 * torch.randn_like(
+            ema_callback.ema.state_dict_ema[param_key]
+        )
+
     ema_callback.on_validation_epoch_start(trainer, model)
     assert ema_callback.collected_state_dict is not None
 
+    collected_state = model.state_dict()
     ema_callback.on_validation_end(trainer, model)
-    for k in ema_callback.collected_state_dict:
-        assert torch.equal(
-            ema_callback.collected_state_dict[k], model.state_dict()[k]
-        )
+
+    diffs = sum(
+        not torch.equal(collected_state[p], ema_callback.ema.state_dict_ema[p])
+        for p in collected_state
+    )
+    assert diffs > 0, "Parameters did not swap after on_validation_end!"
+
+
+def test_ema_swapping_across_training(
+    model: LightningModule, ema_callback: EMACallback
+):
+    class PreCheckCallback(pl.Callback):
+        """Captures the training (original) weights before EMA swaps
+        in."""
+
+        def on_train_epoch_start(
+            self, trainer: pl.Trainer, pl_module: DummyLightningModule
+        ) -> None:
+            pl_module.training_weights_on_train_epoch_start = {
+                k: v.detach().clone()
+                for k, v in pl_module.state_dict().items()
+            }
+
+        def on_validation_epoch_start(
+            self, trainer: pl.Trainer, pl_module: DummyLightningModule
+        ) -> None:
+            pl_module.training_weights_on_val_start = {
+                k: v.detach().clone()
+                for k, v in pl_module.state_dict().items()
+            }
+
+        def on_save_checkpoint(
+            self,
+            trainer: pl.Trainer,
+            pl_module: DummyLightningModule,
+            checkpoint: dict[str, Any],
+        ) -> None:
+            pl_module.training_weights_on_save_ckpt = {
+                k: v.detach().clone()
+                for k, v in pl_module.state_dict().items()
+            }
+
+    class PostCheckCallback(pl.Callback):
+        """Verifies the model uses EMA weights during validation and on
+        checkpoint save.
+
+        It should revert to training weights on training epoch start.
+        """
+
+        def on_train_epoch_start(
+            self, trainer: pl.Trainer, pl_module: DummyLightningModule
+        ) -> None:
+            original_weights = pl_module.training_weights_on_train_epoch_start
+            diffs = sum(
+                not torch.equal(pl_module.state_dict()[k], original_weights[k])
+                for k in pl_module.state_dict()
+            )
+            assert diffs == 0, "Parameters changed after on_train_epoch_start!"
+
+        def on_validation_epoch_start(
+            self, trainer: pl.Trainer, pl_module: DummyLightningModule
+        ) -> None:
+            original_weights = pl_module.training_weights_on_val_start
+            diffs = sum(
+                not torch.equal(pl_module.state_dict()[k], original_weights[k])
+                for k in pl_module.state_dict()
+            )
+            assert diffs > 0, (
+                "Parameters did not swap after on_validation_epoch_start!"
+            )
+
+        def on_save_checkpoint(
+            self,
+            trainer: pl.Trainer,
+            pl_module: DummyLightningModule,
+            checkpoint: dict[str, Any],
+        ) -> None:
+            original_weights = pl_module.training_weights_on_save_ckpt
+            diffs = sum(
+                not torch.equal(pl_module.state_dict()[k], original_weights[k])
+                for k in pl_module.state_dict()
+            )
+            assert diffs == 0, "Parameters changed after on_save_checkpoint!"
+
+    x_train = torch.randn(50, 2)
+    y_train = torch.randn(50, 2)
+    train_loader = DataLoader(TensorDataset(x_train, y_train), batch_size=5)
+
+    x_val = torch.randn(10, 2)
+    y_val = torch.randn(10, 2)
+    val_loader = DataLoader(TensorDataset(x_val, y_val), batch_size=5)
+
+    pre_callback = PreCheckCallback()
+    post_callback = PostCheckCallback()
+
+    # Simulate luxonis-train 2 ModelCheckpoint callbacks
+    checkpoint_min = ModelCheckpoint(
+        monitor="val_loss",
+        mode="min",
+        filename="min-loss",
+        save_top_k=1,
+    )
+    checkpoint_best = ModelCheckpoint(
+        monitor="val_metric",
+        mode="max",
+        filename="best-metric",
+        save_top_k=1,
+    )
+
+    trainer = Trainer(
+        max_epochs=4,
+        check_val_every_n_epoch=2,
+        callbacks=[
+            pre_callback,
+            ema_callback,
+            post_callback,
+            checkpoint_min,
+            checkpoint_best,
+        ],
+        limit_val_batches=1,
+        num_sanity_val_steps=0,
+        default_root_dir="test_ema_swapping_logs",
+    )
+
+    trainer.fit(
+        model, train_dataloaders=train_loader, val_dataloaders=val_loader
+    )
+
+    shutil.rmtree("test_ema_swapping_logs", ignore_errors=True)

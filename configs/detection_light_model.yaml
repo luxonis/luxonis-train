@@ -9,10 +9,10 @@ model:
       variant: light
       loss_params:
         iou_type: "siou"
-        # No assigner warmup
-        n_warmup_epochs: 0
+
         # Should be 2.5 * accumulate_grad_batches for best results
         iou_loss_weight: 20
+
         # Should be 1 * accumulate_grad_batches for best results
         class_loss_weight: 8
 
@@ -33,7 +33,8 @@ trainer:
 
   batch_size: 8
   epochs: 300
-  # For best results, always accumulate gradients to effectively use 64 batch size
+  # For best results, always accumulate gradients to
+  # effectively use 64 batch size
   accumulate_grad_batches: 8
   n_workers: 8
   validation_interval: 10

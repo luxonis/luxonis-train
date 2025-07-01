@@ -5,12 +5,11 @@ from lightning.pytorch.callbacks import (
     LearningRateMonitor,
     ModelCheckpoint,
     ModelPruning,
-    RichModelSummary,
     StochasticWeightAveraging,
     Timer,
 )
 
-from luxonis_train.utils.registry import CALLBACKS
+from luxonis_train.registry import CALLBACKS
 
 from .archive_on_train_end import ArchiveOnTrainEnd
 from .ema import EMACallback
@@ -23,6 +22,7 @@ from .luxonis_progress_bar import (
     LuxonisTQDMProgressBar,
 )
 from .metadata_logger import MetadataLogger
+from .rich_model_summary import LuxonisRichModelSummary
 from .test_on_train_end import TestOnTrainEnd
 from .training_manager import TrainingManager
 from .upload_checkpoint import UploadCheckpoint
@@ -30,7 +30,7 @@ from .upload_checkpoint import UploadCheckpoint
 CALLBACKS.register(module=EarlyStopping)
 CALLBACKS.register(module=LearningRateMonitor)
 CALLBACKS.register(module=ModelCheckpoint)
-CALLBACKS.register(module=RichModelSummary)
+CALLBACKS.register(module=LuxonisRichModelSummary)
 CALLBACKS.register(module=DeviceStatsMonitor)
 CALLBACKS.register(module=GradientAccumulationScheduler)
 CALLBACKS.register(module=StochasticWeightAveraging)
@@ -48,6 +48,7 @@ __all__ = [
     "ExportOnTrainEnd",
     "GPUStatsMonitor",
     "GradCamCallback",
+    "LuxonisRichModelSummary",
     "LuxonisRichProgressBar",
     "LuxonisTQDMProgressBar",
     "MetadataLogger",

@@ -15,7 +15,7 @@ class AffineActivation(nn.Module):
         self.affine = AffineBlock()
 
     def forward(self, x: Tensor) -> Tensor:
-        # WARN: Is the order correct (activation -> affine)?
+        # WARN: Is the order (affine ∘ activation) correct?
         return self.affine(self.activation(x))
 
 
@@ -77,3 +77,14 @@ class LCNetV3Block(nn.Sequential):
             )
         )
         super().__init__(*blocks)
+
+
+def make_divisible(
+    v: float, divisor: int = 16, min_value: int | None = None
+) -> int:
+    if min_value is None:
+        min_value = divisor
+    new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
+    if new_v < 0.9 * v:
+        new_v += divisor
+    return new_v

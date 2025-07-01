@@ -4,9 +4,13 @@ from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
-from luxonis_train.utils.registry import NODES
+from luxonis_train.registry import NODES
 
-BACKBONES = [backbone for backbone in BACKBONES if backbone != "PPLCNetV3"]
+BACKBONES = [
+    backbone
+    for backbone in BACKBONES
+    if backbone not in {"PPLCNetV3", "GhostFaceNetV2"}
+]
 
 
 def get_opts_backbone(backbone: str) -> Params:

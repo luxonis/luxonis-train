@@ -62,7 +62,7 @@ def get_sigmas(
 
 
 def get_center_keypoints(
-    bboxes: Tensor, height: int = 1, width: int = 1
+    bboxes: Tensor, *, height: int = 1, width: int = 1
 ) -> Tensor:
     """Get center keypoints from bounding boxes.
 
@@ -75,12 +75,12 @@ def get_center_keypoints(
     @rtype: Tensor
     @return: Tensor of center keypoints.
     """
-    keypoints = torch.empty(
-        (bboxes.shape[0], 4), device=bboxes.device, dtype=torch.int
+    keypoints = torch.full(
+        (bboxes.shape[0], 4), 2, device=bboxes.device, dtype=bboxes.dtype
     )
-    keypoints[:, :2] = bboxes[:, :2]
-    keypoints[:, 2] = (bboxes[:, 2] + bboxes[:, 4] / 2) * width
-    keypoints[:, 3] = (bboxes[:, 3] + bboxes[:, 5] / 2) * height
+    keypoints[:, 0] = bboxes[:, 0]
+    keypoints[:, 1] = (bboxes[:, 2] + bboxes[:, 4] / 2) * width
+    keypoints[:, 2] = (bboxes[:, 3] + bboxes[:, 5] / 2) * height
     return keypoints
 
 
@@ -106,8 +106,8 @@ def insert_class(keypoints: Tensor, bboxes: Tensor) -> Tensor:
 
 
 def compute_pose_oks(
-    pred_kpts: Tensor,
-    gt_kpts: Tensor,
+    predictions: Tensor,
+    targets: Tensor,
     sigmas: Tensor,
     gt_bboxes: Tensor | None = None,
     pose_area: Tensor | None = None,
@@ -153,10 +153,10 @@ def compute_pose_oks(
             (width * height * area_factor).unsqueeze(-1).unsqueeze(-1)
         )  # shape: [N, M1, 1, 1]
 
-    gt_xy = gt_kpts[:, :, :, :2].unsqueeze(
+    gt_xy = targets[:, :, :, :2].unsqueeze(
         2
     )  # shape: [N, M1, 1, n_keypoints, 2]
-    pred_xy = pred_kpts[:, :, :, :2].unsqueeze(
+    pred_xy = predictions[:, :, :, :2].unsqueeze(
         1
     )  # shape: [N, 1, M2, n_keypoints, 2]
 
@@ -177,7 +177,7 @@ def compute_pose_oks(
     oks_vals = torch.exp(-exp_term)  # shape: [N, M1, M2, n_keypoints]
 
     vis_mask = (
-        gt_kpts[:, :, :, 2].gt(0).float().unsqueeze(2)
+        targets[:, :, :, 2].gt(0).float().unsqueeze(2)
     )  # shape: [N, M1, 1, n_keypoints]
     vis_count = vis_mask.sum(dim=-1)  # shape: [N, M1, M2]
 

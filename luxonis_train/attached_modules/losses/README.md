@@ -128,7 +128,7 @@ Compatible with: [`EfficientBBoxHead`](../../nodes/README.md#efficientbboxhead)
 
 | Key                 | Type                                              | Default value | Description                                                                                                                                                                                                                                              |
 | ------------------- | ------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `n_warmup_epochs`   | `int`                                             | `4`           | Number of epochs using the ATSS assigner before switching to the TAL assigner.                                                                                                                                                                           |
+| `n_warmup_epochs`   | `int`                                             | `0`           | Number of epochs using the ATSS assigner before switching to the TAL assigner.                                                                                                                                                                           |
 | `iou_type`          | `Literal["none", "giou", "diou", "ciou", "siou"]` | `"giou"`      | Type of IoU used for bounding box regression loss.                                                                                                                                                                                                       |
 | `class_loss_weight` | `float`                                           | `1.0`         | Weight for the classification component of the loss.                                                                                                                                                                                                     |
 | `iou_loss_weight`   | `float`                                           | `2.5`         | Weight for the IoU regression component of the loss.                                                                                                                                                                                                     |
@@ -161,7 +161,6 @@ Compatible with: [`EfficientKeypointBBoxHead`](../../nodes/README.md#efficientke
 
 | Key                     | Type                                              | Default value | Description                                                                                    |
 | ----------------------- | ------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------- |
-| `n_warmup_epochs`       | `int`                                             | `4`           | Number of epochs using the ATSS assigner before switching to the TAL assigner.                 |
 | `iou_type`              | `Literal["none", "giou", "diou", "ciou", "siou"]` | `"giou"`      | IoU type used for the bounding box regression sub-loss.                                        |
 | `reduction`             | `Literal["mean", "sum"]`                          | `"mean"`      | Specifies the reduction method for the loss output.                                            |
 | `class_loss_weight`     | `float`                                           | `1.0`         | Weight for the classification sub-loss.                                                        |
@@ -170,6 +169,7 @@ Compatible with: [`EfficientKeypointBBoxHead`](../../nodes/README.md#efficientke
 | `vis_kpts_loss_weight`  | `float`                                           | `2.0`         | Weight for the keypoint visibility sub-loss.                                                   |
 | `sigmas`                | `list[float] \| None`                             | `None`        | Sigmas used in KeypointLoss for OKS; if `None`, defaults (e.g., COCO values) are used.         |
 | `area_factor`           | `float \| None`                                   | `None`        | Factor to multiply the bounding box area in KeypointLoss; if `None`, a default factor is used. |
+| `n_warmup_epochs`       | `int`                                             | `0`           | Number of epochs using the ATSS assigner before switching to the TAL assigner.                 |
 
 #### `FOMOLocalizationLoss`
 
@@ -177,9 +177,11 @@ Compatible with: [`FOMOHead`](../../nodes/README.md#fomohead)
 
 **Parameters:**
 
-| Key             | Type    | Default value | Description                                                                                                                   |
-| --------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `object_weight` | `float` | `500`         | Weight for objects in the loss computation. Higher values may improve detection accuracy at the risk of more false positives. |
+| Key             | Type    | Default Value | Description                                                                                                                      |
+| --------------- | ------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `object_weight` | `float` | `500`         | Weight applied to object (positive) regions in the loss. Higher values can help detect objects but may increase false positives. |
+| `alpha`         | `float` | `0.45`        | Balances the importance of positive vs. negative examples in Focal loss.                                                         |
+| `gamma`         | `float` | `2`           | Exponent that modulates the difficulty weighting in Focal loss.                                                                  |
 
 ### Instance Segmentation Losses
 

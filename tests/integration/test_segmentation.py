@@ -6,7 +6,7 @@ from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
-from luxonis_train.utils.registry import NODES
+from luxonis_train.registry import NODES
 
 # TODO: Remove the following line after the incompatibility issue is resolved
 BACKBONES = [backbone for backbone in BACKBONES if backbone != "PPLCNetV3"]

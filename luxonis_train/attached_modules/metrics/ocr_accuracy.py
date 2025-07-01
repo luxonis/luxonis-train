@@ -8,7 +8,7 @@ from typing_extensions import override
 from luxonis_train.nodes import OCRCTCHead
 from luxonis_train.tasks import Tasks
 
-from .base_metric import BaseMetric, State
+from .base_metric import BaseMetric, MetricState
 
 
 class OCRAccuracy(BaseMetric):
@@ -18,18 +18,10 @@ class OCRAccuracy(BaseMetric):
 
     node: OCRCTCHead
 
-    rank_0: Annotated[
-        Tensor, State(default=torch.tensor(0.0), dist_reduce_fx="sum")
-    ]
-    rank_1: Annotated[
-        Tensor, State(default=torch.tensor(0.0), dist_reduce_fx="sum")
-    ]
-    rank_2: Annotated[
-        Tensor, State(default=torch.tensor(0.0), dist_reduce_fx="sum")
-    ]
-    total: Annotated[
-        Tensor, State(default=torch.tensor(0.0), dist_reduce_fx="sum")
-    ]
+    rank_0: Annotated[Tensor, MetricState()]
+    rank_1: Annotated[Tensor, MetricState()]
+    rank_2: Annotated[Tensor, MetricState()]
+    total: Annotated[Tensor, MetricState()]
 
     def __init__(self, blank_class: int = 0, **kwargs):
         """Initializes the OCR accuracy metric.
@@ -51,24 +43,22 @@ class OCRAccuracy(BaseMetric):
         @param targets: A tensor containing the target labels.
         """
 
-        target = self.node.encoder(target).to(predictions.device)
+        target = self.node.encoder(target).to(self.device)
 
         batch_size, text_length, _ = predictions.shape
 
         pred_classes = predictions.argmax(dim=-1)
 
         predictions = torch.zeros(
-            (batch_size, text_length),
-            dtype=torch.int64,
-            device=predictions.device,
+            (batch_size, text_length), dtype=torch.int64, device=self.device
         )
-        for rank in range(batch_size):
-            unique_cons_classes = torch.unique_consecutive(pred_classes[rank])
+        for i in range(batch_size):
+            unique_cons_classes = torch.unique_consecutive(pred_classes[i])
             unique_cons_classes = unique_cons_classes[
                 unique_cons_classes != self.blank_class
             ]
             if len(unique_cons_classes) != 0:
-                predictions[rank, : unique_cons_classes.shape[0]] = (
+                predictions[i, : unique_cons_classes.shape[0]] = (
                     unique_cons_classes
                 )
 

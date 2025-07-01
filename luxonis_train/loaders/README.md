@@ -20,8 +20,11 @@ The default loader used with `LuxonisTrain`. It can either load data from an alr
 | `team_id`         | `str \| None`                                                                                             | `None`        | Optional unique team identifier for the cloud                                                                                                                                                                                                                                                              |
 | `bucket_storage`  | `Literal["local", "s3", "gcs"]`                                                                           | `"local"`     | Type of the bucket storage                                                                                                                                                                                                                                                                                 |
 | `delete_existing` | `bool`                                                                                                    | `False`       | Whether to delete the existing dataset with the same name. Only relevant if `dataset_dir` is provided. Use if you want to reparse the directory in case the data changed                                                                                                                                   |
+| `update_mode`     | `Literal["all", "missing"]`                                                                               | `all`         | Select whether to download all remote dataset media files or only those missing locally                                                                                                                                                                                                                    |
 
 **Data Shape Definitions:**
+
+Below we list the output shapes of `LuxonisTorchLoader` returned by the `collate_fn` function. These are the shapes used during model training.
 
 | Task Type               | Data Shape                                         | Description                                                                                                                                                   |
 | ----------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -35,12 +38,13 @@ The default loader used with `LuxonisTrain`. It can either load data from an alr
 
 ### Implementing a custom loader
 
-To implement a loader, you need to create a class that inherits from `BaseLoaderTorch` and implement the following methods:
+To implement a loader, you need to create a class that inherits from [`BaseLoaderTorch`](./base_loader.py) and implement the following methods:
 
 - `input_shapes(self) -> dict[str, torch.Size]`: Returns a dictionary with input shapes for each input image.
 - `__len__(self) -> int`: Returns the number of samples in the dataset.
 - `__getitem__(self, idx: int) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor]`: Returns a dictionary with input tensors for each input image.
 - `get_classes(self) -> dict[str, list[str]]`: Returns a dictionary with class names for each task in the dataset.
+- `collate_fn(self, batch: list[LuxonisLoaderTorchOutput]) -> tuple[dict[str, Tensor], Labels]`: A custom collation function that merges a list of samples into a single batch. It prepares inputs and labels in the format expected by the models during training.
 
 For loaders yielding keypoint tasks, you also have to implement `get_n_keypoints(self) -> dict[str, int]` method.
 

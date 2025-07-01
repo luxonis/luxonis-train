@@ -27,14 +27,14 @@ from luxonis_train.callbacks import (
 )
 from luxonis_train.config import Config
 from luxonis_train.lightning import LuxonisLightningModule
-from luxonis_train.loaders import BaseLoaderTorch, collate_fn
+from luxonis_train.loaders import BaseLoaderTorch
 from luxonis_train.loaders.luxonis_loader_torch import LuxonisLoaderTorch
+from luxonis_train.registry import LOADERS
 from luxonis_train.utils import (
     DatasetMetadata,
     LuxonisTrackerPL,
     setup_logging,
 )
-from luxonis_train.utils.registry import LOADERS
 
 from .utils.export_utils import (
     blobconverter_export,
@@ -63,7 +63,7 @@ class LuxonisModel:
 
     def __init__(
         self,
-        cfg: str | Params | Config | None,
+        cfg: PathType | Params | Config | None,
         opts: Params | list[str] | tuple[str, ...] | None = None,
     ):
         """Constructs a new Core instance.
@@ -122,6 +122,16 @@ class LuxonisModel:
         self.loaders: dict[View, BaseLoaderTorch] = {}
         loader_name = self.cfg.loader.name
         Loader = LOADERS.get(loader_name)
+        if issubclass(Loader, LuxonisLoaderTorch):
+            model_tasks = sorted(
+                {
+                    node.task_name
+                    for node in self.cfg.model.nodes
+                    if node.task_name is not None
+                }
+            )
+            self.cfg.loader.params["filter_task_names"] = model_tasks
+
         for view in ("train", "val", "test"):
             if (
                 view != "train"
@@ -186,7 +196,7 @@ class LuxonisModel:
                 loader,
                 batch_size=self.cfg.trainer.batch_size,
                 num_workers=self.cfg.trainer.n_workers,
-                collate_fn=collate_fn,
+                collate_fn=self.loaders[view].collate_fn,
                 shuffle=view == "train",
                 drop_last=(
                     self.cfg.trainer.skip_last_batch
@@ -235,15 +245,16 @@ class LuxonisModel:
             self.tracker._finalize(status)
 
     def train(
-        self, new_thread: bool = False, resume_weights: PathType | None = None
+        self, new_thread: bool = False, weights: PathType | None = None
     ) -> None:
         """Runs training.
 
         @type new_thread: bool
         @param new_thread: Runs training in new thread if set to True.
-        @type resume_weights: str | None
-        @param resume_weights: Path to the checkpoint from which to to
-            resume the training.
+        @type weights: str | None
+        @param weights: Path to the weights. If user specifies weights
+            in the config file, the weights provided here will take
+            precedence.
         """
 
         if self.cfg.trainer.matmul_precision is not None:
@@ -254,9 +265,25 @@ class LuxonisModel:
                 self.cfg.trainer.matmul_precision
             )
 
-        if resume_weights is not None:
-            resume_weights = LuxonisFileSystem.download(
-                str(resume_weights), self.run_save_dir
+        if weights is not None:
+            weights = LuxonisFileSystem.download(
+                str(weights), self.run_save_dir
+            )
+            if self.cfg.model.weights is not None:
+                logger.warning(
+                    "Weights provided in the command line, but config weights are set. "
+                    "Ignoring weights provided in config."
+                )
+            self.lightning_module.load_checkpoint(weights)
+        else:
+            weights = self.cfg.model.weights
+
+        resume_weights = weights if self.cfg.trainer.resume_training else None
+
+        if self.cfg.trainer.resume_training and resume_weights is None:
+            logger.warning(
+                "Resume training is enabled but no weights were provided. "
+                "Training will start from scratch."
             )
 
         def graceful_exit(signum: int, _: Any) -> None:  # pragma: no cover
@@ -275,12 +302,6 @@ class LuxonisModel:
 
         if not new_thread:
             logger.info(f"Checkpoints will be saved in: {self.run_save_dir}")
-            if self.cfg.trainer.resume_training:
-                if resume_weights is not None:
-                    logger.warning(
-                        "Resume weights provided in the command line, but resume_training in config is set to True. Ignoring resume weights provided in the command line."
-                    )
-                resume_weights = self.cfg.model.weights
             logger.info("Starting training...")
             self._train(
                 resume_weights,
@@ -312,16 +333,16 @@ class LuxonisModel:
 
     def export(
         self,
-        onnx_save_path: PathType | None = None,
+        save_path: PathType | None = None,
         weights: PathType | None = None,
         ignore_missing_weights: bool = False,
     ) -> None:
         """Runs export.
 
-        @type onnx_save_path: PathType | None
-        @param onnx_save_path: Path to where the exported ONNX model will be saved.
-            If not specified, model will be saved to the export directory
-            with the name specified in config file.
+        @type save_path: PathType | None
+        @param save_path: Directory where to save all exported model files.
+        If not specified, files will be saved to the "export" directory
+        in the run save directory.
         @type weights: PathType | None
         @param weights: Path to the checkpoint from which to load weights.
             If not specified, the value of `model.weights` from the
@@ -341,15 +362,17 @@ class LuxonisModel:
                 "No model weights specified. Exporting model without weights."
             )
 
-        export_save_dir = Path(self.run_save_dir, "export")
+        export_save_dir = (
+            Path(save_path)
+            if save_path is not None
+            else Path(self.run_save_dir, "export")
+        )
         export_save_dir.mkdir(parents=True, exist_ok=True)
 
         export_path = export_save_dir / (
             self.cfg.exporter.name or self.cfg.model.name
         )
-        onnx_save_path = str(
-            onnx_save_path or export_path.with_suffix(".onnx")
-        )
+        onnx_save_path = str(export_path.with_suffix(".onnx"))
 
         with replace_weights(self.lightning_module, weights):
             output_names = self.lightning_module.export_onnx(
@@ -378,16 +401,13 @@ class LuxonisModel:
 
         if self.cfg.exporter.blobconverter.active:
             try:
-                blobconverter_export(
+                self._exported_models["blob"] = blobconverter_export(
                     self.cfg.exporter,
                     scale_values,
                     mean_values,
                     reverse_input_channels,
                     str(export_save_dir),
                     onnx_save_path,
-                )
-                self._exported_models["blob"] = export_path.with_suffix(
-                    ".blob"
                 )
             except ImportError:
                 logger.error("Failed to import `blobconverter`")
@@ -419,7 +439,7 @@ class LuxonisModel:
                 LuxonisFileSystem.upload(path, self.cfg.exporter.upload_url)
 
         with open(export_path.with_suffix(".yaml"), "w") as f:
-            yaml.dump(modelconverter_config, f)
+            yaml.safe_dump(modelconverter_config, f)
             if self.cfg.exporter.upload_to_run:
                 self.tracker.upload_artifact(f.name, name=f.name, typ="export")
             if self.cfg.exporter.upload_url is not None:  # pragma: no cover
@@ -437,7 +457,7 @@ class LuxonisModel:
     def test(
         self,
         new_thread: Literal[True] = ...,
-        view: Literal["train", "test", "val"] = "val",
+        view: Literal["train", "test", "val"] = "test",
         weights: PathType | None = ...,
     ) -> None: ...
 
@@ -445,7 +465,7 @@ class LuxonisModel:
     def test(
         self,
         new_thread: bool = False,
-        view: Literal["train", "val", "test"] = "val",
+        view: Literal["train", "val", "test"] = "test",
         weights: PathType | None = None,
     ) -> Mapping[str, float] | None:
         """Runs testing.
@@ -453,7 +473,7 @@ class LuxonisModel:
         @type new_thread: bool
         @param new_thread: Runs testing in a new thread if set to True.
         @type view: Literal["train", "test", "val"]
-        @param view: Which view to run the testing on. Defauls to "val".
+        @param view: Which view to run the testing on. Defauls to "test".
         @rtype: Mapping[str, float] | None
         @return: If new_thread is False, returns a dictionary test
             results.
@@ -544,6 +564,9 @@ class LuxonisModel:
             """Objective function used to optimize Optuna study."""
             cfg_tracker = self.cfg.tracker
             tracker_params = cfg_tracker.model_dump()
+            tracker_params["run_name"] = (
+                tracker_params["run_name"] or self.tracker.run_name
+            )
             child_tracker = LuxonisTrackerPL(
                 rank=rank_zero_only.rank,
                 mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
@@ -590,7 +613,7 @@ class LuxonisModel:
             child_tracker.log_hyperparams(curr_params)
 
             cfg.save_data(run_save_dir / "training_config.yaml")
-
+            cfg.trainer.n_sanity_val_steps = 0
             lightning_module = LuxonisLightningModule(
                 cfg=cfg,
                 dataset_metadata=self.dataset_metadata,
@@ -606,8 +629,33 @@ class LuxonisModel:
                 )
             ]
 
+            if cfg.tuner.monitor == "loss":
+                monitor = "val/loss"
+            else:
+                main_metric = next(
+                    (m for m in cfg.model.metrics if m.is_main_metric), None
+                )
+                assert main_metric is not None
+                all_mlflow_logging_keys = self.get_mlflow_logging_keys()
+                search_name = (
+                    "mcc"
+                    if main_metric.name == "ConfusionMatrix"
+                    else main_metric.name
+                )
+                monitor = next(
+                    (
+                        k
+                        for k in all_mlflow_logging_keys["metrics"]
+                        if search_name in k
+                        and main_metric.attached_to in k
+                        and "val" in k
+                    ),
+                    None,
+                )
+                assert monitor is not None
+
             pruner_callback = PyTorchLightningPruningCallback(
-                trial, monitor="val/loss"
+                trial, monitor=monitor
             )
             callbacks.append(pruner_callback)
 
@@ -630,7 +678,7 @@ class LuxonisModel:
             except optuna.TrialPruned as e:
                 logger.info(e)
 
-            return pl_trainer.callback_metrics["val/loss"].item()
+            return pl_trainer.callback_metrics[monitor].item()
 
         cfg_tuner = self.cfg.tuner
         if cfg_tuner is None:
@@ -644,6 +692,9 @@ class LuxonisModel:
         tracker_params = cfg_tracker.model_dump()
         # NOTE: wandb doesn't allow multiple concurrent runs, handle this separately
         tracker_params["is_wandb"] = False
+        tracker_params["run_name"] = (
+            tracker_params["run_name"] or self.tracker.run_name
+        )
         self.parent_tracker = LuxonisTrackerPL(
             rank=rank,
             mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
@@ -677,7 +728,9 @@ class LuxonisModel:
         study = optuna.create_study(
             study_name=cfg_tuner.study_name,
             storage=storage,
-            direction="minimize",
+            direction="minimize"
+            if cfg_tuner.monitor == "loss"
+            else "maximize",
             pruner=pruner,
             load_if_exists=cfg_tuner.continue_existing_study,
         )
@@ -685,8 +738,16 @@ class LuxonisModel:
         study.optimize(
             _objective, n_trials=cfg_tuner.n_trials, timeout=cfg_tuner.timeout
         )
+        logger.info(
+            f"Best study parameters: {study.best_params}. Cost: {study.best_value}."
+        )
 
-        logger.info(f"Best study parameters: {study.best_params}")
+        study_df = study.trials_dataframe()
+        study_df.to_csv(self.run_save_dir / "tuner_study.csv", index=False)
+
+        logger.info(
+            f"Optuna study results saved to {self.run_save_dir / 'tuner_study.csv'}."
+        )
 
         self.parent_tracker.log_hyperparams(study.best_params)
 
@@ -818,44 +879,6 @@ class LuxonisModel:
 
     # TODO: Where are these methods used? Can they be removed?
     @rank_zero_only
-    def get_status(self) -> tuple[int, int]:
-        """Get current status of training.
-
-        @rtype: tuple[int, int]
-        @return: First element is the current epoch, second element is
-            the total number of epochs.
-        """
-        return self.lightning_module.current_epoch, self.cfg.trainer.epochs
-
-    @rank_zero_only
-    def get_status_percentage(self) -> float:
-        """Return percentage of current training, takes into account
-        early stopping.
-
-        @rtype: float
-        @return: Percentage of current training in range 0-100.
-        """
-
-        current_epoch = self.lightning_module.current_epoch
-        early_stopping = self.pl_trainer.early_stopping_callback
-
-        if early_stopping is not None:
-            if early_stopping.stopped_epoch == 0:
-                return (current_epoch / self.cfg.trainer.epochs) * 100
-            return 100.0
-        return (current_epoch / self.cfg.trainer.epochs) * 100
-
-    @rank_zero_only
-    def get_error_message(self) -> str | None:
-        """Return error message if one occurs while running in thread,
-        otherwise None.
-
-        @rtype: str | None
-        @return: Error message
-        """
-        return self.error_message
-
-    @rank_zero_only
     def get_min_loss_checkpoint_path(self) -> str | None:
         """Return best checkpoint path with respect to minimal
         validation loss.
@@ -886,3 +909,11 @@ class LuxonisModel:
             if callback.monitor and "val/metric/" in callback.monitor:
                 return callback.best_model_path
         return None
+
+    def get_mlflow_logging_keys(self) -> dict[str, list[str]]:
+        """
+        Returns a dictionary with two lists of keys:
+        1) "metrics"    -> Keys expected to be logged as standard metrics
+        2) "artifacts"  -> Keys expected to be logged as artifacts (e.g. confusion_matrix.json, visualizations)
+        """
+        return self.lightning_module.get_mlflow_logging_keys()

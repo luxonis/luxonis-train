@@ -8,7 +8,7 @@ from luxonis_train.nodes.blocks import (
     ConvBlock,
     FeatureFusionBlock,
 )
-from luxonis_train.utils.registry import NODES
+from luxonis_train.registry import NODES
 
 
 class ContextSpatial(BaseNode[Tensor, list[Tensor]]):

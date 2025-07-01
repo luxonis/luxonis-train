@@ -4,143 +4,111 @@ from torchvision.ops import box_convert, box_iou
 from typing_extensions import override
 
 from luxonis_train.attached_modules.metrics import BaseMetric
-from luxonis_train.tasks import Metadata, Tasks
+from luxonis_train.tasks import Tasks
+from luxonis_train.utils.general import instances_from_batch
+
+from .utils import compute_mcc
 
 
 class DetectionConfusionMatrix(BaseMetric):
-    supported_tasks = [Tasks.BOUNDINGBOX, Tasks.INSTANCE_KEYPOINTS]
+    supported_tasks = [
+        Tasks.BOUNDINGBOX,
+        Tasks.INSTANCE_KEYPOINTS,
+        Tasks.INSTANCE_SEGMENTATION,
+    ]
 
     confusion_matrix: Tensor
 
-    def __init__(self, **kwargs):
+    def __init__(self, iou_threshold: float = 0.45, **kwargs):
         super().__init__(**kwargs)
+        self.iou_threshold = iou_threshold
 
         self.add_state(
             "confusion_matrix",
-            # +1 for background
             default=torch.zeros(
                 self.n_classes + 1, self.n_classes + 1, dtype=torch.int64
             ),
             dist_reduce_fx="sum",
         )
 
-    @property
     @override
-    def required_labels(self) -> set[str | Metadata]:
-        return super().required_labels - {"keypoints"}
-
-    @override
-    def update(self, predictions: list[Tensor], targets: Tensor) -> None:
-        """Prepare data for classification, segmentation, and detection
-        tasks.
-
-        @type inputs: Packet[Tensor]
-        @param inputs: The inputs to the model.
-        @type labels: Labels
-        @param labels: The ground-truth labels.
-        @return: A tuple of two dictionaries: one for predictions and
-            one for targets.
-        """
-
-        targets[..., 2:6] = box_convert(targets[..., 2:6], "xywh", "xyxy")
-        scale_factors = torch.tensor(
-            [
-                self.original_in_shape[2],
-                self.original_in_shape[1],
-                self.original_in_shape[2],
-                self.original_in_shape[1],
-            ],
-            device=targets.device,
+    def update(
+        self, boundingbox: list[Tensor], target_boundingbox: Tensor
+    ) -> None:
+        target_boundingbox[:, 2:] = box_convert(
+            target_boundingbox[:, 2:], "xywh", "xyxy"
         )
-        targets[..., 2:6] *= scale_factors
+        target_boundingbox[:, [2, 4]] *= self.original_in_shape[2]
+        target_boundingbox[:, [3, 5]] *= self.original_in_shape[1]
 
-        self.confusion_matrix += self._compute_detection_confusion_matrix(
-            predictions, targets
-        )
+        self._update(boundingbox, target_boundingbox)
 
     @override
     def compute(self) -> dict[str, Tensor]:
-        return {"detection_confusion_matrix": self.confusion_matrix}
+        return {
+            "mcc": compute_mcc(self.confusion_matrix.float()),
+            "confusion_matrix": self.confusion_matrix,
+        }
 
-    def _compute_detection_confusion_matrix(
-        self, predictions: list[Tensor], targets: Tensor
-    ) -> Tensor:
-        """Compute a confusion matrix for object detection tasks.
-
-        @type predictions: list[Tensor]
-        @param predictions: List of predictions for each image. Each
-            tensor has shape [N, 6] where 6 is for [x1, y1, x2, y2,
-            score, class]
-        @type targets: Tensor
-        @param targets: Ground truth boxes and classes. Shape [M, 6]
-            where first column is image index.
-        """
-        conf_matrix = torch.zeros(
-            self.n_classes + 1,
-            self.n_classes + 1,
-            dtype=torch.int64,
-            device=predictions[0].device,
-        )
-
-        for i, pred in enumerate(predictions):
-            target = targets[targets[:, 0] == i]
-
-            if target.numel() == 0:
-                for pred_class in pred[:, 5].int():
-                    conf_matrix[pred_class, self.n_classes] += 1
-                continue
-
-            if pred.numel() == 0:
-                for target_class in target[:, 1].int():
-                    conf_matrix[self.n_classes, target_class] += 1
-                continue
-
-            pred_boxes = pred[:, :4]
+    def _update(self, predictions: list[Tensor], targets: Tensor) -> None:
+        for pred, target in zip(
+            predictions,
+            instances_from_batch(targets, batch_size=len(predictions)),
+            strict=True,
+        ):
             pred_classes = pred[:, 5].int()
+            target_classes = target[:, 0].int()
 
-            target_boxes = target[:, 2:]
-            target_classes = target[:, 1].int()
+            if target.numel() == pred.numel() == 0:
+                self.confusion_matrix[self.n_classes, self.n_classes] += 1
 
-            iou = box_iou(target_boxes, pred_boxes)
+            elif target.numel() == 0:
+                self.confusion_matrix[pred_classes, self.n_classes] += 1
 
-            if iou.any():
-                _, pred_max_idx = torch.max(iou, dim=1)
-                target_match_idx = torch.arange(
-                    len(target_boxes), device=target_boxes.device
-                )
+            elif pred.numel() == 0:
+                self.confusion_matrix[self.n_classes, target_classes] += 1
 
-                for target_idx, pred_idx in zip(
-                    target_match_idx, pred_max_idx, strict=True
-                ):
-                    target_class = target_classes[target_idx]
-                    pred_class = pred_classes[pred_idx]
-                    conf_matrix[pred_class, target_class] += 1
+            elif (
+                iou := box_iou(target[:, 1:], pred[:, :4]) > self.iou_threshold
+            ).any():
+                iou_max, pred_max_idx = torch.max(iou, dim=1)
+                iou_target_mask = iou_max > self.iou_threshold
+                targets_kept = torch.arange(len(target), device=self.device)[
+                    iou_target_mask
+                ]
+                predictions_kept = pred_max_idx[iou_target_mask]
 
-                unmatched_gt_mask = ~torch.isin(
-                    torch.arange(
-                        len(target_boxes), device=target_boxes.device
+                self.confusion_matrix.index_put_(
+                    (
+                        pred_classes[predictions_kept],
+                        target_classes[targets_kept],
                     ),
-                    target_match_idx,
+                    torch.tensor(1),
+                    accumulate=True,
                 )
-                for target_idx in torch.arange(
-                    len(target_boxes), device=target_boxes.device
-                )[unmatched_gt_mask]:
-                    target_class = target_classes[target_idx]
-                    conf_matrix[self.n_classes, target_class] += 1
 
-                unmatched_pred_mask = ~torch.isin(
-                    torch.arange(len(pred_boxes), device=target_boxes.device),
-                    pred_max_idx,
-                )
-                for pred_idx in torch.arange(
-                    len(pred_boxes), device=target_boxes.device
-                )[unmatched_pred_mask]:
-                    pred_class = pred_classes[pred_idx]
-                    conf_matrix[pred_class, self.n_classes] += 1
+                for target_idx in self._get_unmatched(
+                    targets_kept, len(target)
+                ):
+                    self.confusion_matrix[
+                        self.n_classes, target_classes[target_idx]
+                    ] += 1
+
+                for pred_idx in self._get_unmatched(
+                    predictions_kept, len(pred)
+                ):
+                    self.confusion_matrix[
+                        pred_classes[pred_idx], self.n_classes
+                    ] += 1
             else:
-                for target_class in target_classes:
-                    conf_matrix[self.n_classes, target_class] += 1
-                for pred_class in pred_classes:
-                    conf_matrix[pred_class, self.n_classes] += 1
+                self.confusion_matrix[self.n_classes, target_classes] += 1
+                self.confusion_matrix[pred_classes, self.n_classes] += 1
 
-        return conf_matrix
+    def _get_unmatched(self, index: Tensor, size: int) -> Tensor:
+        return torch.arange(size, device=self.device)[
+            torch.isin(
+                torch.arange(size, device=self.device),
+                index,
+                invert=True,
+            )
+        ]

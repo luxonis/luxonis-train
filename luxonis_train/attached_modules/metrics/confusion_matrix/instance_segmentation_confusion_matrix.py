@@ -1,4 +1,3 @@
-import torch
 from torch import Tensor
 from typing_extensions import override
 
@@ -6,15 +5,13 @@ from luxonis_train.tasks import Tasks
 
 from .detection_confusion_matrix import DetectionConfusionMatrix
 from .recognition_confusion_matrix import RecognitionConfusionMatrix
+from .utils import preprocess_instance_masks
 
 
-class InstanceConfusionMatrix(
-    RecognitionConfusionMatrix, DetectionConfusionMatrix
+class InstanceSegmentationConfusionMatrix(
+    DetectionConfusionMatrix, RecognitionConfusionMatrix
 ):
     supported_tasks = [Tasks.INSTANCE_SEGMENTATION]
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
 
     @override
     def update(
@@ -27,64 +24,28 @@ class InstanceConfusionMatrix(
         DetectionConfusionMatrix.update(self, boundingbox, target_boundingbox)
         RecognitionConfusionMatrix.update(
             self,
-            self._merge_predicted_masks(boundingbox, instance_segmentation),
-            self._merge_target_masks(
+            *preprocess_instance_masks(
+                boundingbox,
+                instance_segmentation,
                 target_boundingbox,
                 target_instance_segmentation,
-                len(boundingbox),
+                self.n_classes,
+                *self.original_in_shape[1:],
+                device=self.device,
             ),
         )
 
     @override
     def compute(self) -> dict[str, Tensor]:
-        return DetectionConfusionMatrix.compute(
-            self
-        ) | RecognitionConfusionMatrix.compute(self)
+        det_result = DetectionConfusionMatrix.compute(self)
+        rec_result = RecognitionConfusionMatrix.compute(self)
+        det_renamed = {
+            "detection_mcc": det_result["mcc"],
+            "detection_confusion_matrix": det_result["confusion_matrix"],
+        }
+        rec_renamed = {
+            "segmentation_mcc": rec_result["mcc"],
+            "segmentation_confusion_matrix": rec_result["confusion_matrix"],
+        }
 
-    @override
-    def reset(self) -> None:
-        DetectionConfusionMatrix.reset(self)
-        RecognitionConfusionMatrix.reset(self)
-
-    def _merge_predicted_masks(
-        self,
-        boundingbox: list[Tensor],
-        instance_segmentation: list[Tensor],
-    ) -> Tensor:
-        mask = torch.zeros(
-            len(boundingbox),
-            self.n_classes,
-            *self.original_in_shape[1:],
-            dtype=torch.bool,
-            device=instance_segmentation[0].device,
-        )
-        for i, (bboxes, segs) in enumerate(
-            zip(boundingbox, instance_segmentation, strict=True)
-        ):
-            for j, seg in enumerate(segs):
-                class_id = bboxes[j][5:].argmax()
-                mask[i][class_id] |= seg.bool()
-
-        return mask.to(instance_segmentation[0].dtype)
-
-    def _merge_target_masks(
-        self,
-        target_boundingbox: Tensor,
-        target_instance_segmentation: Tensor,
-        batch_size: int,
-    ) -> Tensor:
-        mask = torch.zeros(
-            batch_size,
-            self.n_classes,
-            *self.original_in_shape[1:],
-            dtype=torch.bool,
-            device=target_instance_segmentation.device,
-        )
-        for bboxes, segs in zip(
-            target_boundingbox, target_instance_segmentation, strict=True
-        ):
-            batch_idx = bboxes[0].int()
-            class_id = bboxes[1].int()
-            mask[batch_idx][class_id] |= segs.bool()
-
-        return mask.to(target_instance_segmentation.dtype)
+        return det_renamed | rec_renamed

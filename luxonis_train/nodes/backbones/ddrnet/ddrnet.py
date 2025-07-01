@@ -1,5 +1,3 @@
-from collections.abc import Callable
-
 from luxonis_ml.typing import Kwargs
 from torch import Tensor, nn
 from typing_extensions import override
@@ -38,9 +36,9 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         ssp_interpolation_mode: str = "bilinear",
         segmentation_interpolation_mode: str = "bilinear",
         # TODO: nn.Module registry
-        block: Callable[..., nn.Module] = ResNetBlock,
-        skip_block: Callable[..., nn.Module] = ResNetBlock,
-        layer5_block: Callable[..., nn.Module] = ResNetBottleneck,
+        block: type[nn.Module] = ResNetBlock,
+        skip_block: type[nn.Module] = ResNetBlock,
+        layer5_block: type[nn.Module] = ResNetBottleneck,
         layer5_bottleneck_expansion: int = 2,
         spp_kernel_sizes: list[int] | None = None,
         spp_strides: list[int] | None = None,

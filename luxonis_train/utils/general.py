@@ -1,6 +1,6 @@
 import math
 import urllib.parse
-from collections.abc import Collection
+from collections.abc import Collection, Iterator
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal, TypeVar
 
@@ -8,6 +8,7 @@ import torch
 from loguru import logger
 from luxonis_ml.typing import Kwargs, PathType
 from torch import Size, Tensor
+from typing_extensions import overload
 
 from luxonis_train.typing import Packet
 
@@ -50,7 +51,7 @@ def infer_upscale_factor(
     def _infer_upscale_factor(in_size: int, orig_size: int) -> int | float:
         factor = math.log2(orig_size) - math.log2(in_size)
         if abs(round(factor) - factor) < 1e-6:
-            return int(round(factor))
+            return round(factor)
         return factor
 
     if isinstance(in_size, int):
@@ -136,7 +137,7 @@ def get_with_default(
     if value is not None:
         return value
 
-    msg = f"Default value of {value} is being used for {action_name}."
+    msg = f"Default value `{default}` is being used for {action_name}."
 
     if caller_name:
         msg = f"[{caller_name}] {msg}"
@@ -260,3 +261,93 @@ def add_variant_aliases(
                 variants[alias] = variants[name]
 
     return variants
+
+
+def get_batch_instances(
+    batch_index: int, bboxes: Tensor, payload: Tensor | None = None
+) -> Tensor:
+    """Get instances from batched data, where the batch index is
+    encoded.
+
+    as the first column of the bounding boxes.
+    @type batch_index: int
+    @param batch_index: Batch index.
+    @type bboxes: Tensor
+    @param bboxes: Tensor of bounding boxes. Must have the batch index
+        as the first column.
+    @type payload: Tensor | None
+    @param payload: Additional tensor to be batched with the bounding
+        boxes. This tensor is in the same batch order, but doesn't
+        contain the batch index itself. If unset, returns the bounding
+        box instances (without the batch index).
+    @rtype: Tensor
+    @return: Instances from the batched data.
+    """
+    if payload is None:
+        return bboxes[bboxes[:, 0] == batch_index][:, 1:]
+    return payload[bboxes[:, 0] == batch_index]
+
+
+@overload
+def instances_from_batch(
+    bboxes: Tensor, *, batch_size: int | None = ...
+) -> Iterator[Tensor]: ...
+
+
+@overload
+def instances_from_batch(
+    bboxes: Tensor, *args: Tensor, batch_size: int | None = ...
+) -> Iterator[tuple[Tensor, ...]]: ...
+
+
+def instances_from_batch(
+    bboxes: Tensor, *args: Tensor, batch_size: int | None = None
+) -> Iterator[tuple[Tensor, ...]] | Iterator[Tensor]:
+    """Generate instances from batched data, where the batch index is
+    encoded as the first column of the bounding boxes.
+
+    Example::
+        >>> bboxes = torch.tensor([[0, 1], [0, 2], [1, 3]])
+        >>> keypoints = torch.tensor([[0.1], [0.2], [0.3]])
+        >>> for bbox, kpt in instances_from_batch(bboxes, keypoints):
+        ...     print(bbox, kpt)
+        tensor([[1], [2]]) tensor([[0.1], [0.2]])
+        tensor([[3]]) tensor([[0.3]])
+
+    @type bboxes: Tensor
+    @param bboxes: Tensor of bounding boxes. Must have the batch index
+        as the first column.
+    @type *args: Tensor
+    @param *args: Additional tensors to be batched with the bounding
+        boxes. These tensors are in the same batch order, but don't
+        contain the batch index themselves.
+    @type batch_size: int
+    @param batch_size: The batch size. Important in case of empty
+        tensors. If provided and the tensors are empty, the generator
+        will yield C{batch_size} empty tensors. If not provided, the
+        generator will yield nothing. Defaults to C{None}.
+    @rtype: Iterator[tuple[Tensor, ...]]
+    @return: Generator of instances, where the first element is the
+        bounding box tensor (with the batch index stripped) and the
+        rest are the additional tensors (keypoints, masks, etc.).
+    """
+    if not all(len(arg) == len(bboxes) for arg in args):
+        raise ValueError("All tensors must have the same length.")
+    if not bboxes.numel():
+        if batch_size is not None:
+            for _ in range(batch_size):
+                if not args:
+                    yield torch.empty_like(bboxes)
+                else:
+                    yield tuple(
+                        torch.empty_like(bboxes) for _ in [bboxes, *args]
+                    )
+        return
+    for i in range(batch_size or int(bboxes[:, 0].max()) + 1):
+        if not args:
+            yield get_batch_instances(i, bboxes)
+        else:
+            yield tuple(
+                get_batch_instances(i, bboxes, payload)
+                for payload in [None, *args]
+            )

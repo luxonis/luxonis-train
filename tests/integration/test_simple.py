@@ -2,7 +2,6 @@ import json
 import shutil
 import sys
 import tarfile
-from copy import deepcopy
 from pathlib import Path
 
 import cv2
@@ -11,13 +10,14 @@ from luxonis_ml.data import LuxonisDataset, LuxonisLoader
 from luxonis_ml.typing import Params
 from luxonis_ml.utils import environ
 from pytest_subtests import SubTests
+from tensorboard.backend.event_processing import event_accumulator
 
 from luxonis_train.core import LuxonisModel
 
 from .multi_input_modules import *
 
 INFER_PATH = Path("tests/integration/infer-save-directory")
-ONNX_PATH = Path("tests/integration/_model.onnx")
+ONNX_PATH = Path("tests/integration/example_multi_input.onnx")
 STUDY_PATH = Path("study_local.db")
 
 
@@ -30,17 +30,15 @@ def infer_path() -> Path:
 
 
 @pytest.fixture
-def opts(test_output_dir: Path) -> Params:
-    return deepcopy(
-        {
-            "trainer.epochs": 1,
-            "trainer.batch_size": 1,
-            "trainer.validation_interval": 1,
-            "trainer.callbacks": "[]",
-            "tracker.save_directory": str(test_output_dir),
-            "tuner.n_trials": 4,
-        }
-    )
+def opts(output_dir: Path) -> Params:
+    return {
+        "trainer.epochs": 1,
+        "trainer.batch_size": 1,
+        "trainer.validation_interval": 1,
+        "trainer.callbacks": [],
+        "tracker.save_directory": str(output_dir),
+        "tuner.n_trials": 4,
+    }
 
 
 @pytest.fixture(autouse=True)
@@ -51,7 +49,7 @@ def clear_files():
 
 
 @pytest.mark.parametrize(
-    "config_file",
+    "config_name",
     [
         "classification_heavy_model",
         "classification_light_model",
@@ -69,27 +67,44 @@ def clear_files():
 )
 def test_predefined_models(
     opts: Params,
-    config_file: str,
+    config_name: str,
     coco_dataset: LuxonisDataset,
     cifar10_dataset: LuxonisDataset,
-    mnist_dataset: LuxonisDataset,
+    toy_ocr_dataset: LuxonisDataset,
     image_size: tuple[int, int],
+    output_dir: Path,
+    subtests: SubTests,
 ):
-    config_file = f"configs/{config_file}.yaml"
-    opts |= {
+    config_file = f"configs/{config_name}.yaml"
+    opts = opts | {
         "loader.params.dataset_name": (
             cifar10_dataset.identifier
             if "classification" in config_file
-            else mnist_dataset.identifier
+            else toy_ocr_dataset.identifier
             if "ocr_recognition" in config_file
             else coco_dataset.identifier
         ),
+        "tracker.run_name": config_name,
         "trainer.epochs": 1,
         "trainer.preprocessing.train_image_size": image_size,
-    }  # type: ignore
-    model = LuxonisModel(config_file, opts)
-    model.train()
-    model.test(view="train")
+        "trainer.callbacks": [
+            {"name": "ExportOnTrainEnd"},
+            {"name": "ArchiveOnTrainEnd"},
+            {"name": "TestOnTrainEnd"},
+        ],
+    }
+    if "ocr_recognition" in config_file:
+        opts["trainer.preprocessing.train_image_size"] = [48, 320]
+
+    with subtests.test("original_config"):
+        model = LuxonisModel(config_file, opts)
+        model.train()
+    with subtests.test("saved_config"):
+        opts["tracker.run_name"] = f"{config_name}_reload"
+        model = LuxonisModel(
+            str(output_dir / config_name / "training_config.yaml"), opts
+        )
+        model.test()
 
 
 def test_multi_input(opts: Params, infer_path: Path):
@@ -99,7 +114,7 @@ def test_multi_input(opts: Params, infer_path: Path):
     model.test(view="val")
 
     assert not ONNX_PATH.exists()
-    model.export(str(ONNX_PATH))
+    model.export(str(ONNX_PATH.parent))
     assert ONNX_PATH.exists()
 
     assert len(list(infer_path.iterdir())) == 0
@@ -111,8 +126,9 @@ def test_custom_tasks(
     opts: Params, parking_lot_dataset: LuxonisDataset, subtests: SubTests
 ):
     config_file = "tests/configs/parking_lot_config.yaml"
-    opts |= {
+    opts = opts | {
         "loader.params.dataset_name": parking_lot_dataset.dataset_name,
+        "trainer.preprocessing.train_image_size": [128, 160],
         "trainer.batch_size": 2,
     }
     del opts["trainer.callbacks"]
@@ -146,10 +162,6 @@ def test_custom_tasks(
         keys_to_sort = ["inputs", "outputs", "heads"]
         sort_by_name(generated_config, keys_to_sort)
         sort_by_name(correct_archive_config, keys_to_sort)
-        from rich import print
-
-        print(generated_config)
-
         assert generated_config == correct_archive_config
 
 
@@ -184,7 +196,10 @@ def test_tune(opts: Params, coco_dataset: LuxonisDataset):
 
 
 def test_infer(
-    coco_dataset: LuxonisDataset, infer_path: Path, subtests: SubTests
+    coco_dataset: LuxonisDataset,
+    infer_path: Path,
+    image_size: tuple[int, int],
+    subtests: SubTests,
 ):
     loader = LuxonisLoader(coco_dataset)
     img_dir = Path("tests/data/img_dir")
@@ -205,6 +220,7 @@ def test_infer(
 
     opts = {
         "loader.params.dataset_name": coco_dataset.identifier,
+        "trainer.preprocessing.train_image_size": image_size,
         "trainer.preprocessing.augmentations": [],
     }
     model = LuxonisModel("configs/complex_model.yaml", opts)
@@ -229,9 +245,9 @@ def test_infer(
         model.infer(source_path="tests/data/invalid.jpg", save_dir=infer_path)
 
 
-def test_archive(test_output_dir: Path, coco_dataset: LuxonisDataset):
+def test_archive(output_dir: Path, coco_dataset: LuxonisDataset):
     opts: Params = {
-        "tracker.save_directory": str(test_output_dir),
+        "tracker.save_directory": str(output_dir),
         "loader.params.dataset_name": coco_dataset.identifier,
     }
     model = LuxonisModel("tests/configs/archive_config.yaml", opts)
@@ -249,9 +265,7 @@ def test_archive(test_output_dir: Path, coco_dataset: LuxonisDataset):
 
 def test_callbacks(opts: Params, coco_dataset: LuxonisDataset):
     config_file = "tests/configs/config_simple.yaml"
-    opts = deepcopy(opts)
-    del opts["trainer.callbacks"]
-    opts |= {
+    opts = opts | {
         "trainer.use_rich_progress_bar": False,
         "trainer.seed": 42,
         "trainer.deterministic": "warn",
@@ -283,39 +297,195 @@ def test_callbacks(opts: Params, coco_dataset: LuxonisDataset):
     model.train()
 
 
-def test_freezing(opts: Params, coco_dataset: LuxonisDataset):
+@pytest.mark.parametrize(
+    ("lr_after_unfreeze", "expected_lrs"),
+    [
+        (
+            0.001,
+            {
+                "lr-SGD": [
+                    (0, 0.000100),
+                    (1, 0.002080),
+                ],
+                "lr-SGD/pg1": [
+                    (2, 0.010000),
+                    (3, 0.008365),
+                ],
+                "lr-SGD/pg2": [
+                    (2, 0.001000),
+                    (3, 0.000837),
+                ],
+            },
+        ),
+        (
+            0.01,
+            {
+                "lr-SGD": [
+                    (0, 0.000100),
+                    (1, 0.002080),
+                ],
+                "lr-SGD/pg1": [
+                    (2, 0.010000),
+                    (3, 0.008365),
+                ],
+                "lr-SGD/pg2": [
+                    (2, 0.010000),
+                    (3, 0.008365),
+                ],
+            },
+        ),
+    ],
+)
+def test_freezing_parametrized(
+    lr_after_unfreeze: float,
+    expected_lrs: dict[str, list[tuple[int, float]]],
+    coco_dataset: LuxonisDataset,
+):
     config_file = "configs/segmentation_light_model.yaml"
-    opts = deepcopy(opts)
-    opts |= {
+    opts = {
         "model.predefined_model.params": {
             "head_params": {
                 "freezing": {
                     "active": True,
                     "unfreeze_after": 2,
+                    "lr_after_unfreeze": lr_after_unfreeze,
                 },
-            }
-        }
+            },
+        },
+        "trainer.epochs": 4,
+        "loader.params.dataset_name": coco_dataset.identifier,
+        "loader.train_view": "val",
+        "loader.val_view": "val",
+        "loader.test_view": "val",
+        "trainer.batch_size": 2,
+        "trainer.optimizer": {
+            "name": "SGD",
+            "params": {
+                "lr": 0.01,
+                "momentum": 0.9,
+                "nesterov": False,
+                "weight_decay": 0.0005,
+            },
+        },
+        "trainer.scheduler": {
+            "name": "SequentialLR",
+            "params": {
+                "schedulers": [
+                    {
+                        "name": "LinearLR",
+                        "params": {"start_factor": 0.01},
+                    },
+                    {
+                        "name": "PolynomialLR",
+                        "params": {"power": 0.8},
+                    },
+                ],
+                "milestones": [2],
+            },
+        },
+        "trainer.callbacks": [
+            {"name": "LearningRateMonitor"},
+        ],
     }
-    opts["trainer.epochs"] = 3
-    opts["loader.params.dataset_name"] = coco_dataset.identifier
     model = LuxonisModel(config_file, opts)
     model.train()
+    log_dir = model.lightning_module.logger.experiment["tensorboard"].log_dir
+
+    ea = event_accumulator.EventAccumulator(
+        str(Path(log_dir)),
+        size_guidance={event_accumulator.SCALARS: 0},
+    )
+    ea.Reload()
+
+    for tag, expected_seq in expected_lrs.items():
+        actual_vals = ea.Scalars(tag)
+        assert len(actual_vals) == len(expected_seq), (
+            f"{tag}: expected {len(expected_seq)} entries, got {len(actual_vals)}"
+        )
+        for (exp_step, exp_val), actual in zip(
+            expected_seq, actual_vals, strict=True
+        ):
+            act_step, act_val = actual.step, actual.value
+            assert act_step == exp_step, (
+                f"{tag}: expected step {exp_step}, got {act_step}"
+            )
+            assert abs(act_val - exp_val) < 1e-6, (
+                f"{tag} @ step {act_step}: expected LR {exp_val:.6f}, got {act_val:.6f}"
+            )
 
 
-def test_smart_cfg_auto_populate(
-    opts: Params, parking_lot_dataset: LuxonisDataset
-):
-    config_file = "tests/configs/smart_cfg_populate_config.yaml"
-    opts = {"loader.params.dataset_name": parking_lot_dataset.dataset_name}
+def test_smart_cfg_auto_populate(coco_dataset: LuxonisDataset):
+    base_opts = {
+        "loader.params.dataset_name": coco_dataset.dataset_name,
+        "model.predefined_model.params.loss_params": {
+            "iou_loss_weight": 14,
+            "class_loss_weight": 1,
+        },
+    }
+
+    config_path = "tests/configs/smart_cfg_populate_config.yaml"
+    model = LuxonisModel(config_path, base_opts)
+
+    assert model.cfg.trainer.scheduler is not None
+    scheduler_params = model.cfg.trainer.scheduler.params
+    assert scheduler_params["T_max"] == model.cfg.trainer.epochs
+
+    augmentations = model.cfg.trainer.preprocessing.augmentations[0].params
+    img_width, img_height = model.cfg.trainer.preprocessing.train_image_size
+    assert augmentations["out_width"] == img_width
+    assert augmentations["out_height"] == img_height
+
+    batch_size = model.cfg.trainer.batch_size
+    grad_accumulation = 64 // batch_size
+
+    assert model.cfg.model.predefined_model is not None
+    loss_params = model.cfg.model.predefined_model.params["loss_params"]
+    expected_iou_weight = 2.5 * grad_accumulation
+    expected_class_weight = 1.0 * grad_accumulation
+    assert isinstance(loss_params, dict)
+
+    assert loss_params["iou_loss_weight"] == expected_iou_weight
+    assert loss_params["class_loss_weight"] == expected_class_weight
+
+
+def test_weight_loading(coco_dataset: LuxonisDataset):
+    config_file = "tests/configs/ddrnet.yaml"
+    opts = {
+        "loader.params.dataset_name": coco_dataset.dataset_name,
+        "trainer.epochs": 1,
+        "trainer.n_validation_batches": 1,
+        "trainer.batch_size": 1,
+        "loader.train_view": "val",
+        "loader.val_view": "val",
+        "loader.test_view": "val",
+    }
+
     model = LuxonisModel(config_file, opts)
-    assert (
-        model.cfg.trainer.scheduler.params["T_max"] == model.cfg.trainer.epochs
-    )
-    assert (
-        model.cfg.trainer.preprocessing.augmentations[0].params["out_width"]
-        == model.cfg.trainer.preprocessing.train_image_size[0]
-    )
-    assert (
-        model.cfg.trainer.preprocessing.augmentations[0].params["out_height"]
-        == model.cfg.trainer.preprocessing.train_image_size[1]
-    )
+    model.train()
+    weights = model.get_min_loss_checkpoint_path()
+    model.test(weights=weights)
+
+
+def test_precision_fallback_to_bf16_on_cpu(coco_dataset: LuxonisDataset):
+    config_files = [
+        "configs/segmentation_light_model.yaml",
+        "configs/detection_light_model.yaml",
+        "configs/keypoint_bbox_light_model.yaml",
+        "configs/instance_segmentation_light_model.yaml",
+    ]
+    opts = {
+        "loader.params.dataset_name": coco_dataset.dataset_name,
+        "trainer.epochs": 1,
+        "trainer.n_validation_batches": 1,
+        "trainer.batch_size": 1,
+        "loader.train_view": "val",
+        "loader.val_view": "val",
+        "loader.test_view": "val",
+        "trainer.precision": "16-mixed",
+        "trainer.accelerator": "cpu",
+        "trainer.callbacks": [],
+    }
+
+    for config_file in config_files:
+        model = LuxonisModel(config_file, opts)
+        model.test()

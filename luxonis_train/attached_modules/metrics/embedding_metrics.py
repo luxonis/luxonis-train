@@ -8,7 +8,7 @@ from typing_extensions import override
 from luxonis_train.nodes.heads.ghostfacenet_head import GhostFaceNetHead
 from luxonis_train.tasks import Tasks
 
-from .base_metric import BaseMetric, State
+from .base_metric import BaseMetric, MetricState
 
 # Converted from https://omoindrot.github.io/triplet-loss#offline-and-online-triplet-mining
 # to PyTorch from TensorFlow
@@ -18,15 +18,9 @@ class ClosestIsPositiveAccuracy(BaseMetric):
     supported_tasks = [Tasks.EMBEDDINGS]
     node: GhostFaceNetHead
 
-    cross_batch_memory: Annotated[
-        list[tuple[Tensor, Tensor]], State(default=[], dist_reduce_fx="cat")
-    ]
-    correct: Annotated[
-        Tensor, State(default=torch.tensor(0), dist_reduce_fx="sum")
-    ]
-    total: Annotated[
-        Tensor, State(default=torch.tensor(0), dist_reduce_fx="sum")
-    ]
+    cross_batch_memory: Annotated[list[tuple[Tensor, Tensor]], MetricState()]
+    correct: Annotated[Tensor, MetricState()]
+    total: Annotated[Tensor, MetricState()]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -86,21 +80,11 @@ class MedianDistances(BaseMetric):
     supported_tasks = [Tasks.EMBEDDINGS]
     node: GhostFaceNetHead
 
-    cross_batch_memory: Annotated[
-        list[tuple[Tensor, Tensor]], State(default=[], dist_reduce_fx="cat")
-    ]
-    all_distances: Annotated[
-        list[Tensor], State(default=[], dist_reduce_fx="cat")
-    ]
-    closest_distances: Annotated[
-        list[Tensor], State(default=[], dist_reduce_fx="cat")
-    ]
-    positive_distances: Annotated[
-        list[Tensor], State(default=[], dist_reduce_fx="cat")
-    ]
-    closest_vs_positive_distances: Annotated[
-        list[Tensor], State(default=[], dist_reduce_fx="cat")
-    ]
+    cross_batch_memory: Annotated[list[tuple[Tensor, Tensor]], MetricState()]
+    all_distances: Annotated[list[Tensor], MetricState()]
+    closest_distances: Annotated[list[Tensor], MetricState()]
+    positive_distances: Annotated[list[Tensor], MetricState()]
+    closest_vs_positive_distances: Annotated[list[Tensor], MetricState()]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

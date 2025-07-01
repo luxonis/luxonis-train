@@ -10,7 +10,7 @@ from luxonis_train.config import (
     NodeConfig,
 )
 from luxonis_train.config.config import FreezingConfig
-from luxonis_train.utils.registry import MODELS
+from luxonis_train.registry import MODELS
 
 
 class BasePredefinedModel(

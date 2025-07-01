@@ -28,7 +28,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
 
     def __init__(
         self,
-        n_warmup_epochs: int = 4,
+        n_warmup_epochs: int = 0,
         iou_type: IoUType = "giou",
         reduction: Literal["sum", "mean"] = "mean",
         class_loss_weight: float = 0.5,

@@ -239,12 +239,13 @@ class ConvBlock(nn.Module):
         out_channels: int,
         kernel_size: int | tuple[int, int],
         stride: int | tuple[int, int] = 1,
-        padding: int | tuple[int, int] = 0,
+        padding: int | tuple[int, int] | str = 0,
         dilation: int | tuple[int, int] = 1,
         groups: int = 1,
         bias: bool = False,
         activation: EllipsisType | Callable[[Tensor], Tensor] | None = ...,
         use_norm: bool = True,
+        norm_momentum: float = 0.1,
     ):
         """Conv2d + Optional BN + Activation.
 
@@ -256,7 +257,7 @@ class ConvBlock(nn.Module):
         @param kernel_size: Kernel size.
         @type stride: int
         @param stride: Stride. Defaults to 1.
-        @type padding: int
+        @type padding: int | str
         @param padding: Padding. Defaults to 0.
         @type dilation: int
         @param dilation: Dilation. Defaults to 1.
@@ -295,7 +296,7 @@ class ConvBlock(nn.Module):
 
         self.bn: nn.BatchNorm2d | None = None
         if use_norm:
-            self.bn = nn.BatchNorm2d(out_channels)
+            self.bn = nn.BatchNorm2d(out_channels, momentum=norm_momentum)
 
         if activation is ...:
             self.activation = nn.ReLU()

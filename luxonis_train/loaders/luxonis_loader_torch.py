@@ -3,13 +3,7 @@ from typing import Literal
 import numpy as np
 import torch
 from loguru import logger
-from luxonis_ml.data import (
-    BucketStorage,
-    BucketType,
-    Category,
-    LuxonisDataset,
-    LuxonisLoader,
-)
+from luxonis_ml.data import Category, LuxonisDataset, LuxonisLoader
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.enums import DatasetType
 from torch import Size, Tensor
@@ -29,7 +23,9 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         team_id: str | None = None,
         bucket_type: Literal["internal", "external"] = "internal",
         bucket_storage: Literal["local", "s3", "gcs", "azure"] = "local",
+        update_mode: Literal["all", "missing"] = "all",
         delete_existing: bool = True,
+        filter_task_names: list[str] | None = None,
         **kwargs,
     ):
         """Torch-compatible loader for Luxonis datasets.
@@ -60,6 +56,10 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         @type bucket_storage: Literal["local", "s3", "gcs", "azure"]
         @param bucket_storage: Type of the bucket storage. Defaults to
             'local'.
+        @type update_mode: Literal["all", "missing"]
+        @param update_mode: Enum that determines the sync mode for media files of the remote dataset (annotations and metadata are always overwritten):
+            - UpdateMode.MISSING: Downloads only the missing media files for the dataset.
+            - UpdateMode.ALL: Always downloads and overwrites all media files in the local dataset.
         @type delete_existing: bool
         @param delete_existing: Only relevant when C{dataset_dir} is
             provided. By default, the dataset is parsed again every time
@@ -67,6 +67,11 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             changed. If C{delete_existing} is set to C{False} and a
             dataset of the same name already exists, the existing
             dataset will be used instead of re-parsing the data.
+        @type filter_task_names: list[str] | None
+        @param filter_task_names: List of task names to filter the
+            dataset by. If provided, only the tasks with the specified
+            names will be loaded. If not provided, all tasks will be
+            loaded.
         """
         super().__init__(**kwargs)
         if dataset_dir is not None:
@@ -81,8 +86,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             self.dataset = LuxonisDataset(
                 dataset_name=dataset_name,
                 team_id=team_id,
-                bucket_type=BucketType(bucket_type),
-                bucket_storage=BucketStorage(bucket_storage),
+                bucket_type=bucket_type,
+                bucket_storage=bucket_storage,
             )
         self.loader = LuxonisLoader(
             dataset=self.dataset,
@@ -95,6 +100,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             width=self.width,
             keep_aspect_ratio=self.keep_aspect_ratio,
             color_space=self.color_space,
+            update_mode=update_mode,
+            filter_task_names=filter_task_names,
         )
 
     @override
@@ -179,5 +186,6 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             dataset_name=dataset_name,
             dataset_type=dataset_type,
             save_dir="data",
-            delete_existing=True,
+            delete_local=True,
+            delete_remote=True,
         ).parse()

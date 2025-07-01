@@ -1,5 +1,6 @@
 from collections.abc import Generator
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Literal
 
 from loguru import logger
@@ -63,7 +64,9 @@ def try_onnx_simplify(onnx_path: str) -> None:
 
 def get_preprocessing(
     cfg: PreprocessingConfig, log_label: str | None = None
-) -> tuple[list[float] | None, list[float] | None, Literal["RGB", "BGR"]]:
+) -> tuple[
+    list[float] | None, list[float] | None, Literal["RGB", "BGR", "GRAY"]
+]:
     def _get_norm_param(key: Literal["mean", "std"]) -> list[float] | None:
         params = cfg.normalize.params
         if key not in params:
@@ -97,7 +100,7 @@ def blobconverter_export(
     reverse_channels: bool,
     export_path: str,
     onnx_path: str,
-) -> str:
+) -> Path:
     import blobconverter
 
     logger.info("Converting ONNX to .blob")
@@ -120,4 +123,4 @@ def blobconverter_export(
         output_dir=export_path,
     )
     logger.info(f".blob model saved to {blob_path}")
-    return blob_path
+    return Path(blob_path)

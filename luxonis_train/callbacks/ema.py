@@ -249,7 +249,7 @@ class EMACallback(pl.Callback):
         self,
         trainer: pl.Trainer,
         pl_module: pl.LightningModule,
-        checkpoint: dict,
+        checkpoint: dict[str, Any],
     ) -> None:  # or dict?
         """Save the EMA state dictionary into the checkpoint.
 
@@ -267,7 +267,7 @@ class EMACallback(pl.Callback):
         self,
         trainer: pl.Trainer,
         pl_module: pl.LightningModule,
-        callback_state: dict,
+        callback_state: dict[str, Any],
     ) -> None:
         """Load the EMA state dictionary from the checkpoint.
 

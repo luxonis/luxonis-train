@@ -20,7 +20,7 @@ classifiers = [
 ]
 
 [project.scripts]
-luxonis_train = "luxonis_train.__main__:app"
+luxonis_train = "luxonis_train.__main__:app.meta"
 
 [project.urls]
 repository = "https://github.com/luxonis/luxonis-train"
@@ -55,8 +55,6 @@ select = [
   "FLY",
   "FURB",
   "I",
-  "ICN",
-  "ICN",
   "INP",
   "INT",
   "ISC",
@@ -87,6 +85,7 @@ ignore = [
   "ANN003",
   "ANN204",
   "ANN401",
+  "B017",
   "D1",
   "E501",
   "F403",
@@ -112,7 +111,7 @@ unfixable = ["B905"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN201"]
-"__main__.py" = ["ANN201"]
+"__main__.py" = ["ANN201", "T201"]
 
 [tool.docformatter]
 black = true

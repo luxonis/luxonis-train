@@ -1,8 +1,6 @@
-import multiprocessing as mp
-
 import pytest
 from luxonis_ml.data import LuxonisDataset
-from luxonis_ml.typing import ConfigItem, Params
+from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
 
@@ -13,12 +11,13 @@ def create_model_config() -> Params:
             "n_sanity_val_steps": 0,
             "preprocessing": {"train_image_size": [32, 32]},
             "epochs": 2,
-            "batch_size": 4,
-            "n_workers": mp.cpu_count(),
+            "validation_interval": 1,
         },
         "loader": {
             "name": "LuxonisLoaderTorch",
-            "train_view": "train",
+            "train_view": "val",
+            "val_view": "val",
+            "test_view": "val",
             "params": {"dataset_name": "coco_test"},
         },
         "model": {
@@ -31,10 +30,10 @@ def create_model_config() -> Params:
     }
 
 
-def sequential_scheduler() -> ConfigItem:
-    return ConfigItem(
-        name="SequentialLR",
-        params={
+def sequential_scheduler() -> Params:
+    return {
+        "name": "SequentialLR",
+        "params": {
             "schedulers": [
                 {
                     "name": "LinearLR",
@@ -47,17 +46,30 @@ def sequential_scheduler() -> ConfigItem:
             ],
             "milestones": [1],
         },
-    )
+    }
 
 
-def cosine_annealing_scheduler() -> ConfigItem:
-    return ConfigItem(
-        name="CosineAnnealingLR", params={"T_max": 2, "eta_min": 0.001}
-    )
+def cosine_annealing_scheduler() -> Params:
+    return {
+        "name": "CosineAnnealingLR",
+        "params": {"T_max": 2, "eta_min": 0.001},
+    }
+
+
+def sequential_with_reduce_on_plateau_scheduler() -> Params:
+    return {
+        "name": "ReduceLROnPlateau",
+        "params": {"mode": "max", "factor": 0.1, "patience": 2},
+    }
 
 
 @pytest.mark.parametrize(
-    "scheduler_config", [sequential_scheduler(), cosine_annealing_scheduler()]
+    "scheduler_config",
+    [
+        sequential_scheduler(),
+        cosine_annealing_scheduler(),
+        sequential_with_reduce_on_plateau_scheduler(),
+    ],
 )
 def test_scheduler(coco_dataset: LuxonisDataset, scheduler_config: Params):
     config = create_model_config()

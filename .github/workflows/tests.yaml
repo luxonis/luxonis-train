@@ -1,7 +1,34 @@
 name: Run tests
 
 on:
- workflow_dispatch:
+  workflow_dispatch:
+    inputs:
+      ml_ref:
+         description: 'luxonis-ml version (branch/tag/SHA)'
+         required: true
+         default: main
+      train_ref:
+         description: 'luxonis-train version (branch/tag/SHA)'
+         required: true
+         default: main
+
+  workflow_call:
+    inputs:
+      ml_ref:
+        description: 'luxonis-ml version (branch/tag/SHA)'
+        required: true
+        type: string
+      train_ref:
+        description: 'luxonis-train version (branch/tag/SHA)'
+        required: true
+        type: string
+    secrets:
+      GOOGLE_APPLICATION_CREDENTIALS:
+        description: 'GCP service-account JSON'
+        required: true
+      CODECOV_TOKEN:
+        description: 'Codecov upload token'
+        required: true
 
 permissions:
   pull-requests: write
@@ -13,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-t4-4core, windows-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -21,7 +48,16 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       with:
-        ref: ${{ github.head_ref }}
+        repository: Luxonis/luxonis-train
+        ref:        ${{ inputs.train_ref }}
+        path:       luxonis-train
+
+    - name: Free Disk Space (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: false
+        large-packages: false
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -30,10 +66,18 @@ jobs:
         cache: pip
 
     - name: Install dependencies
+      working-directory: luxonis-train
       run: pip install -e .[dev]
 
-    - name: Install latest luxonis-ml
-      run: pip install luxonis-ml[all]@git+https://github.com/luxonis/luxonis-ml.git@main --upgrade --force-reinstall
+    - name: Install specified luxonis-ml
+      shell: bash
+      env:
+        ML_REF: ${{ inputs.ml_ref }}
+      run: |
+        pip uninstall luxonis-ml -y
+        pip install \
+          "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}" \
+          --upgrade --force-reinstall
 
     - name: Authenticate to Google Cloud
       id: google-auth
@@ -45,19 +89,20 @@ jobs:
         token_format: access_token
 
     - name: Run pytest
+      working-directory: luxonis-train
       env:
         LUXONISML_BUCKET: luxonis-test-bucket
       run: pytest --cov --junitxml=junit.xml -o junit_family=legacy
 
     - name: Upload test results to Codecov
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-t4-4core'
       uses: codecov/test-results-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
 
     - name: Upload coverage results to Codecov
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-t4-4core'
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}

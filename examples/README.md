@@ -18,6 +18,7 @@ The `luxonis-train` framework is designed to be easily extendable. This document
     - [Complex Loss](#complex-loss)
     - [Metric](#metric)
     - [Visualizer](#visualizer)
+- [Testing Custom Components](#testing-custom-components)
 
 ## Nodes
 
@@ -244,7 +245,7 @@ class CustomSegmentationHead(BaseHead):
     # a `list[int]` depending on the value of `attach_index`.
     # By specifying its type here, the constructor of `BaseNode`
     # will automatically check if the value is correct and will
-    # raise `IncompatibleException` if it is not.
+    # raise `IncompatibleError` if it is not.
     # (e.g. if `attach_index` is set to "all" and `in_channels`
     # is annotated as `int`, an exception will be raised)
     in_channels: int
@@ -327,18 +328,20 @@ The framework provides a way to automatically extract the correct values from th
 
 **Rules for Automatic Parameters:**
 
-The signature of the `forward` or `update` method must follow one of these rules to make use of the automatic parameter extraction:
+The signature of the `forward` or `update` can use the following special argument names:
 
-- It has only 2 arguments, first one for predictions and second for targets.
-  - The first argument will be taken from the node output based on the value of `Task.main_output` property.
-  - The second argument will be taken from the dataset based on the value of `Task.required_labels` property.
-  - Works only for tasks that require a single label, _i.e._ wouldn't work for `Task.KEYPOINTS` because it requires both `"boundingbox"` and `"keypoints"` labels
-- Single prediction argument named one of `pred`, `preds`, `prediction`, or `predictions`. One or more target arguments.
-  - If one target argument, it has to start with `target`
-  - If more than one (_e.g._ for `Tasks.KEYPOINTS`) the name should be `target_{name_of_label}`
-    - `target_boundingbox`, `target_keypoints`
-- Multiple prediction arguments named the same way as keys in the node output (output of the `BaseNode.wrap` method)
-  - Same rules for target arguments as in the rule above.
+- `predictions` - used to extract the main output of the connected node
+  - e.g. if the node's `task` is `Tasks.SEGMENTATION`, the `predictions` argument will be extracted from the node output dictionary using the key `Task.Segmentation.main_output` ("segmentation" in this case)
+  - `preds`, `pred`, and `prediction` can also be used
+- `target` - used to extract the required label from the dataset
+  - e.g. if the node's `task` is `Tasks.SEGMENTATION`, the `target` argument will be extracted from the dataset based on the value of `Task.Segmentation.required_labels` (label of type "segmentation" in this case)
+  - Can only be used if the task requires only one label type
+    - e.g. cannot be used for instance segmentation
+  - `targets` can also be used
+- `target_{label_type}` - used to extract a specific label from the dataset
+  - e.g. `target_segmentation` will extract the label of type "segmentation" from the dataset
+- any other argument will be extracted from the node output dictionary based on the argument name
+  - e.g. if the argument is named `features`, the value will be extracted from the node output dictionary using the key `"features"`
 
 > [!NOTE]
 > If the arguments are annotated (either `Tensor` or `list[Tensor]`), the framework will check if the types are correct and raise an exception if they are not.
@@ -448,6 +451,37 @@ class InstanceKeypointsLoss(BaseLoss):
 
 The rules for defining the `update` method are the same as for the `forward` method of the loss.
 
+**Metric States**
+
+For better integration with distributed training and easier handling of the metric state,
+the metric attributes that are used to store the state of the metric should be
+registered using the `add_state` method, see the [torchmetrics documentation](https://lightning.ai/docs/torchmetrics/stable/pages/implement.html).
+In order for type checking to pass, the attributes defined using `add_state` should be also added as a class-level annotations.
+To streamline this process, `LuxonisTrain` offers a simpler way to define the metric state using the `MetricState` class.
+The `MetricState` is intended to be used inside an `Annotated` type for class-level declarations of the metric states.
+
+**Example:**
+
+```python
+
+from luxonis_train import BaseMetric, MetricState
+
+class MyMetric(BaseMetric):
+    true_positives: Annotated[Tensor, MetricState(default=0)]
+    false_positives: Annotated[Tensor, MetricState(default=0)]
+    total: Annotated[Tensor, MetricState(default=0)]
+
+```
+
+The `MetricState` takes the same arguments as `add_state` method, but also specifies some sane default values and conversions:
+
+- If `default` is not specified:
+  - If the state is a `Tensor`, the default value is `torch.tensor(0, dtype=torch.float32)`
+  - If the state is a `list`, the default value is an empty list
+- If `dist_reduce_fx` is not specified:
+  - If the state is a `Tensor`, the default value is `"sum"`
+  - If the state is a `list`, the default value is `"cat"`
+
 #### Visualizer
 
 The rules for defining the `forward` method are the same as for the `forward` method of the loss.
@@ -487,3 +521,108 @@ class BBoxVisualizer(BaseVisualizer):
         return target_viz, predictions_viz
 
 ```
+
+## Testing Custom Components
+
+To help you test your own nodes end‑to‑end, here is an example script that shows how the luxonis-train pipeline works under the hood. It demonstrates, in the same way `luxonis-train` does internally:
+
+- Defining custom `BaseNode` and `BaseHead` classes.
+
+- Running data through backbone and head.
+
+- Computing a loss using `CrossEntropyLoss`.
+
+in the same way as luxonis-train does it internally.
+
+```python
+from luxonis_train import Tasks, BaseHead, BaseNode
+from luxonis_train.utils.dataset_metadata import DatasetMetadata
+from luxonis_train.attached_modules import CrossEntropyLoss
+from luxonis_train.typing import Packet
+
+import torch
+from torch import nn, Tensor, Size
+
+class XORBackbone(BaseNode):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.backbone = nn.Sequential(
+            nn.Linear(2, 10), nn.ReLU()
+        )
+
+    def unwrap(self, x: list[Packet[Tensor]]) -> Tensor:
+        x = x[0]["features"][0]
+        x = x.view(-1, 2)
+        return x
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.backbone(x)
+
+class XORHead(BaseHead):
+    task = Tasks.CLASSIFICATION
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.head = nn.Linear(10, 2)
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.head(x)
+
+    def wrap(self, x: Tensor) -> Packet[Tensor]:
+         return {
+             "classification": x,
+         }
+
+# Setup metadata & nodes
+original_in_shape = Size([1, 1, 2])
+dataset_metadata = DatasetMetadata(
+    classes={'': {'xor_0': 0, 'xor_1': 1
+    }},
+)
+
+backbone_node = XORBackbone(
+    input_shapes = [{"features": original_in_shape}],
+    original_in_shape = original_in_shape,
+    dataset_metadata = dataset_metadata
+)
+
+head_node = XORHead(
+    input_shapes = [{"features": Size([1, 10])}],
+    original_in_shape = original_in_shape,
+    dataset_metadata = dataset_metadata
+)
+
+loss = CrossEntropyLoss(node=head_node)
+
+# Dummy data
+input = [{"features": [Tensor([[[[0, 0]]]])]}]
+target = {"/classification": torch.tensor([0])}
+
+# Forward pass
+# 1) Backbone
+unwraped_input = backbone_node.unwrap(input)
+features = backbone_node.forward(unwraped_input)
+wrapped_features = [backbone_node.wrap(features)] # list since next node can have multiple inputs (default lxt behavior)
+
+# 2) Head
+unwraped_features = head_node.unwrap(wrapped_features)
+logits = head_node.forward(unwraped_features)
+wrapped_logits = head_node.wrap(logits)
+
+# 3) Loss
+loss_input_data = loss.get_parameters(wrapped_logits, target)
+loss_value = loss.forward(loss_input_data['predictions'], loss_input_data['target'])
+
+print(f"Loss value: {loss_value.item()}")
+```
+
+Once your `LuxonisModel` is defined, you can run a forward pass like this:
+
+```python
+model = LuxonisModel(config)
+input = {
+     "image": Tensor([[[[0, 0]]]]),
+}
+model_output = model.lightning_module.forward(inputs=input, compute_loss=False, compute_metrics=False, compute_visualizations=False)
+```
+
+To also compute the loss, metrics, and visualizations, simply provide the appropriate targets and set those flags to `True`.

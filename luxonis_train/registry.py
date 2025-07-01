@@ -1,16 +1,18 @@
 """This module implements a metaclass for automatic registration of
 classes."""
 
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
-import lightning.pytorch as pl
 from luxonis_ml.utils.registry import Registry
-from torch.optim.lr_scheduler import LRScheduler
-from torch.optim.optimizer import Optimizer
 
-import luxonis_train as lxt
+if TYPE_CHECKING:
+    import lightning.pytorch as pl
+    from torch.optim.lr_scheduler import LRScheduler
+    from torch.optim.optimizer import Optimizer
 
-CALLBACKS: Registry[type[pl.Callback]] = Registry(name="callbacks")
+    import luxonis_train as lxt
+
+CALLBACKS: Registry[type["pl.Callback"]] = Registry(name="callbacks")
 
 LOADERS: Registry[type["lxt.BaseLoaderTorch"]] = Registry(name="loaders")
 
@@ -22,9 +24,9 @@ MODELS: Registry[type["lxt.BasePredefinedModel"]] = Registry(name="models")
 
 NODES: Registry[type["lxt.BaseNode"]] = Registry(name="nodes")
 
-OPTIMIZERS: Registry[type[Optimizer]] = Registry(name="optimizers")
+OPTIMIZERS: Registry[type["Optimizer"]] = Registry(name="optimizers")
 
-SCHEDULERS: Registry[type[LRScheduler]] = Registry(name="schedulers")
+SCHEDULERS: Registry[type["LRScheduler"]] = Registry(name="schedulers")
 
 STRATEGIES: Registry[type["lxt.BaseTrainingStrategy"]] = Registry(
     name="strategies"

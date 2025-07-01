@@ -4,7 +4,13 @@ from typing import Annotated, Any, Literal, NamedTuple
 
 from loguru import logger
 from luxonis_ml.enums import DatasetType
-from luxonis_ml.typing import ConfigItem, Params, ParamValue, check_type
+from luxonis_ml.typing import (
+    ConfigItem,
+    Params,
+    ParamValue,
+    PathType,
+    check_type,
+)
 from luxonis_ml.utils import (
     BaseModelExtraForbid,
     Environ,
@@ -12,7 +18,13 @@ from luxonis_ml.utils import (
     LuxonisFileSystem,
     is_acyclic,
 )
-from pydantic import Field, field_validator, model_validator
+from pydantic import (
+    Field,
+    SerializationInfo,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 from pydantic.types import (
     FilePath,
     NonNegativeFloat,
@@ -21,7 +33,8 @@ from pydantic.types import (
 )
 from typing_extensions import Self
 
-from luxonis_train.utils.registry import MODELS
+from luxonis_train.config.constants import CONFIG_VERSION
+from luxonis_train.registry import MODELS
 
 
 class ImageSize(NamedTuple):
@@ -54,6 +67,7 @@ class MetricModuleConfig(AttachedModuleConfig):
 class FreezingConfig(BaseModelExtraForbid):
     active: bool = False
     unfreeze_after: NonNegativeInt | NonNegativeFloat | None = None
+    lr_after_unfreeze: NonNegativeFloat | None = None
 
 
 class NodeConfig(ConfigItem):
@@ -66,6 +80,21 @@ class NodeConfig(ConfigItem):
     variant: str | None = None
     metadata_task_override: str | dict[str, str] | None = None
 
+    @model_validator(mode="after")
+    def validate_variant(self) -> Self:
+        if "variant" in self.params and self.variant is None:
+            logger.warning(
+                "Specifying `variant` for nodes in the `params` "
+                "section is deprecated. Use `variant` field instead."
+            )
+            variant = self.params.pop("variant")
+            if not isinstance(variant, str):
+                raise TypeError(
+                    f"Invalid value for `variant`: {variant}. "
+                    "Expected a string."
+                )
+        return self
+
 
 class PredefinedModelConfig(ConfigItem):
     include_nodes: bool = True
@@ -76,7 +105,9 @@ class PredefinedModelConfig(ConfigItem):
 
 class ModelConfig(BaseModelExtraForbid):
     name: str = "model"
-    predefined_model: PredefinedModelConfig | None = None
+    predefined_model: Annotated[
+        PredefinedModelConfig | None, Field(exclude=True)
+    ] = None
     weights: FilePath | None = None
     nodes: list[NodeConfig] = []
     losses: list[LossModuleConfig] = []
@@ -149,10 +180,6 @@ class ModelConfig(BaseModelExtraForbid):
     def check_main_metric(self) -> Self:
         for metric in self.metrics:
             if metric.is_main_metric:
-                if "matrix" in metric.name.lower():
-                    raise ValueError(
-                        f"Main metric cannot contain 'matrix' in its name: `{metric.name}`"
-                    )
                 logger.info(f"Main metric: `{metric.name}`")
                 return self
 
@@ -356,7 +383,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
         ImageSize, Field(min_length=2, max_length=2)
     ] = ImageSize(256, 256)
     keep_aspect_ratio: bool = True
-    color_space: Literal["RGB", "BGR"] = "RGB"
+    color_space: Literal["RGB", "BGR", "GRAY"] = "RGB"
     normalize: NormalizeAugmentationConfig = Field(
         default_factory=NormalizeAugmentationConfig
     )
@@ -374,6 +401,21 @@ class PreprocessingConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_normalize(self) -> Self:
+        norm = next(
+            (aug for aug in self.augmentations if aug.name == "Normalize"),
+            None,
+        )
+        if norm:
+            if self.normalize.active:
+                logger.warning(
+                    "Normalize is being used in both trainer.preprocessing.augmentations "
+                    "and trainer.preprocessing.normalize. "
+                    "Parameters from trainer.preprocessing.augmentations list will override "
+                    "those in trainer.preprocessing.normalize."
+                )
+            self.normalize.params = norm.params
+            self.augmentations.remove(norm)
+
         if self.normalize.active:
             self.augmentations.append(
                 AugmentationConfig(
@@ -381,6 +423,22 @@ class PreprocessingConfig(BaseModelExtraForbid):
                 )
             )
         return self
+
+    @model_serializer
+    def serialize_model(self, info: SerializationInfo) -> Params:
+        data = {
+            key: value
+            for key, value in self.__dict__.items()
+            if not key.startswith("_")
+        }
+        if "augmentations" in data and isinstance(data["augmentations"], list):
+            data["augmentations"] = [
+                aug
+                for aug in data["augmentations"]
+                if getattr(aug, "name", "") != "Normalize"
+            ]
+
+        return data
 
     def get_active_augmentations(self) -> list[ConfigItem]:
         """Returns list of augmentations that are active.
@@ -556,10 +614,8 @@ class TunerConfig(BaseModelExtraForbid):
     n_trials: PositiveInt | None = 15
     timeout: PositiveInt | None = None
     storage: StorageConfig = Field(default_factory=StorageConfig)
-    params: Annotated[
-        dict[str, list[str | int | float | bool | list]],
-        Field(default={}, min_length=1),
-    ]
+    params: dict[str, list[str | int | float | bool | list]] = {}
+    monitor: Literal["metric", "loss"] = "loss"
 
 
 class Config(LuxonisConfig):
@@ -570,7 +626,9 @@ class Config(LuxonisConfig):
     trainer: TrainerConfig = Field(default_factory=TrainerConfig)
     exporter: ExportConfig = Field(default_factory=ExportConfig)
     archiver: ArchiveConfig = Field(default_factory=ArchiveConfig)
-    tuner: TunerConfig | None = None
+    tuner: TunerConfig = Field(default_factory=TunerConfig)
+
+    config_version: str = str(CONFIG_VERSION)
 
     ENVIRON: Environ = Field(exclude=True, default_factory=Environ)
 
@@ -588,9 +646,11 @@ class Config(LuxonisConfig):
     @classmethod
     def get_config(
         cls,
-        cfg: str | Params | None = None,
+        cfg: PathType | Params | None = None,
         overrides: Params | list[str] | tuple[str, ...] | None = None,
     ) -> "Config":
+        if isinstance(cfg, Path):
+            cfg = str(cfg)
         instance = super().get_config(cfg, overrides)
         if not isinstance(cfg, str):
             cls.smart_auto_populate(instance)
@@ -736,3 +796,18 @@ class Config(LuxonisConfig):
                             f"updated with scheduling: {gradient_accumulation_schedule}"
                         )
                         break
+
+        # Rule: Set default callbacks UploadCheckpoint, TestOnTrainEnd, ExportOnTrainEnd, ArchiveOnTrainEnd
+        default_callbacks = [
+            "UploadCheckpoint",
+            "TestOnTrainEnd",
+            "ExportOnTrainEnd",
+            "ArchiveOnTrainEnd",
+        ]
+
+        for cb_name in default_callbacks:
+            if not any(
+                cb.name == cb_name for cb in instance.trainer.callbacks
+            ):
+                instance.trainer.callbacks.append(CallbackConfig(name=cb_name))
+                logger.info(f"Added {cb_name} callback.")

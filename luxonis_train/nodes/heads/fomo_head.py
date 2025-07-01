@@ -4,20 +4,21 @@ from torch import Tensor, nn
 from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.tasks import Tasks
+from luxonis_train.tasks import Task, Tasks
 from luxonis_train.typing import Packet
 
 
 class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
-    task = Tasks.FOMO
     in_channels: int
+
+    task: Task = Tasks.FOMO
     attach_index: int = 1
 
     def __init__(
         self,
         n_conv_layers: int = 3,
         conv_channels: int = 16,
-        use_nms: bool = False,
+        use_nms: bool = True,
         **kwargs,
     ):
         """FOMO Head for object detection using heatmaps.
@@ -64,14 +65,16 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         return self.conv_layers(inputs)
 
     def wrap(self, heatmap: Tensor) -> Packet[Tensor]:
+        if self.training:
+            return {self.task.main_output: heatmap}
+
         if self.export:
             return {"outputs": [self._apply_nms_if_needed(heatmap)]}
 
-        if self.training:
-            return {"heatmap": heatmap}
-
-        keypoints = self._heatmap_to_kpts(heatmap)
-        return {"keypoints": keypoints, "heatmap": heatmap}
+        return {
+            "keypoints": self._heatmap_to_kpts(heatmap),
+            self.task.main_output: heatmap,
+        }
 
     def _apply_nms_if_needed(self, heatmap: Tensor) -> Tensor:
         """Apply NMS pooling to the heatmap if use_nms is enabled.
@@ -99,32 +102,30 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         for batch_idx in range(batch_size):
             kpts_per_img = []
 
-            for c in range(n_classes):
-                prob_map = torch.sigmoid(heatmap[batch_idx, c, :, :])
+            for class_id in range(n_classes):
+                prob_map = torch.sigmoid(heatmap[batch_idx, class_id, :, :])
 
                 keep = self._get_keypoint_mask(prob_map)
 
                 y_indices, x_indices = torch.where(keep)
-                # TODO: class
                 kpts = [
                     [
                         x.item() / width * self.original_img_size[1],
                         y.item() / height * self.original_img_size[0],
                         float(prob_map[y, x]),
+                        class_id,
                     ]
                     for y, x in zip(y_indices, x_indices, strict=True)
                 ]
 
-                kpts_per_img.append(kpts)
+                kpts_per_img.extend(kpts)
 
-            if all(len(kpt) == 0 for kpt in kpts_per_img):
-                kpts_per_img = [[[0, 0, 0.0]]]
-
-            batch_kpts.append(
-                torch.tensor(
-                    kpts_per_img, device=device, dtype=torch.float32
-                ).permute(1, 0, 2)
-            )
+            batch_kpt = torch.tensor(
+                kpts_per_img, device=device, dtype=torch.float32
+            ).unsqueeze(1)
+            if batch_kpt.numel() == 0:
+                batch_kpt = torch.zeros((0, 1, 4), device=device)
+            batch_kpts.append(batch_kpt)
 
         return batch_kpts
 

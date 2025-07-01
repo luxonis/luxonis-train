@@ -89,7 +89,7 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
             32 / multiplier if multiplier < 1.0 or fix_head_stem else 32
         )
         first_channel = make_divisible(
-            int(round(first_channel * multiplier)), divisible_value
+            round(first_channel * multiplier), divisible_value
         )
 
         in_channels_group: list[int] = []
@@ -108,7 +108,7 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
 
         for i in range(self.n_convblocks):
             inplanes_divisible = make_divisible(
-                int(round(inplanes * multiplier)), divisible_value
+                round(inplanes * multiplier), divisible_value
             )
             if i == 0:
                 in_channels_group.append(first_channel)
@@ -117,7 +117,7 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
                 in_channels_group.append(inplanes_divisible)
                 inplanes += final_ch / (self.n_convblocks - 1 * 1.0)
                 inplanes_divisible = make_divisible(
-                    int(round(inplanes * multiplier)), divisible_value
+                    round(inplanes * multiplier), divisible_value
                 )
                 channels_group.append(inplanes_divisible)
 
