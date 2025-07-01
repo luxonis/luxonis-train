@@ -118,7 +118,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
 
         class_scores = self._postprocess(classes_list)
         distributions = self._postprocess(regressions_list)
-        raw_keypoints = self._postprocess(
+        keypoints_raw = self._postprocess(
             out.view(bs, self.n_keypoints_flat, -1) for out in keypoints_list
         )
 
@@ -127,7 +127,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
                 "features": features,
                 "class_scores": class_scores,
                 "distributions": distributions,
-                "raw_keypoints": raw_keypoints,
+                "keypoints_raw": keypoints_raw,
             }
 
         pred_keypoints = torch.cat(
@@ -164,7 +164,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             "features": features,
             "class_scores": class_scores,
             "distributions": distributions,
-            "raw_keypoints": raw_keypoints,
+            "keypoints_raw": keypoints_raw,
         }
 
     @property
