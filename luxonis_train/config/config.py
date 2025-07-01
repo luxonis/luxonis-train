@@ -346,7 +346,7 @@ class LoaderConfig(ConfigItem):
                 f"Dataset type '{dataset_type}' not supported."
                 f"Supported types are: {', '.join(DatasetType.__members__)}."
             )
-        self.params["dataset_type"] = DatasetType(dataset_type.lower())
+        self.params["dataset_type"] = dataset_type.lower()
         return self
 
 

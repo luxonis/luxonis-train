@@ -18,6 +18,7 @@ The `luxonis-train` framework is designed to be easily extendable. This document
     - [Complex Loss](#complex-loss)
     - [Metric](#metric)
     - [Visualizer](#visualizer)
+- [Testing Custom Components](#testing-custom-components)
 
 ## Nodes
 
@@ -520,3 +521,108 @@ class BBoxVisualizer(BaseVisualizer):
         return target_viz, predictions_viz
 
 ```
+
+## Testing Custom Components
+
+To help you test your own nodes end‑to‑end, here is an example script that shows how the luxonis-train pipeline works under the hood. It demonstrates, in the same way `luxonis-train` does internally:
+
+- Defining custom `BaseNode` and `BaseHead` classes.
+
+- Running data through backbone and head.
+
+- Computing a loss using `CrossEntropyLoss`.
+
+in the same way as luxonis-train does it internally.
+
+```python
+from luxonis_train import Tasks, BaseHead, BaseNode
+from luxonis_train.utils.dataset_metadata import DatasetMetadata
+from luxonis_train.attached_modules import CrossEntropyLoss
+from luxonis_train.typing import Packet
+
+import torch
+from torch import nn, Tensor, Size
+
+class XORBackbone(BaseNode):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.backbone = nn.Sequential(
+            nn.Linear(2, 10), nn.ReLU()
+        )
+
+    def unwrap(self, x: list[Packet[Tensor]]) -> Tensor:
+        x = x[0]["features"][0]
+        x = x.view(-1, 2)
+        return x
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.backbone(x)
+
+class XORHead(BaseHead):
+    task = Tasks.CLASSIFICATION
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.head = nn.Linear(10, 2)
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.head(x)
+
+    def wrap(self, x: Tensor) -> Packet[Tensor]:
+         return {
+             "classification": x,
+         }
+
+# Setup metadata & nodes
+original_in_shape = Size([1, 1, 2])
+dataset_metadata = DatasetMetadata(
+    classes={'': {'xor_0': 0, 'xor_1': 1
+    }},
+)
+
+backbone_node = XORBackbone(
+    input_shapes = [{"features": original_in_shape}],
+    original_in_shape = original_in_shape,
+    dataset_metadata = dataset_metadata
+)
+
+head_node = XORHead(
+    input_shapes = [{"features": Size([1, 10])}],
+    original_in_shape = original_in_shape,
+    dataset_metadata = dataset_metadata
+)
+
+loss = CrossEntropyLoss(node=head_node)
+
+# Dummy data
+input = [{"features": [Tensor([[[[0, 0]]]])]}]
+target = {"/classification": torch.tensor([0])}
+
+# Forward pass
+# 1) Backbone
+unwraped_input = backbone_node.unwrap(input)
+features = backbone_node.forward(unwraped_input)
+wrapped_features = [backbone_node.wrap(features)] # list since next node can have multiple inputs (default lxt behavior)
+
+# 2) Head
+unwraped_features = head_node.unwrap(wrapped_features)
+logits = head_node.forward(unwraped_features)
+wrapped_logits = head_node.wrap(logits)
+
+# 3) Loss
+loss_input_data = loss.get_parameters(wrapped_logits, target)
+loss_value = loss.forward(loss_input_data['predictions'], loss_input_data['target'])
+
+print(f"Loss value: {loss_value.item()}")
+```
+
+Once your `LuxonisModel` is defined, you can run a forward pass like this:
+
+```python
+model = LuxonisModel(config)
+input = {
+     "image": Tensor([[[[0, 0]]]]),
+}
+model_output = model.lightning_module.forward(inputs=input, compute_loss=False, compute_metrics=False, compute_visualizations=False)
+```
+
+To also compute the loss, metrics, and visualizations, simply provide the appropriate targets and set those flags to `True`.

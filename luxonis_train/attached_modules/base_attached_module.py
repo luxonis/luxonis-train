@@ -109,7 +109,7 @@ class BaseAttachedModule(
             raise RuntimeError(
                 f"Task of module '{self.name}' is not set. This can happen "
                 "if the module does not specify what tasks it supports "
-                "while being connected to a node that also does not "
+                "or is being connected to a node that also does not "
                 "specify its task. Either specify the `task` attribute "
                 f"on the node '{self.node.name}', or specify the "
                 f"`supported_tasks` atribute on the attached module "

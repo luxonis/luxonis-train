@@ -1,5 +1,9 @@
 # Metrics
 
+> [!NOTE]
+> 📐 **Looking for expected `predictions` and `targets` shapes for each task?**\
+> Refer to the [**Prediction Shapes Overview**](../README.md) for the expected `prediction` formats, and see [`LuxonisLoaderTorch`](../../loaders/README.md#luxonisloadertorch) for details on the `target` formats.
+
 List of all the available metrics.
 
 ## Table Of Contents
