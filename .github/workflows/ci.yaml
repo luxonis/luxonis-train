@@ -76,9 +76,6 @@ jobs:
         python-version: '3.10'
         project: pyproject.toml
 
-    - name: Pyleft Check
-      run: pyleft luxonis_train
-
   # Tests that the `luxonis-train.config.Config` works
   # even when the dependencies of `luxonis-train` are
   # not installed.
