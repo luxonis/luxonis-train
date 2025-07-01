@@ -13,7 +13,7 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
     """PPLCNetV3 backbone.
 
     Variants
-    --------
+    ========
     Only one variant is available, "rec-light".
 
     @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/

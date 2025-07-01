@@ -21,7 +21,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
     It has the balance of feature fusion ability and hardware efficiency.
 
     Variants
-    --------
+    ========
     The variant determines the depth and width multipliers, block used and intermediate channel scaling factor.
     Available variants:
         - "n" or "nano" (default): depth_multiplier=0.33, width_multiplier=0.25, block=RepBlock

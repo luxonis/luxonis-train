@@ -16,9 +16,10 @@ from luxonis_train.utils.general import add_variant_aliases
 
 
 class EfficientRep(BaseNode[Tensor, list[Tensor]]):
-    """
+    """EfficientRep backbone for object detection.
+
     Variants
-    --------
+    ========
     The variant determines the depth and width multipliers,
     block used and intermediate channel scaling factor.
 

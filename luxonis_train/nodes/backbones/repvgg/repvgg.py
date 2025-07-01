@@ -12,9 +12,10 @@ from luxonis_train.nodes.blocks import GeneralReparametrizableBlock
 
 
 class RepVGG(BaseNode[Tensor, list[Tensor]]):
-    """
+    """RepVGG backbone.
+
     Variants
-    --------
+    ========
 
     The variant determines the number of blocks in each stage and the width multiplier.
 

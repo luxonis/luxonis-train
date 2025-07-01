@@ -26,7 +26,7 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
     and performance, making it suitable for deployment on edge devices with limited resources.
 
     Variants
-    --------
+    ========
     The variant determines the width, depth, and dimension of the network.
     Available variants are:
       - "n" or "nano" (default): width_list=[8, 16, 32, 64, 128], depth_list=[1, 2, 2, 2, 2], dim=16

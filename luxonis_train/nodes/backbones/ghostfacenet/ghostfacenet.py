@@ -20,15 +20,15 @@ class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
 
     Source: U{https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py}
 
+    Variants
+    ========
+    This backbone offers a single variant, V2, which is the default variant.
+
     @license: U{MIT License
         <https://github.com/Hazqeel09/ellzaf_ml/blob/main/LICENSE>}
 
     @see: U{GhostFaceNets: Lightweight Face Recognition Model From Cheap Operations
         <https://www.researchgate.net/publication/369930264_GhostFaceNets_Lightweight_Face_Recognition_Model_from_Cheap_Operations>}
-
-    Variants
-    --------
-    This backbone offers a single variant, V2, which is the default variant.
     """
 
     default_variant = "V2"

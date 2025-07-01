@@ -13,7 +13,7 @@ class MicroNet(BaseNode[Tensor, list[Tensor]]):
     """MicroNet backbone.
 
     Variants
-    --------
+    ========
     The variant determines the architecture of the MicroNet backbone.
     Available variants are:
       - M1 (default):

@@ -14,9 +14,10 @@ from .blocks import DAPPM, BasicDDRBackbone, make_layer
 
 
 class DDRNet(BaseNode[Tensor, list[Tensor]]):
-    """
+    """DDRNet backbone for semantic segmentation.
+
     Variants
-    --------
+    ========
     The variant determines the number of channels and high resolution channels.
     The following variants are available:
         - "23-slim" (default): channels=32, high_resolution_channels=64
@@ -54,12 +55,6 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         @see: U{Paper <https://arxiv.org/pdf/2101.06085.pdf>}
         @license: U{Apache License, Version 2.0 <https://github.com/Deci-AI/super-
             gradients/blob/master/LICENSE.md>}
-        @type variant: Literal["23-slim", "23"]
-        @param variant: DDRNet variant. Defaults to "23-slim".
-            The variant determines the number of channels and high_resolution_channels.
-            The following variants are available:
-                - "23-slim" (default): channels=32, high_resolution_channels=64
-                - "23": channels=64, high_resolution_channels=128
         @type channels: int | None
         @param channels: Base number of channels. If provided, overrides the variant values.
         @type high_resolution_channels: int | None

@@ -34,7 +34,7 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
     Source: U{<https://github.com/apple/ml-mobileone>}
 
     Variants
-    --------
+    ========
     Each variant specifies a predefined set of values for:
       - width multipliers - A tuple of 4 float values specifying the width multipliers for each stage of the network. If the use of SE blocks is disabled, the last two values are ignored.
       - number of convolution branches - An integer specifying the number of linear convolution branches in MobileOne block.
