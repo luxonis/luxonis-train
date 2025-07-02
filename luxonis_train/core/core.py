@@ -432,7 +432,7 @@ class LuxonisModel:
 
         inputs = []
         outputs = []
-        inputs_dict = get_inputs(path)
+        inputs_dict = get_inputs(self._exported_models["onnx"])
         for input_name, metadata in inputs_dict.items():
             inputs.append(
                 {
@@ -441,7 +441,7 @@ class LuxonisModel:
                 }
             )
 
-        outputs_dict = get_outputs(path)
+        outputs_dict = get_outputs(self._exported_models["onnx"])
         for output_name, metadata in outputs_dict.items():
             outputs.append(
                 {
