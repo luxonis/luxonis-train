@@ -378,7 +378,7 @@ class LuxonisModel:
         try_onnx_simplify(onnx_save_path)
         self._exported_models["onnx"] = Path(onnx_save_path)
 
-        scale, mean, color_space = get_preprocessing(
+        mean, scale, color_space = get_preprocessing(
             self.cfg_preprocessing, "Model export"
         )
         scale_values = self.cfg.exporter.scale_values or scale
