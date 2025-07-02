@@ -41,7 +41,7 @@ def process_class_metrics(
     for metric_name in per_class_metrics:
         metric = metrics.pop(metric_name)
 
-        if metric.ndim > 1:
+        if metric.shape[0] > 1:
             for i, class_id in enumerate(classes):
                 class_name = class_names[int(class_id)].replace(" ", "_")
                 metrics[f"{metric_name}_{class_name}"] = metric[i]
