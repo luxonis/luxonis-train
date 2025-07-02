@@ -18,7 +18,7 @@ from loguru import logger
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.typing import Params, PathType
-from luxonis_ml.utils import LuxonisFileSystem
+from luxonis_ml.utils import Environ, LuxonisFileSystem
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
@@ -89,7 +89,7 @@ class LuxonisModel:
 
         self.tracker = LuxonisTrackerPL(
             rank=rank_zero_only.rank,
-            mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
+            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
             _auto_finalize=False,
             **self.cfg.tracker.model_dump(),
         )
@@ -565,7 +565,7 @@ class LuxonisModel:
             )
             child_tracker = LuxonisTrackerPL(
                 rank=rank_zero_only.rank,
-                mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
+                mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
                 is_sweep=True,
                 **tracker_params,
             )
@@ -699,7 +699,7 @@ class LuxonisModel:
         )
         self.parent_tracker = LuxonisTrackerPL(
             rank=rank,
-            mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
+            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
             is_sweep=False,
             **tracker_params,
         )
@@ -720,12 +720,13 @@ class LuxonisModel:
             if cfg_tuner.storage.storage_type == "local":
                 storage = "sqlite:///study_local.db"
             else:  # pragma: no cover
-                storage = "postgresql://{}:{}@{}:{}/{}".format(  # noqa: UP032
-                    self.cfg.ENVIRON.POSTGRES_USER,
-                    self.cfg.ENVIRON.POSTGRES_PASSWORD,
-                    self.cfg.ENVIRON.POSTGRES_HOST,
-                    self.cfg.ENVIRON.POSTGRES_PORT,
-                    self.cfg.ENVIRON.POSTGRES_DB,
+                storage = (
+                    f"postgresql"
+                    f"://{self.environ.POSTGRES_USER}"
+                    f":{self.environ.POSTGRES_PASSWORD}"
+                    f"@{self.environ.POSTGRES_HOST}"
+                    f":{self.environ.POSTGRES_PORT}"
+                    f"/{self.environ.POSTGRES_DB}"
                 )
         study = optuna.create_study(
             study_name=cfg_tuner.study_name,
@@ -878,6 +879,10 @@ class LuxonisModel:
             self.tracker.upload_artifact(archive_path, typ="archive")
 
         return Path(archive_path)
+
+    @property
+    def environ(self) -> Environ:
+        return self.cfg.ENVIRON
 
     @rank_zero_only
     def get_min_loss_checkpoint_path(self) -> str | None:

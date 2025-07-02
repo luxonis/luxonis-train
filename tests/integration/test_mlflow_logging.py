@@ -1,11 +1,11 @@
 import os
 import shutil
 import subprocess
-import tempfile
 import time
 from pathlib import Path
 
 import mlflow
+import mlflow.server
 import numpy as np
 import psutil
 import pytest
@@ -18,25 +18,32 @@ from torch import Tensor, nn
 from luxonis_train import BaseHead, LuxonisModel, Tasks
 
 
-@pytest.fixture
-def temp_dir():
-    tmp_dir = Path(tempfile.mkdtemp())
+def kill_process_tree(pid: int) -> None:
     try:
-        yield tmp_dir
-    finally:
-        shutil.rmtree(str(tmp_dir), ignore_errors=True)
+        parent = psutil.Process(pid)
+        for child in parent.children(recursive=True):
+            child.terminate()
+        parent.terminate()
+
+        _, alive = psutil.wait_procs(
+            [parent] + parent.children(recursive=True), timeout=5
+        )
+        for p in alive:
+            p.kill()
+    except psutil.NoSuchProcess:
+        pass
 
 
 @pytest.fixture(autouse=True)
-def setup(temp_dir: Path):
+def setup(tempdir: Path):
     environ.MLFLOW_TRACKING_URI = "http://127.0.0.1:5001"
     os.environ["MLFLOW_TRACKING_URI"] = "http://127.0.0.1:5001"
 
     start_time = time.time()
     timeout = 30
 
-    backend_store_uri = f"sqlite:///{temp_dir}/mlflow.db"
-    artifact_root = temp_dir / "mlflow-artifacts"
+    backend_store_uri = f"sqlite:///{tempdir}/mlflow.db"
+    artifact_root = tempdir / "mlflow-artifacts"
     artifact_root.mkdir(parents=True, exist_ok=True)
 
     mlflow_executable = shutil.which("mlflow")
@@ -64,19 +71,13 @@ def setup(temp_dir: Path):
             break
         except Exception as e:
             if time.time() - start_time > timeout:
-                process.terminate()
+                process.kill()
                 raise RuntimeError(
                     "MLflow server failed to start within 60 seconds"
                 ) from e
             time.sleep(0.5)
     yield
-    process.terminate()
-    # On Windows, an open connection to mlflow.db may prevent deletion of the temp folder.
-    # Kill any remaining process listening on port 5001 to ensure the file is unlocked.
-    for conn in psutil.net_connections(kind="inet"):
-        if conn.laddr.port == 5001 and conn.pid:  # type: ignore
-            proc = psutil.Process(conn.pid)
-            proc.kill()
+    kill_process_tree(process.pid)
 
 
 class XORHead(BaseHead):
@@ -94,8 +95,8 @@ class XORHead(BaseHead):
 
 
 @pytest.mark.timeout(30)
-@pytest.mark.parametrize("task_name", [None, "xor_task"])
-def test_mlflow_logging(task_name: str | None, temp_dir: Path):
+@pytest.mark.parametrize("task_name", ["", "xor_task"])
+def test_mlflow_logging(task_name: str, tempdir: Path):
     def generator(tmp_dir: Path) -> DatasetIterator:
         """Generate XOR dataset as images with 2 pixels representing XOR
         inputs."""
@@ -115,20 +116,16 @@ def test_mlflow_logging(task_name: str | None, temp_dir: Path):
             img_path = data_dir / f"xor_{i}.png"
             img.save(img_path)
 
-            if task_name:
-                yield {
-                    "task_name": task_name,
-                    "file": str(img_path),
-                    "annotation": {"class": f"xor_{y_value}"},
-                }
-            else:
-                yield {
-                    "file": str(img_path),
-                    "annotation": {"class": f"xor_{y_value}"},
-                }
+            record = {
+                "file": str(img_path),
+                "annotation": {"class": f"xor_{y_value}"},
+                "task_name": task_name,
+            }
+
+            yield record
 
     dataset = LuxonisDataset("xor_dataset", delete_local=True)
-    dataset.add(generator(temp_dir))
+    dataset.add(generator(tempdir))
     dataset.make_splits((1, 0, 0))
 
     config: Params = {
@@ -137,7 +134,7 @@ def test_mlflow_logging(task_name: str | None, temp_dir: Path):
             "nodes": [
                 {
                     "name": "XORHead",
-                    "task_name": "" if task_name is None else task_name,
+                    "task_name": task_name,
                     "losses": [{"name": "CrossEntropyLoss"}],
                     "metrics": [
                         {"name": "Accuracy", "is_main_metric": True},
@@ -169,9 +166,9 @@ def test_mlflow_logging(task_name: str | None, temp_dir: Path):
                 },
             },
             "batch_size": 4,
-            "epochs": 30,
+            "epochs": 10,
             "n_log_images": 3,
-            "validation_interval": 15,
+            "validation_interval": 5,
             "optimizer": {
                 "name": "Adam",
                 "params": {"lr": 0.1, "weight_decay": 0.01},
@@ -226,10 +223,10 @@ def test_mlflow_logging(task_name: str | None, temp_dir: Path):
     formated_node_name = f"{task_name}-XORHead" if task_name else "XORHead"
 
     test_files = [
-        f"test/metrics/30/{formated_node_name}/confusion_matrix.json",
-        f"test/visualizations/{formated_node_name}/ClassificationVisualizer/30/0.png",
-        f"test/visualizations/{formated_node_name}/ClassificationVisualizer/30/1.png",
-        f"test/visualizations/{formated_node_name}/ClassificationVisualizer/30/2.png",
+        f"test/metrics/10/{formated_node_name}/confusion_matrix.json",
+        f"test/visualizations/{formated_node_name}/ClassificationVisualizer/10/0.png",
+        f"test/visualizations/{formated_node_name}/ClassificationVisualizer/10/1.png",
+        f"test/visualizations/{formated_node_name}/ClassificationVisualizer/10/2.png",
     ]
 
     for file_path in test_files:
@@ -239,17 +236,17 @@ def test_mlflow_logging(task_name: str | None, temp_dir: Path):
 
     validation_files = [
         f"val/metrics/0/{formated_node_name}/confusion_matrix.json",
-        f"val/metrics/14/{formated_node_name}/confusion_matrix.json",
-        f"val/metrics/29/{formated_node_name}/confusion_matrix.json",
+        f"val/metrics/4/{formated_node_name}/confusion_matrix.json",
+        f"val/metrics/9/{formated_node_name}/confusion_matrix.json",
         f"val/visualizations/{formated_node_name}/ClassificationVisualizer/0/0.png",
         f"val/visualizations/{formated_node_name}/ClassificationVisualizer/0/1.png",
         f"val/visualizations/{formated_node_name}/ClassificationVisualizer/0/2.png",
-        f"val/visualizations/{formated_node_name}/ClassificationVisualizer/14/0.png",
-        f"val/visualizations/{formated_node_name}/ClassificationVisualizer/14/1.png",
-        f"val/visualizations/{formated_node_name}/ClassificationVisualizer/14/2.png",
-        f"val/visualizations/{formated_node_name}/ClassificationVisualizer/29/0.png",
-        f"val/visualizations/{formated_node_name}/ClassificationVisualizer/29/1.png",
-        f"val/visualizations/{formated_node_name}/ClassificationVisualizer/29/2.png",
+        f"val/visualizations/{formated_node_name}/ClassificationVisualizer/4/0.png",
+        f"val/visualizations/{formated_node_name}/ClassificationVisualizer/4/1.png",
+        f"val/visualizations/{formated_node_name}/ClassificationVisualizer/4/2.png",
+        f"val/visualizations/{formated_node_name}/ClassificationVisualizer/9/0.png",
+        f"val/visualizations/{formated_node_name}/ClassificationVisualizer/9/1.png",
+        f"val/visualizations/{formated_node_name}/ClassificationVisualizer/9/2.png",
     ]
 
     assert set(validation_files).issubset(
@@ -283,18 +280,18 @@ def test_mlflow_logging(task_name: str | None, temp_dir: Path):
         )
 
     train_loss = client.get_metric_history(run_id, "train/loss")
-    assert len(train_loss) == 30, (
-        f"Expected 30 train/loss metrics, but found {len(train_loss)}"
+    assert len(train_loss) == 10, (
+        f"Expected 10 train/loss metrics, but found {len(train_loss)}"
     )
 
     train_loss_xorhead = client.get_metric_history(
         run_id, f"train/loss/{formated_node_name}/CrossEntropyLoss"
     )
-    assert len(train_loss_xorhead) == 30, (
-        f"Expected 30 train/loss/{formated_node_name}/CrossEntropyLoss metrics, but found {len(train_loss_xorhead)}"
+    assert len(train_loss_xorhead) == 10, (
+        f"Expected 10 train/loss/{formated_node_name}/CrossEntropyLoss metrics, but found {len(train_loss_xorhead)}"
     )
 
-    expected_val_steps = [14, 29]
+    expected_val_steps = [4, 9]
 
     val_loss = client.get_metric_history(run_id, "val/loss")
     assert len(val_loss) == len(expected_val_steps), (

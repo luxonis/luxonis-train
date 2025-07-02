@@ -18,13 +18,16 @@ def get_opts_backbone(backbone: str) -> Params:
             "nodes": [
                 {
                     "name": backbone,
+                    "variant": "default",
                 },
                 {
                     "name": "EfficientBBoxHead",
+                    "variant": "default",
                     "inputs": [backbone],
                 },
                 {
                     "name": "EfficientKeypointBBoxHead",
+                    "variant": "default",
                     "inputs": [backbone],
                 },
             ],

@@ -23,6 +23,7 @@ class ResNet(BaseNode[Tensor, list[Tensor]]):
             False,
             False,
         ),
+        weights: Literal["download", "random"] = "random",
         **kwargs,
     ):
         """ResNet backbone.
@@ -84,7 +85,7 @@ class ResNet(BaseNode[Tensor, list[Tensor]]):
         super().__init__(**kwargs)
         self.backbone = self._get_backbone(
             variant,
-            weights="DEFAULT" if self._weights == "download" else None,
+            weights="DEFAULT" if weights == "download" else None,
             zero_init_residual=zero_init_residual,
             groups=groups,
             width_per_group=width_per_group,

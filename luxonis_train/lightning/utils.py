@@ -485,6 +485,7 @@ def build_nodes(
                 "remove_on_export": node_cfg.remove_on_export,
                 "dataset_metadata": dataset_metadata,
                 "original_in_shape": input_shapes[cfg.loader.image_source],
+                "variant": node_cfg.variant,
             },
         )
 

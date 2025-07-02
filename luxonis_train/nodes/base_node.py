@@ -115,6 +115,7 @@ class BaseNode(
 
     attach_index: AttachIndexType = None
     task: Task | None = None
+    default_variant: str | None = None
 
     @typechecked
     def __init__(
@@ -254,12 +255,15 @@ class BaseNode(
                     m.inplace = True
 
     @classmethod
-    def from_variant(cls, variant: str, **kwargs) -> "BaseNode":
+    def from_variant(
+        cls, variant: str | Literal["default"], **kwargs
+    ) -> "BaseNode":
         """Creates a node from a predefined variant.
 
-        @type variant: str
+        @type variant: str | None
         @param variant: Variant of the node. The available variants
-            depend on the node implementation.
+            depend on the node implementation. If set to None, the
+            default variant is used if the node specifies one.
         @param kwargs: Additional keyword arguments to be passed to the
             node constructor. In case of a conflict between the variant
             parameters and the keyword arguments, the keyword arguments
@@ -272,11 +276,30 @@ class BaseNode(
         try:
             variants = cls.get_variants()
         except NotImplementedError:
+            if variant == "default":
+                logger.warning(
+                    f"Node '{cls.__name__}' does not define any variants, "
+                    "but the `from_variant` method was called with "
+                    "`variant='default'`. The node will be created "
+                    "using its standard constructor."
+                )
+                return cls(**kwargs)
+
             raise NotImplementedError(
                 f"Node '{cls.__name__}' does not support variants. "
                 "To support predefined variants, implement the "
                 "`get_variant_params` method."
             ) from None
+
+        if variant == "default":
+            if cls.default_variant is None:
+                raise ValueError(
+                    f"Node '{cls.__name__}' does not specify a default variant. "
+                    "Please provide a variant name or specify the "
+                    "`default_variant` class attribute."
+                )
+            variant = cls.default_variant
+
         if variant not in variants:
             raise ValueError(
                 f"Invalid variant name '{variant}'."

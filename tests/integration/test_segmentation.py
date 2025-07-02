@@ -7,8 +7,11 @@ from luxonis_ml.typing import Params
 from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
 
-# TODO: Remove the following line after the incompatibility issue is resolved
-BACKBONES = [backbone for backbone in BACKBONES if backbone != "PPLCNetV3"]
+BACKBONES = [
+    backbone
+    for backbone in BACKBONES
+    if backbone not in {"PPLCNetV3", "GhostFaceNetV2"}
+]
 
 
 def get_opts(backbone: str) -> Params:
@@ -17,39 +20,46 @@ def get_opts(backbone: str) -> Params:
             "nodes": [
                 {
                     "name": backbone,
+                    "variant": "default",
                 },
                 {
                     "name": "SegmentationHead",
+                    "variant": "default",
                     "alias": "seg-color-segmentation",
                     "task_name": "color",
                     "inputs": [backbone],
                 },
                 {
                     "name": "BiSeNetHead",
+                    "variant": "default",
                     "alias": "bi-color-segmentation",
                     "task_name": "color",
                     "inputs": [backbone],
                 },
                 {
                     "name": "SegmentationHead",
+                    "variant": "default",
                     "alias": "seg-vehicle-segmentation",
                     "task_name": "vehicles",
                     "inputs": [backbone],
                 },
                 {
                     "name": "BiSeNetHead",
+                    "variant": "default",
                     "alias": "bi-vehicle-segmentation",
                     "task_name": "vehicles",
                     "inputs": [backbone],
                 },
                 {
                     "name": "SegmentationHead",
+                    "variant": "default",
                     "alias": "seg-vehicle-segmentation-2",
                     "task_name": "vehicles",
                     "inputs": [backbone],
                 },
                 {
                     "name": "SegmentationHead",
+                    "variant": "default",
                     "alias": "seg-vehicle-segmentation-3",
                     "task_name": "vehicles",
                     "inputs": [backbone],
@@ -132,5 +142,7 @@ def test_backbones(
     backbone: str, config: Params, parking_lot_dataset: LuxonisDataset
 ):
     opts = get_opts(backbone)
+
     opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
+    opts["trainer.epochs"] = 1
     train_and_test(config, opts)

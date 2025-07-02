@@ -17,17 +17,17 @@ from luxonis_train.core import LuxonisModel
 
 from .multi_input_modules import *  # noqa: F403
 
-INFER_PATH = Path("tests/integration/infer-save-directory")
+# TODO: We should be able to specify the save
+# directory instead of using the CWD.
 ONNX_PATH = Path("tests/integration/example_multi_input.onnx")
 STUDY_PATH = Path("study_local.db")
 
 
 @pytest.fixture
-def infer_path() -> Path:
-    if INFER_PATH.exists():
-        shutil.rmtree(INFER_PATH)
-    INFER_PATH.mkdir()
-    return INFER_PATH
+def infer_path(work_dir: Path) -> Path:
+    path = work_dir / "infer-save-directory"
+    path.mkdir(exist_ok=True)
+    return path
 
 
 @pytest.fixture

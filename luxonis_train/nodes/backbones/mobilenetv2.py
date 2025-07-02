@@ -1,3 +1,5 @@
+from typing import Literal
+
 import torchvision
 from torch import Tensor
 
@@ -5,7 +7,12 @@ from luxonis_train.nodes.base_node import BaseNode
 
 
 class MobileNetV2(BaseNode[Tensor, list[Tensor]]):
-    def __init__(self, out_indices: list[int] | None = None, **kwargs):
+    def __init__(
+        self,
+        out_indices: list[int] | None = None,
+        weights: Literal["download", "random"] = "random",
+        **kwargs,
+    ):
         """MobileNetV2 backbone.
 
         This class implements the MobileNetV2 model as described in:
@@ -27,7 +34,7 @@ class MobileNetV2(BaseNode[Tensor, list[Tensor]]):
         super().__init__(**kwargs)
 
         self.backbone = torchvision.models.mobilenet_v2(
-            weights="DEFAULT" if self._weights == "download" else None
+            weights="DEFAULT" if weights == "download" else None
         )
         self.out_indices = out_indices or [3, 6, 13, 18]
 

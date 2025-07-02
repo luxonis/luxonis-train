@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Literal, cast
 
 import torch
 from torch import Tensor, nn
@@ -9,7 +9,12 @@ from luxonis_train.nodes.base_node import BaseNode
 class EfficientNet(BaseNode[Tensor, list[Tensor]]):
     attach_index: int = -1
 
-    def __init__(self, out_indices: list[int] | None = None, **kwargs):
+    def __init__(
+        self,
+        out_indices: list[int] | None = None,
+        weights: Literal["download", "random"] = "random",
+        **kwargs,
+    ):
         """EfficientNet backbone.
 
         EfficientNet is a convolutional neural network architecture and scaling method that uniformly scales all dimensions of depth/width/resolution using a compound coefficient. Unlike conventional practice that arbitrary scales these factors, the EfficientNet scaling method uniformly scales network width, depth, and resolution with a set of fixed scaling coefficients.
@@ -39,7 +44,7 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
             torch.hub.load(
                 "rwightman/gen-efficientnet-pytorch",
                 "efficientnet_lite0",
-                pretrained=self._weights == "download",
+                pretrained=weights == "download",
             ),
         )
         self.out_indices = out_indices or [0, 1, 2, 4, 6]
