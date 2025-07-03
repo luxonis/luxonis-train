@@ -1,3 +1,4 @@
+from .annotation import default_annotate
 from .boundingbox import (
     anchors_for_fpn_features,
     apply_bounding_box_to_masks,
@@ -28,6 +29,14 @@ from .keypoints import (
 )
 from .logging import setup_logging
 from .ocr import OCRDecoder, OCREncoder
+from .segmentation import (
+    seg_output_to_bool,
+)
+from .spatial_transforms import (
+    transform_boxes,
+    transform_keypoints,
+    transform_masks,
+)
 from .tracker import LuxonisTrackerPL
 
 __all__ = [
@@ -42,6 +51,7 @@ __all__ = [
     "bbox_iou",
     "compute_iou_loss",
     "compute_pose_oks",
+    "default_annotate",
     "dist2bbox",
     "get_attribute_check_none",
     "get_batch_instances",
@@ -62,8 +72,12 @@ __all__ = [
     "non_max_suppression",
     "safe_download",
     "safe_download",
+    "seg_output_to_bool",
     "setup_logging",
     "setup_logging",
     "to_shape_packet",
     "to_shape_packet",
+    "transform_boxes",
+    "transform_keypoints",
+    "transform_masks",
 ]

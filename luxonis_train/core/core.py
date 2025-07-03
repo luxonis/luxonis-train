@@ -15,6 +15,7 @@ import yaml
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
+from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.typing import Params, PathType
@@ -36,6 +37,7 @@ from luxonis_train.utils import (
     setup_logging,
 )
 
+from .utils.annotate_utils import annotate_from_directory
 from .utils.archive_utils import (
     get_head_configs,
     get_inputs,
@@ -572,6 +574,43 @@ class LuxonisModel:
                     )
             else:
                 infer_from_dataset(self, view, save_dir)
+
+    def annotate(
+        self,
+        dir_path: PathType,
+        dataset_name: str,
+        weights: PathType | None = None,
+        bucket_storage: Literal["local", "gcs"] = "local",
+        delete_local: bool = True,
+        delete_remote: bool = True,
+        team_id: str | None = None,
+    ) -> LuxonisDataset:
+        self.lightning_module.eval()
+        weights = weights or self.cfg.model.weights
+
+        with replace_weights(self.lightning_module, weights):
+            dir_path = Path(dir_path)
+            if dir_path.is_dir():
+                image_files = (
+                    f
+                    for f in dir_path.iterdir()
+                    if f.suffix.lower() in IMAGE_FORMATS
+                )
+                annotated_dataset = annotate_from_directory(
+                    self,
+                    image_files,
+                    dataset_name,
+                    bucket_storage,
+                    delete_local,
+                    delete_remote,
+                    team_id,
+                )
+            else:
+                raise ValueError(
+                    f"Directory path {dir_path} is not a valid directory."
+                )
+
+        return annotated_dataset
 
     def tune(self) -> None:
         """Runs Optuna tuning of hyperparameters."""

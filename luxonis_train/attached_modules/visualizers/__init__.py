@@ -16,7 +16,6 @@ from .utils import (
     get_color,
     get_denormalized_images,
     preprocess_images,
-    seg_output_to_bool,
 )
 
 __all__ = [
@@ -37,5 +36,4 @@ __all__ = [
     "get_color",
     "get_denormalized_images",
     "preprocess_images",
-    "seg_output_to_bool",
 ]
