@@ -36,7 +36,11 @@ def work_dir() -> Generator[Path]:
 
     yield path
 
-    shutil.rmtree(path, ignore_errors=True)
+    for subdir in path.iterdir():
+        if subdir.is_file():
+            subdir.unlink(missing_ok=True)
+        elif subdir.is_dir() and subdir.name != "luxonisml":
+            shutil.rmtree(subdir, ignore_errors=True)
 
 
 @pytest.fixture
@@ -62,18 +66,17 @@ def tempdir(work_dir: Path) -> Generator[Path]:
 
 
 @pytest.fixture(scope="session")
-def data_dir(work_dir: Path) -> Path:
-    path = work_dir / "data"
+def data_dir() -> Path:
+    path = Path("tests", "data")
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
 @pytest.fixture(scope="session")
-def output_dir() -> Generator[Path]:
-    path = Path("tests", "integration", "save-directory")
+def save_dir(work_dir: Path) -> Path:
+    path = work_dir / "save-directory"
     path.mkdir(parents=True, exist_ok=True)
-    yield path
-    shutil.rmtree(path)
+    return path
 
 
 @pytest.fixture
@@ -330,14 +333,17 @@ def anomaly_detection_dataset(data_dir: Path) -> LuxonisDataset:
 
 @pytest.fixture
 def config(
-    train_overfit: bool, image_size: tuple[int, int], batch_size: int
+    save_dir: Path,
+    train_overfit: bool,
+    image_size: tuple[int, int],
+    batch_size: int,
 ) -> Kwargs:
     epochs = 100 if train_overfit else 1
 
     return deepcopy(
         {
             "tracker": {
-                "save_directory": "tests/integration/save-directory",
+                "save_directory": save_dir,
             },
             "loader": {
                 "train_view": "val",

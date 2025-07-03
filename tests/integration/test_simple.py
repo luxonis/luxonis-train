@@ -31,13 +31,13 @@ def infer_path(work_dir: Path) -> Path:
 
 
 @pytest.fixture
-def opts(output_dir: Path) -> dict[str, Any]:
+def opts(save_dir: Path) -> dict[str, Any]:
     return {
         "trainer.epochs": 1,
         "trainer.batch_size": 1,
         "trainer.validation_interval": 1,
         "trainer.callbacks": [],
-        "tracker.save_directory": str(output_dir),
+        "tracker.save_directory": str(save_dir),
         "tuner.n_trials": 4,
     }
 
@@ -73,7 +73,7 @@ def test_predefined_models(
     cifar10_dataset: LuxonisDataset,
     toy_ocr_dataset: LuxonisDataset,
     image_size: tuple[int, int],
-    output_dir: Path,
+    save_dir: Path,
     subtests: SubTests,
 ):
     config_file = f"configs/{config_name}.yaml"
@@ -103,7 +103,7 @@ def test_predefined_models(
     with subtests.test("saved_config"):
         opts["tracker.run_name"] = f"{config_name}_reload"
         model = LuxonisModel(
-            str(output_dir / config_name / "training_config.yaml"), opts
+            str(save_dir / config_name / "training_config.yaml"), opts
         )
         model.test()
 
@@ -246,9 +246,9 @@ def test_infer(
         model.infer(source_path="tests/data/invalid.jpg", save_dir=infer_path)
 
 
-def test_archive(output_dir: Path, coco_dataset: LuxonisDataset):
+def test_archive(save_dir: Path, coco_dataset: LuxonisDataset):
     opts: Params = {
-        "tracker.save_directory": str(output_dir),
+        "tracker.save_directory": str(save_dir),
         "loader.params.dataset_name": coco_dataset.identifier,
     }
     model = LuxonisModel("tests/configs/archive_config.yaml", opts)
