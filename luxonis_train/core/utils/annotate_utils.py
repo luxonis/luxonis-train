@@ -4,7 +4,7 @@ from typing import Literal
 
 import torch
 import torch.utils.data as torch_data
-from luxonis_ml.data import DatasetIterator, LuxonisDataset
+from luxonis_ml.data import DatasetIterator, LuxonisDataset, LuxonisLoader
 from luxonis_ml.typing import PathType
 
 import luxonis_train as lxt
@@ -59,8 +59,10 @@ def annotate_from_directory(
     generator = annotated_dataset_generator(model, loader)
     annotated_dataset.add(generator)
     annotated_dataset.make_splits()
+    luxonis_loader = loader.dataset
+    assert isinstance(luxonis_loader, LuxonisLoader)
 
-    loader.dataset.dataset.delete_dataset()
+    luxonis_loader.dataset.delete_dataset()
 
     return annotated_dataset
 
@@ -71,18 +73,20 @@ def annotated_dataset_generator(
     """Generator that yields annotations for images processed by the
     model."""
 
-    lm = model.lightning_module.eval()
+    lt_module = model.lightning_module.eval()
 
     for batch in loader:
         imgs, metas = batch
         with torch.no_grad():
-            batch_out = lm(imgs).outputs
+            batch_out = lt_module(imgs).outputs
 
         for head_name, head_output in batch_out.items():
             img_paths = [
                 Path("".join(chr(int(c.item())) for c in raw_meta))
                 for raw_meta in metas["/metadata/path"]
             ]
-            yield from lm.nodes[head_name].annotate(
-                head_output, img_paths, model.cfg_preprocessing
-            )
+            head = lt_module.nodes[head_name]
+            if isinstance(head, lxt.BaseHead):
+                yield from head.annotate(
+                    head_output, img_paths, model.cfg_preprocessing
+                )

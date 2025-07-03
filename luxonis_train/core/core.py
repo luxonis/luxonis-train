@@ -15,6 +15,7 @@ import yaml
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
+from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.typing import Params, PathType
@@ -27,7 +28,7 @@ from luxonis_train.callbacks import (
 )
 from luxonis_train.config import Config
 from luxonis_train.lightning import LuxonisLightningModule
-from luxonis_train.loaders import BaseLoaderTorch, collate_fn
+from luxonis_train.loaders import BaseLoaderTorch
 from luxonis_train.loaders.luxonis_loader_torch import LuxonisLoaderTorch
 from luxonis_train.registry import LOADERS
 from luxonis_train.utils import (
@@ -37,6 +38,11 @@ from luxonis_train.utils import (
 )
 
 from .utils.annotate_utils import annotate_from_directory
+from .utils.archive_utils import (
+    get_head_configs,
+    get_inputs,
+    get_outputs,
+)
 from .utils.export_utils import (
     blobconverter_export,
     get_preprocessing,
@@ -193,7 +199,7 @@ class LuxonisModel:
                 loader,
                 batch_size=self.cfg.trainer.batch_size,
                 num_workers=self.cfg.trainer.n_workers,
-                collate_fn=collate_fn,
+                collate_fn=self.loaders[view].collate_fn,
                 shuffle=view == "train",
                 drop_last=(
                     self.cfg.trainer.skip_last_batch
@@ -379,7 +385,7 @@ class LuxonisModel:
         try_onnx_simplify(onnx_save_path)
         self._exported_models["onnx"] = Path(onnx_save_path)
 
-        scale, mean, color_space = get_preprocessing(
+        mean, scale, color_space = get_preprocessing(
             self.cfg_preprocessing, "Model export"
         )
         scale_values = self.cfg.exporter.scale_values or scale
@@ -413,6 +419,12 @@ class LuxonisModel:
                     "Ensure `blobconverter` is installed in your environment."
                 )
 
+        for path in self._exported_models.values():
+            if self.cfg.exporter.upload_to_run:
+                self.tracker.upload_artifact(path, typ="export")
+            if self.cfg.exporter.upload_url is not None:  # pragma: no cover
+                LuxonisFileSystem.upload(path, self.cfg.exporter.upload_url)
+
         if len(self.input_shapes) > 1:
             logger.error(
                 "Generating modelconverter config for a model "
@@ -420,20 +432,33 @@ class LuxonisModel:
             )
             return
 
+        inputs = []
+        outputs = []
+        inputs_dict = get_inputs(self._exported_models["onnx"])
+        for input_name, metadata in inputs_dict.items():
+            inputs.append(
+                {
+                    "name": input_name,
+                    "shape": metadata["shape"],
+                }
+            )
+
+        outputs_dict = get_outputs(self._exported_models["onnx"])
+        for output_name, metadata in outputs_dict.items():
+            outputs.append(
+                {
+                    "name": output_name,
+                    "shape": metadata["shape"],
+                }
+            )
         modelconverter_config = {
             "input_model": onnx_save_path,
             "scale_values": scale_values,
             "mean_values": mean_values,
-            "reverse_input_channels": reverse_input_channels,
-            "shape": [1, *next(iter(self.input_shapes.values()))],
-            "outputs": [{"name": name} for name in output_names],
+            "encoding": {"from": color_space, "to": "BGR"},
+            "inputs": inputs,
+            "outputs": outputs,
         }
-
-        for path in self._exported_models.values():
-            if self.cfg.exporter.upload_to_run:
-                self.tracker.upload_artifact(path, typ="export")
-            if self.cfg.exporter.upload_url is not None:  # pragma: no cover
-                LuxonisFileSystem.upload(path, self.cfg.exporter.upload_url)
 
         with open(export_path.with_suffix(".yaml"), "w") as f:
             yaml.safe_dump(modelconverter_config, f)
@@ -559,7 +584,7 @@ class LuxonisModel:
         delete_local: bool = True,
         delete_remote: bool = True,
         team_id: str | None = None,
-    ):
+    ) -> LuxonisDataset:
         self.lightning_module.eval()
         weights = weights or self.cfg.model.weights
 
@@ -817,12 +842,6 @@ class LuxonisModel:
             return self._archive(path)
 
     def _archive(self, path: PathType | None = None) -> Path:
-        from .utils.archive_utils import (
-            get_head_configs,
-            get_inputs,
-            get_outputs,
-        )
-
         archive_name = self.cfg.archiver.name or self.cfg.model.name
         archive_save_directory = Path(self.run_save_dir, "archive")
         archive_save_directory.mkdir(parents=True, exist_ok=True)
@@ -844,11 +863,13 @@ class LuxonisModel:
         mean, scale, color_space = get_preprocessing(
             self.cfg_preprocessing, "Exporting to NN Archive"
         )
+        scale_values = self.cfg.exporter.scale_values or scale
+        mean_values = self.cfg.exporter.mean_values or mean
 
         # TODO: keep preprocessing same for each input?
         preprocessing = {
-            "mean": mean,
-            "scale": scale,
+            "mean": mean_values,
+            "scale": scale_values,
             "dai_type": f"{color_space}888p",
         }
 

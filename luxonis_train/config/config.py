@@ -27,6 +27,7 @@ from pydantic.types import (
 )
 from typing_extensions import Self
 
+from luxonis_train.config.constants import CONFIG_VERSION
 from luxonis_train.registry import MODELS
 
 
@@ -339,7 +340,7 @@ class LoaderConfig(ConfigItem):
                 f"Dataset type '{dataset_type}' not supported."
                 f"Supported types are: {', '.join(DatasetType.__members__)}."
             )
-        self.params["dataset_type"] = DatasetType(dataset_type.lower())
+        self.params["dataset_type"] = dataset_type.lower()
         return self
 
 
@@ -360,7 +361,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
         ImageSize, Field(min_length=2, max_length=2)
     ] = ImageSize(256, 256)
     keep_aspect_ratio: bool = True
-    color_space: Literal["RGB", "BGR"] = "RGB"
+    color_space: Literal["RGB", "BGR", "GRAY"] = "RGB"
     normalize: NormalizeAugmentationConfig = Field(
         default_factory=NormalizeAugmentationConfig
     )
@@ -605,6 +606,8 @@ class Config(LuxonisConfig):
     archiver: ArchiveConfig = Field(default_factory=ArchiveConfig)
     tuner: TunerConfig | None = None
 
+    config_version: str = str(CONFIG_VERSION)
+
     ENVIRON: Environ = Field(exclude=True, default_factory=Environ)
 
     @model_validator(mode="before")
@@ -769,3 +772,18 @@ class Config(LuxonisConfig):
                             f"updated with scheduling: {gradient_accumulation_schedule}"
                         )
                         break
+
+        # Rule: Set default callbacks UploadCheckpoint, TestOnTrainEnd, ExportOnTrainEnd, ArchiveOnTrainEnd
+        default_callbacks = [
+            "UploadCheckpoint",
+            "TestOnTrainEnd",
+            "ExportOnTrainEnd",
+            "ArchiveOnTrainEnd",
+        ]
+
+        for cb_name in default_callbacks:
+            if not any(
+                cb.name == cb_name for cb in instance.trainer.callbacks
+            ):
+                instance.trainer.callbacks.append(CallbackConfig(name=cb_name))
+                logger.info(f"Added {cb_name} callback.")

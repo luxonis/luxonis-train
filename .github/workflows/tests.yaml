@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-t4-4core, windows-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -51,6 +51,13 @@ jobs:
         repository: Luxonis/luxonis-train
         ref:        ${{ inputs.train_ref }}
         path:       luxonis-train
+
+    - name: Free Disk Space (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: false
+        large-packages: false
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -88,14 +95,14 @@ jobs:
       run: pytest --cov --junitxml=junit.xml -o junit_family=legacy
 
     - name: Upload test results to Codecov
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-t4-4core'
       uses: codecov/test-results-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
 
     - name: Upload coverage results to Codecov
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-t4-4core'
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}

@@ -19,11 +19,11 @@ from luxonis_train.utils.annotation import default_annotate
 class BaseHead(BaseNode[ForwardInputT, ForwardOutputT]):
     """Base class for all heads in the model.
 
-    @type parser: str | None
+    @type parser: str
     @ivar parser: Parser to use for the head.
     """
 
-    parser: str | None = None
+    parser: str = ""
 
     def get_head_config(self) -> dict[str, Any]:
         """Get head configuration.

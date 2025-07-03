@@ -8,18 +8,21 @@ import torch
 from lightning.pytorch.callbacks import (
     GradientAccumulationScheduler,
     ModelCheckpoint,
-    RichModelSummary,
 )
 from loguru import logger
 from luxonis_ml.typing import ConfigItem, Kwargs, check_type
 from luxonis_ml.utils import traverse_graph
 from luxonis_ml.utils.registry import Registry
 from torch import Size, Tensor, nn
-from torch.optim.lr_scheduler import LRScheduler, SequentialLR
+from torch.optim.lr_scheduler import (
+    LRScheduler,
+    ReduceLROnPlateau,
+    SequentialLR,
+)
 from torch.optim.optimizer import Optimizer
 
 from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
-from luxonis_train.callbacks import TrainingManager
+from luxonis_train.callbacks import LuxonisRichModelSummary, TrainingManager
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.nodes import BaseHead, BaseNode
 from luxonis_train.registry import (
@@ -245,8 +248,11 @@ def build_training_strategy(
 
 
 def build_optimizers(
-    cfg: Config, parameters: Iterable[nn.Parameter]
-) -> tuple[list[Optimizer], list[LRScheduler]]:
+    cfg: Config,
+    parameters: Iterable[nn.Parameter],
+    main_metric: tuple[str, str] | None,
+    nodes: Nodes,
+) -> tuple[list[Optimizer], list[LRScheduler | dict[str, Any]]]:
     """Configures model optimizers and schedulers."""
 
     cfg_optimizer = cfg.trainer.optimizer
@@ -297,6 +303,26 @@ def build_optimizers(
         scheduler = SequentialLR(
             optimizer, schedulers=schedulers_list, milestones=milestones
         )
+
+    elif cfg_scheduler.name == "ReduceLROnPlateau":
+        scheduler = _get_scheduler(cfg_scheduler, optimizer)
+        if cfg_scheduler.params.get("mode") == "max":
+            if main_metric is None:
+                raise ValueError(
+                    "ReduceLROnPlateau with 'max' mode requires a main_metric."
+                )
+            node_name, metric_name = main_metric
+            formatted = nodes.formatted_name(node_name)
+            monitor = f"val/metric/{formatted}/{metric_name}"
+        else:
+            monitor = "val/loss"
+
+        scheduler = {
+            "scheduler": scheduler,
+            "monitor": monitor,
+            "frequency": cfg.trainer.validation_interval,
+        }
+
     else:
         scheduler = _get_scheduler(cfg_scheduler, optimizer)
 
@@ -315,7 +341,7 @@ def build_callbacks(
 
     callbacks: list[pl.Callback] = [
         TrainingManager(),
-        RichModelSummary(max_depth=2),
+        LuxonisRichModelSummary(max_depth=2),
         ModelCheckpoint(
             dirpath=save_dir / "min_val_loss",
             filename=f"{model_name}_loss={{val/loss:.4f}}_{{epoch:02d}}",
@@ -553,10 +579,11 @@ def log_balanced_class_images(
 ) -> tuple[int, list[int]]:
     """Log images with balanced class distribution."""
     for node_name, node_visualizations in visualizations.items():
+        node_logged_images = n_logged_images
         formatted_node_name = nodes.formatted_name(node_name)
         for viz_name, viz_batch in node_visualizations.items():
             for idx, viz in enumerate(viz_batch):
-                if n_logged_images >= max_log_images:
+                if node_logged_images >= max_log_images:
                     break
                 present_classes = (
                     (labels[cls_key][idx] > 0)
@@ -572,15 +599,15 @@ def log_balanced_class_images(
                     ):
                         name = f"{mode}/visualizations/{formatted_node_name}/{viz_name}"
                         tracker.log_image(
-                            f"{name}/{n_logged_images}",
+                            f"{name}/{node_logged_images}",
                             viz.detach().cpu().numpy().transpose(1, 2, 0),
                             step=current_epoch,
                         )
-                        n_logged_images += 1
+                        node_logged_images += 1
                         for c in present_classes:
                             class_log_counts[c] += 1
 
-    return n_logged_images, class_log_counts
+    return node_logged_images, class_log_counts
 
 
 def log_sequential_images(
@@ -594,19 +621,20 @@ def log_sequential_images(
 ) -> int:
     """Log first N images sequentially."""
     for node_name, node_visualizations in visualizations.items():
+        node_logged_images = n_logged_images
         formatted_node_name = nodes.formatted_name(node_name)
         for viz_name, viz_batch in node_visualizations.items():
             for viz in viz_batch:
-                if n_logged_images >= max_log_images:
+                if node_logged_images >= max_log_images:
                     break
                 name = (
                     f"{mode}/visualizations/{formatted_node_name}/{viz_name}"
                 )
                 tracker.log_image(
-                    f"{name}/{n_logged_images}",
+                    f"{name}/{node_logged_images}",
                     viz.detach().cpu().numpy().transpose(1, 2, 0),
                     step=current_epoch,
                 )
-                n_logged_images += 1
+                node_logged_images += 1
 
-    return n_logged_images
+    return node_logged_images

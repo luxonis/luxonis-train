@@ -1,11 +1,12 @@
 from collections import defaultdict
 from pathlib import Path
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import lightning.pytorch as pl
 import torch
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
+from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
 from torch import Size, Tensor
 from typing_extensions import override
@@ -139,6 +140,13 @@ class LuxonisLightningModule(pl.LightningModule):
         self.training_strategy = build_training_strategy(self.cfg, self)
 
         self.load_checkpoint(self.cfg.model.weights)
+
+        self.save_hyperparameters(
+            {
+                "luxonis_train_version": luxonis_train.__version__,
+                "luxonis_ml_version": luxonis_ml_version,
+            }
+        )
 
     @property
     def progress_bar(self) -> BaseLuxonisProgressBar:
@@ -547,11 +555,13 @@ class LuxonisLightningModule(pl.LightningModule):
         self,
     ) -> tuple[
         list[torch.optim.Optimizer],
-        list[torch.optim.lr_scheduler.LRScheduler],
+        list[torch.optim.lr_scheduler.LRScheduler | dict[str, Any]],
     ]:
         if self.training_strategy is not None:
             return self.training_strategy.configure_optimizers()
-        return build_optimizers(self.cfg, self.parameters())
+        return build_optimizers(
+            self.cfg, self.parameters(), self.main_metric, self.nodes
+        )
 
     def load_checkpoint(self, path: str | Path | None) -> None:
         """Loads checkpoint weights from provided path.
@@ -603,13 +613,14 @@ class LuxonisLightningModule(pl.LightningModule):
         inputs: dict[str, Tensor],
         labels: Labels,
     ) -> dict[str, Tensor]:
+        max_log_images = self.cfg.trainer.n_log_images
         input_image = inputs[self.image_source]
 
         cls_key = next(
             (key for key in labels if "/classification" in key), None
         )
         images = None
-        if self._n_logged_images < self.cfg.trainer.n_log_images:
+        if self._n_logged_images < max_log_images:
             images = get_denormalized_images(self.cfg, input_image)
 
         outputs = self.forward(
@@ -625,8 +636,6 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
         self._loss_accumulators[mode].update(losses)
-
-        max_log_images = self.cfg.trainer.n_log_images
 
         if outputs.visualizations:
             if cls_key is not None:
