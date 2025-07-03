@@ -199,13 +199,13 @@ class PrecisionBBoxHead(BaseDetectionHead):
         return torch.cat(base_output, dim=-1)
 
     @override
-    def initialize_weights(self) -> None:
+    def initialize_weights(self, method: str | None = None) -> None:
         """Initialize biases for the detection heads.
 
         Assumes detection_heads structure with separate regression and
         classification branches.
         """
-        super().initialize_weights(method="yolo")
+        super().initialize_weights(method)
         for head, stride in zip(
             self.detection_heads, self.stride, strict=True
         ):

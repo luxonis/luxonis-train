@@ -228,17 +228,16 @@ class BaseNode(
         elif self._weights.startswith("http"):
             self.load_checkpoint(path=self._weights)
         else:
-            self.initialize_weights()
+            self.initialize_weights(method=self._weights)
 
     def initialize_weights(
-        self, *, method: Literal["yolo"] | str | None = None
+        self, method: Literal["yolo"] | str | None = None
     ) -> None:
         """Initializes the weights of the module.
 
         This method should be overridden in subclasses to provide custom
         weight initialization.
         """
-        method = method or self._weights  # type: ignore
         if method == "yolo":
             for m in self.modules():
                 if isinstance(m, nn.Conv2d):
@@ -308,10 +307,9 @@ class BaseNode(
         params = variants[variant]
         for key in list(params.keys()):
             if key in kwargs:
-                logger.warning(
-                    f"Parameter '{key}' provided explicitly in the "
-                    f"constructor with value `{kwargs[key]}`."
-                    f"Overriding the variant value `{params[key]}`."
+                logger.info(
+                    f"Overriding variant parameter '{key}' with "
+                    f"explicitly provided value `{kwargs[key]}`."
                 )
                 del params[key]
 

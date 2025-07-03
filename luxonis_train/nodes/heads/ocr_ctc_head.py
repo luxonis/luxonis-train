@@ -108,7 +108,8 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
         return self._encoder.n_classes
 
     @override
-    def initialize_weights(self) -> None:
+    def initialize_weights(self, method: str | None = None) -> None:
+        super().initialize_weights(method)
         for m in self.modules():
             if isinstance(m, nn.Linear):
                 std = 1.0 / math.sqrt(m.in_features)

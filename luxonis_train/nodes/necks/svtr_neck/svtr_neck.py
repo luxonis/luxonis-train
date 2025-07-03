@@ -125,7 +125,8 @@ class SVTRNeck(BaseNode[list[Tensor], list[Tensor]]):
         return self.conv1x1(self.conv4(z))
 
     @override
-    def initialize_weights(self) -> None:
+    def initialize_weights(self, method: str | None = None) -> None:
+        super().initialize_weights(method)
         for m in self.modules():
             if isinstance(m, nn.Linear):
                 nn.init.trunc_normal_(m.weight, std=0.02)

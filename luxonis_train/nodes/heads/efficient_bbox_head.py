@@ -79,8 +79,8 @@ class EfficientBBoxHead(BaseDetectionHead):
         self.bias_init_p = bias_init_p
 
     @override
-    def initialize_weights(self) -> None:
-        super().initialize_weights(method="yolo")
+    def initialize_weights(self, method: str | None = None) -> None:
+        super().initialize_weights(method)
         for head in self.heads:
             data = [
                 (
