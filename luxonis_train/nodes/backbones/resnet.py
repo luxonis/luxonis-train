@@ -10,8 +10,6 @@ from luxonis_train.nodes.base_node import BaseNode
 
 
 class ResNet(BaseNode[Tensor, list[Tensor]]):
-    default_variant = "18"
-
     def __init__(
         self,
         variant: Literal["18", "34", "50", "101", "152"] = "18",
@@ -92,17 +90,6 @@ class ResNet(BaseNode[Tensor, list[Tensor]]):
             replace_stride_with_dilation=replace_stride_with_dilation,
         )
 
-    @staticmethod
-    @override
-    def get_variants() -> Kwargs:
-        return {
-            "18": {"variant": "18"},
-            "34": {"variant": "34"},
-            "50": {"variant": "50"},
-            "101": {"variant": "101"},
-            "152": {"variant": "152"},
-        }
-
     def forward(self, inputs: Tensor) -> list[Tensor]:
         outs: list[Tensor] = []
         x = self.backbone.conv1(inputs)
@@ -120,6 +107,17 @@ class ResNet(BaseNode[Tensor, list[Tensor]]):
         outs.append(x)
 
         return outs
+
+    @staticmethod
+    @override
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        return "18", {
+            "18": {"variant": "18"},
+            "34": {"variant": "34"},
+            "50": {"variant": "50"},
+            "101": {"variant": "101"},
+            "152": {"variant": "152"},
+        }
 
     @staticmethod
     def _get_backbone(

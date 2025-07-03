@@ -25,7 +25,6 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
         - "A2": n_blocks=(2, 4, 14, 1), width_multiplier=(1.5, 1.5, 1.5, 2.75)
     """
 
-    default_variant = "A0"
     in_channels: int
     attach_index: int = -1
 
@@ -114,8 +113,8 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
 
     @override
     @staticmethod
-    def get_variants() -> dict[str, Kwargs]:
-        return {
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        return "A0", {
             "A0": {
                 "n_blocks": (2, 4, 14, 1),
                 "width_multiplier": (0.75, 0.75, 0.75, 2.5),

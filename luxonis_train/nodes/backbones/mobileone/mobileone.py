@@ -50,7 +50,6 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
     @license: U{Apple<https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
     """
 
-    default_variant = "s0"
     in_channels: int
 
     @typechecked
@@ -121,8 +120,8 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
 
     @override
     @staticmethod
-    def get_variants() -> dict[str, Kwargs]:
-        return {
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        return "s0", {
             "s0": {
                 "width_multipliers": (0.75, 1.0, 1.0, 2.0),
                 "n_conv_branches": 4,

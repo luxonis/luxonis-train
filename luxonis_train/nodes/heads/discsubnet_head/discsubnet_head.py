@@ -11,7 +11,6 @@ from luxonis_train.typing import Packet
 
 class DiscSubNetHead(BaseHead[Tensor, Tensor]):
     task = Tasks.ANOMALY_DETECTION
-    default_variant = "n"
 
     in_channels: list[int] | int
     base_channels: int
@@ -83,8 +82,8 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
 
     @override
     @staticmethod
-    def get_variants() -> dict[str, Kwargs]:
-        return {
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        return "n", {
             "n": {
                 "base_channels": 32,
                 "width_multipliers": [1, 1.1],

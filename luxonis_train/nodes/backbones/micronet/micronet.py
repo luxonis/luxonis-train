@@ -60,8 +60,6 @@ class MicroNet(BaseNode[Tensor, list[Tensor]]):
         - reduction_factors: [1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2]
     """
 
-    default_variant = "M1"
-
     @typechecked
     def __init__(
         self,
@@ -143,8 +141,8 @@ class MicroNet(BaseNode[Tensor, list[Tensor]]):
 
     @override
     @staticmethod
-    def get_variants() -> dict[str, Kwargs]:
-        return {
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        return "M1", {
             "M1": {
                 "stem_channels": 6,
                 "stem_groups": (3, 2),

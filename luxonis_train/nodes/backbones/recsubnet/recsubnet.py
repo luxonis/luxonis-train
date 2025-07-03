@@ -7,8 +7,6 @@ from luxonis_train.nodes.blocks import SimpleDecoder, SimpleEncoder
 
 
 class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
-    default_variant = "n"
-
     in_channels: int
 
     def __init__(
@@ -64,8 +62,8 @@ class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
 
     @override
     @staticmethod
-    def get_variants() -> dict[str, Kwargs]:
-        return {
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        return "n", {
             "n": {
                 "base_channels": 64,
                 "width_multipliers": [1, 1.1],

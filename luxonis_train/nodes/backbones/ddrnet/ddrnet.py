@@ -24,7 +24,6 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         - "23": channels=64, high_resolution_channels=128
     """
 
-    default_variant = "23-slim"
     in_channels: int
 
     def __init__(
@@ -300,9 +299,9 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         return f"{{github}}/ddrnet_{variant}_coco.ckpt"
 
     @override
-    def get_variants() -> dict[str, Kwargs]:
-        # TODO: The other init parameters could be here too?
-        return {
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        # TODO: Could the other init parameters be here too?
+        return "23-slim", {
             "23-slim": {
                 "channels": 32,
                 "high_resolution_channels": 64,

@@ -25,7 +25,6 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
         >}
     """
 
-    default_variant = "rec-light"
     in_channels: int
 
     @typechecked
@@ -158,8 +157,8 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
 
     @override
     @staticmethod
-    def get_variants() -> dict[str, Kwargs]:
-        return {
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        return "rec-light", {
             "rec-light": {
                 "scale": 0.95,
                 "n_branches": 4,

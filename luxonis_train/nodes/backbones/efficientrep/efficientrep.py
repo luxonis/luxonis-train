@@ -33,7 +33,6 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
     """
 
     in_channels: int
-    default_variant = "n"
 
     def __init__(
         self,
@@ -147,8 +146,8 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
 
     @staticmethod
     @override
-    def get_variants() -> Kwargs:
-        return add_variant_aliases(
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        return "n", add_variant_aliases(
             {
                 "n": {
                     "depth_multiplier": 0.33,

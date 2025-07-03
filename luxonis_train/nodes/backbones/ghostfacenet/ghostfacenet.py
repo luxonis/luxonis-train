@@ -31,7 +31,6 @@ class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
         <https://www.researchgate.net/publication/369930264_GhostFaceNets_Lightweight_Face_Recognition_Model_from_Cheap_Operations>}
     """
 
-    default_variant = "V2"
     in_channels: int
     in_width: int
 
@@ -146,8 +145,8 @@ class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
     # Can we simplify them?
     @override
     @staticmethod
-    def get_variants() -> dict[str, Kwargs]:
-        return {
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        return "V2", {
             "V2": {
                 "width_multiplier": 1,
                 "kernel_sizes": [

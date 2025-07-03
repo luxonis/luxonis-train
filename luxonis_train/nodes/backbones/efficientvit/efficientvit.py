@@ -35,7 +35,6 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
       - "l" or "large": width_list=[32, 64, 128, 256, 512], depth_list=[1, 4, 6, 6, 9], dim=32
     """
 
-    default_variant = "n"
     in_channels: int
 
     @typechecked
@@ -146,8 +145,8 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
 
     @override
     @staticmethod
-    def get_variants() -> dict[str, Kwargs]:
-        return add_variant_aliases(
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        return "n", add_variant_aliases(
             {
                 "n": {
                     "width_list": [8, 16, 32, 64, 128],

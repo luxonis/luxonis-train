@@ -30,7 +30,6 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0, block=CSPStackRepBlock, e=1/2
     """
 
-    default_variant = "n"
     in_channels: list[int]
     in_width: list[int]
     in_height: list[int]
@@ -197,10 +196,27 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
             )
         return f"{{github}}/reppanneck_{self._variant}_coco.ckpt"
 
+    def forward(self, inputs: list[Tensor]) -> list[Tensor]:
+        x = inputs[-1]
+        up_block_outs: list[Tensor] = []
+        for up_block, input_ in zip(
+            self.up_blocks, inputs[-2::-1], strict=False
+        ):
+            conv_out, x = up_block(x, input_)
+            up_block_outs.append(conv_out)
+
+        outs = [x]
+        for down_block, up_out in zip(
+            self.down_blocks, reversed(up_block_outs), strict=True
+        ):
+            x = down_block(x, up_out)
+            outs.append(x)
+        return outs
+
     @override
     @staticmethod
-    def get_variants() -> dict[str, Kwargs]:
-        return add_variant_aliases(
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        return "n", add_variant_aliases(
             {
                 "n": {
                     "depth_multiplier": 0.33,
@@ -226,23 +242,6 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
                 },
             }
         )
-
-    def forward(self, inputs: list[Tensor]) -> list[Tensor]:
-        x = inputs[-1]
-        up_block_outs: list[Tensor] = []
-        for up_block, input_ in zip(
-            self.up_blocks, inputs[-2::-1], strict=False
-        ):
-            conv_out, x = up_block(x, input_)
-            up_block_outs.append(conv_out)
-
-        outs = [x]
-        for down_block, up_out in zip(
-            self.down_blocks, reversed(up_block_outs), strict=True
-        ):
-            x = down_block(x, up_out)
-            outs.append(x)
-        return outs
 
     def _fit_to_n_heads(
         self, channels_list: list[int], n_repeats: list[int]

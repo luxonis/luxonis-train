@@ -115,7 +115,6 @@ class BaseNode(
 
     attach_index: AttachIndexType = None
     task: Task | None = None
-    default_variant: str | None = None
 
     @typechecked
     def __init__(
@@ -275,7 +274,7 @@ class BaseNode(
             parameters (e.g. due to an invalid variant name).
         """
         try:
-            variants = cls.get_variants()
+            default, variants = cls.get_variants()
         except NotImplementedError:
             if variant == "default":
                 logger.warning(
@@ -293,13 +292,7 @@ class BaseNode(
             ) from None
 
         if variant == "default":
-            if cls.default_variant is None:
-                raise ValueError(
-                    f"Node '{cls.__name__}' does not specify a default variant. "
-                    "Please provide a variant name or specify the "
-                    "`default_variant` class attribute."
-                )
-            variant = cls.default_variant
+            variant = default
 
         if variant not in variants:
             raise ValueError(
@@ -318,7 +311,18 @@ class BaseNode(
         return cls(**params, **kwargs, _variant=variant)
 
     @staticmethod
-    def get_variants() -> dict[str, Kwargs]:
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        """Returns a name of the default varaint and a dictionary of
+        available model variants with their parameters.
+
+        The keys are the variant names, and the values are dictionaries
+        of parameters which can be used as C{**kwargs} for the
+        predefined model constructor.
+
+        @rtype: tuple[str, dict[str, Params]]
+        @return: A tuple containing the default variant name and a
+            dictionary of available variants with their parameters.
+        """
         raise NotImplementedError
 
     @property
