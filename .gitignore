@@ -156,7 +156,5 @@ tests/data
 mlartifacts
 mlruns
 wandb
-tests/_data
-tests/integration/save-directory
-tests/integration/infer-save-directory
+tests/work
 data
