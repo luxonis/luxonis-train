@@ -237,14 +237,16 @@ class BaseNode(
 
         This method should be overridden in subclasses to provide custom
         weight initialization.
+
+        @type method: str | None
+        @param method: Method to use for weight initialization. If set
+            to "yolo", the weights are initialized using the YOLOv5
+            method. Defaults to None, which does not perform any
+            initialization.
         """
         if method == "yolo":
             for m in self.modules():
-                if isinstance(m, nn.Conv2d):
-                    nn.init.kaiming_normal_(
-                        m.weight, mode="fan_out", nonlinearity="relu"
-                    )
-                elif isinstance(m, nn.BatchNorm2d):
+                if isinstance(m, nn.BatchNorm2d):
                     m.eps = 1e-3
                     m.momentum = 3e-2
                 elif isinstance(

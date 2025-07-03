@@ -126,7 +126,7 @@ class LuxonisModel:
             model_tasks = sorted(
                 {node.task_name for node in self.cfg.model.nodes}
             )
-            self.cfg.loader.params["filter_task_names"] = model_tasks  # type: ignore
+            self.cfg.loader.params["filter_task_names"] = model_tasks
 
         for view in ("train", "val", "test"):
             if (
