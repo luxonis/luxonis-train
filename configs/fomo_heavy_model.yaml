@@ -2,8 +2,7 @@ model:
   name: fomo_detection_heavy
   predefined_model:
     name: FOMOModel
-    params:
-      variant: heavy
+    variant: heavy
 
 loader:
   params:

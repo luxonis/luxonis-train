@@ -4,12 +4,15 @@ model:
   name: instance_segmentation_light
   predefined_model:
     name: InstanceSegmentationModel
+    variant: light
     params:
-      variant: light
       loss_params:
-        bbox_loss_weight: 60 # Should be 7.5 * accumulate_grad_batches for best results
-        class_loss_weight: 4 # Should be 0.5 * accumulate_grad_batches for best results
-        dfl_loss_weight: 12 # Should be 1.5 * accumulate_grad_batches for best results
+        # Should be 7.5 * accumulate_grad_batches for best results
+        bbox_loss_weight: 60
+        # Should be 0.5 * accumulate_grad_batches for best results
+        class_loss_weight: 4
+        # Should be 1.5 * accumulate_grad_batches for best results
+        dfl_loss_weight: 12
 
 loader:
   params:
@@ -27,7 +30,7 @@ trainer:
         std: [1, 1, 1]
 
   batch_size: 8
-  epochs: &epochs 300
+  epochs: 300
   n_workers: 4
   validation_interval: 10
   n_log_images: 8
