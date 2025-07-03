@@ -6,7 +6,9 @@ from luxonis_ml.typing import Kwargs
 from luxonis_train.core import LuxonisModel
 
 
-def get_config(image_size: tuple[int, int], batch_size: int) -> Kwargs:
+def get_config(
+    save_dir: Path, image_size: tuple[int, int], batch_size: int
+) -> Kwargs:
     return {
         "model": {
             "name": "DREAM",
@@ -40,7 +42,7 @@ def get_config(image_size: tuple[int, int], batch_size: int) -> Kwargs:
             "n_sanity_val_steps": 0,
         },
         "tracker": {
-            "save_directory": "tests/integration/save-directory",
+            "save_directory": save_dir,
         },
     }
 

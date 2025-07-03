@@ -1,5 +1,4 @@
 import json
-import shutil
 import sys
 import tarfile
 from pathlib import Path
@@ -19,7 +18,7 @@ from .multi_input_modules import *  # noqa: F403
 
 # TODO: We should be able to specify the save
 # directory instead of using the CWD.
-ONNX_PATH = Path("tests/integration/example_multi_input.onnx")
+ONNX_PATH = Path("tests", "work", "example_multi_input.onnx")
 STUDY_PATH = Path("study_local.db")
 
 
@@ -77,6 +76,8 @@ def test_predefined_models(
     subtests: SubTests,
 ):
     config_file = f"configs/{config_name}.yaml"
+    if config_name in {"segmentation_light_model", "segmentation_heavy_model"}:
+        image_size = (64, 128)
     opts = opts | {
         "loader.params.dataset_name": (
             cifar10_dataset.identifier
@@ -139,7 +140,7 @@ def test_custom_tasks(
         model.run_save_dir, "archive", model.cfg.model.name
     ).with_suffix(".onnx.tar.xz")
     correct_archive_config = json.loads(
-        Path("tests/integration/parking_lot.json").read_text()
+        Path("tests", "integration", "parking_lot.json").read_text()
     )
 
     with subtests.test("test_archive"):
@@ -197,25 +198,23 @@ def test_tune(opts: Params, coco_dataset: LuxonisDataset):
 
 
 def test_infer(
+    tempdir: Path,
     coco_dataset: LuxonisDataset,
     infer_path: Path,
     image_size: tuple[int, int],
     subtests: SubTests,
 ):
     loader = LuxonisLoader(coco_dataset)
-    img_dir = Path("tests/data/img_dir")
+    video_path = tempdir / "video.avi"
     video_writer = cv2.VideoWriter(
-        "tests/data/video.avi",  # type: ignore
+        str(video_path),  # type: ignore
         cv2.VideoWriter_fourcc(*"XVID"),
         1,
         (256, 256),
     )
-    if img_dir.exists():  # pragma: no cover
-        shutil.rmtree(img_dir)
-    img_dir.mkdir()
     for i, (img, _) in enumerate(loader):
         img = cv2.resize(img, (256, 256))
-        cv2.imwrite(str(img_dir / f"{i}.jpg"), img)
+        cv2.imwrite(str(tempdir / f"{i}.jpg"), img)
         video_writer.write(img)
     video_writer.release()
 
@@ -227,15 +226,15 @@ def test_infer(
     model = LuxonisModel("configs/complex_model.yaml", opts)
 
     with subtests.test("single_image"):
-        model.infer(source_path=img_dir / "0.jpg", save_dir=infer_path)
+        model.infer(source_path=tempdir / "0.jpg", save_dir=infer_path)
         assert len(list(infer_path.glob("*.png"))) == 3
 
     with subtests.test("image_dir"):
-        model.infer(source_path=img_dir, save_dir=infer_path)
+        model.infer(source_path=tempdir, save_dir=infer_path)
         assert len(list(infer_path.glob("*.png"))) == len(loader) * 3
 
     with subtests.test("video"):
-        model.infer(source_path="tests/data/video.avi", save_dir=infer_path)
+        model.infer(source_path=video_path, save_dir=infer_path)
         assert len(list(infer_path.glob("*.mp4"))) == 3
 
     with subtests.test("loader"):

@@ -32,15 +32,15 @@ def batch_size() -> int:
 def work_dir() -> Generator[Path]:
     path = Path("tests", "work").absolute()
     path.mkdir(parents=True, exist_ok=True)
-    environ.LUXONISML_BASE_PATH = path / "luxonisml"
 
     yield path
 
-    for subdir in path.iterdir():
-        if subdir.is_file():
-            subdir.unlink(missing_ok=True)
-        elif subdir.is_dir() and subdir.name != "luxonisml":
-            shutil.rmtree(subdir, ignore_errors=True)
+    shutil.rmtree(path, ignore_errors=True)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def set_environment(work_dir: Path) -> None:
+    environ.LUXONISML_BASE_PATH = work_dir / "luxonisml"
 
 
 @pytest.fixture

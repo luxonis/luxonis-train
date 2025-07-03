@@ -12,10 +12,10 @@ from luxonis_ml.utils import environ
 from luxonis_train.__main__ import archive, export, inspect, train
 from luxonis_train.__main__ import test as _test
 
-ONNX_PATH = Path("tests/integration/client_commands_test_model.onnx")
+ONNX_PATH = Path("tests", "work", "client_commands_test_model.onnx")
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def prepare():
     os.environ["LUXONISML_BASE_PATH"] = str(environ.LUXONISML_BASE_PATH)
     yield
