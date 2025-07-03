@@ -8,6 +8,7 @@ from luxonis_ml.data import DatasetIterator, LuxonisDataset, LuxonisLoader
 from luxonis_ml.typing import PathType
 
 import luxonis_train as lxt
+from luxonis_train.loaders.luxonis_loader_torch import LuxonisLoaderTorch
 
 from .infer_utils import create_loader_from_directory
 
@@ -60,7 +61,7 @@ def annotate_from_directory(
     annotated_dataset.add(generator)
     annotated_dataset.make_splits()
     luxonis_loader = loader.dataset
-    assert isinstance(luxonis_loader, LuxonisLoader)
+    assert isinstance(luxonis_loader, LuxonisLoaderTorch)
 
     luxonis_loader.dataset.delete_dataset()
 
