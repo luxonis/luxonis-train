@@ -1,187 +1,82 @@
-from typing import Literal
-
 from luxonis_ml.typing import Params
-from pydantic import BaseModel
 
-from luxonis_train.config import (
-    AttachedModuleConfig,
-    LossModuleConfig,
-    MetricModuleConfig,
-    NodeConfig,
-)
+from luxonis_train.config import LossModuleConfig, NodeConfig
 
-from .base_predefined_model import BasePredefinedModel
-
-VariantLiteral = Literal["light", "heavy"]
+from .base_predefined_model import SimplePredefinedModel
 
 
-class SegmentationVariant(BaseModel):
-    backbone: str
-    backbone_params: Params
-    head_params: Params
+class SegmentationModel(SimplePredefinedModel):
+    def __init__(self, aux_head_params: Params | None = None, **kwargs):
+        kwargs = {
+            "backbone": "DDRNet",
+            "head": "DDRNetSegmentationHead",
+            "loss": "OHEMLoss",
+            "metrics": ["JaccardIndex", "F1Score"],
+            "confusion_matrix_available": True,
+            "main_metric": "JaccardIndex",
+            "visualizer": "SegmentationVisualizer",
+            "weights": "download",
+        } | kwargs
+        super().__init__(**kwargs)
 
+        self._use_aux_heads = kwargs.get("use_aux_heads", True)
 
-def get_variant(variant: VariantLiteral) -> SegmentationVariant:
-    """Returns the specific variant configuration for the
-    SegmentationModel."""
-    variants = {
-        "light": SegmentationVariant(
-            backbone="DDRNet",
-            backbone_params={"variant": "23-slim", "weights": "download"},
-            head_params={"weights": "download"},
-        ),
-        "heavy": SegmentationVariant(
-            backbone="DDRNet",
-            backbone_params={"variant": "23", "weights": "download"},
-            head_params={"weights": "download"},
-        ),
-    }
+        self._aux_head_params = aux_head_params or {}
+        if "attach_index" not in self._aux_head_params:
+            self._aux_head_params["attach_index"] = -2
+        if "aux_head" not in self._head_params:
+            self._head_params["attach_index"] = -1
 
-    if variant not in variants:
-        raise ValueError(
-            f"Segmentation variant should be one of {list(variants.keys())}, got '{variant}'."
-        )
+        remove_aux_on_export = self._aux_head_params.pop("use_aux_heads", True)
+        if not isinstance(remove_aux_on_export, bool):
+            raise TypeError(
+                "The `aux_head_params.remove_on_export` parameter "
+                f"must be a boolean. Got `{self._remove_aux_on_export}`."
+            )
+        self._remove_aux_on_export = remove_aux_on_export
 
-    return variants[variant]
-
-
-class SegmentationModel(BasePredefinedModel):
-    def __init__(
-        self,
-        variant: VariantLiteral = "light",
-        backbone: str | None = None,
-        backbone_params: Params | None = None,
-        head_params: Params | None = None,
-        aux_head_params: Params | None = None,
-        loss_params: Params | None = None,
-        visualizer_params: Params | None = None,
-        task: Literal["binary", "multiclass"] | None = None,
-        task_name: str = "",
-        enable_confusion_matrix: bool = True,
-        confusion_matrix_params: Params | None = None,
-    ):
-        var_config = get_variant(variant)
-
-        self.backbone = backbone or var_config.backbone
-        self.backbone_params = (
-            backbone_params
-            if backbone is not None or backbone_params is not None
-            else var_config.backbone_params
-        ) or {}
-        self.head_params = head_params or var_config.head_params
-        self.aux_head_params = aux_head_params or {}
-        self.loss_params = loss_params or {}
-        self.visualizer_params = visualizer_params or {}
-        self.task = task
-        self.task_name = task_name
-        self.enable_confusion_matrix = enable_confusion_matrix
-        self.confusion_matrix_params = confusion_matrix_params or {}
+    @staticmethod
+    def get_variants() -> tuple[str, dict[str, Params]]:
+        return "light", {
+            "light": {
+                "backbone": "DDRNet",
+                "backbone_params": {
+                    "variant": "23-slim",
+                },
+            },
+            "heavy": {
+                "backbone": "DDRNet",
+                "backbone_params": {
+                    "variant": "23",
+                },
+            },
+        }
 
     @property
     def nodes(self) -> list[NodeConfig]:
-        """Defines the model nodes, including backbone and head."""
-        self.head_params.update({"attach_index": -1})
-        self.aux_head_params.update({"attach_index": -2})
-
-        node_list = [
-            NodeConfig(
-                name=self.backbone,
-                freezing=self._get_freezing(self.backbone_params),
-                params=self.backbone_params,
-                task_name=self.task_name,
-            ),
-            NodeConfig(
-                name="DDRNetSegmentationHead",
-                freezing=self._get_freezing(self.head_params),
-                inputs=[self.backbone],
-                params=self.head_params,
-                task_name=self.task_name,
-            ),
-        ]
-        if self.backbone_params.get("use_aux_heads", True):
-            remove_on_export = self.aux_head_params.pop(
-                "remove_on_export", True
-            )
-            if not isinstance(remove_on_export, bool):
-                raise ValueError(
-                    "The 'remove_on_export' parameter must be a boolean. "
-                    f"Got `{remove_on_export}`."
-                )
-            node_list.append(
+        nodes = super().nodes
+        if self._use_aux_heads:
+            nodes.append(
                 NodeConfig(
-                    name="DDRNetSegmentationHead",
-                    freezing=self._get_freezing(self.aux_head_params),
-                    inputs=[self.backbone],
-                    params=self.aux_head_params,
-                    task_name=self.task_name,
-                    remove_on_export=remove_on_export,
+                    name=self._head,
+                    alias=f"{self._head}_aux",
+                    inputs=[self._backbone],
+                    params=self._aux_head_params,
+                    task_name=self._task_name,
+                    remove_on_export=self._remove_aux_on_export,
                 )
             )
-        return node_list
+        return nodes
 
     @property
     def losses(self) -> list[LossModuleConfig]:
-        """Defines the loss module for the segmentation task."""
-        loss_list = [
-            LossModuleConfig(
-                name=(
-                    "OHEMBCEWithLogitsLoss"
-                    if self.task == "binary"
-                    else "OHEMCrossEntropyLoss"
-                ),
-                attached_to="DDRNetSegmentationHead",
-                params=self.loss_params,
-                weight=1.0,
-            )
-        ]
-        if self.backbone_params.get("use_aux_heads", False):
-            loss_list.append(
+        losses = super().losses
+        if self._use_aux_heads:
+            losses.append(
                 LossModuleConfig(
-                    name=(
-                        "OHEMBCEWithLogitsLoss"
-                        if self.task == "binary"
-                        else "OHEMCrossEntropyLoss"
-                    ),
-                    attached_to="DDRNetSegmentationHead_aux",
-                    params=self.loss_params,
+                    name=self._loss,
+                    attached_to=f"{self._head}_aux",
                     weight=0.4,
                 )
             )
-        return loss_list
-
-    @property
-    def metrics(self) -> list[MetricModuleConfig]:
-        """Defines the metrics used for evaluation."""
-        metrics = [
-            MetricModuleConfig(
-                name="JaccardIndex",
-                attached_to="DDRNetSegmentationHead",
-                is_main_metric=True,
-                params={"task": self.task},
-            ),
-            MetricModuleConfig(
-                name="F1Score",
-                attached_to="DDRNetSegmentationHead",
-                params={"task": self.task},
-            ),
-        ]
-        if self.enable_confusion_matrix:
-            metrics.append(
-                MetricModuleConfig(
-                    name="ConfusionMatrix",
-                    attached_to="DDRNetSegmentationHead",
-                    params={**self.confusion_matrix_params},
-                )
-            )
-        return metrics
-
-    @property
-    def visualizers(self) -> list[AttachedModuleConfig]:
-        """Defines the visualizer used for the segmentation task."""
-        return [
-            AttachedModuleConfig(
-                name="SegmentationVisualizer",
-                attached_to="DDRNetSegmentationHead",
-                params=self.visualizer_params,
-            )
-        ]
+        return losses
