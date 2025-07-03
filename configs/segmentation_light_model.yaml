@@ -5,8 +5,7 @@ model:
   name: segmentation_light
   predefined_model:
     name: SegmentationModel
-    params:
-      variant: light
+    variant: light
 
 loader:
   params:

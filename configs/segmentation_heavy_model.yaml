@@ -4,8 +4,7 @@ model:
   name: segmentation_heavy
   predefined_model:
     name: SegmentationModel
-    params:
-      variant: heavy
+    variant: heavy
 
 loader:
   params:

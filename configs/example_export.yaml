@@ -5,10 +5,13 @@ model:
   weights: null  # TODO: Specify a path to the weights here
   predefined_model:
     name: DetectionModel
+    variant: light
     params:
-      variant: light
       head_params:
-       export_output_names: [output1_yolov6r2, output2_yolov6r2, output3_yolov6r2]
+        export_output_names:
+          - output1_yolov6r2
+          - output2_yolov6r2
+          - output3_yolov6r2
 
 loader:
   params:
