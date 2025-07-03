@@ -279,9 +279,8 @@ class VarifocalLoss(nn.Module):
                 self.per_class_weights = self.per_class_weights.to(
                     pred_score.device
                 )
-            weight = weight * self.per_class_weights.view(
-                1, 1, -1
-            )  # ensure correct broadcasting (batches, anchors, classes)
+            # ensure correct broadcasting (batches, anchors, classes)
+            weight = weight * self.per_class_weights.view(1, 1, -1)
 
         with amp.autocast(device_type=pred_score.device.type, enabled=False):
             ce_loss = F.binary_cross_entropy(
