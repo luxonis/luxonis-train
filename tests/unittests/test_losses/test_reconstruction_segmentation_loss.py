@@ -18,7 +18,9 @@ class DummyPrecisionSegmentBBoxHead(DiscSubNetHead, register=False):
 
 
 def test_reconstruction_segmentation_loss():
-    loss = ReconstructionSegmentationLoss(node=DummyPrecisionSegmentBBoxHead())
+    loss = ReconstructionSegmentationLoss(
+        node=DummyPrecisionSegmentBBoxHead(32, [2, 3, 4])
+    )
     (
         predictions,
         reconstructed,

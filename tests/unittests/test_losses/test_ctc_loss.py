@@ -4,20 +4,24 @@ from torch import Size, Tensor
 from luxonis_train.attached_modules.losses import CTCLoss
 from luxonis_train.nodes import OCRCTCHead
 from luxonis_train.tasks import Tasks
+from luxonis_train.typing import Packet
 
 
 class DummyOCRCTCHead(OCRCTCHead, register=False):
     task = Tasks.OCR
     original_in_shape: Size = Size([3, 384, 512])
-    input_shapes = [{"features": [Size([2, 128, 12, 16])]}]
+
+    @property
+    def input_shapes(self) -> list[Packet[Size]]:
+        return [{"features": [Size([2, 128, 12, 16])]}]
 
     def __init__(self, alphabet: str, **kwargs):
-        super().__init__(alphabet=alphabet, **kwargs)
+        super().__init__(alphabet=alphabet.split(), **kwargs)
         self.alphabet = alphabet
         mapping = {c: i for i, c in enumerate(self.alphabet)}
 
         class DummyEncoder:
-            def __init__(self, mapping):
+            def __init__(self, mapping: dict[str, int]):
                 self.char_to_int = mapping
 
             def __call__(self, targets: Tensor) -> Tensor:

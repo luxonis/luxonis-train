@@ -4,6 +4,7 @@ model:
     - name: ResNet
       params:
         variant: "18"
+        weights: "download"
 
     - name: ClassificationHead
 

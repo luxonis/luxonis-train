@@ -12,10 +12,10 @@ from luxonis_ml.utils import environ
 from luxonis_train.__main__ import archive, export, inspect, train
 from luxonis_train.__main__ import test as _test
 
-ONNX_PATH = Path("tests/integration/client_commands_test_model.onnx")
+ONNX_PATH = Path("tests", "work", "client_commands_test_model.onnx")
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="module", autouse=True)
 def prepare():
     os.environ["LUXONISML_BASE_PATH"] = str(environ.LUXONISML_BASE_PATH)
     yield
@@ -78,7 +78,7 @@ def test_cli_command_success(
 def test_cli_command_failure(
     command: Callable, kwargs: Kwargs, coco_dataset: LuxonisDataset
 ) -> None:
-    with pytest.raises(Exception):  # noqa: PT011
+    with pytest.raises(Exception):  # noqa: B017, PT011
         command(
             ["loader.params.dataset_name", coco_dataset.identifier],
             **kwargs,
@@ -163,6 +163,7 @@ class CustomLoss(BaseLoss):
             "LUXONISML_BASE_PATH": str(environ.LUXONISML_BASE_PATH),
             "PYTHONIOENCODING": "utf-8",
         },
+        check=False,
     )
 
     assert result.returncode == 0, (

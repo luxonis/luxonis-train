@@ -7,7 +7,7 @@ from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
 
-ONNX_PATH = Path("tests/integration/ddrnet_segmentation.onnx")
+ONNX_PATH = Path("tests", "work", "ddrnet_segmentation.onnx")
 
 
 @pytest.fixture(autouse=True)

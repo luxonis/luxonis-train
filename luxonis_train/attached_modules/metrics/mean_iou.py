@@ -48,12 +48,11 @@ class MIoU(BaseMetric):
     ) -> Tensor:
         if self.input_format == "index":
             return torch.argmax(tensor, dim=1)
-        elif self.input_format == "one-hot":
-            if not is_target:
-                classes = torch.argmax(tensor, dim=1, keepdim=True)
-                one_hot = torch.zeros_like(tensor)
-                one_hot.scatter_(1, classes, 1)
-                return one_hot
+        if self.input_format == "one-hot" and not is_target:
+            classes = torch.argmax(tensor, dim=1, keepdim=True)
+            one_hot = torch.zeros_like(tensor)
+            one_hot.scatter_(1, classes, 1)
+            return one_hot
         return tensor
 
     def update(self, predictions: Tensor, target: Tensor) -> None:

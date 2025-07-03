@@ -4,7 +4,14 @@ from typing import Annotated, Any, Literal, NamedTuple
 
 from loguru import logger
 from luxonis_ml.enums import DatasetType
-from luxonis_ml.typing import ConfigItem, Params, ParamValue, check_type
+from luxonis_ml.typing import (
+    ConfigItem,
+    Kwargs,
+    Params,
+    ParamValue,
+    PathType,
+    check_type,
+)
 from luxonis_ml.utils import (
     BaseModelExtraForbid,
     Environ,
@@ -72,9 +79,34 @@ class NodeConfig(ConfigItem):
     remove_on_export: bool = False
     task_name: str = ""
     metadata_task_override: str | dict[str, str] | None = None
+    variant: str | Literal["default"] | None = None
+
+    @model_validator(mode="after")
+    def validate_variant(self) -> Self:
+        old_variant = self.params.pop("variant", None)
+        if old_variant is not None and self.variant is not None:
+            raise ValueError(
+                "Both `node.variant` and `node.params.variant` are set for "
+                f"'{self.alias or self.name}'. Please use only one of them. "
+                "Note that `node.params.variant` is deprecated and its use "
+                "will raise an exception in future versions."
+            )
+        if old_variant is not None:
+            if not isinstance(old_variant, str):
+                raise TypeError(
+                    f"Invalid value for `node.params.variant`: {old_variant}. "
+                    "Expected a string."
+                )
+            logger.warning(
+                "Using `node.params.variant` is deprecated. "
+                "Please use `node.variant` field instead."
+            )
+            self.variant = old_variant
+        return self
 
 
 class PredefinedModelConfig(ConfigItem):
+    variant: str | Literal["default", "none"] | None = "default"
     include_nodes: bool = True
     include_losses: bool = True
     include_metrics: bool = True
@@ -134,23 +166,44 @@ class ModelConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_predefined_model(self) -> Self:
-        if self.predefined_model is not None:
-            logger.info(
-                f"Using predefined model: `{self.predefined_model.name}`"
+        if self.predefined_model is None:
+            return self
+
+        if "variant" in self.predefined_model.params:
+            logger.warning(
+                "Using `predefined_model.params.variant` is deprecated. "
+                "Please use `predefined_model.variant` field instead."
             )
-            model = MODELS.get(self.predefined_model.name)(
-                **self.predefined_model.params
-            )
-            nodes, losses, metrics, visualizers = model.generate_model(
-                include_nodes=self.predefined_model.include_nodes,
-                include_losses=self.predefined_model.include_losses,
-                include_metrics=self.predefined_model.include_metrics,
-                include_visualizers=self.predefined_model.include_visualizers,
-            )
-            self.nodes += nodes
-            self.losses += losses
-            self.metrics += metrics
-            self.visualizers += visualizers
+            if self.predefined_model.variant is not None:
+                logger.warning(
+                    "Both `predefined_model.variant` and "
+                    "`predefined_model.params.variant` are set. "
+                    "The `predefined_model.variant` will be used."
+                )
+                del self.predefined_model.params["variant"]
+            else:
+                variant = self.predefined_model.params.pop("variant", None)
+                if not isinstance(variant, str):
+                    raise TypeError(
+                        f"Invalid value for `predefined_model.params.variant`: {variant}. "
+                        "Expected a string."
+                    )
+                self.predefined_model.variant = variant
+
+        logger.info(f"Using predefined model: `{self.predefined_model.name}`")
+        model = MODELS.get(self.predefined_model.name).from_variant(
+            self.predefined_model.variant, **self.predefined_model.params
+        )
+        nodes, losses, metrics, visualizers = model.generate_model(
+            include_nodes=self.predefined_model.include_nodes,
+            include_losses=self.predefined_model.include_losses,
+            include_metrics=self.predefined_model.include_metrics,
+            include_visualizers=self.predefined_model.include_visualizers,
+        )
+        self.nodes += nodes
+        self.losses += losses
+        self.metrics += metrics
+        self.visualizers += visualizers
 
         return self
 
@@ -403,7 +456,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
         return self
 
     @model_serializer
-    def serialize_model(self, info: SerializationInfo):
+    def serialize_model(self, info: SerializationInfo) -> Kwargs:
         data = {
             key: value
             for key, value in self.__dict__.items()
@@ -604,7 +657,7 @@ class Config(LuxonisConfig):
     trainer: TrainerConfig = Field(default_factory=TrainerConfig)
     exporter: ExportConfig = Field(default_factory=ExportConfig)
     archiver: ArchiveConfig = Field(default_factory=ArchiveConfig)
-    tuner: TunerConfig | None = None
+    tuner: TunerConfig = Field(default_factory=TunerConfig)
 
     config_version: str = str(CONFIG_VERSION)
 
@@ -624,9 +677,11 @@ class Config(LuxonisConfig):
     @classmethod
     def get_config(
         cls,
-        cfg: str | Params | None = None,
+        cfg: PathType | Params | None = None,
         overrides: Params | list[str] | tuple[str, ...] | None = None,
     ) -> "Config":
+        if isinstance(cfg, Path):
+            cfg = str(cfg)
         instance = super().get_config(cfg, overrides)
         if not isinstance(cfg, str):
             cls.smart_auto_populate(instance)
