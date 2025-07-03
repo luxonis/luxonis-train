@@ -96,6 +96,12 @@ class EfficientBBoxHead(BaseDetectionHead):
                 nn.init.constant_(module.weight, 0)
                 nn.init.constant_(module.bias, fill_value)
 
+    @override
+    def load_checkpoint(
+        self, path: str | None = None, strict: bool = False
+    ) -> None:
+        return super().load_checkpoint(path, strict)
+
     def forward(
         self, inputs: list[Tensor]
     ) -> tuple[list[Tensor], list[Tensor], list[Tensor]]:

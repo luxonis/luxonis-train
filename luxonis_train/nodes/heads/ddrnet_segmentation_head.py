@@ -90,6 +90,12 @@ class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
         )
 
     @override
+    def load_checkpoint(
+        self, path: str | None = None, strict: bool = False
+    ) -> None:
+        return super().load_checkpoint(path, strict)
+
+    @override
     def get_weights_url(self) -> str | None:
         if self.in_channels == 128:
             variant = "slim"
