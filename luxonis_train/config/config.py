@@ -106,7 +106,7 @@ class NodeConfig(ConfigItem):
 
 
 class PredefinedModelConfig(ConfigItem):
-    variant: str | Literal["default", "none"] | None = "default"
+    variant: str | Literal["default", "none"] | None = None
     include_nodes: bool = True
     include_losses: bool = True
     include_metrics: bool = True
@@ -189,6 +189,10 @@ class ModelConfig(BaseModelExtraForbid):
                         "Expected a string."
                     )
                 self.predefined_model.variant = variant
+
+        self.predefined_model.variant = (
+            self.predefined_model.variant or "default"
+        )
 
         logger.info(f"Using predefined model: `{self.predefined_model.name}`")
         model = MODELS.get(self.predefined_model.name).from_variant(
