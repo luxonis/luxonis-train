@@ -31,6 +31,7 @@ class DebugLoader(BaseLoaderTorch):
         width: int | None = None,
         image_source: str = "image",
         color_space: Literal["RGB", "BGR", "GRAY"] = "RGB",
+        n_keypoints: int = 4,
     ):
         super().__init__(
             view=view,
@@ -39,6 +40,8 @@ class DebugLoader(BaseLoaderTorch):
             image_source=image_source,
             color_space=color_space,
         )
+        self.n_keypoints = n_keypoints
+        self.batch_size = cfg.trainer.batch_size
         self.labels: dict[str, set[str | Metadata]] = defaultdict(set)
         for node in cfg.model.nodes:
             Node = NODES.get(node.name)
@@ -62,7 +65,7 @@ class DebugLoader(BaseLoaderTorch):
 
     @override
     def __len__(self) -> int:
-        return 10
+        return self.batch_size * 10
 
     @override
     def get(self, idx: int) -> tuple[Tensor | dict[str, Tensor], Labels]:
@@ -83,7 +86,7 @@ class DebugLoader(BaseLoaderTorch):
 
     @override
     def get_n_keypoints(self) -> dict[str, int] | None:
-        return dict.fromkeys(self.labels, 3)
+        return dict.fromkeys(self.labels, self.n_keypoints)
 
     def get_label_shapes(
         self, labels: dict[str, set[str | Metadata]]
@@ -102,7 +105,7 @@ class DebugLoader(BaseLoaderTorch):
                     case "boundingbox":
                         shapes[name] = (1, 5)
                     case "keypoints":
-                        shapes[name] = (1, 9)
+                        shapes[name] = (1, self.n_keypoints * 3)
                     case "segmentation" | "instance_segmentation":
                         shapes[name] = (1, self.height, self.width)
                     case _:
