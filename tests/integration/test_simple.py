@@ -531,3 +531,19 @@ def test_annotate_from_directory(
         team_id="test_team",
     )
     assert isinstance(annotated_dataset, LuxonisDataset)
+
+
+def test_debug_mode(opts: Params, subtests: SubTests):
+    config_file = "configs/detection_light_model.yaml"
+    opts = opts | {
+        "loader.params.dataset_name": "invalid_dataset_name",
+        "trainer.epochs": 1,
+        "trainer.batch_size": 1,
+    }
+    model = LuxonisModel(config_file, opts, debug_mode=True)
+
+    with subtests.test("train"):
+        model.train()
+
+    with subtests.test("test"):
+        model.test()

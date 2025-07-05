@@ -1,11 +1,11 @@
 from .base_loader import BaseLoaderTorch, LuxonisLoaderTorchOutput
-from .dummy_loader import DummyLoader
+from .debug_loader import DebugLoader
 from .luxonis_loader_torch import LuxonisLoaderTorch
 from .luxonis_perlin_loader_torch import LuxonisLoaderPerlinNoise
 
 __all__ = [
     "BaseLoaderTorch",
-    "DummyLoader",
+    "DebugLoader",
     "LuxonisLoaderPerlinNoise",
     "LuxonisLoaderTorch",
     "LuxonisLoaderTorchOutput",

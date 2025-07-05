@@ -13,7 +13,7 @@ from luxonis_train.typing import Labels
 from .base_loader import BaseLoaderTorch
 
 
-class DummyLoader(BaseLoaderTorch):
+class DebugLoader(BaseLoaderTorch):
     """A dummy data loader for testing purposes.
 
     It serves as a placeholder in place of C{LuxonisLoaderTorch} when no

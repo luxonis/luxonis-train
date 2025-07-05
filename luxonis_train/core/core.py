@@ -30,7 +30,7 @@ from luxonis_train.config import Config
 from luxonis_train.lightning import LuxonisLightningModule
 from luxonis_train.loaders import (
     BaseLoaderTorch,
-    DummyLoader,
+    DebugLoader,
     LuxonisLoaderTorch,
 )
 from luxonis_train.registry import LOADERS
@@ -181,7 +181,7 @@ class LuxonisModel:
                     f"Failed to initialize loader '{loader_name}' "
                     f"for view '{view}'. Using `DummyLoader` instead."
                 )
-                self.loaders[view] = DummyLoader(
+                self.loaders[view] = DebugLoader(
                     cfg=self.cfg,
                     view={
                         "train": self.cfg.loader.train_view,
