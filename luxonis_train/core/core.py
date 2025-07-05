@@ -28,8 +28,11 @@ from luxonis_train.callbacks import (
 )
 from luxonis_train.config import Config
 from luxonis_train.lightning import LuxonisLightningModule
-from luxonis_train.loaders import BaseLoaderTorch
-from luxonis_train.loaders.luxonis_loader_torch import LuxonisLoaderTorch
+from luxonis_train.loaders import (
+    BaseLoaderTorch,
+    DummyLoader,
+    LuxonisLoaderTorch,
+)
 from luxonis_train.registry import LOADERS
 from luxonis_train.utils import (
     DatasetMetadata,
@@ -72,6 +75,8 @@ class LuxonisModel:
         self,
         cfg: str | Params | Config | None,
         opts: Params | list[str] | tuple[str, ...] | None = None,
+        *,
+        debug_mode: bool = False,
     ):
         """Constructs a new Core instance.
 
@@ -83,12 +88,19 @@ class LuxonisModel:
 
         @type opts: list[str] | tuple[str, ...] | dict[str, Any] | None
         @param opts: Argument dict provided through command line, used for config overriding
+
+        @type debug_mode: bool
+        @param debug_mode: If set to True, enables debug mode which ignores some
+            normaly unrecovarable exceptions and allows to test the model
+            without it being fully functional.
         """
 
         if isinstance(cfg, Config):
             self.cfg = cfg
         else:
             self.cfg = Config.get_config(cfg, opts)
+
+        self.debug_mode = debug_mode
 
         self.cfg_preprocessing = self.cfg.trainer.preprocessing
 
@@ -143,20 +155,44 @@ class LuxonisModel:
             ):
                 self.cfg.loader.params["delete_existing"] = False
 
-            self.loaders[view] = Loader(
-                view={
-                    "train": self.cfg.loader.train_view,
-                    "val": self.cfg.loader.val_view,
-                    "test": self.cfg.loader.test_view,
-                }[view],
-                image_source=self.cfg.loader.image_source,
-                height=self.cfg_preprocessing.train_image_size.height,
-                width=self.cfg_preprocessing.train_image_size.width,
-                augmentation_config=self.cfg_preprocessing.get_active_augmentations(),
-                color_space=self.cfg_preprocessing.color_space,
-                keep_aspect_ratio=self.cfg_preprocessing.keep_aspect_ratio,
-                **self.cfg.loader.params,  # type: ignore
-            )
+            try:
+                self.loaders[view] = Loader(
+                    view={
+                        "train": self.cfg.loader.train_view,
+                        "val": self.cfg.loader.val_view,
+                        "test": self.cfg.loader.test_view,
+                    }[view],
+                    image_source=self.cfg.loader.image_source,
+                    height=self.cfg_preprocessing.train_image_size.height,
+                    width=self.cfg_preprocessing.train_image_size.width,
+                    augmentation_config=self.cfg_preprocessing.get_active_augmentations(),
+                    color_space=self.cfg_preprocessing.color_space,
+                    keep_aspect_ratio=self.cfg_preprocessing.keep_aspect_ratio,
+                    **self.cfg.loader.params,  # type: ignore
+                )
+            except Exception:
+                if not self.debug_mode:
+                    logger.error(
+                        "Unable to initialize loader. If you want to run "
+                        "the model in debug mode, set `debug_mode=True`."
+                    )
+                    raise
+                logger.warning(
+                    f"Failed to initialize loader '{loader_name}' "
+                    f"for view '{view}'. Using `DummyLoader` instead."
+                )
+                self.loaders[view] = DummyLoader(
+                    cfg=self.cfg,
+                    view={
+                        "train": self.cfg.loader.train_view,
+                        "val": self.cfg.loader.val_view,
+                        "test": self.cfg.loader.test_view,
+                    }[view],
+                    image_source=self.cfg.loader.image_source,
+                    height=self.cfg_preprocessing.train_image_size.height,
+                    width=self.cfg_preprocessing.train_image_size.width,
+                    color_space=self.cfg_preprocessing.color_space,
+                )
 
         for name, loader in self.loaders.items():
             logger.info(
