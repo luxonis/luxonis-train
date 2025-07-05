@@ -172,7 +172,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
             zip(bboxes_list, keypoints_list, classes_list, strict=True)
         ):
             for j, (bbox, kpts, class_id) in enumerate(
-                zip(bboxes, keypoints, classes, strict=True)
+                zip(bboxes, keypoints, classes, strict=False)
             ):
                 annotation = {
                     "id": len(annotations) + 1,
