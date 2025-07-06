@@ -181,7 +181,7 @@ class LuxonisModel:
                     f"Failed to initialize loader '{loader_name}' "
                     f"for view '{view}'. Using `DummyLoader` instead."
                 )
-                n_keypoints = self.cfg.loader.params.get("n_keypoints", 4)
+                n_keypoints = self.cfg.loader.params.get("n_keypoints", 3)
                 if not isinstance(n_keypoints, int) or n_keypoints < 1:
                     logger.warning(
                         "Invalid `n_keypoints` value in the config. "
