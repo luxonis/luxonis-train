@@ -31,7 +31,7 @@ class DebugLoader(BaseLoaderTorch):
         width: int | None = None,
         image_source: str = "image",
         color_space: Literal["RGB", "BGR", "GRAY"] = "RGB",
-        n_keypoints: int = 4,
+        n_keypoints: int = 3,
     ):
         super().__init__(
             view=view,
