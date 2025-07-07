@@ -1,5 +1,3 @@
-import os
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -48,7 +46,7 @@ class UploadCheckpoint(pl.Callback):
                 )
                 module.logger.upload_artifact(temp_filename, typ="weights")
 
-                os.remove(temp_filename)
+                Path(temp_filename).unlink(missing_ok=True)
 
                 logger.info("Checkpoint upload finished")
                 self.last_best_checkpoints.add(curr_best_checkpoint)

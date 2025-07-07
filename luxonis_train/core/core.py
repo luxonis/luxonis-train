@@ -19,7 +19,7 @@ from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.typing import Params, PathType
-from luxonis_ml.utils import LuxonisFileSystem
+from luxonis_ml.utils import Environ, LuxonisFileSystem
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
@@ -73,7 +73,7 @@ class LuxonisModel:
 
     def __init__(
         self,
-        cfg: str | Params | Config | None,
+        cfg: PathType | Params | Config | None,
         opts: Params | list[str] | tuple[str, ...] | None = None,
         *,
         debug_mode: bool = False,
@@ -108,7 +108,7 @@ class LuxonisModel:
 
         self.tracker = LuxonisTrackerPL(
             rank=rank_zero_only.rank,
-            mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
+            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
             _auto_finalize=False,
             **self.cfg.tracker.model_dump(),
         )
@@ -422,7 +422,7 @@ class LuxonisModel:
         onnx_save_path = str(export_path.with_suffix(".onnx"))
 
         with replace_weights(self.lightning_module, weights):
-            output_names = self.lightning_module.export_onnx(
+            self.lightning_module.export_onnx(
                 onnx_save_path, **self.cfg.exporter.onnx.model_dump()
             )
 
@@ -672,7 +672,7 @@ class LuxonisModel:
             )
             child_tracker = LuxonisTrackerPL(
                 rank=rank_zero_only.rank,
-                mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
+                mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
                 is_sweep=True,
                 **tracker_params,
             )
@@ -734,7 +734,7 @@ class LuxonisModel:
 
             if cfg.tuner.monitor == "loss":
                 monitor = "val/loss"
-            elif cfg.tuner.monitor == "metric":
+            else:
                 main_metric = next(
                     (m for m in cfg.model.metrics if m.is_main_metric), None
                 )
@@ -755,6 +755,13 @@ class LuxonisModel:
                         ),
                         None,
                     )
+                    if monitor is None:
+                        raise ValueError(
+                            f"Could not find monitor key for main metric '{main_metric.name}' "
+                            f"attached to '{main_metric.attached_to}' in the MLFlow logging keys."
+                        )
+                else:
+                    raise AssertionError
 
             pruner_callback = PyTorchLightningPruningCallback(
                 trial, monitor=monitor
@@ -799,7 +806,7 @@ class LuxonisModel:
         )
         self.parent_tracker = LuxonisTrackerPL(
             rank=rank,
-            mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
+            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
             is_sweep=False,
             **tracker_params,
         )
@@ -820,12 +827,13 @@ class LuxonisModel:
             if cfg_tuner.storage.storage_type == "local":
                 storage = "sqlite:///study_local.db"
             else:  # pragma: no cover
-                storage = "postgresql://{}:{}@{}:{}/{}".format(  # noqa: UP032
-                    self.cfg.ENVIRON.POSTGRES_USER,
-                    self.cfg.ENVIRON.POSTGRES_PASSWORD,
-                    self.cfg.ENVIRON.POSTGRES_HOST,
-                    self.cfg.ENVIRON.POSTGRES_PORT,
-                    self.cfg.ENVIRON.POSTGRES_DB,
+                storage = (
+                    f"postgresql"
+                    f"://{self.environ.POSTGRES_USER}"
+                    f":{self.environ.POSTGRES_PASSWORD}"
+                    f"@{self.environ.POSTGRES_HOST}"
+                    f":{self.environ.POSTGRES_PORT}"
+                    f"/{self.environ.POSTGRES_DB}"
                 )
         study = optuna.create_study(
             study_name=cfg_tuner.study_name,
@@ -975,6 +983,10 @@ class LuxonisModel:
 
         return Path(archive_path)
 
+    @property
+    def environ(self) -> Environ:
+        return self.cfg.ENVIRON
+
     @rank_zero_only
     def get_min_loss_checkpoint_path(self) -> str | None:
         """Return best checkpoint path with respect to minimal
@@ -1007,7 +1019,7 @@ class LuxonisModel:
                 return callback.best_model_path
         return None
 
-    def get_mlflow_logging_keys(self):
+    def get_mlflow_logging_keys(self) -> dict[str, list[str]]:
         """
         Returns a dictionary with two lists of keys:
         1) "metrics"    -> Keys expected to be logged as standard metrics

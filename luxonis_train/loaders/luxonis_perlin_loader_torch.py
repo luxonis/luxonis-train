@@ -114,7 +114,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         return aug_tensor_img, tensor_labels
 
     @override
-    def get_classes(self) -> dict[str, list[str]]:
+    def get_classes(self) -> dict[str, bidict[str, int]]:
         names = ["background", "anomaly"]
         idx_map = bidict({name: i for i, name in enumerate(names)})
         return {self.task_name: idx_map}
@@ -123,7 +123,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
 @contextmanager
 def _freeze_seed() -> Generator:
     python_seed = random.getstate()
-    numpy_seed = np.random.get_state()
+    numpy_seed = np.random.get_state()  # noqa: NPY002
     yield
     random.setstate(python_seed)
-    np.random.set_state(numpy_seed)
+    np.random.set_state(numpy_seed)  # noqa: NPY002

@@ -3,8 +3,7 @@ from typing import Literal
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.nodes.activations import HSigmoid
-from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.nodes.blocks import ConvBlock
 
 
 class MicroBlock(nn.Module):
@@ -105,6 +104,12 @@ class MicroBlock(nn.Module):
                 init_b,
             )
 
+    def forward(self, inputs: Tensor) -> Tensor:
+        out = self.layers(inputs)
+        if self.use_residual:
+            out += inputs
+        return out
+
     def _create_lite_block(
         self,
         in_channels: int,
@@ -130,7 +135,7 @@ class MicroBlock(nn.Module):
                 intermediate_channels,
                 init_a,
                 init_b,
-                True if use_dy2 == 2 else False,
+                use_dy2 == 2,
                 group1,
                 reduction,
             )
@@ -140,12 +145,12 @@ class MicroBlock(nn.Module):
             ChannelShuffle(intermediate_channels // 2)
             if use_dy2 != 0
             else nn.Sequential(),
-            ConvModule(
+            ConvBlock(
                 in_channels=intermediate_channels,
                 out_channels=out_channels,
                 kernel_size=1,
                 groups=group2,
-                activation=False,
+                activation=None,
             ),
             DYShiftMax(
                 out_channels,
@@ -174,12 +179,12 @@ class MicroBlock(nn.Module):
         reduction: int,
     ) -> nn.Sequential:
         return nn.Sequential(
-            ConvModule(
+            ConvBlock(
                 in_channels=in_channels,
                 out_channels=intermediate_channels,
                 kernel_size=1,
                 groups=group1,
-                activation=False,
+                activation=None,
             ),
             DYShiftMax(
                 intermediate_channels,
@@ -212,19 +217,19 @@ class MicroBlock(nn.Module):
         init_b: tuple[float, float],
     ) -> nn.Sequential:
         return nn.Sequential(
-            ConvModule(
+            ConvBlock(
                 in_channels=in_channels,
                 out_channels=intermediate_channels,
                 kernel_size=1,
                 groups=groups_1[0],
-                activation=False,
+                activation=None,
             ),
             DYShiftMax(
                 intermediate_channels,
                 intermediate_channels,
                 init_a,
                 init_b,
-                True if use_dy1 == 2 else False,
+                use_dy1 == 2,
                 groups_1[1],
                 reduction,
             )
@@ -239,7 +244,7 @@ class MicroBlock(nn.Module):
                 intermediate_channels,
                 init_a,
                 init_b,
-                True if use_dy2 == 2 else False,
+                use_dy2 == 2,
                 groups_1[1],
                 reduction,
                 True,
@@ -251,12 +256,12 @@ class MicroBlock(nn.Module):
             else nn.Sequential()
             if use_dy1 == 0 and use_dy2 == 0
             else ChannelShuffle(intermediate_channels // 2),
-            ConvModule(
+            ConvBlock(
                 in_channels=intermediate_channels,
                 out_channels=out_channels,
                 kernel_size=1,
                 groups=group1,
-                activation=False,
+                activation=None,
             ),
             DYShiftMax(
                 out_channels,
@@ -276,12 +281,6 @@ class MicroBlock(nn.Module):
             if use_dy3 != 0
             else nn.Sequential(),
         )
-
-    def forward(self, inputs: Tensor) -> Tensor:
-        out = self.layers(inputs)
-        if self.use_residual:
-            out += inputs
-        return out
 
 
 class ChannelShuffle(nn.Module):
@@ -304,8 +303,7 @@ class ChannelShuffle(nn.Module):
         channels_per_group = channels // self.groups
         x = x.view(batch_size, self.groups, channels_per_group, height, width)
         x = torch.transpose(x, 1, 2).contiguous()
-        out = x.view(batch_size, -1, height, width)
-        return out
+        return x.view(batch_size, -1, height, width)
 
 
 class DYShiftMax(nn.Module):
@@ -361,9 +359,9 @@ class DYShiftMax(nn.Module):
 
         self.fc = nn.Sequential(
             nn.Linear(in_channels, squeeze_channels),
-            nn.ReLU(True),
+            nn.ReLU(),
             nn.Linear(squeeze_channels, out_channels * self.exp),
-            HSigmoid(),
+            nn.Hardsigmoid(),
         )
 
         if groups != 1 and expansion:
@@ -385,7 +383,7 @@ class DYShiftMax(nn.Module):
         x_out = x
 
         y = self.avg_pool(x).view(batch_size, channels)
-        y = self.fc(y).view(batch_size, -1, 1, 1)
+        y: Tensor = self.fc(y).view(batch_size, -1, 1, 1)
         y = (y - 0.5) * 4.0
 
         x2 = x_out[:, self.index, :, :]
@@ -404,7 +402,7 @@ class DYShiftMax(nn.Module):
             out = torch.max(z1, z2)
 
         elif self.exp == 2:
-            a1, b1 = torch.split(y, self.out_channels, dim=1)
+            a1, b1 = y.split(self.out_channels, dim=1)
             a1 = a1 + self.init_a[0]
             b1 = b1 + self.init_b[0]
             out = x_out * a1 + x2 * b1

@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Annotated, Literal
 
 import requests
 from cyclopts import App, Group, Parameter
-from loguru import logger
 
 if TYPE_CHECKING:
     from luxonis_train import LuxonisModel

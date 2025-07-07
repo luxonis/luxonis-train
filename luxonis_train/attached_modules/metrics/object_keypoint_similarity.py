@@ -90,7 +90,12 @@ class ObjectKeypointSimilarity(BaseMetric):
         self.sigmas = self.sigmas.to(self.device)
         mean_oks = torch.zeros(len(self.target_keypoints))
         for i, (pred_kpts, target_kpts, scales) in enumerate(
-            zip(self.pred_keypoints, self.target_keypoints, self.scales)
+            zip(
+                self.pred_keypoints,
+                self.target_keypoints,
+                self.scales,
+                strict=True,
+            )
         ):
             image_ious = compute_pose_oks(
                 pred_kpts.unsqueeze(0),
@@ -104,7 +109,8 @@ class ObjectKeypointSimilarity(BaseMetric):
                 image_ious.cpu().numpy(), maximize=True
             )
             matched_ious = [
-                image_ious[n, m] for n, m in zip(gt_indices, pred_indices)
+                image_ious[n, m]
+                for n, m in zip(gt_indices, pred_indices, strict=True)
             ]
             mean_oks[i] = torch.tensor(matched_ious).mean()
 
