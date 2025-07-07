@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import cv2
 import numpy as np
 
@@ -7,9 +5,9 @@ import numpy as np
 def compute_ratio_and_padding(
     orig_h: int,
     orig_w: int,
-    train_size: Tuple[int, int],
+    train_size: tuple[int, int],
     keep_aspect_ratio: bool,
-) -> Tuple[float, float, float]:
+) -> tuple[float, float, float]:
     """Computes the ratio and padding needed to transform bounding
     boxes, keypoints, and masks."""
     train_h, train_w = train_size
@@ -27,7 +25,7 @@ def transform_boxes(
     raw_boxes: np.ndarray,
     orig_h: int,
     orig_w: int,
-    train_size: Tuple[int, int],
+    train_size: tuple[int, int],
     keep_aspect_ratio: bool,
 ) -> np.ndarray:
     """Transforms raw bounding boxes to normalized coordinates based on
@@ -53,7 +51,7 @@ def transform_keypoints(
     raw_kpts: np.ndarray,
     orig_h: int,
     orig_w: int,
-    train_size: Tuple[int, int],
+    train_size: tuple[int, int],
     keep_aspect_ratio: bool,
 ) -> np.ndarray:
     """Transforms raw keypoints to normalized coordinates based on the
@@ -77,7 +75,7 @@ def transform_masks(
     raw_masks: np.ndarray,
     orig_h: int,
     orig_w: int,
-    train_size: Tuple[int, int],
+    train_size: tuple[int, int],
     keep_aspect_ratio: bool,
 ) -> np.ndarray:
     """Transforms raw masks to normalized size based on the original

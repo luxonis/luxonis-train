@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 import torch
 import torch.utils.data as torch_data
-from luxonis_ml.data import Category, DatasetIterator, LuxonisDataset
+from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from luxonis_ml.typing import PathType
 from torch import Tensor
 
@@ -220,14 +220,12 @@ def create_loader_from_directory(
         color_space=model.cfg_preprocessing.color_space,
         keep_aspect_ratio=model.cfg_preprocessing.keep_aspect_ratio,
     )
-    loader = torch_data.DataLoader(
+    return torch_data.DataLoader(
         loader,
         batch_size=model.cfg.trainer.batch_size,
         pin_memory=True,
         shuffle=False,
     )
-
-    return loader
 
 
 def infer_from_directory(
