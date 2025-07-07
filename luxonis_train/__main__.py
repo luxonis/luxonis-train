@@ -28,11 +28,13 @@ management_group = Group.create_ordered("Management")
 annotation_group = Group.create_ordered("Annotation")
 
 
-def create_model(config: str | None, opts: list[str] | None) -> "LuxonisModel":
+def create_model(
+    config: str | None, opts: list[str] | None, debug_mode: bool = False
+) -> "LuxonisModel":
     importlib.reload(sys.modules["luxonis_train"])
     from luxonis_train import LuxonisModel
 
-    return LuxonisModel(config, opts)
+    return LuxonisModel(config, opts, debug_mode=debug_mode)
 
 
 @app.command(group=training_group, sort_key=1)
@@ -42,6 +44,7 @@ def train(
     *,
     config: str | None = None,
     weights: str | None = None,
+    debug: bool = False,
 ):
     """Start the training process.
 
@@ -51,8 +54,12 @@ def train(
     @param weights: Path to the model weights.
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
+    @type debug: bool
+    @param debug: If True, the training will run in debug mode which
+        suppresses some exceptions to allow training without a fully
+        defined model.
     """
-    create_model(config, opts).train(weights=weights)
+    create_model(config, opts, debug).train(weights=weights)
 
 
 @app.command(group=training_group, sort_key=2)
@@ -136,6 +143,7 @@ def test(
     config: str | None = None,
     view: Literal["train", "val", "test"] = "val",
     weights: str | None = None,
+    debug: bool = False,
 ):
     """Evaluate a trained model.
 
@@ -149,8 +157,12 @@ def test(
     @param weights: Path to the model weights.
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
+    @type debug: bool
+    @param debug: If True, the training will run in debug mode which
+        suppresses some exceptions to allow training without a fully
+        defined model.
     """
-    create_model(config, opts).test(view=view, weights=weights)
+    create_model(config, opts, debug).test(view=view, weights=weights)
 
 
 @app.command(group=evaluation_group, sort_key=2)
