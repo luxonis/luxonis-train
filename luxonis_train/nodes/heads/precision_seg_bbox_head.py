@@ -24,7 +24,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         self,
         n_heads: Literal[2, 3, 4] = 3,
         n_masks: int = 32,
-        n_proto: int = 256,
+        n_proto: int = 64,
         conf_thres: float = 0.25,
         iou_thres: float = 0.45,
         max_det: int = 300,

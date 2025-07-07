@@ -132,6 +132,7 @@ The CLI is the most straightforward way how to use `LuxonisTrain`. The CLI provi
 - `archive` - Create an `NN Archive` file that can be used with our `DepthAI` API (coming soon)
 - `tune` - Tune the hyperparameters of the model for better performance
 - `inspect` - Inspect the dataset you are using and visualize the annotations
+- `annotate` - Annotate a directory using the model’s predictions and generate a new LDF.
 
 **To get help on any command:**
 

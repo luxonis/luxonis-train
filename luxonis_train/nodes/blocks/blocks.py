@@ -28,14 +28,10 @@ class PreciseDecoupledBlock(nn.Module):
         self.classification_branch = nn.Sequential(
             ConvBlock(
                 in_channels,
-                in_channels,
+                cls_channels,
                 kernel_size=3,
                 padding=1,
                 activation=nn.SiLU(),
-                groups=in_channels,
-            ),
-            ConvBlock(
-                in_channels, cls_channels, kernel_size=1, activation=nn.SiLU()
             ),
             ConvBlock(
                 cls_channels,
@@ -43,10 +39,6 @@ class PreciseDecoupledBlock(nn.Module):
                 kernel_size=3,
                 padding=1,
                 activation=nn.SiLU(),
-                groups=cls_channels,
-            ),
-            ConvBlock(
-                cls_channels, cls_channels, kernel_size=1, activation=nn.SiLU()
             ),
             nn.Conv2d(cls_channels, n_classes, kernel_size=1),
         )

@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 import torch
 import torch.utils.data as torch_data
-from luxonis_ml.data import DatasetIterator, LuxonisDataset
+from luxonis_ml.data import Category, DatasetIterator, LuxonisDataset
 from luxonis_ml.typing import PathType
 from torch import Tensor
 
@@ -179,6 +179,57 @@ def infer_from_loader(
     cv2.destroyAllWindows()
 
 
+def create_loader_from_directory(
+    img_paths: Iterable[PathType],
+    model: "lxt.LuxonisModel",
+    add_path_annotation: bool = False,
+) -> torch_data.DataLoader:
+    """Creates a DataLoader from a directory of images.
+
+    @type img_paths: Iterable[PathType]
+    @param img_paths: Iterable of paths to the images.
+    @type model: L{LuxonisModel}
+    @param model: The model to use for inference.
+    @type add_path_annotation: bool
+    @param add_path_annotation: Whether to add the image path as an
+        annotation in the dataset.
+    @rtype: torch_data.DataLoader
+    @return: The DataLoader for the images.
+    """
+    dataset_name = "infer_from_directory"
+    dataset = LuxonisDataset(dataset_name=dataset_name, delete_local=True)
+
+    def generator() -> DatasetIterator:
+        for img_path in img_paths:
+            data = {"file": img_path}
+            if add_path_annotation:
+                data["annotation"] = {"metadata": {"path": str(img_path)}}
+            yield data
+
+    dataset.add(generator())
+    dataset.make_splits(
+        {"train": 0.0, "val": 0.0, "test": 1.0}, replace_old_splits=True
+    )
+
+    loader = LuxonisLoaderTorch(
+        dataset_name=dataset_name,
+        view="test",
+        height=model.cfg_preprocessing.train_image_size.height,
+        width=model.cfg_preprocessing.train_image_size.width,
+        augmentation_config=model.cfg_preprocessing.get_active_augmentations(),
+        color_space=model.cfg_preprocessing.color_space,
+        keep_aspect_ratio=model.cfg_preprocessing.keep_aspect_ratio,
+    )
+    loader = torch_data.DataLoader(
+        loader,
+        batch_size=model.cfg.trainer.batch_size,
+        pin_memory=True,
+        shuffle=False,
+    )
+
+    return loader
+
+
 def infer_from_directory(
     model: "lxt.LuxonisModel",
     img_paths: Iterable[PathType],
@@ -195,33 +246,11 @@ def infer_from_directory(
     """
     img_paths = list(img_paths)
 
-    def generator() -> DatasetIterator:
-        for img_path in img_paths:
-            yield {"file": img_path}
-
-    dataset_name = "infer_from_directory"
-    dataset = LuxonisDataset(dataset_name=dataset_name, delete_local=True)
-    dataset.add(generator())
-    dataset.make_splits(
-        {"train": 0.0, "val": 0.0, "test": 1.0}, replace_old_splits=True
-    )
-
-    loader = LuxonisLoaderTorch(
-        dataset_name=dataset_name,
-        view="test",
-        height=model.cfg_preprocessing.train_image_size.height,
-        width=model.cfg_preprocessing.train_image_size.width,
-        augmentation_config=model.cfg_preprocessing.get_active_augmentations(),
-        color_space=model.cfg_preprocessing.color_space,
-        keep_aspect_ratio=model.cfg_preprocessing.keep_aspect_ratio,
-    )
-    loader = torch_data.DataLoader(
-        loader, batch_size=model.cfg.trainer.batch_size, pin_memory=True
-    )
+    loader = create_loader_from_directory(img_paths, model)
 
     infer_from_loader(model, loader, save_dir, img_paths)
 
-    dataset.delete_dataset()
+    loader.dataset.dataset.delete_dataset()
 
 
 def infer_from_dataset(
