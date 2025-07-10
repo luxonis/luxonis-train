@@ -13,6 +13,7 @@ from luxonis_ml.utils import environ
 from pytest_subtests import SubTests
 from tensorboard.backend.event_processing import event_accumulator
 
+from luxonis_train.config import Config
 from luxonis_train.core import LuxonisModel
 
 from .multi_input_modules import *
@@ -296,6 +297,15 @@ def test_callbacks(opts: Params, coco_dataset: LuxonisDataset):
     }
     model = LuxonisModel(config_file, opts)
     model.train()
+    ckpt_path = model.get_best_metric_checkpoint_path()
+    assert ckpt_path is not None, "No checkpoint found after training"
+    ckpt = torch.load(ckpt_path, map_location="cpu")
+    assert "execution_order" in ckpt
+    with open("tests/files/execution_order.json", "r") as f:
+        assert ckpt["execution_order"] == json.load(f)
+    assert "lxt_config" in ckpt
+    Config.get_config(ckpt["lxt_config"])
+    assert model.cfg.model_dump(exclude={"ENVIRON"}) == ckpt["lxt_config"]
 
 
 @pytest.mark.parametrize(
