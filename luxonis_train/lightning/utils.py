@@ -21,6 +21,7 @@ from torch.optim.lr_scheduler import (
 )
 from torch.optim.optimizer import Optimizer
 
+import luxonis_train as lxt
 from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
 from luxonis_train.callbacks import LuxonisRichModelSummary, TrainingManager
 from luxonis_train.config import AttachedModuleConfig, Config
@@ -638,3 +639,51 @@ def log_sequential_images(
                 node_logged_images += 1
 
     return node_logged_images
+
+
+def get_model_execution_order(
+    model: "lxt.LuxonisLightningModule",
+) -> dict[Literal["train", "test", "export"], list[str]]:
+    """Get the execution order of the model's nodes."""
+
+    order_dict = {"train": [], "test": [], "export": []}
+    if model._export:
+        orig_mode = "export"
+    else:
+        orig_mode = "train" if model.training else "test"
+
+    for mode in ["train", "test", "export"]:
+        handles = []
+        if mode == "export":
+            model.set_export_mode(mode=True)
+        elif mode == "train":
+            model.train()
+        else:
+            model.eval()
+
+        for name, module in model.named_modules():
+            if name and list(module.parameters()):
+                handle = module.register_forward_hook(
+                    lambda mod, inp, out, n=name: order_dict[mode].append(n)
+                )
+                handles.append(handle)
+
+        with torch.no_grad():
+            dummy_inputs = {
+                input_name: torch.zeros(1, *shape, device=model.device)
+                for shapes in model.nodes.input_shapes.values()
+                for input_name, shape in shapes.items()
+            }
+            model(dummy_inputs)
+
+        for handle in handles:
+            handle.remove()
+
+    if orig_mode == "export":
+        model.set_export_mode(mode=True)
+    elif orig_mode == "train":
+        model.train()
+    else:
+        model.eval()
+
+    return order_dict  # type: ignore
