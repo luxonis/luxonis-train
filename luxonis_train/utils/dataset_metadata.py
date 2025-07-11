@@ -44,8 +44,8 @@ class DatasetMetadata:
         @return: Dictionary containing the metadata.
         """
         return {
-            "classes": self._classes,
-            "n_keypoints": self._n_keypoints,
+            "classes": {k: dict(v) for k, v in self._classes.items()},
+            "n_keypoints": dict(self._n_keypoints),
             "metadata_types": {
                 k: v.__name__ for k, v in self._metadata_types.items()
             },
