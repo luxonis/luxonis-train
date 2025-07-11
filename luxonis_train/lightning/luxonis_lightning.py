@@ -275,20 +275,7 @@ class LuxonisLightningModule(pl.LightningModule):
             outputs=outputs_dict, losses=losses, visualizations=visualizations
         )
 
-    @override
-    def train(self, mode: bool = True) -> Self:
-        if self._export:
-            self.set_export_mode(mode=False)
-        return super().train(mode)
-
-    @override
-    def eval(self) -> Self:
-        if self._export:
-            self.set_export_mode(mode=False)
-        return super().eval()
-
     def set_export_mode(self, *, mode: bool) -> None:
-        self._export = mode
         for module in self.modules():
             if isinstance(module, BaseNode):
                 module.set_export_mode(mode=mode)
