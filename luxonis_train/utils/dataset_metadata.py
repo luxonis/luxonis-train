@@ -2,7 +2,6 @@ from typing import Any
 
 from bidict import bidict
 from luxonis_ml.data import Category
-from luxonis_ml.typing import Params
 
 from luxonis_train.loaders import BaseLoaderTorch
 
@@ -47,7 +46,9 @@ class DatasetMetadata:
         return {
             "classes": self._classes,
             "n_keypoints": self._n_keypoints,
-            "metadata_types": self._metadata_types,
+            "metadata_types": {
+                k: v.__name__ for k, v in self._metadata_types.items()
+            },
         }
 
     @property
