@@ -265,7 +265,7 @@ def test_archive(output_dir: Path, coco_dataset: LuxonisDataset):
     )
 
 
-def test_callbacks(opts: Params):
+def test_callbacks(opts: Params, coco_dataset: LuxonisDataset):
     config_file = "tests/configs/config_simple.yaml"
     opts = opts | {
         "trainer.use_rich_progress_bar": False,
@@ -293,6 +293,7 @@ def test_callbacks(opts: Params):
         "exporter.scale_values": [0.5, 0.5, 0.5],
         "exporter.mean_values": [0.5, 0.5, 0.5],
         "exporter.blobconverter.active": True,
+        "loader.params.dataset_name": coco_dataset.identifier,
     }
     model = LuxonisModel(config_file, opts, debug_mode=True)
     model.train()
@@ -311,8 +312,8 @@ def test_callbacks(opts: Params):
 
     assert "dataset_metadata" in ckpt
     assert ckpt["dataset_metadata"] == {
-        "classes": {"": {"x": 0}},
-        "n_keypoints": {"": 3},
+        "classes": {"": {"person": 0}},
+        "n_keypoints": {"": 17},
         "metadata_types": {},
     }
 
