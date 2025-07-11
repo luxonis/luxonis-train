@@ -658,7 +658,7 @@ def get_model_execution_order(
 
     with torch.no_grad():
         dummy_inputs = {
-            input_name: torch.zeros(1, *shape, device=model.device)
+            input_name: torch.zeros(2, *shape, device=model.device)
             for shapes in model.nodes.input_shapes.values()
             for input_name, shape in shapes.items()
         }
