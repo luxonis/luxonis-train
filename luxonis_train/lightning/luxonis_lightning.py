@@ -562,9 +562,7 @@ class LuxonisLightningModule(pl.LightningModule):
     @override
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         checkpoint["execution_order"] = get_model_execution_order(self)
-        checkpoint["lxt_config"] = self.cfg.model_dump(
-            mode="json", exclude={"ENVIRON"}
-        )
+        checkpoint["lxt_config"] = self.cfg.model_dump(mode="json")
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:

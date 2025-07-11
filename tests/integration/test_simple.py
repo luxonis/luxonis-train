@@ -304,8 +304,8 @@ def test_callbacks(opts: Params, coco_dataset: LuxonisDataset):
     with open("tests/files/execution_order.json", "r") as f:
         assert ckpt["execution_order"] == json.load(f)
     assert "lxt_config" in ckpt
-    Config.get_config(ckpt["lxt_config"])
-    assert model.cfg.model_dump(exclude={"ENVIRON"}) == ckpt["lxt_config"]
+    cfg = Config.get_config(ckpt["lxt_config"])
+    assert model.cfg.model_dump() == cfg.model_dump()
 
 
 @pytest.mark.parametrize(
