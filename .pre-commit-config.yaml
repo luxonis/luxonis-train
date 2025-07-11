@@ -43,6 +43,11 @@ repos:
       - id: mixed-line-ending
       - id: check-yaml
       - id: check-json
+      - id: pretty-format-json
+        args:
+          - "--autofix"
+          - "--indent=4"
+          - "--no-sort-keys"
       - id: detect-private-key
       - id: check-toml
       - id: no-commit-to-branch
