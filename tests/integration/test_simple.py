@@ -265,7 +265,7 @@ def test_archive(output_dir: Path, coco_dataset: LuxonisDataset):
     )
 
 
-def test_callbacks(opts: Params, coco_dataset: LuxonisDataset):
+def test_callbacks(opts: Params):
     config_file = "tests/configs/config_simple.yaml"
     opts = opts | {
         "trainer.use_rich_progress_bar": False,
@@ -292,20 +292,29 @@ def test_callbacks(opts: Params, coco_dataset: LuxonisDataset):
         ],
         "exporter.scale_values": [0.5, 0.5, 0.5],
         "exporter.mean_values": [0.5, 0.5, 0.5],
-        "exporter.blobconverter.active": True,
-        "loader.params.dataset_name": coco_dataset.identifier,
+        # "exporter.blobconverter.active": True,
     }
-    model = LuxonisModel(config_file, opts)
+    model = LuxonisModel(config_file, opts, debug_mode=True)
     model.train()
+
     ckpt_path = model.get_best_metric_checkpoint_path()
     assert ckpt_path is not None, "No checkpoint found after training"
     ckpt = torch.load(ckpt_path, map_location="cpu")
+
     assert "execution_order" in ckpt
     with open("tests/files/execution_order.json", "r") as f:
         assert ckpt["execution_order"] == json.load(f)
-    assert "lxt_config" in ckpt
-    cfg = Config.get_config(ckpt["lxt_config"])
+
+    assert "config" in ckpt
+    cfg = Config.get_config(ckpt["config"])
     assert model.cfg.model_dump() == cfg.model_dump()
+
+    assert "dataset_metadata" in ckpt
+    assert ckpt["dataset_metadata"] == {
+        "classes": {"": {"x": 0}},
+        "n_keypoints": {"": 3},
+        "metadata_types": {},
+    }
 
 
 @pytest.mark.parametrize(

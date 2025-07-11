@@ -1,5 +1,8 @@
+from typing import Any
+
 from bidict import bidict
 from luxonis_ml.data import Category
+from luxonis_ml.typing import Params
 
 from luxonis_train.loaders import BaseLoaderTorch
 
@@ -34,6 +37,18 @@ class DatasetMetadata:
         self._n_keypoints = n_keypoints or {}
         self._metadata_types = metadata_types or {}
         self._loader = loader
+
+    def dump(self) -> dict[str, Any]:
+        """Dumps the metadata to a dictionary.
+
+        @rtype: dict[str, dict[str, int] | int | dict[str, type]]
+        @return: Dictionary containing the metadata.
+        """
+        return {
+            "classes": self._classes,
+            "n_keypoints": self._n_keypoints,
+            "metadata_types": self._metadata_types,
+        }
 
     @property
     def task_names(self) -> set[str]:
