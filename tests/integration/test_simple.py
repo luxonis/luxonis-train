@@ -292,7 +292,7 @@ def test_callbacks(opts: Params):
         ],
         "exporter.scale_values": [0.5, 0.5, 0.5],
         "exporter.mean_values": [0.5, 0.5, 0.5],
-        # "exporter.blobconverter.active": True,
+        "exporter.blobconverter.active": True,
     }
     model = LuxonisModel(config_file, opts, debug_mode=True)
     model.train()
