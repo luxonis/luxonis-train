@@ -5,8 +5,8 @@ model:
   name: detection_light
   predefined_model:
     name: DetectionModel
+    variant: light
     params:
-      variant: light
       loss_params:
         iou_type: "siou"
 
