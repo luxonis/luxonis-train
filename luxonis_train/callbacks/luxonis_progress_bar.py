@@ -57,7 +57,7 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
     def _log_progress(self, trainer: pl.Trainer) -> None:
         duration = (
             time.time() - self._epoch_start_time
-            if self._epoch_start_time
+            if hasattr(self, "_epoch_start_time")
             else 0.0
         )
         # Get last loss
