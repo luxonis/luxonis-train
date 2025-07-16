@@ -27,7 +27,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         update_mode: Literal["all", "missing"] = "all",
         delete_existing: bool = True,
         filter_task_names: list[str] | None = None,
-        min_bbox_visibility: float = 0.0
+        min_bbox_visibility: float = 0.0,
         bbox_area_threshold: float = 0.0004,
         seed: int | None = None,
         **kwargs,
