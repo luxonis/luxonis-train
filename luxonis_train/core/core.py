@@ -168,6 +168,7 @@ class LuxonisModel:
                     augmentation_config=self.cfg_preprocessing.get_active_augmentations(),
                     color_space=self.cfg_preprocessing.color_space,
                     keep_aspect_ratio=self.cfg_preprocessing.keep_aspect_ratio,
+                    seed=self.cfg.trainer.seed,
                     **self.cfg.loader.params,  # type: ignore
                 )
             except Exception:
