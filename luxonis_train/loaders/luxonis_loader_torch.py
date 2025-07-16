@@ -27,6 +27,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         update_mode: Literal["all", "missing"] = "all",
         delete_existing: bool = True,
         filter_task_names: list[str] | None = None,
+        min_bbox_visibility: float = 0.0
         bbox_area_threshold: float = 0.0004,
         seed: int | None = None,
         **kwargs,
@@ -75,11 +76,13 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             dataset by. If provided, only the tasks with the specified
             names will be loaded. If not provided, all tasks will be
             loaded.
-        @type seed: Optional[int]
-        @param seed: The random seed to use for the augmentations.
+        @type min_bbox_visibility: float
+        @param min_bbox_visibility: Minimum fraction of the original bounding box that must remain visible after augmentation.
         @type bbox_area_threshold: float
         @param bbox_area_threshold: Minimum area threshold for bounding boxes to be considered valid. In the range [0, 1].
             Default is 0.0004, which corresponds to a small area threshold to remove invalid bboxes and respective keypoints.
+        @type seed: Optional[int]
+        @param seed: The random seed to use for the augmentations.
         """
         super().__init__(**kwargs)
         if dataset_dir is not None:
@@ -110,6 +113,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             color_space=self.color_space,
             update_mode=update_mode,
             filter_task_names=filter_task_names,
+            min_bbox_visibility=min_bbox_visibility,
             bbox_area_threshold=bbox_area_threshold,
             seed=seed,
         )
