@@ -13,6 +13,7 @@ from luxonis_ml.utils import environ
 from pytest_subtests import SubTests
 from tensorboard.backend.event_processing import event_accumulator
 
+from luxonis_train.callbacks import LuxonisRichProgressBar
 from luxonis_train.config import Config
 from luxonis_train.core import LuxonisModel
 
@@ -567,3 +568,22 @@ def test_debug_mode(opts: Params, subtests: SubTests):
 
     with subtests.test("test"):
         model.test()
+
+
+def test_rich_progress_bar(coco_dataset: LuxonisDataset):
+    progress_bar = LuxonisRichProgressBar()
+
+    config = "configs/detection_light_model.yaml"
+    opts = {
+        "loader.params.dataset_name": coco_dataset.identifier,
+    }
+    model = LuxonisModel(config)
+
+    try:
+        progress_bar.on_train_epoch_end(
+            model.pl_trainer, model.lightning_module
+        )
+    except Exception as e:
+        pytest.fail(
+            f"on_train_epoch_end raised an unexpected exception: {e!r}"
+        )
