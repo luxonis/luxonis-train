@@ -36,6 +36,7 @@ class BaseLoaderTorch(
         image_source: str = "image",
         keep_aspect_ratio: bool = True,
         color_space: Literal["RGB", "BGR", "GRAY"] = "RGB",
+        seed: int | None = None,
     ):
         """Base abstract loader class that enforces
         LuxonisLoaderTorchOutput output label structure.
@@ -85,6 +86,9 @@ class BaseLoaderTorch(
 
         @type color_space: Literal["RGB", "BGR", "GRAY"]
         @param color_space: Color space of the output image.
+
+        @type seed: Optional[int]
+        @param seed: The random seed to use for the augmentations.
         """
         self._view = view
         self._image_source = image_source
@@ -94,6 +98,7 @@ class BaseLoaderTorch(
         self._width = width
         self._keep_aspect_ratio = keep_aspect_ratio
         self._color_space = color_space
+        self._seed = seed
 
     @property
     def image_source(self) -> str:
@@ -159,6 +164,14 @@ class BaseLoaderTorch(
         @type: Literal["RGB", "BGR"]
         """
         return self._getter_check_none("color_space")
+
+    @property
+    def seed(self) -> int:
+        """The random seed to use for the augmentations.
+
+        @type: int
+        """
+        return self._getter_check_none("seed")
 
     @property
     @abstractmethod
