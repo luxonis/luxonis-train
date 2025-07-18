@@ -125,7 +125,7 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
             tablefmt="fancy_grid",
             numalign="right",
         )
-        logger.info(f"\n{formatted}")
+        logger.info(f"\n{formatted}\n")
 
     def on_train_epoch_start(self, trainer, pl_module):
         super().on_train_epoch_start(trainer, pl_module)
