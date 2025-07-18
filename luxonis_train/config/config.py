@@ -1,4 +1,5 @@
 import sys
+from contextlib import suppress
 from pathlib import Path
 from typing import Annotated, Any, Literal, NamedTuple
 
@@ -627,8 +628,6 @@ class Config(LuxonisConfig):
     def check_rich_logging(
         cls, data: Params, handler: ModelWrapValidatorHandler
     ) -> Self:
-        from luxonis_train.utils import setup_logging
-
         trainer = data.get("trainer", {})
         if not isinstance(trainer, dict):
             raise TypeError(
@@ -648,7 +647,12 @@ class Config(LuxonisConfig):
                 "Expected a boolean."
             )
         use_rich = use_rich and use_rich_progress_bar
-        setup_logging(use_rich=use_rich)
+
+        with suppress(ModuleNotFoundError):
+            from luxonis_train.utils import setup_logging
+
+            setup_logging(use_rich=use_rich)
+
         data["rich_logging"] = use_rich
         self = handler(data)
         self.trainer.use_rich_progress_bar = use_rich
