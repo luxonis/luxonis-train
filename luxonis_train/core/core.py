@@ -119,7 +119,7 @@ class LuxonisModel:
         self.log_file = self.run_save_dir / "luxonis_train.log"
         self.error_message = None
 
-        setup_logging(file=self.log_file)
+        setup_logging(file=self.log_file, use_rich=self.cfg.rich_logging)
 
         # NOTE: overriding logger in pl so it uses our logger to log device info
         rank_zero_module.log = logger
@@ -132,7 +132,7 @@ class LuxonisModel:
             logger=self.tracker,
             callbacks=(
                 LuxonisRichProgressBar()
-                if self.cfg.trainer.use_rich_progress_bar
+                if self.cfg.rich_logging
                 else LuxonisTQDMProgressBar()
             ),
             precision=self.cfg.trainer.precision,
@@ -728,7 +728,7 @@ class LuxonisModel:
             callbacks = [
                 (
                     LuxonisRichProgressBar()
-                    if cfg.trainer.use_rich_progress_bar
+                    if cfg.rich_logging
                     else LuxonisTQDMProgressBar()
                 )
             ]

@@ -14,6 +14,7 @@ from luxonis_ml.utils import (
 )
 from pydantic import (
     Field,
+    ModelWrapValidatorHandler,
     SerializationInfo,
     field_validator,
     model_serializer,
@@ -479,6 +480,16 @@ class TrainerConfig(BaseModelExtraForbid):
 
     training_strategy: ConfigItem | None = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def validate_use_rich_progress_bar(cls, data: Params) -> Params:
+        if "use_rich_progress_bar" in data:
+            logger.warning(
+                "Field `use_rich_progress_bar` is deprecated. "
+                "Use the top-level `rich_logging` instead. "
+            )
+        return data
+
     @model_validator(mode="after")
     def validate_scheduler(self) -> Self:
         if self.scheduler.name == "CosineAnnealingLR":
@@ -597,6 +608,7 @@ class TunerConfig(BaseModelExtraForbid):
 
 
 class Config(LuxonisConfig):
+    rich_logging: bool = True
     model: ModelConfig = Field(default_factory=ModelConfig)
 
     loader: LoaderConfig = Field(default_factory=LoaderConfig)
@@ -609,6 +621,38 @@ class Config(LuxonisConfig):
     config_version: str = str(CONFIG_VERSION)
 
     ENVIRON: Environ = Field(exclude=True, default_factory=Environ)
+
+    @model_validator(mode="wrap")
+    @classmethod
+    def check_rich_logging(
+        cls, data: Params, handler: ModelWrapValidatorHandler
+    ) -> Self:
+        from luxonis_train.utils import setup_logging
+
+        trainer = data.get("trainer", {})
+        if not isinstance(trainer, dict):
+            raise TypeError(
+                f"Invalid value for `trainer`: {type(trainer)}. "
+                "Expected a dictionary."
+            )
+        use_rich_progress_bar = trainer.get("use_rich_progress_bar", True)
+        if not isinstance(use_rich_progress_bar, bool):
+            raise TypeError(
+                f"Invalid value for `trainer.use_rich_progress_bar`: "
+                f"{use_rich_progress_bar}. Expected a boolean."
+            )
+        use_rich = data.get("rich_logging", True)
+        if not isinstance(use_rich, bool):
+            raise TypeError(
+                f"Invalid value for `rich_logging`: {use_rich}. "
+                "Expected a boolean."
+            )
+        use_rich = use_rich and use_rich_progress_bar
+        setup_logging(use_rich=use_rich)
+        data["rich_logging"] = use_rich
+        self = handler(data)
+        self.trainer.use_rich_progress_bar = use_rich
+        return self
 
     @model_validator(mode="before")
     @classmethod

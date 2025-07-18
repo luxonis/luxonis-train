@@ -5,7 +5,6 @@ from collections.abc import Mapping
 from io import StringIO
 
 import lightning.pytorch as pl
-import tabulate
 from lightning.pytorch.callbacks import (
     ProgressBar,
     RichProgressBar,
@@ -14,6 +13,7 @@ from lightning.pytorch.callbacks import (
 from loguru import logger
 from rich.console import Console
 from rich.table import Table
+from tabulate import tabulate
 from typing_extensions import override
 
 import luxonis_train as lxt
@@ -119,7 +119,7 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
             C{"Value"}.
         """
         self._rule(title)
-        formatted = tabulate.tabulate(
+        formatted = tabulate(
             table.items(),
             headers=[key_name, value_name],
             tablefmt="fancy_grid",

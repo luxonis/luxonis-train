@@ -341,7 +341,7 @@ def build_callbacks(
 
     callbacks: list[pl.Callback] = [
         TrainingManager(),
-        LuxonisRichModelSummary(max_depth=2),
+        LuxonisRichModelSummary(max_depth=2, rich=cfg.rich_logging),
         ModelCheckpoint(
             dirpath=save_dir / "min_val_loss",
             filename=f"{model_name}_loss={{val/loss:.4f}}_{{epoch:02d}}",
