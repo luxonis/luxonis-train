@@ -9,7 +9,7 @@ from tabulate import tabulate
 from typing_extensions import override
 
 
-class LuxonisRichModelSummary(RichModelSummary):
+class LuxonisModelSummary(RichModelSummary):
     def __init__(self, rich: bool = True, **kwargs):
         super().__init__(**kwargs)
 
