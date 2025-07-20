@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Callable, Literal, cast
@@ -548,6 +549,12 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        pattern = re.compile(r"^(metrics|visualizers|losses)\..*_node\..*")
+        checkpoint["state_dict"] = {
+            k: v
+            for k, v in checkpoint["state_dict"].items()
+            if not pattern.match(k)
+        }
         checkpoint["execution_order"] = get_model_execution_order(self)
         checkpoint["config"] = self.cfg.model_dump(mode="json")
         checkpoint["dataset_metadata"] = self.dataset_metadata.dump()
