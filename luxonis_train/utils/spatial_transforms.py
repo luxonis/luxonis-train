@@ -7,7 +7,7 @@ def compute_ratio_and_padding(
     orig_w: int,
     train_size: tuple[int, int],
     keep_aspect_ratio: bool,
-) -> tuple[float, float, float]:
+) -> tuple[float | None, float, float]:
     """Computes the ratio and padding needed to transform bounding
     boxes, keypoints, and masks."""
     train_h, train_w = train_size
@@ -35,7 +35,7 @@ def transform_boxes(
     )
     boxes = []
     for x1, y1, x2, y2 in raw_boxes:
-        if keep_aspect_ratio:
+        if ratio is not None:
             ox1 = (x1 - pad_x) / ratio
             oy1 = (y1 - pad_y) / ratio
             ow = (x2 - x1) / ratio
@@ -64,7 +64,7 @@ def transform_keypoints(
     for i in range(N):
         for j in range(K):
             x, y, v = raw_kpts[i, j]
-            if keep_aspect_ratio:
+            if ratio is not None:
                 x = (x - pad_x) / ratio
                 y = (y - pad_y) / ratio
             out[i, j] = (x / orig_w, y / orig_h, float(v))
@@ -85,7 +85,7 @@ def transform_masks(
     )
     norm_masks = []
     for mask in raw_masks:
-        if keep_aspect_ratio:
+        if ratio is not None:
             y1 = int(pad_y)
             y2 = int(pad_y + orig_h * ratio)
             x1 = int(pad_x)

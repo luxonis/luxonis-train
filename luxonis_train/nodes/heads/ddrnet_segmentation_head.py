@@ -93,7 +93,7 @@ class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
     def load_checkpoint(
         self, path: str | None = None, strict: bool = False
     ) -> None:
-        return super().load_checkpoint(path, strict)
+        return super().load_checkpoint(path, strict=strict)
 
     @override
     def get_weights_url(self) -> str | None:

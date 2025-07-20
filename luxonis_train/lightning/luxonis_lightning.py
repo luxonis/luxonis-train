@@ -1,5 +1,6 @@
 import re
 from collections import defaultdict
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -90,6 +91,8 @@ class LuxonisLightningModule(pl.LightningModule):
 
     _trainer: pl.Trainer
     logger: LuxonisTrackerPL
+
+    __call__: Callable[..., LuxonisOutput]
 
     def __init__(
         self,
@@ -376,7 +379,9 @@ class LuxonisLightningModule(pl.LightningModule):
                         idx += 1
         else:
             output_names = []
-            running_i = {}  # for case where export_output_names should be used but output node's output is split into multiple subnodes
+            # For cases where export_output_names should be used but
+            # output node's output is split into multiple subnodes
+            running_i = {}
             for node_name, output_name, i in output_order:
                 if node_name in export_output_names_dict:
                     running_i[node_name] = (
@@ -577,7 +582,7 @@ class LuxonisLightningModule(pl.LightningModule):
             self.cfg, self.parameters(), self.main_metric, self.nodes
         )
 
-    def load_checkpoint(self, path: str | Path | None) -> None:
+    def load_checkpoint(self, path: PathType | None) -> None:
         """Loads checkpoint weights from provided path.
 
         Loads the checkpoints gracefully, ignoring keys that are not

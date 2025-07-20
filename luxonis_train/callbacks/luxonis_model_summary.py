@@ -111,7 +111,7 @@ class LuxonisModelSummary(RichModelSummary):
         total_training_modes: dict[str, int],
         **_,
     ) -> None:
-        rows = list(zip(*(arr[1] for arr in summary_data)))
+        rows = list(zip(*(arr[1] for arr in summary_data), strict=True))
         table = tabulate(
             rows,
             headers=[" ", "Name", "Type", "Params", "Mode"],

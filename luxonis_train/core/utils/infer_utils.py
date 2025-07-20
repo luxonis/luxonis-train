@@ -1,7 +1,7 @@
 from collections import defaultdict
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal, cast
 
 import cv2
 import numpy as np
@@ -201,7 +201,7 @@ def create_loader_from_directory(
 
     def generator() -> DatasetIterator:
         for img_path in img_paths:
-            data = {"file": img_path}
+            data: dict[str, Any] = {"file": img_path}
             if add_path_annotation:
                 data["annotation"] = {"metadata": {"path": str(img_path)}}
             yield data
@@ -247,8 +247,9 @@ def infer_from_directory(
     loader = create_loader_from_directory(img_paths, model)
 
     infer_from_loader(model, loader, save_dir, img_paths)
+    inner_loader = cast(LuxonisLoaderTorch, loader.dataset)
 
-    loader.dataset.dataset.delete_dataset(delete_local=True)
+    inner_loader.dataset.delete_dataset(delete_local=True)
 
 
 def infer_from_dataset(
