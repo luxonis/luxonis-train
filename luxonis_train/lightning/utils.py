@@ -18,7 +18,7 @@ from torch.optim.lr_scheduler import LRScheduler, SequentialLR
 from torch.optim.optimizer import Optimizer
 
 from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
-from luxonis_train.callbacks import LuxonisRichModelSummary, TrainingManager
+from luxonis_train.callbacks import LuxonisModelSummary, TrainingManager
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.nodes import BaseHead, BaseNode
 from luxonis_train.registry import (
@@ -345,7 +345,7 @@ def build_callbacks(
 
     callbacks: list[pl.Callback] = [
         TrainingManager(),
-        LuxonisRichModelSummary(max_depth=2),
+        LuxonisModelSummary(max_depth=2, rich=cfg.rich_logging),
         ModelCheckpoint(
             dirpath=save_dir / "min_val_loss",
             filename=f"{model_name}_loss={{val/loss:.4f}}_{{epoch:02d}}",

@@ -248,7 +248,7 @@ def infer_from_directory(
 
     infer_from_loader(model, loader, save_dir, img_paths)
 
-    loader.dataset.dataset.delete_dataset()
+    loader.dataset.dataset.delete_dataset(delete_local=True)
 
 
 def infer_from_dataset(

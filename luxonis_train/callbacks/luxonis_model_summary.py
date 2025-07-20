@@ -5,13 +5,15 @@ from lightning.pytorch.callbacks import RichModelSummary
 from lightning.pytorch.utilities.model_summary import get_human_readable_count
 from loguru import logger
 from rich.console import Console
+from tabulate import tabulate
 from typing_extensions import override
 
 
-class LuxonisRichModelSummary(RichModelSummary):
-    def __init__(self, **kwargs):
+class LuxonisModelSummary(RichModelSummary):
+    def __init__(self, rich: bool = True, **kwargs):
         super().__init__(**kwargs)
 
+        self.rich = rich
         self._log_buffer = StringIO()
         self._log_console = Console(
             file=self._log_buffer, force_terminal=False
@@ -19,6 +21,16 @@ class LuxonisRichModelSummary(RichModelSummary):
 
     @override
     def summarize(
+        self,
+        *args,
+        **kwargs,
+    ) -> None:
+        if self.rich:
+            self._rich_summarize(*args, **kwargs)
+        else:
+            self._regular_summarize(*args, **kwargs)
+
+    def _rich_summarize(
         self,
         summary_data: list[tuple[str, list[str]]],
         total_parameters: int,
@@ -89,3 +101,37 @@ class LuxonisRichModelSummary(RichModelSummary):
         logger.bind(file_only=True).info("\n" + self._log_buffer.getvalue())
         self._log_buffer.seek(0)
         self._log_buffer.truncate(0)
+
+    def _regular_summarize(
+        self,
+        summary_data: list[tuple[str, list[str]]],
+        total_parameters: int,
+        trainable_parameters: int,
+        model_size: float,
+        total_training_modes: dict[str, int],
+        **_,
+    ) -> None:
+        rows = list(zip(*(arr[1] for arr in summary_data)))
+        table = tabulate(
+            rows,
+            headers=[" ", "Name", "Type", "Params", "Mode"],
+            tablefmt="fancy_grid",
+        )
+        logger.info(f"\n{table}\n")
+
+        parameters = []
+        for param in [
+            trainable_parameters,
+            total_parameters - trainable_parameters,
+            total_parameters,
+            model_size,
+        ]:
+            parameters.append(
+                "{:<{}}".format(get_human_readable_count(int(param)), 10)
+            )
+        logger.info(f"Trainable params: {parameters[0]}")
+        logger.info(f"Non-trainable params: {parameters[1]}")
+        logger.info(f"Total params: {parameters[2]}")
+        logger.info(f"Total estimated model params size (MB): {parameters[3]}")
+        logger.info(f"Modules in train mode: {total_training_modes['train']}")
+        logger.info(f"Modules in eval mode: {total_training_modes['eval']}")

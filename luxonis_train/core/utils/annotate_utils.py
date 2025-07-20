@@ -63,7 +63,7 @@ def annotate_from_directory(
     luxonis_loader = loader.dataset
     assert isinstance(luxonis_loader, LuxonisLoaderTorch)
 
-    luxonis_loader.dataset.delete_dataset()
+    luxonis_loader.dataset.delete_dataset(delete_local=True)
 
     return annotated_dataset
 
