@@ -892,7 +892,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 handlers.append(handler)
 
         with torch.no_grad():
-            dummy_input = torch.randn(1, 3, 224, 224)
+            dummy_input = torch.randn(1, 3, 224, 224, device=self.device)
             self({"image": dummy_input})
 
         for handler in handlers:
