@@ -29,6 +29,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         filter_task_names: list[str] | None = None,
         min_bbox_visibility: float = 0.0,
         bbox_area_threshold: float = 0.0004,
+        class_order_per_task: dict[str, list[str]] | None = None,
         seed: int | None = None,
         **kwargs,
     ):
@@ -81,6 +82,9 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         @type bbox_area_threshold: float
         @param bbox_area_threshold: Minimum area threshold for bounding boxes to be considered valid. In the range [0, 1].
             Default is 0.0004, which corresponds to a small area threshold to remove invalid bboxes and respective keypoints.
+        @type class_order_per_task: dict[str, list[str]] | None
+        @param class_order_per_task: Dictionary mapping task names to a list of class names.
+            If provided, the classes for the specified tasks will be reordered permanently.
         @type seed: Optional[int]
         @param seed: The random seed to use for the augmentations.
         """
@@ -115,6 +119,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             filter_task_names=filter_task_names,
             min_bbox_visibility=min_bbox_visibility,
             bbox_area_threshold=bbox_area_threshold,
+            class_order_per_task=class_order_per_task,
             seed=seed,
         )
 
