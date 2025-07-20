@@ -1,6 +1,7 @@
+import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any, Callable, Literal, cast
 
 import lightning.pytorch as pl
 import torch
@@ -9,7 +10,7 @@ from loguru import logger
 from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
 from torch import Size, Tensor
-from typing_extensions import override
+from typing_extensions import Self, override
 
 import luxonis_train
 from luxonis_train.attached_modules.visualizers import (
@@ -33,6 +34,7 @@ from .utils import (
     build_training_strategy,
     build_visualizers,
     compute_losses,
+    get_model_execution_order,
     log_balanced_class_images,
     log_sequential_images,
     postprocess_metrics,
@@ -274,6 +276,11 @@ class LuxonisLightningModule(pl.LightningModule):
             outputs=outputs_dict, losses=losses, visualizations=visualizations
         )
 
+    def set_export_mode(self, *, mode: bool) -> None:
+        for module in self.modules():
+            if isinstance(module, BaseNode):
+                module.set_export_mode(mode=mode)
+
     def export_onnx(self, save_path: str, **kwargs) -> list[str]:
         """Exports the model to ONNX format.
 
@@ -303,9 +310,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         inputs_for_onnx = {"inputs": inputs_deep_clone}
 
-        for module in self.modules():
-            if isinstance(module, BaseNode):
-                module.set_export_mode()
+        self.set_export_mode(mode=True)
 
         outputs = self.forward(inputs_deep_clone).outputs
         output_order = sorted(
@@ -417,9 +422,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         self.forward = old_forward  # type: ignore
 
-        for module in self.modules():
-            if isinstance(module, BaseNode):
-                module.set_export_mode(False)
+        self.set_export_mode(mode=False)
 
         logger.info(f"Model exported to {save_path}")
 
@@ -543,6 +546,18 @@ class LuxonisLightningModule(pl.LightningModule):
     @override
     def on_test_epoch_end(self) -> None:
         return self._evaluation_epoch_end("test")
+
+    @override
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        pattern = re.compile(r"^(metrics|visualizers|losses)\..*_node\..*")
+        checkpoint["state_dict"] = {
+            k: v
+            for k, v in checkpoint["state_dict"].items()
+            if not pattern.match(k)
+        }
+        checkpoint["execution_order"] = get_model_execution_order(self)
+        checkpoint["config"] = self.cfg.model_dump(mode="json")
+        checkpoint["dataset_metadata"] = self.dataset_metadata.dump()
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:

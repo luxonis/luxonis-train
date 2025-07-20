@@ -21,6 +21,7 @@ from torch.optim.lr_scheduler import (
 )
 from torch.optim.optimizer import Optimizer
 
+import luxonis_train as lxt
 from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
 from luxonis_train.callbacks import LuxonisModelSummary, TrainingManager
 from luxonis_train.config import AttachedModuleConfig, Config
@@ -638,3 +639,32 @@ def log_sequential_images(
                 node_logged_images += 1
 
     return node_logged_images
+
+
+def get_model_execution_order(
+    model: "lxt.LuxonisLightningModule",
+) -> list[str]:
+    """Get the execution order of the model's nodes."""
+
+    order = []
+    handles = []
+
+    for name, module in model.named_modules():
+        if name and list(module.parameters()):
+            handle = module.register_forward_hook(
+                lambda mod, inp, out, n=name: order.append(n)
+            )
+            handles.append(handle)
+
+    with torch.no_grad():
+        dummy_inputs = {
+            input_name: torch.zeros(2, *shape, device=model.device)
+            for shapes in model.nodes.input_shapes.values()
+            for input_name, shape in shapes.items()
+        }
+        model(dummy_inputs)
+
+    for handle in handles:
+        handle.remove()
+
+    return order
