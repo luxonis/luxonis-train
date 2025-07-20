@@ -266,6 +266,7 @@ def export(
     config: str | None = None,
     save_path: str | None = None,
     weights: str | None = None,
+    ckpt_only: bool = False,
 ):
     """Export the model to ONNX or BLOB format.
 
@@ -276,12 +277,19 @@ def export(
     @param save_path: Directory where to save all exported model files.
         If not specified, files will be saved to the 'export' directory
         in the run save directory.
+    @type ckpt_only: bool
+    @param ckpt_only: If True, only the `.ckpt` file will be exported.
+        This is useful for updating the metadata in the checkpoint
+        file in case they changed (e.g. new configuration file,
+        architectural changes affecting the exection order etc.)
     @type weights: str
     @param weights: Path to the model weights.
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the
     """
-    create_model(config, opts).export(save_path=save_path, weights=weights)
+    create_model(config, opts).export(
+        save_path=save_path, weights=weights, ckpt_only=ckpt_only
+    )
 
 
 @app.command(group=export_group, sort_key=2)

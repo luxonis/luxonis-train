@@ -6,6 +6,7 @@ from typing import Any
 
 import cv2
 import pytest
+import torch
 from luxonis_ml.data import LuxonisDataset, LuxonisLoader
 from luxonis_ml.typing import Params
 from luxonis_ml.utils import environ
@@ -13,6 +14,7 @@ from pytest_subtests import SubTests
 from tensorboard.backend.event_processing import event_accumulator
 
 from luxonis_train.callbacks import LuxonisRichProgressBar
+from luxonis_train.config import Config
 from luxonis_train.core import LuxonisModel
 
 from .multi_input_modules import *  # noqa: F403
@@ -294,8 +296,27 @@ def test_callbacks(opts: Params, coco_dataset: LuxonisDataset):
         "exporter.blobconverter.active": True,
         "loader.params.dataset_name": coco_dataset.identifier,
     }
-    model = LuxonisModel(config_file, opts)
+    model = LuxonisModel(config_file, opts, debug_mode=True)
     model.train()
+
+    ckpt_path = model.get_best_metric_checkpoint_path()
+    assert ckpt_path is not None, "No checkpoint found after training"
+    ckpt = torch.load(ckpt_path, map_location="cpu")
+
+    assert "execution_order" in ckpt
+    with open("tests/files/execution_order.json") as f:
+        assert ckpt["execution_order"] == json.load(f)
+
+    assert "config" in ckpt
+    cfg = Config.get_config(ckpt["config"])
+    assert model.cfg.model_dump() == cfg.model_dump()
+
+    assert "dataset_metadata" in ckpt
+    assert ckpt["dataset_metadata"] == {
+        "classes": {"": {"person": 0}},
+        "n_keypoints": {"": 17},
+        "metadata_types": {},
+    }
 
 
 @pytest.mark.parametrize(
@@ -555,10 +576,10 @@ def test_rich_progress_bar(coco_dataset: LuxonisDataset):
     progress_bar = LuxonisRichProgressBar()
 
     config = "configs/detection_light_model.yaml"
-    opts = {
+    opts: Params = {
         "loader.params.dataset_name": coco_dataset.identifier,
     }
-    model = LuxonisModel(config)
+    model = LuxonisModel(config, opts)
 
     try:
         progress_bar.on_train_epoch_end(

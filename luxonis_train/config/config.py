@@ -34,7 +34,7 @@ from pydantic.types import (
     NonNegativeInt,
     PositiveInt,
 )
-from typing_extensions import Self
+from typing_extensions import Self, override
 
 from luxonis_train.config.constants import CONFIG_VERSION
 from luxonis_train.registry import MODELS
@@ -679,6 +679,20 @@ class Config(LuxonisConfig):
     config_version: str = str(CONFIG_VERSION)
 
     ENVIRON: Environ = Field(exclude=True, default_factory=Environ)
+
+    @override
+    def model_dump(
+        self, exclude: set[str] | None = None, **kwargs
+    ) -> dict[str, Any]:
+        exclude = exclude or set()
+        return super().model_dump(exclude=exclude | {"ENVIRON"}, **kwargs)
+
+    @override
+    def model_dump_json(
+        self, exclude: set[str] | None = None, **kwargs
+    ) -> str:
+        exclude = exclude or set()
+        return super().model_dump_json(exclude=exclude | {"ENVIRON"}, **kwargs)
 
     @model_validator(mode="wrap")
     @classmethod

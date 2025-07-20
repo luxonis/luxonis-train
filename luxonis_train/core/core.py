@@ -384,6 +384,7 @@ class LuxonisModel:
         save_path: PathType | None = None,
         weights: PathType | None = None,
         ignore_missing_weights: bool = False,
+        ckpt_only: bool = False,
     ) -> None:
         """Runs export.
 
@@ -400,6 +401,11 @@ class LuxonisModel:
         @type ignore_missing_weights: bool
         @param ignore_missing_weights: If set to True, the warning about
             missing weights will be suppressed.
+        @type ckpt_only: bool
+        @param ckpt_only: If True, only the `.ckpt` file will be exported.
+            This is useful for updating the metadata in the checkpoint
+            file in case they changed (e.g. new configuration file,
+            architectural changes affecting the exection order etc.)
         @raises RuntimeError: If C{onnxsim} fails to simplify the model.
         """
 
@@ -420,6 +426,24 @@ class LuxonisModel:
         export_path = export_save_dir / (
             self.cfg.exporter.name or self.cfg.model.name
         )
+
+        if ckpt_only:
+            logger.info("Re-exporting the checkpoint file.")
+            with replace_weights(self.lightning_module, weights):
+                # Needs to be called to attach the model to the trainer
+                self.pl_trainer.validate(
+                    self.lightning_module,
+                    self.pytorch_loaders["val"],
+                    verbose=False,
+                )
+                self.pl_trainer.save_checkpoint(
+                    str(export_path.with_suffix(".ckpt")), weights_only=False
+                )
+                logger.info(
+                    f"Checkpoint saved to {export_path.with_suffix('.ckpt')}"
+                )
+            return
+
         onnx_save_path = str(export_path.with_suffix(".onnx"))
 
         with replace_weights(self.lightning_module, weights):
