@@ -1,5 +1,4 @@
 from collections.abc import Callable
-from types import EllipsisType
 from typing import Literal, cast
 
 import torch
@@ -102,7 +101,9 @@ class EfficientDecoupledBlock(nn.Module):
                 activation=nn.SiLU(),
             ),
             nn.Conv2d(
-                in_channels=in_channels, out_channels=n_classes, kernel_size=1
+                in_channels=in_channels,
+                out_channels=n_classes,
+                kernel_size=1,
             ),
         )
         self.regression_branch = nn.Sequential(
@@ -114,7 +115,11 @@ class EfficientDecoupledBlock(nn.Module):
                 padding=1,
                 activation=nn.SiLU(),
             ),
-            nn.Conv2d(in_channels=in_channels, out_channels=4, kernel_size=1),
+            nn.Conv2d(
+                in_channels=in_channels,
+                out_channels=4,
+                kernel_size=1,
+            ),
         )
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
@@ -188,16 +193,18 @@ class DFL(nn.Module):
             to 16.
         """
         super().__init__()
-        self.proj_conv = nn.Conv2d(reg_max, 1, kernel_size=1, bias=False)
-        self.proj_conv.weight.data.copy_(
+        self.conv = nn.Conv2d(reg_max, 1, kernel_size=1, bias=False)
+        self.conv.weight.data.copy_(
             torch.arange(reg_max, dtype=torch.float32).view(1, reg_max, 1, 1)
         )
-        self.proj_conv.requires_grad_(False)
+        self.conv.requires_grad_(False)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x: Tensor) -> Tensor:
-        bs, _, h, w = x.size()
-        x = F.softmax(x.view(bs, 4, -1, h * w).permute(0, 2, 1, 3), dim=1)
-        return self.proj_conv(x)[:, 0].view(bs, 4, h, w)
+        n, _, h, w = x.size()
+        x = x.view(n, 4, -1, h * w).permute(0, 2, 1, 3)
+        x = self.softmax(x)
+        return self.conv(x)[:, 0].view(n, 4, h, w)
 
 
 class ConvBlock(nn.Module):
@@ -212,7 +219,7 @@ class ConvBlock(nn.Module):
         dilation: int | tuple[int, int] = 1,
         groups: int = 1,
         bias: bool = False,
-        activation: EllipsisType | Callable[[Tensor], Tensor] | None = ...,
+        activation: Callable[[Tensor], Tensor] | None | bool = True,
         use_norm: bool = True,
         norm_momentum: float = 0.1,
     ):
@@ -234,9 +241,9 @@ class ConvBlock(nn.Module):
         @param groups: Groups. Defaults to 1.
         @type bias: bool
         @param bias: Whether to use bias. Defaults to False.
-        @type activation: L{nn.Module} | None | Literal[False]
+        @type activation: L{nn.Module} | None | bool
         @param activation: Activation function. Defaults to `nn.Relu`
-            if not explicitly set to C{None}
+            if not explicitly set to C{None} or C{False}.
         @type use_norm: bool
         @param use_norm: Whether to use batch normalization. Defaults to
             True.
@@ -268,9 +275,9 @@ class ConvBlock(nn.Module):
         if use_norm:
             self.bn = nn.BatchNorm2d(out_channels, momentum=norm_momentum)
 
-        if activation is ...:
+        if activation is True:
             self.activation = nn.ReLU()
-        elif activation is None:
+        elif not activation:
             self.activation = nn.Identity()
         else:
             self.activation = activation
@@ -327,7 +334,7 @@ class SqueezeExciteBlock(nn.Sequential):
 
 
 # TODO: Maybe a better name?
-class GeneralReparametrizableBlock(nn.Module, Reparametrizable):
+class GeneralReparametrizableBlock(Reparametrizable):
     __call__: Callable[[Tensor], Tensor]
 
     @typechecked
@@ -342,7 +349,7 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable):
         n_branches: int = 1,
         # TODO: Maybe a better name?
         refine_block: nn.Module | Literal["se"] | None = None,
-        activation: nn.Module | None | EllipsisType = ...,
+        activation: nn.Module | None | bool = True,
     ):
         """GeneralReparametrizableBlock is a basic rep-style block,
         including training and deploy status.
@@ -374,9 +381,9 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable):
               - string `"se"` which will use L{SqueezeExciteBlock}
               - None for no operation
             Defaults to C{None}.
-        @type activation: nn.Module | None | Literal[False]
-        @param activation: Activation function. If C{None} then C{nn.ReLU}.
-            If C{False} then no activation. Defaults to C{nn.ReLU}.
+        @type activation: nn.Module | None | bool
+        @param activation: Activation function. By default C{nn.ReLU}.
+            If C{False} or C{None} then no activation.
         """
         super().__init__()
 
@@ -424,9 +431,9 @@ class GeneralReparametrizableBlock(nn.Module, Reparametrizable):
         else:
             self.refine_block = refine_block or nn.Identity()
 
-        if activation is ...:
+        if activation is True:
             self.activation = nn.ReLU()
-        elif activation is None:
+        elif not activation:
             self.activation = nn.Identity()
         else:
             self.activation = activation or nn.ReLU()

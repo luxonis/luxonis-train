@@ -288,7 +288,7 @@ class BaseNode(
             raise NotImplementedError(
                 f"Node '{cls.__name__}' does not support variants. "
                 "To support predefined variants, implement the "
-                "`get_variant_params` method."
+                "`get_variants` method."
             ) from None
 
         if variant == "default":
