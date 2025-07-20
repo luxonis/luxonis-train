@@ -35,14 +35,15 @@ You can create your own config or use/edit one of the examples.
 
 ## Top-level Options
 
-| Key        | Type                    | Description      |
-| ---------- | ----------------------- | ---------------- |
-| `model`    | [`model`](#model)       | Model section    |
-| `loader`   | [`loader`](#loader)     | Loader section   |
-| `tracker`  | [`tracker`](#tracker)   | Tracker section  |
-| `trainer`  | [`trainer`](#trainer)   | Trainer section  |
-| `exporter` | [`exporter`](#exporter) | Exporter section |
-| `tuner`    | [`tuner`](#tuner)       | Tuner section    |
+| Key            | Type                    | Description                                                                 |
+| -------------- | ----------------------- | --------------------------------------------------------------------------- |
+| `rich_logging` | `bool`                  | Whether to use rich logging for the configuration file. Defaults to `True`. |
+| `model`        | [`model`](#model)       | Model section                                                               |
+| `loader`       | [`loader`](#loader)     | Loader section                                                              |
+| `tracker`      | [`tracker`](#tracker)   | Tracker section                                                             |
+| `trainer`      | [`trainer`](#trainer)   | Trainer section                                                             |
+| `exporter`     | [`exporter`](#exporter) | Exporter section                                                            |
+| `tuner`        | [`tuner`](#tuner)       | Tuner section                                                               |
 
 ## Model
 
