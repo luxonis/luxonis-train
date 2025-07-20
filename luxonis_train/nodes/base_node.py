@@ -225,7 +225,7 @@ class BaseNode(
         if self._weights == "download":
             self.load_checkpoint()
         elif self._weights.startswith("http"):
-            self.load_checkpoint(path=self._weights)
+            self.load_checkpoint(ckpt=self._weights)
         else:
             self.initialize_weights(method=self._weights)
 
@@ -525,38 +525,47 @@ class BaseNode(
         )
 
     def load_checkpoint(
-        self, path: str | None = None, strict: bool = True
+        self,
+        ckpt: str | dict[str, Tensor] | None = None,
+        *,
+        strict: bool = True,
     ) -> None:
         """Loads checkpoint for the module. If path is url then it
         downloads it locally and stores it in cache.
 
-        @type path: str | None
-        @param path: Path to local or remote .ckpt file.
+        @type ckpt: str | dict[str, Tensor] | None
+        @param ckpt: Path to local or remote .ckpt file.
         @type strict: bool
         @param strict: Whether to load weights strictly or not. Defaults
             to True.
         """
-        path = path or self._get_weights_url()
-        logger.info(f"Loading weights from '{path}'")
-        if path is None:
+        ckpt = ckpt or self._get_weights_url()
+        if not isinstance(ckpt, dict):
+            logger.info(f"Loading weights from '{ckpt}'")
+        if ckpt is None:
             raise ValueError(
                 f"Attempting to load weights for '{self.name}' "
-                f"node, but the `path` argument was not provided and "
+                f"node, but the `ckpt` argument was not provided and "
                 "the node does not implement the `get_weights_url` method."
             )
 
-        local_path = safe_download(url=path)
-        if local_path:
-            # load explicitly to cpu, PL takes care of transfering to CUDA is needed
-            state_dict = torch.load(  # nosemgrep
-                local_path, weights_only=False, map_location="cpu"
-            )["state_dict"]
-            self.load_state_dict(state_dict, strict=strict)
-            logging.info(f"Checkpoint for {self.name} loaded.")
+        if isinstance(ckpt, dict):
+            state_dict = ckpt
         else:
-            logger.warning(
-                f"No checkpoint available for {self.name}, skipping."
-            )
+            local_path = safe_download(url=ckpt)
+            if local_path:
+                # load explicitly to cpu, PL takes care of transfering to CUDA is needed
+                state_dict = torch.load(  # nosemgrep
+                    local_path, weights_only=False, map_location="cpu"
+                )["state_dict"]
+            else:
+                logger.warning(
+                    f"No checkpoint available for {self.name}, skipping."
+                )
+                return
+
+        self.load_state_dict(state_dict, strict=strict)
+        logging.info(f"Checkpoint for {self.name} loaded.")
 
     @property
     def export(self) -> bool:

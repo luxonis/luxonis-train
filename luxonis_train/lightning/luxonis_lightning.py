@@ -583,28 +583,54 @@ class LuxonisLightningModule(pl.LightningModule):
 
         if "state_dict" not in checkpoint:
             raise ValueError("Checkpoint does not contain state_dict.")
-        state_dict = {}
-        self_state_dict = self.state_dict()
-        for key, value in checkpoint["state_dict"].items():
-            if key not in self_state_dict:
-                logger.warning(
-                    f"Key `{key}` from checkpoint not found in model state dict."
-                )
-            else:
-                state_dict[key] = value
 
-        for key in self_state_dict:
-            if key not in state_dict:
-                logger.warning(f"Key `{key}` was not found in checkpoint.")
-            else:
-                try:
-                    self_state_dict[key].copy_(state_dict[key])
-                except Exception:
-                    logger.warning(
-                        f"Key `{key}` from checkpoint could not be loaded into model."
+        state_dict = checkpoint["state_dict"]
+        order_mapping = self._load_execution_order_mapping(checkpoint)
+
+        for node_name, node in self.nodes.items():
+            sub_state_dict = {
+                self._strip_state_prefix(k): v
+                for k, v in state_dict.items()
+                if k.startswith(f"nodes.{node_name}.")
+            }
+            try:
+                node.load_checkpoint(sub_state_dict, strict=True)
+            except RuntimeError:
+                logger.error(f"Failed to load checkpoint for node {node_name}")
+
+                if isinstance(order_mapping, str):
+                    logger.critical(
+                        f"Failed to use execution order to "
+                        f"migrate weights: {order_mapping}"
                     )
+                    raise
+                if node_name not in order_mapping:
+                    logger.critical(
+                        f"Node '{node_name}' not found in execution order mapping."
+                    )
+                    raise
 
-        logger.info(f"Loaded checkpoint from {path}.")
+                logger.info("Attempting to transform incompatible weights...")
+                new_state_dict = {}
+
+                for old_name, value in sub_state_dict.items():
+                    *old_name_parts, parameter_name = old_name.split(".")
+
+                    bare_name = ".".join(old_name_parts)
+                    new_name = order_mapping[node_name][bare_name]
+                    if old_name in sub_state_dict:
+                        new_state_dict[f"{new_name}.{parameter_name}"] = value
+                    else:
+                        logger.warning(
+                            f"Key '{bare_name}' not found in state dict for node '{node_name}'."
+                        )
+                try:
+                    node.load_checkpoint(new_state_dict, strict=True)
+                except RuntimeError:
+                    logger.critical(
+                        f"Failed to load transformed checkpoint for node '{node_name}'"
+                    )
+                    raise
 
     def _evaluation_step(
         self,
@@ -833,3 +859,46 @@ class LuxonisLightningModule(pl.LightningModule):
             "metrics": sorted(metric_keys),
             "artifacts": sorted(artifact_keys),
         }
+
+    def _generate_execution_order(self) -> list[str]:
+        order = []
+        handlers = []
+
+        for name, module in self.named_modules():
+            if name and list(module.parameters()):
+                handler = module.register_forward_hook(
+                    lambda mod, inp, out, n=name: order.append(n)
+                )
+                handlers.append(handler)
+
+        with torch.no_grad():
+            dummy_input = torch.randn(1, 3, 224, 224)
+            self({"image": dummy_input})
+
+        for handler in handlers:
+            handler.remove()
+
+        return order
+
+    def _load_execution_order_mapping(
+        self, ckpt: dict[str, Any]
+    ) -> dict[str, dict[str, str]] | str:
+        if "execution_order" not in ckpt:
+            return "Execution order not found in checkpoint."
+        old_order = ckpt["execution_order"]
+        new_order = self._generate_execution_order()
+        if len(old_order) != len(new_order):
+            return (
+                "Execution order length mismatch between checkpoint and model."
+            )
+        mapping = defaultdict(dict)
+        for old_name, new_name in zip(old_order, new_order, strict=True):
+            node_name = old_name.split(".")[1]
+            mapping[node_name][self._strip_state_prefix(old_name)] = (
+                self._strip_state_prefix(new_name)
+            )
+        return dict(mapping)
+
+    @staticmethod
+    def _strip_state_prefix(key: str) -> str:
+        return ".".join(key.split(".")[2:])
