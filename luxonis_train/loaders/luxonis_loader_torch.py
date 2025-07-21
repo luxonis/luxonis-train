@@ -84,7 +84,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             Default is 0.0004, which corresponds to a small area threshold to remove invalid bboxes and respective keypoints.
         @type class_order_per_task: dict[str, list[str]] | None
         @param class_order_per_task: Dictionary mapping task names to a list of class names.
-            If provided, the classes for the specified tasks will be reordered permanently.
+            If provided, the classes for the specified tasks will be reordered.
         @type seed: Optional[int]
         @param seed: The random seed to use for the augmentations.
         """
