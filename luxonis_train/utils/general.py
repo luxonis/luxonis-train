@@ -7,6 +7,7 @@ from typing import Any, Literal, TypeVar, overload
 import torch
 from loguru import logger
 from luxonis_ml.typing import Kwargs, PathType
+from luxonis_ml.utils import LuxonisFileSystem
 from torch import Size, Tensor
 
 from luxonis_train.typing import Packet
@@ -181,6 +182,10 @@ def safe_download(
     logger.info(f"Downloading `{uri}` to `{f}`")
     for i in range(retry + 1):
         try:
+            if "://" in url:
+                protocol, _ = url.split("://")
+                if protocol in {"s3", "gcs", "gs"}:
+                    return LuxonisFileSystem.download(url, f)
             torch.hub.download_url_to_file(url, str(f), progress=True)
         except Exception:
             logger.warning(f"Download failed, retrying {i + 1}/{retry} ...")
