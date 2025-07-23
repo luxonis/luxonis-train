@@ -13,10 +13,10 @@ class MicroBlock(nn.Module):
         out_channels: int,
         kernel_size: int = 3,
         stride: int = 1,
-        expansion_ratios: tuple[int, int] = (2, 2),
+        expand_ratio: tuple[int, int] = (2, 2),
         groups_1: tuple[int, int] = (0, 6),
         groups_2: tuple[int, int] = (1, 1),
-        use_dynamic_shift: tuple[int, int, int] = (2, 0, 1),
+        dy_shift: tuple[int, int, int] = (2, 0, 1),
         reduction_factor: int = 1,
         init_a: tuple[float, float] = (1.0, 1.0),
         init_b: tuple[float, float] = (0.0, 0.0),
@@ -53,13 +53,11 @@ class MicroBlock(nn.Module):
         super().__init__()
 
         self.use_residual = stride == 1 and in_channels == out_channels
-        self.expansion_ratios = expansion_ratios
-        use_dy1, use_dy2, use_dy3 = use_dynamic_shift
+        self.expand_ratio = expand_ratio
+        use_dy1, use_dy2, use_dy3 = dy_shift
         group1, group2 = groups_2
         reduction = 8 * reduction_factor
-        intermediate_channels = (
-            in_channels * expansion_ratios[0] * expansion_ratios[1]
-        )
+        intermediate_channels = in_channels * expand_ratio[0] * expand_ratio[1]
 
         if groups_1[0] == 0:
             self.layers = self._create_lite_block(
@@ -128,7 +126,7 @@ class MicroBlock(nn.Module):
     ) -> nn.Sequential:
         return nn.Sequential(
             DepthSpatialSepConv(
-                in_channels, self.expansion_ratios, kernel_size, stride
+                in_channels, self.expand_ratio, kernel_size, stride
             ),
             DYShiftMax(
                 intermediate_channels,
