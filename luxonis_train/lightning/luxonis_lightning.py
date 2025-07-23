@@ -880,33 +880,13 @@ class LuxonisLightningModule(pl.LightningModule):
             "artifacts": sorted(artifact_keys),
         }
 
-    def _generate_execution_order(self) -> list[str]:
-        order = []
-        handlers = []
-
-        for name, module in self.named_modules():
-            if name and list(module.parameters()):
-                handler = module.register_forward_hook(
-                    lambda mod, inp, out, n=name: order.append(n)
-                )
-                handlers.append(handler)
-
-        with torch.no_grad():
-            dummy_input = torch.randn(1, 3, 224, 224, device=self.device)
-            self({"image": dummy_input})
-
-        for handler in handlers:
-            handler.remove()
-
-        return order
-
     def _load_execution_order_mapping(
         self, ckpt: dict[str, Any]
     ) -> dict[str, dict[str, str]] | str:
         if "execution_order" not in ckpt:
             return "Execution order not found in checkpoint."
         old_order = ckpt["execution_order"]
-        new_order = self._generate_execution_order()
+        new_order = get_model_execution_order(self)
         if len(old_order) != len(new_order):
             return (
                 "Execution order length mismatch between checkpoint and model."
