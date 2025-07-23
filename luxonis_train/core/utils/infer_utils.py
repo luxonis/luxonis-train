@@ -49,7 +49,7 @@ def process_visualizations(
 
 
 def prepare_and_infer_image(
-    model: "lxt.LuxonisModel", img: Tensor
+    model: "lxt.LuxonisModel", img: dict[str, Tensor]
 ) -> LuxonisOutput:
     """Prepares the image for inference and runs the model."""
     img = model.loaders["val"].augment_test_image(img)
@@ -95,7 +95,9 @@ def infer_from_video(
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # TODO: batched inference
-        outputs = prepare_and_infer_image(model, torch.tensor(frame))
+        outputs = prepare_and_infer_image(
+            model, {"image": torch.tensor(frame)}
+        )
         renders = process_visualizations(outputs.visualizations, batch_size=1)
 
         for (node_name, viz_name), [viz] in renders.items():
