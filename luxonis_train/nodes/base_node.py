@@ -520,7 +520,7 @@ class BaseNode(
 
         return url.replace(
             "{github}",
-            "https://github.com/luxonis/luxonis-train/"
+            "gcs://luxonis-test-data/weights/v0.4.0-beta/"
             "releases/download/v0.2.1-beta",
         )
 
