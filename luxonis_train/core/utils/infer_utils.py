@@ -118,7 +118,11 @@ def infer_from_video(
             break
 
     cap.release()
-    cv2.destroyAllWindows()
+    if save_dir is None:
+        try:
+            cv2.destroyAllWindows()
+        except cv2.error:
+            pass
 
     for writer in writers.values():
         writer.release()
@@ -176,7 +180,11 @@ def infer_from_loader(
                 broken = True
                 break
 
-    cv2.destroyAllWindows()
+    if save_dir is None:
+        try:
+            cv2.destroyAllWindows()
+        except cv2.error:
+            pass
 
 
 def create_loader_from_directory(
