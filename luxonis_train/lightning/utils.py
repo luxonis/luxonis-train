@@ -577,42 +577,38 @@ def log_balanced_class_images(
     max_log_images: int,
     mode: Literal["test", "val"],
     current_epoch: int,
-) -> tuple[int, list[int], dict[str, list[int]]]:
+) -> tuple[int, list[int], list[int]]:
     """Log images with balanced class distribution."""
-    logged_indices: dict[str, list[int]] = {}
+    logged_indices = []
+
+    batch_size = next(
+        iter(next(iter(visualizations.values())).values())
+    ).shape[0]
+    present_classes = [
+        (labels[cls_key][idx] > 0).nonzero(as_tuple=True)[0].tolist()
+        for idx in range(batch_size)
+    ]
+    for idx, classes in enumerate(present_classes):
+        if classes:
+            min_logged_class = min(classes, key=lambda c: class_log_counts[c])
+            if class_log_counts[min_logged_class] == min(class_log_counts):
+                logged_indices.append(idx)
+                for c in classes:
+                    class_log_counts[c] += 1
 
     for node_name, node_visualizations in visualizations.items():
         node_logged_images = n_logged_images
         formatted_node_name = nodes.formatted_name(node_name)
         for viz_name, viz_batch in node_visualizations.items():
-            for idx, viz in enumerate(viz_batch):
+            for idx in logged_indices:
                 if node_logged_images >= max_log_images:
                     break
-                present_classes = (
-                    (labels[cls_key][idx] > 0)
-                    .nonzero(as_tuple=True)[0]
-                    .tolist()
+                tracker.log_image(
+                    f"{mode}/visualizations/{formatted_node_name}/{viz_name}/{node_logged_images}",
+                    viz_batch[idx].detach().cpu().numpy().transpose(1, 2, 0),
+                    step=current_epoch,
                 )
-                if present_classes:
-                    min_logged_class = min(
-                        present_classes, key=lambda c: class_log_counts[c]
-                    )
-                    if class_log_counts[min_logged_class] == min(
-                        class_log_counts
-                    ):
-                        name = f"{mode}/visualizations/{formatted_node_name}/{viz_name}"
-                        tracker.log_image(
-                            f"{name}/{node_logged_images}",
-                            viz.detach().cpu().numpy().transpose(1, 2, 0),
-                            step=current_epoch,
-                        )
-                        if node_name not in logged_indices:
-                            logged_indices[node_name] = []
-                        logged_indices[node_name].append(idx)
-
-                        node_logged_images += 1
-                        for c in present_classes:
-                            class_log_counts[c] += 1
+                node_logged_images += 1
 
     return node_logged_images, class_log_counts, logged_indices
 
@@ -650,7 +646,7 @@ def log_sequential_images(
 def compute_visualization_buffer(
     seq_buffer: list[dict[str, dict[str, Tensor]]],
     visualizations: dict[str, dict[str, Tensor]],
-    logged_idxs: dict[str, list[int]],
+    logged_idxs: list[int],
     max_log_images: int,
 ) -> dict[str, dict[str, Tensor]] | None:
     """Build a buffer of leftover visualizations to fill up to
@@ -661,9 +657,8 @@ def compute_visualization_buffer(
                         dicts of viz names to Tensors of shape [N, …].
     @type visualizations: dict[str, dict[str, Tensor]]
     @param visualizations: Current batch’s visualizations with the same nested structure.
-    @type logged_idxs: dict[str, list[int]]
-    @param logged_idxs: Mapping from node names to lists of batch indices already logged
-                       by the smart (class-balanced) logger.
+    @type logged_idxs: list[int]
+    @param logged_idxs: List of batch indices already logged by the smart (class-balanced) logger.
     @type max_log_images: int
     @param max_log_images: Total number of images we aim to log per epoch.
     @return: A dict `{ node_name: { viz_name: Tensor[...] } }` containing up to the remaining
@@ -680,20 +675,19 @@ def compute_visualization_buffer(
     if buf_count >= max_log_images:
         return None
 
+    B = next(iter(next(iter(visualizations.values())).values())).shape[0]
+    used = set(logged_idxs)
+    free_ix = [i for i in range(B) if i not in used]
+    if not free_ix:
+        return None
+
     rem = max_log_images - buf_count
     leftovers: dict[str, dict[str, Tensor]] = {}
 
     for node_name, viz_map in visualizations.items():
-        used = set(logged_idxs.get(node_name, []))
         node_buf: dict[str, Tensor] = {}
-
         for viz_name, tensor in viz_map.items():
-            free_ix = [i for i in range(tensor.shape[0]) if i not in used]
-            if not free_ix:
-                continue
-            slice_ = tensor[free_ix][:rem]
-            node_buf[viz_name] = slice_
-
+            node_buf[viz_name] = tensor[free_ix][:rem]
         if node_buf:
             leftovers[node_name] = node_buf
 

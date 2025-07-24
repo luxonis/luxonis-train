@@ -20,6 +20,72 @@ def create_image(i: int, dir: Path) -> Path:
     return path
 
 
+CONFIG = {
+    "model": {
+        "name": "detection_light",
+        "nodes": [
+            {
+                "name": "EfficientRep",
+                "params": {
+                    "variant": "n",
+                },
+            },
+            {
+                "name": "RepPANNeck",
+                "inputs": ["EfficientRep"],
+                "params": {
+                    "variant": "n",
+                },
+            },
+            {
+                "name": "EfficientBBoxHead",
+                "inputs": ["RepPANNeck"],
+                "visualizers": [
+                    {
+                        "name": "BBoxVisualizer",
+                    }
+                ],
+                "metrics": [
+                    {
+                        "name": "MeanAveragePrecision",
+                    }
+                ],
+                "losses": [
+                    {
+                        "name": "AdaptiveDetectionLoss",
+                    }
+                ],
+            },
+            {
+                "name": "EfficientKeypointBBoxHead",
+                "inputs": ["RepPANNeck"],
+                "visualizers": [
+                    {
+                        "name": "KeypointVisualizer",
+                    }
+                ],
+                "metrics": [{"name": "MeanAveragePrecision"}],
+                "losses": [
+                    {
+                        "name": "EfficientKeypointBBoxLoss",
+                    }
+                ],
+            },
+        ],
+    },
+    "loader": {
+        "test_view": "val",
+        "params": {
+            "dataset_name": "duplicates",
+        },
+    },
+    "trainer": {
+        "batch_size": 2,
+        "n_log_images": 8,
+    },
+}
+
+
 def test_smart_vis_logging(work_dir: Path):
     temp_dir = Path(work_dir) / "non_balanced"
     temp_dir.mkdir(parents=True, exist_ok=True)
@@ -33,6 +99,19 @@ def test_smart_vis_logging(work_dir: Path):
                 "annotation": {
                     "class": "cat" if i in [0, 1] else "dog",
                     "boundingbox": {"x": 0.5, "y": 0.5, "w": 0.1, "h": 0.3},
+                    "keypoints": {
+                        "keypoints": [(0.5, 0.5, 1), (0.6, 0.6, 1)],
+                    },
+                },
+            }
+            yield {
+                "file": str(path),
+                "annotation": {
+                    "class": "mouse",
+                    "boundingbox": {"x": 0.3, "y": 0.3, "w": 0.1, "h": 0.3},
+                    "keypoints": {
+                        "keypoints": [(0.3, 0.3, 1), (0.4, 0.4, 1)],
+                    },
                 },
             }
             if i in [0, 1]:
@@ -45,14 +124,10 @@ def test_smart_vis_logging(work_dir: Path):
     dataset.make_splits(definitions)
 
     opts = {
-        "loader.test_view": "val",
         "loader.params.dataset_name": dataset.identifier,
-        "trainer.batch_size": 2,
-        "trainer.n_log_images": 8,
     }
 
-    config_file = "configs/detection_light_model.yaml"
-    model = LuxonisModel(config_file, opts)
+    model = LuxonisModel(CONFIG, opts)
     model.test()
 
     log_dir = model.lightning_module.logger.experiment["tensorboard"].log_dir
@@ -62,11 +137,17 @@ def test_smart_vis_logging(work_dir: Path):
 
     image_tags = ea.Tags().get("images", [])
 
-    expected = [
+    expected_det = [
         f"test/visualizations/EfficientBBoxHead/BBoxVisualizer/{i}"
         for i in range(8)
     ]
+    expected_kpts = [
+        f"test/visualizations/EfficientKeypointBBoxHead/KeypointVisualizer/{i}"
+        for i in range(8)
+    ]
 
-    assert set(image_tags) == set(expected), (
-        f"Got image tags {image_tags!r}, but expected exactly {expected!r}"
+    expected = set(expected_det) | set(expected_kpts)
+
+    assert set(image_tags) == expected, (
+        f"Got image tags {image_tags!r}, but expected exactly {sorted(expected)!r}"
     )
