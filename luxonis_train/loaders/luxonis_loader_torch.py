@@ -158,9 +158,9 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
     @override
     def augment_test_image(self, img: dict[str, Tensor]) -> Tensor:
         if self.loader.augmentations is None:
-            return img
-        img = {k: v.numpy() for k, v in img.items()}
-        augmented_dict = self.loader.augmentations.apply([(img, {})])[0]
+            return img[self.image_source]
+        img_arr = {k: v.numpy() for k, v in img.items()}
+        augmented_dict = self.loader.augmentations.apply([(img_arr, {})])[0]
         return torch.tensor(next(iter(augmented_dict.values())))
 
     def _parse_dataset(
