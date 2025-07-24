@@ -1,5 +1,6 @@
 from collections import defaultdict
 from collections.abc import Iterable
+from contextlib import suppress
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -49,18 +50,18 @@ def process_visualizations(
 
 
 def prepare_and_infer_image(
-    model: "lxt.LuxonisModel", img: Tensor
+    model: "lxt.LuxonisModel", images: dict[str, Tensor]
 ) -> LuxonisOutput:
     """Prepares the image for inference and runs the model."""
-    img = model.loaders["val"].augment_test_image(img)
+    img_arr = model.loaders["val"].augment_test_image(images)
 
     inputs = {
-        "image": torch.tensor(img).unsqueeze(0).permute(0, 3, 1, 2).float()
+        "image": torch.tensor(img_arr).unsqueeze(0).permute(0, 3, 1, 2).float()
     }
-    images = get_denormalized_images(model.cfg, inputs["image"])
+    img = get_denormalized_images(model.cfg, inputs["image"])
 
     return model.lightning_module.forward(
-        inputs, images=images, compute_visualizations=True
+        inputs, images=img, compute_visualizations=True
     )
 
 
@@ -95,7 +96,9 @@ def infer_from_video(
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # TODO: batched inference
-        outputs = prepare_and_infer_image(model, torch.tensor(frame))
+        outputs = prepare_and_infer_image(
+            model, {"image": torch.tensor(frame)}
+        )
         renders = process_visualizations(outputs.visualizations, batch_size=1)
 
         for (node_name, viz_name), [viz] in renders.items():
@@ -118,7 +121,9 @@ def infer_from_video(
             break
 
     cap.release()
-    cv2.destroyAllWindows()
+    if save_dir is None:
+        with suppress(cv2.error):  # type: ignore
+            cv2.destroyAllWindows()
 
     for writer in writers.values():
         writer.release()
@@ -176,7 +181,9 @@ def infer_from_loader(
                 broken = True
                 break
 
-    cv2.destroyAllWindows()
+    if save_dir is None:
+        with suppress(cv2.error):  # type: ignore
+            cv2.destroyAllWindows()
 
 
 def create_loader_from_directory(

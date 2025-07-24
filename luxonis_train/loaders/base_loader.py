@@ -217,7 +217,7 @@ class BaseLoaderTorch(
         """
         return self.input_shapes[self.image_source]
 
-    def augment_test_image(self, img: Tensor) -> Tensor:
+    def augment_test_image(self, img: dict[str, Tensor]) -> Tensor:
         raise NotImplementedError(
             f"{self.__class__.__name__} does not expose interface "
             "for test-time augmentation. Implement "
