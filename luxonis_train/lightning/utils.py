@@ -653,6 +653,23 @@ def compute_visualization_buffer(
     logged_idxs: dict[str, list[int]],
     max_log_images: int,
 ) -> dict[str, dict[str, Tensor]] | None:
+    """Build a buffer of leftover visualizations to fill up to
+    `max_log_images` frames.
+
+    @type seq_buffer: list[dict[str, dict[str, Tensor]]]
+    @param seq_buffer: Previously buffered visualizations; each item maps node names to
+                        dicts of viz names to Tensors of shape [N, …].
+    @type visualizations: dict[str, dict[str, Tensor]]
+    @param visualizations: Current batch’s visualizations with the same nested structure.
+    @type logged_idxs: dict[str, list[int]]
+    @param logged_idxs: Mapping from node names to lists of batch indices already logged
+                       by the smart (class-balanced) logger.
+    @type max_log_images: int
+    @param max_log_images: Total number of images we aim to log per epoch.
+    @return: A dict `{ node_name: { viz_name: Tensor[...] } }` containing up to the remaining
+             number of images needed to reach `max_log_images`, excluding any indices in
+             `logged_idxs`. Returns `None` if the buffer is already full or no leftovers exist.
+    """
     if seq_buffer:
         first_map = seq_buffer[0]
         first_tensor = next(iter(next(iter(first_map.values())).values()))
