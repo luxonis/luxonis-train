@@ -4,8 +4,8 @@ model:
   name: keypoint_detection_light
   predefined_model:
     name: KeypointDetectionModel
+    variant: light
     params:
-      variant: light
       loss_params:
         iou_type: "ciou"
 

@@ -5,8 +5,7 @@ model:
   name: detection_light
   predefined_model:
     name: DetectionModel
-    params:
-      variant: light
+    variant: light
 
 loader:
   params:
