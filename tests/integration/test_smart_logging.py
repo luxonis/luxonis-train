@@ -81,7 +81,7 @@ CONFIG = {
     },
     "trainer": {
         "batch_size": 2,
-        "n_log_images": 8,
+        "n_log_images": 9,
     },
 }
 
@@ -118,6 +118,13 @@ def test_smart_vis_logging(work_dir: Path):
                 definitions["train"].append(str(path))
             else:
                 definitions["val"].append(str(path))
+            path = create_image(i, temp_dir)
+
+        path = create_image(11, temp_dir)
+        yield {
+            "file": str(path),
+        }
+        definitions["val"].append(str(path))
 
     dataset = LuxonisDataset("non_balanced", delete_local=True)
     dataset.add(generator())
@@ -139,11 +146,11 @@ def test_smart_vis_logging(work_dir: Path):
 
     expected_det = [
         f"test/visualizations/EfficientBBoxHead/BBoxVisualizer/{i}"
-        for i in range(8)
+        for i in range(9)
     ]
     expected_kpts = [
         f"test/visualizations/EfficientKeypointBBoxHead/KeypointVisualizer/{i}"
-        for i in range(8)
+        for i in range(9)
     ]
 
     expected = set(expected_det) | set(expected_kpts)
