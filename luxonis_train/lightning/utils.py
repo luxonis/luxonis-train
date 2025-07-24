@@ -577,8 +577,10 @@ def log_balanced_class_images(
     max_log_images: int,
     mode: Literal["test", "val"],
     current_epoch: int,
-) -> tuple[int, list[int]]:
+) -> tuple[int, list[int], dict[str, list[int]]]:
     """Log images with balanced class distribution."""
+    logged_indices: dict[str, list[int]] = {}
+
     for node_name, node_visualizations in visualizations.items():
         node_logged_images = n_logged_images
         formatted_node_name = nodes.formatted_name(node_name)
@@ -604,11 +606,15 @@ def log_balanced_class_images(
                             viz.detach().cpu().numpy().transpose(1, 2, 0),
                             step=current_epoch,
                         )
+                        if node_name not in logged_indices:
+                            logged_indices[node_name] = []
+                        logged_indices[node_name].append(idx)
+
                         node_logged_images += 1
                         for c in present_classes:
                             class_log_counts[c] += 1
 
-    return node_logged_images, class_log_counts
+    return node_logged_images, class_log_counts, logged_indices
 
 
 def log_sequential_images(
@@ -639,6 +645,47 @@ def log_sequential_images(
                 node_logged_images += 1
 
     return node_logged_images
+
+
+def compute_visualization_buffer(
+    seq_buffer: list[dict[str, dict[str, Tensor]]],
+    visualizations: dict[str, dict[str, Tensor]],
+    logged_idxs: dict[str, list[int]],
+    max_log_images: int,
+) -> dict[str, dict[str, Tensor]] | None:
+    if seq_buffer:
+        first_map = seq_buffer[0]
+        first_tensor = next(iter(next(iter(first_map.values())).values()))
+        buf_count = first_tensor.shape[0]
+    else:
+        buf_count = 0
+
+    if buf_count >= max_log_images:
+        return None
+
+    rem = max_log_images - buf_count
+    leftovers: dict[str, dict[str, Tensor]] = {}
+
+    for node_name, viz_map in visualizations.items():
+        used = set(logged_idxs.get(node_name, []))
+        node_buf: dict[str, Tensor] = {}
+
+        for viz_name, tensor in viz_map.items():
+            free_ix = [i for i in range(tensor.shape[0]) if i not in used]
+            if not free_ix:
+                continue
+            slice_ = tensor[free_ix][:rem]
+            node_buf[viz_name] = slice_
+            rem -= slice_.shape[0]
+            if rem <= 0:
+                break
+
+        if node_buf:
+            leftovers[node_name] = node_buf
+        if rem <= 0:
+            break
+
+    return leftovers if leftovers else None
 
 
 def get_model_execution_order(

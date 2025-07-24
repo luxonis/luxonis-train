@@ -34,6 +34,7 @@ from .utils import (
     build_training_strategy,
     build_visualizers,
     compute_losses,
+    compute_visualization_buffer,
     get_model_execution_order,
     log_balanced_class_images,
     log_sequential_images,
@@ -121,6 +122,8 @@ class LuxonisLightningModule(pl.LightningModule):
         self._core = _core
         self._n_logged_images = 0
         self._class_log_counts: list[int] = []
+        self._sequentially_logged_visualizations: list[dict[str, Tensor]] = []
+        self._needs_vis_buffering = True
 
         self._loss_accumulators = {
             "train": LossAccumulator(),
@@ -662,7 +665,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 ):
                     self._class_log_counts = [0] * n_classes
 
-                self._n_logged_images, self._class_log_counts = (
+                self._n_logged_images, self._class_log_counts, logged_idxs = (
                     log_balanced_class_images(
                         self.tracker,
                         self.nodes,
@@ -676,6 +679,15 @@ class LuxonisLightningModule(pl.LightningModule):
                         self.current_epoch,
                     )
                 )
+                if self._needs_vis_buffering:
+                    extra = compute_visualization_buffer(
+                        self._sequentially_logged_visualizations,
+                        outputs.visualizations,
+                        logged_idxs,
+                        max_log_images,
+                    )
+                    if extra:
+                        self._sequentially_logged_visualizations.append(extra)
             else:
                 # just log first N images
                 self._n_logged_images = log_sequential_images(
@@ -734,8 +746,24 @@ class LuxonisLightningModule(pl.LightningModule):
         if self._n_logged_images != self.cfg.trainer.n_log_images:
             logger.warning(
                 f"Logged images ({self._n_logged_images}) != expected ({self.cfg.trainer.n_log_images}). Possible reasons: "
-                f"class imbalance or a small number of images in the split."
+                f"class imbalance or a small number of images in the split. Trying to log more images."
             )
+            for (
+                missing_visualizations
+            ) in self._sequentially_logged_visualizations:
+                self._n_logged_images = log_sequential_images(
+                    self.tracker,
+                    self.nodes,
+                    missing_visualizations,
+                    self._n_logged_images,
+                    self.cfg.trainer.n_log_images,
+                    mode,
+                    self.current_epoch,
+                )
+        else:
+            self._needs_vis_buffering = False
+
+        self._sequentially_logged_visualizations.clear()
 
         self._n_logged_images = 0
         if self._class_log_counts:
