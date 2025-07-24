@@ -48,7 +48,7 @@ def test_smart_vis_logging(work_dir: Path):
         "loader.test_view": "val",
         "loader.params.dataset_name": dataset.identifier,
         "trainer.batch_size": 2,
-        "trainer.n_log_images": 9,
+        "trainer.n_log_images": 8,
     }
 
     config_file = "configs/detection_light_model.yaml"
