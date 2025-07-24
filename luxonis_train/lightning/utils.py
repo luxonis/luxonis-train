@@ -693,14 +693,9 @@ def compute_visualization_buffer(
                 continue
             slice_ = tensor[free_ix][:rem]
             node_buf[viz_name] = slice_
-            rem -= slice_.shape[0]
-            if rem <= 0:
-                break
 
         if node_buf:
             leftovers[node_name] = node_buf
-        if rem <= 0:
-            break
 
     return leftovers if leftovers else None
 
