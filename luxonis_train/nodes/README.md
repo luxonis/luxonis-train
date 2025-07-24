@@ -207,6 +207,9 @@ Adapted from [here](https://arxiv.org/abs/2108.07610)
 
 Adapted from [here](https://arxiv.org/abs/2205.14756)
 
+> [!NOTE]
+> Tested export functionality with `opset_version` set to 16.
+
 **Parameters:**
 
 | Key            | Type                                                              | Default value                    | Description                                         |
