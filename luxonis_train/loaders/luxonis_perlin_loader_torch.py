@@ -88,10 +88,12 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
 
                 if self.augmentations is not None:
                     anomaly_img = self.augmentations.apply(
-                        [(anomaly_img, {})]
+                        [({"image": anomaly_img}, {})]
                     )[0]
 
-                anomaly_img = torch.tensor(anomaly_img).permute(2, 0, 1)
+                anomaly_img = torch.tensor(anomaly_img["image"]).permute(
+                    2, 0, 1
+                )
                 aug_tensor_img, an_mask = apply_anomaly_to_img(
                     tensor_img, anomaly_img, self.beta
                 )
