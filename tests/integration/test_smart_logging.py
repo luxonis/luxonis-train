@@ -39,6 +39,7 @@ CONFIG = {
             },
             {
                 "name": "EfficientBBoxHead",
+                "task_name": "animals",
                 "inputs": ["RepPANNeck"],
                 "visualizers": [
                     {
@@ -57,17 +58,18 @@ CONFIG = {
                 ],
             },
             {
-                "name": "EfficientKeypointBBoxHead",
+                "name": "SegmentationHead",
+                "task_name": "objects",
                 "inputs": ["RepPANNeck"],
                 "visualizers": [
                     {
-                        "name": "KeypointVisualizer",
+                        "name": "SegmentationVisualizer",
                     }
                 ],
-                "metrics": [{"name": "MeanAveragePrecision"}],
+                "metrics": [{"name": "JaccardIndex"}],
                 "losses": [
                     {
-                        "name": "EfficientKeypointBBoxLoss",
+                        "name": "CrossEntropyLoss",
                     }
                 ],
             },
@@ -96,6 +98,7 @@ def test_smart_vis_logging(work_dir: Path):
             path = create_image(i, temp_dir)
             yield {
                 "file": str(path),
+                "task_name": "animals",
                 "annotation": {
                     "class": "cat" if i in [0, 1] else "dog",
                     "boundingbox": {"x": 0.5, "y": 0.5, "w": 0.1, "h": 0.3},
@@ -104,14 +107,16 @@ def test_smart_vis_logging(work_dir: Path):
                     },
                 },
             }
+            mask = np.zeros((512, 512), dtype=np.uint8)
+            mask[0:10, 0:10] = np.random.randint(
+                0, 2, (10, 10), dtype=np.uint8
+            )
             yield {
                 "file": str(path),
+                "task_name": "objects",
                 "annotation": {
-                    "class": "mouse",
-                    "boundingbox": {"x": 0.3, "y": 0.3, "w": 0.1, "h": 0.3},
-                    "keypoints": {
-                        "keypoints": [(0.3, 0.3, 1), (0.4, 0.4, 1)],
-                    },
+                    "class": "house" if i % 2 == 0 else "car",
+                    "segmentation": {"mask": mask},
                 },
             }
             if i in [0, 1]:
@@ -145,11 +150,11 @@ def test_smart_vis_logging(work_dir: Path):
     image_tags = ea.Tags().get("images", [])
 
     expected_det = [
-        f"test/visualizations/EfficientBBoxHead/BBoxVisualizer/{i}"
+        f"test/visualizations/animals-EfficientBBoxHead/BBoxVisualizer/{i}"
         for i in range(9)
     ]
     expected_kpts = [
-        f"test/visualizations/EfficientKeypointBBoxHead/KeypointVisualizer/{i}"
+        f"test/visualizations/objects-SegmentationHead/SegmentationVisualizer/{i}"
         for i in range(9)
     ]
 

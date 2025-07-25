@@ -634,6 +634,7 @@ class LuxonisLightningModule(pl.LightningModule):
         max_log_images = self.cfg.trainer.n_log_images
         input_image = inputs[self.image_source]
 
+        # Smart logging is decided based on only one task's classifications
         cls_key = next(
             (key for key in labels if "/classification" in key), None
         )
