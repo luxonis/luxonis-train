@@ -84,7 +84,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             Default is 0.0004, which corresponds to a small area threshold to remove invalid bboxes and respective keypoints.
         @type class_order_per_task: dict[str, list[str]] | None
         @param class_order_per_task: Dictionary mapping task names to a list of class names.
-            If provided, the classes for the specified tasks will be reordered permanently.
+            If provided, the classes for the specified tasks will be reordered.
         @type seed: Optional[int]
         @param seed: The random seed to use for the augmentations.
         """
@@ -104,6 +104,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 bucket_type=bucket_type,
                 bucket_storage=bucket_storage,
             )
+
+        self.dataset.set_class_order_per_task(class_order_per_task)
         self.loader = LuxonisLoader(
             dataset=self.dataset,
             view=self.view,
@@ -119,7 +121,6 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             filter_task_names=filter_task_names,
             min_bbox_visibility=min_bbox_visibility,
             bbox_area_threshold=bbox_area_threshold,
-            class_order_per_task=class_order_per_task,
             seed=seed,
         )
 
