@@ -114,8 +114,8 @@ def test_smart_vis_logging(work_dir: Path):
                     },
                 }
             if (
-                i > 5
-            ):  # TODO: luxonis-ml bug, background class will not be assigned (self._load_data(0) in luxonis_loader.py)
+                i == 0 or i > 5
+            ):  # luxonis-ml: background class will be assigned based on 0-th sample (self._load_data(0) in luxonis_loader.py)
                 mask = np.zeros((512, 512), dtype=np.uint8)
                 mask[0:10, 0:10] = np.random.randint(
                     0, 2, (10, 10), dtype=np.uint8
