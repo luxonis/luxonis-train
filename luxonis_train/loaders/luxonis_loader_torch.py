@@ -104,8 +104,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 bucket_type=bucket_type,
                 bucket_storage=bucket_storage,
             )
-
-        self.dataset.set_class_order_per_task(class_order_per_task)
+        if class_order_per_task is not None:
+            self.dataset.set_class_order_per_task(class_order_per_task)
         self.loader = LuxonisLoader(
             dataset=self.dataset,
             view=self.view,
