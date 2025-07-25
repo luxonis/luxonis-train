@@ -653,7 +653,10 @@ class LuxonisLightningModule(pl.LightningModule):
         self._loss_accumulators[mode].update(losses)
 
         if outputs.visualizations:
-            if cls_key is not None:
+            if (
+                self.cfg.trainer.use_balanced_image_logging
+                and cls_key is not None
+            ):
                 # Smart logging: balance class representation
                 n_classes = labels[cls_key].shape[1]
                 if (
