@@ -172,10 +172,3 @@ def test_smart_vis_logging(work_dir: Path):
     assert set(image_tags) == expected, (
         f"Got image tags {image_tags!r}, but expected exactly {sorted(expected)!r}"
     )
-
-
-if __name__ == "__main__":
-    work_dir = (
-        r"C:\Users\jerne\Desktop\luxonis-train-ml\luxonis-train\tests\data"
-    )
-    test_smart_vis_logging(work_dir)
