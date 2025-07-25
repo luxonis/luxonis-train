@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import cv2
+import numpy as np
 import pytest
 import torch
 from luxonis_ml.data import LuxonisDataset, LuxonisLoader
@@ -216,6 +217,7 @@ def test_infer(
         (256, 256),
     )
     for i, (img, _) in enumerate(loader):
+        assert isinstance(img, np.ndarray)
         img = cv2.resize(img, (256, 256))
         cv2.imwrite(str(tempdir / f"{i}.jpg"), img)
         video_writer.write(img)

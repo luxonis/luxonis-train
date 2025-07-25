@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Literal
 
-import numpy as np
 import torch
 from loguru import logger
 from luxonis_ml.data import Category, LuxonisDataset, LuxonisLoader
@@ -131,9 +130,15 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
     @override
     def get(self, idx: int) -> tuple[Tensor, Labels]:
         img, labels = self.loader[idx]
-
-        img = np.transpose(img, (2, 0, 1))  # HWC to CHW
-        tensor_img = torch.tensor(img)
+        if isinstance(img, dict):
+            tensor_img = {
+                key: torch.tensor(value.transpose(2, 0, 1))
+                for key, value in img.items()
+            }
+            raise NotImplementedError(
+                "This loader does not support multi-source datasets. "
+            )
+        tensor_img = torch.tensor(img.transpose(2, 0, 1))
 
         return tensor_img, self.dict_numpy_to_torch(labels)
 
