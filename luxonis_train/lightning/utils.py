@@ -571,7 +571,7 @@ def log_balanced_class_images(
     nodes: Mapping[str, BaseNode],
     visualizations: dict[str, dict[str, Tensor]],
     labels: Labels,
-    cls_key: str,
+    cls_task_keys: list[str],
     class_log_counts: list[int],
     n_logged_images: int,
     max_log_images: int,
@@ -584,8 +584,9 @@ def log_balanced_class_images(
     batch_size = next(
         iter(next(iter(visualizations.values())).values())
     ).shape[0]
+    cls_tensor = torch.cat([labels[k] for k in cls_task_keys], dim=1)
     present_classes = [
-        (labels[cls_key][idx] > 0).nonzero(as_tuple=True)[0].tolist()
+        (cls_tensor[idx] > 0).nonzero(as_tuple=True)[0].tolist()
         for idx in range(batch_size)
     ]
     for idx, classes in enumerate(present_classes):

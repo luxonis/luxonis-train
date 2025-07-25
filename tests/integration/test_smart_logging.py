@@ -96,29 +96,38 @@ def test_smart_vis_logging(work_dir: Path):
     def generator():
         for i in range(10):
             path = create_image(i, temp_dir)
-            yield {
-                "file": str(path),
-                "task_name": "animals",
-                "annotation": {
-                    "class": "cat" if i in [0, 1] else "dog",
-                    "boundingbox": {"x": 0.5, "y": 0.5, "w": 0.1, "h": 0.3},
-                    "keypoints": {
-                        "keypoints": [(0.5, 0.5, 1), (0.6, 0.6, 1)],
+            if i <= 5:
+                yield {
+                    "file": str(path),
+                    "task_name": "animals",
+                    "annotation": {
+                        "class": "cat" if i in [0, 1] else "dog",
+                        "boundingbox": {
+                            "x": 0.5,
+                            "y": 0.5,
+                            "w": 0.1,
+                            "h": 0.3,
+                        },
+                        "keypoints": {
+                            "keypoints": [(0.5, 0.5, 1), (0.6, 0.6, 1)],
+                        },
                     },
-                },
-            }
-            mask = np.zeros((512, 512), dtype=np.uint8)
-            mask[0:10, 0:10] = np.random.randint(
-                0, 2, (10, 10), dtype=np.uint8
-            )
-            yield {
-                "file": str(path),
-                "task_name": "objects",
-                "annotation": {
-                    "class": "house" if i % 2 == 0 else "car",
-                    "segmentation": {"mask": mask},
-                },
-            }
+                }
+            if (
+                i > 5
+            ):  # TODO: luxonis-ml bug, background class will not be assigned (self._load_data(0) in luxonis_loader.py)
+                mask = np.zeros((512, 512), dtype=np.uint8)
+                mask[0:10, 0:10] = np.random.randint(
+                    0, 2, (10, 10), dtype=np.uint8
+                )
+                yield {
+                    "file": str(path),
+                    "task_name": "objects",
+                    "annotation": {
+                        "class": "house" if i % 2 == 0 else "car",
+                        "segmentation": {"mask": mask},
+                    },
+                }
             if i in [0, 1]:
                 definitions["train"].append(str(path))
             else:
@@ -163,3 +172,10 @@ def test_smart_vis_logging(work_dir: Path):
     assert set(image_tags) == expected, (
         f"Got image tags {image_tags!r}, but expected exactly {sorted(expected)!r}"
     )
+
+
+if __name__ == "__main__":
+    work_dir = (
+        r"C:\Users\jerne\Desktop\luxonis-train-ml\luxonis-train\tests\data"
+    )
+    test_smart_vis_logging(work_dir)

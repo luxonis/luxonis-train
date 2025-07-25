@@ -634,10 +634,10 @@ class LuxonisLightningModule(pl.LightningModule):
         max_log_images = self.cfg.trainer.n_log_images
         input_image = inputs[self.image_source]
 
-        # Smart logging is decided based on only one task's classifications
-        cls_key = next(
-            (key for key in labels if "/classification" in key), None
-        )
+        # Smart logging is decided based on the classification task keys that are merged for all tasks
+        cls_task_keys: list[str] | None = [
+            k for k in labels if "/classification" in k
+        ] or None
         images = None
         if self._n_logged_images < max_log_images:
             images = get_denormalized_images(self.cfg, input_image)
@@ -657,9 +657,21 @@ class LuxonisLightningModule(pl.LightningModule):
         self._loss_accumulators[mode].update(losses)
 
         if outputs.visualizations:
-            if cls_key is not None:
+            if cls_task_keys is not None:
                 # Smart logging: balance class representation
-                n_classes = labels[cls_key].shape[1]
+                labels_copy = {k: v.clone() for k, v in labels.items()}
+                # Remove background class from segmentation tasks
+                for k in (k for k in labels_copy if "/segmentation" in k):
+                    cls_key = f"{k[: -len('/segmentation')]}/classification"
+                    labels_copy[cls_key] = (
+                        labels_copy[cls_key][:, 1:]
+                        if labels_copy[cls_key].shape[1] > 1
+                        else labels_copy[cls_key]
+                    )
+
+                n_classes = sum(
+                    labels_copy[task].shape[1] for task in cls_task_keys
+                )
                 if (
                     not self._class_log_counts
                     or len(self._class_log_counts) != n_classes
@@ -671,8 +683,8 @@ class LuxonisLightningModule(pl.LightningModule):
                         self.tracker,
                         self.nodes,
                         outputs.visualizations,
-                        labels,
-                        cls_key,
+                        labels_copy,
+                        cls_task_keys,
                         self._class_log_counts,
                         self._n_logged_images,
                         max_log_images,
