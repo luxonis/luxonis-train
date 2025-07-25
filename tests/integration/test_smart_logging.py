@@ -114,7 +114,7 @@ def test_smart_vis_logging(work_dir: Path):
                     },
                 }
             if (
-                i == 0 or i > 5
+                i > 5
             ):  # luxonis-ml: background class will be assigned based on 0-th sample (self._load_data(0) in luxonis_loader.py)
                 mask = np.zeros((512, 512), dtype=np.uint8)
                 mask[0:10, 0:10] = np.random.randint(
@@ -128,6 +128,17 @@ def test_smart_vis_logging(work_dir: Path):
                         "segmentation": {"mask": mask},
                     },
                 }
+
+                background_mask = 1 - mask
+                yield {
+                    "file": str(path),
+                    "task_name": "objects",
+                    "annotation": {
+                        "class": "background",
+                        "segmentation": {"mask": background_mask},
+                    },
+                }
+
             if i in [0, 1]:
                 definitions["train"].append(str(path))
             else:
