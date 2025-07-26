@@ -393,7 +393,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
         self.groups = groups
 
         self.skip_layer: nn.BatchNorm2d | None = None
-        if out_channels == in_channels and stride == 1:
+        if out_channels == in_channels and stride in (1, (1, 1)):
             self.skip_layer = nn.BatchNorm2d(in_channels)
 
         self.scale_layer: ConvBlock | None = None
