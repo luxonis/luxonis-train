@@ -77,3 +77,51 @@ class LCNetV3Block(nn.Sequential):
             )
         )
         super().__init__(*blocks)
+
+
+class LCNetV3Layer(nn.Sequential):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: list[int],
+        kernel_sizes: list[int],
+        strides: list[int],
+        use_se: list[bool],
+        n_branches: int = 4,
+        scale: float = 1.0,
+    ):
+        self.in_channels = in_channels
+        self.out_channels = scale_up(out_channels[-1], scale)
+        layer = []
+        for out_channel, kernel_size, stride, se in zip(
+            out_channels,
+            kernel_sizes,
+            strides,
+            use_se,
+            strict=True,
+        ):
+            out_channel = scale_up(out_channel, scale)
+            layer.append(
+                LCNetV3Block(
+                    in_channels=in_channels,
+                    out_channels=out_channel,
+                    kernel_size=kernel_size,
+                    stride=stride,
+                    use_se=se,
+                    n_branches=n_branches,
+                )
+            )
+            in_channels = out_channel
+        super().__init__(*layer)
+
+
+def scale_up(
+    v: float, scale: float, divisor: int = 16, min_value: int | None = None
+) -> int:
+    v = v * scale
+    if min_value is None:
+        min_value = divisor
+    new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
+    if new_v < 0.9 * v:
+        new_v += divisor
+    return new_v

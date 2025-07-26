@@ -1,4 +1,5 @@
-from luxonis_ml.typing import Kwargs
+from typing import TypedDict
+
 from torch import Tensor, nn
 from typeguard import typechecked
 from typing_extensions import override
@@ -6,7 +7,7 @@ from typing_extensions import override
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvBlock
 
-from .blocks import LCNetV3Block
+from .blocks import LCNetV3Layer, scale_up
 
 
 class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
@@ -33,12 +34,8 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
         scale: float,
         n_branches: int,
         use_detection_backbone: bool,
-        kernel_sizes: list[list[int]],
-        in_channels: list[list[int]],
-        out_channels: list[list[int]],
-        strides: list[list[int]],
-        use_se: list[list[bool]],
         max_text_len: int,
+        layer_params: list["LayerParamsDict"] | None = None,
         **kwargs,
     ):
         """
@@ -54,6 +51,7 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
         @param max_text_len: Maximum text length. Defaults to 40.
         """
         super().__init__(**kwargs)
+        layer_params = layer_params or []
 
         self.scale = scale
         self.use_detection_backbone = use_detection_backbone
@@ -61,53 +59,31 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
 
         self.conv = ConvBlock(
             in_channels=self.in_channels,
-            out_channels=_make_divisible(16 * self.scale),
+            out_channels=scale_up(16, self.scale),
             kernel_size=3,
             stride=2,
             padding=1,
             bias=True,
             activation=None,
         )
-        blocks = []
-        for (
-            in_channel,
-            out_channel,
-            kernel_size,
-            stride,
-            _use_se,
-        ) in zip(
-            in_channels,
-            out_channels,
-            kernel_sizes,
-            strides,
-            use_se,
-            strict=True,
-        ):
-            layer = []
-            for ic, oc, ks, s, se in zip(
-                in_channel,
-                out_channel,
-                kernel_size,
-                stride,
-                _use_se,
-                strict=True,
-            ):
-                layer.append(
-                    LCNetV3Block(
-                        in_channels=_make_divisible(ic * self.scale),
-                        out_channels=_make_divisible(oc * self.scale),
-                        kernel_size=ks,
-                        stride=s,
-                        use_se=se,
-                        n_branches=self.n_branches,
-                    )
+
+        blocks: list[LCNetV3Layer] = []
+        in_channels = scale_up(16, self.scale)
+        for params in layer_params:
+            blocks.append(
+                LCNetV3Layer(
+                    in_channels=in_channels,
+                    n_branches=self.n_branches,
+                    scale=self.scale,
+                    **params,
                 )
-            blocks.append(nn.Sequential(*layer))
+            )
+            in_channels = blocks[-1].out_channels
         self.blocks = nn.ModuleList(blocks)
 
         if self.use_detection_backbone:
             blocks_out_channels = [
-                _make_divisible(out_channels[i][-1] * self.scale)
+                scale_up(blocks[i].out_channels, self.scale)
                 for i in range(1, 5)
             ]
 
@@ -157,57 +133,57 @@ class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
 
     @override
     @staticmethod
-    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+    def get_variants() -> tuple[str, dict[str, "PPLCNetVariantDict"]]:
         return "rec-light", {
             "rec-light": {
                 "scale": 0.95,
                 "n_branches": 4,
                 "use_detection_backbone": False,
-                "kernel_sizes": [
-                    [3],
-                    [3, 3],
-                    [3, 3],
-                    [3, 5, 5, 5, 5],
-                    [5, 5, 5, 5],
-                ],
-                "in_channels": [
-                    [16],
-                    [32, 64],
-                    [64, 128],
-                    [128, 256, 256, 256, 256],
-                    [256, 512, 512, 512],
-                ],
-                "out_channels": [
-                    [32],
-                    [64, 64],
-                    [128, 128],
-                    [256, 256, 256, 256, 256],
-                    [512, 512, 512, 512],
-                ],
-                "strides": [
-                    [1],
-                    [2, 1],
-                    [1, 1],
-                    [2, 1, 1, 1, 1],
-                    [1, 1, 1, 1],
-                ],
-                "use_se": [
-                    [False],
-                    [False, False],
-                    [False, False],
-                    [False, False, False, False, False],
-                    [True, True, False, False],
+                "layer_params": [
+                    {
+                        "kernel_sizes": [3],
+                        "out_channels": [32],
+                        "strides": [1],
+                        "use_se": [False],
+                    },
+                    {
+                        "kernel_sizes": [3, 3],
+                        "out_channels": [64, 64],
+                        "strides": [2, 1],
+                        "use_se": [False, False],
+                    },
+                    {
+                        "kernel_sizes": [3, 3],
+                        "out_channels": [128, 128],
+                        "strides": [1, 1],
+                        "use_se": [False, False],
+                    },
+                    {
+                        "kernel_sizes": [3, 5, 5, 5, 5],
+                        "out_channels": [256, 256, 256, 256, 256],
+                        "strides": [2, 1, 1, 1, 1],
+                        "use_se": [False, False, False, False, False],
+                    },
+                    {
+                        "kernel_sizes": [5, 5, 5, 5],
+                        "out_channels": [512, 512, 512, 512],
+                        "strides": [1, 1, 1, 1],
+                        "use_se": [True, True, False, False],
+                    },
                 ],
             }
         }
 
 
-def _make_divisible(
-    v: float, divisor: int = 16, min_value: int | None = None
-) -> int:
-    if min_value is None:
-        min_value = divisor
-    new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
-    if new_v < 0.9 * v:
-        new_v += divisor
-    return new_v
+class LayerParamsDict(TypedDict):
+    kernel_sizes: list[int]
+    out_channels: list[int]
+    strides: list[int]
+    use_se: list[bool]
+
+
+class PPLCNetVariantDict(TypedDict):
+    scale: float
+    n_branches: int
+    use_detection_backbone: bool
+    layer_params: list[LayerParamsDict]
