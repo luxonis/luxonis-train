@@ -8,6 +8,7 @@ from luxonis_train.nodes.blocks import (
     GeneralReparametrizableBlock,
     SqueezeExciteBlock,
 )
+from luxonis_train.nodes.blocks.utils import forward_gather
 
 
 class MobileOne(BaseNode[Tensor, list[Tensor]]):
@@ -75,48 +76,38 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
 
         self._in_channels = min(64, int(64 * width_multipliers[0]))
 
-        self.stage0 = GeneralReparametrizableBlock(
-            in_channels=self.in_channels,
-            out_channels=self._in_channels,
-            kernel_size=3,
-            stride=2,
-            padding=1,
-        )
-        self.stage1 = self._make_stage(
-            int(64 * width_multipliers[0]),
-            self.n_blocks_per_stage[0],
-            n_se_blocks=0,
-        )
-        self.stage2 = self._make_stage(
-            int(128 * width_multipliers[1]),
-            self.n_blocks_per_stage[1],
-            n_se_blocks=0,
-        )
-        self.stage3 = self._make_stage(
-            int(256 * width_multipliers[2]),
-            self.n_blocks_per_stage[2],
-            n_se_blocks=self.n_blocks_per_stage[2] // 2 if use_se else 0,
-        )
-        self.stage4 = self._make_stage(
-            int(512 * width_multipliers[3]),
-            self.n_blocks_per_stage[3],
-            n_se_blocks=self.n_blocks_per_stage[3] if use_se else 0,
-        )
+        self.stages = [
+            GeneralReparametrizableBlock(
+                in_channels=self.in_channels,
+                out_channels=self._in_channels,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+            ),
+            self._make_stage(
+                int(64 * width_multipliers[0]),
+                self.n_blocks_per_stage[0],
+                n_se_blocks=0,
+            ),
+            self._make_stage(
+                int(128 * width_multipliers[1]),
+                self.n_blocks_per_stage[1],
+                n_se_blocks=0,
+            ),
+            self._make_stage(
+                int(256 * width_multipliers[2]),
+                self.n_blocks_per_stage[2],
+                n_se_blocks=self.n_blocks_per_stage[2] // 2 if use_se else 0,
+            ),
+            self._make_stage(
+                int(512 * width_multipliers[3]),
+                self.n_blocks_per_stage[3],
+                n_se_blocks=self.n_blocks_per_stage[3] if use_se else 0,
+            ),
+        ]
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
-        outs: list[Tensor] = []
-        x = self.stage0(inputs)
-        outs.append(x)
-        x = self.stage1(x)
-        outs.append(x)
-        x = self.stage2(x)
-        outs.append(x)
-        x = self.stage3(x)
-        outs.append(x)
-        x = self.stage4(x)
-        outs.append(x)
-
-        return outs
+        return forward_gather(inputs, self.stages)
 
     @override
     @staticmethod
