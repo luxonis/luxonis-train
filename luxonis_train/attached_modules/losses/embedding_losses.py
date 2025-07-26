@@ -58,16 +58,17 @@ for _loss_name in EMBEDDING_LOSSES:
             regularizer: str | None = None,
             regularizer_params: Params | None = None,
             node: BaseNode | None = None,
+            _loss_name: str = _loss_name,
             **kwargs,
         ):
             super().__init__(node=node)
-            loss_name = _loss_name
+            self._name = _loss_name
 
-            if not hasattr(pml_losses, loss_name):
+            if not hasattr(pml_losses, self._name):
                 raise ValueError(
-                    f"Loss {loss_name} not found in pytorch-metric-learning"
+                    f"Loss {self._name} not found in pytorch-metric-learning"
                 )
-            Loss = getattr(pml_losses, loss_name)
+            Loss = getattr(pml_losses, self._name)
 
             if reducer is not None:
                 if not hasattr(pml_reducers, reducer):
@@ -106,7 +107,7 @@ for _loss_name in EMBEDDING_LOSSES:
             self.loss = Loss(**kwargs)
 
             if self.node.cross_batch_memory_size is not None:
-                if loss_name in CrossBatchMemory.supported_losses():
+                if self._name in CrossBatchMemory.supported_losses():
                     self.loss = CrossBatchMemory(
                         self.loss,
                         embedding_size=self.node.embedding_size,
@@ -114,7 +115,7 @@ for _loss_name in EMBEDDING_LOSSES:
                     )
                 else:
                     logger.warning(
-                        f"'CrossBatchMemory' is not supported for {loss_name}. "
+                        f"'CrossBatchMemory' is not supported for {self._name}. "
                         "Ignoring cross_batch_memory_size."
                     )
 
@@ -126,4 +127,4 @@ for _loss_name in EMBEDDING_LOSSES:
 
         @property
         def name(self) -> str:
-            return _loss_name
+            return self._name

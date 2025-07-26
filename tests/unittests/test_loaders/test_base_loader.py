@@ -64,7 +64,7 @@ def test_collate_fn(
 
     batch = [build_batch_element() for _ in range(batch_size)]
 
-    loader = DummyLoader(view="train")
+    loader = DummyLoader(view=["train"])
     inputs, annotations = loader.collate_fn(batch)
 
     with subtests.test("inputs"):

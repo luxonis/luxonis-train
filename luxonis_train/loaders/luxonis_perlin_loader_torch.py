@@ -76,6 +76,10 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
     def get(self, idx: int) -> tuple[Tensor, Labels]:
         with _freeze_seed():
             img, labels = self.loader[idx]
+        if isinstance(img, dict):
+            raise NotImplementedError(
+                "This loader does not support multi-source datasets."
+            )
 
         img = np.transpose(img, (2, 0, 1))
         tensor_img = torch.tensor(img)
@@ -88,12 +92,10 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
 
                 if self.augmentations is not None:
                     anomaly_img = self.augmentations.apply(
-                        [({"image": anomaly_img}, {})]
-                    )[0]
+                        [({self.image_source: anomaly_img}, {})]
+                    )[0][self.image_source]
 
-                anomaly_img = torch.tensor(anomaly_img["image"]).permute(
-                    2, 0, 1
-                )
+                anomaly_img = torch.tensor(anomaly_img).permute(2, 0, 1)
                 aug_tensor_img, an_mask = apply_anomaly_to_img(
                     tensor_img, anomaly_img, self.beta
                 )
@@ -116,7 +118,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         return aug_tensor_img, tensor_labels
 
     @override
-    def get_classes(self) -> dict[str, list[str]]:
+    def get_classes(self) -> dict[str, bidict[str, int]]:
         names = ["background", "anomaly"]
         idx_map = bidict({name: i for i, name in enumerate(names)})
         return {self.task_name: idx_map}
@@ -125,7 +127,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
 @contextmanager
 def _freeze_seed() -> Generator:
     python_seed = random.getstate()
-    numpy_seed = np.random.get_state()
+    numpy_seed = np.random.get_state()  # noqa: NPY002
     yield
     random.setstate(python_seed)
-    np.random.set_state(numpy_seed)
+    np.random.set_state(numpy_seed)  # noqa: NPY002
