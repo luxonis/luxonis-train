@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Annotated, Literal
 
 import requests
 from cyclopts import App, Group, Parameter
-from loguru import logger
 
 if TYPE_CHECKING:
     from luxonis_train import LuxonisModel
@@ -125,9 +124,10 @@ def inspect(
         new_h, new_w = int(h * size_multiplier), int(w * size_multiplier)
         main_image = cv2.resize(main_image, (new_w, new_h))
         viz = visualize(
-            main_image,
-            np_labels,
-            loader.get_classes(),
+            image=main_image,
+            labels=np_labels,
+            classes=loader.get_classes(),
+            source_name=loader.image_source,
         )
         cv2.imshow("Visualization", viz)
         if cv2.waitKey() in {ord("q"), 27}:
