@@ -9,7 +9,13 @@ from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import Kwargs
 from luxonis_ml.utils import environ
 
-from luxonis_train.__main__ import archive, export, inspect, train
+from luxonis_train.__main__ import (
+    _yield_visualizations,
+    archive,
+    export,
+    inspect,
+    train,
+)
 from luxonis_train.__main__ import test as _test
 
 ONNX_PATH = Path("tests/integration/client_commands_test_model.onnx")
@@ -41,6 +47,10 @@ def prepare():
             },
         ),
         (
+            _yield_visualizations,
+            {"config": "tests/configs/config_simple.yaml"},
+        ),
+        (
             archive,
             {
                 "config": "tests/configs/config_simple.yaml",
@@ -52,7 +62,17 @@ def prepare():
 def test_cli_command_success(
     command: Callable, kwargs: Kwargs, coco_dataset: LuxonisDataset
 ) -> None:
-    command(["loader.params.dataset_name", coco_dataset.identifier], **kwargs)
+    if command is _yield_visualizations:
+        list(
+            command(
+                ["loader.params.dataset_name", coco_dataset.identifier],
+                **kwargs,
+            )
+        )
+    else:
+        command(
+            ["loader.params.dataset_name", coco_dataset.identifier], **kwargs
+        )
 
 
 @pytest.mark.parametrize(

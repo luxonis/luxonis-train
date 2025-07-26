@@ -2,15 +2,17 @@ import importlib
 import importlib.util
 import subprocess
 import sys
+from collections.abc import Iterator
 from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal
 
 import requests
 from cyclopts import App, Group, Parameter
-from loguru import logger
 
 if TYPE_CHECKING:
+    import numpy as np
+
     from luxonis_train import LuxonisModel
 
 app = App(
@@ -74,6 +76,45 @@ def tune(opts: list[str] | None = None, /, *, config: str | None = None):
     create_model(config, opts).tune()
 
 
+def _yield_visualizations(
+    opts: list[str] | None = None,
+    config: str | None = None,
+    view: Literal["train", "val", "test"] = "train",
+    size_multiplier: Annotated[
+        float, Parameter(["--size_multiplier", "-s"])
+    ] = 1.0,
+) -> Iterator["np.ndarray"]:
+    import cv2
+    import numpy as np
+    from luxonis_ml.data.utils.visualizations import visualize
+
+    opts = opts or []
+    opts.extend(["trainer.preprocessing.normalize.active", "False"])
+
+    model = create_model(config, opts)
+
+    loader = model.loaders[view]
+    for images, labels in loader:
+        np_images = {
+            k: v.numpy().transpose(1, 2, 0) for k, v in images.items()
+        }
+        main_image = np_images[loader.image_source]
+        main_image = cv2.cvtColor(main_image, cv2.COLOR_RGB2BGR).astype(
+            np.uint8
+        )
+        np_labels = {task: label.numpy() for task, label in labels.items()}
+
+        h, w, _ = main_image.shape
+        new_h, new_w = int(h * size_multiplier), int(w * size_multiplier)
+        main_image = cv2.resize(main_image, (new_w, new_h))
+        yield visualize(
+            image=main_image,
+            labels=np_labels,
+            classes=loader.get_classes(),
+            source_name=loader.image_source,
+        )
+
+
 @app.command(group=training_group, sort_key=3)
 def inspect(
     opts: list[str] | None = None,
@@ -102,33 +143,13 @@ def inspect(
     @param opts: A list of optional CLI overrides of the config file.
     """
     import cv2
-    import numpy as np
-    from luxonis_ml.data.utils.visualizations import visualize
 
-    opts = opts or []
-    opts.extend(["trainer.preprocessing.normalize.active", "False"])
-
-    model = create_model(config, opts)
-
-    loader = model.loaders[view]
-    for images, labels in loader:
-        np_images = {
-            k: v.numpy().transpose(1, 2, 0) for k, v in images.items()
-        }
-        main_image = np_images[loader.image_source]
-        main_image = cv2.cvtColor(main_image, cv2.COLOR_RGB2BGR).astype(
-            np.uint8
-        )
-        np_labels = {task: label.numpy() for task, label in labels.items()}
-
-        h, w, _ = main_image.shape
-        new_h, new_w = int(h * size_multiplier), int(w * size_multiplier)
-        main_image = cv2.resize(main_image, (new_w, new_h))
-        viz = visualize(
-            main_image,
-            np_labels,
-            loader.get_classes(),
-        )
+    for viz in _yield_visualizations(
+        config=config,
+        view=view,
+        size_multiplier=size_multiplier,
+        opts=opts,
+    ):
         cv2.imshow("Visualization", viz)
         if cv2.waitKey() in {ord("q"), 27}:
             break
