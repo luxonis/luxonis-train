@@ -138,7 +138,8 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         if self.use_nms:
             pooled_map = (
                 F.max_pool2d(
-                    prob_map.unsqueeze(0).unsqueeze(0),  # [1, 1, H, W]
+                    # Shape: `[1, 1, H, W]`
+                    prob_map.unsqueeze(0).unsqueeze(0),
                     kernel_size=3,
                     stride=1,
                     padding=1,
