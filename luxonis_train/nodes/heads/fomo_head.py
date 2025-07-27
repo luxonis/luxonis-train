@@ -4,6 +4,7 @@ from torch import Tensor, nn
 from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.nodes.blocks.blocks import ConvBlock
 from luxonis_train.tasks import Task, Tasks
 from luxonis_train.typing import Packet
 
@@ -39,14 +40,14 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         layers = []
         for _ in range(self.n_conv_layers - 1):
             layers.append(
-                nn.Conv2d(
+                ConvBlock(
                     current_channels,
                     self.conv_channels,
                     kernel_size=1,
                     stride=1,
+                    use_norm=False,
                 )
             )
-            layers.append(nn.ReLU())
             current_channels = self.conv_channels
         layers.append(
             nn.Conv2d(
@@ -68,24 +69,17 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
             return {self.task.main_output: heatmap}
 
         if self.export:
-            return {"outputs": [self._apply_nms_if_needed(heatmap)]}
+            if self.use_nms:
+                heatmap = F.max_pool2d(
+                    heatmap, kernel_size=3, stride=1, padding=1
+                )
+
+            return {"outputs": [heatmap]}
 
         return {
             "keypoints": self._heatmap_to_kpts(heatmap),
             self.task.main_output: heatmap,
         }
-
-    def _apply_nms_if_needed(self, heatmap: Tensor) -> Tensor:
-        """Apply NMS pooling to the heatmap if use_nms is enabled.
-
-        @type heatmap: Tensor
-        @param heatmap: Heatmap to process.
-        @return: Processed heatmap with or without pooling.
-        """
-        if not self.use_nms:
-            return heatmap
-
-        return F.max_pool2d(heatmap, kernel_size=3, stride=1, padding=1)
 
     def _heatmap_to_kpts(self, heatmap: Tensor) -> list[Tensor]:
         """Convert heatmap to keypoint pairs using local-max NMS so that

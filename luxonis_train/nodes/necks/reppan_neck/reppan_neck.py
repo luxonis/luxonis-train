@@ -187,15 +187,6 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
             out_channels = channels_list_down_blocks[2 * i + 1]
             curr_n_repeats = n_repeats_down_blocks[i]
 
-    @override
-    def get_weights_url(self) -> str | None:
-        if self._variant is None:
-            raise ValueError(
-                f"Online weights are available for '{self.name}' "
-                "only when it's used with a predefined variant."
-            )
-        return f"{{github}}/reppanneck_{self._variant}_coco.ckpt"
-
     def forward(self, inputs: list[Tensor]) -> list[Tensor]:
         x = inputs[-1]
         up_block_outs: list[Tensor] = []
@@ -212,6 +203,15 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
             x = down_block(x, up_out)
             outs.append(x)
         return outs
+
+    @override
+    def get_weights_url(self) -> str | None:
+        if self._variant is None:
+            raise ValueError(
+                f"Online weights are available for '{self.name}' "
+                "only when it's used with a predefined variant."
+            )
+        return f"{{github}}/reppanneck_{self._variant}_coco.ckpt"
 
     @override
     @staticmethod

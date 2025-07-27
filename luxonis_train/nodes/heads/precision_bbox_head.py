@@ -124,6 +124,31 @@ class PrecisionBBoxHead(BaseDetectionHead):
             "boundingbox": boxes,
         }
 
+    @override
+    def initialize_weights(self, method: str | None = None) -> None:
+        """Initialize biases for the detection heads.
+
+        Assumes detection_heads structure with separate regression and
+        classification branches.
+        """
+        super().initialize_weights(method)
+        for head, stride in zip(
+            self.detection_heads, self.stride, strict=True
+        ):
+            reg_conv = head.regression_branch[-1]
+            assert isinstance(reg_conv, nn.Conv2d)
+            if reg_conv.bias is not None:
+                nn.init.constant_(reg_conv.bias, 1.0)
+
+            cls_conv = head.classification_branch[-1]
+            assert isinstance(cls_conv, nn.Conv2d)
+            if cls_conv.bias is not None:
+                cls_conv.bias.data[: self.n_classes] = math.log(
+                    5
+                    / self.n_classes
+                    / (self.original_in_shape[1] / stride) ** 2
+                )
+
     @property
     @override
     def export_output_names(self) -> list[str] | None:
@@ -197,28 +222,3 @@ class PrecisionBBoxHead(BaseDetectionHead):
 
         # @shape: [N, H * W, 4 + 1 + n_classes]
         return torch.cat(base_output, dim=-1)
-
-    @override
-    def initialize_weights(self, method: str | None = None) -> None:
-        """Initialize biases for the detection heads.
-
-        Assumes detection_heads structure with separate regression and
-        classification branches.
-        """
-        super().initialize_weights(method)
-        for head, stride in zip(
-            self.detection_heads, self.stride, strict=True
-        ):
-            reg_conv = head.regression_branch[-1]
-            assert isinstance(reg_conv, nn.Conv2d)
-            if reg_conv.bias is not None:
-                nn.init.constant_(reg_conv.bias, 1.0)
-
-            cls_conv = head.classification_branch[-1]
-            assert isinstance(cls_conv, nn.Conv2d)
-            if cls_conv.bias is not None:
-                cls_conv.bias.data[: self.n_classes] = math.log(
-                    5
-                    / self.n_classes
-                    / (self.original_in_shape[1] / stride) ** 2
-                )

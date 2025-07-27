@@ -53,8 +53,8 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
         self.return_feats = return_feats
         self.fc_decay = fc_decay
 
-        self._encoder = OCREncoder(alphabet, ignore_unknown)
-        self._decoder = OCRDecoder(self.encoder.char_to_int)
+        self.encoder = OCREncoder(alphabet, ignore_unknown)
+        self.decoder = OCRDecoder(self.encoder.char_to_int)
 
         if mid_channels is None:
             self.block = nn.Linear(self.in_channels, self.out_channels)
@@ -96,16 +96,8 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
         }
 
     @property
-    def encoder(self) -> OCREncoder:
-        return self._encoder
-
-    @property
-    def decoder(self) -> OCRDecoder:
-        return self._decoder
-
-    @property
     def out_channels(self) -> int:
-        return self._encoder.n_classes
+        return self.encoder.n_classes
 
     @override
     def initialize_weights(self, method: str | None = None) -> None:

@@ -1,6 +1,7 @@
 from typing import Any
 
 from torch import Tensor, nn
+from typing_extensions import override
 
 from luxonis_train.nodes.blocks import UpBlock
 from luxonis_train.nodes.heads import BaseHead
@@ -50,6 +51,7 @@ class SegmentationHead(BaseHead[Tensor, Tensor]):
     def forward(self, inputs: Tensor) -> Tensor:
         return self.head(inputs)
 
+    @override
     def get_custom_head_config(self) -> dict:
         """Returns custom head configuration.
 

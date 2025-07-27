@@ -65,6 +65,9 @@ class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
             nn.BatchNorm1d(embedding_size),
         )
 
+    def forward(self, x: Tensor) -> Tensor:
+        return self.head(x)
+
     @override
     def initialize_weights(self, method: str | None = None) -> None:
         super().initialize_weights(method)
@@ -78,6 +81,3 @@ class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
             if isinstance(m, nn.BatchNorm2d):
                 m.momentum = 0.9
                 m.eps = 1e-5
-
-    def forward(self, x: Tensor) -> Tensor:
-        return self.head(x)

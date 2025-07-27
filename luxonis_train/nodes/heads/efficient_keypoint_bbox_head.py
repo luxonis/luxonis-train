@@ -87,8 +87,8 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         features_list, classes_list, regressions_list = super().forward(inputs)
         keypoints_list: list[Tensor] = []
 
-        # FIXME: What when lenghts not match? Deeper or shallower features
-        # should be discarded?
+        # FIXME: What when lenghts don't match?
+        # Currently we're discarding deeper features.
         for head, x in zip(self.keypoint_heads, inputs, strict=False):
             keypoints_list.append(head(x))
 
@@ -175,6 +175,17 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             + [f"kpt_output{i + 1}" for i in range(self.n_heads)]
         )
 
+    @override
+    def get_custom_head_config(self) -> dict:
+        """Returns custom head configuration.
+
+        @rtype: dict
+        @return: Custom head configuration.
+        """
+        return super().get_custom_head_config() | {
+            "n_keypoints": self.n_keypoints
+        }
+
     def _distributions_to_keypoints(
         self,
         keypoints: Tensor,
@@ -232,14 +243,3 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             for detection in detections
         ]
         return bboxes, keypoints
-
-    @override
-    def get_custom_head_config(self) -> dict:
-        """Returns custom head configuration.
-
-        @rtype: dict
-        @return: Custom head configuration.
-        """
-        return super().get_custom_head_config() | {
-            "n_keypoints": self.n_keypoints
-        }

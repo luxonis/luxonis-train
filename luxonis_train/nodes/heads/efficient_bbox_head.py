@@ -60,8 +60,7 @@ class EfficientBBoxHead(BaseDetectionHead):
 
         self.heads = cast(list[EfficientDecoupledBlock], nn.ModuleList())
         # TODO: What to do if inputs are longer than heads? Create
-        # more heads or discard some inputs? If discard, do we discared
-        # the deeper features or the shallower ones?
+        # more heads or discard some inputs?
         if len(self.in_channels) < self.n_heads:
             logger.warning(
                 f"Head '{self.name}' was set to use {self.n_heads} heads, "
