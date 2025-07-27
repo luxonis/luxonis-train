@@ -27,7 +27,7 @@ class DummyOCRCTCHead(OCRCTCHead, register=False):
             def __call__(self, targets: Tensor) -> Tensor:
                 return targets.view(-1)
 
-        self._encoder = DummyEncoder(mapping)
+        self.encoder = DummyEncoder(mapping)
 
     def forward(self, _: Tensor) -> Tensor: ...
 
