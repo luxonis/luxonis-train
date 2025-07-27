@@ -6,7 +6,9 @@ from luxonis_ml.typing import Kwargs
 from luxonis_train.core import LuxonisModel
 
 
-def get_config(image_size: tuple[int, int], batch_size: int) -> Kwargs:
+def get_config(
+    save_dir: Path, image_size: tuple[int, int], batch_size: int
+) -> Kwargs:
     return {
         "model": {
             "name": "DREAM",
@@ -40,18 +42,19 @@ def get_config(image_size: tuple[int, int], batch_size: int) -> Kwargs:
             "n_sanity_val_steps": 0,
         },
         "tracker": {
-            "save_directory": "tests/integration/save-directory",
+            "save_directory": save_dir,
         },
     }
 
 
 def test_anomaly_detection(
+    save_dir: Path,
     anomaly_detection_dataset: LuxonisDataset,
     image_size: tuple[int, int],
     batch_size: int,
 ):
     model = LuxonisModel(
-        get_config(image_size, batch_size),
+        get_config(save_dir, image_size, batch_size),
         {"loader.params.dataset_name": anomaly_detection_dataset.identifier},
     )
     model.train()

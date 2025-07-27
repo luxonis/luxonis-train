@@ -6,26 +6,29 @@ import pytest
 import torch
 from lightning.pytorch import LightningModule, Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint
-from torch import nn
+from torch import Tensor, nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from luxonis_train.callbacks.ema import EMACallback, ModelEma
 
 
 class DummyModel(pl.LightningModule):
+    training_weights_on_train_epoch_start: dict[str, Tensor]
+    training_weights_on_val_start: dict[str, Tensor]
+    training_weights_on_save_ckpt: dict[str, Tensor]
+
     def __init__(self):
         super().__init__()
         self.layer = nn.Linear(2, 2)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return self.layer(x)
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch: tuple[Tensor, Tensor], batch_idx: int):
         x, y = batch
-        loss = nn.MSELoss()(self(x), y)
-        return loss
+        return nn.MSELoss()(self(x), y)
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch: tuple[Tensor, Tensor], batch_idx: int):
         x, y = batch
         loss = nn.MSELoss()(self(x), y)
         self.log("val_loss", loss, prog_bar=True)
@@ -142,19 +145,28 @@ def test_ema_swapping_across_training(
         """Captures the training (original) weights before EMA swaps
         in."""
 
-        def on_train_epoch_start(self, trainer, pl_module):
+        def on_train_epoch_start(
+            self, trainer: pl.Trainer, pl_module: DummyModel
+        ) -> None:
             pl_module.training_weights_on_train_epoch_start = {
                 k: v.detach().clone()
                 for k, v in pl_module.state_dict().items()
             }
 
-        def on_validation_epoch_start(self, trainer, pl_module):
+        def on_validation_epoch_start(
+            self, trainer: pl.Trainer, pl_module: DummyModel
+        ) -> None:
             pl_module.training_weights_on_val_start = {
                 k: v.detach().clone()
                 for k, v in pl_module.state_dict().items()
             }
 
-        def on_save_checkpoint(self, trainer, pl_module, checkpoint):
+        def on_save_checkpoint(
+            self,
+            trainer: pl.Trainer,
+            pl_module: DummyModel,
+            checkpoint: dict[str, Tensor],
+        ) -> None:
             pl_module.training_weights_on_save_ckpt = {
                 k: v.detach().clone()
                 for k, v in pl_module.state_dict().items()
@@ -167,7 +179,9 @@ def test_ema_swapping_across_training(
         It should revert to training weights on training epoch start.
         """
 
-        def on_train_epoch_start(self, trainer, pl_module):
+        def on_train_epoch_start(
+            self, trainer: pl.Trainer, pl_module: DummyModel
+        ) -> None:
             original_weights = pl_module.training_weights_on_train_epoch_start
             diffs = sum(
                 not torch.equal(pl_module.state_dict()[k], original_weights[k])
@@ -175,7 +189,9 @@ def test_ema_swapping_across_training(
             )
             assert diffs == 0, "Parameters changed after on_train_epoch_start!"
 
-        def on_validation_epoch_start(self, trainer, pl_module):
+        def on_validation_epoch_start(
+            self, trainer: pl.Trainer, pl_module: DummyModel
+        ) -> None:
             original_weights = pl_module.training_weights_on_val_start
             diffs = sum(
                 not torch.equal(pl_module.state_dict()[k], original_weights[k])
@@ -185,7 +201,12 @@ def test_ema_swapping_across_training(
                 "Parameters did not swap after on_validation_epoch_start!"
             )
 
-        def on_save_checkpoint(self, trainer, pl_module, checkpoint):
+        def on_save_checkpoint(
+            self,
+            trainer: pl.Trainer,
+            pl_module: DummyModel,
+            checkpoint: dict[str, Tensor],
+        ) -> None:
             original_weights = pl_module.training_weights_on_save_ckpt
             diffs = sum(
                 not torch.equal(pl_module.state_dict()[k], original_weights[k])

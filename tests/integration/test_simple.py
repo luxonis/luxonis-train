@@ -1,12 +1,13 @@
 import json
-import shutil
 import sys
 import tarfile
 from pathlib import Path
 from typing import Any
 
 import cv2
+import numpy as np
 import pytest
+import torch
 from luxonis_ml.data import LuxonisDataset, LuxonisLoader
 from luxonis_ml.typing import Params
 from luxonis_ml.utils import environ
@@ -17,29 +18,29 @@ from luxonis_train.callbacks import LuxonisRichProgressBar
 from luxonis_train.config import Config
 from luxonis_train.core import LuxonisModel
 
-from .multi_input_modules import *
+from .multi_input_modules import *  # noqa: F403
 
-INFER_PATH = Path("tests/integration/infer-save-directory")
-ONNX_PATH = Path("tests/integration/example_multi_input.onnx")
+# TODO: We should be able to specify the save
+# directory instead of using the CWD.
+ONNX_PATH = Path("tests", "work", "example_multi_input.onnx")
 STUDY_PATH = Path("study_local.db")
 
 
 @pytest.fixture
-def infer_path() -> Path:
-    if INFER_PATH.exists():
-        shutil.rmtree(INFER_PATH)
-    INFER_PATH.mkdir()
-    return INFER_PATH
+def infer_path(work_dir: Path) -> Path:
+    path = work_dir / "infer-save-directory"
+    path.mkdir(exist_ok=True)
+    return path
 
 
 @pytest.fixture
-def opts(output_dir: Path) -> dict[str, Any]:
+def opts(save_dir: Path) -> dict[str, Any]:
     return {
         "trainer.epochs": 1,
         "trainer.batch_size": 1,
         "trainer.validation_interval": 1,
         "trainer.callbacks": [],
-        "tracker.save_directory": str(output_dir),
+        "tracker.save_directory": str(save_dir),
         "tuner.n_trials": 4,
     }
 
@@ -75,10 +76,12 @@ def test_predefined_models(
     cifar10_dataset: LuxonisDataset,
     toy_ocr_dataset: LuxonisDataset,
     image_size: tuple[int, int],
-    output_dir: Path,
+    save_dir: Path,
     subtests: SubTests,
 ):
     config_file = f"configs/{config_name}.yaml"
+    if config_name in {"segmentation_light_model", "segmentation_heavy_model"}:
+        image_size = (64, 128)
     opts = opts | {
         "loader.params.dataset_name": (
             cifar10_dataset.identifier
@@ -105,7 +108,7 @@ def test_predefined_models(
     with subtests.test("saved_config"):
         opts["tracker.run_name"] = f"{config_name}_reload"
         model = LuxonisModel(
-            str(output_dir / config_name / "training_config.yaml"), opts
+            str(save_dir / config_name / "training_config.yaml"), opts
         )
         model.test()
 
@@ -141,7 +144,7 @@ def test_custom_tasks(
         model.run_save_dir, "archive", model.cfg.model.name
     ).with_suffix(".onnx.tar.xz")
     correct_archive_config = json.loads(
-        Path("tests/integration/parking_lot.json").read_text()
+        Path("tests", "integration", "parking_lot.json").read_text()
     )
 
     with subtests.test("test_archive"):
@@ -174,7 +177,7 @@ def test_custom_tasks(
 )
 def test_parsing_loader():
     model = LuxonisModel("tests/configs/segmentation_parse_loader.yaml")
-    model.train()
+    model.test()
 
 
 @pytest.mark.skipif(
@@ -199,25 +202,24 @@ def test_tune(opts: Params, coco_dataset: LuxonisDataset):
 
 
 def test_infer(
+    tempdir: Path,
     coco_dataset: LuxonisDataset,
     infer_path: Path,
     image_size: tuple[int, int],
     subtests: SubTests,
 ):
     loader = LuxonisLoader(coco_dataset)
-    img_dir = Path("tests/data/img_dir")
+    video_path = tempdir / "video.avi"
     video_writer = cv2.VideoWriter(
-        "tests/data/video.avi",  # type: ignore
+        str(video_path),  # type: ignore
         cv2.VideoWriter_fourcc(*"XVID"),
         1,
         (256, 256),
     )
-    if img_dir.exists():  # pragma: no cover
-        shutil.rmtree(img_dir)
-    img_dir.mkdir()
     for i, (img, _) in enumerate(loader):
+        assert isinstance(img, np.ndarray)
         img = cv2.resize(img, (256, 256))
-        cv2.imwrite(str(img_dir / f"{i}.jpg"), img)
+        cv2.imwrite(str(tempdir / f"{i}.jpg"), img)
         video_writer.write(img)
     video_writer.release()
 
@@ -229,15 +231,15 @@ def test_infer(
     model = LuxonisModel("configs/complex_model.yaml", opts)
 
     with subtests.test("single_image"):
-        model.infer(source_path=img_dir / "0.jpg", save_dir=infer_path)
+        model.infer(source_path=tempdir / "0.jpg", save_dir=infer_path)
         assert len(list(infer_path.glob("*.png"))) == 3
 
     with subtests.test("image_dir"):
-        model.infer(source_path=img_dir, save_dir=infer_path)
+        model.infer(source_path=tempdir, save_dir=infer_path)
         assert len(list(infer_path.glob("*.png"))) == len(loader) * 3
 
     with subtests.test("video"):
-        model.infer(source_path="tests/data/video.avi", save_dir=infer_path)
+        model.infer(source_path=video_path, save_dir=infer_path)
         assert len(list(infer_path.glob("*.mp4"))) == 3
 
     with subtests.test("loader"):
@@ -248,9 +250,9 @@ def test_infer(
         model.infer(source_path="tests/data/invalid.jpg", save_dir=infer_path)
 
 
-def test_archive(output_dir: Path, coco_dataset: LuxonisDataset):
+def test_archive(save_dir: Path, coco_dataset: LuxonisDataset):
     opts: Params = {
-        "tracker.save_directory": str(output_dir),
+        "tracker.save_directory": str(save_dir),
         "loader.params.dataset_name": coco_dataset.identifier,
     }
     model = LuxonisModel("tests/configs/archive_config.yaml", opts)
@@ -304,7 +306,7 @@ def test_callbacks(opts: Params, coco_dataset: LuxonisDataset):
     ckpt = torch.load(ckpt_path, map_location="cpu")
 
     assert "execution_order" in ckpt
-    with open("tests/files/execution_order.json", "r") as f:
+    with open("tests/files/execution_order.json") as f:
         assert ckpt["execution_order"] == json.load(f)
 
     assert "config" in ckpt
@@ -424,7 +426,9 @@ def test_freezing_parametrized(
         assert len(actual_vals) == len(expected_seq), (
             f"{tag}: expected {len(expected_seq)} entries, got {len(actual_vals)}"
         )
-        for (exp_step, exp_val), actual in zip(expected_seq, actual_vals):
+        for (exp_step, exp_val), actual in zip(
+            expected_seq, actual_vals, strict=True
+        ):
             act_step, act_val = actual.step, actual.value
             assert act_step == exp_step, (
                 f"{tag}: expected step {exp_step}, got {act_step}"
@@ -574,10 +578,10 @@ def test_rich_progress_bar(coco_dataset: LuxonisDataset):
     progress_bar = LuxonisRichProgressBar()
 
     config = "configs/detection_light_model.yaml"
-    opts = {
+    opts: Params = {
         "loader.params.dataset_name": coco_dataset.identifier,
     }
-    model = LuxonisModel(config)
+    model = LuxonisModel(config, opts)
 
     try:
         progress_bar.on_train_epoch_end(

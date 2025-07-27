@@ -55,14 +55,18 @@ class PLModuleWrapper(pl.LightningModule):
         first_head_dict = next(iter(output.outputs.values()))
 
         if self.task == "segmentation":
+            assert isinstance(first_head_dict["segmentation"], Tensor)
             return first_head_dict["segmentation"]
         if self.task == "detection":
             scores = first_head_dict["class_scores"]
+            assert isinstance(scores, Tensor)
             return scores.sum(dim=1)
         if self.task == "classification":
+            assert isinstance(first_head_dict["classification"], Tensor)
             return first_head_dict["classification"]
         if self.task == "keypoints":
             scores = first_head_dict["class_scores"]
+            assert isinstance(scores, Tensor)
             return scores.sum(dim=1)
         raise ValueError(f"Unknown task: {self.task}")
 

@@ -14,7 +14,11 @@ class FOMOLocalizationLoss(BaseLoss):
     supported_tasks = [Tasks.FOMO]
 
     def __init__(
-        self, object_weight: float = 500, alpha=0.45, gamma=2, **kwargs
+        self,
+        object_weight: float = 500,
+        alpha: float = 0.45,
+        gamma: float = 2,
+        **kwargs,
     ):
         """FOMO Localization Loss for object detection using heatmaps.
 

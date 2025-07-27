@@ -7,8 +7,8 @@ model:
     params:
       backbone: MicroNet
       backbone_params:
-        variant: M1
-      task: multiclass
+        variant: default
+      weights: default
 
 loader:
   params:

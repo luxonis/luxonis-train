@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Literal
 
+import blobconverter
 from loguru import logger
 from luxonis_ml.typing import PathType, check_type
 
@@ -64,7 +65,9 @@ def try_onnx_simplify(onnx_path: str) -> None:
 
 def get_preprocessing(
     cfg: PreprocessingConfig, log_label: str | None = None
-) -> tuple[list[float] | None, list[float] | None, Literal["RGB", "BGR"]]:
+) -> tuple[
+    list[float] | None, list[float] | None, Literal["RGB", "BGR", "GRAY"]
+]:
     def _get_norm_param(key: Literal["mean", "std"]) -> list[float] | None:
         params = cfg.normalize.params
         if key not in params:
@@ -99,8 +102,6 @@ def blobconverter_export(
     export_path: str,
     onnx_path: str,
 ) -> Path:
-    import blobconverter
-
     logger.info("Converting ONNX to .blob")
 
     optimizer_params: list[str] = []

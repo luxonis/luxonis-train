@@ -318,6 +318,7 @@ class BaseLoaderTorch(
             "width",
             "keep_aspect_ratio",
             "color_space",
+            "seed",
         ],
     ) -> Any:
         return get_attribute_check_none(self, attribute)

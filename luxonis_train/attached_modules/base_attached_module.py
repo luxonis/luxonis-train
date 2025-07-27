@@ -8,6 +8,7 @@ from types import UnionType
 from typing import Literal, Union, get_args, get_origin
 
 from bidict import bidict
+from loguru import logger
 from luxonis_ml.typing import check_type
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
@@ -280,3 +281,40 @@ class BaseAttachedModule(
         origin = get_origin(annotation)
         args = get_args(annotation)
         return origin in {Union, UnionType} and type(None) in args
+
+    def _infer_torchmetrics_task(self, **kwargs) -> str:
+        task = kwargs.get("task")
+        if task is None:
+            if "num_classes" in kwargs:
+                task = "binary" if kwargs["num_classes"] == 1 else "multiclass"
+            elif "num_labels" in kwargs:
+                task = "multilabel"
+            else:
+                with suppress(RuntimeError, ValueError):
+                    task = "binary" if self.n_classes == 1 else "multiclass"
+            if task is not None:
+                logger.warning(
+                    "Parameter 'task' was not specified for `TorchMetric` "
+                    f"based '{self.name}'. Assuming task type '{task}' "
+                    "based on the number of classes. "
+                    "If this is incorrect, please specify the "
+                    "'task' parameter in the config."
+                )
+
+        if task is None:
+            raise ValueError(
+                f"'{self.name}' does not have the 'task' parameter set. "
+                "and it is not possible to infer it from the other arguments. "
+                "You can either set the 'task' parameter explicitly, "
+                "provide either 'num_classes' or 'num_labels' argument, "
+                "or use this metric with a node. "
+                "The 'task' can be one of 'binary', 'multiclass', "
+                "or 'multilabel'. "
+            )
+        if task not in {"binary", "multiclass", "multilabel"}:
+            raise ValueError(
+                f"Invalid task type '{task}' for '{self.name}'. "
+                "The 'task' can be one of 'binary', 'multiclass', "
+                "or 'multilabel'."
+            )
+        return task

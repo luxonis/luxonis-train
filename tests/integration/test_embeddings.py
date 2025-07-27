@@ -10,6 +10,7 @@ def test_embeddings_model(embedding_dataset: LuxonisDataset):
             "loader.params.dataset_name": embedding_dataset.dataset_name,
             "trainer.epochs": 1,
             "trainer.validation_interval": 1,
+            "trainer.preprocessing.train_image_size": [64, 64],
         },
     )
     model.train()

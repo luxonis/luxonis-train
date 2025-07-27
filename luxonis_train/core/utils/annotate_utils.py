@@ -4,7 +4,7 @@ from typing import Literal
 
 import torch
 import torch.utils.data as torch_data
-from luxonis_ml.data import DatasetIterator, LuxonisDataset, LuxonisLoader
+from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from luxonis_ml.typing import PathType
 
 import luxonis_train as lxt

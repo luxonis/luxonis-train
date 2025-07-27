@@ -2,6 +2,8 @@ import multiprocessing as mp
 import os
 import random
 import shutil
+import time
+from collections.abc import Generator
 from copy import deepcopy
 from pathlib import Path
 
@@ -17,13 +19,8 @@ from luxonis_ml.utils import LuxonisFileSystem, environ
 
 
 @pytest.fixture(scope="session")
-def work_dir() -> Path:
-    return Path("tests", "data").absolute()
-
-
-@pytest.fixture(scope="session")
 def image_size() -> tuple[int, int]:
-    return 64, 128
+    return 32, 64
 
 
 @pytest.fixture(scope="session")
@@ -32,17 +29,54 @@ def batch_size() -> int:
 
 
 @pytest.fixture(scope="session")
-def output_dir() -> Path:
-    return Path("tests/integration/save-directory")
+def work_dir() -> Generator[Path]:
+    path = Path("tests", "work").absolute()
+    path.mkdir(parents=True, exist_ok=True)
+
+    yield path
+
+    shutil.rmtree(path, ignore_errors=True)
 
 
 @pytest.fixture(scope="session", autouse=True)
-def setup(output_dir: Path, work_dir: Path):
-    work_dir.mkdir(parents=True, exist_ok=True)
-    shutil.rmtree(work_dir / "luxonisml", ignore_errors=True)
-    shutil.rmtree(output_dir, ignore_errors=True)
+def set_environment(work_dir: Path) -> None:
     environ.LUXONISML_BASE_PATH = work_dir / "luxonisml"
-    output_dir.mkdir(exist_ok=True)
+
+
+@pytest.fixture
+def tempdir(work_dir: Path) -> Generator[Path]:
+    rng = random.Random(time.time())
+    t = time.time()
+    unique_id = rng.randint(0, 100_000)
+    while True:
+        path = work_dir / str(unique_id)
+        if not path.exists():
+            break
+        if time.time() - t > 5:  # pragma: no cover
+            raise TimeoutError(
+                "Could not create a unique tempdir. Something is wrong."
+            )
+        unique_id = rng.randint(0, 100_000)
+
+    path.mkdir(exist_ok=True)
+
+    yield path
+
+    shutil.rmtree(path, ignore_errors=True)
+
+
+@pytest.fixture(scope="session")
+def data_dir() -> Path:
+    path = Path("tests", "data")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+@pytest.fixture(scope="session")
+def save_dir(work_dir: Path) -> Path:
+    path = work_dir / "save-directory"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 @pytest.fixture
@@ -51,20 +85,20 @@ def train_overfit() -> bool:
 
 
 @pytest.fixture(scope="session")
-def parking_lot_dataset(work_dir: Path) -> LuxonisDataset:
+def parking_lot_dataset(data_dir: Path) -> LuxonisDataset:
     url = "gs://luxonis-test-bucket/luxonis-ml-test-data/D1_ParkingLot_Native.zip"
     parser = LuxonisParser(
         url,
         dataset_name="D1_ParkingLot",
         delete_local=True,
-        save_dir=work_dir,
+        save_dir=data_dir,
     )
     return parser.parse(random_split=True)
 
 
 @pytest.fixture(scope="session")
-def embedding_dataset(work_dir: Path) -> LuxonisDataset:
-    img_dir = work_dir / "embedding_images"
+def embedding_dataset(data_dir: Path) -> LuxonisDataset:
+    img_dir = data_dir / "embedding_images"
     img_dir.mkdir(exist_ok=True)
 
     def generator() -> DatasetIterator:
@@ -90,9 +124,9 @@ def embedding_dataset(work_dir: Path) -> LuxonisDataset:
 
 
 @pytest.fixture(scope="session")
-def toy_ocr_dataset(work_dir: Path) -> LuxonisDataset:
-    def generator():
-        path = work_dir / "toy_ocr"
+def toy_ocr_dataset(data_dir: Path) -> LuxonisDataset:
+    def generator() -> DatasetIterator:
+        path = data_dir / "toy_ocr"
         path.mkdir(parents=True, exist_ok=True)
         alphabet = "abcdefghijklmnopqrstuvwxyz"
         for _ in range(50):
@@ -126,14 +160,14 @@ def toy_ocr_dataset(work_dir: Path) -> LuxonisDataset:
 
 
 @pytest.fixture(scope="session")
-def coco_dataset(work_dir: Path) -> LuxonisDataset:
+def coco_dataset(data_dir: Path) -> LuxonisDataset:
     dataset_name = "coco_test"
     url = "https://drive.google.com/uc?id=1XlvFK7aRmt8op6-hHkWVKIJQeDtOwoRT"
-    output_zip = work_dir / "COCO_people_subset.zip"
+    output_zip = data_dir / "COCO_people_subset.zip"
 
     if (
         not output_zip.exists()
-        and not (work_dir / "COCO_people_subset").exists()
+        and not (data_dir / "COCO_people_subset").exists()
     ):
         gdown.download(url, str(output_zip), quiet=False)
 
@@ -144,13 +178,13 @@ def coco_dataset(work_dir: Path) -> LuxonisDataset:
 
 
 @pytest.fixture(scope="session")
-def cifar10_dataset(work_dir: Path) -> LuxonisDataset:
+def cifar10_dataset(data_dir: Path) -> LuxonisDataset:
     dataset = LuxonisDataset("cifar10_test", delete_local=True)
-    output_folder = work_dir / "cifar10"
-    if not os.path.exists(output_folder) or not os.listdir(output_folder):
+    output_folder = data_dir / "cifar10"
+    if not output_folder.exists() or not list(output_folder.iterdir()):
         output_folder = LuxonisFileSystem.download(
             "gs://luxonis-test-bucket/luxonis-train-test-data/datasets/cifar10",
-            work_dir,
+            data_dir,
         )
     cifar10_torch = torchvision.datasets.CIFAR10(
         root=output_folder, train=False, download=False
@@ -187,9 +221,9 @@ def cifar10_dataset(work_dir: Path) -> LuxonisDataset:
 
 
 @pytest.fixture(scope="session")
-def mnist_dataset(work_dir: Path) -> LuxonisDataset:
+def mnist_dataset(data_dir: Path) -> LuxonisDataset:
     dataset = LuxonisDataset("mnist_test", delete_local=True)
-    output_folder = work_dir / "mnist"
+    output_folder = data_dir / "mnist"
     output_folder.mkdir(parents=True, exist_ok=True)
     mnist_torch = torchvision.datasets.MNIST(
         root=output_folder, train=False, download=True
@@ -215,13 +249,13 @@ def mnist_dataset(work_dir: Path) -> LuxonisDataset:
 
 
 @pytest.fixture(scope="session")
-def anomaly_detection_dataset(work_dir: Path) -> LuxonisDataset:
+def anomaly_detection_dataset(data_dir: Path) -> LuxonisDataset:
     url = "https://drive.google.com/uc?id=1XlvFK7aRmt8op6-hHkWVKIJQeDtOwoRT"
-    output_zip = work_dir / "COCO_people_subset.zip"
+    output_zip = data_dir / "COCO_people_subset.zip"
 
     if (
         not output_zip.exists()
-        and not (work_dir / "COCO_people_subset").exists()
+        and not (data_dir / "COCO_people_subset").exists()
     ):
         gdown.download(url, str(output_zip), quiet=False)
 
@@ -230,14 +264,15 @@ def anomaly_detection_dataset(work_dir: Path) -> LuxonisDataset:
     ) -> np.ndarray:
         mask = np.zeros(image_shape, dtype=np.uint8)
         h, w = image_shape
+        rng = np.random.default_rng()
         for _ in range(n_squares):
             top_left = (
-                np.random.randint(0, w // 2),
-                np.random.randint(0, h // 2),
+                rng.integers(0, w // 2),
+                rng.integers(0, h // 2),
             )
             bottom_right = (
-                np.random.randint(w // 2, w),
-                np.random.randint(h // 2, h),
+                rng.integers(w // 2, w),
+                rng.integers(h // 2, h),
             )
             cv2.rectangle(mask, top_left, bottom_right, 255, -1)
         return mask
@@ -282,7 +317,7 @@ def anomaly_detection_dataset(work_dir: Path) -> LuxonisDataset:
                 },
             }
 
-    paths_total = list((work_dir / "COCO_people_subset/").rglob("*.jpg"))
+    paths_total = list((data_dir / "COCO_people_subset/").rglob("*.jpg"))
     train_paths = paths_total[:5]
     test_paths = paths_total[5:]
 
@@ -298,17 +333,17 @@ def anomaly_detection_dataset(work_dir: Path) -> LuxonisDataset:
 
 @pytest.fixture
 def config(
-    train_overfit: bool, image_size: tuple[int, int], batch_size: int
+    save_dir: Path,
+    train_overfit: bool,
+    image_size: tuple[int, int],
+    batch_size: int,
 ) -> Kwargs:
-    if train_overfit:  # pragma: no cover
-        epochs = 100
-    else:
-        epochs = 1
+    epochs = 100 if train_overfit else 1
 
     return deepcopy(
         {
             "tracker": {
-                "save_directory": "tests/integration/save-directory",
+                "save_directory": save_dir,
             },
             "loader": {
                 "train_view": "val",

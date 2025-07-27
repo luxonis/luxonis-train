@@ -54,13 +54,13 @@ class LuxonisModelSummary(RichModelSummary):
         table.add_column("Params", justify="right")
         table.add_column("Mode")
 
-        column_names = list(zip(*summary_data))[0]
+        column_names = list(zip(*summary_data, strict=True))[0]
 
         for column_name in ["In sizes", "Out sizes"]:
             if column_name in column_names:
                 table.add_column(column_name, justify="right", style="white")
 
-        rows = list(zip(*(arr[1] for arr in summary_data)))
+        rows = list(zip(*(arr[1] for arr in summary_data), strict=True))
         for row in rows:
             table.add_row(*row)
 
@@ -111,7 +111,7 @@ class LuxonisModelSummary(RichModelSummary):
         total_training_modes: dict[str, int],
         **_,
     ) -> None:
-        rows = list(zip(*(arr[1] for arr in summary_data)))
+        rows = list(zip(*(arr[1] for arr in summary_data), strict=True))
         table = tabulate(
             rows,
             headers=[" ", "Name", "Type", "Params", "Mode"],
