@@ -177,7 +177,7 @@ def test_custom_tasks(
 )
 def test_parsing_loader():
     model = LuxonisModel("tests/configs/segmentation_parse_loader.yaml")
-    model.train()
+    model.test()
 
 
 @pytest.mark.skipif(

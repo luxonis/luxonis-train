@@ -130,7 +130,7 @@ class BaseNode(
         export_output_names: list[str] | None = None,
         attach_index: AttachIndexType | None = None,
         task_name: str | None = None,
-        weights: str | Literal["download", "yolo", "default", "auto"] = "auto",
+        weights: str | Literal["download", "yolo", "default"] = "default",
         _variant: str | None = None,
     ):
         """Constructor for the C{BaseNode}.

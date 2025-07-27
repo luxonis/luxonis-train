@@ -12,7 +12,7 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
     def __init__(
         self,
         out_indices: list[int] | None = None,
-        weights: Literal["download", "random"] = "random",
+        weights: Literal["default", "download"] = "default",
         **kwargs,
     ):
         """EfficientNet backbone.

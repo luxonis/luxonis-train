@@ -8,6 +8,7 @@ model:
       backbone: MicroNet
       backbone_params:
         variant: default
+      weights: default
 
 loader:
   params:

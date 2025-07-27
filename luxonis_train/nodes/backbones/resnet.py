@@ -21,7 +21,7 @@ class ResNet(BaseNode[Tensor, list[Tensor]]):
             False,
             False,
         ),
-        weights: Literal["download", "random"] = "random",
+        weights: Literal["default", "download"] = "default",
         **kwargs,
     ):
         """ResNet backbone.
