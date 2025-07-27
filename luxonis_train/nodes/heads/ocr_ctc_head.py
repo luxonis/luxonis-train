@@ -53,8 +53,8 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
         self.return_feats = return_feats
         self.fc_decay = fc_decay
 
-        self.encoder = OCREncoder(alphabet, ignore_unknown)
-        self.decoder = OCRDecoder(self.encoder.char_to_int)
+        self._encoder = OCREncoder(alphabet, ignore_unknown)
+        self._decoder = OCRDecoder(self._encoder.char_to_int)
 
         if mid_channels is None:
             self.block = nn.Linear(self.in_channels, self.out_channels)
@@ -73,6 +73,16 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
             predictions = F.softmax(predictions, dim=-1)
 
         return predictions
+
+    @property
+    def encoder(self) -> OCREncoder:
+        """Returns the OCR encoder."""
+        return self._encoder
+
+    @property
+    def decoder(self) -> OCRDecoder:
+        """Returns the OCR decoder."""
+        return self._decoder
 
     @property
     @override
