@@ -10,6 +10,7 @@ from luxonis_train.nodes.base_node import (
     ForwardInputT,
     ForwardOutputT,
 )
+from luxonis_train.tasks import Task
 from luxonis_train.typing import Packet
 from luxonis_train.utils.annotation import default_annotate
 

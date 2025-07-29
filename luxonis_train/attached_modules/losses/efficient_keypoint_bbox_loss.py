@@ -236,7 +236,6 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         """Preprocesses the target keypoints in shape [batch_size, N,
         n_keypoints, 3] where N is the maximum number of keypoints in
         one image."""
-
         _, counts = torch.unique(kpts_target[:, 0].int(), return_counts=True)
         max_kpts = int(counts.max()) if counts.numel() > 0 else 0
         batched_keypoints = torch.zeros(

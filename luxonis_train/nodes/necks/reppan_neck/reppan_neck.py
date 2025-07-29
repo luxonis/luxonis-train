@@ -30,8 +30,8 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         initialize_weights: bool = True,
         **kwargs,
     ):
-        """Implementation of the RepPANNeck module. Supports the version
-        with RepBlock and CSPStackRepBlock (for larger networks)
+        """Implementation of the RepPANNeck module. the version. with
+        RepBlock and. (for larger CSPStackRepBlock. networks) Supports.
 
         Adapted from U{YOLOv6: A Single-Stage Object Detection Framework
         for Industrial Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
@@ -69,7 +69,6 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         @type initialize_weights: bool
         @param initialize_weights: If True, initialize weights of the model.
         """
-
         super().__init__(**kwargs)
 
         if (

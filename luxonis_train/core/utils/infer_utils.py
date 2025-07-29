@@ -82,7 +82,6 @@ def infer_from_video(
     @type show: bool
     @param show: Whether to display the visualizations.
     """
-
     cap = cv2.VideoCapture(filename=str(video_path))  # type: ignore
 
     writers: dict[str, cv2.VideoWriter] = {}
@@ -147,7 +146,6 @@ def infer_from_loader(
     @type img_paths: list[Path] | None
     @param img_paths: The paths to the images.
     """
-
     predictions = model.pl_trainer.predict(model.lightning_module, loader)
 
     broken = False
@@ -278,6 +276,5 @@ def infer_from_dataset(
     @type save_dir: PathType | None
     @param save_dir: The directory to save the visualizations to.
     """
-
     loader = model.pytorch_loaders[view]
     infer_from_loader(model, loader, save_dir)

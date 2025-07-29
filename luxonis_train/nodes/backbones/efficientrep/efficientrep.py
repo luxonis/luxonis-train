@@ -31,8 +31,9 @@ class EfficientRep(BaseNode[Tensor, list[Tensor]]):
         initialize_weights: bool = True,
         **kwargs,
     ):
-        """Implementation of the EfficientRep backbone. Supports the
-        version with RepBlock and CSPStackRepBlock (for larger networks)
+        """Implementation of the EfficientRep backbone. networks)
+        Supports version with RepBlock and the. (for larger
+        CSPStackRepBlock.
 
         Adapted from U{YOLOv6: A Single-Stage Object Detection Framework
         for Industrial Applications

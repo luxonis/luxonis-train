@@ -5,7 +5,7 @@ import torch
 from loguru import logger
 from torch import Tensor, nn
 
-from luxonis_train.nodes.blocks import DFL, ConvModule, DWConvModule
+from luxonis_train.nodes.blocks import DFL, ConvModule
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet

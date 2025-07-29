@@ -304,7 +304,7 @@ def test_callbacks(opts: Params, coco_dataset: LuxonisDataset):
     ckpt = torch.load(ckpt_path, map_location="cpu")
 
     assert "execution_order" in ckpt
-    with open("tests/files/execution_order.json", "r") as f:
+    with open("tests/files/execution_order.json") as f:
         assert ckpt["execution_order"] == json.load(f)
 
     assert "config" in ckpt

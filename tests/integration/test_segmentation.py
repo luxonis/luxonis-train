@@ -7,8 +7,11 @@ from luxonis_ml.typing import Params
 from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
 
-# TODO: Remove the following line after the incompatibility issue is resolved
-BACKBONES = [backbone for backbone in BACKBONES if backbone != "PPLCNetV3"]
+BACKBONES = [
+    backbone
+    for backbone in BACKBONES
+    if backbone not in {"PPLCNetV3", "GhostFaceNetV2"}
+]
 
 
 def get_opts(backbone: str) -> Params:

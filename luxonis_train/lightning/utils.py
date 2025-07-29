@@ -253,7 +253,6 @@ def build_optimizers(
     nodes: Nodes,
 ) -> tuple[list[Optimizer], list[LRScheduler | dict[str, Any]]]:
     """Configures model optimizers and schedulers."""
-
     cfg_optimizer = cfg.trainer.optimizer
     cfg_scheduler = cfg.trainer.scheduler
 
@@ -335,7 +334,6 @@ def build_callbacks(
     nodes: Nodes,
 ) -> list[pl.Callback]:
     """Configures Pytorch Lightning callbacks."""
-
     model_name = cfg.model.name
 
     callbacks: list[pl.Callback] = [
@@ -643,7 +641,6 @@ def get_model_execution_order(
     model: "lxt.LuxonisLightningModule",
 ) -> list[str]:
     """Get the execution order of the model's nodes."""
-
     order = []
     handles = []
 

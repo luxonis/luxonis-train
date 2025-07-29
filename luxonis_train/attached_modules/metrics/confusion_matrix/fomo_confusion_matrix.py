@@ -1,5 +1,3 @@
-from typing import Optional
-
 from loguru import logger
 from torch import Tensor
 from typing_extensions import override

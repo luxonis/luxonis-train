@@ -254,7 +254,6 @@ class DWConvModule(ConvModule):
         @type activation: L{nn.Module} | None
         @param activation: Activation function. If None then nn.Relu.
         """
-
         super().__init__(
             in_channels=in_channels,
             out_channels=out_channels,
@@ -300,7 +299,6 @@ class UpBlock(nn.Sequential):
         @param align_corners: Align corners option for upsampling
             methods that support it. Defaults to False.
         """
-
         layers = []
 
         if upsample_mode == "conv_transpose":
@@ -563,8 +561,8 @@ class BlockRepeater(nn.Module):
         out_channels: int,
         n_blocks: int = 1,
     ):
-        """Module which repeats the block n times. First block accepts
-        in_channels and outputs out_channels while subsequent blocks
+        """Module which repeats the block n times. accepts in_channels
+        and outputs out_channels while subsequent blocks First block
         accept out_channels and output out_channels.
 
         @type block: L{nn.Module}
@@ -763,7 +761,6 @@ class FeatureFusionBlock(nn.Module):
         @type reduction: int
         @param reduction: Reduction factor. Defaults to C{1}.
         """
-
         super().__init__()
 
         self.conv_1x1 = ConvModule(in_channels, out_channels, 1, 1, 0)

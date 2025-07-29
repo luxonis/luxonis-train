@@ -94,7 +94,6 @@ class LuxonisModel:
             normaly unrecovarable exceptions and allows to test the model
             without it being fully functional.
         """
-
         if isinstance(cfg, Config):
             self.cfg = cfg
         else:
@@ -304,7 +303,6 @@ class LuxonisModel:
             in the config file, the weights provided here will take
             precedence.
         """
-
         if self.cfg.trainer.matmul_precision is not None:
             logger.info(
                 f"Setting matmul precision to {self.cfg.trainer.matmul_precision}"
@@ -408,7 +406,6 @@ class LuxonisModel:
             architectural changes affecting the exection order etc.)
         @raises RuntimeError: If C{onnxsim} fails to simplify the model.
         """
-
         weights = weights or self.cfg.model.weights
 
         if not ignore_missing_weights and weights is None:
@@ -575,7 +572,6 @@ class LuxonisModel:
             model will be temporarily replaced with the weights from the
             specified checkpoint.
         """
-
         weights = weights or self.cfg.model.weights
         loader = self.pytorch_loaders[view]
 
@@ -1039,7 +1035,7 @@ class LuxonisModel:
                 return callback.best_model_path
         return None
 
-    def get_mlflow_logging_keys(self):
+    def get_mlflow_logging_keys(self) -> dict[str, list[str]]:
         """
         Returns a dictionary with two lists of keys:
         1) "metrics"    -> Keys expected to be logged as standard metrics
