@@ -580,7 +580,7 @@ tuner:
   study_name: "seg_study"
   n_trials: 10
   storage:
-    storage_type: "local"
+    backend: sqlite
   params:
     trainer.optimizer.name_categorical: ["Adam", "SGD"]
     trainer.optimizer.params.lr_float: [0.0001, 0.001]
