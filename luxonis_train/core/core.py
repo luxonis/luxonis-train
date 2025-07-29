@@ -842,7 +842,13 @@ class LuxonisModel:
 
         storage = None
         if cfg_tuner.storage.active:
-            if cfg_tuner.storage.storage_type == "local":
+            if cfg_tuner.storage.url is not None:
+                logger.info(
+                    f"Using custom storage for Optuna "
+                    f"study at '{cfg_tuner.storage.url}'"
+                )
+                storage = cfg_tuner.storage.url
+            elif cfg_tuner.storage.storage_type == "sqlite":
                 storage = "sqlite:///study_local.db"
             else:  # pragma: no cover
                 storage = "postgresql://{}:{}@{}:{}/{}".format(  # noqa: UP032

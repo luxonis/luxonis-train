@@ -5,7 +5,13 @@ from typing import Annotated, Any, Literal, NamedTuple
 
 from loguru import logger
 from luxonis_ml.enums import DatasetType
-from luxonis_ml.typing import ConfigItem, Params, ParamValue, check_type
+from luxonis_ml.typing import (
+    ConfigItem,
+    Kwargs,
+    Params,
+    ParamValue,
+    check_type,
+)
 from luxonis_ml.utils import (
     BaseModelExtraForbid,
     Environ,
@@ -595,7 +601,33 @@ class ExportConfig(ArchiveConfig):
 
 class StorageConfig(BaseModelExtraForbid):
     active: bool = True
-    storage_type: Literal["local", "remote"] = "local"
+    storage_type: Literal["sqlite", "postgresql"] = "sqlite"
+    url: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_storage_type(cls, data: Kwargs) -> Kwargs:
+        if "storage_type" not in data:
+            return data
+        storage_type = data["storage_type"]
+        if not isinstance(storage_type, str):
+            raise TypeError(
+                f"Invalid value for `storage_type`: {storage_type}. "
+                "Expected a string."
+            )
+        if storage_type == "local":
+            logger.warning(
+                "Using 'local' storage type is deprecated. "
+                "Please use 'sqlite' instead."
+            )
+            data["storage_type"] = "sqlite"
+        elif storage_type == "remote":
+            logger.warning(
+                "Using 'remote' storage type is deprecated. "
+                "Please use 'postgresql' instead."
+            )
+            data["storage_type"] = "postgresql"
+        return data
 
 
 class TunerConfig(BaseModelExtraForbid):

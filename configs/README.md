@@ -553,10 +553,11 @@ Here you can specify options for tuning.
 
 ### Storage
 
-| Key            | Type                         | Default value | Description                                         |
-| -------------- | ---------------------------- | ------------- | --------------------------------------------------- |
-| `active`       | `bool`                       | `True`        | Whether to use storage to make the study persistent |
-| `storage_type` | `Literal["local", "remote"]` | `"local"`     | Type of the storage                                 |
+| Key            | Type                         | Default value | Description                                                            |
+| -------------- | ---------------------------- | ------------- | ---------------------------------------------------------------------- |
+| `active`       | `bool`                       | `True`        | Whether to use storage to make the study persistent                    |
+| `storage_type` | `Literal["local", "remote"]` | `"local"`     | Type of the storage. Ignored if `url` is also specified.               |
+| `url`          | `str \| None`                | `None`        | Custom storage URL. `storage_type` is ignored when `url` is specified. |
 
 **Example:**
 
