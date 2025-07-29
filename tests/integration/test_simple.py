@@ -182,7 +182,7 @@ def test_parsing_loader():
 )
 def test_tune(opts: Params, coco_dataset: LuxonisDataset):
     opts |= {
-        "tuner.storage.url": f"sqlite:///{STUDY_PATH}",
+        "tuner.storage.database": f"{STUDY_PATH}",
         "tuner.params": {
             "trainer.optimizer.name_categorical": ["Adam", "SGD"],
             "trainer.optimizer.params.lr_float": [0.0001, 0.001],
