@@ -1,7 +1,8 @@
 import re
 from collections import defaultdict
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Literal, cast
+from typing import Any, Literal, cast
 
 import lightning.pytorch as pl
 import torch

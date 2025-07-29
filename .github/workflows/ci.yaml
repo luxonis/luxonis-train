@@ -48,7 +48,6 @@ jobs:
         run: pydoctor --docformat=epytext luxonis_train
 
   type-check:
-    if: false
     needs:
       - pre-commit
       - docs
@@ -76,9 +75,21 @@ jobs:
         warnings: true
         python-version: '3.10'
         project: pyproject.toml
-
-    - name: Pyleft Check
-      run: pyleft luxonis_train
+        working-directory: >
+          luxonis_train/assigners
+          luxonis_train/attached_modules
+          luxonis_train/callbacks
+          luxonis_train/config
+          luxonis_train/core
+          luxonis_train/lightning
+          luxonis_train/loaders
+          luxonis_train/optimizers
+          luxonis_train/schedulers
+          luxonis_train/strategies
+          luxonis_train/utils
+          luxonis_train/registry.py
+          luxonis_train/tasks.py
+          luxonis_train/typing.py
 
   # Tests that the `luxonis-train.config.Config` works
   # even when the dependencies of `luxonis-train` are

@@ -23,6 +23,7 @@ class BaseHead(BaseNode[ForwardInputT, ForwardOutputT]):
     @ivar parser: Parser to use for the head.
     """
 
+    task: Task
     parser: str = ""
 
     def get_head_config(self) -> dict[str, Any]:

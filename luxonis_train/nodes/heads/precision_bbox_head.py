@@ -278,7 +278,7 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
                 m.eps = 0.001
                 m.momentum = 0.03
             elif isinstance(
-                m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU)
+                m, nn.Hardswish | nn.LeakyReLU | nn.ReLU | nn.ReLU6 | nn.SiLU
             ):
                 m.inplace = True
 

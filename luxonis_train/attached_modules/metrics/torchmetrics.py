@@ -100,7 +100,7 @@ class TorchMetricWrapper(BaseMetric):
         self.metric.update(predictions, target)
 
     @override
-    def compute(self) -> Tensor:
+    def compute(self) -> Tensor | tuple[Tensor, dict[str, Tensor]]:
         x = self.metric.compute()
         if not (isinstance(x, Tensor) and x.ndim > 0 and x.numel() > 1):
             return x
@@ -111,10 +111,9 @@ class TorchMetricWrapper(BaseMetric):
                 metric_name + "_" + class_names[i]: x[i]
                 for i in range(x.numel())
             }
-        else:
-            ValueError(
-                f"Metric '{self.name}' does not have 'classes' attribute set."
-            )
+        raise ValueError(
+            f"Metric '{self.name}' does not have 'classes' attribute set."
+        )
 
     @override
     def reset(self) -> None:

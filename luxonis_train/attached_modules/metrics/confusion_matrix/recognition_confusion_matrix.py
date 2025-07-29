@@ -37,7 +37,7 @@ class RecognitionConfusionMatrix(BaseMetric):
             self.metric.update(predictions, targets)
 
     @override
-    def compute(self) -> Tensor:
+    def compute(self) -> dict[str, Tensor]:
         cm = self.metric.compute()
         mcc = compute_mcc(cm.float())
         return {"mcc": mcc, "confusion_matrix": cm}

@@ -780,6 +780,13 @@ class LuxonisModel:
                         ),
                         None,
                     )
+                    if monitor is None:
+                        raise ValueError(
+                            f"Could not find monitor key for main metric '{main_metric.name}' "
+                            f"attached to '{main_metric.attached_to}' in the MLFlow logging keys."
+                        )
+            else:
+                raise AssertionError
 
             pruner_callback = PyTorchLightningPruningCallback(
                 trial, monitor=monitor

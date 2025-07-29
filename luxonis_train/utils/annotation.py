@@ -5,6 +5,7 @@ import numpy as np
 from luxonis_ml.data import DatasetIterator
 from torch import Tensor
 
+import luxonis_train as lxt
 from luxonis_train.config.config import PreprocessingConfig
 from luxonis_train.typing import Packet
 
@@ -17,8 +18,8 @@ from .spatial_transforms import (
 
 
 def default_annotate(
-    head,  # type: BaseHead
-    head_output: dict[str, Packet[Tensor]],
+    head: "lxt.nodes.BaseHead",
+    head_output: Packet[Tensor],
     image_paths: list[Path],
     config_preprocessing: PreprocessingConfig,
 ) -> DatasetIterator:
@@ -28,7 +29,7 @@ def default_annotate(
 
     @type head: BaseHead
     @param head: The head from which to extract annotations.
-    @type head_output: dict[str, Packet[Tensor]]
+    @type head_output: Packet[Tensor]
     @param head_output: The output from the head containing predictions.
     @type image_paths: list[Path]
     @param image_paths: List of paths to the images corresponding to the
@@ -115,7 +116,11 @@ def default_annotate(
                 .numpy()
             )
         if "text" in required_labels:
-            pred_text = head.decoder(preds_for_image["text"])
+            if not hasattr(head, "decoder"):
+                raise ValueError(
+                    "Head does not have a decoder for text output."
+                )
+            pred_text = head.decoder(preds_for_image["text"])  # type: ignore
 
         for task in required_labels:
             if task == "boundingbox":
