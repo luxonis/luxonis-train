@@ -40,8 +40,7 @@ def figure_to_torch(fig: Figure, width: int, height: int) -> Tensor:
 def torch_img_to_numpy(
     img: Tensor, reverse_colors: bool = False
 ) -> npt.NDArray[np.uint8]:
-    """Converts a torch image (CHW) to a numpy array (HWC). also.
-    converts. colors. Optionally.
+    """Converts a torch image (CHW) to a numpy array (HWC).
 
     @type img: Tensor
     @param img: Torch image (CHW)

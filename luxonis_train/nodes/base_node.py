@@ -366,8 +366,7 @@ class BaseNode(
     def load_checkpoint(
         self, path: str | None = None, strict: bool = True
     ) -> None:
-        """Loads checkpoint for the module. cache. If path. is url then
-        it. downloads it. locally and. stores it in.
+        """Loads checkpoint for the module.
 
         @type path: str | None
         @param path: Path to local or remote .ckpt file.

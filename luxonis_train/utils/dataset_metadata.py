@@ -20,9 +20,9 @@ class DatasetMetadata:
         | None = None,
         loader: BaseLoaderTorch | None = None,
     ):
-        """An object containing metadata about the dataset. keypoints,
-        I{etc.} Used to instead infer the number of classes, number of
-        of passing them as arguments to the model.
+        """An object containing metadata about the dataset. Used to
+        infer the number of classes, number of keypoints, I{etc.}
+        instead of passing them as arguments to the model.
 
         @type classes: dict[str, dict[str, int]] | None
         @param classes: Dictionary mapping tasks to the classes.

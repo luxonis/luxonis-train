@@ -96,8 +96,8 @@ def infer_upscale_factor(
 
 
 def to_shape_packet(packet: Packet[Tensor]) -> Packet[Size]:
-    """Converts a packet of tensors to a packet of shapes. purposes.
-    Used for. debugging.
+    """Converts a packet of tensors to a packet of shapes. Used for
+    debugging purposes.
 
     @type packet: Packet[Tensor]
     @param packet: Packet of tensors.

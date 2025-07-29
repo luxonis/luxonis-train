@@ -561,9 +561,8 @@ class BlockRepeater(nn.Module):
         out_channels: int,
         n_blocks: int = 1,
     ):
-        """Module which repeats the block n times. accepts in_channels
-        and outputs out_channels while subsequent blocks First block
-        accept out_channels and output out_channels.
+        """Module which repeats the block n times. First block accepts
+        in_channels and outputs out_channels while subsequent blocks.
 
         @type block: L{nn.Module}
         @param block: Block to repeat.

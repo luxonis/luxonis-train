@@ -23,9 +23,8 @@ def default_annotate(
     image_paths: list[Path],
     config_preprocessing: PreprocessingConfig,
 ) -> DatasetIterator:
-    """Convert head output to a DatasetIterator for annotation.
-    processes the head output and image paths to yield This annotations
-    function in a format suitable for LuxonisDataset.
+    """Convert head output to a DatasetIterator for annotations in a
+    format suitable for LuxonisDataset.
 
     @type head: BaseHead
     @param head: The head from which to extract annotations.
