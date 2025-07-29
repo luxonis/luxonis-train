@@ -22,6 +22,7 @@ from luxonis_ml.utils import (
 from pydantic import (
     Field,
     ModelWrapValidatorHandler,
+    SecretStr,
     SerializationInfo,
     field_validator,
     model_serializer,
@@ -601,15 +602,30 @@ class ExportConfig(ArchiveConfig):
 
 class StorageConfig(BaseModelExtraForbid):
     active: bool = True
-    storage_type: Literal["sqlite", "postgresql"] = "sqlite"
-    url: str | None = None
+    storage_type: Annotated[
+        Literal["local", "remote"] | None,
+        Field(
+            deprecated="The `storage_type` field is deprecated. Use `backend` instead."
+        ),
+    ] = None
+    backend: str = "sqlite"
+    username: str | None = None
+    password: SecretStr | None = None
+    host: str | None = None
+    port: PositiveInt | None = None
+    database: str | None = None
 
     @model_validator(mode="before")
     @classmethod
     def validate_storage_type(cls, data: Kwargs) -> Kwargs:
         if "storage_type" not in data:
             return data
-        storage_type = data["storage_type"]
+        if "backend" in data:
+            raise ValueError(
+                "Both `storage_type` and `backend` fields are set. "
+                "Please use only `backend` field."
+            )
+        storage_type = data.pop("storage_type")
         if not isinstance(storage_type, str):
             raise TypeError(
                 f"Invalid value for `storage_type`: {storage_type}. "
@@ -620,13 +636,13 @@ class StorageConfig(BaseModelExtraForbid):
                 "Using 'local' storage type is deprecated. "
                 "Please use 'sqlite' instead."
             )
-            data["storage_type"] = "sqlite"
+            data["backend"] = "sqlite"
         elif storage_type == "remote":
             logger.warning(
                 "Using 'remote' storage type is deprecated. "
                 "Please use 'postgresql' instead."
             )
-            data["storage_type"] = "postgresql"
+            data["backend"] = "postgresql"
         return data
 
 
@@ -715,6 +731,28 @@ class Config(LuxonisConfig):
                 "Please use environment variables or `.env` file instead."
             )
         return data
+
+    @model_validator(mode="after")
+    def check_tune_storage(self) -> Self:
+        if self.tuner is None:
+            return self
+        stg = self.tuner.storage
+        if stg.active:
+            if stg.backend == "sqlite":
+                if not stg.database:
+                    stg.database = "study_local.db"
+                    logger.warning(
+                        "No database specified for SQLite storage. "
+                        "Using default 'study_local.db'."
+                    )
+            elif stg.backend == "postgresql":
+                stg.username = stg.username or self.ENVIRON.POSTGRES_USER
+                stg.password = stg.password or self.ENVIRON.POSTGRES_PASSWORD
+                stg.host = stg.host or self.ENVIRON.POSTGRES_HOST
+                stg.port = stg.port or self.ENVIRON.POSTGRES_PORT
+                stg.database = stg.database or self.ENVIRON.POSTGRES_DB
+
+        return self
 
     @classmethod
     def get_config(

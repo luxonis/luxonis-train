@@ -553,11 +553,25 @@ Here you can specify options for tuning.
 
 ### Storage
 
-| Key            | Type                         | Default value | Description                                                                                                                                                                                                                                                      |
-| -------------- | ---------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `active`       | `bool`                       | `True`        | Whether to use storage to make the study persistent                                                                                                                                                                                                              |
-| `storage_type` | `Literal["local", "remote"]` | `"local"`     | Type of the storage. Ignored if `url` is also specified.                                                                                                                                                                                                         |
-| `url`          | `str \| None`                | `None`        | Custom storage URL. `storage_type` is ignored when `url` is specified. `optuna` internally uses `SQLAlchemy` to handle the database. Visit the [documentation](https://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls) to see the supported URLs. |
+`optuna` uses `SQLAlchemy` for handling database connections. To see the supported storage backends, refer to the [SQLAlchemy documentation](https://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls)
+
+| Key        | Type          | Default value | Description                                         |
+| ---------- | ------------- | ------------- | --------------------------------------------------- |
+| `active`   | `bool`        | `True`        | Whether to use storage to make the study persistent |
+| `backend`  | `str`         | `"sqlite"`    | Type of the storage.                                |
+| `username` | `str \| None` | `None`        | Username for the storage.                           |
+| `password` | `str \| None` | `None`        | Password for the storage.                           |
+| `host`     | `str \| None` | `None`        | Host for the storage.                               |
+| `port`     | `int \| None` | `None`        | Port for the storage.                               |
+| `database` | `str \| None` | `None`        | Database name for the storage.                      |
+
+In case of `"postgres"` backend, the additional parameters will be read from these environment variables if not provided in the config file:
+
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `POSTGRES_HOST`
+- `POSTGRES_PORT`
+- `POSTGRES_DB`
 
 **Example:**
 
