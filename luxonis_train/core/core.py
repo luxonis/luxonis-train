@@ -853,13 +853,14 @@ class LuxonisModel:
                 port=cfg_tuner.storage.port,
             )
             logger.info(f"Using '{storage}' as Optuna storage.")
-            storage = storage.render_as_string(hide_password=False)
         else:
             storage = None
 
         study = optuna.create_study(
             study_name=cfg_tuner.study_name,
-            storage=storage,
+            storage=storage.render_as_string(hide_password=False)
+            if storage
+            else None,
             direction="minimize"
             if cfg_tuner.monitor == "loss"
             else "maximize",
