@@ -1,6 +1,10 @@
 import json
+import random
+import shutil
 import sys
 import tarfile
+import time
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
@@ -27,10 +31,14 @@ STUDY_PATH = Path("study_local.db")
 
 
 @pytest.fixture
-def infer_path(work_dir: Path) -> Path:
-    path = work_dir / "infer-save-directory"
+def infer_path(work_dir: Path) -> Generator[Path]:
+    rng = random.Random()
+    rng.seed(time.time())
+    randint = rng.randint(0, 100_000)
+    path = work_dir / f"infer-save-directory-{randint}"
     path.mkdir(exist_ok=True)
-    return path
+    yield path
+    shutil.rmtree(path)
 
 
 @pytest.fixture
