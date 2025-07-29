@@ -1,7 +1,10 @@
 import json
+import random
 import shutil
 import sys
 import tarfile
+import time
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
@@ -20,27 +23,33 @@ from luxonis_train.core import LuxonisModel
 
 from .multi_input_modules import *
 
-INFER_PATH = Path("tests/integration/infer-save-directory")
 ONNX_PATH = Path("tests/integration/example_multi_input.onnx")
 STUDY_PATH = Path("study_local.db")
 
 
 @pytest.fixture
-def infer_path() -> Path:
-    if INFER_PATH.exists():
-        shutil.rmtree(INFER_PATH)
-    INFER_PATH.mkdir()
-    return INFER_PATH
+def randint() -> int:
+    rng = random.Random()
+    rng.seed(time.time())
+    return rng.randint(0, 100_000)
 
 
 @pytest.fixture
-def opts(output_dir: Path) -> dict[str, Any]:
+def infer_path(work_dir: Path, randint: int) -> Generator[Path]:
+    path = work_dir / f"infer-save-directory-{randint}"
+    path.mkdir(exist_ok=True)
+    yield path
+    shutil.rmtree(path)
+
+
+@pytest.fixture
+def opts(save_dir: Path) -> dict[str, Any]:
     return {
         "trainer.epochs": 1,
         "trainer.batch_size": 1,
         "trainer.validation_interval": 1,
         "trainer.callbacks": [],
-        "tracker.save_directory": str(output_dir),
+        "tracker.save_directory": str(save_dir),
         "tuner.n_trials": 4,
     }
 
