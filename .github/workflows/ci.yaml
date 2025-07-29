@@ -67,6 +67,12 @@ jobs:
     - name: Install dependencies
       run: pip install -e .[dev]
 
+    - name: Install dev version of LuxonisML
+      if: startsWith(github.head_ref, 'release/') == false
+      run: |
+        pip uninstall luxonis-ml -y
+        pip install "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@main"
+
     - name: Pyright check
       uses: jakebailey/pyright-action@v2
       with:
