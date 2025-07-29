@@ -133,7 +133,7 @@ exclude = ["__main__.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--disable-warnings"
+addopts = "--disable-warnings -vv"
 markers = [
   "unit: mark a test as a unit test",
   "integration: mark a test as an integration test",
