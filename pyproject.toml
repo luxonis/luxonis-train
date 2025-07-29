@@ -52,6 +52,7 @@ select = [
   "E",
   "ERA",
   "F401",
+  # "F",
   "FLY",
   "FURB",
   "I",

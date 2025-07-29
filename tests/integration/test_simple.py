@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import cv2
+import numpy as np
 import pytest
 from luxonis_ml.data import LuxonisDataset, LuxonisLoader
 from luxonis_ml.typing import Params
@@ -216,6 +217,7 @@ def test_infer(
         shutil.rmtree(img_dir)
     img_dir.mkdir()
     for i, (img, _) in enumerate(loader):
+        assert isinstance(img, np.ndarray)
         img = cv2.resize(img, (256, 256))
         cv2.imwrite(str(img_dir / f"{i}.jpg"), img)
         video_writer.write(img)

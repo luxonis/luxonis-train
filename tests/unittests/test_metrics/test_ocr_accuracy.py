@@ -106,7 +106,7 @@ def test_ocr_accuracy(
 
     metric = OCRAccuracy(node=mock_node, blank_class=0)
 
-    metric.update(predictions, targets)
+    metric.update(predictions, targets)  # type: ignore
 
     _, ranks = metric.compute()
 
