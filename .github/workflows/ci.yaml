@@ -75,7 +75,7 @@ jobs:
         warnings: true
         python-version: '3.10'
         project: pyproject.toml
-        working-directory: >
+        extra-args: >
           luxonis_train/assigners
           luxonis_train/attached_modules
           luxonis_train/callbacks
