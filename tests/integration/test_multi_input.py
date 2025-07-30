@@ -1,7 +1,11 @@
+from pathlib import Path
+
 import torch
+from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from typing_extensions import override
 
+from luxonis_train.core import LuxonisModel
 from luxonis_train.loaders import BaseLoaderTorch, LuxonisLoaderTorchOutput
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Tasks
@@ -35,9 +39,9 @@ class CustomMultiInputLoader(BaseLoaderTorch):
             "pointcloud": pointcloud,
         }
 
-        segmap = torch.zeros(1, 224, 224, dtype=torch.float32)
-        segmap[0, 100:150, 100:150] = 1
-        labels = {"/segmentation": segmap}
+        labels = {
+            "/segmentation": torch.zeros(1, 224, 224, dtype=torch.float32)
+        }
 
         return inputs, labels
 
@@ -82,7 +86,7 @@ class CustomSegHead1(MultiInputTestBaseNode):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.conv = nn.Conv2d(1, 1, 3, padding=1)
+        self.conv = nn.Conv2d(1, 1, kernel_size=3, padding=1)
 
     def unwrap(self, inputs: list[Packet[Tensor]]) -> Tensor:
         assert len(inputs) == 1
@@ -97,7 +101,7 @@ class CustomSegHead2(MultiInputTestBaseNode):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.conv = nn.Conv2d(1, 1, 3, padding=1)
+        self.conv = nn.Conv2d(1, 1, kernel_size=3, padding=1)
 
     def unwrap(self, inputs: list[Packet[Tensor]]):
         return [packet["features"][-1] for packet in inputs]
@@ -105,3 +109,21 @@ class CustomSegHead2(MultiInputTestBaseNode):
     def forward(self, inputs: list[Tensor]) -> Tensor:
         fn1, _, disp = inputs
         return self.conv(fn1 + disp)
+
+
+def test_multi_input(opts: Params, tempdir: Path):
+    cfg = "tests/configs/multi_input.yaml"
+    model = LuxonisModel(cfg, opts)
+    model.train()
+    model.test(view="val")
+    model.export(tempdir)
+
+    assert (tempdir / "example_multi_input.onnx").exists()
+
+    infer_dir = tempdir / "infer"
+    model.infer(view="val", save_dir=infer_dir)
+    assert infer_dir.exists()
+    assert (
+        len(list(infer_dir.glob("*.png")))
+        == len(model.pytorch_loaders["val"]) * 2  # 2 heads
+    )

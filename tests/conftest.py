@@ -1,6 +1,381 @@
+import multiprocessing as mp
+import os
+import random
+import shutil
+import time
+from collections.abc import Generator
+from copy import deepcopy
+from pathlib import Path
+
+import cv2
+import gdown
+import numpy as np
 import pytest
+import torchvision
 from _pytest.config import Config
 from _pytest.python import Function
+from luxonis_ml.data import Category, DatasetIterator, LuxonisDataset
+from luxonis_ml.data.parsers import LuxonisParser
+from luxonis_ml.typing import Kwargs, Params
+from luxonis_ml.utils import LuxonisFileSystem, environ
+
+
+@pytest.fixture(scope="session")
+def image_size() -> tuple[int, int]:
+    return 32, 64
+
+
+@pytest.fixture(scope="session")
+def work_dir() -> Generator[Path]:
+    path = Path("tests", "work").absolute()
+    path.mkdir(parents=True, exist_ok=True)
+
+    yield path
+
+    shutil.rmtree(path, ignore_errors=True)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def set_environment(work_dir: Path) -> None:
+    environ.LUXONISML_BASE_PATH = work_dir / "luxonisml"
+
+
+@pytest.fixture
+def randint() -> int:
+    rng = random.Random(time.time())
+    return rng.randint(0, 100_000)
+
+
+@pytest.fixture
+def tempdir(work_dir: Path) -> Generator[Path]:
+    t = time.time()
+    unique_id = randint._fixture_function()
+    while True:
+        path = work_dir / str(unique_id)
+        if not path.exists():
+            break
+        if time.time() - t > 5:  # pragma: no cover
+            raise TimeoutError(
+                "Could not create a unique tempdir. Something is wrong."
+            )
+        unique_id = randint._fixture_function()
+
+    path.mkdir(exist_ok=True)
+
+    yield path
+
+    shutil.rmtree(path, ignore_errors=True)
+
+
+@pytest.fixture(scope="session")
+def data_dir() -> Path:
+    path = Path("tests", "data")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+@pytest.fixture(scope="session")
+def save_dir(work_dir: Path) -> Path:
+    path = work_dir / "save-directory"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+@pytest.fixture
+def train_overfit() -> bool:
+    return bool(os.getenv("LUXONIS_TRAIN_OVERFIT"))
+
+
+@pytest.fixture(scope="session")
+def parking_lot_dataset(data_dir: Path) -> LuxonisDataset:
+    url = "gs://luxonis-test-bucket/luxonis-train-test-data/datasets/ParkingLot3.zip"
+    return LuxonisParser(
+        url,
+        dataset_name="ParkingLot3",
+        delete_local=True,
+        save_dir=data_dir,
+    ).parse()
+
+
+@pytest.fixture(scope="session")
+def embedding_dataset(data_dir: Path) -> LuxonisDataset:
+    img_dir = data_dir / "embedding_images"
+    img_dir.mkdir(exist_ok=True)
+
+    def generator() -> DatasetIterator:
+        for i in range(100):
+            color = [(255, 0, 0), (0, 255, 0), (0, 0, 255)][i % 3]
+            img = np.full((100, 100, 3), color, dtype=np.uint8)
+            img[i, i] = 255
+            cv2.imwrite(str(img_dir / f"image_{i}.png"), img)
+
+            yield {
+                "file": img_dir / f"image_{i}.png",
+                "annotation": {
+                    "metadata": {
+                        "color": Category(["red", "green", "blue"][i % 3]),
+                    },
+                },
+            }
+
+    dataset = LuxonisDataset("embedding_test", delete_local=True)
+    dataset.add(generator())
+    dataset.make_splits()
+    return dataset
+
+
+@pytest.fixture(scope="session")
+def toy_ocr_dataset(data_dir: Path) -> LuxonisDataset:
+    def generator() -> DatasetIterator:
+        path = data_dir / "toy_ocr"
+        path.mkdir(parents=True, exist_ok=True)
+        alphabet = "abcdefghijklmnopqrstuvwxyz"
+        for _ in range(50):
+            random_word = "".join(
+                random.choices(alphabet, k=random.randint(3, 10))
+            )
+            img = np.full((64, 320, 3), 255, dtype=np.uint8)
+            cv2.putText(
+                img,
+                random_word,
+                (10, 50),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (0, 0, 0),
+                2,
+                cv2.LINE_AA,
+            )
+            cv2.imwrite(str(path / f"{random_word}.png"), img)
+            yield {
+                "file": path / f"{random_word}.png",
+                "annotation": {
+                    "metadata": {"text": random_word},
+                },
+            }
+
+    dataset = LuxonisDataset("toy_ocr", delete_local=True)
+    dataset.add(generator())
+
+    dataset.make_splits()
+    return dataset
+
+
+@pytest.fixture(scope="session")
+def coco_dataset(data_dir: Path) -> LuxonisDataset:
+    dataset_name = "coco_test"
+    url = "https://drive.google.com/uc?id=1XlvFK7aRmt8op6-hHkWVKIJQeDtOwoRT"
+    output_zip = data_dir / "COCO_people_subset.zip"
+
+    if (
+        not output_zip.exists()
+        and not (data_dir / "COCO_people_subset").exists()
+    ):
+        gdown.download(url, str(output_zip), quiet=False)
+
+    parser = LuxonisParser(
+        str(output_zip), dataset_name=dataset_name, delete_local=True
+    )
+    return parser.parse(random_split=True)
+
+
+@pytest.fixture(scope="session")
+def cifar10_dataset(data_dir: Path) -> LuxonisDataset:
+    dataset = LuxonisDataset("cifar10_test", delete_local=True)
+    output_folder = data_dir / "cifar10"
+    if not output_folder.exists() or not list(output_folder.iterdir()):
+        output_folder = LuxonisFileSystem.download(
+            "gs://luxonis-test-bucket/luxonis-train-test-data/datasets/cifar10",
+            data_dir,
+        )
+    cifar10_torch = torchvision.datasets.CIFAR10(
+        root=output_folder, train=False, download=False
+    )
+    classes = [
+        "airplane",
+        "automobile",
+        "bird",
+        "cat",
+        "deer",
+        "dog",
+        "frog",
+        "horse",
+        "ship",
+        "truck",
+    ]
+
+    def CIFAR10_subset_generator() -> DatasetIterator:
+        for i, (image, label) in enumerate(cifar10_torch):  # type: ignore
+            if i == 20:
+                break
+            path = output_folder / f"cifar_{i}.png"
+            image.save(path)
+            yield {
+                "file": path,
+                "annotation": {
+                    "class": classes[label],
+                },
+            }
+
+    dataset.add(CIFAR10_subset_generator())
+    dataset.make_splits()
+    return dataset
+
+
+@pytest.fixture(scope="session")
+def mnist_dataset(data_dir: Path) -> LuxonisDataset:
+    dataset = LuxonisDataset("mnist_test", delete_local=True)
+    output_folder = data_dir / "mnist"
+    output_folder.mkdir(parents=True, exist_ok=True)
+    mnist_torch = torchvision.datasets.MNIST(
+        root=output_folder, train=False, download=True
+    )
+
+    def MNIST_subset_generator() -> DatasetIterator:
+        for i, (image, label) in enumerate(mnist_torch):  # type: ignore
+            if i == 20:
+                break
+            path = output_folder / f"mnist_{i}.png"
+            image.save(path)
+            yield {
+                "file": path,
+                "annotation": {
+                    "class": str(label),
+                    "metadata": {"text": str(label)},
+                },
+            }
+
+    dataset.add(MNIST_subset_generator())
+    dataset.make_splits()
+    return dataset
+
+
+@pytest.fixture(scope="session")
+def anomaly_detection_dataset(data_dir: Path) -> LuxonisDataset:
+    url = "https://drive.google.com/uc?id=1XlvFK7aRmt8op6-hHkWVKIJQeDtOwoRT"
+    output_zip = data_dir / "COCO_people_subset.zip"
+
+    if (
+        not output_zip.exists()
+        and not (data_dir / "COCO_people_subset").exists()
+    ):
+        gdown.download(url, str(output_zip), quiet=False)
+
+    def random_square_mask(
+        image_shape: tuple[int, int], n_squares: int = 1
+    ) -> np.ndarray:
+        mask = np.zeros(image_shape, dtype=np.uint8)
+        h, w = image_shape
+        rng = np.random.default_rng()
+        for _ in range(n_squares):
+            top_left = (
+                rng.integers(0, w // 2),
+                rng.integers(0, h // 2),
+            )
+            bottom_right = (
+                rng.integers(w // 2, w),
+                rng.integers(h // 2, h),
+            )
+            cv2.rectangle(mask, top_left, bottom_right, 255, -1)
+        return mask
+
+    def dummy_generator(
+        train_paths: list[Path], test_paths: list[Path]
+    ) -> DatasetIterator:
+        for path in train_paths:
+            img = cv2.imread(str(path))
+            img_h, img_w, _ = img.shape
+            mask = np.zeros((img_h, img_w), dtype=np.uint8)
+            yield {
+                "file": path,
+                "annotation": {
+                    "class": "object",
+                    "segmentation": {"mask": mask},
+                },
+            }
+
+        for path in test_paths:
+            img = cv2.imread(str(path))
+            img_h, img_w, _ = img.shape
+            mask = random_square_mask((img_h, img_w))
+            poly = cv2.findContours(
+                mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+            )[0]
+            poly_normalized = [
+                [(x / img_w, y / img_h) for x, y in contour.reshape(-1, 2)]
+                for contour in poly
+            ]
+            yield {
+                "file": path,
+                "annotation": {
+                    "class": "object",
+                    "segmentation": {
+                        "height": img_h,
+                        "width": img_w,
+                        "points": [
+                            pt for segment in poly_normalized for pt in segment
+                        ],
+                    },
+                },
+            }
+
+    paths_total = list((data_dir / "COCO_people_subset/").rglob("*.jpg"))
+    train_paths = paths_total[:5]
+    test_paths = paths_total[5:]
+
+    dataset = LuxonisDataset("dummy_mvtec", delete_local=True)
+    dataset.add(dummy_generator(train_paths, test_paths))
+    definitions = {
+        "train": train_paths,
+        "val": test_paths,
+    }
+    dataset.make_splits(definitions=definitions)
+    return dataset
+
+
+@pytest.fixture
+def config(
+    save_dir: Path,
+    train_overfit: bool,
+    image_size: tuple[int, int],
+) -> Kwargs:
+    epochs = 100 if train_overfit else 1
+
+    return deepcopy(
+        {
+            "tracker": {
+                "save_directory": save_dir,
+            },
+            "loader": {
+                "train_view": "val",
+            },
+            "trainer": {
+                "batch_size": 2,
+                "epochs": epochs,
+                "n_workers": mp.cpu_count(),
+                "validation_interval": epochs,
+                "preprocessing": {
+                    "train_image_size": image_size,
+                    "keep_aspect_ratio": False,
+                },
+                "callbacks": [
+                    {"name": "ExportOnTrainEnd"},
+                ],
+                "matmul_precision": "medium",
+            },
+        }
+    )
+
+
+@pytest.fixture
+def opts(save_dir: Path, image_size: tuple[int, int]) -> Params:
+    return {
+        "trainer.epochs": 1,
+        "trainer.batch_size": 1,
+        "trainer.validation_interval": 1,
+        "trainer.callbacks": [],
+        "tracker.save_directory": str(save_dir),
+        "trainer.preprocessing.train_image_size": image_size,
+    }
 
 
 def pytest_collection_modifyitems(items: list[Function]):
