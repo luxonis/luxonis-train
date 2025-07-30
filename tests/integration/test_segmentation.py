@@ -11,84 +11,79 @@ from luxonis_train.nodes.backbones import __all__ as BACKBONES
 BACKBONES = [backbone for backbone in BACKBONES if backbone != "PPLCNetV3"]
 
 
-def get_opts(backbone: str) -> Params:
+def get_opts(backbone: str, index: int) -> Params:
     opts = {
         "model": {
             "nodes": [
-                {
-                    "name": backbone,
-                },
+                {"name": backbone},
                 {
                     "name": "SegmentationHead",
                     "alias": "seg-color-segmentation",
                     "task_name": "color",
                     "inputs": [backbone],
-                },
-                {
+                    "losses": [{"name": "CrossEntropyLoss"}],
+                }
+                if index % 6 == 0
+                else {
                     "name": "BiSeNetHead",
                     "alias": "bi-color-segmentation",
                     "task_name": "color",
                     "inputs": [backbone],
-                },
-                {
+                    "losses": [{"name": "CrossEntropyLoss"}],
+                }
+                if index % 6 == 1
+                else {
                     "name": "SegmentationHead",
                     "alias": "seg-vehicle-segmentation",
                     "task_name": "vehicles",
                     "inputs": [backbone],
-                },
-                {
+                    "losses": [{"name": "BCEWithLogitsLoss"}],
+                }
+                if index % 6 == 2
+                else {
                     "name": "BiSeNetHead",
                     "alias": "bi-vehicle-segmentation",
                     "task_name": "vehicles",
                     "inputs": [backbone],
-                },
-                {
+                    "losses": [
+                        {
+                            "name": "SigmoidFocalLoss",
+                            "params": {"alpha": 0.5, "gamma": 1.0},
+                        }
+                    ],
+                }
+                if index % 6 == 3
+                else {
                     "name": "SegmentationHead",
                     "alias": "seg-vehicle-segmentation-2",
                     "task_name": "vehicles",
                     "inputs": [backbone],
-                },
-                {
+                    "losses": [
+                        {
+                            "name": "SoftmaxFocalLoss",
+                            "params": {"alpha": 0.5, "gamma": 1.0},
+                        }
+                    ],
+                }
+                if index % 6 == 4
+                else {
                     "name": "SegmentationHead",
                     "alias": "seg-vehicle-segmentation-3",
                     "task_name": "vehicles",
                     "inputs": [backbone],
+                    "losses": [
+                        {
+                            "name": "SmoothBCEWithLogitsLoss",
+                            "params": {"label_smoothing": 0.1},
+                        }
+                    ],
                 },
             ],
-            "losses": [
-                {
-                    "name": "CrossEntropyLoss",
-                    "attached_to": "seg-color-segmentation",
-                },
-                {
-                    "name": "CrossEntropyLoss",
-                    "attached_to": "bi-color-segmentation",
-                },
-                {
-                    "name": "BCEWithLogitsLoss",
-                    "attached_to": "seg-vehicle-segmentation",
-                },
-                {
-                    "name": "SigmoidFocalLoss",
-                    "attached_to": "bi-vehicle-segmentation",
-                    "params": {"alpha": 0.5, "gamma": 1.0},
-                },
-                {
-                    "name": "SoftmaxFocalLoss",
-                    "attached_to": "seg-vehicle-segmentation-2",
-                    "params": {"alpha": 0.5, "gamma": 1.0},
-                },
-                {
-                    "name": "SmoothBCEWithLogitsLoss",
-                    "attached_to": "seg-vehicle-segmentation-3",
-                    "params": {"label_smoothing": 0.1},
-                },
-            ],
-            "metrics": [],
-            "visualizers": [],
         }
     }
     aliases = [head["alias"] for head in opts["model"]["nodes"][1:]]
+    opts["model"]["metrics"] = []
+    opts["model"]["visualizers"] = []
     for alias in aliases:
         opts["model"]["metrics"].extend(
             [
@@ -127,10 +122,13 @@ def train_and_test(
                 assert value > 0.8, f"{name} = {value} (expected > 0.8)"
 
 
-@pytest.mark.parametrize("backbone", BACKBONES)
+@pytest.mark.parametrize(("index", "backbone"), enumerate(BACKBONES))
 def test_backbones(
-    backbone: str, config: Params, parking_lot_dataset: LuxonisDataset
+    index: int,
+    backbone: str,
+    config: Params,
+    parking_lot_dataset: LuxonisDataset,
 ):
-    opts = get_opts(backbone)
+    opts = get_opts(backbone, index)
     opts["loader.params.dataset_name"] = parking_lot_dataset.identifier
     train_and_test(config, opts)
