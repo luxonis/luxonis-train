@@ -319,51 +319,18 @@ def anomaly_detection_dataset(data_dir: Path) -> LuxonisDataset:
             }
 
     paths_total = list((data_dir / "COCO_people_subset/").rglob("*.jpg"))
-    train_paths = paths_total[:5]
-    test_paths = paths_total[5:]
+    train_paths = paths_total[:10]
+    test_paths = paths_total[10:]
 
     dataset = LuxonisDataset("dummy_mvtec", delete_local=True)
     dataset.add(dummy_generator(train_paths, test_paths))
     definitions = {
         "train": train_paths,
-        "val": test_paths,
+        "val": test_paths[len(train_paths) // 2 :],
+        "test": test_paths[: len(test_paths) // 2],
     }
     dataset.make_splits(definitions=definitions)
     return dataset
-
-
-@pytest.fixture
-def config(
-    save_dir: Path,
-    train_overfit: bool,
-    image_size: tuple[int, int],
-) -> Kwargs:
-    epochs = 100 if train_overfit else 1
-
-    return deepcopy(
-        {
-            "tracker": {
-                "save_directory": save_dir,
-            },
-            "loader": {
-                "train_view": "val",
-            },
-            "trainer": {
-                "batch_size": 2,
-                "epochs": epochs,
-                "n_workers": mp.cpu_count(),
-                "validation_interval": epochs,
-                "preprocessing": {
-                    "train_image_size": image_size,
-                    "keep_aspect_ratio": False,
-                },
-                "callbacks": [
-                    {"name": "ExportOnTrainEnd"},
-                ],
-                "matmul_precision": "medium",
-            },
-        }
-    )
 
 
 @pytest.fixture

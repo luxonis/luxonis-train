@@ -1,6 +1,6 @@
 import pytest
 from luxonis_ml.data import LuxonisDataset
-from luxonis_ml.typing import Params
+from luxonis_ml.typing import Params, ParamValue
 
 from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
@@ -13,6 +13,27 @@ BACKBONES = [
 
 
 def get_config(backbone: str) -> Params:
+    seg_multi_losses: ParamValue = [
+        {"name": "CrossEntropyLoss"},
+        {"name": "SigmoidFocalLoss"},
+        {"name": "OHEMCrossEntropyLoss"},
+    ]
+    seg_binary_losses: ParamValue = [
+        {"name": "BCEWithLogitsLoss"},
+        {
+            "name": "SmoothBCEWithLogitsLoss",
+            "params": {"label_smoothing": 0.1},
+        },
+        {"name": "SigmoidFocalLoss"},
+        {"name": "OHEMBCEWithLogitsLoss"},
+    ]
+    seg_metrics: ParamValue = [
+        {"name": "JaccardIndex"},
+        {"name": "F1Score"},
+        {"name": "Accuracy"},
+        {"name": "Precision"},
+        {"name": "Recall"},
+    ]
     return {
         "model": {
             "nodes": [
@@ -50,56 +71,35 @@ def get_config(backbone: str) -> Params:
                     ],
                 },
                 {
-                    "name": "SegmentationHead",
-                    "alias": "seg-color-segmentation",
-                    "task_name": "color",
-                    "losses": [{"name": "CrossEntropyLoss"}],
-                    "metrics": [{"name": "JaccardIndex"}, {"name": "F1Score"}],
+                    "name": "BiSeNetHead",
+                    "alias": "BiSeNet-binary-cars",
+                    "task_name": "cars",
+                    "losses": seg_binary_losses,
+                    "metrics": seg_metrics,
                     "visualizers": [{"name": "SegmentationVisualizer"}],
                 },
                 {
                     "name": "BiSeNetHead",
-                    "alias": "bi-color-segmentation",
+                    "alias": "BiSeNet-multi-color",
                     "task_name": "color",
-                    "losses": [{"name": "CrossEntropyLoss"}],
-                    "metrics": [{"name": "JaccardIndex"}, {"name": "F1Score"}],
+                    "losses": seg_multi_losses,
+                    "metrics": seg_metrics,
                     "visualizers": [{"name": "SegmentationVisualizer"}],
                 },
                 {
                     "name": "SegmentationHead",
-                    "alias": "seg-vehicle-segmentation",
-                    "task_name": "vehicles",
-                    "losses": [{"name": "BCEWithLogitsLoss"}],
-                    "metrics": [{"name": "JaccardIndex"}, {"name": "F1Score"}],
-                    "visualizers": [{"name": "SegmentationVisualizer"}],
-                },
-                {
-                    "name": "BiSeNetHead",
-                    "alias": "bi-vehicle-segmentation",
-                    "task_name": "vehicles",
-                    "losses": [{"name": "SigmoidFocalLoss"}],
-                    "metrics": [{"name": "JaccardIndex"}, {"name": "F1Score"}],
+                    "alias": "seg-binary-motorbikes",
+                    "task_name": "motorbikes",
+                    "losses": seg_binary_losses,
+                    "metrics": seg_metrics,
                     "visualizers": [{"name": "SegmentationVisualizer"}],
                 },
                 {
                     "name": "SegmentationHead",
-                    "alias": "seg-vehicle-segmentation-2",
+                    "alias": "seg-multi-vehicles",
                     "task_name": "vehicles",
-                    "losses": [{"name": "SoftmaxFocalLoss"}],
-                    "metrics": [{"name": "JaccardIndex"}, {"name": "F1Score"}],
-                    "visualizers": [{"name": "SegmentationVisualizer"}],
-                },
-                {
-                    "name": "SegmentationHead",
-                    "alias": "seg-vehicle-segmentation-3",
-                    "task_name": "vehicles",
-                    "losses": [
-                        {
-                            "name": "SmoothBCEWithLogitsLoss",
-                            "params": {"label_smoothing": 0.1},
-                        }
-                    ],
-                    "metrics": [{"name": "JaccardIndex"}, {"name": "F1Score"}],
+                    "losses": seg_multi_losses,
+                    "metrics": seg_metrics,
                     "visualizers": [{"name": "SegmentationVisualizer"}],
                 },
             ],
@@ -107,23 +107,9 @@ def get_config(backbone: str) -> Params:
     }
 
 
-def train_and_test(
-    config: Params,
-    opts: Params,
-    train_overfit: bool = False,
-):
-    model = LuxonisModel(config, opts)
-    model.train()
-    if train_overfit:  # pragma: no cover
-        results = model.test(view="val")
-        for name, value in results.items():
-            if "metric" in name:
-                assert value > 0.8, f"{name} = {value} (expected > 0.8)"
-
-
 @pytest.mark.parametrize("backbone", BACKBONES)
 def test_backbones(
-    backbone: str, opts: Params, parking_lot_dataset: LuxonisDataset
+    backbone: str, parking_lot_dataset: LuxonisDataset, opts: Params
 ):
     config = get_config(backbone)
     opts |= {
