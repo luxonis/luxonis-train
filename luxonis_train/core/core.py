@@ -34,6 +34,7 @@ from luxonis_train.loaders import (
     LuxonisLoaderTorch,
 )
 from luxonis_train.registry import LOADERS
+from luxonis_train.typing import View
 from luxonis_train.utils import (
     DatasetMetadata,
     LuxonisTrackerPL,
@@ -60,8 +61,6 @@ from .utils.infer_utils import (
     infer_from_video,
 )
 from .utils.train_utils import create_trainer
-
-View: TypeAlias = Literal["train", "val", "test"]
 
 
 class LuxonisModel:
