@@ -540,7 +540,7 @@ class LuxonisModel:
     def test(
         self,
         new_thread: Literal[False] = ...,
-        view: Literal["train", "test", "val"] = "val",
+        view: Literal["train", "test", "val"] = "test",
         weights: PathType | None = ...,
     ) -> Mapping[str, float]: ...
 
