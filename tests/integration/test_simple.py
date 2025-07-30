@@ -183,8 +183,8 @@ def test_parsing_loader():
 def test_tune(opts: Params, coco_dataset: LuxonisDataset):
     opts |= {
         "tuner.storage.database": f"{STUDY_PATH}",
+        "tuner.n_trials": 4,
         "tuner.params": {
-            "tuner.n_trials": 4,
             "trainer.optimizer.name_categorical": ["Adam", "SGD"],
             "trainer.optimizer.params.lr_float": [0.0001, 0.001],
             "trainer.batch_size_int": [4, 16, 4],
