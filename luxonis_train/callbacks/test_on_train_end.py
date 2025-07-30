@@ -1,17 +1,25 @@
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import ModelCheckpoint
+from loguru import logger
 
 import luxonis_train as lxt
 from luxonis_train.registry import CALLBACKS
 
+from .needs_checkpoint import NeedsCheckpoint
+
 
 @CALLBACKS.register()
-class TestOnTrainEnd(pl.Callback):
+class TestOnTrainEnd(NeedsCheckpoint):
     """Callback to perform a test run at the end of the training."""
 
     def on_train_end(
         self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
+        checkpoint = self.get_checkpoint(pl_module)
+        if checkpoint is None:  # pragma: no cover
+            logger.warning(
+                "Best model checkpoint not found. Using last checkpoint for testing."
+            )
         # `trainer.test` would delete the paths so we need to save them
         best_paths = {
             hash(callback.monitor): callback.best_model_path
@@ -21,7 +29,7 @@ class TestOnTrainEnd(pl.Callback):
 
         device_before = pl_module.device
 
-        trainer.test(pl_module, pl_module.core.pytorch_loaders["test"])
+        pl_module.core.test(weights=checkpoint)
 
         # .test() moves pl_module to "cpu", we move it back to original device after
         pl_module.to(device_before)
