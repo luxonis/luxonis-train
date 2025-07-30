@@ -24,6 +24,7 @@ from luxonis_train.core import LuxonisModel
         "instance_segmentation_heavy_model",
         "instance_segmentation_light_model",
         "fomo_light_model",
+        "anomaly_detection_model",
     ],
 )
 def test_predefined_models(
@@ -33,7 +34,9 @@ def test_predefined_models(
     cifar10_dataset: LuxonisDataset,
     toy_ocr_dataset: LuxonisDataset,
     embedding_dataset: LuxonisDataset,
+    anomaly_detection_dataset: LuxonisDataset,
     save_dir: Path,
+    data_dir: Path,
     subtests: SubTests,
 ):
     config_file = f"configs/{config_name}.yaml"
@@ -43,6 +46,12 @@ def test_predefined_models(
         dataset = toy_ocr_dataset
     elif "classification" in config_name:
         dataset = cifar10_dataset
+    elif "anomaly_detection" in config_name:
+        opts |= {
+            "loader.params.anomaly_source_path": data_dir.absolute()
+            / "COCO_people_subset"
+        }
+        dataset = anomaly_detection_dataset
     else:
         dataset = coco_dataset
 
@@ -66,12 +75,11 @@ def test_predefined_models(
     elif "ocr_recognition" in config_file:
         opts["trainer.preprocessing.train_image_size"] = [48, 320]
 
-    with subtests.test("original_config"):
-        model = LuxonisModel(config_file, opts)
-        model.train()
-    with subtests.test("saved_config"):
-        opts["tracker.run_name"] = f"{config_name}_reload"
-        model = LuxonisModel(
-            str(save_dir / config_name / "training_config.yaml"), opts
-        )
-        model.test()
+    model = LuxonisModel(config_file, opts)
+    model.train()
+
+    opts["tracker.run_name"] = f"{config_name}_reload"
+    model = LuxonisModel(
+        str(save_dir / config_name / "training_config.yaml"), opts
+    )
+    model.test()

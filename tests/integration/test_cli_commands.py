@@ -3,11 +3,13 @@ import subprocess
 import sys
 from collections.abc import Callable
 from pathlib import Path
+from types import GeneratorType
 
 import pytest
 from luxonis_ml.data import LuxonisDataset
-from luxonis_ml.typing import Kwargs
+from luxonis_ml.typing import Kwargs, Params
 from luxonis_ml.utils import environ
+from pytest_subtests import SubTests
 
 from luxonis_train.__main__ import (
     _yield_visualizations,
@@ -15,64 +17,46 @@ from luxonis_train.__main__ import (
     export,
     inspect,
     train,
+    tune,
 )
 from luxonis_train.__main__ import test as _test
 
-ONNX_PATH = Path("tests/integration/client_commands_test_model.onnx")
 
-
-@pytest.fixture(scope="session", autouse=True)
-def prepare():
-    os.environ["LUXONISML_BASE_PATH"] = str(environ.LUXONISML_BASE_PATH)
-    yield
-    ONNX_PATH.unlink(missing_ok=True)
-
-
-@pytest.mark.parametrize(
-    ("command", "kwargs"),
-    [
-        (train, {"config": "tests/configs/config_simple.yaml"}),
-        (
-            _test,
-            {
-                "config": "tests/configs/config_simple.yaml",
-                "view": "val",
-            },
-        ),
-        (
-            export,
-            {
-                "config": "tests/configs/config_simple.yaml",
-                "save_path": ONNX_PATH.parent,
-            },
-        ),
-        (
-            _yield_visualizations,
-            {"config": "tests/configs/config_simple.yaml"},
-        ),
-        (
-            archive,
-            {
-                "config": "tests/configs/config_simple.yaml",
-                "executable": ONNX_PATH,
-            },
-        ),
-    ],
-)
 def test_cli_command_success(
-    command: Callable, kwargs: Kwargs, coco_dataset: LuxonisDataset
+    coco_dataset: LuxonisDataset,
+    tempdir: Path,
+    subtests: SubTests,
+    opts: Params,
 ) -> None:
-    if command is _yield_visualizations:
-        list(
-            command(
-                ["loader.params.dataset_name", coco_dataset.identifier],
+    flat_opts = []
+    for key, value in opts.items():
+        flat_opts.append(key)
+        flat_opts.append(str(value))
+
+    for command, kwargs in [
+        (train, {}),
+        (tune, {}),
+        (_test, {"view": "val"}),
+        (export, {"save_path": tempdir}),
+        (_yield_visualizations, {}),
+        (archive, {"executable": tempdir / "export.onnx"}),
+    ]:
+        with subtests.test(command.__name__):
+            res = command(
+                [
+                    "loader.params.dataset_name",
+                    coco_dataset.identifier,
+                    "model.name",
+                    command.__name__,
+                    *flat_opts,
+                ],
+                config="configs/detection_light_model.yaml"
+                if command is not tune
+                else "configs/example_tuning.yaml",
                 **kwargs,
             )
-        )
-    else:
-        command(
-            ["loader.params.dataset_name", coco_dataset.identifier], **kwargs
-        )
+            if isinstance(res, GeneratorType):
+                list(res)
 
 
 @pytest.mark.parametrize(
