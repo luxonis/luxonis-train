@@ -615,35 +615,29 @@ class StorageConfig(BaseModelExtraForbid):
     port: PositiveInt | None = None
     database: str | None = None
 
-    @model_validator(mode="before")
-    @classmethod
-    def validate_storage_type(cls, data: Kwargs) -> Kwargs:
-        if "storage_type" not in data:
-            return data
-        if "backend" in data:
+    @model_validator(mode="after")
+    def validate_storage_type(self) -> Self:
+        if not self.storage_type:
+            return self
+        if self.backend:
             raise ValueError(
                 "Both `storage_type` and `backend` fields are set. "
-                "Please use only `backend` field."
+                "Please use only the `backend` field."
             )
-        storage_type = data.pop("storage_type")
-        if not isinstance(storage_type, str):
-            raise TypeError(
-                f"Invalid value for `storage_type`: {storage_type}. "
-                "Expected a string."
-            )
-        if storage_type == "local":
+        if self.storage_type == "local":
             logger.warning(
                 "Using 'local' storage type is deprecated. "
                 "Please use 'sqlite' instead."
             )
-            data["backend"] = "sqlite"
-        elif storage_type == "remote":
+            self.backend = "sqlite"
+        elif self.storage_type == "remote":
             logger.warning(
                 "Using 'remote' storage type is deprecated. "
                 "Please use 'postgresql' instead."
             )
-            data["backend"] = "postgresql"
-        return data
+            self.backend = "postgresql"
+        self.storage_type = None
+        return self
 
 
 class TunerConfig(BaseModelExtraForbid):
