@@ -116,24 +116,15 @@ def test_infer(
 
 
 def test_archive(
-    output_dir: Path, coco_dataset: LuxonisDataset, image_size: tuple[int, int]
+    tempdir: Path,
+    opts: Params,
+    coco_dataset: LuxonisDataset,
 ):
-    opts: Params = {
-        "tracker.save_directory": str(output_dir),
-        "loader.params.dataset_name": coco_dataset.identifier,
-        "trainer.preprocessing.train_image_size": image_size,
-    }
-    model = LuxonisModel("tests/configs/archive_config.yaml", opts)
-    model.archive()
-    assert (
-        Path(
-            model.run_save_dir,
-            "archive",
-            model.cfg.archiver.name or model.cfg.model.name,
-        )
-        .with_suffix(".onnx.tar.xz")
-        .exists()
-    )
+    opts |= {"loader.params.dataset_name": coco_dataset.identifier}
+    model = LuxonisModel("configs/detection_light_model.yaml", opts)
+    model.archive(save_dir=tempdir)
+    archive_name = model.cfg.archiver.name or model.cfg.model.name
+    assert (tempdir / archive_name).with_suffix(".onnx.tar.xz").exists()
 
 
 def test_weights_loading(cifar10_dataset: LuxonisDataset, opts: Params):

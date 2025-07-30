@@ -899,7 +899,10 @@ class LuxonisModel:
             wandb_parent_tracker.log_hyperparams(study.best_params)
 
     def archive(
-        self, path: PathType | None = None, weights: PathType | None = None
+        self,
+        path: PathType | None = None,
+        weights: PathType | None = None,
+        save_dir: PathType | None = None,
     ) -> Path:
         """Generates an NN Archive out of a model executable.
 
@@ -917,11 +920,16 @@ class LuxonisModel:
         """
         weights = weights or self.cfg.model.weights
         with replace_weights(self.lightning_module, weights):
-            return self._archive(path)
+            return self._archive(path, save_dir)
 
-    def _archive(self, path: PathType | None = None) -> Path:
+    def _archive(
+        self, path: PathType | None = None, save_dir: PathType | None = None
+    ) -> Path:
+        if isinstance(save_dir, str):
+            save_dir = Path(save_dir)
+
         archive_name = self.cfg.archiver.name or self.cfg.model.name
-        archive_save_directory = Path(self.run_save_dir, "archive")
+        archive_save_directory = save_dir or Path(self.run_save_dir, "archive")
         archive_save_directory.mkdir(parents=True, exist_ok=True)
         inputs = []
         outputs = []

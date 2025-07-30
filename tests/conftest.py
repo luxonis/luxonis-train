@@ -1,10 +1,9 @@
-import multiprocessing as mp
 import os
 import random
 import shutil
 import time
+import zipfile
 from collections.abc import Generator
-from copy import deepcopy
 from pathlib import Path
 
 import cv2
@@ -16,7 +15,7 @@ from _pytest.config import Config
 from _pytest.python import Function
 from luxonis_ml.data import Category, DatasetIterator, LuxonisDataset
 from luxonis_ml.data.parsers import LuxonisParser
-from luxonis_ml.typing import Kwargs, Params
+from luxonis_ml.typing import Params
 from luxonis_ml.utils import LuxonisFileSystem, environ
 
 
@@ -47,7 +46,7 @@ def randint() -> int:
 
 
 @pytest.fixture
-def tempdir(work_dir: Path) -> Generator[Path]:
+def tempdir(work_dir: Path) -> Path:
     t = time.time()
     unique_id = randint._fixture_function()
     while True:
@@ -61,10 +60,7 @@ def tempdir(work_dir: Path) -> Generator[Path]:
         unique_id = randint._fixture_function()
 
     path.mkdir(exist_ok=True)
-
-    yield path
-
-    shutil.rmtree(path, ignore_errors=True)
+    return path
 
 
 @pytest.fixture(scope="session")
@@ -161,19 +157,28 @@ def toy_ocr_dataset(data_dir: Path) -> LuxonisDataset:
 
 
 @pytest.fixture(scope="session")
-def coco_dataset(data_dir: Path) -> LuxonisDataset:
-    dataset_name = "coco_test"
+def coco_dir(data_dir: Path) -> Path:
     url = "https://drive.google.com/uc?id=1XlvFK7aRmt8op6-hHkWVKIJQeDtOwoRT"
-    output_zip = data_dir / "COCO_people_subset.zip"
+    coco_zip = data_dir / "COCO_people_subset.zip"
 
     if (
-        not output_zip.exists()
+        not coco_zip.exists()
         and not (data_dir / "COCO_people_subset").exists()
     ):
-        gdown.download(url, str(output_zip), quiet=False)
+        gdown.download(url, str(coco_zip), quiet=False)
+
+    with zipfile.ZipFile(coco_zip, "r") as zip:
+        unzip_dir = coco_zip.parent / coco_zip.stem
+        zip.extractall(unzip_dir)
+        return unzip_dir
+
+
+@pytest.fixture(scope="session")
+def coco_dataset(coco_dir: Path) -> LuxonisDataset:
+    dataset_name = "coco_test"
 
     parser = LuxonisParser(
-        str(output_zip), dataset_name=dataset_name, delete_local=True
+        str(coco_dir), dataset_name=dataset_name, delete_local=True
     )
     return parser.parse(random_split=True)
 
