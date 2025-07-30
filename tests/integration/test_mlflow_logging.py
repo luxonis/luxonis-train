@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 import time
+from contextlib import suppress
 from pathlib import Path
 
 import mlflow
@@ -15,22 +16,6 @@ from PIL import Image
 from torch import Tensor, nn
 
 from luxonis_train import BaseHead, LuxonisModel, Tasks
-
-
-def kill_process_tree(pid: int) -> None:
-    try:
-        parent = psutil.Process(pid)
-        for child in parent.children(recursive=True):
-            child.terminate()
-        parent.terminate()
-
-        _, alive = psutil.wait_procs(
-            [parent] + parent.children(recursive=True), timeout=5
-        )
-        for p in alive:
-            p.kill()
-    except psutil.NoSuchProcess:
-        pass
 
 
 @pytest.fixture(autouse=True)
@@ -75,7 +60,9 @@ def setup(tempdir: Path):
                     "MLflow server failed to start within 60 seconds"
                 ) from e
             time.sleep(0.5)
+
     yield
+
     kill_process_tree(process.pid)
 
 
@@ -96,10 +83,10 @@ class XORHead(BaseHead):
 @pytest.mark.timeout(30)
 @pytest.mark.parametrize("task_name", ["", "xor_task"])
 def test_mlflow_logging(task_name: str, tempdir: Path):
-    def generator(tmp_dir: Path) -> DatasetIterator:
+    def generator() -> DatasetIterator:
         """Generate XOR dataset as images with 2 pixels representing XOR
         inputs."""
-        data_dir = tmp_dir / "xor_data"
+        data_dir = tempdir / "xor_data"
         data_dir.mkdir(parents=True, exist_ok=True)
 
         inputs = [[0, 0], [0, 1], [1, 0], [1, 1]]
@@ -124,7 +111,7 @@ def test_mlflow_logging(task_name: str, tempdir: Path):
             yield record
 
     dataset = LuxonisDataset("xor_dataset", delete_local=True)
-    dataset.add(generator(tempdir))
+    dataset.add(generator())
     dataset.make_splits((1, 0, 0))
 
     config: Params = {
@@ -151,7 +138,6 @@ def test_mlflow_logging(task_name: str, tempdir: Path):
             "test_view": "train",
             "params": {
                 "dataset_name": "xor_dataset",
-                "bucket_storage": "local",
             },
         },
         "trainer": {
@@ -159,19 +145,11 @@ def test_mlflow_logging(task_name: str, tempdir: Path):
             "preprocessing": {
                 "train_image_size": [1, 2],
                 "keep_aspect_ratio": False,
-                "normalize": {
-                    "active": True,
-                    "params": {"mean": [0, 0, 0], "std": [1, 1, 1]},
-                },
             },
             "batch_size": 4,
             "epochs": 10,
             "n_log_images": 3,
             "validation_interval": 5,
-            "optimizer": {
-                "name": "Adam",
-                "params": {"lr": 0.1, "weight_decay": 0.01},
-            },
             "scheduler": {
                 "name": "StepLR",
                 "params": {"step_size": 10, "gamma": 0.1},
@@ -338,3 +316,17 @@ def test_mlflow_logging(task_name: str, tempdir: Path):
         assert metric_name in all_mlflow_logging_keys["metrics"], (
             f"Missing {metric_name} in logging keys"
         )
+
+
+def kill_process_tree(pid: int) -> None:
+    with suppress(psutil.NoSuchProcess):
+        parent = psutil.Process(pid)
+        for child in parent.children(recursive=True):
+            child.terminate()
+        parent.terminate()
+
+        _, alive = psutil.wait_procs(
+            [parent] + parent.children(recursive=True), timeout=5
+        )
+        for p in alive:
+            p.kill()

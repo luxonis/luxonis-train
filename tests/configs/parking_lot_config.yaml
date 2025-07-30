@@ -91,7 +91,3 @@ trainer:
       - name: Sharpen
         params:
           p: 0.1
-
-  callbacks:
-    - name: ExportOnTrainEnd
-    - name: ArchiveOnTrainEnd

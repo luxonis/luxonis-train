@@ -64,25 +64,7 @@ model:
       visualizers:
         - name: SegmentationVisualizer
 
-tracker:
-  project_name: multi_input_example
-  is_tensorboard: True
-
 trainer:
   batch_size: 1
-  epochs: 10
-  n_workers: 4
-  validation_interval: 10
-  n_log_images: 4
-
-  callbacks:
-    - name: ExportOnTrainEnd
-
-  optimizer:
-    name: Adam
-    params:
-      lr: 0.01
-
-exporter:
-  onnx:
-    opset_version: 11
+  epochs: 1
+  validation_interval: 1

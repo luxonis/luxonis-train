@@ -4,56 +4,19 @@ from luxonis_ml.typing import Params
 from luxonis_train.core import LuxonisModel
 
 
-def get_config() -> Params:
-    return {
-        "model": {
-            "nodes": [
-                {
-                    "name": "EfficientRep",
-                    "alias": "backbone",
-                },
-                {
-                    "name": "RepPANNeck",
-                    "alias": "neck",
-                    "inputs": ["backbone"],
-                },
-                {
-                    "name": "EfficientBBoxHead",
-                    "task_name": "motorbike",
-                    "inputs": ["neck"],
-                },
-            ],
-            "losses": [
-                {
-                    "name": "AdaptiveDetectionLoss",
-                    "attached_to": "EfficientBBoxHead",
-                }
-            ],
-            "metrics": [
-                {
-                    "name": "MeanAveragePrecision",
-                    "attached_to": "EfficientBBoxHead",
-                }
-            ],
-        },
-        "loader": {
-            "name": "LuxonisLoaderTorch",
-            "train_view": "train",
-            "val_view": "train",
-            "test_view": "train",
-        },
-        "trainer": {
-            "n_validation_batches": 1,
-        },
+def test_fixed_validation_batch_limit(
+    parking_lot_dataset: LuxonisDataset, opts: Params
+):
+    cfg = "configs/detection_light_model.yaml"
+    opts |= {
+        "model.predefined_model.params.task_name": "motorbike",
+        "loader.params.dataset_name": parking_lot_dataset.identifier,
+        "loader.train_view": "train",
+        "loader.val_view": "train",
+        "loader.test_view": "train",
+        "trainer.n_validation_batches": 1,
     }
-
-
-def test_fixed_validation_batch_limit(parking_lot_dataset: LuxonisDataset):
-    config = get_config()
-    opts: Params = {
-        "loader.params.dataset_name": parking_lot_dataset.identifier
-    }
-    model = LuxonisModel(config, opts)
+    model = LuxonisModel(cfg, opts)
     assert len(model.pytorch_loaders["val"]) == 1, (
         "Validation loader should contain exactly 1 batch"
     )
@@ -61,7 +24,7 @@ def test_fixed_validation_batch_limit(parking_lot_dataset: LuxonisDataset):
         "Test loader should contain exactly 1 batch"
     )
     opts["trainer.n_validation_batches"] = None
-    model = LuxonisModel(config, opts)
+    model = LuxonisModel(cfg, opts)
     assert len(model.pytorch_loaders["val"]) > 1, (
         "Validation loader should contain all validation samples"
     )

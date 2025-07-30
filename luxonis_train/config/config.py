@@ -708,21 +708,20 @@ class Config(LuxonisConfig):
             instance.tracker.run_id = fs.run_id
 
         if instance.trainer.smart_cfg_auto_populate:
-            cls.smart_auto_populate(instance)
+            return instance.smart_auto_populate()
 
         return instance
 
-    @classmethod
-    def smart_auto_populate(cls, instance: "Config") -> None:
+    def smart_auto_populate(self) -> Self:
         """Automatically populates config fields based on rules, with
         warnings."""
         # Rule: Mosaic4 should have out_width and out_height matching train_image_size if not provided
-        for augmentation in instance.trainer.preprocessing.augmentations:
+        for augmentation in self.trainer.preprocessing.augmentations:
             if augmentation.name == "Mosaic4" and (
                 "out_width" not in augmentation.params
                 or "out_height" not in augmentation.params
             ):
-                train_size = instance.trainer.preprocessing.train_image_size
+                train_size = self.trainer.preprocessing.train_image_size
                 augmentation.params.update(
                     {"out_width": train_size[0], "out_height": train_size[1]}
                 )
@@ -732,12 +731,12 @@ class Config(LuxonisConfig):
 
         # Rule: If train, val, and test views are the same, set n_validation_batches
         if (
-            instance.loader.train_view
-            == instance.loader.val_view
-            == instance.loader.test_view
+            self.loader.train_view
+            == self.loader.val_view
+            == self.loader.test_view
         ):
-            if instance.trainer.n_validation_batches is None:
-                instance.trainer.n_validation_batches = 10
+            if self.trainer.n_validation_batches is None:
+                self.trainer.n_validation_batches = 10
                 logger.warning(
                     "Train, validation, and test views are the same. "
                     "Automatically setting `n_validation_batches` to 10 "
@@ -752,7 +751,7 @@ class Config(LuxonisConfig):
                 )
 
         # Rule: Check if a predefined model is set and adjust config accordingly to achieve best training results
-        predefined_model_cfg = instance.model.predefined_model
+        predefined_model_cfg = self.model.predefined_model
         if predefined_model_cfg is not None:
             logger.info(
                 "Predefined model detected. "
@@ -761,13 +760,13 @@ class Config(LuxonisConfig):
                 "`smart_cfg_auto_populate` to `False`."
             )
             model_name = predefined_model_cfg.name
-            accumulate_grad_batches = int(64 / instance.trainer.batch_size)
+            accumulate_grad_batches = int(64 / self.trainer.batch_size)
             logger.info(
                 f"Setting 'accumulate_grad_batches' to "
                 f"{accumulate_grad_batches} "
-                f"(trainer.batch_size={instance.trainer.batch_size})",
+                f"(trainer.batch_size={self.trainer.batch_size})",
                 accumulate_grad_batches,
-                instance.trainer.batch_size,
+                self.trainer.batch_size,
             )
             loss_params = predefined_model_cfg.params.get("loss_params", {})
             if not isinstance(loss_params, dict):
@@ -829,7 +828,7 @@ class Config(LuxonisConfig):
                 )
             predefined_model_cfg.params["loss_params"] = loss_params
             if gradient_accumulation_schedule:
-                for callback in instance.trainer.callbacks:
+                for callback in self.trainer.callbacks:
                     if callback.name == "GradientAccumulationScheduler":
                         callback.params["scheduling"] = (  # type: ignore
                             gradient_accumulation_schedule
@@ -849,8 +848,8 @@ class Config(LuxonisConfig):
         ]
 
         for cb_name in default_callbacks:
-            if not any(
-                cb.name == cb_name for cb in instance.trainer.callbacks
-            ):
-                instance.trainer.callbacks.append(CallbackConfig(name=cb_name))
+            if not any(cb.name == cb_name for cb in self.trainer.callbacks):
+                self.trainer.callbacks.append(CallbackConfig(name=cb_name))
                 logger.info(f"Added {cb_name} callback.")
+
+        return self
