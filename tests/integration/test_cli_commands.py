@@ -1,13 +1,12 @@
 import os
 import subprocess
 import sys
-from collections.abc import Callable
 from pathlib import Path
 from types import GeneratorType
 
 import pytest
 from luxonis_ml.data import LuxonisDataset
-from luxonis_ml.typing import Kwargs, Params
+from luxonis_ml.typing import Params
 from luxonis_ml.utils import environ
 from pytest_subtests import SubTests
 
@@ -33,7 +32,7 @@ def test_cli_command_success(
         flat_opts.append(key)
         flat_opts.append(str(value))
 
-    for command, kwargs in [
+    for cmd, kwargs in [
         (train, {}),
         (tune, {}),
         (_test, {"view": "val"}),
@@ -41,17 +40,21 @@ def test_cli_command_success(
         (_yield_visualizations, {}),
         (archive, {"executable": tempdir / "export.onnx"}),
     ]:
-        with subtests.test(command.__name__):
-            res = command(
+        with subtests.test(cmd.__name__):
+            res = cmd(
                 [
                     "loader.params.dataset_name",
                     coco_dataset.identifier,
                     "model.name",
-                    command.__name__,
+                    cmd.__name__,
+                    "tuner.n_trials",
+                    "2",
+                    "tuner.storage.database",
+                    str(tempdir / "study_local.db"),
                     *flat_opts,
                 ],
                 config="configs/detection_light_model.yaml"
-                if command is not tune
+                if cmd is not tune
                 else "configs/example_tuning.yaml",
                 **kwargs,
             )
@@ -59,44 +62,41 @@ def test_cli_command_success(
                 list(res)
 
 
-@pytest.mark.parametrize(
-    ("command", "kwargs"),
-    [
+def test_cli_command_failure(
+    coco_dataset: LuxonisDataset,
+    subtests: SubTests,
+) -> None:
+    for cmd, kwargs in [
         (train, {"config": "nonexistent.yaml"}),
-        (
-            _test,
-            {"config": "tests/configs/config_simple.yaml", "view": "invalid"},
-        ),
-        (export, {"config": "nonexistent.yaml"}),
+        (train, {"weights": "nonexistent.ckpt"}),
+        (_test, {"view": "invalid"}),
+        (_test, {"weights": "nonexistent.ckpt"}),
+        (export, {"weights": "nonexistent.ckpt"}),
         (
             inspect,
             {
-                "config": "nonexistent.yaml",
                 "view": "train",
                 "size_multiplier": -1.0,
             },
         ),
-        (archive, {"config": "nonexistent.yaml"}),
-    ],
-)
-def test_cli_command_failure(
-    command: Callable, kwargs: Kwargs, coco_dataset: LuxonisDataset
-) -> None:
-    with pytest.raises(Exception):  # noqa: PT011
-        command(
-            ["loader.params.dataset_name", coco_dataset.identifier],
-            **kwargs,
-        )
+        (archive, {"weights": "nonexistent.ckpt"}),
+    ]:
+        with subtests.test(cmd.__name__):
+            with pytest.raises(Exception):  # noqa: PT011
+                cmd(
+                    ["loader.params.dataset_name", coco_dataset.identifier],
+                    **kwargs,
+                )
 
 
-def test_source(work_dir: Path, coco_dataset: LuxonisDataset):
-    with open(work_dir / "source_1.py", "w") as f:
+def test_source(tempdir: Path, cifar10_dataset: LuxonisDataset):
+    with open(tempdir / "source_1.py", "w") as f:
         f.write("print('sourcing 1')")
 
-    with open(work_dir / "source_2.py", "w") as f:
+    with open(tempdir / "source_2.py", "w") as f:
         f.write("print('sourcing 2')")
 
-    with open(work_dir / "callbacks.py", "w") as f:
+    with open(tempdir / "callbacks.py", "w") as f:
         f.write(
             """
 import lightning.pytorch as pl
@@ -107,19 +107,19 @@ from luxonis_train.registry import CALLBACKS
 
 @CALLBACKS.register()
 class CustomCallback(pl.Callback):
-    def __init__(self, message: str, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.message = message
 
-    def on_train_epoch_end(
+    def teardown(
         self,
         trainer: pl.Trainer,
         pl_module: LuxonisLightningModule,
+        stage: str,
     ) -> None:
-        print(self.message)
+        print("callback message")
 """
         )
-    with open(work_dir / "loss.py", "w") as f:
+    with open(tempdir / "loss.py", "w") as f:
         f.write(
             """
 from torch import Tensor
@@ -144,20 +144,24 @@ class CustomLoss(BaseLoss):
             "-m",
             "luxonis_train",
             "--source",
-            str(work_dir / "source_1.py"),
+            str(tempdir / "source_1.py"),
             "test",
             "--source",
-            str(work_dir / "source_2.py"),
+            str(tempdir / "source_2.py"),
             "--config",
-            "tests/configs/config_simple.yaml",
+            "configs/classification_light_model.yaml",
             "--source",
-            str(work_dir / "callbacks.py"),
+            str(tempdir / "callbacks.py"),
             "--source",
-            str(work_dir / "loss.py"),
+            str(tempdir / "loss.py"),
             "loader.params.dataset_name",
-            coco_dataset.identifier,
+            cifar10_dataset.identifier,
             "model.losses.0.name",
             "CustomLoss",
+            "model.losses.0.attached_to",
+            "ClassificationHead",
+            "trainer.callbacks.3.name",
+            "CustomCallback",
         ],
         capture_output=True,
         text=True,
@@ -176,3 +180,6 @@ class CustomLoss(BaseLoss):
     assert result.stdout is not None, "No stdout captured from subprocess"
     assert "sourcing 1" in result.stdout, "'sourcing 1' not found in output"
     assert "sourcing 2" in result.stdout, "'sourcing 2' not found in output"
+    assert "callback message" in result.stdout, (
+        "'callback message' not found in output"
+    )

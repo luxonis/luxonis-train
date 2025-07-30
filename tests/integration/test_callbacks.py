@@ -8,10 +8,10 @@ from luxonis_train.config import Config
 from luxonis_train.core import LuxonisModel
 
 
-def test_callbacks(coco_dataset: LuxonisDataset, opts: Params):
-    config_file = "tests/configs/config_simple.yaml"
+def test_callbacks(cifar10_dataset: LuxonisDataset, opts: Params):
+    config_file = "configs/classification_light_model.yaml"
     opts = opts | {
-        "trainer.use_rich_progress_bar": False,
+        "rich_logging": False,
         "trainer.seed": 42,
         "trainer.deterministic": "warn",
         "trainer.callbacks": [
@@ -36,7 +36,7 @@ def test_callbacks(coco_dataset: LuxonisDataset, opts: Params):
         "exporter.scale_values": [0.5, 0.5, 0.5],
         "exporter.mean_values": [0.5, 0.5, 0.5],
         "exporter.blobconverter.active": True,
-        "loader.params.dataset_name": coco_dataset.identifier,
+        "loader.params.dataset_name": cifar10_dataset.identifier,
     }
     model = LuxonisModel(config_file, opts, debug_mode=True)
     model.train()
@@ -55,7 +55,20 @@ def test_callbacks(coco_dataset: LuxonisDataset, opts: Params):
 
     assert "dataset_metadata" in ckpt
     assert ckpt["dataset_metadata"] == {
-        "classes": {"": {"person": 0}},
-        "n_keypoints": {"": 17},
+        "classes": {
+            "": {
+                "airplane": 0,
+                "automobile": 1,
+                "bird": 2,
+                "cat": 3,
+                "deer": 4,
+                "dog": 5,
+                "frog": 6,
+                "horse": 7,
+                "ship": 8,
+                "truck": 9,
+            }
+        },
+        "n_keypoints": {},
         "metadata_types": {},
     }

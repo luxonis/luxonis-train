@@ -203,10 +203,13 @@ def cifar10_dataset(data_dir: Path) -> LuxonisDataset:
         "truck",
     ]
 
+    seen_classes = set()
+
     def CIFAR10_subset_generator() -> DatasetIterator:
         for i, (image, label) in enumerate(cifar10_torch):  # type: ignore
-            if i == 20:
+            if i > 20 and len(seen_classes) == len(classes):
                 break
+            seen_classes.add(classes[label])
             path = output_folder / f"cifar_{i}.png"
             image.save(path)
             yield {
