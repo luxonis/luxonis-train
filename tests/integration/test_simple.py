@@ -1,5 +1,6 @@
 import json
 import shutil
+import sqlite3
 import sys
 import tarfile
 from pathlib import Path
@@ -40,7 +41,6 @@ def opts(output_dir: Path) -> dict[str, Any]:
         "trainer.validation_interval": 1,
         "trainer.callbacks": [],
         "tracker.save_directory": str(output_dir),
-        "tuner.n_trials": 4,
     }
 
 
@@ -184,6 +184,7 @@ def test_tune(opts: Params, coco_dataset: LuxonisDataset):
     opts |= {
         "tuner.storage.database": f"{STUDY_PATH}",
         "tuner.params": {
+            "tuner.n_trials": 4,
             "trainer.optimizer.name_categorical": ["Adam", "SGD"],
             "trainer.optimizer.params.lr_float": [0.0001, 0.001],
             "trainer.batch_size_int": [4, 16, 4],
@@ -199,6 +200,12 @@ def test_tune(opts: Params, coco_dataset: LuxonisDataset):
     model = LuxonisModel("configs/example_tuning.yaml", opts)
     model.tune()
     assert STUDY_PATH.exists()
+    con = sqlite3.connect(STUDY_PATH)
+    cur = con.cursor()
+    cur.execute("SELECT * FROM trial_params")
+    # Should be 4 * 6 = 24, but the augmentation
+    # subset parameters are not stored in the database
+    assert len(cur.fetchall()) == 20
 
 
 def test_infer(
