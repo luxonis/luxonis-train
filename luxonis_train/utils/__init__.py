@@ -12,6 +12,7 @@ from .boundingbox import (
 from .dataset_metadata import DatasetMetadata
 from .exceptions import IncompatibleError
 from .general import (
+    Counter,
     get_attribute_check_none,
     get_batch_instances,
     get_with_default,
@@ -40,6 +41,7 @@ from .spatial_transforms import (
 from .tracker import LuxonisTrackerPL
 
 __all__ = [
+    "Counter",
     "DatasetMetadata",
     "IncompatibleError",
     "LuxonisTrackerPL",
