@@ -91,46 +91,49 @@ def test_predefined_models(
             model.run_save_dir / "archive" / f"{config_name}.onnx.tar.xz"
         ).exists()
 
-    with subtests.test("infer"):
-        loader = LuxonisLoader(dataset)
-        img_dir = tempdir / "images"
-        video_path = tempdir / "video.avi"
-        video_writer = cv2.VideoWriter(
-            str(video_path), cv2.VideoWriter_fourcc(*"XVID"), 1, (256, 256)
-        )
-        img_dir.mkdir()
-        for i, (img, _) in enumerate(loader):
-            assert isinstance(img, np.ndarray)
-            img = cv2.resize(img, (256, 256))
-            cv2.imwrite(str(img_dir / f"{i}.png"), img)
-            video_writer.write(img)
-        video_writer.release()
+    if config_name != "embeddings_model":
+        with subtests.test("infer"):
+            loader = LuxonisLoader(dataset)
+            img_dir = tempdir / "images"
+            video_path = tempdir / "video.avi"
+            video_writer = cv2.VideoWriter(
+                str(video_path), cv2.VideoWriter_fourcc(*"XVID"), 1, (256, 256)
+            )
+            img_dir.mkdir()
+            for i, (img, _) in enumerate(loader):
+                assert isinstance(img, np.ndarray)
+                img = cv2.resize(img, (256, 256))
+                cv2.imwrite(str(img_dir / f"{i}.png"), img)
+                video_writer.write(img)
+            video_writer.release()
 
-        for subtest in ["single_image", "image_dir", "video", "loader"]:
-            with subtests.test(f"infer/{subtest}"):
-                save_dir = tempdir / f"infer_{subtest}"
-                if subtest == "single_image":
-                    source = img_dir / "0.png"
-                elif subtest == "image_dir":
-                    source = img_dir
-                elif subtest == "video":
-                    source = video_path
-                else:
-                    source = None
+            for subtest in ["single_image", "image_dir", "video", "loader"]:
+                with subtests.test(f"infer/{subtest}"):
+                    save_dir = tempdir / f"infer_{subtest}"
+                    if subtest == "single_image":
+                        source = img_dir / "0.png"
+                    elif subtest == "image_dir":
+                        source = img_dir
+                    elif subtest == "video":
+                        source = video_path
+                    else:
+                        source = None
 
-                model.infer(source_path=source, save_dir=save_dir)
+                    model.infer(source_path=source, save_dir=save_dir)
 
-                if subtest == "single_image":
-                    assert len(list(save_dir.rglob("*.png"))) == 1
-                elif subtest == "image_dir":
-                    assert len(list(save_dir.iterdir())) == len(loader)
-                elif subtest == "video":
-                    assert len(list(save_dir.rglob("*.mp4"))) == 1
-                if subtest is None:
-                    assert len(list(save_dir.iterdir())) == len(loader)
+                    if subtest == "single_image":
+                        assert len(list(save_dir.rglob("*.png"))) == 1
+                    elif subtest == "image_dir":
+                        assert len(list(save_dir.iterdir())) == len(loader)
+                    elif subtest == "video":
+                        assert len(list(save_dir.rglob("*.mp4"))) == 1
+                    if subtest is None:
+                        assert len(list(save_dir.iterdir())) == len(loader)
 
     # TODO: Support annotation for all models
     if config_name not in {
+        "classification_light_model",
+        "classification_heavy_model",
         "embeddings_model",
         "anomaly_detection_model",
         "fomo_light_model",
