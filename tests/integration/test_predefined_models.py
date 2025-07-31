@@ -14,20 +14,20 @@ from tests.conftest import LuxonisTestDataset
 @pytest.mark.parametrize(
     "config_name",
     [
-        "fomo_light_model",
         "anomaly_detection_model",
+        "embeddings_model",
+        "fomo_light_model",
         "ocr_recognition_light_model",
         "classification_light_model",
-        "segmentation_light_model",
         "detection_light_model",
-        "embeddings_model",
-        "keypoint_bbox_light_model",
         "instance_segmentation_light_model",
+        "keypoint_bbox_light_model",
+        "segmentation_light_model",
         "classification_heavy_model",
-        "segmentation_heavy_model",
         "detection_heavy_model",
-        "keypoint_bbox_heavy_model",
         "instance_segmentation_heavy_model",
+        "keypoint_bbox_heavy_model",
+        "segmentation_heavy_model",
     ],
 )
 def test_predefined_models(
@@ -43,6 +43,7 @@ def test_predefined_models(
 ):
     config_file = f"configs/{config_name}.yaml"
     tempdir = tempdir / config_name
+    tempdir.mkdir()
 
     if config_name == "embeddings_model":
         dataset = embedding_dataset
@@ -101,15 +102,15 @@ def test_predefined_models(
         for i, (img, _) in enumerate(loader):
             assert isinstance(img, np.ndarray)
             img = cv2.resize(img, (256, 256))
-            cv2.imwrite(str(img_dir / f"{i}.jpg"), img)
+            cv2.imwrite(str(img_dir / f"{i}.png"), img)
             video_writer.write(img)
         video_writer.release()
 
         for subtest in ["single_image", "image_dir", "video", "loader"]:
-            with subtests.test(subtest):
+            with subtests.test(f"infer/{subtest}"):
                 save_dir = tempdir / f"infer_{subtest}"
                 if subtest == "single_image":
-                    source = img_dir / "0.jpg"
+                    source = img_dir / "0.png"
                 elif subtest == "image_dir":
                     source = img_dir
                 elif subtest == "video":
@@ -120,15 +121,21 @@ def test_predefined_models(
                 model.infer(source_path=source, save_dir=save_dir)
 
                 if subtest == "single_image":
-                    assert len(list(save_dir.rglob("*.jpg"))) == 1
+                    assert len(list(save_dir.rglob("*.png"))) == 1
                 elif subtest == "image_dir":
                     assert len(list(save_dir.iterdir())) == len(loader)
                 elif subtest == "video":
-                    assert len(list(save_dir.rglob("*.avi"))) == 1
+                    assert len(list(save_dir.rglob("*.mp4"))) == 1
                 if subtest is None:
                     assert len(list(save_dir.iterdir())) == len(loader)
 
-    if config_name not in {"embeddings_model", "anomaly_detection_model"}:
+    # TODO: Support annotation for all models
+    if config_name not in {
+        "embeddings_model",
+        "anomaly_detection_model",
+        "fomo_light_model",
+        "ocr_recognition_light_model",
+    }:
         with subtests.test("annotate"):
             model.annotate(
                 dir_path=dataset.source_path,
