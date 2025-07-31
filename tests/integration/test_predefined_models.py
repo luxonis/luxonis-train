@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import cast
 
 import pytest
 from luxonis_ml.data import LuxonisDataset
@@ -6,6 +7,7 @@ from luxonis_ml.typing import Params
 from pytest_subtests import SubTests
 
 from luxonis_train.core import LuxonisModel
+from luxonis_train.loaders.luxonis_loader_torch import LuxonisLoaderTorch
 
 
 @pytest.mark.parametrize(
@@ -86,9 +88,10 @@ def test_predefined_models(
 
     with subtests.test("infer"):
         model.infer(save_dir=model.run_save_dir / "infer", view="test")
+        loader = cast(LuxonisLoaderTorch, model.loaders["test"])
         assert (model.run_save_dir / "infer").exists()
         assert len(list((model.run_save_dir / "infer").iterdir())) == len(
-            model.loaders["test"].loader
+            loader.loader
         )
 
     with subtests.test("annotate"):
