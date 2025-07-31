@@ -122,7 +122,9 @@ class LuxonisLightningModule(pl.LightningModule):
         self._core = _core
         self._n_logged_images = 0
         self._class_log_counts: list[int] = []
-        self._sequentially_logged_visualizations: list[dict[str, Tensor]] = []
+        self._sequentially_logged_visualizations: list[
+            dict[str, dict[str, Tensor]]
+        ] = []
         self._needs_vis_buffering = True
 
         self._loss_accumulators = {
