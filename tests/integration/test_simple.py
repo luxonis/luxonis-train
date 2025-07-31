@@ -85,7 +85,6 @@ def test_predefined_models(
     cifar10_dataset: LuxonisDataset,
     toy_ocr_dataset: LuxonisDataset,
     image_size: tuple[int, int],
-    output_dir: Path,
     subtests: SubTests,
 ):
     config_file = f"configs/{config_name}.yaml"
@@ -115,7 +114,7 @@ def test_predefined_models(
     with subtests.test("saved_config"):
         opts["tracker.run_name"] = f"{config_name}_reload"
         model = LuxonisModel(
-            str(output_dir / config_name / "training_config.yaml"), opts
+            str(model.run_save_dir / "training_config.yaml"), opts
         )
         model.test()
 
