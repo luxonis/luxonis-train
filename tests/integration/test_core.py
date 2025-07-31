@@ -102,10 +102,10 @@ def test_weights_loading(cifar10_dataset: LuxonisDataset, opts: Params):
 
 
 def test_precision_fallback_to_bf16_on_cpu(
-    coco_dataset: LuxonisDataset, opts: Params
+    cifar10_dataset: LuxonisDataset, opts: Params
 ):
     opts |= {
-        "loader.params.dataset_name": coco_dataset.dataset_name,
+        "loader.params.dataset_name": cifar10_dataset.dataset_name,
         "trainer.precision": "16-mixed",
         "trainer.accelerator": "cpu",
     }
