@@ -1,8 +1,8 @@
 from pathlib import Path
-from typing import Any
 
 import pytest
 from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.typing import Params
 from pytest_subtests import SubTests
 
 from luxonis_train.core import LuxonisModel
@@ -28,18 +28,18 @@ from luxonis_train.core import LuxonisModel
     ],
 )
 def test_predefined_models(
-    opts: dict[str, Any],
     config_name: str,
+    opts: Params,
+    coco_dir: Path,
     coco_dataset: LuxonisDataset,
     cifar10_dataset: LuxonisDataset,
     toy_ocr_dataset: LuxonisDataset,
     embedding_dataset: LuxonisDataset,
     anomaly_detection_dataset: LuxonisDataset,
-    save_dir: Path,
-    data_dir: Path,
     subtests: SubTests,
 ):
     config_file = f"configs/{config_name}.yaml"
+    coco_images = coco_dir / "person_val2017_subset"
     if config_name == "embeddings_model":
         dataset = embedding_dataset
     elif "ocr_recognition" in config_name:
@@ -47,28 +47,20 @@ def test_predefined_models(
     elif "classification" in config_name:
         dataset = cifar10_dataset
     elif "anomaly_detection" in config_name:
-        opts |= {
-            "loader.params.anomaly_source_path": data_dir.absolute()
-            / "COCO_people_subset"
-        }
+        opts |= {"loader.params.anomaly_source_path": str(coco_dir)}
         dataset = anomaly_detection_dataset
     else:
         dataset = coco_dataset
 
     opts |= {
+        "model.name": config_name,
         "loader.params.dataset_name": dataset.identifier,
         "tracker.run_name": config_name,
-        "trainer.callbacks": [
-            {"name": "ExportOnTrainEnd"},
-            {"name": "ArchiveOnTrainEnd"},
-            {"name": "TestOnTrainEnd"},
-        ],
     }
 
     if config_name == "embeddings_model":
         opts |= {
             "loader.params.dataset_name": embedding_dataset.dataset_name,
-            "tracker.save_directory": str(save_dir),
             "trainer.batch_size": 16,
             "trainer.preprocessing.train_image_size": [48, 64],
         }
@@ -76,10 +68,42 @@ def test_predefined_models(
         opts["trainer.preprocessing.train_image_size"] = [48, 320]
 
     model = LuxonisModel(config_file, opts)
-    model.train()
 
-    opts["tracker.run_name"] = f"{config_name}_reload"
-    model = LuxonisModel(
-        str(save_dir / config_name / "training_config.yaml"), opts
-    )
-    model.test()
+    with subtests.test("train"):
+        model.train()
+        assert model.run_save_dir.exists()
+        assert list(model.run_save_dir.iterdir())
+
+    with subtests.test("export"):
+        model.export()
+        assert (model.run_save_dir / "export" / f"{config_name}.onnx").exists()
+
+    with subtests.test("archive"):
+        model.archive()
+        assert (
+            model.run_save_dir / "archive" / f"{config_name}.onnx.tar.xz"
+        ).exists()
+
+    with subtests.test("infer"):
+        model.infer(save_dir=model.run_save_dir / "infer", view="test")
+        assert (model.run_save_dir / "infer").exists()
+        assert len(list((model.run_save_dir / "infer").iterdir())) == len(
+            model.loaders["test"].loader
+        )
+
+    with subtests.test("annotate"):
+        annotated_dataset = model.annotate(
+            dir_path=coco_images,
+            dataset_name="test_annotated_dataset",
+            bucket_storage="local",
+            delete_local=True,
+        )
+        assert isinstance(annotated_dataset, LuxonisDataset)
+        assert len(annotated_dataset) == len(coco_dataset)
+
+    with subtests.test("test-reload"):
+        model_reload = LuxonisModel(
+            str(model.run_save_dir / "training_config.yaml"),
+            opts | {"tracker.run_name": f"{config_name}_reload"},
+        )
+        model_reload.test()
