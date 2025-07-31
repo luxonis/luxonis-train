@@ -21,7 +21,6 @@ def get_inputs(path: Path) -> dict[str, ArchiveMetadataDict]:
     @type path: Path
     @param path: Path to model executable file.
     """
-
     if path.suffix == ".onnx":
         return _get_onnx_inputs(path)
     raise NotImplementedError(
@@ -35,7 +34,6 @@ def get_outputs(path: Path) -> dict[str, ArchiveMetadataDict]:
     @type path: Path
     @param path: Path to model executable file.
     """
-
     if path.suffix == ".onnx":
         return _get_onnx_outputs(path)
     raise NotImplementedError(
@@ -104,7 +102,6 @@ def _get_head_outputs(outputs: list[dict], head_name: str) -> list[str]:
     @rtype: list[str]
     @return: List of output names.
     """
-
     output_names = []
     for output in outputs:
         try:

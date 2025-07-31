@@ -22,34 +22,43 @@ class MicroBlock(nn.Module):
         init_a: tuple[float, float] = (1.0, 1.0),
         init_b: tuple[float, float] = (0.0, 0.0),
     ):
-        """
-        MicroBlock: The basic building block of MicroNet.
+        """MicroBlock: The basic building block of MicroNet.
 
-        This block implements the Micro-Factorized Convolution and Dynamic Shift-Max activation.
-        It can be configured to use different combinations of these components based on the network design.
+        This block implements the Micro-Factorized Convolution and
+        Dynamic Shift-Max activation. It can be configured to use
+        different combinations of these components based on the network
+        design.
 
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type out_channels: int
         @param out_channels: Number of output channels.
         @type kernel_size: int
-        @param kernel_size: Size of the convolution kernel. Defaults to 3.
+        @param kernel_size: Size of the convolution kernel. Defaults to
+            3.
         @type stride: int
         @param stride: Stride of the convolution. Defaults to 1.
         @type expansion_ratios: tuple[int, int]
-        @param expansion_ratios: Expansion ratios for the intermediate channels. Defaults to (2, 2).
+        @param expansion_ratios: Expansion ratios for the intermediate
+            channels. Defaults to (2, 2).
         @type groups_1: tuple[int, int]
-        @param groups_1: Groups for the first set of convolutions. Defaults to (0, 6).
+        @param groups_1: Groups for the first set of convolutions.
+            Defaults to (0, 6).
         @type groups_2: tuple[int, int]
-        @param groups_2: Groups for the second set of convolutions. Defaults to (1, 1).
+        @param groups_2: Groups for the second set of convolutions.
+            Defaults to (1, 1).
         @type use_dynamic_shift: tuple[int, int, int]
-        @param use_dynamic_shift: Flags to use Dynamic Shift-Max in different positions. Defaults to (2, 0, 1).
+        @param use_dynamic_shift: Flags to use Dynamic Shift-Max in
+            different positions. Defaults to (2, 0, 1).
         @type reduction_factor: int
-        @param reduction_factor: Reduction factor for the squeeze-and-excitation-like operation. Defaults to 1.
+        @param reduction_factor: Reduction factor for the squeeze-and-
+            excitation-like operation. Defaults to 1.
         @type init_a: tuple[float, float]
-        @param init_a: Initialization parameters for Dynamic Shift-Max. Defaults to (1.0, 1.0).
+        @param init_a: Initialization parameters for Dynamic Shift-Max.
+            Defaults to (1.0, 1.0).
         @type init_b: tuple[float, float]
-        @param init_b: Initialization parameters for Dynamic Shift-Max. Defaults to (0.0, 0.0).
+        @param init_b: Initialization parameters for Dynamic Shift-Max.
+            Defaults to (0.0, 0.0).
         """
         super().__init__()
 
@@ -295,7 +304,6 @@ class ChannelShuffle(nn.Module):
         @param groups: Number of groups to divide the channels into
             before shuffling.
         """
-
         super().__init__()
         self.groups = groups
 

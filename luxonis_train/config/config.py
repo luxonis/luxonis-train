@@ -7,9 +7,9 @@ from loguru import logger
 from luxonis_ml.enums import DatasetType
 from luxonis_ml.typing import (
     ConfigItem,
-    Kwargs,
     Params,
     ParamValue,
+    PathType,
     check_type,
 )
 from luxonis_ml.utils import (
@@ -28,7 +28,6 @@ from pydantic import (
     model_serializer,
     model_validator,
 )
-from pydantic.main import IncEx
 from pydantic.types import (
     FilePath,
     NonNegativeFloat,
@@ -413,7 +412,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
         return self
 
     @model_serializer
-    def serialize_model(self, info: SerializationInfo):
+    def serialize_model(self, info: SerializationInfo) -> dict[str, Any]:
         data = {
             key: value
             for key, value in self.__dict__.items()
@@ -660,7 +659,7 @@ class Config(LuxonisConfig):
     trainer: TrainerConfig = Field(default_factory=TrainerConfig)
     exporter: ExportConfig = Field(default_factory=ExportConfig)
     archiver: ArchiveConfig = Field(default_factory=ArchiveConfig)
-    tuner: TunerConfig | None = None
+    tuner: TunerConfig = Field(default_factory=TunerConfig)
 
     config_version: str = str(CONFIG_VERSION)
 
@@ -751,7 +750,7 @@ class Config(LuxonisConfig):
     @classmethod
     def get_config(
         cls,
-        cfg: str | Params | None = None,
+        cfg: PathType | Params | None = None,
         overrides: Params | list[str] | tuple[str, ...] | None = None,
     ) -> "Config":
         instance = super().get_config(cfg, overrides)
@@ -774,7 +773,6 @@ class Config(LuxonisConfig):
     def smart_auto_populate(self) -> Self:
         """Automatically populates config fields based on rules, with
         warnings."""
-
         # Rule: Mosaic4 should have out_width and out_height matching train_image_size if not provided
         for augmentation in self.trainer.preprocessing.augmentations:
             if augmentation.name == "Mosaic4" and (

@@ -1,46 +1,59 @@
 import pytorch_lightning as pl
 import torch
+from torch import Tensor
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LambdaLR
+from torch.optim.optimizer import Optimizer
 
 from luxonis_train.strategies.triple_lr_sgd import TripleLRSGDStrategy
+
+
+class _Core:
+    loaders = {"train": range(10)}
+
+
+class _Cfg:
+    class Trainer:
+        batch_size = 1
+        epochs = 50
+
+    trainer = Trainer()
 
 
 def test_triple_lr_sgd():
     class DummyModel(pl.LightningModule):
         def __init__(self):
             super().__init__()
-            self.core = type("", (), {"loaders": {"train": range(10)}})()
-            self.cfg = type(
-                "",
-                (),
-                {"trainer": type("", (), {"batch_size": 1, "epochs": 50})()},
-            )()
+            self.core = _Core()
+            self.cfg = _Cfg()
             self.linear = torch.nn.Linear(2, 1)
             self.lr_list = [[], [], []]
 
-        def forward(self, x):
+        def forward(self, x: Tensor) -> Tensor:
             return self.linear(x)
 
-        def training_step(self, batch, batch_idx):
+        def training_step(self, batch: Tensor, batch_idx: int) -> Tensor:
             x = batch
             y = self.forward(x)
-            loss = torch.nn.functional.mse_loss(y, torch.zeros_like(y))
-            return loss
+            return torch.nn.functional.mse_loss(y, torch.zeros_like(y))
 
-        def configure_optimizers(self):
-            self.strategy = TripleLRSGDStrategy(model)
+        def configure_optimizers(
+            self,
+        ) -> tuple[list[Optimizer], list[LambdaLR]]:
+            self.strategy = TripleLRSGDStrategy(model)  # type: ignore
             return self.strategy.configure_optimizers()
 
-        def on_before_optimizer_step(self, optimizer):
+        def on_before_optimizer_step(self, optimizer: Optimizer) -> None:
             for i, param_group in enumerate(optimizer.param_groups):
                 self.lr_list[i].append(param_group["lr"])
 
-        def on_after_backward(self):
+        def on_after_backward(self) -> None:
             self.strategy.update_parameters()
 
     model = DummyModel()
 
     dataset = torch.randn(model.core.loaders["train"].__len__(), 2)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)  # type: ignore
     trainer = pl.Trainer(max_epochs=model.cfg.trainer.epochs)
     trainer.fit(model, dataloader)
 

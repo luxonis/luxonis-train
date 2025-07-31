@@ -62,7 +62,6 @@ def setup(tempdir: Path):
             time.sleep(0.5)
 
     yield
-
     kill_process_tree(process.pid)
 
 

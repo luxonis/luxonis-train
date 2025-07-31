@@ -5,7 +5,7 @@ import torch
 from loguru import logger
 from torch import Tensor, nn
 
-from luxonis_train.nodes.blocks import DFL, ConvModule, DWConvModule
+from luxonis_train.nodes.blocks import DFL, ConvModule
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
@@ -286,7 +286,7 @@ class PrecisionBBoxHead(BaseHead[list[Tensor], list[Tensor]]):
                 m.eps = 0.001
                 m.momentum = 0.03
             elif isinstance(
-                m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU)
+                m, nn.Hardswish | nn.LeakyReLU | nn.ReLU | nn.ReLU6 | nn.SiLU
             ):
                 m.inplace = True
 

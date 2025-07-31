@@ -34,6 +34,7 @@ def get_config(backbone: str) -> Params:
         {"name": "Accuracy"},
         {"name": "Precision"},
         {"name": "Recall"},
+        {"name": "ConfusionMatrix"},
     ]
     return {
         "model": {
@@ -109,7 +110,7 @@ def get_config(backbone: str) -> Params:
 
 
 @pytest.mark.parametrize("backbone", BACKBONES)
-def test_backbones(
+def test_combinations(
     backbone: str,
     parking_lot_dataset: LuxonisDataset,
     opts: Params,

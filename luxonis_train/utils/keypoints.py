@@ -141,7 +141,6 @@ def compute_pose_oks(
     @rtype: Tensor
     @return: A tensor of OKS values with shape [N, M1, M2]
     """
-
     if pose_area is None:
         if gt_bboxes is None:
             raise ValueError(

@@ -6,11 +6,15 @@ from torch import Size, Tensor
 from luxonis_train.attached_modules.visualizers import OCRVisualizer
 from luxonis_train.nodes import OCRCTCHead
 from luxonis_train.tasks import Tasks
+from luxonis_train.typing import Packet
 
 
 class DummyOCRNode(OCRCTCHead, register=False):
     task = Tasks.FOMO
-    input_shapes = [{"features": [Size([2, 128, 12, 16])]}]
+
+    @property
+    def input_shapes(self) -> list[Packet[Size]]:
+        return [{"features": [Size([2, 128, 12, 16])]}]
 
     def forward(self, x: Tensor) -> Tensor:
         return x
@@ -28,7 +32,7 @@ class DummyOCRNode(OCRCTCHead, register=False):
 
 def test_ocr_visualizer():
     visualizer = OCRVisualizer(
-        node=DummyOCRNode(alphabet="abcdefghijklmnopqrstuvwxyz")
+        node=DummyOCRNode(alphabet=list("abcdefghijklmnopqrstuvwxyz"))
     )
 
     canvas = torch.zeros(2, 3, 100, 100, dtype=torch.uint8)

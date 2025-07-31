@@ -1,13 +1,14 @@
 from pathlib import Path
-from typing import cast
 
+import cv2
+import numpy as np
 import pytest
-from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.data import LuxonisLoader
 from luxonis_ml.typing import Params
 from pytest_subtests import SubTests
 
 from luxonis_train.core import LuxonisModel
-from luxonis_train.loaders.luxonis_loader_torch import LuxonisLoaderTorch
+from tests.conftest import LuxonisTestDataset
 
 
 @pytest.mark.parametrize(
@@ -32,16 +33,17 @@ from luxonis_train.loaders.luxonis_loader_torch import LuxonisLoaderTorch
 def test_predefined_models(
     config_name: str,
     opts: Params,
-    coco_dir: Path,
-    coco_dataset: LuxonisDataset,
-    cifar10_dataset: LuxonisDataset,
-    toy_ocr_dataset: LuxonisDataset,
-    embedding_dataset: LuxonisDataset,
-    anomaly_detection_dataset: LuxonisDataset,
+    coco_dataset: LuxonisTestDataset,
+    cifar10_dataset: LuxonisTestDataset,
+    toy_ocr_dataset: LuxonisTestDataset,
+    embedding_dataset: LuxonisTestDataset,
+    anomaly_detection_dataset: LuxonisTestDataset,
+    tempdir: Path,
     subtests: SubTests,
 ):
     config_file = f"configs/{config_name}.yaml"
-    coco_images = coco_dir / "person_val2017_subset"
+    tempdir = tempdir / config_name
+
     if config_name == "embeddings_model":
         dataset = embedding_dataset
     elif "ocr_recognition" in config_name:
@@ -49,7 +51,9 @@ def test_predefined_models(
     elif "classification" in config_name:
         dataset = cifar10_dataset
     elif "anomaly_detection" in config_name:
-        opts |= {"loader.params.anomaly_source_path": str(coco_dir)}
+        opts |= {
+            "loader.params.anomaly_source_path": str(coco_dataset.source_path)
+        }
         dataset = anomaly_detection_dataset
     else:
         dataset = coco_dataset
@@ -87,17 +91,47 @@ def test_predefined_models(
         ).exists()
 
     with subtests.test("infer"):
-        model.infer(save_dir=model.run_save_dir / "infer", view="test")
-        loader = cast(LuxonisLoaderTorch, model.loaders["test"])
-        assert (model.run_save_dir / "infer").exists()
-        assert len(list((model.run_save_dir / "infer").iterdir())) == len(
-            loader.loader
+        loader = LuxonisLoader(dataset)
+        img_dir = tempdir / "images"
+        video_path = tempdir / "video.avi"
+        video_writer = cv2.VideoWriter(
+            str(video_path), cv2.VideoWriter_fourcc(*"XVID"), 1, (256, 256)
         )
+        img_dir.mkdir()
+        for i, (img, _) in enumerate(loader):
+            assert isinstance(img, np.ndarray)
+            img = cv2.resize(img, (256, 256))
+            cv2.imwrite(str(img_dir / f"{i}.jpg"), img)
+            video_writer.write(img)
+        video_writer.release()
+
+        for subtest in ["single_image", "image_dir", "video", "loader"]:
+            with subtests.test(subtest):
+                save_dir = tempdir / f"infer_{subtest}"
+                if subtest == "single_image":
+                    source = img_dir / "0.jpg"
+                elif subtest == "image_dir":
+                    source = img_dir
+                elif subtest == "video":
+                    source = video_path
+                else:
+                    source = None
+
+                model.infer(source_path=source, save_dir=save_dir)
+
+                if subtest == "single_image":
+                    assert len(list(save_dir.rglob("*.jpg"))) == 1
+                elif subtest == "image_dir":
+                    assert len(list(save_dir.iterdir())) == len(loader)
+                elif subtest == "video":
+                    assert len(list(save_dir.rglob("*.avi"))) == 1
+                if subtest is None:
+                    assert len(list(save_dir.iterdir())) == len(loader)
 
     if config_name not in {"embeddings_model", "anomaly_detection_model"}:
         with subtests.test("annotate"):
             model.annotate(
-                dir_path=coco_images,
+                dir_path=dataset.source_path,
                 dataset_name="test_annotated_dataset",
                 bucket_storage="local",
                 delete_local=True,

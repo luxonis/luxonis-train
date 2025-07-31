@@ -4,7 +4,7 @@ from typing import Literal
 
 import torch
 import torch.utils.data as torch_data
-from luxonis_ml.data import DatasetIterator, LuxonisDataset, LuxonisLoader
+from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from luxonis_ml.typing import PathType
 
 import luxonis_train as lxt
@@ -42,7 +42,6 @@ def annotate_from_directory(
     @param team_id: Optional team ID for the dataset.
     @type team_id: str | None
     """
-
     img_paths = list(img_paths)
 
     loader = create_loader_from_directory(
@@ -73,7 +72,6 @@ def annotated_dataset_generator(
 ) -> DatasetIterator:
     """Generator that yields annotations for images processed by the
     model."""
-
     lt_module = model.lightning_module.eval()
 
     for batch in loader:

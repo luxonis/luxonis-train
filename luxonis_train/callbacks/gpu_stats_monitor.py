@@ -1,22 +1,19 @@
-# Copyright The PyTorch Lightning team.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-"""
-GPU Stats Monitor
-=================
+"""GPU Stats Monitor.
 
 Monitor and logs GPU stats during training.
 
+Copyright The PyTorch Lightning team.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may
+not use this file except in compliance with the License. You may obtain
+a copy of the License at
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 """
 
 import os
@@ -80,7 +77,6 @@ class GPUStatsMonitor(pl.Callback):
         @param temperature: Set to C{True} to monitor the memory and gpu temperature in degree Celsius. Defaults to C{False}.
         @raises MisconfigurationException: If NVIDIA driver is not installed, not running on GPUs, or C{Trainer} has no logger.
         """
-
         super().__init__()
 
         if shutil.which("nvidia-smi") is None:
@@ -215,8 +211,7 @@ class GPUStatsMonitor(pl.Callback):
     def _get_gpu_stats(self, queries: list[str]) -> list[list[float]]:
         if not queries:
             return []
-
-        """Run nvidia-smi to get the gpu stats"""
+        """Run nvidia-smi to get the gpu stats."""
         gpu_query = ",".join(queries)
         format = "csv,nounits,noheader"
         gpu_ids = ",".join(self._gpu_ids)

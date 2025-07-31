@@ -5,6 +5,7 @@ import time
 import zipfile
 from collections.abc import Generator
 from pathlib import Path
+from typing import cast
 
 import cv2
 import gdown
@@ -93,8 +94,14 @@ def parking_lot_dataset(data_dir: Path) -> LuxonisDataset:
     ).parse()
 
 
+class LuxonisTestDataset(LuxonisDataset):
+    def __init__(self, *args, source_path: Path, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.source_path = source_path
+
+
 @pytest.fixture(scope="session")
-def embedding_dataset(data_dir: Path) -> LuxonisDataset:
+def embedding_dataset(data_dir: Path) -> LuxonisTestDataset:
     img_dir = data_dir / "embedding_images"
     img_dir.mkdir(exist_ok=True)
 
@@ -114,14 +121,16 @@ def embedding_dataset(data_dir: Path) -> LuxonisDataset:
                 },
             }
 
-    dataset = LuxonisDataset("embedding_test", delete_local=True)
+    dataset = LuxonisTestDataset(
+        "embedding_test", delete_local=True, source_path=img_dir
+    )
     dataset.add(generator())
     dataset.make_splits()
     return dataset
 
 
 @pytest.fixture(scope="session")
-def toy_ocr_dataset(data_dir: Path) -> LuxonisDataset:
+def toy_ocr_dataset(data_dir: Path) -> LuxonisTestDataset:
     def generator() -> DatasetIterator:
         path = data_dir / "toy_ocr"
         path.mkdir(parents=True, exist_ok=True)
@@ -149,7 +158,9 @@ def toy_ocr_dataset(data_dir: Path) -> LuxonisDataset:
                 },
             }
 
-    dataset = LuxonisDataset("toy_ocr", delete_local=True)
+    dataset = LuxonisTestDataset(
+        "toy_ocr", delete_local=True, source_path=data_dir / "toy_ocr"
+    )
     dataset.add(generator())
 
     dataset.make_splits()
@@ -174,18 +185,19 @@ def coco_dir(data_dir: Path) -> Path:
 
 
 @pytest.fixture(scope="session")
-def coco_dataset(coco_dir: Path) -> LuxonisDataset:
-    dataset_name = "coco_test"
-
+def coco_dataset(coco_dir: Path) -> LuxonisTestDataset:
     parser = LuxonisParser(
-        str(coco_dir), dataset_name=dataset_name, delete_local=True
+        str(coco_dir),
+        dataset_name="coco_test",
+        delete_local=True,
+        dataset_plugin="LuxonisTestDataset",
+        source_path=coco_dir / "person_val2017_subset",
     )
-    return parser.parse(random_split=True)
+    return cast(LuxonisTestDataset, parser.parse(random_split=True))
 
 
 @pytest.fixture(scope="session")
-def cifar10_dataset(data_dir: Path) -> LuxonisDataset:
-    dataset = LuxonisDataset("cifar10_test", delete_local=True)
+def cifar10_dataset(data_dir: Path) -> LuxonisTestDataset:
     output_folder = data_dir / "cifar10"
     if not output_folder.exists() or not list(output_folder.iterdir()):
         output_folder = LuxonisFileSystem.download(
@@ -221,14 +233,16 @@ def cifar10_dataset(data_dir: Path) -> LuxonisDataset:
                 },
             }
 
+    dataset = LuxonisTestDataset(
+        "cifar10_test", delete_local=True, source_path=output_folder
+    )
     dataset.add(CIFAR10_subset_generator())
     dataset.make_splits()
     return dataset
 
 
 @pytest.fixture(scope="session")
-def mnist_dataset(data_dir: Path) -> LuxonisDataset:
-    dataset = LuxonisDataset("mnist_test", delete_local=True)
+def mnist_dataset(data_dir: Path) -> LuxonisTestDataset:
     output_folder = data_dir / "mnist"
     output_folder.mkdir(parents=True, exist_ok=True)
     mnist_torch = torchvision.datasets.MNIST(
@@ -249,22 +263,16 @@ def mnist_dataset(data_dir: Path) -> LuxonisDataset:
                 },
             }
 
+    dataset = LuxonisTestDataset(
+        "mnist_test", delete_local=True, source_path=output_folder
+    )
     dataset.add(MNIST_subset_generator())
     dataset.make_splits()
     return dataset
 
 
 @pytest.fixture(scope="session")
-def anomaly_detection_dataset(data_dir: Path) -> LuxonisDataset:
-    url = "https://drive.google.com/uc?id=1XlvFK7aRmt8op6-hHkWVKIJQeDtOwoRT"
-    output_zip = data_dir / "COCO_people_subset.zip"
-
-    if (
-        not output_zip.exists()
-        and not (data_dir / "COCO_people_subset").exists()
-    ):
-        gdown.download(url, str(output_zip), quiet=False)
-
+def anomaly_detection_dataset(coco_dir: Path) -> LuxonisTestDataset:
     def random_square_mask(
         image_shape: tuple[int, int], n_squares: int = 1
     ) -> np.ndarray:
@@ -323,11 +331,15 @@ def anomaly_detection_dataset(data_dir: Path) -> LuxonisDataset:
                 },
             }
 
-    paths_total = list((data_dir / "COCO_people_subset/").rglob("*.jpg"))
+    paths_total = list((coco_dir).rglob("*.jpg"))
     train_paths = paths_total[:10]
     test_paths = paths_total[10:]
 
-    dataset = LuxonisDataset("dummy_mvtec", delete_local=True)
+    dataset = LuxonisTestDataset(
+        "dummy_mvtec",
+        delete_local=True,
+        source_path=coco_dir / "person_val2017_subset",
+    )
     dataset.add(dummy_generator(train_paths, test_paths))
     definitions = {
         "train": train_paths,
