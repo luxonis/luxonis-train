@@ -684,6 +684,7 @@ class LuxonisModel:
         """Runs Optuna tuning of hyperparameters."""
         import optuna
         from optuna.integration import PyTorchLightningPruningCallback
+        from sqlalchemy import URL
 
         from .utils.tune_utils import get_trial_params
 
@@ -839,21 +840,26 @@ class LuxonisModel:
             else optuna.pruners.NopPruner()
         )
 
-        storage = None
         if cfg_tuner.storage.active:
-            if cfg_tuner.storage.storage_type == "local":
-                storage = "sqlite:///study_local.db"
-            else:  # pragma: no cover
-                storage = "postgresql://{}:{}@{}:{}/{}".format(  # noqa: UP032
-                    self.cfg.ENVIRON.POSTGRES_USER,
-                    self.cfg.ENVIRON.POSTGRES_PASSWORD,
-                    self.cfg.ENVIRON.POSTGRES_HOST,
-                    self.cfg.ENVIRON.POSTGRES_PORT,
-                    self.cfg.ENVIRON.POSTGRES_DB,
-                )
+            storage = URL.create(
+                cfg_tuner.storage.backend,
+                username=cfg_tuner.storage.username,
+                password=cfg_tuner.storage.password.get_secret_value()
+                if cfg_tuner.storage.password is not None
+                else None,
+                host=cfg_tuner.storage.host,
+                database=cfg_tuner.storage.database,
+                port=cfg_tuner.storage.port,
+            )
+            logger.info(f"Using '{storage}' as Optuna storage.")
+        else:
+            storage = None
+
         study = optuna.create_study(
             study_name=cfg_tuner.study_name,
-            storage=storage,
+            storage=storage.render_as_string(hide_password=False)
+            if storage
+            else None,
             direction="minimize"
             if cfg_tuner.monitor == "loss"
             else "maximize",
