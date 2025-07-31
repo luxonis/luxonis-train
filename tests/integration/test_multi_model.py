@@ -116,14 +116,18 @@ def test_multi_input(opts: Params, tempdir: Path):
     model = LuxonisModel(cfg, opts)
     model.train()
     model.test(view="val")
-    model.export(tempdir)
+    model.export()
+    model.archive()
 
-    assert (tempdir / "example_multi_input.onnx").exists()
-
-    infer_dir = tempdir / "infer"
-    model.infer(view="val", save_dir=infer_dir)
-    assert infer_dir.exists()
     assert (
-        len(list(infer_dir.glob("*.png")))
+        model.run_save_dir / "export" / "example_multi_input.onnx"
+    ).exists()
+    assert (
+        model.run_save_dir / "archive" / "example_multi_input.onnx.tar.xz"
+    ).exists()
+
+    model.infer(view="val", save_dir=tempdir)
+    assert (
+        len(list(tempdir.glob("*.png")))
         == len(model.pytorch_loaders["val"]) * 2  # 2 heads
     )

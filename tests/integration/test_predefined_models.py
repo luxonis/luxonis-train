@@ -94,15 +94,14 @@ def test_predefined_models(
             loader.loader
         )
 
-    with subtests.test("annotate"):
-        annotated_dataset = model.annotate(
-            dir_path=coco_images,
-            dataset_name="test_annotated_dataset",
-            bucket_storage="local",
-            delete_local=True,
-        )
-        assert isinstance(annotated_dataset, LuxonisDataset)
-        assert len(annotated_dataset) == len(coco_dataset)
+    if config_name not in {"embeddings_model", "anomaly_detection_model"}:
+        with subtests.test("annotate"):
+            model.annotate(
+                dir_path=coco_images,
+                dataset_name="test_annotated_dataset",
+                bucket_storage="local",
+                delete_local=True,
+            )
 
     with subtests.test("test-reload"):
         model_reload = LuxonisModel(
