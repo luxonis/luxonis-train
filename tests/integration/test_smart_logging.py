@@ -3,6 +3,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from luxonis_ml.data import DatasetIterator, LuxonisDataset
+from luxonis_ml.typing import Params
 from tensorboard.backend.event_processing import event_accumulator
 
 from luxonis_train import LuxonisModel
@@ -154,7 +155,7 @@ def test_smart_vis_logging(work_dir: Path):
     dataset.add(generator())
     dataset.make_splits(definitions)
 
-    opts = {
+    opts: Params = {
         "loader.params.dataset_name": dataset.identifier,
     }
 
