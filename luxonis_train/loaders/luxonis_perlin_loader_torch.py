@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from bidict import bidict
+from luxonis_ml.typing import PathType
 from luxonis_ml.utils import LuxonisFileSystem
 from torch import Tensor
 from typing_extensions import override
@@ -21,7 +22,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
     def __init__(
         self,
         *args,
-        anomaly_source_path: str,
+        anomaly_source_path: PathType,
         noise_prob: float = 0.5,
         beta: float | None = None,
         **kwargs,
@@ -41,14 +42,18 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         """
         super().__init__(*args, **kwargs)
 
-        try:
-            self.anomaly_source_path = LuxonisFileSystem.download(
-                anomaly_source_path, dest="./data"
-            )
-        except Exception as e:
-            raise FileNotFoundError(
-                "The anomaly source path is invalid."
-            ) from e
+        if isinstance(anomaly_source_path, str):
+            try:
+                self.anomaly_source_path = LuxonisFileSystem.download(
+                    anomaly_source_path, dest="./data"
+                )
+            except Exception as e:
+                raise FileNotFoundError(
+                    f"The anomaly source path '{anomaly_source_path}' "
+                    "could not be found or downloaded."
+                ) from e
+        else:
+            self.anomaly_source_path = anomaly_source_path
 
         from luxonis_train.core.utils.infer_utils import IMAGE_FORMATS
 
