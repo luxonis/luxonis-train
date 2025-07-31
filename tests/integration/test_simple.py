@@ -107,6 +107,8 @@ def test_predefined_models(
     }
     if "ocr_recognition" in config_file:
         opts["trainer.preprocessing.train_image_size"] = [48, 320]
+    elif "segmentation" in config_file:
+        opts |= {"trainer.batch_size": 2}
 
     with subtests.test("original_config"):
         model = LuxonisModel(config_file, opts)
@@ -258,9 +260,9 @@ def test_infer(
         model.infer(source_path="tests/data/invalid.jpg", save_dir=infer_path)
 
 
-def test_archive(output_dir: Path, coco_dataset: LuxonisDataset):
+def test_archive(tempdir: Path, coco_dataset: LuxonisDataset):
     opts: Params = {
-        "tracker.save_directory": str(output_dir),
+        "tracker.save_directory": str(tempdir),
         "loader.params.dataset_name": coco_dataset.identifier,
     }
     model = LuxonisModel("tests/configs/archive_config.yaml", opts)
