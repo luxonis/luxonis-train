@@ -1,6 +1,7 @@
 import pytest
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import Params, ParamValue
+from pytest_subtests import SubTests
 
 from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
@@ -109,15 +110,23 @@ def get_config(backbone: str) -> Params:
 
 @pytest.mark.parametrize("backbone", BACKBONES)
 def test_backbones(
-    backbone: str, parking_lot_dataset: LuxonisDataset, opts: Params
+    backbone: str,
+    parking_lot_dataset: LuxonisDataset,
+    opts: Params,
+    subtests: SubTests,
 ):
     config = get_config(backbone)
-    opts |= {
-        "loader.params.dataset_name": parking_lot_dataset.identifier,
-        "trainer.batch_size": 2,
-    }
+    opts |= {"loader.params.dataset_name": parking_lot_dataset.identifier}
     model = LuxonisModel(config, opts)
-    model.train()
-    model.test()
-    model.export()
-    model.archive()
+
+    with subtests.test("train"):
+        model.train()
+
+    with subtests.test("test"):
+        model.test()
+
+    with subtests.test("export"):
+        model.export()
+
+    with subtests.test("archive"):
+        model.archive()
