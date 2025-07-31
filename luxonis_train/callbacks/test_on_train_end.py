@@ -1,16 +1,26 @@
+from typing import Literal
+
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import ModelCheckpoint
 from loguru import logger
 
 import luxonis_train as lxt
 from luxonis_train.registry import CALLBACKS
+from luxonis_train.typing import View
 
 from .needs_checkpoint import NeedsCheckpoint
 
 
 @CALLBACKS.register()
 class TestOnTrainEnd(NeedsCheckpoint):
-    """Callback to perform a test run at the end of the training."""
+    def __init__(self, view: View = "test") -> None:
+        """Callback to perform a test run at the end of the training.
+
+        @type view: Literal["train", "val", "test"]
+        @param view: The view to use for testing. Defaults to "test".
+        """
+        super().__init__()
+        self.view: View = view
 
     def on_train_end(
         self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
@@ -29,7 +39,7 @@ class TestOnTrainEnd(NeedsCheckpoint):
 
         device_before = pl_module.device
 
-        pl_module.core.test(weights=checkpoint)
+        pl_module.core.test(weights=checkpoint, view=self.view)
 
         # .test() moves pl_module to "cpu", we move it back to original device after
         pl_module.to(device_before)

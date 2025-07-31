@@ -162,7 +162,7 @@ def test(
     /,
     *,
     config: str | None = None,
-    view: Literal["train", "val", "test"] = "val",
+    view: Literal["train", "val", "test"] = "test",
     weights: str | None = None,
     debug: bool = False,
 ):
