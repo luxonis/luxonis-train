@@ -345,7 +345,7 @@ def anomaly_detection_dataset(data_dir: Path) -> LuxonisDataset:
 def opts(save_dir: Path, image_size: tuple[int, int]) -> Params:
     return {
         "trainer.epochs": 1,
-        "trainer.batch_size": 1,
+        "trainer.batch_size": 2,
         "trainer.validation_interval": 1,
         "trainer.callbacks": [],
         "tracker.save_directory": str(save_dir),
