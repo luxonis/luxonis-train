@@ -15,6 +15,7 @@ import luxonis_train as lxt
 from luxonis_train.attached_modules.visualizers import get_denormalized_images
 from luxonis_train.lightning import LuxonisOutput
 from luxonis_train.loaders import LuxonisLoaderTorch
+from luxonis_train.utils import Counter
 
 IMAGE_FORMATS = {
     ".bmp",
@@ -154,7 +155,9 @@ def infer_from_loader(
     if predictions is None:
         return
 
-    for i, outputs in enumerate(predictions):
+    counter = Counter()
+
+    for outputs in predictions:
         if broken:  # pragma: no cover
             break
         assert isinstance(outputs, LuxonisOutput)
@@ -163,16 +166,15 @@ def infer_from_loader(
             iter(next(iter(visualizations.values())).values())
         ).shape[0]
         renders = process_visualizations(visualizations, batch_size=batch_size)
-        for j in range(batch_size):
-            for (node_name, viz_name), visualizations in renders.items():
-                viz = visualizations[j]
+        for (node_name, viz_name), visualizations in renders.items():
+            for viz in visualizations:
                 if save_dir is not None:
                     save_dir = Path(save_dir)
                     if img_paths is not None:
-                        img_path = Path(img_paths[i * batch_size + j])
+                        img_path = Path(img_paths[counter()])
                         name = f"{img_path.stem}_{node_name}_{viz_name}"
                     else:
-                        name = f"{node_name}_{viz_name}_{i * batch_size + j}"
+                        name = f"{node_name}_{viz_name}_{counter()}"
                     name = name.replace("/", "-")
                     cv2.imwrite(str(save_dir / f"{name}.png"), viz)
                 else:
