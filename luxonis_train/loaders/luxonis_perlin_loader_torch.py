@@ -2,11 +2,11 @@ import random
 from collections.abc import Generator
 from contextlib import contextmanager
 
-from luxonis_ml.typing import PathType
 import numpy as np
 import torch
 import torch.nn.functional as F
 from bidict import bidict
+from luxonis_ml.typing import PathType
 from luxonis_ml.utils import LuxonisFileSystem
 from torch import Tensor
 from typing_extensions import override
