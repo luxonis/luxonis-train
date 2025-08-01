@@ -138,7 +138,11 @@ jobs:
     needs:
       - config-test
 
-    runs-on: ubuntu-t4-4core
+    strategy:
+      matrix:
+        suite: [unit, predefined, combinations, misc]
+
+    runs-on: ${{ matrix.suite == 'unit' && 'ubuntu-latest' || 'ubuntu-t4-4core' }}
 
     steps:
     - name: Checkout
@@ -176,14 +180,12 @@ jobs:
       run: pytest -x --cov --junitxml=junit.xml -o junit_family=legacy
 
     - name: Upload test results to Codecov
-      if: matrix.os == 'ubuntu-latest'
       uses: codecov/test-results-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
 
     - name: Upload coverage results to Codecov
-      if: matrix.os == 'ubuntu-latest'
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
