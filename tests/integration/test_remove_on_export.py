@@ -6,11 +6,9 @@ from luxonis_train.core import LuxonisModel
 
 
 def test_train_only_heads(coco_dataset: LuxonisDataset, opts: Params):
-    config_file = "configs/segmentation_light_model.yaml"
-
     opts |= {"loader.params.dataset_name": coco_dataset.dataset_name}
 
-    model = LuxonisModel(config_file, opts)
+    model = LuxonisModel(get_config(), opts)
     results = model.test()
 
     name_to_check = "aux_segmentation_head"
@@ -19,7 +17,7 @@ def test_train_only_heads(coco_dataset: LuxonisDataset, opts: Params):
     model.export()
 
     sess = rt.InferenceSession(
-        model.run_save_dir / "export" / "segmentation_light.onnx"
+        model.run_save_dir / "export" / f"{model.cfg.model.name}.onnx"
     )
     onnx_output_names = [output.name for output in sess.get_outputs()]
     is_in_output_names = any(
@@ -32,3 +30,28 @@ def test_train_only_heads(coco_dataset: LuxonisDataset, opts: Params):
     assert not is_in_output_names, (
         "'aux_segmentation_head' should not be in the ONNX output names"
     )
+
+
+def get_config() -> Params:
+    return {
+        "model": {
+            "name": "ddrnet_segmentation",
+            "nodes": [
+                {"name": "DDRNet"},
+                {
+                    "name": "DDRNetSegmentationHead",
+                    "alias": "segmentation_head",
+                    "params": {"attach_index": -1},
+                    "losses": [{"name": "CrossEntropyLoss"}],
+                    "metrics": [{"name": "JaccardIndex"}],
+                },
+                {
+                    "name": "DDRNetSegmentationHead",
+                    "alias": "aux_segmentation_head",
+                    "params": {"attach_index": -2},
+                    "remove_on_export": True,
+                    "losses": [{"name": "CrossEntropyLoss"}],
+                },
+            ],
+        }
+    }
