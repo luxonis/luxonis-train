@@ -9,8 +9,8 @@ from luxonis_train.core import LuxonisModel
 
 
 def test_callbacks(coco_dataset: LuxonisDataset, opts: Params):
-    config_file = "tests/configs/config_simple.yaml"
-    opts = opts | {
+    config_file = "configs/segmentation_light_model.yaml"
+    opts |= {
         "trainer.use_rich_progress_bar": False,
         "trainer.seed": 42,
         "trainer.deterministic": "warn",

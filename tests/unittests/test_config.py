@@ -7,16 +7,33 @@ from luxonis_train.config.config import Config
 
 
 def test_smart_cfg_auto_populate(coco_dataset: LuxonisDataset):
-    opts = {
-        "loader.params.dataset_name": coco_dataset.dataset_name,
-        "model.predefined_model.params.loss_params": {
-            "iou_loss_weight": 14,
-            "class_loss_weight": 1,
+    cfg = {
+        "model": {
+            "name": "test_auto_populate",
+            "predefined_model": {
+                "name": "DetectionModel",
+                "params": {
+                    "loss_params": {
+                        "iou_type": "siou",
+                        "iout_loss_weight": 14,
+                        "class_loss_weight": 1,
+                    }
+                },
+            },
         },
+        "trainer": {
+            "batch_size": 2,
+            "epochs": 10,
+            "scheduler": {"name": "CosineAnnealingLR"},
+            "preprocessing": {
+                "train_image_size": [128, 128],
+                "augmentations": [{"name": "Mosaic4"}],
+            },
+        },
+        "loader": {"params": {"dataset_name": coco_dataset.identifier}},
     }
 
-    config_path = "tests/configs/smart_cfg_populate_config.yaml"
-    cfg = Config.get_config(config_path, opts)
+    cfg = Config.get_config(cfg)
 
     assert cfg.trainer.scheduler is not None
     scheduler_params = cfg.trainer.scheduler.params
