@@ -10,6 +10,7 @@ from typing import cast
 import cv2
 import gdown
 import numpy as np
+import numpy.typing as npt
 import pytest
 import torchvision
 from _pytest.config import Config
@@ -347,6 +348,41 @@ def anomaly_detection_dataset(coco_dir: Path) -> LuxonisTestDataset:
         "test": test_paths[: len(test_paths) // 2],
     }
     dataset.make_splits(definitions=definitions)
+    return dataset
+
+
+@pytest.fixture
+def xor_dataset(data_dir: Path) -> LuxonisTestDataset:
+    data_dir = data_dir / "xor_data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    def generator() -> DatasetIterator:
+        inputs = [[0, 0], [0, 1], [1, 0], [1, 1]]
+
+        outputs = [0, 1, 1, 0]
+
+        for i, (x_values, y_value) in enumerate(
+            zip(inputs, outputs, strict=True)
+        ):
+            img_array = cast(
+                npt.NDArray[np.uint8],
+                np.array(x_values, dtype=np.uint8).reshape(1, 2) * 255,
+            )
+            img_path = data_dir / f"xor_{i}.png"
+            cv2.imwrite(str(img_path), img_array)
+
+            record = {
+                "file": str(img_path),
+                "annotation": {"class": f"xor_{y_value}"},
+            }
+
+            yield record
+
+    dataset = LuxonisTestDataset(
+        "xor_dataset", delete_local=True, source_path=data_dir
+    )
+    dataset.add(generator())
+    dataset.make_splits((1, 0, 0))
     return dataset
 
 
