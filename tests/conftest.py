@@ -411,13 +411,13 @@ def pytest_collection_modifyitems(items: list[Function]):
             item.add_marker(pytest.mark.order(0))
         elif "test_predefined_models.py" in path:
             item.add_marker(pytest.mark.predefined)
-            item.add_marker(pytest.mark.order(1))
+            item.add_marker(pytest.mark.order(2))
         elif "test_combinations.py" in path:
             item.add_marker(pytest.mark.combinations)
-            item.add_marker(pytest.mark.order(2))
+            item.add_marker(pytest.mark.order(3))
         else:
             item.add_marker(pytest.mark.misc)
-            item.add_marker(pytest.mark.order(3))
+            item.add_marker(pytest.mark.order(1))
 
 
 def pytest_configure(config: Config):
