@@ -1,0 +1,94 @@
+{
+    "config_version": "1.0",
+    "model": {
+        "metadata": {
+            "name": "example_multi_input",
+            "path": "example_multi_input.onnx",
+            "precision": "float32"
+        },
+        "inputs": [
+            {
+                "name": "disparity",
+                "dtype": "float32",
+                "input_type": "image",
+                "shape": [
+                    1,
+                    1,
+                    224,
+                    224
+                ],
+                "layout": "NCHW",
+                "preprocessing": {
+                    "mean": [
+                        123.675,
+                        116.28,
+                        103.53
+                    ],
+                    "scale": [
+                        58.395,
+                        57.12,
+                        57.375
+                    ],
+                    "reverse_channels": null,
+                    "interleaved_to_planar": null,
+                    "dai_type": "RGB888p"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "name": "/CustomSegHead1/segmentation/0",
+                "dtype": "float32",
+                "shape": [
+                    1,
+                    1,
+                    224,
+                    224
+                ],
+                "layout": "NCHW"
+            },
+            {
+                "name": "/CustomSegHead2/segmentation/0",
+                "dtype": "float32",
+                "shape": [
+                    1,
+                    1,
+                    224,
+                    224
+                ],
+                "layout": "NCHW"
+            }
+        ],
+        "heads": [
+            {
+                "name": "CustomSegHead1",
+                "parser": "",
+                "metadata": {
+                    "postprocessor_path": null,
+                    "classes": [
+                        "square"
+                    ],
+                    "n_classes": 1
+                },
+                "outputs": [
+                    "/CustomSegHead1/segmentation/0"
+                ]
+            },
+            {
+                "name": "CustomSegHead2",
+                "parser": "",
+                "metadata": {
+                    "postprocessor_path": null,
+                    "classes": [
+                        "square"
+                    ],
+                    "n_classes": 1,
+                    "custom_param": "value"
+                },
+                "outputs": [
+                    "/CustomSegHead2/segmentation/0"
+                ]
+            }
+        ]
+    }
+}

@@ -21,11 +21,6 @@ from luxonis_ml.utils import LuxonisFileSystem, environ
 
 
 @pytest.fixture(scope="session")
-def image_size() -> tuple[int, int]:
-    return 32, 64
-
-
-@pytest.fixture(scope="session")
 def work_dir() -> Generator[Path]:
     path = Path("tests", "work").absolute()
     path.mkdir(parents=True, exist_ok=True)
@@ -33,6 +28,11 @@ def work_dir() -> Generator[Path]:
     yield path
 
     shutil.rmtree(path, ignore_errors=True)
+
+
+@pytest.fixture(scope="session")
+def image_size() -> tuple[int, int]:
+    return 32, 64
 
 
 @pytest.fixture(scope="session", autouse=True)

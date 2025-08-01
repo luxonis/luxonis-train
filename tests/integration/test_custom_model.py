@@ -1,13 +1,17 @@
+import json
+import tarfile
 from pathlib import Path
 
 import torch
 from luxonis_ml.typing import Params
+from pytest_subtests import SubTests
 from torch import Tensor, nn
 from typing_extensions import override
 
 from luxonis_train.core import LuxonisModel
 from luxonis_train.loaders import BaseLoaderTorch, LuxonisLoaderTorchOutput
 from luxonis_train.nodes import BaseNode
+from luxonis_train.nodes.heads.base_head import BaseHead
 from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
 
@@ -80,7 +84,7 @@ class FusionNeck(MultiInputTestBaseNode): ...
 class FusionNeck2(MultiInputTestBaseNode): ...
 
 
-class CustomSegHead1(MultiInputTestBaseNode):
+class CustomSegHead1(BaseHead):
     task = Tasks.SEGMENTATION
     attach_index = -1
 
@@ -96,7 +100,7 @@ class CustomSegHead1(MultiInputTestBaseNode):
         return self.conv(inputs)
 
 
-class CustomSegHead2(MultiInputTestBaseNode):
+class CustomSegHead2(BaseHead):
     task = Tasks.SEGMENTATION
 
     def __init__(self, **kwargs):
@@ -110,24 +114,59 @@ class CustomSegHead2(MultiInputTestBaseNode):
         fn1, _, disp = inputs
         return self.conv(fn1 + disp)
 
+    def get_custom_head_config(self) -> Params:
+        return {"custom_param": "value"}
 
-def test_multi_input(opts: Params, tempdir: Path):
+
+def test_custom_model(opts: Params, tempdir: Path, subtests: SubTests):
     cfg = "tests/configs/multi_input.yaml"
     model = LuxonisModel(cfg, opts)
-    model.train()
-    model.test(view="val")
-    model.export()
-    model.archive()
+    with subtests.test("train"):
+        model.train()
 
-    assert (
-        model.run_save_dir / "export" / "example_multi_input.onnx"
-    ).exists()
-    assert (
-        model.run_save_dir / "archive" / "example_multi_input.onnx.tar.xz"
-    ).exists()
+    with subtests.test("test"):
+        model.test(view="val")
 
-    model.infer(view="val", save_dir=tempdir)
-    assert (
-        len(list(tempdir.glob("*.png")))
-        == len(model.pytorch_loaders["val"]) * 2  # 2 heads
-    )
+    with subtests.test("export"):
+        model.export()
+        assert (
+            model.run_save_dir / "export" / "example_multi_input.onnx"
+        ).exists()
+
+    with subtests.test("archive"):
+        model.archive()
+
+        archive_path = Path(
+            model.run_save_dir, "archive", model.cfg.model.name
+        ).with_suffix(".onnx.tar.xz")
+        assert archive_path.exists()
+        correct_archive_config = json.loads(
+            Path("tests/files/custom_archive_config.json").read_text()
+        )
+        with tarfile.open(archive_path) as tar:
+            extracted_cfg = tar.extractfile("config.json")
+
+            assert extracted_cfg is not None, (
+                "Config JSON not found in the archive."
+            )
+            generated_config = json.loads(extracted_cfg.read().decode())
+
+        keys_to_sort = ["inputs", "outputs", "heads"]
+        sort_by_name(generated_config, keys_to_sort)
+        sort_by_name(correct_archive_config, keys_to_sort)
+        assert generated_config == correct_archive_config
+
+    with subtests.test("infer"):
+        model.infer(view="val", save_dir=tempdir)
+        assert (
+            len(list(tempdir.glob("*.png")))
+            == len(model.pytorch_loaders["val"].dataset) * 2  # type: ignore
+        )
+
+
+def sort_by_name(config: dict, keys: list[str]) -> None:
+    for key in keys:
+        if key in config["model"]:
+            config["model"][key] = sorted(
+                config["model"][key], key=lambda x: x["name"]
+            )
