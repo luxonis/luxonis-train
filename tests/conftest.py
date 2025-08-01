@@ -400,16 +400,29 @@ def opts(save_dir: Path, image_size: tuple[int, int]) -> Params:
 
 def pytest_collection_modifyitems(items: list[Function]):
     for item in items:
-        if "/unittests/" in str(item.fspath):
+        path = str(item.fspath)
+        if "/unittests/" in path:
             item.add_marker(pytest.mark.unit)
-            # ensure unittests run before integration tests
             item.add_marker(pytest.mark.order(0))
-        elif "/integration/" in str(item.fspath):
-            item.add_marker(pytest.mark.integration)
+        elif "test_predefined_models.py" in path:
+            item.add_marker(pytest.mark.predefined)
+            item.add_marker(pytest.mark.order(1))
+        elif "test_combinations.py" in path:
+            item.add_marker(pytest.mark.combinations)
+            item.add_marker(pytest.mark.order(2))
+        else:
+            item.add_marker(pytest.mark.misc)
+            item.add_marker(pytest.mark.order(3))
 
 
 def pytest_configure(config: Config):
     config.addinivalue_line("markers", "unit: mark test as a unit test")
     config.addinivalue_line(
-        "markers", "integration: mark test as an integration test"
+        "markers", "predefined: mark test as a predefined model test"
+    )
+    config.addinivalue_line(
+        "markers", "combinations: mark test as a combinations test"
+    )
+    config.addinivalue_line(
+        "markers", "misc: mark test as a miscellaneous test"
     )
