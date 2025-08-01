@@ -58,3 +58,12 @@ def test_parsing(opts: Params):
     }
     model = LuxonisModel("configs/detection_light_model.yaml", opts)
     model.train()
+
+
+def test_debug_loader(opts: Params):
+    config_file = "configs/detection_light_model.yaml"
+    opts = opts | {
+        "loader.params.dataset_name": "invalid_dataset_name",
+    }
+    model = LuxonisModel(config_file, opts, debug_mode=True)
+    model.train()

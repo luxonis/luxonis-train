@@ -13,15 +13,6 @@ from luxonis_train.core import LuxonisModel
 STUDY_PATH = Path("study_local.db")
 
 
-def test_debug_mode(opts: Params):
-    config_file = "configs/detection_light_model.yaml"
-    opts = opts | {
-        "loader.params.dataset_name": "invalid_dataset_name",
-    }
-    model = LuxonisModel(config_file, opts, debug_mode=True)
-    model.train()
-
-
 @pytest.mark.skipif(
     sys.platform == "win32", reason="Tuning not supported on Windows"
 )
