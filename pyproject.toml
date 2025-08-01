@@ -151,6 +151,8 @@ omit = [
   "config.py",
   "config-3.py",
 ]
+parallel = true
+concurrency = ["multiprocessing"]
 
 [tool.coverage.report]
 exclude_also = [
