@@ -2,8 +2,8 @@
     "config_version": "1.0",
     "model": {
         "metadata": {
-            "name": "example_multi_input",
-            "path": "example_multi_input.onnx",
+            "name": "custom_model",
+            "path": "custom_model.onnx",
             "precision": "float32"
         },
         "inputs": [
@@ -14,8 +14,8 @@
                 "shape": [
                     1,
                     1,
-                    224,
-                    224
+                    32,
+                    64
                 ],
                 "layout": "NCHW",
                 "preprocessing": {
@@ -42,8 +42,8 @@
                 "shape": [
                     1,
                     1,
-                    224,
-                    224
+                    32,
+                    64
                 ],
                 "layout": "NCHW"
             },
@@ -53,8 +53,8 @@
                 "shape": [
                     1,
                     1,
-                    224,
-                    224
+                    32,
+                    64
                 ],
                 "layout": "NCHW"
             }

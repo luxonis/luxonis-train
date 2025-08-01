@@ -19,23 +19,22 @@ from luxonis_train.typing import Packet
 class CustomMultiInputLoader(BaseLoaderTorch):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._height = 224
-        self._width = 224
+        self.n_points = 100
 
     @property
     def input_shapes(self):
         return {
-            "left": torch.Size([3, 224, 224]),
-            "right": torch.Size([3, 224, 224]),
-            "disparity": torch.Size([1, 224, 224]),
-            "pointcloud": torch.Size([1000, 3]),
+            "left": torch.Size([3, self.height, self.width]),
+            "right": torch.Size([3, self.height, self.width]),
+            "disparity": torch.Size([1, self.height, self.width]),
+            "pointcloud": torch.Size([self.n_points, 3]),
         }
 
     def get(self, _: int) -> LuxonisLoaderTorchOutput:
-        left = torch.rand(3, 224, 224, dtype=torch.float32)
-        right = torch.rand(3, 224, 224, dtype=torch.float32)
-        disparity = torch.rand(1, 224, 224, dtype=torch.float32)
-        pointcloud = torch.rand(1000, 3, dtype=torch.float32)
+        left = torch.rand(3, self.height, self.width, dtype=torch.float32)
+        right = torch.rand(3, self.height, self.width, dtype=torch.float32)
+        disparity = torch.rand(1, self.height, self.width, dtype=torch.float32)
+        pointcloud = torch.rand(self.n_points, 3, dtype=torch.float32)
         inputs = {
             "left": left,
             "right": right,
@@ -44,7 +43,9 @@ class CustomMultiInputLoader(BaseLoaderTorch):
         }
 
         labels = {
-            "/segmentation": torch.zeros(1, 224, 224, dtype=torch.float32)
+            "/segmentation": torch.zeros(
+                1, self.height, self.width, dtype=torch.float32
+            )
         }
 
         return inputs, labels
@@ -119,8 +120,7 @@ class CustomSegHead2(BaseHead):
 
 
 def test_custom_model(opts: Params, tempdir: Path, subtests: SubTests):
-    cfg = "tests/configs/multi_input.yaml"
-    model = LuxonisModel(cfg, opts)
+    model = LuxonisModel(get_config(), opts)
     with subtests.test("train"):
         model.train()
 
@@ -130,8 +130,10 @@ def test_custom_model(opts: Params, tempdir: Path, subtests: SubTests):
     with subtests.test("export"):
         model.export()
         assert (
-            model.run_save_dir / "export" / "example_multi_input.onnx"
-        ).exists()
+            (model.run_save_dir / "export" / model.cfg.model.name)
+            .with_suffix(".onnx")
+            .exists()
+        )
 
     with subtests.test("archive"):
         model.archive()
@@ -170,3 +172,56 @@ def sort_by_name(config: dict, keys: list[str]) -> None:
             config["model"][key] = sorted(
                 config["model"][key], key=lambda x: x["name"]
             )
+
+
+def get_config() -> Params:
+    return {
+        "model": {
+            "name": "custom_model",
+            "nodes": [
+                {"name": "FullBackbone"},
+                {
+                    "name": "RGBDBackbone",
+                    "input_sources": ["left", "right", "disparity"],
+                },
+                {
+                    "name": "PointcloudBackbone",
+                    "input_sources": ["pointcloud"],
+                },
+                {
+                    "name": "FusionNeck",
+                    "inputs": ["RGBDBackbone", "PointcloudBackbone"],
+                    "input_sources": ["disparity"],
+                },
+                {
+                    "name": "FusionNeck2",
+                    "inputs": [
+                        "RGBDBackbone",
+                        "PointcloudBackbone",
+                        "FullBackbone",
+                    ],
+                },
+                {
+                    "name": "CustomSegHead1",
+                    "inputs": ["FusionNeck"],
+                    "losses": [{"name": "BCEWithLogitsLoss"}],
+                    "metrics": [
+                        {"name": "JaccardIndex", "is_main_metric": True}
+                    ],
+                    "visualizers": [{"name": "SegmentationVisualizer"}],
+                },
+                {
+                    "name": "CustomSegHead2",
+                    "inputs": ["FusionNeck", "FusionNeck2"],
+                    "input_sources": ["disparity"],
+                    "losses": [{"name": "CrossEntropyLoss"}],
+                    "metrics": [{"name": "JaccardIndex"}],
+                    "visualizers": [{"name": "SegmentationVisualizer"}],
+                },
+            ],
+        },
+        "loader": {
+            "name": "CustomMultiInputLoader",
+            "image_source": "left",
+        },
+    }
