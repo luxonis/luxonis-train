@@ -9,7 +9,7 @@ def test_fixed_validation_batch_limit(
 ):
     cfg = "configs/detection_light_model.yaml"
     opts |= {
-        "model.predefined_model.params.task_name": "motorbike",
+        "model.predefined_model.params.task_name": "vehicles",
         "loader.params.dataset_name": parking_lot_dataset.identifier,
         "loader.train_view": "train",
         "loader.val_view": "train",
