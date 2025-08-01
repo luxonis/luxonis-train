@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any
 
 from luxonis_ml.data import DatasetIterator
+from luxonis_ml.typing import Params
 from torch import Tensor
 
 from luxonis_train.config.config import PreprocessingConfig
@@ -15,8 +16,6 @@ from luxonis_train.typing import Packet
 from luxonis_train.utils.annotation import default_annotate
 
 
-# TODO: We shouldn't skip the head completely
-# if custom config is not defined.
 class BaseHead(BaseNode[ForwardInputT, ForwardOutputT]):
     """Base class for all heads in the model.
 
@@ -51,15 +50,13 @@ class BaseHead(BaseNode[ForwardInputT, ForwardOutputT]):
             },
         }
 
-    def get_custom_head_config(self) -> dict[str, Any]:
+    def get_custom_head_config(self) -> Params:
         """Get custom head configuration.
 
         @rtype: dict
         @return: Custom head configuration.
         """
-        raise NotImplementedError(
-            "get_custom_head_config method must be implemented."
-        )
+        return {}
 
     def annotate(
         self,
