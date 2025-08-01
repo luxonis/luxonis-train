@@ -392,7 +392,12 @@ def opts(save_dir: Path, image_size: tuple[int, int]) -> Params:
         "trainer.epochs": 1,
         "trainer.batch_size": 2,
         "trainer.validation_interval": 1,
-        "trainer.callbacks": [],
+        "trainer.callbacks": [
+            {"name": "TestOnTrainEnd", "active": False},
+            {"name": "ExportOnTrainEnd", "active": False},
+            {"name": "ArchiveOnTrainEnd", "active": False},
+            {"name": "UploadCheckpoint", "active": False},
+        ],
         "tracker.save_directory": str(save_dir),
         "trainer.preprocessing.train_image_size": image_size,
     }
