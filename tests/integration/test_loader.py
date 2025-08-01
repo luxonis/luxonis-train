@@ -64,6 +64,7 @@ def test_debug_loader(opts: Params):
     config_file = "configs/complex_model.yaml"
     opts = opts | {
         "loader.params.dataset_name": "invalid_dataset_name",
+        "model.nodes.6.name": "ClassificationHead",
     }
     model = LuxonisModel(config_file, opts, debug_mode=True)
     model.train()
