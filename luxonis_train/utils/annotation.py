@@ -125,15 +125,26 @@ def default_annotate(
             if task == "boundingbox":
                 for idx, inst in enumerate(preds_for_image["boundingbox"]):
                     x, y, w, h = norm_boxes[idx]
-                    yield {
-                        "file": str(img_path),
-                        "task_name": head.task_name,
-                        "annotation": {
-                            "instance_id": idx,
-                            "class": head.classes.inverse[int(inst[5].item())],
-                            "boundingbox": {"x": x, "y": y, "w": w, "h": h},
-                        },
-                    }
+                    for val in [x, y, w, h]:
+                        if not -2 <= val <= 2:
+                            break
+                    else:
+                        yield {
+                            "file": str(img_path),
+                            "task_name": head.task_name,
+                            "annotation": {
+                                "instance_id": idx,
+                                "class": head.classes.inverse[
+                                    int(inst[5].item())
+                                ],
+                                "boundingbox": {
+                                    "x": x,
+                                    "y": y,
+                                    "w": w,
+                                    "h": h,
+                                },
+                            },
+                        }
             elif task == "keypoints":
                 for idx, pts in enumerate(norm_kpts):
                     kps = [
