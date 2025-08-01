@@ -773,7 +773,8 @@ class Config(LuxonisConfig):
     def smart_auto_populate(self) -> Self:
         """Automatically populates config fields based on rules, with
         warnings."""
-        # Rule: Mosaic4 should have out_width and out_height matching train_image_size if not provided
+        # Rule: Mosaic4 should have out_width and out_height
+        # matching train_image_size if not provided
         for augmentation in self.trainer.preprocessing.augmentations:
             if augmentation.name == "Mosaic4" and (
                 "out_width" not in augmentation.params
@@ -787,7 +788,7 @@ class Config(LuxonisConfig):
                     "`Mosaic4` augmentation detected. Automatically set `out_width` and `out_height` to match `train_image_size`."
                 )
 
-        # Rule: If train, val, and test views are the same, set n_validation_batches
+        # Rule: If all views are the same, set n_validation_batches
         if (
             self.loader.train_view
             == self.loader.val_view
@@ -808,7 +809,8 @@ class Config(LuxonisConfig):
                     "Make sure this is intended."
                 )
 
-        # Rule: Check if a predefined model is set and adjust config accordingly to achieve best training results
+        # Rule: Check if a predefined model is used and adjust
+        # config accordingly to achieve best training results
         predefined_model_cfg = self.model.predefined_model
         if predefined_model_cfg is not None:
             logger.info(
@@ -897,7 +899,6 @@ class Config(LuxonisConfig):
                         )
                         break
 
-        # Rule: Set default callbacks UploadCheckpoint, TestOnTrainEnd, ExportOnTrainEnd, ArchiveOnTrainEnd
         default_callbacks = [
             "UploadCheckpoint",
             "TestOnTrainEnd",
