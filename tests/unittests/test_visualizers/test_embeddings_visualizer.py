@@ -11,7 +11,7 @@ from luxonis_train.tasks import Tasks
 class DummyEmbeddingNode(BaseNode, register=False):
     task = Tasks.EMBEDDINGS
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # pragma: no cover
         return x
 
 

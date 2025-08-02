@@ -109,6 +109,6 @@ class DebugLoader(BaseLoaderTorch):
                     case "segmentation" | "instance_segmentation":
                         shapes[name] = (1, self.height, self.width)
                     case _:
-                        shapes[name] = (1,)
+                        shapes[name] = (2,)
 
         return shapes

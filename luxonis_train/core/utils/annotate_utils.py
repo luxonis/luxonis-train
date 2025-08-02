@@ -1,10 +1,12 @@
 from collections.abc import Iterable
+from contextlib import suppress
 from pathlib import Path
 from typing import Literal
 
 import torch
 import torch.utils.data as torch_data
 from luxonis_ml.data import DatasetIterator, LuxonisDataset
+from luxonis_ml.data.datasets import DatasetRecord
 from luxonis_ml.typing import PathType
 
 import luxonis_train as lxt
@@ -86,6 +88,13 @@ def annotated_dataset_generator(
             ]
             head = lt_module.nodes[head_name]
             if isinstance(head, lxt.BaseHead):
-                yield from head.annotate(
+                for record in head.annotate(
                     head_output, img_paths, model.cfg_preprocessing
-                )
+                ):
+                    if isinstance(record, DatasetRecord):
+                        yield record
+                    else:
+                        # Skips predictions that are invalid,
+                        # e.g. bboxes outside of the clipping range
+                        with suppress(Exception):
+                            yield DatasetRecord(**record)

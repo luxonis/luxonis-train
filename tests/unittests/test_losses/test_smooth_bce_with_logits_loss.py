@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from luxonis_train.attached_modules.losses import SmoothBCEWithLogitsLoss
@@ -12,3 +13,6 @@ def test_smooght_bce_with_logits():
     loss = loss_fn(predictions, targets)
 
     assert torch.isclose(loss, torch.tensor(expected_loss), atol=1e-4)
+
+    with pytest.raises(RuntimeError, match="should be the same"):
+        loss_fn(torch.zeros((2, 1, 4)), torch.ones((2, 1, 4, 4)))

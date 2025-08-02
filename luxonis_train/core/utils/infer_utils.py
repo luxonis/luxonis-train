@@ -82,7 +82,7 @@ def infer_from_video(
     @type show: bool
     @param show: Whether to display the visualizations.
     """
-    cap = cv2.VideoCapture(filename=str(video_path))  # type: ignore
+    cap = cv2.VideoCapture(filename=str(video_path))
 
     writers: dict[str, cv2.VideoWriter] = {}
 
@@ -149,7 +149,7 @@ def infer_from_loader(
     predictions = model.pl_trainer.predict(model.lightning_module, loader)
 
     broken = False
-    if predictions is None:
+    if predictions is None:  # pragma: no cover
         return
 
     counter = Counter()

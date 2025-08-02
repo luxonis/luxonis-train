@@ -16,7 +16,7 @@ class DummyOCRNode(OCRCTCHead, register=False):
     def input_shapes(self) -> list[Packet[Size]]:
         return [{"features": [Size([2, 128, 12, 16])]}]
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:  # pragma: no cover
         return x
 
     def decoder(self, predictions: Tensor):

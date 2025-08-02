@@ -3,11 +3,14 @@ import subprocess
 import sys
 from collections.abc import Callable
 from pathlib import Path
+from types import GeneratorType
 
 import pytest
+import yaml
 from luxonis_ml.data import LuxonisDataset
-from luxonis_ml.typing import Kwargs
+from luxonis_ml.typing import Kwargs, Params
 from luxonis_ml.utils import environ
+from pytest_subtests import SubTests
 
 from luxonis_train.__main__ import (
     _yield_visualizations,
@@ -15,64 +18,46 @@ from luxonis_train.__main__ import (
     export,
     inspect,
     train,
+    tune,
 )
 from luxonis_train.__main__ import test as _test
 
-ONNX_PATH = Path("tests/integration/client_commands_test_model.onnx")
 
-
-@pytest.fixture(scope="session", autouse=True)
-def prepare():
-    os.environ["LUXONISML_BASE_PATH"] = str(environ.LUXONISML_BASE_PATH)
-    yield
-    ONNX_PATH.unlink(missing_ok=True)
-
-
-@pytest.mark.parametrize(
-    ("command", "kwargs"),
-    [
-        (train, {"config": "tests/configs/config_simple.yaml"}),
-        (
-            _test,
-            {
-                "config": "tests/configs/config_simple.yaml",
-                "view": "val",
-            },
-        ),
-        (
-            export,
-            {
-                "config": "tests/configs/config_simple.yaml",
-                "save_path": ONNX_PATH.parent,
-            },
-        ),
-        (
-            _yield_visualizations,
-            {"config": "tests/configs/config_simple.yaml"},
-        ),
-        (
-            archive,
-            {
-                "config": "tests/configs/config_simple.yaml",
-                "executable": ONNX_PATH,
-            },
-        ),
-    ],
-)
 def test_cli_command_success(
-    command: Callable, kwargs: Kwargs, coco_dataset: LuxonisDataset
+    coco_dataset: LuxonisDataset,
+    tempdir: Path,
+    subtests: SubTests,
+    opts: Params,
 ) -> None:
-    if command is _yield_visualizations:
-        list(
-            command(
-                ["loader.params.dataset_name", coco_dataset.identifier],
+    flat_opts = []
+    for key, value in opts.items():
+        flat_opts.append(key)
+        flat_opts.append(str(value))
+
+    for command, kwargs in [
+        (train, {}),
+        (tune, {}),
+        (_test, {"view": "val"}),
+        (export, {"save_path": tempdir}),
+        (_yield_visualizations, {}),
+        (archive, {"executable": tempdir / "export.onnx"}),
+    ]:
+        with subtests.test(command.__name__):
+            res = command(
+                [
+                    "loader.params.dataset_name",
+                    coco_dataset.identifier,
+                    "model.name",
+                    command.__name__,
+                    *flat_opts,
+                ],
+                config="configs/detection_light_model.yaml"
+                if command is not tune
+                else "configs/example_tuning.yaml",
                 **kwargs,
             )
-        )
-    else:
-        command(
-            ["loader.params.dataset_name", coco_dataset.identifier], **kwargs
-        )
+            if isinstance(res, GeneratorType):
+                list(res)
 
 
 @pytest.mark.parametrize(
@@ -81,7 +66,10 @@ def test_cli_command_success(
         (train, {"config": "nonexistent.yaml"}),
         (
             _test,
-            {"config": "tests/configs/config_simple.yaml", "view": "invalid"},
+            {
+                "config": "configs/segmentation_light_model.yaml",
+                "view": "invalid",
+            },
         ),
         (export, {"config": "nonexistent.yaml"}),
         (
@@ -105,14 +93,41 @@ def test_cli_command_failure(
         )
 
 
-def test_source(work_dir: Path, coco_dataset: LuxonisDataset):
-    with open(work_dir / "source_1.py", "w") as f:
+def test_source(tempdir: Path, coco_dataset: LuxonisDataset):
+    cfg = {
+        "rich_logging": False,
+        "model": {
+            "name": "test_source",
+            "nodes": [
+                {
+                    "name": "ResNet",
+                },
+                {
+                    "name": "ClassificationHead",
+                    "losses": [{"name": "CustomLoss"}],
+                    "metrics": [{"name": "Accuracy"}],
+                },
+            ],
+        },
+        "trainer": {
+            "callbacks": [
+                {
+                    "name": "CustomCallback",
+                    "params": {"message": "custom callback message"},
+                }
+            ],
+        },
+    }
+    with open(tempdir / "config.yaml", "w") as f:
+        yaml.dump(cfg, f)
+
+    with open(tempdir / "source_1.py", "w") as f:
         f.write("print('sourcing 1')")
 
-    with open(work_dir / "source_2.py", "w") as f:
+    with open(tempdir / "source_2.py", "w") as f:
         f.write("print('sourcing 2')")
 
-    with open(work_dir / "callbacks.py", "w") as f:
+    with open(tempdir / "callbacks.py", "w") as f:
         f.write(
             """
 import lightning.pytorch as pl
@@ -127,15 +142,16 @@ class CustomCallback(pl.Callback):
         super().__init__(**kwargs)
         self.message = message
 
-    def on_train_epoch_end(
+    def teardown(
         self,
         trainer: pl.Trainer,
         pl_module: LuxonisLightningModule,
+        stage: str
     ) -> None:
         print(self.message)
 """
         )
-    with open(work_dir / "loss.py", "w") as f:
+    with open(tempdir / "loss.py", "w") as f:
         f.write(
             """
 from torch import Tensor
@@ -154,26 +170,24 @@ class CustomLoss(BaseLoss):
 """
         )
 
-    result = subprocess.run(
+    res = subprocess.run(
         [  # noqa: S607
             sys.executable,
             "-m",
             "luxonis_train",
             "--source",
-            str(work_dir / "source_1.py"),
+            str(tempdir / "source_1.py"),
             "test",
             "--source",
-            str(work_dir / "source_2.py"),
+            str(tempdir / "source_2.py"),
             "--config",
-            "tests/configs/config_simple.yaml",
+            str(tempdir / "config.yaml"),
             "--source",
-            str(work_dir / "callbacks.py"),
+            str(tempdir / "callbacks.py"),
             "--source",
-            str(work_dir / "loss.py"),
+            str(tempdir / "loss.py"),
             "loader.params.dataset_name",
             coco_dataset.identifier,
-            "model.losses.0.name",
-            "CustomLoss",
         ],
         capture_output=True,
         text=True,
@@ -185,10 +199,9 @@ class CustomLoss(BaseLoss):
         },
     )
 
-    assert result.returncode == 0, (
-        f"Command failed with return code {result.returncode}:\n{result.stderr}"
-    )
+    assert res.returncode == 0, res.stderr
 
-    assert result.stdout is not None, "No stdout captured from subprocess"
-    assert "sourcing 1" in result.stdout, "'sourcing 1' not found in output"
-    assert "sourcing 2" in result.stdout, "'sourcing 2' not found in output"
+    assert res.stdout is not None
+    assert "sourcing 1" in res.stdout
+    assert "sourcing 2" in res.stdout
+    assert "custom callback message" in res.stdout

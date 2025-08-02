@@ -141,13 +141,18 @@ markers = [
 
 [tool.coverage.run]
 omit = [
-  "**/__main__.py",
-  "**/gpu_stats_monitor.py",
+  "luxonis_train/__main__.py",
+  "luxonis_train/callbacks/gpu_stats_monitor.py",
+  "**/.cache/**",
+  "tests/work/*",
+  "**/_remote_module_non_scriptable.py",
   # These are not related to our `config.py`,
   # see https://github.com/nedbat/coveragepy/issues/1653
   "config.py",
   "config-3.py",
 ]
+parallel = true
+concurrency = ["multiprocessing"]
 
 [tool.coverage.report]
 exclude_also = [
@@ -160,8 +165,11 @@ exclude_also = [
   "except ImportError",
   "@abstractmethod",
   "@overload",
-  "exit\\(\\)",
+  "sys.exit\\(\\)",
   "cv2\\.imshow",
   "cv2\\.waitKey",
+  "cv2\\.error",
+  "cv2\\.destroyAllWindows",
   "logger\\.",
+  "if TYPE_CHECKING",
 ]

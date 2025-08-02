@@ -33,5 +33,5 @@ if (
             f"Error: `{e}`",
             stacklevel=2,
         )
-else:
+else:  # pragma: no cover
     _unlocked = ...
