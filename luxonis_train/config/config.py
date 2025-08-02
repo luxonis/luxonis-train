@@ -755,8 +755,7 @@ class Config(LuxonisConfig):
     ) -> "Config":
         instance = super().get_config(cfg, overrides)
         if not isinstance(cfg, str):
-            cls.smart_auto_populate(instance)
-            return instance
+            return instance.smart_auto_populate()
         fs = LuxonisFileSystem(cfg)
         if fs.is_mlflow:
             logger.info(
@@ -766,7 +765,7 @@ class Config(LuxonisConfig):
             instance.tracker.run_id = fs.run_id
 
         if instance.trainer.smart_cfg_auto_populate:
-            cls.smart_auto_populate(instance)
+            return instance.smart_auto_populate()
 
         return instance
 
