@@ -1,16 +1,9 @@
 import pytest
-import torch
 from torch import Tensor
 
 from luxonis_train import BaseLoss, BaseNode
 from luxonis_train.tasks import Tasks
 from luxonis_train.utils.exceptions import IncompatibleError
-
-SEGMENTATION_ARRAY = torch.tensor([0])
-KEYPOINT_ARRAY = torch.tensor([1])
-BOUNDINGBOX_ARRAY = torch.tensor([2])
-CLASSIFICATION_ARRAY = torch.tensor([3])
-FEATURES_ARRAY = torch.tensor([4])
 
 
 class DummyBackbone(BaseNode):
