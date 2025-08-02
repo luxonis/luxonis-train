@@ -53,7 +53,7 @@ def setup(tempdir: Path):
         try:
             mlflow.search_experiments()
             break
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             if time.time() - start_time > timeout:
                 process.kill()
                 raise RuntimeError(
@@ -236,7 +236,7 @@ def kill_process_tree(pid: int) -> None:
         _, alive = psutil.wait_procs(
             [parent] + parent.children(recursive=True), timeout=5
         )
-        for p in alive:
+        for p in alive:  # pragma: no cover
             p.kill()
 
 

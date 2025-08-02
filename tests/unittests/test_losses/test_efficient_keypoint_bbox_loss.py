@@ -18,7 +18,7 @@ class DummyEfficientKeypointBBoxHead(
     n_keypoints: int = 17
 
     @property
-    def input_shapes(self) -> list[Packet[Size]]:
+    def input_shapes(self) -> list[Packet[Size]]:  # pragma: no cover
         return [
             {
                 "features": [

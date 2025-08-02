@@ -16,15 +16,7 @@ class DummyPrecisionBBoxHead(PrecisionBBoxHead, register=False):
     n_classes: int = 1
 
     @property
-    def in_sizes(self) -> list[Size]:
-        return [
-            Size([2, 32, 48, 64]),
-            Size([2, 64, 24, 32]),
-            Size([2, 128, 12, 16]),
-        ]
-
-    @property
-    def input_shapes(self) -> list[Packet[Size]]:
+    def input_shapes(self) -> list[Packet[Size]]:  # pragma: no cover
         return [
             {
                 "features": [
@@ -33,6 +25,14 @@ class DummyPrecisionBBoxHead(PrecisionBBoxHead, register=False):
                     Size([2, 128, 12, 16]),
                 ]
             }
+        ]
+
+    @property
+    def in_sizes(self) -> list[Size]:
+        return [
+            Size([2, 32, 48, 64]),
+            Size([2, 64, 24, 32]),
+            Size([2, 128, 12, 16]),
         ]
 
     def forward(self, _: Tensor) -> Tensor: ...

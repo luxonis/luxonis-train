@@ -1,4 +1,3 @@
-import os
 import random
 import shutil
 import time
@@ -59,7 +58,7 @@ def tempdir(work_dir: Path) -> Path:
             raise TimeoutError(
                 "Could not create a unique tempdir. Something is wrong."
             )
-        unique_id = randint._fixture_function()
+        unique_id = randint._fixture_function()  # pragma: no cover
 
     path.mkdir(exist_ok=True)
     return path
@@ -77,11 +76,6 @@ def save_dir(work_dir: Path) -> Path:
     path = work_dir / "save-directory"
     path.mkdir(parents=True, exist_ok=True)
     return path
-
-
-@pytest.fixture
-def train_overfit() -> bool:
-    return bool(os.getenv("LUXONIS_TRAIN_OVERFIT"))
 
 
 @pytest.fixture(scope="session")
@@ -238,36 +232,6 @@ def cifar10_dataset(data_dir: Path) -> LuxonisTestDataset:
         "cifar10_test", delete_local=True, source_path=output_folder
     )
     dataset.add(CIFAR10_subset_generator())
-    dataset.make_splits()
-    return dataset
-
-
-@pytest.fixture(scope="session")
-def mnist_dataset(data_dir: Path) -> LuxonisTestDataset:
-    output_folder = data_dir / "mnist"
-    output_folder.mkdir(parents=True, exist_ok=True)
-    mnist_torch = torchvision.datasets.MNIST(
-        root=output_folder, train=False, download=True
-    )
-
-    def MNIST_subset_generator() -> DatasetIterator:
-        for i, (image, label) in enumerate(mnist_torch):  # type: ignore
-            if i == 20:
-                break
-            path = output_folder / f"mnist_{i}.png"
-            image.save(path)
-            yield {
-                "file": path,
-                "annotation": {
-                    "class": str(label),
-                    "metadata": {"text": str(label)},
-                },
-            }
-
-    dataset = LuxonisTestDataset(
-        "mnist_test", delete_local=True, source_path=output_folder
-    )
-    dataset.add(MNIST_subset_generator())
     dataset.make_splits()
     return dataset
 

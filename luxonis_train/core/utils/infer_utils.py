@@ -149,7 +149,7 @@ def infer_from_loader(
     predictions = model.pl_trainer.predict(model.lightning_module, loader)
 
     broken = False
-    if predictions is None:
+    if predictions is None:  # pragma: no cover
         return
 
     counter = Counter()

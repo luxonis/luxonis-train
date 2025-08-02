@@ -4,7 +4,6 @@ from torch import Tensor
 
 from luxonis_train import BaseLoss, BaseNode
 from luxonis_train.tasks import Tasks
-from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils.exceptions import IncompatibleError
 
 SEGMENTATION_ARRAY = torch.tensor([0])
@@ -44,24 +43,6 @@ class DummyLoss(BaseLoss):
 
 class NoLabelLoss(BaseLoss):
     def forward(self, _: Tensor) -> Tensor: ...
-
-
-@pytest.fixture
-def labels() -> Labels:
-    return {
-        "/segmentation": SEGMENTATION_ARRAY,
-        "/keypoints": KEYPOINT_ARRAY,
-        "/boundingbox": BOUNDINGBOX_ARRAY,
-        "/classification": CLASSIFICATION_ARRAY,
-    }
-
-
-@pytest.fixture
-def inputs() -> Packet[Tensor]:
-    return {
-        "features": [FEATURES_ARRAY],
-        "segmentation": [SEGMENTATION_ARRAY],
-    }
 
 
 def test_valid_properties():
