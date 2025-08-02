@@ -169,6 +169,7 @@ exclude_also = [
   "cv2\\.imshow",
   "cv2\\.waitKey",
   "cv2\\.error",
+  "cv2\\.destroyAllWindows",
   "logger\\.",
   "if TYPE_CHECKING",
 ]
