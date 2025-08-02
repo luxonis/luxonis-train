@@ -45,12 +45,13 @@ indent-width = 4
 
 [tool.ruff.lint]
 select = [
-  # "ANN",
+  "ANN",
   # "B",
   "C4",
   "DTZ",
   "E",
-  # "ERA",
+  "ERA",
+  "F401",
   # "F",
   "FLY",
   "FURB",
@@ -66,7 +67,7 @@ select = [
   "PIE",
   # "PL",
   "PT",
-  # "PTH",
+  "PTH",
   "PYI",
   "Q",
   # "RET",
@@ -78,7 +79,7 @@ select = [
   "T20",
   "TID",
   "TRY",
-  # "UP",
+  "UP",
   "W",
 ]
 ignore = [
@@ -111,7 +112,8 @@ unfixable = ["B905"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN201"]
-"__main__.py" = ["ANN201", "T201"]
+"__main__.py" = ["ANN201", "T201", "PT028"]
+"__init__.py" = ["F403"]
 
 [tool.docformatter]
 black = true
@@ -129,13 +131,9 @@ reportIncompatibleMethodOverride = "none"
 reportUnnecessaryIsInstance = "none"
 reportMatchNotExhaustive = "error"
 
-[tool.pyleft]
-paths = ["luxonis_train"]
-exclude = ["__main__.py"]
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--disable-warnings"
+addopts = "--disable-warnings -vv"
 markers = [
   "unit: mark a test as a unit test",
   "integration: mark a test as an integration test",

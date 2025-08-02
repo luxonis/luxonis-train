@@ -168,7 +168,6 @@ class DatasetMetadata:
         @return: Instance of L{DatasetMetadata} created from the
             provided dataset.
         """
-
         return cls(
             classes=loader.get_classes(),
             n_keypoints=loader.get_n_keypoints(),

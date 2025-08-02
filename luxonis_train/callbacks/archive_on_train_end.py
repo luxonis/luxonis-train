@@ -19,7 +19,6 @@ class ArchiveOnTrainEnd(NeedsCheckpoint):
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-
         onnx_path = pl_module.core._exported_models.get("onnx")
         if onnx_path is None:  # pragma: no cover
             checkpoint = self.get_checkpoint(pl_module)

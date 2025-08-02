@@ -135,13 +135,14 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         return {self.image_source: img.shape}
 
     @override
-    def get(self, idx: int) -> tuple[Tensor, Labels]:
+    def get(self, idx: int) -> tuple[dict[str, Tensor], Labels]:
         img, labels = self.loader[idx]
+        if isinstance(img, np.ndarray):
+            img = {self.image_source: img}
 
-        img = np.transpose(img, (2, 0, 1))  # HWC to CHW
-        tensor_img = torch.tensor(img)
+        img = {k: self.img_numpy_to_torch(v) for k, v in img.items()}
 
-        return tensor_img, self.dict_numpy_to_torch(labels)
+        return img, self.dict_numpy_to_torch(labels)
 
     @override
     def get_classes(self) -> dict[str, dict[str, int]]:

@@ -1,7 +1,7 @@
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Callable, Literal, cast
+from typing import Any, Literal, cast
 
 import lightning.pytorch as pl
 import torch
@@ -10,7 +10,7 @@ from loguru import logger
 from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
 from torch import Size, Tensor
-from typing_extensions import Self, override
+from typing_extensions import override
 
 import luxonis_train
 from luxonis_train.attached_modules.visualizers import (
@@ -122,7 +122,9 @@ class LuxonisLightningModule(pl.LightningModule):
         self._core = _core
         self._n_logged_images = 0
         self._class_log_counts: list[int] = []
-        self._sequentially_logged_visualizations: list[dict[str, Tensor]] = []
+        self._sequentially_logged_visualizations: list[
+            dict[str, dict[str, Tensor]]
+        ] = []
         self._needs_vis_buffering = True
 
         self._loss_accumulators = {
@@ -524,7 +526,7 @@ class LuxonisLightningModule(pl.LightningModule):
         return outputs
 
     @override
-    def on_train_epoch_start(self):
+    def on_train_epoch_start(self) -> None:
         for node in self.nodes.values():
             node.current_epoch = self.current_epoch
 
@@ -788,7 +790,6 @@ class LuxonisLightningModule(pl.LightningModule):
         self, stage: str, loss: float, metrics: dict[str, dict[str, float]]
     ) -> None:
         """Prints validation metrics in the console."""
-
         logger.info(f"{stage} loss: {loss:.4f}")
 
         self.progress_bar.print_results(

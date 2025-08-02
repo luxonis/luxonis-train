@@ -11,6 +11,7 @@ from luxonis_train.nodes.base_node import (
     ForwardInputT,
     ForwardOutputT,
 )
+from luxonis_train.tasks import Task
 from luxonis_train.typing import Packet
 from luxonis_train.utils.annotation import default_annotate
 
@@ -22,6 +23,7 @@ class BaseHead(BaseNode[ForwardInputT, ForwardOutputT]):
     @ivar parser: Parser to use for the head.
     """
 
+    task: Task
     parser: str = ""
 
     def get_head_config(self) -> dict[str, Any]:

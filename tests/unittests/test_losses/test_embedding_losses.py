@@ -4,12 +4,16 @@ from torch import Size
 from luxonis_train.attached_modules.losses import EmbeddingLossWrapper
 from luxonis_train.nodes import GhostFaceNetHead
 from luxonis_train.tasks import Tasks
+from luxonis_train.typing import Packet
 
 
 class DummyGhostFaceNetHead(GhostFaceNetHead):
     Task = Tasks.EMBEDDINGS
     original_in_shape: Size = Size([3, 112, 112])
-    input_shapes = [{"features": [Size([2, 3, 56, 56])]}]
+
+    @property
+    def input_shapes(self) -> list[Packet[Size]]:
+        return [{"features": [Size([2, 3, 56, 56])]}]
 
     def forward(self, _: torch.Tensor) -> torch.Tensor: ...
 

@@ -69,7 +69,6 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
         @type initialize_weights: bool
         @param initialize_weights: If True, initialize weights of the model.
         """
-
         super().__init__(**kwargs)
 
         if (
@@ -209,7 +208,7 @@ class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
                 m.eps = 0.001
                 m.momentum = 0.03
             elif isinstance(
-                m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU)
+                m, nn.Hardswish | nn.LeakyReLU | nn.ReLU | nn.ReLU6 | nn.SiLU
             ):
                 m.inplace = True
 

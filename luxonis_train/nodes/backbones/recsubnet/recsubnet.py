@@ -37,8 +37,8 @@ class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
         variant: VariantLiteral = "l",
         **kwargs,
     ):
-        """
-        RecSubNet: A reconstruction sub-network that consists of an encoder and a decoder.
+        """RecSubNet: A reconstruction sub-network that consists of an
+        encoder and a decoder.
 
         This model is designed to reconstruct the original image from an input image that contains noise or anomalies.
         The encoder extracts relevant features from the noisy input, and the decoder attempts to reconstruct the clean

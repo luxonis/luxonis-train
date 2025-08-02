@@ -144,7 +144,6 @@ def apply_anomaly_to_img(
         - augmented_img (Tensor): The augmented image with applied anomaly and Perlin noise.
         - perlin_mask (Tensor): The Perlin noise mask applied to the image.
     """
-
     perlin_mask = generate_perlin_noise(shape=(img.shape[1], img.shape[2]))
 
     if beta is None:

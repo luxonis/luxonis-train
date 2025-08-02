@@ -113,7 +113,6 @@ class GradCamCallback(pl.Callback):
         @type stage: str
         @param stage: The stage of the training loop.
         """
-
         self.pl_module = PLModuleWrapper(pl_module, self.task)
 
     def on_validation_batch_end(
@@ -138,7 +137,6 @@ class GradCamCallback(pl.Callback):
         @type batch_idx: int
         @param batch_idx: The index of the batch.
         """
-
         if batch_idx < self.log_n_batches:
             images = batch[0][pl_module.image_source]
             self.visualize_gradients(trainer, pl_module, images, batch_idx)
@@ -161,7 +159,6 @@ class GradCamCallback(pl.Callback):
         @type batch_idx: int
         @param batch_idx: The index of the batch.
         """
-
         target_layers = [m[1] for m in self.pl_module.named_modules()][
             self.target_layer : self.target_layer + 1
         ]

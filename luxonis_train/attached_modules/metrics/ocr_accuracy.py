@@ -42,7 +42,6 @@ class OCRAccuracy(BaseMetric):
         @type targets: Tensor
         @param targets: A tensor containing the target labels.
         """
-
         target = self.node.encoder(target).to(self.device)
 
         batch_size, text_length, _ = predictions.shape

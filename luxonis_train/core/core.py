@@ -4,7 +4,7 @@ import threading
 from collections.abc import Mapping
 from pathlib import Path
 from threading import ExceptHookArgs
-from typing import Any, Literal, TypeAlias, overload
+from typing import Any, Literal, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -72,7 +72,7 @@ class LuxonisModel:
 
     def __init__(
         self,
-        cfg: str | Params | Config | None,
+        cfg: PathType | Params | Config | None,
         opts: Params | list[str] | tuple[str, ...] | None = None,
         *,
         debug_mode: bool = False,
@@ -93,7 +93,6 @@ class LuxonisModel:
             normaly unrecovarable exceptions and allows to test the model
             without it being fully functional.
         """
-
         if isinstance(cfg, Config):
             self.cfg = cfg
         else:
@@ -303,7 +302,6 @@ class LuxonisModel:
             in the config file, the weights provided here will take
             precedence.
         """
-
         if self.cfg.trainer.matmul_precision is not None:
             logger.info(
                 f"Setting matmul precision to {self.cfg.trainer.matmul_precision}"
@@ -407,7 +405,6 @@ class LuxonisModel:
             architectural changes affecting the exection order etc.)
         @raises RuntimeError: If C{onnxsim} fails to simplify the model.
         """
-
         weights = weights or self.cfg.model.weights
 
         if not ignore_missing_weights and weights is None:
@@ -574,7 +571,6 @@ class LuxonisModel:
             model will be temporarily replaced with the weights from the
             specified checkpoint.
         """
-
         weights = weights or self.cfg.model.weights
         loader = self.pytorch_loaders[view]
 
@@ -780,6 +776,13 @@ class LuxonisModel:
                         ),
                         None,
                     )
+                    if monitor is None:
+                        raise ValueError(
+                            f"Could not find monitor key for main metric '{main_metric.name}' "
+                            f"attached to '{main_metric.attached_to}' in the MLFlow logging keys."
+                        )
+            else:
+                raise AssertionError
 
             pruner_callback = PyTorchLightningPruningCallback(
                 trial, monitor=monitor
@@ -895,7 +898,10 @@ class LuxonisModel:
             wandb_parent_tracker.log_hyperparams(study.best_params)
 
     def archive(
-        self, path: PathType | None = None, weights: PathType | None = None
+        self,
+        path: PathType | None = None,
+        weights: PathType | None = None,
+        save_dir: PathType | None = None,
     ) -> Path:
         """Generates an NN Archive out of a model executable.
 
@@ -913,11 +919,16 @@ class LuxonisModel:
         """
         weights = weights or self.cfg.model.weights
         with replace_weights(self.lightning_module, weights):
-            return self._archive(path)
+            return self._archive(path, save_dir)
 
-    def _archive(self, path: PathType | None = None) -> Path:
+    def _archive(
+        self, path: PathType | None = None, save_dir: PathType | None = None
+    ) -> Path:
+        if isinstance(save_dir, str):
+            save_dir = Path(save_dir)
+
         archive_name = self.cfg.archiver.name or self.cfg.model.name
-        archive_save_directory = Path(self.run_save_dir, "archive")
+        archive_save_directory = save_dir or Path(self.run_save_dir, "archive")
         archive_save_directory.mkdir(parents=True, exist_ok=True)
         inputs = []
         outputs = []
@@ -1037,7 +1048,7 @@ class LuxonisModel:
                 return callback.best_model_path
         return None
 
-    def get_mlflow_logging_keys(self):
+    def get_mlflow_logging_keys(self) -> dict[str, list[str]]:
         """
         Returns a dictionary with two lists of keys:
         1) "metrics"    -> Keys expected to be logged as standard metrics

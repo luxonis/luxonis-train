@@ -246,7 +246,7 @@ class EncoderWithSVTR(nn.Module):
         kernel_size: tuple[int, int] = (3, 3),
         qk_scale: float | None = None,
     ):
-        super(EncoderWithSVTR, self).__init__()
+        super().__init__()
         self.depth = depth
         self.use_guide = use_guide
         self.conv1 = ConvModule(

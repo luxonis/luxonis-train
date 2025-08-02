@@ -64,7 +64,9 @@ def try_onnx_simplify(onnx_path: str) -> None:
 
 def get_preprocessing(
     cfg: PreprocessingConfig, log_label: str | None = None
-) -> tuple[list[float] | None, list[float] | None, Literal["RGB", "BGR"]]:
+) -> tuple[
+    list[float] | None, list[float] | None, Literal["RGB", "BGR", "GRAY"]
+]:
     def _get_norm_param(key: Literal["mean", "std"]) -> list[float] | None:
         params = cfg.normalize.params
         if key not in params:

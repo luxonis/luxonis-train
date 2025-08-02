@@ -1,9 +1,9 @@
-import os
 from pathlib import Path
 
 import cv2
 import numpy as np
-from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.data import DatasetIterator, LuxonisDataset
+from luxonis_ml.typing import Params
 from tensorboard.backend.event_processing import event_accumulator
 
 from luxonis_train import LuxonisModel
@@ -93,7 +93,7 @@ def test_smart_vis_logging(work_dir: Path):
     temp_dir.mkdir(parents=True, exist_ok=True)
     definitions = {"train": [], "val": []}
 
-    def generator():
+    def generator() -> DatasetIterator:
         for i in range(10):
             path = create_image(i, temp_dir)
             if i <= 5:
@@ -155,7 +155,7 @@ def test_smart_vis_logging(work_dir: Path):
     dataset.add(generator())
     dataset.make_splits(definitions)
 
-    opts = {
+    opts: Params = {
         "loader.params.dataset_name": dataset.identifier,
     }
 

@@ -134,7 +134,6 @@ class EMACallback(pl.Callback):
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-
         self._ema = ModelEma(
             pl_module,
             decay=self.decay,
@@ -215,7 +214,6 @@ class EMACallback(pl.Callback):
         @type pl_module: L{pl.LightningModule}
         @param pl_module: Pytorch Lightning module.
         """
-
         self._swap_to_ema_weights(pl_module)
 
     def on_test_end(

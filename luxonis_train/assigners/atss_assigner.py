@@ -54,7 +54,6 @@ class ATSSAssigner(nn.Module):
             [bs, n_anchors, n_classes] and output positive mask of shape
             [bs, n_anchors].
         """
-
         self.n_anchors = anchor_bboxes.size(0)
         self.bs = gt_bboxes.size(0)
         self.n_max_boxes = gt_bboxes.size(1)

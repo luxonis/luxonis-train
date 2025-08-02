@@ -1,3 +1,5 @@
+from typing import Literal
+
 import pytest
 import torch
 from torch import Tensor
@@ -238,7 +240,10 @@ def test_dice_coefficient_index(
     ],
 )
 def test_dice_coefficient_averaging(
-    predictions: Tensor, targets: Tensor, average, expected: Tensor
+    predictions: Tensor,
+    targets: Tensor,
+    average: Literal["micro", "macro", "weighted", "none"],
+    expected: Tensor,
 ):
     metric = DiceCoefficient(
         num_classes=2,
