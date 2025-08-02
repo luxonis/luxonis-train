@@ -177,7 +177,7 @@ jobs:
     - name: Run pytest
       env:
         LUXONISML_BUCKET: luxonis-test-bucket
-      run: pytest -x --cov --junitxml=junit.xml -o junit_family=legacy
+      run: pytest -x --cov --junitxml=junit.xml -o junit_family=legacy -m ${{ matrix.suite }} }}
 
     - name: Upload test results to Codecov
       uses: codecov/test-results-action@v1
