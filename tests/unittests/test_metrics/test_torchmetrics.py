@@ -36,6 +36,9 @@ def test_torchmetrics():
     with pytest.raises(ValueError, match="not possible to infer"):
         DummyMetric()
 
+    with pytest.raises(ValueError, match="Invalid task type 'invalid'"):
+        DummyMetric(task="invalid")
+
     with pytest.raises(ValueError, match="not have the 'num_classes'"):
         DummyMetric(task="multiclass")
 

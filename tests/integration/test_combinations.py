@@ -43,7 +43,12 @@ def get_config(backbone: str) -> Params:
                 {
                     "name": "EfficientBBoxHead",
                     "task_name": "vehicles",
-                    "losses": [{"name": "AdaptiveDetectionLoss"}],
+                    "losses": [
+                        {
+                            "name": "AdaptiveDetectionLoss",
+                            "params": {"per_class_weights": [0, 0.5, 0.5]},
+                        }
+                    ],
                     "metrics": [
                         {"name": "MeanAveragePrecision"},
                         {"name": "ConfusionMatrix"},
