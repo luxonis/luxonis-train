@@ -1,5 +1,3 @@
-from typing import Optional
-
 from loguru import logger
 from torch import Tensor
 from typing_extensions import override
@@ -13,7 +11,7 @@ from .detection_confusion_matrix import DetectionConfusionMatrix
 class FomoConfusionMatrix(DetectionConfusionMatrix):
     supported_tasks = [Tasks.FOMO]
 
-    def __init__(self, iou_threshold: Optional[float] = None, **kwargs):
+    def __init__(self, iou_threshold: float | None = None, **kwargs):
         if iou_threshold is not None and iou_threshold != 0.0:
             logger.warning(
                 "The `iou_threshold` parameter is ignored for FomoConfusionMatrix and is hardcoded to 0. "

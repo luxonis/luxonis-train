@@ -1,5 +1,3 @@
-from typing import Literal
-
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import ModelCheckpoint
 from loguru import logger

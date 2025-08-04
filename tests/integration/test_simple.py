@@ -1,12 +1,16 @@
 import json
+import random
 import shutil
 import sqlite3
 import sys
 import tarfile
+import time
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
 import cv2
+import numpy as np
 import pytest
 from luxonis_ml.data import LuxonisDataset, LuxonisLoader
 from luxonis_ml.typing import Params
@@ -20,27 +24,33 @@ from luxonis_train.core import LuxonisModel
 
 from .multi_input_modules import *
 
-INFER_PATH = Path("tests/integration/infer-save-directory")
 ONNX_PATH = Path("tests/integration/example_multi_input.onnx")
 STUDY_PATH = Path("tests/integration/tuning.db")
 
 
 @pytest.fixture
-def infer_path() -> Path:
-    if INFER_PATH.exists():
-        shutil.rmtree(INFER_PATH)
-    INFER_PATH.mkdir()
-    return INFER_PATH
+def randint() -> int:
+    rng = random.Random()
+    rng.seed(time.time())
+    return rng.randint(0, 100_000)
 
 
 @pytest.fixture
-def opts(output_dir: Path) -> dict[str, Any]:
+def infer_path(work_dir: Path, randint: int) -> Generator[Path]:
+    path = work_dir / f"infer-save-directory-{randint}"
+    path.mkdir(exist_ok=True)
+    yield path
+    shutil.rmtree(path)
+
+
+@pytest.fixture
+def opts(save_dir: Path) -> dict[str, Any]:
     return {
         "trainer.epochs": 1,
         "trainer.batch_size": 1,
         "trainer.validation_interval": 1,
         "trainer.callbacks": [],
-        "tracker.save_directory": str(output_dir),
+        "tracker.save_directory": str(save_dir),
     }
 
 
@@ -75,7 +85,6 @@ def test_predefined_models(
     cifar10_dataset: LuxonisDataset,
     toy_ocr_dataset: LuxonisDataset,
     image_size: tuple[int, int],
-    output_dir: Path,
     subtests: SubTests,
 ):
     config_file = f"configs/{config_name}.yaml"
@@ -98,6 +107,8 @@ def test_predefined_models(
     }
     if "ocr_recognition" in config_file:
         opts["trainer.preprocessing.train_image_size"] = [48, 320]
+    elif "segmentation" in config_file:
+        opts |= {"trainer.batch_size": 2}
 
     with subtests.test("original_config"):
         model = LuxonisModel(config_file, opts)
@@ -105,7 +116,7 @@ def test_predefined_models(
     with subtests.test("saved_config"):
         opts["tracker.run_name"] = f"{config_name}_reload"
         model = LuxonisModel(
-            str(output_dir / config_name / "training_config.yaml"), opts
+            str(model.run_save_dir / "training_config.yaml"), opts
         )
         model.test()
 
@@ -226,6 +237,7 @@ def test_infer(
         shutil.rmtree(img_dir)
     img_dir.mkdir()
     for i, (img, _) in enumerate(loader):
+        assert isinstance(img, np.ndarray)
         img = cv2.resize(img, (256, 256))
         cv2.imwrite(str(img_dir / f"{i}.jpg"), img)
         video_writer.write(img)
@@ -258,9 +270,9 @@ def test_infer(
         model.infer(source_path="tests/data/invalid.jpg", save_dir=infer_path)
 
 
-def test_archive(output_dir: Path, coco_dataset: LuxonisDataset):
+def test_archive(tempdir: Path, coco_dataset: LuxonisDataset):
     opts: Params = {
-        "tracker.save_directory": str(output_dir),
+        "tracker.save_directory": str(tempdir),
         "loader.params.dataset_name": coco_dataset.identifier,
     }
     model = LuxonisModel("tests/configs/archive_config.yaml", opts)
@@ -314,7 +326,7 @@ def test_callbacks(opts: Params, coco_dataset: LuxonisDataset):
     ckpt = torch.load(ckpt_path, map_location="cpu")
 
     assert "execution_order" in ckpt
-    with open("tests/files/execution_order.json", "r") as f:
+    with open("tests/files/execution_order.json") as f:
         assert ckpt["execution_order"] == json.load(f)
 
     assert "config" in ckpt

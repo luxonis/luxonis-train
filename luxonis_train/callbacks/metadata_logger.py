@@ -1,9 +1,4 @@
-import shutil
-import subprocess
-from pathlib import Path
-
 import lightning.pytorch as pl
-import pkg_resources
 import yaml
 
 import luxonis_train as lxt

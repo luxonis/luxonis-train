@@ -111,7 +111,6 @@ class MobileOneBlock(nn.Module):
 
     def forward(self, inputs: Tensor) -> Tensor:
         """Apply forward pass."""
-
         if self.inference_mode:
             return self.activation(self.se(self.reparam_conv(inputs)))
 

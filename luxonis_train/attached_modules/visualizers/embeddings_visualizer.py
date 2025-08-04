@@ -52,7 +52,6 @@ class EmbeddingsVisualizer(BaseVisualizer):
         @rtype: Tensor
         @return: An embedding space projection.
         """
-
         embeddings_np = predictions.detach().cpu().numpy()
         ids_np = target.detach().cpu().numpy().astype(int)
 

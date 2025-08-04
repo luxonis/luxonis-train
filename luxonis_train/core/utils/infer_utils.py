@@ -1,13 +1,13 @@
 from collections import defaultdict
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal, cast
 
 import cv2
 import numpy as np
 import torch
 import torch.utils.data as torch_data
-from luxonis_ml.data import Category, DatasetIterator, LuxonisDataset
+from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from luxonis_ml.typing import PathType
 from torch import Tensor
 
@@ -52,10 +52,10 @@ def prepare_and_infer_image(
     model: "lxt.LuxonisModel", img: dict[str, Tensor]
 ) -> LuxonisOutput:
     """Prepares the image for inference and runs the model."""
-    img = model.loaders["val"].augment_test_image(img)
+    aug_img = model.loaders["val"].augment_test_image(img)
 
     inputs = {
-        "image": torch.tensor(img).unsqueeze(0).permute(0, 3, 1, 2).float()
+        "image": torch.tensor(aug_img).unsqueeze(0).permute(0, 3, 1, 2).float()
     }
     images = get_denormalized_images(model.cfg, inputs["image"])
 
@@ -82,7 +82,6 @@ def infer_from_video(
     @type show: bool
     @param show: Whether to display the visualizations.
     """
-
     cap = cv2.VideoCapture(filename=str(video_path))  # type: ignore
 
     writers: dict[str, cv2.VideoWriter] = {}
@@ -123,7 +122,7 @@ def infer_from_video(
     if save_dir is None:
         try:
             cv2.destroyAllWindows()
-        except cv2.error:
+        except cv2.error:  # type: ignore
             pass
 
     for writer in writers.values():
@@ -147,7 +146,6 @@ def infer_from_loader(
     @type img_paths: list[Path] | None
     @param img_paths: The paths to the images.
     """
-
     predictions = model.pl_trainer.predict(model.lightning_module, loader)
 
     broken = False
@@ -188,7 +186,7 @@ def infer_from_loader(
     if save_dir is None:
         try:
             cv2.destroyAllWindows()
-        except cv2.error:
+        except cv2.error:  # type: ignore
             pass
 
 
@@ -214,7 +212,7 @@ def create_loader_from_directory(
 
     def generator() -> DatasetIterator:
         for img_path in img_paths:
-            data = {"file": img_path}
+            data: dict[str, Any] = {"file": img_path}
             if add_path_annotation:
                 data["annotation"] = {"metadata": {"path": str(img_path)}}
             yield data
@@ -262,8 +260,9 @@ def infer_from_directory(
     loader = create_loader_from_directory(img_paths, model)
 
     infer_from_loader(model, loader, save_dir, img_paths)
+    inner_loader = cast(LuxonisLoaderTorch, loader.dataset)
 
-    loader.dataset.dataset.delete_dataset(delete_local=True)
+    inner_loader.dataset.delete_dataset(delete_local=True)
 
 
 def infer_from_dataset(
@@ -280,6 +279,5 @@ def infer_from_dataset(
     @type save_dir: PathType | None
     @param save_dir: The directory to save the visualizations to.
     """
-
     loader = model.pytorch_loaders[view]
     infer_from_loader(model, loader, save_dir)
