@@ -91,7 +91,7 @@ def annotated_dataset_generator(
                 for record in head.annotate(
                     head_output, img_paths, model.cfg_preprocessing
                 ):
-                    if isinstance(record, DatasetRecord):
+                    if isinstance(record, DatasetRecord):  # pragma: no cover
                         yield record
                     else:
                         # Skips predictions that are invalid,
