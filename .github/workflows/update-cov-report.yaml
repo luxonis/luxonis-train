@@ -1,0 +1,32 @@
+name: Update Coverage Report
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  update-base-report:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        suite: [unit, predefined, combinations, misc]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Download artifacts
+        uses: dawidd6/action-download-artifact@v7
+        with:
+          name: coverage-${{ matrix.suite }}
+          path: coverage.xml
+          workflow: ci.yaml
+
+      - name: Upload coverage results to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false

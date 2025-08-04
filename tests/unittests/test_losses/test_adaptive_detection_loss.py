@@ -15,7 +15,7 @@ class DummyEfficientBBoxHead(EfficientBBoxHead, register=False):
     n_classes: int = 1
 
     @property
-    def input_shapes(self) -> list[Packet[Size]]:
+    def input_shapes(self) -> list[Packet[Size]]:  # pragma: no cover
         return [
             {
                 "features": [

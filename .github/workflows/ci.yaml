@@ -2,7 +2,6 @@ name: CI
 
 on:
   pull_request:
-    branches: [ main ]
     paths:
       - 'luxonis_train/**'
       - 'tests/**'
@@ -138,7 +137,11 @@ jobs:
     needs:
       - config-test
 
-    runs-on: ubuntu-t4-4core
+    strategy:
+      matrix:
+        suite: [unit, predefined, combinations, misc]
+
+    runs-on: ${{ matrix.suite == 'unit' && 'ubuntu-latest' || 'ubuntu-t4-4core' }}
 
     steps:
     - name: Checkout
@@ -173,18 +176,26 @@ jobs:
     - name: Run pytest
       env:
         LUXONISML_BUCKET: luxonis-test-bucket
-      run: pytest -x --cov --junitxml=junit.xml -o junit_family=legacy
+        SUITE: ${{ matrix.suite }}
+      run: pytest -x --cov --junitxml=junit.xml -o junit_family=legacy -m "${SUITE}"
 
     - name: Upload test results to Codecov
-      if: matrix.os == 'ubuntu-latest'
       uses: codecov/test-results-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
+        flags: ${{ matrix.suite }}
 
     - name: Upload coverage results to Codecov
-      if: matrix.os == 'ubuntu-latest'
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
+        flags: ${{ matrix.suite }}
+
+    - name: Upload coverage as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-${{ matrix.suite }}
+        path: coverage.xml
+        overwrite: true
