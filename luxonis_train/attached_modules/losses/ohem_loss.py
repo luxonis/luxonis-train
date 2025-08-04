@@ -23,8 +23,11 @@ class OHEMLoss(BaseLoss):
     ):
         """Initializes the criterion.
 
-        @type criterion: BaseLoss
-        @param criterion: The criterion to use.
+        @type criterion: BaseLoss | str | Literal["auto"]
+        @param criterion: The criterion to use. It can be a string name
+            of the criterion (e.g., "CrossEntropyLoss"), a class that
+            inherits from C{BaseLoss}, or "auto" to infer the criterion
+            based on the task and other parameters.
         @type ohem_ratio: float
         @param ohem_ratio: The ratio of pixels to keep.
         @type ohem_threshold: float
