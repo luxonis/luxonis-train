@@ -47,7 +47,6 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
         @param return_feats: Whether to return features. Defaults to
             False.
         """
-
         super().__init__(**kwargs)
 
         self.return_feats = return_feats

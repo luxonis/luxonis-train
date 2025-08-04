@@ -355,3 +355,16 @@ def instances_from_batch(
                 get_batch_instances(i, bboxes, payload)
                 for payload in [None, *args]
             )
+
+
+class Counter:
+    """Simple counter that can be used to generate unique IDs or
+    indices."""
+
+    def __init__(self, start: int = 0):
+        self._count = start
+
+    def __call__(self) -> int:
+        current = self._count
+        self._count += 1
+        return current

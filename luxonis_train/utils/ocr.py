@@ -24,7 +24,6 @@ class OCRDecoder:
         @param is_remove_duplicate: Whether to remove duplicate
             characters. Defaults to True.
         """
-
         if ignored_tokens is None:
             self.ignored_tokens = [0]
 
@@ -86,7 +85,6 @@ class OCREncoder:
         @param ignore_unknown: Whether to ignore unknown characters.
             Defaults to True.
         """
-
         self._alphabet = ["", *np.unique(alphabet)]
         self.char_to_int = {char: i for i, char in enumerate(self._alphabet)}
 

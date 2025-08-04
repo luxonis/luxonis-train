@@ -16,6 +16,7 @@ import luxonis_train as lxt
 from luxonis_train.attached_modules.visualizers import get_denormalized_images
 from luxonis_train.lightning import LuxonisOutput
 from luxonis_train.loaders import LuxonisLoaderTorch
+from luxonis_train.utils import Counter
 
 IMAGE_FORMATS = {
     ".bmp",
@@ -33,18 +34,17 @@ VIDEO_FORMATS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 
 
 def process_visualizations(
-    visualizations: dict[str, dict[str, Tensor]], batch_size: int
+    visualizations: dict[str, dict[str, Tensor]],
 ) -> dict[tuple[str, str], list[np.ndarray]]:
     """Render or save visualizations."""
     renders = defaultdict(list)
 
-    for i in range(batch_size):
-        for node_name, vzs in visualizations.items():
-            for viz_name, viz_batch in vzs.items():
-                viz = viz_batch[i]
-                viz_arr = viz.detach().cpu().numpy().transpose(1, 2, 0)
-                viz_arr = cv2.cvtColor(viz_arr, cv2.COLOR_RGB2BGR)
-                renders[(node_name, viz_name)].append(viz_arr)
+    for node_name, vzs in visualizations.items():
+        for name, batch in vzs.items():
+            for viz in batch:
+                arr = viz.detach().cpu().numpy().transpose(1, 2, 0)
+                arr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
+                renders[(node_name, name)].append(arr)
 
     return renders
 
@@ -83,8 +83,7 @@ def infer_from_video(
     @type show: bool
     @param show: Whether to display the visualizations.
     """
-
-    cap = cv2.VideoCapture(filename=str(video_path))  # type: ignore
+    cap = cv2.VideoCapture(filename=str(video_path))
 
     writers: dict[str, cv2.VideoWriter] = {}
 
@@ -99,7 +98,7 @@ def infer_from_video(
         outputs = prepare_and_infer_image(
             model, {"image": torch.tensor(frame)}
         )
-        renders = process_visualizations(outputs.visualizations, batch_size=1)
+        renders = process_visualizations(outputs.visualizations)
 
         for (node_name, viz_name), [viz] in renders.items():
             if save_dir is not None:
@@ -146,34 +145,36 @@ def infer_from_loader(
     @type img_paths: list[Path] | None
     @param img_paths: The paths to the images.
     """
-
     predictions = model.pl_trainer.predict(model.lightning_module, loader)
 
     broken = False
-    if predictions is None:
+    if predictions is None:  # pragma: no cover
         return
 
-    for i, outputs in enumerate(predictions):
+    counter = Counter()
+
+    for outputs in predictions:
         if broken:  # pragma: no cover
             break
         assert isinstance(outputs, LuxonisOutput)
         visualizations = outputs.visualizations
-        batch_size = next(
-            iter(next(iter(visualizations.values())).values())
-        ).shape[0]
-        renders = process_visualizations(visualizations, batch_size=batch_size)
-        for j in range(batch_size):
+        renders = process_visualizations(visualizations)
+        batch_size = len(next(iter(renders.values())))
+        for i in range(batch_size):
+            if img_paths is not None:
+                idx = counter()
             for (node_name, viz_name), visualizations in renders.items():
-                viz = visualizations[j]
+                viz = visualizations[i]
                 if save_dir is not None:
                     save_dir = Path(save_dir)
                     if img_paths is not None:
-                        img_path = Path(img_paths[i * batch_size + j])
+                        img_path = Path(img_paths[idx])
                         name = f"{img_path.stem}_{node_name}_{viz_name}"
                     else:
-                        name = f"{node_name}_{viz_name}_{i * batch_size + j}"
+                        name = f"{node_name}_{viz_name}_{counter()}"
                     name = name.replace("/", "-")
-                    cv2.imwrite(str(save_dir / f"{name}.png"), viz)
+                    save_path = save_dir / f"{name}.png"
+                    cv2.imwrite(str(save_path), viz)
                 else:
                     cv2.imshow(f"{node_name}/{viz_name}", viz)
 
@@ -273,6 +274,5 @@ def infer_from_dataset(
     @type save_dir: PathType | None
     @param save_dir: The directory to save the visualizations to.
     """
-
     loader = model.pytorch_loaders[view]
     infer_from_loader(model, loader, save_dir)

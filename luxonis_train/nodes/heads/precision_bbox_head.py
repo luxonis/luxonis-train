@@ -2,6 +2,7 @@ import math
 from typing import Literal, cast
 
 import torch
+from loguru import logger
 from torch import Tensor, nn
 from typing_extensions import override
 
@@ -61,6 +62,14 @@ class PrecisionBBoxHead(BaseDetectionHead):
 
         reg_channels = max((16, self.in_channels[0] // 4, reg_max * 4))
         cls_channels = max(self.in_channels[0], min(self.n_classes, 100))
+
+        if len(self.in_channels) < self.n_heads:
+            logger.warning(
+                f"Head '{self.name}' was set to use {self.n_heads} heads, "
+                f"but received only {len(self.in_channels)} inputs. "
+                f"Changing number of heads to {len(self.in_channels)}."
+            )
+            self.n_heads = len(self.in_channels)
 
         self.detection_heads = cast(
             list[PreciseDecoupledBlock],

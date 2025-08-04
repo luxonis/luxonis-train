@@ -4,7 +4,7 @@ import threading
 from collections.abc import Mapping
 from pathlib import Path
 from threading import ExceptHookArgs
-from typing import Any, Literal, TypeAlias, overload
+from typing import Any, Literal, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -34,6 +34,7 @@ from luxonis_train.loaders import (
     LuxonisLoaderTorch,
 )
 from luxonis_train.registry import LOADERS
+from luxonis_train.typing import View
 from luxonis_train.utils import (
     DatasetMetadata,
     LuxonisTrackerPL,
@@ -60,8 +61,6 @@ from .utils.infer_utils import (
     infer_from_video,
 )
 from .utils.train_utils import create_trainer
-
-View: TypeAlias = Literal["train", "val", "test"]
 
 
 class LuxonisModel:
@@ -94,7 +93,6 @@ class LuxonisModel:
             normaly unrecovarable exceptions and allows to test the model
             without it being fully functional.
         """
-
         if isinstance(cfg, Config):
             self.cfg = cfg
         else:
@@ -304,7 +302,6 @@ class LuxonisModel:
             in the config file, the weights provided here will take
             precedence.
         """
-
         if self.cfg.trainer.matmul_precision is not None:
             logger.info(
                 f"Setting matmul precision to {self.cfg.trainer.matmul_precision}"
@@ -408,7 +405,6 @@ class LuxonisModel:
             architectural changes affecting the exection order etc.)
         @raises RuntimeError: If C{onnxsim} fails to simplify the model.
         """
-
         weights = weights or self.cfg.model.weights
 
         if not ignore_missing_weights and weights is None:
@@ -540,7 +536,7 @@ class LuxonisModel:
     def test(
         self,
         new_thread: Literal[False] = ...,
-        view: Literal["train", "test", "val"] = "val",
+        view: Literal["train", "test", "val"] = "test",
         weights: PathType | None = ...,
     ) -> Mapping[str, float]: ...
 
@@ -575,7 +571,6 @@ class LuxonisModel:
             model will be temporarily replaced with the weights from the
             specified checkpoint.
         """
-
         weights = weights or self.cfg.model.weights
         loader = self.pytorch_loaders[view]
 
@@ -685,6 +680,7 @@ class LuxonisModel:
         """Runs Optuna tuning of hyperparameters."""
         import optuna
         from optuna.integration import PyTorchLightningPruningCallback
+        from sqlalchemy import URL
 
         from .utils.tune_utils import get_trial_params
 
@@ -847,22 +843,26 @@ class LuxonisModel:
             else optuna.pruners.NopPruner()
         )
 
-        storage = None
         if cfg_tuner.storage.active:
-            if cfg_tuner.storage.storage_type == "local":
-                storage = "sqlite:///study_local.db"
-            else:  # pragma: no cover
-                storage = (
-                    f"postgresql"
-                    f"://{self.environ.POSTGRES_USER}"
-                    f":{self.environ.POSTGRES_PASSWORD}"
-                    f"@{self.environ.POSTGRES_HOST}"
-                    f":{self.environ.POSTGRES_PORT}"
-                    f"/{self.environ.POSTGRES_DB}"
-                )
+            storage = URL.create(
+                cfg_tuner.storage.backend,
+                username=cfg_tuner.storage.username,
+                password=cfg_tuner.storage.password.get_secret_value()
+                if cfg_tuner.storage.password is not None
+                else None,
+                host=cfg_tuner.storage.host,
+                database=cfg_tuner.storage.database,
+                port=cfg_tuner.storage.port,
+            )
+            logger.info(f"Using '{storage}' as Optuna storage.")
+        else:
+            storage = None
+
         study = optuna.create_study(
             study_name=cfg_tuner.study_name,
-            storage=storage,
+            storage=storage.render_as_string(hide_password=False)
+            if storage
+            else None,
             direction="minimize"
             if cfg_tuner.monitor == "loss"
             else "maximize",
@@ -898,7 +898,10 @@ class LuxonisModel:
             wandb_parent_tracker.log_hyperparams(study.best_params)
 
     def archive(
-        self, path: PathType | None = None, weights: PathType | None = None
+        self,
+        path: PathType | None = None,
+        weights: PathType | None = None,
+        save_dir: PathType | None = None,
     ) -> Path:
         """Generates an NN Archive out of a model executable.
 
@@ -916,11 +919,16 @@ class LuxonisModel:
         """
         weights = weights or self.cfg.model.weights
         with replace_weights(self.lightning_module, weights):
-            return self._archive(path)
+            return self._archive(path, save_dir)
 
-    def _archive(self, path: PathType | None = None) -> Path:
+    def _archive(
+        self, path: PathType | None = None, save_dir: PathType | None = None
+    ) -> Path:
+        if isinstance(save_dir, str):
+            save_dir = Path(save_dir)
+
         archive_name = self.cfg.archiver.name or self.cfg.model.name
-        archive_save_directory = Path(self.run_save_dir, "archive")
+        archive_save_directory = save_dir or Path(self.run_save_dir, "archive")
         archive_save_directory.mkdir(parents=True, exist_ok=True)
         inputs = []
         outputs = []

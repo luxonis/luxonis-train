@@ -1,11 +1,12 @@
 import random
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 from bidict import bidict
+from luxonis_ml.typing import PathType
 from luxonis_ml.utils import LuxonisFileSystem
 from torch import Tensor
 from typing_extensions import override
@@ -21,7 +22,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
     def __init__(
         self,
         *args,
-        anomaly_source_path: str,
+        anomaly_source_path: PathType,
         noise_prob: float = 0.5,
         beta: float | None = None,
         **kwargs,
@@ -41,14 +42,18 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         """
         super().__init__(*args, **kwargs)
 
-        try:
-            self.anomaly_source_path = LuxonisFileSystem.download(
-                anomaly_source_path, dest="./data"
-            )
-        except Exception as e:
-            raise FileNotFoundError(
-                "The anomaly source path is invalid."
-            ) from e
+        if isinstance(anomaly_source_path, str):
+            try:
+                self.anomaly_source_path = LuxonisFileSystem.download(
+                    anomaly_source_path, dest="./data"
+                )
+            except Exception as e:
+                raise FileNotFoundError(
+                    f"The anomaly source path '{anomaly_source_path}' "
+                    "could not be found or downloaded."
+                ) from e
+        else:
+            self.anomaly_source_path = anomaly_source_path
 
         from luxonis_train.core.utils.infer_utils import IMAGE_FORMATS
 
@@ -77,12 +82,17 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         with _freeze_seed():
             img, labels = self.loader[idx]
         if isinstance(img, dict):
-            raise NotImplementedError(
-                "This loader does not support multi-source datasets."
-            )
+            if self._image_source is None:
+                raise NotImplementedError(
+                    "This loader does not support multi-input models "
+                    "and the `image_source` identifying the input image "
+                    "is not set. Please set `image_source` to a valid "
+                    "image source in the loader parameters or use a dataset "
+                    "with a single image source."
+                )
+            img = img[self._image_source]
 
-        img = np.transpose(img, (2, 0, 1))
-        tensor_img = torch.tensor(img)
+        img = self.img_numpy_to_torch(img)
         tensor_labels = self.dict_numpy_to_torch(labels)
 
         if self.view[0] == "train":
@@ -95,15 +105,15 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
                         [({self.image_source: anomaly_img}, {})]
                     )[0][self.image_source]
 
-                anomaly_img = torch.tensor(anomaly_img).permute(2, 0, 1)
+                anomaly_img = self.img_numpy_to_torch(anomaly_img)
                 aug_tensor_img, an_mask = apply_anomaly_to_img(
-                    tensor_img, anomaly_img, self.beta
+                    img, anomaly_img, self.beta
                 )
             else:
-                aug_tensor_img = tensor_img
+                aug_tensor_img = img
                 an_mask = torch.zeros((self.height, self.width))
         else:
-            aug_tensor_img = tensor_img
+            aug_tensor_img = img
             an_mask = torch.tensor(
                 labels.pop(f"{self.task_name}/segmentation")
             )[-1, ...]
@@ -111,14 +121,14 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         an_mask = F.one_hot(an_mask.long(), 2).permute(2, 0, 1).float()
 
         tensor_labels = {
-            f"{self.task_name}/original_segmentation": tensor_img,
+            f"{self.task_name}/original_segmentation": img,
             f"{self.task_name}/segmentation": an_mask,
         }
 
         return aug_tensor_img, tensor_labels
 
     @override
-    def get_classes(self) -> dict[str, bidict[str, int]]:
+    def get_classes(self) -> dict[str, Mapping[str, int]]:
         names = ["background", "anomaly"]
         idx_map = bidict({name: i for i, name in enumerate(names)})
         return {self.task_name: idx_map}

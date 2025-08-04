@@ -259,7 +259,6 @@ def build_optimizers(
     nodes: Nodes,
 ) -> tuple[list[Optimizer], list[LRScheduler | dict[str, Any]]]:
     """Configures model optimizers and schedulers."""
-
     cfg_optimizer = cfg.trainer.optimizer
     cfg_scheduler = cfg.trainer.scheduler
 
@@ -341,7 +340,6 @@ def build_callbacks(
     nodes: Nodes,
 ) -> list[pl.Callback]:
     """Configures Pytorch Lightning callbacks."""
-
     model_name = cfg.model.name
 
     callbacks: list[pl.Callback] = [
@@ -576,44 +574,47 @@ def log_balanced_class_images(
     nodes: Nodes,
     visualizations: dict[str, dict[str, Tensor]],
     labels: Labels,
-    cls_key: str,
+    cls_task_keys: list[str],
     class_log_counts: list[int],
     n_logged_images: int,
     max_log_images: int,
     mode: Literal["test", "val"],
     current_epoch: int,
-) -> tuple[int, list[int]]:
+) -> tuple[int, list[int], list[int]]:
     """Log images with balanced class distribution."""
+    logged_indices = []
+
+    batch_size = next(
+        iter(next(iter(visualizations.values())).values())
+    ).shape[0]
+    cls_tensor = torch.cat([labels[k] for k in cls_task_keys], dim=1)
+    present_classes = [
+        (cls_tensor[idx] > 0).nonzero(as_tuple=True)[0].tolist()
+        for idx in range(batch_size)
+    ]
+    for idx, classes in enumerate(present_classes):
+        if classes:
+            min_logged_class = min(classes, key=lambda c: class_log_counts[c])
+            if class_log_counts[min_logged_class] == min(class_log_counts):
+                logged_indices.append(idx)
+                for c in classes:
+                    class_log_counts[c] += 1
+
     for node_name, node_visualizations in visualizations.items():
         node_logged_images = n_logged_images
         formatted_node_name = nodes.formatted_name(node_name)
         for viz_name, viz_batch in node_visualizations.items():
-            for idx, viz in enumerate(viz_batch):
+            for idx in logged_indices:
                 if node_logged_images >= max_log_images:
                     break
-                present_classes = (
-                    (labels[cls_key][idx] > 0)
-                    .nonzero(as_tuple=True)[0]
-                    .tolist()
+                tracker.log_image(
+                    f"{mode}/visualizations/{formatted_node_name}/{viz_name}/{node_logged_images}",
+                    viz_batch[idx].detach().cpu().numpy().transpose(1, 2, 0),
+                    step=current_epoch,
                 )
-                if present_classes:
-                    min_logged_class = min(
-                        present_classes, key=lambda c: class_log_counts[c]
-                    )
-                    if class_log_counts[min_logged_class] == min(
-                        class_log_counts
-                    ):
-                        name = f"{mode}/visualizations/{formatted_node_name}/{viz_name}"
-                        tracker.log_image(
-                            f"{name}/{node_logged_images}",
-                            viz.detach().cpu().numpy().transpose(1, 2, 0),
-                            step=current_epoch,
-                        )
-                        node_logged_images += 1
-                        for c in present_classes:
-                            class_log_counts[c] += 1
+                node_logged_images += 1
 
-    return node_logged_images, class_log_counts
+    return node_logged_images, class_log_counts, logged_indices
 
 
 def log_sequential_images(
@@ -646,11 +647,61 @@ def log_sequential_images(
     return node_logged_images
 
 
+def compute_visualization_buffer(
+    seq_buffer: list[dict[str, dict[str, Tensor]]],
+    visualizations: dict[str, dict[str, Tensor]],
+    logged_idxs: list[int],
+    max_log_images: int,
+) -> dict[str, dict[str, Tensor]] | None:
+    """Build a buffer of leftover visualizations to fill up to
+    `max_log_images` frames.
+
+    @type seq_buffer: list[dict[str, dict[str, Tensor]]]
+    @param seq_buffer: Previously buffered visualizations; each item maps node names to
+                        dicts of viz names to Tensors of shape [N, …].
+    @type visualizations: dict[str, dict[str, Tensor]]
+    @param visualizations: Current batch’s visualizations with the same nested structure.
+    @type logged_idxs: list[int]
+    @param logged_idxs: List of batch indices already logged by the smart (class-balanced) logger.
+    @type max_log_images: int
+    @param max_log_images: Total number of images we aim to log per epoch.
+    @return: A dict `{ node_name: { viz_name: Tensor[...] } }` containing up to the remaining
+             number of images needed to reach `max_log_images`, excluding any indices in
+             `logged_idxs`. Returns `None` if the buffer is already full or no leftovers exist.
+    """
+    if seq_buffer:
+        first_map = seq_buffer[0]
+        first_tensor = next(iter(next(iter(first_map.values())).values()))
+        buf_count = first_tensor.shape[0]
+    else:
+        buf_count = 0
+
+    if buf_count >= max_log_images:
+        return None
+
+    B = next(iter(next(iter(visualizations.values())).values())).shape[0]
+    used = set(logged_idxs)
+    free_ix = [i for i in range(B) if i not in used]
+    if not free_ix:
+        return None
+
+    rem = max_log_images - buf_count
+    leftovers: dict[str, dict[str, Tensor]] = {}
+
+    for node_name, viz_map in visualizations.items():
+        node_buf: dict[str, Tensor] = {}
+        for viz_name, tensor in viz_map.items():
+            node_buf[viz_name] = tensor[free_ix][:rem]
+        if node_buf:
+            leftovers[node_name] = node_buf
+
+    return leftovers if leftovers else None
+
+
 def get_model_execution_order(
     model: "lxt.LuxonisLightningModule",
 ) -> list[str]:
     """Get the execution order of the model's nodes."""
-
     order = []
     handles = []
 

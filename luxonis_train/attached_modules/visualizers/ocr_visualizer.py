@@ -40,7 +40,7 @@ class OCRVisualizer(BaseVisualizer):
         prediction_canvas: Tensor,
         target_canvas: Tensor,
         predictions: Tensor,
-        targets: Tensor,
+        targets: Tensor | None,
     ) -> tuple[Tensor, Tensor]:
         """Creates a visualization of the OCR predictions and labels.
 
@@ -58,11 +58,12 @@ class OCRVisualizer(BaseVisualizer):
         decoded_predictions = self.node.decoder(predictions)
 
         target_strings = []
-        for target in targets:
-            target = target[target != 0]
-            target = [chr(int(char.item())) for char in target]
-            target = "".join(target)
-            target_strings.append(target)
+        if targets is not None:
+            for target in targets:
+                target = target[target != 0]
+                target = [chr(int(char.item())) for char in target]
+                target = "".join(target)
+                target_strings.append(target)
 
         overlay = torch.zeros_like(target_canvas)
         preds_targets = torch.zeros_like(prediction_canvas)

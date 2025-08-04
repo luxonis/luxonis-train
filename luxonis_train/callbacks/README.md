@@ -66,6 +66,12 @@ Metadata include all defined hyperparameters together with git hashes of `luxoni
 
 Callback to perform a test run at the end of the training.
 
+**Parameters:**
+
+| Key    | Type                              | Default value | Description                     |
+| ------ | --------------------------------- | ------------- | ------------------------------- |
+| `view` | `Literal["train", "val", "test"]` | \`"test"      | Which view to use for the test. |
+
 ## `UploadCheckpoint`
 
 Callback that uploads currently the best checkpoint (based on validation loss) to the tracker location - where all other logs are stored.

@@ -23,17 +23,19 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
         out_channels: int = 2,
         **kwargs,
     ):
-        """
-        DiscSubNetHead: A discriminative sub-network that detects and segments anomalies in images.
+        """DiscSubNetHead: A discriminative sub-network that detects and
+        segments anomalies in images.
 
-        This model is designed to take an input image and generate a mask that highlights anomalies or
-        regions of interest based on reconstruction. The encoder extracts relevant features from the
-        input, while the decoder generates a mask that identifies areas of anomalies by distinguishing
-        between the reconstructed image and the input.
+        This model is designed to take an input image and generate a
+        mask that highlights anomalies or regions of interest based on
+        reconstruction. The encoder extracts relevant features from the
+        input, while the decoder generates a mask that identifies areas
+        of anomalies by distinguishing between the reconstructed image
+        and the input.
 
         @type in_channels: list[int] | int
-        @param in_channels: Number of input channels for the encoder. Defaults to 6.
-
+        @param in_channels: Number of input channels for the encoder.
+            Defaults to 6.
         @type out_channels: int
         @param out_channels: Number of output channels for the decoder.
             Defaults to 2 (for segmentation masks).
@@ -55,7 +57,6 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
 
     def forward(self, inputs: list[Tensor]) -> tuple[Tensor, Tensor]:
         """Performs the forward pass through the encoder and decoder."""
-
         reconstruction, x = inputs
         x = torch.cat([reconstruction, x], dim=1)
         seg_out = self.decoder_segment(self.encoder_segment(x))

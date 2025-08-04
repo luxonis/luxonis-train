@@ -260,7 +260,6 @@ class VarifocalLoss(nn.Module):
         @type per_class_weights: Tensor | None
         @param per_class_weights: A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
         """
-
         super().__init__()
 
         self.alpha = alpha

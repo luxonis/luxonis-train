@@ -242,7 +242,7 @@ def test_dice_coefficient_index(
 def test_dice_coefficient_averaging(
     predictions: Tensor,
     targets: Tensor,
-    average: Literal["micro", "macro", "weighted", "none"] | None,
+    average: Literal["micro", "macro", "weighted", "none"],
     expected: Tensor,
 ):
     metric = DiceCoefficient(

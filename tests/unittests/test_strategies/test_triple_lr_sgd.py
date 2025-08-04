@@ -2,6 +2,7 @@ import pytorch_lightning as pl
 import torch
 from torch import Tensor
 from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LambdaLR
 
 from luxonis_train.strategies.triple_lr_sgd import TripleLRSGDStrategy
 
@@ -35,7 +36,9 @@ def test_triple_lr_sgd():
             y = self.forward(x)
             return torch.nn.functional.mse_loss(y, torch.zeros_like(y))
 
-        def configure_optimizers(self) -> tuple:
+        def configure_optimizers(
+            self,
+        ) -> tuple[list[Optimizer], list[LambdaLR]]:
             self.strategy = TripleLRSGDStrategy(model)  # type: ignore
             return self.strategy.configure_optimizers()
 

@@ -93,7 +93,6 @@ class TaskAlignedAssigner(nn.Module):
             [bs, n_anchors, n_classes] and output mask of shape [bs,
             n_anchors]
         """
-
         if any_not_none(
             [pred_kpts, gt_kpts, sigmas, area_factor]
         ) and not all_not_none([pred_kpts, gt_kpts, sigmas, area_factor]):
@@ -220,7 +219,6 @@ class TaskAlignedAssigner(nn.Module):
         @return: Alignment metric and IoU between GTs and predicted
             bboxes, optionally incorporating pose OKS.
         """
-
         pred_scores = pred_scores.permute(0, 2, 1)
         gt_labels = gt_labels.to(torch.long)
         ind = torch.zeros([2, self.bs, self.n_max_boxes], dtype=torch.long)

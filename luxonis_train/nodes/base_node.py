@@ -388,7 +388,6 @@ class BaseNode(
         @raises RuntimeError: If the C{input_shapes} were not set during
             initialization.
         """
-
         if self._input_shapes is None:
             raise self._non_set_error("input_shapes")
         return self._input_shapes
@@ -530,8 +529,7 @@ class BaseNode(
         *,
         strict: bool = True,
     ) -> None:
-        """Loads checkpoint for the module. If path is url then it
-        downloads it locally and stores it in cache.
+        """Loads checkpoint for the module.
 
         @type ckpt: str | dict[str, Tensor] | None
         @param ckpt: Path to local or remote .ckpt file.

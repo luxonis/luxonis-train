@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import TypedDict
 
 import onnx
-from loguru import logger
 from luxonis_ml.nn_archive.config_building_blocks import DataType
 from onnx.onnx_pb import TensorProto
 
@@ -21,7 +20,6 @@ def get_inputs(path: Path) -> dict[str, ArchiveMetadataDict]:
     @type path: Path
     @param path: Path to model executable file.
     """
-
     if path.suffix == ".onnx":
         return _get_onnx_inputs(path)
     raise NotImplementedError(
@@ -35,7 +33,6 @@ def get_outputs(path: Path) -> dict[str, ArchiveMetadataDict]:
     @type path: Path
     @param path: Path to model executable file.
     """
-
     if path.suffix == ".onnx":
         return _get_onnx_outputs(path)
     raise NotImplementedError(
@@ -104,7 +101,6 @@ def _get_head_outputs(outputs: list[dict], head_name: str) -> list[str]:
     @rtype: list[str]
     @return: List of output names.
     """
-
     output_names = []
     for output in outputs:
         try:
@@ -135,11 +131,7 @@ def get_head_configs(
     for node_name, node in lightning_module.nodes.items():
         if not isinstance(node, BaseHead) or node.remove_on_export:
             continue
-        try:
-            head_config = node.get_head_config()
-        except NotImplementedError as e:
-            logger.error(f"Failed to archive head `{node_name}`: {e}")
-            continue
+        head_config = node.get_head_config()
         head_name = (
             node_name
             if node_name not in head_names

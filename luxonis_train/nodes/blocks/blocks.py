@@ -580,8 +580,7 @@ class ModuleRepeater(nn.Sequential):
         self, module: Callable[..., nn.Module], /, *, n_repeats: int, **kwargs
     ):
         """Module which repeats the block n times. First block accepts
-        in_channels and outputs out_channels while subsequent blocks
-        accept out_channels and output out_channels.
+        in_channels and outputs out_channels while subsequent blocks.
 
         @type module: C{type[nn.Module]}
         @param module: Module to repeat.
@@ -785,7 +784,6 @@ class FeatureFusionBlock(nn.Module):
         @type reduction: int
         @param reduction: Reduction factor. Defaults to C{1}.
         """
-
         super().__init__()
 
         self.conv_1x1 = ConvBlock(in_channels, out_channels, 1, 1, 0)

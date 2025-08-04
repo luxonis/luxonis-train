@@ -317,11 +317,17 @@ class BaseLoaderTorch(
             "height",
             "width",
             "keep_aspect_ratio",
-            "color_space",
             "seed",
+            "color_space",
         ],
     ) -> Any:
         return get_attribute_check_none(self, attribute)
+
+    @staticmethod
+    def img_numpy_to_torch(img: np.ndarray) -> Tensor:
+        if len(img.shape) == 3:
+            img = img.transpose((2, 0, 1))
+        return torch.tensor(img, dtype=torch.float32)
 
     def collate_fn(
         self,

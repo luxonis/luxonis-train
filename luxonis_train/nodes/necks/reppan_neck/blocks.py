@@ -24,7 +24,6 @@ class PANUpBlockBase(ABC, nn.Module):
         @type encode_block: nn.Module
         @param encode_block: Encode block that is used.
         """
-
         super().__init__()
 
         self.conv = ConvBlock(
@@ -70,7 +69,6 @@ class RepUpBlock(PANUpBlockBase):
         @type n_repeats: int
         @param n_repeats: Number of RepVGGBlock repeats.
         """
-
         super().__init__(
             in_channels=in_channels,
             out_channels=out_channels,

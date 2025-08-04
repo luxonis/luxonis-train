@@ -7,7 +7,6 @@ from loguru import logger
 from luxonis_ml.enums import DatasetType
 from luxonis_ml.typing import (
     ConfigItem,
-    Kwargs,
     Params,
     ParamValue,
     PathType,
@@ -23,6 +22,7 @@ from luxonis_ml.utils import (
 from pydantic import (
     Field,
     ModelWrapValidatorHandler,
+    SecretStr,
     SerializationInfo,
     field_validator,
     model_serializer,
@@ -462,7 +462,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
         return self
 
     @model_serializer
-    def serialize_model(self, info: SerializationInfo) -> Kwargs:
+    def serialize_model(self, info: SerializationInfo) -> Params:
         data = {
             key: value
             for key, value in self.__dict__.items()
@@ -651,7 +651,42 @@ class ExportConfig(ArchiveConfig):
 
 class StorageConfig(BaseModelExtraForbid):
     active: bool = True
-    storage_type: Literal["local", "remote"] = "local"
+    storage_type: Annotated[
+        Literal["local", "remote"] | None,
+        Field(
+            deprecated="The `storage_type` field is deprecated. Use `backend` instead."
+        ),
+    ] = None
+    backend: str = "sqlite"
+    username: str | None = None
+    password: SecretStr | None = None
+    host: str | None = None
+    port: PositiveInt | None = None
+    database: str | None = None
+
+    @model_validator(mode="after")
+    def validate_storage_type(self) -> Self:
+        if not self.storage_type:
+            return self
+        if self.backend:
+            raise ValueError(
+                "Both `storage_type` and `backend` fields are set. "
+                "Please use only the `backend` field."
+            )
+        if self.storage_type == "local":
+            logger.warning(
+                "Using 'local' storage type is deprecated. "
+                "Please use 'sqlite' instead."
+            )
+            self.backend = "sqlite"
+        elif self.storage_type == "remote":
+            logger.warning(
+                "Using 'remote' storage type is deprecated. "
+                "Please use 'postgresql' instead."
+            )
+            self.backend = "postgresql"
+        self.storage_type = None
+        return self
 
 
 class TunerConfig(BaseModelExtraForbid):
@@ -740,6 +775,28 @@ class Config(LuxonisConfig):
             )
         return data
 
+    @model_validator(mode="after")
+    def check_tune_storage(self) -> Self:
+        if self.tuner is None:
+            return self
+        stg = self.tuner.storage
+        if stg.active:
+            if stg.backend == "sqlite":
+                if not stg.database:
+                    stg.database = "study_local.db"
+                    logger.warning(
+                        "No database specified for SQLite storage. "
+                        "Using default 'study_local.db'."
+                    )
+            elif stg.backend == "postgresql":
+                stg.username = stg.username or self.ENVIRON.POSTGRES_USER
+                stg.password = stg.password or self.ENVIRON.POSTGRES_PASSWORD
+                stg.host = stg.host or self.ENVIRON.POSTGRES_HOST
+                stg.port = stg.port or self.ENVIRON.POSTGRES_PORT
+                stg.database = stg.database or self.ENVIRON.POSTGRES_DB
+
+        return self
+
     @classmethod
     def get_config(
         cls,
@@ -750,8 +807,7 @@ class Config(LuxonisConfig):
             cfg = str(cfg)
         instance = super().get_config(cfg, overrides)
         if not isinstance(cfg, str):
-            cls.smart_auto_populate(instance)
-            return instance
+            return instance.smart_auto_populate()
         fs = LuxonisFileSystem(cfg)
         if fs.is_mlflow:
             logger.info(
@@ -761,22 +817,21 @@ class Config(LuxonisConfig):
             instance.tracker.run_id = fs.run_id
 
         if instance.trainer.smart_cfg_auto_populate:
-            cls.smart_auto_populate(instance)
+            return instance.smart_auto_populate()
 
         return instance
 
-    @classmethod
-    def smart_auto_populate(cls, instance: "Config") -> None:
+    def smart_auto_populate(self) -> Self:
         """Automatically populates config fields based on rules, with
         warnings."""
-
-        # Rule: Mosaic4 should have out_width and out_height matching train_image_size if not provided
-        for augmentation in instance.trainer.preprocessing.augmentations:
+        # Rule: Mosaic4 should have out_width and out_height
+        # matching train_image_size if not provided
+        for augmentation in self.trainer.preprocessing.augmentations:
             if augmentation.name == "Mosaic4" and (
                 "out_width" not in augmentation.params
                 or "out_height" not in augmentation.params
             ):
-                train_size = instance.trainer.preprocessing.train_image_size
+                train_size = self.trainer.preprocessing.train_image_size
                 augmentation.params.update(
                     {"out_width": train_size[0], "out_height": train_size[1]}
                 )
@@ -784,14 +839,14 @@ class Config(LuxonisConfig):
                     "`Mosaic4` augmentation detected. Automatically set `out_width` and `out_height` to match `train_image_size`."
                 )
 
-        # Rule: If train, val, and test views are the same, set n_validation_batches
+        # Rule: If all views are the same, set n_validation_batches
         if (
-            instance.loader.train_view
-            == instance.loader.val_view
-            == instance.loader.test_view
+            self.loader.train_view
+            == self.loader.val_view
+            == self.loader.test_view
         ):
-            if instance.trainer.n_validation_batches is None:
-                instance.trainer.n_validation_batches = 10
+            if self.trainer.n_validation_batches is None:
+                self.trainer.n_validation_batches = 10
                 logger.warning(
                     "Train, validation, and test views are the same. "
                     "Automatically setting `n_validation_batches` to 10 "
@@ -805,8 +860,9 @@ class Config(LuxonisConfig):
                     "Make sure this is intended."
                 )
 
-        # Rule: Check if a predefined model is set and adjust config accordingly to achieve best training results
-        predefined_model_cfg = instance.model.predefined_model
+        # Rule: Check if a predefined model is used and adjust
+        # config accordingly to achieve best training results
+        predefined_model_cfg = self.model.predefined_model
         if predefined_model_cfg is not None:
             logger.info(
                 "Predefined model detected. "
@@ -815,13 +871,13 @@ class Config(LuxonisConfig):
                 "`smart_cfg_auto_populate` to `False`."
             )
             model_name = predefined_model_cfg.name
-            accumulate_grad_batches = int(64 / instance.trainer.batch_size)
+            accumulate_grad_batches = int(64 / self.trainer.batch_size)
             logger.info(
                 f"Setting 'accumulate_grad_batches' to "
                 f"{accumulate_grad_batches} "
-                f"(trainer.batch_size={instance.trainer.batch_size})",
+                f"(trainer.batch_size={self.trainer.batch_size})",
                 accumulate_grad_batches,
-                instance.trainer.batch_size,
+                self.trainer.batch_size,
             )
             loss_params = predefined_model_cfg.params.get("loss_params", {})
             if not isinstance(loss_params, dict):
@@ -883,7 +939,7 @@ class Config(LuxonisConfig):
                 )
             predefined_model_cfg.params["loss_params"] = loss_params
             if gradient_accumulation_schedule:
-                for callback in instance.trainer.callbacks:
+                for callback in self.trainer.callbacks:
                     if callback.name == "GradientAccumulationScheduler":
                         callback.params["scheduling"] = (  # type: ignore
                             gradient_accumulation_schedule
@@ -894,7 +950,6 @@ class Config(LuxonisConfig):
                         )
                         break
 
-        # Rule: Set default callbacks UploadCheckpoint, TestOnTrainEnd, ExportOnTrainEnd, ArchiveOnTrainEnd
         default_callbacks = [
             "UploadCheckpoint",
             "TestOnTrainEnd",
@@ -903,8 +958,8 @@ class Config(LuxonisConfig):
         ]
 
         for cb_name in default_callbacks:
-            if not any(
-                cb.name == cb_name for cb in instance.trainer.callbacks
-            ):
-                instance.trainer.callbacks.append(CallbackConfig(name=cb_name))
+            if not any(cb.name == cb_name for cb in self.trainer.callbacks):
+                self.trainer.callbacks.append(CallbackConfig(name=cb_name))
                 logger.info(f"Added {cb_name} callback.")
+
+        return self
