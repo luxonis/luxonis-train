@@ -293,7 +293,7 @@ Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 
 ### `DDRNetSegmentationHead`
 
-Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works well with the [`DDRNet`](#ddrnet) backbone and the [`OHEMBCEWithLogitsLoss`](../attached_modules/losses/README.md#ohembcewithlogitsloss) loss. For predefined model that utilizes it, see [`SegmentationModel`](../config/predefined_models/README.md#segmentationmodel).
+Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works well with the [`DDRNet`](#ddrnet) backbone and the [`OHEMLoss`](../attached_modules/losses/README.md#ohemloss) loss. For predefined model that utilizes it, see [`SegmentationModel`](../config/predefined_models/README.md#segmentationmodel).
 
 **Parameters:**
 

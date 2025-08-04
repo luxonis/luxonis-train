@@ -17,7 +17,7 @@ def get_config(backbone: str) -> Params:
     seg_multi_losses: ParamValue = [
         {"name": "CrossEntropyLoss"},
         {"name": "SigmoidFocalLoss"},
-        {"name": "OHEMCrossEntropyLoss"},
+        {"name": "OHEMLoss"},
     ]
     seg_binary_losses: ParamValue = [
         {"name": "BCEWithLogitsLoss"},
@@ -26,7 +26,7 @@ def get_config(backbone: str) -> Params:
             "params": {"label_smoothing": 0.1},
         },
         {"name": "SigmoidFocalLoss"},
-        {"name": "OHEMBCEWithLogitsLoss"},
+        {"name": "OHEMLoss"},
     ]
     seg_metrics: ParamValue = [
         {"name": "JaccardIndex"},

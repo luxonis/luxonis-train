@@ -6,8 +6,6 @@ from .ctc_loss import CTCLoss
 from .efficient_keypoint_bbox_loss import EfficientKeypointBBoxLoss
 from .embedding_losses import EmbeddingLossWrapper
 from .fomo_localization_loss import FOMOLocalizationLoss
-from .ohem_bce_with_logits import OHEMBCEWithLogitsLoss
-from .ohem_cross_entropy import OHEMCrossEntropyLoss
 from .ohem_loss import OHEMLoss
 from .precision_dfl_detection_loss import PrecisionDFLDetectionLoss
 from .precision_dlf_segmentation_loss import PrecisionDFLSegmentationLoss
@@ -25,8 +23,6 @@ __all__ = [
     "EfficientKeypointBBoxLoss",
     "EmbeddingLossWrapper",
     "FOMOLocalizationLoss",
-    "OHEMBCEWithLogitsLoss",
-    "OHEMCrossEntropyLoss",
     "OHEMLoss",
     "PrecisionDFLDetectionLoss",
     "PrecisionDFLSegmentationLoss",
