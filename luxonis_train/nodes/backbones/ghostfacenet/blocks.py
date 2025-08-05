@@ -7,7 +7,7 @@ from torch import Tensor, nn
 
 from luxonis_train.nodes.backbones.micronet.blocks import _make_divisible
 from luxonis_train.nodes.blocks import SqueezeExciteBlock
-from luxonis_train.nodes.blocks.blocks import ConvBlock
+from luxonis_train.nodes.blocks.blocks import ConvModule
 
 
 class GhostModuleV2(nn.Module):
@@ -27,51 +27,51 @@ class GhostModuleV2(nn.Module):
         self.out_channels = out_channels
         intermediate_channels = math.ceil(out_channels / ratio)
         new_channels = intermediate_channels * (ratio - 1)
-        self.primary_conv = ConvBlock(
+        self.primary_conv = ConvModule(
             in_channels,
             intermediate_channels,
             kernel_size,
             stride,
             kernel_size // 2,
-            activation=nn.PReLU() if use_prelu else None,
+            activation=nn.PReLU() if use_prelu else False,
         )
-        self.cheap_operation = ConvBlock(
+        self.cheap_operation = ConvModule(
             intermediate_channels,
             new_channels,
             dw_size,
             1,
             dw_size // 2,
             groups=intermediate_channels,
-            activation=nn.PReLU() if use_prelu else None,
+            activation=nn.PReLU() if use_prelu else False,
         )
 
         if self.mode == "attn":
             self.short_conv = nn.Sequential(
-                ConvBlock(
+                ConvModule(
                     in_channels,
                     out_channels,
                     kernel_size,
                     stride,
                     kernel_size // 2,
-                    activation=None,
+                    activation=False,
                 ),
-                ConvBlock(
+                ConvModule(
                     out_channels,
                     out_channels,
                     kernel_size=(1, 5),
                     stride=1,
                     padding=(0, 2),
                     groups=out_channels,
-                    activation=None,
+                    activation=False,
                 ),
-                ConvBlock(
+                ConvModule(
                     out_channels,
                     out_channels,
                     kernel_size=(5, 1),
                     stride=1,
                     padding=(2, 0),
                     groups=out_channels,
-                    activation=None,
+                    activation=False,
                 ),
                 nn.AvgPool2d(kernel_size=2, stride=2),
                 nn.Sigmoid(),
@@ -95,9 +95,9 @@ class GhostBottleneckV2(nn.Module):
     def __init__(
         self,
         in_channels: int,
-        hidden_channels: int,
+        intermediate_channels: int,
         out_channels: int,
-        kernel_size: int = 3,
+        dw_kernel_size: int = 3,
         stride: int = 1,
         se_ratio: float = 0.0,
         *,
@@ -111,42 +111,41 @@ class GhostBottleneckV2(nn.Module):
         if layer_id <= 1:
             self.ghost1 = GhostModuleV2(
                 in_channels,
-                hidden_channels,
+                intermediate_channels,
                 use_prelu=True,
                 mode="original",
             )
         else:
             self.ghost1 = GhostModuleV2(
-                in_channels, hidden_channels, use_prelu=True, mode="attn"
+                in_channels, intermediate_channels, use_prelu=True, mode="attn"
             )
 
         # Depth-wise convolution
         if self.stride > 1:
             self.conv_dw = nn.Conv2d(
-                hidden_channels,
-                hidden_channels,
-                kernel_size,
+                intermediate_channels,
+                intermediate_channels,
+                dw_kernel_size,
                 stride=stride,
-                padding=(kernel_size - 1) // 2,
-                groups=hidden_channels,
+                padding=(dw_kernel_size - 1) // 2,
+                groups=intermediate_channels,
                 bias=False,
             )
-            self.bn_dw = nn.BatchNorm2d(hidden_channels)
+            self.bn_dw = nn.BatchNorm2d(intermediate_channels)
 
         # Squeeze-and-excitation
         if has_se:
-            reduced_chs = _make_divisible(int(hidden_channels * se_ratio), 4)
+            reduced_chs = _make_divisible(
+                int(intermediate_channels * se_ratio), 4
+            )
             self.se = SqueezeExciteBlock(
-                hidden_channels,
-                reduced_chs,
-                hard_sigmoid=True,
-                activation=nn.PReLU(),
+                intermediate_channels, reduced_chs, True, activation=nn.PReLU()
             )
         else:
             self.se = None
 
         self.ghost2 = GhostModuleV2(
-            hidden_channels,
+            intermediate_channels,
             out_channels,
             use_prelu=False,
             mode="original",
@@ -160,9 +159,9 @@ class GhostBottleneckV2(nn.Module):
                 nn.Conv2d(
                     in_channels,
                     in_channels,
-                    kernel_size,
+                    dw_kernel_size,
                     stride=stride,
-                    padding=(kernel_size - 1) // 2,
+                    padding=(dw_kernel_size - 1) // 2,
                     groups=in_channels,
                     bias=False,
                 ),

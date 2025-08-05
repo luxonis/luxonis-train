@@ -78,7 +78,9 @@ class AdaptiveDetectionLoss(BaseLoss):
                 self.per_class_weights = torch.tensor(per_class_weights)
             else:
                 logger.warning(
-                    f"Incorrect per_class_weights length. Expected {self.n_classes} but got {len(per_class_weights)}. Setting to None."
+                    f"Incorrect per_class_weights length. "
+                    f"Expected {self.n_classes} but got "
+                    f"{len(per_class_weights)}. Setting to None."
                 )
                 self.per_class_weights = None
         else:
@@ -260,7 +262,6 @@ class VarifocalLoss(nn.Module):
         @type per_class_weights: Tensor | None
         @param per_class_weights: A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
         """
-
         super().__init__()
 
         self.alpha = alpha
@@ -276,7 +277,9 @@ class VarifocalLoss(nn.Module):
         )
 
         if self.per_class_weights is not None:
-            if self.per_class_weights.device != pred_score.device:
+            if (
+                self.per_class_weights.device != pred_score.device
+            ):  # pragma: no cover
                 self.per_class_weights = self.per_class_weights.to(
                     pred_score.device
                 )

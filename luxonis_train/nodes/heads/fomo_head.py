@@ -15,29 +15,29 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
 
     def __init__(
         self,
-        n_conv_layers: int = 3,
+        num_conv_layers: int = 3,
         conv_channels: int = 16,
         use_nms: bool = True,
         **kwargs,
     ):
         """FOMO Head for object detection using heatmaps.
 
-        @type n_conv_layers: int
-        @param n_conv_layers: Number of convolutional layers to use.
+        @type num_conv_layers: int
+        @param num_conv_layers: Number of convolutional layers to use.
         @type conv_channels: int
         @param conv_channels: Number of channels to use in the
             convolutional layers.
         """
         super().__init__(**kwargs)
         self.original_img_size = self.original_in_shape[1:]
-        self.n_conv_layers = n_conv_layers
+        self.num_conv_layers = num_conv_layers
         self.conv_channels = conv_channels
         self.use_nms = use_nms
 
         current_channels = self.in_channels
 
         layers = []
-        for _ in range(self.n_conv_layers - 1):
+        for _ in range(self.num_conv_layers - 1):
             layers.append(
                 nn.Conv2d(
                     current_channels,
@@ -95,13 +95,13 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         @param heatmap: Heatmap to convert to keypoints.
         """
         device = heatmap.device
-        batch_size, n_classes, height, width = heatmap.shape
+        batch_size, num_classes, height, width = heatmap.shape
 
         batch_kpts = []
         for batch_idx in range(batch_size):
             kpts_per_img = []
 
-            for class_id in range(n_classes):
+            for class_id in range(num_classes):
                 prob_map = torch.sigmoid(heatmap[batch_idx, class_id, :, :])
 
                 keep = self._get_keypoint_mask(prob_map)
@@ -114,7 +114,7 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
                         float(prob_map[y, x]),
                         class_id,
                     ]
-                    for y, x in zip(y_indices, x_indices, strict=True)
+                    for y, x in zip(y_indices, x_indices)
                 ]
 
                 kpts_per_img.extend(kpts)

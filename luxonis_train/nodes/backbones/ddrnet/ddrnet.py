@@ -1,49 +1,43 @@
-from luxonis_ml.typing import Kwargs
+from typing import Literal
+
+from loguru import logger
 from torch import Tensor, nn
-from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import (
-    ConvBlock,
-    ResNetBlock,
-    ResNetBottleneck,
+    BasicResNetBlock,
+    Bottleneck,
+    ConvModule,
     UpscaleOnline,
 )
 
 from .blocks import DAPPM, BasicDDRBackbone, make_layer
+from .variants import get_variant
 
 
 class DDRNet(BaseNode[Tensor, list[Tensor]]):
-    """DDRNet backbone for semantic segmentation.
-
-    Variants
-    ========
-    The variant determines the number of channels and high resolution channels.
-    The following variants are available:
-        - "23-slim" (default): channels=32, high_resolution_channels=64
-        - "23": channels=64, high_resolution_channels=128
-    """
-
     in_channels: int
 
     def __init__(
         self,
-        channels: int = 32,
-        high_resolution_channels: int = 64,
+        variant: Literal["23-slim", "23"] = "23-slim",
+        channels: int | None = None,
+        highres_channels: int | None = None,
         use_aux_heads: bool = True,
         upscale_module: nn.Module | None = None,
         spp_width: int = 128,
-        ssp_interpolation_mode: str = "bilinear",
-        segmentation_interpolation_mode: str = "bilinear",
+        ssp_inter_mode: str = "bilinear",
+        segmentation_inter_mode: str = "bilinear",
         # TODO: nn.Module registry
-        block: type[nn.Module] = ResNetBlock,
-        skip_block: type[nn.Module] = ResNetBlock,
-        layer5_block: type[nn.Module] = ResNetBottleneck,
+        block: type[nn.Module] = BasicResNetBlock,
+        skip_block: type[nn.Module] = BasicResNetBlock,
+        layer5_block: type[nn.Module] = Bottleneck,
         layer5_bottleneck_expansion: int = 2,
         spp_kernel_sizes: list[int] | None = None,
         spp_strides: list[int] | None = None,
         layer3_repeats: int = 1,
         layers: list[int] | None = None,
+        download_weights: bool = True,
         **kwargs,
     ):
         """DDRNet backbone.
@@ -54,11 +48,16 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         @see: U{Paper <https://arxiv.org/pdf/2101.06085.pdf>}
         @license: U{Apache License, Version 2.0 <https://github.com/Deci-AI/super-
             gradients/blob/master/LICENSE.md>}
+        @type variant: Literal["23-slim", "23"]
+        @param variant: DDRNet variant. Defaults to "23-slim".
+            The variant determines the number of channels and highres_channels.
+            The following variants are available:
+                - "23-slim" (default): channels=32, highres_channels=64
+                - "23": channels=64, highres_channels=128
         @type channels: int | None
         @param channels: Base number of channels. If provided, overrides the variant values.
-        @type high_resolution_channels: int | None
-        @param high_resolution_channels: Number of channels in the high resolution net.
-            If provided, overrides the variant values.
+        @type highres_channels: int | None
+        @param highres_channels: Number of channels in the high resolution net. If provided, overrides the variant values.
         @type use_aux_heads: bool
         @param use_aux_heads: Whether to use auxiliary heads. Defaults to True.
         @type upscale_module: nn.Module
@@ -66,18 +65,18 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             Defaults to UpscaleOnline().
         @type spp_width: int
         @param spp_width: Width of the branches in the SPP block. Defaults to 128.
-        @type ssp_interpolation_mode: str
-        @param ssp_interpolation_mode: Interpolation mode for the SPP block. Defaults to
+        @type ssp_inter_mode: str
+        @param ssp_inter_mode: Interpolation mode for the SPP block. Defaults to
             "bilinear".
-        @type segmentation_interpolation_mode: str
-        @param segmentation_interpolation_mode: Interpolation mode for the segmentation head.
+        @type segmentation_inter_mode: str
+        @param segmentation_inter_mode: Interpolation mode for the segmentation head.
             Defaults to "bilinear".
         @type block: type[nn.Module]
         @param block: type of block to use in the backbone. Defaults to
-            ResNetBlock.
+            BasicResNetBlock.
         @type skip_block: type[nn.Module]
         @param skip_block: type of block for skip connections. Defaults to
-            ResNetBlock.
+            BasicResNetBlock.
         @type layer5_block: type[nn.Module]
         @param layer5_block: type of block for layer5 and layer5_skip. Defaults to
             Bottleneck.
@@ -95,6 +94,8 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         @type layers: list[int]
         @param layers: Number of blocks in each layer of the backbone. Defaults to [2,
             2, 2, 2, 1, 2, 2, 1].
+        @type download_weights: bool
+        @param download_weights: If True download weights from COCO (if available for specified variant). Defaults to True.
         """
         super().__init__(**kwargs)
 
@@ -103,10 +104,15 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         spp_strides = spp_strides or [1, 2, 4, 8, 0]
         layers = layers or [2, 2, 2, 2, 1, 2, 2, 1]
 
+        var = get_variant(variant)
+
+        channels = channels or var.channels
+        highres_channels = highres_channels or var.highres_channels
+
         self._use_aux_heads = use_aux_heads
         self.upscale = upscale_module
-        self.ssp_interpolation_mode = ssp_interpolation_mode
-        self.segmentation_interpolation_mode = segmentation_interpolation_mode
+        self.ssp_inter_mode = ssp_inter_mode
+        self.segmentation_inter_mode = segmentation_inter_mode
         self.relu = nn.ReLU(inplace=False)
         self.layer3_repeats = layer3_repeats
         self.channels = channels
@@ -116,7 +122,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             self.layers[4:],
         )
 
-        self.backbone = BasicDDRBackbone(
+        self._backbone = BasicDDRBackbone(
             block=block,
             stem_channels=self.channels,
             layers=self.backbone_layers,
@@ -124,7 +130,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             layer3_repeats=self.layer3_repeats,
         )
         out_chan_backbone = (
-            self.backbone.get_backbone_output_number_of_channels()
+            self._backbone.get_backbone_output_number_of_channels()
         )
 
         # Define layers for layer 3
@@ -133,23 +139,23 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         self.layer3_skip = nn.ModuleList()
         for i in range(layer3_repeats):
             self.compression3.append(
-                ConvBlock(
+                ConvModule(
                     in_channels=out_chan_backbone["layer3"],
-                    out_channels=high_resolution_channels,
+                    out_channels=highres_channels,
                     kernel_size=1,
                     bias=False,
-                    activation=None,
+                    activation=False,
                 )
             )
             self.down3.append(
-                ConvBlock(
-                    in_channels=high_resolution_channels,
+                ConvModule(
+                    in_channels=highres_channels,
                     out_channels=out_chan_backbone["layer3"],
                     kernel_size=3,
                     stride=2,
                     padding=1,
                     bias=False,
-                    activation=None,
+                    activation=False,
                 )
             )
             self.layer3_skip.append(
@@ -157,54 +163,54 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
                     in_channels=(
                         out_chan_backbone["layer2"]
                         if i == 0
-                        else high_resolution_channels
+                        else highres_channels
                     ),
-                    channels=high_resolution_channels,
+                    channels=highres_channels,
                     block=skip_block,
-                    n_blocks=self.additional_layers[1],
+                    num_blocks=self.additional_layers[1],
                 )
             )
 
-        self.compression4 = ConvBlock(
+        self.compression4 = ConvModule(
             in_channels=out_chan_backbone["layer4"],
-            out_channels=high_resolution_channels,
+            out_channels=highres_channels,
             kernel_size=1,
             bias=False,
-            activation=None,
+            activation=False,
         )
 
         self.down4 = nn.Sequential(
-            ConvBlock(
-                in_channels=high_resolution_channels,
-                out_channels=high_resolution_channels * 2,
+            ConvModule(
+                in_channels=highres_channels,
+                out_channels=highres_channels * 2,
                 kernel_size=3,
                 stride=2,
                 padding=1,
                 bias=False,
                 activation=nn.ReLU(inplace=True),
             ),
-            ConvBlock(
-                in_channels=high_resolution_channels * 2,
+            ConvModule(
+                in_channels=highres_channels * 2,
                 out_channels=out_chan_backbone["layer4"],
                 kernel_size=3,
                 stride=2,
                 padding=1,
                 bias=False,
-                activation=None,
+                activation=False,
             ),
         )
 
         self.layer4_skip = make_layer(
             block=skip_block,
-            in_channels=high_resolution_channels,
-            channels=high_resolution_channels,
-            n_blocks=self.additional_layers[2],
+            in_channels=highres_channels,
+            channels=highres_channels,
+            num_blocks=self.additional_layers[2],
         )
         self.layer5_skip = make_layer(
             block=layer5_block,
-            in_channels=high_resolution_channels,
-            channels=high_resolution_channels,
-            n_blocks=self.additional_layers[3],
+            in_channels=highres_channels,
+            channels=highres_channels,
+            num_blocks=self.additional_layers[3],
             expansion=layer5_bottleneck_expansion,
         )
 
@@ -212,7 +218,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             block=layer5_block,
             in_channels=out_chan_backbone["layer4"],
             channels=out_chan_backbone["layer4"],
-            n_blocks=self.additional_layers[0],
+            num_blocks=self.additional_layers[0],
             stride=2,
             expansion=layer5_bottleneck_expansion,
         )
@@ -221,25 +227,36 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             in_channels=out_chan_backbone["layer4"]
             * layer5_bottleneck_expansion,
             branch_channels=spp_width,
-            out_channels=high_resolution_channels
-            * layer5_bottleneck_expansion,
-            interpolation_mode=self.ssp_interpolation_mode,
+            out_channels=highres_channels * layer5_bottleneck_expansion,
+            inter_mode=self.ssp_inter_mode,
             kernel_sizes=spp_kernel_sizes,
             strides=spp_strides,
         )
+
+        self.highres_channels = highres_channels
+        self.layer5_bottleneck_expansion = layer5_bottleneck_expansion
+        self.init_params()
+
+        if download_weights:
+            if var.weights_path:
+                self.load_checkpoint(var.weights_path)
+            else:
+                logger.warning(
+                    f"No checkpoint available for {self.name}, skipping."
+                )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         width_output = inputs.shape[-1] // 8
         height_output = inputs.shape[-2] // 8
 
-        x = self.backbone.stem(inputs)
-        x = self.backbone.layer1(x)
-        x = self.backbone.layer2(self.relu(x))
+        x = self._backbone.stem(inputs)
+        x = self._backbone.layer1(x)
+        x = self._backbone.layer2(self.relu(x))
 
         # Repeat layer 3
         x_skip = x
         for i in range(self.layer3_repeats):
-            out_layer3 = self.backbone.layer3[i](self.relu(x))
+            out_layer3 = self._backbone.layer3[i](self.relu(x))
             out_layer3_skip = self.layer3_skip[i](self.relu(x_skip))
 
             x = out_layer3 + self.down3[i](self.relu(out_layer3_skip))
@@ -253,7 +270,7 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
         if self._use_aux_heads:
             x_extra = x_skip
 
-        out_layer4 = self.backbone.layer4(self.relu(x))
+        out_layer4 = self._backbone.layer4(self.relu(x))
         out_layer4_skip = self.layer4_skip(self.relu(x_skip))
 
         x = out_layer4 + self.down4(self.relu(out_layer4_skip))
@@ -273,10 +290,10 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
 
         if self._use_aux_heads:
             return [x_extra, x]
-        return [x]
+        else:
+            return [x]
 
-    @override
-    def initialize_weights(self, method: str | None = None) -> None:
+    def init_params(self) -> None:
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(
@@ -287,27 +304,3 @@ class DDRNet(BaseNode[Tensor, list[Tensor]]):
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
-
-    @override
-    def get_weights_url(self) -> str:
-        if self._variant is None:
-            raise ValueError(
-                f"Online weights are available for '{self.name}' "
-                "only when it's used with a predefined variant."
-            )
-        variant = self._variant.replace("-", "")
-        return f"{{github}}/ddrnet_{variant}_coco.ckpt"
-
-    @override
-    def get_variants() -> tuple[str, dict[str, Kwargs]]:
-        # TODO: Could the other init parameters be here too?
-        return "23-slim", {
-            "23-slim": {
-                "channels": 32,
-                "high_resolution_channels": 64,
-            },
-            "23": {
-                "channels": 64,
-                "high_resolution_channels": 128,
-            },
-        }

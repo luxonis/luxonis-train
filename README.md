@@ -71,7 +71,7 @@ Get started with `LuxonisTrain` in just a few steps:
    Open the provided URL in your browser to visualize the training progress
 
 > [!NOTE]
-> For hands-on examples of how to prepare data with `LuxonisML` and train AI models using `LuxonisTrain`, check out [this guide](https://github.com/luxonis/depthai-ml-training/tree/main/training#-luxonis-train-tutorials).
+> For hands-on examples of how to prepare data with `LuxonisML` and train AI models using `LuxonisTrain`, check out [this guide](https://github.com/luxonis/ai-tutorials/tree/main/training#-luxonis-train-tutorials).
 
 ## 📜 Table Of Contents
 
@@ -132,6 +132,7 @@ The CLI is the most straightforward way how to use `LuxonisTrain`. The CLI provi
 - `archive` - Create an `NN Archive` file that can be used with our `DepthAI` API (coming soon)
 - `tune` - Tune the hyperparameters of the model for better performance
 - `inspect` - Inspect the dataset you are using and visualize the annotations
+- `annotate` - Annotate a directory using the model’s predictions and generate a new LDF.
 
 **To get help on any command:**
 
@@ -541,7 +542,7 @@ tuner:
   study_name: det_study
   n_trials: 10
   storage:
-    storage_type: local
+    backend: sqlite
   params:
     trainer.optimizer.name_categorical: ["Adam", "SGD"]
     trainer.optimizer.params.lr_float: [0.0001, 0.001]
@@ -689,7 +690,7 @@ For more information on how to define custom components, consult the respective 
 
 ## 📚 Tutorials and Examples
 
-We are actively working on providing examples and tutorials for different parts of the library which will help you to start more easily. The tutorials can be found [here](https://github.com/luxonis/depthai-ml-training/tree/main/training) and will be updated regularly.
+We are actively working on providing examples and tutorials for different parts of the library which will help you to start more easily. The tutorials can be found [here](https://github.com/luxonis/ai-tutorials/tree/main/training) and will be updated regularly.
 
 <a name="credentials"></a>
 

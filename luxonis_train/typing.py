@@ -2,6 +2,8 @@ from typing import Literal, TypeAlias, TypeVar
 
 from torch import Size, Tensor
 
+View: TypeAlias = Literal["train", "val", "test"]
+
 Labels: TypeAlias = dict[str, Tensor]
 """Labels is a dictionary mapping task names to tensors."""
 

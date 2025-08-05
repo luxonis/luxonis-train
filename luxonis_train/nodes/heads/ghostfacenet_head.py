@@ -2,10 +2,9 @@
 import math
 
 from torch import Tensor, nn
-from typing_extensions import override
 
-from luxonis_train.nodes.blocks.blocks import ConvBlock
-from luxonis_train.nodes.heads.base_head import BaseHead
+from luxonis_train.nodes.blocks.blocks import ConvModule
+from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
 
 
@@ -47,7 +46,7 @@ class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
         _, H, W = self.original_in_shape
 
         self.head = nn.Sequential(
-            ConvBlock(
+            ConvModule(
                 self.in_channels,
                 self.in_channels,
                 kernel_size=(
@@ -55,7 +54,7 @@ class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
                     W // 32 if W % 32 == 0 else W // 32 + 1,
                 ),
                 groups=self.in_channels,
-                activation=None,
+                activation=False,
             ),
             nn.Dropout(dropout),
             nn.Conv2d(
@@ -64,12 +63,11 @@ class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
             nn.Flatten(),
             nn.BatchNorm1d(embedding_size),
         )
+        self._init_weights()
 
-    @override
-    def initialize_weights(self, method: str | None = None) -> None:
-        super().initialize_weights(method)
+    def _init_weights(self) -> None:
         for m in self.modules():
-            if isinstance(m, nn.Conv2d | nn.Linear):
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
                 fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
                 negative_slope = 0.25
                 m.weight.data.normal_(

@@ -4,7 +4,7 @@ import threading
 from collections.abc import Mapping
 from pathlib import Path
 from threading import ExceptHookArgs
-from typing import Any, Literal, TypeAlias, overload
+from typing import Any, Literal, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -15,10 +15,11 @@ import yaml
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
+from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.typing import Params, PathType
-from luxonis_ml.utils import Environ, LuxonisFileSystem
+from luxonis_ml.utils import LuxonisFileSystem
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
@@ -27,15 +28,25 @@ from luxonis_train.callbacks import (
 )
 from luxonis_train.config import Config
 from luxonis_train.lightning import LuxonisLightningModule
-from luxonis_train.loaders import BaseLoaderTorch
-from luxonis_train.loaders.luxonis_loader_torch import LuxonisLoaderTorch
+from luxonis_train.loaders import (
+    BaseLoaderTorch,
+    DebugLoader,
+    LuxonisLoaderTorch,
+)
 from luxonis_train.registry import LOADERS
+from luxonis_train.typing import View
 from luxonis_train.utils import (
     DatasetMetadata,
     LuxonisTrackerPL,
     setup_logging,
 )
 
+from .utils.annotate_utils import annotate_from_directory
+from .utils.archive_utils import (
+    get_head_configs,
+    get_inputs,
+    get_outputs,
+)
 from .utils.export_utils import (
     blobconverter_export,
     get_preprocessing,
@@ -51,8 +62,6 @@ from .utils.infer_utils import (
 )
 from .utils.train_utils import create_trainer
 
-View: TypeAlias = Literal["train", "val", "test"]
-
 
 class LuxonisModel:
     """Common logic of the core components.
@@ -65,6 +74,8 @@ class LuxonisModel:
         self,
         cfg: PathType | Params | Config | None,
         opts: Params | list[str] | tuple[str, ...] | None = None,
+        *,
+        debug_mode: bool = False,
     ):
         """Constructs a new Core instance.
 
@@ -76,12 +87,18 @@ class LuxonisModel:
 
         @type opts: list[str] | tuple[str, ...] | dict[str, Any] | None
         @param opts: Argument dict provided through command line, used for config overriding
-        """
 
+        @type debug_mode: bool
+        @param debug_mode: If set to True, enables debug mode which ignores some
+            normaly unrecovarable exceptions and allows to test the model
+            without it being fully functional.
+        """
         if isinstance(cfg, Config):
             self.cfg = cfg
         else:
             self.cfg = Config.get_config(cfg, opts)
+
+        self.debug_mode = debug_mode
 
         self.cfg_preprocessing = self.cfg.trainer.preprocessing
 
@@ -89,7 +106,7 @@ class LuxonisModel:
 
         self.tracker = LuxonisTrackerPL(
             rank=rank_zero_only.rank,
-            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
+            mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
             _auto_finalize=False,
             **self.cfg.tracker.model_dump(),
         )
@@ -100,7 +117,7 @@ class LuxonisModel:
         self.log_file = self.run_save_dir / "luxonis_train.log"
         self.error_message = None
 
-        setup_logging(file=self.log_file)
+        setup_logging(file=self.log_file, use_rich=self.cfg.rich_logging)
 
         # NOTE: overriding logger in pl so it uses our logger to log device info
         rank_zero_module.log = logger
@@ -113,7 +130,7 @@ class LuxonisModel:
             logger=self.tracker,
             callbacks=(
                 LuxonisRichProgressBar()
-                if self.cfg.trainer.use_rich_progress_bar
+                if self.cfg.rich_logging
                 else LuxonisTQDMProgressBar()
             ),
             precision=self.cfg.trainer.precision,
@@ -136,20 +153,53 @@ class LuxonisModel:
             ):
                 self.cfg.loader.params["delete_existing"] = False
 
-            self.loaders[view] = Loader(
-                view={
-                    "train": self.cfg.loader.train_view,
-                    "val": self.cfg.loader.val_view,
-                    "test": self.cfg.loader.test_view,
-                }[view],
-                image_source=self.cfg.loader.image_source,
-                height=self.cfg_preprocessing.train_image_size.height,
-                width=self.cfg_preprocessing.train_image_size.width,
-                augmentation_config=self.cfg_preprocessing.get_active_augmentations(),
-                color_space=self.cfg_preprocessing.color_space,
-                keep_aspect_ratio=self.cfg_preprocessing.keep_aspect_ratio,
-                **self.cfg.loader.params,  # type: ignore
-            )
+            try:
+                self.loaders[view] = Loader(
+                    view={
+                        "train": self.cfg.loader.train_view,
+                        "val": self.cfg.loader.val_view,
+                        "test": self.cfg.loader.test_view,
+                    }[view],
+                    image_source=self.cfg.loader.image_source,
+                    height=self.cfg_preprocessing.train_image_size.height,
+                    width=self.cfg_preprocessing.train_image_size.width,
+                    augmentation_config=self.cfg_preprocessing.get_active_augmentations(),
+                    color_space=self.cfg_preprocessing.color_space,
+                    keep_aspect_ratio=self.cfg_preprocessing.keep_aspect_ratio,
+                    seed=self.cfg.trainer.seed,
+                    **self.cfg.loader.params,  # type: ignore
+                )
+            except Exception:
+                if not self.debug_mode:
+                    logger.error(
+                        "Unable to initialize loader. If you want to run "
+                        "the model in debug mode, set `debug_mode=True`."
+                    )
+                    raise
+                logger.warning(
+                    f"Failed to initialize loader '{loader_name}' "
+                    f"for view '{view}'. Using `DummyLoader` instead."
+                )
+                n_keypoints = self.cfg.loader.params.get("n_keypoints", 3)
+                if not isinstance(n_keypoints, int) or n_keypoints < 1:
+                    logger.warning(
+                        "Invalid `n_keypoints` value in the config. "
+                        "Using default value of 3."
+                    )
+                    n_keypoints = 3
+                self.loaders[view] = DebugLoader(
+                    cfg=self.cfg,
+                    view={
+                        "train": self.cfg.loader.train_view,
+                        "val": self.cfg.loader.val_view,
+                        "test": self.cfg.loader.test_view,
+                    }[view],
+                    image_source=self.cfg.loader.image_source,
+                    height=self.cfg_preprocessing.train_image_size.height,
+                    width=self.cfg_preprocessing.train_image_size.width,
+                    color_space=self.cfg_preprocessing.color_space,
+                    n_keypoints=n_keypoints,
+                )
 
         for name, loader in self.loaders.items():
             logger.info(
@@ -252,7 +302,6 @@ class LuxonisModel:
             in the config file, the weights provided here will take
             precedence.
         """
-
         if self.cfg.trainer.matmul_precision is not None:
             logger.info(
                 f"Setting matmul precision to {self.cfg.trainer.matmul_precision}"
@@ -332,6 +381,7 @@ class LuxonisModel:
         save_path: PathType | None = None,
         weights: PathType | None = None,
         ignore_missing_weights: bool = False,
+        ckpt_only: bool = False,
     ) -> None:
         """Runs export.
 
@@ -348,9 +398,13 @@ class LuxonisModel:
         @type ignore_missing_weights: bool
         @param ignore_missing_weights: If set to True, the warning about
             missing weights will be suppressed.
+        @type ckpt_only: bool
+        @param ckpt_only: If True, only the `.ckpt` file will be exported.
+            This is useful for updating the metadata in the checkpoint
+            file in case they changed (e.g. new configuration file,
+            architectural changes affecting the exection order etc.)
         @raises RuntimeError: If C{onnxsim} fails to simplify the model.
         """
-
         weights = weights or self.cfg.model.weights
 
         if not ignore_missing_weights and weights is None:
@@ -368,6 +422,24 @@ class LuxonisModel:
         export_path = export_save_dir / (
             self.cfg.exporter.name or self.cfg.model.name
         )
+
+        if ckpt_only:
+            logger.info("Re-exporting the checkpoint file.")
+            with replace_weights(self.lightning_module, weights):
+                # Needs to be called to attach the model to the trainer
+                self.pl_trainer.validate(
+                    self.lightning_module,
+                    self.pytorch_loaders["val"],
+                    verbose=False,
+                )
+                self.pl_trainer.save_checkpoint(
+                    str(export_path.with_suffix(".ckpt")), weights_only=False
+                )
+                logger.info(
+                    f"Checkpoint saved to {export_path.with_suffix('.ckpt')}"
+                )
+            return
+
         onnx_save_path = str(export_path.with_suffix(".onnx"))
 
         with replace_weights(self.lightning_module, weights):
@@ -378,7 +450,7 @@ class LuxonisModel:
         try_onnx_simplify(onnx_save_path)
         self._exported_models["onnx"] = Path(onnx_save_path)
 
-        scale, mean, color_space = get_preprocessing(
+        mean, scale, color_space = get_preprocessing(
             self.cfg_preprocessing, "Model export"
         )
         scale_values = self.cfg.exporter.scale_values or scale
@@ -412,6 +484,12 @@ class LuxonisModel:
                     "Ensure `blobconverter` is installed in your environment."
                 )
 
+        for path in self._exported_models.values():
+            if self.cfg.exporter.upload_to_run:
+                self.tracker.upload_artifact(path, typ="export")
+            if self.cfg.exporter.upload_url is not None:  # pragma: no cover
+                LuxonisFileSystem.upload(path, self.cfg.exporter.upload_url)
+
         if len(self.input_shapes) > 1:
             logger.error(
                 "Generating modelconverter config for a model "
@@ -419,20 +497,33 @@ class LuxonisModel:
             )
             return
 
+        inputs = []
+        outputs = []
+        inputs_dict = get_inputs(self._exported_models["onnx"])
+        for input_name, metadata in inputs_dict.items():
+            inputs.append(
+                {
+                    "name": input_name,
+                    "shape": metadata["shape"],
+                }
+            )
+
+        outputs_dict = get_outputs(self._exported_models["onnx"])
+        for output_name, metadata in outputs_dict.items():
+            outputs.append(
+                {
+                    "name": output_name,
+                    "shape": metadata["shape"],
+                }
+            )
         modelconverter_config = {
             "input_model": onnx_save_path,
             "scale_values": scale_values,
             "mean_values": mean_values,
-            "reverse_input_channels": reverse_input_channels,
-            "shape": [1, *next(iter(self.input_shapes.values()))],
-            "outputs": [{"name": name} for name in output_names],
+            "encoding": {"from": color_space, "to": "BGR"},
+            "inputs": inputs,
+            "outputs": outputs,
         }
-
-        for path in self._exported_models.values():
-            if self.cfg.exporter.upload_to_run:
-                self.tracker.upload_artifact(path, typ="export")
-            if self.cfg.exporter.upload_url is not None:  # pragma: no cover
-                LuxonisFileSystem.upload(path, self.cfg.exporter.upload_url)
 
         with open(export_path.with_suffix(".yaml"), "w") as f:
             yaml.safe_dump(modelconverter_config, f)
@@ -445,7 +536,7 @@ class LuxonisModel:
     def test(
         self,
         new_thread: Literal[False] = ...,
-        view: Literal["train", "test", "val"] = "val",
+        view: Literal["train", "test", "val"] = "test",
         weights: PathType | None = ...,
     ) -> Mapping[str, float]: ...
 
@@ -480,7 +571,6 @@ class LuxonisModel:
             model will be temporarily replaced with the weights from the
             specified checkpoint.
         """
-
         weights = weights or self.cfg.model.weights
         loader = self.pytorch_loaders[view]
 
@@ -549,10 +639,48 @@ class LuxonisModel:
             else:
                 infer_from_dataset(self, view, save_dir)
 
+    def annotate(
+        self,
+        dir_path: PathType,
+        dataset_name: str,
+        weights: PathType | None = None,
+        bucket_storage: Literal["local", "gcs"] = "local",
+        delete_local: bool = True,
+        delete_remote: bool = True,
+        team_id: str | None = None,
+    ) -> LuxonisDataset:
+        self.lightning_module.eval()
+        weights = weights or self.cfg.model.weights
+
+        with replace_weights(self.lightning_module, weights):
+            dir_path = Path(dir_path)
+            if dir_path.is_dir():
+                image_files = (
+                    f
+                    for f in dir_path.iterdir()
+                    if f.suffix.lower() in IMAGE_FORMATS
+                )
+                annotated_dataset = annotate_from_directory(
+                    self,
+                    image_files,
+                    dataset_name,
+                    bucket_storage,
+                    delete_local,
+                    delete_remote,
+                    team_id,
+                )
+            else:
+                raise ValueError(
+                    f"Directory path {dir_path} is not a valid directory."
+                )
+
+        return annotated_dataset
+
     def tune(self) -> None:
         """Runs Optuna tuning of hyperparameters."""
         import optuna
         from optuna.integration import PyTorchLightningPruningCallback
+        from sqlalchemy import URL
 
         from .utils.tune_utils import get_trial_params
 
@@ -565,7 +693,7 @@ class LuxonisModel:
             )
             child_tracker = LuxonisTrackerPL(
                 rank=rank_zero_only.rank,
-                mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
+                mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
                 is_sweep=True,
                 **tracker_params,
             )
@@ -620,14 +748,14 @@ class LuxonisModel:
             callbacks = [
                 (
                     LuxonisRichProgressBar()
-                    if cfg.trainer.use_rich_progress_bar
+                    if cfg.rich_logging
                     else LuxonisTQDMProgressBar()
                 )
             ]
 
             if cfg.tuner.monitor == "loss":
                 monitor = "val/loss"
-            else:
+            elif cfg.tuner.monitor == "metric":
                 main_metric = next(
                     (m for m in cfg.model.metrics if m.is_main_metric), None
                 )
@@ -653,8 +781,8 @@ class LuxonisModel:
                             f"Could not find monitor key for main metric '{main_metric.name}' "
                             f"attached to '{main_metric.attached_to}' in the MLFlow logging keys."
                         )
-                else:
-                    raise AssertionError
+            else:
+                raise AssertionError
 
             pruner_callback = PyTorchLightningPruningCallback(
                 trial, monitor=monitor
@@ -699,7 +827,7 @@ class LuxonisModel:
         )
         self.parent_tracker = LuxonisTrackerPL(
             rank=rank,
-            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
+            mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
             is_sweep=False,
             **tracker_params,
         )
@@ -715,22 +843,26 @@ class LuxonisModel:
             else optuna.pruners.NopPruner()
         )
 
-        storage = None
         if cfg_tuner.storage.active:
-            if cfg_tuner.storage.storage_type == "local":
-                storage = "sqlite:///study_local.db"
-            else:  # pragma: no cover
-                storage = (
-                    f"postgresql"
-                    f"://{self.environ.POSTGRES_USER}"
-                    f":{self.environ.POSTGRES_PASSWORD}"
-                    f"@{self.environ.POSTGRES_HOST}"
-                    f":{self.environ.POSTGRES_PORT}"
-                    f"/{self.environ.POSTGRES_DB}"
-                )
+            storage = URL.create(
+                cfg_tuner.storage.backend,
+                username=cfg_tuner.storage.username,
+                password=cfg_tuner.storage.password.get_secret_value()
+                if cfg_tuner.storage.password is not None
+                else None,
+                host=cfg_tuner.storage.host,
+                database=cfg_tuner.storage.database,
+                port=cfg_tuner.storage.port,
+            )
+            logger.info(f"Using '{storage}' as Optuna storage.")
+        else:
+            storage = None
+
         study = optuna.create_study(
             study_name=cfg_tuner.study_name,
-            storage=storage,
+            storage=storage.render_as_string(hide_password=False)
+            if storage
+            else None,
             direction="minimize"
             if cfg_tuner.monitor == "loss"
             else "maximize",
@@ -766,7 +898,10 @@ class LuxonisModel:
             wandb_parent_tracker.log_hyperparams(study.best_params)
 
     def archive(
-        self, path: PathType | None = None, weights: PathType | None = None
+        self,
+        path: PathType | None = None,
+        weights: PathType | None = None,
+        save_dir: PathType | None = None,
     ) -> Path:
         """Generates an NN Archive out of a model executable.
 
@@ -784,17 +919,16 @@ class LuxonisModel:
         """
         weights = weights or self.cfg.model.weights
         with replace_weights(self.lightning_module, weights):
-            return self._archive(path)
+            return self._archive(path, save_dir)
 
-    def _archive(self, path: PathType | None = None) -> Path:
-        from .utils.archive_utils import (
-            get_head_configs,
-            get_inputs,
-            get_outputs,
-        )
+    def _archive(
+        self, path: PathType | None = None, save_dir: PathType | None = None
+    ) -> Path:
+        if isinstance(save_dir, str):
+            save_dir = Path(save_dir)
 
         archive_name = self.cfg.archiver.name or self.cfg.model.name
-        archive_save_directory = Path(self.run_save_dir, "archive")
+        archive_save_directory = save_dir or Path(self.run_save_dir, "archive")
         archive_save_directory.mkdir(parents=True, exist_ok=True)
         inputs = []
         outputs = []
@@ -814,11 +948,13 @@ class LuxonisModel:
         mean, scale, color_space = get_preprocessing(
             self.cfg_preprocessing, "Exporting to NN Archive"
         )
+        scale_values = self.cfg.exporter.scale_values or scale
+        mean_values = self.cfg.exporter.mean_values or mean
 
         # TODO: keep preprocessing same for each input?
         preprocessing = {
-            "mean": mean,
-            "scale": scale,
+            "mean": mean_values,
+            "scale": scale_values,
             "dai_type": f"{color_space}888p",
         }
 
@@ -879,10 +1015,6 @@ class LuxonisModel:
             self.tracker.upload_artifact(archive_path, typ="archive")
 
         return Path(archive_path)
-
-    @property
-    def environ(self) -> Environ:
-        return self.cfg.ENVIRON
 
     @rank_zero_only
     def get_min_loss_checkpoint_path(self) -> str | None:

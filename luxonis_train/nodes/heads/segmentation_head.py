@@ -30,21 +30,13 @@ class SegmentationHead(BaseHead[Tensor, Tensor]):
         in_channels = self.in_channels
         for _ in range(int(n_up)):
             modules.append(
-                UpBlock(
-                    in_channels=in_channels,
-                    out_channels=in_channels // 2,
-                    kernel_size=2,
-                    stride=2,
-                    upsample_mode="conv_upsample",
-                    interpolation_mode="bilinear",
-                    align_corners=False,
-                    use_norm=True,
-                )
+                UpBlock(in_channels=in_channels, out_channels=in_channels // 2)
             )
             in_channels //= 2
 
         self.head = nn.Sequential(
-            *modules, nn.Conv2d(in_channels, self.n_classes, kernel_size=1)
+            *modules,
+            nn.Conv2d(in_channels, self.n_classes, kernel_size=1),
         )
 
     def forward(self, inputs: Tensor) -> Tensor:
@@ -56,4 +48,6 @@ class SegmentationHead(BaseHead[Tensor, Tensor]):
         @rtype: dict
         @return: Custom head configuration.
         """
-        return {"is_softmax": False}
+        return {
+            "is_softmax": False,
+        }

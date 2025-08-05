@@ -69,9 +69,10 @@ Adapted from [here](https://pytorch.org/vision/main/models/resnet.html).
 
 **Parameters:**
 
-| Key       | Type                                      | Default value | Description            |
-| --------- | ----------------------------------------- | ------------- | ---------------------- |
-| `variant` | `Literal["18", "34", "50", "101", "152"]` | `"18"`        | Variant of the network |
+| Key                | Type                                      | Default value | Description                            |
+| ------------------ | ----------------------------------------- | ------------- | -------------------------------------- |
+| `variant`          | `Literal["18", "34", "50", "101", "152"]` | `"18"`        | Variant of the network                 |
+| `download_weights` | `bool`                                    | `True`        | If True download weights from ImageNet |
 
 ### `MicroNet`
 
@@ -99,15 +100,17 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
 **Parameters:**
 
-| Key             | Type                                                              | Default value             | Description                                                                |
-| --------------- | ----------------------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------- |
-| `variant`       | `Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]` | `"nano"`                  | Variant of the network                                                     |
-| `channels_list` | `list[int]`                                                       | [64, 128, 256, 512, 1024] | List of number of channels for each block                                  |
-| `n_repeats`     | `list[int]`                                                       | [1, 6, 12, 18, 6]         | List of number of repeats of `RepVGGBlock`                                 |
-| `depth_mul`     | `float`                                                           | `0.33`                    | Depth multiplier                                                           |
-| `width_mul`     | `float`                                                           | `0.25`                    | Width multiplier                                                           |
-| `block`         | `Literal["RepBlock", "CSPStackRepBlock"]`                         | `"RepBlock"`              | Base block used                                                            |
-| `csp_e`         | `float`                                                           | `0.5`                     | Factor for intermediate channels when block is set to `"CSPStackRepBlock"` |
+| Key                  | Type                                                              | Default value             | Description                                                                |
+| -------------------- | ----------------------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------- |
+| `variant`            | `Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]` | `"nano"`                  | Variant of the network                                                     |
+| `channels_list`      | `list[int]`                                                       | [64, 128, 256, 512, 1024] | List of number of channels for each block                                  |
+| `n_repeats`          | `list[int]`                                                       | [1, 6, 12, 18, 6]         | List of number of repeats of `RepVGGBlock`                                 |
+| `depth_mul`          | `float`                                                           | `0.33`                    | Depth multiplier                                                           |
+| `width_mul`          | `float`                                                           | `0.25`                    | Width multiplier                                                           |
+| `block`              | `Literal["RepBlock", "CSPStackRepBlock"]`                         | `"RepBlock"`              | Base block used                                                            |
+| `csp_e`              | `float`                                                           | `0.5`                     | Factor for intermediate channels when block is set to `"CSPStackRepBlock"` |
+| `download_weights`   | `bool`                                                            | `True`                    | If True download weights from COCO (if available for specified variant)    |
+| `initialize_weights` | `bool`                                                            | `True`                    | If True, initialize weights.                                               |
 
 ### RexNetV1_lite
 
@@ -140,9 +143,9 @@ Adapted from [here](https://pytorch.org/vision/main/models/generated/torchvision
 
 **Parameters:**
 
-| Key           | Type        | Default value    | Description                  |
-| ------------- | ----------- | ---------------- | ---------------------------- |
-| `out_indices` | `list[int]` | `[3, 6, 13, 18]` | Indices of the output layers |
+| Key                | Type   | Default value | Description                            |
+| ------------------ | ------ | ------------- | -------------------------------------- |
+| `download_weights` | `bool` | `True`        | If True download weights from ImageNet |
 
 ### `EfficientNet`
 
@@ -150,9 +153,9 @@ Adapted from [here](https://github.com/rwightman/gen-efficientnet-pytorch).
 
 **Parameters:**
 
-| Key           | Type        | Default value     | Description                  |
-| ------------- | ----------- | ----------------- | ---------------------------- |
-| `out_indices` | `list[int]` | `[0, 1, 2, 4, 6]` | Indices of the output layers |
+| Key                | Type   | Default value | Description                            |
+| ------------------ | ------ | ------------- | -------------------------------------- |
+| `download_weights` | `bool` | `True`        | If True download weights from ImageNet |
 
 ### `ContextSpatial`
 
@@ -170,9 +173,10 @@ Adapted from [here](https://github.com/ydhongHIT/DDRNet)
 
 **Parameters:**
 
-| Key       | Type                       | Default value | Description            |
-| --------- | -------------------------- | ------------- | ---------------------- |
-| `variant` | `Literal["23-slim", "23"]` | `"23-slim"`   | Variant of the network |
+| Key                | Type                       | Default value | Description                                                             |
+| ------------------ | -------------------------- | ------------- | ----------------------------------------------------------------------- |
+| `variant`          | `Literal["23-slim", "23"]` | `"23-slim"`   | Variant of the network                                                  |
+| `download_weights` | `bool`                     | `True`        | If True download weights from COCO (if available for specified variant) |
 
 ### `PPLCNetV3`
 
@@ -203,6 +207,9 @@ Adapted from [here](https://arxiv.org/abs/2108.07610)
 
 Adapted from [here](https://arxiv.org/abs/2205.14756)
 
+> [!NOTE]
+> Tested export functionality with `opset_version` set to 16.
+
 **Parameters:**
 
 | Key            | Type                                                              | Default value                    | Description                                         |
@@ -229,16 +236,18 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf).
 
 **Parameters:**
 
-| Key             | Type                                                              | Default value                    | Description                                                                     |
-| --------------- | ----------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------- |
-| `variant`       | `Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]` | `"nano"`                         | Variant of the network                                                          |
-| `n_heads`       | `Literal[2,3,4]`                                                  | `3`                              | Number of output heads. Should be same also on the connected head in most cases |
-| `channels_list` | `list[int]`                                                       | `[256, 128, 128, 256, 256, 512]` | List of number of channels for each block                                       |
-| `n_repeats`     | `list[int]`                                                       | `[12, 12, 12, 12]`               | List of number of repeats of `RepVGGBlock`                                      |
-| `depth_mul`     | `float`                                                           | `0.33`                           | Depth multiplier                                                                |
-| `width_mul`     | `float`                                                           | `0.25`                           | Width multiplier                                                                |
-| `block`         | `Literal["RepBlock", "CSPStackRepBlock"]`                         | `"RepBlock"`                     | Base block used                                                                 |
-| `csp_e`         | `float`                                                           | `0.5`                            | Factor for intermediate channels when block is set to `"CSPStackRepBlock"`      |
+| Key                  | Type                                                              | Default value                    | Description                                                                     |
+| -------------------- | ----------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------- |
+| `variant`            | `Literal["n", "nano", "s", "small", "m", "medium", "l", "large"]` | `"nano"`                         | Variant of the network                                                          |
+| `n_heads`            | `Literal[2,3,4]`                                                  | `3`                              | Number of output heads. Should be same also on the connected head in most cases |
+| `channels_list`      | `list[int]`                                                       | `[256, 128, 128, 256, 256, 512]` | List of number of channels for each block                                       |
+| `n_repeats`          | `list[int]`                                                       | `[12, 12, 12, 12]`               | List of number of repeats of `RepVGGBlock`                                      |
+| `depth_mul`          | `float`                                                           | `0.33`                           | Depth multiplier                                                                |
+| `width_mul`          | `float`                                                           | `0.25`                           | Width multiplier                                                                |
+| `block`              | `Literal["RepBlock", "CSPStackRepBlock"]`                         | `"RepBlock"`                     | Base block used                                                                 |
+| `csp_e`              | `float`                                                           | `0.5`                            | Factor for intermediate channels when block is set to `"CSPStackRepBlock"`      |
+| `download_weights`   | `bool`                                                            | `False`                          | If True download weights from COCO (if available for specified variant)         |
+| `initialize_weights` | `bool`                                                            | `True`                           | If True, initialize weights.                                                    |
 
 ### `SVTRNeck`
 
@@ -284,14 +293,15 @@ Adapted from [here](https://github.com/taveraantonio/BiseNetv1).
 
 ### `DDRNetSegmentationHead`
 
-Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works well with the [`DDRNet`](#ddrnet) backbone and the [`OHEMBCEWithLogitsLoss`](../attached_modules/losses/README.md#ohembcewithlogitsloss) loss. For predefined model that utilizes it, see [`SegmentationModel`](../config/predefined_models/README.md#segmentationmodel).
+Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works well with the [`DDRNet`](#ddrnet) backbone and the [`OHEMLoss`](../attached_modules/losses/README.md#ohemloss) loss. For predefined model that utilizes it, see [`SegmentationModel`](../config/predefined_models/README.md#segmentationmodel).
 
 **Parameters:**
 
-| Key              | Type  | Default value | Description                                                                                                               |
-| ---------------- | ----- | ------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `inter_channels` | `int` | `64`          | Width of internal convolutions                                                                                            |
-| `inter_mode`     | `str` | `"bilinear"`  | Up-sampling method. One of `"nearest"`, `"linear"`, `"bilinear"`, `"bicubic"`, `"trilinear"`, `"area"`, `"pixel_shuffle"` |
+| Key                | Type   | Default value | Description                                                                                                               |
+| ------------------ | ------ | ------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `inter_channels`   | `int`  | `64`          | Width of internal convolutions                                                                                            |
+| `inter_mode`       | `str`  | `"bilinear"`  | Up-sampling method. One of `"nearest"`, `"linear"`, `"bilinear"`, `"bicubic"`, `"trilinear"`, `"area"`, `"pixel_shuffle"` |
+| `download_weights` | `bool` | `False`       | If True download weights from COCO                                                                                        |
 
 ## Bounding Box Heads
 
@@ -305,12 +315,14 @@ Adapted from [here](https://arxiv.org/pdf/2209.02976.pdf). It works best with th
 
 **Parameters:**
 
-| Key          | Type    | Default value | Description                                                           |
-| ------------ | ------- | ------------- | --------------------------------------------------------------------- |
-| `n_heads`    | `int`   | `3`           | Number of output heads                                                |
-| `conf_thres` | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation) |
-| `iou_thres`  | `float` | `0.45`        | `IoU` threshold for non-maxima-suppression (used for evaluation)      |
-| `max_det`    | `int`   | `300`         | Maximum number of detections retained after NMS                       |
+| Key                  | Type    | Default value | Description                                                           |
+| -------------------- | ------- | ------------- | --------------------------------------------------------------------- |
+| `n_heads`            | `int`   | `3`           | Number of output heads                                                |
+| `conf_thres`         | `float` | `0.25`        | Confidence threshold for non-maxima-suppression (used for evaluation) |
+| `iou_thres`          | `float` | `0.45`        | `IoU` threshold for non-maxima-suppression (used for evaluation)      |
+| `max_det`            | `int`   | `300`         | Maximum number of detections retained after NMS                       |
+| `download_weights`   | `bool`  | `False`       | If True download weights from COCO                                    |
+| `initialize_weights` | `bool`  | `True`        | If True, initialize weights.                                          |
 
 ### `PrecisionBBoxHead`
 
@@ -353,11 +365,11 @@ Designed to be very fast. Simply attach it to one of the feature maps from the b
 
 **Parameters:**
 
-| Key             | Type   | Default value | Description                                                                              |
-| --------------- | ------ | ------------- | ---------------------------------------------------------------------------------------- |
-| `n_conv_layers` | `int`  | `3`           | Number of convolutional layers to use in the model.                                      |
-| `conv_channels` | `int`  | `16`          | Number of output channels for each convolutional layer.                                  |
-| `use_nms`       | `bool` | `False`       | If True, enable NMS. This can reduce FP, but it will also reduce TP for close neighbors. |
+| Key               | Type   | Default value | Description                                                                              |
+| ----------------- | ------ | ------------- | ---------------------------------------------------------------------------------------- |
+| `num_conv_layers` | `int`  | `3`           | Number of convolutional layers to use in the model.                                      |
+| `conv_channels`   | `int`  | `16`          | Number of output channels for each convolutional layer.                                  |
+| `use_nms`         | `bool` | `False`       | If True, enable NMS. This can reduce FP, but it will also reduce TP for close neighbors. |
 
 ## Instance Segmentation Heads
 

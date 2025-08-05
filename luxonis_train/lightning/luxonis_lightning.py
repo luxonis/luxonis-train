@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -33,6 +34,8 @@ from .utils import (
     build_training_strategy,
     build_visualizers,
     compute_losses,
+    compute_visualization_buffer,
+    get_model_execution_order,
     log_balanced_class_images,
     log_sequential_images,
     postprocess_metrics,
@@ -119,6 +122,10 @@ class LuxonisLightningModule(pl.LightningModule):
         self._core = _core
         self._n_logged_images = 0
         self._class_log_counts: list[int] = []
+        self._sequentially_logged_visualizations: list[
+            dict[str, dict[str, Tensor]]
+        ] = []
+        self._needs_vis_buffering = True
 
         self._loss_accumulators = {
             "train": LossAccumulator(),
@@ -274,6 +281,11 @@ class LuxonisLightningModule(pl.LightningModule):
             outputs=outputs_dict, losses=losses, visualizations=visualizations
         )
 
+    def set_export_mode(self, *, mode: bool) -> None:
+        for module in self.modules():
+            if isinstance(module, BaseNode):
+                module.set_export_mode(mode=mode)
+
     def export_onnx(self, save_path: str, **kwargs) -> list[str]:
         """Exports the model to ONNX format.
 
@@ -303,9 +315,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         inputs_for_onnx = {"inputs": inputs_deep_clone}
 
-        for module in self.modules():
-            if isinstance(module, BaseNode):
-                module.set_export_mode(True)
+        self.set_export_mode(mode=True)
 
         outputs = self.forward(inputs_deep_clone).outputs
         output_order = sorted(
@@ -417,9 +427,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         self.forward = old_forward  # type: ignore
 
-        for module in self.modules():
-            if isinstance(module, BaseNode):
-                module.set_export_mode(False)
+        self.set_export_mode(mode=False)
 
         logger.info(f"Model exported to {save_path}")
 
@@ -544,6 +552,18 @@ class LuxonisLightningModule(pl.LightningModule):
         return self._evaluation_epoch_end("test")
 
     @override
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        pattern = re.compile(r"^(metrics|visualizers|losses)\..*_node\..*")
+        checkpoint["state_dict"] = {
+            k: v
+            for k, v in checkpoint["state_dict"].items()
+            if not pattern.match(k)
+        }
+        checkpoint["execution_order"] = get_model_execution_order(self)
+        checkpoint["config"] = self.cfg.model_dump(mode="json")
+        checkpoint["dataset_metadata"] = self.dataset_metadata.dump()
+
+    @override
     def configure_callbacks(self) -> list[pl.Callback]:
         return build_callbacks(
             self.cfg, self.main_metric, self.save_dir, self.nodes
@@ -615,9 +635,10 @@ class LuxonisLightningModule(pl.LightningModule):
         max_log_images = self.cfg.trainer.n_log_images
         input_image = inputs[self.image_source]
 
-        cls_key = next(
-            (key for key in labels if "/classification" in key), None
-        )
+        # Smart logging is decided based on the classification task keys that are merged for all tasks
+        cls_task_keys: list[str] | None = [
+            k for k in labels if "/classification" in k
+        ] or None
         images = None
         if self._n_logged_images < max_log_images:
             images = get_denormalized_images(self.cfg, input_image)
@@ -637,22 +658,34 @@ class LuxonisLightningModule(pl.LightningModule):
         self._loss_accumulators[mode].update(losses)
 
         if outputs.visualizations:
-            if cls_key is not None:
+            if cls_task_keys is not None:
                 # Smart logging: balance class representation
-                n_classes = labels[cls_key].shape[1]
+                labels_copy = {k: v.clone() for k, v in labels.items()}
+                # Remove background class from segmentation tasks
+                for k in (k for k in labels_copy if "/segmentation" in k):
+                    cls_key = f"{k[: -len('/segmentation')]}/classification"
+                    labels_copy[cls_key] = (
+                        labels_copy[cls_key][:, 1:]
+                        if labels_copy[cls_key].shape[1] > 1
+                        else labels_copy[cls_key]
+                    )
+
+                n_classes = sum(
+                    labels_copy[task].shape[1] for task in cls_task_keys
+                )
                 if (
                     not self._class_log_counts
                     or len(self._class_log_counts) != n_classes
                 ):
                     self._class_log_counts = [0] * n_classes
 
-                self._n_logged_images, self._class_log_counts = (
+                self._n_logged_images, self._class_log_counts, logged_idxs = (
                     log_balanced_class_images(
                         self.tracker,
                         self.nodes,
                         outputs.visualizations,
-                        labels,
-                        cls_key,
+                        labels_copy,
+                        cls_task_keys,
                         self._class_log_counts,
                         self._n_logged_images,
                         max_log_images,
@@ -660,6 +693,15 @@ class LuxonisLightningModule(pl.LightningModule):
                         self.current_epoch,
                     )
                 )
+                if self._needs_vis_buffering:
+                    extra = compute_visualization_buffer(
+                        self._sequentially_logged_visualizations,
+                        outputs.visualizations,
+                        logged_idxs,
+                        max_log_images,
+                    )
+                    if extra:
+                        self._sequentially_logged_visualizations.append(extra)
             else:
                 # just log first N images
                 self._n_logged_images = log_sequential_images(
@@ -718,8 +760,24 @@ class LuxonisLightningModule(pl.LightningModule):
         if self._n_logged_images != self.cfg.trainer.n_log_images:
             logger.warning(
                 f"Logged images ({self._n_logged_images}) != expected ({self.cfg.trainer.n_log_images}). Possible reasons: "
-                f"class imbalance or a small number of images in the split."
+                f"class imbalance or a small number of images in the split. Trying to log more images."
             )
+            for (
+                missing_visualizations
+            ) in self._sequentially_logged_visualizations:
+                self._n_logged_images = log_sequential_images(
+                    self.tracker,
+                    self.nodes,
+                    missing_visualizations,
+                    self._n_logged_images,
+                    self.cfg.trainer.n_log_images,
+                    mode,
+                    self.current_epoch,
+                )
+        else:
+            self._needs_vis_buffering = False
+
+        self._sequentially_logged_visualizations.clear()
 
         self._n_logged_images = 0
         if self._class_log_counts:
@@ -731,7 +789,6 @@ class LuxonisLightningModule(pl.LightningModule):
         self, stage: str, loss: float, metrics: dict[str, dict[str, float]]
     ) -> None:
         """Prints validation metrics in the console."""
-
         logger.info(f"{stage} loss: {loss:.4f}")
 
         self.progress_bar.print_results(

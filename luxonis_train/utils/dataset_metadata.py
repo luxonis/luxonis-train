@@ -1,3 +1,5 @@
+from typing import Any
+
 from bidict import bidict
 from luxonis_ml.data import Category
 
@@ -34,6 +36,20 @@ class DatasetMetadata:
         self._n_keypoints = n_keypoints or {}
         self._metadata_types = metadata_types or {}
         self._loader = loader
+
+    def dump(self) -> dict[str, Any]:
+        """Dumps the metadata to a dictionary.
+
+        @rtype: dict[str, dict[str, int] | int | dict[str, type]]
+        @return: Dictionary containing the metadata.
+        """
+        return {
+            "classes": {k: dict(v) for k, v in self._classes.items()},
+            "n_keypoints": dict(self._n_keypoints),
+            "metadata_types": {
+                k: v.__name__ for k, v in self._metadata_types.items()
+            },
+        }
 
     @property
     def task_names(self) -> set[str]:
@@ -152,7 +168,6 @@ class DatasetMetadata:
         @return: Instance of L{DatasetMetadata} created from the
             provided dataset.
         """
-
         return cls(
             classes=loader.get_classes(),
             n_keypoints=loader.get_n_keypoints(),

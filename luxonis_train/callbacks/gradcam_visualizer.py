@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from lightning.pytorch.utilities.types import STEP_OUTPUT
+from loguru import logger
 from pytorch_grad_cam import HiResCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
 from pytorch_grad_cam.utils.model_targets import (
@@ -47,16 +48,21 @@ class PLModuleWrapper(pl.LightningModule):
         """
         input_dict = {"image": inputs}
         output = self.pl_module(input_dict, *args, **kwargs)
+        if len(output.outputs) > 1:
+            logger.warning(
+                "Model has multiple heads. Using the first head for Grad-CAM."
+            )
+        first_head_dict = next(iter(output.outputs.values()))
 
         if self.task == "segmentation":
-            return output.outputs["segmentation_head"]["segmentation"][0]
+            return first_head_dict["segmentation"]
         if self.task == "detection":
-            scores = output.outputs["detection_head"]["class_scores"][0]
+            scores = first_head_dict["class_scores"]
             return scores.sum(dim=1)
         if self.task == "classification":
-            return output.outputs["classification_head"]["classification"][0]
-        if self.task == "keypoint_detection":
-            scores = output.outputs["kpt_detection_head"]["class_scores"][0]
+            return first_head_dict["classification"]
+        if self.task == "keypoints":
+            scores = first_head_dict["class_scores"]
             return scores.sum(dim=1)
         raise ValueError(f"Unknown task: {self.task}")
 
@@ -107,7 +113,6 @@ class GradCamCallback(pl.Callback):
         @type stage: str
         @param stage: The stage of the training loop.
         """
-
         self.pl_module = PLModuleWrapper(pl_module, self.task)
 
     def on_validation_batch_end(
@@ -132,7 +137,6 @@ class GradCamCallback(pl.Callback):
         @type batch_idx: int
         @param batch_idx: The index of the batch.
         """
-
         if batch_idx < self.log_n_batches:
             images = batch[0][pl_module.image_source]
             self.visualize_gradients(trainer, pl_module, images, batch_idx)
@@ -155,8 +159,7 @@ class GradCamCallback(pl.Callback):
         @type batch_idx: int
         @param batch_idx: The index of the batch.
         """
-
-        target_layers = [m[1] for m in pl_module.named_modules()][
+        target_layers = [m[1] for m in self.pl_module.named_modules()][
             self.target_layer : self.target_layer + 1
         ]
         self.gradcam = HiResCAM(self.pl_module, target_layers)

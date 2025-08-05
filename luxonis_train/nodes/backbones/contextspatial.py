@@ -1,11 +1,11 @@
-import torch.nn.functional as F
 from luxonis_ml.typing import Kwargs
 from torch import Tensor, nn
+from torch.nn import functional as F
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import (
     AttentionRefinmentBlock,
-    ConvBlock,
+    ConvModule,
     FeatureFusionBlock,
 )
 from luxonis_train.registry import NODES
@@ -28,7 +28,7 @@ class ContextSpatial(BaseNode[Tensor, list[Tensor]]):
 
         @type context_backbone: str
         @param context_backbone: Backbone used in the context path.
-            Can be either a string or a C{nn.Module}.
+            Can be either a string or a C{torch.nn.Module}.
             If a string argument is used, it has to be a name of a module
             stored in the L{NODES} registry. Defaults to C{MobileNetV2}.
 
@@ -58,28 +58,28 @@ class SpatialPath(nn.Module):
     def __init__(self, in_channels: int, out_channels: int):
         super().__init__()
         intermediate_channels = 64
-        self.conv_7x7 = ConvBlock(
+        self.conv_7x7 = ConvModule(
             in_channels,
             intermediate_channels,
             kernel_size=7,
             stride=2,
             padding=3,
         )
-        self.conv_3x3_1 = ConvBlock(
+        self.conv_3x3_1 = ConvModule(
             intermediate_channels,
             intermediate_channels,
             kernel_size=3,
             stride=2,
             padding=1,
         )
-        self.conv_3x3_2 = ConvBlock(
+        self.conv_3x3_2 = ConvModule(
             intermediate_channels,
             intermediate_channels,
             kernel_size=3,
             stride=2,
             padding=1,
         )
-        self.conv_1x1 = ConvBlock(
+        self.conv_1x1 = ConvModule(
             intermediate_channels,
             out_channels,
             kernel_size=1,
@@ -106,8 +106,8 @@ class ContextPath(nn.Module):
             scale_factor=2.0, mode="bilinear", align_corners=True
         )
 
-        self.refine16 = ConvBlock(128, 128, 3, 1, 1)
-        self.refine32 = ConvBlock(128, 128, 3, 1, 1)
+        self.refine16 = ConvModule(128, 128, 3, 1, 1)
+        self.refine32 = ConvModule(128, 128, 3, 1, 1)
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         *_, down16, down32 = self.backbone(x)
@@ -118,7 +118,7 @@ class ContextPath(nn.Module):
 
             self.global_context = nn.Sequential(
                 nn.AdaptiveAvgPool2d(1),
-                ConvBlock(down32.shape[1], 128, 1, 1, 0),
+                ConvModule(down32.shape[1], 128, 1, 1, 0),
             )
 
         arm_down16 = self.arm16(down16)

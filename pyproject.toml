@@ -46,12 +46,13 @@ indent-width = 4
 [tool.ruff.lint]
 select = [
   "ANN",
-  "B",
+  # "B",
   "C4",
   "DTZ",
   "E",
   "ERA",
-  "F",
+  "F401",
+  # "F",
   "FLY",
   "FURB",
   "I",
@@ -64,22 +65,21 @@ select = [
   "PERF102",
   "PERF402",
   "PIE",
-  "PL",
+  # "PL",
   "PT",
   "PTH",
   "PYI",
   "Q",
-  "RET",
-  "RSE",
+  # "RET",
+  # "RSE",
   "RUF022",
   "S",
-  "SIM",
+  # "SIM",
   "T10",
   "T20",
   "TID",
   "TRY",
   "UP",
-  "YTT",
   "W",
 ]
 ignore = [
@@ -89,8 +89,9 @@ ignore = [
   "ANN401",
   "D1",
   "E501",
+  "F403",
   "ICN002",
-  "PLC0415",
+  "NPY002",
   "PLR0911",
   "PLR0912",
   "PLR0913",
@@ -99,10 +100,14 @@ ignore = [
   "PLW2901",
   "PTH123",
   "PYI051",
+  "RET503",
+  "RUF012",
   "S101",
   "S311",
   "S603",
+  "SIM108",
   "TRY003",
+  "W191",
 ]
 unfixable = ["B905"]
 
@@ -127,13 +132,9 @@ reportIncompatibleMethodOverride = "none"
 reportUnnecessaryIsInstance = "none"
 reportMatchNotExhaustive = "error"
 
-[tool.pyleft]
-paths = ["luxonis_train"]
-exclude = ["__main__.py"]
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--disable-warnings"
+addopts = "--disable-warnings -vv"
 markers = [
   "unit: mark a test as a unit test",
   "integration: mark a test as an integration test",
@@ -141,13 +142,18 @@ markers = [
 
 [tool.coverage.run]
 omit = [
-  "**/__main__.py",
-  "**/gpu_stats_monitor.py",
+  "luxonis_train/__main__.py",
+  "luxonis_train/callbacks/gpu_stats_monitor.py",
+  "**/.cache/**",
+  "tests/work/*",
+  "**/_remote_module_non_scriptable.py",
   # These are not related to our `config.py`,
   # see https://github.com/nedbat/coveragepy/issues/1653
   "config.py",
   "config-3.py",
 ]
+parallel = true
+concurrency = ["multiprocessing"]
 
 [tool.coverage.report]
 exclude_also = [
@@ -160,8 +166,11 @@ exclude_also = [
   "except ImportError",
   "@abstractmethod",
   "@overload",
-  "exit\\(\\)",
+  "sys.exit\\(\\)",
   "cv2\\.imshow",
   "cv2\\.waitKey",
+  "cv2\\.error",
+  "cv2\\.destroyAllWindows",
   "logger\\.",
+  "if TYPE_CHECKING",
 ]

@@ -6,7 +6,8 @@ from typing import Any, Literal, TypeVar, overload
 
 import torch
 from loguru import logger
-from luxonis_ml.typing import Kwargs, PathType
+from luxonis_ml.typing import PathType
+from luxonis_ml.utils import LuxonisFileSystem
 from torch import Size, Tensor
 
 from luxonis_train.typing import Packet
@@ -181,6 +182,11 @@ def safe_download(
     logger.info(f"Downloading `{uri}` to `{f}`")
     for i in range(retry + 1):
         try:
+            if "://" in url:
+                protocol, _ = url.split("://")
+                if protocol in {"s3", "gcs", "gs"}:
+                    return LuxonisFileSystem.download(url, f)
+
             torch.hub.download_url_to_file(url, str(f), progress=True)
         except Exception:
             logger.warning(f"Download failed, retrying {i + 1}/{retry} ...")
@@ -350,3 +356,16 @@ def instances_from_batch(
                 get_batch_instances(i, bboxes, payload)
                 for payload in [None, *args]
             )
+
+
+class Counter:
+    """Simple counter that can be used to generate unique IDs or
+    indices."""
+
+    def __init__(self, start: int = 0):
+        self._count = start
+
+    def __call__(self) -> int:
+        current = self._count
+        self._count += 1
+        return current

@@ -3,7 +3,8 @@ from typing import Literal
 import torch
 from torch import Tensor, nn
 
-from luxonis_train.nodes.blocks import ConvBlock
+from luxonis_train.nodes.activations import HSigmoid
+from luxonis_train.nodes.blocks import ConvModule
 
 
 class MicroBlock(nn.Module):
@@ -21,34 +22,43 @@ class MicroBlock(nn.Module):
         init_a: tuple[float, float] = (1.0, 1.0),
         init_b: tuple[float, float] = (0.0, 0.0),
     ):
-        """
-        MicroBlock: The basic building block of MicroNet.
+        """MicroBlock: The basic building block of MicroNet.
 
-        This block implements the Micro-Factorized Convolution and Dynamic Shift-Max activation.
-        It can be configured to use different combinations of these components based on the network design.
+        This block implements the Micro-Factorized Convolution and
+        Dynamic Shift-Max activation. It can be configured to use
+        different combinations of these components based on the network
+        design.
 
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type out_channels: int
         @param out_channels: Number of output channels.
         @type kernel_size: int
-        @param kernel_size: Size of the convolution kernel. Defaults to 3.
+        @param kernel_size: Size of the convolution kernel. Defaults to
+            3.
         @type stride: int
         @param stride: Stride of the convolution. Defaults to 1.
         @type expansion_ratios: tuple[int, int]
-        @param expansion_ratios: Expansion ratios for the intermediate channels. Defaults to (2, 2).
+        @param expansion_ratios: Expansion ratios for the intermediate
+            channels. Defaults to (2, 2).
         @type groups_1: tuple[int, int]
-        @param groups_1: Groups for the first set of convolutions. Defaults to (0, 6).
+        @param groups_1: Groups for the first set of convolutions.
+            Defaults to (0, 6).
         @type groups_2: tuple[int, int]
-        @param groups_2: Groups for the second set of convolutions. Defaults to (1, 1).
+        @param groups_2: Groups for the second set of convolutions.
+            Defaults to (1, 1).
         @type use_dynamic_shift: tuple[int, int, int]
-        @param use_dynamic_shift: Flags to use Dynamic Shift-Max in different positions. Defaults to (2, 0, 1).
+        @param use_dynamic_shift: Flags to use Dynamic Shift-Max in
+            different positions. Defaults to (2, 0, 1).
         @type reduction_factor: int
-        @param reduction_factor: Reduction factor for the squeeze-and-excitation-like operation. Defaults to 1.
+        @param reduction_factor: Reduction factor for the squeeze-and-
+            excitation-like operation. Defaults to 1.
         @type init_a: tuple[float, float]
-        @param init_a: Initialization parameters for Dynamic Shift-Max. Defaults to (1.0, 1.0).
+        @param init_a: Initialization parameters for Dynamic Shift-Max.
+            Defaults to (1.0, 1.0).
         @type init_b: tuple[float, float]
-        @param init_b: Initialization parameters for Dynamic Shift-Max. Defaults to (0.0, 0.0).
+        @param init_b: Initialization parameters for Dynamic Shift-Max.
+            Defaults to (0.0, 0.0).
         """
         super().__init__()
 
@@ -104,12 +114,6 @@ class MicroBlock(nn.Module):
                 init_b,
             )
 
-    def forward(self, inputs: Tensor) -> Tensor:
-        out = self.layers(inputs)
-        if self.use_residual:
-            out += inputs
-        return out
-
     def _create_lite_block(
         self,
         in_channels: int,
@@ -135,7 +139,7 @@ class MicroBlock(nn.Module):
                 intermediate_channels,
                 init_a,
                 init_b,
-                use_dy2 == 2,
+                True if use_dy2 == 2 else False,
                 group1,
                 reduction,
             )
@@ -145,12 +149,12 @@ class MicroBlock(nn.Module):
             ChannelShuffle(intermediate_channels // 2)
             if use_dy2 != 0
             else nn.Sequential(),
-            ConvBlock(
+            ConvModule(
                 in_channels=intermediate_channels,
                 out_channels=out_channels,
                 kernel_size=1,
                 groups=group2,
-                activation=None,
+                activation=False,
             ),
             DYShiftMax(
                 out_channels,
@@ -179,12 +183,12 @@ class MicroBlock(nn.Module):
         reduction: int,
     ) -> nn.Sequential:
         return nn.Sequential(
-            ConvBlock(
+            ConvModule(
                 in_channels=in_channels,
                 out_channels=intermediate_channels,
                 kernel_size=1,
                 groups=group1,
-                activation=None,
+                activation=False,
             ),
             DYShiftMax(
                 intermediate_channels,
@@ -217,19 +221,19 @@ class MicroBlock(nn.Module):
         init_b: tuple[float, float],
     ) -> nn.Sequential:
         return nn.Sequential(
-            ConvBlock(
+            ConvModule(
                 in_channels=in_channels,
                 out_channels=intermediate_channels,
                 kernel_size=1,
                 groups=groups_1[0],
-                activation=None,
+                activation=False,
             ),
             DYShiftMax(
                 intermediate_channels,
                 intermediate_channels,
                 init_a,
                 init_b,
-                use_dy1 == 2,
+                True if use_dy1 == 2 else False,
                 groups_1[1],
                 reduction,
             )
@@ -244,7 +248,7 @@ class MicroBlock(nn.Module):
                 intermediate_channels,
                 init_a,
                 init_b,
-                use_dy2 == 2,
+                True if use_dy2 == 2 else False,
                 groups_1[1],
                 reduction,
                 True,
@@ -256,12 +260,12 @@ class MicroBlock(nn.Module):
             else nn.Sequential()
             if use_dy1 == 0 and use_dy2 == 0
             else ChannelShuffle(intermediate_channels // 2),
-            ConvBlock(
+            ConvModule(
                 in_channels=intermediate_channels,
                 out_channels=out_channels,
                 kernel_size=1,
                 groups=group1,
-                activation=None,
+                activation=False,
             ),
             DYShiftMax(
                 out_channels,
@@ -282,6 +286,12 @@ class MicroBlock(nn.Module):
             else nn.Sequential(),
         )
 
+    def forward(self, inputs: Tensor) -> Tensor:
+        out = self.layers(inputs)
+        if self.use_residual:
+            out += inputs
+        return out
+
 
 class ChannelShuffle(nn.Module):
     def __init__(self, groups: int):
@@ -294,7 +304,6 @@ class ChannelShuffle(nn.Module):
         @param groups: Number of groups to divide the channels into
             before shuffling.
         """
-
         super().__init__()
         self.groups = groups
 
@@ -303,7 +312,8 @@ class ChannelShuffle(nn.Module):
         channels_per_group = channels // self.groups
         x = x.view(batch_size, self.groups, channels_per_group, height, width)
         x = torch.transpose(x, 1, 2).contiguous()
-        return x.view(batch_size, -1, height, width)
+        out = x.view(batch_size, -1, height, width)
+        return out
 
 
 class DYShiftMax(nn.Module):
@@ -359,9 +369,9 @@ class DYShiftMax(nn.Module):
 
         self.fc = nn.Sequential(
             nn.Linear(in_channels, squeeze_channels),
-            nn.ReLU(),
+            nn.ReLU(True),
             nn.Linear(squeeze_channels, out_channels * self.exp),
-            nn.Hardsigmoid(),
+            HSigmoid(),
         )
 
         if groups != 1 and expansion:
@@ -383,7 +393,7 @@ class DYShiftMax(nn.Module):
         x_out = x
 
         y = self.avg_pool(x).view(batch_size, channels)
-        y: Tensor = self.fc(y).view(batch_size, -1, 1, 1)
+        y = self.fc(y).view(batch_size, -1, 1, 1)
         y = (y - 0.5) * 4.0
 
         x2 = x_out[:, self.index, :, :]
@@ -402,7 +412,7 @@ class DYShiftMax(nn.Module):
             out = torch.max(z1, z2)
 
         elif self.exp == 2:
-            a1, b1 = y.split(self.out_channels, dim=1)
+            a1, b1 = torch.split(y, self.out_channels, dim=1)
             a1 = a1 + self.init_a[0]
             b1 = b1 + self.init_b[0]
             out = x_out * a1 + x2 * b1

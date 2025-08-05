@@ -36,6 +36,7 @@ class BaseLoaderTorch(
         image_source: str = "image",
         keep_aspect_ratio: bool = True,
         color_space: Literal["RGB", "BGR", "GRAY"] = "RGB",
+        seed: int | None = None,
     ):
         """Base abstract loader class that enforces
         LuxonisLoaderTorchOutput output label structure.
@@ -85,6 +86,9 @@ class BaseLoaderTorch(
 
         @type color_space: Literal["RGB", "BGR", "GRAY"]
         @param color_space: Color space of the output image.
+
+        @type seed: Optional[int]
+        @param seed: The random seed to use for the augmentations.
         """
         self._view = view
         self._image_source = image_source
@@ -94,6 +98,7 @@ class BaseLoaderTorch(
         self._width = width
         self._keep_aspect_ratio = keep_aspect_ratio
         self._color_space = color_space
+        self._seed = seed
 
     @property
     def image_source(self) -> str:
@@ -161,6 +166,14 @@ class BaseLoaderTorch(
         return self._getter_check_none("color_space")
 
     @property
+    def seed(self) -> int:
+        """The random seed to use for the augmentations.
+
+        @type: int
+        """
+        return self._getter_check_none("seed")
+
+    @property
     @abstractmethod
     def input_shapes(self) -> dict[str, Size]:
         """
@@ -204,7 +217,7 @@ class BaseLoaderTorch(
         """
         return self.input_shapes[self.image_source]
 
-    def augment_test_image(self, img: Tensor) -> Tensor:
+    def augment_test_image(self, img: dict[str, Tensor]) -> Tensor:
         raise NotImplementedError(
             f"{self.__class__.__name__} does not expose interface "
             "for test-time augmentation. Implement "
@@ -304,10 +317,17 @@ class BaseLoaderTorch(
             "height",
             "width",
             "keep_aspect_ratio",
+            "seed",
             "color_space",
         ],
     ) -> Any:
         return get_attribute_check_none(self, attribute)
+
+    @staticmethod
+    def img_numpy_to_torch(img: np.ndarray) -> Tensor:
+        if len(img.shape) == 3:
+            img = img.transpose((2, 0, 1))
+        return torch.tensor(img, dtype=torch.float32)
 
     def collate_fn(
         self,

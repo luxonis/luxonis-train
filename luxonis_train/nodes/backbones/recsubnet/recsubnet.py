@@ -1,23 +1,44 @@
-from luxonis_ml.typing import Kwargs
+from typing import Literal, TypeAlias
+
 from torch import Tensor
-from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.nodes.blocks import SimpleDecoder, SimpleEncoder
+
+from .blocks import Decoder, Encoder, NanoDecoder, NanoEncoder
+
+VariantLiteral: TypeAlias = Literal["n", "l"]
+
+
+def get_variant(variant: VariantLiteral) -> int:
+    """Returns the base width for the specified variant."""
+    variants = {
+        "n": 64,
+        "l": 128,
+    }
+
+    if variant not in variants:
+        raise ValueError(
+            f"Variant should be one of {list(variants.keys())}, got '{variant}'."
+        )
+
+    return variants[variant]
 
 
 class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
     in_channels: int
+    out_channels: int
+    base_width: int
 
     def __init__(
         self,
-        base_channels: int,
-        width_multipliers: list[float],
+        in_channels: int = 3,
         out_channels: int = 3,
+        base_width: int | None = None,
+        variant: VariantLiteral = "l",
         **kwargs,
     ):
-        """
-        RecSubNet: A reconstruction sub-network that consists of an encoder and a decoder.
+        """RecSubNet: A reconstruction sub-network that consists of an
+        encoder and a decoder.
 
         This model is designed to reconstruct the original image from an input image that contains noise or anomalies.
         The encoder extracts relevant features from the noisy input, and the decoder attempts to reconstruct the clean
@@ -26,32 +47,32 @@ class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
         This architecture is based on the paper:
         "Data-Efficient Image Transformers: A Deeper Look" (https://arxiv.org/abs/2108.07610).
 
+        @type in_channels: int
+        @param in_channels: Number of input channels for the encoder. Defaults to 3.
+
         @type out_channels: int
         @param out_channels: Number of output channels for the decoder. Defaults to 3.
 
-        @type base_channels: int
-        @param base_channels: The base width of the network.
-            Determines the number of filters in the encoder and decoder.
+        @type base_width: int
+        @param base_width: The base width of the network. Determines the number of filters in the encoder and decoder.
 
-        @type encoder: nn.Module
-        @param encoder: The encoder block to use. Defaults to Encoder.
-
-        @type decoder: nn.Module
-        @param decoder: The decoder block to use. Defaults to Decoder.
+        @type variant: Literal["n", "l"]
+        @param variant: The variant of the RecSubNet to use. "l" for large, "n" for nano (lightweight). Defaults to "l".
         """
         super().__init__(**kwargs)
 
-        self.encoder = SimpleEncoder(
-            self.in_channels,
-            base_channels,
-            width_multipliers,
-            n_convolutions=1,
+        self.base_width = (
+            base_width if base_width is not None else get_variant(variant)
         )
-        self.decoder = SimpleDecoder(
-            base_channels,
-            out_channels=out_channels,
-            encoder_width_multipliers=width_multipliers,
-        )
+
+        if variant == "l":
+            self.encoder = Encoder(in_channels, self.base_width)
+            self.decoder = Decoder(self.base_width, out_channels=out_channels)
+        elif variant == "n":
+            self.encoder = NanoEncoder(in_channels, self.base_width)
+            self.decoder = NanoDecoder(
+                self.base_width, out_channels=out_channels
+            )
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """Performs the forward pass through the encoder and decoder."""
@@ -59,17 +80,3 @@ class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
         output = self.decoder(b5)
 
         return output, x
-
-    @override
-    @staticmethod
-    def get_variants() -> tuple[str, dict[str, Kwargs]]:
-        return "n", {
-            "n": {
-                "base_channels": 64,
-                "width_multipliers": [1, 1.1],
-            },
-            "l": {
-                "base_channels": 128,
-                "width_multipliers": [1, 2, 4, 8],
-            },
-        }

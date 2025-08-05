@@ -3,17 +3,15 @@ import logging
 from abc import ABC, abstractmethod
 from contextlib import suppress
 from operator import itemgetter
-from typing import Generic, Literal, TypeVar
+from typing import Generic, TypeVar
 
 import torch
 from bidict import bidict
 from loguru import logger
-from luxonis_ml.typing import Kwargs
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
 from typeguard import TypeCheckError, check_type, typechecked
 
-from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
 from luxonis_train.registry import NODES
 from luxonis_train.tasks import Task
 from luxonis_train.typing import AttachIndexType, Packet
@@ -27,22 +25,11 @@ ForwardOutputT = TypeVar("ForwardOutputT")
 ForwardInputT = TypeVar("ForwardInputT")
 
 
-class PostInitMeta(AutoRegisterMeta):
-    def __call__(cls, *args, **kwargs):
-        obj = cls.__new__(cls, *args, **kwargs)  # type: ignore
-        if isinstance(obj, cls):
-            cls.__init__(obj, *args, **kwargs)
-            post_init = getattr(obj, "_post_init", None)
-            if callable(post_init):
-                post_init()
-        return obj
-
-
 class BaseNode(
     nn.Module,
     ABC,
     Generic[ForwardInputT, ForwardOutputT],
-    metaclass=PostInitMeta,
+    metaclass=AutoRegisterMeta,
     register=False,
     registry=NODES,
 ):
@@ -130,8 +117,6 @@ class BaseNode(
         export_output_names: list[str] | None = None,
         attach_index: AttachIndexType | None = None,
         task_name: str | None = None,
-        weights: str | Literal["download", "yolo", "default", "auto"] = "auto",
-        _variant: str | None = None,
     ):
         """Constructor for the C{BaseNode}.
 
@@ -210,134 +195,16 @@ class BaseNode(
         self._export = False
         self._remove_on_export = remove_on_export
         self._export_output_names = export_output_names
+        self._epoch = 0
         self._in_sizes = in_sizes
-        self._variant = _variant
-        self._weights = weights
 
         self.current_epoch = 0
 
         self._check_type_overrides()
 
-    def _post_init(self) -> None:
-        if self._weights == "default":
-            return
-
-        if self._weights == "download":
-            self.load_checkpoint()
-        elif self._weights.startswith("http"):
-            self.load_checkpoint(path=self._weights)
-        else:
-            self.initialize_weights(method=self._weights)
-
-    def initialize_weights(
-        self, method: Literal["yolo"] | str | None = None
-    ) -> None:
-        """Initializes the weights of the module.
-
-        This method should be overridden in subclasses to provide custom
-        weight initialization.
-
-        @type method: str | None
-        @param method: Method to use for weight initialization. If set
-            to "yolo", the weights are initialized using the YOLOv5
-            method. Defaults to None, which does not perform any
-            initialization.
-        """
-        if method == "yolo":
-            for m in self.modules():
-                if isinstance(m, nn.BatchNorm2d):
-                    m.eps = 1e-3
-                    m.momentum = 3e-2
-                elif isinstance(
-                    m,
-                    nn.Hardswish | nn.LeakyReLU | nn.ReLU | nn.ReLU6 | nn.SiLU,
-                ):
-                    m.inplace = True
-
-    @classmethod
-    def from_variant(
-        cls, variant: str | Literal["default"], **kwargs
-    ) -> "BaseNode":
-        """Creates a node from a predefined variant.
-
-        @type variant: str | None
-        @param variant: Variant of the node. The available variants
-            depend on the node implementation. If set to None, the
-            default variant is used if the node specifies one.
-        @param kwargs: Additional keyword arguments to be passed to the
-            node constructor. In case of a conflict between the variant
-            parameters and the keyword arguments, the keyword arguments
-            take precedence.
-        @raises NotImplementedError: If the node does not support
-            variants.
-        @raises ValueError: If an error occurs while getting the variant
-            parameters (e.g. due to an invalid variant name).
-        """
-        try:
-            default, variants = cls.get_variants()
-        except NotImplementedError:
-            if variant == "default":
-                logger.warning(
-                    f"Node '{cls.__name__}' does not define any variants, "
-                    "but the `from_variant` method was called with "
-                    "`variant='default'`. The node will be created "
-                    "using its standard constructor."
-                )
-                return cls(**kwargs)
-
-            raise NotImplementedError(
-                f"Node '{cls.__name__}' does not support variants. "
-                "To support predefined variants, implement the "
-                "`get_variant_params` method."
-            ) from None
-
-        if variant == "default":
-            variant = default
-
-        if variant not in variants:
-            raise ValueError(
-                f"Invalid variant name '{variant}'."
-                f"Available variants are: {list(variants.keys())}"
-            )
-        params = variants[variant]
-        for key in list(params.keys()):
-            if key in kwargs:
-                logger.info(
-                    f"Overriding variant parameter '{key}' with "
-                    f"explicitly provided value `{kwargs[key]}`."
-                )
-                del params[key]
-
-        return cls(**params, **kwargs, _variant=variant)
-
-    @staticmethod
-    def get_variants() -> tuple[str, dict[str, Kwargs]]:
-        """Returns a name of the default varaint and a dictionary of
-        available model variants with their parameters.
-
-        The keys are the variant names, and the values are dictionaries
-        of parameters which can be used as C{**kwargs} for the
-        predefined model constructor.
-
-        @rtype: tuple[str, dict[str, Params]]
-        @return: A tuple containing the default variant name and a
-            dictionary of available variants with their parameters.
-        """
-        raise NotImplementedError
-
     @property
     def name(self) -> str:
         return self.__class__.__name__
-
-    @property
-    def variant(self) -> str:
-        if self._variant is None:
-            raise RuntimeError(
-                f"Variant not set for node '{self.name}'. "
-                "Variant is only set if the node was created "
-                "using the `from_variant` class method."
-            )
-        return self._variant
 
     @property
     def n_keypoints(self) -> int:
@@ -388,7 +255,6 @@ class BaseNode(
         @raises RuntimeError: If the C{input_shapes} were not set during
             initialization.
         """
-
         if self._input_shapes is None:
             raise self._non_set_error("input_shapes")
         return self._input_shapes
@@ -497,38 +363,10 @@ class BaseNode(
         """
         return self._get_nth_size(-1)
 
-    def get_weights_url(self) -> str | None:
-        """Returns the URL to the weights of the node.
-
-        Subclasses can override this method to provide a URL to support
-        loading weights from a remote location.
-
-        It is possible to use a special placeholder C{{github}} in the
-        URL, which will be replaced with
-        C{"https://github.com/luxonis/luxonis-train/releases/download/{version}"},
-        where C{{version}} is the version of `luxonis-train` library.
-
-        The file pointed to by the URL should be a C{.ckpt} file
-        that is directly loadable using C{nn.Module.load_state_dict}.
-        """
-        return None
-
-    def _get_weights_url(self) -> str | None:
-        url = self.get_weights_url()
-        if url is None:
-            return None
-
-        return url.replace(
-            "{github}",
-            "https://github.com/luxonis/luxonis-train/"
-            "releases/download/v0.2.1-beta",
-        )
-
     def load_checkpoint(
         self, path: str | None = None, strict: bool = True
     ) -> None:
-        """Loads checkpoint for the module. If path is url then it
-        downloads it locally and stores it in cache.
+        """Loads checkpoint for the module.
 
         @type path: str | None
         @param path: Path to local or remote .ckpt file.
@@ -536,8 +374,7 @@ class BaseNode(
         @param strict: Whether to load weights strictly or not. Defaults
             to True.
         """
-        path = path or self._get_weights_url()
-        logger.info(f"Loading weights from '{path}'")
+        path = path or self.get_weights_url()
         if path is None:
             raise ValueError(
                 f"Attempting to load weights for '{self.name}' "
@@ -563,33 +400,13 @@ class BaseNode(
         """Getter for the export mode."""
         return self._export
 
-    @export.setter
-    def export(self, mode: bool) -> None:
-        """Sets the module to export mode."""
-        self.set_export_mode(mode)
-
-    def set_export_mode(self, /, mode: bool) -> None:
+    def set_export_mode(self, mode: bool = True) -> None:
         """Sets the module to export mode.
 
         @type mode: bool
-        @param mode: Value to set the export mode to.
+        @param mode: Value to set the export mode to. Defaults to True.
         """
         self._export = mode
-        if mode:
-            logger.info(f"Reparametrizing '{self.name}'")
-        else:
-            logger.info(f"Restoring reparametrized '{self.name}'")
-
-        for name, module in self.named_modules():
-            if isinstance(module, Reparametrizable):
-                if mode:
-                    logger.debug(f"Reparametrizing '{name}' in '{self.name}'")
-                    module.reparametrize()
-                else:
-                    logger.debug(
-                        f"Restoring reparametrized '{name}' in '{self.name}'"
-                    )
-                    module.restore()
 
     @property
     def remove_on_export(self) -> bool:
@@ -686,7 +503,10 @@ class BaseNode(
             raise ValueError(
                 "Default `wrap` expects a single tensor or a list of tensors."
             )
-        name = "features" if self.task is None else self.task.main_output
+        if self.task is None:
+            name = "features"
+        else:
+            name = self.task.main_output
         return {name: outputs}
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:

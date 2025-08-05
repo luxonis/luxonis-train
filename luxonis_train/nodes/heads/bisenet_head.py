@@ -1,7 +1,6 @@
 from torch import Tensor, nn
-from typing_extensions import override
 
-from luxonis_train.nodes.blocks import ConvBlock
+from luxonis_train.nodes.blocks import ConvModule
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
 from luxonis_train.utils import infer_upscale_factor
@@ -36,7 +35,7 @@ class BiSeNetHead(BaseHead[Tensor, Tensor]):
         )
         out_channels = self.n_classes * upscale_factor * upscale_factor
 
-        self.conv_3x3 = ConvBlock(
+        self.conv_3x3 = ConvModule(
             self.in_channels,
             intermediate_channels,
             kernel_size=3,
@@ -57,11 +56,12 @@ class BiSeNetHead(BaseHead[Tensor, Tensor]):
         x = self.conv_1x1(x)
         return self.upscale(x)
 
-    @override
     def get_custom_head_config(self) -> dict:
         """Returns custom head configuration.
 
         @rtype: dict
         @return: Custom head configuration.
         """
-        return {"is_softmax": False}
+        return {
+            "is_softmax": False,
+        }

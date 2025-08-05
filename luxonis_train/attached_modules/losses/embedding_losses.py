@@ -64,9 +64,9 @@ for _loss_name in EMBEDDING_LOSSES:
             super().__init__(node=node)
             self._name = _loss_name
 
-            if not hasattr(pml_losses, self._name):
+            if not hasattr(pml_losses, self._name):  # pragma: no cover
                 raise ValueError(
-                    f"Loss {self._name} not found in pytorch-metric-learning"
+                    f"Loss '{self._name}' not found in pytorch-metric-learning"
                 )
             Loss = getattr(pml_losses, self._name)
 
@@ -112,6 +112,7 @@ for _loss_name in EMBEDDING_LOSSES:
                         self.loss,
                         embedding_size=self.node.embedding_size,
                         miner=self.miner,
+                        memory_size=self.node.cross_batch_memory_size,
                     )
                 else:
                     logger.warning(
@@ -126,5 +127,5 @@ for _loss_name in EMBEDDING_LOSSES:
             return self.loss(predictions, target)
 
         @property
-        def name(self) -> str:
+        def name(self) -> str:  # pragma: no cover
             return self._name

@@ -40,8 +40,7 @@ def figure_to_torch(fig: Figure, width: int, height: int) -> Tensor:
 def torch_img_to_numpy(
     img: Tensor, reverse_colors: bool = False
 ) -> npt.NDArray[np.uint8]:
-    """Converts a torch image (CHW) to a numpy array (HWC). Optionally
-    also converts colors.
+    """Converts a torch image (CHW) to a numpy array (HWC).
 
     @type img: Tensor
     @param img: Torch image (CHW)
@@ -168,19 +167,6 @@ def draw_keypoint_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
         out_keypoints = keypoints_points.reshape((n_instances, -1, 2)).int()
 
     return draw_keypoints(img, out_keypoints, **kwargs)
-
-
-def seg_output_to_bool(data: Tensor, binary_threshold: float = 0.5) -> Tensor:
-    """Converts seg head output to 2D boolean mask for visualization."""
-    masks = torch.empty_like(data, dtype=torch.bool, device=data.device)
-    if data.shape[0] == 1:
-        classes = data.sigmoid()
-        masks[0] = classes >= binary_threshold
-    else:
-        classes = data.argmax(dim=0)
-        for i in range(masks.shape[0]):
-            masks[i] = classes == i
-    return masks
 
 
 def denormalize(
