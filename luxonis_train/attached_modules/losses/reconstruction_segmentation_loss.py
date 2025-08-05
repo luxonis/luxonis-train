@@ -137,15 +137,9 @@ def ssim(
     val_range: float | None = None,
 ) -> Tensor:
     if val_range is None:
-        if torch.max(img1) > 128:
-            max_val = 255
-        else:
-            max_val = 1
+        max_val = 255 if torch.max(img1) > 128 else 1
 
-        if torch.min(img1) < -0.5:
-            min_val = -1
-        else:
-            min_val = 0
+        min_val = -1 if torch.min(img1) < -0.5 else 0
         dynamic_range = max_val - min_val
     else:
         dynamic_range = val_range
