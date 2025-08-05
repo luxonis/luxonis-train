@@ -5,17 +5,19 @@ from .base_predefined_model import SimplePredefinedModel
 
 class DetectionModel(SimplePredefinedModel):
     def __init__(self, **kwargs):
-        kwargs = {
-            "backbone": "EfficientRep",
-            "neck": "RepPANNeck",
-            "head": "EfficientBBoxHead",
-            "loss": "AdaptiveDetectionLoss",
-            "metrics": "MeanAveragePrecision",
-            "confusion_matrix_available": True,
-            "visualizer": "BBoxVisualizer",
-            "weights": "download",
-        } | kwargs
-        super().__init__(**kwargs)
+        super().__init__(
+            **{
+                "backbone": "EfficientRep",
+                "neck": "RepPANNeck",
+                "head": "EfficientBBoxHead",
+                "loss": "AdaptiveDetectionLoss",
+                "metrics": "MeanAveragePrecision",
+                "confusion_matrix_available": True,
+                "visualizer": "BBoxVisualizer",
+                "weights": "download",
+            }
+            | kwargs
+        )
 
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Params]]:

@@ -5,15 +5,17 @@ from .base_predefined_model import SimplePredefinedModel
 
 class FOMOModel(SimplePredefinedModel):
     def __init__(self, **kwargs):
-        kwargs = {
-            "backbone": "EfficientRep",
-            "head": "FOMOHead",
-            "loss": "FOMOLocalizationLoss",
-            "metrics": "ConfusionMatrix",
-            "confusion_matrix_available": False,
-            "visualizer": "FOMOVisualizer",
-        } | kwargs
-        super().__init__(**kwargs)
+        super().__init__(
+            **{
+                "backbone": "EfficientRep",
+                "head": "FOMOHead",
+                "loss": "FOMOLocalizationLoss",
+                "metrics": "ConfusionMatrix",
+                "confusion_matrix_available": False,
+                "visualizer": "FOMOVisualizer",
+            }
+            | kwargs
+        )
 
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Params]]:

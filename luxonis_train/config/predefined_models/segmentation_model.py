@@ -7,17 +7,19 @@ from .base_predefined_model import SimplePredefinedModel
 
 class SegmentationModel(SimplePredefinedModel):
     def __init__(self, aux_head_params: Params | None = None, **kwargs):
-        kwargs = {
-            "backbone": "DDRNet",
-            "head": "DDRNetSegmentationHead",
-            "loss": "OHEMLoss",
-            "metrics": ["JaccardIndex", "F1Score"],
-            "confusion_matrix_available": True,
-            "main_metric": "JaccardIndex",
-            "visualizer": "SegmentationVisualizer",
-            "weights": "download",
-        } | kwargs
-        super().__init__(**kwargs)
+        super().__init__(
+            **{
+                "backbone": "DDRNet",
+                "head": "DDRNetSegmentationHead",
+                "loss": "OHEMLoss",
+                "metrics": ["JaccardIndex", "F1Score"],
+                "confusion_matrix_available": True,
+                "main_metric": "JaccardIndex",
+                "visualizer": "SegmentationVisualizer",
+                "weights": "download",
+            }
+            | kwargs
+        )
 
         self._use_aux_heads = kwargs.get("use_aux_heads", True)
 

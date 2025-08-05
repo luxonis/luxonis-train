@@ -5,16 +5,18 @@ from .base_predefined_model import SimplePredefinedModel
 
 class AnomalyDetectionModel(SimplePredefinedModel):
     def __init__(self, **kwargs):
-        kwargs = {
-            "backbone": "RecSubNet",
-            "head": "DiscSubNetHead",
-            "loss": "ReconstructionSegmentationLoss",
-            "metrics": "JaccardIndex",
-            "confusion_matrix_available": False,
-            "metrics_params": {"num_classes": 2, "task": "multiclass"},
-            "visualizer": "SegmentationVisualizer",
-        } | kwargs
-        super().__init__(**kwargs)
+        super().__init__(
+            **{
+                "backbone": "RecSubNet",
+                "head": "DiscSubNetHead",
+                "loss": "ReconstructionSegmentationLoss",
+                "metrics": "JaccardIndex",
+                "confusion_matrix_available": False,
+                "metrics_params": {"num_classes": 2, "task": "multiclass"},
+                "visualizer": "SegmentationVisualizer",
+            }
+            | kwargs
+        )
 
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Params]]:
