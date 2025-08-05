@@ -130,7 +130,6 @@ class SimplePredefinedModel(BasePredefinedModel):
         main_metric: str | None = None,
         visualizer: str | None = None,
         confusion_matrix_available: bool = False,
-        download_weights: bool = False,
         backbone_params: Params | None = None,
         neck_params: Params | None = None,
         use_neck: bool = True,
@@ -151,11 +150,6 @@ class SimplePredefinedModel(BasePredefinedModel):
         self._neck_params = neck_params or {}
         self._head = head
         self._head_params = head_params or {}
-
-        if download_weights:
-            self._backbone_params["download_weights"] = True
-            self._neck_params["download_weights"] = True
-            self._head_params["download_weights"] = True
 
         self._task_name = task_name
         self._use_neck = use_neck
