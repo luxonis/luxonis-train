@@ -26,7 +26,7 @@ class SegmentationModel(SimplePredefinedModel):
             | kwargs
         )
 
-        self._use_aux_heads = kwargs.get("use_aux_heads", True)
+        self._use_aux_heads = use_aux_head
 
         self._aux_head_params = aux_head_params or {}
         if "attach_index" not in self._aux_head_params:
