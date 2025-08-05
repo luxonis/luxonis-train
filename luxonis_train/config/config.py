@@ -167,7 +167,7 @@ class ModelConfig(BaseModelExtraForbid):
         return nodes
 
     @model_validator(mode="after")
-    def check_predefined_model(self) -> Self:
+    def validate_predefined_model(self) -> Self:
         if self.predefined_model is None:
             return self
 
@@ -180,7 +180,7 @@ class ModelConfig(BaseModelExtraForbid):
                 logger.warning(
                     "Both `predefined_model.variant` and "
                     "`predefined_model.params.variant` are set. "
-                    "The `predefined_model.variant` will be used."
+                    "`predefined_model.variant` will be used."
                 )
                 del self.predefined_model.params["variant"]
             else:

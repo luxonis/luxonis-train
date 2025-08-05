@@ -1,4 +1,5 @@
 from luxonis_ml.typing import Params
+from typing_extensions import override
 
 from .base_predefined_model import SimplePredefinedModel
 
@@ -12,13 +13,17 @@ class AnomalyDetectionModel(SimplePredefinedModel):
                 "loss": "ReconstructionSegmentationLoss",
                 "metrics": "JaccardIndex",
                 "confusion_matrix_available": False,
-                "metrics_params": {"num_classes": 2, "task": "multiclass"},
+                "metrics_params": {
+                    "num_classes": 2,
+                    "task": "multiclass",
+                },
                 "visualizer": "SegmentationVisualizer",
             }
             | kwargs
         )
 
     @staticmethod
+    @override
     def get_variants() -> tuple[str, dict[str, Params]]:
         return "light", {
             "light": {

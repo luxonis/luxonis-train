@@ -1,4 +1,5 @@
 from luxonis_ml.typing import Params
+from typing_extensions import override
 
 from luxonis_train.config import LossModuleConfig, NodeConfig
 
@@ -6,7 +7,12 @@ from .base_predefined_model import SimplePredefinedModel
 
 
 class SegmentationModel(SimplePredefinedModel):
-    def __init__(self, aux_head_params: Params | None = None, **kwargs):
+    def __init__(
+        self,
+        use_aux_head: bool = True,
+        aux_head_params: Params | None = None,
+        **kwargs,
+    ):
         super().__init__(
             **{
                 "backbone": "DDRNet",
@@ -16,7 +22,6 @@ class SegmentationModel(SimplePredefinedModel):
                 "confusion_matrix_available": True,
                 "main_metric": "JaccardIndex",
                 "visualizer": "SegmentationVisualizer",
-                "weights": "download",
             }
             | kwargs
         )
@@ -38,6 +43,7 @@ class SegmentationModel(SimplePredefinedModel):
         self._remove_aux_on_export = remove_aux_on_export
 
     @staticmethod
+    @override
     def get_variants() -> tuple[str, dict[str, Params]]:
         return "light", {
             "light": {
@@ -45,16 +51,25 @@ class SegmentationModel(SimplePredefinedModel):
                 "backbone_params": {
                     "variant": "23-slim",
                 },
+                "head": "DDRNetSegmentationHead",
+                "head_params": {
+                    "weights": "download",
+                },
             },
             "heavy": {
                 "backbone": "DDRNet",
                 "backbone_params": {
                     "variant": "23",
                 },
+                "head": "DDRNetSegmentationHead",
+                "head_params": {
+                    "weights": "download",
+                },
             },
         }
 
     @property
+    @override
     def nodes(self) -> list[NodeConfig]:
         nodes = super().nodes
         if self._use_aux_heads:
@@ -71,6 +86,7 @@ class SegmentationModel(SimplePredefinedModel):
         return nodes
 
     @property
+    @override
     def losses(self) -> list[LossModuleConfig]:
         losses = super().losses
         if self._use_aux_heads:

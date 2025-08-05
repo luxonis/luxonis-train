@@ -4,8 +4,7 @@ model:
   name: classification_light
   predefined_model:
     name: ClassificationModel
-    params:
-      variant: light
+    variant: light
 
 loader:
   params:

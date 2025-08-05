@@ -2,6 +2,7 @@ from typing import Literal, TypeAlias
 
 from loguru import logger
 from luxonis_ml.typing import Params
+from typing_extensions import override
 
 from .base_predefined_model import SimplePredefinedModel
 
@@ -44,6 +45,7 @@ class OCRRecognitionModel(SimplePredefinedModel):
             self._head_params["ignore_unknown"] = ignore_unknown
 
     @staticmethod
+    @override
     def get_variants() -> tuple[str, dict[str, Params]]:
         return "light", {
             "light": {

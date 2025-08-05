@@ -2,8 +2,7 @@ model:
   name: fomo_detection_light
   predefined_model:
     name: FOMOModel
-    params:
-      variant: light
+    variant: light
 
 loader:
   params:

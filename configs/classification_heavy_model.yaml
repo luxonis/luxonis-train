@@ -4,8 +4,7 @@ model:
   name: classification_heavy
   predefined_model:
     name: ClassificationModel
-    params:
-      variant: heavy
+    variant: heavy
 
 loader:
   params:
