@@ -19,7 +19,7 @@ from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.typing import Params, PathType
-from luxonis_ml.utils import LuxonisFileSystem
+from luxonis_ml.utils import Environ, LuxonisFileSystem
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
@@ -106,7 +106,7 @@ class LuxonisModel:
 
         self.tracker = LuxonisTrackerPL(
             rank=rank_zero_only.rank,
-            mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
+            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
             _auto_finalize=False,
             **self.cfg.tracker.model_dump(),
         )
@@ -443,7 +443,7 @@ class LuxonisModel:
         onnx_save_path = str(export_path.with_suffix(".onnx"))
 
         with replace_weights(self.lightning_module, weights):
-            output_names = self.lightning_module.export_onnx(
+            self.lightning_module.export_onnx(
                 onnx_save_path, **self.cfg.exporter.onnx.model_dump()
             )
 
@@ -693,7 +693,7 @@ class LuxonisModel:
             )
             child_tracker = LuxonisTrackerPL(
                 rank=rank_zero_only.rank,
-                mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
+                mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
                 is_sweep=True,
                 **tracker_params,
             )
@@ -755,7 +755,7 @@ class LuxonisModel:
 
             if cfg.tuner.monitor == "loss":
                 monitor = "val/loss"
-            elif cfg.tuner.monitor == "metric":
+            else:
                 main_metric = next(
                     (m for m in cfg.model.metrics if m.is_main_metric), None
                 )
@@ -781,8 +781,8 @@ class LuxonisModel:
                             f"Could not find monitor key for main metric '{main_metric.name}' "
                             f"attached to '{main_metric.attached_to}' in the MLFlow logging keys."
                         )
-            else:
-                raise AssertionError
+                else:
+                    raise AssertionError
 
             pruner_callback = PyTorchLightningPruningCallback(
                 trial, monitor=monitor
@@ -827,7 +827,7 @@ class LuxonisModel:
         )
         self.parent_tracker = LuxonisTrackerPL(
             rank=rank,
-            mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
+            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
             is_sweep=False,
             **tracker_params,
         )
@@ -1015,6 +1015,10 @@ class LuxonisModel:
             self.tracker.upload_artifact(archive_path, typ="archive")
 
         return Path(archive_path)
+
+    @property
+    def environ(self) -> Environ:
+        return self.cfg.ENVIRON
 
     @rank_zero_only
     def get_min_loss_checkpoint_path(self) -> str | None:

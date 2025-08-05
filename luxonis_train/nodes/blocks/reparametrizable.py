@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 
+from torch import nn
 
-class Reparametrizable(ABC):
+
+class Reparametrizable(nn.Module, ABC):
     """An abstract class for reparametrizable modules.
 
     Reparametrizable modules are modules that support reparametrization

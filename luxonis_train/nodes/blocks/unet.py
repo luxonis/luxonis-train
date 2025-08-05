@@ -1,4 +1,3 @@
-from types import EllipsisType
 from typing import Literal
 
 import torch
@@ -239,7 +238,7 @@ class UpBlock(nn.Sequential):
         use_norm: bool,
         align_corners: bool,
         stride: int = 2,
-        activation: nn.Module | EllipsisType | None = ...,
+        activation: nn.Module | None | bool = True,
         interpolation_mode: Literal[
             "nearest", "linear", "bilinear", "bicubic", "trilinear"
         ] = "bilinear",

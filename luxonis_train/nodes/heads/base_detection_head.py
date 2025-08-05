@@ -43,15 +43,6 @@ class BaseDetectionHead(BaseHead[list[Tensor], tuple[list[Tensor], ...]]):
 
         self.stride = self.fit_stride_to_heads()
 
-    def fit_stride_to_heads(self) -> Tensor:
-        return torch.tensor(
-            [
-                round(self.original_in_shape[1] / x[2])
-                for x in self.in_sizes[: self.n_heads]
-            ],
-            dtype=torch.int,
-        )
-
     @override
     def get_custom_head_config(self) -> dict[str, Any]:
         """Returns custom head configuration.
@@ -82,3 +73,12 @@ class BaseDetectionHead(BaseHead[list[Tensor], tuple[list[Tensor], ...]]):
                 "Using names compatible with DepthAI."
             )
         return default
+
+    def fit_stride_to_heads(self) -> Tensor:
+        return torch.tensor(
+            [
+                round(self.original_in_shape[1] / x[2])
+                for x in self.in_sizes[: self.n_heads]
+            ],
+            dtype=torch.int,
+        )

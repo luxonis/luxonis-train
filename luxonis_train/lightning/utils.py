@@ -100,7 +100,13 @@ class Nodes(dict[str, BaseNode] if TYPE_CHECKING else nn.ModuleDict):
                 shape_packet = to_shape_packet(dummy_input)
                 node_input_shapes.append(shape_packet)
 
-            node = Node(input_shapes=node_input_shapes, **kwargs)
+            variant = kwargs.pop("variant", None)
+            if variant is not None:
+                node = Node.from_variant(
+                    variant, input_shapes=node_input_shapes, **kwargs
+                )
+            else:
+                node = Node(input_shapes=node_input_shapes, **kwargs)
 
             if isinstance(node, BaseHead):
                 try:
@@ -478,6 +484,7 @@ def build_nodes(
                 "remove_on_export": node_cfg.remove_on_export,
                 "dataset_metadata": dataset_metadata,
                 "original_in_shape": input_shapes[cfg.loader.image_source],
+                "variant": node_cfg.variant,
             },
         )
 
