@@ -2,7 +2,6 @@ from contextlib import suppress
 from functools import cached_property
 
 import torchmetrics
-from loguru import logger
 from torch import Tensor
 from typing_extensions import override
 
@@ -16,46 +15,7 @@ class TorchMetricWrapper(BaseMetric):
 
     def __init__(self, **kwargs):
         super().__init__(node=kwargs.pop("node", None))
-        task = kwargs.get("task")
-        if task is None:
-            if "num_classes" in kwargs:
-                if kwargs["num_classes"] == 1:
-                    task = "binary"
-                else:
-                    task = "multiclass"
-            elif "num_labels" in kwargs:
-                task = "multilabel"
-            else:
-                with suppress(RuntimeError, ValueError):
-                    if self.n_classes == 1:
-                        task = "binary"
-                    else:
-                        task = "multiclass"
-            if task is not None:
-                logger.warning(
-                    "Parameter 'task' was not specified for `TorchMetric` "
-                    f"based '{self.name}'. Assuming task type '{task}' "
-                    "based on the number of classes. "
-                    "If this is incorrect, please specify the "
-                    "'task' parameter in the config."
-                )
-
-        if task is None:
-            raise ValueError(
-                f"'{self.name}' does not have the 'task' parameter set. "
-                "and it is not possible to infer it from the other arguments. "
-                "You can either set the 'task' parameter explicitly, "
-                "provide either 'num_classes' or 'num_labels' argument, "
-                "or use this metric with a node. "
-                "The 'task' can be one of 'binary', 'multiclass', "
-                "or 'multilabel'. "
-            )
-        if task not in {"binary", "multiclass", "multilabel"}:
-            raise ValueError(
-                f"Invalid task type '{task}' for '{self.name}'. "
-                "The 'task' can be one of 'binary', 'multiclass', "
-                "or 'multilabel'."
-            )
+        task = self._infer_torchmetrics_task(**kwargs)
         self._torchmetric_task = task
         kwargs["task"] = task
 
@@ -95,7 +55,7 @@ class TorchMetricWrapper(BaseMetric):
 
     @override
     def update(self, predictions: Tensor, target: Tensor) -> None:
-        if self._torchmetric_task in ["multiclass"]:
+        if self._torchmetric_task == "multiclass":
             target = target.argmax(dim=1)
         self.metric.update(predictions, target)
 

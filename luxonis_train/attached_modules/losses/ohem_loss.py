@@ -1,6 +1,9 @@
+from typing import Literal
+
 import torch
 from torch import Tensor
 
+from luxonis_train.registry import LOSSES
 from luxonis_train.tasks import Tasks
 
 from .base_loss import BaseLoss
@@ -13,15 +16,18 @@ class OHEMLoss(BaseLoss):
 
     def __init__(
         self,
-        criterion: type[BaseLoss],
+        criterion: str | type[BaseLoss] | Literal["auto"] = "auto",
         ohem_ratio: float = 0.1,
         ohem_threshold: float = 0.7,
         **kwargs,
     ):
         """Initializes the criterion.
 
-        @type criterion: BaseLoss
-        @param criterion: The criterion to use.
+        @type criterion: BaseLoss | str | Literal["auto"]
+        @param criterion: The criterion to use. It can be a string name
+            of the criterion (e.g., "CrossEntropyLoss"), a class that
+            inherits from C{BaseLoss}, or "auto" to infer the criterion
+            based on the task and other parameters.
         @type ohem_ratio: float
         @param ohem_ratio: The ratio of pixels to keep.
         @type ohem_threshold: float
@@ -30,8 +36,18 @@ class OHEMLoss(BaseLoss):
             the criterion.
         """
         super().__init__(**kwargs)
-        kwargs.update(reduction="none")
-        self.criterion = criterion(**kwargs)
+
+        if criterion == "auto":
+            task = self._infer_torchmetrics_task(**kwargs)
+            if task == "binary":
+                criterion = "BCEWithLogitsLoss"
+            else:
+                criterion = "CrossEntropyLoss"
+
+        if isinstance(criterion, str):
+            criterion = LOSSES.get(criterion)
+
+        self.criterion = criterion(**kwargs, reduction="none")
         self.ohem_ratio = ohem_ratio
         self.ohem_threshold = -torch.log(torch.tensor(ohem_threshold))
 

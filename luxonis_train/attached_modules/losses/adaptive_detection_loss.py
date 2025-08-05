@@ -78,7 +78,9 @@ class AdaptiveDetectionLoss(BaseLoss):
                 self.per_class_weights = torch.tensor(per_class_weights)
             else:
                 logger.warning(
-                    f"Incorrect per_class_weights length. Expected {self.n_classes} but got {len(per_class_weights)}. Setting to None."
+                    f"Incorrect per_class_weights length. "
+                    f"Expected {self.n_classes} but got "
+                    f"{len(per_class_weights)}. Setting to None."
                 )
                 self.per_class_weights = None
         else:
@@ -275,13 +277,14 @@ class VarifocalLoss(nn.Module):
         )
 
         if self.per_class_weights is not None:
-            if self.per_class_weights.device != pred_score.device:
+            if (
+                self.per_class_weights.device != pred_score.device
+            ):  # pragma: no cover
                 self.per_class_weights = self.per_class_weights.to(
                     pred_score.device
                 )
-            weight = weight * self.per_class_weights.view(
-                1, 1, -1
-            )  # ensure correct broadcasting (batches, anchors, classes)
+            # ensure correct broadcasting (batches, anchors, classes)
+            weight = weight * self.per_class_weights.view(1, 1, -1)
 
         with amp.autocast(device_type=pred_score.device.type, enabled=False):
             ce_loss = F.binary_cross_entropy(

@@ -124,11 +124,7 @@ class SegmentationModel(BasePredefinedModel):
         """Defines the loss module for the segmentation task."""
         loss_list = [
             LossModuleConfig(
-                name=(
-                    "OHEMBCEWithLogitsLoss"
-                    if self.task == "binary"
-                    else "OHEMCrossEntropyLoss"
-                ),
+                name="OHEMLoss",
                 attached_to="DDRNetSegmentationHead",
                 params=self.loss_params,
                 weight=1.0,
@@ -137,11 +133,7 @@ class SegmentationModel(BasePredefinedModel):
         if self.backbone_params.get("use_aux_heads", False):
             loss_list.append(
                 LossModuleConfig(
-                    name=(
-                        "OHEMBCEWithLogitsLoss"
-                        if self.task == "binary"
-                        else "OHEMCrossEntropyLoss"
-                    ),
+                    name="OHEMLoss",
                     attached_to="DDRNetSegmentationHead_aux",
                     params=self.loss_params,
                     weight=0.4,
