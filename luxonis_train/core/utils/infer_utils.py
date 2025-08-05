@@ -231,12 +231,14 @@ def create_loader_from_directory(
         color_space=model.cfg_preprocessing.color_space,
         keep_aspect_ratio=model.cfg_preprocessing.keep_aspect_ratio,
     )
-    return torch_data.DataLoader(
+    loader = torch_data.DataLoader(
         loader,
         batch_size=model.cfg.trainer.batch_size,
         pin_memory=True,
         shuffle=False,
     )
+
+    return loader
 
 
 def infer_from_directory(

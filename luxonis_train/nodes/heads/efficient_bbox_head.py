@@ -114,16 +114,20 @@ class EfficientBBoxHead(
         if self.in_channels == [32, 64, 128]:  # light predefined model
             if initialize_weights:
                 return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/efficientbbox_head_n_coco.ckpt"
-            return "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientbbox_head_n_coco.ckpt"
-        if self.in_channels == [64, 128, 256]:  # medium predefined model
+            else:
+                return "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientbbox_head_n_coco.ckpt"
+        elif self.in_channels == [64, 128, 256]:  # medium predefined model
             if initialize_weights:
                 return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/efficientbbox_head_s_coco.ckpt"
-            return None
-        if self.in_channels == [128, 256, 512]:  # heavy predefined model
+            else:
+                return None
+        elif self.in_channels == [128, 256, 512]:  # heavy predefined model
             if initialize_weights:
                 return "https://github.com/luxonis/luxonis-train/releases/download/v0.2.1-beta/efficientbbox_head_l_coco.ckpt"
+            else:
+                return None
+        else:
             return None
-        return None
 
     def check_export_output_names(self) -> None:
         if (
@@ -193,13 +197,14 @@ class EfficientBBoxHead(
                 "distributions": reg_tensor,
             }
 
-        boxes = self._process_to_bbox((features, cls_tensor, reg_tensor))
-        return {
-            "boundingbox": boxes,
-            "features": features,
-            "class_scores": cls_tensor,
-            "distributions": reg_tensor,
-        }
+        else:
+            boxes = self._process_to_bbox((features, cls_tensor, reg_tensor))
+            return {
+                "boundingbox": boxes,
+                "features": features,
+                "class_scores": cls_tensor,
+                "distributions": reg_tensor,
+            }
 
     def _fit_stride_to_n_heads(self) -> Tensor:
         """Returns correct stride for number of heads and attach

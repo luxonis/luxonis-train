@@ -516,7 +516,8 @@ class RepVGGBlock(nn.Module):
     def _pad_1x1_to_3x3_tensor(self, kernel1x1: Tensor | None) -> Tensor:
         if kernel1x1 is None:
             return torch.tensor(0)
-        return torch.nn.functional.pad(kernel1x1, [1, 1, 1, 1])
+        else:
+            return torch.nn.functional.pad(kernel1x1, [1, 1, 1, 1])
 
     def _fuse_bn_tensor(
         self, branch: nn.Module | None
