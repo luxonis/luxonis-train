@@ -31,8 +31,13 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
     @typechecked
     def __init__(
         self,
-        n_blocks: tuple[int, int, int, int],
-        width_multiplier: tuple[float, float, float, float],
+        n_blocks: tuple[int, int, int, int] = (2, 4, 14, 1),
+        width_multiplier: tuple[float, float, float, float] = (
+            0.75,
+            0.75,
+            0.75,
+            2.5,
+        ),
         override_groups_map: dict[int, int] | None = None,
         use_se: bool = False,
         use_checkpoint: bool = False,

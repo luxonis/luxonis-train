@@ -64,12 +64,12 @@ class MicroNet(BaseNode[Tensor, list[Tensor]]):
     @typechecked
     def __init__(
         self,
-        stem_channels: int,
-        stem_groups: tuple[int, int],
-        init_a: tuple[float, float],
-        init_b: tuple[float, float],
-        out_indices: list[int],
-        layer_params: list["LayerParamsDict"],
+        stem_channels: int = 6,
+        stem_groups: tuple[int, int] = (3, 2),
+        init_a: tuple[float, float] = (1.0, 1.0),
+        init_b: tuple[float, float] = (0.0, 0.0),
+        out_indices: list[int] | None = None,
+        layer_params: list["LayerParamsDict"] | None = None,
         **kwargs,
     ):
         """MicroNet backbone.
@@ -83,6 +83,10 @@ class MicroNet(BaseNode[Tensor, list[Tensor]]):
             overrides the variant value.
         """
         super().__init__(**kwargs)
+        out_indices = out_indices or [1, 2, 4, 7]
+        layer_params = (
+            layer_params or self.get_variants()[1]["M1"]["layer_params"]
+        )
 
         self.out_indices = out_indices
         self.layers = nn.ModuleList([Stem(3, 2, stem_groups)])

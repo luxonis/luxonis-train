@@ -56,8 +56,13 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
     @typechecked
     def __init__(
         self,
-        width_multipliers: tuple[float, float, float, float],
-        n_conv_branches: int,
+        width_multipliers: tuple[float, float, float, float] = (
+            0.75,
+            1.0,
+            1.0,
+            2.0,
+        ),
+        n_conv_branches: int = 4,
         use_se: bool = False,
         **kwargs,
     ):

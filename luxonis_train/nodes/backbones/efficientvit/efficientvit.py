@@ -40,9 +40,9 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
     @typechecked
     def __init__(
         self,
-        width_list: list[int],
-        depth_list: list[int],
-        dim: int,
+        width_list: list[int] | None = None,
+        depth_list: list[int] | None = None,
+        dim: int = 16,
         expand_ratio: int = 4,
         **kwargs,
     ):
@@ -57,6 +57,8 @@ class EfficientViT(BaseNode[Tensor, list[Tensor]]):
         @param expand_ratio: Expansion ratio for the L{MobileBottleneckBlock}. Defaults to C{4}.
         """
         super().__init__(**kwargs)
+        width_list = width_list or [8, 16, 32, 64, 128]
+        depth_list = depth_list or [1, 2, 2, 2, 2]
 
         self.feature_extractor = nn.ModuleList(
             [

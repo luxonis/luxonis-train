@@ -11,8 +11,8 @@ class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
 
     def __init__(
         self,
-        base_channels: int,
-        width_multipliers: list[float],
+        base_channels: int = 64,
+        width_multipliers: list[float] | None = None,
         out_channels: int = 3,
         **kwargs,
     ):
@@ -40,6 +40,7 @@ class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
         @param decoder: The decoder block to use. Defaults to Decoder.
         """
         super().__init__(**kwargs)
+        width_multipliers = width_multipliers or [1, 1.1]
 
         self.encoder = SimpleEncoder(
             self.in_channels,
