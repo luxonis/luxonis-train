@@ -4,12 +4,15 @@ model:
   name: instance_segmentation_heavy
   predefined_model:
     name: InstanceSegmentationModel
+    variant: heavy
     params:
-      variant: heavy
       loss_params:
-        bbox_loss_weight: 60 # Should be 7.5 * accumulate_grad_batches for best results
-        class_loss_weight: 4 # Should be 0.5 * accumulate_grad_batches for best results
-        dfl_loss_weight: 12 # Should be 1.5 * accumulate_grad_batches for best results
+        # Should be 7.5 * accumulate_grad_batches for best results
+        bbox_loss_weight: 60
+        # Should be 0.5 * accumulate_grad_batches for best results
+        class_loss_weight: 4
+        # Should be 1.5 * accumulate_grad_batches for best results
+        dfl_loss_weight: 12
 
 loader:
   params:
@@ -43,7 +46,8 @@ trainer:
     - name: TestOnTrainEnd
     - name: GradientAccumulationScheduler
       params:
-        scheduling: # warmup phase is 3 epochs
+        # warmup phase is 3 epochs
+        scheduling:
           0: 1
           1: 4
           2: 8 # For best results, always accumulate gradients to effectively use 64 batch size

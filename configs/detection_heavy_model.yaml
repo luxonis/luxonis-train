@@ -5,8 +5,8 @@ model:
   name: detection_heavy
   predefined_model:
     name: DetectionModel
+    variant: heavy
     params:
-      variant: heavy
       loss_params:
         iou_type: "siou"
 

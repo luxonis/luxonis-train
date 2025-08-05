@@ -2,8 +2,7 @@ model:
   name: AnomalyDetecion
   predefined_model:
     name: AnomalyDetectionModel
-    params:
-      variant: light
+    variant: light
 
 loader:
   name: LuxonisLoaderPerlinNoise

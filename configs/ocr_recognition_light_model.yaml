@@ -4,8 +4,8 @@ model:
   name: ocr_recognition_light
   predefined_model:
     name: OCRRecognitionModel
+    variant: light
     params:
-      variant: light
       alphabet: english
       max_text_len: 40
       ignore_unknown: true

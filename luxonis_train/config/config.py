@@ -84,6 +84,7 @@ class NodeConfig(ConfigItem):
 
 
 class PredefinedModelConfig(ConfigItem):
+    variant: str | Literal["default", "none"] | None = None
     include_nodes: bool = True
     include_losses: bool = True
     include_metrics: bool = True
@@ -142,24 +143,49 @@ class ModelConfig(BaseModelExtraForbid):
         return nodes
 
     @model_validator(mode="after")
-    def check_predefined_model(self) -> Self:
-        if self.predefined_model is not None:
-            logger.info(
-                f"Using predefined model: `{self.predefined_model.name}`"
+    def validate_predefined_model(self) -> Self:
+        if self.predefined_model is None:
+            return self
+
+        if "variant" in self.predefined_model.params:
+            logger.warning(
+                "Using `predefined_model.params.variant` is deprecated. "
+                "Please use `predefined_model.variant` field instead."
             )
-            model = MODELS.get(self.predefined_model.name)(
-                **self.predefined_model.params
-            )
-            nodes, losses, metrics, visualizers = model.generate_model(
-                include_nodes=self.predefined_model.include_nodes,
-                include_losses=self.predefined_model.include_losses,
-                include_metrics=self.predefined_model.include_metrics,
-                include_visualizers=self.predefined_model.include_visualizers,
-            )
-            self.nodes += nodes
-            self.losses += losses
-            self.metrics += metrics
-            self.visualizers += visualizers
+            if self.predefined_model.variant is not None:
+                logger.warning(
+                    "Both `predefined_model.variant` and "
+                    "`predefined_model.params.variant` are set. "
+                    "`predefined_model.variant` will be used."
+                )
+                del self.predefined_model.params["variant"]
+            else:
+                variant = self.predefined_model.params.pop("variant", None)
+                if not isinstance(variant, str):
+                    raise TypeError(
+                        f"Invalid value for `predefined_model.params.variant`: {variant}. "
+                        "Expected a string."
+                    )
+                self.predefined_model.variant = variant
+
+        self.predefined_model.variant = (
+            self.predefined_model.variant or "default"
+        )
+
+        logger.info(f"Using predefined model: `{self.predefined_model.name}`")
+        model = MODELS.get(self.predefined_model.name).from_variant(
+            self.predefined_model.variant, **self.predefined_model.params
+        )
+        nodes, losses, metrics, visualizers = model.generate_model(
+            include_nodes=self.predefined_model.include_nodes,
+            include_losses=self.predefined_model.include_losses,
+            include_metrics=self.predefined_model.include_metrics,
+            include_visualizers=self.predefined_model.include_visualizers,
+        )
+        self.nodes += nodes
+        self.losses += losses
+        self.metrics += metrics
+        self.visualizers += visualizers
 
         return self
 
