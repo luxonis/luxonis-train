@@ -60,7 +60,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
 
         mid_channels = max(self.in_channels[0] // 4, n_masks)
 
-        self.mask_heads = nn.ModuleList(
+        self.segmentation_heads = nn.ModuleList(
             nn.Sequential(
                 ConvBlock(
                     in_channels=in_channels,
@@ -91,7 +91,8 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
     ) -> tuple[list[Tensor], list[Tensor], list[Tensor], Tensor, list[Tensor]]:
         prototypes = self.proto(inputs[0])
         mask_coefficients = [
-            head(x) for head, x in zip(self.mask_heads, inputs, strict=True)
+            head(x)
+            for head, x in zip(self.segmentation_heads, inputs, strict=True)
         ]
 
         return *super().forward(inputs), prototypes, mask_coefficients

@@ -35,7 +35,7 @@ class BaseDetectionHead(BaseHead[list[Tensor], tuple[list[Tensor], ...]]):
         @param max_det: Maximum number of detections retained after NMS.
         """
 
-        super().__init__(**kwargs)
+        super().__init__(**{"attach_index": (-1, -n_heads - 1), **kwargs})
         self.n_heads = n_heads
         self.conf_thres = conf_thres
         self.iou_thres = iou_thres

@@ -1,14 +1,13 @@
 from collections import defaultdict
-from typing import cast
 
 from luxonis_ml.typing import Kwargs
 from torch import Tensor, nn
-from torch.utils import checkpoint
 from typeguard import typechecked
 from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import GeneralReparametrizableBlock
+from luxonis_train.nodes.blocks.utils import forward_gather
 
 
 class RepVGG(BaseNode[Tensor, list[Tensor]]):
@@ -40,7 +39,6 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
         ),
         override_groups_map: dict[int, int] | None = None,
         use_se: bool = False,
-        use_checkpoint: bool = False,
         **kwargs,
     ):
         """RepVGG backbone.
@@ -68,14 +66,11 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
         @param override_groups_map: Dictionary mapping layer index to number of groups. The layers are indexed starting from 0.
         @type use_se: bool
         @param use_se: Whether to use Squeeze-and-Excitation blocks.
-        @type use_checkpoint: bool
-        @param use_checkpoint: Whether to use checkpointing.
         """
         super().__init__(**kwargs)
 
         override_groups_map = defaultdict(lambda: 1, override_groups_map or {})
         self.use_se = use_se
-        self.use_checkpoint = use_checkpoint
 
         out_channels = min(64, int(64 * width_multiplier[0]))
         self.stage0 = GeneralReparametrizableBlock(
@@ -84,7 +79,7 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
             kernel_size=3,
             stride=2,
             padding=1,
-            refine_block="se",
+            refine_block="se" if use_se else None,
         )
 
         blocks = []
@@ -102,19 +97,9 @@ class RepVGG(BaseNode[Tensor, list[Tensor]]):
             in_channels = out_channels
 
         self.blocks = nn.ModuleList(blocks)
-        self.gap = nn.AdaptiveAvgPool2d(output_size=1)
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
-        outputs: list[Tensor] = []
-        out = self.stage0(inputs)
-        for block in self.blocks:
-            # TODO: What exactly does this do?
-            if self.use_checkpoint:
-                out = cast(Tensor, checkpoint.checkpoint(block, out))
-            else:
-                out = block(out)
-            outputs.append(out)
-        return outputs
+        return forward_gather(self.stage0(inputs), self.blocks)
 
     @override
     @staticmethod
