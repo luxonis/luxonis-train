@@ -2,6 +2,7 @@ from typing import Literal, TypeAlias
 
 from loguru import logger
 from luxonis_ml.typing import Params
+from typing_extensions import override
 
 from .base_predefined_model import SimplePredefinedModel
 
@@ -24,16 +25,18 @@ class OCRRecognitionModel(SimplePredefinedModel):
         ignore_unknown: bool = True,
         **kwargs,
     ):
-        kwargs = {
-            "backbone": "PPLCNetV3",
-            "neck": "SVTRNeck",
-            "head": "OCRCTCHead",
-            "loss": "CTCLoss",
-            "metrics": "OCRAccuracy",
-            "confusion_matrix_available": False,
-            "visualizer": "OCRVisualizer",
-        } | kwargs
-        super().__init__(**kwargs)
+        super().__init__(
+            **{
+                "backbone": "PPLCNetV3",
+                "neck": "SVTRNeck",
+                "head": "OCRCTCHead",
+                "loss": "CTCLoss",
+                "metrics": "OCRAccuracy",
+                "confusion_matrix_available": False,
+                "visualizer": "OCRVisualizer",
+            }
+            | kwargs
+        )
         if "max_text_len" not in self._backbone_params:
             self._backbone_params["max_text_len"] = max_text_len
         if "alphabet" not in self._head_params:
@@ -42,6 +45,7 @@ class OCRRecognitionModel(SimplePredefinedModel):
             self._head_params["ignore_unknown"] = ignore_unknown
 
     @staticmethod
+    @override
     def get_variants() -> tuple[str, dict[str, Params]]:
         return "light", {
             "light": {

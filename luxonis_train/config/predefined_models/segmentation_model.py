@@ -1,4 +1,5 @@
 from luxonis_ml.typing import Params
+from typing_extensions import override
 
 from luxonis_train.config import LossModuleConfig, NodeConfig
 
@@ -6,20 +7,26 @@ from .base_predefined_model import SimplePredefinedModel
 
 
 class SegmentationModel(SimplePredefinedModel):
-    def __init__(self, aux_head_params: Params | None = None, **kwargs):
-        kwargs = {
-            "backbone": "DDRNet",
-            "head": "DDRNetSegmentationHead",
-            "loss": "OHEMLoss",
-            "metrics": ["JaccardIndex", "F1Score"],
-            "confusion_matrix_available": True,
-            "main_metric": "JaccardIndex",
-            "visualizer": "SegmentationVisualizer",
-            "weights": "download",
-        } | kwargs
-        super().__init__(**kwargs)
+    def __init__(
+        self,
+        use_aux_head: bool = True,
+        aux_head_params: Params | None = None,
+        **kwargs,
+    ):
+        super().__init__(
+            **{
+                "backbone": "DDRNet",
+                "head": "DDRNetSegmentationHead",
+                "loss": "OHEMLoss",
+                "metrics": ["JaccardIndex", "F1Score"],
+                "confusion_matrix_available": True,
+                "main_metric": "JaccardIndex",
+                "visualizer": "SegmentationVisualizer",
+            }
+            | kwargs
+        )
 
-        self._use_aux_heads = kwargs.get("use_aux_heads", True)
+        self._use_aux_heads = use_aux_head
 
         self._aux_head_params = aux_head_params or {}
         if "attach_index" not in self._aux_head_params:
@@ -36,6 +43,7 @@ class SegmentationModel(SimplePredefinedModel):
         self._remove_aux_on_export = remove_aux_on_export
 
     @staticmethod
+    @override
     def get_variants() -> tuple[str, dict[str, Params]]:
         return "light", {
             "light": {
@@ -43,16 +51,25 @@ class SegmentationModel(SimplePredefinedModel):
                 "backbone_params": {
                     "variant": "23-slim",
                 },
+                "head": "DDRNetSegmentationHead",
+                "head_params": {
+                    "download_weights": True,
+                },
             },
             "heavy": {
                 "backbone": "DDRNet",
                 "backbone_params": {
                     "variant": "23",
                 },
+                "head": "DDRNetSegmentationHead",
+                "head_params": {
+                    "download_weights": True,
+                },
             },
         }
 
     @property
+    @override
     def nodes(self) -> list[NodeConfig]:
         nodes = super().nodes
         if self._use_aux_heads:
@@ -69,6 +86,7 @@ class SegmentationModel(SimplePredefinedModel):
         return nodes
 
     @property
+    @override
     def losses(self) -> list[LossModuleConfig]:
         losses = super().losses
         if self._use_aux_heads:
