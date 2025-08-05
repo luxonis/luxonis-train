@@ -105,15 +105,13 @@ def test_instances_from_batch(subtests: SubTests):
         )
         assert len(list(instances_from_batch(tensor))) == 3
         assert len(list(instances_from_batch(tensor, batch_size=4))) == 4
-    with (
-        subtests.test("fail"),
-        pytest.raises(
+    with subtests.test("fail"):
+        with pytest.raises(
             ValueError, match="All tensors must have the same length"
-        ),
-    ):
-        list(
-            instances_from_batch(
-                torch.tensor([[0, 1], [0, 2], [1, 3]]),
-                torch.tensor([[10], [20]]),
+        ):
+            list(
+                instances_from_batch(
+                    torch.tensor([[0, 1], [0, 2], [1, 3]]),
+                    torch.tensor([[10], [20]]),
+                )
             )
-        )
