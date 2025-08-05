@@ -94,7 +94,7 @@ class ObjectKeypointSimilarity(BaseMetric):
                 self.pred_keypoints,
                 self.target_keypoints,
                 self.scales,
-                strict=True,
+                strict=False,  # for targets with no keypoints
             )
         ):
             image_ious = compute_pose_oks(

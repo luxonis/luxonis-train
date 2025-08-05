@@ -10,8 +10,7 @@ Loss functions are organized based on the tasks they serve. This helps in quickl
   - [`SmoothBCEWithLogitsLoss`](#smoothbcewithlogitsloss)
   - [`SigmoidFocalLoss`](#sigmoidfocalloss)
   - [`SoftmaxFocalLoss`](#softmaxfocalloss)
-  - [`OHEMCrossEntropyLoss`](#ohemcrossentropyloss)
-  - [`OHEMBCEWithLogitsLoss`](#ohembcewithlogitsloss)
+  - [`OHEMLoss`](#ohemloss)
 - [Bounding Box Detection Losses](#bounding-box-detection-losses)
   - [`AdaptiveDetectionLoss`](#adaptivedetectionloss)
   - [`PrecisionDFLDetectionLoss`](#precisiondfldetectionloss)
@@ -88,33 +87,20 @@ Adapted from [TorchVision docs](https://pytorch.org/vision/stable/generated/torc
 | `reduction` | `Literal["none", "mean", "sum"]` | `"mean"`      | Specifies the reduction method for the output.                                           |
 | `smooth`    | `float`                          | `1e-5`        | Smoothing constant added to labels to avoid zero probabilities.                          |
 
-### `OHEMCrossEntropyLoss`
+### `OHEMLoss`
 
-Wraps the standard `CrossEntropyLoss` with Online Hard Example Mining (OHEM).
-
-**Parameters:**
-
-| Key               | Type                             | Default value | Description                                                                                                                                |
-| ----------------- | -------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ohem_ratio`      | `float`                          | `0.1`         | Fraction of elements (e.g., pixels) to keep based on highest loss values.                                                                  |
-| `ohem_threshold`  | `float`                          | `0.7`         | Threshold for hard example selection, computed as `-torch.log(torch.tensor(ohem_threshold))`; only losses above this value are considered. |
-| `weight`          | `list[float] \| None`            | `None`        | (Forwarded to `CrossEntropyLoss`) Manual rescaling weight for each class.                                                                  |
-| `reduction`       | `Literal["none", "mean", "sum"]` | `"mean"`      | (Forwarded to `CrossEntropyLoss`) Specifies the reduction method.                                                                          |
-| `label_smoothing` | `float` (0.0 to 1.0)             | `0.0`         | (Forwarded to `CrossEntropyLoss`) Amount of label smoothing to apply.                                                                      |
-
-### `OHEMBCEWithLogitsLoss`
-
-Wraps the standard `BCEWithLogitsLoss` with Online Hard Example Mining (OHEM).
+Online Hard Example Mining (OHEM) loss.
 
 **Parameters:**
 
-| Key              | Type                             | Default value | Description                                                                                                                                  |
-| ---------------- | -------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ohem_ratio`     | `float`                          | `0.1`         | Fraction of elements to keep based on highest loss values.                                                                                   |
-| `ohem_threshold` | `float`                          | `0.7`         | Threshold for hard example selection, computed as `-torch.log(torch.tensor(ohem_threshold))`; only losses above this threshold are retained. |
-| `weight`         | `list[float] \| None`            | `None`        | (Forwarded to `BCEWithLogitsLoss`) Manual rescaling weight for each class.                                                                   |
-| `reduction`      | `Literal["none", "mean", "sum"]` | `"mean"`      | (Forwarded to `BCEWithLogitsLoss`) Specifies the reduction method.                                                                           |
-| `pos_weight`     | `Tensor \| None`                 | `None`        | (Forwarded to `BCEWithLogitsLoss`) Weight for positive examples.                                                                             |
+| Key              | Type                                  | Default value | Description                                                                                                                                                                                                                                    |
+| ---------------- | ------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `criterion`      | `str \| Literal["auto"] \| nn.Module` | `"auto"`      | The underlying loss function to use; if `"auto"`, uses either `BCEWithLogitsLoss` or `CrossEntropyLoss` based on the number of classes. Otherwise it accepts either an `nn.Module` or a string name of a loss stored in the `LOSSES` registry. |
+| `ohem_ratio`     | `float`                               | `0.1`         | Fraction of elements to keep based on highest loss values.                                                                                                                                                                                     |
+| `ohem_threshold` | `float`                               | `0.7`         | Threshold for hard example selection, computed as `-torch.log(torch.tensor(ohem_threshold))`; only losses above this threshold are retained.                                                                                                   |
+| `weight`         | `list[float] \| None`                 | `None`        | (Forwarded to `BCEWithLogitsLoss`) Manual rescaling weight for each class.                                                                                                                                                                     |
+| `reduction`      | `Literal["none", "mean", "sum"]`      | `"mean"`      | (Forwarded to `BCEWithLogitsLoss`) Specifies the reduction method.                                                                                                                                                                             |
+| `pos_weight`     | `Tensor \| None`                      | `None`        | (Forwarded to `BCEWithLogitsLoss`) Weight for positive examples.                                                                                                                                                                               |
 
 ### Bounding Box Detection Losses
 

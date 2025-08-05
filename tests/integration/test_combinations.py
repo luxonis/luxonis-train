@@ -17,7 +17,7 @@ def get_config(backbone: str) -> Params:
     seg_multi_losses: ParamValue = [
         {"name": "CrossEntropyLoss"},
         {"name": "SigmoidFocalLoss"},
-        {"name": "OHEMCrossEntropyLoss"},
+        {"name": "OHEMLoss"},
     ]
     seg_binary_losses: ParamValue = [
         {"name": "BCEWithLogitsLoss"},
@@ -26,7 +26,7 @@ def get_config(backbone: str) -> Params:
             "params": {"label_smoothing": 0.1},
         },
         {"name": "SigmoidFocalLoss"},
-        {"name": "OHEMBCEWithLogitsLoss"},
+        {"name": "OHEMLoss"},
     ]
     seg_metrics: ParamValue = [
         {"name": "JaccardIndex"},
@@ -43,7 +43,12 @@ def get_config(backbone: str) -> Params:
                 {
                     "name": "EfficientBBoxHead",
                     "task_name": "vehicles",
-                    "losses": [{"name": "AdaptiveDetectionLoss"}],
+                    "losses": [
+                        {
+                            "name": "AdaptiveDetectionLoss",
+                            "params": {"per_class_weights": [0, 0.5, 0.5]},
+                        }
+                    ],
                     "metrics": [
                         {"name": "MeanAveragePrecision"},
                         {"name": "ConfusionMatrix"},
