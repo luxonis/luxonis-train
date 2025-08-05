@@ -803,8 +803,6 @@ class Config(LuxonisConfig):
         cfg: PathType | Params | None = None,
         overrides: Params | list[str] | tuple[str, ...] | None = None,
     ) -> "Config":
-        if isinstance(cfg, Path):
-            cfg = str(cfg)
         instance = super().get_config(cfg, overrides)
         if not isinstance(cfg, str):
             return instance.smart_auto_populate()
