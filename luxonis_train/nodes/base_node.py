@@ -735,6 +735,12 @@ class BaseNode(
 
         def _normalize_slice(i: int, j: int, k: int | None = None) -> slice:
             if i < 0 and j < 0:
+                if i < j:
+                    return slice(
+                        max(len(lst) + i + 1, 0),
+                        len(lst) + j + 1,
+                        k or -1 if i > j else 1,
+                    )
                 return slice(
                     len(lst) + i, len(lst) + j, k or -1 if i > j else 1
                 )

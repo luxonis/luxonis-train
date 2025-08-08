@@ -186,6 +186,7 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
                     groups=self._in_channels,
                     n_branches=self.n_conv_branches,
                     refine_block=refine_block,
+                    scale_layer_padding=0,
                 )
             )
             # Pointwise conv
@@ -199,6 +200,7 @@ class MobileOne(BaseNode[Tensor, list[Tensor]]):
                     groups=1,
                     n_branches=self.n_conv_branches,
                     refine_block=refine_block,
+                    use_scale_layer=False,
                 )
             )
             self._in_channels = out_channels

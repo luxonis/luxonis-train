@@ -1,5 +1,5 @@
 import torch
-from luxonis_ml.typing import Kwargs
+from luxonis_ml.typing import Kwargs, Params
 from torch import Tensor
 from typing_extensions import override
 
@@ -73,7 +73,7 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
         return {"reconstructed": recon, "segmentation": seg_out}
 
     @override
-    def get_custom_head_config(self) -> dict:
+    def get_custom_head_config(self) -> Params:
         """Returns custom head configuration.
 
         @rtype: dict

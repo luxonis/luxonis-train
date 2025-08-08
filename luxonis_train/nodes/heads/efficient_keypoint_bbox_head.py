@@ -1,6 +1,7 @@
 from typing import Literal
 
 import torch
+from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from typing_extensions import override
 
@@ -176,7 +177,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         )
 
     @override
-    def get_custom_head_config(self) -> dict:
+    def get_custom_head_config(self) -> Params:
         """Returns custom head configuration.
 
         @rtype: dict

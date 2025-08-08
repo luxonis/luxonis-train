@@ -1,7 +1,6 @@
-from typing import Any
-
 import torch
 from loguru import logger
+from luxonis_ml.typing import Params
 from torch import Size, Tensor
 from typing_extensions import override
 
@@ -35,16 +34,27 @@ class BaseDetectionHead(BaseHead[list[Tensor], tuple[list[Tensor], ...]]):
         @param max_det: Maximum number of detections retained after NMS.
         """
 
-        super().__init__(**{"attach_index": (-1, -n_heads - 1), **kwargs})
+        super().__init__(**kwargs)
+
         self.n_heads = n_heads
         self.conf_thres = conf_thres
         self.iou_thres = iou_thres
         self.max_det = max_det
 
+        if len(self.in_channels) < self.n_heads:
+            logger.warning(
+                f"Head '{self.name}' was set to use {self.n_heads} heads, "
+                f"but received only {len(self.in_channels)} inputs. "
+                f"Changing number of heads to {len(self.in_channels)}."
+            )
+            self.n_heads = len(self.in_channels)
+
+        self.attach_index = (-self.n_heads - 1, -1)
+
         self.stride = self.fit_stride_to_heads()
 
     @override
-    def get_custom_head_config(self) -> dict[str, Any]:
+    def get_custom_head_config(self) -> Params:
         """Returns custom head configuration.
 
         @rtype: dict[str, Any]

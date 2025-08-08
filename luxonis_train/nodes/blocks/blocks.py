@@ -349,6 +349,8 @@ class GeneralReparametrizableBlock(Reparametrizable):
         n_branches: int = 1,
         # TODO: Maybe a better name?
         refine_block: nn.Module | Literal["se"] | None = None,
+        use_scale_layer: bool = True,
+        scale_layer_padding: int | tuple[int, int] | None = None,
         activation: nn.Module | None | bool = True,
     ):
         """GeneralReparametrizableBlock is a basic rep-style block,
@@ -397,18 +399,18 @@ class GeneralReparametrizableBlock(Reparametrizable):
             self.skip_layer = nn.BatchNorm2d(in_channels)
 
         self.scale_layer: ConvBlock | None = None
-        padding_scale = padding - kernel_size // 2
 
-        # if padding_scale > 0:
-        self.scale_layer = ConvBlock(
-            in_channels=self.in_channels,
-            out_channels=self.out_channels,
-            kernel_size=1,
-            stride=stride,
-            padding=padding_scale,
-            groups=self.groups,
-            activation=None,
-        )
+        if use_scale_layer:
+            padding_scale = scale_layer_padding or padding - kernel_size // 2
+            self.scale_layer = ConvBlock(
+                in_channels=self.in_channels,
+                out_channels=self.out_channels,
+                kernel_size=1,
+                stride=stride,
+                padding=padding_scale,
+                groups=self.groups,
+                activation=False,
+            )
 
         branches = [
             ConvBlock(
@@ -418,7 +420,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
                 stride=stride,
                 padding=padding,
                 groups=self.groups,
-                activation=None,
+                activation=False,
             )
             for _ in range(n_branches)
         ]

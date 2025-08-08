@@ -1,5 +1,6 @@
 import math
 
+from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from torch.nn import functional as F
 from typing_extensions import override
@@ -89,7 +90,7 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
         return ["output_ocr_ctc"]
 
     @override
-    def get_custom_head_config(self) -> dict:
+    def get_custom_head_config(self) -> Params:
         """Returns custom head configuration.
 
         @rtype: dict

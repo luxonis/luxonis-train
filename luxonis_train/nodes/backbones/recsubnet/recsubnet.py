@@ -11,7 +11,7 @@ class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
 
     def __init__(
         self,
-        base_channels: int = 64,
+        base_channels: int = 128,
         width_multipliers: list[float] | None = None,
         out_channels: int = 3,
         **kwargs,
@@ -40,13 +40,13 @@ class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
         @param decoder: The decoder block to use. Defaults to Decoder.
         """
         super().__init__(**kwargs)
-        width_multipliers = width_multipliers or [1, 1.1]
+        width_multipliers = width_multipliers or [1, 2, 4, 8]
 
         self.encoder = SimpleEncoder(
             self.in_channels,
             base_channels,
             width_multipliers,
-            n_convolutions=1,
+            n_convolutions=2,
         )
         self.decoder = SimpleDecoder(
             base_channels,
@@ -64,7 +64,7 @@ class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
     @override
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
-        return "n", {
+        return "l", {
             "n": {
                 "base_channels": 64,
                 "width_multipliers": [1, 1.1],

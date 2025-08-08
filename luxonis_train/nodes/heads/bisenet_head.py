@@ -1,3 +1,4 @@
+from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from typing_extensions import override
 
@@ -58,7 +59,7 @@ class BiSeNetHead(BaseHead[Tensor, Tensor]):
         return self.upscale(x)
 
     @override
-    def get_custom_head_config(self) -> dict:
+    def get_custom_head_config(self) -> Params:
         """Returns custom head configuration.
 
         @rtype: dict

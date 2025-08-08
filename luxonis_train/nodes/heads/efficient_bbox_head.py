@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from typing import Literal, cast
 
 import torch
-from loguru import logger
+from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from typing_extensions import override
 
@@ -59,15 +59,6 @@ class EfficientBBoxHead(BaseDetectionHead):
         self.grid_cell_size = 5.0
 
         self.heads = cast(list[EfficientDecoupledBlock], nn.ModuleList())
-        # TODO: What to do if inputs are longer than heads? Create
-        # more heads or discard some inputs?
-        if len(self.in_channels) < self.n_heads:
-            logger.warning(
-                f"Head '{self.name}' was set to use {self.n_heads} heads, "
-                f"but received {len(self.in_channels)} inputs. "
-                f"Changing number of heads to {len(self.in_channels)}."
-            )
-            self.n_heads = len(self.in_channels)
 
         for i in range(self.n_heads):
             self.heads.append(
@@ -234,7 +225,7 @@ class EfficientBBoxHead(BaseDetectionHead):
         )
 
     @override
-    def get_custom_head_config(self) -> dict:
+    def get_custom_head_config(self) -> Params:
         """Returns custom head configuration.
 
         @rtype: dict
