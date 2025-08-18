@@ -166,7 +166,10 @@ def draw_keypoint_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
     else:
         out_keypoints = keypoints_points.reshape((n_instances, -1, 2)).int()
 
-    return draw_keypoints(img, out_keypoints, **kwargs)
+    if out_keypoints.numel() == 0:
+        return img
+    else:
+        return draw_keypoints(img, out_keypoints, **kwargs)
 
 
 def denormalize(
