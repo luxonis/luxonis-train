@@ -84,13 +84,7 @@ def get_trial_params(
 def rename_params_for_logging(
     params: dict, tuner_params: dict | None = None
 ) -> dict:
-    """Rename augmentation keys in a flat param dict from numeric
-    indices to augmentation names.
-
-    Example:
-        'trainer.preprocessing.augmentations.0.active'
-        -> 'trainer.preprocessing.augmentations.Defocus.active'
-    """
+    """Rename parameters used for logging."""
     aug_subset = []
     if tuner_params:
         aug_subset, _ = tuner_params.get(
