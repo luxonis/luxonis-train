@@ -8,7 +8,6 @@ from luxonis_train.attached_modules.losses import BaseLoss
 from luxonis_train.tasks import Tasks
 
 
-# TODO: Add support for multi-class tasks
 class SoftmaxFocalLoss(BaseLoss):
     supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 
@@ -48,6 +47,12 @@ class SoftmaxFocalLoss(BaseLoss):
             raise ValueError("smooth value should be in [0,1]")
 
     def forward(self, predictions: Tensor, targets: Tensor) -> Tensor:
+        if predictions.size(1) <= 2:
+            raise ValueError(
+                "SoftmaxFocalLoss is not suitable for binary tasks. "
+                "Please use SigmoidFocalLoss instead."
+            )
+
         if predictions.shape != targets.shape:
             raise ValueError(
                 f"Shape mismatch: {predictions.shape} vs {targets.shape}"
