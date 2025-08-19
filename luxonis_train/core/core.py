@@ -682,7 +682,10 @@ class LuxonisModel:
         from optuna.integration import PyTorchLightningPruningCallback
         from sqlalchemy import URL
 
-        from .utils.tune_utils import get_trial_params
+        from .utils.tune_utils import (
+            get_trial_params,
+            rename_params_for_logging,
+        )
 
         def _objective(trial: optuna.trial.Trial) -> float:
             """Objective function used to optimize Optuna study."""
@@ -734,7 +737,10 @@ class LuxonisModel:
 
             cfg.trainer.callbacks = filtered_callbacks
 
-            child_tracker.log_hyperparams(curr_params)
+            renamed_params = rename_params_for_logging(
+                curr_params, self.cfg.tuner.params
+            )
+            child_tracker.log_hyperparams(renamed_params)
 
             cfg.save_data(run_save_dir / "training_config.yaml")
             cfg.trainer.n_sanity_val_steps = 0
