@@ -47,7 +47,7 @@ class SoftmaxFocalLoss(BaseLoss):
             raise ValueError("smooth value should be in [0,1]")
 
     def forward(self, predictions: Tensor, targets: Tensor) -> Tensor:
-        if predictions.size(1) <= 2:
+        if predictions.size(1) < 2:
             raise ValueError(
                 "SoftmaxFocalLoss is not suitable for binary tasks. "
                 "Please use SigmoidFocalLoss instead."
