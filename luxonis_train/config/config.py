@@ -197,8 +197,9 @@ class ModelConfig(BaseModelExtraForbid):
         )
 
         logger.info(f"Using predefined model: `{self.predefined_model.name}`")
-        model = MODELS.get(self.predefined_model.name).from_variant(
-            self.predefined_model.variant, **self.predefined_model.params
+        model = MODELS.get(self.predefined_model.name)(
+            variant=self.predefined_model.variant,
+            **self.predefined_model.params,
         )
         nodes, losses, metrics, visualizers = model.generate_model(
             include_nodes=self.predefined_model.include_nodes,

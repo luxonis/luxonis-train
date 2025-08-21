@@ -9,10 +9,12 @@ import torch
 from bidict import bidict
 from loguru import logger
 from luxonis_ml.typing import Kwargs
-from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch import Size, Tensor, nn
 from typeguard import TypeCheckError, check_type, typechecked
 
+from luxonis_train.config.predefined_models.base_predefined_model import (
+    VariantMeta,
+)
 from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
 from luxonis_train.registry import NODES
 from luxonis_train.tasks import Task
@@ -27,11 +29,10 @@ ForwardOutputT = TypeVar("ForwardOutputT")
 ForwardInputT = TypeVar("ForwardInputT")
 
 
-class PostInitMeta(AutoRegisterMeta):
+class PostInitMeta(VariantMeta):
     def __call__(cls, *args, **kwargs):
-        obj = cls.__new__(cls, *args, **kwargs)  # type: ignore
+        obj = VariantMeta.__call__(cls, *args, **kwargs)
         if isinstance(obj, cls):
-            cls.__init__(obj, *args, **kwargs)
             post_init = getattr(obj, "_post_init", None)
             if callable(post_init):
                 post_init()
@@ -116,6 +117,8 @@ class BaseNode(
     attach_index: AttachIndexType = None
     task: Task | None = None
 
+    _variant: str | None
+
     @typechecked
     def __init__(
         self,
@@ -131,7 +134,6 @@ class BaseNode(
         attach_index: AttachIndexType | None = None,
         task_name: str | None = None,
         weights: str | Literal["download", "yolo", "default"] = "default",
-        _variant: str | None = None,
     ):
         """Constructor for the C{BaseNode}.
 
@@ -211,7 +213,6 @@ class BaseNode(
         self._remove_on_export = remove_on_export
         self._export_output_names = export_output_names
         self._in_sizes = in_sizes
-        self._variant = _variant
         self._weights = weights
 
         self.current_epoch = 0
@@ -254,62 +255,6 @@ class BaseNode(
                 ):
                     m.inplace = True
 
-    @classmethod
-    def from_variant(
-        cls, variant: str | Literal["default"], **kwargs
-    ) -> "BaseNode":
-        """Creates a node from a predefined variant.
-
-        @type variant: str | None
-        @param variant: Variant of the node. The available variants
-            depend on the node implementation. If set to None, the
-            default variant is used if the node specifies one.
-        @param kwargs: Additional keyword arguments to be passed to the
-            node constructor. In case of a conflict between the variant
-            parameters and the keyword arguments, the keyword arguments
-            take precedence.
-        @raises NotImplementedError: If the node does not support
-            variants.
-        @raises ValueError: If an error occurs while getting the variant
-            parameters (e.g. due to an invalid variant name).
-        """
-        try:
-            default, variants = cls.get_variants()
-        except NotImplementedError:
-            if variant == "default":
-                logger.warning(
-                    f"Node '{cls.__name__}' does not define any variants, "
-                    "but the `from_variant` method was called with "
-                    "`variant='default'`. The node will be created "
-                    "using its standard constructor."
-                )
-                return cls(**kwargs)
-
-            raise NotImplementedError(
-                f"Node '{cls.__name__}' does not support variants. "
-                "To support predefined variants, implement the "
-                "`get_variants` method."
-            ) from None
-
-        if variant == "default":
-            variant = default
-
-        if variant not in variants:
-            raise ValueError(
-                f"Invalid variant name '{variant}'."
-                f"Available variants are: {list(variants.keys())}"
-            )
-        params = variants[variant]
-        for key in list(params.keys()):
-            if key in kwargs:
-                logger.info(
-                    f"Overriding variant parameter '{key}' with "
-                    f"explicitly provided value `{kwargs[key]}`."
-                )
-                del params[key]
-
-        return cls(**params, **kwargs, _variant=variant)
-
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
         """Returns a name of the default varaint and a dictionary of
@@ -332,11 +277,7 @@ class BaseNode(
     @property
     def variant(self) -> str:
         if self._variant is None:
-            raise RuntimeError(
-                f"Variant not set for node '{self.name}'. "
-                "Variant is only set if the node was created "
-                "using the `from_variant` class method."
-            )
+            raise RuntimeError(f"Variant was not set for node '{self.name}'.")
         return self._variant
 
     @property
