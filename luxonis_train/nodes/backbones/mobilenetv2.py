@@ -6,7 +6,7 @@ from torch import Tensor
 from luxonis_train.nodes.base_node import BaseNode
 
 
-class MobileNetV2(BaseNode[Tensor, list[Tensor]]):
+class MobileNetV2(BaseNode):
     def __init__(
         self,
         out_indices: list[int] | None = None,

@@ -82,26 +82,16 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             for i in range(len(self.heads))
         )
 
-    def forward(
-        self, inputs: list[Tensor]
-    ) -> tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]]:
-        features_list, classes_list, regressions_list = super().forward(inputs)
+    def forward(self, inputs: list[Tensor]) -> Packet[Tensor]:
+        features_list, classes_list, regressions_list = super()._forward(
+            inputs
+        )
         keypoints_list: list[Tensor] = []
 
-        # FIXME: What when lenghts don't match?
-        # Currently we're discarding deeper features.
-        for head, x in zip(self.keypoint_heads, inputs, strict=False):
+        for head, x in zip(self.keypoint_heads, inputs, strict=True):
             keypoints_list.append(head(x))
 
-        return features_list, classes_list, regressions_list, keypoints_list
-
-    @override
-    def wrap(
-        self,
-        output: tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]],
-    ) -> Packet[Tensor]:
-        features, classes_list, regressions_list, keypoints_list = output
-        bs = features[0].shape[0]
+        bs = features_list[0].shape[0]
         if self.export:
             packet = self._wrap_export(classes_list, regressions_list)
             keypoints = []
@@ -109,7 +99,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
                 keypoints.append(
                     self._distributions_to_keypoints(
                         keypoint.view(bs, self.n_keypoints_flat, -1),
-                        features,
+                        features_list,
                         bs,
                         i,
                         apply_sigmoid=False,
@@ -125,7 +115,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
 
         if self.training:
             return {
-                "features": features,
+                "features": features_list,
                 "class_scores": class_scores,
                 "distributions": distributions,
                 "keypoints_raw": keypoints_raw,
@@ -135,7 +125,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
             [
                 self._distributions_to_keypoints(
                     keypoint.view(bs, self.n_keypoints_flat, -1),
-                    features,
+                    features_list,
                     bs,
                     i,
                 )
@@ -145,14 +135,14 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         ).permute(0, 2, 1)
 
         _, anchor_points, _, stride_tensor = anchors_for_fpn_features(
-            features,
+            features_list,
             self.stride,
             self.grid_cell_size,
             self.grid_cell_offset,
             multiply_with_stride=False,
         )
         boxes, kpts = self._postprocess_keypoint_detections(
-            features,
+            features_list,
             class_scores,
             distributions,
             pred_keypoints,
@@ -162,7 +152,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         return {
             "boundingbox": boxes,
             "keypoints": kpts,
-            "features": features,
+            "features": features_list,
             "class_scores": class_scores,
             "distributions": distributions,
             "keypoints_raw": keypoints_raw,

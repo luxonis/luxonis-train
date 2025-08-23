@@ -6,17 +6,13 @@ from luxonis_ml.typing import Params
 from torch import Tensor
 
 from luxonis_train.config.config import PreprocessingConfig
-from luxonis_train.nodes.base_node import (
-    BaseNode,
-    ForwardInputT,
-    ForwardOutputT,
-)
+from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.tasks import Task
 from luxonis_train.typing import Packet
 from luxonis_train.utils.annotation import default_annotate
 
 
-class BaseHead(BaseNode[ForwardInputT, ForwardOutputT]):
+class BaseHead(BaseNode):
     """Base class for all heads in the model.
 
     @type parser: str

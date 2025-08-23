@@ -9,7 +9,7 @@ from typing_extensions import override
 from luxonis_train.nodes.base_node import BaseNode
 
 
-class ResNet(BaseNode[Tensor, list[Tensor]]):
+class ResNet(BaseNode):
     def __init__(
         self,
         variant: Literal["18", "34", "50", "101", "152"] = "18",

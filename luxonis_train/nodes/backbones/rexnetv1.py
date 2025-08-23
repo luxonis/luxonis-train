@@ -6,7 +6,7 @@ from luxonis_train.nodes.blocks import ConvBlock
 from luxonis_train.utils import make_divisible
 
 
-class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
+class ReXNetV1_lite(BaseNode):
     def __init__(
         self,
         fix_head_stem: bool = False,

@@ -10,7 +10,7 @@ from luxonis_train.tasks import Tasks
 from luxonis_train.utils.general import infer_upscale_factor
 
 
-class DDRNetSegmentationHead(BaseHead[Tensor, Tensor]):
+class DDRNetSegmentationHead(BaseHead):
     attach_index: int = -1
     in_height: int
     in_width: int

@@ -7,7 +7,7 @@ from typing_extensions import TypeVarTuple, Unpack
 
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.registry import VISUALIZERS
-from luxonis_train.typing import Labels, Packet
+from luxonis_train.typing import Labels, Packet, get_signature
 
 Ts = TypeVarTuple("Ts")
 
@@ -61,7 +61,7 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
 
     @cached_property
     def _signature(self) -> dict[str, Parameter]:
-        signature = self._get_signature(self.forward)
+        signature = get_signature(self.forward)
         for key in list(signature.keys()):
             if "canvas" in key:
                 del signature[key]

@@ -10,7 +10,7 @@ from luxonis_train.nodes.blocks import ConvBlock
 from .blocks import LCNetV3Layer, scale_up
 
 
-class PPLCNetV3(BaseNode[Tensor, list[Tensor]]):
+class PPLCNetV3(BaseNode):
     """PPLCNetV3 backbone.
 
     Variants

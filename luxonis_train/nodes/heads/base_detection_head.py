@@ -8,7 +8,7 @@ from luxonis_train.nodes.heads import BaseHead
 
 
 # TODO: Maybe change `heads` to `branches`?
-class BaseDetectionHead(BaseHead[list[Tensor], tuple[list[Tensor], ...]]):
+class BaseDetectionHead(BaseHead):
     parser = "YOLO"
 
     in_channels: list[int]

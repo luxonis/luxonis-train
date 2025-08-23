@@ -6,7 +6,7 @@ from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
 
 
-class ClassificationHead(BaseHead[Tensor, Tensor]):
+class ClassificationHead(BaseHead):
     in_channels: int
     task = Tasks.CLASSIFICATION
     parser: str = "ClassificationParser"

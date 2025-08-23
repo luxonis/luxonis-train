@@ -10,7 +10,7 @@ from luxonis_train.nodes.blocks import GeneralReparametrizableBlock
 from luxonis_train.nodes.blocks.utils import forward_gather
 
 
-class RepVGG(BaseNode[Tensor, list[Tensor]]):
+class RepVGG(BaseNode):
     """RepVGG backbone.
 
     Variants

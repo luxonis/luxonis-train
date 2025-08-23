@@ -13,7 +13,7 @@ from luxonis_train.nodes.blocks import (
 from .blocks import DAPPM, BasicDDRBackbone, make_layer
 
 
-class DDRNet(BaseNode[Tensor, list[Tensor]]):
+class DDRNet(BaseNode):
     """DDRNet backbone for semantic segmentation.
 
     Variants

@@ -3,14 +3,14 @@ import logging
 from abc import ABC, abstractmethod
 from contextlib import suppress
 from operator import itemgetter
-from typing import Generic, Literal, TypeVar
+from typing import Literal, TypeVar
 
 import torch
 from bidict import bidict
 from loguru import logger
-from luxonis_ml.typing import Kwargs
+from luxonis_ml.typing import Kwargs, check_type
 from torch import Size, Tensor, nn
-from typeguard import TypeCheckError, check_type, typechecked
+from typeguard import typechecked
 
 from luxonis_train.config.predefined_models.base_predefined_model import (
     VariantMeta,
@@ -18,15 +18,12 @@ from luxonis_train.config.predefined_models.base_predefined_model import (
 from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
 from luxonis_train.registry import NODES
 from luxonis_train.tasks import Task
-from luxonis_train.typing import AttachIndexType, Packet
+from luxonis_train.typing import AttachIndexType, Packet, get_signature
 from luxonis_train.utils import (
     DatasetMetadata,
     IncompatibleError,
     safe_download,
 )
-
-ForwardOutputT = TypeVar("ForwardOutputT")
-ForwardInputT = TypeVar("ForwardInputT")
 
 
 class PostInitMeta(VariantMeta):
@@ -42,7 +39,6 @@ class PostInitMeta(VariantMeta):
 class BaseNode(
     nn.Module,
     ABC,
-    Generic[ForwardInputT, ForwardOutputT],
     metaclass=PostInitMeta,
     register=False,
     registry=NODES,
@@ -58,54 +54,13 @@ class BaseNode(
     of lists of tensors. Each key in the dictionary represents a different output
     from the previous node. Input to the node is a list of L{Packet}s, output is a single L{Packet}.
 
-    When the node is called, the inputs are sent to the L{unwrap} method.
-    The C{unwrap} method should return a valid input to the L{forward} method.
-    Outputs of the C{forward} method are then sent to L{wrap} method,
-    which wraps the output into a C{Packet}. The wrapped C{Packet} is the final output of the node.
-
-    The L{run} method combines the C{unwrap}, C{forward} and C{wrap} methods
-    together with input validation.
-
     When subclassing, the following methods should be implemented:
         - L{forward}: Forward pass of the module.
-        - L{unwrap}: Optional. Unwraps the inputs from the input packet.
-            The default implementation expects a single input with C{features} key.
-        - L{wrap}: Optional. Wraps the output of the forward pass
-            into a C{Packet[Tensor]}. The default implementation expects wraps the output
-            of the forward pass into a packet with either "features" or the task name as the key.
 
     Additionally, the following class attributes can be defined:
         - L{attach_index}: Index of previous output that this node attaches to.
         - L{task}: An instance of `luxonis_train.tasks.Task` that specifies the
             task of the node. Usually defined for head nodes.
-
-    Example::
-        class MyNode(BaseNode):
-            task = Tasks.CLASSIFICATION
-
-            def __init__(self, **kwargs):
-                super().__init__(**kwargs)
-                self.nn = nn.Sequential(
-                    nn.Linear(10, 10),
-                    nn.ReLU(),
-                    nn.Linear(10, 10),
-                )
-
-            # Roughly equivalent to the default implementation
-            def unwrap(self, inputs: list[Packet[Tensor]]) -> Tensor:
-                assert len(inputs) == 1
-                assert "features" in inputs[0]
-                return inputs[0]["features"]
-
-            def forward(self, inputs: Tensor) -> Tensor:
-                return self.nn(inputs)
-
-            # Roughly equivalent to the default implementation
-            def wrap(output: Tensor) -> Packet[Tensor]:
-                # The key of the main node output have to be the same as the
-                # default task name for it to be automatically recognized
-                # by the attached modules.
-                return {"classification": [output]}
 
     @type attach_index: AttachIndexType
     @ivar attach_index: Index of previous output that this node attaches to.
@@ -549,93 +504,18 @@ class BaseNode(
         """Getter for the export_output_names attribute."""
         return self._export_output_names
 
-    def unwrap(self, inputs: list[Packet[Tensor]]) -> ForwardInputT:
-        """Prepares inputs for the forward pass.
-
-        Unwraps the inputs from the C{list[Packet[Tensor]]} input so
-        they can be passed to the forward call. The default
-        implementation expects a single input with C{features} key and
-        returns the tensor or tensors at the C{attach_index} position.
-
-        For most cases the default implementation should be sufficient.
-        Exceptions are modules with multiple inputs.
-
-        @type inputs: list[Packet[Tensor]]
-        @param inputs: Inputs to the node.
-        @rtype: ForwardInputT
-        @return: Prepared inputs, ready to be passed to the L{forward}
-            method.
-        @raises ValueError: If the number of inputs is not equal to 1.
-            In such cases the method has to be overridden.
-        """
-        if len(inputs) > 1:
-            raise ValueError(
-                f"Node {self.name} expects a single input, "
-                f"but got {len(inputs)} inputs instead. "
-                "If the node expects multiple inputs, "
-                "the `unwrap` method should be overridden."
-            )
-        inp = inputs[0]["features"]
-        if isinstance(inp, Tensor):
-            return inp  # type: ignore
-        return self.get_attached(inp)  # type: ignore
-
     @abstractmethod
-    def forward(self, inputs: ForwardInputT) -> ForwardOutputT:
+    def forward(
+        self, inputs: Tensor | list[Tensor]
+    ) -> Tensor | list[Tensor] | Packet[Tensor]:
         """Forward pass of the module.
 
         @type inputs: L{ForwardInputT}
         @param inputs: Inputs to the module.
-        @rtype: L{ForwardOutputT}
+        @rtype: Tensor | list[Tensor] | Packet[Tensor]
         @return: Result of the forward pass.
         """
         ...
-
-    def wrap(self, output: ForwardOutputT) -> Packet[Tensor]:
-        """Wraps the output of the forward pass into a
-        C{Packet[Tensor]}.
-
-        The default implementation expects a single tensor or a list of tensors
-        and wraps them into a Packet with either the node task as a key
-        or "features" key if task is not defined.
-
-        Example::
-
-            >>> class FooNode(BaseNode):
-            ...     task = Tasks.CLASSIFICATION
-            ...
-            ... class BarNode(BaseNode):
-            ...     pass
-            ...
-            >>> node = FooNode()
-            >>> node.wrap(torch.rand(1, 10))
-            {"classification": [Tensor(1, 10)]}
-            >>> node = BarNode()
-            >>> node.wrap([torch.rand(1, 10), torch.rand(1, 10)])
-            {"features": [Tensor(1, 10), Tensor(1, 10)]}
-
-        @type output: ForwardOutputT
-        @param output: Output of the forward pass.
-
-        @rtype: L{Packet}[Tensor]
-        @return: Wrapped output.
-
-        @raises ValueError: If the C{output} argument is not a tensor or a list of tensors.
-            In such cases the L{wrap} method should be overridden.
-        """
-
-        if isinstance(output, Tensor):
-            outputs = output
-        elif isinstance(output, list | tuple) and all(
-            isinstance(t, Tensor) for t in output
-        ):
-            outputs = list(output)
-        else:
-            raise ValueError(
-                "Default `wrap` expects a single tensor or a list of tensors."
-            )
-        name = "features" if self.task is None else self.task.main_output
-        return {name: outputs}
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:
         """Combines the forward pass with the wrapping and unwrapping of
@@ -647,10 +527,54 @@ class BaseNode(
         @rtype: L{Packet}[Tensor]
         @return: Outputs of the module as a dictionary of list of tensors:
             C{{"features": [Tensor, ...], "segmentation": [Tensor]}}
-
-        @raises RuntimeError: If default L{wrap} or L{unwrap} methods are not sufficient.
         """
-        return self.wrap(self(self.unwrap(inputs)))
+        kwargs = {}
+        signature = get_signature(self.forward)
+        for name, param in signature.items():
+            if name in {"input", "inputs", "x"}:
+                if len(inputs) != 1:
+                    raise RuntimeError(
+                        f"Node '{self.name}' expects a single input, "
+                        "but is connected to multiple preceding nodes. "
+                    )
+                input_name = "features"
+
+                packet = inputs[0]
+                if input_name not in packet:
+                    raise RuntimeError(
+                        f"Node '{self.name}' expects an input with key "
+                        f"'{input_name}', but it was not found in the packet."
+                    )
+                value = packet[input_name]
+                if isinstance(value, Tensor):
+                    if param.annotation != Tensor:
+                        raise RuntimeError(
+                            f"Node '{self.name}' expects an input with key "
+                            f"'{input_name}' to be of type `{param.annotation}`, "
+                            "but got a single tensor instead."
+                        )
+                    kwargs[name] = value
+                else:
+                    kwargs[name] = self.get_attached(value)
+
+        outputs = self(**kwargs)
+
+        if check_type(outputs, Packet[Tensor]):
+            return outputs
+
+        name = "features" if self.task is None else self.task.main_output
+
+        if isinstance(outputs, Tensor):
+            return {name: outputs}
+
+        if check_type(outputs, list[Tensor]):
+            return {name: outputs}
+
+        raise ValueError(
+            "Invalid output type from the forward pass. "
+            "Expected Tensor, list of Tensors or a dictionary, "
+            f"but got {type(outputs)} instead."
+        )
 
     T = TypeVar("T", Tensor, Size)
 
@@ -743,13 +667,11 @@ class BaseNode(
             if name in properties:
                 with suppress(RuntimeError):
                     value = getattr(self, name)
-                    try:
-                        check_type(value, typ)
-                    except TypeCheckError as e:
+                    if not check_type(value, typ):
                         raise IncompatibleError(
                             f"Node '{self.name}' specifies the type of "
                             f"the property `{name}` as `{typ}`, "
                             f"but received `{type(value)}`. "
                             f"This may indicate that the '{self.name}' node is "
                             "not compatible with its predecessor."
-                        ) from e
+                        )

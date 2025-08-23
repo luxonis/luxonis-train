@@ -92,27 +92,22 @@ class EfficientBBoxHead(BaseDetectionHead):
     ) -> None:
         return super().load_checkpoint(path, strict=strict)
 
-    def forward(
+    def _forward(
         self, inputs: list[Tensor]
     ) -> tuple[list[Tensor], list[Tensor], list[Tensor]]:
         features_list: list[Tensor] = []
         classes_list: list[Tensor] = []
         regressions_list: list[Tensor] = []
 
-        # FIXME: strict=True, related to the TODO above
-        for head, x in zip(self.heads, inputs, strict=False):
+        for head, x in zip(self.heads, inputs, strict=True):
             features, classes, regressions = head(x)
             features_list.append(features)
             classes_list.append(torch.sigmoid(classes))
             regressions_list.append(regressions)
-
         return features_list, classes_list, regressions_list
 
-    @override
-    def wrap(
-        self, output: tuple[list[Tensor], list[Tensor], list[Tensor]]
-    ) -> Packet[Tensor]:
-        features, classes_list, regressions_list = output
+    def forward(self, inputs: list[Tensor]) -> Packet[Tensor]:
+        features_list, classes_list, regressions_list = self._forward(inputs)
 
         if self.export:
             return self._wrap_export(classes_list, regressions_list)
@@ -122,24 +117,26 @@ class EfficientBBoxHead(BaseDetectionHead):
 
         if self.training:
             return {
-                "features": features,
+                "features": features_list,
                 "class_scores": class_scores,
                 "distributions": distributions,
             }
 
         _, anchor_points, _, stride_tensor = anchors_for_fpn_features(
-            features,
+            features_list,
             self.stride,
             self.grid_cell_size,
             self.grid_cell_offset,
             multiply_with_stride=False,
         )
-        boxes = self._postprocess_detections(
-            features, class_scores, distributions, anchor_points, stride_tensor
-        )
-        return {
-            "boundingbox": boxes,
-            "features": features,
+        return self._postprocess_detections(
+            features_list,
+            class_scores,
+            distributions,
+            anchor_points,
+            stride_tensor,
+        ) | {
+            "features": features_list,
             "class_scores": class_scores,
             "distributions": distributions,
         }
@@ -192,7 +189,7 @@ class EfficientBBoxHead(BaseDetectionHead):
         stride_tensor: Tensor,
         *,
         tail: list[Tensor] | None = None,
-    ) -> list[Tensor]:
+    ) -> Packet[Tensor]:
         """Performs post-processing of the output and returns bboxs
         after NMS."""
 
@@ -214,7 +211,7 @@ class EfficientBBoxHead(BaseDetectionHead):
             dim=-1,
         )
 
-        return non_max_suppression(
+        boxes = non_max_suppression(
             output_merged,
             n_classes=self.n_classes,
             conf_thres=self.conf_thres,
@@ -223,6 +220,7 @@ class EfficientBBoxHead(BaseDetectionHead):
             max_det=self.max_det,
             predicts_objectness=False,
         )
+        return {"boundingbox": boxes}
 
     @override
     def get_custom_head_config(self) -> Params:

@@ -9,7 +9,7 @@ from luxonis_train.nodes.base_node import BaseNode
 from .blocks import MicroBlock, Stem
 
 
-class MicroNet(BaseNode[Tensor, list[Tensor]]):
+class MicroNet(BaseNode):
     # TODO: Check docs, add source
     """MicroNet backbone.
 

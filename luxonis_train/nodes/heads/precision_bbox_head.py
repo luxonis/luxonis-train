@@ -79,9 +79,7 @@ class PrecisionBBoxHead(BaseDetectionHead):
 
         self.dfl = DFL(reg_max) if reg_max > 1 else nn.Identity()
 
-    def forward(
-        self, inputs: list[Tensor]
-    ) -> tuple[list[Tensor], list[Tensor], list[Tensor]]:
+    def forward(self, inputs: list[Tensor]) -> Packet[Tensor]:
         features_list = []
         classes_list = []
         regressions_list = []
@@ -91,13 +89,6 @@ class PrecisionBBoxHead(BaseDetectionHead):
             classes_list.append(classes)
             features_list.append(features)
 
-        return features_list, classes_list, regressions_list
-
-    @override
-    def wrap(
-        self, output: tuple[list[Tensor], list[Tensor], list[Tensor]]
-    ) -> Packet[Tensor]:
-        features_list, classes_list, regressions_list = output
         if self.training:
             return {"features": features_list}
 

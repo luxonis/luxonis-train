@@ -15,7 +15,7 @@ from luxonis_train.utils import make_divisible
 from luxonis_train.utils.general import add_variant_aliases
 
 
-class EfficientRep(BaseNode[Tensor, list[Tensor]]):
+class EfficientRep(BaseNode):
     """EfficientRep backbone for object detection.
 
     Variants

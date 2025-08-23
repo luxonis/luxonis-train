@@ -10,7 +10,7 @@ from luxonis_train.tasks import Tasks
 from luxonis_train.utils import OCRDecoder, OCREncoder
 
 
-class OCRCTCHead(BaseHead[Tensor, Tensor]):
+class OCRCTCHead(BaseHead):
     in_channels: int
     task = Tasks.OCR
 

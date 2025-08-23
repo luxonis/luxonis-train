@@ -12,7 +12,7 @@ from luxonis_train.nodes.blocks import ConvBlock
 from .blocks import GhostBottleneckLayer
 
 
-class GhostFaceNetV2(BaseNode[Tensor, Tensor]):
+class GhostFaceNetV2(BaseNode):
     """GhostFaceNetsV2 backbone.
 
     GhostFaceNetsV2 is a convolutional neural network architecture focused on face recognition, but it is

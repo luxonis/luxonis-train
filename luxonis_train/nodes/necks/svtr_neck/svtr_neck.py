@@ -7,7 +7,7 @@ from luxonis_train.nodes.blocks import ConvBlock
 from luxonis_train.nodes.necks.svtr_neck.blocks import SVTRBlock
 
 
-class SVTRNeck(BaseNode[list[Tensor], list[Tensor]]):
+class SVTRNeck(BaseNode):
     """SVTR neck.
 
     @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/

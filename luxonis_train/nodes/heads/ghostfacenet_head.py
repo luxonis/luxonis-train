@@ -9,7 +9,7 @@ from luxonis_train.nodes.heads.base_head import BaseHead
 from luxonis_train.tasks import Tasks
 
 
-class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
+class GhostFaceNetHead(BaseHead):
     in_channels: int
     in_width: int
     task = Tasks.EMBEDDINGS

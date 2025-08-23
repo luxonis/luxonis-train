@@ -86,31 +86,20 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         self.proto = SegProto(self.in_channels[0], n_proto, n_masks)
         self.n_masks = n_masks
 
-    def forward(
-        self, inputs: list[Tensor]
-    ) -> tuple[list[Tensor], list[Tensor], list[Tensor], Tensor, list[Tensor]]:
+    def forward(self, inputs: list[Tensor]) -> Packet[Tensor]:
         prototypes = self.proto(inputs[0])
         mask_coefficients = [
             head(x)
             for head, x in zip(self.segmentation_heads, inputs, strict=True)
         ]
 
-        return *super().forward(inputs), prototypes, mask_coefficients
-
-    @override
-    def wrap(
-        self,
-        output: tuple[
-            list[Tensor], list[Tensor], list[Tensor], Tensor, list[Tensor]
-        ],
-    ) -> Packet[Tensor]:
         (
             features_list,
             classes_list,
             regressions_list,
             prototypes,
             mask_coefficients,
-        ) = output
+        ) = *super().forward(inputs), prototypes, mask_coefficients
 
         if self.export:
             pred_bboxes = self._construct_raw_bboxes(

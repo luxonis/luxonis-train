@@ -12,7 +12,7 @@ from luxonis_train.utils.general import add_variant_aliases
 from .blocks import CSPDownBlock, CSPUpBlock, RepDownBlock, RepUpBlock
 
 
-class RepPANNeck(BaseNode[list[Tensor], list[Tensor]]):
+class RepPANNeck(BaseNode):
     """Implementation of the RepPANNeck module. Supports the version
     with RepBlock and CSPStackRepBlock (for larger networks)
 

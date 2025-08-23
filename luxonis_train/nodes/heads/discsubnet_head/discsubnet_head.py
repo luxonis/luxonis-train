@@ -9,7 +9,7 @@ from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
 
 
-class DiscSubNetHead(BaseHead[Tensor, Tensor]):
+class DiscSubNetHead(BaseHead):
     task = Tasks.ANOMALY_DETECTION
 
     in_channels: list[int] | int
@@ -55,22 +55,16 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
             base_channels, out_channels, width_multipliers
         )
 
-    def forward(self, inputs: list[Tensor]) -> tuple[Tensor, Tensor]:
+    def forward(self, inputs: list[Tensor]) -> Packet[Tensor]:
         """Performs the forward pass through the encoder and decoder."""
         reconstruction, x = inputs
         x = torch.cat([reconstruction, x], dim=1)
         seg_out = self.decoder_segment(self.encoder_segment(x))
 
-        return seg_out, reconstruction
-
-    @override
-    def wrap(self, output: tuple[Tensor, Tensor]) -> Packet[Tensor]:
-        """Wraps the output into a packet."""
-        seg_out, recon = output
         if self.export:
             return {"segmentation": seg_out}
-        seg_out, recon = output
-        return {"reconstructed": recon, "segmentation": seg_out}
+
+        return {"reconstructed": reconstruction, "segmentation": seg_out}
 
     @override
     def get_custom_head_config(self) -> Params:

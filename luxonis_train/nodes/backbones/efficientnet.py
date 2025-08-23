@@ -6,7 +6,7 @@ from torch import Tensor, nn
 from luxonis_train.nodes.base_node import BaseNode
 
 
-class EfficientNet(BaseNode[Tensor, list[Tensor]]):
+class EfficientNet(BaseNode):
     attach_index: int = -1
 
     def __init__(

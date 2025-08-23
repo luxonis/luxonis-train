@@ -11,7 +11,7 @@ from luxonis_train.nodes.blocks import (
 from luxonis_train.nodes.blocks.utils import forward_gather
 
 
-class MobileOne(BaseNode[Tensor, list[Tensor]]):
+class MobileOne(BaseNode):
     """MobileOne: An efficient CNN backbone for mobile devices.
 
     The architecture focuses on reducing memory access costs and improving parallelism

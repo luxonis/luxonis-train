@@ -6,7 +6,7 @@ from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import SimpleDecoder, SimpleEncoder
 
 
-class RecSubNet(BaseNode[Tensor, tuple[Tensor, Tensor]]):
+class RecSubNet(BaseNode):
     in_channels: int
 
     def __init__(

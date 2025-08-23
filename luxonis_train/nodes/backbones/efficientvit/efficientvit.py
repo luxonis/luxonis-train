@@ -14,7 +14,7 @@ from .blocks import (
 )
 
 
-class EfficientViT(BaseNode[Tensor, list[Tensor]]):
+class EfficientViT(BaseNode):
     """EfficientViT backbone implementation based on a lightweight
     transformer architecture.
 

@@ -9,7 +9,7 @@ from luxonis_train.tasks import Task, Tasks
 from luxonis_train.typing import Packet
 
 
-class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
+class FOMOHead(BaseNode):
     task: Task = Tasks.FOMO
     in_channels: int
     attach_index: int = 1
@@ -61,10 +61,9 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
     def n_keypoints(self) -> int:
         return 1
 
-    def forward(self, inputs: list[Tensor]) -> Tensor:
-        return self.conv_layers(inputs)
+    def forward(self, inputs: list[Tensor]) -> Packet[Tensor]:
+        heatmap = self.conv_layers(inputs)
 
-    def wrap(self, heatmap: Tensor) -> Packet[Tensor]:
         if self.training:
             return {self.task.main_output: heatmap}
 

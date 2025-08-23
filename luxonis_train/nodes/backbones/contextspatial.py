@@ -11,7 +11,7 @@ from luxonis_train.nodes.blocks import (
 from luxonis_train.registry import NODES
 
 
-class ContextSpatial(BaseNode[Tensor, list[Tensor]]):
+class ContextSpatial(BaseNode):
     def __init__(
         self,
         context_backbone: str | nn.Module = "MobileNetV2",

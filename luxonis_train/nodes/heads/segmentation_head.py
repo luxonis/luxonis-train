@@ -10,7 +10,7 @@ from luxonis_train.tasks import Tasks
 from luxonis_train.utils import infer_upscale_factor
 
 
-class SegmentationHead(BaseHead[Tensor, Tensor]):
+class SegmentationHead(BaseHead):
     in_height: int
     in_width: int
     in_channels: int
