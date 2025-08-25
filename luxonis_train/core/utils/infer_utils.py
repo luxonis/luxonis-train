@@ -1,5 +1,6 @@
 from collections import defaultdict
 from collections.abc import Iterable
+from contextlib import suppress
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -49,18 +50,18 @@ def process_visualizations(
 
 
 def prepare_and_infer_image(
-    model: "lxt.LuxonisModel", img: dict[str, Tensor]
+    model: "lxt.LuxonisModel", images: dict[str, Tensor]
 ) -> LuxonisOutput:
     """Prepares the image for inference and runs the model."""
-    aug_img = model.loaders["val"].augment_test_image(img)
+    img_arr = model.loaders["val"].augment_test_image(images)
 
     inputs = {
-        "image": torch.tensor(aug_img).unsqueeze(0).permute(0, 3, 1, 2).float()
+        "image": torch.tensor(img_arr).unsqueeze(0).permute(0, 3, 1, 2).float()
     }
-    images = get_denormalized_images(model.cfg, inputs["image"])
+    img = get_denormalized_images(model.cfg, inputs["image"])
 
     return model.lightning_module.forward(
-        inputs, images=images, compute_visualizations=True
+        inputs, images=img, compute_visualizations=True
     )
 
 
@@ -120,10 +121,8 @@ def infer_from_video(
 
     cap.release()
     if save_dir is None:
-        try:
+        with suppress(cv2.error):  # type: ignore
             cv2.destroyAllWindows()
-        except cv2.error:  # type: ignore
-            pass
 
     for writer in writers.values():
         writer.release()
@@ -184,10 +183,8 @@ def infer_from_loader(
                 break
 
     if save_dir is None:
-        try:
+        with suppress(cv2.error):  # type: ignore
             cv2.destroyAllWindows()
-        except cv2.error:  # type: ignore
-            pass
 
 
 def create_loader_from_directory(
@@ -231,14 +228,12 @@ def create_loader_from_directory(
         color_space=model.cfg_preprocessing.color_space,
         keep_aspect_ratio=model.cfg_preprocessing.keep_aspect_ratio,
     )
-    loader = torch_data.DataLoader(
+    return torch_data.DataLoader(
         loader,
         batch_size=model.cfg.trainer.batch_size,
         pin_memory=True,
         shuffle=False,
     )
-
-    return loader
 
 
 def infer_from_directory(

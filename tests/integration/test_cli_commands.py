@@ -86,7 +86,7 @@ def test_cli_command_success(
 def test_cli_command_failure(
     command: Callable, kwargs: Kwargs, coco_dataset: LuxonisDataset
 ) -> None:
-    with pytest.raises(Exception):  # noqa: PT011
+    with pytest.raises(Exception):  # noqa: B017, PT011
         command(
             ["loader.params.dataset_name", coco_dataset.identifier],
             **kwargs,
@@ -197,6 +197,7 @@ class CustomLoss(BaseLoss):
             "LUXONISML_BASE_PATH": str(environ.LUXONISML_BASE_PATH),
             "PYTHONIOENCODING": "utf-8",
         },
+        check=False,
     )
 
     assert res.returncode == 0, res.stderr

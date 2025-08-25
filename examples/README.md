@@ -195,7 +195,7 @@ class DistanceEstimation(BoundingBox):
 
 ```python
 
-class ResNet(BaseNode[Tensor, list[Tensor]]):
+class ResNet(BaseNode):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         ...

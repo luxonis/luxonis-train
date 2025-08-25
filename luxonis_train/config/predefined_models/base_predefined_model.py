@@ -17,22 +17,30 @@ from luxonis_train.config.config import FreezingConfig
 from luxonis_train.registry import MODELS
 
 
-class BasePredefinedModel(
-    ABC, metaclass=AutoRegisterMeta, registry=MODELS, register=False
-):
-    @classmethod
-    def from_variant(
-        cls, variant: str | Literal["default", "none"] | None = None, **kwargs
-    ) -> "BasePredefinedModel":
-        """Creates a model instance from a predefined variant.
+class VariantMeta(AutoRegisterMeta):
+    def __call__(cls, *args, variant: str | None = None, **kwargs):
+        obj: BasePredefinedModel = cls.__new__(
+            cls,  # type: ignore
+            *args,
+            **kwargs,
+        )
+        variant = variant or "none"
 
-        @type variant: str
-        @param variant: The name of the variant to use.
-        """
-        if variant is None or variant == "none":
-            return cls(**kwargs)
+        if variant == "none":
+            cls.__init__(obj, *args, **kwargs)
+            return obj
 
-        default, variants = cls.get_variants()
+        try:
+            default, variants = obj.get_variants()
+        except NotImplementedError as e:
+            raise NotImplementedError(
+                f"'{cls.__name__}' was called with the 'variant' "
+                f"parameter set to '{variant}', but the `get_variants` "
+                "method was not implented."
+            ) from e
+
+        obj._variant = variant  # type: ignore
+
         if variant == "default":
             variant = default
 
@@ -41,7 +49,9 @@ class BasePredefinedModel(
                 f"Variant '{variant}' is not available. "
                 f"Available variants: {list(variants.keys())}."
             )
+
         params = variants[variant]
+
         for key in list(params.keys()):
             if key in kwargs:
                 logger.info(
@@ -50,7 +60,14 @@ class BasePredefinedModel(
                 )
                 del params[key]
 
-        return cls(**params, **kwargs)
+        cls.__init__(obj, *args, **kwargs, **params)
+        return obj
+
+
+class BasePredefinedModel(
+    ABC, metaclass=VariantMeta, registry=MODELS, register=False
+):
+    _variant: str | None
 
     @property
     @abstractmethod

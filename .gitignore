@@ -158,4 +158,4 @@ mlruns
 wandb
 tests/work
 data
-lightning_logs
+lightning_logs/
