@@ -3,7 +3,7 @@ import logging
 from abc import ABC, abstractmethod
 from contextlib import suppress
 from operator import itemgetter
-from typing import Literal, TypeVar
+from typing import Generic, Literal, TypeVar
 
 import torch
 from bidict import bidict
@@ -36,9 +36,14 @@ class PostInitMeta(VariantMeta):
         return obj
 
 
+InputT = TypeVar("InputT", Tensor, list[Tensor], Packet[Tensor])
+OutputT = TypeVar("OutputT", Tensor, list[Tensor], Packet[Tensor])
+
+
 class BaseNode(
     nn.Module,
     ABC,
+    Generic[InputT, OutputT],
     metaclass=PostInitMeta,
     register=False,
     registry=NODES,
@@ -505,21 +510,21 @@ class BaseNode(
         return self._export_output_names
 
     @abstractmethod
-    def forward(
-        self, inputs: Tensor | list[Tensor]
-    ) -> Tensor | list[Tensor] | Packet[Tensor]:
+    def forward(self, *inputs: InputT) -> OutputT:
         """Forward pass of the module.
 
-        @type inputs: L{ForwardInputT}
-        @param inputs: Inputs to the module.
+        @type inputs: Tensor | list[Tensor] | Packet[Tensor]
+        @param inputs: Inputs to the module. Can be either a single
+            tensor, a list of tensors or a tensor packet.
         @rtype: Tensor | list[Tensor] | Packet[Tensor]
-        @return: Result of the forward pass.
+        @return: Result of the forward pass. Can be either a single
+            tensor, a list of tensors or a tensor packet.
         """
         ...
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:
-        """Combines the forward pass with the wrapping and unwrapping of
-        the inputs.
+        """Combines the forward pass with automatic wrapping and
+        unwrapping of the inputs.
 
         @type inputs: list[Packet[Tensor]]
         @param inputs: Inputs to the module.
@@ -530,32 +535,45 @@ class BaseNode(
         """
         kwargs = {}
         signature = get_signature(self.forward)
-        for name, param in signature.items():
-            if name in {"input", "inputs", "x"}:
-                if len(inputs) != 1:
-                    raise RuntimeError(
-                        f"Node '{self.name}' expects a single input, "
-                        "but is connected to multiple preceding nodes. "
-                    )
-                input_name = "features"
+        if len(signature) != len(inputs):
+            raise RuntimeError(
+                f"Node '{self.name}' expects {len(signature)} inputs, "
+                f"but got {len(inputs)} instead. "
+            )
 
-                packet = inputs[0]
-                if input_name not in packet:
-                    raise RuntimeError(
-                        f"Node '{self.name}' expects an input with key "
-                        f"'{input_name}', but it was not found in the packet."
-                    )
-                value = packet[input_name]
-                if isinstance(value, Tensor):
-                    if param.annotation != Tensor:
+        for (name, param), inp in zip(signature.items(), inputs, strict=True):
+            if param.annotation == Packet[Tensor]:
+                kwargs[name] = inp
+            elif (
+                param.annotation == list[Tensor] or param.annotation == Tensor
+            ):
+                if name in "xyz" or name.startswith("input"):
+                    input_name = "features"
+
+                    packet = inputs[0]
+                    if input_name not in packet:
                         raise RuntimeError(
                             f"Node '{self.name}' expects an input with key "
-                            f"'{input_name}' to be of type `{param.annotation}`, "
-                            "but got a single tensor instead."
+                            f"'{input_name}', but it was not found in the packet."
                         )
-                    kwargs[name] = value
-                else:
-                    kwargs[name] = self.get_attached(value)
+                    value = packet[input_name]
+                    if isinstance(value, Tensor):
+                        if param.annotation != Tensor:
+                            raise RuntimeError(
+                                f"Node '{self.name}' expects an input with key "
+                                f"'{input_name}' to be of type `{param.annotation}`, "
+                                "but got a single tensor instead."
+                            )
+                        kwargs[name] = value
+                    else:
+                        kwargs[name] = self.get_attached(value)
+            else:
+                raise RuntimeError(
+                    f"Node '{self.name}' has an unsupported type "
+                    f"`{param.annotation}` for parameter `{name}`. "
+                    "Supported types are Tensor, list of Tensors and "
+                    "Packet of Tensors."
+                )
 
         outputs = self(**kwargs)
 

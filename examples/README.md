@@ -414,7 +414,7 @@ from luxonis_train.tasks import Tasks
 # Example node that produces multiple outputs during
 # training that are all used in the loss calculation.
 class EfficientKeypointBBoxHead(...):
-    def wrap(...) -> Packet[Tensor]:
+    def forward(...) -> Packet[Tensor]:
         return {
             "features": features,
             "class_scores": cls_tensor,
@@ -572,12 +572,10 @@ class XORHead(BaseHead):
         self.head = nn.Linear(10, 2)
 
     def forward(self, x: Tensor) -> Tensor:
-        return self.head(x)
-
-    def wrap(self, x: Tensor) -> Packet[Tensor]:
-         return {
-             "classification": x,
-         }
+        x = self.head(x)
+        return {
+            "classification": x,
+        }
 
 # Setup metadata & nodes
 original_in_shape = Size([1, 1, 2])
