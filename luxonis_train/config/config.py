@@ -588,7 +588,7 @@ class TrainerConfig(BaseModelExtraForbid):
 class OnnxExportConfig(BaseModelExtraForbid):
     opset_version: PositiveInt = 12
     dynamic_axes: Params | None = None
-    simplify: bool = False
+    disable_onnx_simplification: bool = False
 
 
 class BlobconverterExportConfig(BaseModelExtraForbid):

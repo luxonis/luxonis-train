@@ -451,7 +451,7 @@ class LuxonisModel:
                 **onnx_kwargs,
             )
 
-        if self.cfg.exporter.onnx.simplify:
+        if not self.cfg.exporter.onnx.disable_onnx_simplification:
             try_onnx_simplify(onnx_save_path)
         self._exported_models["onnx"] = Path(onnx_save_path)
 

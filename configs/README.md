@@ -500,11 +500,11 @@ Here you can define configuration for exporting.
 
 Option specific for `ONNX` export.
 
-| Key             | Type                     | Default value | Description                          |
-| --------------- | ------------------------ | ------------- | ------------------------------------ |
-| `opset_version` | `int`                    | `12`          | Which `ONNX` opset version to use    |
-| `dynamic_axes`  | `dict[str, Any] \| None` | `None`        | Whether to specify dynamic axes      |
-| `simplify`      | `bool`                   | `True`        | Run ONNX simplification after export |
+| Key                           | Type                     | Default value | Description                              |
+| ----------------------------- | ------------------------ | ------------- | ---------------------------------------- |
+| `opset_version`               | `int`                    | `12`          | Which `ONNX` opset version to use        |
+| `dynamic_axes`                | `dict[str, Any] \| None` | `None`        | Whether to specify dynamic axes          |
+| `disable_onnx_simplification` | `bool`                   | `False`       | Disable ONNX simplification after export |
 
 ### `Blob`
 
