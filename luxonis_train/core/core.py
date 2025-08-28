@@ -443,8 +443,12 @@ class LuxonisModel:
         onnx_save_path = str(export_path.with_suffix(".onnx"))
 
         with replace_weights(self.lightning_module, weights):
+            onnx_kwargs = self.cfg.exporter.onnx.model_dump(
+                exclude={"simplify"}
+            )
             output_names = self.lightning_module.export_onnx(
-                onnx_save_path, **self.cfg.exporter.onnx.model_dump()
+                onnx_save_path,
+                **onnx_kwargs,
             )
 
         if self.cfg.exporter.onnx.simplify:
