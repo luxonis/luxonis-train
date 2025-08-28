@@ -47,6 +47,19 @@ def default_annotate(
         for task in head.task.required_labels
     }
 
+    for task in required_labels:
+        if task not in [
+            "boundingbox",
+            "keypoints",
+            "instance_segmentation",
+            "segmentation",
+            "classification",
+            "text",
+        ]:
+            raise ValueError(
+                f"Unsupported task: {task}, please create a custom to_annotate method for {head.name}."
+            )
+
     for i in range(batch_size):
         img_path = image_paths[i]
 
@@ -189,7 +202,3 @@ def default_annotate(
                         }
                     },
                 }
-            else:
-                raise ValueError(
-                    f"Unsupported task: {task}, please create a custom to_annotate method for this head."
-                )
