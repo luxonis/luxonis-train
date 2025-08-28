@@ -447,7 +447,8 @@ class LuxonisModel:
                 onnx_save_path, **self.cfg.exporter.onnx.model_dump()
             )
 
-        try_onnx_simplify(onnx_save_path)
+        if self.cfg.exporter.onnx.simplify:
+            try_onnx_simplify(onnx_save_path)
         self._exported_models["onnx"] = Path(onnx_save_path)
 
         mean, scale, color_space = get_preprocessing(
