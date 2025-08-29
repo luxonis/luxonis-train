@@ -71,11 +71,15 @@ class ObjectKeypointSimilarity(BaseMetric):
         h, w = self.original_in_shape[1:]
         bs = len(keypoints)
 
-        self.pred_keypoints.extend(map(fix_empty_tensor, keypoints))
-
-        for bboxes, kpts in instances_from_batch(
-            target_boundingbox, target_keypoints, batch_size=bs
+        for i, (bboxes, kpts) in enumerate(
+            instances_from_batch(
+                target_boundingbox, target_keypoints, batch_size=bs
+            )
         ):
+            if kpts.numel() == 0:
+                # Skipping images with no keypoints annotations
+                continue
+
             bbox_w = bboxes[:, 3] * w
             bbox_h = bboxes[:, 4] * h
 
@@ -83,6 +87,7 @@ class ObjectKeypointSimilarity(BaseMetric):
             kpts[:, 0::3] *= w
             kpts[:, 1::3] *= h
 
+            self.pred_keypoints.append(fix_empty_tensor(keypoints[i]))
             self.target_keypoints.append(fix_empty_tensor(kpts))
             self.scales.append(bbox_w * bbox_h * self.area_factor)
 
