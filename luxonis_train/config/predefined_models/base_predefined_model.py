@@ -61,6 +61,11 @@ class VariantMeta(AutoRegisterMeta):
                 del params[key]
 
         cls.__init__(obj, *args, **kwargs, **params)
+
+        if isinstance(obj, cls):
+            post_init = getattr(obj, "__post_init__", None)
+            if callable(post_init):
+                post_init()
         return obj
 
 

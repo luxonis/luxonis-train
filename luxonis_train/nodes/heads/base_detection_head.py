@@ -53,6 +53,20 @@ class BaseDetectionHead(BaseHead):
 
         self.stride = self.fit_stride_to_heads()
 
+    def _forward(
+        self, inputs: list[Tensor]
+    ) -> tuple[list[Tensor], list[Tensor], list[Tensor]]:
+        features_list: list[Tensor] = []
+        classes_list: list[Tensor] = []
+        regressions_list: list[Tensor] = []
+
+        for head, x in zip(self.heads, inputs, strict=True):
+            features, classes, regressions = head(x)
+            features_list.append(features)
+            classes_list.append(torch.sigmoid(classes))
+            regressions_list.append(regressions)
+        return features_list, classes_list, regressions_list
+
     @override
     def get_custom_head_config(self) -> Params:
         """Returns custom head configuration.

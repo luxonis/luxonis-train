@@ -30,7 +30,6 @@ class FOMOHead(BaseNode):
             convolutional layers.
         """
         super().__init__(**kwargs)
-        self.original_img_size = self.original_in_shape[1:]
         self.n_conv_layers = n_conv_layers
         self.conv_channels = conv_channels
         self.use_nms = use_nms
@@ -46,6 +45,7 @@ class FOMOHead(BaseNode):
                     kernel_size=1,
                     stride=1,
                     use_norm=False,
+                    bias=True,
                 )
             )
             current_channels = self.conv_channels
@@ -102,8 +102,8 @@ class FOMOHead(BaseNode):
                 y_indices, x_indices = torch.where(keep)
                 kpts = [
                     [
-                        x.item() / width * self.original_img_size[1],
-                        y.item() / height * self.original_img_size[0],
+                        x.item() / width * self.original_in_shape[2],
+                        y.item() / height * self.original_in_shape[1],
                         float(prob_map[y, x]),
                         class_id,
                     ]

@@ -93,13 +93,9 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
             for head, x in zip(self.segmentation_heads, inputs, strict=True)
         ]
 
-        (
-            features_list,
-            classes_list,
-            regressions_list,
-            prototypes,
-            mask_coefficients,
-        ) = *super().forward(inputs), prototypes, mask_coefficients
+        features_list, classes_list, regressions_list = super()._forward(
+            inputs
+        )
 
         if self.export:
             pred_bboxes = self._construct_raw_bboxes(

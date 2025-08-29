@@ -4,6 +4,7 @@ from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import SimpleDecoder, SimpleEncoder
+from luxonis_train.typing import Packet
 
 
 class RecSubNet(BaseNode):
@@ -54,15 +55,17 @@ class RecSubNet(BaseNode):
             encoder_width_multipliers=width_multipliers,
         )
 
-    def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
+    def forward(self, x: Tensor) -> Packet[Tensor]:
         """Performs the forward pass through the encoder and decoder."""
         b5 = self.encoder(x)
         output = self.decoder(b5)
+        return {
+            "reconstruction": output,
+            "original": x,
+        }
 
-        return output, x
-
-    @override
     @staticmethod
+    @override
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
         return "l", {
             "n": {

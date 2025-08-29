@@ -63,7 +63,7 @@ class PrecisionBBoxHead(BaseDetectionHead):
         reg_channels = max((16, self.in_channels[0] // 4, reg_max * 4))
         cls_channels = max(self.in_channels[0], min(self.n_classes, 100))
 
-        self.detection_heads = cast(
+        self.heads = cast(
             list[PreciseDecoupledBlock],
             nn.ModuleList(
                 PreciseDecoupledBlock(
@@ -83,7 +83,7 @@ class PrecisionBBoxHead(BaseDetectionHead):
         features_list = []
         classes_list = []
         regressions_list = []
-        for head, x in zip(self.detection_heads, inputs, strict=True):
+        for head, x in zip(self.heads, inputs, strict=True):
             features, classes, regressions = head(x)
             regressions_list.append(regressions)
             classes_list.append(classes)
@@ -124,9 +124,7 @@ class PrecisionBBoxHead(BaseDetectionHead):
         classification branches.
         """
         super().initialize_weights(method)
-        for head, stride in zip(
-            self.detection_heads, self.stride, strict=True
-        ):
+        for head, stride in zip(self.heads, self.stride, strict=True):
             reg_conv = head.regression_branch[-1]
             assert isinstance(reg_conv, nn.Conv2d)
             if reg_conv.bias is not None:

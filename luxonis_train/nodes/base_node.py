@@ -25,17 +25,6 @@ from luxonis_train.utils import (
     safe_download,
 )
 
-
-class PostInitMeta(VariantMeta):
-    def __call__(cls, *args, **kwargs):
-        obj = VariantMeta.__call__(cls, *args, **kwargs)
-        if isinstance(obj, cls):
-            post_init = getattr(obj, "_post_init", None)
-            if callable(post_init):
-                post_init()
-        return obj
-
-
 InputT = TypeVar("InputT", Tensor, list[Tensor], Packet[Tensor])
 OutputT = TypeVar("OutputT", Tensor, list[Tensor], Packet[Tensor])
 
@@ -44,7 +33,7 @@ class BaseNode(
     nn.Module,
     ABC,
     Generic[InputT, OutputT],
-    metaclass=PostInitMeta,
+    metaclass=VariantMeta,
     register=False,
     registry=NODES,
 ):
@@ -179,7 +168,7 @@ class BaseNode(
 
         self._check_type_overrides()
 
-    def _post_init(self) -> None:
+    def __post_init__(self) -> None:
         if self._weights == "default":
             return
 
@@ -535,15 +524,15 @@ class BaseNode(
         """
         kwargs = {}
         signature = get_signature(self.forward)
-        if len(signature) != len(inputs):
-            raise RuntimeError(
-                f"Node '{self.name}' expects {len(signature)} inputs, "
-                f"but got {len(inputs)} instead. "
-            )
 
-        for (name, param), inp in zip(signature.items(), inputs, strict=True):
+        for i, (name, param) in enumerate(signature.items()):
             if param.annotation == Packet[Tensor]:
-                kwargs[name] = inp
+                if i >= len(inputs):
+                    raise RuntimeError(
+                        f"Node '{self.name}' expects at least {i + 1} inputs, "
+                        f"but received only {len(inputs)}."
+                    )
+                kwargs[name] = inputs[i]
             elif (
                 param.annotation == list[Tensor] or param.annotation == Tensor
             ):
@@ -567,6 +556,22 @@ class BaseNode(
                         kwargs[name] = value
                     else:
                         kwargs[name] = self.get_attached(value)
+                else:
+                    for inp in inputs:
+                        if name in inp:
+                            if not check_type(inp[name], param.annotation):
+                                raise RuntimeError(
+                                    f"Node '{self.name}' expects an input with key "
+                                    f"'{name}' to be of type `{param.annotation}`, "
+                                    f"but got `{type(inp[name])}` instead."
+                                )
+                            if name in kwargs:
+                                raise RuntimeError(
+                                    f"Node '{self.name}' requires an input with key "
+                                    f"'{name}', but it was found in multiple input packets."
+                                )
+                            kwargs[name] = inp[name]
+
             else:
                 raise RuntimeError(
                     f"Node '{self.name}' has an unsupported type "

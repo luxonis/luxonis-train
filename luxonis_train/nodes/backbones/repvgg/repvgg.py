@@ -101,8 +101,8 @@ class RepVGG(BaseNode):
     def forward(self, inputs: Tensor) -> list[Tensor]:
         return forward_gather(self.stage0(inputs), self.blocks)
 
-    @override
     @staticmethod
+    @override
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
         return "A0", {
             "A0": {

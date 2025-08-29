@@ -15,6 +15,8 @@ class DiscSubNetHead(BaseHead):
     in_channels: list[int] | int
     base_channels: int
 
+    attach_index = -1
+
     def __init__(
         self,
         base_channels: int,
@@ -55,10 +57,11 @@ class DiscSubNetHead(BaseHead):
             base_channels, out_channels, width_multipliers
         )
 
-    def forward(self, inputs: list[Tensor]) -> Packet[Tensor]:
+    def forward(
+        self, reconstruction: Tensor, original: Tensor
+    ) -> Packet[Tensor]:
         """Performs the forward pass through the encoder and decoder."""
-        reconstruction, x = inputs
-        x = torch.cat([reconstruction, x], dim=1)
+        x = torch.cat([reconstruction, original], dim=1)
         seg_out = self.decoder_segment(self.encoder_segment(x))
 
         if self.export:
@@ -75,8 +78,8 @@ class DiscSubNetHead(BaseHead):
         """
         return {}
 
-    @override
     @staticmethod
+    @override
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
         return "n", {
             "n": {

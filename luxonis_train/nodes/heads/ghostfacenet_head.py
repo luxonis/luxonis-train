@@ -55,7 +55,7 @@ class GhostFaceNetHead(BaseHead):
                     W // 32 if W % 32 == 0 else W // 32 + 1,
                 ),
                 groups=self.in_channels,
-                activation=None,
+                activation=False,
             ),
             nn.Dropout(dropout),
             nn.Conv2d(
