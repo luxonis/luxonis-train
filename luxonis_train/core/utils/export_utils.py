@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Literal
 
+import blobconverter
 from loguru import logger
 from luxonis_ml.typing import PathType, check_type
 
@@ -101,8 +102,6 @@ def blobconverter_export(
     export_path: str,
     onnx_path: str,
 ) -> Path:
-    import blobconverter
-
     logger.info("Converting ONNX to .blob")
 
     optimizer_params: list[str] = []

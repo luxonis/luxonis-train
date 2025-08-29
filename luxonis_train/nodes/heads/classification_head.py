@@ -1,3 +1,4 @@
+from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from typing_extensions import override
 
@@ -5,7 +6,7 @@ from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
 
 
-class ClassificationHead(BaseHead[Tensor, Tensor]):
+class ClassificationHead(BaseHead):
     in_channels: int
     task = Tasks.CLASSIFICATION
     parser: str = "ClassificationParser"
@@ -33,7 +34,7 @@ class ClassificationHead(BaseHead[Tensor, Tensor]):
         return self.head(inputs)
 
     @override
-    def get_custom_head_config(self) -> dict[str, bool]:
+    def get_custom_head_config(self) -> Params:
         """Returns custom head configuration.
 
         @rtype: dict

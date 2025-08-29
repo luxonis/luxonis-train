@@ -81,6 +81,30 @@ class NodeConfig(ConfigItem):
     remove_on_export: bool = False
     task_name: str = ""
     metadata_task_override: str | dict[str, str] | None = None
+    variant: str | Literal["default"] | None = None
+
+    @model_validator(mode="after")
+    def validate_variant(self) -> Self:
+        old_variant = self.params.pop("variant", None)
+        if old_variant is not None and self.variant is not None:
+            raise ValueError(
+                "Both `node.variant` and `node.params.variant` are set for "
+                f"'{self.alias or self.name}'. Please use only one of them. "
+                "Note that `node.params.variant` is deprecated and its use "
+                "will raise an exception in future versions."
+            )
+        if old_variant is not None:
+            if not isinstance(old_variant, str):
+                raise TypeError(
+                    f"Invalid value for `node.params.variant`: {old_variant}. "
+                    "Expected a string."
+                )
+            logger.warning(
+                "Using `node.params.variant` is deprecated. "
+                "Please use `node.variant` field instead."
+            )
+            self.variant = old_variant
+        return self
 
 
 class PredefinedModelConfig(ConfigItem):
@@ -173,8 +197,9 @@ class ModelConfig(BaseModelExtraForbid):
         )
 
         logger.info(f"Using predefined model: `{self.predefined_model.name}`")
-        model = MODELS.get(self.predefined_model.name).from_variant(
-            self.predefined_model.variant, **self.predefined_model.params
+        model = MODELS.get(self.predefined_model.name)(
+            variant=self.predefined_model.variant,
+            **self.predefined_model.params,
         )
         nodes, losses, metrics, visualizers = model.generate_model(
             include_nodes=self.predefined_model.include_nodes,
@@ -438,7 +463,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
         return self
 
     @model_serializer
-    def serialize_model(self, info: SerializationInfo) -> dict[str, Any]:
+    def serialize_model(self, info: SerializationInfo) -> Params:
         data = {
             key: value
             for key, value in self.__dict__.items()
