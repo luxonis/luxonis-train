@@ -7,6 +7,7 @@ from torch import Tensor
 
 import luxonis_train as lxt
 from luxonis_train.config.config import PreprocessingConfig
+from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
 
 from .segmentation import seg_output_to_bool
@@ -15,6 +16,20 @@ from .spatial_transforms import (
     transform_keypoints,
     transform_masks,
 )
+
+ALLOWED_ANNOTATE_LABELS = {
+    (label if isinstance(label, str) else label.name)
+    for task in (
+        Tasks.BOUNDINGBOX,
+        Tasks.INSTANCE_KEYPOINTS,
+        Tasks.KEYPOINTS,
+        Tasks.INSTANCE_SEGMENTATION,
+        Tasks.SEGMENTATION,
+        Tasks.CLASSIFICATION,
+        Tasks.OCR,
+    )
+    for label in task.required_labels
+}
 
 
 def default_annotate(
@@ -46,6 +61,12 @@ def default_annotate(
         task if isinstance(task, str) else task.name
         for task in head.task.required_labels
     }
+
+    for task in required_labels:
+        if task not in ALLOWED_ANNOTATE_LABELS:
+            raise ValueError(
+                f"Unsupported task: {task}. Please create a custom annotate() method for head {head.name}."
+            )
 
     for i in range(batch_size):
         img_path = image_paths[i]
@@ -189,7 +210,3 @@ def default_annotate(
                         }
                     },
                 }
-            else:
-                raise ValueError(
-                    f"Unsupported task: {task}, please create a custom to_annotate method for this head."
-                )

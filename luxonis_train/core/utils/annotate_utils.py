@@ -82,10 +82,7 @@ def annotated_dataset_generator(
             batch_out = lt_module(imgs).outputs
 
         for head_name, head_output in batch_out.items():
-            img_paths = [
-                Path("".join(chr(int(c.item())) for c in raw_meta))
-                for raw_meta in metas["/metadata/path"]
-            ]
+            img_paths = [Path(p) for p in metas["/metadata/path"]]
             head = lt_module.nodes[head_name]
             if isinstance(head, lxt.BaseHead):
                 for record in head.annotate(

@@ -131,14 +131,15 @@ def test_predefined_models(
                         assert len(list(save_dir.iterdir())) == len(loader)
 
     # TODO: Support annotation for all models
-    if config_name not in {
-        "classification_light_model",
-        "classification_heavy_model",
-        "embeddings_model",
-        "anomaly_detection_model",
-        "fomo_light_model",
-        "ocr_recognition_light_model",
-    }:
+    if (
+        config_name
+        not in {
+            "embeddings_model",
+            "anomaly_detection_model",
+            "fomo_light_model",
+        }
+        or "heavy" in config_name
+    ):
         with subtests.test("annotate"):
             model.annotate(
                 dir_path=dataset.source_path,
