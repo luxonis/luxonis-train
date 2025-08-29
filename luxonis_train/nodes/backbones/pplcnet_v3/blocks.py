@@ -31,7 +31,7 @@ class AffineBlock(nn.Module):
         return self.scale * x + self.bias
 
 
-class LCNetV3Block(nn.Sequential):
+class LCNetV3Block(nn.Module):
     @typechecked
     def __init__(
         self,
@@ -42,41 +42,41 @@ class LCNetV3Block(nn.Sequential):
         use_se: bool = False,
         n_branches: int = 4,
     ):
-        blocks: list[nn.Module] = [
-            GeneralReparametrizableBlock(
-                in_channels=in_channels,
-                out_channels=in_channels,
-                kernel_size=kernel_size,
-                stride=stride,
-                padding=(kernel_size - 1) // 2,
-                groups=in_channels,
-                n_branches=n_branches,
-                refine_block=AffineBlock(),
-                activation=AffineActivation() if stride != 2 else None,
-            )
-        ]
-        if use_se:
-            blocks.append(
-                SqueezeExciteBlock(
-                    in_channels=in_channels,
-                    intermediate_channels=in_channels // 4,
-                    hard_sigmoid=True,
-                )
-            )
-
-        blocks.append(
-            GeneralReparametrizableBlock(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                padding=0,
-                kernel_size=1,
-                stride=1,
-                n_branches=n_branches,
-                refine_block=AffineBlock(),
-                activation=AffineActivation(),
-            )
+        super().__init__()
+        self.dw_conv = GeneralReparametrizableBlock(
+            in_channels=in_channels,
+            out_channels=in_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=(kernel_size - 1) // 2,
+            groups=in_channels,
+            n_branches=n_branches,
+            refine_block=AffineBlock(),
+            activation=AffineActivation(),
         )
-        super().__init__(*blocks)
+        if use_se:
+            self.se = SqueezeExciteBlock(
+                in_channels=in_channels,
+                intermediate_channels=in_channels // 4,
+                hard_sigmoid=True,
+            )
+        else:
+            self.se = nn.Identity()
+
+        self.pw_conv = GeneralReparametrizableBlock(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            padding=0,
+            kernel_size=1,
+            stride=1,
+            n_branches=n_branches,
+            refine_block=AffineBlock(),
+            activation=AffineActivation(),
+            use_scale_layer=False,
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.pw_conv(self.se(self.dw_conv(x)))
 
 
 class LCNetV3Layer(nn.Sequential):

@@ -64,7 +64,7 @@ class PPLCNetV3(BaseNode):
             stride=2,
             padding=1,
             bias=True,
-            activation=None,
+            activation=False,
         )
 
         blocks: list[LCNetV3Layer] = []
