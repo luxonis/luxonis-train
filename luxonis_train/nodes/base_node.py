@@ -25,7 +25,9 @@ from luxonis_train.utils import (
     safe_download,
 )
 
-InputT = TypeVar("InputT", Tensor, list[Tensor], Packet[Tensor])
+InputT = TypeVar(
+    "InputT", Tensor, list[Tensor], Packet[Tensor] | list[Packet[Tensor]]
+)
 OutputT = TypeVar("OutputT", Tensor, list[Tensor], Packet[Tensor])
 
 
@@ -515,7 +517,7 @@ class BaseNode(
         return self._export_output_names
 
     @abstractmethod
-    def forward(self, *inputs: InputT) -> OutputT:
+    def forward(self, inputs: InputT) -> OutputT:
         """Forward pass of the module.
 
         @type inputs: Tensor | list[Tensor] | Packet[Tensor]
@@ -542,7 +544,16 @@ class BaseNode(
         signature = get_signature(self.forward)
 
         for i, (name, param) in enumerate(signature.items()):
-            if param.annotation == Packet[Tensor]:
+            if param.annotation == list[Packet[Tensor]]:
+                if len(signature) != 1:
+                    raise RuntimeError(
+                        f"Node '{self.name}' has a parameter '{name}' "
+                        "of type `list[Packet[Tensor]]`, but it is not the "
+                        "only parameter of the `forward` method. This is not "
+                        "supported."
+                    )
+                kwargs[name] = inputs
+            elif param.annotation == Packet[Tensor]:
                 if i >= len(inputs):
                     raise RuntimeError(
                         f"Node '{self.name}' expects at least {i + 1} inputs, "
