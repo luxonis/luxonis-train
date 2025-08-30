@@ -7,6 +7,10 @@ from luxonis_train.nodes.blocks import SimpleDecoder, SimpleEncoder
 from luxonis_train.typing import Packet
 
 
+# NOTE: This is not really a backbone in the traditional sense.
+# It does not output feature maps for further processing by
+# an arbitrary head. This node is intended to be used specifically
+# with the DiscSubNetHead for anomaly detection tasks.
 class RecSubNet(BaseNode):
     in_channels: int
 
@@ -57,10 +61,8 @@ class RecSubNet(BaseNode):
 
     def forward(self, x: Tensor) -> Packet[Tensor]:
         """Performs the forward pass through the encoder and decoder."""
-        b5 = self.encoder(x)
-        output = self.decoder(b5)
         return {
-            "reconstruction": output,
+            "reconstruction": self.decoder(self.encoder(x)),
             "original": x,
         }
 

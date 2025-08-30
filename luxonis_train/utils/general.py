@@ -105,7 +105,11 @@ def to_shape_packet(packet: Packet[Tensor]) -> Packet[Size]:
     """
     shape_packet: Packet[Size] = {}
     for name, value in packet.items():
-        shape_packet[name] = [x.shape for x in value]
+        shape_packet[name] = (
+            [x.shape for x in value]
+            if isinstance(value, list)
+            else value.shape
+        )
     return shape_packet
 
 

@@ -67,7 +67,7 @@ class DiscSubNetHead(BaseHead):
         if self.export:
             return {"segmentation": seg_out}
 
-        return {"reconstructed": reconstruction, "segmentation": seg_out}
+        return {"reconstruction": reconstruction, "segmentation": seg_out}
 
     @override
     def get_custom_head_config(self) -> Params:

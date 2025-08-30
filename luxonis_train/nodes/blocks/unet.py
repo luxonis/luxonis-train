@@ -32,7 +32,7 @@ class SimpleEncoder(nn.Sequential):
         base_hidden_channels: int,
         width_multipliers: list[float],
         n_convolutions: int = 2,
-    ) -> None:
+    ):
         blocks = []
         for i, width_multiplier in enumerate(
             [*width_multipliers, width_multipliers[-1]]

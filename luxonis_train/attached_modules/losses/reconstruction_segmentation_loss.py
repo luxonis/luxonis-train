@@ -49,12 +49,12 @@ class ReconstructionSegmentationLoss(BaseLoss):
     def forward(
         self,
         predictions: Tensor,
-        reconstructed: Tensor,
+        reconstruction: Tensor,
         target_original_segmentation: Tensor,
         target_segmentation: Tensor,
     ) -> tuple[Tensor, dict[str, Tensor]]:
-        l2 = self.loss_l2(reconstructed, target_original_segmentation)
-        ssim = self.loss_ssim(reconstructed, target_original_segmentation)
+        l2 = self.loss_l2(reconstruction, target_original_segmentation)
+        ssim = self.loss_ssim(reconstruction, target_original_segmentation)
         focal = self.loss_focal(predictions, target_segmentation)
 
         total_loss = l2 + ssim + focal
