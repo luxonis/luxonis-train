@@ -79,3 +79,31 @@ def get_trial_params(
             "No paramteres to tune. Specify them under `tuner.params`."
         )
     return new_params
+
+
+def rename_params_for_logging(
+    params: dict, tuner_params: dict | None = None
+) -> dict:
+    """Rename parameters used for logging."""
+    aug_subset = []
+    if tuner_params:
+        aug_subset, _ = tuner_params.get(
+            "trainer.preprocessing.augmentations_subset", ([], [])
+        )
+
+    renamed = {}
+    for k, v in params.items():
+        if k.startswith("trainer.preprocessing.augmentations.") and aug_subset:
+            parts = k.split(".")
+            try:
+                idx = int(parts[3])  # augmentations.<index>.<field>
+                aug_name = aug_subset[idx]
+                new_key = (
+                    f"trainer.preprocessing.augmentations.{aug_name}.active"
+                )
+                renamed[new_key] = v
+            except (IndexError, ValueError):
+                renamed[k] = v
+        else:
+            renamed[k] = v
+    return renamed

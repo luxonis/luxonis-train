@@ -443,11 +443,16 @@ class LuxonisModel:
         onnx_save_path = str(export_path.with_suffix(".onnx"))
 
         with replace_weights(self.lightning_module, weights):
+            onnx_kwargs = self.cfg.exporter.onnx.model_dump(
+                exclude={"disable_onnx_simplification"}
+            )
             self.lightning_module.export_onnx(
-                onnx_save_path, **self.cfg.exporter.onnx.model_dump()
+                onnx_save_path,
+                **onnx_kwargs,
             )
 
-        try_onnx_simplify(onnx_save_path)
+        if not self.cfg.exporter.onnx.disable_onnx_simplification:
+            try_onnx_simplify(onnx_save_path)
         self._exported_models["onnx"] = Path(onnx_save_path)
 
         mean, scale, color_space = get_preprocessing(
@@ -682,7 +687,10 @@ class LuxonisModel:
         from optuna.integration import PyTorchLightningPruningCallback
         from sqlalchemy import URL
 
-        from .utils.tune_utils import get_trial_params
+        from .utils.tune_utils import (
+            get_trial_params,
+            rename_params_for_logging,
+        )
 
         def _objective(trial: optuna.trial.Trial) -> float:
             """Objective function used to optimize Optuna study."""
@@ -734,7 +742,10 @@ class LuxonisModel:
 
             cfg.trainer.callbacks = filtered_callbacks
 
-            child_tracker.log_hyperparams(curr_params)
+            renamed_params = rename_params_for_logging(
+                curr_params, self.cfg.tuner.params
+            )
+            child_tracker.log_hyperparams(renamed_params)
 
             cfg.save_data(run_save_dir / "training_config.yaml")
             cfg.trainer.n_sanity_val_steps = 0

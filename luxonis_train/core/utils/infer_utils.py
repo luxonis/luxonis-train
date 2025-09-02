@@ -11,6 +11,7 @@ import torch.utils.data as torch_data
 from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from luxonis_ml.typing import PathType
 from torch import Tensor
+from torch.utils.data._utils.collate import default_collate
 
 import luxonis_train as lxt
 from luxonis_train.attached_modules.visualizers import get_denormalized_images
@@ -228,8 +229,26 @@ def create_loader_from_directory(
         color_space=model.cfg_preprocessing.color_space,
         keep_aspect_ratio=model.cfg_preprocessing.keep_aspect_ratio,
     )
+
+    def collate_fix_paths(batch: list[tuple[Tensor, dict[str, Any]]]) -> Any:
+        for _, m in batch:
+            m["/metadata/path"] = (
+                m["/metadata/path"]
+                .view(-1)
+                .byte()
+                .cpu()
+                .numpy()
+                .tobytes()
+                .rstrip(b"\0")
+                .decode("utf-8", "ignore")
+            )
+        return default_collate(batch)
+
     return torch_data.DataLoader(
         loader,
+        collate_fn=collate_fix_paths
+        if add_path_annotation
+        else default_collate,
         batch_size=model.cfg.trainer.batch_size,
         pin_memory=True,
         shuffle=False,
