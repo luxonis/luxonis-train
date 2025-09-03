@@ -1,6 +1,5 @@
 import random
 import shutil
-import time
 import zipfile
 from collections.abc import Generator
 from pathlib import Path
@@ -14,6 +13,7 @@ import pytest
 import torchvision
 from _pytest.config import Config
 from _pytest.python import Function
+from _pytest.tmpdir import TempPathFactory
 from luxonis_ml.data import Category, DatasetIterator, LuxonisDataset
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.typing import Params
@@ -41,27 +41,8 @@ def set_environment(work_dir: Path) -> None:
 
 
 @pytest.fixture
-def randint() -> int:
-    rng = random.Random(time.time())
-    return rng.randint(0, 100_000)
-
-
-@pytest.fixture
-def tempdir(work_dir: Path) -> Path:
-    t = time.time()
-    unique_id = randint._fixture_function()
-    while True:
-        path = work_dir / str(unique_id)
-        if not path.exists():
-            break
-        if time.time() - t > 5:  # pragma: no cover
-            raise TimeoutError(
-                "Could not create a unique tempdir. Something is wrong."
-            )
-        unique_id = randint._fixture_function()  # pragma: no cover
-
-    path.mkdir(exist_ok=True)
-    return path
+def tempdir(tmp_path_factory: TempPathFactory) -> Path:
+    return tmp_path_factory.mktemp("tempdir")
 
 
 @pytest.fixture(scope="session")
