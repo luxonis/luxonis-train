@@ -1,0 +1,114 @@
+from collections.abc import Collection
+from typing import Literal, Protocol
+
+from loguru import logger
+from luxonis_ml.typing import Kwargs
+from luxonis_ml.utils.registry import AutoRegisterMeta
+
+
+class VariantProtocol(Protocol):
+    _variant: str | None
+
+    @staticmethod
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        """Returns a name of the default varaint and a dictionary of
+        available model variants with their parameters.
+
+        The keys are the variant names, and the values are dictionaries
+        of parameters which can be used as C{**kwargs} for the
+        predefined model constructor.
+
+        @rtype: tuple[str, dict[str, Kwargs]]
+        @return: A tuple containing the default variant name and a
+            dictionary of available variants with their parameters.
+        """
+        ...
+
+
+class VariantMeta(AutoRegisterMeta):
+    """A metaclass for classes that support variants.
+
+    When a class with this metaclass is instantiated with the 'variant'
+    keyword argument, the metaclass will look up the corresponding
+    parameters for that variant using the class's C{get_variants}
+    method. It will then call the class's C{__init__} method with those
+    parameters, along with any other provided arguments, taking care of
+    managing conflicts between explicitly provided arguments and variant
+    parameters.
+
+    If the C{variant} argument is not provided or is set to 'none', the
+    class will be instantiated normally.
+
+    Additionally, if the class has a C{__post_init__} method, it will be
+    called after the initialization. This method can be used for any
+    additional setup that needs to occur after the object is created.
+    """
+
+    def __call__(
+        cls: type[VariantProtocol], *args, variant: str | None = None, **kwargs
+    ):
+        obj = cls.__new__(cls, *args, **kwargs)
+        variant = variant or "none"
+
+        if variant == "none":
+            cls.__init__(obj, *args, **kwargs)
+            return obj
+
+        try:
+            default, variants = obj.get_variants()
+        except NotImplementedError as e:
+            raise NotImplementedError(
+                f"'{cls.__name__}' was called with the 'variant' "
+                f"parameter set to '{variant}', but the `get_variants` "
+                "method was not implented."
+            ) from e
+
+        obj._variant = variant  # type: ignore
+
+        if variant == "default":
+            variant = default
+
+        if variant not in variants:
+            raise ValueError(
+                f"Variant '{variant}' is not available. "
+                f"Available variants: {list(variants.keys())}."
+            )
+
+        params = variants[variant]
+
+        for key in list(params.keys()):
+            if key in kwargs:
+                logger.info(
+                    f"Overriding variant parameter '{key}' with "
+                    f"explicitly provided value `{kwargs[key]}`."
+                )
+                del params[key]
+
+        cls.__init__(obj, *args, **kwargs, **params)
+
+        if isinstance(obj, cls):
+            post_init = getattr(obj, "__post_init__", None)
+            if callable(post_init):
+                post_init()
+        return obj
+
+
+def add_variant_aliases(
+    variants: dict[str, Kwargs],
+    aliases: dict[str, Collection[str]] | Literal["yolo"] = "yolo",
+) -> dict[str, Kwargs]:
+    """Adds yolo-style aliases to the variants dictionary."""
+    if aliases == "yolo":
+        aliases = {
+            "tiny": ["t"],
+            "nano": ["n"],
+            "small": ["s"],
+            "medium": ["m"],
+            "large": ["l"],
+        }
+    else:
+        for alias, names in aliases.items():
+            for name in names:
+                variants[alias] = variants[name]
+
+    return variants

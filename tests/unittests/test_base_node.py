@@ -75,8 +75,7 @@ def test_in_sizes():
     node = DummyNode(in_sizes=Size((3, 224, 224)))
     assert node.in_sizes == Size((3, 224, 224))
     node = DummyNode(input_shapes=[{"feats": [Size((3, 224, 224))]}])
-    with pytest.raises(RuntimeError):
-        _ = node.in_sizes
+    assert node.in_sizes == [Size((3, 224, 224))]
 
 
 def test_check_type_override():

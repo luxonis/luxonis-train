@@ -1,12 +1,12 @@
 import math
 import urllib.parse
-from collections.abc import Collection, Iterator
+from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
-from typing import Any, Literal, TypeVar, overload
+from typing import Any, TypeVar, overload
 
 import torch
 from loguru import logger
-from luxonis_ml.typing import Kwargs, PathType
+from luxonis_ml.typing import PathType
 from luxonis_ml.utils import LuxonisFileSystem
 from torch import Size, Tensor
 
@@ -249,26 +249,6 @@ def get_attribute_check_none(obj: object, attribute: str) -> Any:
     if value is None:
         raise ValueError(f"attribute '{attribute}' was not set")
     return value
-
-
-def add_variant_aliases(
-    variants: dict[str, Kwargs],
-    aliases: dict[str, Collection[str]] | Literal["yolo"] = "yolo",
-) -> dict[str, Kwargs]:
-    if aliases == "yolo":
-        aliases = {
-            "tiny": ["t"],
-            "nano": ["n"],
-            "small": ["s"],
-            "medium": ["m"],
-            "large": ["l"],
-        }
-    else:
-        for alias, names in aliases.items():
-            for name in names:
-                variants[alias] = variants[name]
-
-    return variants
 
 
 def get_batch_instances(

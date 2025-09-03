@@ -346,7 +346,7 @@ class BaseNode(
         input_shapes = self.input_shapes[0]
         features = input_shapes.get("features")
         if features is None:
-            if len(set(input_shapes.values())) == 1:
+            if len(input_shapes) == 1:
                 features = next(iter(input_shapes.values()))
             else:
                 # TODO: This could be handled by allowing to specify

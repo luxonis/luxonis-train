@@ -1,9 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Literal
 
-from loguru import logger
 from luxonis_ml.typing import Kwargs, Params, check_type
-from luxonis_ml.utils.registry import AutoRegisterMeta
 from typeguard import typechecked
 from typing_extensions import override
 
@@ -15,58 +13,7 @@ from luxonis_train.config import (
 )
 from luxonis_train.config.config import FreezingConfig
 from luxonis_train.registry import MODELS
-
-
-class VariantMeta(AutoRegisterMeta):
-    def __call__(cls, *args, variant: str | None = None, **kwargs):
-        obj: BasePredefinedModel = cls.__new__(
-            cls,  # type: ignore
-            *args,
-            **kwargs,
-        )
-        variant = variant or "none"
-
-        if variant == "none":
-            cls.__init__(obj, *args, **kwargs)
-            return obj
-
-        try:
-            default, variants = obj.get_variants()
-        except NotImplementedError as e:
-            raise NotImplementedError(
-                f"'{cls.__name__}' was called with the 'variant' "
-                f"parameter set to '{variant}', but the `get_variants` "
-                "method was not implented."
-            ) from e
-
-        obj._variant = variant  # type: ignore
-
-        if variant == "default":
-            variant = default
-
-        if variant not in variants:
-            raise ValueError(
-                f"Variant '{variant}' is not available. "
-                f"Available variants: {list(variants.keys())}."
-            )
-
-        params = variants[variant]
-
-        for key in list(params.keys()):
-            if key in kwargs:
-                logger.info(
-                    f"Overriding variant parameter '{key}' with "
-                    f"explicitly provided value `{kwargs[key]}`."
-                )
-                del params[key]
-
-        cls.__init__(obj, *args, **kwargs, **params)
-
-        if isinstance(obj, cls):
-            post_init = getattr(obj, "__post_init__", None)
-            if callable(post_init):
-                post_init()
-        return obj
+from luxonis_train.utils import VariantMeta
 
 
 class BasePredefinedModel(
