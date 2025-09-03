@@ -6,8 +6,7 @@ from torch import Tensor, nn
 from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.utils import make_divisible
-from luxonis_train.utils.general import add_variant_aliases
+from luxonis_train.utils import add_variant_aliases, make_divisible
 
 from .blocks import CSPDownBlock, CSPUpBlock, RepDownBlock, RepUpBlock
 
