@@ -2,14 +2,13 @@ import math
 import urllib.parse
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
-from typing import Any, TypeVar
+from typing import Any, TypeVar, overload
 
 import torch
 from loguru import logger
 from luxonis_ml.typing import PathType
 from luxonis_ml.utils import LuxonisFileSystem
 from torch import Size, Tensor
-from typing_extensions import overload
 
 from luxonis_train.typing import Packet
 
@@ -106,7 +105,11 @@ def to_shape_packet(packet: Packet[Tensor]) -> Packet[Size]:
     """
     shape_packet: Packet[Size] = {}
     for name, value in packet.items():
-        shape_packet[name] = [x.shape for x in value]
+        shape_packet[name] = (
+            [x.shape for x in value]
+            if isinstance(value, list)
+            else value.shape
+        )
     return shape_packet
 
 
@@ -138,7 +141,7 @@ def get_with_default(
     if value is not None:
         return value
 
-    msg = f"Default value `{default}` is being used for {action_name}."
+    msg = f"Default value of `{value}` is being used for {action_name}."
 
     if caller_name:
         msg = f"[{caller_name}] {msg}"
