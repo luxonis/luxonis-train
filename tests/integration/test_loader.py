@@ -5,7 +5,6 @@ from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import Params
 
 from luxonis_train import LuxonisModel
-from luxonis_train.core import LuxonisModel
 
 
 @pytest.mark.parametrize(

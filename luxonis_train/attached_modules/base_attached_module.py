@@ -1,6 +1,5 @@
-import inspect
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Collection, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from functools import cached_property
 from inspect import Parameter
@@ -86,19 +85,6 @@ class BaseAttachedModule(
     @property
     def current_epoch(self) -> int:
         return self.node.current_epoch
-
-    @staticmethod
-    def _get_signature(
-        func: Callable, exclude: Collection[str] | None = None
-    ) -> dict[str, Parameter]:
-        exclude = set(exclude or [])
-        exclude |= {"self", "kwargs"}
-        signature = dict(inspect.signature(func).parameters)
-        return {
-            name: param
-            for name, param in signature.items()
-            if name not in exclude
-        }
 
     @cached_property
     @abstractmethod

@@ -6,7 +6,7 @@ from torch import Tensor
 
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.registry import LOSSES
-from luxonis_train.typing import Labels, Packet
+from luxonis_train.typing import Labels, Packet, get_signature
 
 
 class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
@@ -34,7 +34,7 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
 
     @cached_property
     def _signature(self) -> dict[str, Parameter]:
-        return self._get_signature(self.forward)
+        return get_signature(self.forward)
 
     def run(
         self, inputs: Packet[Tensor], labels: Labels

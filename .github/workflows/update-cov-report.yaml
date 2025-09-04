@@ -6,7 +6,6 @@ on:
 
 jobs:
   update-base-report:
-    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:

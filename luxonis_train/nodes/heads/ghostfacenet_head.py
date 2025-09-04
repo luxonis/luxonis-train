@@ -2,13 +2,14 @@
 import math
 
 from torch import Tensor, nn
+from typing_extensions import override
 
-from luxonis_train.nodes.blocks.blocks import ConvModule
-from luxonis_train.nodes.heads import BaseHead
+from luxonis_train.nodes.blocks.blocks import ConvBlock
+from luxonis_train.nodes.heads.base_head import BaseHead
 from luxonis_train.tasks import Tasks
 
 
-class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
+class GhostFaceNetHead(BaseHead):
     in_channels: int
     in_width: int
     task = Tasks.EMBEDDINGS
@@ -20,9 +21,9 @@ class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
         dropout: float = 0.2,
         **kwargs,
     ):
-        """GhostFaceNetV2 backbone.
+        """GhostFaceNet backbone.
 
-        GhostFaceNetV2 is a convolutional neural network architecture focused on face recognition, but it is
+        GhostFaceNet is a convolutional neural network architecture focused on face recognition, but it is
         adaptable to generic embedding tasks. It is based on the GhostNet architecture and uses Ghost BottleneckV2 blocks.
 
         Source: U{https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py}
@@ -46,7 +47,7 @@ class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
         _, H, W = self.original_in_shape
 
         self.head = nn.Sequential(
-            ConvModule(
+            ConvBlock(
                 self.in_channels,
                 self.in_channels,
                 kernel_size=(
@@ -63,11 +64,15 @@ class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
             nn.Flatten(),
             nn.BatchNorm1d(embedding_size),
         )
-        self._init_weights()
 
-    def _init_weights(self) -> None:
+    def forward(self, x: Tensor) -> Tensor:
+        return self.head(x)
+
+    @override
+    def initialize_weights(self, method: str | None = None) -> None:
+        super().initialize_weights(method)
         for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+            if isinstance(m, nn.Conv2d | nn.Linear):
                 fan_in, _ = nn.init._calculate_fan_in_and_fan_out(m.weight)
                 negative_slope = 0.25
                 m.weight.data.normal_(
@@ -76,6 +81,3 @@ class GhostFaceNetHead(BaseHead[Tensor, list[Tensor]]):
             if isinstance(m, nn.BatchNorm2d):
                 m.momentum = 0.9
                 m.eps = 1e-5
-
-    def forward(self, x: Tensor) -> Tensor:
-        return self.head(x)

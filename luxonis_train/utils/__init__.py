@@ -39,6 +39,7 @@ from .spatial_transforms import (
     transform_masks,
 )
 from .tracker import LuxonisTrackerPL
+from .variants import VariantBase, VariantMeta, add_variant_aliases
 
 __all__ = [
     "Counter",
@@ -47,6 +48,9 @@ __all__ = [
     "LuxonisTrackerPL",
     "OCRDecoder",
     "OCREncoder",
+    "VariantBase",
+    "VariantMeta",
+    "add_variant_aliases",
     "anchors_for_fpn_features",
     "apply_bounding_box_to_masks",
     "bbox2dist",
