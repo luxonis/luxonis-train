@@ -38,12 +38,12 @@ def test_predefined_models(
     toy_ocr_dataset: LuxonisTestDataset,
     embedding_dataset: LuxonisTestDataset,
     anomaly_detection_dataset: LuxonisTestDataset,
-    tempdir: Path,
+    temp_path: Path,
     subtests: SubTests,
 ):
     config_file = f"configs/{config_name}.yaml"
-    tempdir = tempdir / config_name
-    tempdir.mkdir()
+    temp_path = temp_path / config_name
+    temp_path.mkdir()
 
     if config_name == "embeddings_model":
         dataset = embedding_dataset
@@ -94,8 +94,8 @@ def test_predefined_models(
     if config_name != "embeddings_model":
         with subtests.test("infer"):
             loader = LuxonisLoader(dataset)
-            img_dir = tempdir / "images"
-            video_path = tempdir / "video.avi"
+            img_dir = temp_path / "images"
+            video_path = temp_path / "video.avi"
             video_writer = cv2.VideoWriter(
                 str(video_path), cv2.VideoWriter_fourcc(*"XVID"), 1, (256, 256)
             )
@@ -109,7 +109,7 @@ def test_predefined_models(
 
             for subtest in ["single_image", "image_dir", "video", "loader"]:
                 with subtests.test(f"infer/{subtest}"):
-                    save_dir = tempdir / f"infer_{subtest}"
+                    save_dir = temp_path / f"infer_{subtest}"
                     if subtest == "single_image":
                         source = img_dir / "0.png"
                     elif subtest == "image_dir":

@@ -57,9 +57,9 @@ def test_smart_cfg_auto_populate(coco_dataset: LuxonisDataset):
     assert loss_params["class_loss_weight"] == expected_class_weight
 
 
-def test_config_dump(coco_dataset: LuxonisDataset, tempdir: Path):
+def test_config_dump(coco_dataset: LuxonisDataset, tmp_path: Path):
     model_config_path = Path("configs", "detection_light_model.yaml")
-    temp_config_path = tempdir / "config.yaml"
+    temp_config_path = tmp_path / "config.yaml"
 
     config = Config.get_config(model_config_path)
     config.save_data(temp_config_path)
@@ -78,9 +78,9 @@ def test_config_dump(coco_dataset: LuxonisDataset, tempdir: Path):
     ]
 
 
-def test_explicit_dataset_type(tempdir: Path):
+def test_explicit_dataset_type(tmp_path: Path):
     model_config_path = Path("configs", "detection_light_model.yaml")
-    temp_config_path = tempdir / "config.yaml"
+    temp_config_path = tmp_path / "config.yaml"
 
     cfg1 = Config.get_config(
         model_config_path,

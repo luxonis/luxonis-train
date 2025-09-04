@@ -25,7 +25,7 @@ from luxonis_train.__main__ import test as _test
 
 def test_cli_command_success(
     coco_dataset: LuxonisDataset,
-    tempdir: Path,
+    tmp_path: Path,
     subtests: SubTests,
     opts: Params,
 ) -> None:
@@ -38,9 +38,9 @@ def test_cli_command_success(
         (train, {}),
         (tune, {}),
         (_test, {"view": "val"}),
-        (export, {"save_path": tempdir}),
+        (export, {"save_path": tmp_path}),
         (_yield_visualizations, {}),
-        (archive, {"executable": tempdir / "export.onnx"}),
+        (archive, {"executable": tmp_path / "export.onnx"}),
     ]:
         with subtests.test(command.__name__):
             res = command(
@@ -93,7 +93,7 @@ def test_cli_command_failure(
         )
 
 
-def test_source(tempdir: Path, coco_dataset: LuxonisDataset):
+def test_source(tmp_path: Path, coco_dataset: LuxonisDataset):
     cfg = {
         "rich_logging": False,
         "model": {
@@ -118,16 +118,16 @@ def test_source(tempdir: Path, coco_dataset: LuxonisDataset):
             ],
         },
     }
-    with open(tempdir / "config.yaml", "w") as f:
+    with open(tmp_path / "config.yaml", "w") as f:
         yaml.dump(cfg, f)
 
-    with open(tempdir / "source_1.py", "w") as f:
+    with open(tmp_path / "source_1.py", "w") as f:
         f.write("print('sourcing 1')")
 
-    with open(tempdir / "source_2.py", "w") as f:
+    with open(tmp_path / "source_2.py", "w") as f:
         f.write("print('sourcing 2')")
 
-    with open(tempdir / "callbacks.py", "w") as f:
+    with open(tmp_path / "callbacks.py", "w") as f:
         f.write(
             """
 import lightning.pytorch as pl
@@ -151,7 +151,7 @@ class CustomCallback(pl.Callback):
         print(self.message)
 """
         )
-    with open(tempdir / "loss.py", "w") as f:
+    with open(tmp_path / "loss.py", "w") as f:
         f.write(
             """
 from torch import Tensor
@@ -176,16 +176,16 @@ class CustomLoss(BaseLoss):
             "-m",
             "luxonis_train",
             "--source",
-            str(tempdir / "source_1.py"),
+            str(tmp_path / "source_1.py"),
             "test",
             "--source",
-            str(tempdir / "source_2.py"),
+            str(tmp_path / "source_2.py"),
             "--config",
-            str(tempdir / "config.yaml"),
+            str(tmp_path / "config.yaml"),
             "--source",
-            str(tempdir / "callbacks.py"),
+            str(tmp_path / "callbacks.py"),
             "--source",
-            str(tempdir / "loss.py"),
+            str(tmp_path / "loss.py"),
             "loader.params.dataset_name",
             coco_dataset.identifier,
         ],
