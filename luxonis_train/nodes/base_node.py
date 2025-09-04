@@ -1,6 +1,6 @@
 import inspect
 import logging
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from contextlib import suppress
 from operator import itemgetter
 from typing import Generic, Literal, TypeVar
@@ -12,9 +12,6 @@ from luxonis_ml.typing import Kwargs, check_type
 from torch import Size, Tensor, nn
 from typeguard import typechecked
 
-from luxonis_train.config.predefined_models.base_predefined_model import (
-    VariantMeta,
-)
 from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
 from luxonis_train.registry import NODES
 from luxonis_train.tasks import Task
@@ -22,6 +19,7 @@ from luxonis_train.typing import AttachIndexType, Packet, get_signature
 from luxonis_train.utils import (
     DatasetMetadata,
     IncompatibleError,
+    VariantBase,
     safe_download,
 )
 
@@ -33,9 +31,8 @@ OutputT = TypeVar("OutputT", Tensor, list[Tensor], Packet[Tensor])
 
 class BaseNode(
     nn.Module,
-    ABC,
+    VariantBase,
     Generic[InputT, OutputT],
-    metaclass=VariantMeta,
     register=False,
     registry=NODES,
 ):
@@ -171,9 +168,6 @@ class BaseNode(
         self._check_type_overrides()
 
     def __post_init__(self) -> None:
-        if self._weights == "default":
-            return
-
         if self._weights == "download":
             self.load_checkpoint()
         elif self._weights.startswith("http"):

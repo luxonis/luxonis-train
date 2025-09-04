@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Literal
 
 from luxonis_ml.typing import Kwargs, Params, check_type
@@ -13,12 +13,10 @@ from luxonis_train.config import (
 )
 from luxonis_train.config.config import FreezingConfig
 from luxonis_train.registry import MODELS
-from luxonis_train.utils import VariantMeta
+from luxonis_train.utils.variants import VariantBase
 
 
-class BasePredefinedModel(
-    ABC, metaclass=VariantMeta, registry=MODELS, register=False
-):
+class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
     _variant: str | None
 
     @property

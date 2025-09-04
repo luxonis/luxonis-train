@@ -37,7 +37,7 @@ from pydantic.types import (
 from typing_extensions import Self, override
 
 from luxonis_train.config.constants import CONFIG_VERSION
-from luxonis_train.registry import MODELS
+from luxonis_train.registry import MODELS, from_registry
 
 
 class ImageSize(NamedTuple):
@@ -197,7 +197,9 @@ class ModelConfig(BaseModelExtraForbid):
         )
 
         logger.info(f"Using predefined model: `{self.predefined_model.name}`")
-        model = MODELS.get(self.predefined_model.name)(
+        model = from_registry(
+            MODELS,
+            self.predefined_model.name,
             variant=self.predefined_model.variant,
             **self.predefined_model.params,
         )
