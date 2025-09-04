@@ -310,13 +310,29 @@ class BaseNode(
         if self._in_sizes is not None:
             return self._in_sizes
 
-        features = self.input_shapes[0].get("features")
-        if features is None:
+        if len(self.input_shapes) != 1:
             raise RuntimeError(
-                f"Feature field is missing in {self.name}. "
-                "The default implementation of `in_sizes` cannot be used."
+                f"Node '{self.name}' takes inputs from multiple "
+                "preceding nodes, but the default implementation "
+                "of `in_sizes` can only handle a single input nodes. "
+                f"Please use `{self.name}.input_shapes` directly."
             )
-        assert isinstance(features, list)
+
+        input_shapes = self.input_shapes[0]
+        features = input_shapes.get("features")
+        if features is None:
+            if len(input_shapes) == 1:
+                features = next(iter(input_shapes.values()))
+            else:
+                # TODO: This could be handled by allowing to specify
+                # the main output key in the preceding node. We
+                # would also need a reference to preceding nodes
+                # in each node for that.
+                raise RuntimeError(
+                    f"'feature' field is missing from the input "
+                    f"to '{self.name}'. The default implementation of "
+                    "`in_sizes` cannot be used."
+                )
         return self.get_attached(features)
 
     @property
@@ -526,14 +542,14 @@ class BaseNode(
 
     T = TypeVar("T", Tensor, Size)
 
-    def get_attached(self, lst: list[T]) -> list[T] | T:
+    def get_attached(self, value: list[T] | T) -> list[T] | T:
         """Gets the attached elements from a list.
 
         This method is used to get the attached elements from a list
         based on the C{attach_index} attribute.
 
-        @type lst: list[T]
-        @param lst: List to get the attached elements from. Can be
+        @type value: list[T] | T
+        @param value: List to get the attached elements from. Can be
             either a list of tensors or a list of sizes.
         @rtype: list[T] | T
         @return: Attached elements. If C{attach_index} is set to
@@ -543,37 +559,52 @@ class BaseNode(
 
         def _normalize_index(index: int) -> int:
             if index < 0:
-                index += len(lst)
+                index += len(value)
             return index
 
         def _normalize_slice(i: int, j: int, k: int | None = None) -> slice:
             if i < 0 and j < 0:
+                if i < j:
+                    return slice(
+                        max(len(value) + i + 1, 0),
+                        len(value) + j + 1,
+                        k or -1 if i > j else 1,
+                    )
                 return slice(
-                    len(lst) + i, len(lst) + j, k or -1 if i > j else 1
+                    len(value) + i, len(value) + j, k or -1 if i > j else 1
                 )
             if i < 0:
-                return slice(len(lst) + i, j, k or 1)
+                return slice(len(value) + i, j, k or 1)
             if j < 0:
-                return slice(i, len(lst) + j, k or 1)
+                return slice(i, len(value) + j, k or 1)
             if i > j:
                 return slice(i, j, k or -1)
             return slice(i, j, k or 1)
 
+        if not isinstance(value, list):
+            if self.attach_index not in (None, -1, 0):
+                raise ValueError(
+                    f"Attach index for node '{self.name}' is set to "
+                    f"'{self.attach_index}', but the input is not a list. "
+                    "Only attach indices of None, -1 or 0 are valid in this case."
+                )
+            return value
+
         match self.attach_index:
             case "all":
-                return lst
+                return value
             case int(i):
                 i = _normalize_index(i)
-                if i >= len(lst):
+                if i >= len(value):
                     raise ValueError(
                         f"Attach index {i} is out of range "
-                        f"for list of length {len(lst)}."
+                        f"for list of length {len(value)}."
                     )
-                return lst[i]
+                return value[i]
             case (int(i), int(j)):
-                return lst[_normalize_slice(i, j)]
+                return value[_normalize_slice(i, j)]
             case (int(i), int(j), int(k)):
-                return lst[_normalize_slice(i, j, k)]
+                return value[_normalize_slice(i, j, k)]
             case None:
                 raise RuntimeError(self._missing_attach_index_message())
 
