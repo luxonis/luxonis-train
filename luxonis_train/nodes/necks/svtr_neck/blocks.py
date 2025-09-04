@@ -10,18 +10,6 @@ from typeguard import typechecked
 from luxonis_train.nodes.blocks import DropPath
 
 
-class Im2Seq(nn.Module):
-    @typechecked
-    def __init__(self, in_channels: int):
-        super().__init__()
-        self.out_channels = in_channels
-
-    def forward(self, x: Tensor) -> Tensor:
-        _, _, H, _ = x.shape
-        assert H == 1
-        return x.squeeze(2).permute(0, 2, 1)
-
-
 class ConvMixer(nn.Module):
     @typechecked
     def __init__(
