@@ -21,9 +21,9 @@ class GhostFaceNetHead(BaseHead):
         dropout: float = 0.2,
         **kwargs,
     ):
-        """GhostFaceNetV2 backbone.
+        """GhostFaceNet backbone.
 
-        GhostFaceNetV2 is a convolutional neural network architecture focused on face recognition, but it is
+        GhostFaceNet is a convolutional neural network architecture focused on face recognition, but it is
         adaptable to generic embedding tasks. It is based on the GhostNet architecture and uses Ghost BottleneckV2 blocks.
 
         Source: U{https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py}

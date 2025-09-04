@@ -19,7 +19,7 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`RecSubNet`](#recsubnet)
   - [`PPLCNetV3`](#pplcnetv3)
   - [`EfficientViT`](#efficientvit)
-  - [`GhostFaceNetV2`](#ghostfacenetv2)
+  - [`GhostFaceNet`](#ghostfacenet)
 - [Necks](#necks)
   - [`RepPANNeck`](#reppanneck)
   - [`SVTRNeck`](#svtrneck)
@@ -216,7 +216,7 @@ Adapted from [here](https://arxiv.org/abs/2205.14756)
 | `expand_ratio` | `int`                                                             | `4`                              | Factor by which channels expand in the local module |
 | `dim`          | `int`                                                             | `None`                           | Dimension size for each attention head              |
 
-### `GhostFaceNetV2`
+### `GhostFaceNet`
 
 **Parameters:**
 
