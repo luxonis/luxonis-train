@@ -9,7 +9,7 @@ from luxonis_train.nodes.backbones import __all__ as BACKBONES
 BACKBONES = [
     backbone
     for backbone in BACKBONES
-    if backbone not in {"PPLCNetV3", "GhostFaceNetV2", "RecSubNet"}
+    if backbone not in {"PPLCNetV3", "GhostFaceNet", "RecSubNet"}
 ]
 
 
