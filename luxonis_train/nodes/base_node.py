@@ -3,7 +3,7 @@ import logging
 from abc import abstractmethod
 from contextlib import suppress
 from operator import itemgetter
-from typing import Generic, Literal, TypeVar
+from typing import Literal, TypeVar
 
 import torch
 from bidict import bidict
@@ -23,19 +23,8 @@ from luxonis_train.utils import (
     safe_download,
 )
 
-InputT = TypeVar(
-    "InputT", Tensor, list[Tensor], Packet[Tensor] | list[Packet[Tensor]]
-)
-OutputT = TypeVar("OutputT", Tensor, list[Tensor], Packet[Tensor])
 
-
-class BaseNode(
-    nn.Module,
-    VariantBase,
-    Generic[InputT, OutputT],
-    register=False,
-    registry=NODES,
-):
+class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
     """A base class for all model nodes.
 
     This class defines the basic interface for all nodes.
@@ -511,10 +500,14 @@ class BaseNode(
         return self._export_output_names
 
     @abstractmethod
-    def forward(self, inputs: InputT) -> OutputT:
+    def forward(
+        self,
+        inputs: Tensor | list[Tensor] | Packet[Tensor] | list[Packet[Tensor]],
+    ) -> Tensor | list[Tensor] | Packet[Tensor]:
         """Forward pass of the module.
 
-        @type inputs: Tensor | list[Tensor] | Packet[Tensor]
+        @type inputs: Tensor | list[Tensor] | Packet[Tensor] |
+            list[Packet[Tensor]]
         @param inputs: Inputs to the module. Can be either a single
             tensor, a list of tensors or a tensor packet.
         @rtype: Tensor | list[Tensor] | Packet[Tensor]
