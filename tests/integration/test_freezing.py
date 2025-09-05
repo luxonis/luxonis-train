@@ -96,7 +96,9 @@ def test_freezing_parametrized(
         assert len(actual_vals) == len(expected_seq), (
             f"{tag}: expected {len(expected_seq)} entries, got {len(actual_vals)}"
         )
-        for (exp_step, exp_val), actual in zip(expected_seq, actual_vals):
+        for (exp_step, exp_val), actual in zip(
+            expected_seq, actual_vals, strict=True
+        ):
             act_step, act_val = actual.step, actual.value
             assert act_step == exp_step, (
                 f"{tag}: expected step {exp_step}, got {act_step}"

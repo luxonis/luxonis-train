@@ -3,7 +3,6 @@ import torch
 from torch import Tensor
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
-from torch.optim.optimizer import Optimizer
 
 from luxonis_train.strategies.triple_lr_sgd import TripleLRSGDStrategy
 

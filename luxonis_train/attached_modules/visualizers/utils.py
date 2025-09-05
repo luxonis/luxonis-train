@@ -168,8 +168,7 @@ def draw_keypoint_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
 
     if out_keypoints.numel() == 0:
         return img
-    else:
-        return draw_keypoints(img, out_keypoints, **kwargs)
+    return draw_keypoints(img, out_keypoints, **kwargs)
 
 
 def denormalize(

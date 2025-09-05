@@ -1,3 +1,6 @@
+import inspect
+from collections.abc import Callable, Collection
+from inspect import Parameter
 from typing import Literal, TypeAlias, TypeVar
 
 from torch import Size, Tensor
@@ -24,3 +27,26 @@ of either `torch.Tensor`s or `torch.Size`s.
 
 Packets are used to pass data between nodes of the network graph.
 """
+
+
+def get_signature(
+    func: Callable, exclude: Collection[str] | None = None
+) -> dict[str, Parameter]:
+    """Get the signature of a function, excluding certain parameters
+    like 'self' and 'kwargs'.
+
+    @type func: Callable
+    @param func: The function to get the signature of.
+    @type exclude: Collection[str] | None
+    @param exclude: A collection of parameter names to exclude from the
+        signature. Defaults to None, which excludes 'self' and 'kwargs'.
+    @rtype: dict[str, Parameter]
+    @return: A dictionary mapping parameter names to their Parameter
+        objects, excluding the specified parameters.
+    """
+    exclude = set(exclude or [])
+    exclude |= {"self", "kwargs"}
+    signature = dict(inspect.signature(func).parameters)
+    return {
+        name: param for name, param in signature.items() if name not in exclude
+    }
