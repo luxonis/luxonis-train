@@ -13,7 +13,6 @@ import pytest
 import torchvision
 from _pytest.config import Config
 from _pytest.python import Function
-from _pytest.tmpdir import TempPathFactory
 from luxonis_ml.data import Category, DatasetIterator, LuxonisDataset
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.typing import Params
@@ -38,11 +37,6 @@ def image_size() -> tuple[int, int]:
 @pytest.fixture(scope="session", autouse=True)
 def set_environment(work_dir: Path) -> None:
     environ.LUXONISML_BASE_PATH = work_dir / "luxonisml"
-
-
-@pytest.fixture
-def tempdir(tmp_path_factory: TempPathFactory) -> Path:
-    return tmp_path_factory.mktemp("tempdir")
 
 
 @pytest.fixture(scope="session")
