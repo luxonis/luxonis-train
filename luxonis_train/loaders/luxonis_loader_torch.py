@@ -85,8 +85,6 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         @type class_order_per_task: dict[str, list[str]] | None
         @param class_order_per_task: Dictionary mapping task names to a list of class names.
             If provided, the classes for the specified tasks will be reordered.
-        @type seed: Optional[int]
-        @param seed: The random seed to use for the augmentations.
         """
         super().__init__(**kwargs)
         if dataset_dir is not None:
@@ -121,7 +119,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             filter_task_names=filter_task_names,
             min_bbox_visibility=min_bbox_visibility,
             bbox_area_threshold=bbox_area_threshold,
-            seed=seed,
+            seed=self.seed,
         )
 
     @override
