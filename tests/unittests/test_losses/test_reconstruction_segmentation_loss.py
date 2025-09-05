@@ -21,14 +21,14 @@ def test_reconstruction_segmentation_loss():
     loss = ReconstructionSegmentationLoss(node=DummyPrecisionSegmentBBoxHead())
     (
         predictions,
-        reconstructed,
+        reconstruction,
         target_original_segmentation,
         target_segmentation,
         expected_sub_losses,
     ) = load_checkpoint("reconstruction_segmentation_loss_data.pt")
     result = loss(
         predictions,
-        reconstructed,
+        reconstruction,
         target_original_segmentation,
         target_segmentation,
     )[1]

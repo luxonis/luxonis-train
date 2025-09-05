@@ -102,7 +102,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
 
                 if self.augmentations is not None:
                     anomaly_img = self.augmentations.apply(
-                        [({"image": anomaly_img}, {})]
+                        [({self.image_source: anomaly_img}, {})]
                     )[0][self.image_source]
 
                 anomaly_img = self.img_numpy_to_torch(anomaly_img)

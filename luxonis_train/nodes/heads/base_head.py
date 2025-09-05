@@ -60,7 +60,7 @@ class BaseHead(BaseNode[ForwardInputT, ForwardOutputT]):
 
     def annotate(
         self,
-        head_output: dict[str, Packet[Tensor]],
+        head_output: Packet[Tensor],
         image_paths: list[Path],
         config_preprocessing: PreprocessingConfig,
     ) -> DatasetIterator:

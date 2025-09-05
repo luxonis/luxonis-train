@@ -4,6 +4,7 @@ import subprocess
 import time
 from contextlib import suppress
 from pathlib import Path
+from typing import Final
 
 import mlflow
 import psutil
@@ -17,6 +18,8 @@ from torch import Tensor, nn
 
 from luxonis_train import BaseHead, LuxonisModel, Tasks
 
+TIMEOUT: Final[int] = 60
+
 
 @pytest.fixture(autouse=True)
 def setup(tempdir: Path):
@@ -24,7 +27,6 @@ def setup(tempdir: Path):
     os.environ["MLFLOW_TRACKING_URI"] = environ.MLFLOW_TRACKING_URI
 
     start_time = time.time()
-    timeout = 30
 
     backend_store_uri = f"sqlite:///{tempdir}/mlflow.db"
     artifact_root = tempdir / "mlflow-artifacts"
@@ -54,7 +56,7 @@ def setup(tempdir: Path):
             mlflow.search_experiments()
             break
         except Exception as e:  # pragma: no cover
-            if time.time() - start_time > timeout:
+            if time.time() - start_time > TIMEOUT:
                 process.kill()
                 raise RuntimeError(
                     "MLflow server failed to start within 60 seconds"
@@ -79,7 +81,7 @@ class XORHead(BaseHead):
         return self.model(x)
 
 
-@pytest.mark.timeout(30)
+@pytest.mark.timeout(TIMEOUT)
 def test_mlflow_logging(xor_dataset: LuxonisDataset, subtests: SubTests):
     model = LuxonisModel(
         get_config(), {"loader.params.dataset_name": xor_dataset.identifier}

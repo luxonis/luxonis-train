@@ -35,7 +35,7 @@ def transform_boxes(
     )
     boxes = []
     for x1, y1, x2, y2 in raw_boxes:
-        if keep_aspect_ratio:
+        if ratio is not None:
             ox1 = (x1 - pad_x) / ratio
             oy1 = (y1 - pad_y) / ratio
             ow = (x2 - x1) / ratio
@@ -64,7 +64,7 @@ def transform_keypoints(
     for i in range(N):
         for j in range(K):
             x, y, v = raw_kpts[i, j]
-            if keep_aspect_ratio:
+            if ratio is not None:
                 x = (x - pad_x) / ratio
                 y = (y - pad_y) / ratio
             out[i, j] = (x / orig_w, y / orig_h, float(v))
