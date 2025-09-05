@@ -30,7 +30,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         min_bbox_visibility: float = 0.0,
         bbox_area_threshold: float = 0.0004,
         class_order_per_task: dict[str, list[str]] | None = None,
-        seed: int | None = None,
+        kpts_mapping_per_task: dict[str, list[int]] | None = None,
         **kwargs,
     ):
         """Torch-compatible loader for Luxonis datasets.
@@ -85,8 +85,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         @type class_order_per_task: dict[str, list[str]] | None
         @param class_order_per_task: Dictionary mapping task names to a list of class names.
             If provided, the classes for the specified tasks will be reordered.
-        @type seed: Optional[int]
-        @param seed: The random seed to use for the augmentations.
+        @type kpts_mapping_per_task: dict[str, list[int]] | None
+        @param kpts_mapping_per_task: Dictionary mapping task names to custom keypoint mappings. If provided, the keypoints for the specified tasks will be reordered.
         """
         super().__init__(**kwargs)
         if dataset_dir is not None:
@@ -106,6 +106,25 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             )
         if class_order_per_task is not None:
             self.dataset.set_class_order_per_task(class_order_per_task)
+
+        if kpts_mapping_per_task is not None:
+            dataset_tasks = self.dataset.get_tasks()
+            for task, new_mapping in kpts_mapping_per_task.items():
+                if task not in dataset_tasks:
+                    raise KeyError(
+                        f"Task `{task}` specified in kpts_mapping_per_task but not present in dataset tasks ({list(dataset_tasks.keys())})"
+                    )
+                if "keypoints" not in dataset_tasks[task]:
+                    raise KeyError(
+                        f"Task `{task}` specified in kpts_mapping_per_task but this task doesn't have `keypoints` annotations"
+                    )
+                if len(new_mapping) != len(set(new_mapping)):
+                    logger.warning(
+                        f"Duplicate indices detected in keypoint mapping for task `{task}`. Verify that training on repeated keypoints is intentional."
+                    )
+
+        self.kpts_mapping_per_task = kpts_mapping_per_task
+
         self.loader = LuxonisLoader(
             dataset=self.dataset,
             view=self.view,
@@ -121,7 +140,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             filter_task_names=filter_task_names,
             min_bbox_visibility=min_bbox_visibility,
             bbox_area_threshold=bbox_area_threshold,
-            seed=seed,
+            seed=self.seed,
         )
 
     @override
@@ -140,9 +159,39 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         if isinstance(img, np.ndarray):
             img = {self.image_source: img}
 
+        if self.kpts_mapping_per_task is not None:
+            labels = self._remap_keypoints(labels)
+
         img = {k: self.img_numpy_to_torch(v) for k, v in img.items()}
 
         return img, self.dict_numpy_to_torch(labels)
+
+    def _remap_keypoints(
+        self, labels: dict[str, np.ndarray]
+    ) -> dict[str, np.ndarray]:
+        """Remap keypoint labels in `labels` using the configured
+        mappings."""
+        for task, new_mapping in self.kpts_mapping_per_task.items():  # type: ignore
+            key = f"{task}/keypoints"
+            if key not in labels:
+                continue
+
+            original = labels[key]
+            if original.size == 0:
+                continue
+
+            n_samples, flat_dim = original.shape
+            kpts = original.reshape(n_samples, -1, 3)
+
+            expected, got = kpts.shape[1], len(new_mapping)
+            if expected != got:
+                raise ValueError(
+                    f"Invalid keypoint mapping for task '{task}': expected {expected} indices, got {got}."
+                )
+
+            labels[key] = kpts[:, new_mapping, :].reshape(n_samples, flat_dim)
+
+        return labels
 
     @override
     def get_classes(self) -> dict[str, dict[str, int]]:
