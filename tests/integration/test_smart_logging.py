@@ -49,8 +49,8 @@ def get_config(dataset_name: str) -> Params:
     }
 
 
-def test_smart_vis_logging(tempdir: Path):
-    dataset = create_dataset(tempdir)
+def test_smart_vis_logging(tmp_path: Path):
+    dataset = create_dataset(tmp_path)
     model = LuxonisModel(get_config(dataset.identifier))
 
     model.test()
@@ -85,12 +85,12 @@ def create_image(i: int, dir: Path) -> Path:
     return path
 
 
-def create_dataset(tempdir: Path) -> LuxonisDataset:
+def create_dataset(tmp_path: Path) -> LuxonisDataset:
     definitions = {"train": [], "val": []}
 
     def generator() -> DatasetIterator:
         for i in range(10):
-            path = create_image(i, tempdir)
+            path = create_image(i, tmp_path)
             if i <= 5:
                 yield {
                     "file": str(path),
@@ -138,9 +138,9 @@ def create_dataset(tempdir: Path) -> LuxonisDataset:
                 definitions["train"].append(str(path))
             else:
                 definitions["val"].append(str(path))
-            path = create_image(i, tempdir)
+            path = create_image(i, tmp_path)
 
-        path = create_image(11, tempdir)
+        path = create_image(11, tmp_path)
         yield {"file": str(path)}
         definitions["val"].append(str(path))
 

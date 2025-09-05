@@ -144,13 +144,20 @@ def inspect(
     """
     import cv2
 
+    window_name = "Visualization"
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
     for viz in _yield_visualizations(
         config=config,
         view=view,
         size_multiplier=size_multiplier,
         opts=opts,
     ):
-        cv2.imshow("Visualization", viz)
+        cv2.resizeWindow(
+            window_name,
+            viz.shape[1],
+            viz.shape[0],
+        )
+        cv2.imshow(window_name, viz)
         if cv2.waitKey() in {ord("q"), 27}:
             break
     cv2.destroyAllWindows()

@@ -12,8 +12,8 @@ from luxonis_train.core import LuxonisModel
 @pytest.mark.skipif(
     sys.platform == "win32", reason="Tuning not supported on Windows"
 )
-def test_tune(opts: Params, coco_dataset: LuxonisDataset, tempdir: Path):
-    study_path = tempdir / "study.db"
+def test_tune(opts: Params, coco_dataset: LuxonisDataset, tmp_path: Path):
+    study_path = tmp_path / "study.db"
 
     opts |= {
         "tuner.storage.database": str(study_path),

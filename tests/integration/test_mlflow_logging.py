@@ -22,14 +22,14 @@ TIMEOUT: Final[int] = 60
 
 
 @pytest.fixture(autouse=True)
-def setup(tempdir: Path):
+def setup(tmp_path: Path):
     environ.MLFLOW_TRACKING_URI = "http://127.0.0.1:5001"
     os.environ["MLFLOW_TRACKING_URI"] = environ.MLFLOW_TRACKING_URI
 
     start_time = time.time()
 
-    backend_store_uri = f"sqlite:///{tempdir}/mlflow.db"
-    artifact_root = tempdir / "mlflow-artifacts"
+    backend_store_uri = f"sqlite:///{tmp_path}/mlflow.db"
+    artifact_root = tmp_path / "mlflow-artifacts"
     artifact_root.mkdir(parents=True, exist_ok=True)
 
     mlflow_executable = shutil.which("mlflow")

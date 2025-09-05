@@ -119,7 +119,7 @@ class CustomSegHead2(BaseHead):
         return {"custom_param": "value"}
 
 
-def test_custom_model(opts: Params, tempdir: Path, subtests: SubTests):
+def test_custom_model(opts: Params, tmp_path: Path, subtests: SubTests):
     model = LuxonisModel(get_config(), opts)
     with subtests.test("train"):
         model.train()
@@ -159,9 +159,9 @@ def test_custom_model(opts: Params, tempdir: Path, subtests: SubTests):
         assert generated_config == correct_archive_config
 
     with subtests.test("infer"):
-        model.infer(view="val", save_dir=tempdir)
+        model.infer(view="val", save_dir=tmp_path)
         assert (
-            len(list(tempdir.glob("*.png")))
+            len(list(tmp_path.glob("*.png")))
             == len(model.pytorch_loaders["val"].dataset) * 2  # type: ignore
         )
 
