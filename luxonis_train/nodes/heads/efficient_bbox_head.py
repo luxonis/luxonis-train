@@ -149,15 +149,17 @@ class EfficientBBoxHead(BaseDetectionHead):
         )
 
     @override
-    def get_weights_url(self) -> str | None:
-        if self.in_channels == [32, 64, 128]:
+    def get_weights_url(self) -> str:
+        if self._variant is not None:
+            variant = self._variant
+        elif self.in_channels == [32, 64, 128]:
             variant = "n"
         elif self.in_channels == [64, 128, 256]:
             variant = "s"
         elif self.in_channels == [128, 256, 512]:
             variant = "l"
         else:
-            return None
+            raise NotImplementedError
 
         return f"{{github}}/efficientbbox_head_{variant}_coco.ckpt"
 

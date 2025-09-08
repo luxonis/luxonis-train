@@ -204,9 +204,9 @@ class RepPANNeck(BaseNode):
         return outs
 
     @override
-    def get_weights_url(self) -> str | None:
+    def get_weights_url(self) -> str:
         if self._variant is None:
-            raise ValueError(
+            raise NotImplementedError(
                 f"Online weights are available for '{self.name}' "
                 "only when it's used with a predefined variant."
             )

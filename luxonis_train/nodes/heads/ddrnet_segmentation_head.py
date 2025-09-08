@@ -97,13 +97,13 @@ class DDRNetSegmentationHead(BaseHead):
         return super().load_checkpoint(path, strict=strict)
 
     @override
-    def get_weights_url(self) -> str | None:
+    def get_weights_url(self) -> str:
         if self.in_channels == 128:
             variant = "slim"
         elif self.in_channels == 256:
             variant = ""
         else:
-            raise ValueError(
+            raise NotImplementedError(
                 f"No online weights available for '{self.name}' "
                 "with the chosen parameters"
             )

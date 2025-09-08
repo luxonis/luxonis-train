@@ -134,7 +134,7 @@ class EfficientRep(BaseNode):
         return outputs
 
     @override
-    def get_weights_url(self) -> str | None:
+    def get_weights_url(self) -> str:
         if self._variant is None:
             raise ValueError(
                 f"Online weights are available for '{self.name}' "

@@ -400,7 +400,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         """
         return self._get_nth_size(-1)
 
-    def get_weights_url(self) -> str | None:
+    def get_weights_url(self) -> str:
         """Returns the URL to the weights of the node.
 
         Subclasses can override this method to provide a URL to support
@@ -414,11 +414,12 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         The file pointed to by the URL should be a C{.ckpt} file
         that is directly loadable using C{nn.Module.load_state_dict}.
         """
-        return None
+        raise NotImplementedError
 
     def _get_weights_url(self) -> str | None:
-        url = self.get_weights_url()
-        if url is None:
+        try:
+            url = self.get_weights_url()
+        except NotImplementedError:
             return None
 
         return url.replace(
