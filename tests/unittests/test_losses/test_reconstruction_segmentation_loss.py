@@ -1,5 +1,6 @@
 import torch
 from torch import Size, Tensor
+from typing_extensions import override
 
 from luxonis_train.attached_modules.losses import (
     ReconstructionSegmentationLoss,
@@ -13,6 +14,11 @@ from .test_utils import load_checkpoint
 class DummyPrecisionSegmentBBoxHead(DiscSubNetHead, register=False):
     task = Tasks.ANOMALY_DETECTION
     original_in_shape: Size = Size([3, 256, 256])
+
+    @property
+    @override
+    def in_channels(self) -> int:
+        return 3
 
     def forward(self, _: Tensor) -> Tensor: ...
 
