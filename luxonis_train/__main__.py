@@ -3,6 +3,7 @@ import importlib.util
 import subprocess
 import sys
 from collections.abc import Iterator
+from functools import lru_cache
 from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal
@@ -144,13 +145,21 @@ def inspect(
     """
     import cv2
 
+    @lru_cache
+    def get_window() -> str:
+        window_name = "Visualization"
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        return window_name
+
     for viz in _yield_visualizations(
         config=config,
         view=view,
         size_multiplier=size_multiplier,
         opts=opts,
     ):
-        cv2.imshow("Visualization", viz)
+        window_name = get_window()
+        cv2.resizeWindow(window_name, width=viz.shape[1], height=viz.shape[0])
+        cv2.imshow(window_name, viz)
         if cv2.waitKey() in {ord("q"), 27}:
             break
     cv2.destroyAllWindows()
