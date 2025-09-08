@@ -13,7 +13,7 @@ from luxonis_train.config import (
 )
 from luxonis_train.config.config import FreezingConfig
 from luxonis_train.registry import MODELS
-from luxonis_train.utils.variants import VariantBase
+from luxonis_train.variants import VariantBase
 
 
 class BasePredefinedModel(VariantBase, registry=MODELS, register=False):

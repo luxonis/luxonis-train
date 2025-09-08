@@ -11,7 +11,8 @@ from luxonis_train.nodes.blocks import (
     ModuleRepeater,
     SpatialPyramidPoolingBlock,
 )
-from luxonis_train.utils import add_variant_aliases, make_divisible
+from luxonis_train.utils import make_divisible
+from luxonis_train.variants import add_variant_aliases
 
 
 class EfficientRep(BaseNode):

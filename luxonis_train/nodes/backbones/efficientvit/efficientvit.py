@@ -5,7 +5,7 @@ from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import ConvBlock
-from luxonis_train.utils import add_variant_aliases
+from luxonis_train.variants import add_variant_aliases
 
 from .blocks import (
     DepthWiseSeparableConv,

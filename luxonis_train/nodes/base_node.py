@@ -20,9 +20,9 @@ from luxonis_train.typing import AttachIndexType, Packet, get_signature
 from luxonis_train.utils import (
     DatasetMetadata,
     IncompatibleError,
-    VariantBase,
     safe_download,
 )
+from luxonis_train.variants import VariantBase
 
 
 class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
