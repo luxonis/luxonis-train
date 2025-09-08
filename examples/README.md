@@ -82,7 +82,6 @@ The main methods of the node are:
   - Should always take `**kwargs` as an argument and pass it to the parent constructor
   - All the arguments under `node.params` in the config file are passed here
 - `forward` - the forward pass of the node
-  - Can return either a single tensor, a list of tensors, or a dictionary of tensors
   - The `forward` arguments can be either:
     - A single tensor or a list of tensors
       - Most common case
