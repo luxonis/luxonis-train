@@ -30,16 +30,6 @@ def work_dir() -> Generator[Path]:
 
 
 @pytest.fixture(scope="session")
-def image_size() -> tuple[int, int]:
-    return 32, 64
-
-
-@pytest.fixture(scope="session", autouse=True)
-def set_environment(work_dir: Path) -> None:
-    environ.LUXONISML_BASE_PATH = work_dir / "luxonisml"
-
-
-@pytest.fixture(scope="session")
 def data_dir() -> Path:
     path = Path("tests", "data")
     path.mkdir(parents=True, exist_ok=True)
@@ -51,6 +41,16 @@ def save_dir(work_dir: Path) -> Path:
     path = work_dir / "save-directory"
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+@pytest.fixture(scope="session")
+def image_size() -> tuple[int, int]:
+    return 32, 64
+
+
+@pytest.fixture(scope="session", autouse=True)
+def set_environment(work_dir: Path) -> None:
+    environ.LUXONISML_BASE_PATH = work_dir / "luxonisml"
 
 
 @pytest.fixture(scope="session")
