@@ -152,11 +152,6 @@ def inspect(
         size_multiplier=size_multiplier,
         opts=opts,
     ):
-        cv2.resizeWindow(
-            window_name,
-            viz.shape[1],
-            viz.shape[0],
-        )
         cv2.imshow(window_name, viz)
         if cv2.waitKey() in {ord("q"), 27}:
             break
