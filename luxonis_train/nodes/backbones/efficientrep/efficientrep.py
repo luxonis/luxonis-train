@@ -135,13 +135,7 @@ class EfficientRep(BaseNode):
 
     @override
     def get_weights_url(self) -> str:
-        if self._variant is None:
-            raise ValueError(
-                f"Online weights are available for '{self.name}' "
-                "only when used with a predefined variant."
-            )
-
-        return f"{{github}}/efficientrep_{self._variant}_coco.ckpt"
+        return "{github}/efficientrep_{variant}_coco.ckpt"
 
     @staticmethod
     @override

@@ -1,5 +1,6 @@
 import inspect
 import logging
+import re
 from abc import abstractmethod
 from contextlib import suppress
 from operator import itemgetter
@@ -70,7 +71,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         export_output_names: list[str] | None = None,
         attach_index: AttachIndexType | None = None,
         task_name: str | None = None,
-        weights: str | Literal["download", "yolo", "default"] = "default",
+        weights: str | Literal["download", "yolo", "none"] | None = None,
     ):
         """Constructor for the C{BaseNode}.
 
@@ -150,7 +151,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         self._remove_on_export = remove_on_export
         self._export_output_names = export_output_names
         self._in_sizes = in_sizes
-        self._weights = weights
+        self._weights = weights or "none"
         self._signature = get_signature(self.forward)
 
         self.current_epoch = 0
@@ -158,9 +159,11 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         self._check_type_overrides()
 
     def __post_init__(self) -> None:
+        if self._weights == "none":
+            return
         if self._weights == "download":
             self.load_checkpoint()
-        elif self._weights.startswith("http"):
+        elif "://" in self._weights:
             self.load_checkpoint(ckpt=self._weights)
         else:
             self.initialize_weights(method=self._weights)
@@ -406,10 +409,13 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         Subclasses can override this method to provide a URL to support
         loading weights from a remote location.
 
-        It is possible to use a special placeholder C{{github}} in the
-        URL, which will be replaced with
-        C{"https://github.com/luxonis/luxonis-train/releases/download/{version}"},
-        where C{{version}} is the version of `luxonis-train` library.
+        It is possible to use several special placeholders inside the URL:
+          - C{{github}} - will be replaced with
+            C{"https://github.com/luxonis/luxonis-train/releases/download/{version}"},
+            where C{{version}} is the version of used `luxonis-train` library.
+          - C{{variant}} - will be replaced with the variant of the node.
+            If the node was not constructed from a variant, an error
+            is raised.
 
         The file pointed to by the URL should be a C{.ckpt} file
         that is directly loadable using C{nn.Module.load_state_dict}.
@@ -422,10 +428,16 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         except NotImplementedError:
             return None
 
-        return url.replace(
-            "{github}",
-            "gcs://luxonis-test-data/weights/v0.4.0-beta/"
+        if "{variant}" in url and self._variant is None:
+            raise ValueError(
+                f"Attempting to get weights URL for '{self.name}' "
+                "node, but it uses the `{variant}` placeholder when "
+                "the node was not constructed from a variant."
+            )
+        return url.format(
+            github="gcs://luxonis-test-data/weights/v0.4.0-beta/"
             "releases/download/v0.2.1-beta",
+            variant=self.variant,
         )
 
     def load_checkpoint(
@@ -563,10 +575,15 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             elif (
                 param.annotation == list[Tensor] or param.annotation == Tensor
             ):
-                if name in "xyz" or name.startswith("input"):
+                if name in "xyz" or (
+                    match := re.match(r"inputs?_?(\d+)?", name)
+                ):
                     input_name = "features"
+                    if name in "xyz":
+                        idx = "xyz".index(name)
+                    idx = int(match.group(1) or 0) if match else 0
 
-                    packet = inputs[0]
+                    packet = inputs[idx]
                     if input_name not in packet:
                         raise RuntimeError(
                             f"Node '{self.name}' expects an input with key "

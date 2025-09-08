@@ -205,12 +205,7 @@ class RepPANNeck(BaseNode):
 
     @override
     def get_weights_url(self) -> str:
-        if self._variant is None:
-            raise NotImplementedError(
-                f"Online weights are available for '{self.name}' "
-                "only when it's used with a predefined variant."
-            )
-        return f"{{github}}/reppanneck_{self._variant}_coco.ckpt"
+        return "{github}/reppanneck_{variant}_coco.ckpt"
 
     @override
     @staticmethod

@@ -10,7 +10,7 @@ class MobileNetV2(BaseNode):
     def __init__(
         self,
         out_indices: list[int] | None = None,
-        weights: Literal["default", "download"] = "default",
+        weights: Literal["download", "none"] | None = None,
         **kwargs,
     ):
         """MobileNetV2 backbone.

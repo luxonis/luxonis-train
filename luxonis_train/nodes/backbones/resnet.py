@@ -21,7 +21,7 @@ class ResNet(BaseNode):
             False,
             False,
         ),
-        weights: Literal["default", "download"] = "default",
+        weights: Literal["download", "none"] | None = None,
         **kwargs,
     ):
         """ResNet backbone.
