@@ -577,9 +577,9 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             elif (
                 param.annotation == list[Tensor] or param.annotation == Tensor
             ):
-                if name in "xyz" or (
+                if (
                     match := re.match(r"inputs?_?(\d+)?", name)
-                ):
+                ) or name in "xyz":
                     input_name = "features"
                     if name in "xyz":
                         idx = "xyz".index(name)
