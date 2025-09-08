@@ -144,14 +144,15 @@ def inspect(
     """
     import cv2
 
-    window_name = "Visualization"
-    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-    for viz in _yield_visualizations(
+    viz_generator = _yield_visualizations(
         config=config,
         view=view,
         size_multiplier=size_multiplier,
         opts=opts,
-    ):
+    )
+    window_name = "Visualization"
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+    for viz in viz_generator:
         cv2.imshow(window_name, viz)
         if cv2.waitKey() in {ord("q"), 27}:
             break
