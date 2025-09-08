@@ -428,16 +428,18 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         except NotImplementedError:
             return None
 
-        if "{variant}" in url and self._variant is None:
-            raise ValueError(
-                f"Attempting to get weights URL for '{self.name}' "
-                "node, but it uses the `{variant}` placeholder when "
-                "the node was not constructed from a variant."
-            )
-        return url.format(
-            github="gcs://luxonis-test-data/weights/v0.4.0-beta/"
+        if "{variant}" in url:
+            if self._variant is None:
+                raise ValueError(
+                    f"Attempting to get weights URL for '{self.name}' "
+                    "node, but it uses the `{variant}` placeholder when "
+                    "the node was not constructed from a variant."
+                )
+            url = url.replace("{variant}", self.variant)
+        return url.replace(
+            "{github}",
+            "gcs://luxonis-test-data/weights/v0.4.0-beta/"
             "releases/download/v0.2.1-beta",
-            variant=self.variant,
         )
 
     def load_checkpoint(
