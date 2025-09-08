@@ -151,6 +151,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         self._export_output_names = export_output_names
         self._in_sizes = in_sizes
         self._weights = weights
+        self._signature = get_signature(self.forward)
 
         self.current_epoch = 0
 
@@ -330,17 +331,29 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         features = input_shapes.get("features")
         if features is None:
             if len(input_shapes) == 1:
-                features = next(iter(input_shapes.values()))
-            else:
-                # TODO: This could be handled by allowing to specify
-                # the main output key in the preceding node. We
-                # would also need a reference to preceding nodes
-                # in each node for that.
+                return self.get_attached(next(iter(input_shapes.values())))
+            params = {}
+            for name in self._signature:
+                if name in input_shapes:
+                    params[name] = input_shapes[name]
+            if not params:
                 raise RuntimeError(
-                    f"'feature' field is missing from the input "
-                    f"to '{self.name}'. The default implementation of "
-                    "`in_sizes` cannot be used."
+                    "Unable to determine the correct input shape."
                 )
+            if len(params) == 1:
+                return self.get_attached(next(iter(params.values())))
+            first = next(iter(params.values()))
+            for value in params.values():
+                if value != first:
+                    raise RuntimeError(
+                        f"Node '{self.name}' requires multiple inputs, "
+                        f"({list(params.keys())}) "
+                        "but they are of different shapes. The default "
+                        "implementation of `in_sizes` cannot be used. "
+                        f"Please use `{self.name}.input_shapes` directly."
+                    )
+            return self.get_attached(first)
+
         return self.get_attached(features)
 
     @property
@@ -528,11 +541,10 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             C{{"features": [Tensor, ...], "segmentation": [Tensor]}}
         """
         kwargs = {}
-        signature = get_signature(self.forward)
 
-        for i, (name, param) in enumerate(signature.items()):
+        for i, (name, param) in enumerate(self._signature.items()):
             if param.annotation == list[Packet[Tensor]]:
-                if len(signature) != 1:
+                if len(self._signature) != 1:
                     raise RuntimeError(
                         f"Node '{self.name}' has a parameter '{name}' "
                         "of type `list[Packet[Tensor]]`, but it is not the "

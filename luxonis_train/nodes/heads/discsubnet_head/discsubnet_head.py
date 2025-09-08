@@ -12,7 +12,7 @@ from luxonis_train.typing import Packet
 class DiscSubNetHead(BaseHead):
     task = Tasks.ANOMALY_DETECTION
 
-    in_channels: list[int] | int
+    in_channels: int
     base_channels: int
 
     attach_index = -1
@@ -21,7 +21,6 @@ class DiscSubNetHead(BaseHead):
         self,
         base_channels: int,
         width_multipliers: list[float],
-        in_channels: list[int] | int = 6,
         out_channels: int = 2,
         **kwargs,
     ):
@@ -35,9 +34,6 @@ class DiscSubNetHead(BaseHead):
         of anomalies by distinguishing between the reconstructed image
         and the input.
 
-        @type in_channels: list[int] | int
-        @param in_channels: Number of input channels for the encoder.
-            Defaults to 6.
         @type out_channels: int
         @param out_channels: Number of output channels for the decoder.
             Defaults to 2 (for segmentation masks).
@@ -47,11 +43,8 @@ class DiscSubNetHead(BaseHead):
         """
         super().__init__(**kwargs)
 
-        if isinstance(in_channels, list):
-            in_channels = in_channels[0] * 2
-
         self.encoder_segment = UNetEncoder(
-            in_channels, base_channels, width_multipliers
+            self.in_channels * 2, base_channels, width_multipliers
         )
         self.decoder_segment = UNetDecoder(
             base_channels, out_channels, width_multipliers
@@ -65,9 +58,12 @@ class DiscSubNetHead(BaseHead):
         seg_out = self.decoder_segment(self.encoder_segment(x))
 
         if self.export:
-            return {"segmentation": seg_out}
+            return {self.task.main_output: seg_out}
 
-        return {"reconstruction": reconstruction, "segmentation": seg_out}
+        return {
+            self.task.main_output: seg_out,
+            "reconstruction": reconstruction,
+        }
 
     @override
     def get_custom_head_config(self) -> Params:
