@@ -60,7 +60,7 @@ class BaseDetectionHead(BaseHead):
         classes_list: list[Tensor] = []
         regressions_list: list[Tensor] = []
 
-        for head, x in zip(self.heads, inputs, strict=True):
+        for head, x in zip(self.heads, inputs, strict=True):  # type: ignore
             features, classes, regressions = head(x)
             features_list.append(features)
             classes_list.append(torch.sigmoid(classes))
