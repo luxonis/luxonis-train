@@ -29,6 +29,7 @@ def work_dir() -> Generator[Path]:
     shutil.rmtree(path, ignore_errors=True)
 
 
+@pytest.fixture(scope="session")
 def data_dir() -> Path:
     path = Path("tests", "data")
     path.mkdir(parents=True, exist_ok=True)
