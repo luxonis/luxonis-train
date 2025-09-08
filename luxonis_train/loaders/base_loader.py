@@ -166,12 +166,12 @@ class BaseLoaderTorch(
         return self._getter_check_none("color_space")
 
     @property
-    def seed(self) -> int:
+    def seed(self) -> int | None:
         """The random seed to use for the augmentations.
 
-        @type: int
+        @type: int | None
         """
-        return self._getter_check_none("seed")
+        return self._seed
 
     @property
     @abstractmethod
@@ -317,7 +317,6 @@ class BaseLoaderTorch(
             "height",
             "width",
             "keep_aspect_ratio",
-            "seed",
             "color_space",
         ],
     ) -> Any:
