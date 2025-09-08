@@ -4,7 +4,6 @@ The `luxonis-train` framework is designed to be easily extendable. This document
 
 ## Table of Contents
 
-- [Introduction](#introduction)
 - [Nodes](#nodes)
   - [`BaseHead` Interface](#basehead-interface)
   - [Custom Tasks](#custom-tasks)
@@ -20,12 +19,6 @@ The `luxonis-train` framework is designed to be easily extendable. This document
     - [Metric](#metric)
     - [Visualizer](#visualizer)
 - [Testing Custom Components](#testing-custom-components)
-
-## Introduction
-
-The following diagram illustrates how parts of the model interact with each other and how the data flows through the network in a simple detection model. All individual parts with specific code examples are described in the following sections.
-
-![diagram](../media/luxonis_train_diagram.png)
 
 ## Nodes
 
