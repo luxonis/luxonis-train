@@ -54,15 +54,13 @@ def prepare_and_infer_image(
     model: "lxt.LuxonisModel", images: dict[str, Tensor]
 ) -> LuxonisOutput:
     """Prepares the image for inference and runs the model."""
-    img_arr = model.loaders["val"].augment_test_image(images)
-
-    inputs = {
-        "image": torch.tensor(img_arr).unsqueeze(0).permute(0, 3, 1, 2).float()
-    }
-    img = get_denormalized_images(model.cfg, inputs["image"])
+    npy_img = model.loaders["val"].augment_test_image(images)
+    torch_img = torch.tensor(npy_img).unsqueeze(0).permute(0, 3, 1, 2).float()
 
     return model.lightning_module.forward(
-        inputs, images=img, compute_visualizations=True
+        {"image": torch_img},
+        images=get_denormalized_images(model.cfg, torch_img),
+        compute_visualizations=True,
     )
 
 
@@ -121,7 +119,7 @@ def infer_from_video(
             break
 
     cap.release()
-    if save_dir is None:
+    if save_dir is None:  # pragma: no cover
         with suppress(cv2.error):  # type: ignore
             cv2.destroyAllWindows()
 
@@ -183,7 +181,7 @@ def infer_from_loader(
                 broken = True
                 break
 
-    if save_dir is None:
+    if save_dir is None:  # pragma: no cover
         with suppress(cv2.error):  # type: ignore
             cv2.destroyAllWindows()
 

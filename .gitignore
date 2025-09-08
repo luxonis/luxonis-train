@@ -151,11 +151,14 @@ models_venv/*
 # pycharm settings
 .idea
 
-# additional directories
+# test files
 tests/data
+tests/work
+tests/tmp
+
+# additional directories
 mlartifacts
 mlruns
 wandb
-tests/work
 data
 lightning_logs/

@@ -593,7 +593,7 @@ class LuxonisLightningModule(pl.LightningModule):
         Loads the checkpoints gracefully, ignoring keys that are not
         found in the model state dict or in the checkpoint.
 
-        @type path: str | None
+        @type path: PathType | None
         @param path: Path to the checkpoint. If C{None}, no checkpoint
             will be loaded.
         """
