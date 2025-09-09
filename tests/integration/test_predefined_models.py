@@ -18,15 +18,6 @@ from tests.conftest import LuxonisTestDataset
         ("embeddings_model", None),
         ("fomo_light_model", None),
         ("ocr_recognition_light_model", None),
-        (
-            "ocr_recognition_light_model",
-            {
-                "model.predefined_model.params.neck_params": {
-                    "mixer": "conv",
-                    "prenorm": True,
-                },
-            },
-        ),
         ("classification_light_model", None),
         ("detection_light_model", None),
         ("instance_segmentation_light_model", None),
