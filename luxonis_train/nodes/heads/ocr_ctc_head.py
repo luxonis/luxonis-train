@@ -49,6 +49,8 @@ class OCRCTCHead(BaseHead):
             False.
         """
         super().__init__(**kwargs)
+        if len(set(alphabet)) != len(alphabet):  # pragma: no cover
+            raise ValueError("Alphabet has duplicate characters.")
 
         self.return_feats = return_feats
         self.fc_decay = fc_decay
