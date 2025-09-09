@@ -78,6 +78,15 @@ def get_config(backbone: str) -> Params:
                     ],
                 },
                 {
+                    "name": "PrecisionBBoxHead",
+                    "task_name": "vehicles",
+                    "losses": [{"name": "PrecisionDFLDetectionLoss"}],
+                    "metrics": [
+                        {"name": "MeanAveragePrecision"},
+                        {"name": "ConfusionMatrix"},
+                    ],
+                },
+                {
                     "name": "BiSeNetHead",
                     "alias": "BiSeNet-binary-cars",
                     "task_name": "cars",
