@@ -51,7 +51,7 @@ def infer_upscale_factor(
     def _infer_upscale_factor(in_size: int, orig_size: int) -> int | float:
         factor = math.log2(orig_size) - math.log2(in_size)
         if abs(round(factor) - factor) < 1e-6:
-            return int(round(factor))
+            return round(factor)
         return factor
 
     if isinstance(in_size, int):

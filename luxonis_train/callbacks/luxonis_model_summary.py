@@ -54,7 +54,7 @@ class LuxonisModelSummary(RichModelSummary):
         table.add_column("Params", justify="right")
         table.add_column("Mode")
 
-        column_names = list(zip(*summary_data, strict=True))[0]
+        column_names = next(zip(*summary_data, strict=True))
 
         for column_name in ["In sizes", "Out sizes"]:
             if column_name in column_names:

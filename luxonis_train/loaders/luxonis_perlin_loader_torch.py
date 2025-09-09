@@ -137,7 +137,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
 @contextmanager
 def _freeze_seed() -> Generator:
     python_seed = random.getstate()
-    numpy_seed = np.random.get_state()  # noqa: NPY002
+    numpy_seed = np.random.get_state()
     yield
     random.setstate(python_seed)
-    np.random.set_state(numpy_seed)  # noqa: NPY002
+    np.random.set_state(numpy_seed)

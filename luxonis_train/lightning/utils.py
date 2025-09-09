@@ -1,4 +1,4 @@
-from collections import defaultdict  # noqa: INP001
+from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypeVar
@@ -654,7 +654,7 @@ def compute_visualization_buffer(
     @param seq_buffer: Previously buffered visualizations; each item maps node names to
                         dicts of viz names to Tensors of shape [N, …].
     @type visualizations: dict[str, dict[str, Tensor]]
-    @param visualizations: Current batch’s visualizations with the same nested structure.
+    @param visualizations: Current batch's visualizations with the same nested structure.
     @type logged_idxs: list[int]
     @param logged_idxs: List of batch indices already logged by the smart (class-balanced) logger.
     @type max_log_images: int

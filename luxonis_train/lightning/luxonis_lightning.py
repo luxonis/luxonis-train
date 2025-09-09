@@ -866,7 +866,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 values = postprocess_metrics(metric_name, metric.compute())
                 for sub_name in values:
                     if "confusion_matrix" in sub_name:
-                        for epoch_idx in sorted([0] + val_eval_epochs):
+                        for epoch_idx in sorted([0, *val_eval_epochs]):
                             artifact_keys.add(
                                 f"val/metrics/{epoch_idx}/{formatted_node_name}/confusion_matrix.json"
                             )
@@ -885,7 +885,7 @@ class LuxonisLightningModule(pl.LightningModule):
         for node_name, visualizations in self.visualizers.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
             for viz_name in visualizations:
-                for epoch_idx in sorted([0] + val_eval_epochs):
+                for epoch_idx in sorted([0, *val_eval_epochs]):
                     for i in range(self.cfg.trainer.n_log_images):
                         artifact_keys.add(
                             f"val/visualizations/{formatted_node_name}/{viz_name}/{epoch_idx}/{i}.png"
