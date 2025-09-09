@@ -1,3 +1,5 @@
+from typing import Literal
+
 import torch
 from torch import Tensor, nn
 from typing_extensions import override
@@ -38,6 +40,8 @@ class SVTRNeck(BaseNode):
         drop_path: float = 0.0,
         kernel_size: tuple[int, int] = (3, 3),
         qk_scale: float | None = None,
+        mixer: Literal["global", "local", "conv"] = "global",
+        prenorm: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -64,7 +68,7 @@ class SVTRNeck(BaseNode):
                 SVTRBlock(
                     dim=mid_channels,
                     n_heads=n_heads,
-                    mixer="global",
+                    mixer=mixer,
                     height=None,
                     width=None,
                     mlp_ratio=mlp_ratio,
@@ -75,7 +79,7 @@ class SVTRNeck(BaseNode):
                     drop_path=drop_path,
                     norm_layer=nn.LayerNorm,
                     epsilon=1e-05,
-                    prenorm=False,
+                    prenorm=prenorm,
                 )
                 for _ in range(depth)
             ]
