@@ -24,5 +24,5 @@ class Reparametrizable(nn.Module, ABC):
 
     @abstractmethod
     def restore(self) -> None:
-        """Resores the module to its original state."""
+        """Restores the module to its original state."""
         ...

@@ -26,7 +26,6 @@ class SVTRNeck(BaseNode):
 
     in_channels: int
 
-    # TODO: @sokovnin: Document
     def __init__(
         self,
         dims: int = 64,
@@ -41,6 +40,8 @@ class SVTRNeck(BaseNode):
         kernel_size: tuple[int, int] = (3, 3),
         qk_scale: float | None = None,
         mixer: Literal["global", "local", "conv"] = "global",
+        height: int | None = None,
+        width: int | None = None,
         prenorm: bool = False,
         **kwargs,
     ):
@@ -69,8 +70,8 @@ class SVTRNeck(BaseNode):
                     dim=mid_channels,
                     n_heads=n_heads,
                     mixer=mixer,
-                    height=None,
-                    width=None,
+                    height=height,
+                    width=width,
                     mlp_ratio=mlp_ratio,
                     qk_scale=qk_scale,
                     dropout=drop_rate,

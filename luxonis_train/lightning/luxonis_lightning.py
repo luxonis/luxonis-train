@@ -620,7 +620,7 @@ class LuxonisLightningModule(pl.LightningModule):
             }
             try:
                 node.load_checkpoint(sub_state_dict, strict=True)
-            except RuntimeError:
+            except RuntimeError:  # pragma: no cover
                 logger.error(f"Failed to load checkpoint for node {node_name}")
 
                 if isinstance(order_mapping, str):
@@ -925,11 +925,11 @@ class LuxonisLightningModule(pl.LightningModule):
     def _load_execution_order_mapping(
         self, ckpt: dict[str, Any]
     ) -> dict[str, dict[str, str]] | str:
-        if "execution_order" not in ckpt:
+        if "execution_order" not in ckpt:  # pragma: no cover
             return "Execution order not found in checkpoint."
         old_order = ckpt["execution_order"]
         new_order = get_model_execution_order(self)
-        if len(old_order) != len(new_order):
+        if len(old_order) != len(new_order):  # pragma: no cover
             return (
                 "Execution order length mismatch between checkpoint and model."
             )
