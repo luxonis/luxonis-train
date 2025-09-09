@@ -39,7 +39,7 @@ def get_config(backbone: str) -> Params:
     return {
         "model": {
             "nodes": [
-                {"name": backbone},
+                {"name": backbone, "params": {"variant": "default"}},
                 {
                     "name": "EfficientBBoxHead",
                     "task_name": "vehicles",

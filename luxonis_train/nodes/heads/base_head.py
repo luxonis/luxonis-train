@@ -19,7 +19,6 @@ class BaseHead(BaseNode):
     @ivar parser: Parser to use for the head.
     """
 
-    task: Task
     parser: str = ""
     task: Task
 

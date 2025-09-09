@@ -26,50 +26,67 @@ class VariantMeta(AutoRegisterMeta):
     additional setup that needs to occur after the object is created.
     """
 
+    def __handle_variants(
+        cls: type["VariantBase"],  # type: ignore
+        *args,
+        variant: str | None = None,
+        **kwargs,
+    ) -> "VariantBase":
+        obj = cls.__new__(cls, *args, **kwargs)
+        variant = variant or "none"
+
+        if variant == "none":
+            cls.__init__(obj, *args, **kwargs)
+            return obj
+
+        try:
+            default, variants = obj.get_variants()
+        except NotImplementedError as e:
+            if variant != "default":
+                raise NotImplementedError(
+                    f"'{cls.__name__}' was called with the 'variant' "
+                    f"parameter set to '{variant}', but the `get_variants` "
+                    "method was not implented."
+                ) from e
+            logger.warning(
+                f"'{cls.__name__}' was called with the 'variant' "
+                "parameter set to 'default', but the `get_variants` "
+                "method was not implemented. Using default parameters."
+            )
+            cls.__init__(obj, *args, **kwargs)
+            return obj
+
+        obj._variant = variant  # type: ignore
+
+        if variant == "default":
+            variant = default
+
+        if variant not in variants:
+            raise ValueError(
+                f"Variant '{variant}' is not available. "
+                f"Available variants: {list(variants.keys())}."
+            )
+
+        params = variants[variant]
+
+        for key in list(params.keys()):
+            if key in kwargs:
+                logger.info(
+                    f"Overriding variant parameter '{key}' with "
+                    f"explicitly provided value `{kwargs[key]}`."
+                )
+                del params[key]
+
+        cls.__init__(obj, *args, **kwargs, **params)
+        return obj
+
     def __call__(
         cls: type["VariantBase"],  # type: ignore
         *args,
         variant: str | None = None,
         **kwargs,
     ):
-        obj = cls.__new__(cls, *args, **kwargs)
-        variant = variant or "none"
-
-        if variant == "none":
-            cls.__init__(obj, *args, **kwargs)
-        else:
-            try:
-                default, variants = obj.get_variants()
-            except NotImplementedError as e:
-                raise NotImplementedError(
-                    f"'{cls.__name__}' was called with the 'variant' "
-                    f"parameter set to '{variant}', but the `get_variants` "
-                    "method was not implented."
-                ) from e
-
-            obj._variant = variant  # type: ignore
-
-            if variant == "default":
-                variant = default
-
-            if variant not in variants:
-                raise ValueError(
-                    f"Variant '{variant}' is not available. "
-                    f"Available variants: {list(variants.keys())}."
-                )
-
-            params = variants[variant]
-
-            for key in list(params.keys()):
-                if key in kwargs:
-                    logger.info(
-                        f"Overriding variant parameter '{key}' with "
-                        f"explicitly provided value `{kwargs[key]}`."
-                    )
-                    del params[key]
-
-            cls.__init__(obj, *args, **kwargs, **params)
-
+        obj = cls.__handle_variants(*args, variant=variant, **kwargs)
         if isinstance(obj, cls):
             post_init = getattr(obj, "__post_init__", None)
             if callable(post_init):
