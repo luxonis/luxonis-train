@@ -89,8 +89,8 @@ def blobconverter_export(
     scale_values: list[float] | None,
     mean_values: list[float] | None,
     reverse_channels: bool,
-    export_path: str,
-    onnx_path: str,
+    export_path: PathType,
+    onnx_path: PathType,
 ) -> Path:
     import blobconverter
 
@@ -105,13 +105,13 @@ def blobconverter_export(
         optimizer_params.append("--reverse_input_channels")
 
     blob_path = blobconverter.from_onnx(
-        model=onnx_path,
+        model=str(onnx_path),
         optimizer_params=optimizer_params,
         data_type=cfg.data_type.upper(),
         shaves=cfg.blobconverter.shaves,
         version=cfg.blobconverter.version,
         use_cache=False,
-        output_dir=export_path,
+        output_dir=str(export_path),
     )
     logger.info(f".blob model saved to {blob_path}")
     return Path(blob_path)
