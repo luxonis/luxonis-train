@@ -48,6 +48,9 @@ class OCRCTCHead(BaseHead[Tensor, Tensor]):
             False.
         """
         super().__init__(**kwargs)
+        if len(set(alphabet)) != len(alphabet):  # pragma: no cover
+            raise ValueError("Alphabet has duplicate characters.")
+
         self.return_feats = return_feats
 
         self._encoder = OCREncoder(alphabet, ignore_unknown)

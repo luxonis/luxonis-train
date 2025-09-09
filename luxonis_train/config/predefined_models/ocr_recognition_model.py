@@ -56,7 +56,7 @@ class OCRRecognitionModel(SimplePredefinedModel):
     @staticmethod
     def _generate_alphabet(alphabet: list[str] | AlphabetName) -> list[str]:
         alphabets = {
-            "english": "absdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+            "english": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
             "english_lowercase": "abcdefghijklmnopqrstuvwxyz",
             "numeric": "0123456789",
             "alphanumeric": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
