@@ -159,8 +159,6 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         self._check_type_overrides()
 
     def __post_init__(self) -> None:
-        if self._weights == "none":
-            return
         if self._weights == "download":
             self.load_checkpoint()
         elif "://" in self._weights:
