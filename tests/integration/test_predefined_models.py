@@ -76,7 +76,6 @@ def test_predefined_models(
         "model.name": config_name,
         "loader.params.dataset_name": dataset.identifier,
         "tracker.run_name": config_name,
-        **extra_opts,
     }
 
     if config_name == "embeddings_model":
@@ -88,7 +87,7 @@ def test_predefined_models(
     elif "ocr_recognition" in config_file:
         opts["trainer.preprocessing.train_image_size"] = [48, 320]
 
-    model = LuxonisModel(config_file, opts)
+    model = LuxonisModel(config_file, opts | extra_opts)
 
     with subtests.test("train"):
         model.train()
