@@ -289,7 +289,7 @@ class LuxonisLightningModule(pl.LightningModule):
             if isinstance(module, BaseNode):
                 module.set_export_mode(mode=mode)
 
-    def export_onnx(self, save_path: str, **kwargs) -> list[str]:
+    def export_onnx(self, save_path: PathType, **kwargs) -> Path:
         """Exports the model to ONNX format.
 
         @type save_path: str
@@ -297,8 +297,8 @@ class LuxonisLightningModule(pl.LightningModule):
         @type kwargs: Any
         @param kwargs: Additional arguments for the L{torch.onnx.export}
             method.
-        @rtype: list[str]
-        @return: List of output names.
+        @rtype: Path
+        @return: Path to the exported model.
         """
         device_before = self.device
 
@@ -432,14 +432,13 @@ class LuxonisLightningModule(pl.LightningModule):
 
         self.forward = old_forward  # type: ignore
 
-        self.set_export_mode(mode=False)
-
         logger.info(f"Model exported to {save_path}")
 
+        self.set_export_mode(mode=False)
         self.train()
         self.to(device_before)  # reset device after export
 
-        return output_names
+        return Path(save_path)
 
     def process_losses(
         self,

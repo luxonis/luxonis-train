@@ -444,16 +444,19 @@ class GeneralReparametrizableBlock(Reparametrizable):
         self.fused_branch: nn.Conv2d | None = None
 
     def forward(self, x: Tensor) -> Tensor:
-        out = 0
+        if self.fused_branch is None:
+            out = 0
 
-        if self.skip_layer is not None:
-            out += self.skip_layer(x)
+            if self.skip_layer is not None:
+                out += self.skip_layer(x)
 
-        for branch in self.branches:
-            out += branch(x)
+            for branch in self.branches:
+                out += branch(x)
 
-        if self.scale_layer is not None:
-            out += self.scale_layer(x)
+            if self.scale_layer is not None:
+                out += self.scale_layer(x)
+        else:
+            out = self.fused_branch(x)
 
         return self.activation(self.refine_block(out))
 

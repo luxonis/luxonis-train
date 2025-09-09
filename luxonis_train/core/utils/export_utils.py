@@ -27,7 +27,7 @@ def replace_weights(
         del old_weights
 
 
-def try_onnx_simplify(onnx_path: str) -> None:
+def try_onnx_simplify(onnx_path: PathType) -> None:
     import onnx
 
     try:

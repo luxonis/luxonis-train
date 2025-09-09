@@ -440,13 +440,13 @@ class LuxonisModel:
                 )
             return
 
-        onnx_save_path = str(export_path.with_suffix(".onnx"))
-
         with replace_weights(self.lightning_module, weights):
             onnx_kwargs = self.cfg.exporter.onnx.model_dump(
                 exclude={"disable_onnx_simplification"}
             )
-            self.lightning_module.export_onnx(onnx_save_path, **onnx_kwargs)
+            onnx_save_path = self.lightning_module.export_onnx(
+                export_path.with_suffix(".onnx"), **onnx_kwargs
+            )
 
         if not self.cfg.exporter.onnx.disable_onnx_simplification:
             try_onnx_simplify(onnx_save_path)
