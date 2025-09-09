@@ -441,8 +441,8 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             url = url.replace("{variant}", self.variant)
         return url.replace(
             "{github}",
-            "gcs://luxonis-test-data/weights/v0.4.0-beta/"
-            "releases/download/v0.2.1-beta",
+            # TODO: Change back
+            "gcs://luxonis-test-bucket/weights/v0.4.0-beta/",
         )
 
     def load_checkpoint(
