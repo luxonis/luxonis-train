@@ -35,7 +35,9 @@ class ConvMixer(nn.Module):
         )
 
     def forward(self, x: Tensor) -> Tensor:
-        x = x.permute(0, 2, 1).reshape([0, self.dim, self.height, self.width])
+        x = x.permute(0, 2, 1).reshape(
+            [x.size(0), self.dim, self.height, self.width]
+        )
         x = self.local_mixer(x)
         return x.flatten(2).permute(0, 2, 1)
 
