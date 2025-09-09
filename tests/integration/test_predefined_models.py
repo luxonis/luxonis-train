@@ -12,26 +12,38 @@ from tests.conftest import LuxonisTestDataset
 
 
 @pytest.mark.parametrize(
-    "config_name",
+    ("config_name", "extra_opts"),
     [
-        "anomaly_detection_model",
-        "embeddings_model",
-        "fomo_light_model",
-        "ocr_recognition_light_model",
-        "classification_light_model",
-        "detection_light_model",
-        "instance_segmentation_light_model",
-        "keypoint_bbox_light_model",
-        "segmentation_light_model",
-        "classification_heavy_model",
-        "detection_heavy_model",
-        "instance_segmentation_heavy_model",
-        "keypoint_bbox_heavy_model",
-        "segmentation_heavy_model",
+        ("anomaly_detection_model", None),
+        ("embeddings_model", None),
+        ("fomo_light_model", None),
+        ("ocr_recognition_light_model", None),
+        (
+            "ocr_recognition_light_model",
+            {
+                "model.predefined_model.params.neck_params": {
+                    "mixer": "conv",
+                    "prenorm": True,
+                    "height": 8,
+                    "width": 5,
+                },
+            },
+        ),
+        ("classification_light_model", None),
+        ("detection_light_model", None),
+        ("instance_segmentation_light_model", None),
+        ("keypoint_bbox_light_model", None),
+        ("segmentation_light_model", None),
+        ("classification_heavy_model", None),
+        ("detection_heavy_model", None),
+        ("instance_segmentation_heavy_model", None),
+        ("keypoint_bbox_heavy_model", None),
+        ("segmentation_heavy_model", None),
     ],
 )
 def test_predefined_models(
     config_name: str,
+    extra_opts: Params | None,
     opts: Params,
     coco_dataset: LuxonisTestDataset,
     cifar10_dataset: LuxonisTestDataset,
@@ -59,6 +71,7 @@ def test_predefined_models(
     else:
         dataset = coco_dataset
 
+    extra_opts = extra_opts or {}
     opts |= {
         "model.name": config_name,
         "loader.params.dataset_name": dataset.identifier,
@@ -74,7 +87,7 @@ def test_predefined_models(
     elif "ocr_recognition" in config_file:
         opts["trainer.preprocessing.train_image_size"] = [48, 320]
 
-    model = LuxonisModel(config_file, opts)
+    model = LuxonisModel(config_file, opts | extra_opts)
 
     with subtests.test("train"):
         model.train()

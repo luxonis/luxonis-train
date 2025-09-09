@@ -1,14 +1,16 @@
+from typing import Literal
+
 import torchvision
 from torch import Tensor
 
 from luxonis_train.nodes.base_node import BaseNode
 
 
-class MobileNetV2(BaseNode[Tensor, list[Tensor]]):
+class MobileNetV2(BaseNode):
     def __init__(
         self,
-        download_weights: bool = True,
         out_indices: list[int] | None = None,
+        weights: Literal["download", "none"] | None = None,
         **kwargs,
     ):
         """MobileNetV2 backbone.
@@ -26,16 +28,13 @@ class MobileNetV2(BaseNode[Tensor, list[Tensor]]):
             - Depth-wise separable convolutions for efficiency
             - Configurable width multiplier and input resolution
 
-        @type download_weights: bool
-        @param download_weights: If True download weights from imagenet. Defaults to
-            True.
         @type out_indices: list[int] | None
         @param out_indices: Indices of the output layers. Defaults to [3, 6, 13, 18].
         """
         super().__init__(**kwargs)
 
         self.backbone = torchvision.models.mobilenet_v2(
-            weights="DEFAULT" if download_weights else None
+            weights="DEFAULT" if weights == "download" else None
         )
         self.out_indices = out_indices or [3, 6, 13, 18]
 

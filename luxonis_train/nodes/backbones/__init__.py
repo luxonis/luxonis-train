@@ -3,7 +3,7 @@ from .ddrnet import DDRNet
 from .efficientnet import EfficientNet
 from .efficientrep import EfficientRep
 from .efficientvit import EfficientViT
-from .ghostfacenet import GhostFaceNetV2
+from .ghostfacenet import GhostFaceNet
 from .micronet import MicroNet
 from .mobilenetv2 import MobileNetV2
 from .mobileone import MobileOne
@@ -19,7 +19,7 @@ __all__ = [
     "EfficientNet",
     "EfficientRep",
     "EfficientViT",
-    "GhostFaceNetV2",
+    "GhostFaceNet",
     "MicroNet",
     "MobileNetV2",
     "MobileOne",

@@ -1,9 +1,7 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Literal
 
-from loguru import logger
 from luxonis_ml.typing import Kwargs, Params, check_type
-from luxonis_ml.utils.registry import AutoRegisterMeta
 from typeguard import typechecked
 from typing_extensions import override
 
@@ -15,43 +13,10 @@ from luxonis_train.config import (
 )
 from luxonis_train.config.config import FreezingConfig
 from luxonis_train.registry import MODELS
+from luxonis_train.variants import VariantBase
 
 
-class BasePredefinedModel(
-    ABC, metaclass=AutoRegisterMeta, registry=MODELS, register=False
-):
-    @classmethod
-    def from_variant(
-        cls, variant: str | Literal["default", "none"] | None = None, **kwargs
-    ) -> "BasePredefinedModel":
-        """Creates a model instance from a predefined variant.
-
-        @type variant: str
-        @param variant: The name of the variant to use.
-        """
-        if variant is None or variant == "none":
-            return cls(**kwargs)
-
-        default, variants = cls.get_variants()
-        if variant == "default":
-            variant = default
-
-        if variant not in variants:
-            raise ValueError(
-                f"Variant '{variant}' is not available. "
-                f"Available variants: {list(variants.keys())}."
-            )
-        params = variants[variant]
-        for key in list(params.keys()):
-            if key in kwargs:
-                logger.info(
-                    f"Overriding variant parameter '{key}' with "
-                    f"explicitly provided value `{kwargs[key]}`."
-                )
-                del params[key]
-
-        return cls(**params, **kwargs)
-
+class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
     @property
     @abstractmethod
     def nodes(self) -> list[NodeConfig]: ...

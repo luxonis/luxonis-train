@@ -31,7 +31,7 @@ class FOMOLocalizationLoss(BaseLoss):
             range). Lower values reduce positive example weighting.
         @type gamma: float
         @param gamma: Focal loss gamma parameter for hard example
-            focusing (γ >= 0). Higher values focus more on hard
+            focusing (gamma >= 0). Higher values focus more on hard
             misclassified examples.
         """
         super().__init__(**kwargs)

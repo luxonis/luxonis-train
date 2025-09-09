@@ -2,11 +2,11 @@ import torch
 from torch import Tensor, nn
 
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.nodes.blocks import ConvModule
+from luxonis_train.nodes.blocks import ConvBlock
 from luxonis_train.utils import make_divisible
 
 
-class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
+class ReXNetV1_lite(BaseNode):
     def __init__(
         self,
         fix_head_stem: bool = False,
@@ -73,12 +73,14 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
 
         strides = [
             s if i == 0 else 1
-            for layer, s in zip(layers, strides)
+            for layer, s in zip(layers, strides, strict=True)
             for i in range(layer)
         ]
         ts = [1] * layers[0] + [6] * sum(layers[1:])
         kernel_sizes = [
-            ks for ks, layer in zip(kernel_sizes, layers) for _ in range(layer)
+            ks
+            for ks, layer in zip(kernel_sizes, layers, strict=True)
+            for _ in range(layer)
         ]
 
         features: list[nn.Module] = []
@@ -87,14 +89,14 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
             32 / multiplier if multiplier < 1.0 or fix_head_stem else 32
         )
         first_channel = make_divisible(
-            int(round(first_channel * multiplier)), divisible_value
+            round(first_channel * multiplier), divisible_value
         )
 
         in_channels_group: list[int] = []
         channels_group: list[int] = []
 
         features.append(
-            ConvModule(
+            ConvBlock(
                 3,
                 first_channel,
                 kernel_size=3,
@@ -106,7 +108,7 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
 
         for i in range(self.n_convblocks):
             inplanes_divisible = make_divisible(
-                int(round(inplanes * multiplier)), divisible_value
+                round(inplanes * multiplier), divisible_value
             )
             if i == 0:
                 in_channels_group.append(first_channel)
@@ -115,7 +117,7 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
                 in_channels_group.append(inplanes_divisible)
                 inplanes += final_ch / (self.n_convblocks - 1 * 1.0)
                 inplanes_divisible = make_divisible(
-                    int(round(inplanes * multiplier)), divisible_value
+                    round(inplanes * multiplier), divisible_value
                 )
                 channels_group.append(inplanes_divisible)
 
@@ -140,8 +142,8 @@ class ReXNetV1_lite(BaseNode[Tensor, list[Tensor]]):
             else 1280
         )
         features.append(
-            ConvModule(
-                in_channels=c,  # type: ignore
+            ConvBlock(
+                in_channels=c,
                 out_channels=pen_channels,
                 kernel_size=1,
                 activation=nn.ReLU6(inplace=True),
@@ -175,7 +177,7 @@ class LinearBottleneck(nn.Module):
         if t != 1:
             dw_channels = in_channels * t
             out.append(
-                ConvModule(
+                ConvBlock(
                     in_channels=in_channels,
                     out_channels=dw_channels,
                     kernel_size=1,
@@ -185,7 +187,7 @@ class LinearBottleneck(nn.Module):
         else:
             dw_channels = in_channels
         out.append(
-            ConvModule(
+            ConvBlock(
                 in_channels=dw_channels,
                 out_channels=dw_channels * 1,
                 kernel_size=kernel_size,
@@ -196,11 +198,11 @@ class LinearBottleneck(nn.Module):
             )
         )
         out.append(
-            ConvModule(
+            ConvBlock(
                 in_channels=dw_channels,
                 out_channels=channels,
                 kernel_size=1,
-                activation=False,
+                activation=None,
             )
         )
 
@@ -215,7 +217,6 @@ class LinearBottleneck(nn.Module):
             b = x
             a = a + b
             c = out[:, self.in_channels :]
-            d = torch.concat([a, c], dim=1)
-            return d
+            return torch.concat([a, c], dim=1)
 
         return out

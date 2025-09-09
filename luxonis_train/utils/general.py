@@ -51,7 +51,7 @@ def infer_upscale_factor(
     def _infer_upscale_factor(in_size: int, orig_size: int) -> int | float:
         factor = math.log2(orig_size) - math.log2(in_size)
         if abs(round(factor) - factor) < 1e-6:
-            return int(round(factor))
+            return round(factor)
         return factor
 
     if isinstance(in_size, int):
@@ -190,10 +190,9 @@ def safe_download(
                 protocol, _ = url.split("://")
                 if protocol in {"s3", "gcs", "gs"}:
                     return LuxonisFileSystem.download(url, f)
-
             torch.hub.download_url_to_file(url, str(f), progress=True)
         except Exception:
-            logger.warning(f"Download failed, retrying {i + 1}/{retry} ...")
+            logger.exception(f"Download failed, retrying {i + 1}/{retry} ...")
         else:
             return f
     logger.warning("Download failed, retry limit reached.")

@@ -1,7 +1,8 @@
 model:
   name: reid_test
   nodes:
-    - name: GhostFaceNetV2
+    - name: GhostFaceNet
+      variant: V2
 
     - name: GhostFaceNetHead
       alias: color-embeddings

@@ -24,7 +24,7 @@ class MeanAveragePrecision:
         | MeanAveragePrecisionKeypoints
     ):
         match node.task:
-            case None:
+            case None:  # pragma: no cover
                 raise ValueError(
                     f"Node {node.name} does not have the 'task' parameter set"
                 )
@@ -38,7 +38,7 @@ class MeanAveragePrecision:
                 )
             case Tasks.INSTANCE_KEYPOINTS:
                 return MeanAveragePrecisionKeypoints(node=node, **kwargs)
-            case _:
+            case _:  # pragma: no cover
                 raise ValueError(
                     f"'MeanAveragePrecision' does not support task '{node.task.name}'"
                 )

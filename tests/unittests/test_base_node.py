@@ -27,6 +27,7 @@ def packet() -> Packet[Tensor]:
         ((-1, -3, -1), [5, 4]),
         ((4, 2), [5, 4]),
         ((-1, -3), [5, 4]),
+        ((-3, -1), [4, 5]),
         ((-4, 4), [2, 3, 4]),
         ((1, -1), [2, 3, 4]),
     ],
@@ -63,10 +64,6 @@ def test_invalid(packet: Packet[Tensor]):
         _ = node.original_in_shape
     with pytest.raises(RuntimeError, match="`dataset_metadata`"):
         _ = node.dataset_metadata
-    with pytest.raises(ValueError, match="`unwrap`"):
-        node.unwrap([packet, packet])
-    with pytest.raises(ValueError, match="`wrap`"):
-        node.wrap({"inp": torch.rand(3, 224, 224)})
 
 
 def test_in_sizes():

@@ -236,7 +236,7 @@ def kill_process_tree(pid: int) -> None:
         parent.terminate()
 
         _, alive = psutil.wait_procs(
-            [parent] + parent.children(recursive=True), timeout=5
+            [parent, *parent.children(recursive=True)], timeout=5
         )
         for p in alive:  # pragma: no cover
             p.kill()

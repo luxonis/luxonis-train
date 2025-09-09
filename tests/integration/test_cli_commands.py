@@ -171,7 +171,7 @@ class CustomLoss(BaseLoss):
         )
 
     res = subprocess.run(
-        [  # noqa: S607
+        [
             sys.executable,
             "-m",
             "luxonis_train",

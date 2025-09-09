@@ -157,9 +157,7 @@ def default_annotate(
                     }
             elif task == "keypoints":
                 for idx, pts in enumerate(norm_kpts):
-                    kps = [
-                        (float(x), float(y), int(round(v))) for x, y, v in pts
-                    ]
+                    kps = [(float(x), float(y), round(v)) for x, y, v in pts]
                     yield {
                         "file": str(img_path),
                         "task_name": head.task_name,

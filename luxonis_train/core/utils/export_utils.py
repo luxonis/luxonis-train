@@ -23,20 +23,11 @@ def replace_weights(
     yield
 
     if old_weights is not None:
-        try:
-            module.load_state_dict(old_weights)
-        except RuntimeError:
-            logger.opt(depth=2).error(
-                "Failed to strictly load old weights. "
-                "The model likely underwent re-parametrization, "
-                "which is a destructive operation. "
-                "Loading old weights with `strict=False`."
-            )
-            module.load_state_dict(old_weights, strict=False)
+        module.load_state_dict(old_weights)
         del old_weights
 
 
-def try_onnx_simplify(onnx_path: str) -> None:
+def try_onnx_simplify(onnx_path: PathType) -> None:
     import onnx
 
     try:
@@ -53,7 +44,7 @@ def try_onnx_simplify(onnx_path: str) -> None:
     logger.info("Simplifying ONNX model...")
     model_onnx = onnx.load(onnx_path)
     onnx_model, check = onnxsim.simplify(model_onnx)
-    if not check:
+    if not check:  # pragma: no cover
         logger.error(
             "Failed to simplify ONNX model. Proceeding without simplification."
         )
@@ -69,7 +60,7 @@ def get_preprocessing(
 ]:
     def _get_norm_param(key: Literal["mean", "std"]) -> list[float] | None:
         params = cfg.normalize.params
-        if key not in params:
+        if key not in params:  # pragma: no cover
             if log_label is not None:
                 logger.warning(
                     f"{log_label} requires the '{key}' "
@@ -79,7 +70,7 @@ def get_preprocessing(
                 )
             return None
         param = params[key]
-        if not check_type(param, list[float | int]):
+        if not check_type(param, list[float | int]):  # pragma: no cover
             if log_label is not None:
                 logger.warning(
                     f"{log_label} requires the '{key}' parameter "
@@ -98,8 +89,8 @@ def blobconverter_export(
     scale_values: list[float] | None,
     mean_values: list[float] | None,
     reverse_channels: bool,
-    export_path: str,
-    onnx_path: str,
+    export_path: PathType,
+    onnx_path: PathType,
 ) -> Path:
     import blobconverter
 
@@ -114,13 +105,13 @@ def blobconverter_export(
         optimizer_params.append("--reverse_input_channels")
 
     blob_path = blobconverter.from_onnx(
-        model=onnx_path,
+        model=str(onnx_path),
         optimizer_params=optimizer_params,
         data_type=cfg.data_type.upper(),
         shaves=cfg.blobconverter.shaves,
         version=cfg.blobconverter.version,
         use_cache=False,
-        output_dir=export_path,
+        output_dir=str(export_path),
     )
     logger.info(f".blob model saved to {blob_path}")
     return Path(blob_path)
