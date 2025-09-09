@@ -17,8 +17,6 @@ from luxonis_train.variants import VariantBase
 
 
 class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
-    _variant: str | None
-
     @property
     @abstractmethod
     def nodes(self) -> list[NodeConfig]: ...
