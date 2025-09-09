@@ -1,6 +1,7 @@
 from .blocks import (
     DFL,
     AttentionRefinmentBlock,
+    BlockRepeater,
     ConvBlock,
     ConvStack,
     CSPStackRepBlock,
@@ -8,7 +9,6 @@ from .blocks import (
     EfficientDecoupledBlock,
     FeatureFusionBlock,
     GeneralReparametrizableBlock,
-    ModuleRepeater,
     SegProto,
     SpatialPyramidPoolingBlock,
     SqueezeExciteBlock,
@@ -30,6 +30,7 @@ from .unet import (
 __all__ = [
     "DFL",
     "AttentionRefinmentBlock",
+    "BlockRepeater",
     "CSPStackRepBlock",
     "CSPStackRepBlock",
     "ConvBlock",
@@ -42,7 +43,6 @@ __all__ = [
     "FeatureFusionBlock",
     "FeatureFusionBlock",
     "GeneralReparametrizableBlock",
-    "ModuleRepeater",
     "ResNetBlock",
     "ResNetBottleneck",
     "SegProto",

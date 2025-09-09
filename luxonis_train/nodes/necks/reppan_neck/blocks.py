@@ -4,10 +4,10 @@ import torch
 from torch import Tensor, nn
 
 from luxonis_train.nodes.blocks import (
+    BlockRepeater,
     ConvBlock,
     CSPStackRepBlock,
     GeneralReparametrizableBlock,
-    ModuleRepeater,
 )
 
 
@@ -72,7 +72,7 @@ class RepUpBlock(PANUpBlockBase):
         super().__init__(
             in_channels=in_channels,
             out_channels=out_channels,
-            encode_block=ModuleRepeater(
+            encode_block=BlockRepeater(
                 GeneralReparametrizableBlock,
                 in_channels=in_channels_next + out_channels,
                 out_channels=out_channels,
@@ -184,7 +184,7 @@ class RepDownBlock(PANDownBlockBase):
         super().__init__(
             in_channels=in_channels,
             downsample_out_channels=downsample_out_channels,
-            encode_block=ModuleRepeater(
+            encode_block=BlockRepeater(
                 GeneralReparametrizableBlock,
                 n_repeats=n_repeats,
                 in_channels=downsample_out_channels + in_channels_next,

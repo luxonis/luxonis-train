@@ -579,7 +579,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
         return kernel * t, beta - running_mean * gamma / std
 
 
-class ModuleRepeater(nn.Sequential):
+class BlockRepeater(nn.Sequential):
     @typechecked
     def __init__(
         self, module: Callable[..., nn.Module], /, *, n_repeats: int, **kwargs
@@ -636,7 +636,7 @@ class CSPStackRepBlock(nn.Module):
             kernel_size=1,
             padding=autopad(1, None),
         )
-        self.rep_stack = ModuleRepeater(
+        self.rep_stack = BlockRepeater(
             BottleRep,
             in_channels=intermediate_channels,
             out_channels=intermediate_channels,
@@ -909,7 +909,7 @@ class DropPath(nn.Module):
         return self.drop_path(x)
 
 
-class ConvStack(ModuleRepeater):
+class ConvStack(BlockRepeater):
     def __init__(
         self, in_channels: int, out_channels: int, *, n_repeats: int = 2
     ):

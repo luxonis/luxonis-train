@@ -6,9 +6,9 @@ from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
 from luxonis_train.nodes.blocks import (
+    BlockRepeater,
     CSPStackRepBlock,
     GeneralReparametrizableBlock,
-    ModuleRepeater,
     SpatialPyramidPoolingBlock,
 )
 from luxonis_train.utils import make_divisible
@@ -101,7 +101,7 @@ class EfficientRep(BaseNode):
                     stride=2,
                 ),
                 (
-                    ModuleRepeater(
+                    BlockRepeater(
                         GeneralReparametrizableBlock,
                         in_channels=channels_list[i + 1],
                         out_channels=channels_list[i + 1],
