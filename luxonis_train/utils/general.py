@@ -192,7 +192,7 @@ def safe_download(
                     return LuxonisFileSystem.download(url, f)
             torch.hub.download_url_to_file(url, str(f), progress=True)
         except Exception:
-            logger.warning(f"Download failed, retrying {i + 1}/{retry} ...")
+            logger.exception(f"Download failed, retrying {i + 1}/{retry} ...")
         else:
             return f
     logger.warning("Download failed, retry limit reached.")

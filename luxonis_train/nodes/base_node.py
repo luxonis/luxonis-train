@@ -169,7 +169,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             self.initialize_weights(method=self._weights)
 
     def initialize_weights(
-        self, method: Literal["yolo"] | str | None = None
+        self, method: Literal["yolo", "none"] | str | None = None
     ) -> None:
         """Initializes the weights of the module.
 
@@ -182,6 +182,9 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             method. Defaults to None, which does not perform any
             initialization.
         """
+        if method is None or method == "none":
+            return
+
         if method == "yolo":
             for m in self.modules():
                 if isinstance(m, nn.BatchNorm2d):
