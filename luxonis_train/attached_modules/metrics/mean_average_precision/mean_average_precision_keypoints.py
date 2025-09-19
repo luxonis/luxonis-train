@@ -130,7 +130,10 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         self.coco_eval = COCOeval_faster(
             coco_target, coco_preds, iouType="keypoints"
         )
-        self.coco_eval.params.kpt_oks_sigmas = self.sigmas.cpu().numpy()
+        # self.coco_eval.params.kpt_oks_sigmas = self.sigmas.cpu().numpy()
+        self.coco_eval.params.kpt_oks_sigmas = (
+            self.sigmas.detach().to("cpu").numpy()
+        )
         self.coco_eval.params.maxDets = [self.max_dets]
 
         self.coco_eval.run()
@@ -177,10 +180,12 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
                 annotation = {
                     "id": len(annotations) + 1,
                     "image_id": i,
-                    "bbox": bbox.cpu().tolist(),
+                    # "bbox": bbox.cpu().tolist(),
+                    "bbox": bbox.detach().to("cpu").tolist(),
                     "area": (bbox[2] * bbox[3] * self.area_factor).item(),
                     "category_id": class_id.item(),
-                    "keypoints": kpts.cpu().tolist(),
+                    # "keypoints": kpts.cpu().tolist(),
+                    "keypoints": kpts.detach().to("cpu").tolist(),
                     "num_keypoints": kpts[2::3].ne(0).sum().item(),
                     "iscrowd": 0,
                 }

@@ -93,8 +93,10 @@ class ObjectKeypointSimilarity(BaseMetric):
 
     @override
     def compute(self) -> Tensor:
+        # self.sigmas = self.sigmas.to(self.device)
+        # mean_oks = torch.zeros(len(self.target_keypoints))
         self.sigmas = self.sigmas.to(self.device)
-        mean_oks = torch.zeros(len(self.target_keypoints))
+        mean_oks = torch.zeros(len(self.target_keypoints), device=self.device)
         for i, (pred_kpts, target_kpts, scales) in enumerate(
             zip(
                 self.pred_keypoints,
@@ -111,14 +113,22 @@ class ObjectKeypointSimilarity(BaseMetric):
                 pose_area=scales[None, :, None, None],
             ).squeeze(0)
 
+            # gt_indices, pred_indices = linear_sum_assignment(
+            #     image_ious.cpu().numpy(), maximize=True
+            # )
+            cost = image_ious.detach().to("cpu").numpy()
             gt_indices, pred_indices = linear_sum_assignment(
-                image_ious.cpu().numpy(), maximize=True
+                cost, maximize=True
             )
             matched_ious = [
                 image_ious[n, m]
                 for n, m in zip(gt_indices, pred_indices, strict=True)
             ]
-            mean_oks[i] = torch.tensor(matched_ious).mean()
+            # mean_oks[i] = torch.tensor(matched_ious).mean()
+            if len(matched_ious) > 0:
+                mean_oks[i] = torch.stack(matched_ious).mean()
+            else:
+                mean_oks[i] = torch.tensor(0.0, device=self.device)
 
         return mean_oks.nanmean().nan_to_num()
 
