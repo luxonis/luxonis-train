@@ -922,6 +922,12 @@ class LuxonisLightningModule(pl.LightningModule):
     def _load_execution_order_mapping(
         self, ckpt: dict[str, Any]
     ) -> dict[str, dict[str, str]] | str:
+        """Loads mapping from old to new parameter names based on
+        execution order.
+
+        Returns a mapping dictionary or an error string if mapping
+        cannot be created.
+        """
         if "execution_order" not in ckpt:  # pragma: no cover
             return "Execution order not found in checkpoint."
         old_order = ckpt["execution_order"]
