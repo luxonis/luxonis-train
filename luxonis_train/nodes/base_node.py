@@ -441,10 +441,11 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         if match := re.search(
             r"\{github(?::(v[0-9]+\.[0-9]+\.[0-9]+(-\w+)?))?\}", url
         ):
-            version = match.group(1) or "v0.4.0-beta"
+            version = match.group(1) or "v0.3.10-beta"
             url = url.replace(
                 match.group(0),
-                f"gcs://luxonis-test-bucket/weights/{version}/",
+                "https://github.com/luxonis/"
+                f"luxonis-train/releases/download/{version}/",
             )
         return url
 
