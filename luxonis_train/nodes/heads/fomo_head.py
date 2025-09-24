@@ -60,7 +60,7 @@ class FOMOHead(BaseNode):
     def n_keypoints(self) -> int:
         return 1
 
-    def forward(self, inputs: list[Tensor]) -> Packet[Tensor]:
+    def forward(self, inputs: Tensor) -> Packet[Tensor]:
         heatmap = self.conv_layers(inputs)
 
         if self.training:
