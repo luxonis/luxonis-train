@@ -25,7 +25,6 @@ class RepVGG(BaseNode):
     """
 
     in_channels: int
-    attach_index: int = -1
 
     @typechecked
     def __init__(

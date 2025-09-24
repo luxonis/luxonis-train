@@ -7,8 +7,6 @@ from luxonis_train.nodes.base_node import BaseNode
 
 
 class EfficientNet(BaseNode):
-    attach_index: int = -1
-
     def __init__(
         self,
         out_indices: list[int] | None = None,

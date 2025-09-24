@@ -12,7 +12,6 @@ from luxonis_train.typing import Packet
 class FOMOHead(BaseNode):
     task: Task = Tasks.FOMO
     in_channels: int
-    attach_index: int = 1
 
     def __init__(
         self,
