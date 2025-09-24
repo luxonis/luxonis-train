@@ -301,7 +301,6 @@ class DDRNet(BaseNode):
     @override
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
-        # TODO: Could the other init parameters be here too?
         return "23-slim", {
             "23-slim": {
                 "channels": 32,
