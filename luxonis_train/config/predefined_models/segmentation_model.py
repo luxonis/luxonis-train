@@ -50,6 +50,7 @@ class SegmentationModel(SimplePredefinedModel):
                 "backbone": "DDRNet",
                 "backbone_params": {
                     "variant": "23-slim",
+                    "weights": "download",
                 },
                 "head": "DDRNetSegmentationHead",
                 "head_params": {
