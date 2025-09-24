@@ -597,7 +597,7 @@ backbone_output = backbone_node.run(input)
 
 logits = head_node.run(backbone_output)
 
-# 3) Loss
+# Loss
 loss_input_data = loss.get_parameters(logits, target)
 loss_value = loss.forward(loss_input_data['predictions'], loss_input_data['target'])
 
