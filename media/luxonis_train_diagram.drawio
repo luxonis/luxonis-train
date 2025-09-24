@@ -183,7 +183,7 @@
         <mxCell id="MXd5LvHk3ocg5dNi32uw-11" value="&lt;font style=&quot;background-color: rgb(223, 223, 223);&quot; face=&quot;Courier New&quot;&gt;features:list[Tensor]&lt;/font&gt;&amp;nbsp;would work just the same." style="shape=callout;whiteSpace=wrap;html=1;perimeter=calloutPerimeter;align=center;size=20;position=0.19;position2=0.13;fontSize=17;flipV=1;base=18;" parent="1" vertex="1">
           <mxGeometry x="890" y="200" width="438.38" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="clmWsWutVdpPg649MSEb-1" value="&lt;font style=&quot;font-size: 33px;&quot; face=&quot;Courier New&quot;&gt;Detection Model Diagram&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;" parent="1" vertex="1">
+        <mxCell id="clmWsWutVdpPg649MSEb-1" value="&lt;font style=&quot;font-size: 33px;&quot; face=&quot;Courier New&quot;&gt;Detection Model&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;" parent="1" vertex="1">
           <mxGeometry x="444.5" y="-592" width="510" height="80" as="geometry" />
         </mxCell>
       </root>
