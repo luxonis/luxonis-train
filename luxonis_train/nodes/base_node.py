@@ -414,8 +414,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
           - C{{github}} - will be replaced with
             C{"https://github.com/luxonis/luxonis-train/releases/download/{version}"},
             where C{{version}} is the version of used `luxonis-train` library.
-            - A version tag can be added to use a specific version.
-             e.g. C{{github:v0.3.0}}
+              - A version tag can be added to use a specific version. e.g. C{{github:v0.3.0}}
           - C{{variant}} - will be replaced with the variant of the node.
             If the node was not constructed from a variant, an error
             is raised.
