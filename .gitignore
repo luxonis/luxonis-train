@@ -164,3 +164,4 @@ data
 lightning_logs/
 
 *.drawio.bkp
+*.drawio.dtmp
