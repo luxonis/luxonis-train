@@ -414,6 +414,8 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
           - C{{github}} - will be replaced with
             C{"https://github.com/luxonis/luxonis-train/releases/download/{version}"},
             where C{{version}} is the version of used `luxonis-train` library.
+            - A version tag can be added to use a specific version.
+             e.g. C{{github:v0.3.0}}
           - C{{variant}} - will be replaced with the variant of the node.
             If the node was not constructed from a variant, an error
             is raised.
@@ -437,11 +439,15 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
                     "the node was not constructed from a variant."
                 )
             url = url.replace("{variant}", self.variant)
-        return url.replace(
-            "{github}",
-            # TODO: Change back
-            "gcs://luxonis-test-bucket/weights/v0.4.0-beta/",
-        )
+        if match := re.search(
+            r"\{github(?::(v[0-9]+\.[0-9]+\.[0-9]+(-\w+)?))?\}", url
+        ):
+            version = match.group(1) or "v0.4.0-beta"
+            url = url.replace(
+                match.group(0),
+                f"gcs://luxonis-test-bucket/weights/{version}/",
+            )
+        return url
 
     def load_checkpoint(
         self,
