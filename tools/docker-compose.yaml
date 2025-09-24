@@ -1,0 +1,10 @@
+services:
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/shared
+      - $HOME/luxonis_ml:/root/luxonis_ml
+    entrypoint: ["/app/tools/migrate.sh"]
+    tty: true
