@@ -81,12 +81,12 @@ class NodeConfig(ConfigItem):
     remove_on_export: bool = False
     task_name: str = ""
     metadata_task_override: str | dict[str, str] | None = None
-    variant: str | Literal["default"] | None = None
+    variant: str | Literal["default", "none"] | None = "default"
 
     @model_validator(mode="after")
     def validate_variant(self) -> Self:
         old_variant = self.params.pop("variant", None)
-        if old_variant is not None and self.variant is not None:
+        if old_variant is not None and self.variant != "default":
             raise ValueError(
                 "Both `node.variant` and `node.params.variant` are set for "
                 f"'{self.alias or self.name}'. Please use only one of them. "
@@ -108,7 +108,7 @@ class NodeConfig(ConfigItem):
 
 
 class PredefinedModelConfig(ConfigItem):
-    variant: str | Literal["default", "none"] | None = None
+    variant: str | Literal["default", "none"] | None = "default"
     include_nodes: bool = True
     include_losses: bool = True
     include_metrics: bool = True
@@ -191,10 +191,6 @@ class ModelConfig(BaseModelExtraForbid):
                         "Expected a string."
                     )
                 self.predefined_model.variant = variant
-
-        self.predefined_model.variant = (
-            self.predefined_model.variant or "default"
-        )
 
         logger.info(f"Using predefined model: `{self.predefined_model.name}`")
         model = from_registry(

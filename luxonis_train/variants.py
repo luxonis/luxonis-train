@@ -56,10 +56,10 @@ class VariantMeta(AutoRegisterMeta):
             cls.__init__(obj, *args, **kwargs)
             return obj
 
-        obj._variant = variant  # type: ignore
-
         if variant == "default":
             variant = default
+
+        obj._variant = variant  # type: ignore
 
         if variant not in variants:
             raise ValueError(
