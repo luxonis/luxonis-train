@@ -609,6 +609,8 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
                     else:
                         kwargs[name] = self.get_attached(value)
                 else:
+                    prev_kwargs_len = len(kwargs)
+
                     for inp in inputs:
                         if name in inp:
                             if not check_type(inp[name], param.annotation):
@@ -623,9 +625,27 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
                                     f"'{name}', but it was found in multiple input packets."
                                 )
                             kwargs[name] = inp[name]
+                    if (
+                        len(kwargs) == prev_kwargs_len
+                        and len(inputs) == len(self._signature) == 1
+                        and name not in inputs[0]
+                    ):
+                        key_name = next(iter(inputs[0]))
+                        kwargs[name] = self.get_attached(
+                            next(iter(inputs[0].values()))
+                        )
+
+                        logger.warning(
+                            f"Non-standard parameter name '{name}' used in `{self.name}.forward`. "
+                            f"The node expects a single argument of type `{param.annotation}` "
+                            f"and it got a single input packet wit ha single key '{key_name}'. "
+                            "Assuming the input corresponds to that parameter. "
+                            "If this is incorrect, please double check the parameter name or "
+                            "the input packets."
+                        )
 
             else:
-                raise RuntimeError(
+                raise TypeError(
                     f"Node '{self.name}' has an unsupported type "
                     f"`{param.annotation}` for parameter `{name}`. "
                     "Supported types are Tensor, list of Tensors and "
