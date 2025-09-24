@@ -31,21 +31,21 @@ class KeypointDetectionModel(SimplePredefinedModel):
                 "backbone_params": {"variant": "n"},
                 "neck_params": {
                     "variant": "n",
-                    "download_weights": True,
+                    "weights": "download",
                 },
             },
             "medium": {
                 "backbone_params": {"variant": "s"},
                 "neck_params": {
                     "variant": "s",
-                    "download_weights": True,
+                    "weights": "download",
                 },
             },
             "heavy": {
                 "backbone_params": {"variant": "l"},
                 "neck_params": {
                     "variant": "l",
-                    "download_weights": True,
+                    "weights": "download",
                 },
             },
         }

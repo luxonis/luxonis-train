@@ -1,4 +1,3 @@
-# ruff: noqa: T201
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Mapping

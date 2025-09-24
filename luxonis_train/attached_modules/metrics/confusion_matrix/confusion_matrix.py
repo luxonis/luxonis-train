@@ -26,7 +26,7 @@ class ConfusionMatrix:
         | InstanceSegmentationConfusionMatrix
     ):
         match node.task:
-            case None:
+            case None:  # pragma: no cover
                 raise ValueError(
                     f"Node {node.name} does not have the 'task' parameter set"
                 )
@@ -38,7 +38,7 @@ class ConfusionMatrix:
                 return InstanceSegmentationConfusionMatrix(node=node, **kwargs)
             case Tasks.FOMO:
                 return FomoConfusionMatrix(node=node, **kwargs)
-            case _:
+            case _:  # pragma: no cover
                 raise ValueError(
                     f"'ConfusionMatrix' does not support task '{node.task.name}'"
                 )

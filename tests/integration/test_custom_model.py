@@ -63,11 +63,13 @@ class MultiInputTestBaseNode(BaseNode):
         super().__init__(**kwargs)
         self.scalar = nn.Parameter(torch.tensor(1.0), requires_grad=True)
 
-    def forward(self, inputs: list[Tensor]):
-        return [self.scalar * inp for inp in inputs]
-
-    def unwrap(self, inputs: list[dict[str, list[Tensor]]]):
-        return [item for inp in inputs for key in inp for item in inp[key]]
+    def forward(self, inputs: list[Packet[Tensor]]) -> list[Tensor]:
+        return [
+            item * self.scalar
+            for inp in inputs
+            for key in inp
+            for item in inp[key]
+        ]
 
 
 class FullBackbone(MultiInputTestBaseNode): ...
@@ -93,10 +95,6 @@ class CustomSegHead1(BaseHead):
         super().__init__(**kwargs)
         self.conv = nn.Conv2d(1, 1, kernel_size=3, padding=1)
 
-    def unwrap(self, inputs: list[Packet[Tensor]]) -> Tensor:
-        assert len(inputs) == 1
-        return inputs[0]["features"][-1]
-
     def forward(self, inputs: Tensor) -> Tensor:
         return self.conv(inputs)
 
@@ -108,11 +106,8 @@ class CustomSegHead2(BaseHead):
         super().__init__(**kwargs)
         self.conv = nn.Conv2d(1, 1, kernel_size=3, padding=1)
 
-    def unwrap(self, inputs: list[Packet[Tensor]]):
-        return [packet["features"][-1] for packet in inputs]
-
-    def forward(self, inputs: list[Tensor]) -> Tensor:
-        fn1, _, disp = inputs
+    def forward(self, inputs: list[Packet[Tensor]]) -> Tensor:
+        fn1, _, disp = [packet["features"][-1] for packet in inputs]
         return self.conv(fn1 + disp)
 
     def get_custom_head_config(self) -> Params:

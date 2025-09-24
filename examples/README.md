@@ -25,7 +25,7 @@ The `luxonis-train` framework is designed to be easily extendable. This document
 
 The following diagram illustrates how parts of the model interact with each other and how the data flows through the network in a simple detection model. All individual parts with specific code examples are described in the following sections.
 
-![diagram](../media/luxonis_train_diagram.png)
+![simple-diagram](../media/luxonis_train_diagram.png)
 
 ## Nodes
 
@@ -88,40 +88,41 @@ The main methods of the node are:
 - `__init__` - constructor
   - Should always take `**kwargs` as an argument and pass it to the parent constructor
   - All the arguments under `node.params` in the config file are passed here
-- `forward(x: T) -> K` - the forward pass of the node
-  - In most cases should take either a single tensor or a list of tensors and return again a single tensor or a list of tensors
-    - If more control is needed, see the `unwrap` method
-- `wrap(outputs: K) -> Packet[Tensor]` - called after `forward`, wraps the output of the node into a dictionary
-  - The results of `forward` are not the final outputs of the node, but are wrapped into a dictionary (called a `Packet`)
-  - The keys of the dictionary are used to extract the correct values in the attached modules (losses, metrics, visualizers)
-  - Usually needs to be overridden for heads only
-    - Typically it behaves differently for `train`, `eval`, and `export` calls
-    - `train` goes to the loss, `eval` goes to the loss, metrics and visualizers, and `export` is used when the model is exported to ONNX
-    - (all of them are also sent to the next node)
-  - The default implementation roughly behaves like this:
-    - For backbones and necks, the output is wrapped into a dictionary with a single key `"features"`
-    - For heads, the output is wrapped into a dictionary with a single key equivalent to the value of `node.task.main_output` property
-      - If task is not defined, the node is considered to be a backbone or a neck (_i.e._ using the `"features"` key)
-    - Roughly equivalent to:
-      ```python
-      def wrap(self, output: ForwardOutputType) -> Packet[Tensor]:
-          if self.task is not None:
-              return {self.task.main_output: output}
-          return {"features": output}
-      ```
-- `unwrap(inputs: list[Packet[Tensor]]) -> T` - called before `forward`, the output of `unwrap` is directly passed to the `forward` method
-  - Usually doesn't need to be overridden
-  - Receives a list of packets, one for each connected node
-    - Usually only one packet is passed
-    - Multiple packets are passed if the current node is connected to multiple preceding nodes
-      - No such architecture currently implemented in the framework
-  - The default implementation looks for a key named `"features"` in the input dictionary and returns its value based on the `attach_index`
-    - Roughly equivalent to:
-      ```python
-      def unwrap(self, inputs: list[Packet[Tensor]]) -> ForwardInputType:
-          return inputs[0]["features"][self.attach_index]
-      ```
-  - Unless the node is connected to a complex backbone producing multiple outputs on top of the feature maps or to another head, this method doesn't need to be overridden
+- `forward` - the forward pass of the node
+  - The `forward` arguments can be either:
+    - A single tensor or a list of tensors
+      - Most common case
+      - The input tensor(s) are automatically extracted from the input packet based on the `attach_index` value
+      - By default, the packet field under the `"features"` key is used
+    - A single packet (dictionary of tensors)
+      - In this case, the entire packet from the preceding node is passed to the `forward` method
+    - A list of packets
+      - Rarely used
+      - Can be used for nodes that are connected to multiple preceding nodes
+      - The `forward` method will receive a list of packets, one for each connected node, in the same order as specified in the configuration file
+    - Multiple arguments (only tensors or lists of tensors)
+      - In essence the same as a single packet, but the values are unpacked and passed as separate arguments based on the argument names
+      - Can be used with non-standard nodes that do not output regular feature maps (e.g. Anomaly Detection)
+  - The return type of the `forward` method can be one of:
+    - A single tensor / list of tensors
+      - Usually used for backbones and necks
+      - For heads (nodes that specify the `task` attribute), the output is wrapped into a dictionary with a single key equivalent to the value of `node.task.main_output` property
+      - Otherwise (for backbones and necks), the output is automatically turned into a packet with a single key `"features"`
+      - The automatic wrapping is roughly equivalent to:
+        ```python
+        if self.task is not None:
+            return {self.task.main_output: output}
+        return {"features": output}
+        ```
+    - A tensor packet (dictionary of tensors)
+      - Usually used for heads
+      - The keys of the dictionary are used to extract the correct values in the attached modules (losses, metrics, visualizers)
+      - The output packet is typically different for `train`, `eval`, and `export` calls
+        - `train` goes to the loss, `eval` goes to the loss, metrics and visualizers, and `export` is used when the model is exported to ONNX
+
+The following diagram illustrates how parts of the model interact with each other and how the data flows through the network in a more complex anomaly detection model.
+
+![diagram](../media/anomaly_detection_diagram.png)
 
 ### `BaseHead` Interface
 
@@ -195,7 +196,7 @@ class DistanceEstimation(BoundingBox):
 
 ```python
 
-class ResNet(BaseNode[Tensor, list[Tensor]]):
+class ResNet(BaseNode):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         ...
@@ -414,7 +415,7 @@ from luxonis_train.tasks import Tasks
 # Example node that produces multiple outputs during
 # training that are all used in the loss calculation.
 class EfficientKeypointBBoxHead(...):
-    def wrap(...) -> Packet[Tensor]:
+    def forward(...) -> Packet[Tensor]:
         return {
             "features": features,
             "class_scores": cls_tensor,
@@ -557,27 +558,21 @@ class XORBackbone(BaseNode):
             nn.Linear(2, 10), nn.ReLU()
         )
 
-    def unwrap(self, x: list[Packet[Tensor]]) -> Tensor:
-        x = x[0]["features"][0]
-        x = x.view(-1, 2)
-        return x
-
     def forward(self, x: Tensor) -> Tensor:
         return self.backbone(x)
 
 class XORHead(BaseHead):
     task = Tasks.CLASSIFICATION
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.head = nn.Linear(10, 2)
 
     def forward(self, x: Tensor) -> Tensor:
-        return self.head(x)
-
-    def wrap(self, x: Tensor) -> Packet[Tensor]:
-         return {
-             "classification": x,
-         }
+        x = self.head(x)
+        return {
+            "classification": x,
+        }
 
 # Setup metadata & nodes
 original_in_shape = Size([1, 1, 2])
@@ -605,18 +600,12 @@ input = [{"features": [Tensor([[[[0, 0]]]])]}]
 target = {"/classification": torch.tensor([0])}
 
 # Forward pass
-# 1) Backbone
-unwraped_input = backbone_node.unwrap(input)
-features = backbone_node.forward(unwraped_input)
-wrapped_features = [backbone_node.wrap(features)] # list since next node can have multiple inputs (default lxt behavior)
+backbone_output = backbone_node.run(input)
 
-# 2) Head
-unwraped_features = head_node.unwrap(wrapped_features)
-logits = head_node.forward(unwraped_features)
-wrapped_logits = head_node.wrap(logits)
+logits = head_node.run(backbone_output)
 
-# 3) Loss
-loss_input_data = loss.get_parameters(wrapped_logits, target)
+# Loss
+loss_input_data = loss.get_parameters(logits, target)
 loss_value = loss.forward(loss_input_data['predictions'], loss_input_data['target'])
 
 print(f"Loss value: {loss_value.item()}")

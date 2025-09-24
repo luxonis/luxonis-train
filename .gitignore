@@ -161,4 +161,7 @@ mlartifacts
 mlruns
 wandb
 data
-lightning_logs
+lightning_logs/
+
+*.drawio.bkp
+*.drawio.dtmp

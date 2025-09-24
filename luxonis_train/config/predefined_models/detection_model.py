@@ -16,7 +16,7 @@ class DetectionModel(SimplePredefinedModel):
                 "confusion_matrix_available": True,
                 "visualizer": "BBoxVisualizer",
             }
-            | kwargs,
+            | kwargs
         )
 
     @staticmethod
@@ -26,31 +26,31 @@ class DetectionModel(SimplePredefinedModel):
             "light": {
                 "backbone_params": {
                     "variant": "n",
-                    "download_weights": True,
+                    "weights": "download",
                 },
                 "neck_params": {
                     "variant": "n",
-                    "download_weights": True,
+                    "weights": "download",
                 },
             },
             "medium": {
                 "backbone_params": {
                     "variant": "s",
-                    "download_weights": True,
+                    "weights": "download",
                 },
                 "neck_params": {
                     "variant": "s",
-                    "download_weights": True,
+                    "weights": "download",
                 },
             },
             "heavy": {
                 "backbone_params": {
                     "variant": "l",
-                    "download_weights": True,
+                    "weights": "download",
                 },
                 "neck_params": {
                     "variant": "l",
-                    "download_weights": True,
+                    "weights": "download",
                 },
             },
         }

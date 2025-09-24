@@ -4,49 +4,49 @@ from torch import Tensor, nn
 from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.nodes.blocks.blocks import ConvBlock
 from luxonis_train.tasks import Task, Tasks
 from luxonis_train.typing import Packet
 
 
-class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
+class FOMOHead(BaseNode):
     task: Task = Tasks.FOMO
     in_channels: int
-    attach_index: int = 1
 
     def __init__(
         self,
-        num_conv_layers: int = 3,
+        n_conv_layers: int = 3,
         conv_channels: int = 16,
         use_nms: bool = True,
         **kwargs,
     ):
         """FOMO Head for object detection using heatmaps.
 
-        @type num_conv_layers: int
-        @param num_conv_layers: Number of convolutional layers to use.
+        @type n_conv_layers: int
+        @param n_conv_layers: Number of convolutional layers to use.
         @type conv_channels: int
         @param conv_channels: Number of channels to use in the
             convolutional layers.
         """
         super().__init__(**kwargs)
-        self.original_img_size = self.original_in_shape[1:]
-        self.num_conv_layers = num_conv_layers
+        self.n_conv_layers = n_conv_layers
         self.conv_channels = conv_channels
         self.use_nms = use_nms
 
         current_channels = self.in_channels
 
         layers = []
-        for _ in range(self.num_conv_layers - 1):
+        for _ in range(self.n_conv_layers - 1):
             layers.append(
-                nn.Conv2d(
+                ConvBlock(
                     current_channels,
                     self.conv_channels,
                     kernel_size=1,
                     stride=1,
+                    use_norm=False,
+                    bias=True,
                 )
             )
-            layers.append(nn.ReLU())
             current_channels = self.conv_channels
         layers.append(
             nn.Conv2d(
@@ -60,32 +60,24 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
     def n_keypoints(self) -> int:
         return 1
 
-    def forward(self, inputs: list[Tensor]) -> Tensor:
-        return self.conv_layers(inputs)
+    def forward(self, inputs: Tensor) -> Packet[Tensor]:
+        heatmap = self.conv_layers(inputs)
 
-    def wrap(self, heatmap: Tensor) -> Packet[Tensor]:
         if self.training:
             return {self.task.main_output: heatmap}
 
         if self.export:
-            return {"outputs": [self._apply_nms_if_needed(heatmap)]}
+            if self.use_nms:
+                heatmap = F.max_pool2d(
+                    heatmap, kernel_size=3, stride=1, padding=1
+                )
+
+            return {"outputs": [heatmap]}
 
         return {
             "keypoints": self._heatmap_to_kpts(heatmap),
             self.task.main_output: heatmap,
         }
-
-    def _apply_nms_if_needed(self, heatmap: Tensor) -> Tensor:
-        """Apply NMS pooling to the heatmap if use_nms is enabled.
-
-        @type heatmap: Tensor
-        @param heatmap: Heatmap to process.
-        @return: Processed heatmap with or without pooling.
-        """
-        if not self.use_nms:
-            return heatmap
-
-        return F.max_pool2d(heatmap, kernel_size=3, stride=1, padding=1)
 
     def _heatmap_to_kpts(self, heatmap: Tensor) -> list[Tensor]:
         """Convert heatmap to keypoint pairs using local-max NMS so that
@@ -95,13 +87,13 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         @param heatmap: Heatmap to convert to keypoints.
         """
         device = heatmap.device
-        batch_size, num_classes, height, width = heatmap.shape
+        batch_size, n_classes, height, width = heatmap.shape
 
         batch_kpts = []
         for batch_idx in range(batch_size):
             kpts_per_img = []
 
-            for class_id in range(num_classes):
+            for class_id in range(n_classes):
                 prob_map = torch.sigmoid(heatmap[batch_idx, class_id, :, :])
 
                 keep = self._get_keypoint_mask(prob_map)
@@ -109,12 +101,12 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
                 y_indices, x_indices = torch.where(keep)
                 kpts = [
                     [
-                        x.item() / width * self.original_img_size[1],
-                        y.item() / height * self.original_img_size[0],
+                        x.item() / width * self.original_in_shape[2],
+                        y.item() / height * self.original_in_shape[1],
                         float(prob_map[y, x]),
                         class_id,
                     ]
-                    for y, x in zip(y_indices, x_indices)
+                    for y, x in zip(y_indices, x_indices, strict=True)
                 ]
 
                 kpts_per_img.extend(kpts)
@@ -138,7 +130,8 @@ class FOMOHead(BaseNode[list[Tensor], list[Tensor]]):
         if self.use_nms:
             pooled_map = (
                 F.max_pool2d(
-                    prob_map.unsqueeze(0).unsqueeze(0),  # [1, 1, H, W]
+                    # Shape: `[1, 1, H, W]`
+                    prob_map.unsqueeze(0).unsqueeze(0),
                     kernel_size=3,
                     stride=1,
                     padding=1,
