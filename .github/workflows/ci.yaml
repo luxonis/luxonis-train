@@ -89,6 +89,7 @@ jobs:
     needs:
       - pre-commit
       - type-check
+      - docs
 
     steps:
     - name: Checkout
