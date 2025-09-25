@@ -128,7 +128,8 @@ def get_head_configs(
     head_configs = []
     head_names = set()
 
-    for node_name, node in lightning_module.nodes.items():
+    for node_name, node_wrapper in lightning_module.nodes.items():
+        node = node_wrapper.module
         if not isinstance(node, BaseHead) or node.remove_on_export:
             continue
         head_config = node.get_head_config()
