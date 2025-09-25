@@ -36,7 +36,7 @@ from pydantic.types import (
 from typing_extensions import Self, override
 
 from luxonis_train.config.constants import CONFIG_VERSION
-from luxonis_train.registry import MODELS, from_registry
+from luxonis_train.registry import MODELS, NODES, from_registry
 
 
 class ImageSize(NamedTuple):
@@ -271,6 +271,16 @@ class ModelConfig(BaseModelExtraForbid):
 
                     names.add(name)
         return self
+
+    @property
+    def head_nodes(self) -> list[NodeConfig]:
+        from luxonis_train.nodes import BaseHead
+
+        return [
+            node
+            for node in self.nodes
+            if issubclass(NODES._module_dict.get(node.name, object), BaseHead)
+        ]
 
 
 class TrackerConfig(BaseModelExtraForbid):
