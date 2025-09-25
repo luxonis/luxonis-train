@@ -16,12 +16,12 @@ def get_config(dataset_name: str) -> Params:
             "nodes": [
                 {
                     "name": "EfficientRep",
-                    "params": {"variant": "n"},
+                    "variant": "n",
                 },
                 {
                     "name": "RepPANNeck",
                     "inputs": ["EfficientRep"],
-                    "params": {"variant": "n"},
+                    "variant": "n",
                 },
                 {
                     "name": "EfficientBBoxHead",
