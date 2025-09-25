@@ -24,15 +24,15 @@ class InstanceSegmentationModel(SimplePredefinedModel):
     def get_variants() -> tuple[str, dict[str, Params]]:
         return "light", {
             "light": {
-                "backbone_params": {"variant": "n"},
-                "neck_params": {"variant": "n"},
+                "backbone_variant": "n",
+                "neck_variant": "n",
             },
             "medium": {
-                "backbone_params": {"variant": "s"},
-                "neck_params": {"variant": "s"},
+                "backbone_variant": "s",
+                "neck_variant": "s",
             },
             "heavy": {
-                "backbone_params": {"variant": "l"},
-                "neck_params": {"variant": "l"},
+                "backbone_variant": "l",
+                "neck_variant": "l",
             },
         }

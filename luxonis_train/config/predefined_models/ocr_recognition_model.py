@@ -49,7 +49,7 @@ class OCRRecognitionModel(SimplePredefinedModel):
     def get_variants() -> tuple[str, dict[str, Params]]:
         return "light", {
             "light": {
-                "backbone_params": {"variant": "rec-light"},
+                "backbone_variant": "rec-light",
             }
         }
 

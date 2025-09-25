@@ -58,6 +58,7 @@ In addition, the following class attributes can be overridden:
 | -------------- | ----------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `attach_index` | `int \| "all" \| tuple[int, int] \| tuple[int, int, int] \| None` | `None`        | Index of previous output that the head attaches to. Each node has a sensible default. Usually should not be manually set in most cases. Can be either a single index, a slice (negative indexing is also supported), or `"all"` |
 | `task`         | `Task \| None`                                                    | `None`        | List of tasks types supported by the node. Should be overridden for head nodes.                                                                                                                                                 |
+| `variant`      | `str \| None`                                                     | `None`        | Some nodes specify predefined variants of the architecture. This attribute can be used to indicate which variant should be used.                                                                                                |
 
 Additional parameters for specific nodes are listed below.
 

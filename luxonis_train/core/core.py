@@ -28,6 +28,7 @@ from luxonis_train.callbacks import (
 )
 from luxonis_train.config import Config
 from luxonis_train.lightning import LuxonisLightningModule
+from luxonis_train.lightning.utils import get_main_metric
 from luxonis_train.loaders import (
     BaseLoaderTorch,
     DebugLoader,
@@ -140,10 +141,11 @@ class LuxonisModel:
         loader_name = self.cfg.loader.name
         Loader = LOADERS.get(loader_name)
         if issubclass(Loader, LuxonisLoaderTorch):
-            model_tasks = sorted(
-                {node.task_name for node in self.cfg.model.nodes}
-            )
-            self.cfg.loader.params["filter_task_names"] = model_tasks
+            model_tasks = {node.task_name for node in self.cfg.model.nodes}
+            if None not in model_tasks:
+                self.cfg.loader.params["filter_task_names"] = sorted(
+                    model_tasks  # type: ignore
+                )
 
         for view in ("train", "val", "test"):
             if (
@@ -764,9 +766,7 @@ class LuxonisModel:
             if cfg.tuner.monitor == "loss":
                 monitor = "val/loss"
             else:
-                main_metric = next(
-                    (m for m in cfg.model.metrics if m.is_main_metric), None
-                )
+                main_metric = get_main_metric(cfg)
                 if main_metric is None:  # pragma: no cover
                     raise ValueError(
                         "You have to specify the `main_metric` in the `model.metrics` section of the config when using a custom metric for tuning."
@@ -774,23 +774,23 @@ class LuxonisModel:
                 all_mlflow_logging_keys = self.get_mlflow_logging_keys()
                 search_name = (
                     "mcc"
-                    if main_metric.name == "ConfusionMatrix"
-                    else main_metric.name
+                    if main_metric.metric_name == "ConfusionMatrix"
+                    else main_metric.metric_name
                 )
                 monitor = next(
                     (
                         k
                         for k in all_mlflow_logging_keys["metrics"]
                         if search_name in k
-                        and main_metric.attached_to in k
+                        and main_metric.node_name in k
                         and "val" in k
                     ),
                     None,
                 )
                 if monitor is None:
                     raise ValueError(
-                        f"Could not find monitor key for main metric '{main_metric.name}' "
-                        f"attached to '{main_metric.attached_to}' in the MLFlow logging keys."
+                        f"Could not find monitor key for main metric '{main_metric.metric_name}' "
+                        f"attached to '{main_metric.node_name}' in the MLFlow logging keys."
                     )
 
             pruner_callback = PyTorchLightningPruningCallback(

@@ -46,8 +46,11 @@ class ImageSize(NamedTuple):
 
 
 class AttachedModuleConfig(ConfigItem):
-    attached_to: str
     alias: str | None = None
+
+    @property
+    def identifier(self) -> str:
+        return self.alias or self.name
 
 
 class LossModuleConfig(AttachedModuleConfig):
@@ -79,37 +82,20 @@ class NodeConfig(ConfigItem):
     input_sources: list[str] = []  # From data loader
     freezing: FreezingConfig = Field(default_factory=FreezingConfig)
     remove_on_export: bool = False
-    task_name: str = ""
+    task_name: str | None = None
     metadata_task_override: str | dict[str, str] | None = None
     variant: str | Literal["default", "none"] | None = "default"
+    losses: list[LossModuleConfig] = []
+    metrics: list[MetricModuleConfig] = []
+    visualizers: list[AttachedModuleConfig] = []
 
-    @model_validator(mode="after")
-    def validate_variant(self) -> Self:
-        old_variant = self.params.pop("variant", None)
-        if old_variant is not None and self.variant != "default":
-            raise ValueError(
-                "Both `node.variant` and `node.params.variant` are set for "
-                f"'{self.alias or self.name}'. Please use only one of them. "
-                "Note that `node.params.variant` is deprecated and its use "
-                "will raise an exception in future versions."
-            )
-        if old_variant is not None:
-            if not isinstance(old_variant, str):
-                raise TypeError(
-                    f"Invalid value for `node.params.variant`: {old_variant}. "
-                    "Expected a string."
-                )
-            logger.warning(
-                "Using `node.params.variant` is deprecated. "
-                "Please use `node.variant` field instead."
-            )
-            self.variant = old_variant
-        return self
+    @property
+    def identifier(self) -> str:
+        return self.alias or self.name
 
 
 class PredefinedModelConfig(ConfigItem):
     variant: str | Literal["default", "none"] | None = "default"
-    include_nodes: bool = True
     include_losses: bool = True
     include_metrics: bool = True
     include_visualizers: bool = True
@@ -122,9 +108,6 @@ class ModelConfig(BaseModelExtraForbid):
     ] = None
     weights: FilePath | None = None
     nodes: list[NodeConfig] = []
-    losses: list[LossModuleConfig] = []
-    metrics: list[MetricModuleConfig] = []
-    visualizers: list[AttachedModuleConfig] = []
     outputs: list[str] = []
 
     @field_validator("nodes", mode="before")
@@ -171,27 +154,6 @@ class ModelConfig(BaseModelExtraForbid):
         if self.predefined_model is None:
             return self
 
-        if "variant" in self.predefined_model.params:
-            logger.warning(
-                "Using `predefined_model.params.variant` is deprecated. "
-                "Please use `predefined_model.variant` field instead."
-            )
-            if self.predefined_model.variant is not None:
-                logger.warning(
-                    "Both `predefined_model.variant` and "
-                    "`predefined_model.params.variant` are set. "
-                    "`predefined_model.variant` will be used."
-                )
-                del self.predefined_model.params["variant"]
-            else:
-                variant = self.predefined_model.params.pop("variant", None)
-                if not isinstance(variant, str):
-                    raise TypeError(
-                        f"Invalid value for `predefined_model.params.variant`: {variant}. "
-                        "Expected a string."
-                    )
-                self.predefined_model.variant = variant
-
         logger.info(f"Using predefined model: `{self.predefined_model.name}`")
         model = from_registry(
             MODELS,
@@ -199,29 +161,24 @@ class ModelConfig(BaseModelExtraForbid):
             variant=self.predefined_model.variant,
             **self.predefined_model.params,
         )
-        nodes, losses, metrics, visualizers = model.generate_model(
-            include_nodes=self.predefined_model.include_nodes,
+        self.nodes += model.generate_nodes(
             include_losses=self.predefined_model.include_losses,
             include_metrics=self.predefined_model.include_metrics,
             include_visualizers=self.predefined_model.include_visualizers,
         )
-        self.nodes += nodes
-        self.losses += losses
-        self.metrics += metrics
-        self.visualizers += visualizers
-
         return self
 
     @model_validator(mode="after")
     def check_main_metric(self) -> Self:
-        for metric in self.metrics:
-            if metric.is_main_metric:
-                logger.info(f"Main metric: `{metric.name}`")
-                return self
+        for node in self.nodes:
+            for metric in node.metrics:
+                if metric.is_main_metric:
+                    logger.info(f"Main metric: `{metric.name}`")
+                    return self
 
         logger.warning("No main metric specified.")
-        if self.metrics:
-            for metric in self.metrics:
+        for node in self.nodes:
+            for metric in node.metrics:
                 if "matrix" not in metric.name.lower():
                     metric.is_main_metric = True
                     name = metric.alias or metric.name
@@ -232,7 +189,6 @@ class ModelConfig(BaseModelExtraForbid):
                 "metrics contain 'matrix' in their names."
             )
         logger.warning(
-            "[Ignore if using predefined model] "
             "No metrics specified. "
             "This is likely unintended unless "
             "the configuration is not used for training."
@@ -260,93 +216,58 @@ class ModelConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_for_invalid_characters(self) -> Self:
-        for modules in [
-            self.nodes,
-            self.losses,
-            self.metrics,
-            self.visualizers,
-        ]:
-            for module in modules:
-                invalid_parts = []
-                if module.alias and "/" in module.alias:
-                    invalid_parts.append(f"alias '{module.alias}'")
-                if module.name and "/" in module.name:
-                    invalid_parts.append(f"name '{module.name}'")
+        for node in self.nodes:
+            for modules in [
+                node.losses,
+                node.metrics,
+                node.visualizers,
+            ]:
+                for module in [node, *modules]:
+                    invalid_parts = []
+                    if module.alias and "/" in module.alias:
+                        invalid_parts.append(f"alias '{module.alias}'")
+                    if module.name and "/" in module.name:
+                        invalid_parts.append(f"name '{module.name}'")
 
-                if invalid_parts:
-                    error_message = (
-                        f"The {', '.join(invalid_parts)} contain a '/', which is not allowed. "
-                        "Please rename to remove any '/' characters."
-                    )
-                    raise ValueError(error_message)
+                    if invalid_parts:
+                        error_message = (
+                            f"The {', '.join(invalid_parts)} contain a '/', which is not allowed. "
+                            "Please rename to remove any '/' characters."
+                        )
+                        raise ValueError(error_message)
 
         return self
 
     @model_validator(mode="after")
     def check_unique_names(self) -> Self:
-        for modules in [
-            self.nodes,
-            self.losses,
-            self.metrics,
-            self.visualizers,
-        ]:
-            names: set[str] = set()
-            node_index = 0
-            for module in modules:
-                module: AttachedModuleConfig | NodeConfig
-                name = module.alias or module.name
-                if name in names:
-                    if module.alias is None:
-                        if isinstance(module, NodeConfig):
-                            module.alias = module.name
-                        else:
-                            module.alias = f"{name}_{module.attached_to}"
+        for node in self.nodes:
+            for modules in [
+                node.losses,
+                node.metrics,
+                node.visualizers,
+            ]:
+                names: set[str] = set()
+                node_index = 0
+                for module in [node, *modules]:
+                    module: AttachedModuleConfig | NodeConfig
+                    name = module.alias or module.name
+                    if name in names:
+                        if module.alias is None:
+                            if isinstance(module, NodeConfig):
+                                module.alias = module.name
+                            else:
+                                module.alias = f"{name}_{node.alias}"
 
-                    if module.alias in names:
-                        new_alias = f"{module.alias}_{node_index}"
-                        logger.warning(
-                            f"Duplicate name: {module.alias}. Renaming to {new_alias}."
-                        )
-                        module.alias = new_alias
-                        node_index += 1
+                        if module.alias in names:
+                            new_alias = f"{module.alias}_{node_index}"
+                            logger.warning(
+                                f"Duplicate name: {module.alias}. Renaming to {new_alias}."
+                            )
+                            module.alias = new_alias
+                            node_index += 1
 
-                names.add(name)
+                    names.add(name)
         return self
-
-    @model_validator(mode="before")
-    @classmethod
-    def check_attached_modules(cls, data: Params) -> Params:
-        if "nodes" not in data:
-            return data
-        for section in ["losses", "metrics", "visualizers"]:
-            if section not in data:
-                data[section] = []
-            else:
-                logger.warning(
-                    f"Field `model.{section}` is deprecated. "
-                    f"Please specify `{section}` under "
-                    "the node they are attached to."
-                )
-            if not check_type(data["nodes"], list[dict[str, Any]]):
-                raise ValueError(
-                    "Invalid value for `model.nodes`. "
-                    "Expected a list of dictionaries."
-                )
-            for node in data["nodes"]:
-                if section in node:
-                    cfg = node.pop(section)
-                    if not isinstance(cfg, list):
-                        cfg = [cfg]
-                    for c in cfg:
-                        c["attached_to"] = node.get("alias", node.get("name"))
-                    section_data = data[section]
-                    if not check_type(section_data, list[dict]):
-                        raise ValueError(
-                            f"Invalid value for `model.{section}`. "
-                            "Expected a list of dictionaries."
-                        )
-                    section_data.extend(cfg)
-        return data
 
 
 class TrackerConfig(BaseModelExtraForbid):
@@ -424,16 +345,6 @@ class PreprocessingConfig(BaseModelExtraForbid):
         default_factory=NormalizeAugmentationConfig
     )
     augmentations: list[AugmentationConfig] = []
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_train_rgb(cls, data: Params) -> Params:
-        if "train_rgb" in data:
-            logger.warning(
-                "Field `train_rgb` is deprecated. Use `color_space` instead."
-            )
-            data["color_space"] = "RGB" if data.pop("train_rgb") else "BGR"
-        return data
 
     @model_validator(mode="after")
     def check_normalize(self) -> Self:
@@ -537,16 +448,6 @@ class TrainerConfig(BaseModelExtraForbid):
 
     training_strategy: ConfigItem | None = None
 
-    @model_validator(mode="before")
-    @classmethod
-    def validate_use_rich_progress_bar(cls, data: Params) -> Params:
-        if "use_rich_progress_bar" in data:
-            logger.warning(
-                "Field `use_rich_progress_bar` is deprecated. "
-                "Use the top-level `rich_logging` instead. "
-            )
-        return data
-
     @model_validator(mode="after")
     def validate_scheduler(self) -> Self:
         if self.scheduler.name == "CosineAnnealingLR":
@@ -635,7 +536,6 @@ class ExportConfig(ArchiveConfig):
     reverse_input_channels: bool | None = None
     scale_values: list[float] | None = None
     mean_values: list[float] | None = None
-    output_names: list[str] | None = None
     onnx: OnnxExportConfig = Field(default_factory=OnnxExportConfig)
     blobconverter: BlobconverterExportConfig = Field(
         default_factory=BlobconverterExportConfig
@@ -651,42 +551,12 @@ class ExportConfig(ArchiveConfig):
 
 class StorageConfig(BaseModelExtraForbid):
     active: bool = True
-    storage_type: Annotated[
-        Literal["local", "remote"] | None,
-        Field(
-            deprecated="The `storage_type` field is deprecated. Use `backend` instead."
-        ),
-    ] = None
     backend: str = "sqlite"
     username: str | None = None
     password: SecretStr | None = None
     host: str | None = None
     port: PositiveInt | None = None
     database: str | None = None
-
-    @model_validator(mode="after")
-    def validate_storage_type(self) -> Self:
-        if not self.storage_type:
-            return self
-        if self.backend:
-            raise ValueError(
-                "Both `storage_type` and `backend` fields are set. "
-                "Please use only the `backend` field."
-            )
-        if self.storage_type == "local":
-            logger.warning(
-                "Using 'local' storage type is deprecated. "
-                "Please use 'sqlite' instead."
-            )
-            self.backend = "sqlite"
-        elif self.storage_type == "remote":
-            logger.warning(
-                "Using 'remote' storage type is deprecated. "
-                "Please use 'postgresql' instead."
-            )
-            self.backend = "postgresql"
-        self.storage_type = None
-        return self
 
 
 class TunerConfig(BaseModelExtraForbid):
