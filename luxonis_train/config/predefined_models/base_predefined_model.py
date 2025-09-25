@@ -64,7 +64,7 @@ class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
                 f"`backbone_params.freezing` should be a dictionary, "
                 f"got '{freezing}' instead."
             )
-        return FreezingConfig(**freezing)
+        return FreezingConfig(**{"active": True, **freezing})
 
 
 class SimplePredefinedModel(BasePredefinedModel):

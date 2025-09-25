@@ -26,8 +26,14 @@ def test_tune(opts: Params, coco_dataset: LuxonisDataset, tmp_path: Path):
                 ["Defocus", "Sharpen", "Flip", "Normalize", "invalid"],
                 2,
             ],
-            "model.losses.0.weight_uniform": [0.1, 0.9],
-            "model.nodes.0.freezing.unfreeze_after_loguniform": [0.1, 0.9],
+            "model.predefined_model.params.loss_params.weight_uniform": [
+                0.1,
+                0.9,
+            ],
+            "model.predefined_model.params.backbone_params.freezing.unfreeze_after_loguniform": [
+                0.1,
+                0.9,
+            ],
         },
         "loader.params.dataset_name": coco_dataset.identifier,
     }
