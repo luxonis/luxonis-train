@@ -297,14 +297,14 @@ class LuxonisModel:
             without it being fully functional.
         """
         ckpt = torch.load(path, map_location="cpu")
-        if "config" not in ckpt:
+        if "config" not in ckpt:  # pragma: no cover
             raise ValueError(
                 f"Checkpoint '{path}' does not contain the 'config' key. "
                 "Cannot restore `LuxonisModel` from checkpoint."
             )
         try:
             cfg = Config.get_config(ckpt["config"], opts)
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             raise ValueError(
                 "Failed to load config from the checkpoint. "
                 "This can happen if the config schema changed "
