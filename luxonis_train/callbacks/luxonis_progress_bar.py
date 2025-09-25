@@ -156,7 +156,7 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         if self._console is None:  # pragma: no cover
             raise RuntimeError(
                 "Console is not initialized for the `LuxonisRichProgressBar`. "
-                "Consider setting `tracker.use_rich_progress_bar` to `False` in the configuration."
+                "Consider setting `rich_logging` to `False` in the configuration."
             )
         return self._console
 

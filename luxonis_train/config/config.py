@@ -21,7 +21,6 @@ from luxonis_ml.utils import (
 )
 from pydantic import (
     Field,
-    ModelWrapValidatorHandler,
     SecretStr,
     SerializationInfo,
     field_validator,
@@ -408,7 +407,6 @@ class TrainerConfig(BaseModelExtraForbid):
     preprocessing: PreprocessingConfig = Field(
         default_factory=PreprocessingConfig
     )
-    use_rich_progress_bar: bool = True
 
     precision: Literal["16-mixed", "32"] = "32"
     accelerator: Literal["auto", "cpu", "gpu", "tpu"] = "auto"
@@ -599,41 +597,6 @@ class Config(LuxonisConfig):
         exclude = exclude or set()
         return super().model_dump_json(exclude=exclude | {"ENVIRON"}, **kwargs)
 
-    @model_validator(mode="wrap")
-    @classmethod
-    def check_rich_logging(
-        cls, data: Params, handler: ModelWrapValidatorHandler
-    ) -> Self:
-        trainer = data.get("trainer", {})
-        if not isinstance(trainer, dict):
-            raise TypeError(
-                f"Invalid value for `trainer`: {type(trainer)}. "
-                "Expected a dictionary."
-            )
-        use_rich_progress_bar = trainer.get("use_rich_progress_bar", True)
-        if not isinstance(use_rich_progress_bar, bool):
-            raise TypeError(
-                f"Invalid value for `trainer.use_rich_progress_bar`: "
-                f"{use_rich_progress_bar}. Expected a boolean."
-            )
-        use_rich = data.get("rich_logging", True)
-        if not isinstance(use_rich, bool):
-            raise TypeError(
-                f"Invalid value for `rich_logging`: {use_rich}. "
-                "Expected a boolean."
-            )
-        use_rich = use_rich and use_rich_progress_bar
-
-        with suppress(ModuleNotFoundError):
-            from luxonis_train.utils import setup_logging
-
-            setup_logging(use_rich=use_rich)
-
-        data["rich_logging"] = use_rich
-        self = handler(data)
-        self.trainer.use_rich_progress_bar = use_rich
-        return self
-
     @model_validator(mode="before")
     @classmethod
     def check_environment(cls, data: Params) -> Params:
@@ -666,6 +629,23 @@ class Config(LuxonisConfig):
                 stg.database = stg.database or self.ENVIRON.POSTGRES_DB
 
         return self
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_rich_logging(cls, data: Params) -> Params:
+        use_rich = data.get("rich_logging", True)
+        if not isinstance(use_rich, bool):
+            raise TypeError(
+                f"Invalid value for `rich_logging`: {use_rich}. "
+                "Expected a boolean."
+            )
+
+        with suppress(ModuleNotFoundError):
+            from luxonis_train.utils import setup_logging
+
+            setup_logging(use_rich=use_rich)
+
+        return data
 
     @classmethod
     def get_config(

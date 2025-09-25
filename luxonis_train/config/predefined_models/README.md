@@ -20,7 +20,6 @@ models which can be used instead.
 | --------------------- | ---------------- | ------------- | -------------------------------------------------------------------- |
 | `name`                | `str`            | -             | Name of the predefined architecture. See below the available options |
 | `params`              | `dict[str, Any]` | `{}`          | Additional parameters of the predefined model                        |
-| `include_nodes`       | `bool`           | `True`        | Whether to include nodes of the model                                |
 | `include_losses`      | `bool`           | `True`        | Whether to include loss functions                                    |
 | `include_metrics`     | `bool`           | `True`        | Whether to include metrics                                           |
 | `include_visualizers` | `bool`           | `True`        | Whether to include visualizers                                       |
