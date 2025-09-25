@@ -505,7 +505,9 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
-        pattern = re.compile(r"^(metrics|visualizers|losses)\..*_node\..*")
+        pattern = re.compile(
+            r"^nodes\.[^.]+\.(metrics|visualizers|losses)\..*_node\..*"
+        )
         checkpoint["state_dict"] = {
             k: v
             for k, v in checkpoint["state_dict"].items()
@@ -909,4 +911,4 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @staticmethod
     def _strip_state_prefix(key: str) -> str:
-        return ".".join(key.split(".")[2:])
+        return ".".join(key.split(".")[3:])
