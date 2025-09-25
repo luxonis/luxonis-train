@@ -725,8 +725,7 @@ def get_main_metric(cfg: Config) -> MainMetric | None:
                     raise ValueError(
                         "Multiple main metrics defined. Only one is allowed."
                     )
-                metric_name = metric_cfg.identifier
-                if metric_name == "ConfusionMatrix":
-                    metric_name = "mcc"
-                main_metric = MainMetric(node_cfg.identifier, metric_name)
+                main_metric = MainMetric(
+                    node_cfg.identifier, metric_cfg.identifier
+                )
     return main_metric
