@@ -28,6 +28,7 @@ def test_cli_command_success(
     tmp_path: Path,
     subtests: SubTests,
     opts: Params,
+    save_dir: Path,
 ) -> None:
     flat_opts = []
     for key, value in opts.items():
@@ -49,6 +50,8 @@ def test_cli_command_success(
                     coco_dataset.identifier,
                     "model.name",
                     command.__name__,
+                    "tracker.run_name",
+                    command.__name__,
                     *flat_opts,
                 ],
                 config="configs/detection_light_model.yaml"
@@ -58,6 +61,19 @@ def test_cli_command_success(
             )
             if isinstance(res, GeneratorType):
                 list(res)
+    with subtests.test("reload-from-checkpoint"):
+        ckpt = next((save_dir / "train").rglob("*.ckpt"), None)
+        assert ckpt is not None, "No checkpoint found after training."
+        _test(
+            [
+                "loader.params.dataset_name",
+                coco_dataset.identifier,
+                "model.name",
+                "test-reload-from-checkpoint",
+                *flat_opts,
+            ],
+            weights=str(ckpt),
+        )
 
 
 @pytest.mark.parametrize(
