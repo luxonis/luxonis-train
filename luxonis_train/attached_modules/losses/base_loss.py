@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from collections.abc import Callable
 from functools import cached_property
 from inspect import Parameter
 
@@ -17,6 +18,8 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
     utilizes automatic registration of defined subclasses to a L{LOSSES}
     registry.
     """
+
+    __call__: Callable[..., Tensor | tuple[Tensor, dict[str, Tensor]]]
 
     @typechecked
     def __init__(self, weight: float = 1.0, **kwargs):
@@ -64,5 +67,8 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
         @raises IncompatibleError: If the inputs are not compatible with
             the module.
         """
-        main_loss, sublosses = self(**self.get_parameters(inputs, labels))
-        return main_loss * self._weight, sublosses
+        match self(**self.get_parameters(inputs, labels)):
+            case Tensor() as main_loss:
+                return main_loss * self._weight
+            case Tensor() as main_loss, dict() as sublosses:
+                return main_loss * self._weight, sublosses
