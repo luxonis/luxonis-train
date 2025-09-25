@@ -3,6 +3,7 @@ from functools import cached_property
 from inspect import Parameter
 
 from torch import Tensor
+from typeguard import typechecked
 
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.registry import LOSSES
@@ -16,6 +17,15 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
     utilizes automatic registration of defined subclasses to a L{LOSSES}
     registry.
     """
+
+    @typechecked
+    def __init__(self, weight: float = 1.0, **kwargs):
+        """
+        @type weight: float
+        @param weight: Optional weight by which the final loss is multiplied.
+        """
+        super().__init__(**kwargs)
+        self._weight = weight
 
     @abstractmethod
     def forward(
@@ -54,4 +64,5 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
         @raises IncompatibleError: If the inputs are not compatible with
             the module.
         """
-        return self(**self.get_parameters(inputs, labels))
+        main_loss, sublosses = self(**self.get_parameters(inputs, labels))
+        return main_loss * self._weight, sublosses
