@@ -3,8 +3,8 @@ import torch.nn.functional as F
 from torch import Tensor, nn
 from typing_extensions import override
 
-from luxonis_train.nodes import BaseHead
 from luxonis_train.nodes.blocks.blocks import ConvBlock
+from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Task, Tasks
 from luxonis_train.typing import Packet
 
