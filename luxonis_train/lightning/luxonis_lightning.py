@@ -607,7 +607,6 @@ class LuxonisLightningModule(pl.LightningModule):
             raise ValueError("Checkpoint does not contain state_dict.")
 
         state_dict = checkpoint["state_dict"]
-        del checkpoint["execution_order"]
         order_mapping = self._load_execution_order_mapping(checkpoint)
 
         for node_name, node in self.nodes.items():
