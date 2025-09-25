@@ -176,23 +176,27 @@ class ModelConfig(BaseModelExtraForbid):
                     return self
 
         logger.warning("No main metric specified.")
-        for node in self.nodes:
-            for metric in node.metrics:
-                if "matrix" not in metric.name.lower():
-                    metric.is_main_metric = True
-                    name = metric.alias or metric.name
-                    logger.info(f"Setting '{name}' as main metric.")
-                    return self
-            raise ValueError(
-                "No valid main metric can be set as all "
-                "metrics contain 'matrix' in their names."
+        all_metrics = [
+            metric for node in self.nodes for metric in node.metrics
+        ]
+        if not all_metrics:
+            logger.warning(
+                "No metrics specified. "
+                "This is likely unintended unless "
+                "the configuration is not used for training."
             )
-        logger.warning(
-            "No metrics specified. "
-            "This is likely unintended unless "
-            "the configuration is not used for training."
+            return self
+
+        for metric in all_metrics:
+            if "matrix" not in metric.name.lower():
+                metric.is_main_metric = True
+                logger.info(f"Setting '{metric.identifier}' as main metric.")
+                return self
+
+        raise ValueError(
+            "No valid main metric can be set because all "
+            "specifed metrics are confusion matrices."
         )
-        return self
 
     @model_validator(mode="after")
     def check_graph(self) -> Self:

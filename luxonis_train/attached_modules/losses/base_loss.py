@@ -22,13 +22,13 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
     __call__: Callable[..., Tensor | tuple[Tensor, dict[str, Tensor]]]
 
     @typechecked
-    def __init__(self, weight: float = 1.0, **kwargs):
+    def __init__(self, final_loss_weight: float = 1.0, **kwargs):
         """
         @type weight: float
         @param weight: Optional weight by which the final loss is multiplied.
         """
         super().__init__(**kwargs)
-        self._weight = weight
+        self.__final_loss_weight = final_loss_weight
 
     @abstractmethod
     def forward(
@@ -69,6 +69,6 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
         """
         match self(**self.get_parameters(inputs, labels)):
             case Tensor() as main_loss:
-                return main_loss * self._weight
+                return main_loss * self.__final_loss_weight
             case Tensor() as main_loss, dict() as sublosses:
-                return main_loss * self._weight, sublosses
+                return main_loss * self.__final_loss_weight, sublosses

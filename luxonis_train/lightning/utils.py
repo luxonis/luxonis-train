@@ -26,6 +26,7 @@ from luxonis_train.callbacks import LuxonisModelSummary, TrainingManager
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.config.config import NodeConfig
 from luxonis_train.nodes import BaseNode
+from luxonis_train.nodes.heads.base_head import BaseHead
 from luxonis_train.registry import (
     CALLBACKS,
     LOSSES,
@@ -127,7 +128,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             unfreeze_after, lr_after_unfreeze = self._get_freezing(
                 node_cfg, cfg.trainer.epochs
             )
-            task_name = self._get_task_name(dataset_metadata, node_cfg)
+            task_name = self._get_task_name(Node, dataset_metadata, node_cfg)
             self._override_metadata_labels(Node, dataset_metadata, node_cfg)
 
             if node_cfg.input_sources:
@@ -161,7 +162,10 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                 lr_after_unfreeze=lr_after_unfreeze,
                 losses=dict(
                     _init_attached_module(
-                        node_module, l_cfg, LOSSES, weight=l_cfg.weight
+                        node_module,
+                        l_cfg,
+                        LOSSES,
+                        final_loss_weight=l_cfg.weight,
                     )
                     for l_cfg in node_cfg.losses
                 ),
@@ -184,15 +188,16 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
 
     def _get_task_name(
         self,
+        Node: type[BaseNode],
         dataset_metadata: DatasetMetadata,
         node_cfg: NodeConfig,
-    ) -> str:
+    ) -> str | None:
         task_name = node_cfg.task_name
         if task_name is None:
             task_names = dataset_metadata.task_names
             if len(task_names) == 1:
                 task_name = next(iter(task_names))
-            else:
+            elif issubclass(Node, BaseHead):
                 raise ValueError(
                     f"Dataset contains multiple tasks: {task_names}, "
                     f"but node '{node_cfg.identifier}' does not have the "
