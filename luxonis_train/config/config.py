@@ -734,7 +734,7 @@ class Config(LuxonisConfig):
         if predefined_model_cfg is not None:
             logger.info(
                 "Predefined model detected. "
-                "Adjusting  parameters for best training results."
+                "Adjusting  parameters for best training results. "
                 "If this behavior is not desired, set "
                 "`smart_cfg_auto_populate` to `False`."
             )
