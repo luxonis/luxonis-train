@@ -1,4 +1,4 @@
-__version__ = "0.3.10"
+__version__ = "0.4.0"
 import sys
 
 # Do not run imports when first importing from within the CLI
