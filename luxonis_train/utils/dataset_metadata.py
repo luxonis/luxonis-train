@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+from pprint import pformat
 from typing import Any
 
 from bidict import bidict
@@ -36,6 +38,15 @@ class DatasetMetadata:
         self._n_keypoints = n_keypoints or {}
         self._metadata_types = metadata_types or {}
         self._loader = loader
+
+    def __str__(self) -> str:
+        return pformat(self.dump())
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    def __rich_repr__(self) -> Iterator[tuple[str, Any]]:
+        yield from self.dump().items()
 
     def dump(self) -> dict[str, Any]:
         """Dumps the metadata to a dictionary.
