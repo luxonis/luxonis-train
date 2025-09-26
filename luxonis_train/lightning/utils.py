@@ -717,15 +717,8 @@ def get_model_execution_order(
 
 
 def get_main_metric(cfg: Config) -> MainMetric | None:
-    main_metric = None
     for node_cfg in cfg.model.nodes:
         for metric_cfg in node_cfg.metrics:
             if metric_cfg.is_main_metric:
-                if main_metric is not None:
-                    raise ValueError(
-                        "Multiple main metrics defined. Only one is allowed."
-                    )
-                main_metric = MainMetric(
-                    node_cfg.identifier, metric_cfg.identifier
-                )
-    return main_metric
+                return MainMetric(node_cfg.identifier, metric_cfg.identifier)
+    return None

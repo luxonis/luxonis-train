@@ -169,11 +169,21 @@ class ModelConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_main_metric(self) -> Self:
+        main_metric = None
         for node in self.nodes:
             for metric in node.metrics:
                 if metric.is_main_metric:
-                    logger.info(f"Main metric: `{metric.name}`")
-                    return self
+                    if main_metric is not None:
+                        raise ValueError(
+                            f"Multiple main metrics specified: "
+                            f"`{main_metric.identifier}` and "
+                            f"`{metric.identifier}`. "
+                            "Only one main metric can be specified."
+                        )
+                    main_metric = metric
+                    logger.info(f"Main metric: `{metric.identifier}`")
+        if main_metric is not None:
+            return self
 
         logger.warning("No main metric specified.")
         all_metrics = [
