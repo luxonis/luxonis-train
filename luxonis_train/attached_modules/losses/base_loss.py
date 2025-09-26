@@ -3,6 +3,7 @@ from functools import cached_property
 from inspect import Parameter
 
 from torch import Tensor
+from typeguard import typechecked
 
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.registry import LOSSES
@@ -17,14 +18,23 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
     registry.
     """
 
+    @typechecked
+    def __init__(self, final_loss_weight: float = 1.0, **kwargs):
+        """
+        @type weight: float
+        @param weight: Optional weight by which the final loss is multiplied.
+        """
+        super().__init__(**kwargs)
+        self.__final_loss_weight = final_loss_weight
+
     @abstractmethod
     def forward(
         self, *args: Tensor | list[Tensor]
     ) -> Tensor | tuple[Tensor, dict[str, Tensor]]:
         """Forward pass of the loss function.
 
-        @type args: Unpack[Ts]
-        @param args: Prepared inputs from the L{prepare} method.
+        @type *args: Tensor | list[Tensor] @param *args: Inputs to the
+        loss function.
         @rtype: Tensor | tuple[Tensor, dict[str, Tensor]]
         @return: The main loss and optional a dictionary of sub-losses
             (for logging). Only the main loss is used for
@@ -54,4 +64,8 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
         @raises IncompatibleError: If the inputs are not compatible with
             the module.
         """
-        return self(**self.get_parameters(inputs, labels))
+        loss = self(**self.get_parameters(inputs, labels))
+        if isinstance(loss, Tensor):
+            return loss * self.__final_loss_weight
+        main_loss, sublosses = loss
+        return main_loss * self.__final_loss_weight, sublosses

@@ -5,6 +5,7 @@ from typing import Literal
 
 import torch
 import torch.utils.data as torch_data
+from loguru import logger
 from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from luxonis_ml.data.datasets import DatasetRecord
 from luxonis_ml.typing import PathType
@@ -60,7 +61,10 @@ def annotate_from_directory(
 
     generator = annotated_dataset_generator(model, loader)
     annotated_dataset.add(generator)
-    annotated_dataset.make_splits()
+    if len(annotated_dataset) > 0:
+        annotated_dataset.make_splits()
+    else:
+        logger.warning("No annotations were generated. The dataset is empty.")
     luxonis_loader = loader.dataset
     assert isinstance(luxonis_loader, LuxonisLoaderTorch)
 
@@ -83,7 +87,7 @@ def annotated_dataset_generator(
 
         for head_name, head_output in batch_out.items():
             img_paths = [Path(p) for p in metas["/metadata/path"]]
-            head = lt_module.nodes[head_name]
+            head = lt_module.nodes[head_name].module
             if isinstance(head, lxt.BaseHead):
                 for record in head.annotate(
                     head_output, img_paths, model.cfg_preprocessing

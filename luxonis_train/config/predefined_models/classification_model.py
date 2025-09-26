@@ -25,10 +25,10 @@ class ClassificationModel(SimplePredefinedModel):
         return "light", {
             "light": {
                 "backbone": "ResNet",
-                "backbone_params": {"variant": "18"},
+                "backbone_variant": "18",
             },
             "heavy": {
                 "backbone": "ResNet",
-                "backbone_params": {"variant": "50"},
+                "backbone_variant": "50",
             },
         }

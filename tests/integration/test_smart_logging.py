@@ -16,12 +16,12 @@ def get_config(dataset_name: str) -> Params:
             "nodes": [
                 {
                     "name": "EfficientRep",
-                    "params": {"variant": "n"},
+                    "variant": "n",
                 },
                 {
                     "name": "RepPANNeck",
                     "inputs": ["EfficientRep"],
-                    "params": {"variant": "n"},
+                    "variant": "n",
                 },
                 {
                     "name": "EfficientBBoxHead",
@@ -138,10 +138,9 @@ def create_dataset(tmp_path: Path) -> LuxonisDataset:
                 definitions["train"].append(str(path))
             else:
                 definitions["val"].append(str(path))
-            path = create_image(i, tmp_path)
 
-        path = create_image(11, tmp_path)
-        yield {"file": str(path)}
+        path = create_image(10, tmp_path)
+        yield {"file": str(path), "task_name": "animals"}
         definitions["val"].append(str(path))
 
     dataset = LuxonisDataset("non_balanced", delete_local=True)

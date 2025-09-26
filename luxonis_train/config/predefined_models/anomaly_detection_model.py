@@ -27,11 +27,11 @@ class AnomalyDetectionModel(SimplePredefinedModel):
     def get_variants() -> tuple[str, dict[str, Params]]:
         return "light", {
             "light": {
-                "backbone_params": {"variant": "n"},
-                "head_params": {"variant": "n"},
+                "backbone_variant": "n",
+                "head_variant": "n",
             },
             "heavy": {
-                "backbone_params": {"variant": "l"},
-                "head_params": {"variant": "l"},
+                "backbone_variant": "l",
+                "head_variant": "l",
             },
         }

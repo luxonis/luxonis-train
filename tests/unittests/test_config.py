@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import Params
 
@@ -98,3 +99,28 @@ def test_explicit_dataset_type(tmp_path: Path):
         cfg1.loader.params["dataset_type"]
         == cfg2.loader.params["dataset_type"]
     )
+
+
+def test_config_invalid():
+    cfg: Params = {
+        "model": {
+            "nodes": [
+                {"name": "ResNet"},
+                {
+                    "name": "SegmentationHead",
+                    "metrics": [
+                        {
+                            "name": "Accuracy",
+                            "is_main_metric": True,
+                        },
+                        {
+                            "name": "JaccardIndex",
+                            "is_main_metric": True,
+                        },
+                    ],
+                },
+            ]
+        },
+    }
+    with pytest.raises(ValueError, match="Only one main metric"):
+        Config.get_config(cfg)

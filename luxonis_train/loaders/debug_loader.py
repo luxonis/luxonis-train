@@ -47,7 +47,7 @@ class DebugLoader(BaseLoaderTorch):
             Node = NODES.get(node.name)
             if Node.task is not None:
                 for label in Node.task.required_labels:
-                    self.labels[f"{node.task_name}"].add(label)
+                    self.labels[f"{node.task_name or ''}"].add(label)
         self.n_channels = 1 if color_space == "GRAY" else 3
 
     @property

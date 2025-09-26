@@ -11,6 +11,23 @@ from luxonis_train.core import LuxonisModel
 from tests.conftest import LuxonisTestDataset
 
 
+def test_model_construction():
+    cfg = "configs/detection_light_model.yaml"
+    model = LuxonisModel(
+        cfg,
+        {
+            "model.predefined_model.include_losses": False,
+            "model.predefined_model.include_metrics": False,
+            "model.predefined_model.include_visualizers": False,
+        },
+        debug_mode=True,
+    )
+    for node in model.lightning_module.nodes.values():
+        assert not node.losses
+        assert not node.metrics
+        assert not node.visualizers
+
+
 @pytest.mark.parametrize(
     ("config_name", "extra_opts"),
     [

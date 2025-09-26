@@ -54,7 +54,9 @@ class OHEMLoss(BaseLoss):
         self._was_logged = False
 
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
-        loss = self.criterion(predictions, target).view(-1)
+        loss = self.criterion(predictions, target)
+        assert isinstance(loss, Tensor)
+        loss = loss.view(-1)
 
         n_pixels = loss.numel()
 

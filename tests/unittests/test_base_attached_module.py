@@ -1,7 +1,7 @@
 import pytest
 from torch import Tensor
 
-from luxonis_train import BaseLoss, BaseNode
+from luxonis_train import BaseHead, BaseLoss, BaseNode
 from luxonis_train.tasks import Tasks
 from luxonis_train.utils.exceptions import IncompatibleError
 
@@ -10,19 +10,19 @@ class DummyBackbone(BaseNode):
     def forward(self, _: Tensor) -> Tensor: ...
 
 
-class DummySegmentationHead(BaseNode):
+class DummySegmentationHead(BaseHead):
     task = Tasks.SEGMENTATION
 
     def forward(self, _: Tensor) -> Tensor: ...
 
 
-class DummyBBoxHead(BaseNode):
+class DummyBBoxHead(BaseHead):
     task = Tasks.BOUNDINGBOX
 
     def forward(self, _: Tensor) -> Tensor: ...
 
 
-class DummyDetectionHead(BaseNode):
+class DummyDetectionHead(BaseHead):
     task = Tasks.INSTANCE_KEYPOINTS
 
     def forward(self, _: Tensor) -> Tensor: ...

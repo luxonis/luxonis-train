@@ -21,18 +21,6 @@ class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
     @abstractmethod
     def nodes(self) -> list[NodeConfig]: ...
 
-    @property
-    @abstractmethod
-    def losses(self) -> list[LossModuleConfig]: ...
-
-    @property
-    @abstractmethod
-    def metrics(self) -> list[MetricModuleConfig]: ...
-
-    @property
-    @abstractmethod
-    def visualizers(self) -> list[AttachedModuleConfig]: ...
-
     @staticmethod
     @abstractmethod
     def get_variants() -> tuple[str, dict[str, Params]]:
@@ -48,24 +36,21 @@ class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
             dictionary of available variants with their parameters.
         """
 
-    def generate_model(
+    def generate_nodes(
         self,
-        include_nodes: bool = True,
         include_losses: bool = True,
         include_metrics: bool = True,
         include_visualizers: bool = True,
-    ) -> tuple[
-        list[NodeConfig],
-        list[LossModuleConfig],
-        list[MetricModuleConfig],
-        list[AttachedModuleConfig],
-    ]:
-        nodes = self.nodes if include_nodes else []
-        losses = self.losses if include_losses else []
-        metrics = self.metrics if include_metrics else []
-        visualizers = self.visualizers if include_visualizers else []
-
-        return nodes, losses, metrics, visualizers
+    ) -> list[NodeConfig]:
+        nodes = self.nodes
+        for node in nodes:
+            if not include_losses:
+                node.losses = []
+            if not include_metrics:
+                node.metrics = []
+            if not include_visualizers:
+                node.visualizers = []
+        return nodes
 
     @staticmethod
     def _get_freezing(params: Params) -> FreezingConfig:
@@ -79,7 +64,7 @@ class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
                 f"`backbone_params.freezing` should be a dictionary, "
                 f"got '{freezing}' instead."
             )
-        return FreezingConfig(**freezing)
+        return FreezingConfig(**{"active": True, **freezing})
 
 
 class SimplePredefinedModel(BasePredefinedModel):
@@ -88,8 +73,11 @@ class SimplePredefinedModel(BasePredefinedModel):
         self,
         *,
         backbone: str,
+        backbone_variant: str | None = None,
         head: str,
+        head_variant: str | None = None,
         neck: str | None = None,
+        neck_variant: str | None = None,
         loss: str,
         metrics: str | list[str] | None,
         main_metric: str | None = None,
@@ -104,17 +92,20 @@ class SimplePredefinedModel(BasePredefinedModel):
         visualizer_params: Params | None = None,
         enable_confusion_matrix: bool = True,
         confusion_matrix_params: Params | None = None,
-        task_name: str = "",
+        task_name: str | None = None,
         torchmetrics_task: Literal["binary", "multiclass", "multilabel"]
         | None = None,
         per_class_metrics: bool | None = None,
     ):
         self._backbone = backbone
         self._backbone_params = backbone_params or {}
+        self._backbone_variant = backbone_variant
         self._neck = neck
         self._neck_params = neck_params or {}
+        self._neck_variant = neck_variant
         self._head = head
         self._head_params = head_params or {}
+        self._head_variant = head_variant
 
         self._task_name = task_name
         self._use_neck = use_neck
@@ -158,6 +149,7 @@ class SimplePredefinedModel(BasePredefinedModel):
             NodeConfig(
                 name=self._backbone,
                 params=self._backbone_params,
+                variant=self._backbone_variant,
                 freezing=self._get_freezing(self._backbone_params),
             )
         ]
@@ -166,6 +158,7 @@ class SimplePredefinedModel(BasePredefinedModel):
                 NodeConfig(
                     name=self._neck,
                     params=self._neck_params,
+                    variant=self._neck_variant,
                     inputs=[self._backbone],
                     freezing=self._get_freezing(self._neck_params),
                 )
@@ -174,6 +167,7 @@ class SimplePredefinedModel(BasePredefinedModel):
             NodeConfig(
                 name=self._head,
                 params=self._head_params,
+                variant=self._head_variant,
                 inputs=[
                     self._neck
                     if self._use_neck and self._neck is not None
@@ -181,52 +175,38 @@ class SimplePredefinedModel(BasePredefinedModel):
                 ],
                 freezing=self._get_freezing(self._head_params),
                 task_name=self._task_name,
+                losses=[
+                    LossModuleConfig(
+                        name=self._loss,
+                        params=self._loss_params,
+                        weight=1.0,
+                    )
+                ],
+                metrics=[
+                    MetricModuleConfig(
+                        name=metric,
+                        params=self._metrics_params,
+                        is_main_metric=metric == self._main_metric,
+                    )
+                    for metric in self._metrics
+                ]
+                + [
+                    MetricModuleConfig(
+                        name="ConfusionMatrix",
+                        params=self._confusion_matrix_params,
+                        is_main_metric=False,
+                    )
+                ]
+                if self._enable_confusion_matrix
+                else [],
+                visualizers=[
+                    AttachedModuleConfig(
+                        name=self._visualizer,
+                        params=self._visualizer_params,
+                    )
+                ]
+                if self._visualizer is not None
+                else [],
             )
         )
         return nodes
-
-    @property
-    def losses(self) -> list[LossModuleConfig]:
-        return [
-            LossModuleConfig(
-                name=self._loss,
-                attached_to=self._head,
-                params=self._loss_params,
-                weight=1.0,
-            )
-        ]
-
-    @property
-    def metrics(self) -> list[MetricModuleConfig]:
-        metrics = []
-        for metric in self._metrics:
-            metrics.append(
-                MetricModuleConfig(
-                    name=metric,
-                    attached_to=self._head,
-                    params=self._metrics_params,
-                    is_main_metric=metric == self._main_metric,
-                )
-            )
-        if self._enable_confusion_matrix:
-            metrics.append(
-                MetricModuleConfig(
-                    name="ConfusionMatrix",
-                    attached_to=self._head,
-                    params=self._confusion_matrix_params,
-                    is_main_metric=False,
-                )
-            )
-        return metrics
-
-    @property
-    def visualizers(self) -> list[AttachedModuleConfig]:
-        if self._visualizer is None:
-            return []
-        return [
-            AttachedModuleConfig(
-                name=self._visualizer,
-                attached_to=self._head,
-                params=self._visualizer_params,
-            )
-        ]

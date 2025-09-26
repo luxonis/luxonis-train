@@ -132,14 +132,6 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             else:
                 logger.warning(self._missing_attach_index_message())
 
-        if task_name is None and dataset_metadata is not None:
-            if len(dataset_metadata.task_names) == 1:
-                task_name = next(iter(dataset_metadata.task_names))
-            else:
-                raise ValueError(
-                    f"Dataset contain multiple tasks, but the `task_name` "
-                    f"argument for node '{self.name}' was not provided."
-                )
         self.task_name = task_name or ""
 
         self._input_shapes = input_shapes
