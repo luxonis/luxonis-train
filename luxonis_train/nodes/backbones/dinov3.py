@@ -5,16 +5,43 @@ from typing import Literal, TypedDict
 
 class DinoV3(BaseNode):
     def __init__(
-            self,
-            variant: Literal["vits16", "vits16plus", "vitb16", "vitl16", "vith16plus", "vit7b16",
+        self,
+        variant: Literal[
+            "vits16", "vits16plus", "vitb16", "vitl16", "vith16plus", "vit7b16",
             "convnext_tiny", "convnext_small", "convnext_base", "convnext_large"
-            ] = "vits16",
-            **kwargs):
+        ] = "vitb16",
+        weights: Literal["download", "none"] | None = "download",
+        repo_dir: str = "facebookresearch/dinov3",
+        **kwargs):
+        """DinoV3 backbone
+
+        Source: U{https://github.com/facebookresearch/dinov3}
+
+        @param variant: Architecture variant of the DINOv3 backbone.
+        @type variant: Literal of supported DINOv3 variants.
+
+        @param weights: Whether to download pretrained weights ("download") or initialize randomly ("none").
+        @type weights: Literal["download", "none"] or None
+
+        @param repo_dir: Torch Hub repo to use. Defaults to the official "facebookresearch/dinov3".
+        @type repo_dir: str
+        """
         super().__init__(**kwargs)
-        self.backbone = self._get_backbone(variant)
+
+        if weights == "download":
+            weights_url = self._get_weights_url(variant)
+        else:
+            weights_url = None
+
+        self.backbone = self._get_backbone(
+            variant=variant,
+            weights=weights_url,
+            repo_dir=repo_dir
+        )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
-        return
+        x = self.backbone(inputs)
+        return [x]
 
     @staticmethod
     @override
@@ -34,12 +61,12 @@ class DinoV3(BaseNode):
 
     @staticmethod
     def _get_backbone(
-        variant: Literal[
-            "vits16", "vits16plus", "vitb16", "vitl16", "vith16plus", "vit7b16",
-            "convnext_tiny", "convnext_small", "convnext_base", "convnext_large"
-        ],
-        weights: str,
-        repo_dir: str = "facebookresearch/dinov3",
+            variant: Literal[
+                "vits16", "vits16plus", "vitb16", "vitl16", "vith16plus", "vit7b16",
+                "convnext_tiny", "convnext_small", "convnext_base", "convnext_large"
+            ],
+            weights: str,
+            repo_dir: str = "facebookresearch/dinov3",
     ):
         variant_to_hub_name = {
             "vits16": "dinov3_vits16",
