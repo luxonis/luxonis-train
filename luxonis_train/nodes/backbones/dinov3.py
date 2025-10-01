@@ -39,9 +39,13 @@ class DinoV3(BaseNode):
             repo_dir=repo_dir
         )
 
+        logger.warning(
+            "DinoV3 is not convertible for RVC2. If RVC2 is your target platform, please pick a different backbone."
+        )
+
     def forward(self, inputs: Tensor) -> list[Tensor]:
         x = self.backbone(inputs)
-        return [x]
+        return x
 
     @staticmethod
     @override
