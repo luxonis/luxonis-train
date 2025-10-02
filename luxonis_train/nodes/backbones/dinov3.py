@@ -42,7 +42,6 @@ class DinoV3Local(BaseNode):
         @type return_sequence: bool
         """
         super().__init__(**kwargs)
-
         self.return_sequence = return_sequence
 
         if weights == "download":
@@ -56,8 +55,6 @@ class DinoV3Local(BaseNode):
             repo_dir=repo_dir,
             **kwargs
         )
-
-        print(self.backbone)
 
         logger.warning(
             "DinoV3 is not convertible for RVC2. If RVC2 is your target platform, please pick a different backbone."
