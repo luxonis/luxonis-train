@@ -1,18 +1,30 @@
 import torch
+import torch.nn as nn
+from torch import Tensor
+from typing import Literal, TypedDict, Dict
+from typing_extensions import override
+
 from loguru import logger
-from typing import Literal, TypedDict
+
+from luxonis_train.nodes.blocks import UpBlock
+from luxonis_train import BaseHead, BaseNode, BaseLoss
+from luxonis_train import Tasks
 
 
-class DinoV3(BaseNode):
+class DinoV3Local(BaseNode):
+    DINOv3Kwargs = Dict[str, str]
+
     def __init__(
-        self,
-        variant: Literal[
-            "vits16", "vits16plus", "vitb16", "vitl16", "vith16plus", "vit7b16",
-            "convnext_tiny", "convnext_small", "convnext_base", "convnext_large"
-        ] = "vitb16",
-        weights: Literal["download", "none"] | None = "download",
-        repo_dir: str = "facebookresearch/dinov3",
-        **kwargs):
+            self,
+            weights_link,
+            variant: Literal[
+                "vits16", "vits16plus", "vitb16", "vitl16", "vith16plus", "vit7b16",
+                "convnext_tiny", "convnext_small", "convnext_base", "convnext_large"
+            ] = "vits16",
+            weights: Literal["download", "none"] | None = "download",
+            repo_dir: str = "facebookresearch/dinov3",
+            return_sequence=False,
+            **kwargs):
         """DinoV3 backbone
 
         Source: U{https://github.com/facebookresearch/dinov3}
@@ -25,11 +37,16 @@ class DinoV3(BaseNode):
 
         @param repo_dir: Torch Hub repo to use. Defaults to the official "facebookresearch/dinov3".
         @type repo_dir: str
+
+        @param return_sequence: If True, return the patch sequence directly to be processed by classification head. Otherwise, turn patch embeddings into [B, C, H, W] feature map to be passed to traditional heads
+        @type return_sequence: bool
         """
         super().__init__(**kwargs)
 
+        self.return_sequence = return_sequence
+
         if weights == "download":
-            weights_url = self._get_weights_url(variant)
+            weights_url = weights_link
         else:
             weights_url = None
 
@@ -40,41 +57,22 @@ class DinoV3(BaseNode):
             **kwargs
         )
 
+        print(self.backbone)
+
         logger.warning(
             "DinoV3 is not convertible for RVC2. If RVC2 is your target platform, please pick a different backbone."
         )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
-        x = self.backbone(inputs)
-        return x
+        x = self.backbone.get_intermediate_layers(inputs, n=1)[0]
 
-    @staticmethod
-    def _get_weights_url(variant: str) -> str: # these links are unfortunately incorrect, the correct weights are links sent by META after filling a form
-        """
-        Returns the pretrained weights URL for a given DINOv3 variant.
+        if self.return_sequence:  # return patch sequence directly
+            return [x]
 
-        @param variant: The name of the DINOv3 variant.
-        @return: URL string pointing to the pretrained weights.
-        @raises ValueError: If the variant is not recognized.
-        """
-        base_url = "https://dl.fbaipublicfiles.com/dinov3"
-        variant_urls = {
-            "vits16": f"{base_url}/dinov3_vits16_pretrain.pth",
-            "vits16plus": f"{base_url}/dinov3_vits16plus_pretrain.pth",
-            "vitb16": f"{base_url}/dinov3_vitb16_pretrain.pth",
-            "vitl16": f"{base_url}/dinov3_vitl16_pretrain.pth",
-            "vith16plus": f"{base_url}/dinov3_vith16plus_pretrain.pth",
-            "vit7b16": f"{base_url}/dinov3_vit7b16_pretrain.pth",
-            "convnext_tiny": f"{base_url}/dinov3_convnext_tiny_pretrain.pth",
-            "convnext_small": f"{base_url}/dinov3_convnext_small_pretrain.pth",
-            "convnext_base": f"{base_url}/dinov3_convnext_base_pretrain.pth",
-            "convnext_large": f"{base_url}/dinov3_convnext_large_pretrain.pth",
-        }
-
-        if variant not in variant_urls:
-            raise ValueError(f"Unsupported variant '{variant}' for DINOv3 pretrained weights.")
-
-        return variant_urls[variant]
+        B, N, C = x.shape
+        H = W = int(N ** 0.5)
+        x = x.permute(0, 2, 1).reshape(B, C, H, W)
+        return [x]
 
     @staticmethod
     @override
