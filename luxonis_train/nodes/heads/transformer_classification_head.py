@@ -46,7 +46,7 @@ class TransformerClassificationHead(BaseHead):
             Class logits of shape [B, n_classes]
         """
         if self.use_cls_token:
-            x = inputs[:, 0]  # [B, C]
+            x = inputs[:, 0]
         else:
             x = inputs.mean(dim=1)
 

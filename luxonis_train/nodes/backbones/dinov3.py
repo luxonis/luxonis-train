@@ -11,7 +11,7 @@ from luxonis_train import BaseHead, BaseNode, BaseLoss
 from luxonis_train import Tasks
 
 
-class DinoV3Local(BaseNode):
+class DinoV3(BaseNode):
     DINOv3Kwargs = Dict[str, str]
 
     def __init__(
