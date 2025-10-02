@@ -60,13 +60,12 @@ class TransformerSegmentationHead(BaseNode):
             5) Upsample to original image resolution
         """
         B, N, C = x.shape
+        h, w = self.original_in_shape[1:]
 
         x = self.head(x)
 
-        h, w = self.original_in_shape[1:]  # Original input image size
-
         aspect_ratio = w / h
-        H_p = int(round((N / aspect_ratio) ** 0.5))
+        H_p = int(round((N / aspect_ratio) ** 0.5)) # note: for now it seems like I cannot export a model that ues round() to ONNX
         W_p = N // H_p
         assert H_p * W_p == N, f"Cannot reshape: N={N}, inferred H_p={H_p}, W_p={W_p}, product={H_p * W_p}"
 
