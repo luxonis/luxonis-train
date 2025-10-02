@@ -69,10 +69,8 @@ class TransformerSegmentationHead(BaseNode):
         W_p = N // H_p
         assert H_p * W_p == N, f"Cannot reshape: N={N}, inferred H_p={H_p}, W_p={W_p}, product={H_p * W_p}"
 
-        # Reshape to image grid: [B, n_classes, H_p, W_p]
         x = x.permute(0, 2, 1).reshape(B, self.n_classes, H_p, W_p)
 
-        # Upsample to match original input image size
         x = F.interpolate(x, size=(h, w), mode="bilinear", align_corners=False)
         return x
 

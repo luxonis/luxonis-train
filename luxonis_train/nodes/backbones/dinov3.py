@@ -61,9 +61,13 @@ class DinoV3(BaseNode):
         )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
+        """
+        If self.return_sequence is True: return patch sequence directly in the format [B, N, C] to be passed to transformer heads
+        If self.return sequence is False: convert patch-level embeddings to feature map to be passed to the classic heads
+        """
         x = self.backbone.get_intermediate_layers(inputs, n=1)[0]
 
-        if self.return_sequence:  # return patch sequence directly
+        if self.return_sequence:  #
             return [x]
 
         B, N, C = x.shape
