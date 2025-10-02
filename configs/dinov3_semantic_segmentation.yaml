@@ -1,0 +1,54 @@
+model:
+  name: CustomUNet
+  nodes:
+    - name: DinoV3
+
+    - name: SegmentationHead
+      inputs:
+        - DinoV3
+
+      losses:
+        - name: MyBCEWithLogitsLoss
+
+      metrics:
+        - name: Accuracy
+          is_main_metric: true
+
+      visualizers:
+        - name: SegmentationVisualizer
+
+loader:
+  params:
+    dataset_name: "leafs_dataset"
+    dataset_dir: "roboflow://giovi/leaf-segmentation-uxlob/4/coco"
+
+trainer:
+  precision: "16-mixed"
+  preprocessing:
+    train_image_size: [384, 384]
+    keep_aspect_ratio: true
+    normalize:
+      active: true
+
+  batch_size: 4
+  epochs: &epochs 1
+  n_workers: 4
+  validation_interval: 10
+  n_log_images: 20
+
+  callbacks:
+    - name: TestOnTrainEnd
+    - name: ExportOnTrainEnd
+
+  optimizer:
+    name: AdamW
+    params:
+      lr: 0.0005
+      weight_decay: 0.0001
+
+
+  scheduler:
+    name: CosineAnnealingLR
+    params:
+      T_max: *epochs
+      eta_min: 0.0001
