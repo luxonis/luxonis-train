@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch import Tensor
 from typing import Any, Optional, Tuple
 from typing_extensions import override
+from loguru import logger
 
 from luxonis_ml.typing import Params
 from luxonis_train.nodes.heads import BaseHead
@@ -30,6 +31,13 @@ class TransformerSegmentationHead(BaseNode):
             nn.LayerNorm(self.in_channels),
             nn.Linear(self.in_channels, self.n_classes),
         )
+
+        if len(self.input_shapes[0]['features']) == 4:
+            logger.warning(
+                "The transformer segmentation head will not work with feature maps of dimension [B, C, H, W] as input. Please provide patch-level embeddings from transformer backbones in the format [B, C, N]")
+
+        logger.warning(
+            "In order to accurately calculate the patch size, this class assumes that the CLS token is in the given patch embeddings. Please make sure that the previously-defined transformer encoder does not remove the CLS token.")
 
     @property
     def in_channels(self) -> int:
