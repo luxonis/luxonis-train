@@ -17,6 +17,9 @@ model:
         - name: Accuracy
           is_main_metric: true
 
+      visualizers:
+        - name: ClassificationVisualizer
+
 loader:
   params:
     dataset_name: bean_classification_dataset
