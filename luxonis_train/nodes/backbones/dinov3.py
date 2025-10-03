@@ -16,14 +16,14 @@ class DinoV3(BaseNode):
 
     def __init__(
             self,
-            weights_link,
+            weights_link: str,
+            return_sequence: bool = False,
             variant: Literal[
                 "vits16", "vits16plus", "vitb16", "vitl16", "vith16plus", "vit7b16",
                 "convnext_tiny", "convnext_small", "convnext_base", "convnext_large"
             ] = "vits16",
             weights: Literal["download", "none"] | None = "download",
             repo_dir: str = "facebookresearch/dinov3",
-            return_sequence=False,
             **kwargs):
         """DinoV3 backbone
 
@@ -42,6 +42,7 @@ class DinoV3(BaseNode):
         @type return_sequence: bool
         """
         super().__init__(**kwargs)
+
         self.return_sequence = return_sequence
 
         if weights == "download":
@@ -50,7 +51,7 @@ class DinoV3(BaseNode):
             weights_url = None
 
         self.backbone = self._get_backbone(
-            variant=variant,
+            variant=self.variant,
             weights=weights_url,
             repo_dir=repo_dir,
             **kwargs
@@ -61,13 +62,9 @@ class DinoV3(BaseNode):
         )
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
-        """
-        If self.return_sequence is True: return patch sequence directly in the format [B, N, C] to be passed to transformer heads
-        If self.return sequence is False: convert patch-level embeddings to feature map to be passed to the classic heads
-        """
         x = self.backbone.get_intermediate_layers(inputs, n=1)[0]
 
-        if self.return_sequence:
+        if self.return_sequence:  # return patch sequence directly
             return [x]
 
         B, N, C = x.shape
