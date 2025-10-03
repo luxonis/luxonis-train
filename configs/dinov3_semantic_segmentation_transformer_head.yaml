@@ -1,0 +1,47 @@
+model:
+  name: dino_model
+  nodes:
+    - name: DinoV3
+      params:
+        weights_link: "REACTED"
+        return_sequence: true
+
+    - name: TransformerClassificationHead
+      inputs:
+        - DinoV3
+      
+      losses:
+        - name: CrossEntropyLoss
+          
+      metrics:
+        - name: Accuracy
+          is_main_metric: true
+
+loader:
+  params:
+    dataset_name: bean_classification_dataset
+
+exporter:
+  onnx:
+    opset_version: 16
+
+trainer:
+  preprocessing:
+    train_image_size: [500, 500]
+    keep_aspect_ratio: true
+    normalize:
+      active: true
+
+  batch_size: 4
+  epochs: 1
+  n_workers: 8
+  validation_interval: 1
+  n_log_images: 8
+
+  optimizer:
+    name: Adam
+    params:
+      lr: 0.0003
+
+  scheduler:
+    name: ConstantLR
