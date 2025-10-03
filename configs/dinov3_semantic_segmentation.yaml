@@ -22,6 +22,10 @@ loader:
     dataset_name: "leafs_dataset"
     dataset_dir: "roboflow://giovi/leaf-segmentation-uxlob/4/coco"
 
+exporter:
+  onnx:
+    opset_version: 16
+      
 trainer:
   precision: "16-mixed"
   preprocessing:

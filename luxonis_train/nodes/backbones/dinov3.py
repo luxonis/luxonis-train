@@ -51,7 +51,7 @@ class DinoV3(BaseNode):
             weights_url = None
 
         self.backbone = self._get_backbone(
-            variant=self.variant,
+            variant=variant,
             weights=weights_url,
             repo_dir=repo_dir,
             **kwargs

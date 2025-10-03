@@ -21,15 +21,19 @@ loader:
   params:
     dataset_name: bean_classification_dataset
 
+exporter:
+  onnx:
+    opset_version: 16
+
 trainer:
   preprocessing:
-    train_image_size: [500, 500]
+    train_image_size: [ 500, 500 ]
     keep_aspect_ratio: true
     normalize:
       active: true
 
   batch_size: 16
-  epochs: &epochs 10
+  epochs: 10
   n_workers: 8
   validation_interval: 5
   n_log_images: 8

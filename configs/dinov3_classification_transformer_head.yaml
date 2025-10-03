@@ -16,10 +16,13 @@ model:
       metrics:
         - name: Accuracy
           is_main_metric: true
-
 loader:
   params:
     dataset_name: bean_classification_dataset
+
+exporter:
+  onnx:
+    opset_version: 16
 
 trainer:
   preprocessing:
