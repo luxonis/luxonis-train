@@ -55,32 +55,42 @@ class TransformerSegmentationHead(BaseNode):
 
     def forward(self, x: Tensor) -> Tensor:
         """
+        Args:
+            x: [B, N+1, C] = patch tokens including class token (CLS at position 0)
+
+        Returns:
+            Segmentation logits: [B, n_classes, H, W]
+
         Steps:
-        1) Remove CLS token if it is there (if N = H_p * W_p + 1)
-        2) Pass through LayerNorm and Linear layer to map embedding dim C to number of classes
-        3) Infer patch grid dimensions H_p x W_p from original image size and patch size
-        4) Reshape patch sequence [B, N, n_classes] into 2D grid [B, n_classes, H_p, W_p]
-        5) Upsample logits to original image resolution [B, n_classes, H, W]
+            1) Remove class token at position 0
+            2) Project patch tokens to class logits via LayerNorm + Linear
+            3) Infer patch grid dimensions (H_p x W_p) using image aspect ratio
+            4) Reshape [B, N, n_classes] → [B, n_classes, H_p, W_p]
+            5) Upsample to original image resolution (H, W)
         """
-        B, N, C = x.shape
-        h, w = self.original_in_shape[1:]
+        B, N_with_cls, C = x.shape
+        h, w = self.original_in_shape[1:]  # Original input resolution
 
-        H_p = h // self.patch_size
-        W_p = w // self.patch_size
-        N_expected = H_p * W_p
-
-        if N == N_expected + 1:
-            x = x[:, 1:, :]
-        elif N != N_expected:
-            logger.warning(
-                f"Token count N={N} does not match expected patch grid H_p*W_p={H_p}*{W_p}={N_expected}. "
-                f"Skipping reshape and returning dummy segmentation output."
-            )
-            return torch.zeros((B, self.n_classes, h, w), dtype=x.dtype, device=x.device)
+        # Remove class token
+        x = x[:, 1:, :]
+        N = x.shape[1]
 
         x = self.head(x)
 
-        x = x.permute(0, 2, 1).reshape(B, self.n_classes, H_p, W_p)
+        aspect_ratio = w / h
+        H_p = int((N / aspect_ratio) ** 0.5)
+        W_p = N // H_p
+
+        if H_p * W_p != N:
+            logger.warning(
+                f"Cannot reshape tokens into 2D grid. N={N}, "
+                f"inferred H_p={H_p}, W_p={W_p}, product={H_p * W_p}. "
+                f"Returning dummy output."
+            )
+            return torch.zeros((B, self.n_classes, h, w), dtype=x.dtype, device=x.device)
+
+        x = x.permute(0, 2, 1).reshape(B, self.n_classes, H_p, W_p)  # [B, n_classes, H_p, W_p]
+
         x = F.interpolate(x, size=(h, w), mode="bilinear", align_corners=False)
 
         return x
