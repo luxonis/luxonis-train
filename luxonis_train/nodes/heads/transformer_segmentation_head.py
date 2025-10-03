@@ -47,31 +47,34 @@ class TransformerSegmentationHead(BaseNode):
 
     def forward(self, x: Tensor) -> Tensor:
         """
-        Args:
-            x: [B, N, C] = patch tokens
-        Returns:
-            Segmentation logits: [B, n_classes, H, W]
-
         Steps:
-            1) Pass through LayerNorm to normalize the features then a Linear layer to map embedding size C to number of classes
-            2) Get original image input size
-            3) Infer patch grid dimensions H_p x W_p
-            4) Reshape patch sequence into 2d grids
-            5) Upsample to original image resolution
+        1) Remove CLS token if it is there (if N = H_p * W_p + 1)
+        2) Pass through LayerNorm and Linear layer to map embedding dim C to number of classes
+        3) Infer patch grid dimensions H_p x W_p from original image size and patch size
+        4) Reshape patch sequence [B, N, n_classes] into 2D grid [B, n_classes, H_p, W_p]
+        5) Upsample logits to original image resolution [B, n_classes, H, W]
         """
         B, N, C = x.shape
         h, w = self.original_in_shape[1:]
 
+        H_p = h // self.patch_size
+        W_p = w // self.patch_size
+        N_expected = H_p * W_p
+
+        if N == N_expected + 1:
+            x = x[:, 1:, :]
+        elif N != N_expected:
+            logger.warning(
+                f"Token count N={N} does not match expected patch grid H_p*W_p={H_p}*{W_p}={N_expected}. "
+                f"Skipping reshape and returning dummy segmentation output."
+            )
+            return torch.zeros((B, self.n_classes, h, w), dtype=x.dtype, device=x.device)
+
         x = self.head(x)
 
-        aspect_ratio = w / h
-        H_p = int(round((N / aspect_ratio) ** 0.5)) # note: for now it seems like I cannot export a model that ues round() to ONNX
-        W_p = N // H_p
-        assert H_p * W_p == N, f"Cannot reshape: N={N}, inferred H_p={H_p}, W_p={W_p}, product={H_p * W_p}"
-
         x = x.permute(0, 2, 1).reshape(B, self.n_classes, H_p, W_p)
-
         x = F.interpolate(x, size=(h, w), mode="bilinear", align_corners=False)
+
         return x
 
     @override

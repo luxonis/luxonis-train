@@ -67,7 +67,7 @@ class DinoV3(BaseNode):
         """
         x = self.backbone.get_intermediate_layers(inputs, n=1)[0]
 
-        if self.return_sequence:  #
+        if self.return_sequence:
             return [x]
 
         B, N, C = x.shape
