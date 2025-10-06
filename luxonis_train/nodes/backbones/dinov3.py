@@ -5,8 +5,7 @@ from loguru import logger
 from torch import Tensor
 from typing_extensions import override
 
-from luxonis_train import BaseNode
-
+from luxonis_train.nodes.base_node import BaseNode
 
 class TransformerBackboneReturnsIntermediateLayers(Protocol):
     """Minimal interface for DINOv3 models.
