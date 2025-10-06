@@ -1,6 +1,8 @@
+import os
 from typing import Literal, Protocol, cast
 
 import torch
+from dotenv import load_dotenv
 from loguru import logger
 from torch import Tensor
 from typing_extensions import override
@@ -26,7 +28,7 @@ class DinoV3(BaseNode):
 
     def __init__(
         self,
-        weights_link: str,
+        weights_link: str = "",
         return_sequence: bool = False,
         variant: Literal[
             "vits16",
@@ -64,7 +66,7 @@ class DinoV3(BaseNode):
 
         self.return_sequence = return_sequence
 
-        weights_url = weights_link if weights == "download" else None
+        weights_url = self._resolve_weights_url(weights, weights_link)
 
         self.backbone, self.patch_size = self._get_backbone(
             variant=variant,
@@ -152,3 +154,40 @@ class DinoV3(BaseNode):
         model = cast(TransformerBackboneReturnsIntermediateLayers, model)
         patch_size = getattr(model, "patch_size", 16)
         return model, patch_size
+
+    def _resolve_weights_url(
+        self, weights: str | None, weights_link: str
+    ) -> str | None:
+        """Resolve the URL or local path for pretrained weights.
+
+        Priority:
+            1. Use `weights_link` if provided.
+            2. Fall back to the `DINOV3_WEIGHTS` environment variable from `.env`.
+            3. Return None if weights are to be initialized randomly.
+
+        @param weights: Whether to download pretrained weights ("download") or use none.
+        @type weights: str | None
+
+        @param weights_link: Direct URL or file path to the weights. Optional.
+        @type weights_link: str
+
+        @return: URL or path to weights, or None if weights shouldn't be loaded.
+        @rtype: str | None
+        """
+        load_dotenv()
+
+        if weights == "none":
+            return None
+
+        if weights_link:
+            return weights_link
+
+        env_weights = os.getenv("DINOV3_WEIGHTS")
+        if env_weights:
+            logger.info("Using DINOV3_WEIGHTS from .env file.")
+            return env_weights
+
+        logger.warning(
+            "No weights provided. Proceeding without pretrained weights."
+        )
+        return None
