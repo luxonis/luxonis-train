@@ -29,4 +29,5 @@ __all__ = [
     "RecSubNet",
     "RepVGG",
     "ResNet",
+    "DinoV3"
 ]

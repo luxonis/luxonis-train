@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch import Tensor
-from typing import Literal, TypedDict, Dict
+from typing import Tuple, Literal, TypedDict, Dict
 from typing_extensions import override
 
 from loguru import logger
@@ -46,10 +46,7 @@ class DinoV3(BaseNode):
         self.return_sequence = return_sequence
         self.variant = variant
 
-        if weights == "download":
-            weights_url = weights_link
-        else:
-            weights_url = None
+        weights_url = weights_link if weights == "download" else None
 
         self.backbone, self.patch_size = self._get_backbone(
             variant=self.variant,
@@ -105,7 +102,7 @@ class DinoV3(BaseNode):
             weights: str,
             repo_dir: str = "facebookresearch/dinov3",
             **kwargs
-    ):
+    ) -> Tuple["dinov3.models.vision_transformer.DinoVisionTransformer", int]:
         variant_to_hub_name = {
             "vits16": "dinov3_vits16",
             "vits16plus": "dinov3_vits16plus",

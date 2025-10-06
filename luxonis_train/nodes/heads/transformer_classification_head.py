@@ -41,7 +41,7 @@ class TransformerClassificationHead(BaseHead):
 
             return feature_shape[-1]
         except Exception as e:
-            raise RuntimeError(f"Could not determine in_channels from input_shapes: {self.input_shapes} — {e}")
+            raise RuntimeError(f"Could not determine in_channels from input_shapes: {self.input_shapes} — {e}") from e
 
     def forward(self, inputs: Tensor) -> Tensor:
         """
@@ -50,14 +50,10 @@ class TransformerClassificationHead(BaseHead):
         Returns:
             Class logits of shape [B, n_classes]
         """
-        if self.use_cls_token:
-            x = inputs[:, 0]
-        else:
-            x = inputs.mean(dim=1)
+        x = inputs[:, 0] if self.use_cls_token else inputs.mean(dim=1)
 
         x = self.dropout(x)
-        x = self.fc(x)
-        return x
+        return self.fc(x)
 
     @override
     def get_custom_head_config(self) -> Params:

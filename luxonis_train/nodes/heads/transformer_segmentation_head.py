@@ -12,7 +12,7 @@ from luxonis_train.tasks import Tasks
 import torch.nn.functional as F
 
 
-class TransformerSegmentationHead(BaseNode):
+class TransformerSegmentationHead(BaseHead):
     in_height: int
     in_width: int
     in_channels: int
@@ -51,7 +51,7 @@ class TransformerSegmentationHead(BaseNode):
 
             return feature_shape[-1]
         except Exception as e:
-            raise RuntimeError(f"Could not determine in_channels from input_shapes: {self.input_shapes} — {e}")
+            raise RuntimeError(f"Could not determine in_channels from input_shapes: {self.input_shapes} — {e}") from e
 
     def forward(self, x: Tensor) -> Tensor:
         """
@@ -91,9 +91,7 @@ class TransformerSegmentationHead(BaseNode):
 
         x = x.permute(0, 2, 1).reshape(B, self.n_classes, H_p, W_p)  # [B, n_classes, H_p, W_p]
 
-        x = F.interpolate(x, size=(h, w), mode="bilinear", align_corners=False)
-
-        return x
+        return F.interpolate(x, size=(h, w), mode="bilinear", align_corners=False)
 
     @override
     def get_custom_head_config(self) -> dict:
