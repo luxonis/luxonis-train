@@ -43,7 +43,6 @@ class DinoV3(BaseNode):
             "convnext_base",
             "convnext_large",
         ] = "vits16",
-        weights: Literal["download", "none"] | None = "download",
         repo_dir: str = "facebookresearch/dinov3",
         **kwargs,
     ):
@@ -54,7 +53,6 @@ class DinoV3(BaseNode):
         @param variant: Architecture variant of the DINOv3 backbone.
         @type variant: Literal of supported DINOv3 variants.
 
-        @param weights: Whether to download pretrained weights ("download") or initialize randomly ("none").
         @type weights: Literal["download", "none"] or None
 
         @param repo_dir: Torch Hub repo to use. Defaults to the official "facebookresearch/dinov3".
