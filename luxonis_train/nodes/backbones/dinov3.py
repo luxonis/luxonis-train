@@ -44,14 +44,15 @@ class DinoV3(BaseNode):
         super().__init__(**kwargs)
 
         self.return_sequence = return_sequence
+        self.variant = variant
 
         if weights == "download":
             weights_url = weights_link
         else:
             weights_url = None
 
-        self.backbone = self._get_backbone(
-            variant=variant,
+        self.backbone, self.patch_size = self._get_backbone(
+            variant=self.variant,
             weights=weights_url,
             repo_dir=repo_dir,
             **kwargs
@@ -68,7 +69,14 @@ class DinoV3(BaseNode):
             return [x]
 
         B, N, C = x.shape
-        H = W = int(N ** 0.5)
+
+        input_shape = self.input_shapes[0]["features"][0]
+        H_img, W_img = input_shape[-2:]
+
+        H = H_img // self.patch_size
+        W = W_img // self.patch_size
+
+        # Reshape from sequence to feature map
         x = x.permute(0, 2, 1).reshape(B, C, H, W)
         return [x]
 
@@ -121,4 +129,5 @@ class DinoV3(BaseNode):
             weights=weights,
             **kwargs
         )
-        return model
+        patch_size = getattr(model, 'patch_size', 16)
+        return model, patch_size
