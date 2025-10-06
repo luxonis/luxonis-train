@@ -7,6 +7,7 @@ from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
 
+
 class TransformerBackboneReturnsIntermediateLayers(Protocol):
     """Minimal interface for DINOv3 models.
 
