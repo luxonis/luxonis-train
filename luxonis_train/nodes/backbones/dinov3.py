@@ -1,16 +1,28 @@
-from typing import Literal
+from typing import Literal, Protocol, cast
 
 import torch
 from loguru import logger
 from torch import Tensor
-from torch.nn import Module
 from typing_extensions import override
 
 from luxonis_train import BaseNode
 
 
+class TransformerBackboneReturnsIntermediateLayers(Protocol):
+    """Minimal interface for DINOv3 models.
+
+    To properly declare the dinov3.models.vision_transformer.DinoVisionTransformer type, the Dinov3 repository needs to be cloned locally.
+    """
+
+    def get_intermediate_layers(
+        self, x: Tensor, n: int
+    ) -> tuple[Tensor, ...]: ...
+
+
 class DinoV3(BaseNode):
     DINOv3Kwargs = dict[str, str]
+    in_height: int
+    in_width: int
 
     def __init__(
         self,
@@ -51,12 +63,11 @@ class DinoV3(BaseNode):
         super().__init__(**kwargs)
 
         self.return_sequence = return_sequence
-        self.variant = variant
 
         weights_url = weights_link if weights == "download" else None
 
         self.backbone, self.patch_size = self._get_backbone(
-            variant=self.variant,
+            variant=variant,
             weights=weights_url,
             repo_dir=repo_dir,
             **kwargs,
@@ -74,11 +85,8 @@ class DinoV3(BaseNode):
 
         B, N, C = x.shape
 
-        input_shape = self.input_shapes[0]["features"][0]
-        H_img, W_img = input_shape[-2:]
-
-        H = H_img // self.patch_size
-        W = W_img // self.patch_size
+        H = self.in_height // self.patch_size
+        W = self.in_width // self.patch_size
 
         # Reshape from sequence to feature map
         x = x.permute(0, 2, 1).reshape(B, C, H, W)
@@ -114,10 +122,10 @@ class DinoV3(BaseNode):
             "convnext_base",
             "convnext_large",
         ],
-        weights: str,
+        weights: str | None,
         repo_dir: str = "facebookresearch/dinov3",
         **kwargs,
-    ) -> tuple[Module, int]:
+    ) -> tuple[TransformerBackboneReturnsIntermediateLayers, int]:
         variant_to_hub_name = {
             "vits16": "dinov3_vits16",
             "vits16plus": "dinov3_vits16plus",
@@ -141,5 +149,6 @@ class DinoV3(BaseNode):
             weights=weights,
             **kwargs,
         )
+        model = cast(TransformerBackboneReturnsIntermediateLayers, model)
         patch_size = getattr(model, "patch_size", 16)
         return model, patch_size

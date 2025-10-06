@@ -1,6 +1,6 @@
 from loguru import logger
 from luxonis_ml.typing import Params
-from torch import Tensor, nn
+from torch import Size, Tensor, nn
 from typing_extensions import override
 
 from luxonis_train.nodes.heads import BaseHead
@@ -8,6 +8,7 @@ from luxonis_train.tasks import Tasks
 
 
 class TransformerClassificationHead(BaseHead):
+    in_sizes: Size
     task = Tasks.CLASSIFICATION
     parser: str = "ClassificationParser"
 
@@ -33,27 +34,19 @@ class TransformerClassificationHead(BaseHead):
 
     @property
     def in_channels(self) -> int:
-        """Override to extract embedding dim from transformer output
-        shape.
-
-        Expected input_shapes: [{'features': [torch.Size([B, N, C])]}]
-        """
+        """Extract embedding dim from self.in_sizes instead of
+        input_shapes."""
         try:
-            shape_dict = self.input_shapes[0]
-            feature_shape = shape_dict["features"][0]
-
-            return feature_shape[-1]
+            return self.in_sizes[-1]
         except Exception as e:
             raise RuntimeError(
-                f"Could not determine in_channels from input_shapes: {self.input_shapes} — {e}"
+                f"Could not determine in_channels from in_sizes: {self.in_sizes} — {e}"
             ) from e
 
     def forward(self, inputs: Tensor) -> Tensor:
         """
-        Args:
-            inputs: Patch embeddings of shape [B, N_patches, C]
-        Returns:
-            Class logits of shape [B, n_classes]
+        @param inputs: Patch embeddings of shape [B, N_patches, C]
+        @return: Class logits of shape [B, n_classes]
         """
         x = inputs[:, 0] if self.use_cls_token else inputs.mean(dim=1)
 

@@ -3,7 +3,7 @@ from typing import Any
 import torch
 import torch.nn.functional as F
 from loguru import logger
-from torch import Tensor, nn
+from torch import Size, Tensor, nn
 from typing_extensions import override
 
 from luxonis_train.nodes.heads import BaseHead
@@ -11,9 +11,9 @@ from luxonis_train.tasks import Tasks
 
 
 class TransformerSegmentationHead(BaseHead):
+    in_sizes: Size
     in_height: int
     in_width: int
-    in_channels: int
     n_classes: int
 
     task = Tasks.SEGMENTATION
@@ -41,35 +41,27 @@ class TransformerSegmentationHead(BaseHead):
 
     @property
     def in_channels(self) -> int:
-        """Override to extract embedding dim from transformer output
-        shape.
-
-        Expected input_shapes: [{'features': [torch.Size([B, N, C])]}]
-        """
+        """Extract embedding dim from self.in_sizes instead of
+        input_shapes."""
         try:
-            shape_dict = self.input_shapes[0]
-            feature_shape = shape_dict["features"][0]
-
-            return feature_shape[-1]
+            return self.in_sizes[-1]
         except Exception as e:
             raise RuntimeError(
-                f"Could not determine in_channels from input_shapes: {self.input_shapes} — {e}"
+                f"Could not determine in_channels from in_sizes: {self.in_sizes} — {e}"
             ) from e
 
     def forward(self, x: Tensor) -> Tensor:
         """
-        Args:
-            x: [B, N+1, C] = patch tokens including class token (CLS at position 0)
+        @param x: Tensor of shape [B, N+1, C], where N is the number of patch tokens and the first token is the class (CLS) token at position 0
+        @return: Segmentation logits of shape [B, n_classes, H, W]
 
-        Returns:
-            Segmentation logits: [B, n_classes, H, W]
-
-        Steps:
-            1) Remove class token at position 0
-            2) Project patch tokens to class logits via LayerNorm + Linear
-            3) Infer patch grid dimensions (H_p x W_p) using image aspect ratio
-            4) Reshape [B, N, n_classes] → [B, n_classes, H_p, W_p]
-            5) Upsample to original image resolution (H, W)
+        @note:
+        Steps performed:
+          1) Remove class token at position 0
+          2) Project patch tokens to class logits via LayerNorm + Linear
+          3) Infer patch grid dimensions (H_p x W_p) using image aspect ratio
+          4) Reshape [B, N, n_classes] → [B, n_classes, H_p, W_p]
+          5) Upsample to original image resolution (H, W)
         """
         B, N_with_cls, C = x.shape
         h, w = self.original_in_shape[1:]  # Original input resolution
