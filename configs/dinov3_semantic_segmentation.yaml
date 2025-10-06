@@ -25,7 +25,7 @@ loader:
 exporter:
   onnx:
     opset_version: 16
-      
+
 trainer:
   precision: "16-mixed"
   preprocessing:

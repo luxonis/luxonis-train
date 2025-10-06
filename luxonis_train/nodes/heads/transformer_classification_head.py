@@ -1,7 +1,7 @@
+from loguru import logger
 from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from typing_extensions import override
-from loguru import logger
 
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
@@ -11,13 +11,14 @@ class TransformerClassificationHead(BaseHead):
     task = Tasks.CLASSIFICATION
     parser: str = "ClassificationParser"
 
-    def __init__(self, dropout_rate: float = 0.2, use_cls_token: bool = False, **kwargs):
-        """
-        Classification head for transformer patch embeddings.
+    def __init__(
+        self, dropout_rate: float = 0.2, use_cls_token: bool = False, **kwargs
+    ):
+        """Classification head for transformer patch embeddings.
 
         @param dropout_rate: Dropout rate before last layer.
         @param use_cls_token: If True, use the first token (CLS token)
-                              instead of pooling across patches.
+            instead of pooling across patches.
         """
         super().__init__(**kwargs)
         self.use_cls_token = use_cls_token
@@ -25,14 +26,16 @@ class TransformerClassificationHead(BaseHead):
         self.dropout = nn.Dropout(dropout_rate)
         self.fc = nn.Linear(self.in_channels, self.n_classes)
 
-        if len(self.input_shapes[0]['features']) == 4:
+        if len(self.input_shapes[0]["features"]) == 4:
             logger.warning(
-                "The transformer segmentation head will not work with feature maps of dimension [B, C, H, W] as input. Please provide patch-level embeddings from transformer backbones in the format [B, C, N]")
+                "The transformer segmentation head will not work with feature maps of dimension [B, C, H, W] as input. Please provide patch-level embeddings from transformer backbones in the format [B, C, N]"
+            )
 
     @property
     def in_channels(self) -> int:
-        """
-        Override to extract embedding dim from transformer output shape.
+        """Override to extract embedding dim from transformer output
+        shape.
+
         Expected input_shapes: [{'features': [torch.Size([B, N, C])]}]
         """
         try:
@@ -41,7 +44,9 @@ class TransformerClassificationHead(BaseHead):
 
             return feature_shape[-1]
         except Exception as e:
-            raise RuntimeError(f"Could not determine in_channels from input_shapes: {self.input_shapes} — {e}") from e
+            raise RuntimeError(
+                f"Could not determine in_channels from input_shapes: {self.input_shapes} — {e}"
+            ) from e
 
     def forward(self, inputs: Tensor) -> Tensor:
         """

@@ -78,11 +78,9 @@ Adapted from [here](https://pytorch.org/vision/main/models/resnet.html).
 
 Adapted from [here](https://github.com/facebookresearch/dinov3)
 
-
-| Key       | Type                                     | Default value | Description            |
-| --------- | ---------------------------------------- | ------------- | ---------------------- |
-| `variant` | `Literal["vits16", "vits16plus", "vitb16", "vitl16", "vith16plus", "vit7b16", "convnext_tiny", "convnext_small", "convnext_base", "convnext_large"]` | `"vitb16"`        | Variant of the network |
-
+| Key       | Type                                                                                                                                                 | Default value | Description            |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------------- |
+| `variant` | `Literal["vits16", "vits16plus", "vitb16", "vitl16", "vith16plus", "vit7b16", "convnext_tiny", "convnext_small", "convnext_base", "convnext_large"]` | `"vitb16"`    | Variant of the network |
 
 ### `MicroNet`
 

@@ -29,5 +29,5 @@ __all__ = [
     "PrecisionSegmentBBoxHead",
     "SegmentationHead",
     "TransformerClassificationHead",
-    "TransformerSegmentationHead"
+    "TransformerSegmentationHead",
 ]

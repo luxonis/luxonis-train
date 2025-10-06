@@ -9,10 +9,10 @@ model:
     - name: TransformerClassificationHead
       inputs:
         - DinoV3
-      
+
       losses:
         - name: CrossEntropyLoss
-          
+
       metrics:
         - name: Accuracy
           is_main_metric: true

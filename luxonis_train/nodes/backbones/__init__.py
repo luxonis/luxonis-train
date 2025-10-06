@@ -1,5 +1,6 @@
 from .contextspatial import ContextSpatial
 from .ddrnet import DDRNet
+from .dinov3 import DinoV3
 from .efficientnet import EfficientNet
 from .efficientrep import EfficientRep
 from .efficientvit import EfficientViT
@@ -11,12 +12,12 @@ from .pplcnet_v3 import PPLCNetV3
 from .recsubnet import RecSubNet
 from .repvgg import RepVGG
 from .resnet import ResNet
-from .dinov3 import DinoV3
 from .rexnetv1 import ReXNetV1_lite
 
 __all__ = [
     "ContextSpatial",
     "DDRNet",
+    "DinoV3",
     "EfficientNet",
     "EfficientRep",
     "EfficientViT",
@@ -29,5 +30,4 @@ __all__ = [
     "RecSubNet",
     "RepVGG",
     "ResNet",
-    "DinoV3"
 ]

@@ -1,31 +1,38 @@
+from typing import Literal
+
 import torch
-import torch.nn as nn
+from loguru import logger
 from torch import Tensor
-from typing import Tuple, Literal, TypedDict, Dict
+from torch.nn import Module
 from typing_extensions import override
 
-from loguru import logger
-
-from luxonis_train.nodes.blocks import UpBlock
-from luxonis_train import BaseHead, BaseNode, BaseLoss
-from luxonis_train import Tasks
+from luxonis_train import BaseNode
 
 
 class DinoV3(BaseNode):
-    DINOv3Kwargs = Dict[str, str]
+    DINOv3Kwargs = dict[str, str]
 
     def __init__(
-            self,
-            weights_link: str,
-            return_sequence: bool = False,
-            variant: Literal[
-                "vits16", "vits16plus", "vitb16", "vitl16", "vith16plus", "vit7b16",
-                "convnext_tiny", "convnext_small", "convnext_base", "convnext_large"
-            ] = "vits16",
-            weights: Literal["download", "none"] | None = "download",
-            repo_dir: str = "facebookresearch/dinov3",
-            **kwargs):
-        """DinoV3 backbone
+        self,
+        weights_link: str,
+        return_sequence: bool = False,
+        variant: Literal[
+            "vits16",
+            "vits16plus",
+            "vitb16",
+            "vitl16",
+            "vith16plus",
+            "vit7b16",
+            "convnext_tiny",
+            "convnext_small",
+            "convnext_base",
+            "convnext_large",
+        ] = "vits16",
+        weights: Literal["download", "none"] | None = "download",
+        repo_dir: str = "facebookresearch/dinov3",
+        **kwargs,
+    ):
+        """DinoV3 backbone.
 
         Source: U{https://github.com/facebookresearch/dinov3}
 
@@ -52,7 +59,7 @@ class DinoV3(BaseNode):
             variant=self.variant,
             weights=weights_url,
             repo_dir=repo_dir,
-            **kwargs
+            **kwargs,
         )
 
         logger.warning(
@@ -95,14 +102,22 @@ class DinoV3(BaseNode):
 
     @staticmethod
     def _get_backbone(
-            variant: Literal[
-                "vits16", "vits16plus", "vitb16", "vitl16", "vith16plus", "vit7b16",
-                "convnext_tiny", "convnext_small", "convnext_base", "convnext_large"
-            ],
-            weights: str,
-            repo_dir: str = "facebookresearch/dinov3",
-            **kwargs
-    ) -> Tuple["dinov3.models.vision_transformer.DinoVisionTransformer", int]:
+        variant: Literal[
+            "vits16",
+            "vits16plus",
+            "vitb16",
+            "vitl16",
+            "vith16plus",
+            "vit7b16",
+            "convnext_tiny",
+            "convnext_small",
+            "convnext_base",
+            "convnext_large",
+        ],
+        weights: str,
+        repo_dir: str = "facebookresearch/dinov3",
+        **kwargs,
+    ) -> tuple[Module, int]:
         variant_to_hub_name = {
             "vits16": "dinov3_vits16",
             "vits16plus": "dinov3_vits16plus",
@@ -124,7 +139,7 @@ class DinoV3(BaseNode):
             model=variant_to_hub_name[variant],
             source="github",
             weights=weights,
-            **kwargs
+            **kwargs,
         )
-        patch_size = getattr(model, 'patch_size', 16)
+        patch_size = getattr(model, "patch_size", 16)
         return model, patch_size
