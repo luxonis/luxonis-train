@@ -66,7 +66,7 @@ class DinoV3(BaseNode):
 
         self.return_sequence = return_sequence
 
-        weights_url = self._resolve_weights_url(weights, weights_link)
+        weights_url = self._resolve_weights_url(weights_link)
 
         self.backbone, self.patch_size = self._get_backbone(
             variant=variant,
@@ -155,36 +155,28 @@ class DinoV3(BaseNode):
         patch_size = getattr(model, "patch_size", 16)
         return model, patch_size
 
-    def _resolve_weights_url(
-        self, weights: str | None, weights_link: str
-    ) -> str | None:
+    def _resolve_weights_url(self, weights_link: str) -> str | None:
         """Resolve the URL or local path for pretrained weights.
 
         Priority:
-            1. Use `weights_link` if provided.
-            2. Fall back to the `DINOV3_WEIGHTS` environment variable from `.env`.
-            3. Return None if weights are to be initialized randomly.
+            1. Use `weights_link` if it is a non-empty string.
+            2. If empty, fall back to the `DINOV3_WEIGHTS` environment variable.
+            3. If still missing, return None and log a warning.
 
-        @param weights: Whether to download pretrained weights ("download") or use none.
-        @type weights: str | None
-
-        @param weights_link: Direct URL or file path to the weights. Optional.
+        @param weights_link: Direct URL or file path to the weights. If empty, will attempt to read from environment.
         @type weights_link: str
 
         @return: URL or path to weights, or None if weights shouldn't be loaded.
-        @rtype: str | None
+        @rtype: str or None
         """
         load_dotenv()
 
-        if weights == "none":
-            return None
-
-        if weights_link:
+        if weights_link.strip():
             return weights_link
 
         env_weights = os.getenv("DINOV3_WEIGHTS")
-        if env_weights:
-            logger.info("Using DINOV3_WEIGHTS from .env file.")
+        if env_weights and env_weights.strip():
+            logger.info("Using DINOV3_WEIGHTS from environment.")
             return env_weights
 
         logger.warning(
