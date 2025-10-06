@@ -52,16 +52,16 @@ class TransformerSegmentationHead(BaseHead):
 
     def forward(self, x: Tensor) -> Tensor:
         """
-        @param x: Tensor of shape [B, N+1, C], where N is the number of patch tokens and the first token is the class (CLS) token at position 0
-        @return: Segmentation logits of shape [B, n_classes, H, W]
+        @param x: Tensor of shape [B, N+1, C], where N is the number of patch
+                  tokens and the first token is the class (CLS) token at position 0.
+        @return: Segmentation logits of shape [B, n_classes, H, W].
 
-        @note:
-        Steps performed:
-          1) Remove class token at position 0
-          2) Project patch tokens to class logits via LayerNorm + Linear
-          3) Infer patch grid dimensions (H_p x W_p) using image aspect ratio
-          4) Reshape [B, N, n_classes] → [B, n_classes, H_p, W_p]
-          5) Upsample to original image resolution (H, W)
+        @note: Steps performed:
+            1) Remove class token at position 0.
+            2) Project patch tokens to class logits via LayerNorm + Linear.
+            3) Infer patch grid dimensions (H_p x W_p) using image aspect ratio.
+            4) Reshape [B, N, n_classes] → [B, n_classes, H_p, W_p].
+            5) Upsample to original image resolution (H, W).
         """
         B, N_with_cls, C = x.shape
         h, w = self.original_in_shape[1:]  # Original input resolution
