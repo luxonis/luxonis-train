@@ -29,6 +29,10 @@ on:
       CODECOV_TOKEN:
         description: 'Codecov upload token'
         required: true
+      DINOV3_WEIGHTS:
+        description: 'Path to pretrained DINOV3 weights, provided by Meta'
+        required: true
+
 
 permissions:
   pull-requests: write

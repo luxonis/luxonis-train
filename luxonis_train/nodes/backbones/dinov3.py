@@ -169,9 +169,10 @@ class DinoV3(BaseNode):
         @return: URL or path to weights, or None if weights shouldn't be loaded.
         @rtype: str or None
         """
-        load_dotenv()
+        if Path(".env").exists():
+            load_dotenv()
 
-        if weights_link.strip():
+        if weights_link and weights_link.strip():
             return weights_link
 
         env_weights = os.getenv("DINOV3_WEIGHTS")
