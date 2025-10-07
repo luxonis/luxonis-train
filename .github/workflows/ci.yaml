@@ -166,7 +166,7 @@ jobs:
     - name: Download DinoV3 weights from GCP
       run: |
         mkdir -p "$TORCH_HOME/hub/checkpoints"
-        gsutil cp "gs://${LUXONISML_BUCKET}/models/dinov3_vits16_pretrain_lvd1689m-08c60483.pth" \
+        gsutil cp "gs://${LUXONISML_BUCKET}/luxonis-train-test-data/checkpoints/dinov3_vits16_pretrain_lvd1689m-08c60483.pth" \
           "$TORCH_HOME/hub/checkpoints/"
 
     - name: Run pytest
