@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Literal, Protocol, cast, TypeAlias
+from typing import Literal, Protocol, TypeAlias, cast
 
 import torch
 from dotenv import load_dotenv
@@ -21,6 +21,7 @@ class TransformerBackboneReturnsIntermediateLayers(Protocol):
         self, x: Tensor, n: int
     ) -> tuple[Tensor, ...]: ...
 
+
 DINOv3Variant: TypeAlias = Literal[
     "vits16",
     "vits16plus",
@@ -31,8 +32,9 @@ DINOv3Variant: TypeAlias = Literal[
     "convnext_tiny",
     "convnext_small",
     "convnext_base",
-    "convnext_large"
+    "convnext_large",
 ]
+
 
 class DinoV3(BaseNode):
     DINOv3Kwargs = dict[str, str]
