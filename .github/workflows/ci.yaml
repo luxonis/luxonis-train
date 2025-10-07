@@ -129,6 +129,10 @@ jobs:
 
     runs-on: ${{ matrix.suite == 'unit' && 'ubuntu-latest' || 'ubuntu-t4-4core' }}
 
+    env:
+      TORCH_HOME: /home/runner/torch_cache
+      LUXONISML_BUCKET: luxonis-test-bucket
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -159,11 +163,15 @@ jobs:
         export_environment_variables: true
         token_format: access_token
 
+    - name: Download DinoV3 weights from GCP
+      run: |
+        mkdir -p "$TORCH_HOME/hub/checkpoints"
+        gsutil cp "gs://${LUXONISML_BUCKET}/models/dinov3_vits16_pretrain_lvd1689m-08c60483.pth" \
+          "$TORCH_HOME/hub/checkpoints/"
+
     - name: Run pytest
       env:
-        LUXONISML_BUCKET: luxonis-test-bucket
         SUITE: ${{ matrix.suite }}
-        DINOV3_WEIGHTS: ${{ secrets.DINOV3_WEIGHTS }}
       run: pytest -x --cov --junitxml=junit.xml -o junit_family=legacy -m "${SUITE}"
 
     - name: Upload test results to Codecov

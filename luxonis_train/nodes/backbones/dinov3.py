@@ -1,9 +1,7 @@
 import os
-from pathlib import Path
 from typing import Literal, Protocol, TypeAlias, cast
 
 import torch
-from dotenv import load_dotenv
 from loguru import logger
 from torch import Tensor
 from typing_extensions import override
@@ -46,7 +44,7 @@ class DinoV3(BaseNode):
         weights_link: str = "",
         return_sequence: bool = False,
         variant: DINOv3Variant = "vits16",
-        repo_dir: str = "facebookresearch/dinov3",
+        repo_dir: str = "",
         **kwargs,
     ):
         """DinoV3 backbone.
@@ -68,6 +66,19 @@ class DinoV3(BaseNode):
 
         self.return_sequence = return_sequence
 
+        if not repo_dir:
+            torch_home = os.environ.get(
+                "TORCH_HOME", os.path.expanduser("~/.cache/torch")
+            )
+            repo_dir = os.path.join(
+                torch_home, "hub", "facebookresearch_dinov3_main"
+            )
+            logger.info(
+                f"Detected CI environment. Using local repo_dir: {repo_dir}"
+            )
+        else:
+            repo_dir = "facebookresearch/dinov3"
+
         weights_url = self._resolve_weights_url(weights_link)
 
         self.backbone, self.patch_size = self._get_backbone(
@@ -80,6 +91,10 @@ class DinoV3(BaseNode):
         logger.warning(
             "DinoV3 is not convertible for RVC2. If RVC2 is your target platform, please pick a different backbone."
         )
+
+    def _is_ci(self) -> bool:
+        """Detect if we're running in a CI environment."""
+        return os.getenv("CI", "false").lower() == "true"
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         x = self.backbone.get_intermediate_layers(inputs, n=1)[0]
@@ -151,10 +166,9 @@ class DinoV3(BaseNode):
 
         Priority:
             1. Use `weights_link` if it is a non-empty string.
-            2. If empty, fall back to the `DINOV3_WEIGHTS` environment variable.
-            3. If still missing, return None and log a warning.
+            2. If empty, return None and log a warning.
 
-        @param weights_link: Direct URL or file path to the weights. If empty, will attempt to read from environment.
+        @param weights_link: Direct URL or file path to the weights.
         @type weights_link: str
 
         @return: URL or path to weights, or None if weights shouldn't be loaded.
@@ -162,15 +176,6 @@ class DinoV3(BaseNode):
         """
         if weights_link and weights_link.strip():
             return weights_link
-
-        env_weights = os.getenv("DINOV3_WEIGHTS")
-        if not env_weights and Path(".env").exists():
-            load_dotenv()
-            env_weights = os.getenv("DINOV3_WEIGHTS")
-
-        if env_weights and env_weights.strip():
-            logger.info("Using DINOV3_WEIGHTS from environment.")
-            return env_weights
 
         logger.warning(
             "No weights provided. Proceeding without pretrained weights."
