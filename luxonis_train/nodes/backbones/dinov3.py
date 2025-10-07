@@ -71,7 +71,7 @@ class DinoV3(BaseNode):
             torch_home = Path(
                 os.environ.get("TORCH_HOME", "~/.cache/torch")
             ).expanduser()
-            repo_dir = torch_home / "hub" / "facebookresearch_dinov3_main"
+            repo_dir = str(torch_home / "hub" / "facebookresearch_dinov3_main")
 
             logger.info(
                 f"Detected CI environment. Using local repo_dir: {repo_dir}"
