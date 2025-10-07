@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Literal, Protocol, TypeAlias, cast
 
 import torch
@@ -67,12 +68,11 @@ class DinoV3(BaseNode):
         self.return_sequence = return_sequence
 
         if not repo_dir:
-            torch_home = os.environ.get(
-                "TORCH_HOME", os.path.expanduser("~/.cache/torch")
-            )
-            repo_dir = os.path.join(
-                torch_home, "hub", "facebookresearch_dinov3_main"
-            )
+            torch_home = Path(
+                os.environ.get("TORCH_HOME", "~/.cache/torch")
+            ).expanduser()
+            repo_dir = torch_home / "hub" / "facebookresearch_dinov3_main"
+
             logger.info(
                 f"Detected CI environment. Using local repo_dir: {repo_dir}"
             )
