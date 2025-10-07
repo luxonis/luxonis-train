@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Literal, Protocol, cast
+from typing import Literal, Protocol, cast, TypeAlias
 
 import torch
 from dotenv import load_dotenv
@@ -21,6 +21,18 @@ class TransformerBackboneReturnsIntermediateLayers(Protocol):
         self, x: Tensor, n: int
     ) -> tuple[Tensor, ...]: ...
 
+DINOv3Variant: TypeAlias = Literal[
+    "vits16",
+    "vits16plus",
+    "vitb16",
+    "vitl16",
+    "vith16plus",
+    "vit7b16",
+    "convnext_tiny",
+    "convnext_small",
+    "convnext_base",
+    "convnext_large"
+]
 
 class DinoV3(BaseNode):
     DINOv3Kwargs = dict[str, str]
@@ -31,18 +43,7 @@ class DinoV3(BaseNode):
         self,
         weights_link: str = "",
         return_sequence: bool = False,
-        variant: Literal[
-            "vits16",
-            "vits16plus",
-            "vitb16",
-            "vitl16",
-            "vith16plus",
-            "vit7b16",
-            "convnext_tiny",
-            "convnext_small",
-            "convnext_base",
-            "convnext_large",
-        ] = "vits16",
+        variant: DINOv3Variant = "vits16",
         repo_dir: str = "facebookresearch/dinov3",
         **kwargs,
     ):
@@ -68,8 +69,8 @@ class DinoV3(BaseNode):
         weights_url = self._resolve_weights_url(weights_link)
 
         self.backbone, self.patch_size = self._get_backbone(
-            variant=variant,
             weights=weights_url,
+            variant=variant,
             repo_dir=repo_dir,
             **kwargs,
         )
@@ -96,7 +97,7 @@ class DinoV3(BaseNode):
     @staticmethod
     @override
     def get_variants() -> tuple[str, dict[str, DINOv3Kwargs]]:
-        return "vitb16", {
+        return "vits16", {
             "vits16": {"variant": "vits16"},
             "vits16plus": {"variant": "vits16plus"},
             "vitb16": {"variant": "vitb16"},
@@ -111,19 +112,8 @@ class DinoV3(BaseNode):
 
     @staticmethod
     def _get_backbone(
-        variant: Literal[
-            "vits16",
-            "vits16plus",
-            "vitb16",
-            "vitl16",
-            "vith16plus",
-            "vit7b16",
-            "convnext_tiny",
-            "convnext_small",
-            "convnext_base",
-            "convnext_large",
-        ],
         weights: str | None,
+        variant: DINOv3Variant = "vits16",
         repo_dir: str = "facebookresearch/dinov3",
         **kwargs,
     ) -> tuple[TransformerBackboneReturnsIntermediateLayers, int]:
