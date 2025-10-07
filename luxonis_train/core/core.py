@@ -84,10 +84,10 @@ class LuxonisModel:
         lightning components, etc.
 
         @type cfg: str | dict[str, Any] | Config
-        @param cfg: Path to config file or config dict used to setup training
+        @param cfg: Path to config file or config dict used to setup training.
 
         @type opts: list[str] | tuple[str, ...] | dict[str, Any] | None
-        @param opts: Argument dict provided through command line, used for config overriding
+        @param opts: Argument dict provided through command line, used for config overriding.
 
         @type debug_mode: bool
         @param debug_mode: If set to True, enables debug mode which ignores some
@@ -280,6 +280,42 @@ class LuxonisModel:
         )
 
         self._exported_models: dict[str, Path] = {}
+
+    @classmethod
+    def from_checkpoint(
+        cls,
+        path: PathType,
+        opts: Params | list[str] | tuple[str, ...] | None = None,
+        *,
+        debug_mode: bool = False,
+    ) -> "LuxonisModel":
+        """Creates a LuxonisModel instance from a checkpoint file.
+
+        @type path: PathType
+        @param path: Path to the checkpoint file.
+        @type opts: Params | list[str] | tuple[str, ...] | None
+        @param opts: Argument dict provided through command line, used to config overriding.
+        @type debug_mode: bool
+        @param debug_mode: If set to True, enables debug mode which ignores some
+            normaly unrecovarable exceptions and allows to test the model
+            without it being fully functional.
+        """
+        ckpt = torch.load(path, map_location="cpu")
+        if "config" not in ckpt:  # pragma: no cover
+            raise ValueError(
+                f"Checkpoint '{path}' does not contain the 'config' key. "
+                "Cannot restore `LuxonisModel` from checkpoint."
+            )
+        try:
+            cfg = Config.get_config(ckpt["config"], opts)
+        except Exception as e:  # pragma: no cover
+            raise ValueError(
+                "Failed to load config from the checkpoint. "
+                "This can happen if the config schema changed "
+                "between the version used to create the checkpoint "
+                "and the current version of luxonis-train."
+            ) from e
+        return cls(cfg, debug_mode=debug_mode)
 
     def _train(self, resume: PathType | None, *args, **kwargs) -> None:
         status = "success"
