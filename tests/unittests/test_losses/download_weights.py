@@ -1,6 +1,12 @@
-from tests.unittests.test_losses.test_utils import load_checkpoint
+from pathlib import Path
+
+from luxonis_ml.utils import LuxonisFileSystem
 
 if __name__ == "__main__":
     # Hardcode the checkpoint name
-    checkpoint = "dinov3_vits16_pretrain_lvd1689m-08c60483.pth"
-    load_checkpoint(checkpoint)
+    checkpoint_name = "dinov3_vits16_pretrain_lvd1689m-08c60483.pth"
+    dest_dir = Path("tests", "data", "checkpoints")
+    local_path = dest_dir / checkpoint_name
+    if not local_path.exists():
+        remote_path = f"gs://luxonis-test-bucket/luxonis-train-test-data/checkpoints/{checkpoint_name}"
+        local_path = LuxonisFileSystem.download(remote_path, dest=dest_dir)
