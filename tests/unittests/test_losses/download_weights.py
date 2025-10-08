@@ -1,8 +1,7 @@
 from pathlib import Path
 
-from luxonis_ml.utils import LuxonisFileSystem
-
 from loguru import logger
+from luxonis_ml.utils import LuxonisFileSystem
 
 if __name__ == "__main__":
     # Hardcode the checkpoint name
