@@ -66,7 +66,7 @@ class DinoV3(BaseNode):
 
     def __init__(
         self,
-        weights_link: str = "tests/data/checkpoints/dinov3_vits16_pretrain_lvd1689m-08c60483.pth",
+        weights_link: str = "",
         return_sequence: bool = False,
         variant: DINOv3Variant = "vits16",
         repo_dir: str = "facebookresearch/dinov3",
@@ -183,7 +183,6 @@ class DinoV3(BaseNode):
             **kwargs,
         )
         model = cast(TransformerBackboneReturnsIntermediateLayers, model)
-        model.load_state_dict(torch.load(weights))
         patch_size = getattr(model, "patch_size", 16)
         return model, patch_size
 
