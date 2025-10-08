@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Literal, Protocol, TypeAlias, cast
 
 import torch
+import torch.nn as nn
 from loguru import logger
 from torch import Tensor
 from typing_extensions import override
@@ -17,7 +18,7 @@ class TransformerBackboneReturnsIntermediateLayers(Protocol):
     """
 
     def get_intermediate_layers(
-        self, x: Tensor, n: int
+            self, x: Tensor, n: int
     ) -> tuple[Tensor, ...]: ...
 
 
@@ -35,18 +36,32 @@ DINOv3Variant: TypeAlias = Literal[
 ]
 
 
+class AbsolutePositionalEmbedding(nn.Module):
+    def __init__(self, embed_dim: int, seq_len: int, num_heads: int):
+        super().__init__()
+        head_dim = embed_dim // num_heads
+
+        self.sin_embed = nn.Parameter(torch.zeros(seq_len, head_dim))
+        self.cos_embed = nn.Parameter(torch.zeros(seq_len, head_dim))
+        nn.init.trunc_normal_(self.sin_embed, std=0.02)
+        nn.init.trunc_normal_(self.cos_embed, std=0.02)
+
+    def forward(self, *, H: int, W: int):
+        return self.sin_embed, self.cos_embed
+
+
 class DinoV3(BaseNode):
     DINOv3Kwargs = dict[str, str]
     in_height: int
     in_width: int
 
     def __init__(
-        self,
-        weights_link: str = "",
-        return_sequence: bool = False,
-        variant: DINOv3Variant = "vits16",
-        repo_dir: str = "",
-        **kwargs,
+            self,
+            weights_link: str = "",
+            return_sequence: bool = False,
+            variant: DINOv3Variant = "vits16",
+            repo_dir: str = "facebookresearch/dinov3",
+            **kwargs,
     ):
         """DinoV3 backbone.
 
@@ -67,18 +82,6 @@ class DinoV3(BaseNode):
 
         self.return_sequence = return_sequence
 
-        if not repo_dir:
-            torch_home = Path(
-                os.environ.get("TORCH_HOME", "~/.cache/torch")
-            ).expanduser()
-            repo_dir = str(torch_home / "hub" / "facebookresearch_dinov3_main")
-
-            logger.info(
-                f"Detected CI environment. Using local repo_dir: {repo_dir}"
-            )
-        else:
-            repo_dir = "facebookresearch/dinov3"
-
         weights_url = self._resolve_weights_url(weights_link)
 
         self.backbone, self.patch_size = self._get_backbone(
@@ -87,6 +90,8 @@ class DinoV3(BaseNode):
             repo_dir=repo_dir,
             **kwargs,
         )
+        seq_len = (self.in_height // self.patch_size) * (self.in_width // self.patch_size)
+        self.backbone.rope_embed = AbsolutePositionalEmbedding(embed_dim=self.backbone.embed_dim, seq_len=seq_len, num_heads=self.backbone.num_heads)
 
         logger.warning(
             "DinoV3 is not convertible for RVC2. If RVC2 is your target platform, please pick a different backbone."
@@ -97,19 +102,25 @@ class DinoV3(BaseNode):
         return os.getenv("CI", "false").lower() == "true"
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
-        x = self.backbone.get_intermediate_layers(inputs, n=1)[0]
+        features = self.backbone.get_intermediate_layers(inputs, n=4)
+        outs: list[Tensor] = []
 
-        if self.return_sequence:  # return patch sequence directly
-            return [x]
+        for x in features:
+            if self.return_sequence:
+                outs.append(x)  # B x N x C
+            else:
+                B, N_with_cls, C = x.shape
 
-        B, N, C = x.shape
+                H = self.in_height // self.patch_size
+                W = self.in_width // self.patch_size
 
-        H = self.in_height // self.patch_size
-        W = self.in_width // self.patch_size
+                assert x.shape[1] == H * W, f"Expected {H * W} tokens, got {x.shape[1]}"
 
-        # Reshape from sequence to feature map
-        x = x.permute(0, 2, 1).reshape(B, C, H, W)
-        return [x]
+                # Reshape sequence to feature map
+                x = x.permute(0, 2, 1).reshape(B, C, H, W)
+                outs.append(x)
+
+        return outs
 
     @staticmethod
     @override
@@ -129,10 +140,10 @@ class DinoV3(BaseNode):
 
     @staticmethod
     def _get_backbone(
-        weights: str | None,
-        variant: DINOv3Variant = "vits16",
-        repo_dir: str = "facebookresearch/dinov3",
-        **kwargs,
+            weights: str | None,
+            variant: DINOv3Variant = "vits16",
+            repo_dir: str = "facebookresearch/dinov3",
+            **kwargs,
     ) -> tuple[TransformerBackboneReturnsIntermediateLayers, int]:
         variant_to_hub_name = {
             "vits16": "dinov3_vits16",

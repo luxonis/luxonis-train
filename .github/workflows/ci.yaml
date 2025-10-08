@@ -163,11 +163,9 @@ jobs:
         export_environment_variables: true
         token_format: access_token
 
-    - name: Download DinoV3 weights from GCP
+    - name: Download DinoV3 weights from GCP using LuxonisFileSystem
       run: |
-        mkdir -p "$TORCH_HOME/hub/checkpoints"
-        gsutil cp "gs://${LUXONISML_BUCKET}/luxonis-train-test-data/checkpoints/dinov3_vits16_pretrain_lvd1689m-08c60483.pth" \
-          "$TORCH_HOME/hub/checkpoints/"
+        python scripts/download_weights.py
 
     - name: Run pytest
       env:
