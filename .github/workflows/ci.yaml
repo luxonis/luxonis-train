@@ -172,7 +172,7 @@ jobs:
         SUITE: ${{ matrix.suite }}
       run: |
         python tests/unittests/test_losses/download_weights.py
-        mkdir -p ~/.cache/torch/hub/checkpoints
+        mkdir -p "$TORCH_HOME/hub/checkpoints"
         cp tests/data/checkpoints/dinov3_vits16_pretrain_lvd1689m-08c60483.pth "$TORCH_HOME/hub/checkpoints/"
         pytest -x --cov --junitxml=junit.xml -o junit_family=legacy -m "${SUITE}"
 
