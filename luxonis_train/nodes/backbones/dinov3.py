@@ -91,8 +91,6 @@ class DinoV3(BaseNode):
 
         self.return_sequence = return_sequence
 
-        # weights_url = self._resolve_weights_url(weights_link)
-
         self.backbone, self.patch_size = self._get_backbone(
             weights=weights_link,
             variant=variant,
