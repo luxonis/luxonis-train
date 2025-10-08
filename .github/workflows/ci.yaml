@@ -165,7 +165,7 @@ jobs:
 
     - name: Download DinoV3 weights from GCP using LuxonisFileSystem
       run: |
-        python scripts/download_weights.py
+        python tests/unittests/test_losses/download_weights.py
 
     - name: Run pytest
       env:
