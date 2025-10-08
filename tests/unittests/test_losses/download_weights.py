@@ -10,3 +10,4 @@ if __name__ == "__main__":
     if not local_path.exists():
         remote_path = f"gs://luxonis-test-bucket/luxonis-train-test-data/checkpoints/{checkpoint_name}"
         local_path = LuxonisFileSystem.download(remote_path, dest=dest_dir)
+        print("DinoV3 weights downloaded to " + str(local_path))

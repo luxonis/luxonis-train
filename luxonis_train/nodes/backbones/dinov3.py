@@ -59,7 +59,7 @@ class DinoV3(BaseNode):
 
     def __init__(
         self,
-        weights_link: str = "./home/runner/torch_cache/hub/facebookv3research_dinov3_main",
+        weights_link: str = "",
         return_sequence: bool = False,
         variant: DINOv3Variant = "vits16",
         repo_dir: str = "local",
@@ -181,7 +181,7 @@ class DinoV3(BaseNode):
             )
         else:
             model = torch.hub.load(
-                repo_or_dir=repo_dir,
+                repo_or_dir="./home/runner/torch_cache/hub/facebookv3research_dinov3_main",
                 model=variant_to_hub_name[variant],
                 source="local",
             )
