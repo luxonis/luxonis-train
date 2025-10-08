@@ -1,5 +1,6 @@
 import os
-from typing import Literal, Protocol, TypeAlias, cast
+from collections import OrderedDict
+from typing import Literal, Protocol, TypeAlias, Union, cast
 
 import torch
 from loguru import logger
@@ -22,6 +23,12 @@ class TransformerBackboneReturnsIntermediateLayers(Protocol):
     def get_intermediate_layers(
         self, x: Tensor, n: int
     ) -> tuple[Tensor, ...]: ...
+
+    def load_state_dict(
+        self,
+        state_dict: Union[dict[str, Tensor], "OrderedDict[str, Tensor]"],
+        strict: bool = True,
+    ) -> None: ...
 
 
 DINOv3Variant: TypeAlias = Literal[
@@ -84,10 +91,10 @@ class DinoV3(BaseNode):
 
         self.return_sequence = return_sequence
 
-        weights_url = self._resolve_weights_url(weights_link)
+        # weights_url = self._resolve_weights_url(weights_link)
 
         self.backbone, self.patch_size = self._get_backbone(
-            weights=weights_url,
+            weights=weights_link,
             variant=variant,
             repo_dir=repo_dir,
             **kwargs,
@@ -150,7 +157,7 @@ class DinoV3(BaseNode):
 
     @staticmethod
     def _get_backbone(
-        weights: str | None,
+        weights: str = "tests/data/checkpoints/dinov3_vits16_pretrain_lvd1689m-08c60483.pth",
         variant: DINOv3Variant = "vits16",
         repo_dir: str = "facebookresearch/dinov3",
         **kwargs,
@@ -177,8 +184,8 @@ class DinoV3(BaseNode):
             source="github",
             **kwargs,
         )
-        model.load_state_dict(weights)
         model = cast(TransformerBackboneReturnsIntermediateLayers, model)
+        model.load_state_dict(torch.load(weights))
         patch_size = getattr(model, "patch_size", 16)
         return model, patch_size
 
