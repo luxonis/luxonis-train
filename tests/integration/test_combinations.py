@@ -6,7 +6,11 @@ from pytest_subtests import SubTests
 from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
 
-BACKBONES = [backbone for backbone in BACKBONES if backbone in ["DinoV3"]]
+BACKBONES = [
+    backbone
+    for backbone in BACKBONES
+    if backbone not in {"PPLCNetV3", "GhostFaceNet", "RecSubNet"}
+]
 
 
 def get_config(backbone: str) -> Params:

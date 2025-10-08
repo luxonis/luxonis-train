@@ -165,7 +165,9 @@ jobs:
 
     - name: Download DinoV3 weights from GCP using LuxonisFileSystem
       run: |
-        python tests/unittests/test_losses/download_weights.py
+        python tests/integration/download_weights.py
+        mkdir -p "$TORCH_HOME/hub/checkpoints"
+        cp tests/data/checkpoints/dinov3_vits16_pretrain_lvd1689m-08c60483.pth "$TORCH_HOME/hub/checkpoints/"
 
     - name: Run pytest
       env:
@@ -174,7 +176,6 @@ jobs:
         python tests/unittests/test_losses/download_weights.py
         mkdir -p "$TORCH_HOME/hub/checkpoints"
         cp tests/data/checkpoints/dinov3_vits16_pretrain_lvd1689m-08c60483.pth "$TORCH_HOME/hub/checkpoints/"
-        pytest -x --cov --junitxml=junit.xml -o junit_family=legacy -m "${SUITE}"
 
     - name: Upload test results to Codecov
       uses: codecov/test-results-action@v1

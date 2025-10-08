@@ -2,6 +2,9 @@ model:
   name: CustomUNet
   nodes:
     - name: DinoV3
+      params:
+        weights_link: "REDACTED"
+        return_sequence: false  # this will change the encoder output to a feature map
 
     - name: SegmentationHead
       inputs:

@@ -1,6 +1,5 @@
 import os
-from collections import OrderedDict
-from typing import Literal, Protocol, TypeAlias, Union, cast
+from typing import Literal, Protocol, TypeAlias, cast
 
 import torch
 from loguru import logger
@@ -23,12 +22,6 @@ class TransformerBackboneReturnsIntermediateLayers(Protocol):
     def get_intermediate_layers(
         self, x: Tensor, n: int
     ) -> tuple[Tensor, ...]: ...
-
-    def load_state_dict(
-        self,
-        state_dict: Union[dict[str, Tensor], "OrderedDict[str, Tensor]"],
-        strict: bool = True,
-    ) -> None: ...
 
 
 DINOv3Variant: TypeAlias = Literal[
@@ -185,24 +178,3 @@ class DinoV3(BaseNode):
         model = cast(TransformerBackboneReturnsIntermediateLayers, model)
         patch_size = getattr(model, "patch_size", 16)
         return model, patch_size
-
-    def _resolve_weights_url(self, weights_link: str) -> str | None:
-        """Resolve the URL or local path for pretrained weights.
-
-        Priority:
-            1. Use `weights_link` if it is a non-empty string.
-            2. If empty, return None and log a warning.
-
-        @param weights_link: Direct URL or file path to the weights.
-        @type weights_link: str
-
-        @return: URL or path to weights, or None if weights shouldn't be loaded.
-        @rtype: str or None
-        """
-        if weights_link and weights_link.strip():
-            return weights_link
-
-        logger.warning(
-            "No weights provided. Proceeding without pretrained weights."
-        )
-        return None
