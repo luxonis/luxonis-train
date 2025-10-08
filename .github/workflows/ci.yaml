@@ -174,7 +174,7 @@ jobs:
         SUITE: ${{ matrix.suite }}
       run: |
         pytest -x --cov --junitxml=junit.xml -o junit_family=legacy -m "${SUITE}"
-        
+
     - name: Upload test results to Codecov
       uses: codecov/test-results-action@v1
       with:
