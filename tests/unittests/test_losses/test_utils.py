@@ -13,4 +13,3 @@ def load_checkpoint(
         remote_path = f"gs://luxonis-test-bucket/luxonis-train-test-data/checkpoints/{checkpoint_name}"
         local_path = LuxonisFileSystem.download(remote_path, dest=dest_dir)
     return torch.load(local_path, map_location=map_location)
-

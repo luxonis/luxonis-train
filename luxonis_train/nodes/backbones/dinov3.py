@@ -1,11 +1,9 @@
 import os
-from pathlib import Path
 from typing import Literal, Protocol, TypeAlias, cast
 
 import torch
-import torch.nn as nn
 from loguru import logger
-from torch import Tensor
+from torch import Tensor, nn
 from typing_extensions import override
 
 from luxonis_train.nodes.base_node import BaseNode
@@ -17,8 +15,12 @@ class TransformerBackboneReturnsIntermediateLayers(Protocol):
     To properly declare the dinov3.models.vision_transformer.DinoVisionTransformer type, the Dinov3 repository needs to be cloned locally.
     """
 
+    rope_embed: nn.Module
+    embed_dim: int
+    num_heads: int
+
     def get_intermediate_layers(
-            self, x: Tensor, n: int
+        self, x: Tensor, n: int
     ) -> tuple[Tensor, ...]: ...
 
 
@@ -46,7 +48,7 @@ class AbsolutePositionalEmbedding(nn.Module):
         nn.init.trunc_normal_(self.sin_embed, std=0.02)
         nn.init.trunc_normal_(self.cos_embed, std=0.02)
 
-    def forward(self, *, H: int, W: int):
+    def forward(self, *, H: int, W: int) -> tuple[Tensor, Tensor]:
         return self.sin_embed, self.cos_embed
 
 
@@ -56,12 +58,12 @@ class DinoV3(BaseNode):
     in_width: int
 
     def __init__(
-            self,
-            weights_link: str = "",
-            return_sequence: bool = False,
-            variant: DINOv3Variant = "vits16",
-            repo_dir: str = "facebookresearch/dinov3",
-            **kwargs,
+        self,
+        weights_link: str = "",
+        return_sequence: bool = False,
+        variant: DINOv3Variant = "vits16",
+        repo_dir: str = "facebookresearch/dinov3",
+        **kwargs,
     ):
         """DinoV3 backbone.
 
@@ -90,8 +92,14 @@ class DinoV3(BaseNode):
             repo_dir=repo_dir,
             **kwargs,
         )
-        seq_len = (self.in_height // self.patch_size) * (self.in_width // self.patch_size)
-        self.backbone.rope_embed = AbsolutePositionalEmbedding(embed_dim=self.backbone.embed_dim, seq_len=seq_len, num_heads=self.backbone.num_heads)
+        seq_len = (self.in_height // self.patch_size) * (
+            self.in_width // self.patch_size
+        )
+        self.backbone.rope_embed = AbsolutePositionalEmbedding(
+            embed_dim=self.backbone.embed_dim,
+            seq_len=seq_len,
+            num_heads=self.backbone.num_heads,
+        )
 
         logger.warning(
             "DinoV3 is not convertible for RVC2. If RVC2 is your target platform, please pick a different backbone."
@@ -114,7 +122,9 @@ class DinoV3(BaseNode):
                 H = self.in_height // self.patch_size
                 W = self.in_width // self.patch_size
 
-                assert x.shape[1] == H * W, f"Expected {H * W} tokens, got {x.shape[1]}"
+                assert x.shape[1] == H * W, (
+                    f"Expected {H * W} tokens, got {x.shape[1]}"
+                )
 
                 # Reshape sequence to feature map
                 x = x.permute(0, 2, 1).reshape(B, C, H, W)
@@ -140,10 +150,10 @@ class DinoV3(BaseNode):
 
     @staticmethod
     def _get_backbone(
-            weights: str | None,
-            variant: DINOv3Variant = "vits16",
-            repo_dir: str = "facebookresearch/dinov3",
-            **kwargs,
+        weights: str | None,
+        variant: DINOv3Variant = "vits16",
+        repo_dir: str = "facebookresearch/dinov3",
+        **kwargs,
     ) -> tuple[TransformerBackboneReturnsIntermediateLayers, int]:
         variant_to_hub_name = {
             "vits16": "dinov3_vits16",
