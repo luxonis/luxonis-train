@@ -59,10 +59,10 @@ class DinoV3(BaseNode):
 
     def __init__(
         self,
-        weights_link: str = "",
+        weights_link: str = "tests/data/checkpoints/dinov3_vits16_pretrain_lvd1689m-08c60483.pth",
         return_sequence: bool = False,
         variant: DINOv3Variant = "vits16",
-        repo_dir: str = "local",
+        repo_dir: str = "facebookresearch/dinov3",
         **kwargs,
     ):
         """DinoV3 backbone.
@@ -171,20 +171,13 @@ class DinoV3(BaseNode):
         if variant not in variant_to_hub_name:
             raise ValueError(f"Unsupported variant: {variant}")
 
-        if weights:
-            model = torch.hub.load(
-                repo_or_dir=repo_dir,
-                model=variant_to_hub_name[variant],
-                source="github",
-                weights=weights,
-                **kwargs,
-            )
-        else:
-            model = torch.hub.load(
-                repo_or_dir="./home/runner/torch_cache/hub/facebookv3research_dinov3_main",
-                model=variant_to_hub_name[variant],
-                source="local",
-            )
+        model = torch.hub.load(
+            repo_or_dir=repo_dir,
+            model=variant_to_hub_name[variant],
+            source="github",
+            **kwargs,
+        )
+        model.load_state_dict(weights)
         model = cast(TransformerBackboneReturnsIntermediateLayers, model)
         patch_size = getattr(model, "patch_size", 16)
         return model, patch_size
