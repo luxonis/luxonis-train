@@ -173,6 +173,7 @@ class DinoV3(BaseNode):
 
         if weights:
             model = torch.hub.load(
+                weights=weights,
                 repo_or_dir=repo_dir,
                 model=variant_to_hub_name[variant],
                 source="github",
@@ -180,7 +181,6 @@ class DinoV3(BaseNode):
             )
         else:
             model = torch.hub.load(
-                weights=weights,
                 repo_or_dir=repo_dir,
                 model=variant_to_hub_name[variant],
                 source="github",
