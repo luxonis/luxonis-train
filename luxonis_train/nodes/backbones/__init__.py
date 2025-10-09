@@ -1,6 +1,7 @@
+from luxonis_train.nodes.backbones.dinov3.dinov3 import DinoV3
+
 from .contextspatial import ContextSpatial
 from .ddrnet import DDRNet
-from .dinov3 import DinoV3
 from .efficientnet import EfficientNet
 from .efficientrep import EfficientRep
 from .efficientvit import EfficientViT

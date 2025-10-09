@@ -1,3 +1,4 @@
+import inspect
 import os
 from typing import Literal, Protocol, TypeAlias, cast
 
@@ -6,6 +7,9 @@ from loguru import logger
 from torch import Tensor, nn
 from typing_extensions import override
 
+from luxonis_train.nodes.backbones.dinov3.rope_position_encoding import (
+    RopePositionEmbedding,
+)
 from luxonis_train.nodes.base_node import BaseNode
 
 
@@ -15,12 +19,12 @@ class TransformerBackboneReturnsIntermediateLayers(Protocol):
     To properly declare the dinov3.models.vision_transformer.DinoVisionTransformer type, the Dinov3 repository needs to be cloned locally.
     """
 
-    rope_embed: nn.Module
     embed_dim: int
     num_heads: int
+    rope_embed: nn.Module
 
     def get_intermediate_layers(
-        self, x: Tensor, n: int
+        self, x: Tensor, n: int, norm: bool
     ) -> tuple[Tensor, ...]: ...
 
 
@@ -36,20 +40,6 @@ DINOv3Variant: TypeAlias = Literal[
     "convnext_base",
     "convnext_large",
 ]
-
-
-class AbsolutePositionalEmbedding(nn.Module):
-    def __init__(self, embed_dim: int, seq_len: int, num_heads: int):
-        super().__init__()
-        head_dim = embed_dim // num_heads
-
-        self.sin_embed = nn.Parameter(torch.zeros(seq_len, head_dim))
-        self.cos_embed = nn.Parameter(torch.zeros(seq_len, head_dim))
-        nn.init.trunc_normal_(self.sin_embed, std=0.02)
-        nn.init.trunc_normal_(self.cos_embed, std=0.02)
-
-    def forward(self, *, H: int, W: int) -> tuple[Tensor, Tensor]:
-        return self.sin_embed, self.cos_embed
 
 
 class DinoV3(BaseNode):
@@ -90,25 +80,39 @@ class DinoV3(BaseNode):
             repo_dir=repo_dir,
             **kwargs,
         )
-        seq_len = (self.in_height // self.patch_size) * (
-            self.in_width // self.patch_size
-        )
-        self.backbone.rope_embed = AbsolutePositionalEmbedding(
-            embed_dim=self.backbone.embed_dim,
-            seq_len=seq_len,
-            num_heads=self.backbone.num_heads,
-        )
+
+        self._replace_rope_embedding()
 
         logger.warning(
             "DinoV3 is not convertible for RVC2. If RVC2 is your target platform, please pick a different backbone."
         )
+
+    def _replace_rope_embedding(self) -> None:
+        """Replaces the default RoPE embedding in the DinoV3 backbone
+        with a custom implementation that is ONNX-convertible."""
+        old_rope = self.backbone.rope_embed
+        new_rope_cls = RopePositionEmbedding
+
+        init_params = inspect.signature(new_rope_cls.__init__).parameters
+        param_names = [p for p in init_params if p != "self"]
+
+        rope_kwargs = {}
+        for name in param_names:
+            if hasattr(self.backbone, name):
+                rope_kwargs[name] = getattr(self.backbone, name)
+            elif hasattr(old_rope, name):
+                rope_kwargs[name] = getattr(old_rope, name)
+
+        self.backbone.rope_embed = new_rope_cls(**rope_kwargs)
 
     def _is_ci(self) -> bool:
         """Detect if we're running in a CI environment."""
         return os.getenv("CI", "false").lower() == "true"
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
-        features = self.backbone.get_intermediate_layers(inputs, n=4)
+        features = self.backbone.get_intermediate_layers(
+            inputs, norm=True, n=4
+        )
         outs: list[Tensor] = []
 
         for x in features:
@@ -148,7 +152,7 @@ class DinoV3(BaseNode):
 
     @staticmethod
     def _get_backbone(
-        weights: str = "",
+        weights: str = "https://dinov3.llamameta.net/dinov3_vits16/dinov3_vits16_pretrain_lvd1689m-08c60483.pth?Policy=eyJTdGF0ZW1lbnQiOlt7InVuaXF1ZV9oYXNoIjoidWp6bWNmNGp4dXF0bW0xM2d3M3o3Y2F1IiwiUmVzb3VyY2UiOiJodHRwczpcL1wvZGlub3YzLmxsYW1hbWV0YS5uZXRcLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NTk1MDMwNTF9fX1dfQ__&Signature=YAEFDMsDR%7EMobuJJagjxyviGtUYb7WG-bAlgi-x8a5be2uJGXg05E3OUTCEP7lgnxUoVqgF9imdxVDk0vOOv9fdyFY8mhVftHNnZO-YVxcH1XlVtF4unrkN3ulGWvjEFJspLzXutaya5keKLKsEquFjF%7EYudenOBolIme0l3K6WtYJHa5MY7qseGn69fkaaNhkKFivlZamS%7E9Wi-UN1ByowC2Dql%7E5V6xvY-i23MjMPAwCV4DLVVqtV7BtpPA5F2dfbi%7En7NJqW5yQBuMmittKpd14pGCx29V-8wmFfQPDvY5v4SiF00z7eCShjreGCrjX0rVfTSTo1uTIYCFyZguw__&Key-Pair-Id=K15QRJLYKIFSLZ&Download-Request-ID=3345018032303110",
         variant: DINOv3Variant = "vits16",
         repo_dir: str = "facebookresearch/dinov3",
         **kwargs,
