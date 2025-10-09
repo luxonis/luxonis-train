@@ -1,5 +1,4 @@
 import inspect
-import os
 from typing import Literal, Protocol, TypeAlias, cast
 
 import torch
@@ -24,7 +23,7 @@ class TransformerBackboneReturnsIntermediateLayers(Protocol):
     rope_embed: nn.Module
 
     def get_intermediate_layers(
-            self, x: Tensor, n: int, norm: bool
+        self, x: Tensor, n: int, norm: bool
     ) -> tuple[Tensor, ...]: ...
 
 
@@ -48,12 +47,12 @@ class DinoV3(BaseNode):
     in_width: int
 
     def __init__(
-            self,
-            weights_link: str = "",
-            return_sequence: bool = False,
-            variant: DINOv3Variant = "vits16",
-            repo_dir: str = "facebookresearch/dinov3",
-            **kwargs,
+        self,
+        weights_link: str = "",
+        return_sequence: bool = False,
+        variant: DINOv3Variant = "vits16",
+        repo_dir: str = "facebookresearch/dinov3",
+        **kwargs,
     ):
         """DinoV3 backbone.
 
@@ -91,7 +90,8 @@ class DinoV3(BaseNode):
 
     def _replace_rope_embedding(self) -> None:
         """Replaces the default RoPE embedding in the DinoV3 backbone
-        with a nearly-identical implementation that is ONNX-convertible."""
+        with a nearly-identical implementation that is ONNX-
+        convertible."""
         old_rope = self.backbone.rope_embed
         new_rope_cls = RopePositionEmbedding
 
@@ -150,10 +150,10 @@ class DinoV3(BaseNode):
 
     @staticmethod
     def _get_backbone(
-            weights: str = "",
-            variant: DINOv3Variant = "vits16",
-            repo_dir: str = "facebookresearch/dinov3",
-            **kwargs,
+        weights: str = "",
+        variant: DINOv3Variant = "vits16",
+        repo_dir: str = "facebookresearch/dinov3",
+        **kwargs,
     ) -> tuple[TransformerBackboneReturnsIntermediateLayers, int]:
         variant_to_hub_name = {
             "vits16": "dinov3_vits16",
