@@ -30,7 +30,6 @@ on:
         description: 'Codecov upload token'
         required: true
 
-
 permissions:
   pull-requests: write
   contents: write

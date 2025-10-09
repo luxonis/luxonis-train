@@ -24,7 +24,7 @@ class TransformerBackboneReturnsIntermediateLayers(Protocol):
     rope_embed: nn.Module
 
     def get_intermediate_layers(
-        self, x: Tensor, n: int, norm: bool
+            self, x: Tensor, n: int, norm: bool
     ) -> tuple[Tensor, ...]: ...
 
 
@@ -48,27 +48,29 @@ class DinoV3(BaseNode):
     in_width: int
 
     def __init__(
-        self,
-        weights_link: str = "",
-        return_sequence: bool = False,
-        variant: DINOv3Variant = "vits16",
-        repo_dir: str = "facebookresearch/dinov3",
-        **kwargs,
+            self,
+            weights_link: str = "",
+            return_sequence: bool = False,
+            variant: DINOv3Variant = "vits16",
+            repo_dir: str = "facebookresearch/dinov3",
+            **kwargs,
     ):
         """DinoV3 backbone.
 
         Source: U{https://github.com/facebookresearch/dinov3}
 
+        @license: U{https://github.com/facebookresearch/dinov3?tab=License-1-ov-file#readme}
+
+        @type weights_link: a weights link for the specific model, which needs to be requested here U{https://pytorch.org/get-started/locally/}
+
+        @param return_sequence: If True, return the patch sequence [B, N, C] directly to be processed by transformer heads. Otherwise, turn patch embeddings into [B, C, H, W] feature map to be passed to traditional heads
+        @type return_sequence: bool
+
         @param variant: Architecture variant of the DINOv3 backbone.
         @type variant: Literal of supported DINOv3 variants.
 
-        @type weights: Literal["download", "none"] or None
-
-        @param repo_dir: Torch Hub repo to use. Defaults to the official "facebookresearch/dinov3".
+        @param repo_dir: "facebookresearch/dinov3" if the repository is not locally donwloaded or cached, "local" otherwise
         @type repo_dir: str
-
-        @param return_sequence: If True, return the patch sequence directly to be processed by classification head. Otherwise, turn patch embeddings into [B, C, H, W] feature map to be passed to traditional heads
-        @type return_sequence: bool
         """
         super().__init__(**kwargs)
 
@@ -89,7 +91,7 @@ class DinoV3(BaseNode):
 
     def _replace_rope_embedding(self) -> None:
         """Replaces the default RoPE embedding in the DinoV3 backbone
-        with a custom implementation that is ONNX-convertible."""
+        with a nearly-identical implementation that is ONNX-convertible."""
         old_rope = self.backbone.rope_embed
         new_rope_cls = RopePositionEmbedding
 
@@ -104,10 +106,6 @@ class DinoV3(BaseNode):
                 rope_kwargs[name] = getattr(old_rope, name)
 
         self.backbone.rope_embed = new_rope_cls(**rope_kwargs)
-
-    def _is_ci(self) -> bool:
-        """Detect if we're running in a CI environment."""
-        return os.getenv("CI", "false").lower() == "true"
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         features = self.backbone.get_intermediate_layers(
@@ -152,10 +150,10 @@ class DinoV3(BaseNode):
 
     @staticmethod
     def _get_backbone(
-        weights: str = "https://dinov3.llamameta.net/dinov3_vits16/dinov3_vits16_pretrain_lvd1689m-08c60483.pth?Policy=eyJTdGF0ZW1lbnQiOlt7InVuaXF1ZV9oYXNoIjoidWp6bWNmNGp4dXF0bW0xM2d3M3o3Y2F1IiwiUmVzb3VyY2UiOiJodHRwczpcL1wvZGlub3YzLmxsYW1hbWV0YS5uZXRcLyoiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3NTk1MDMwNTF9fX1dfQ__&Signature=YAEFDMsDR%7EMobuJJagjxyviGtUYb7WG-bAlgi-x8a5be2uJGXg05E3OUTCEP7lgnxUoVqgF9imdxVDk0vOOv9fdyFY8mhVftHNnZO-YVxcH1XlVtF4unrkN3ulGWvjEFJspLzXutaya5keKLKsEquFjF%7EYudenOBolIme0l3K6WtYJHa5MY7qseGn69fkaaNhkKFivlZamS%7E9Wi-UN1ByowC2Dql%7E5V6xvY-i23MjMPAwCV4DLVVqtV7BtpPA5F2dfbi%7En7NJqW5yQBuMmittKpd14pGCx29V-8wmFfQPDvY5v4SiF00z7eCShjreGCrjX0rVfTSTo1uTIYCFyZguw__&Key-Pair-Id=K15QRJLYKIFSLZ&Download-Request-ID=3345018032303110",
-        variant: DINOv3Variant = "vits16",
-        repo_dir: str = "facebookresearch/dinov3",
-        **kwargs,
+            weights: str = "",
+            variant: DINOv3Variant = "vits16",
+            repo_dir: str = "facebookresearch/dinov3",
+            **kwargs,
     ) -> tuple[TransformerBackboneReturnsIntermediateLayers, int]:
         variant_to_hub_name = {
             "vits16": "dinov3_vits16",
