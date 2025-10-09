@@ -148,7 +148,7 @@ class DinoV3(BaseNode):
 
     @staticmethod
     def _get_backbone(
-        weights: str = "tests/data/checkpoints/dinov3_vits16_pretrain_lvd1689m-08c60483.pth",
+        weights: str = "",
         variant: DINOv3Variant = "vits16",
         repo_dir: str = "facebookresearch/dinov3",
         **kwargs,
@@ -169,12 +169,21 @@ class DinoV3(BaseNode):
         if variant not in variant_to_hub_name:
             raise ValueError(f"Unsupported variant: {variant}")
 
-        model = torch.hub.load(
-            repo_or_dir=repo_dir,
-            model=variant_to_hub_name[variant],
-            source="github",
-            **kwargs,
-        )
+        if weights:
+            model = torch.hub.load(
+                repo_or_dir=repo_dir,
+                model=variant_to_hub_name[variant],
+                source="github",
+                **kwargs,
+            )
+        else:
+            model = torch.hub.load(
+                weights=weights,
+                repo_or_dir=repo_dir,
+                model=variant_to_hub_name[variant],
+                source="github",
+                **kwargs,
+            )
         model = cast(TransformerBackboneReturnsIntermediateLayers, model)
         patch_size = getattr(model, "patch_size", 16)
         return model, patch_size
