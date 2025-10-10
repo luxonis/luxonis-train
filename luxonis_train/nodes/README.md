@@ -236,7 +236,7 @@ Adapted from [here](https://github.com/facebookresearch/dinov3)
 > Tested export functionality with `opset_version` set to 16.
 
 | Key       | Type                                                                                                                                                 | Default value | Description            |
-|-----------|------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|------------------------|
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------------- |
 | `variant` | `Literal["vits16", "vits16plus", "vitb16", "vitl16", "vith16plus", "vit7b16", "convnext_tiny", "convnext_small", "convnext_base", "convnext_large"]` | `"vitb16"`    | Variant of the network |
 
 ## Necks
@@ -288,7 +288,7 @@ backbones, for example [`DINOv3`](#dinov3).
 **Parameters:**
 
 | Key             | Type    | Default value | Description                                                                  |
-|-----------------|---------|---------------|------------------------------------------------------------------------------|
+| --------------- | ------- | ------------- | ---------------------------------------------------------------------------- |
 | `dropout_rate`  | `float` | `0.2`         | Dropout rate before last layer.                                              |
 | `use_cls_token` | `bool`  | `False`       | If True, use the first token (CLS token) instead of pooling across patches.. |
 
