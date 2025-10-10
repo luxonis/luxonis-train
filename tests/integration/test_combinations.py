@@ -1,8 +1,10 @@
+from pathlib import Path
+from typing import cast
+
 import pytest
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import Params, ParamValue
 from pytest_subtests import SubTests
-from pathlib import Path
 
 from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
@@ -38,99 +40,101 @@ def get_config(backbone: str, dinov3_weights: Path) -> Params:
         {"name": "ConfusionMatrix"},
     ]
 
-    backbone_node = {"name": backbone, "variant": "default"}
+    backbone_node: Params = {"name": backbone, "variant": "default"}
     if backbone == "DinoV3":
         backbone_node["params"] = {"weights_link": str(dinov3_weights)}
 
-    config = {
-        "model": {
-            "nodes": [
-                backbone_node,
-                {
-                    "name": "EfficientBBoxHead",
-                    "task_name": "vehicles",
-                    "losses": [
-                        {
-                            "name": "AdaptiveDetectionLoss",
-                            "params": {"per_class_weights": [0, 0.5, 0.5]},
-                        }
-                    ],
-                    "metrics": [
-                        {"name": "MeanAveragePrecision"},
-                        {"name": "ConfusionMatrix"},
-                    ],
-                    "visualizers": [{"name": "BBoxVisualizer"}],
-                },
-                {
-                    "name": "EfficientKeypointBBoxHead",
-                    "task_name": "motorbikes",
-                    "losses": [{"name": "EfficientKeypointBBoxLoss"}],
-                    "metrics": [
-                        {"name": "MeanAveragePrecision"},
-                        {"name": "ConfusionMatrix"},
-                    ],
-                    "visualizers": [{"name": "KeypointVisualizer"}],
-                },
-                {
-                    "name": "PrecisionSegmentBBoxHead",
-                    "task_name": "vehicles",
-                    "losses": [{"name": "PrecisionDFLSegmentationLoss"}],
-                    "metrics": [
-                        {"name": "MeanAveragePrecision"},
-                        {"name": "ConfusionMatrix"},
-                    ],
-                    "visualizers": [
-                        {"name": "InstanceSegmentationVisualizer"}
-                    ],
-                },
-                {
-                    "name": "PrecisionBBoxHead",
-                    "task_name": "vehicles",
-                    "losses": [{"name": "PrecisionDFLDetectionLoss"}],
-                    "metrics": [
-                        {"name": "MeanAveragePrecision"},
-                        {"name": "ConfusionMatrix"},
-                    ],
-                },
-                {
-                    "name": "BiSeNetHead",
-                    "alias": "BiSeNet-binary-cars",
-                    "task_name": "cars",
-                    "losses": seg_binary_losses,
-                    "metrics": seg_metrics,
-                    "visualizers": [{"name": "SegmentationVisualizer"}],
-                },
-                {
-                    "name": "BiSeNetHead",
-                    "alias": "BiSeNet-multi-color",
-                    "task_name": "color",
-                    "losses": seg_multi_losses,
-                    "metrics": seg_metrics,
-                    "visualizers": [{"name": "SegmentationVisualizer"}],
-                },
-                {
-                    "name": "SegmentationHead",
-                    "alias": "seg-binary-motorbikes",
-                    "task_name": "motorbikes",
-                    "losses": seg_binary_losses,
-                    "metrics": seg_metrics,
-                    "visualizers": [{"name": "SegmentationVisualizer"}],
-                },
-                {
-                    "name": "SegmentationHead",
-                    "alias": "seg-multi-vehicles",
-                    "task_name": "vehicles",
-                    "losses": seg_multi_losses,
-                    "metrics": seg_metrics,
-                    "visualizers": [{"name": "SegmentationVisualizer"}],
-                },
-            ],
-        }
-    }
+    config = cast(
+        Params,
+        {
+            "model": {
+                "nodes": [
+                    backbone_node,
+                    {
+                        "name": "EfficientBBoxHead",
+                        "task_name": "vehicles",
+                        "losses": [
+                            {
+                                "name": "AdaptiveDetectionLoss",
+                                "params": {"per_class_weights": [0, 0.5, 0.5]},
+                            }
+                        ],
+                        "metrics": [
+                            {"name": "MeanAveragePrecision"},
+                            {"name": "ConfusionMatrix"},
+                        ],
+                        "visualizers": [{"name": "BBoxVisualizer"}],
+                    },
+                    {
+                        "name": "EfficientKeypointBBoxHead",
+                        "task_name": "motorbikes",
+                        "losses": [{"name": "EfficientKeypointBBoxLoss"}],
+                        "metrics": [
+                            {"name": "MeanAveragePrecision"},
+                            {"name": "ConfusionMatrix"},
+                        ],
+                        "visualizers": [{"name": "KeypointVisualizer"}],
+                    },
+                    {
+                        "name": "PrecisionSegmentBBoxHead",
+                        "task_name": "vehicles",
+                        "losses": [{"name": "PrecisionDFLSegmentationLoss"}],
+                        "metrics": [
+                            {"name": "MeanAveragePrecision"},
+                            {"name": "ConfusionMatrix"},
+                        ],
+                        "visualizers": [
+                            {"name": "InstanceSegmentationVisualizer"}
+                        ],
+                    },
+                    {
+                        "name": "PrecisionBBoxHead",
+                        "task_name": "vehicles",
+                        "losses": [{"name": "PrecisionDFLDetectionLoss"}],
+                        "metrics": [
+                            {"name": "MeanAveragePrecision"},
+                            {"name": "ConfusionMatrix"},
+                        ],
+                    },
+                    {
+                        "name": "BiSeNetHead",
+                        "alias": "BiSeNet-binary-cars",
+                        "task_name": "cars",
+                        "losses": seg_binary_losses,
+                        "metrics": seg_metrics,
+                        "visualizers": [{"name": "SegmentationVisualizer"}],
+                    },
+                    {
+                        "name": "BiSeNetHead",
+                        "alias": "BiSeNet-multi-color",
+                        "task_name": "color",
+                        "losses": seg_multi_losses,
+                        "metrics": seg_metrics,
+                        "visualizers": [{"name": "SegmentationVisualizer"}],
+                    },
+                    {
+                        "name": "SegmentationHead",
+                        "alias": "seg-binary-motorbikes",
+                        "task_name": "motorbikes",
+                        "losses": seg_binary_losses,
+                        "metrics": seg_metrics,
+                        "visualizers": [{"name": "SegmentationVisualizer"}],
+                    },
+                    {
+                        "name": "SegmentationHead",
+                        "alias": "seg-multi-vehicles",
+                        "task_name": "vehicles",
+                        "losses": seg_multi_losses,
+                        "metrics": seg_metrics,
+                        "visualizers": [{"name": "SegmentationVisualizer"}],
+                    },
+                ],
+            }
+        },
+    )
 
     if backbone == "DinoV3":
         config["exporter"] = {"onnx": {"opset_version": 16}}
-    print(config)
 
     return config
 

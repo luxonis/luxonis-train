@@ -18,25 +18,25 @@ class RopePositionEmbedding(nn.Module):
     periods: Tensor
 
     def __init__(
-            self,
-            embed_dim: int,
-            *,
-            num_heads: int,
-            base: float | None = 100.0,
-            min_period: float | None = None,
-            max_period: float | None = None,
-            normalize_coords: Literal["min", "max", "separate"] = "separate",
-            shift_coords: float | None = None,
-            jitter_coords: float | None = None,
-            rescale_coords: float | None = None,
-            dtype: torch.dtype | None = None,
-            device: torch.device | None = None,
+        self,
+        embed_dim: int,
+        *,
+        num_heads: int,
+        base: float | None = 100.0,
+        min_period: float | None = None,
+        max_period: float | None = None,
+        normalize_coords: Literal["min", "max", "separate"] = "separate",
+        shift_coords: float | None = None,
+        jitter_coords: float | None = None,
+        rescale_coords: float | None = None,
+        dtype: torch.dtype | None = None,
+        device: torch.device | None = None,
     ):
         super().__init__()
         assert embed_dim % (4 * num_heads) == 0
         both_periods = min_period is not None and max_period is not None
         if (base is None and not both_periods) or (
-                base is not None and both_periods
+            base is not None and both_periods
         ):
             raise ValueError(
                 "Either `base` or `min_period`+`max_period` must be provided."
@@ -115,11 +115,12 @@ class RopePositionEmbedding(nn.Module):
 
         # Prepare angles and sin/cos
         angles = (
-                2 * math.pi * coords[:, :, None] / self.periods[None, None, :]
+            2 * math.pi * coords[:, :, None] / self.periods[None, None, :]
         )  # [HW, 2, D//4]
         angles = angles.flatten(1, 2)  # [HW, D//2]
-        angles = angles.repeat(1,
-                               2)  # [HW, D] This line was changed from angles = angles.tile(2), as angles.tile is not yet ONNX-convertible
+        angles = angles.repeat(
+            1, 2
+        )  # [HW, D] This line was changed from angles = angles.tile(2), as angles.tile is not yet ONNX-convertible
         cos = torch.cos(angles)  # [HW, D]
         sin = torch.sin(angles)  # [HW, D]
 
@@ -130,9 +131,9 @@ class RopePositionEmbedding(nn.Module):
         dtype = self.dtype
         if self.base is not None:
             periods = self.base ** (
-                    2
-                    * torch.arange(self.D_head // 4, device=device, dtype=dtype)
-                    / (self.D_head // 2)
+                2
+                * torch.arange(self.D_head // 4, device=device, dtype=dtype)
+                / (self.D_head // 2)
             )  # [D//4]
         else:
             assert self.max_period is not None
@@ -141,9 +142,9 @@ class RopePositionEmbedding(nn.Module):
             exponents = torch.linspace(
                 0, 1, self.D_head // 4, device=device, dtype=dtype
             )  # [D//4] range [0, 1]
-            periods = base ** exponents  # range [1, max_period / min_period]
+            periods = base**exponents  # range [1, max_period / min_period]
             periods = periods / base  # range [min_period / max_period, 1]
             periods = (
-                    periods * self.max_period
+                periods * self.max_period
             )  # range [min_period, max_period]
         self.periods.data = periods

@@ -1,10 +1,8 @@
-import inspect
 from typing import Literal, TypeAlias, cast
 
 import torch
 from loguru import logger
 from torch import Tensor, nn
-from typing_extensions import override
 
 from luxonis_train.nodes.backbones.dinov3.rope_position_encoding import (
     RopePositionEmbedding,
@@ -24,7 +22,7 @@ class TransformerBackboneReturnsIntermediateLayers(nn.Module):
     rope_embed: nn.Module
 
     def get_intermediate_layers(
-            self, x: Tensor, n: int, norm: bool
+        self, x: Tensor, n: int, norm: bool
     ) -> tuple[Tensor, ...]: ...
 
 
@@ -48,12 +46,12 @@ class DinoV3(BaseNode):
     in_width: int
 
     def __init__(
-            self,
-            weights_link,
-            return_sequence: bool = False,
-            variant: DINOv3Variant = "vits16",
-            repo_dir: str = "facebookresearch/dinov3",
-            **kwargs,
+        self,
+        weights_link: str,
+        return_sequence: bool = False,
+        variant: DINOv3Variant = "vits16",
+        repo_dir: str = "facebookresearch/dinov3",
+        **kwargs,
     ):
         """DinoV3 backbone.
 
@@ -134,10 +132,10 @@ class DinoV3(BaseNode):
 
     @staticmethod
     def _get_backbone(
-            weights: str = "",
-            variant: DINOv3Variant = "vits16",
-            repo_dir: str = "facebookresearch/dinov3",
-            **kwargs,
+        weights: str = "",
+        variant: DINOv3Variant = "vits16",
+        repo_dir: str = "facebookresearch/dinov3",
+        **kwargs,
     ) -> tuple[TransformerBackboneReturnsIntermediateLayers, int]:
         if variant not in DINOv3Variant.__args__:
             raise ValueError(f"Unsupported variant: {variant}")

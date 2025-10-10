@@ -4,7 +4,6 @@ import torch
 import torch.nn.functional as F
 from loguru import logger
 from torch import Size, Tensor, nn
-from typing_extensions import override
 
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks

@@ -1,7 +1,5 @@
 from loguru import logger
-from luxonis_ml.typing import Params
 from torch import Size, Tensor, nn
-from typing_extensions import override
 
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
@@ -13,7 +11,7 @@ class TransformerClassificationHead(BaseHead):
     parser: str = "ClassificationParser"
 
     def __init__(
-            self, dropout_rate: float = 0.2, use_cls_token: bool = False, **kwargs
+        self, dropout_rate: float = 0.2, use_cls_token: bool = False, **kwargs
     ):
         """Classification head for transformer patch embeddings.
 
