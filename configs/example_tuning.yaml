@@ -1,6 +1,5 @@
 # Example configuration for tuning a predefined light segmentation model
 
-
 model:
   name: detection_light
   predefined_model:
@@ -27,16 +26,12 @@ trainer:
       - name: Flip
 
   batch_size: 8
-  epochs: &epochs 200
+  epochs: 200
   validation_interval: 10
   n_log_images: 8
 
   scheduler:
     name: CosineAnnealingLR
-    params:
-      T_max: *epochs
-      eta_min: 0
-
 
 tuner:
   study_name: det_study
