@@ -98,7 +98,7 @@ class RopePositionEmbedding(nn.Module):
         # Jitter coords by multiplying the range [-1, 1] by a log-uniform value in [1/jitter, jitter]
         if self.training and self.jitter_coords is not None:
             jitter_max = np.log(
-                self.rescale_coords
+                self.jitter_coords
             )  # was previously np.log(self.rescale_coords)
             jitter_min = -jitter_max
             jitter_hw = (
