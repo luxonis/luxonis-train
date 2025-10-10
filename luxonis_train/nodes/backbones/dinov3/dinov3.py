@@ -1,5 +1,5 @@
 import inspect
-from typing import Literal, Protocol, TypeAlias, cast
+from typing import Literal, TypeAlias, cast
 
 import torch
 from loguru import logger
@@ -10,9 +10,10 @@ from luxonis_train.nodes.backbones.dinov3.rope_position_encoding import (
     RopePositionEmbedding,
 )
 from luxonis_train.nodes.base_node import BaseNode
+from luxonis_train.typing import get_signature
 
 
-class TransformerBackboneReturnsIntermediateLayers(Protocol):
+class TransformerBackboneReturnsIntermediateLayers(nn.Module):
     """Minimal interface for DINOv3 models.
 
     To properly declare the dinov3.models.vision_transformer.DinoVisionTransformer type, the Dinov3 repository needs to be cloned locally.
@@ -23,7 +24,7 @@ class TransformerBackboneReturnsIntermediateLayers(Protocol):
     rope_embed: nn.Module
 
     def get_intermediate_layers(
-        self, x: Tensor, n: int, norm: bool
+            self, x: Tensor, n: int, norm: bool
     ) -> tuple[Tensor, ...]: ...
 
 
@@ -47,12 +48,12 @@ class DinoV3(BaseNode):
     in_width: int
 
     def __init__(
-        self,
-        weights_link: str = "",
-        return_sequence: bool = False,
-        variant: DINOv3Variant = "vits16",
-        repo_dir: str = "facebookresearch/dinov3",
-        **kwargs,
+            self,
+            weights_link: str = "",
+            return_sequence: bool = False,
+            variant: DINOv3Variant = "vits16",
+            repo_dir: str = "facebookresearch/dinov3",
+            **kwargs,
     ):
         """DinoV3 backbone.
 
@@ -93,9 +94,8 @@ class DinoV3(BaseNode):
         with a nearly-identical implementation that is ONNX-
         convertible."""
         old_rope = self.backbone.rope_embed
-        new_rope_cls = RopePositionEmbedding
 
-        init_params = inspect.signature(new_rope_cls.__init__).parameters
+        init_params = get_signature(RopePositionEmbedding.__init__)
         param_names = [p for p in init_params if p != "self"]
 
         rope_kwargs = {}
@@ -105,7 +105,7 @@ class DinoV3(BaseNode):
             elif hasattr(old_rope, name):
                 rope_kwargs[name] = getattr(old_rope, name)
 
-        self.backbone.rope_embed = new_rope_cls(**rope_kwargs)
+        self.backbone.rope_embed = RopePositionEmbedding(**rope_kwargs)
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         features = self.backbone.get_intermediate_layers(
@@ -133,56 +133,28 @@ class DinoV3(BaseNode):
         return outs
 
     @staticmethod
-    @override
-    def get_variants() -> tuple[str, dict[str, DINOv3Kwargs]]:
-        return "vits16", {
-            "vits16": {"variant": "vits16"},
-            "vits16plus": {"variant": "vits16plus"},
-            "vitb16": {"variant": "vitb16"},
-            "vitl16": {"variant": "vitl16"},
-            "vith16plus": {"variant": "vith16plus"},
-            "vit7b16": {"variant": "vit7b16"},
-            "convnext_tiny": {"variant": "convnext_tiny"},
-            "convnext_small": {"variant": "convnext_small"},
-            "convnext_base": {"variant": "convnext_base"},
-            "convnext_large": {"variant": "convnext_large"},
-        }
-
-    @staticmethod
     def _get_backbone(
-        weights: str = "",
-        variant: DINOv3Variant = "vits16",
-        repo_dir: str = "facebookresearch/dinov3",
-        **kwargs,
+            weights: str = "",
+            variant: DINOv3Variant = "vits16",
+            repo_dir: str = "facebookresearch/dinov3",
+            **kwargs,
     ) -> tuple[TransformerBackboneReturnsIntermediateLayers, int]:
-        variant_to_hub_name = {
-            "vits16": "dinov3_vits16",
-            "vits16plus": "dinov3_vits16plus",
-            "vitb16": "dinov3_vitb16",
-            "vitl16": "dinov3_vitl16",
-            "vith16plus": "dinov3_vith16plus",
-            "vit7b16": "dinov3_vit7b16",
-            "convnext_tiny": "dinov3_convnext_tiny",
-            "convnext_small": "dinov3_convnext_small",
-            "convnext_base": "dinov3_convnext_base",
-            "convnext_large": "dinov3_convnext_large",
-        }
-
-        if variant not in variant_to_hub_name:
+        if variant not in DINOv3Variant.__args__:
             raise ValueError(f"Unsupported variant: {variant}")
+        model_name = f"dinov3_{variant}"
 
         if weights:
             model = torch.hub.load(
                 weights=weights,
                 repo_or_dir=repo_dir,
-                model=variant_to_hub_name[variant],
+                model=model_name,
                 source="github",
                 **kwargs,
             )
         else:
             model = torch.hub.load(
                 repo_or_dir=repo_dir,
-                model=variant_to_hub_name[variant],
+                model=model_name,
                 source="github",
                 **kwargs,
             )

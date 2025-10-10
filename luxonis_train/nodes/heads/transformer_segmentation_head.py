@@ -30,7 +30,7 @@ class TransformerSegmentationHead(BaseHead):
             nn.Linear(self.in_channels, self.n_classes),
         )
 
-        if len(self.input_shapes[0]["features"]) == 4:
+        if len(self.in_sizes) == 4:
             logger.warning(
                 "The transformer segmentation head will not work with feature maps of dimension [B, C, H, W] as input. Please provide patch-level embeddings from transformer backbones in the format [B, C, N]"
             )
@@ -64,7 +64,7 @@ class TransformerSegmentationHead(BaseHead):
             5) Upsample to original image resolution (H, W).
         """
         B, N_with_cls, C = x.shape
-        h, w = self.original_in_shape[1:]  # Original input resolution
+        h, w = self.original_in_shape[1:]
 
         # Remove class token
         x = x[:, 1:, :]
@@ -93,7 +93,3 @@ class TransformerSegmentationHead(BaseHead):
         return F.interpolate(
             x, size=(h, w), mode="bilinear", align_corners=False
         )
-
-    @override
-    def get_custom_head_config(self) -> dict:
-        return {"is_softmax": False}

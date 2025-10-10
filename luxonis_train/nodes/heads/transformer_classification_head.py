@@ -13,7 +13,7 @@ class TransformerClassificationHead(BaseHead):
     parser: str = "ClassificationParser"
 
     def __init__(
-        self, dropout_rate: float = 0.2, use_cls_token: bool = False, **kwargs
+            self, dropout_rate: float = 0.2, use_cls_token: bool = False, **kwargs
     ):
         """Classification head for transformer patch embeddings.
 
@@ -27,7 +27,7 @@ class TransformerClassificationHead(BaseHead):
         self.dropout = nn.Dropout(dropout_rate)
         self.fc = nn.Linear(self.in_channels, self.n_classes)
 
-        if len(self.input_shapes[0]["features"]) == 4:
+        if len(self.in_sizes) == 4:
             logger.warning(
                 "The transformer segmentation head will not work with feature maps of dimension [B, C, H, W] as input. Please provide patch-level embeddings from transformer backbones in the format [B, C, N]"
             )
@@ -52,7 +52,3 @@ class TransformerClassificationHead(BaseHead):
 
         x = self.dropout(x)
         return self.fc(x)
-
-    @override
-    def get_custom_head_config(self) -> Params:
-        return {"is_softmax": False}
