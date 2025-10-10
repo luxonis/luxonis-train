@@ -6,6 +6,7 @@
 import math
 from typing import Literal
 
+import numpy as np
 import torch
 from torch import Tensor, nn
 
@@ -96,7 +97,7 @@ class RopePositionEmbedding(nn.Module):
 
         # Jitter coords by multiplying the range [-1, 1] by a log-uniform value in [1/jitter, jitter]
         if self.training and self.jitter_coords is not None:
-            jitter_max = torch.log(
+            jitter_max = np.log(
                 self.rescale_coords
             )  # was previously np.log(self.rescale_coords)
             jitter_min = -jitter_max
@@ -107,7 +108,7 @@ class RopePositionEmbedding(nn.Module):
 
         # Rescale coords by multiplying the range [-1, 1] by a log-uniform value in [1/rescale, rescale]
         if self.training and self.rescale_coords is not None:
-            rescale_max = torch.log(
+            rescale_max = np.log(
                 self.rescale_coords
             )  # was previously np.log(self.rescale_coords)
             rescale_min = -rescale_max
