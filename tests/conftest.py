@@ -28,6 +28,7 @@ def work_dir() -> Generator[Path]:
 
     shutil.rmtree(path, ignore_errors=True)
 
+
 @pytest.fixture(scope="session")
 def data_dir() -> Path:
     path = Path("tests", "data")
@@ -62,14 +63,14 @@ def parking_lot_dataset(data_dir: Path) -> LuxonisDataset:
         save_dir=data_dir,
     ).parse()
 
+
 @pytest.fixture(scope="session")
 def dinov3_weights() -> Path:
     checkpoint_name = "dinov3_vits16_pretrain_lvd1689m-08c60483.pth"
     dest_dir = Path("tests", "data", "checkpoints")
-    local_path = dest_dir / checkpoint_name
-    if not local_path.exists():
-        remote_path = f"gs://luxonis-test-bucket/luxonis-train-test-data/checkpoints/{checkpoint_name}"
-        return LuxonisFileSystem.download(remote_path, dest=dest_dir)
+    remote_path = f"gs://luxonis-test-bucket/luxonis-train-test-data/checkpoints/{checkpoint_name}"
+    path_file = LuxonisFileSystem.download(remote_path, dest=dest_dir)
+    return path_file
 
 
 class LuxonisTestDataset(LuxonisDataset):

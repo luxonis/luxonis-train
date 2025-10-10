@@ -2,6 +2,7 @@ import pytest
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import Params, ParamValue
 from pytest_subtests import SubTests
+from pathlib import Path
 
 from luxonis_train.core import LuxonisModel
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
@@ -13,7 +14,7 @@ BACKBONES = [
 ]
 
 
-def get_config(backbone: str) -> Params:
+def get_config(backbone: str, dinov3_weights: Path) -> Params:
     seg_multi_losses: ParamValue = [
         {"name": "CrossEntropyLoss"},
         {"name": "SigmoidFocalLoss"},
@@ -36,10 +37,15 @@ def get_config(backbone: str) -> Params:
         {"name": "Recall"},
         {"name": "ConfusionMatrix"},
     ]
-    return {
+
+    backbone_node = {"name": backbone, "variant": "default"}
+    if backbone == "DinoV3":
+        backbone_node["params"] = {"weights_link": str(dinov3_weights)}
+
+    config = {
         "model": {
             "nodes": [
-                {"name": backbone, "variant": "default"},
+                backbone_node,
                 {
                     "name": "EfficientBBoxHead",
                     "task_name": "vehicles",
@@ -122,15 +128,22 @@ def get_config(backbone: str) -> Params:
         }
     }
 
+    if backbone == "DinoV3":
+        config["exporter"] = {"onnx": {"opset_version": 16}}
+    print(config)
+
+    return config
+
 
 @pytest.mark.parametrize("backbone", BACKBONES)
 def test_combinations(
     backbone: str,
     parking_lot_dataset: LuxonisDataset,
+    dinov3_weights: Path,
     opts: Params,
     subtests: SubTests,
 ):
-    config = get_config(backbone)
+    config = get_config(backbone, dinov3_weights)
     opts |= {"loader.params.dataset_name": parking_lot_dataset.identifier}
     model = LuxonisModel(config, opts)
 
