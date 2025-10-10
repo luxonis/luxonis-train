@@ -31,7 +31,7 @@ class TransformerSegmentationHead(BaseHead):
 
         if len(self.in_sizes) == 4:
             logger.warning(
-                "The transformer segmentation head will not work with feature maps of dimension [B, C, H, W] as input. Please provide patch-level embeddings from transformer backbones in the format [B, C, N]"
+                "The transformer segmentation head will not work with feature maps of dimension [B, C, H, W] as input. Please provide patch-level embeddings from transformer backbones in the format [B, N, C]"
             )
 
         logger.warning(
