@@ -36,8 +36,8 @@ trainer:
 exporter:
   onnx:
     # Override the default ONNX opset version if needed
-    opset_version: 11
-  # Additioanlly compile to BLOB for use with RVC2 devices
+    opset_version: 16
+  # Additionally compile to BLOB for use with RVC2 devices
   blobconverter:
     active: true
     shaves: 8
