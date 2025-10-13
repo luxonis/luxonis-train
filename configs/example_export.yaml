@@ -1,13 +1,23 @@
-# Example configuration for exporting a predefined light detection model
+# Example configuration for exporting a predefined
+# light detection model to ONNX and BLOB formats.
 
 model:
   name: detection_light
-  weights: null  # TODO: Specify a path to the weights here
+
+  # NOTE: Specify a path or URL to the weights here
+  # Alternatively, use the `--weights` argument
+  # if you are using the `luxonis_train` CLI tool.
+  weights: null
+
   predefined_model:
     name: DetectionModel
     variant: light
     params:
       head_params:
+        # Specify custom output names of the exported ONNX model.
+        #
+        # NOTE: These are actually the default names for the
+        # `EfficientBBoxHead` node used in the light detection model.
         export_output_names:
           - output1_yolov6r2
           - output2_yolov6r2
@@ -20,35 +30,14 @@ loader:
 trainer:
   preprocessing:
     train_image_size: [384, 512]
-    keep_aspect_ratio: true
-    normalize:
-      active: true
 
   batch_size: 8
-  epochs: &epochs 200
-  n_workers: 4
-  validation_interval: 10
-  n_log_images: 8
-
-  optimizer:
-    name: SGD
-    params:
-      lr: 0.02
-      momentum: 0.937
-      weight_decay: 0.0005
-      dampening: 0.0
-      nesterov: true
-
-  scheduler:
-    name: CosineAnnealingLR
-    params:
-      T_max: *epochs
-      eta_min: 0.0002
-      last_epoch: -1
 
 exporter:
   onnx:
-    opset_version: 11
+    # Override the default ONNX opset version if needed
+    opset_version: 16
+  # Additionally compile to BLOB for use with RVC2 devices and DepthAIv2
   blobconverter:
     active: true
     shaves: 8
