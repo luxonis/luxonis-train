@@ -37,7 +37,7 @@ exporter:
   onnx:
     # Override the default ONNX opset version if needed
     opset_version: 16
-  # Additionally compile to BLOB for use with RVC2 devicesand DepthAIv2
+  # Additionally compile to BLOB for use with RVC2 devices and DepthAIv2
   blobconverter:
     active: true
     shaves: 8
