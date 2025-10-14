@@ -287,9 +287,9 @@ backbones, for example [`DINOv3`](#dinov3).
 
 **Parameters:**
 
-| Key             | Type    | Default value | Description                                                                  |
-| --------------- | ------- | ------------- | ---------------------------------------------------------------------------- |
-| `dropout_rate`  | `float` | `0.2`         | Dropout rate before last layer.                                              |
+| Key            | Type    | Default value | Description                     |
+| -------------- | ------- | ------------- | ------------------------------- |
+| `dropout_rate` | `float` | `0.2`         | Dropout rate before last layer. |
 
 ## Segmentation Heads
 
