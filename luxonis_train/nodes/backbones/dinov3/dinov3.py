@@ -124,7 +124,10 @@ class DinoV3(BaseNode):
     def _replace_rope_embedding(self) -> None:
         """Replaces the default RoPE embedding in the DINOv3 backbone
         with a nearly-identical implementation that is ONNX-
-        convertible."""
+        convertible.
+
+        angles.tile(2) is not ONNX-convertible and was replaced by
+        angles.repeat(1, 2)"""
         old_rope = self.backbone.rope_embed
 
         init_params = get_signature(RopePositionEmbedding.__init__)
