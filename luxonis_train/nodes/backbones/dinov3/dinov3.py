@@ -62,6 +62,7 @@ class DinoV3(BaseNode):
         return_sequence: bool = False,
         variant: DINOv3Variant = "vits16",
         repo_dir: str = "facebookresearch/dinov3",
+        freeze_backbone: bool = False,
         **kwargs,
     ):
         """
@@ -82,6 +83,10 @@ class DinoV3(BaseNode):
         @param repo_dir: "facebookresearch/dinov3" if the repository
         is not locally downloaded or cached, "local" otherwise
         @type repo_dir: str
+
+        @param freeze_backbone: if True, freeze the backbone;
+        only the head will contain trainable parameters
+        @type freeez_backbone: bool
         """
         super().__init__(**kwargs)
 
@@ -95,6 +100,10 @@ class DinoV3(BaseNode):
         )
 
         self._replace_rope_embedding()
+
+        if freeze_backbone:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
 
         logger.warning(
             "DINOv3 is not convertible for RVC2. If RVC2 is your "
