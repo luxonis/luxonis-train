@@ -127,7 +127,8 @@ class DinoV3(BaseNode):
         convertible.
 
         angles.tile(2) is not ONNX-convertible and was replaced by
-        angles.repeat(1, 2)"""
+        angles.repeat(1, 2)
+        """
         old_rope = self.backbone.rope_embed
 
         init_params = get_signature(RopePositionEmbedding.__init__)
