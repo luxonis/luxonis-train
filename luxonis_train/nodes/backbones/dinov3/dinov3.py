@@ -14,7 +14,9 @@ from luxonis_train.typing import get_signature
 class TransformerBackboneReturnsIntermediateLayers(nn.Module):
     """Minimal interface for DINOv3 models.
 
-    To properly declare the dinov3.models.vision_transformer.DinoVisionTransformer type, the Dinov3 repository needs to be cloned locally.
+    To properly declare the
+    dinov3.models.vision_transformer.DinoVisionTransformer
+    type, the DINOv3 repository needs to be cloned locally.
     """
 
     embed_dim: int
@@ -22,7 +24,7 @@ class TransformerBackboneReturnsIntermediateLayers(nn.Module):
     rope_embed: nn.Module
 
     def get_intermediate_layers(
-        self, x: Tensor, n: int, norm: bool
+        self, x: Tensor, n: int, norm: bool, return_class_token: bool
     ) -> tuple[Tensor, ...]: ...
 
 
@@ -41,6 +43,15 @@ DINOv3Variant: TypeAlias = Literal[
 
 
 class DinoV3(BaseNode):
+    """DINOv3 backbone: a self-supervised vision transformer
+    encoder that learns strong, dense feature representations
+    useful for various downstream tasks.
+
+    Source: U{https://github.com/facebookresearch/dinov3}
+    @license: U{https://github.com/facebookresearch/dinov3?
+    tab=License-1-ov-file#readme}
+    """
+
     DINOv3Kwargs = dict[str, str]
     in_height: int
     in_width: int
@@ -53,21 +64,23 @@ class DinoV3(BaseNode):
         repo_dir: str = "facebookresearch/dinov3",
         **kwargs,
     ):
-        """DinoV3 backbone.
+        """
+        @param weights:link: a weights link for the specific model,
+        which needs to be requested here U{https://pytorch.org/get-
+        started/locally/}
+        @type weights_link: string
 
-        Source: U{https://github.com/facebookresearch/dinov3}
-
-        @license: U{https://github.com/facebookresearch/dinov3?tab=License-1-ov-file#readme}
-
-        @type weights_link: a weights link for the specific model, which needs to be requested here U{https://pytorch.org/get-started/locally/}
-
-        @param return_sequence: If True, return the patch sequence [B, N, C] directly to be processed by transformer heads. Otherwise, turn patch embeddings into [B, C, H, W] feature map to be passed to traditional heads
+        @param return_sequence: If True, return the patch sequence
+        [B, N, C] directly to be processed by transformer heads.
+        Otherwise, turn patch embeddings into [B, C, H, W] feature
+        map to be passed to traditional heads
         @type return_sequence: bool
 
         @param variant: Architecture variant of the DINOv3 backbone.
-        @type variant: Literal of supported DINOv3 variants.
+        @type variant: Literal DINOv3Variant.
 
-        @param repo_dir: "facebookresearch/dinov3" if the repository is not locally donwloaded or cached, "local" otherwise
+        @param repo_dir: "facebookresearch/dinov3" if the repository
+        is not locally downloaded or cached, "local" otherwise
         @type repo_dir: str
         """
         super().__init__(**kwargs)
@@ -84,11 +97,22 @@ class DinoV3(BaseNode):
         self._replace_rope_embedding()
 
         logger.warning(
-            "DinoV3 is not convertible for RVC2. If RVC2 is your target platform, please pick a different backbone."
+            "DINOv3 is not convertible for RVC2. If RVC2 is your "
+            "target platform, please pick a different backbone."
         )
+        if (
+            self.original_in_shape[-1] % 16 != 0
+            or self.original_in_shape[-2] % 16 != 0
+        ):
+            logger.warning(
+                "Image dimensions should be divisible by 16,"
+                f"but got {self.original_in_shape}. "
+                "This will cause inconsistent image sizes"
+                "as DINOv3 natively reshapes to multiples of 16."
+            )
 
     def _replace_rope_embedding(self) -> None:
-        """Replaces the default RoPE embedding in the DinoV3 backbone
+        """Replaces the default RoPE embedding in the DINOv3 backbone
         with a nearly-identical implementation that is ONNX-
         convertible."""
         old_rope = self.backbone.rope_embed
@@ -107,7 +131,7 @@ class DinoV3(BaseNode):
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
         features = self.backbone.get_intermediate_layers(
-            inputs, norm=True, n=4
+            inputs, norm=True, n=4, return_class_token=False
         )
         outs: list[Tensor] = []
 
@@ -115,24 +139,27 @@ class DinoV3(BaseNode):
             if self.return_sequence:
                 outs.append(x)  # B x N x C
             else:
-                B, N_with_cls, C = x.shape
+                B, N, C = x.shape
 
-                H = self.in_height // self.patch_size
-                W = self.in_width // self.patch_size
+                grid_height = self.in_height // self.patch_size
+                grid_width = self.in_width // self.patch_size
+                expected_num_patches = grid_height * grid_width
 
-                assert x.shape[1] == H * W, (
-                    f"Expected {H * W} tokens, got {x.shape[1]}"
+                assert expected_num_patches == N, (
+                    f"Expected {expected_num_patches} tokens, got {N}"
                 )
 
                 # Reshape sequence to feature map
-                x = x.permute(0, 2, 1).reshape(B, C, H, W)
-                outs.append(x)
+                feature_map = x.permute(0, 2, 1).reshape(
+                    B, C, grid_height, grid_width
+                )
+                outs.append(feature_map)
 
         return outs
 
     @staticmethod
     def _get_backbone(
-        weights: str = "",
+        weights: str,
         variant: DINOv3Variant = "vits16",
         repo_dir: str = "facebookresearch/dinov3",
         **kwargs,

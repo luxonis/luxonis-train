@@ -1,6 +1,5 @@
 from typing import Any
 
-import torch
 import torch.nn.functional as F
 from loguru import logger
 from torch import Size, Tensor, nn
@@ -10,6 +9,12 @@ from luxonis_train.tasks import Tasks
 
 
 class TransformerSegmentationHead(BaseHead):
+    """Semantic segmentation decoder head for patch sequence from
+    DINOv3.
+
+    Converts [B, N, C] to segmentation map [B, n_classes, H, W]
+    """
+
     in_sizes: Size
     in_height: int
     in_width: int
@@ -19,10 +24,6 @@ class TransformerSegmentationHead(BaseHead):
     parser: str = "SegmentationParser"
 
     def __init__(self, **kwargs: Any):
-        """Decoder head for patch sequence from DINOv3.
-
-        Converts [B, N, C] to segmentation map [B, n_classes, H, W]
-        """
         super().__init__(**kwargs)
         self.head = nn.Sequential(
             nn.LayerNorm(self.in_channels),
@@ -31,11 +32,17 @@ class TransformerSegmentationHead(BaseHead):
 
         if len(self.in_sizes) == 4:
             logger.warning(
-                "The transformer segmentation head will not work with feature maps of dimension [B, C, H, W] as input. Please provide patch-level embeddings from transformer backbones in the format [B, N, C]"
+                "The transformer segmentation head will not work "
+                "with feature maps of dimension [B, C, H, W] as input. "
+                "Please provide patch-level embeddings from "
+                "transformer backbones in the format [B, N, C]"
             )
 
         logger.warning(
-            "In order to accurately calculate the patch size, this class assumes that the CLS token is in the given patch embeddings. Please make sure that the previously-defined transformer encoder does not remove the CLS token."
+            "In order to accurately calculate the patch size, this "
+            "class assumes that the CLS token is in the given patch "
+            "embeddings. Please make sure that the previously-defined "
+            "transformer encoder does not remove the CLS token."
         )
 
     @property
@@ -51,8 +58,7 @@ class TransformerSegmentationHead(BaseHead):
 
     def forward(self, x: Tensor) -> Tensor:
         """
-        @param x: Tensor of shape [B, N+1, C], where N is the number of patch
-                  tokens and the first token is the class (CLS) token at position 0.
+        @param x: Tensor of shape [B, N, C]
         @return: Segmentation logits of shape [B, n_classes, H, W].
 
         @note: Steps performed:
@@ -62,32 +68,22 @@ class TransformerSegmentationHead(BaseHead):
             4) Reshape [B, N, n_classes] → [B, n_classes, H_p, W_p].
             5) Upsample to original image resolution (H, W).
         """
-        B, N_with_cls, C = x.shape
+        B, N, C = x.shape
         h, w = self.original_in_shape[1:]
 
-        # Remove class token
-        x = x[:, 1:, :]
-        N = x.shape[1]
+        expected_N = (h // 16) * (w // 16)
+
+        if expected_N != N:
+            raise RuntimeError(
+                f"Unexpected token count: got {N}, expected {expected_N}"
+            )
 
         x = self.head(x)
 
-        aspect_ratio = w / h
-        H_p = int((N / aspect_ratio) ** 0.5)
-        W_p = N // H_p
+        H_p = h // 16
+        W_p = w // 16
 
-        if H_p * W_p != N:
-            logger.warning(
-                f"Cannot reshape tokens into 2D grid. N={N}, "
-                f"inferred H_p={H_p}, W_p={W_p}, product={H_p * W_p}. "
-                f"Returning dummy output."
-            )
-            return torch.zeros(
-                (B, self.n_classes, h, w), dtype=x.dtype, device=x.device
-            )
-
-        x = x.permute(0, 2, 1).reshape(
-            B, self.n_classes, H_p, W_p
-        )  # [B, n_classes, H_p, W_p]
+        x = x.permute(0, 2, 1).reshape(B, self.n_classes, H_p, W_p)
 
         return F.interpolate(
             x, size=(h, w), mode="bilinear", align_corners=False

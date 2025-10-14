@@ -6,28 +6,29 @@ from luxonis_train.tasks import Tasks
 
 
 class TransformerClassificationHead(BaseHead):
+    """Classification decoder head for patch sequence from DINOv3.
+
+    Converts [B, N, C] to segmentation map [B, n_classes, H, W]
+    """
+
     in_sizes: Size
     task = Tasks.CLASSIFICATION
     parser: str = "ClassificationParser"
 
-    def __init__(
-        self, dropout_rate: float = 0.2, use_cls_token: bool = False, **kwargs
-    ):
+    def __init__(self, dropout_rate: float = 0.2, **kwargs):
         """Classification head for transformer patch embeddings.
 
         @param dropout_rate: Dropout rate before last layer.
-        @param use_cls_token: If True, use the first token (CLS token)
-            instead of pooling across patches.
         """
         super().__init__(**kwargs)
-        self.use_cls_token = use_cls_token
 
         self.dropout = nn.Dropout(dropout_rate)
         self.fc = nn.Linear(self.in_channels, self.n_classes)
 
         if len(self.in_sizes) == 4:
             logger.warning(
-                "The transformer segmentation head will not work with feature maps of dimension [B, C, H, W] as input. Please provide patch-level embeddings from transformer backbones in the format [B, C, N]"
+                "The transformer classification head expects patch-level embeddings "
+                "in the format [B, N, C], not [B, C, H, W]."
             )
 
     @property
@@ -43,10 +44,14 @@ class TransformerClassificationHead(BaseHead):
 
     def forward(self, inputs: Tensor) -> Tensor:
         """
-        @param inputs: Patch embeddings of shape [B, N_patches, C]
+        @param inputs: Patch embeddings of shape [B, N, C]
         @return: Class logits of shape [B, n_classes]
-        """
-        x = inputs[:, 0] if self.use_cls_token else inputs.mean(dim=1)
 
+        @note: Steps performed:
+            1) Mean pooling over patch dimensions.
+            2) Apply dropout to the pooled embeddings
+            3) Apply a linear layer to produce class logits.
+        """
+        x = inputs.mean(dim=1)
         x = self.dropout(x)
         return self.fc(x)
