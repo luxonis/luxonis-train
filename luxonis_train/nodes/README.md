@@ -290,7 +290,6 @@ backbones, for example [`DINOv3`](#dinov3).
 | Key             | Type    | Default value | Description                                                                  |
 | --------------- | ------- | ------------- | ---------------------------------------------------------------------------- |
 | `dropout_rate`  | `float` | `0.2`         | Dropout rate before last layer.                                              |
-| `use_cls_token` | `bool`  | `False`       | If True, use the first token (CLS token) instead of pooling across patches.. |
 
 ## Segmentation Heads
 

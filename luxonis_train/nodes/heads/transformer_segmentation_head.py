@@ -38,13 +38,6 @@ class TransformerSegmentationHead(BaseHead):
                 "transformer backbones in the format [B, N, C]"
             )
 
-        logger.warning(
-            "In order to accurately calculate the patch size, this "
-            "class assumes that the CLS token is in the given patch "
-            "embeddings. Please make sure that the previously-defined "
-            "transformer encoder does not remove the CLS token."
-        )
-
     @property
     def in_channels(self) -> int:
         """Extract embedding dim from self.in_sizes instead of
