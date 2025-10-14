@@ -85,8 +85,9 @@ class DinoV3(BaseNode):
         @type repo_dir: str
 
         @param freeze_backbone: if True, freeze the backbone;
-        only the head will contain trainable parameters
-        @type freeez_backbone: bool
+        this will lead to a transfer learning scenario where
+        only the head contains trainable parameters
+        @type freeze_backbone: bool
         """
         super().__init__(**kwargs)
 
