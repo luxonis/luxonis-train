@@ -564,7 +564,7 @@ class LuxonisLightningModule(pl.LightningModule):
             sub_state_dict = {
                 self._strip_state_prefix(k): v
                 for k, v in state_dict.items()
-                if k.startswith(f"nodes.{node_name}.")
+                if k.startswith(f"nodes.{node_name}.module.")
             }
             try:
                 node.module.load_checkpoint(sub_state_dict, strict=True)
