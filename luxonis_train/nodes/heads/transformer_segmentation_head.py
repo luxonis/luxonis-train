@@ -1,7 +1,6 @@
 from typing import Any
 
 import torch.nn.functional as F
-from loguru import logger
 from torch import Size, Tensor, nn
 
 from luxonis_train.nodes.heads import BaseHead
@@ -9,75 +8,74 @@ from luxonis_train.tasks import Tasks
 
 
 class TransformerSegmentationHead(BaseHead):
-    """Semantic segmentation decoder head for patch sequence from
-    DINOv3.
+    """Semantic segmentation decoder head that takes feature maps as
+    inputs.
 
-    Converts [B, N, C] to segmentation map [B, n_classes, H, W]
+    Section 6.3.2 of the DINOv3 paper (U{
+    https://arxiv.org/abs/2508.10104/})
+    mentions a ViT-adapter without the injection followed by Mask2Former.
+    IN this implementation, is replaced by a simple convolutional head.
+
+    Converts [B, C, H, W] feature maps to segmentation logits [B, n_classes, H, W]
     """
 
-    in_sizes: Size
-    in_height: int
-    in_width: int
     n_classes: int
+    in_sizes: list[Size]
 
     task = Tasks.SEGMENTATION
     parser: str = "SegmentationParser"
 
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
-        self.head = nn.Sequential(
-            nn.LayerNorm(self.in_channels),
-            nn.Linear(self.in_channels, self.n_classes),
+
+        channels_list = [shape[1] for shape in self.in_sizes]
+
+        self.projections = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Conv2d(c, 256, kernel_size=1),
+                    nn.BatchNorm2d(256),
+                    nn.ReLU(inplace=True),
+                )
+                for c in channels_list
+            ]
         )
 
-        if len(self.in_sizes) == 4:
-            logger.warning(
-                "The transformer segmentation head will not work "
-                "with feature maps of dimension [B, C, H, W] as input. "
-                "Please provide patch-level embeddings from "
-                "transformer backbones in the format [B, N, C]"
-            )
+        # Decoder head
+        self.head = nn.Sequential(
+            nn.Conv2d(256, 256, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, self.n_classes, kernel_size=1),
+        )
 
-    @property
-    def in_channels(self) -> int:
-        """Extract embedding dim from self.in_sizes instead of
-        input_shapes."""
-        try:
-            return self.in_sizes[-1]
-        except Exception as e:
-            raise RuntimeError(
-                f"Could not determine in_channels from in_sizes: {self.in_sizes} — {e}"
-            ) from e
-
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: list[Tensor]) -> Tensor:
         """
-        @param x: Tensor of shape [B, N, C]
-        @return: Segmentation logits of shape [B, n_classes, H, W].
-
-        @note: Steps performed:
-            1) Remove class token at position 0.
-            2) Project patch tokens to class logits via LayerNorm + Linear.
-            3) Infer patch grid dimensions (H_p x W_p) using image aspect ratio.
-            4) Reshape [B, N, n_classes] → [B, n_classes, H_p, W_p].
-            5) Upsample to original image resolution (H, W).
+        Semantic segmentation head for feature maps from a transformer backbone
+        @note
+        Steps:
+            1. Project each feature map to a channel dim of 256 using 1x1 convolutions.
+            2. Upsample the  feature maps to 1/4 of the image size.
+            3. Fuse the projected feature maps through summation.
+            4. Apply segmentation head.
+            5. Upsample to original input resolution.
         """
-        B, N, C = x.shape
         h, w = self.original_in_shape[1:]
 
-        expected_N = (h // 16) * (w // 16)
-
-        if expected_N != N:
-            raise RuntimeError(
-                f"Unexpected token count: got {N}, expected {expected_N}"
+        projected = []
+        for i, feat in enumerate(x):
+            feat = self.projections[i](feat)
+            feat = F.interpolate(
+                feat,
+                size=(h // 4, w // 4),
+                mode="bilinear",
+                align_corners=False,
             )
+            projected.append(feat)
 
-        x = self.head(x)
+        fused = sum(projected)
 
-        H_p = h // 16
-        W_p = w // 16
-
-        x = x.permute(0, 2, 1).reshape(B, self.n_classes, H_p, W_p)
+        logits = self.head(fused)
 
         return F.interpolate(
-            x, size=(h, w), mode="bilinear", align_corners=False
+            logits, size=(h, w), mode="bilinear", align_corners=False
         )

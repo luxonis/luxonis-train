@@ -63,6 +63,7 @@ class DinoV3(BaseNode):
         variant: DINOv3Variant = "vits16",
         repo_dir: str = "facebookresearch/dinov3",
         freeze_backbone: bool = False,
+        depth: int = 4,
         **kwargs,
     ):
         """
@@ -92,6 +93,7 @@ class DinoV3(BaseNode):
         super().__init__(**kwargs)
 
         self.return_sequence = return_sequence
+        self.depth = depth
 
         self.backbone, self.patch_size = self._get_backbone(
             weights=weights_link,
@@ -111,14 +113,14 @@ class DinoV3(BaseNode):
             "target platform, please pick a different backbone."
         )
         if (
-            self.original_in_shape[-1] % 16 != 0
-            or self.original_in_shape[-2] % 16 != 0
+            self.original_in_shape[-1] % self.patch_size != 0
+            or self.original_in_shape[-2] % self.patch_size != 0
         ):
             logger.warning(
-                "Image dimensions should be divisible by 16,"
+                f"Image dimensions should be divisible by {self.patch_size},"
                 f"but got {self.original_in_shape}. "
                 "This will cause inconsistent image sizes"
-                "as DINOv3 natively reshapes to multiples of 16."
+                f"as DINOv3 natively reshapes to multiples of {self.patch_size}."
             )
 
     def _replace_rope_embedding(self) -> None:
@@ -144,30 +146,31 @@ class DinoV3(BaseNode):
         self.backbone.rope_embed = RopePositionEmbedding(**rope_kwargs)
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
-        features = self.backbone.get_intermediate_layers(
-            inputs, norm=True, n=4, return_class_token=False
-        )
+        """If self.return_sequence is True, the CLS token is returned
+        and this can be used for downstream classification tasks.
+
+        Otherwise, the last self.depth layers of the
+        """
+        if self.return_sequence:
+            features = self.backbone.get_intermediate_layers(
+                inputs, norm=True, n=1, return_class_token=True
+            )
+        else:
+            features = self.backbone.get_intermediate_layers(
+                inputs, norm=True, n=self.depth, return_class_token=False
+            )
+
         outs: list[Tensor] = []
 
         for x in features:
             if self.return_sequence:
-                outs.append(x)  # B x N x C
+                outs.append(x[1])
             else:
                 B, N, C = x.shape
-
-                grid_height = self.in_height // self.patch_size
-                grid_width = self.in_width // self.patch_size
-                expected_num_patches = grid_height * grid_width
-
-                assert expected_num_patches == N, (
-                    f"Expected {expected_num_patches} tokens, got {N}"
-                )
-
-                # Reshape sequence to feature map
-                feature_map = x.permute(0, 2, 1).reshape(
-                    B, C, grid_height, grid_width
-                )
-                outs.append(feature_map)
+                h, w = self.original_in_shape[1:]
+                gh, gw = h // self.patch_size, w // self.patch_size
+                assert gh * gw == N, f"Expected {gh * gw} tokens, got {N}"
+                outs.append(x.permute(0, 2, 1).reshape(B, C, gh, gw))
 
         return outs
 
