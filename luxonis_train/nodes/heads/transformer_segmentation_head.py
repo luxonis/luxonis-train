@@ -49,10 +49,14 @@ class TransformerSegmentationHead(BaseHead):
         )
 
     def forward(self, x: list[Tensor]) -> Tensor:
-        """
-        Semantic segmentation head for feature maps from a transformer backbone
-        @note
-        Steps:
+        """Semantic segmentation head for feature maps from a
+        transformer backbone.
+
+        @param x: List of successive feature maps of the same dimension
+        @type x: list[Tensor]
+        @return: Segmentation logits
+
+        @note: Steps:
             1. Project each feature map to a channel dim of 256 using 1x1 convolutions.
             2. Upsample the  feature maps to 1/4 of the image size.
             3. Fuse the projected feature maps through summation.

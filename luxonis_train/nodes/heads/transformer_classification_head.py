@@ -31,14 +31,15 @@ class TransformerClassificationHead(BaseHead):
             raise TypeError("Expected a single [B, C], got multiple.")
         return result
 
-    def forward(self, inputs: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         """
-        @param inputs: CLS tokens of shape [B, C]
+        @param x: Input tensor
+        @type x: Tensor
         @return: Class logits [B, n_classes]
 
         @note: Steps performed:
             1) Apply dropout to the CLS token
             2) Apply a linear layer to produce class logits.
         """
-        x = self.dropout(inputs)
+        x = self.dropout(x)
         return self.fc(x)
