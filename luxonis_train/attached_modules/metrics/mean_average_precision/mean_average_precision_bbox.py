@@ -24,6 +24,7 @@ class MeanAveragePrecisionBBox(MeanAveragePrecision, BaseMetric):
 
     @override
     def compute(self) -> tuple[Tensor, dict[str, Tensor]]:
+        metrics = {k: v.to(self.device) for k, v in super().compute().items()}
         return postprocess_metrics(
-            super().compute(), self.classes.inverse, "map", self.device
+            metrics, self.classes.inverse, "map", self.device
         )
