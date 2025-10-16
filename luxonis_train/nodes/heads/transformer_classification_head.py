@@ -28,7 +28,7 @@ class TransformerClassificationHead(BaseHead):
     def in_channels(self) -> int:
         result = self._get_nth_size(-1)
         if isinstance(result, list):
-            raise RuntimeError("Expected a single [B, C], got multiple.")
+            raise TypeError("Expected a single [B, C], got multiple.")
         return result
 
     def forward(self, inputs: Tensor) -> Tensor:
