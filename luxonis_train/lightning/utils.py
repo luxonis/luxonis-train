@@ -717,3 +717,16 @@ def get_model_execution_order(
         handle.remove()
 
     return order
+
+
+def check_tensor_device(
+    x: Tensor | list[Tensor], device: torch.device
+) -> bool:
+    """Return whether a tensor (or every tensor in a sequence) resides
+    on a given device."""
+    if isinstance(x, Tensor):
+        return x.device == device
+    elif isinstance(x, (list | tuple)):
+        return all(isinstance(i, Tensor) and i.device == device for i in x)
+    else:
+        raise TypeError(f"Expected Tensor or list[Tensor], got {type(x)!r}")

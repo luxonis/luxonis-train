@@ -33,6 +33,7 @@ from .utils import (
     build_optimizers,
     build_training_strategy,
     build_visualizers,
+    check_tensor_device,
     compute_losses,
     compute_visualization_buffer,
     get_model_execution_order,
@@ -735,6 +736,16 @@ class LuxonisLightningModule(pl.LightningModule):
             for metric_name, metric in node_metrics.items():
                 values = postprocess_metrics(metric_name, metric.compute())
                 metric.reset()
+
+                if isinstance(
+                    self.trainer.strategy,
+                    pl.strategies.DDPStrategy,  # type: ignore
+                ) and not check_tensor_device(
+                    list(values.values()), self.device
+                ):
+                    raise RuntimeError(
+                        "When using DDP all metrics must reside on the model's device"
+                    )
 
                 for name, value in values.items():
                     if value.dim() == 2:
