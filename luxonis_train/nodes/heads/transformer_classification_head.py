@@ -33,7 +33,7 @@ class TransformerClassificationHead(BaseHead):
 
     def forward(self, x: Tensor) -> Tensor:
         """
-        @param x: Input tensor
+        @param x: CLS tensor in the form [B, C], where C is the embedding dim
         @type x: Tensor
         @return: Class logits [B, n_classes]
 

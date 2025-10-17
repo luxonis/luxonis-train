@@ -14,9 +14,9 @@ class TransformerSegmentationHead(BaseHead):
     Section 6.3.2 of the DINOv3 paper (U{
     https://arxiv.org/abs/2508.10104/})
     mentions a ViT-adapter without the injection followed by Mask2Former.
-    IN this implementation, is replaced by a simple convolutional head.
+    In this implementation, is replaced by a simple convolutional head.
 
-    Converts [B, C, H, W] feature maps to segmentation logits [B, n_classes, H, W]
+    Converts a list of [B, C, H, W] feature maps to segmentation logits [B, n_classes, H, W]
     """
 
     n_classes: int

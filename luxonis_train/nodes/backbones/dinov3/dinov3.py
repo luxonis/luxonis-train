@@ -24,8 +24,12 @@ class TransformerBackboneReturnsIntermediateLayers(nn.Module):
     rope_embed: nn.Module
 
     def get_intermediate_layers(
-        self, x: Tensor, n: int, norm: bool, return_class_token: bool
-    ) -> tuple[Tensor, ...]: ...
+        self,
+        x: Tensor,
+        n: int,
+        norm: bool,
+        return_class_token: bool,
+    ) -> list[Tensor] | list[tuple[Tensor, Tensor]]: ...
 
 
 DINOv3Variant: TypeAlias = Literal[
@@ -89,6 +93,10 @@ class DinoV3(BaseNode):
         this will lead to a transfer learning scenario where
         only the head contains trainable parameters
         @type freeze_backbone: bool
+
+        @param depth: number of last layers that are taken
+        from the transformer output and converted to feature maps
+        @type depth: int
         """
         super().__init__(**kwargs)
 
@@ -149,23 +157,29 @@ class DinoV3(BaseNode):
         """If self.return_sequence is True, the CLS token is returned
         and this can be used for downstream classification tasks.
 
-        Otherwise, the last self.depth layers of the
+        Otherwise, the last self.depth layers of the network are
+        returned
         """
-        if self.return_sequence:
-            features = self.backbone.get_intermediate_layers(
-                inputs, norm=True, n=1, return_class_token=True
-            )
-        else:
-            features = self.backbone.get_intermediate_layers(
-                inputs, norm=True, n=self.depth, return_class_token=False
-            )
-
         outs: list[Tensor] = []
 
-        for x in features:
-            if self.return_sequence:
-                outs.append(x[1])
-            else:
+        if self.return_sequence:
+            features_with_cls = cast(
+                list[tuple[Tensor, Tensor]],
+                self.backbone.get_intermediate_layers(
+                    inputs, norm=True, n=1, return_class_token=True
+                ),
+            )
+            cls_tokens: list[Tensor] = [cls for _, cls in features_with_cls]
+            outs.extend(cls_tokens)
+
+        else:
+            seq_features = cast(
+                list[Tensor],
+                self.backbone.get_intermediate_layers(
+                    inputs, norm=True, n=self.depth, return_class_token=False
+                ),
+            )
+            for x in seq_features:
                 B, N, C = x.shape
                 h, w = self.original_in_shape[1:]
                 gh, gw = h // self.patch_size, w // self.patch_size
