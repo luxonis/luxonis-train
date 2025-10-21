@@ -715,13 +715,15 @@ def get_model_execution_order(
 
     return order
 
+
 def get_main_metric(cfg: Config) -> MainMetric | None:
     for node_cfg in cfg.model.nodes:
         for metric_cfg in node_cfg.metrics:
             if metric_cfg.is_main_metric:
                 return MainMetric(node_cfg.identifier, metric_cfg.identifier)
     return None
-  
+
+
 def check_tensor_device(
     x: Tensor | list[Tensor], device: torch.device
 ) -> bool:
@@ -729,7 +731,6 @@ def check_tensor_device(
     on a given device."""
     if isinstance(x, Tensor):
         return x.device == device
-    elif isinstance(x, (list | tuple)):
+    if isinstance(x, (list | tuple)):
         return all(isinstance(i, Tensor) and i.device == device for i in x)
-    else:
-        raise TypeError(f"Expected Tensor or list[Tensor], got {type(x)!r}")
+    raise TypeError(f"Expected Tensor or list[Tensor], got {type(x)!r}")
