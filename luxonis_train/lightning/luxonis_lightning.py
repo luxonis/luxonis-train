@@ -31,7 +31,6 @@ from .utils import (
     build_callbacks,
     build_optimizers,
     build_training_strategy,
-    build_visualizers,
     check_tensor_device,
     compute_losses,
     compute_visualization_buffer,
