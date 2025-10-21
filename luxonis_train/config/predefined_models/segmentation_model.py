@@ -48,23 +48,16 @@ class SegmentationModel(SimplePredefinedModel):
         return "light", {
             "light": {
                 "backbone": "DDRNet",
-                "backbone_params": {
-                    "variant": "23-slim",
-                },
+                "backbone_params": {"weights": "download"},
+                "backbone_variant": "23-slim",
                 "head": "DDRNetSegmentationHead",
-                "head_params": {
-                    "download_weights": True,
-                },
+                "head_params": {"weights": "download"},
             },
             "heavy": {
                 "backbone": "DDRNet",
-                "backbone_params": {
-                    "variant": "23",
-                },
+                "backbone_variant": "23",
                 "head": "DDRNetSegmentationHead",
-                "head_params": {
-                    "download_weights": True,
-                },
+                "head_params": {"weights": "download"},
             },
         }
 
@@ -81,20 +74,12 @@ class SegmentationModel(SimplePredefinedModel):
                     params=self._aux_head_params,
                     task_name=self._task_name,
                     remove_on_export=self._remove_aux_on_export,
+                    losses=[
+                        LossModuleConfig(
+                            name=self._loss,
+                            weight=0.4,
+                        )
+                    ],
                 )
             )
         return nodes
-
-    @property
-    @override
-    def losses(self) -> list[LossModuleConfig]:
-        losses = super().losses
-        if self._use_aux_heads:
-            losses.append(
-                LossModuleConfig(
-                    name=self._loss,
-                    attached_to=f"{self._head}_aux",
-                    weight=0.4,
-                )
-            )
-        return losses

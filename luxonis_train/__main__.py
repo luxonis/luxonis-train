@@ -3,6 +3,7 @@ import importlib.util
 import subprocess
 import sys
 from collections.abc import Iterator
+from functools import lru_cache
 from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal
@@ -26,15 +27,23 @@ app["--version"].group = app.meta.group_parameters
 training_group = Group.create_ordered("Training")
 evaluation_group = Group.create_ordered("Evaluation")
 export_group = Group.create_ordered("Export")
-management_group = Group.create_ordered("Management")
 annotation_group = Group.create_ordered("Annotation")
+management_group = Group.create_ordered("Management")
 
 
 def create_model(
-    config: str | None, opts: list[str] | None, debug_mode: bool = False
+    config: str | None,
+    opts: list[str] | None,
+    debug_mode: bool = False,
+    weights: str | None = None,
 ) -> "LuxonisModel":
     importlib.reload(sys.modules["luxonis_train"])
     from luxonis_train import LuxonisModel
+
+    if weights is not None and config is None:
+        return LuxonisModel.from_checkpoint(
+            weights, opts, debug_mode=debug_mode
+        )
 
     return LuxonisModel(config, opts, debug_mode=debug_mode)
 
@@ -61,7 +70,7 @@ def train(
         suppresses some exceptions to allow training without a fully
         defined model.
     """
-    create_model(config, opts, debug).train(weights=weights)
+    create_model(config, opts, debug, weights).train(weights=weights)
 
 
 @app.command(group=training_group, sort_key=2)
@@ -144,13 +153,21 @@ def inspect(
     """
     import cv2
 
+    @lru_cache
+    def get_window() -> str:
+        window_name = "Visualization"
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        return window_name
+
     for viz in _yield_visualizations(
         config=config,
         view=view,
         size_multiplier=size_multiplier,
         opts=opts,
     ):
-        cv2.imshow("Visualization", viz)
+        window_name = get_window()
+        cv2.resizeWindow(window_name, width=viz.shape[1], height=viz.shape[0])
+        cv2.imshow(window_name, viz)
         if cv2.waitKey() in {ord("q"), 27}:
             break
     cv2.destroyAllWindows()
@@ -183,7 +200,7 @@ def test(
         suppresses some exceptions to allow training without a fully
         defined model.
     """
-    create_model(config, opts, debug).test(view=view, weights=weights)
+    create_model(config, opts, debug, weights).test(view=view, weights=weights)
 
 
 @app.command(group=evaluation_group, sort_key=2)
@@ -195,7 +212,7 @@ def infer(
     view: Literal["train", "val", "test"] = "val",
     save_dir: Path | None = None,
     source_path: str | None = None,
-    weights: Path | None = None,
+    weights: str | None = None,
 ):
     """Run inference on a dataset view or a custom source.
 
@@ -218,7 +235,7 @@ def infer(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    create_model(config, opts).infer(
+    create_model(config, opts, weights=weights).infer(
         view=view,
         save_dir=save_dir,
         source_path=source_path,
@@ -234,7 +251,7 @@ def annotate(
     config: str,
     dir_path: Path,
     dataset_name: str,
-    weights: Path | None = None,
+    weights: str | None = None,
     bucket_storage: Literal["local", "gcs"] = "local",
     delete_local: bool = True,
     delete_remote: bool = True,
@@ -267,7 +284,7 @@ def annotate(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    model = create_model(config, opts)
+    model = create_model(config, opts, weights=weights)
 
     model.annotate(
         dir_path=dir_path,
@@ -309,7 +326,7 @@ def export(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the
     """
-    create_model(config, opts).export(
+    create_model(config, opts, weights=weights).export(
         save_path=save_path, weights=weights, ckpt_only=ckpt_only
     )
 
@@ -335,7 +352,9 @@ def archive(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    create_model(str(config), opts).archive(path=executable, weights=weights)
+    create_model(str(config), opts, weights=weights).archive(
+        path=executable, weights=weights
+    )
 
 
 @app.command(group=management_group)

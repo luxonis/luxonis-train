@@ -1,6 +1,8 @@
 from typing import Any
 
+from luxonis_ml.typing import Params
 from torch import Tensor, nn
+from typing_extensions import override
 
 from luxonis_train.nodes.blocks import UpBlock
 from luxonis_train.nodes.heads import BaseHead
@@ -8,7 +10,7 @@ from luxonis_train.tasks import Tasks
 from luxonis_train.utils import infer_upscale_factor
 
 
-class SegmentationHead(BaseHead[Tensor, Tensor]):
+class SegmentationHead(BaseHead):
     in_height: int
     in_width: int
     in_channels: int
@@ -30,24 +32,31 @@ class SegmentationHead(BaseHead[Tensor, Tensor]):
         in_channels = self.in_channels
         for _ in range(int(n_up)):
             modules.append(
-                UpBlock(in_channels=in_channels, out_channels=in_channels // 2)
+                UpBlock(
+                    in_channels=in_channels,
+                    out_channels=in_channels // 2,
+                    kernel_size=2,
+                    stride=2,
+                    upsample_mode="conv_upsample",
+                    interpolation_mode="bilinear",
+                    align_corners=False,
+                    use_norm=True,
+                )
             )
             in_channels //= 2
 
         self.head = nn.Sequential(
-            *modules,
-            nn.Conv2d(in_channels, self.n_classes, kernel_size=1),
+            *modules, nn.Conv2d(in_channels, self.n_classes, kernel_size=1)
         )
 
     def forward(self, inputs: Tensor) -> Tensor:
         return self.head(inputs)
 
-    def get_custom_head_config(self) -> dict:
+    @override
+    def get_custom_head_config(self) -> Params:
         """Returns custom head configuration.
 
         @rtype: dict
         @return: Custom head configuration.
         """
-        return {
-            "is_softmax": False,
-        }
+        return {"is_softmax": False}

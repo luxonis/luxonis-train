@@ -102,7 +102,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
 
                 if self.augmentations is not None:
                     anomaly_img = self.augmentations.apply(
-                        [({"image": anomaly_img}, {})]
+                        [({self.image_source: anomaly_img}, {})]
                     )[0][self.image_source]
 
                 anomaly_img = self.img_numpy_to_torch(anomaly_img)
@@ -137,7 +137,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
 @contextmanager
 def _freeze_seed() -> Generator:
     python_seed = random.getstate()
-    numpy_seed = np.random.get_state()  # noqa: NPY002
+    numpy_seed = np.random.get_state()
     yield
     random.setstate(python_seed)
-    np.random.set_state(numpy_seed)  # noqa: NPY002
+    np.random.set_state(numpy_seed)

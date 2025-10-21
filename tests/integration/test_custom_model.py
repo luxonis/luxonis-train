@@ -63,11 +63,13 @@ class MultiInputTestBaseNode(BaseNode):
         super().__init__(**kwargs)
         self.scalar = nn.Parameter(torch.tensor(1.0), requires_grad=True)
 
-    def forward(self, inputs: list[Tensor]):
-        return [self.scalar * inp for inp in inputs]
-
-    def unwrap(self, inputs: list[dict[str, list[Tensor]]]):
-        return [item for inp in inputs for key in inp for item in inp[key]]
+    def forward(self, inputs: list[Packet[Tensor]]) -> list[Tensor]:
+        return [
+            item * self.scalar
+            for inp in inputs
+            for key in inp
+            for item in inp[key]
+        ]
 
 
 class FullBackbone(MultiInputTestBaseNode): ...
@@ -93,10 +95,6 @@ class CustomSegHead1(BaseHead):
         super().__init__(**kwargs)
         self.conv = nn.Conv2d(1, 1, kernel_size=3, padding=1)
 
-    def unwrap(self, inputs: list[Packet[Tensor]]) -> Tensor:
-        assert len(inputs) == 1
-        return inputs[0]["features"][-1]
-
     def forward(self, inputs: Tensor) -> Tensor:
         return self.conv(inputs)
 
@@ -108,18 +106,15 @@ class CustomSegHead2(BaseHead):
         super().__init__(**kwargs)
         self.conv = nn.Conv2d(1, 1, kernel_size=3, padding=1)
 
-    def unwrap(self, inputs: list[Packet[Tensor]]):
-        return [packet["features"][-1] for packet in inputs]
-
-    def forward(self, inputs: list[Tensor]) -> Tensor:
-        fn1, _, disp = inputs
+    def forward(self, inputs: list[Packet[Tensor]]) -> Tensor:
+        fn1, _, disp = [packet["features"][-1] for packet in inputs]
         return self.conv(fn1 + disp)
 
     def get_custom_head_config(self) -> Params:
         return {"custom_param": "value"}
 
 
-def test_custom_model(opts: Params, tempdir: Path, subtests: SubTests):
+def test_custom_model(opts: Params, tmp_path: Path, subtests: SubTests):
     model = LuxonisModel(get_config(), opts)
     with subtests.test("train"):
         model.train()
@@ -159,9 +154,9 @@ def test_custom_model(opts: Params, tempdir: Path, subtests: SubTests):
         assert generated_config == correct_archive_config
 
     with subtests.test("infer"):
-        model.infer(view="val", save_dir=tempdir)
+        model.infer(view="val", save_dir=tmp_path)
         assert (
-            len(list(tempdir.glob("*.png")))
+            len(list(tmp_path.glob("*.png")))
             == len(model.pytorch_loaders["val"].dataset) * 2  # type: ignore
         )
 

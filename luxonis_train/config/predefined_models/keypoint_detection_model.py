@@ -28,24 +28,21 @@ class KeypointDetectionModel(SimplePredefinedModel):
     def get_variants() -> tuple[str, dict[str, Params]]:
         return "light", {
             "light": {
-                "backbone_params": {"variant": "n"},
-                "neck_params": {
-                    "variant": "n",
-                    "download_weights": True,
-                },
+                "backbone_params": {"weights": "download"},
+                "backbone_variant": "n",
+                "neck_params": {"weights": "download"},
+                "neck_variant": "n",
             },
             "medium": {
-                "backbone_params": {"variant": "s"},
-                "neck_params": {
-                    "variant": "s",
-                    "download_weights": True,
-                },
+                "backbone_params": {"weights": "download"},
+                "backbone_variant": "s",
+                "neck_params": {"weights": "download"},
+                "neck_variant": "s",
             },
             "heavy": {
-                "backbone_params": {"variant": "l"},
-                "neck_params": {
-                    "variant": "l",
-                    "download_weights": True,
-                },
+                "backbone_params": {"weights": "download"},
+                "backbone_variant": "l",
+                "neck_params": {"weights": "download"},
+                "neck_variant": "l",
             },
         }

@@ -19,7 +19,7 @@ from torchmetrics import Metric
 
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.registry import METRICS
-from luxonis_train.typing import Labels, Packet
+from luxonis_train.typing import Labels, Packet, get_signature
 
 
 @dataclass(kw_only=True, slots=True)
@@ -156,7 +156,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
 
     @cached_property
     def _signature(self) -> dict[str, Parameter]:
-        return self._get_signature(self.update)
+        return get_signature(self.update)
 
     def run_update(self, inputs: Packet[Tensor], labels: Labels) -> None:
         """Calls the metric's update method.

@@ -58,10 +58,11 @@ for _loss_name in EMBEDDING_LOSSES:
             regularizer: str | None = None,
             regularizer_params: Params | None = None,
             node: BaseNode | None = None,
+            final_loss_weight: float = 1.0,
             _loss_name: str = _loss_name,
             **kwargs,
         ):
-            super().__init__(node=node)
+            super().__init__(node=node, final_loss_weight=final_loss_weight)
             self._name = _loss_name
 
             if not hasattr(pml_losses, self._name):  # pragma: no cover

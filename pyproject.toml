@@ -46,13 +46,12 @@ indent-width = 4
 [tool.ruff.lint]
 select = [
   "ANN",
-  # "B",
+  "B",
   "C4",
   "DTZ",
   "E",
   "ERA",
-  "F401",
-  # "F",
+  "F",
   "FLY",
   "FURB",
   "I",
@@ -65,21 +64,22 @@ select = [
   "PERF102",
   "PERF402",
   "PIE",
-  # "PL",
+  "PL",
   "PT",
   "PTH",
   "PYI",
   "Q",
-  # "RET",
-  # "RSE",
-  "RUF022",
+  "RET",
+  "RSE",
+  "RUF",
   "S",
-  # "SIM",
+  "SIM",
   "T10",
   "T20",
   "TID",
   "TRY",
   "UP",
+  "YTT",
   "W",
 ]
 ignore = [
@@ -89,9 +89,9 @@ ignore = [
   "ANN401",
   "D1",
   "E501",
-  "F403",
   "ICN002",
   "NPY002",
+  "PLC0415",
   "PLR0911",
   "PLR0912",
   "PLR0913",
@@ -105,9 +105,7 @@ ignore = [
   "S101",
   "S311",
   "S603",
-  "SIM108",
   "TRY003",
-  "W191",
 ]
 unfixable = ["B905"]
 
@@ -134,7 +132,7 @@ reportMatchNotExhaustive = "error"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--disable-warnings -vv"
+addopts = "--disable-warnings -vv --basetemp=tests/tmp/"
 markers = [
   "unit: mark a test as a unit test",
   "integration: mark a test as an integration test",

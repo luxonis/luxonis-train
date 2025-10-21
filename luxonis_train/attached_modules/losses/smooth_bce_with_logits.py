@@ -72,4 +72,6 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
                 + (1 - target) * self.negative_smooth_const
             )
 
-        return self.criterion(predictions, target)
+        loss = self.criterion(predictions, target)
+        assert isinstance(loss, Tensor)
+        return loss

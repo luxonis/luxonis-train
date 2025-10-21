@@ -1,6 +1,7 @@
 import sqlite3
 import sys
 from pathlib import Path
+from typing import Literal
 
 import pytest
 from luxonis_ml.data import LuxonisDataset
@@ -12,11 +13,18 @@ from luxonis_train.core import LuxonisModel
 @pytest.mark.skipif(
     sys.platform == "win32", reason="Tuning not supported on Windows"
 )
-def test_tune(opts: Params, coco_dataset: LuxonisDataset, tempdir: Path):
-    study_path = tempdir / "study.db"
+@pytest.mark.parametrize("monitor", ["loss", "metric"])
+def test_tune(
+    monitor: Literal["loss", "metric"],
+    opts: Params,
+    coco_dataset: LuxonisDataset,
+    tmp_path: Path,
+):
+    study_path = tmp_path / "study.db"
 
     opts |= {
         "tuner.storage.database": str(study_path),
+        "tuner.monitor": monitor,
         "tuner.n_trials": 4,
         "tuner.params": {
             "trainer.optimizer.name_categorical": ["Adam", "SGD"],
@@ -26,8 +34,14 @@ def test_tune(opts: Params, coco_dataset: LuxonisDataset, tempdir: Path):
                 ["Defocus", "Sharpen", "Flip", "Normalize", "invalid"],
                 2,
             ],
-            "model.losses.0.weight_uniform": [0.1, 0.9],
-            "model.nodes.0.freezing.unfreeze_after_loguniform": [0.1, 0.9],
+            "model.predefined_model.params.loss_params.weight_uniform": [
+                0.1,
+                0.9,
+            ],
+            "model.predefined_model.params.backbone_params.freezing.unfreeze_after_loguniform": [
+                0.1,
+                0.9,
+            ],
         },
         "loader.params.dataset_name": coco_dataset.identifier,
     }

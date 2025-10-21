@@ -25,17 +25,16 @@ class FOMOModel(SimplePredefinedModel):
             "light": {
                 "backbone": "EfficientRep",
                 "head_params": {
-                    "num_conv_layers": 2,
+                    "n_conv_layers": 2,
                     "conv_channels": 16,
                 },
-                "backbone_params": {"variant": "n"},
+                "backbone_variant": "n",
             },
             "heavy": {
                 "backbone": "MobileNetV2",
                 "head_params": {
-                    "num_conv_layers": 2,
+                    "n_conv_layers": 2,
                     "conv_channels": 16,
                 },
-                "backbone_params": {},
             },
         }

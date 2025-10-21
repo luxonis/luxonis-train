@@ -9,7 +9,7 @@ from luxonis_train.nodes.backbones import __all__ as BACKBONES
 BACKBONES = [
     backbone
     for backbone in BACKBONES
-    if backbone not in {"PPLCNetV3", "GhostFaceNetV2"}
+    if backbone not in {"PPLCNetV3", "GhostFaceNet", "RecSubNet"}
 ]
 
 
@@ -39,7 +39,7 @@ def get_config(backbone: str) -> Params:
     return {
         "model": {
             "nodes": [
-                {"name": backbone},
+                {"name": backbone, "variant": "default"},
                 {
                     "name": "EfficientBBoxHead",
                     "task_name": "vehicles",
@@ -75,6 +75,15 @@ def get_config(backbone: str) -> Params:
                     ],
                     "visualizers": [
                         {"name": "InstanceSegmentationVisualizer"}
+                    ],
+                },
+                {
+                    "name": "PrecisionBBoxHead",
+                    "task_name": "vehicles",
+                    "losses": [{"name": "PrecisionDFLDetectionLoss"}],
+                    "metrics": [
+                        {"name": "MeanAveragePrecision"},
+                        {"name": "ConfusionMatrix"},
                     ],
                 },
                 {

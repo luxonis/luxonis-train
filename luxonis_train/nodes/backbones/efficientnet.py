@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Literal, cast
 
 import torch
 from torch import Tensor, nn
@@ -6,13 +6,11 @@ from torch import Tensor, nn
 from luxonis_train.nodes.base_node import BaseNode
 
 
-class EfficientNet(BaseNode[Tensor, list[Tensor]]):
-    attach_index: int = -1
-
+class EfficientNet(BaseNode):
     def __init__(
         self,
-        download_weights: bool = True,
         out_indices: list[int] | None = None,
+        weights: Literal["download", "none"] | None = None,
         **kwargs,
     ):
         """EfficientNet backbone.
@@ -28,9 +26,6 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
         @see: U{EfficientNet: Rethinking Model Scaling for
             Convolutional Neural Networks
             <https://arxiv.org/abs/1905.11946>}
-        @type download_weights: bool
-        @param download_weights: If C{True} download weights from imagenet. Defaults to
-            C{True}.
         @type out_indices: list[int] | None
         @param out_indices: Indices of the output layers. Defaults to [0, 1, 2, 4, 6].
         """
@@ -47,7 +42,7 @@ class EfficientNet(BaseNode[Tensor, list[Tensor]]):
             torch.hub.load(
                 "rwightman/gen-efficientnet-pytorch",
                 "efficientnet_lite0",
-                pretrained=download_weights,
+                pretrained=weights == "download",
             ),
         )
         self.out_indices = out_indices or [0, 1, 2, 4, 6]

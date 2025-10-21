@@ -19,7 +19,7 @@ from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.typing import Params, PathType
-from luxonis_ml.utils import LuxonisFileSystem
+from luxonis_ml.utils import Environ, LuxonisFileSystem
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
@@ -28,6 +28,7 @@ from luxonis_train.callbacks import (
 )
 from luxonis_train.config import Config
 from luxonis_train.lightning import LuxonisLightningModule
+from luxonis_train.lightning.utils import get_main_metric
 from luxonis_train.loaders import (
     BaseLoaderTorch,
     DebugLoader,
@@ -83,10 +84,10 @@ class LuxonisModel:
         lightning components, etc.
 
         @type cfg: str | dict[str, Any] | Config
-        @param cfg: Path to config file or config dict used to setup training
+        @param cfg: Path to config file or config dict used to setup training.
 
         @type opts: list[str] | tuple[str, ...] | dict[str, Any] | None
-        @param opts: Argument dict provided through command line, used for config overriding
+        @param opts: Argument dict provided through command line, used for config overriding.
 
         @type debug_mode: bool
         @param debug_mode: If set to True, enables debug mode which ignores some
@@ -106,7 +107,7 @@ class LuxonisModel:
 
         self.tracker = LuxonisTrackerPL(
             rank=rank_zero_only.rank,
-            mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
+            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
             _auto_finalize=False,
             **self.cfg.tracker.model_dump(),
         )
@@ -140,10 +141,13 @@ class LuxonisModel:
         loader_name = self.cfg.loader.name
         Loader = LOADERS.get(loader_name)
         if issubclass(Loader, LuxonisLoaderTorch):
-            model_tasks = sorted(
-                {node.task_name for node in self.cfg.model.nodes}
-            )
-            self.cfg.loader.params["filter_task_names"] = model_tasks
+            model_tasks = {
+                node.task_name for node in self.cfg.model.head_nodes
+            }
+            if None not in model_tasks:
+                self.cfg.loader.params["filter_task_names"] = sorted(
+                    model_tasks  # type: ignore
+                )
 
         for view in ("train", "val", "test"):
             if (
@@ -276,6 +280,42 @@ class LuxonisModel:
         )
 
         self._exported_models: dict[str, Path] = {}
+
+    @classmethod
+    def from_checkpoint(
+        cls,
+        path: PathType,
+        opts: Params | list[str] | tuple[str, ...] | None = None,
+        *,
+        debug_mode: bool = False,
+    ) -> "LuxonisModel":
+        """Creates a LuxonisModel instance from a checkpoint file.
+
+        @type path: PathType
+        @param path: Path to the checkpoint file.
+        @type opts: Params | list[str] | tuple[str, ...] | None
+        @param opts: Argument dict provided through command line, used to config overriding.
+        @type debug_mode: bool
+        @param debug_mode: If set to True, enables debug mode which ignores some
+            normaly unrecovarable exceptions and allows to test the model
+            without it being fully functional.
+        """
+        ckpt = torch.load(path, map_location="cpu")
+        if "config" not in ckpt:  # pragma: no cover
+            raise ValueError(
+                f"Checkpoint '{path}' does not contain the 'config' key. "
+                "Cannot restore `LuxonisModel` from checkpoint."
+            )
+        try:
+            cfg = Config.get_config(ckpt["config"], opts)
+        except Exception as e:  # pragma: no cover
+            raise ValueError(
+                "Failed to load config from the checkpoint. "
+                "This can happen if the config schema changed "
+                "between the version used to create the checkpoint "
+                "and the current version of luxonis-train."
+            ) from e
+        return cls(cfg, debug_mode=debug_mode)
 
     def _train(self, resume: PathType | None, *args, **kwargs) -> None:
         status = "success"
@@ -440,15 +480,12 @@ class LuxonisModel:
                 )
             return
 
-        onnx_save_path = str(export_path.with_suffix(".onnx"))
-
         with replace_weights(self.lightning_module, weights):
             onnx_kwargs = self.cfg.exporter.onnx.model_dump(
                 exclude={"disable_onnx_simplification"}
             )
-            output_names = self.lightning_module.export_onnx(
-                onnx_save_path,
-                **onnx_kwargs,
+            onnx_save_path = self.lightning_module.export_onnx(
+                export_path.with_suffix(".onnx"), **onnx_kwargs
             )
 
         if not self.cfg.exporter.onnx.disable_onnx_simplification:
@@ -701,7 +738,7 @@ class LuxonisModel:
             )
             child_tracker = LuxonisTrackerPL(
                 rank=rank_zero_only.rank,
-                mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
+                mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
                 is_sweep=True,
                 **tracker_params,
             )
@@ -766,34 +803,33 @@ class LuxonisModel:
 
             if cfg.tuner.monitor == "loss":
                 monitor = "val/loss"
-            elif cfg.tuner.monitor == "metric":
-                main_metric = next(
-                    (m for m in cfg.model.metrics if m.is_main_metric), None
-                )
-                if main_metric:
-                    all_mlflow_logging_keys = self.get_mlflow_logging_keys()
-                    search_name = (
-                        "mcc"
-                        if main_metric.name == "ConfusionMatrix"
-                        else main_metric.name
-                    )
-                    monitor = next(
-                        (
-                            k
-                            for k in all_mlflow_logging_keys["metrics"]
-                            if search_name in k
-                            and main_metric.attached_to in k
-                            and "val" in k
-                        ),
-                        None,
-                    )
-                    if monitor is None:
-                        raise ValueError(
-                            f"Could not find monitor key for main metric '{main_metric.name}' "
-                            f"attached to '{main_metric.attached_to}' in the MLFlow logging keys."
-                        )
             else:
-                raise AssertionError
+                main_metric = get_main_metric(cfg)
+                if main_metric is None:  # pragma: no cover
+                    raise ValueError(
+                        "You have to specify the `main_metric` in the `model.metrics` section of the config when using a custom metric for tuning."
+                    )
+                all_mlflow_logging_keys = self.get_mlflow_logging_keys()
+                search_name = (
+                    "mcc"
+                    if main_metric.metric_name == "ConfusionMatrix"
+                    else main_metric.metric_name
+                )
+                monitor = next(
+                    (
+                        k
+                        for k in all_mlflow_logging_keys["metrics"]
+                        if search_name in k
+                        and main_metric.node_name in k
+                        and "val" in k
+                    ),
+                    None,
+                )
+                if monitor is None:
+                    raise ValueError(
+                        f"Could not find monitor key for main metric '{main_metric.metric_name}' "
+                        f"attached to '{main_metric.node_name}' in the MLFlow logging keys."
+                    )
 
             pruner_callback = PyTorchLightningPruningCallback(
                 trial, monitor=monitor
@@ -838,7 +874,7 @@ class LuxonisModel:
         )
         self.parent_tracker = LuxonisTrackerPL(
             rank=rank,
-            mlflow_tracking_uri=self.cfg.ENVIRON.MLFLOW_TRACKING_URI,
+            mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
             is_sweep=False,
             **tracker_params,
         )
@@ -1026,6 +1062,10 @@ class LuxonisModel:
             self.tracker.upload_artifact(archive_path, typ="archive")
 
         return Path(archive_path)
+
+    @property
+    def environ(self) -> Environ:
+        return self.cfg.ENVIRON
 
     @rank_zero_only
     def get_min_loss_checkpoint_path(self) -> str | None:

@@ -11,7 +11,7 @@ from luxonis_train.core import LuxonisModel
 def test_callbacks(coco_dataset: LuxonisDataset, opts: Params):
     config_file = "configs/segmentation_light_model.yaml"
     opts |= {
-        "trainer.use_rich_progress_bar": False,
+        "rich_logging": False,
         "trainer.seed": 42,
         "trainer.deterministic": "warn",
         "trainer.callbacks": [
@@ -31,6 +31,13 @@ def test_callbacks(coco_dataset: LuxonisDataset, opts: Params):
             {
                 "name": "ArchiveOnTrainEnd",
                 "params": {"preferred_checkpoint": "loss"},
+            },
+            {
+                "name": "GradCamCallback",
+                "params": {
+                    "target_layer": 10,
+                    "task": "segmentation",
+                },
             },
         ],
         "exporter.scale_values": [0.5, 0.5, 0.5],

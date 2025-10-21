@@ -25,9 +25,10 @@ from luxonis_train.__main__ import test as _test
 
 def test_cli_command_success(
     coco_dataset: LuxonisDataset,
-    tempdir: Path,
+    tmp_path: Path,
     subtests: SubTests,
     opts: Params,
+    save_dir: Path,
 ) -> None:
     flat_opts = []
     for key, value in opts.items():
@@ -38,9 +39,9 @@ def test_cli_command_success(
         (train, {}),
         (tune, {}),
         (_test, {"view": "val"}),
-        (export, {"save_path": tempdir}),
+        (export, {"save_path": tmp_path}),
         (_yield_visualizations, {}),
-        (archive, {"executable": tempdir / "export.onnx"}),
+        (archive, {"executable": tmp_path / "export.onnx"}),
     ]:
         with subtests.test(command.__name__):
             res = command(
@@ -48,6 +49,8 @@ def test_cli_command_success(
                     "loader.params.dataset_name",
                     coco_dataset.identifier,
                     "model.name",
+                    command.__name__,
+                    "tracker.run_name",
                     command.__name__,
                     *flat_opts,
                 ],
@@ -58,6 +61,19 @@ def test_cli_command_success(
             )
             if isinstance(res, GeneratorType):
                 list(res)
+    with subtests.test("reload-from-checkpoint"):
+        ckpt = next((save_dir / "train").rglob("*.ckpt"), None)
+        assert ckpt is not None, "No checkpoint found after training."
+        _test(
+            [
+                "loader.params.dataset_name",
+                coco_dataset.identifier,
+                "model.name",
+                "test-reload-from-checkpoint",
+                *flat_opts,
+            ],
+            weights=str(ckpt),
+        )
 
 
 @pytest.mark.parametrize(
@@ -86,14 +102,14 @@ def test_cli_command_success(
 def test_cli_command_failure(
     command: Callable, kwargs: Kwargs, coco_dataset: LuxonisDataset
 ) -> None:
-    with pytest.raises(Exception):  # noqa: PT011
+    with pytest.raises(Exception):  # noqa: B017, PT011
         command(
             ["loader.params.dataset_name", coco_dataset.identifier],
             **kwargs,
         )
 
 
-def test_source(tempdir: Path, coco_dataset: LuxonisDataset):
+def test_source(tmp_path: Path, coco_dataset: LuxonisDataset):
     cfg = {
         "rich_logging": False,
         "model": {
@@ -118,16 +134,16 @@ def test_source(tempdir: Path, coco_dataset: LuxonisDataset):
             ],
         },
     }
-    with open(tempdir / "config.yaml", "w") as f:
+    with open(tmp_path / "config.yaml", "w") as f:
         yaml.dump(cfg, f)
 
-    with open(tempdir / "source_1.py", "w") as f:
+    with open(tmp_path / "source_1.py", "w") as f:
         f.write("print('sourcing 1')")
 
-    with open(tempdir / "source_2.py", "w") as f:
+    with open(tmp_path / "source_2.py", "w") as f:
         f.write("print('sourcing 2')")
 
-    with open(tempdir / "callbacks.py", "w") as f:
+    with open(tmp_path / "callbacks.py", "w") as f:
         f.write(
             """
 import lightning.pytorch as pl
@@ -151,7 +167,7 @@ class CustomCallback(pl.Callback):
         print(self.message)
 """
         )
-    with open(tempdir / "loss.py", "w") as f:
+    with open(tmp_path / "loss.py", "w") as f:
         f.write(
             """
 from torch import Tensor
@@ -171,21 +187,21 @@ class CustomLoss(BaseLoss):
         )
 
     res = subprocess.run(
-        [  # noqa: S607
+        [
             sys.executable,
             "-m",
             "luxonis_train",
             "--source",
-            str(tempdir / "source_1.py"),
+            str(tmp_path / "source_1.py"),
             "test",
             "--source",
-            str(tempdir / "source_2.py"),
+            str(tmp_path / "source_2.py"),
             "--config",
-            str(tempdir / "config.yaml"),
+            str(tmp_path / "config.yaml"),
             "--source",
-            str(tempdir / "callbacks.py"),
+            str(tmp_path / "callbacks.py"),
             "--source",
-            str(tempdir / "loss.py"),
+            str(tmp_path / "loss.py"),
             "loader.params.dataset_name",
             coco_dataset.identifier,
         ],
@@ -197,6 +213,7 @@ class CustomLoss(BaseLoss):
             "LUXONISML_BASE_PATH": str(environ.LUXONISML_BASE_PATH),
             "PYTHONIOENCODING": "utf-8",
         },
+        check=False,
     )
 
     assert res.returncode == 0, res.stderr

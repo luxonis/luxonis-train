@@ -2,15 +2,15 @@ import math
 import urllib.parse
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
-from typing import Any, TypeVar
+from typing import Any, TypeVar, overload
 
 import torch
 from loguru import logger
 from luxonis_ml.typing import PathType
 from luxonis_ml.utils import LuxonisFileSystem
 from torch import Size, Tensor
-from typing_extensions import overload
 
+from luxonis_train import __version__
 from luxonis_train.typing import Packet
 
 
@@ -52,7 +52,7 @@ def infer_upscale_factor(
     def _infer_upscale_factor(in_size: int, orig_size: int) -> int | float:
         factor = math.log2(orig_size) - math.log2(in_size)
         if abs(round(factor) - factor) < 1e-6:
-            return int(round(factor))
+            return round(factor)
         return factor
 
     if isinstance(in_size, int):
@@ -106,7 +106,11 @@ def to_shape_packet(packet: Packet[Tensor]) -> Packet[Size]:
     """
     shape_packet: Packet[Size] = {}
     for name, value in packet.items():
-        shape_packet[name] = [x.shape for x in value]
+        shape_packet[name] = (
+            [x.shape for x in value]
+            if isinstance(value, list)
+            else value.shape
+        )
     return shape_packet
 
 
@@ -138,7 +142,7 @@ def get_with_default(
     if value is not None:
         return value
 
-    msg = f"Default value `{default}` is being used for {action_name}."
+    msg = f"Default value of `{value}` is being used for {action_name}."
 
     if caller_name:
         msg = f"[{caller_name}] {msg}"
@@ -173,9 +177,9 @@ def safe_download(
     @rtype: Path | None
     @return: Path to local file or None if downloading failed.
     """
-    dir = Path(dir)
+    dir = Path(dir) / __version__
     dir.mkdir(parents=True, exist_ok=True)
-    f = Path(dir or ".") / (file or url2file(url))
+    f = dir / (file or url2file(url))
     if f.is_file() and not force:
         logger.warning(f"File {f} is already cached, using that one.")
         return f
@@ -187,10 +191,9 @@ def safe_download(
                 protocol, _ = url.split("://")
                 if protocol in {"s3", "gcs", "gs"}:
                     return LuxonisFileSystem.download(url, f)
-
             torch.hub.download_url_to_file(url, str(f), progress=True)
         except Exception:
-            logger.warning(f"Download failed, retrying {i + 1}/{retry} ...")
+            logger.exception(f"Download failed, retrying {i + 1}/{retry} ...")
         else:
             return f
     logger.warning("Download failed, retry limit reached.")

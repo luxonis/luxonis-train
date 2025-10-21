@@ -1,5 +1,6 @@
 import re
 from collections import defaultdict
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -26,10 +27,8 @@ from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
 from .luxonis_output import LuxonisOutput
 from .utils import (
     LossAccumulator,
+    Nodes,
     build_callbacks,
-    build_losses,
-    build_metrics,
-    build_nodes,
     build_optimizers,
     build_training_strategy,
     build_visualizers,
@@ -93,6 +92,8 @@ class LuxonisLightningModule(pl.LightningModule):
     _trainer: pl.Trainer
     logger: LuxonisTrackerPL
 
+    __call__: Callable[..., LuxonisOutput]
+
     def __init__(
         self,
         cfg: Config,
@@ -140,11 +141,8 @@ class LuxonisLightningModule(pl.LightningModule):
         self.save_dir = Path(save_dir)
         self.outputs = self.cfg.model.outputs
 
-        self.nodes = build_nodes(cfg, self.dataset_metadata, input_shapes)
+        self.nodes = Nodes(cfg, self.dataset_metadata, input_shapes)
 
-        self.losses, self.loss_weights = build_losses(self.nodes, self.cfg)
-        self.metrics, self.main_metric = build_metrics(self.nodes, self.cfg)
-        self.visualizers = build_visualizers(self.nodes, self.cfg)
         self.training_strategy = build_training_strategy(self.cfg, self)
 
         self.load_checkpoint(self.cfg.model.weights)
@@ -216,10 +214,10 @@ class LuxonisLightningModule(pl.LightningModule):
         visualizations: dict[str, dict[str, Tensor]] = defaultdict(dict)
 
         computed: dict[str, Packet[Tensor]] = {}
-        for node_name, node, input_names, unprocessed in self.nodes.traverse():
-            if node.export and node.remove_on_export:
+        for node_name, node, _, unprocessed in self.nodes.traverse():
+            if node.module.export and node.module.remove_on_export:
                 continue
-            input_names += self.nodes.inputs[node_name]
+            input_names = node.inputs
 
             node_inputs: list[Packet[Tensor]] = []
             for pred in input_names:
@@ -228,36 +226,26 @@ class LuxonisLightningModule(pl.LightningModule):
                 else:
                     node_inputs.append({"features": [inputs[pred]]})
 
-            outputs = node.run(node_inputs)
+            outputs = node.module.run(node_inputs)
 
             computed[node_name] = outputs
 
             del node_inputs
 
-            if (
-                compute_loss
-                and node_name in self.losses
-                and labels is not None
-            ):
-                for loss_name, loss in self.losses[node_name].items():
+            if compute_loss and node.losses and labels is not None:
+                for loss_name, loss in node.losses.items():
                     losses[node_name][loss_name] = loss.run(outputs, labels)
 
-            if (
-                compute_metrics
-                and node_name in self.metrics
-                and labels is not None
-            ):
-                for metric in self.metrics[node_name].values():
+            if compute_metrics and node.metrics and labels is not None:
+                for metric in node.metrics.values():
                     metric.run_update(outputs, labels)
 
             if (
                 compute_visualizations
-                and node_name in self.visualizers
+                and node.visualizers
                 and images is not None
             ):
-                for viz_name, visualizer in self.visualizers[
-                    node_name
-                ].items():
+                for viz_name, visualizer in node.visualizers.items():
                     viz = combine_visualizations(
                         visualizer.run(images, images, outputs, labels),
                     )
@@ -287,7 +275,7 @@ class LuxonisLightningModule(pl.LightningModule):
             if isinstance(module, BaseNode):
                 module.set_export_mode(mode=mode)
 
-    def export_onnx(self, save_path: str, **kwargs) -> list[str]:
+    def export_onnx(self, save_path: PathType, **kwargs) -> Path:
         """Exports the model to ONNX format.
 
         @type save_path: str
@@ -295,8 +283,8 @@ class LuxonisLightningModule(pl.LightningModule):
         @type kwargs: Any
         @param kwargs: Additional arguments for the L{torch.onnx.export}
             method.
-        @rtype: list[str]
-        @return: List of output names.
+        @rtype: Path
+        @return: Path to the exported model.
         """
         device_before = self.device
 
@@ -305,7 +293,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         inputs = {
             input_name: torch.zeros([1, *shape]).to(self.device)
-            for shapes in self.nodes.input_shapes.values()
+            for shapes in self.nodes.loader_input_shapes.values()
             for input_name, shape in shapes.items()
         }
 
@@ -332,71 +320,40 @@ class LuxonisLightningModule(pl.LightningModule):
         for node_name, outs in outputs.items():
             output_counts[node_name] = sum(len(out) for out in outs.values())
 
-        if self.cfg.exporter.output_names is not None:
-            logger.warning(
-                "The use of 'exporter.output_names' is deprecated and will be removed in a future version. "
-                "If 'node.export_output_names' are provided, they will take precedence and overwrite 'exporter.output_names'. "
-                "Please update your config to use 'node.export_output_names' directly."
-            )
-
-        export_output_names_used = False
         export_output_names_dict = {}
         for node_name, node in self.nodes.items():
-            if node.export_output_names is not None:
-                export_output_names_used = True
-                if len(node.export_output_names) != output_counts[node_name]:
+            if node.module.export_output_names is not None:
+                if (
+                    len(node.module.export_output_names)
+                    != output_counts[node_name]
+                ):
                     logger.warning(
                         f"Number of provided output names for node {node_name} "
-                        f"({len(node.export_output_names)}) does not match "
+                        f"({len(node.module.export_output_names)}) does not match "
                         f"number of outputs ({output_counts[node_name]}). "
                         f"Using default names."
                     )
                 else:
                     export_output_names_dict[node_name] = (
-                        node.export_output_names
+                        node.module.export_output_names
                     )
 
-        if (
-            not export_output_names_used
-            and self.cfg.exporter.output_names is not None
-        ):
-            len_names = len(self.cfg.exporter.output_names)
-            if len_names != len(output_order):
-                logger.warning(
-                    f"Number of provided output names ({len_names}) does not match "
-                    f"number of outputs ({len(output_order)}). Using default names."
+        output_names = []
+        # For cases where export_output_names should be used but
+        # output node's output is split into multiple subnodes
+        running_i = {}
+        for node_name, output_name, i in output_order:
+            if node_name in export_output_names_dict:
+                running_i[node_name] = (
+                    running_i.get(node_name, -1) + 1
+                )  # if not present default to 0 otherwise add 1
+                output_names.append(
+                    export_output_names_dict[node_name][running_i[node_name]]
                 )
-                self.cfg.exporter.output_names = None
-
-            output_names = self.cfg.exporter.output_names or [
-                f"{self.nodes.task_names[node_name]}/{node_name}/{output_name}/{i}"
-                for node_name, output_name, i in output_order
-            ]
-
-            if not self.cfg.exporter.output_names:
-                idx = 1
-                # Set to output names required by DAI
-                for i, output_name in enumerate(output_names):
-                    if output_name.startswith("EfficientBBoxHead"):
-                        output_names[i] = f"output{idx}_yolov6r2"
-                        idx += 1
-        else:
-            output_names = []
-            running_i = {}  # for case where export_output_names should be used but output node's output is split into multiple subnodes
-            for node_name, output_name, i in output_order:
-                if node_name in export_output_names_dict:
-                    running_i[node_name] = (
-                        running_i.get(node_name, -1) + 1
-                    )  # if not present default to 0 otherwise add 1
-                    output_names.append(
-                        export_output_names_dict[node_name][
-                            running_i[node_name]
-                        ]
-                    )
-                else:
-                    output_names.append(
-                        f"{self.nodes.task_names[node_name]}/{node_name}/{output_name}/{i}"
-                    )
+            else:
+                output_names.append(
+                    f"{self.nodes[node_name].task_name}/{node_name}/{output_name}/{i}"
+                )
 
         old_forward = self.forward
 
@@ -428,14 +385,13 @@ class LuxonisLightningModule(pl.LightningModule):
 
         self.forward = old_forward  # type: ignore
 
-        self.set_export_mode(mode=False)
-
         logger.info(f"Model exported to {save_path}")
 
+        self.set_export_mode(mode=False)
         self.train()
         self.to(device_before)  # reset device after export
 
-        return output_names
+        return Path(save_path)
 
     def process_losses(
         self,
@@ -471,7 +427,6 @@ class LuxonisLightningModule(pl.LightningModule):
                     loss = loss_values
                     sublosses = {}
 
-                loss *= self.loss_weights[loss_name]
                 final_loss += loss
                 training_step_output[
                     f"loss/{formatted_node_name}/{loss_name}"
@@ -492,9 +447,7 @@ class LuxonisLightningModule(pl.LightningModule):
         if not outputs.losses:
             raise ValueError("Losses are empty, check if you defined any loss")
 
-        loss, losses = compute_losses(
-            self.cfg, outputs.losses, self.loss_weights, self.device
-        )
+        loss, losses = compute_losses(self.cfg, outputs.losses, self.device)
         self._loss_accumulators["train"].update(losses)
         return loss
 
@@ -516,7 +469,7 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> LuxonisOutput:
         inputs, labels = batch
         images = get_denormalized_images(self.cfg, inputs[self.image_source])
-        outputs = self.forward(
+        return self.forward(
             inputs,
             labels,
             images=images,
@@ -524,12 +477,11 @@ class LuxonisLightningModule(pl.LightningModule):
             compute_loss=False,
             compute_metrics=False,
         )
-        return outputs
 
     @override
     def on_train_epoch_start(self) -> None:
         for node in self.nodes.values():
-            node.current_epoch = self.current_epoch
+            node.module.current_epoch = self.current_epoch
 
     @override
     def on_train_epoch_end(self) -> None:
@@ -555,12 +507,15 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
-        pattern = re.compile(r"^(metrics|visualizers|losses)\..*_node\..*")
+        pattern = re.compile(
+            r"^nodes\.[^.]+\.(metrics|visualizers|losses)\..*_node\..*"
+        )
         checkpoint["state_dict"] = {
             k: v
             for k, v in checkpoint["state_dict"].items()
             if not pattern.match(k)
         }
+        checkpoint["version"] = luxonis_train.__version__
         checkpoint["execution_order"] = get_model_execution_order(self)
         checkpoint["config"] = self.cfg.model_dump(mode="json")
         checkpoint["dataset_metadata"] = self.dataset_metadata.dump()
@@ -568,7 +523,7 @@ class LuxonisLightningModule(pl.LightningModule):
     @override
     def configure_callbacks(self) -> list[pl.Callback]:
         return build_callbacks(
-            self.cfg, self.main_metric, self.save_dir, self.nodes
+            self.cfg, self.nodes.main_metric, self.save_dir, self.nodes
         )
 
     @override
@@ -581,16 +536,16 @@ class LuxonisLightningModule(pl.LightningModule):
         if self.training_strategy is not None:
             return self.training_strategy.configure_optimizers()
         return build_optimizers(
-            self.cfg, self.parameters(), self.main_metric, self.nodes
+            self.cfg, self.parameters(), self.nodes.main_metric, self.nodes
         )
 
-    def load_checkpoint(self, path: str | Path | None) -> None:
+    def load_checkpoint(self, path: PathType | None) -> None:
         """Loads checkpoint weights from provided path.
 
         Loads the checkpoints gracefully, ignoring keys that are not
         found in the model state dict or in the checkpoint.
 
-        @type path: str | None
+        @type path: PathType | None
         @param path: Path to the checkpoint. If C{None}, no checkpoint
             will be loaded.
         """
@@ -599,34 +554,76 @@ class LuxonisLightningModule(pl.LightningModule):
 
         path = str(path)
 
-        checkpoint = torch.load(  # nosemgrep
-            path, map_location=self.device
-        )
+        checkpoint = torch.load(path, map_location=self.device)  # nosemgrep
 
         if "state_dict" not in checkpoint:
             raise ValueError("Checkpoint does not contain state_dict.")
-        state_dict = {}
-        self_state_dict = self.state_dict()
-        for key, value in checkpoint["state_dict"].items():
-            if key not in self_state_dict.keys():
-                logger.warning(
-                    f"Key `{key}` from checkpoint not found in model state dict."
+
+        state_dict = checkpoint["state_dict"]
+        order_mapping = self._load_execution_order_mapping(checkpoint)
+
+        for node_name, node in self.nodes.items():
+            sub_state_dict = {
+                self._strip_state_prefix(k): v
+                for k, v in state_dict.items()
+                if k.startswith(f"nodes.{node_name}.module.")
+            }
+            try:
+                node.module.load_checkpoint(sub_state_dict, strict=True)
+            except RuntimeError:  # pragma: no cover
+                logger.error(
+                    f"Failed to load checkpoint for node '{node_name}'"
                 )
-            else:
-                state_dict[key] = value
 
-        for key in self_state_dict:
-            if key not in state_dict:
-                logger.warning(f"Key `{key}` was not found in checkpoint.")
-            else:
-                try:
-                    self_state_dict[key].copy_(state_dict[key])
-                except Exception:
-                    logger.warning(
-                        f"Key `{key}` from checkpoint could not be loaded into model."
+                if (
+                    isinstance(order_mapping, dict)
+                    and node_name in order_mapping
+                ):
+                    logger.info(
+                        f"Using execution order to transform incompatible weights for node '{node_name}'"
                     )
+                    new_state_dict = {}
 
-        logger.info(f"Loaded checkpoint from {path}.")
+                    for old_name, value in sub_state_dict.items():
+                        *old_name_parts, parameter_name = old_name.split(".")
+
+                        bare_name = ".".join(old_name_parts)
+                        new_name = order_mapping[node_name][bare_name]
+                        if old_name in sub_state_dict:
+                            new_state_dict[f"{new_name}.{parameter_name}"] = (
+                                value
+                            )
+                        else:
+                            logger.warning(
+                                f"Key '{bare_name}' not found in state dict for node '{node_name}'."
+                            )
+                    try:
+                        node.module.load_checkpoint(
+                            new_state_dict, strict=True
+                        )
+                    except RuntimeError:
+                        logger.error(
+                            f"Failed to load transformed checkpoint for node '{node_name}'"
+                        )
+                    logger.info(
+                        "Loading checkpoint with strict=False, some weights may not be loaded"
+                    )
+                    node.module.load_checkpoint(sub_state_dict, strict=False)
+
+                else:
+                    msg = "Failed to use execution order to migrate weights: "
+
+                    if isinstance(order_mapping, str):
+                        msg += order_mapping
+
+                    elif node_name not in order_mapping:
+                        msg += f"Node '{node_name}' not found in the execution order"
+                    logger.error(msg)
+
+                    logger.info(
+                        "Loading checkpoint with strict=False, some weights may not be loaded"
+                    )
+                    node.module.load_checkpoint(sub_state_dict, strict=False)
 
     def _evaluation_step(
         self,
@@ -653,9 +650,7 @@ class LuxonisLightningModule(pl.LightningModule):
             compute_visualizations=True,
         )
 
-        _, losses = compute_losses(
-            self.cfg, outputs.losses, self.loss_weights, self.device
-        )
+        _, losses = compute_losses(self.cfg, outputs.losses, self.device)
 
         self._loss_accumulators[mode].update(losses)
 
@@ -731,9 +726,9 @@ class LuxonisLightningModule(pl.LightningModule):
             self.log(f"{mode}/{formated_name}", value, sync_dist=True)
 
         table = defaultdict(dict)
-        for node_name, node_metrics in self.metrics.items():
+        for node_name, node in self.nodes.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
-            for metric_name, metric in node_metrics.items():
+            for metric_name, metric in node.metrics.items():
                 values = postprocess_metrics(metric_name, metric.compute())
                 metric.reset()
 
@@ -807,8 +802,8 @@ class LuxonisLightningModule(pl.LightningModule):
             stage=stage, loss=loss, metrics=metrics
         )
 
-        if self.main_metric is not None:
-            node_name, metric_name = self.main_metric
+        if self.nodes.main_metric is not None:
+            node_name, metric_name = self.nodes.main_metric
 
             value = metrics[node_name][metric_name]
             logger.info(
@@ -835,20 +830,20 @@ class LuxonisLightningModule(pl.LightningModule):
 
         for mode in ["train", "val", "test"]:
             metric_keys.add(f"{mode}/loss")
-            for node_name, node_losses in self.losses.items():
+            for node_name, node in self.nodes.items():
                 formatted_node_name = self.nodes.formatted_name(node_name)
-                for loss_name in node_losses.keys():
+                for loss_name in node.losses:
                     metric_keys.add(
                         f"{mode}/loss/{formatted_node_name}/{loss_name}"
                     )
 
-        for node_name, node_metrics in self.metrics.items():
+        for node_name, node in self.nodes.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
-            for metric_name, metric in node_metrics.items():
+            for metric_name, metric in node.metrics.items():
                 values = postprocess_metrics(metric_name, metric.compute())
-                for sub_name in values.keys():
+                for sub_name in values:
                     if "confusion_matrix" in sub_name:
-                        for epoch_idx in sorted([0] + val_eval_epochs):
+                        for epoch_idx in sorted([0, *val_eval_epochs]):
                             artifact_keys.add(
                                 f"val/metrics/{epoch_idx}/{formatted_node_name}/confusion_matrix.json"
                             )
@@ -856,7 +851,7 @@ class LuxonisLightningModule(pl.LightningModule):
                             f"test/metrics/{test_eval_epoch}/{formatted_node_name}/confusion_matrix.json"
                         )
                     else:
-                        for epoch_idx in sorted(val_eval_epochs):
+                        for _ in sorted(val_eval_epochs):
                             metric_keys.add(
                                 f"val/metric/{formatted_node_name}/{sub_name}"
                             )
@@ -864,10 +859,8 @@ class LuxonisLightningModule(pl.LightningModule):
                             f"test/metric/{formatted_node_name}/{sub_name}"
                         )
 
-        for node_name, visualizations in self.visualizers.items():
-            formatted_node_name = self.nodes.formatted_name(node_name)
-            for viz_name in visualizations.keys():
-                for epoch_idx in sorted([0] + val_eval_epochs):
+            for viz_name in node.visualizers:
+                for epoch_idx in sorted([0, *val_eval_epochs]):
                     for i in range(self.cfg.trainer.n_log_images):
                         artifact_keys.add(
                             f"val/visualizations/{formatted_node_name}/{viz_name}/{epoch_idx}/{i}.png"
@@ -876,6 +869,7 @@ class LuxonisLightningModule(pl.LightningModule):
                     artifact_keys.add(
                         f"test/visualizations/{formatted_node_name}/{viz_name}/{test_eval_epoch}/{i}.png"
                     )
+
         for callback in self.cfg.trainer.callbacks:
             if callback.name == "UploadCheckpoint":
                 artifact_keys.update(
@@ -902,3 +896,32 @@ class LuxonisLightningModule(pl.LightningModule):
             "metrics": sorted(metric_keys),
             "artifacts": sorted(artifact_keys),
         }
+
+    def _load_execution_order_mapping(
+        self, ckpt: dict[str, Any]
+    ) -> dict[str, dict[str, str]] | str:
+        """Loads mapping from old to new parameter names based on
+        execution order.
+
+        Returns a mapping dictionary or an error string if mapping
+        cannot be created.
+        """
+        if "execution_order" not in ckpt:  # pragma: no cover
+            return "Execution order not found in the checkpoint"
+        old_order = ckpt["execution_order"]
+        new_order = get_model_execution_order(self)
+        if len(old_order) != len(new_order):  # pragma: no cover
+            return (
+                "Execution order length mismatch between checkpoint and model"
+            )
+        mapping = defaultdict(dict)
+        for old_name, new_name in zip(old_order, new_order, strict=True):
+            node_name = old_name.split(".")[1]
+            mapping[node_name][self._strip_state_prefix(old_name)] = (
+                self._strip_state_prefix(new_name)
+            )
+        return dict(mapping)
+
+    @staticmethod
+    def _strip_state_prefix(key: str) -> str:
+        return ".".join(key.split(".")[3:])

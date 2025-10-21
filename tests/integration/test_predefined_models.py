@@ -11,39 +11,68 @@ from luxonis_train.core import LuxonisModel
 from tests.conftest import LuxonisTestDataset
 
 
+def test_model_construction():
+    cfg = "configs/detection_light_model.yaml"
+    model = LuxonisModel(
+        cfg,
+        {
+            "model.predefined_model.include_losses": False,
+            "model.predefined_model.include_metrics": False,
+            "model.predefined_model.include_visualizers": False,
+        },
+        debug_mode=True,
+    )
+    for node in model.lightning_module.nodes.values():
+        assert not node.losses
+        assert not node.metrics
+        assert not node.visualizers
+
+
 @pytest.mark.parametrize(
-    "config_name",
+    ("config_name", "extra_opts"),
     [
-        "anomaly_detection_model",
-        "embeddings_model",
-        "fomo_light_model",
-        "ocr_recognition_light_model",
-        "classification_light_model",
-        "detection_light_model",
-        "instance_segmentation_light_model",
-        "keypoint_bbox_light_model",
-        "segmentation_light_model",
-        "classification_heavy_model",
-        "detection_heavy_model",
-        "instance_segmentation_heavy_model",
-        "keypoint_bbox_heavy_model",
-        "segmentation_heavy_model",
+        ("anomaly_detection_model", None),
+        ("embeddings_model", None),
+        ("fomo_light_model", None),
+        ("ocr_recognition_light_model", None),
+        (
+            "ocr_recognition_light_model",
+            {
+                "model.predefined_model.params.neck_params": {
+                    "mixer": "conv",
+                    "prenorm": True,
+                    "height": 8,
+                    "width": 5,
+                },
+            },
+        ),
+        ("classification_light_model", None),
+        ("detection_light_model", None),
+        ("instance_segmentation_light_model", None),
+        ("keypoint_bbox_light_model", None),
+        ("segmentation_light_model", None),
+        ("classification_heavy_model", None),
+        ("detection_heavy_model", None),
+        ("instance_segmentation_heavy_model", None),
+        ("keypoint_bbox_heavy_model", None),
+        ("segmentation_heavy_model", None),
     ],
 )
 def test_predefined_models(
     config_name: str,
+    extra_opts: Params | None,
     opts: Params,
     coco_dataset: LuxonisTestDataset,
     cifar10_dataset: LuxonisTestDataset,
     toy_ocr_dataset: LuxonisTestDataset,
     embedding_dataset: LuxonisTestDataset,
     anomaly_detection_dataset: LuxonisTestDataset,
-    tempdir: Path,
+    tmp_path: Path,
     subtests: SubTests,
 ):
     config_file = f"configs/{config_name}.yaml"
-    tempdir = tempdir / config_name
-    tempdir.mkdir()
+    tmp_path = tmp_path / config_name
+    tmp_path.mkdir()
 
     if config_name == "embeddings_model":
         dataset = embedding_dataset
@@ -59,6 +88,7 @@ def test_predefined_models(
     else:
         dataset = coco_dataset
 
+    extra_opts = extra_opts or {}
     opts |= {
         "model.name": config_name,
         "loader.params.dataset_name": dataset.identifier,
@@ -74,7 +104,7 @@ def test_predefined_models(
     elif "ocr_recognition" in config_file:
         opts["trainer.preprocessing.train_image_size"] = [48, 320]
 
-    model = LuxonisModel(config_file, opts)
+    model = LuxonisModel(config_file, opts | extra_opts)
 
     with subtests.test("train"):
         model.train()
@@ -94,8 +124,8 @@ def test_predefined_models(
     if config_name != "embeddings_model":
         with subtests.test("infer"):
             loader = LuxonisLoader(dataset)
-            img_dir = tempdir / "images"
-            video_path = tempdir / "video.avi"
+            img_dir = tmp_path / "images"
+            video_path = tmp_path / "video.avi"
             video_writer = cv2.VideoWriter(
                 str(video_path), cv2.VideoWriter_fourcc(*"XVID"), 1, (256, 256)
             )
@@ -109,7 +139,7 @@ def test_predefined_models(
 
             for subtest in ["single_image", "image_dir", "video", "loader"]:
                 with subtests.test(f"infer/{subtest}"):
-                    save_dir = tempdir / f"infer_{subtest}"
+                    save_dir = tmp_path / f"infer_{subtest}"
                     if subtest == "single_image":
                         source = img_dir / "0.png"
                     elif subtest == "image_dir":

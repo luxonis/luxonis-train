@@ -1,44 +1,27 @@
-from typing import Literal, TypeAlias
-
 import torch
+from luxonis_ml.typing import Kwargs, Params
 from torch import Tensor
+from typing_extensions import override
 
+from luxonis_train.nodes.blocks import UNetDecoder, UNetEncoder
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
 from luxonis_train.typing import Packet
 
-from .blocks import Decoder, Encoder, NanoDecoder, NanoEncoder
 
-VariantLiteral: TypeAlias = Literal["n", "l"]
-
-
-def get_variant(variant: VariantLiteral) -> int:
-    """Returns the base width for the specified variant."""
-    variants = {
-        "n": 32,
-        "l": 64,
-    }
-
-    if variant not in variants:
-        raise ValueError(
-            f"Variant should be one of {list(variants.keys())}, got '{variant}'."
-        )
-
-    return variants[variant]
-
-
-class DiscSubNetHead(BaseHead[Tensor, Tensor]):
-    in_channels: list[int] | int
-    out_channels: int
-    base_channels: int
+class DiscSubNetHead(BaseHead):
     task = Tasks.ANOMALY_DETECTION
+
+    in_channels: int
+    base_channels: int
+
+    attach_index = -1
 
     def __init__(
         self,
-        in_channels: list[int] | int = 6,
+        base_channels: int,
+        width_multipliers: list[float],
         out_channels: int = 2,
-        base_channels: int | None = None,
-        variant: VariantLiteral = "l",  # Use lowercase variant
         **kwargs,
     ):
         """DiscSubNetHead: A discriminative sub-network that detects and
@@ -51,61 +34,56 @@ class DiscSubNetHead(BaseHead[Tensor, Tensor]):
         of anomalies by distinguishing between the reconstructed image
         and the input.
 
-        @type in_channels: list[int] | int
-        @param in_channels: Number of input channels for the encoder.
-            Defaults to 6.
         @type out_channels: int
         @param out_channels: Number of output channels for the decoder.
             Defaults to 2 (for segmentation masks).
+
         @type base_channels: int
-        @param base_channels: The base number of filters used in the
-            encoder and decoder blocks. If None, it is determined based
-            on the variant.
-        @type variant: Literal["n", "l"]
-        @param variant: The variant of the DiscSubNetHead to use. "l"
-            for large, "n" for nano (lightweight). Defaults to "l".
+        @param base_channels: The base number of filters used in the encoder and decoder blocks. If None, it is determined based on the variant.
         """
         super().__init__(**kwargs)
 
-        if isinstance(in_channels, list):
-            in_channels = in_channels[0] * 2
-
-        self.base_channels = (
-            base_channels
-            if base_channels is not None
-            else get_variant(variant)
+        self.encoder_segment = UNetEncoder(
+            self.in_channels * 2, base_channels, width_multipliers
+        )
+        self.decoder_segment = UNetDecoder(
+            base_channels, out_channels, width_multipliers
         )
 
-        if variant == "l":
-            self.encoder_segment = Encoder(in_channels, self.base_channels)
-            self.decoder_segment = Decoder(self.base_channels, out_channels)
-        elif variant == "n":
-            self.encoder_segment = NanoEncoder(in_channels, self.base_channels)
-            self.decoder_segment = NanoDecoder(
-                self.base_channels, out_channels
-            )
-
-    def forward(self, inputs: list[Tensor]) -> tuple[Tensor, Tensor]:
+    def forward(
+        self, reconstruction: Tensor, original: Tensor
+    ) -> Packet[Tensor]:
         """Performs the forward pass through the encoder and decoder."""
-        reconstruction, x = inputs
-        x = torch.cat([reconstruction, x], dim=1)
-        seg_out = self.decoder_segment(*self.encoder_segment(x))
+        x = torch.cat([reconstruction, original], dim=1)
+        seg_out = self.decoder_segment(self.encoder_segment(x))
 
-        return seg_out, reconstruction
-
-    def wrap(self, output: tuple[Tensor, Tensor]) -> Packet[Tensor]:
-        """Wraps the output into a packet."""
-        seg_out, recon = output
         if self.export:
-            return {"segmentation": seg_out}
-        else:
-            seg_out, recon = output
-            return {"reconstructed": recon, "segmentation": seg_out}
+            return {self.task.main_output: seg_out}
 
-    def get_custom_head_config(self) -> dict:
+        return {
+            self.task.main_output: seg_out,
+            "reconstruction": reconstruction,
+        }
+
+    @override
+    def get_custom_head_config(self) -> Params:
         """Returns custom head configuration.
 
         @rtype: dict
         @return: Custom head configuration.
         """
         return {}
+
+    @staticmethod
+    @override
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        return "n", {
+            "n": {
+                "base_channels": 32,
+                "width_multipliers": [1, 1.1],
+            },
+            "l": {
+                "base_channels": 64,
+                "width_multipliers": [1, 2, 4, 8, 8],
+            },
+        }
