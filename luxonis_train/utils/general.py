@@ -10,6 +10,7 @@ from luxonis_ml.typing import PathType
 from luxonis_ml.utils import LuxonisFileSystem
 from torch import Size, Tensor
 
+from luxonis_train import __version__
 from luxonis_train.typing import Packet
 
 
@@ -176,9 +177,9 @@ def safe_download(
     @rtype: Path | None
     @return: Path to local file or None if downloading failed.
     """
-    dir = Path(dir)
+    dir = Path(dir) / __version__
     dir.mkdir(parents=True, exist_ok=True)
-    f = Path(dir or ".") / (file or url2file(url))
+    f = dir / (file or url2file(url))
     if f.is_file() and not force:
         logger.warning(f"File {f} is already cached, using that one.")
         return f
