@@ -3,6 +3,7 @@ lightning>=2.5.0
 luxonis-ml[data,tracker]~=0.8
 onnx<1.16.2; sys_platform == "win32"
 onnx >=1.16.2; sys_platform != "win32"
+onnxscript>=0.1
 onnxruntime>=1.13.1
 onnxsim>=0.4.10
 optuna>=3.6.0
