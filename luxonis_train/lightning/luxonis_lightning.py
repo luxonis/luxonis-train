@@ -1,3 +1,4 @@
+import os
 import re
 from collections import defaultdict
 from collections.abc import Callable
@@ -38,6 +39,8 @@ from .utils import (
     log_sequential_images,
     postprocess_metrics,
 )
+
+os.environ["TORCH_ONNX_DISABLE_ONNXSCRIPT"] = "1"
 
 
 class LuxonisLightningModule(pl.LightningModule):
