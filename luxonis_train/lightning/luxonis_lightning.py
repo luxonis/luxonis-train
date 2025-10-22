@@ -1,4 +1,3 @@
-import os
 import re
 from collections import defaultdict
 from collections.abc import Callable
@@ -39,8 +38,6 @@ from .utils import (
     log_sequential_images,
     postprocess_metrics,
 )
-
-os.environ["TORCH_ONNX_DISABLE_ONNXSCRIPT"] = "1"
 
 
 class LuxonisLightningModule(pl.LightningModule):
@@ -287,6 +284,9 @@ class LuxonisLightningModule(pl.LightningModule):
         @rtype: Path
         @return: Path to the exported model.
         """
+        import os
+
+        os.environ["TORCH_ONNX_DISABLE_ONNXSCRIPT"] = "1"
         device_before = self.device
 
         self.eval()
@@ -382,6 +382,7 @@ class LuxonisLightningModule(pl.LightningModule):
         if "output_names" not in kwargs:
             kwargs["output_names"] = output_names
 
+        kwargs.setdefault("dynamo", False)
         self.to_onnx(save_path, inputs_for_onnx, **kwargs)
 
         self.forward = old_forward  # type: ignore
