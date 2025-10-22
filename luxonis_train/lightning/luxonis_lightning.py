@@ -284,9 +284,6 @@ class LuxonisLightningModule(pl.LightningModule):
         @rtype: Path
         @return: Path to the exported model.
         """
-        import os
-
-        os.environ["TORCH_ONNX_DISABLE_ONNXSCRIPT"] = "1"
         device_before = self.device
 
         self.eval()
@@ -382,7 +379,9 @@ class LuxonisLightningModule(pl.LightningModule):
         if "output_names" not in kwargs:
             kwargs["output_names"] = output_names
 
-        kwargs.setdefault("dynamo", False)
+        kwargs.setdefault(
+            "dynamo", False
+        )  # PyTorch 2.9 introduces a breaking change that sets the default value to True
         self.to_onnx(save_path, inputs_for_onnx, **kwargs)
 
         self.forward = old_forward  # type: ignore
