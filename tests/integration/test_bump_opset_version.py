@@ -54,13 +54,13 @@ def test_opset_bump_equivalence(
         return onnx_path
 
     path_opset_12 = _export_model(12)
-    path_opset_16 = _export_model(target_opset)
+    path_opset_newer_version = _export_model(target_opset)
 
     sess12 = ort.InferenceSession(
         str(path_opset_12), providers=["CPUExecutionProvider"]
     )
     sess16 = ort.InferenceSession(
-        str(path_opset_16), providers=["CPUExecutionProvider"]
+        str(path_opset_newer_version), providers=["CPUExecutionProvider"]
     )
 
     inputs12 = sess12.get_inputs()
@@ -75,12 +75,12 @@ def test_opset_bump_equivalence(
 
     with subtests.test("run_inference"):
         outputs12 = sess12.run(None, {input_name: random_input})
-        outputs16 = sess16.run(None, {input_name: random_input})
-        assert len(outputs12) == len(outputs16), "Output count mismatch"
+        outputs_newer = sess16.run(None, {input_name: random_input})
+        assert len(outputs12) == len(outputs_newer), "Output count mismatch"
 
     with subtests.test("compare_outputs"):
-        for i, (out12, out16) in enumerate(
-            zip(outputs12, outputs16, strict=True)
+        for i, (out12, out_newer) in enumerate(
+            zip(outputs12, outputs_newer, strict=True)
         ):
             # Convert any list or dict outputs to numpy arrays (pyright)
             def to_array(x: Any) -> np.ndarray:
@@ -94,12 +94,12 @@ def test_opset_bump_equivalence(
                     x = np.concatenate([np.ravel(v) for v in x])
                 return np.asarray(x)
 
-            a12 = to_array(out12)
-            a16 = to_array(out16)
+            array_output_12 = to_array(out12)
+            array_output_newer = to_array(out_newer)
 
             np.testing.assert_allclose(
-                a12,
-                a16,
+                array_output_12,
+                array_output_newer,
                 rtol=1e-4,
                 atol=1e-5,
                 err_msg=f"Output {i} differs between opset 12 and 16",
