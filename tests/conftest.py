@@ -2,6 +2,7 @@ import random
 import shutil
 import zipfile
 from collections.abc import Generator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
@@ -17,6 +18,8 @@ from luxonis_ml.data import Category, DatasetIterator, LuxonisDataset
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.typing import Params
 from luxonis_ml.utils import LuxonisFileSystem, environ
+
+from luxonis_train.config.config import OnnxExportConfig
 
 
 @pytest.fixture(scope="session")
@@ -325,6 +328,35 @@ def xor_dataset(data_dir: Path) -> LuxonisTestDataset:
     return dataset
 
 
+@dataclass
+class LuxonisTestDatasets:
+    parking_lot_dataset: LuxonisDataset
+    coco_dataset: LuxonisTestDataset
+    cifar10_dataset: LuxonisTestDataset
+    toy_ocr_dataset: LuxonisTestDataset
+    embedding_dataset: LuxonisTestDataset
+    anomaly_detection_dataset: LuxonisTestDataset
+
+
+@pytest.fixture(scope="session")
+def test_datasets(
+    parking_lot_dataset: LuxonisDataset,
+    coco_dataset: LuxonisTestDataset,
+    cifar10_dataset: LuxonisTestDataset,
+    toy_ocr_dataset: LuxonisTestDataset,
+    embedding_dataset: LuxonisTestDataset,
+    anomaly_detection_dataset: LuxonisTestDataset,
+) -> LuxonisTestDatasets:
+    return LuxonisTestDatasets(
+        parking_lot_dataset,
+        coco_dataset,
+        cifar10_dataset,
+        toy_ocr_dataset,
+        embedding_dataset,
+        anomaly_detection_dataset,
+    )
+
+
 @pytest.fixture
 def opts(save_dir: Path, image_size: tuple[int, int]) -> Params:
     return {
@@ -340,6 +372,11 @@ def opts(save_dir: Path, image_size: tuple[int, int]) -> Params:
         "tracker.save_directory": str(save_dir),
         "trainer.preprocessing.train_image_size": image_size,
     }
+
+
+@pytest.fixture
+def current_opset() -> int:
+    return OnnxExportConfig().opset_version
 
 
 def pytest_collection_modifyitems(items: list[Function]):
