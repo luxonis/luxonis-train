@@ -86,13 +86,18 @@ class ClassificationVisualizer(BaseVisualizer):
                 height, width, self.thickness, self.font_scale
             )
 
+            base_y: int = int(height * 0.15)
+            line_spacing: int = int(height * 0.15)
+
+            y_gt, y_pred = base_y, base_y + line_spacing
+
             curr_class = self._get_class_name(prediction)
             if target is not None:
                 gt = self._get_class_name(target[i])
                 arr = cv2.putText(
                     arr,
                     f"GT: {gt}",
-                    (5, 50),
+                    (5, y_gt),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     font_scale,
                     self.color,
@@ -101,7 +106,7 @@ class ClassificationVisualizer(BaseVisualizer):
             arr = cv2.putText(
                 arr,
                 f"Pred: {curr_class}",
-                (5, 75),
+                (5, y_pred),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 font_scale,
                 self.color,
