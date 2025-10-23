@@ -83,12 +83,17 @@ class OCRVisualizer(BaseVisualizer):
                 height, width, self.thickness, self.font_scale
             )
 
+            base_y: int = int(height * 0.15)
+            line_spacing: int = int(height * 0.15)
+
+            y_gt, y_pred = base_y, base_y + line_spacing
+
             if targets is not None:
                 gt_text = target_strings[i]
                 pred_img = cv2.putText(
                     pred_img,
                     f"GT: {gt_text}",
-                    (5, 20),
+                    (5, y_gt),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     font_scale,
                     self.color,
@@ -98,7 +103,7 @@ class OCRVisualizer(BaseVisualizer):
             pred_img = cv2.putText(
                 pred_img,
                 f"Pred: {pred_text} {probability:.2f}",
-                (5, 40),
+                (5, y_pred),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 font_scale,
                 self.color,
