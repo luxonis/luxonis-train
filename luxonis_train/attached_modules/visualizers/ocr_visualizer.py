@@ -6,7 +6,11 @@ from torch import Tensor
 from luxonis_train.nodes import OCRCTCHead
 
 from .base_visualizer import BaseVisualizer
-from .utils import numpy_to_torch_img, torch_img_to_numpy, dynamically_determine_font_scale
+from .utils import (
+    dynamically_determine_font_scale,
+    numpy_to_torch_img,
+    torch_img_to_numpy,
+)
 
 
 class OCRVisualizer(BaseVisualizer):
@@ -23,8 +27,9 @@ class OCRVisualizer(BaseVisualizer):
     ):
         """Initializes the OCR visualizer.
 
-        @type font_scale: float
-        @param font_scale: Font scale of the text. Defaults to C{0.5}.
+        @type font_scale: float | None
+        @param font_scale: Font scale of the text. If None, scales
+            proportionally to image size.
         @type color: tuple[int, int, int]
         @param color: Color of the text. Defaults to C{(0, 0, 0)}.
         @type thickness: int

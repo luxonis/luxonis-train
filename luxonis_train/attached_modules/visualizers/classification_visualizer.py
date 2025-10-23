@@ -77,13 +77,11 @@ class ClassificationVisualizer(BaseVisualizer):
     ) -> Tensor | tuple[Tensor, Tensor]:
         overlay = torch.zeros_like(target_canvas)
         plots = torch.zeros_like(prediction_canvas)
-
         for i in range(len(overlay)):
             prediction = predictions[i]
             arr = torch_img_to_numpy(target_canvas[i].clone())
             height, width = arr.shape[:2]
 
-            # Compute font scale dynamically if None
             font_scale, thickness = dynamically_determine_font_scale(
                 height, width, self.thickness, self.font_scale
             )
