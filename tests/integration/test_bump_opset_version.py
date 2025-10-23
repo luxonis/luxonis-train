@@ -1,13 +1,16 @@
-import pytest
 import tempfile
+from pathlib import Path
+from typing import Any
+
 import numpy as np
 import onnxruntime as ort
-from pathlib import Path
+import pytest
+from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.typing import Params
+from pytest_subtests import SubTests
 
-from luxonis_train.nodes.backbones import __all__ as BACKBONES
 from luxonis_train.core import LuxonisModel
-from tests.integration.test_combinations import get_config
-from luxonis_ml.typing import Params, ParamValue
+from tests.integration.test_combinations import BACKBONES, get_config
 
 BACKBONES = [
     backbone
@@ -17,12 +20,27 @@ BACKBONES = [
 
 
 @pytest.mark.parametrize("backbone", BACKBONES)
-def test_opset_bump_equivalence(backbone: str, opts: Params, subtests, parking_lot_dataset):
+@pytest.mark.parametrize("target_opset", [16])
+def test_opset_bump_equivalence(
+    backbone: str,
+    target_opset: int,
+    opts: Params,
+    subtests: SubTests,
+    parking_lot_dataset: LuxonisDataset,
+):
+    """Tests whether or not bumping an opset version breaks model
+    conversions.
+
+    Performed tests:
+        - Successful export of the model in previous opset version and newer opset version
+        - Converted models can be executed and output formats are the same
+        - Outputs are the same between both models on the same input
+    """
     config = get_config(backbone)
     tmpdir = Path(tempfile.mkdtemp())
     opts |= {"loader.params.dataset_name": parking_lot_dataset.identifier}
 
-    def _export_model(opset_version: int):
+    def _export_model(opset_version: int) -> Path:
         cfg = config.copy()
         cfg["exporter"] = {"onnx": {"opset_version": opset_version}}
         model = LuxonisModel(cfg, opts)
@@ -30,15 +48,20 @@ def test_opset_bump_equivalence(backbone: str, opts: Params, subtests, parking_l
         with subtests.test(f"export_opset_{opset_version}"):
             model.export(save_path=tmpdir)
             onnx_path = next(tmpdir.glob("*.onnx"))
-            assert onnx_path.exists(), f"Export failed for opset {opset_version}"
+            assert onnx_path.exists(), (
+                f"Export failed for opset {opset_version}"
+            )
         return onnx_path
 
-    # this will fail if the export fails
     path_opset_12 = _export_model(12)
-    path_opset_16 = _export_model(16)
+    path_opset_16 = _export_model(target_opset)
 
-    sess12 = ort.InferenceSession(str(path_opset_12), providers=["CPUExecutionProvider"])
-    sess16 = ort.InferenceSession(str(path_opset_16), providers=["CPUExecutionProvider"])
+    sess12 = ort.InferenceSession(
+        str(path_opset_12), providers=["CPUExecutionProvider"]
+    )
+    sess16 = ort.InferenceSession(
+        str(path_opset_16), providers=["CPUExecutionProvider"]
+    )
 
     inputs12 = sess12.get_inputs()
     assert len(inputs12) == 1, "Expected a single model input"
@@ -46,22 +69,37 @@ def test_opset_bump_equivalence(backbone: str, opts: Params, subtests, parking_l
     input_shape = [d if isinstance(d, int) else 1 for d in inputs12[0].shape]
     dtype = np.float32
 
-    # Random input, here 0 is the seed to make the test reproducible
-    rng = np.random.default_rng(0)
+    # Random input with seed
+    rng = np.random.default_rng(seed=3)
     random_input = rng.standard_normal(input_shape, dtype=dtype)
 
-    # will pass if both models can be executed and if both outputs have the same structure
     with subtests.test("run_inference"):
         outputs12 = sess12.run(None, {input_name: random_input})
         outputs16 = sess16.run(None, {input_name: random_input})
         assert len(outputs12) == len(outputs16), "Output count mismatch"
 
-    # this will fail if the outputs between opset 12 and 16 are not the same
     with subtests.test("compare_outputs"):
-        for i, (out12, out16) in enumerate(zip(outputs12, outputs16)):
+        for i, (out12, out16) in enumerate(
+            zip(outputs12, outputs16, strict=True)
+        ):
+            # Convert any list or dict outputs to numpy arrays (pyright)
+            def to_array(x: Any) -> np.ndarray:
+                if hasattr(x, "to_dense"):
+                    x = x.to_dense()
+                if isinstance(x, dict):
+                    x = np.concatenate(
+                        [v for _, v in sorted(x.items())], axis=None
+                    )
+                elif isinstance(x, list):
+                    x = np.concatenate([np.ravel(v) for v in x])
+                return np.asarray(x)
+
+            a12 = to_array(out12)
+            a16 = to_array(out16)
+
             np.testing.assert_allclose(
-                out12,
-                out16,
+                a12,
+                a16,
                 rtol=1e-4,
                 atol=1e-5,
                 err_msg=f"Output {i} differs between opset 12 and 16",
