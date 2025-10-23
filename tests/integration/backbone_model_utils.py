@@ -1,6 +1,7 @@
-from luxonis_train.nodes.backbones import __all__ as BACKBONES
-from tests.conftest import LuxonisTestDatasets, LuxonisTestDataset
 from luxonis_ml.typing import Params
+
+from luxonis_train.nodes.backbones import __all__ as BACKBONES
+from tests.conftest import LuxonisTestDataset, LuxonisTestDatasets
 
 BACKBONES = [
     backbone
@@ -38,9 +39,7 @@ PREDEFINED_MODELS = [
 
 
 def prepare_predefined_model_config(
-        config_name: str,
-        opts: Params,
-        test_datasets: LuxonisTestDatasets
+    config_name: str, opts: Params, test_datasets: LuxonisTestDatasets
 ) -> tuple[str, dict, LuxonisTestDataset]:
     """Prepares configuration and options for non-backbone models."""
     config_file = f"configs/{config_name}.yaml"
@@ -53,7 +52,11 @@ def prepare_predefined_model_config(
     elif "classification" in config_name:
         dataset = test_datasets.cifar10_dataset
     elif "anomaly_detection" in config_name:
-        opts |= {"loader.params.anomaly_source_path": str(test_datasets.coco_dataset.source_path)}
+        opts |= {
+            "loader.params.anomaly_source_path": str(
+                test_datasets.coco_dataset.source_path
+            )
+        }
         dataset = test_datasets.anomaly_detection_dataset
     else:
         dataset = test_datasets.coco_dataset
