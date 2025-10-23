@@ -6,7 +6,7 @@ from torch import Tensor
 from luxonis_train.nodes import OCRCTCHead
 
 from .base_visualizer import BaseVisualizer
-from .utils import numpy_to_torch_img, torch_img_to_numpy
+from .utils import numpy_to_torch_img, torch_img_to_numpy, dynamically_determine_font_scale
 
 
 class OCRVisualizer(BaseVisualizer):
@@ -16,7 +16,7 @@ class OCRVisualizer(BaseVisualizer):
 
     def __init__(
         self,
-        font_scale: float = 0.5,
+        font_scale: float | None = None,
         color: tuple[int, int, int] = (0, 0, 0),
         thickness: int = 1,
         **kwargs,
@@ -73,6 +73,11 @@ class OCRVisualizer(BaseVisualizer):
             arr = torch_img_to_numpy(target_canvas[i].clone())
             pred_img = np.full_like(arr, 255)
 
+            height, width = pred_img.shape[:2]
+            font_scale, thickness = dynamically_determine_font_scale(
+                height, width, self.thickness, self.font_scale
+            )
+
             if targets is not None:
                 gt_text = target_strings[i]
                 pred_img = cv2.putText(
@@ -80,9 +85,9 @@ class OCRVisualizer(BaseVisualizer):
                     f"GT: {gt_text}",
                     (5, 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    self.font_scale,
+                    font_scale,
                     self.color,
-                    self.thickness,
+                    thickness,
                 )
 
             pred_img = cv2.putText(
@@ -90,9 +95,9 @@ class OCRVisualizer(BaseVisualizer):
                 f"Pred: {pred_text} {probability:.2f}",
                 (5, 40),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                self.font_scale,
+                font_scale,
                 self.color,
-                self.thickness,
+                thickness,
             )
 
             overlay[i] = numpy_to_torch_img(arr)
