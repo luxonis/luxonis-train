@@ -58,7 +58,6 @@ def test_opset_bump_equivalence(
         merged_opts = opts | (extra_opts or {})
         merged_opts |= {"exporter": {"onnx": {"opset_version": opset_version}}}
         model = LuxonisModel(config, merged_opts)
-        print(model.cfg.exporter.onnx.opset_version)
 
         with subtests.test(f"export_opset_{opset_version}"):
             model.export(save_path=tmp_path)
@@ -123,5 +122,5 @@ def test_opset_bump_equivalence(
                 array_output_newer,
                 rtol=1e-4,
                 atol=1e-5,
-                err_msg=f"Output {i} differs between opset 12 and 16",
+                err_msg=f"Output {i} differs between opset {current_opset} and {target_opset}",
             )
