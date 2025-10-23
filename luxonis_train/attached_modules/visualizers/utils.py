@@ -251,15 +251,17 @@ def dynamically_determine_font_scale(
     font_scale: float | None = None,
     scale_factor: float = 500.0,
 ) -> tuple[float, int]:
-    computed_scale = (
-        font_scale
-        if font_scale is not None
-        else min(height, width) / scale_factor
+    aspect_ratio = width / max(height, 1)
+    width_weight = min(0.4, aspect_ratio / 10.0)
+    effective_size = height * (1 - width_weight) + width * width_weight
+
+    computed_font_scale = (
+        font_scale if font_scale is not None else effective_size / scale_factor
     )
 
-    if computed_scale < 1:
-        return computed_scale, 1
-    return computed_scale, thickness
+    if computed_font_scale < 1:
+        return computed_font_scale, 1
+    return computed_font_scale, thickness
 
 
 # TODO: Support native visualizations
