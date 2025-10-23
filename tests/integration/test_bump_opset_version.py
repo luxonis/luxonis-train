@@ -57,10 +57,7 @@ def test_opset_bump_equivalence(
     def _export_model(opset_version: int) -> Path:
         merged_opts = opts | (extra_opts or {})
         merged_opts |= {"exporter": {"onnx": {"opset_version": opset_version}}}
-        model = LuxonisModel(
-            config,
-            merged_opts
-        )
+        model = LuxonisModel(config, merged_opts)
         print(model.cfg.exporter.onnx.opset_version)
 
         with subtests.test(f"export_opset_{opset_version}"):
@@ -94,7 +91,9 @@ def test_opset_bump_equivalence(
     random_input = rng.standard_normal(input_shape, dtype=dtype)
 
     with subtests.test("run_inference"):
-        outputs_current = sess_current_opset.run(None, {input_name: random_input})
+        outputs_current = sess_current_opset.run(
+            None, {input_name: random_input}
+        )
         outputs_newer = sess_newer_opset.run(None, {input_name: random_input})
         assert len(outputs_current) == len(outputs_newer), (
             "Output count mismatch"
