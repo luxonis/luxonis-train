@@ -48,17 +48,20 @@ def test_opset_bump_equivalence(
         config, opts, _ = prepare_predefined_model_config(
             config_name, opts, test_datasets
         )
-        extra_opts = extra_opts or {}
         tmp_path = tmp_path / config_name
         tmp_path.mkdir()
 
+    if extra_opts is None:
+        extra_opts = {}
+
     def _export_model(opset_version: int) -> Path:
+        merged_opts = opts | (extra_opts or {})
+        merged_opts |= {"exporter": {"onnx": {"opset_version": opset_version}}}
         model = LuxonisModel(
             config,
-            opts
-            | extra_opts
-            | {"exporter": {"onnx": {"opset_version": opset_version}}},
+            merged_opts
         )
+        print(model.cfg.exporter.onnx.opset_version)
 
         with subtests.test(f"export_opset_{opset_version}"):
             model.export(save_path=tmp_path)
@@ -71,14 +74,14 @@ def test_opset_bump_equivalence(
     path_opset_current = _export_model(current_opset)
     path_opset_newer_version = _export_model(target_opset)
 
-    sess12 = ort.InferenceSession(
+    sess_current_opset = ort.InferenceSession(
         str(path_opset_current), providers=["CPUExecutionProvider"]
     )
-    sess16 = ort.InferenceSession(
+    sess_newer_opset = ort.InferenceSession(
         str(path_opset_newer_version), providers=["CPUExecutionProvider"]
     )
 
-    inputs_current = sess12.get_inputs()
+    inputs_current = sess_current_opset.get_inputs()
     assert len(inputs_current) == 1, "Expected a single model input"
     input_name = inputs_current[0].name
     input_shape = [
@@ -91,8 +94,8 @@ def test_opset_bump_equivalence(
     random_input = rng.standard_normal(input_shape, dtype=dtype)
 
     with subtests.test("run_inference"):
-        outputs_current = sess12.run(None, {input_name: random_input})
-        outputs_newer = sess16.run(None, {input_name: random_input})
+        outputs_current = sess_current_opset.run(None, {input_name: random_input})
+        outputs_newer = sess_newer_opset.run(None, {input_name: random_input})
         assert len(outputs_current) == len(outputs_newer), (
             "Output count mismatch"
         )
