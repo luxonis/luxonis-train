@@ -17,7 +17,7 @@ class DummyClassificationNode(BaseNode, register=False):
 
 
 @pytest.mark.parametrize(
-    "float_value, expected_hash",
+    ("float_value", "expected_hash"),
     [
         (
             1.0,
@@ -29,10 +29,12 @@ class DummyClassificationNode(BaseNode, register=False):
         ),
     ],
 )
-def test_classification_visualizer(float_value, expected_hash):
+def test_classification_visualizer(
+    font_scale: float | None, expected_hash: str
+):
     kwargs = {}
-    if float_value is not None:
-        kwargs["font_scale"] = float_value
+    if font_scale is not None:
+        kwargs["font_scale"] = font_scale
 
     visualizer = ClassificationVisualizer(
         node=DummyClassificationNode(

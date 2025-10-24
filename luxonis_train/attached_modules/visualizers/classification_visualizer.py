@@ -87,7 +87,7 @@ class ClassificationVisualizer(BaseVisualizer):
             )
 
             base_y: int = int(height * 0.15)
-            line_spacing: int = int(height * 0.15)
+            line_spacing: int = int(height * 0.1)
 
             y_gt, y_pred = base_y, base_y + line_spacing
 
