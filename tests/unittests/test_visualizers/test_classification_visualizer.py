@@ -17,7 +17,7 @@ class DummyClassificationNode(BaseNode, register=False):
 
 
 @pytest.mark.parametrize(
-    ("float_value", "expected_hash"),
+    ("font_scale", "expected_hash"),
     [
         (
             1.0,
