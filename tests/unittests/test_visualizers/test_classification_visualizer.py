@@ -25,7 +25,7 @@ class DummyClassificationNode(BaseNode, register=False):
         ),
         (
             None,
-            "fbd4e13946e209a987ad06fa3a9f252e93ba59c4591950cd2e4e404de7c20f1b",
+            "27e4034252004f457e7d3c7cc1c5a2eb2e0e2d5020fc47c731de0d2053ed1adc",
         ),
     ],
 )

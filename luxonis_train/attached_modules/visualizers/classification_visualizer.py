@@ -82,14 +82,17 @@ class ClassificationVisualizer(BaseVisualizer):
             arr = torch_img_to_numpy(target_canvas[i].clone())
             height, width = arr.shape[:2]
 
-            font_scale, thickness = dynamically_determine_font_scale(
-                height, width, self.thickness, self.font_scale
-            )
+            if not self.font_scale:
+                font_scale, thickness = dynamically_determine_font_scale(
+                    height, width, self.thickness, self.font_scale
+                )
+                base_y: int = int(height * 0.15)
+                line_spacing: int = int(height * 0.1)
 
-            base_y: int = int(height * 0.15)
-            line_spacing: int = int(height * 0.1)
-
-            y_gt, y_pred = base_y, base_y + line_spacing
+                y_gt, y_pred = base_y, base_y + line_spacing
+            else:
+                font_scale, thickness = self.font_scale, self.thickness
+                y_gt, y_pred = 50, 75
 
             curr_class = self._get_class_name(prediction)
             if target is not None:

@@ -6,11 +6,7 @@ from torch import Tensor
 from luxonis_train.nodes import OCRCTCHead
 
 from .base_visualizer import BaseVisualizer
-from .utils import (
-    dynamically_determine_font_scale,
-    numpy_to_torch_img,
-    torch_img_to_numpy,
-)
+from .utils import numpy_to_torch_img, torch_img_to_numpy
 
 
 class OCRVisualizer(BaseVisualizer):
@@ -20,16 +16,15 @@ class OCRVisualizer(BaseVisualizer):
 
     def __init__(
         self,
-        font_scale: float | None = None,
+        font_scale: float = 0.5,
         color: tuple[int, int, int] = (0, 0, 0),
         thickness: int = 1,
         **kwargs,
     ):
         """Initializes the OCR visualizer.
 
-        @type font_scale: float | None
-        @param font_scale: Font scale of the text. If None, scales
-            proportionally to image size.
+        @type font_scale: float
+        @param font_scale: Font scale of the text. Defaults to C{0.5}.
         @type color: tuple[int, int, int]
         @param color: Color of the text. Defaults to C{(0, 0, 0)}.
         @type thickness: int
@@ -78,36 +73,26 @@ class OCRVisualizer(BaseVisualizer):
             arr = torch_img_to_numpy(target_canvas[i].clone())
             pred_img = np.full_like(arr, 255)
 
-            height, width = pred_img.shape[:2]
-            font_scale, thickness = dynamically_determine_font_scale(
-                height, width, self.thickness, self.font_scale
-            )
-
-            base_y: int = int(height * 0.15)
-            line_spacing: int = int(height * 0.15)
-
-            y_gt, y_pred = base_y, base_y + line_spacing
-
             if targets is not None:
                 gt_text = target_strings[i]
                 pred_img = cv2.putText(
                     pred_img,
                     f"GT: {gt_text}",
-                    (5, y_gt),
+                    (5, 20),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    font_scale,
+                    self.font_scale,
                     self.color,
-                    thickness,
+                    self.thickness,
                 )
 
             pred_img = cv2.putText(
                 pred_img,
                 f"Pred: {pred_text} {probability:.2f}",
-                (5, y_pred),
+                (5, 40),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                font_scale,
+                self.font_scale,
                 self.color,
-                thickness,
+                self.thickness,
             )
 
             overlay[i] = numpy_to_torch_img(arr)
