@@ -198,15 +198,9 @@ class ModelConfig(BaseModelExtraForbid):
             return self
 
         for metric in all_metrics:
-            if "matrix" not in metric.name.lower():
-                metric.is_main_metric = True
-                logger.info(f"Setting '{metric.identifier}' as main metric.")
-                return self
-
-        raise ValueError(
-            "No valid main metric can be set because all "
-            "specifed metrics are confusion matrices."
-        )
+            metric.is_main_metric = True
+            logger.info(f"Setting '{metric.identifier}' as main metric.")
+            return self
 
     @model_validator(mode="after")
     def check_graph(self) -> Self:

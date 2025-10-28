@@ -11,8 +11,8 @@ class FOMOModel(SimplePredefinedModel):
                 "backbone": "EfficientRep",
                 "head": "FOMOHead",
                 "loss": "FOMOLocalizationLoss",
-                "metrics": "ObjectKeypointSimilarity",
-                "confusion_matrix_available": False,
+                "metrics": "ConfusionMatrix",
+                "confusion_matrix_available": True,
                 "visualizer": "FOMOVisualizer",
             }
             | kwargs
