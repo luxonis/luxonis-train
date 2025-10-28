@@ -244,6 +244,26 @@ def get_color(seed: int) -> Color:
     return hsl_to_rgb(number_to_hsl(seed + 45))
 
 
+def dynamically_determine_font_scale(
+    height: int,
+    width: int,
+    thickness: int,
+    font_scale: float | None = None,
+    scale_factor: float = 500.0,
+) -> tuple[float, int]:
+    aspect_ratio = width / max(height, 1)
+    width_weight = min(0.4, aspect_ratio / 10.0)
+    effective_size = height * (1 - width_weight) + width * width_weight
+
+    computed_font_scale = (
+        font_scale if font_scale is not None else effective_size / scale_factor
+    )
+
+    if computed_font_scale < 1:
+        return computed_font_scale, 1
+    return computed_font_scale, thickness
+
+
 # TODO: Support native visualizations
 # NOTE: Ignore for now, native visualizations not a priority.
 #

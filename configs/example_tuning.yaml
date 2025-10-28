@@ -23,7 +23,7 @@ trainer:
       - name: Sharpen
         params:
           p: 0.1
-      - name: Flip
+      - name: VerticalFlip
 
   batch_size: 8
   epochs: 200
@@ -42,5 +42,4 @@ tuner:
     trainer.optimizer.name_categorical: ["Adam", "SGD"]
     trainer.optimizer.params.lr_float: [0.0001, 0.001]
     trainer.batch_size_int: [4, 16, 4]
-    trainer.preprocessing.augmentations_subset:
-      [["Defocus", "Sharpen", "HorizontalFlip"], 2]
+    trainer.preprocessing.augmentations_subset: [["Defocus", "Sharpen", "VerticalFlip"], 2]
