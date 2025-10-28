@@ -197,10 +197,8 @@ class ModelConfig(BaseModelExtraForbid):
             )
             return self
 
-        for metric in all_metrics:
-            metric.is_main_metric = True
-            logger.info(f"Setting '{metric.identifier}' as main metric.")
-
+        all_metrics[0].is_main_metric = True
+        logger.info(f"Setting '{all_metrics[0].identifier}' as main metric.")
         return self
 
     @model_validator(mode="after")
