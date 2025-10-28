@@ -200,7 +200,8 @@ class ModelConfig(BaseModelExtraForbid):
         for metric in all_metrics:
             metric.is_main_metric = True
             logger.info(f"Setting '{metric.identifier}' as main metric.")
-            return self
+
+        return self
 
     @model_validator(mode="after")
     def check_graph(self) -> Self:
