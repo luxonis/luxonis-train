@@ -11,7 +11,7 @@ class FOMOModel(SimplePredefinedModel):
                 "backbone": "EfficientRep",
                 "head": "FOMOHead",
                 "loss": "FOMOLocalizationLoss",
-                "metrics": "ConfusionMatrix",
+                "metrics": "ObjectKeypointSimilarity",
                 "confusion_matrix_available": False,
                 "visualizer": "FOMOVisualizer",
             }
