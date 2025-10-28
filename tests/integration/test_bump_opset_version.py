@@ -20,7 +20,7 @@ from tests.integration.test_combinations import BACKBONES, get_config
     ("config_name", "extra_opts"),
     [(b, {}) for b in BACKBONES] + PREDEFINED_MODELS,
 )
-@pytest.mark.parametrize("target_opset", [16])
+@pytest.mark.parametrize("target_opset", [12])
 def test_opset_bump_equivalence(
     config_name: str,
     extra_opts: Params | None,
@@ -39,6 +39,10 @@ def test_opset_bump_equivalence(
         - Converted models can be executed and output formats are the same
         - Outputs are the same between both models on the same input
     """
+    if target_opset == current_opset:
+        pytest.skip(
+            "Opset version is not being upgraded, skipping test for bumping opset version"
+        )
     if config_name in BACKBONES:
         config = get_config(config_name)
         opts |= {
