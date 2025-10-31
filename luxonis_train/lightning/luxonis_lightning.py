@@ -10,6 +10,7 @@ from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
 from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
+from packaging import version
 from torch import Size, Tensor
 from typing_extensions import override
 
@@ -380,9 +381,10 @@ class LuxonisLightningModule(pl.LightningModule):
         if "output_names" not in kwargs:
             kwargs["output_names"] = output_names
 
-        kwargs.setdefault(
-            "dynamo", False
-        )  # PyTorch 2.9 introduces a breaking change that sets the default value to True
+        if version.parse(torch.__version__) >= version.parse("2.4.0"):
+            # PyTorch 2.9 introduces a breaking change that
+            # sets the default value to True
+            kwargs.setdefault("dynamo", False)
         self.to_onnx(save_path, inputs_for_onnx, **kwargs)
 
         self.forward = old_forward  # type: ignore
