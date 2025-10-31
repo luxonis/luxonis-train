@@ -56,7 +56,6 @@ class DinoV3(BaseNode):
     tab=License-1-ov-file#readme}
     """
 
-    DINOv3Kwargs = dict[str, str]
     in_height: int
     in_width: int
 
@@ -65,7 +64,7 @@ class DinoV3(BaseNode):
         weights_link: str,
         return_sequence: bool = False,
         variant: DINOv3Variant = "vits16",
-        repo_dir: str = "facebookresearch/dinov3",
+        repo_or_dir: str = "facebookresearch/dinov3",
         freeze_backbone: bool = False,
         depth: int = 4,
         **kwargs,
@@ -106,7 +105,7 @@ class DinoV3(BaseNode):
         self.backbone, self.patch_size = self._get_backbone(
             weights=weights_link,
             variant=variant,
-            repo_dir=repo_dir,
+            repo_or_dir=repo_or_dir,
             **kwargs,
         )
 
@@ -157,8 +156,9 @@ class DinoV3(BaseNode):
         """If self.return_sequence is True, the CLS token is returned
         and this can be used for downstream classification tasks.
 
-        Otherwise, the last self.depth layers of the network are
-        returned
+        Otherwise, the last `self.depth` layers of the network are
+        returned, which can be used for downstream segmentation and
+        other dense feature tasks
         """
         outs: list[Tensor] = []
 
@@ -171,7 +171,6 @@ class DinoV3(BaseNode):
             )
             cls_tokens: list[Tensor] = [cls for _, cls in features_with_cls]
             outs.extend(cls_tokens)
-
         else:
             seq_features = cast(
                 list[Tensor],
@@ -192,7 +191,7 @@ class DinoV3(BaseNode):
     def _get_backbone(
         weights: str,
         variant: DINOv3Variant = "vits16",
-        repo_dir: str = "facebookresearch/dinov3",
+        repo_or_dir: str = "facebookresearch/dinov3",
         **kwargs,
     ) -> tuple[TransformerBackboneReturnsIntermediateLayers, int]:
         if variant not in DINOv3Variant.__args__:
@@ -200,9 +199,9 @@ class DinoV3(BaseNode):
         model_name = f"dinov3_{variant}"
 
         model = torch.hub.load(
-            weights=weights,
-            repo_or_dir=repo_dir,
+            repo_or_dir=repo_or_dir,
             model=model_name,
+            weights=weights,
             source="github",
             **kwargs,
         )

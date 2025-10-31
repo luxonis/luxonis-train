@@ -1,13 +1,15 @@
+from luxonis_ml.typing import Params
 from torch import Tensor, nn
+from typing_extensions import override
 
 from luxonis_train.nodes.heads import BaseHead
 from luxonis_train.tasks import Tasks
 
 
 class TransformerClassificationHead(BaseHead):
-    """Classification decoder head for patch sequence from DINOv3.
+    """Classification decoder head for CLS token output from DINOv3.
 
-    Converts [B, N, C] to segmentation map [B, n_classes, H, W]
+    Converts [B, C] (CLS token embedding) to [B, n_classes].
     """
 
     attach_index = -1
@@ -33,13 +35,22 @@ class TransformerClassificationHead(BaseHead):
 
     def forward(self, x: Tensor) -> Tensor:
         """
-        @param x: CLS tensor in the form [B, C], where C is the embedding dim
+        @param x: CLS tensor in the form [B, C], where C is the embedding dim.
         @type x: Tensor
         @return: Class logits [B, n_classes]
 
         @note: Steps performed:
-            1) Apply dropout to the CLS token
+            1) Apply dropout to the CLS token.
             2) Apply a linear layer to produce class logits.
         """
         x = self.dropout(x)
         return self.fc(x)
+
+    @override
+    def get_custom_head_config(self) -> Params:
+        """Returns custom head configuration.
+
+        @rtype: dict
+        @return: Custom head configuration.
+        """
+        return {"is_softmax": False}
