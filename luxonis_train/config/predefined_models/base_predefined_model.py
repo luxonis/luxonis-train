@@ -190,15 +190,17 @@ class SimplePredefinedModel(BasePredefinedModel):
                     )
                     for metric in self._metrics
                 ]
-                + [
-                    MetricModuleConfig(
-                        name="ConfusionMatrix",
-                        params=self._confusion_matrix_params,
-                        is_main_metric=False,
-                    )
-                ]
-                if self._enable_confusion_matrix
-                else [],
+                + (
+                    [
+                        MetricModuleConfig(
+                            name="ConfusionMatrix",
+                            params=self._confusion_matrix_params,
+                            is_main_metric=False,
+                        )
+                    ]
+                    if self._enable_confusion_matrix
+                    else []
+                ),
                 visualizers=[
                     AttachedModuleConfig(
                         name=self._visualizer,

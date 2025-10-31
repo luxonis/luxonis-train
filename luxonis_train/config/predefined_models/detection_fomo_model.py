@@ -12,7 +12,7 @@ class FOMOModel(SimplePredefinedModel):
                 "head": "FOMOHead",
                 "loss": "FOMOLocalizationLoss",
                 "metrics": "ConfusionMatrix",
-                "confusion_matrix_available": False,
+                "confusion_matrix_available": True,
                 "visualizer": "FOMOVisualizer",
             }
             | kwargs

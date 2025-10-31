@@ -720,7 +720,10 @@ def get_main_metric(cfg: Config) -> MainMetric | None:
     for node_cfg in cfg.model.nodes:
         for metric_cfg in node_cfg.metrics:
             if metric_cfg.is_main_metric:
-                return MainMetric(node_cfg.identifier, metric_cfg.identifier)
+                metric_name = metric_cfg.identifier
+                if "ConfusionMatrix" in metric_cfg.name:
+                    metric_name = "mcc"
+                return MainMetric(node_cfg.identifier, metric_name)
     return None
 
 
