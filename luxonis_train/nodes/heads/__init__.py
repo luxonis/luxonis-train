@@ -11,6 +11,8 @@ from .ocr_ctc_head import OCRCTCHead
 from .precision_bbox_head import PrecisionBBoxHead
 from .precision_seg_bbox_head import PrecisionSegmentBBoxHead
 from .segmentation_head import SegmentationHead
+from .transformer_classification_head import TransformerClassificationHead
+from .transformer_segmentation_head import TransformerSegmentationHead
 
 __all__ = [
     "BaseHead",
@@ -26,4 +28,6 @@ __all__ = [
     "PrecisionBBoxHead",
     "PrecisionSegmentBBoxHead",
     "SegmentationHead",
+    "TransformerClassificationHead",
+    "TransformerSegmentationHead",
 ]

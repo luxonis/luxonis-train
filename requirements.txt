@@ -3,7 +3,7 @@ torch>=2.4.0
 lightning>=2.5.0
 luxonis-ml[data,tracker]~=0.8
 onnx<1.16.2; sys_platform == "win32"
-onnx>=1.16.2; sys_platform != "win32"
+onnx >=1.16.2; sys_platform != "win32"
 onnxruntime>=1.13.1
 onnxsim>=0.4.10
 optuna>=3.6.0
@@ -25,3 +25,4 @@ scikit-learn>=1.5.0
 seaborn>=0.13.2
 torchmetrics<=1.6.3
 semver~=3.0
+termcolor>=1.1

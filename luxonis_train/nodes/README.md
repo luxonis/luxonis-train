@@ -20,16 +20,19 @@ arbitrarily as long as the two nodes are compatible with each other. We've group
   - [`PPLCNetV3`](#pplcnetv3)
   - [`EfficientViT`](#efficientvit)
   - [`GhostFaceNet`](#ghostfacenet)
+  - [`DINOv3`](#dinov3)
 - [Necks](#necks)
   - [`RepPANNeck`](#reppanneck)
   - [`SVTRNeck`](#svtrneck)
 - [Heads](#heads)
   - [Classification Heads](#classification-heads)
     - [`ClassificationHead`](#classificationhead)
+    - [`TransformerClassificationHead`](#transformerclassificationhead)
   - [Segmentation Heads](#segmentation-heads)
     - [`SegmentationHead`](#segmentationhead)
     - [`BiSeNetHead`](#bisenethead)
     - [`DDRNetSegmentationHead`](#ddrnetsegmentationhead)
+    - [`TransformerSegmentationHead`](#transformersegmentationhead)
   - [Bounding Box Detection Heads](#bounding-box-heads)
     - [`EfficientBBoxHead`](#efficientbboxhead)
     - [`PrecisionBBoxHead`](#precisionbboxhead)
@@ -225,6 +228,17 @@ Adapted from [here](https://arxiv.org/abs/2205.14756)
 | --------- | --------------- | ------------- | --------------------------- |
 | `variant` | `Literal["V2"]` | `"V2"`        | The variant of the network. |
 
+### `DINOv3`
+
+Adapted from [here](https://github.com/facebookresearch/dinov3)
+
+> [!NOTE]
+> Tested export functionality with `opset_version` set to 16.
+
+| Key       | Type                                                                                                                                                 | Default value | Description            |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------------- |
+| `variant` | `Literal["vits16", "vits16plus", "vitb16", "vitl16", "vith16plus", "vit7b16", "convnext_tiny", "convnext_small", "convnext_base", "convnext_large"]` | `"vitb16"`    | Variant of the network |
+
 ## Necks
 
 ### `RepPANNeck`
@@ -266,6 +280,17 @@ For predefined model that utilizes it, see [`ClassificationModel`](../config/pre
 | ------------ | ------- | ------------- | ---------------------------------------------- |
 | `fc_dropout` | `float` | `0.2`         | Dropout rate before last layer, range $[0, 1]$ |
 
+### `TransformerClassificationHead`
+
+A transformer-based classification head that takes as input [B, N, C] patch-level embeddings and works with transformer
+backbones, for example [`DINOv3`](#dinov3).
+
+**Parameters:**
+
+| Key            | Type    | Default value | Description                     |
+| -------------- | ------- | ------------- | ------------------------------- |
+| `dropout_rate` | `float` | `0.2`         | Dropout rate before last layer. |
+
 ## Segmentation Heads
 
 You can use various segmentation metrics with these heads, such as [`F1Score, JaccardIndex`](../attached_modules/metrics/README.md#torchmetrics) and [`ConfusionMatrix`](../attached_modules/metrics/README.md#confusionmatrix), as well as visualizer [`SegmentationVisualizer`](../attached_modules/metrics/README.md#segmentationvisualizer).
@@ -296,6 +321,13 @@ Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works we
 | ---------------- | ----- | ------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `inter_channels` | `int` | `64`          | Width of internal convolutions                                                                                            |
 | `inter_mode`     | `str` | `"bilinear"`  | Up-sampling method. One of `"nearest"`, `"linear"`, `"bilinear"`, `"bicubic"`, `"trilinear"`, `"area"`, `"pixel_shuffle"` |
+
+### `TransformerSegmentationHead`
+
+A transformer-based segmentation head that takes as input [B, N, C] patch-level embeddings and works with transformer
+backbones, for example [`DINOv3`](#dinov3).
+The steps taken by this head like applying Layer Norm, reshaping to a feature map and upsampling are based on Meta's
+DINOv3 segmentation head [here](https://github.com/facebookresearch/dinov3/blob/main/dinov3/eval/segmentation/inference.py)
 
 ## Bounding Box Heads
 

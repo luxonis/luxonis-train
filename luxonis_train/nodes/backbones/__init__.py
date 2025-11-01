@@ -1,3 +1,5 @@
+from luxonis_train.nodes.backbones.dinov3.dinov3 import DinoV3
+
 from .contextspatial import ContextSpatial
 from .ddrnet import DDRNet
 from .efficientnet import EfficientNet
@@ -16,6 +18,7 @@ from .rexnetv1 import ReXNetV1_lite
 __all__ = [
     "ContextSpatial",
     "DDRNet",
+    "DinoV3",
     "EfficientNet",
     "EfficientRep",
     "EfficientViT",

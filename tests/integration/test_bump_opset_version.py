@@ -29,6 +29,7 @@ def test_opset_bump_equivalence(
     subtests: SubTests,
     test_datasets: LuxonisTestDatasets,
     tmp_path: Path,
+    dinov3_weights: Path,
     current_opset: int,
 ):
     """Tests whether or not bumping an opset version breaks model
@@ -44,7 +45,7 @@ def test_opset_bump_equivalence(
             "Opset version is not being upgraded, skipping test for bumping opset version"
         )
     if config_name in BACKBONES:
-        config = get_config(config_name)
+        config = get_config(config_name, dinov3_weights)
         opts |= {
             "loader.params.dataset_name": test_datasets.parking_lot_dataset.identifier
         }
