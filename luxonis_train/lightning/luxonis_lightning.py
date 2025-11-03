@@ -381,7 +381,7 @@ class LuxonisLightningModule(pl.LightningModule):
         if "output_names" not in kwargs:
             kwargs["output_names"] = output_names
 
-        if version.parse(torch.__version__) >= version.parse("2.4.0"):
+        if version.parse(torch.__version__) >= version.parse("2.5.0"):
             # PyTorch 2.9 introduces a breaking change that
             # sets the default value to True
             kwargs.setdefault("dynamo", False)
