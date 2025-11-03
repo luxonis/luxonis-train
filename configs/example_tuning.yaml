@@ -1,6 +1,5 @@
 # Example configuration for tuning a predefined light segmentation model
 
-
 model:
   name: detection_light
   predefined_model:
@@ -24,19 +23,15 @@ trainer:
       - name: Sharpen
         params:
           p: 0.1
-      - name: Flip
+      - name: VerticalFlip
 
   batch_size: 8
-  epochs: &epochs 200
+  epochs: 200
   validation_interval: 10
   n_log_images: 8
 
   scheduler:
     name: CosineAnnealingLR
-    params:
-      T_max: *epochs
-      eta_min: 0
-
 
 tuner:
   study_name: det_study
@@ -47,4 +42,4 @@ tuner:
     trainer.optimizer.name_categorical: ["Adam", "SGD"]
     trainer.optimizer.params.lr_float: [0.0001, 0.001]
     trainer.batch_size_int: [4, 16, 4]
-    trainer.preprocessing.augmentations_subset: [["Defocus", "Sharpen", "Flip"], 2]
+    trainer.preprocessing.augmentations_subset: [["Defocus", "Sharpen", "VerticalFlip"], 2]

@@ -10,6 +10,7 @@ from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
 from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
+from packaging import version
 from torch import Size, Tensor
 from typing_extensions import override
 
@@ -31,6 +32,7 @@ from .utils import (
     build_callbacks,
     build_optimizers,
     build_training_strategy,
+    check_tensor_device,
     compute_losses,
     compute_visualization_buffer,
     get_model_execution_order,
@@ -379,6 +381,10 @@ class LuxonisLightningModule(pl.LightningModule):
         if "output_names" not in kwargs:
             kwargs["output_names"] = output_names
 
+        if version.parse(torch.__version__) >= version.parse("2.5.0"):
+            # PyTorch 2.9 introduces a breaking change that
+            # sets the default value to True
+            kwargs.setdefault("dynamo", False)
         self.to_onnx(save_path, inputs_for_onnx, **kwargs)
 
         self.forward = old_forward  # type: ignore
@@ -564,7 +570,7 @@ class LuxonisLightningModule(pl.LightningModule):
             sub_state_dict = {
                 self._strip_state_prefix(k): v
                 for k, v in state_dict.items()
-                if k.startswith(f"nodes.{node_name}.")
+                if k.startswith(f"nodes.{node_name}.module.")
             }
             try:
                 node.module.load_checkpoint(sub_state_dict, strict=True)
@@ -729,6 +735,16 @@ class LuxonisLightningModule(pl.LightningModule):
             for metric_name, metric in node.metrics.items():
                 values = postprocess_metrics(metric_name, metric.compute())
                 metric.reset()
+
+                if isinstance(
+                    self.trainer.strategy,
+                    pl.strategies.DDPStrategy,  # type: ignore
+                ) and not check_tensor_device(
+                    list(values.values()), self.device
+                ):
+                    raise RuntimeError(
+                        "When using DDP all metrics must reside on the model's device"
+                    )
 
                 for name, value in values.items():
                     if value.dim() == 2:

@@ -720,5 +720,20 @@ def get_main_metric(cfg: Config) -> MainMetric | None:
     for node_cfg in cfg.model.nodes:
         for metric_cfg in node_cfg.metrics:
             if metric_cfg.is_main_metric:
-                return MainMetric(node_cfg.identifier, metric_cfg.identifier)
+                metric_name = metric_cfg.identifier
+                if "ConfusionMatrix" in metric_cfg.name:
+                    metric_name = "mcc"
+                return MainMetric(node_cfg.identifier, metric_name)
     return None
+
+
+def check_tensor_device(
+    x: Tensor | list[Tensor], device: torch.device
+) -> bool:
+    """Return whether a tensor (or every tensor in a sequence) resides
+    on a given device."""
+    if isinstance(x, Tensor):
+        return x.device == device
+    if isinstance(x, (list | tuple)):
+        return all(isinstance(i, Tensor) and i.device == device for i in x)
+    raise TypeError(f"Expected Tensor or list[Tensor], got {type(x)!r}")

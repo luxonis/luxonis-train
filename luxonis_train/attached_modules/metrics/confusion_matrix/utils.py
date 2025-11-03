@@ -59,9 +59,9 @@ def compute_mcc(cm: Tensor) -> Tensor:
     )
 
     if denominator == 0:
-        return torch.tensor(0.0)
+        return torch.tensor(0.0, device=cm.device)
 
-    return numerator / denominator
+    return (numerator / denominator).to(cm.device)
 
 
 def _merge_predicted_masks(
