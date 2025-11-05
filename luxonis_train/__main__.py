@@ -250,14 +250,15 @@ def annotate(
     opts: list[str] | None = None,
     /,
     *,
-    config: str,
     dir_path: Path,
     dataset_name: str,
+    config: str | None = None,
     weights: str | None = None,
     bucket_storage: Literal["local", "gcs"] = "local",
     delete_local: bool = True,
     delete_remote: bool = True,
     team_id: str | None = None,
+    debug: bool = False,
 ):
     """Run annotation on a custom directory of images.
 
@@ -287,7 +288,11 @@ def annotate(
     @param opts: A list of optional CLI overrides of the config file.
     """
     model = create_model(
-        config, opts, weights=weights, load_dataset_metadata=True
+        config,
+        opts,
+        weights=weights,
+        load_dataset_metadata=True,
+        debug_mode=debug,
     )
 
     model.annotate(
