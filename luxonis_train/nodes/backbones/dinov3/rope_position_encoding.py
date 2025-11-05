@@ -6,7 +6,6 @@
 import math
 from typing import Literal
 
-import numpy as np
 import torch
 from torch import Tensor, nn
 
@@ -97,23 +96,26 @@ class RopePositionEmbedding(nn.Module):
 
         # Jitter coords by multiplying the range [-1, 1] by a log-uniform value in [1/jitter, jitter]
         if self.training and self.jitter_coords is not None:
-            jitter_max = np.log(
-                self.jitter_coords
-            )  # was previously np.log(self.rescale_coords)
-            jitter_min = -jitter_max
+            j = torch.tensor(self.jitter_coords, device=device, dtype=dtype)
+            jmax_t = torch.log(j)  # was previously np.log
+            jmin_t = -jmax_t  # tensor
+            # uniform_ needs floats, so convert using .item()
             jitter_hw = (
-                torch.empty(2, **dd).uniform_(jitter_min, jitter_max).exp()
+                torch.empty(2, **dd)
+                .uniform_(jmin_t.item(), jmax_t.item())
+                .exp()
             )
             coords *= jitter_hw[None, :]
 
         # Rescale coords by multiplying the range [-1, 1] by a log-uniform value in [1/rescale, rescale]
         if self.training and self.rescale_coords is not None:
-            rescale_max = np.log(
-                self.rescale_coords
-            )  # was previously np.log(self.rescale_coords)
-            rescale_min = -rescale_max
+            r = torch.tensor(self.rescale_coords, device=device, dtype=dtype)
+            rmax_t = torch.log(r)
+            rmin_t = -rmax_t
             rescale_hw = (
-                torch.empty(1, **dd).uniform_(rescale_min, rescale_max).exp()
+                torch.empty(1, **dd)
+                .uniform_(rmin_t.item(), rmax_t.item())
+                .exp()
             )
             coords *= rescale_hw
 
