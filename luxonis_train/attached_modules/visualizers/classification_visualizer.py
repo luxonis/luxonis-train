@@ -7,7 +7,12 @@ from torch import Tensor
 from luxonis_train.tasks import Tasks
 
 from .base_visualizer import BaseVisualizer
-from .utils import figure_to_torch, numpy_to_torch_img, torch_img_to_numpy
+from .utils import (
+    dynamically_determine_font_scale,
+    figure_to_torch,
+    numpy_to_torch_img,
+    torch_img_to_numpy,
+)
 
 
 class ClassificationVisualizer(BaseVisualizer):
@@ -16,7 +21,7 @@ class ClassificationVisualizer(BaseVisualizer):
     def __init__(
         self,
         include_plot: bool = True,
-        font_scale: float = 1.0,
+        font_scale: float | None = None,
         color: tuple[int, int, int] = (255, 0, 0),
         thickness: int = 2,
         multilabel: bool = False,
@@ -27,6 +32,9 @@ class ClassificationVisualizer(BaseVisualizer):
         @type include_plot: bool
         @param include_plot: Whether to include a plot of the class
             probabilities in the visualization. Defaults to C{True}.
+        @type font_scale: float | None = None,
+        @param font_scale: Font scale for text. If None, scales
+            proportionally to the image height and width
         """
         super().__init__(**kwargs)
         self.include_plot = include_plot
@@ -72,28 +80,44 @@ class ClassificationVisualizer(BaseVisualizer):
         for i in range(len(overlay)):
             prediction = predictions[i]
             arr = torch_img_to_numpy(target_canvas[i].clone())
+            height, width = arr.shape[:2]
+
+            if not self.font_scale:
+                font_scale, thickness = dynamically_determine_font_scale(
+                    height, width, self.thickness, self.font_scale
+                )
+                base_y: int = int(height * 0.15)
+                line_spacing: int = int(height * 0.1)
+
+                y_gt, y_pred = base_y, base_y + line_spacing
+            else:
+                font_scale, thickness = self.font_scale, self.thickness
+                y_gt, y_pred = 50, 75
+
             curr_class = self._get_class_name(prediction)
             if target is not None:
                 gt = self._get_class_name(target[i])
                 arr = cv2.putText(
                     arr,
                     f"GT: {gt}",
-                    (5, 50),
+                    (5, y_gt),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    self.font_scale,
+                    font_scale,
                     self.color,
-                    self.thickness,
+                    thickness,
                 )
             arr = cv2.putText(
                 arr,
                 f"Pred: {curr_class}",
-                (5, 75),
+                (5, y_pred),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                self.font_scale,
+                font_scale,
                 self.color,
-                self.thickness,
+                thickness,
             )
+
             overlay[i] = numpy_to_torch_img(arr)
+
             if self.include_plot:
                 plots[i] = self._generate_plot(
                     prediction,

@@ -8,7 +8,11 @@ from luxonis_ml.typing import Params
 from pytest_subtests import SubTests
 
 from luxonis_train.core import LuxonisModel
-from tests.conftest import LuxonisTestDataset
+from tests.conftest import LuxonisTestDatasets
+from tests.integration.test_bump_opset_version import (
+    PREDEFINED_MODELS,
+    prepare_predefined_model_config,
+)
 
 
 def test_model_construction():
@@ -28,81 +32,21 @@ def test_model_construction():
         assert not node.visualizers
 
 
-@pytest.mark.parametrize(
-    ("config_name", "extra_opts"),
-    [
-        ("anomaly_detection_model", None),
-        ("embeddings_model", None),
-        ("fomo_light_model", None),
-        ("ocr_recognition_light_model", None),
-        (
-            "ocr_recognition_light_model",
-            {
-                "model.predefined_model.params.neck_params": {
-                    "mixer": "conv",
-                    "prenorm": True,
-                    "height": 8,
-                    "width": 5,
-                },
-            },
-        ),
-        ("classification_light_model", None),
-        ("detection_light_model", None),
-        ("instance_segmentation_light_model", None),
-        ("keypoint_bbox_light_model", None),
-        ("segmentation_light_model", None),
-        ("classification_heavy_model", None),
-        ("detection_heavy_model", None),
-        ("instance_segmentation_heavy_model", None),
-        ("keypoint_bbox_heavy_model", None),
-        ("segmentation_heavy_model", None),
-    ],
-)
+@pytest.mark.parametrize(("config_name", "extra_opts"), PREDEFINED_MODELS)
 def test_predefined_models(
     config_name: str,
     extra_opts: Params | None,
     opts: Params,
-    coco_dataset: LuxonisTestDataset,
-    cifar10_dataset: LuxonisTestDataset,
-    toy_ocr_dataset: LuxonisTestDataset,
-    embedding_dataset: LuxonisTestDataset,
-    anomaly_detection_dataset: LuxonisTestDataset,
+    test_datasets: LuxonisTestDatasets,
     tmp_path: Path,
     subtests: SubTests,
 ):
-    config_file = f"configs/{config_name}.yaml"
+    config_file, opts, dataset = prepare_predefined_model_config(
+        config_name, opts, test_datasets
+    )
+    extra_opts = extra_opts or {}
     tmp_path = tmp_path / config_name
     tmp_path.mkdir()
-
-    if config_name == "embeddings_model":
-        dataset = embedding_dataset
-    elif "ocr_recognition" in config_name:
-        dataset = toy_ocr_dataset
-    elif "classification" in config_name:
-        dataset = cifar10_dataset
-    elif "anomaly_detection" in config_name:
-        opts |= {
-            "loader.params.anomaly_source_path": str(coco_dataset.source_path)
-        }
-        dataset = anomaly_detection_dataset
-    else:
-        dataset = coco_dataset
-
-    extra_opts = extra_opts or {}
-    opts |= {
-        "model.name": config_name,
-        "loader.params.dataset_name": dataset.identifier,
-        "tracker.run_name": config_name,
-    }
-
-    if config_name == "embeddings_model":
-        opts |= {
-            "loader.params.dataset_name": embedding_dataset.dataset_name,
-            "trainer.batch_size": 16,
-            "trainer.preprocessing.train_image_size": [48, 64],
-        }
-    elif "ocr_recognition" in config_file:
-        opts["trainer.preprocessing.train_image_size"] = [48, 320]
 
     model = LuxonisModel(config_file, opts | extra_opts)
 

@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import cast
+
 import pytest
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import Params, ParamValue
@@ -13,7 +16,7 @@ BACKBONES = [
 ]
 
 
-def get_config(backbone: str) -> Params:
+def get_config(backbone: str, dinov3_weights: Path | None = None) -> Params:
     seg_multi_losses: ParamValue = [
         {"name": "CrossEntropyLoss"},
         {"name": "SigmoidFocalLoss"},
@@ -36,101 +39,115 @@ def get_config(backbone: str) -> Params:
         {"name": "Recall"},
         {"name": "ConfusionMatrix"},
     ]
-    return {
-        "model": {
-            "nodes": [
-                {"name": backbone, "variant": "default"},
-                {
-                    "name": "EfficientBBoxHead",
-                    "task_name": "vehicles",
-                    "losses": [
-                        {
-                            "name": "AdaptiveDetectionLoss",
-                            "params": {"per_class_weights": [0, 0.5, 0.5]},
-                        }
-                    ],
-                    "metrics": [
-                        {"name": "MeanAveragePrecision"},
-                        {"name": "ConfusionMatrix"},
-                    ],
-                    "visualizers": [{"name": "BBoxVisualizer"}],
-                },
-                {
-                    "name": "EfficientKeypointBBoxHead",
-                    "task_name": "motorbikes",
-                    "losses": [{"name": "EfficientKeypointBBoxLoss"}],
-                    "metrics": [
-                        {"name": "MeanAveragePrecision"},
-                        {"name": "ConfusionMatrix"},
-                    ],
-                    "visualizers": [{"name": "KeypointVisualizer"}],
-                },
-                {
-                    "name": "PrecisionSegmentBBoxHead",
-                    "task_name": "vehicles",
-                    "losses": [{"name": "PrecisionDFLSegmentationLoss"}],
-                    "metrics": [
-                        {"name": "MeanAveragePrecision"},
-                        {"name": "ConfusionMatrix"},
-                    ],
-                    "visualizers": [
-                        {"name": "InstanceSegmentationVisualizer"}
-                    ],
-                },
-                {
-                    "name": "PrecisionBBoxHead",
-                    "task_name": "vehicles",
-                    "losses": [{"name": "PrecisionDFLDetectionLoss"}],
-                    "metrics": [
-                        {"name": "MeanAveragePrecision"},
-                        {"name": "ConfusionMatrix"},
-                    ],
-                },
-                {
-                    "name": "BiSeNetHead",
-                    "alias": "BiSeNet-binary-cars",
-                    "task_name": "cars",
-                    "losses": seg_binary_losses,
-                    "metrics": seg_metrics,
-                    "visualizers": [{"name": "SegmentationVisualizer"}],
-                },
-                {
-                    "name": "BiSeNetHead",
-                    "alias": "BiSeNet-multi-color",
-                    "task_name": "color",
-                    "losses": seg_multi_losses,
-                    "metrics": seg_metrics,
-                    "visualizers": [{"name": "SegmentationVisualizer"}],
-                },
-                {
-                    "name": "SegmentationHead",
-                    "alias": "seg-binary-motorbikes",
-                    "task_name": "motorbikes",
-                    "losses": seg_binary_losses,
-                    "metrics": seg_metrics,
-                    "visualizers": [{"name": "SegmentationVisualizer"}],
-                },
-                {
-                    "name": "SegmentationHead",
-                    "alias": "seg-multi-vehicles",
-                    "task_name": "vehicles",
-                    "losses": seg_multi_losses,
-                    "metrics": seg_metrics,
-                    "visualizers": [{"name": "SegmentationVisualizer"}],
-                },
-            ],
-        }
-    }
+
+    backbone_node: Params = {"name": backbone, "variant": "default"}
+    if backbone == "DinoV3" and dinov3_weights:
+        backbone_node["params"] = {"weights_link": str(dinov3_weights)}
+
+    config = cast(
+        Params,
+        {
+            "model": {
+                "nodes": [
+                    backbone_node,
+                    {
+                        "name": "EfficientBBoxHead",
+                        "task_name": "vehicles",
+                        "losses": [
+                            {
+                                "name": "AdaptiveDetectionLoss",
+                                "params": {"per_class_weights": [0, 0.5, 0.5]},
+                            }
+                        ],
+                        "metrics": [
+                            {"name": "MeanAveragePrecision"},
+                            {"name": "ConfusionMatrix"},
+                        ],
+                        "visualizers": [{"name": "BBoxVisualizer"}],
+                    },
+                    {
+                        "name": "EfficientKeypointBBoxHead",
+                        "task_name": "motorbikes",
+                        "losses": [{"name": "EfficientKeypointBBoxLoss"}],
+                        "metrics": [
+                            {"name": "MeanAveragePrecision"},
+                            {"name": "ConfusionMatrix"},
+                        ],
+                        "visualizers": [{"name": "KeypointVisualizer"}],
+                    },
+                    {
+                        "name": "PrecisionSegmentBBoxHead",
+                        "task_name": "vehicles",
+                        "losses": [{"name": "PrecisionDFLSegmentationLoss"}],
+                        "metrics": [
+                            {"name": "MeanAveragePrecision"},
+                            {"name": "ConfusionMatrix"},
+                        ],
+                        "visualizers": [
+                            {"name": "InstanceSegmentationVisualizer"}
+                        ],
+                    },
+                    {
+                        "name": "PrecisionBBoxHead",
+                        "task_name": "vehicles",
+                        "losses": [{"name": "PrecisionDFLDetectionLoss"}],
+                        "metrics": [
+                            {"name": "MeanAveragePrecision"},
+                            {"name": "ConfusionMatrix"},
+                        ],
+                    },
+                    {
+                        "name": "BiSeNetHead",
+                        "alias": "BiSeNet-binary-cars",
+                        "task_name": "cars",
+                        "losses": seg_binary_losses,
+                        "metrics": seg_metrics,
+                        "visualizers": [{"name": "SegmentationVisualizer"}],
+                    },
+                    {
+                        "name": "BiSeNetHead",
+                        "alias": "BiSeNet-multi-color",
+                        "task_name": "color",
+                        "losses": seg_multi_losses,
+                        "metrics": seg_metrics,
+                        "visualizers": [{"name": "SegmentationVisualizer"}],
+                    },
+                    {
+                        "name": "SegmentationHead",
+                        "alias": "seg-binary-motorbikes",
+                        "task_name": "motorbikes",
+                        "losses": seg_binary_losses,
+                        "metrics": seg_metrics,
+                        "visualizers": [{"name": "SegmentationVisualizer"}],
+                    },
+                    {
+                        "name": "SegmentationHead",
+                        "alias": "seg-multi-vehicles",
+                        "task_name": "vehicles",
+                        "losses": seg_multi_losses,
+                        "metrics": seg_metrics,
+                        "visualizers": [{"name": "SegmentationVisualizer"}],
+                    },
+                ],
+            }
+        },
+    )
+
+    if backbone == "DinoV3":
+        config["exporter"] = {"onnx": {"opset_version": 16}}
+
+    return config
 
 
 @pytest.mark.parametrize("backbone", BACKBONES)
 def test_combinations(
     backbone: str,
     parking_lot_dataset: LuxonisDataset,
+    dinov3_weights: Path,
     opts: Params,
     subtests: SubTests,
 ):
-    config = get_config(backbone)
+    config = get_config(backbone, dinov3_weights)
     opts |= {"loader.params.dataset_name": parking_lot_dataset.identifier}
     model = LuxonisModel(config, opts)
 

@@ -25,3 +25,4 @@ seaborn>=0.13.2
 torchmetrics<=1.6.3
 semver~=3.0
 onnxscript>=0.5.6
+termcolor>=1.1
