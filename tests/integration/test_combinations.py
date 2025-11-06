@@ -16,7 +16,7 @@ BACKBONES = [
 ]
 
 
-def get_config(backbone: str, dinov3_weights: Path) -> Params:
+def get_config(backbone: str, dinov3_weights: Path | None = None) -> Params:
     seg_multi_losses: ParamValue = [
         {"name": "CrossEntropyLoss"},
         {"name": "SigmoidFocalLoss"},
@@ -41,7 +41,7 @@ def get_config(backbone: str, dinov3_weights: Path) -> Params:
     ]
 
     backbone_node: Params = {"name": backbone, "variant": "default"}
-    if backbone == "DinoV3":
+    if backbone == "DinoV3" and dinov3_weights:
         backbone_node["params"] = {"weights_link": str(dinov3_weights)}
 
     config = cast(
