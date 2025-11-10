@@ -565,12 +565,15 @@ class LuxonisLightningModule(pl.LightningModule):
 
         state_dict = checkpoint["state_dict"]
         order_mapping = self._load_execution_order_mapping(checkpoint)
+        ver = version.parse(checkpoint.get("version", "0.3.0"))
 
         for node_name, node in self.nodes.items():
             sub_state_dict = {
                 self._strip_state_prefix(k): v
                 for k, v in state_dict.items()
-                if k.startswith(f"nodes.{node_name}.module.")
+                if k.startswith(
+                    f"nodes.{node_name}.{'module.' if ver >= version.parse('0.4.0') else ''}"
+                )
             }
             try:
                 node.module.load_checkpoint(sub_state_dict, strict=True)
