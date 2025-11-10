@@ -20,6 +20,7 @@ from luxonis_ml.utils import (
     is_acyclic,
 )
 from pydantic import (
+    BeforeValidator,
     Field,
     SecretStr,
     SerializationInfo,
@@ -83,7 +84,11 @@ class NodeConfig(ConfigItem):
     remove_on_export: bool = False
     task_name: str | None = None
     metadata_task_override: str | dict[str, str] | None = None
-    variant: str | Literal["default", "none"] | None = "default"
+    variant: (
+        Annotated[str, BeforeValidator(str)]
+        | Literal["default", "none"]
+        | None
+    ) = "default"
     losses: list[LossModuleConfig] = []
     metrics: list[MetricModuleConfig] = []
     visualizers: list[AttachedModuleConfig] = []
