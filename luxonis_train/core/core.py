@@ -77,6 +77,7 @@ class LuxonisModel:
         opts: Params | list[str] | tuple[str, ...] | None = None,
         *,
         debug_mode: bool = False,
+        dataset_metadata: DatasetMetadata | None = None,
     ):
         """Constructs a new Core instance.
 
@@ -263,9 +264,12 @@ class LuxonisModel:
                 else None,
             )
 
-        self.dataset_metadata = DatasetMetadata.from_loader(
-            self.loaders["train"]
-        )
+        if dataset_metadata is not None:
+            self.dataset_metadata = dataset_metadata
+        else:
+            self.dataset_metadata = DatasetMetadata.from_loader(
+                self.loaders["train"]
+            )
         self.config_file = self.run_save_dir / "training_config.yaml"
         self.cfg.save_data(self.config_file)
 
@@ -288,6 +292,7 @@ class LuxonisModel:
         opts: Params | list[str] | tuple[str, ...] | None = None,
         *,
         debug_mode: bool = False,
+        load_dataset_metadata: bool = True,
     ) -> "LuxonisModel":
         """Creates a LuxonisModel instance from a checkpoint file.
 
@@ -299,6 +304,10 @@ class LuxonisModel:
         @param debug_mode: If set to True, enables debug mode which ignores some
             normaly unrecovarable exceptions and allows to test the model
             without it being fully functional.
+        @type load_dataset_metadata: bool
+        @param load_dataset_metadata: If set to True, attempts to load dataset
+            metadata from the checkpoint. If the metadata is not found in the
+            checkpoint, it will be loaded from the training data.
         """
         ckpt = torch.load(path, map_location="cpu")
         if "config" not in ckpt:  # pragma: no cover
@@ -315,7 +324,24 @@ class LuxonisModel:
                 "between the version used to create the checkpoint "
                 "and the current version of luxonis-train."
             ) from e
-        return cls(cfg, debug_mode=debug_mode)
+        dataset_metadata = None
+        if load_dataset_metadata:
+            if "dataset_metadata" not in ckpt:
+                logger.error("Checkpoint does not contain dataset metadata.")
+            else:
+                try:
+                    dataset_metadata = DatasetMetadata(
+                        **ckpt["dataset_metadata"]
+                    )
+                except Exception as e:  # pragma: no cover
+                    logger.error(
+                        "Failed to load dataset metadata from the checkpoint. "
+                        f"Error: {e}"
+                    )
+
+        return cls(
+            cfg, debug_mode=debug_mode, dataset_metadata=dataset_metadata
+        )
 
     def _train(self, resume: PathType | None, *args, **kwargs) -> None:
         status = "success"
