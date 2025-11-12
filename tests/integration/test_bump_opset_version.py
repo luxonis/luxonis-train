@@ -49,6 +49,13 @@ def test_opset_bump_equivalence(
         opts |= {
             "loader.params.dataset_name": test_datasets.parking_lot_dataset.identifier
         }
+        if (
+            "exporter" in config
+            and config["exporter"]["onnx"]["opset_version"] > current_opset
+        ):
+            pytest.skip(
+                f"Skipping for backbone {config_name} because the opset version is already set to higher than current opset"
+            )
     else:
         config, opts, _ = prepare_predefined_model_config(
             config_name, opts, test_datasets
