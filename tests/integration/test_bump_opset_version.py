@@ -20,7 +20,7 @@ from tests.integration.test_combinations import BACKBONES, get_config
     ("config_name", "extra_opts"),
     [(b, {}) for b in BACKBONES] + PREDEFINED_MODELS,
 )
-@pytest.mark.parametrize("target_opset", [12])
+@pytest.mark.parametrize("target_opset", [16])
 def test_opset_bump_equivalence(
     config_name: str,
     extra_opts: Params | None,
