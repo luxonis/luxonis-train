@@ -159,10 +159,13 @@ class ModelConfig(BaseModelExtraForbid):
             return self
 
         logger.info(f"Using predefined model: `{self.predefined_model.name}`")
+        kwargs = dict(self.predefined_model.params or {})
+        if not kwargs.get("variant"):
+            kwargs["variant"] = self.predefined_model.variant
         model = from_registry(
             MODELS,
             self.predefined_model.name,
-            **self.predefined_model.params,
+            **kwargs,
         )
         self.nodes += model.generate_nodes(
             include_losses=self.predefined_model.include_losses,
