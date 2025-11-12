@@ -16,6 +16,20 @@ from tests.integration.backbone_model_utils import (
 from tests.integration.test_combinations import BACKBONES, get_config
 
 
+# for pyright safety
+def get_opset_version(cfg: dict[str, Any]) -> int | None:
+    exporter = cfg.get("exporter")
+    if not isinstance(exporter, dict):
+        return None
+
+    onnx = exporter.get("onnx")
+    if not isinstance(onnx, dict):
+        return None
+
+    opset = onnx.get("opset_version")
+    return opset if isinstance(opset, int) else None
+
+
 @pytest.mark.parametrize(
     ("config_name", "extra_opts"),
     [(b, {}) for b in BACKBONES] + PREDEFINED_MODELS,
@@ -49,10 +63,8 @@ def test_opset_bump_equivalence(
         opts |= {
             "loader.params.dataset_name": test_datasets.parking_lot_dataset.identifier
         }
-        if (
-            "exporter" in config
-            and config["exporter"]["onnx"]["opset_version"] > current_opset
-        ):
+        opset = get_opset_version(config)
+        if opset is not None and opset > current_opset:
             pytest.skip(
                 f"Skipping for backbone {config_name} because the opset version is already set to higher than current opset"
             )
