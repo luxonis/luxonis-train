@@ -6,6 +6,7 @@ from typing import Annotated, Any, Literal, NamedTuple
 from loguru import logger
 from luxonis_ml.enums import DatasetType
 from luxonis_ml.typing import (
+    BaseModelExtraForbid,
     ConfigItem,
     Params,
     ParamValue,
@@ -13,7 +14,6 @@ from luxonis_ml.typing import (
     check_type,
 )
 from luxonis_ml.utils import (
-    BaseModelExtraForbid,
     Environ,
     LuxonisConfig,
     LuxonisFileSystem,
@@ -162,7 +162,6 @@ class ModelConfig(BaseModelExtraForbid):
         model = from_registry(
             MODELS,
             self.predefined_model.name,
-            variant=self.predefined_model.variant,
             **self.predefined_model.params,
         )
         self.nodes += model.generate_nodes(
