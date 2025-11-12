@@ -9,7 +9,7 @@ from pytest_subtests import SubTests
 
 from luxonis_train.core import LuxonisModel
 from tests.conftest import LuxonisTestDatasets
-from tests.integration.test_bump_opset_version import (
+from tests.integration.backbone_model_utils import (
     PREDEFINED_MODELS,
     prepare_predefined_model_config,
 )
