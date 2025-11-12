@@ -133,9 +133,6 @@ def get_config(backbone: str, dinov3_weights: Path | None = None) -> Params:
         },
     )
 
-    if backbone == "DinoV3":
-        config["exporter"] = {"onnx": {"opset_version": 16}}
-
     return config
 
 
