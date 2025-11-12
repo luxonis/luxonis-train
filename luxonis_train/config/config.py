@@ -6,6 +6,7 @@ from typing import Annotated, Any, Literal, NamedTuple
 from loguru import logger
 from luxonis_ml.enums import DatasetType
 from luxonis_ml.typing import (
+    BaseModelExtraForbid,
     ConfigItem,
     Params,
     ParamValue,
@@ -13,7 +14,6 @@ from luxonis_ml.typing import (
     check_type,
 )
 from luxonis_ml.utils import (
-    BaseModelExtraForbid,
     Environ,
     LuxonisConfig,
     LuxonisFileSystem,
@@ -159,11 +159,13 @@ class ModelConfig(BaseModelExtraForbid):
             return self
 
         logger.info(f"Using predefined model: `{self.predefined_model.name}`")
+        kwargs = dict(self.predefined_model.params or {})
+        if not kwargs.get("variant"):
+            kwargs["variant"] = self.predefined_model.variant
         model = from_registry(
             MODELS,
             self.predefined_model.name,
-            variant=self.predefined_model.variant,
-            **self.predefined_model.params,
+            **kwargs,
         )
         self.nodes += model.generate_nodes(
             include_losses=self.predefined_model.include_losses,
