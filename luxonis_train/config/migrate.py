@@ -6,6 +6,8 @@ from loguru import logger
 from luxonis_ml.typing import Params, ParamValue
 from semver import Version
 
+from luxonis_train.config import CONFIG_VERSION
+
 
 @dataclass
 class ConfigWrapper:
@@ -145,7 +147,24 @@ def migrate_v1_to_v2(config: Params) -> Params:
     return cfg.config
 
 
-def migrate_config(cfg: Params, fr: Version, to: Version) -> Params:
+def migrate_config(
+    cfg: Params, fr: Version | None = None, to: Version = CONFIG_VERSION
+) -> Params:
+    if fr is None:
+        if "config_version" not in cfg:
+            raise ValueError(
+                "Config does not contain the 'config_version' field"
+            )
+        version = cfg["config_version"]
+        if not isinstance(version, str):
+            raise TypeError(
+                f"'config_version' field must be a string, got {type(version)}"
+            )
+        fr = Version.parse(version)
+
+    if fr == to:
+        return cfg
+
     # TODO: Chain migration
     map = {
         (Version(1), Version(2)): migrate_v1_to_v2,
