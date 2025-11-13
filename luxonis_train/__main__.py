@@ -34,18 +34,16 @@ management_group = Group.create_ordered("Management")
 def create_model(
     config: str | None,
     opts: list[str] | None,
-    debug_mode: bool = False,
     weights: str | None = None,
+    **kwargs,
 ) -> "LuxonisModel":
     importlib.reload(sys.modules["luxonis_train"])
     from luxonis_train import LuxonisModel
 
     if weights is not None and config is None:
-        return LuxonisModel.from_checkpoint(
-            weights, opts, debug_mode=debug_mode
-        )
+        return LuxonisModel.from_checkpoint(weights, opts, **kwargs)
 
-    return LuxonisModel(config, opts, debug_mode=debug_mode)
+    return LuxonisModel(config, opts, **kwargs)
 
 
 @app.command(group=training_group, sort_key=1)
@@ -70,7 +68,9 @@ def train(
         suppresses some exceptions to allow training without a fully
         defined model.
     """
-    create_model(config, opts, debug, weights).train(weights=weights)
+    create_model(config, opts, weights, debug_mode=debug).train(
+        weights=weights
+    )
 
 
 @app.command(group=training_group, sort_key=2)
@@ -200,7 +200,9 @@ def test(
         suppresses some exceptions to allow training without a fully
         defined model.
     """
-    create_model(config, opts, debug, weights).test(view=view, weights=weights)
+    create_model(config, opts, weights, debug_mode=debug).test(
+        view=view, weights=weights
+    )
 
 
 @app.command(group=evaluation_group, sort_key=2)
@@ -248,14 +250,15 @@ def annotate(
     opts: list[str] | None = None,
     /,
     *,
-    config: str,
     dir_path: Path,
     dataset_name: str,
+    config: str | None = None,
     weights: str | None = None,
     bucket_storage: Literal["local", "gcs"] = "local",
     delete_local: bool = True,
     delete_remote: bool = True,
     team_id: str | None = None,
+    debug: bool = False,
 ):
     """Run annotation on a custom directory of images.
 
@@ -284,7 +287,13 @@ def annotate(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    model = create_model(config, opts, weights=weights)
+    model = create_model(
+        config,
+        opts,
+        weights=weights,
+        load_dataset_metadata=True,
+        debug_mode=debug,
+    )
 
     model.annotate(
         dir_path=dir_path,

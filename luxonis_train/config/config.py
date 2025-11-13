@@ -1,11 +1,12 @@
 import sys
 from contextlib import suppress
 from pathlib import Path
-from typing import Annotated, Any, Literal, NamedTuple
+from typing import Annotated, Any, Final, Literal, NamedTuple
 
 from loguru import logger
 from luxonis_ml.enums import DatasetType
 from luxonis_ml.typing import (
+    BaseModelExtraForbid,
     ConfigItem,
     Params,
     ParamValue,
@@ -13,14 +14,15 @@ from luxonis_ml.typing import (
     check_type,
 )
 from luxonis_ml.utils import (
-    BaseModelExtraForbid,
     Environ,
     LuxonisConfig,
     LuxonisFileSystem,
     is_acyclic,
 )
 from pydantic import (
+    BeforeValidator,
     Field,
+    PlainSerializer,
     SecretStr,
     SerializationInfo,
     field_validator,
@@ -33,10 +35,14 @@ from pydantic.types import (
     NonNegativeInt,
     PositiveInt,
 )
+from pydantic_extra_types.semantic_version import SemanticVersion
 from typing_extensions import Self, override
 
-from luxonis_train.config.constants import CONFIG_VERSION
 from luxonis_train.registry import MODELS, NODES, from_registry
+
+CONFIG_VERSION: Final[SemanticVersion] = SemanticVersion.parse(
+    "2.0", optional_minor_and_patch=True
+)
 
 
 class ImageSize(NamedTuple):
@@ -83,7 +89,11 @@ class NodeConfig(ConfigItem):
     remove_on_export: bool = False
     task_name: str | None = None
     metadata_task_override: str | dict[str, str] | None = None
-    variant: str | Literal["default", "none"] | None = "default"
+    variant: (
+        Annotated[str, BeforeValidator(str)]
+        | Literal["default", "none"]
+        | None
+    ) = "default"
     losses: list[LossModuleConfig] = []
     metrics: list[MetricModuleConfig] = []
     visualizers: list[AttachedModuleConfig] = []
@@ -154,11 +164,13 @@ class ModelConfig(BaseModelExtraForbid):
             return self
 
         logger.info(f"Using predefined model: `{self.predefined_model.name}`")
+        kwargs = dict(self.predefined_model.params or {})
+        if not kwargs.get("variant"):
+            kwargs["variant"] = self.predefined_model.variant
         model = from_registry(
             MODELS,
             self.predefined_model.name,
-            variant=self.predefined_model.variant,
-            **self.predefined_model.params,
+            **kwargs,
         )
         self.nodes += model.generate_nodes(
             include_losses=self.predefined_model.include_losses,
@@ -544,7 +556,7 @@ class TrainerConfig(BaseModelExtraForbid):
 
 
 class OnnxExportConfig(BaseModelExtraForbid):
-    opset_version: PositiveInt = 12
+    opset_version: PositiveInt = 16
     dynamic_axes: Params | None = None
     disable_onnx_simplification: bool = False
 
@@ -615,7 +627,9 @@ class Config(LuxonisConfig):
     archiver: ArchiveConfig = Field(default_factory=ArchiveConfig)
     tuner: TunerConfig = Field(default_factory=TunerConfig)
 
-    config_version: str = str(CONFIG_VERSION)
+    config_version: Annotated[SemanticVersion, PlainSerializer(str)] = (
+        CONFIG_VERSION
+    )
 
     ENVIRON: Environ = Field(exclude=True, default_factory=Environ)
 

@@ -195,6 +195,10 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         task_name = node_cfg.task_name
         if task_name is None:
             task_names = dataset_metadata.task_names
+            if not task_names:
+                raise RuntimeError(
+                    "Dataset does not contain any labeled images."
+                )
             if len(task_names) == 1:
                 task_name = next(iter(task_names))
             elif issubclass(Node, BaseHead):
