@@ -537,7 +537,7 @@ class TrainerConfig(BaseModelExtraForbid):
 
 
 class OnnxExportConfig(BaseModelExtraForbid):
-    opset_version: PositiveInt = 12
+    opset_version: PositiveInt = 16
     dynamic_axes: Params | None = None
     disable_onnx_simplification: bool = False
 

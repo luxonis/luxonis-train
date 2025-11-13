@@ -44,7 +44,7 @@ def get_config(backbone: str, dinov3_weights: Path | None = None) -> Params:
     if backbone == "DinoV3" and dinov3_weights:
         backbone_node["params"] = {"weights_link": str(dinov3_weights)}
 
-    config = cast(
+    return cast(
         Params,
         {
             "model": {
@@ -132,11 +132,6 @@ def get_config(backbone: str, dinov3_weights: Path | None = None) -> Params:
             }
         },
     )
-
-    if backbone == "DinoV3":
-        config["exporter"] = {"onnx": {"opset_version": 16}}
-
-    return config
 
 
 @pytest.mark.parametrize("backbone", BACKBONES)
