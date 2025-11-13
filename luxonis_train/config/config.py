@@ -484,6 +484,25 @@ class TrainerConfig(BaseModelExtraForbid):
         return self
 
     @model_validator(mode="after")
+    def validate_gradient_acc_scheduler(self) -> Self:
+        """Keys in the GradientAccumulationSheduler.params.scheduling
+        should be ints but yaml can sometime auto-convert them to
+        strings.
+
+        This converts them back to ints if possible.
+        """
+        for callback in self.callbacks:
+            if (
+                callback.name == "GradientAccumulationScheduler"
+                and "scheduling" in callback.params
+            ):
+                callback.params["scheduling"] = {
+                    int(k) if isinstance(k, str) and k.isdigit() else k: v
+                    for k, v in callback.params["scheduling"].items()
+                }
+        return self
+
+    @model_validator(mode="after")
     def validate_deterministic(self) -> Self:
         if self.seed is not None and self.deterministic is None:
             logger.warning(
