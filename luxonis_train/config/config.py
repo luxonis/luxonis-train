@@ -1,4 +1,5 @@
 import sys
+from collections.abc import Mapping
 from contextlib import suppress
 from pathlib import Path
 from typing import Annotated, Any, Final, Literal, NamedTuple
@@ -504,14 +505,19 @@ class TrainerConfig(BaseModelExtraForbid):
         This converts them back to ints if possible.
         """
         for callback in self.callbacks:
-            if (
-                callback.name == "GradientAccumulationScheduler"
-                and "scheduling" in callback.params
-            ):
-                callback.params["scheduling"] = {
-                    int(k) if isinstance(k, str) and k.isdigit() else k: v
-                    for k, v in callback.params["scheduling"].items()
-                }
+            if callback.name != "GradientAccumulationScheduler":
+                continue
+
+            scheduling = callback.params.get("scheduling")
+            if not isinstance(scheduling, Mapping):
+                # Continue from Config verification standpoint but it might
+                # fail due to GradientAccumulationScheduler param verification
+                continue
+
+            callback.params["scheduling"] = {
+                int(k) if isinstance(k, str) and k.isdigit() else k: v
+                for k, v in scheduling.items()
+            }
         return self
 
     @model_validator(mode="after")
