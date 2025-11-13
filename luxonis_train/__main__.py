@@ -13,6 +13,7 @@ import requests
 import yaml
 from cyclopts import App, Group, Parameter, validators
 from loguru import logger
+from rich import print
 from semver import Version
 
 from luxonis_train.config import CONFIG_VERSION, Config, migrate_config
