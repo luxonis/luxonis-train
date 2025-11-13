@@ -94,7 +94,7 @@ def migrate_v1_to_v2(config: Params) -> Params:
     )
     cfg.replace(
         "tuner.storage.storage_type",
-        "tuner.backend",
+        "tuner.storage.backend",
         "sqlite"
         if cfg["tuner.storage.storage_type"] == "local"
         else "postgresql",
