@@ -12,9 +12,11 @@ from typing import TYPE_CHECKING, Annotated, Literal
 import requests
 import yaml
 from cyclopts import App, Group, Parameter, validators
+from loguru import logger
 from semver import Version
 
-from luxonis_train.config import CONFIG_VERSION, migrate_config
+from luxonis_train.config import CONFIG_VERSION, Config, migrate_config
+from luxonis_train.utils.dataset_metadata import DatasetMetadata
 
 if TYPE_CHECKING:
     import numpy as np
@@ -40,15 +42,42 @@ def create_model(
     config: str | None,
     opts: list[str] | None,
     weights: str | None = None,
-    **kwargs,
+    debug_mode: bool = False,
+    load_dataset_metadata: bool = True,
 ) -> "LuxonisModel":
     importlib.reload(sys.modules["luxonis_train"])
+    import torch
+
     from luxonis_train import LuxonisModel
 
     if weights is not None and config is None:
-        return LuxonisModel.from_checkpoint(weights, opts, **kwargs)
+        ckpt = torch.load(weights, map_location="cpu")
+        if "config" not in ckpt:  # pragma: no cover
+            raise ValueError(
+                f"Checkpoint '{weights}' does not contain the 'config' key. "
+                "Cannot restore `LuxonisModel` from checkpoint."
+            )
+        cfg = Config.get_config(migrate_config(ckpt["config"]), opts)
+        dataset_metadata = None
+        if load_dataset_metadata:
+            if "dataset_metadata" not in ckpt:
+                logger.error("Checkpoint does not contain dataset metadata.")
+            else:
+                try:
+                    dataset_metadata = DatasetMetadata(
+                        **ckpt["dataset_metadata"]
+                    )
+                except Exception as e:  # pragma: no cover
+                    logger.error(
+                        "Failed to load dataset metadata from the checkpoint. "
+                        f"Error: {e}"
+                    )
 
-    return LuxonisModel(config, opts, **kwargs)
+        return LuxonisModel(
+            cfg, debug_mode=debug_mode, dataset_metadata=dataset_metadata
+        )
+
+    return LuxonisModel(config, opts, debug_mode=debug_mode)
 
 
 @app.command(group=training_group, sort_key=1)
