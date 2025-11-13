@@ -8,6 +8,7 @@ from .config import (
     NodeConfig,
     TrainerConfig,
 )
+from .migrate import migrate_config
 
 # So predefined models get registered
 from .predefined_models import *
@@ -23,4 +24,5 @@ __all__ = [
     "MetricModuleConfig",
     "NodeConfig",
     "TrainerConfig",
+    "migrate_config",
 ]

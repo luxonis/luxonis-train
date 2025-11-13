@@ -1,5 +1,6 @@
 import importlib
 import importlib.util
+import json
 import subprocess
 import sys
 from collections.abc import Iterator
@@ -9,7 +10,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal
 
 import requests
-from cyclopts import App, Group, Parameter
+import yaml
+from cyclopts import App, Group, Parameter, validators
+from semver import Version
+
+from luxonis_train.config import CONFIG_VERSION, migrate_config
 
 if TYPE_CHECKING:
     import numpy as np
@@ -364,6 +369,60 @@ def archive(
     create_model(str(config), opts, weights=weights).archive(
         path=executable, weights=weights
     )
+
+
+@app.command(group=management_group)
+def migrate(
+    old: Annotated[
+        Path,
+        Parameter(validator=validators.Path(exists=True)),
+        Parameter(validator=validators.Path(ext={"yaml", "yml", "json"})),
+    ],
+    new: Annotated[
+        Path | None,
+        Parameter(validator=validators.Path(ext={"yaml", "yml", "json"})),
+    ],
+):
+    """Migrate an old LuxonisTrain config file to the latest format.
+
+    @type old: Path
+    @param old: Path to the old config file.
+    @type new: Path | None
+    @param new: Path to the new config file. If None, it will overwrite
+        the old config file.
+    """
+    if old.suffix == "json":
+        cfg = json.loads(old.read_text(encoding="utf-8"))
+    else:
+        cfg = yaml.safe_load(old.read_text(encoding="utf-8"))
+
+    if "config_version" not in cfg:
+        raise ValueError(
+            f"Old config file {old} does not have a 'config_version field'."
+        )
+    old_version = Version.parse(
+        cfg["config_version"], optional_minor_and_patch=True
+    )
+    if old_version == CONFIG_VERSION:
+        print(
+            f"Old config file {old} is already at the "
+            f"latest version {CONFIG_VERSION}."
+        )
+        return
+    print(
+        f"Migrating config file {old} from version "
+        f"{old_version} to {CONFIG_VERSION}..."
+    )
+    new_cfg = migrate_config(cfg, old_version, CONFIG_VERSION)
+
+    new = new or old
+    if new.suffix == "json":
+        new.write_text(json.dumps(new_cfg, indent=2))
+    else:
+        with open(new, "w") as f:
+            yaml.safe_dump(
+                new_cfg, f, sort_keys=False, default_flow_style=False
+            )
 
 
 @app.command(group=management_group)
