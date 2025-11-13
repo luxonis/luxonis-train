@@ -2,6 +2,7 @@ from abc import abstractmethod
 from functools import cached_property
 from inspect import Parameter
 
+import torch.nn.functional as F
 from torch import Tensor
 from typing_extensions import TypeVarTuple, Unpack
 
@@ -19,6 +20,19 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
     utilizes automatic registration of defined subclasses to the
     L{VISUALIZERS} registry.
     """
+
+    def __init__(self, *args, scale: float = 1.0, **kwargs) -> None:  # NEW
+        super().__init__(*args, **kwargs)
+        self.scale = scale
+
+    @staticmethod
+    def scale_canvas(canvas: Tensor, scale: float = 1.0) -> Tensor:  # NEW
+        return F.interpolate(
+            canvas,
+            scale_factor=scale,
+            mode="bilinear",
+            align_corners=False,
+        )
 
     @abstractmethod
     def forward(
@@ -75,6 +89,9 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
         inputs: Packet[Tensor],
         labels: Labels | None,
     ) -> Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]:
+        prediction_canvas = self.scale_canvas(prediction_canvas, self.scale)
+        target_canvas = self.scale_canvas(target_canvas, self.scale)
+
         return self(
             target_canvas,
             prediction_canvas,

@@ -45,6 +45,23 @@ class KeypointVisualizer(BBoxVisualizer):
         self.nonvisible_color = nonvisible_color
 
     @staticmethod
+    def _get_radius(canvas: Tensor) -> int:
+        """Determine keypoint radius based on image size.
+
+        If the image is under 128 in both height and width: 1.
+        If the image is more than 512 in either height or width: 6.
+        Otherwise: 3.
+        """
+        height = canvas.size(-2)
+        width = canvas.size(-1)
+
+        if height < 128 and width < 128:
+            return 1
+        if height > 512 or width > 512:
+            return 6
+        return 3
+
+    @staticmethod
     def draw_predictions(
         canvas: Tensor,
         predictions: list[Tensor],
@@ -53,6 +70,8 @@ class KeypointVisualizer(BBoxVisualizer):
         **kwargs,
     ) -> Tensor:
         viz = torch.zeros_like(canvas)
+        radius = KeypointVisualizer._get_radius(canvas)
+
         for i in range(len(canvas)):
             prediction = predictions[i]
             mask = prediction[..., 2] < visibility_threshold
@@ -63,17 +82,27 @@ class KeypointVisualizer(BBoxVisualizer):
             visible_kpts[..., 1] = visible_kpts[..., 1].clamp(
                 0, canvas.size(-2) - 1
             )
+
+            _kwargs = deepcopy(kwargs)
+            _kwargs.setdefault("radius", radius)
+
             viz[i] = draw_keypoints(
-                canvas[i].clone(), visible_kpts[..., :2].int(), **kwargs
+                canvas[i].clone(),
+                visible_kpts[..., :2].int(),
+                **_kwargs,
             )
+
             if nonvisible_color is not None:
                 _kwargs = deepcopy(kwargs)
+                _kwargs.setdefault("radius", radius)
                 _kwargs["colors"] = nonvisible_color
                 nonvisible_kpts = (
                     prediction[..., :2] * mask.unsqueeze(-1).float()
                 )
                 viz[i] = draw_keypoints(
-                    viz[i].clone(), nonvisible_kpts[..., :2], **_kwargs
+                    viz[i].clone(),
+                    nonvisible_kpts[..., :2],
+                    **_kwargs,
                 )
 
         return viz
@@ -81,9 +110,18 @@ class KeypointVisualizer(BBoxVisualizer):
     @staticmethod
     def draw_targets(canvas: Tensor, targets: Tensor, **kwargs) -> Tensor:
         viz = torch.zeros_like(canvas)
+        radius = KeypointVisualizer._get_radius(canvas)
+
+        _kwargs = deepcopy(kwargs)
+        _kwargs.setdefault("radius", radius)
+
         for i in range(len(canvas)):
             target = targets[targets[:, 0] == i][:, 1:]
-            viz[i] = draw_keypoint_labels(canvas[i].clone(), target, **kwargs)
+            viz[i] = draw_keypoint_labels(
+                canvas[i].clone(),
+                target,
+                **_kwargs,
+            )
 
         return viz
 
