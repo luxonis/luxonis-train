@@ -33,6 +33,7 @@ Visualizer for **bounding box detection task**.
 | `width`     | `int`                                                                                 | `1`           | The width of the bounding box lines                                                                                                                                     |
 | `font`      | `str \| None`                                                                         | `None`        | A filename containing a `TrueType` font                                                                                                                                 |
 | `font_size` | `int \| None`                                                                         | `None`        | Font size used for the labels                                                                                                                                           |
+| `scale`     | `float \| 1.0`                                                                        | `1.0`         | Scales the canvas and the annotations by a given factor                                                                                                                 |
 
 **Example:**
 
@@ -50,6 +51,8 @@ Visualizer for **instance keypoint detection task**.
 | `connectivity`         | `list[tuple[int, int]] \| None`        | `None`        | List of tuples of keypoint indices that define the connections in the skeleton                                                  |
 | `visible_color`        | `str \| tuple[int, int, int]`          | `"red"`       | Color of visible keypoints                                                                                                      |
 | `nonvisible_color`     | `str \| tuple[int, int, int ] \| None` | `None`        | Color of non-visible keypoints. If `None`, non-visible keypoints are not drawn                                                  |
+| `radius`               | `int \| None`                          | `None`        | Radius of drawn keypoint dots. If `None`, dynamically determine this based on image dimensions                                  |
+| `scale`                | `float \| 1.0`                         | `1.0`         | Scales the canvas and the annotations by a given factor                                                                         |
 
 **Example:**
 
@@ -61,10 +64,11 @@ Visualizer for **segmentation tasks**.
 
 **Parameters:**
 
-| Key     | Type                          | Default value | Description                           |
-| ------- | ----------------------------- | ------------- | ------------------------------------- |
-| `color` | `str \| tuple[int, int, int]` | `"#5050FF"`   | Color of the segmentation masks       |
-| `alpha` | `float`                       | `0.6`         | Alpha value of the segmentation masks |
+| Key     | Type                          | Default value | Description                                             |
+| ------- | ----------------------------- | ------------- | ------------------------------------------------------- |
+| `color` | `str \| tuple[int, int, int]` | `"#5050FF"`   | Color of the segmentation masks                         |
+| `alpha` | `float`                       | `0.6`         | Alpha value of the segmentation masks                   |
+| `scale` | `float \| 1.0`                | `1.0`         | Scales the canvas and the annotations by a given factor |
 
 **Example:**
 
@@ -83,6 +87,7 @@ Visualizer for **classification tasks**.
 | `font_scale`   | `float`                | `1.0`         | Scale of the font                                                                |
 | `thickness`    | `int`                  | `1`           | Line thickness of the font                                                       |
 | `multi_label`  | `bool`                 | `False`       | Set to `True` for multi-label classification, otherwise `False` for single-label |
+| `scale`        | `float \| 1.0`         | `1.0`         | Scales the canvas and the annotations by a given factor                          |
 
 **Example:**
 
@@ -108,11 +113,12 @@ Visualizer for **OCR tasks**.
 
 **Parameters:**
 
-| Key          | Type                   | Default value | Description                                 |
-| ------------ | ---------------------- | ------------- | ------------------------------------------- |
-| `font_scale` | `float`                | `0.5`         | Font scale of the text. Defaults to `0.5`.  |
-| `color`      | `tuple[int, int, int]` | `(0, 0, 0)`   | Color of the text. Defaults to `(0, 0, 0)`. |
-| `thickness`  | `int`                  | `1`           | Thickness of the text. Defaults to `1`.     |
+| Key          | Type                   | Default value | Description                                             |
+| ------------ | ---------------------- | ------------- | ------------------------------------------------------- |
+| `font_scale` | `float`                | `0.5`         | Font scale of the text. Defaults to `0.5`.              |
+| `color`      | `tuple[int, int, int]` | `(0, 0, 0)`   | Color of the text. Defaults to `(0, 0, 0)`.             |
+| `thickness`  | `int`                  | `1`           | Thickness of the text. Defaults to `1`.                 |
+| `scale`      | `float \| 1.0`         | `1.0`         | Scales the canvas and the annotations by a given factor |
 
 **Example:**
 
@@ -132,6 +138,7 @@ Visualizer for **instance segmentation tasks**.
 | `width`     | `int`                                                                                 | `1`           | The width of the bounding box lines                                                                                                                                     |
 | `font`      | `str \| None`                                                                         | `None`        | A filename containing a `TrueType` font                                                                                                                                 |
 | `font_size` | `int \| None`                                                                         | `None`        | Font size used for the labels                                                                                                                                           |
+| `scale`     | `float \| 1.0`                                                                        | `1.0`         | Scales the canvas and the annotations by a given factor                                                                                                                 |
 
 **Example:**
 
