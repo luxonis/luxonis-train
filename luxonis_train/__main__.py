@@ -473,7 +473,11 @@ def checkpoint(
 
 @upgrade_app.default()
 def upgrade():
-    """Upgrade luxonis-train installation."""
+    """Upgrade luxonis-train installation and user files.
+
+    Usage without a subcommand will trigger an upgrade of `luxonis-
+    train` PyPI package.
+    """
     upgrade_installation()
 
 
