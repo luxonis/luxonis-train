@@ -55,11 +55,11 @@ class KeypointVisualizer(BBoxVisualizer):
         height = canvas.size(-2)
         width = canvas.size(-1)
 
-        if height < 128 and width < 128:
+        if height < 96 and width < 96:
             return 1
         if height > 512 or width > 512:
-            return 6
-        return 3
+            return 5
+        return 2
 
     @staticmethod
     def draw_predictions(
