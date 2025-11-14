@@ -1,4 +1,3 @@
-import pathlib
 import sys
 from typing import Final
 
@@ -15,6 +14,7 @@ if (
     or "--source" in sys.argv
     or not sys.argv[0].endswith("/luxonis_train")
 ):
+    import pathlib
     import warnings
 
     try:
