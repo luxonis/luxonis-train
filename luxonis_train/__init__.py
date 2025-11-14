@@ -1,4 +1,5 @@
-__version__ = "0.3.10"
+__version__ = "0.3.11"
+import pathlib
 import sys
 
 # Do not run imports when first importing from within the CLI
@@ -11,6 +12,8 @@ if (
     import warnings
 
     try:
+        import torch
+
         from .attached_modules import *
         from .config.predefined_models import *
         from .core import *
@@ -25,6 +28,13 @@ if (
         from .utils import setup_logging
 
         setup_logging()
+        torch.serialization.add_safe_globals(
+            [
+                pathlib.Path,
+                pathlib.PosixPath,
+                pathlib.WindowsPath,
+            ]
+        )
 
     except ImportError as e:
         warnings.warn(
