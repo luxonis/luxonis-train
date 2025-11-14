@@ -267,8 +267,8 @@ def dynamically_determine_font_scale(
 def potentially_upscale_masks(
     image_masks: Tensor, scale: float = 1.0
 ) -> Tensor:
-    """
-    Upscales boolean segmentation masks
+    """Upscales boolean segmentation masks.
+
     @param image_masks:
     @param scale: scale factor
     @return: Upscaled image masks
