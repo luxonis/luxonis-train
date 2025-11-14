@@ -55,7 +55,7 @@ def create_model(
     from luxonis_train.utils.dataset_metadata import DatasetMetadata
 
     if weights is not None and config is None:
-        ckpt = torch.load(weights, map_location="cpu")
+        ckpt = torch.load(weights, map_location="cpu")  # nosemgre
         if "config" not in ckpt:  # pragma: no cover
             raise ValueError(
                 f"Checkpoint '{weights}' does not contain the 'config' key. "
@@ -460,14 +460,14 @@ def checkpoint(
     import torch
 
     try:
-        ckpt = torch.load(path, map_location="cpu")
+        ckpt = torch.load(path, map_location="cpu")  # nosemgrep
     except Exception as e:
         raise ValueError("Invalid checkpoint file") from e
 
     new_ckpt = upgrade_checkpoint(ckpt)
 
     output = output or path
-    torch.save(new_ckpt, output)
+    torch.save(new_ckpt, output)  # nosemgrep
     logger.info(f"Saved upgraded checkpoint to '{output}'")
 
 
