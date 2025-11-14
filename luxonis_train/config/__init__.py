@@ -1,5 +1,4 @@
 from .config import (
-    CONFIG_VERSION,
     AttachedModuleConfig,
     Config,
     ExportConfig,
@@ -14,7 +13,6 @@ from .predefined_models import *
 from .predefined_models.base_predefined_model import BasePredefinedModel
 
 __all__ = [
-    "CONFIG_VERSION",
     "AttachedModuleConfig",
     "BasePredefinedModel",
     "Config",
