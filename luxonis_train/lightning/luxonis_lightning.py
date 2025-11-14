@@ -521,7 +521,7 @@ class LuxonisLightningModule(pl.LightningModule):
         }
         checkpoint["version"] = luxonis_train.__version__
         checkpoint["execution_order"] = get_model_execution_order(self)
-        checkpoint["config"] = self.cfg.model_dump(mode="json")
+        checkpoint["config"] = self.cfg.model_dump()
         checkpoint["dataset_metadata"] = self.dataset_metadata.dump()
 
     @override

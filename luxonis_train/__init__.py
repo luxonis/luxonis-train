@@ -1,3 +1,4 @@
+import pathlib
 import sys
 from typing import Final
 
@@ -17,6 +18,8 @@ if (
     import warnings
 
     try:
+        import torch
+
         from .attached_modules import *
         from .config.predefined_models import *
         from .core import *
@@ -31,6 +34,13 @@ if (
         from .utils import setup_logging
 
         setup_logging()
+        torch.serialization.add_safe_globals(
+            [
+                pathlib.Path,
+                pathlib.PosixPath,
+                pathlib.WindowsPath,
+            ]
+        )
 
     except ImportError as e:
         warnings.warn(
