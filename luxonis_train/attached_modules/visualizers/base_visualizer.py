@@ -21,12 +21,12 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
     L{VISUALIZERS} registry.
     """
 
-    def __init__(self, *args, scale: float = 1.0, **kwargs) -> None:  # NEW
+    def __init__(self, *args, scale: float = 1.0, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.scale = scale
 
     @staticmethod
-    def scale_canvas(canvas: Tensor, scale: float = 1.0) -> Tensor:  # NEW
+    def scale_canvas(canvas: Tensor, scale: float = 1.0) -> Tensor:
         return F.interpolate(
             canvas,
             scale_factor=scale,
