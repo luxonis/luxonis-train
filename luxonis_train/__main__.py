@@ -454,15 +454,8 @@ def checkpoint(
     @param new: Where to save the upgraded checkpoint. If left empty,
         the old file will be overriden.
     """
-    import torch
-
-    try:
-        ckpt = torch.load(path, map_location="cpu")  # nosemgrep
-    except Exception as e:
-        raise ValueError("Invalid checkpoint file") from e
-
     model = create_model(config=None, weights=path)
-    model.lightning_module.load_checkpoint(ckpt)
+    model.lightning_module.load_checkpoint(path)
 
     # Needs to be called in order to attach the model to the trainer
     model.pl_trainer.validate(
