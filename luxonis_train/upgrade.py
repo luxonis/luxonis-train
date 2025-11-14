@@ -175,19 +175,6 @@ def upgrade_config(cfg: Params | NestedDict) -> Params:
                 f"Moved module from 'model.{key}' to head '{attached_to}'."
             )
 
-    for callback in map(NestedDict, cfg["trainer.callbacks"] or []):
-        if callback["name"] != "GradientAccumulationScheduler":
-            continue
-
-        scheduling = callback["params.scheduling"]
-        if not isinstance(scheduling, dict):
-            continue
-
-        callback["params.scheduling"] = {
-            int(k) if isinstance(k, str) and k.isdecimal() else k: v
-            for k, v in scheduling.items()
-        }
-
     cfg.update("version", lxt.__version__)
 
     return cfg._dict
