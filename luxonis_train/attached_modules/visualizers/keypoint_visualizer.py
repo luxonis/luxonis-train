@@ -75,11 +75,6 @@ class KeypointVisualizer(BBoxVisualizer):
         **kwargs,
     ) -> Tensor:
         viz = torch.zeros_like(canvas)
-        radius = (
-            KeypointVisualizer._get_radius(canvas)
-            if radius is None
-            else radius
-        )
 
         for i in range(len(canvas)):
             prediction = predictions[i]
@@ -117,25 +112,15 @@ class KeypointVisualizer(BBoxVisualizer):
         return viz
 
     @staticmethod
-    def draw_targets(
-        canvas: Tensor, targets: Tensor, radius: int | None = None, **kwargs
-    ) -> Tensor:
+    def draw_targets(canvas: Tensor, targets: Tensor, **kwargs) -> Tensor:
         viz = torch.zeros_like(canvas)
-        radius = (
-            KeypointVisualizer._get_radius(canvas)
-            if radius is None
-            else radius
-        )
-
-        _kwargs = deepcopy(kwargs)
-        _kwargs.setdefault("radius", radius)
 
         for i in range(len(canvas)):
             target = targets[targets[:, 0] == i][:, 1:]
             viz[i] = draw_keypoint_labels(
                 canvas[i].clone(),
                 target,
-                **_kwargs,
+                **kwargs,
             )
 
         return viz
@@ -152,6 +137,17 @@ class KeypointVisualizer(BBoxVisualizer):
     ) -> tuple[Tensor, Tensor] | Tensor:
         pred_viz = super().draw_predictions(prediction_canvas, boundingbox)
 
+        prediction_radius = (
+            KeypointVisualizer._get_radius(prediction_canvas)
+            if self.radius is None
+            else self.radius
+        )
+        target_radius = (
+            KeypointVisualizer._get_radius(target_canvas)
+            if self.radius is None
+            else self.radius
+        )
+
         pred_viz = self.draw_predictions(
             pred_viz,
             keypoints,
@@ -159,7 +155,7 @@ class KeypointVisualizer(BBoxVisualizer):
             colors=self.visible_color,
             nonvisible_color=self.nonvisible_color,
             visibility_threshold=self.visibility_threshold,
-            radius=self.radius,
+            radius=prediction_radius,
             **kwargs,
         )
 
@@ -177,7 +173,7 @@ class KeypointVisualizer(BBoxVisualizer):
             target_viz = self.draw_targets(
                 target_viz,
                 target_keypoints,
-                radius=self.radius,
+                radius=target_radius,
                 colors=self.visible_color,
                 connectivity=self.connectivity,
                 **kwargs,
