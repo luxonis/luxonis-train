@@ -13,6 +13,7 @@ from .utils import (
     draw_bounding_boxes,
     draw_segmentation_targets,
     get_color,
+    potentially_upscale_masks,
 )
 
 
@@ -90,6 +91,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         color_dict: dict[str, Color],
         draw_labels: bool,
         alpha: float,
+        scale: float = 1.0,
     ) -> Tensor:
         viz = torch.zeros_like(canvas)
 
@@ -98,6 +100,12 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             image_bboxes = pred_bboxes[i]
             image_masks = pred_masks[i]
             prediction_classes = image_bboxes[..., 5].int()
+
+            if scale is not None and scale != 1:
+                image_bboxes = image_bboxes.clone()
+                image_bboxes[:, :4] *= scale
+
+            image_masks = potentially_upscale_masks(image_masks, scale)
 
             cls_labels = (
                 [label_dict[int(c)] for c in prediction_classes]
@@ -143,6 +151,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         color_dict: dict[str, Color],
         draw_labels: bool,
         alpha: float,
+        scale: float = 1.0,
     ) -> Tensor:
         viz = torch.zeros_like(canvas)
 
@@ -151,6 +160,8 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             image_bboxes = target_bboxes[target_bboxes[:, 0] == i]
             image_masks = target_masks[target_bboxes[:, 0] == i]
             target_classes = image_bboxes[:, 1].int()
+
+            image_masks = potentially_upscale_masks(image_masks, scale)
 
             cls_labels = (
                 [label_dict[int(c)] for c in target_classes]
@@ -219,10 +230,10 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             self.colors,
             self.draw_labels,
             self.alpha,
+            self.scale,
         )
         if target_boundingbox is None or target_instance_segmentation is None:
             return predictions_viz
-
         targets_viz = self.draw_targets(
             target_canvas,
             target_boundingbox,
@@ -232,5 +243,6 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             self.colors,
             self.draw_labels,
             self.alpha,
+            self.scale,
         )
         return targets_viz, predictions_viz
