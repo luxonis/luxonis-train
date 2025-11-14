@@ -174,32 +174,23 @@ def upgrade_config(cfg: Params | NestedDict) -> Params:
             logger.info(
                 f"Moved module from 'model.{key}' to head '{attached_to}'."
             )
+
+    for callback in map(NestedDict, cfg["trainer.callbacks"] or []):
+        if callback["name"] != "GradientAccumulationScheduler":
+            continue
+
+        scheduling = callback["params.scheduling"]
+        if not isinstance(scheduling, dict):
+            continue
+
+        callback["params.scheduling"] = {
+            int(k) if isinstance(k, str) and k.isdecimal() else k: v
+            for k, v in scheduling.items()
+        }
+
     cfg.update("version", lxt.__version__)
 
     return cfg._dict
-
-
-def upgrade_checkpoint(ckpt: dict[str, Any] | NestedDict) -> dict[str, Any]:
-    if not isinstance(ckpt, NestedDict):
-        ckpt = NestedDict(ckpt)
-
-    old_version = Version.parse(
-        ckpt._dict.get("version", "0.3.0"), optional_minor_and_patch=True
-    )
-    if old_version >= lxt.__semver__:
-        logger.info(
-            f"The checkpoint is already at the latest version"
-            f"(v{old_version}) relative to the version of "
-            f"luxonis-train (v{lxt.__version__})."
-        )
-        return ckpt._dict
-
-    ckpt.update("version", lxt.__version__)
-    if "config" not in ckpt:
-        logger.error("The 'config' field is not present in the checkpoint")
-    ckpt["config"] = upgrade_config(ckpt["config"])
-    logger.info("Upgraded the configuration file.")
-    return ckpt._dict
 
 
 def upgrade_installation() -> None:

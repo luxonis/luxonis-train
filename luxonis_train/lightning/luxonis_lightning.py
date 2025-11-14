@@ -543,29 +543,30 @@ class LuxonisLightningModule(pl.LightningModule):
             self.cfg, self.parameters(), self.nodes.main_metric, self.nodes
         )
 
-    def load_checkpoint(self, path: PathType | None) -> None:
+    def load_checkpoint(self, ckpt: PathType | dict[str, Any] | None) -> None:
         """Loads checkpoint weights from provided path.
 
         Loads the checkpoints gracefully, ignoring keys that are not
         found in the model state dict or in the checkpoint.
 
-        @type path: PathType | None
-        @param path: Path to the checkpoint. If C{None}, no checkpoint
-            will be loaded.
+        @type ckpt: PathType | dict | None
+        @param path: Either a path to or a loaded checkpoint. If
+            C{None}, no checkpoint will be loaded.
         """
-        if path is None:
+        if ckpt is None:
             return
 
-        path = str(path)
+        if isinstance(ckpt, str | Path):
+            ckpt = cast(
+                dict[str, Any], torch.load(ckpt, map_location=self.device)
+            )  # nosemgrep
 
-        checkpoint = torch.load(path, map_location=self.device)  # nosemgrep
-
-        if "state_dict" not in checkpoint:
+        if "state_dict" not in ckpt:
             raise ValueError("Checkpoint does not contain state_dict.")
 
-        state_dict = checkpoint["state_dict"]
-        order_mapping = self._load_execution_order_mapping(checkpoint)
-        ver = version.parse(checkpoint.get("version", "0.3.0"))
+        state_dict = ckpt["state_dict"]
+        order_mapping = self._load_execution_order_mapping(ckpt)
+        ver = version.parse(ckpt.get("version", "0.3.0"))
 
         for node_name, node in self.nodes.items():
             sub_state_dict = {

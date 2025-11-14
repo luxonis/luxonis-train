@@ -11,13 +11,10 @@ from typing import TYPE_CHECKING, Annotated, Literal
 import yaml
 from cyclopts import App, Group, Parameter, validators
 from loguru import logger
+from luxonis_ml.typing import PathType
 
 from luxonis_train.config import Config
-from luxonis_train.upgrade import (
-    upgrade_checkpoint,
-    upgrade_config,
-    upgrade_installation,
-)
+from luxonis_train.upgrade import upgrade_config, upgrade_installation
 
 if TYPE_CHECKING:
     import numpy as np
@@ -42,9 +39,9 @@ management_group = Group.create_ordered("Management")
 
 
 def create_model(
-    config: str | None,
-    opts: list[str] | None,
-    weights: str | None = None,
+    config: PathType | None,
+    opts: list[str] | None = None,
+    weights: PathType | None = None,
     debug_mode: bool = False,
     load_dataset_metadata: bool = True,
 ) -> "LuxonisModel":
@@ -464,10 +461,16 @@ def checkpoint(
     except Exception as e:
         raise ValueError("Invalid checkpoint file") from e
 
-    new_ckpt = upgrade_checkpoint(ckpt)
+    model = create_model(config=None, weights=path)
+    model.lightning_module.load_checkpoint(ckpt)
 
-    output = output or path
-    torch.save(new_ckpt, output)  # nosemgrep
+    # Needs to be called in order to attach the model to the trainer
+    model.pl_trainer.validate(
+        model.lightning_module,
+        model.pytorch_loaders["val"],
+        verbose=False,
+    )
+    model.pl_trainer.save_checkpoint(output or path, weights_only=False)
     logger.info(f"Saved upgraded checkpoint to '{output}'")
 
 
