@@ -1,9 +1,12 @@
+import subprocess
+import sys
 from dataclasses import dataclass
 from types import EllipsisType
 from typing import Any
 
+import requests
 from loguru import logger
-from luxonis_ml.typing import Params, ParamValue, PathType
+from luxonis_ml.typing import Params, ParamValue
 from semver import Version
 
 import luxonis_train as lxt
@@ -86,22 +89,24 @@ class NestedDict:
         logger.info(f"Changed config field '{old_field}' to '{new_field}'")
 
 
-def upgrade_config(config: Params) -> Params:
-    cfg = NestedDict(config)
+def upgrade_config(cfg: Params | NestedDict) -> Params:
+    if not isinstance(cfg, NestedDict):
+        cfg = NestedDict(cfg)
 
     if "config_version" in cfg:
-        old_version = Version(3)
+        old_version = Version(0, 3)
+        cfg.pop("config_version")
     elif "version" in cfg:
         old_version = Version.parse(cfg["version"])
     else:
         raise ValueError("The config does not contain the 'version' field")
-    if old_version.major >= lxt.__semver__.major:
+    if old_version >= lxt.__semver__:
         logger.info(
             f"The config is already at the latest version"
-            f"(v{old_version}) relative to the version of"
+            f"(v{old_version}) relative to the version of "
             f"luxonis-train (v{lxt.__version__})."
         )
-        return config
+        return cfg._dict
     logger.info(
         f"Upgrading the config from v{old_version} to v{lxt.__version__}"
     )
@@ -169,24 +174,22 @@ def upgrade_config(config: Params) -> Params:
             logger.info(
                 f"Moved module from 'model.{key}' to head '{attached_to}'."
             )
-
-    cfg["config_version"] = "2.0"
+    cfg.update("version", lxt.__version__)
 
     return cfg._dict
 
 
-def upgrade_checkpoint(path: PathType) -> dict[str, Any]:
-    import torch
-
-    ckpt = NestedDict(torch.load(path, map_location="cpu"))
+def upgrade_checkpoint(ckpt: dict[str, Any] | NestedDict) -> dict[str, Any]:
+    if not isinstance(ckpt, NestedDict):
+        ckpt = NestedDict(ckpt)
 
     old_version = Version.parse(
         ckpt._dict.get("version", "0.3.0"), optional_minor_and_patch=True
     )
-    if old_version.major >= lxt.__semver__.major:
+    if old_version >= lxt.__semver__:
         logger.info(
             f"The checkpoint is already at the latest version"
-            f"(v{old_version}) relative to the version of"
+            f"(v{old_version}) relative to the version of "
             f"luxonis-train (v{lxt.__version__})."
         )
         return ckpt._dict
@@ -197,3 +200,36 @@ def upgrade_checkpoint(path: PathType) -> dict[str, Any]:
     ckpt["config"] = upgrade_config(ckpt["config"])
     logger.info("Upgraded the configuration file.")
     return ckpt._dict
+
+
+def upgrade_installation() -> None:
+    latest_version = get_latest_version()
+    if latest_version is None:
+        logger.info("Failed to check for updates. Try again later.")
+        return
+    if latest_version == lxt.__semver__:
+        logger.info(f"luxonis-train is up-to-date (v{lxt.__version__}).")
+    else:
+        subprocess.check_output(
+            f"{sys.executable} -m pip install -U pip".split()
+        )
+        subprocess.check_output(
+            f"{sys.executable} -m pip install -U luxonis_train".split()
+        )
+        subprocess.check_output(
+            f"{sys.executable} -m pip install -U luxonis_ml[data]".split()
+        )
+        logger.info(
+            f"luxonis-train updated from v{lxt.__version__} to v{latest_version}."
+        )
+
+
+def get_latest_version() -> Version | None:
+    url = "https://pypi.org/pypi/luxonis_train/json"
+    response = requests.get(url, timeout=5)
+    if response.status_code == 200:
+        data = response.json()
+        versions = list(data["releases"].keys())
+        versions.sort(key=lambda s: [int(u) for u in s.split(".")])
+        return Version.parse(versions[-1])
+    return None

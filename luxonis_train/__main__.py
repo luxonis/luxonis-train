@@ -1,7 +1,6 @@
 import importlib
 import importlib.util
 import json
-import subprocess
 import sys
 from collections.abc import Iterator
 from functools import lru_cache
@@ -9,15 +8,16 @@ from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal
 
-import requests
 import yaml
 from cyclopts import App, Group, Parameter, validators
 from loguru import logger
-from rich import print
-from semver import Version
 
-from luxonis_train.config import CONFIG_VERSION, Config, migrate_config
-from luxonis_train.utils.dataset_metadata import DatasetMetadata
+from luxonis_train.config import Config
+from luxonis_train.upgrade import (
+    upgrade_checkpoint,
+    upgrade_config,
+    upgrade_installation,
+)
 
 if TYPE_CHECKING:
     import numpy as np
@@ -31,6 +31,8 @@ app = App(
 app.meta.group_parameters = Group("Global Parameters", sort_key=0)
 app["--help"].group = app.meta.group_parameters
 app["--version"].group = app.meta.group_parameters
+
+upgrade_app = app.command(App(name="upgrade"))
 
 training_group = Group.create_ordered("Training")
 evaluation_group = Group.create_ordered("Evaluation")
@@ -50,6 +52,7 @@ def create_model(
     import torch
 
     from luxonis_train import LuxonisModel
+    from luxonis_train.utils.dataset_metadata import DatasetMetadata
 
     if weights is not None and config is None:
         ckpt = torch.load(weights, map_location="cpu")
@@ -58,7 +61,7 @@ def create_model(
                 f"Checkpoint '{weights}' does not contain the 'config' key. "
                 "Cannot restore `LuxonisModel` from checkpoint."
             )
-        cfg = Config.get_config(migrate_config(ckpt["config"]), opts)
+        cfg = Config.get_config(upgrade_config(ckpt["config"]), opts)
         dataset_metadata = None
         if load_dataset_metadata:
             if "dataset_metadata" not in ckpt:
@@ -401,91 +404,77 @@ def archive(
     )
 
 
-@app.command(group=management_group)
-def migrate(
-    old: Annotated[
+@upgrade_app.command()
+def config(
+    config: Annotated[
         Path,
         Parameter(validator=validators.Path(exists=True)),
         Parameter(validator=validators.Path(ext={"yaml", "yml", "json"})),
     ],
-    new: Annotated[
+    output: Annotated[
         Path | None,
         Parameter(validator=validators.Path(ext={"yaml", "yml", "json"})),
-    ],
+    ] = None,
 ):
-    """Migrate an old LuxonisTrain config file to the latest format.
+    """Upgrade luxonis-train configuration file.
 
-    @type old: Path
-    @param old: Path to the old config file.
-    @type new: Path | None
-    @param new: Path to the new config file. If None, it will overwrite
-        the old config file.
+    @type path: Path
+    @param old: Path to configuration file to be upgraded.
+    @type output: Path | None
+    @param new: Where to save the upgraded config. If left empty, the
+        old file will be overriden.
     """
-    if old.suffix == "json":
-        cfg = json.loads(old.read_text(encoding="utf-8"))
+    if config.suffix == "json":
+        cfg = json.loads(config.read_text(encoding="utf-8"))
     else:
-        cfg = yaml.safe_load(old.read_text(encoding="utf-8"))
+        cfg = yaml.safe_load(config.read_text(encoding="utf-8"))
 
-    if "config_version" not in cfg:
-        raise ValueError(
-            f"Old config file {old} does not have a 'config_version field'."
-        )
-    old_version = Version.parse(
-        cfg["config_version"], optional_minor_and_patch=True
-    )
-    if old_version == CONFIG_VERSION:
-        print(
-            f"Old config file {old} is already at the "
-            f"latest version {CONFIG_VERSION}."
-        )
-        return
-    print(
-        f"Migrating config file {old} from version "
-        f"{old_version} to {CONFIG_VERSION}..."
-    )
-    new_cfg = migrate_config(cfg, old_version, CONFIG_VERSION)
+    new_cfg = upgrade_config(cfg)
 
-    new = new or old
-    if new.suffix == "json":
-        new.write_text(json.dumps(new_cfg, indent=2))
+    output = output or config
+    if output.suffix == "json":
+        output.write_text(json.dumps(new_cfg, indent=2))
     else:
-        with open(new, "w") as f:
+        with open(output, "w") as f:
             yaml.safe_dump(
                 new_cfg, f, sort_keys=False, default_flow_style=False
             )
 
 
-@app.command(group=management_group)
+@upgrade_app.command(name=["checkpoint", "ckpt"])
+def checkpoint(
+    path: Annotated[
+        Path,
+        Parameter(validator=validators.Path(exists=True)),
+    ],
+    output: Path | None = None,
+):
+    """Upgrade luxonis-train checkpoint file.
+
+    @type path: Path
+    @param old: Path to the checkpoint
+    @type output: Path | None
+    @param new: Where to save the upgraded checkpoint. If left empty,
+        the old file will be overriden.
+    """
+    import torch
+
+    try:
+        ckpt = torch.load(path, map_location="cpu")
+    except Exception as e:
+        raise ValueError("Invalid checkpoint file") from e
+
+    new_ckpt = upgrade_checkpoint(ckpt)
+
+    output = output or path
+    torch.save(new_ckpt, output)
+    logger.info(f"Saved upgraded checkpoint to '{output}'")
+
+
+@upgrade_app.default()
 def upgrade():
-    """Update LuxonisTrain to the latest stable version."""
-
-    def get_latest_version() -> str | None:
-        url = "https://pypi.org/pypi/luxonis_train/json"
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            versions = list(data["releases"].keys())
-            versions.sort(key=lambda s: [int(u) for u in s.split(".")])
-            return versions[-1]
-        return None
-
-    current_version = version("luxonis_train")
-    latest_version = get_latest_version()
-    if latest_version is None:
-        print("Failed to check for updates. Try again later.")
-        return
-    if current_version == latest_version:
-        print(f"LuxonisTrain is up-to-date (v{current_version}).")
-    else:
-        subprocess.check_output(
-            f"{sys.executable} -m pip install -U pip".split()
-        )
-        subprocess.check_output(
-            f"{sys.executable} -m pip install -U luxonis_train".split()
-        )
-        print(
-            f"LuxonisTrain updated from v{current_version} to v{latest_version}."
-        )
+    """Upgrade luxonis-train installation."""
+    upgrade_installation()
 
 
 @app.meta.default
