@@ -3,19 +3,19 @@ from types import EllipsisType
 from typing import Any
 
 from loguru import logger
-from luxonis_ml.typing import Params, ParamValue
+from luxonis_ml.typing import Params, ParamValue, PathType
 from semver import Version
 
-from luxonis_train.config import CONFIG_VERSION
+import luxonis_train as lxt
 
 
 @dataclass
-class ConfigWrapper:
-    config: dict[str, Any]
+class NestedDict:
+    _dict: dict[str, Any]
 
     def __contains__(self, key: str) -> bool:
         keys = key.split(".")
-        current = self.config
+        current = self._dict
         for k in keys:
             if not isinstance(current, dict):
                 return False
@@ -28,14 +28,14 @@ class ConfigWrapper:
         if key not in self:
             return None
         keys = key.split(".")
-        current = self.config
+        current = self._dict
         for k in keys:
             current = current[k]
         return current
 
     def __setitem__(self, key: str, value: Any) -> None:
         keys = key.split(".")
-        current = self.config
+        current = self._dict
         for k in keys[:-1]:
             if k not in current or not isinstance(current[k], dict):
                 current[k] = {}
@@ -48,10 +48,20 @@ class ConfigWrapper:
                 return default
             raise KeyError(f"Key '{key}' not found in config.")
         keys = key.split(".")
-        current = self.config
+        current = self._dict
         for k in keys[:-1]:
             current = current[k]
         return current.pop(keys[-1])
+
+    def update(self, key: str, value: Any) -> None:
+        old_value = self[key]
+
+        if key not in self:
+            logger.info(f"Creating new field '{key}' with value `{value}`")
+        else:
+            logger.info(f"Updating field '{key}': `{old_value}` -> `{value}`")
+
+        self[key] = value
 
     def replace(
         self,
@@ -63,7 +73,7 @@ class ConfigWrapper:
             return
         old_value = self.pop(old_key)
         keys = new_key.split(".")
-        current = self.config
+        current = self._dict
         for k in keys[:-1]:
             if k not in current or not isinstance(current[k], dict):
                 current[k] = {}
@@ -76,8 +86,26 @@ class ConfigWrapper:
         logger.info(f"Changed config field '{old_field}' to '{new_field}'")
 
 
-def migrate_v1_to_v2(config: Params) -> Params:
-    cfg = ConfigWrapper(config)
+def upgrade_config(config: Params) -> Params:
+    cfg = NestedDict(config)
+
+    if "config_version" in cfg:
+        old_version = Version(3)
+    elif "version" in cfg:
+        old_version = Version.parse(cfg["version"])
+    else:
+        raise ValueError("The config does not contain the 'version' field")
+    if old_version.major >= lxt.__semver__.major:
+        logger.info(
+            f"The config is already at the latest version"
+            f"(v{old_version}) relative to the version of"
+            f"luxonis-train (v{lxt.__version__})."
+        )
+        return config
+    logger.info(
+        f"Upgrading the config from v{old_version} to v{lxt.__version__}"
+    )
+
     cfg.replace(
         "trainer.use_rich_progress_bar",
         "rich_logging",
@@ -103,8 +131,8 @@ def migrate_v1_to_v2(config: Params) -> Params:
     nodes = cfg["model"]["nodes"] or []
     assert isinstance(nodes, list)
 
-    heads: dict[str, ConfigWrapper] = {}
-    for node in map(ConfigWrapper, nodes):
+    heads: dict[str, NestedDict] = {}
+    for node in map(NestedDict, nodes):
         node.replace("params.variant", "variant")
         node_name = node["alias"] or node["name"]
         if "Head" in node["name"]:
@@ -137,36 +165,35 @@ def migrate_v1_to_v2(config: Params) -> Params:
                     f"'{attached_to}'."
                 )
             head = heads[attached_to]
-            head.config.setdefault(key, []).append(module)
+            head._dict.setdefault(key, []).append(module)
             logger.info(
                 f"Moved module from 'model.{key}' to head '{attached_to}'."
             )
 
     cfg["config_version"] = "2.0"
 
-    return cfg.config
+    return cfg._dict
 
 
-def migrate_config(
-    cfg: Params, fr: Version | None = None, to: Version = CONFIG_VERSION
-) -> Params:
-    if fr is None:
-        if "config_version" not in cfg:
-            raise ValueError(
-                "Config does not contain the 'config_version' field"
-            )
-        version = cfg["config_version"]
-        if not isinstance(version, str):
-            raise TypeError(
-                f"'config_version' field must be a string, got {type(version)}"
-            )
-        fr = Version.parse(version)
+def upgrade_checkpoint(path: PathType) -> dict[str, Any]:
+    import torch
 
-    if fr == to:
-        return cfg
+    ckpt = NestedDict(torch.load(path, map_location="cpu"))
 
-    # TODO: Chain migration
-    map = {
-        (Version(1), Version(2)): migrate_v1_to_v2,
-    }
-    return map[(fr, to)](cfg)
+    old_version = Version.parse(
+        ckpt._dict.get("version", "0.3.0"), optional_minor_and_patch=True
+    )
+    if old_version.major >= lxt.__semver__.major:
+        logger.info(
+            f"The checkpoint is already at the latest version"
+            f"(v{old_version}) relative to the version of"
+            f"luxonis-train (v{lxt.__version__})."
+        )
+        return ckpt._dict
+
+    ckpt.update("version", lxt.__version__)
+    if "config" not in ckpt:
+        logger.error("The 'config' field is not present in the checkpoint")
+    ckpt["config"] = upgrade_config(ckpt["config"])
+    logger.info("Upgraded the configuration file.")
+    return ckpt._dict

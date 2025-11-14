@@ -1,5 +1,4 @@
 from .config import (
-    CONFIG_VERSION,
     AttachedModuleConfig,
     Config,
     ExportConfig,
@@ -8,14 +7,13 @@ from .config import (
     NodeConfig,
     TrainerConfig,
 )
-from .migrate import migrate_config
+from .migrate import upgrade_config
 
 # So predefined models get registered
 from .predefined_models import *
 from .predefined_models.base_predefined_model import BasePredefinedModel
 
 __all__ = [
-    "CONFIG_VERSION",
     "AttachedModuleConfig",
     "BasePredefinedModel",
     "Config",
@@ -24,5 +22,5 @@ __all__ = [
     "MetricModuleConfig",
     "NodeConfig",
     "TrainerConfig",
-    "migrate_config",
+    "upgrade_config",
 ]
