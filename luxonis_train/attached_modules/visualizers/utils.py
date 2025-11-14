@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import torch
-import torchvision.transforms.functional as F
+import torch.nn.functional as F
 import torchvision.transforms.functional as TF
 from matplotlib.figure import Figure
 from PIL import Image
@@ -201,7 +201,7 @@ def denormalize(
     std_tensor = torch.tensor(std, device=img.device)
     new_mean = -mean_tensor / std_tensor
     new_std = 1 / std_tensor
-    out_img = F.normalize(img, mean=new_mean.tolist(), std=new_std.tolist())
+    out_img = TF.normalize(img, mean=new_mean.tolist(), std=new_std.tolist())
     if to_uint8:
         out_img = out_img.mul_(255).clamp_(0, 255).to(torch.uint8)
     return out_img
@@ -262,6 +262,22 @@ def dynamically_determine_font_scale(
     if computed_font_scale < 1:
         return computed_font_scale, 1
     return computed_font_scale, thickness
+
+
+def potentially_upscale_masks(
+    image_masks: Tensor, scale: float = 1.0
+) -> Tensor:
+    if scale is not None and scale != 1:
+        image_masks = image_masks.unsqueeze(1)
+        H_orig, W_orig = image_masks.shape[-2:]
+        H_up = int(H_orig * scale)
+        W_up = int(W_orig * scale)
+
+        image_masks = F.interpolate(
+            image_masks.float(), size=(H_up, W_up), mode="nearest"
+        ).bool()
+        return image_masks.squeeze(1).bool()
+    return image_masks
 
 
 # TODO: Support native visualizations

@@ -1,7 +1,6 @@
 from collections.abc import Mapping
 
 import torch
-import torch.nn.functional as F
 from loguru import logger
 from torch import Tensor
 
@@ -14,6 +13,7 @@ from .utils import (
     draw_bounding_boxes,
     draw_segmentation_targets,
     get_color,
+    potentially_upscale_masks,
 )
 
 
@@ -105,11 +105,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
                 image_bboxes = image_bboxes.clone()
                 image_bboxes[:, :4] *= scale
 
-            image_masks = (
-                InstanceSegmentationVisualizer.potentially_upscale_masks(
-                    image_masks, scale
-                )
-            )
+            image_masks = potentially_upscale_masks(image_masks, scale)
 
             cls_labels = (
                 [label_dict[int(c)] for c in prediction_classes]
@@ -165,11 +161,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             image_masks = target_masks[target_bboxes[:, 0] == i]
             target_classes = image_bboxes[:, 1].int()
 
-            image_masks = (
-                InstanceSegmentationVisualizer.potentially_upscale_masks(
-                    image_masks, scale
-                )
-            )
+            image_masks = potentially_upscale_masks(image_masks, scale)
 
             cls_labels = (
                 [label_dict[int(c)] for c in target_classes]
@@ -197,22 +189,6 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             ).to(canvas.device)
 
         return viz
-
-    @staticmethod
-    def potentially_upscale_masks(
-        image_masks: Tensor, scale: float = 1.0
-    ) -> Tensor:
-        if scale is not None and scale != 1:
-            image_masks = image_masks.unsqueeze(1)
-            H_orig, W_orig = image_masks.shape[-2:]
-            H_up = int(H_orig * scale)
-            W_up = int(W_orig * scale)
-
-            image_masks = F.interpolate(
-                image_masks.float(), size=(H_up, W_up), mode="nearest"
-            ).bool()
-            return image_masks.squeeze(1).bool()
-        return image_masks
 
     def forward(
         self,
