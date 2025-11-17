@@ -10,7 +10,7 @@ from luxonis_train.tasks import Metadata, Tasks
 from luxonis_train.utils import seg_output_to_bool
 
 from .base_visualizer import BaseVisualizer
-from .utils import Color, draw_segmentation_targets
+from .utils import Color, draw_segmentation_targets, potentially_upscale_masks
 
 log_disable = False
 
@@ -53,12 +53,17 @@ class SegmentationVisualizer(BaseVisualizer):
 
     @staticmethod
     def draw_predictions(
-        canvas: Tensor, predictions: Tensor, alpha: float, colors: list[Color]
+        canvas: Tensor,
+        predictions: Tensor,
+        alpha: float,
+        colors: list[Color],
+        scale: float = 1.0,
     ) -> Tensor:
         viz = torch.zeros_like(canvas)
         for i in range(len(canvas)):
             prediction = predictions[i]
             mask = seg_output_to_bool(prediction)
+            mask = potentially_upscale_masks(mask, scale)
             viz[i] = draw_segmentation_targets(
                 canvas[i].clone(), mask, alpha=alpha, colors=colors
             ).to(canvas.device)
@@ -66,11 +71,16 @@ class SegmentationVisualizer(BaseVisualizer):
 
     @staticmethod
     def draw_targets(
-        canvas: Tensor, targets: Tensor, alpha: float, colors: list[Color]
+        canvas: Tensor,
+        targets: Tensor,
+        alpha: float,
+        colors: list[Color],
+        scale: float = 1.0,
     ) -> Tensor:
         viz = torch.zeros_like(canvas)
         for i in range(len(viz)):
-            target = targets[i]
+            target = targets[i].bool()
+            target = potentially_upscale_masks(target, scale)
             viz[i] = draw_segmentation_targets(
                 canvas[i].clone(), target, alpha=alpha, colors=colors
             ).to(canvas.device)
@@ -107,6 +117,7 @@ class SegmentationVisualizer(BaseVisualizer):
             predictions,
             alpha=self.alpha,
             colors=colors,
+            scale=self.scale,
         )
         if target is None:
             return predictions_vis
@@ -116,6 +127,7 @@ class SegmentationVisualizer(BaseVisualizer):
             target,
             alpha=self.alpha,
             colors=colors,
+            scale=self.scale,
         )
         return targets_vis, predictions_vis
 
