@@ -2,7 +2,7 @@ import sys
 from collections.abc import Mapping
 from contextlib import suppress
 from pathlib import Path
-from typing import Annotated, Any, Final, Literal, NamedTuple
+from typing import Annotated, Any, Literal, NamedTuple
 
 from loguru import logger
 from luxonis_ml.enums import DatasetType
@@ -21,6 +21,7 @@ from luxonis_ml.utils import (
     is_acyclic,
 )
 from pydantic import (
+    AliasChoices,
     BeforeValidator,
     Field,
     PlainSerializer,
@@ -39,11 +40,8 @@ from pydantic.types import (
 from pydantic_extra_types.semantic_version import SemanticVersion
 from typing_extensions import Self, override
 
+import luxonis_train as lxt
 from luxonis_train.registry import MODELS, NODES, from_registry
-
-CONFIG_VERSION: Final[SemanticVersion] = SemanticVersion.parse(
-    "2.0", optional_minor_and_patch=True
-)
 
 
 class ImageSize(NamedTuple):
@@ -633,9 +631,14 @@ class Config(LuxonisConfig):
     archiver: ArchiveConfig = Field(default_factory=ArchiveConfig)
     tuner: TunerConfig = Field(default_factory=TunerConfig)
 
-    config_version: Annotated[SemanticVersion, PlainSerializer(str)] = (
-        CONFIG_VERSION
-    )
+    version: Annotated[
+        SemanticVersion,
+        Field(
+            frozen=True,
+            validation_alias=AliasChoices("version", "config_version"),
+        ),
+        PlainSerializer(str),
+    ] = lxt.__semver__
 
     ENVIRON: Environ = Field(exclude=True, default_factory=Environ)
 

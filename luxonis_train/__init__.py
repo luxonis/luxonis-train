@@ -1,6 +1,11 @@
-__version__ = "0.4.0"
-import pathlib
 import sys
+from typing import Final
+
+from pydantic_extra_types.semantic_version import SemanticVersion
+
+__version__: Final[str] = "0.4.0"
+__semver__: Final[SemanticVersion] = SemanticVersion.parse(__version__)
+
 
 # Do not run imports when first importing from within the CLI
 # This is to make the CLI more responsive
@@ -9,6 +14,7 @@ if (
     or "--source" in sys.argv
     or not sys.argv[0].endswith("/luxonis_train")
 ):
+    import pathlib
     import warnings
 
     try:
