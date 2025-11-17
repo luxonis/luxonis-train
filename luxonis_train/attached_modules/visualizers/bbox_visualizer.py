@@ -105,12 +105,17 @@ class BBoxVisualizer(BaseVisualizer):
         return viz
 
     def draw_predictions(
-        self, canvas: Tensor, predictions: list[Tensor]
+        self, canvas: Tensor, predictions: list[Tensor], scale: float = 1.0
     ) -> Tensor:
         viz = torch.zeros_like(canvas)
 
         for i in range(len(canvas)):
             prediction = predictions[i]
+
+            boxes = prediction[:, :4].clone()
+            if scale != 1.0:
+                boxes *= scale
+
             prediction_classes = prediction[..., 5].int()
             cls_labels = (
                 [self.label_dict[int(c)] for c in prediction_classes]
@@ -131,7 +136,7 @@ class BBoxVisualizer(BaseVisualizer):
             try:
                 viz[i] = draw_bounding_boxes(
                     canvas[i].clone(),
-                    prediction[:, :4],
+                    boxes,
                     width=width,
                     labels=cls_labels,
                     colors=cls_colors,
@@ -164,7 +169,9 @@ class BBoxVisualizer(BaseVisualizer):
         @type targets: Tensor
         @param targets: The target bounding boxes.
         """
-        predictions_viz = self.draw_predictions(prediction_canvas, predictions)
+        predictions_viz = self.draw_predictions(
+            prediction_canvas, predictions, scale=self.scale
+        )
         if targets is None:
             return predictions_viz
 
