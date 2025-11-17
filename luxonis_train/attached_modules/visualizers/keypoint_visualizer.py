@@ -1,6 +1,8 @@
 from copy import deepcopy
 
+import numpy as np
 import torch
+from PIL import Image, ImageDraw
 from torch import Tensor
 
 from luxonis_train.tasks import Tasks
@@ -19,6 +21,7 @@ class KeypointVisualizer(BBoxVisualizer):
         visible_color: Color = "red",
         nonvisible_color: Color | None = None,
         radius: int | None = None,
+        draw_indices: bool = False,
         **kwargs,
     ):
         """Visualizer for keypoints.
@@ -47,6 +50,7 @@ class KeypointVisualizer(BBoxVisualizer):
         self.visible_color = visible_color
         self.nonvisible_color = nonvisible_color
         self.radius = radius
+        self.draw_indices = draw_indices
 
     @staticmethod
     def _get_radius(canvas: Tensor) -> int:
@@ -69,50 +73,132 @@ class KeypointVisualizer(BBoxVisualizer):
     def draw_predictions(
         canvas: Tensor,
         predictions: list[Tensor],
+        draw_indices: bool = False,
         nonvisible_color: Color | None = None,
+        visible_color: Color = "red",
         visibility_threshold: float = 0.5,
         radius: int | None = None,
+        scale: float = 1.0,
         **kwargs,
     ) -> Tensor:
         viz = torch.zeros_like(canvas)
 
         for i in range(len(canvas)):
             prediction = predictions[i]
-            mask = prediction[..., 2] < visibility_threshold
-            visible_kpts = prediction[..., :2] * (~mask).unsqueeze(-1).float()
-            visible_kpts[..., 0] = visible_kpts[..., 0].clamp(
+
+            xy = prediction[..., :2].clone()
+            v = prediction[..., 2]
+
+            if scale != 1.0:
+                xy *= scale
+
+            not_visible = v < visibility_threshold
+            visible_xy = xy * (~not_visible).unsqueeze(-1).float()
+
+            visible_xy[..., 0] = visible_xy[..., 0].clamp(
                 0, canvas.size(-1) - 1
             )
-            visible_kpts[..., 1] = visible_kpts[..., 1].clamp(
+            visible_xy[..., 1] = visible_xy[..., 1].clamp(
                 0, canvas.size(-2) - 1
             )
 
             _kwargs = deepcopy(kwargs)
             _kwargs.setdefault("radius", radius)
+            _kwargs.setdefault("colors", visible_color)
 
             viz[i] = draw_keypoints(
                 canvas[i].clone(),
-                visible_kpts[..., :2].int(),
+                visible_xy.int(),
                 **_kwargs,
             )
+            if draw_indices:
+                viz[i] = KeypointVisualizer.draw_keypoint_indices_pil(
+                    viz[i].clone(),
+                    torch.cat([visible_xy, v.unsqueeze(-1)], dim=-1),
+                    colors=visible_color,
+                )
 
             if nonvisible_color is not None:
-                _kwargs = deepcopy(kwargs)
-                _kwargs.setdefault("radius", radius)
-                _kwargs["colors"] = nonvisible_color
-                nonvisible_kpts = (
-                    prediction[..., :2] * mask.unsqueeze(-1).float()
-                )
+                nonvisible_xy = xy * not_visible.unsqueeze(-1).float()
+
+                _kwargs2 = deepcopy(kwargs)
+                _kwargs2.setdefault("radius", radius)
+                _kwargs2["colors"] = nonvisible_color
+
                 viz[i] = draw_keypoints(
                     viz[i].clone(),
-                    nonvisible_kpts[..., :2],
-                    **_kwargs,
+                    nonvisible_xy,
+                    **_kwargs2,
                 )
+
+                if draw_indices:
+                    viz[i] = KeypointVisualizer.draw_keypoint_indices_pil(
+                        viz[i].clone(),
+                        torch.cat([nonvisible_xy, v.unsqueeze(-1)], dim=-1),
+                        colors=nonvisible_color,
+                    )
 
         return viz
 
     @staticmethod
-    def draw_targets(canvas: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def draw_keypoint_indices_pil(
+        canvas: Tensor,
+        keypoints: Tensor,
+        offset: tuple[int, int] = (7, 7),
+        colors: Color = "red",
+    ) -> Tensor:
+        """Draw keypoint indices using PIL, cycling text offsets to
+        reduce overlap.
+
+        Text is centered around each keypoint, so offsets behave
+        symmetrically.
+        """
+
+        ndarr = canvas.permute(1, 2, 0).detach().cpu().numpy()
+        img = Image.fromarray(ndarr)
+        draw = ImageDraw.Draw(img)
+
+        kp = keypoints.view(-1, 3)
+        oy, ox = offset
+
+        offset_modes = [
+            (+oy, -ox),
+            (+oy, +ox),
+            (-oy, +ox),
+            (-oy, -ox),
+        ]
+
+        for idx, (x, y, _v) in enumerate(kp):
+            x, y = int(x.item()), int(y.item())
+            label = str(idx)
+
+            # Get text size
+            bbox = draw.textbbox((0, 0), label)
+            text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
+
+            # Center text on keypoint
+            cx = x - text_w // 2
+            cy = y - text_h // 2
+
+            # Apply cycled offset
+            dy, dx = offset_modes[idx % len(offset_modes)]
+            tx = cx + dx
+            ty = cy + dy
+
+            draw.text((tx, ty), label, fill=colors)
+
+        out = np.asarray(img).astype(np.float32)
+        return torch.from_numpy(out).permute(2, 0, 1)
+
+    @staticmethod
+    def draw_targets(
+        canvas: Tensor,
+        targets: Tensor,
+        draw_indices: bool = False,
+        colors: Color = "red",
+        **kwargs,
+    ) -> Tensor:
         viz = torch.zeros_like(canvas)
 
         for i in range(len(canvas)):
@@ -120,8 +206,13 @@ class KeypointVisualizer(BBoxVisualizer):
             viz[i] = draw_keypoint_labels(
                 canvas[i].clone(),
                 target,
+                colors=colors,
                 **kwargs,
             )
+            if draw_indices:
+                viz[i] = KeypointVisualizer.draw_keypoint_indices_pil(
+                    viz[i].clone(), target, colors=colors
+                )
 
         return viz
 
@@ -135,7 +226,9 @@ class KeypointVisualizer(BBoxVisualizer):
         target_boundingbox: Tensor | None,
         **kwargs,
     ) -> tuple[Tensor, Tensor] | Tensor:
-        pred_viz = super().draw_predictions(prediction_canvas, boundingbox)
+        pred_viz = super().draw_predictions(
+            prediction_canvas, boundingbox, self.scale
+        )
 
         prediction_radius = (
             KeypointVisualizer._get_radius(prediction_canvas)
@@ -151,11 +244,13 @@ class KeypointVisualizer(BBoxVisualizer):
         pred_viz = self.draw_predictions(
             pred_viz,
             keypoints,
+            self.draw_indices,
             connectivity=self.connectivity,
-            colors=self.visible_color,
             nonvisible_color=self.nonvisible_color,
+            visible_color=self.visible_color,
             visibility_threshold=self.visibility_threshold,
             radius=prediction_radius,
+            scale=self.scale,
             **kwargs,
         )
 
@@ -173,6 +268,7 @@ class KeypointVisualizer(BBoxVisualizer):
             target_viz = self.draw_targets(
                 target_viz,
                 target_keypoints,
+                self.draw_indices,
                 radius=target_radius,
                 colors=self.visible_color,
                 connectivity=self.connectivity,
