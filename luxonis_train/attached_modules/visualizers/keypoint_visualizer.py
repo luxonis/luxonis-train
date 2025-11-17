@@ -75,6 +75,7 @@ class KeypointVisualizer(BBoxVisualizer):
         predictions: list[Tensor],
         draw_indices: bool = False,
         nonvisible_color: Color | None = None,
+        visible_color: Color = "red",
         visibility_threshold: float = 0.5,
         radius: int | None = None,
         scale: float = 1.0,
@@ -103,6 +104,7 @@ class KeypointVisualizer(BBoxVisualizer):
 
             _kwargs = deepcopy(kwargs)
             _kwargs.setdefault("radius", radius)
+            _kwargs.setdefault("colors", visible_color)
 
             viz[i] = draw_keypoints(
                 canvas[i].clone(),
@@ -113,6 +115,7 @@ class KeypointVisualizer(BBoxVisualizer):
                 viz[i] = KeypointVisualizer.draw_keypoint_indices_pil(
                     viz[i].clone(),
                     torch.cat([visible_xy, v.unsqueeze(-1)], dim=-1),
+                    colors=visible_color,
                 )
 
             if nonvisible_color is not None:
@@ -132,6 +135,7 @@ class KeypointVisualizer(BBoxVisualizer):
                     viz[i] = KeypointVisualizer.draw_keypoint_indices_pil(
                         viz[i].clone(),
                         torch.cat([nonvisible_xy, v.unsqueeze(-1)], dim=-1),
+                        colors=nonvisible_color,
                     )
 
         return viz
@@ -242,8 +246,8 @@ class KeypointVisualizer(BBoxVisualizer):
             keypoints,
             self.draw_indices,
             connectivity=self.connectivity,
-            colors=self.visible_color,
             nonvisible_color=self.nonvisible_color,
+            visible_color=self.visible_color,
             visibility_threshold=self.visibility_threshold,
             radius=prediction_radius,
             scale=self.scale,
