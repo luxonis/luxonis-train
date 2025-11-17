@@ -1,6 +1,8 @@
 from copy import deepcopy
 
+import numpy as np
 import torch
+from PIL import Image, ImageDraw
 from torch import Tensor
 
 from luxonis_train.tasks import Tasks
@@ -19,6 +21,7 @@ class KeypointVisualizer(BBoxVisualizer):
         visible_color: Color = "red",
         nonvisible_color: Color | None = None,
         radius: int | None = None,
+        draw_indices: bool = False,
         **kwargs,
     ):
         """Visualizer for keypoints.
@@ -47,6 +50,7 @@ class KeypointVisualizer(BBoxVisualizer):
         self.visible_color = visible_color
         self.nonvisible_color = nonvisible_color
         self.radius = radius
+        self.draw_indices = draw_indices
 
     @staticmethod
     def _get_radius(canvas: Tensor) -> int:
@@ -69,6 +73,7 @@ class KeypointVisualizer(BBoxVisualizer):
     def draw_predictions(
         canvas: Tensor,
         predictions: list[Tensor],
+        draw_indices: bool = False,
         nonvisible_color: Color | None = None,
         visibility_threshold: float = 0.5,
         radius: int | None = None,
@@ -112,7 +117,53 @@ class KeypointVisualizer(BBoxVisualizer):
         return viz
 
     @staticmethod
-    def draw_targets(canvas: Tensor, targets: Tensor, **kwargs) -> Tensor:
+    def draw_keypoint_indices_pil(
+        canvas: Tensor,
+        keypoints: Tensor,
+        offset: tuple[int, int] = (5, 5),
+        color: tuple[int, int, int] = (255, 0, 0),
+    ) -> Tensor:
+        """Draw keypoint indices using PIL, and cycle text offsets to
+        reduce overlap.
+
+        canvas: Tensor (3, H, W) in [0,255]
+        keypoints: Tensor (1, N*3) containing (x, y, v) triplets
+        offset: (dy, dx)
+        color: RGB tuple
+        """
+        ndarr = canvas.permute(1, 2, 0).detach().cpu().numpy()
+        img = Image.fromarray(ndarr)
+        draw = ImageDraw.Draw(img)
+
+        kp = keypoints.view(-1, 3)
+        oy, ox = offset
+
+        offset_modes = [
+            (-oy, +ox),
+            (+oy, -ox),
+            (-oy, -ox),
+        ]
+
+        for idx, (x, y, v) in enumerate(kp):
+            if v < 1:
+                continue
+
+            x, y = int(x.item()), int(y.item())
+
+            # Pick one of the three positions based on keypoint index (cycle in a modulo way)
+            dx, dy = offset_modes[idx % 3]
+
+            tx, ty = x + dx, y + dy
+
+            draw.text((tx, ty), str(idx), fill=color)
+
+        out = np.asarray(img).astype(np.float32)
+        return torch.from_numpy(out).permute(2, 0, 1)
+
+    @staticmethod
+    def draw_targets(
+        canvas: Tensor, targets: Tensor, draw_indices: bool = False, **kwargs
+    ) -> Tensor:
         viz = torch.zeros_like(canvas)
 
         for i in range(len(canvas)):
@@ -122,6 +173,11 @@ class KeypointVisualizer(BBoxVisualizer):
                 target,
                 **kwargs,
             )
+            if draw_indices:
+                viz[i] = KeypointVisualizer.draw_keypoint_indices_pil(
+                    viz[i].clone(),
+                    target,
+                )
 
         return viz
 
@@ -151,6 +207,7 @@ class KeypointVisualizer(BBoxVisualizer):
         pred_viz = self.draw_predictions(
             pred_viz,
             keypoints,
+            self.draw_indices,
             connectivity=self.connectivity,
             colors=self.visible_color,
             nonvisible_color=self.nonvisible_color,
@@ -173,6 +230,7 @@ class KeypointVisualizer(BBoxVisualizer):
             target_viz = self.draw_targets(
                 target_viz,
                 target_keypoints,
+                self.draw_indices,
                 radius=target_radius,
                 colors=self.visible_color,
                 connectivity=self.connectivity,
