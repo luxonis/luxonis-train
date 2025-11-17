@@ -21,6 +21,7 @@ from luxonis_ml.utils import (
     is_acyclic,
 )
 from pydantic import (
+    AliasChoices,
     BeforeValidator,
     Field,
     PlainSerializer,
@@ -632,7 +633,10 @@ class Config(LuxonisConfig):
 
     version: Annotated[
         SemanticVersion,
-        Field(frozen=True, alias="config_version"),
+        Field(
+            frozen=True,
+            validation_alias=AliasChoices("version", "config_version"),
+        ),
         PlainSerializer(str),
     ] = lxt.__semver__
 
