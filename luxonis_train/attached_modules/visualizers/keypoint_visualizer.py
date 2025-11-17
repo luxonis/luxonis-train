@@ -141,7 +141,7 @@ class KeypointVisualizer(BBoxVisualizer):
         canvas: Tensor,
         keypoints: Tensor,
         offset: tuple[int, int] = (7, 7),
-        colors: tuple[int, int, int] = (255, 0, 0),
+        colors: Color = "red",
     ) -> Tensor:
         """Draw keypoint indices using PIL, cycling text offsets to
         reduce overlap.
@@ -192,7 +192,7 @@ class KeypointVisualizer(BBoxVisualizer):
         canvas: Tensor,
         targets: Tensor,
         draw_indices: bool = False,
-        colors: tuple[int, int, int] = (255, 0, 0),
+        colors: Color = "red",
         **kwargs,
     ) -> Tensor:
         viz = torch.zeros_like(canvas)
