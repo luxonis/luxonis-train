@@ -631,7 +631,9 @@ class Config(LuxonisConfig):
     tuner: TunerConfig = Field(default_factory=TunerConfig)
 
     version: Annotated[
-        SemanticVersion, Field(frozen=True), PlainSerializer(str)
+        SemanticVersion,
+        Field(frozen=True, alias="config_version"),
+        PlainSerializer(str),
     ] = lxt.__semver__
 
     ENVIRON: Environ = Field(exclude=True, default_factory=Environ)

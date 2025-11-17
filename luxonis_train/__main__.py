@@ -415,10 +415,10 @@ def config(
 ):
     """Upgrade luxonis-train configuration file.
 
-    @type path: Path
-    @param old: Path to configuration file to be upgraded.
+    @type config: Path
+    @param config: Path to configuration file to be upgraded.
     @type output: Path | None
-    @param new: Where to save the upgraded config. If left empty, the
+    @param output: Where to save the upgraded config. If left empty, the
         old file will be overriden.
     """
     if config.suffix == "json":
@@ -449,7 +449,7 @@ def checkpoint(
     """Upgrade luxonis-train checkpoint file.
 
     @type path: Path
-    @param old: Path to the checkpoint
+    @param path: Path to the checkpoint
     @type output: Path | None
     @param new: Where to save the upgraded checkpoint. If left empty,
         the old file will be overriden.
