@@ -21,8 +21,10 @@ from luxonis_ml.utils import (
     is_acyclic,
 )
 from pydantic import (
+    AliasChoices,
     Field,
     ModelWrapValidatorHandler,
+    PlainSerializer,
     SecretStr,
     SerializationInfo,
     field_validator,
@@ -35,9 +37,10 @@ from pydantic.types import (
     NonNegativeInt,
     PositiveInt,
 )
+from pydantic_extra_types.semantic_version import SemanticVersion
 from typing_extensions import Self, override
 
-from luxonis_train.config.constants import CONFIG_VERSION
+import luxonis_train as lxt
 from luxonis_train.registry import MODELS
 
 
@@ -713,7 +716,14 @@ class Config(LuxonisConfig):
     archiver: ArchiveConfig = Field(default_factory=ArchiveConfig)
     tuner: TunerConfig = Field(default_factory=TunerConfig)
 
-    config_version: str = str(CONFIG_VERSION)
+    version: Annotated[
+        SemanticVersion,
+        Field(
+            frozen=True,
+            validation_alias=AliasChoices("version", "config_version"),
+        ),
+        PlainSerializer(str),
+    ] = lxt.__semver__
 
     ENVIRON: Environ = Field(exclude=True, default_factory=Environ)
 

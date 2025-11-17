@@ -1,14 +1,19 @@
 import importlib
 import importlib.util
-import subprocess
+import json
 import sys
 from collections.abc import Iterator
 from importlib.metadata import version
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal
 
-import requests
-from cyclopts import App, Group, Parameter
+import yaml
+from cyclopts import App, Group, Parameter, validators
+from loguru import logger
+from luxonis_ml.typing import PathType
+
+from luxonis_train.config import Config
+from luxonis_train.upgrade import upgrade_config, upgrade_installation
 
 if TYPE_CHECKING:
     import numpy as np
@@ -23,6 +28,8 @@ app.meta.group_parameters = Group("Global Parameters", sort_key=0)
 app["--help"].group = app.meta.group_parameters
 app["--version"].group = app.meta.group_parameters
 
+upgrade_app = app.command(App(name="upgrade"))
+
 training_group = Group.create_ordered("Training")
 evaluation_group = Group.create_ordered("Evaluation")
 export_group = Group.create_ordered("Export")
@@ -31,10 +38,44 @@ annotation_group = Group.create_ordered("Annotation")
 
 
 def create_model(
-    config: str | None, opts: list[str] | None, debug_mode: bool = False
+    config: PathType | None,
+    opts: list[str] | None = None,
+    weights: PathType | None = None,
+    debug_mode: bool = False,
+    load_dataset_metadata: bool = True,
 ) -> "LuxonisModel":
     importlib.reload(sys.modules["luxonis_train"])
+    import torch
+
     from luxonis_train import LuxonisModel
+    from luxonis_train.utils.dataset_metadata import DatasetMetadata
+
+    if weights is not None and config is None:
+        ckpt = torch.load(weights, map_location="cpu")  # nosemgre
+        if "config" not in ckpt:  # pragma: no cover
+            raise ValueError(
+                f"Checkpoint '{weights}' does not contain the 'config' key. "
+                "Cannot restore `LuxonisModel` from checkpoint."
+            )
+        cfg = Config.get_config(upgrade_config(ckpt["config"]), opts)
+        dataset_metadata = None
+        if load_dataset_metadata:
+            if "dataset_metadata" not in ckpt:
+                logger.error("Checkpoint does not contain dataset metadata.")
+            else:
+                try:
+                    dataset_metadata = DatasetMetadata(
+                        **ckpt["dataset_metadata"]
+                    )
+                except Exception as e:  # pragma: no cover
+                    logger.error(
+                        "Failed to load dataset metadata from the checkpoint. "
+                        f"Error: {e}"
+                    )
+
+        return LuxonisModel(
+            cfg, debug_mode=debug_mode, dataset_metadata=dataset_metadata
+        )
 
     return LuxonisModel(config, opts, debug_mode=debug_mode)
 
@@ -338,37 +379,80 @@ def archive(
     create_model(str(config), opts).archive(path=executable, weights=weights)
 
 
-@app.command(group=management_group)
-def upgrade():
-    """Update LuxonisTrain to the latest stable version."""
+@upgrade_app.command()
+def config(
+    config: Annotated[
+        Path,
+        Parameter(validator=validators.Path(exists=True)),
+        Parameter(validator=validators.Path(ext={"yaml", "yml", "json"})),
+    ],
+    output: Annotated[
+        Path | None,
+        Parameter(validator=validators.Path(ext={"yaml", "yml", "json"})),
+    ] = None,
+):
+    """Upgrade luxonis-train configuration file.
 
-    def get_latest_version() -> str | None:
-        url = "https://pypi.org/pypi/luxonis_train/json"
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            versions = list(data["releases"].keys())
-            versions.sort(key=lambda s: [int(u) for u in s.split(".")])
-            return versions[-1]
-        return None
-
-    current_version = version("luxonis_train")
-    latest_version = get_latest_version()
-    if latest_version is None:
-        print("Failed to check for updates. Try again later.")
-        return
-    if current_version == latest_version:
-        print(f"LuxonisTrain is up-to-date (v{current_version}).")
+    @type config: Path
+    @param config: Path to configuration file to be upgraded.
+    @type output: Path | None
+    @param output: Where to save the upgraded config. If left empty, the
+        old file will be overriden.
+    """
+    if config.suffix == "json":
+        cfg = json.loads(config.read_text(encoding="utf-8"))
     else:
-        subprocess.check_output(
-            f"{sys.executable} -m pip install -U pip".split()
-        )
-        subprocess.check_output(
-            f"{sys.executable} -m pip install -U luxonis_train".split()
-        )
-        print(
-            f"LuxonisTrain updated from v{current_version} to v{latest_version}."
-        )
+        cfg = yaml.safe_load(config.read_text(encoding="utf-8"))
+
+    new_cfg = upgrade_config(cfg)
+
+    output = output or config
+    if output.suffix == "json":
+        output.write_text(json.dumps(new_cfg, indent=2))
+    else:
+        with open(output, "w") as f:
+            yaml.safe_dump(
+                new_cfg, f, sort_keys=False, default_flow_style=False
+            )
+
+
+@upgrade_app.command(name=["checkpoint", "ckpt"])
+def checkpoint(
+    path: Annotated[
+        Path,
+        Parameter(validator=validators.Path(exists=True)),
+    ],
+    output: Path | None = None,
+):
+    """Upgrade luxonis-train checkpoint file.
+
+    @type path: Path
+    @param path: Path to the checkpoint
+    @type output: Path | None
+    @param new: Where to save the upgraded checkpoint. If left empty,
+        the old file will be overriden.
+    """
+    model = create_model(config=None, weights=path)
+    model.lightning_module.load_checkpoint(path)
+
+    # Needs to be called in order to attach the model to the trainer
+    model.pl_trainer.validate(
+        model.lightning_module,
+        model.pytorch_loaders["val"],
+        verbose=False,
+    )
+    model.pl_trainer.save_checkpoint(output or path, weights_only=False)
+    logger.info(f"Saved upgraded checkpoint to '{output}'")
+
+
+@upgrade_app.default()
+def upgrade():
+    """Upgrade luxonis-train installation and user files.
+
+    Usage without a subcommand will trigger an upgrade of `luxonis-
+    train` PyPI package.
+    """
+    upgrade_installation()
 
 
 @app.meta.default

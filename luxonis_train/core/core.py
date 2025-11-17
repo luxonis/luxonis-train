@@ -531,7 +531,12 @@ class LuxonisModel:
         }
 
         with open(export_path.with_suffix(".yaml"), "w") as f:
-            yaml.safe_dump(modelconverter_config, f)
+            yaml.safe_dump(
+                modelconverter_config,
+                f,
+                sort_keys=False,
+                default_flow_style=False,
+            )
             if self.cfg.exporter.upload_to_run:
                 self.tracker.upload_artifact(f.name, name=f.name, typ="export")
             if self.cfg.exporter.upload_url is not None:  # pragma: no cover
