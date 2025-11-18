@@ -190,6 +190,7 @@ def create_loader_from_directory(
     img_paths: Iterable[PathType],
     model: "lxt.LuxonisModel",
     add_path_annotation: bool = False,
+    batch_size: int | None = None,
 ) -> torch_data.DataLoader:
     """Creates a DataLoader from a directory of images.
 
@@ -200,6 +201,9 @@ def create_loader_from_directory(
     @type add_path_annotation: bool
     @param add_path_annotation: Whether to add the image path as an
         annotation in the dataset.
+    @type batch_size: int | None
+    @param batch_size: The batch size for the DataLoader. If None, uses
+        the model's default batch size.
     @rtype: torch_data.DataLoader
     @return: The DataLoader for the images.
     """
@@ -247,7 +251,7 @@ def create_loader_from_directory(
         collate_fn=collate_fix_paths
         if add_path_annotation
         else default_collate,
-        batch_size=model.cfg.trainer.batch_size,
+        batch_size=batch_size or model.cfg.trainer.batch_size,
         pin_memory=True,
         shuffle=False,
     )
