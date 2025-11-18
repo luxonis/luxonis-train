@@ -298,6 +298,30 @@ class LuxonisModel:
             self.tracker.upload_artifact(self.config_file, typ="config")
             self.tracker._finalize(status)
 
+    def _load_weights_non_strict(self, ckpt_path: PathType) -> None:
+        """Manually load a checkpoint using strict=False."""
+        ckpt_path = Path(ckpt_path)
+        logger.info(f"Non-strictly loading checkpoint: {ckpt_path}")
+
+        checkpoint = torch.load(str(ckpt_path), map_location="cpu")
+
+        state_dict = checkpoint.get("state_dict", checkpoint)
+
+        incompatible = self.lightning_module.load_state_dict(
+            state_dict,
+            strict=False,
+        )
+
+        if incompatible.missing_keys:
+            logger.warning(
+                f"[load_state_dict] Missing keys: {incompatible.missing_keys}"
+            )
+
+        if incompatible.unexpected_keys:
+            logger.warning(
+                f"[load_state_dict] Unexpected keys: {incompatible.unexpected_keys}"
+            )
+
     def train(
         self, new_thread: bool = False, weights: PathType | None = None
     ) -> None:
@@ -332,6 +356,11 @@ class LuxonisModel:
             weights = self.cfg.model.weights
 
         resume_weights = weights if self.cfg.trainer.resume_training else None
+
+        if resume_weights is not None and self.cfg.trainer.resume_training:
+            self._load_weights_non_strict(resume_weights)
+
+            resume_weights = None
 
         if self.cfg.trainer.resume_training and resume_weights is None:
             logger.warning(
