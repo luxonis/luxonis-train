@@ -533,12 +533,12 @@ class LuxonisLightningModule(pl.LightningModule):
         The confusion matrix buffer in
         `luxonis_train/metrics/recognition_confusion_matrix.py`) is saved
         by Lightning while the model is in `torch.inference_mode()`.
-        This causes the underlying tensors (e.g. `confmat`) to be marked
+        This causes the underlying tensors to be marked
         as inference tensors, which cannot be modified in-place.
 
         During resumed training, the metric update call:
 
-            self.metric.update(preds.argmax(...), targets.argmax(...))
+        self.metric.update(preds.argmax(...), targets.argmax(...))
 
         tries to perform an in-place update on the confusion-matrix buffer,
         which raises a RuntimeError
