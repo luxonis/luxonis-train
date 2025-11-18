@@ -154,6 +154,10 @@ class LuxonisLightningModule(pl.LightningModule):
             }
         )
 
+    @override
+    def load_state_dict(self, state_dict, strict=True):
+        return super().load_state_dict(state_dict, strict=False)
+
     @property
     def progress_bar(self) -> BaseLuxonisProgressBar:
         return cast(
