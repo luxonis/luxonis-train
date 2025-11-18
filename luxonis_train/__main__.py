@@ -12,6 +12,7 @@ import yaml
 from cyclopts import App, Group, Parameter, validators
 from loguru import logger
 from luxonis_ml.typing import PathType
+from semver import Version
 
 from luxonis_train.config import Config
 from luxonis_train.upgrade import upgrade_config, upgrade_installation
@@ -445,6 +446,10 @@ def checkpoint(
         Parameter(validator=validators.Path(exists=True)),
     ],
     output: Path | None = None,
+    force_full_upgrade: Annotated[
+        bool,
+        Parameter(name=["--force_full_upgrade", "-f"]),
+    ] = False,
 ):
     """Upgrade luxonis-train checkpoint file.
 
@@ -454,17 +459,41 @@ def checkpoint(
     @param new: Where to save the upgraded checkpoint. If left empty,
         the old file will be overriden.
     """
-    model = create_model(config=None, weights=path)
-    model.lightning_module.load_checkpoint(path)
+    import torch
 
-    # Needs to be called in order to attach the model to the trainer
-    model.pl_trainer.validate(
-        model.lightning_module,
-        model.pytorch_loaders["val"],
-        verbose=False,
-    )
-    model.pl_trainer.save_checkpoint(output or path, weights_only=False)
-    logger.info(f"Saved upgraded checkpoint to '{output}'")
+    import luxonis_train as lxt
+
+    ckpt = torch.load(path)
+    version = ckpt.pop("version", Version(3))
+    if version == lxt.__semver__:
+        logger.info(f"Checkpoint '{path}' is already up to date.")
+        return
+
+    ckpt["version"] = lxt.__version__
+
+    if version < Version(4) or force_full_upgrade:
+        logger.info("Performing a full checkpoint upgrade.")
+        model = create_model(config=None, weights=path)
+        model.lightning_module.load_checkpoint(path)
+
+        # Needs to be called in order to attach the model to the trainer
+        model.pl_trainer.validate(
+            model.lightning_module,
+            model.pytorch_loaders["val"],
+            verbose=False,
+        )
+        model.pl_trainer.save_checkpoint(output or path, weights_only=False)
+        logger.info(f"Saved upgraded checkpoint to '{output}'")
+    else:
+        logger.info("Performing a partial checkpoint upgrade.")
+        if "config" not in ckpt:
+            raise ValueError(
+                f"Checkpoint '{path}' does not contain the 'config' key. "
+                "Cannot perform partial upgrade."
+            )
+        ckpt["config"] = upgrade_config(ckpt["config"])
+        torch.save(ckpt, output or path)
+        logger.info(f"Saved upgraded checkpoint to '{output or path}'")
 
 
 @upgrade_app.default()
