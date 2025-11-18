@@ -402,7 +402,7 @@ def archive(
     )
 
 
-@upgrade_app.command()
+@upgrade_app.command(name=["config", "cfg"])
 def config(
     config: Annotated[
         Path,
@@ -464,14 +464,14 @@ def checkpoint(
     import luxonis_train as lxt
 
     ckpt = torch.load(path)
-    version = ckpt.pop("version", Version(3))
+    version = ckpt.pop("version", Version(0, 3))
     if version == lxt.__semver__:
         logger.info(f"Checkpoint '{path}' is already up to date.")
         return
 
     ckpt["version"] = lxt.__version__
 
-    if version < Version(3, 10) or force_full_upgrade:
+    if version < Version(0, 3, 10) or force_full_upgrade:
         logger.info("Performing a full checkpoint upgrade.")
         model = create_model(config=None, weights=path)
         model.lightning_module.load_checkpoint(path)
