@@ -1,6 +1,6 @@
 import re
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -12,6 +12,7 @@ from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
 from packaging import version
 from torch import Size, Tensor
+from torch.nn.modules.module import _IncompatibleKeys
 from typing_extensions import override
 
 import luxonis_train
@@ -153,6 +154,12 @@ class LuxonisLightningModule(pl.LightningModule):
                 "luxonis_ml_version": luxonis_ml_version,
             }
         )
+
+    @override
+    def load_state_dict(
+        self, state_dict: Mapping[str, Tensor], strict: bool = True
+    ) -> _IncompatibleKeys:
+        return super().load_state_dict(state_dict, strict=False)
 
     @property
     def progress_bar(self) -> BaseLuxonisProgressBar:
