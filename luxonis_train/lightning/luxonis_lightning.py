@@ -159,7 +159,15 @@ class LuxonisLightningModule(pl.LightningModule):
     def load_state_dict(
         self, state_dict: Mapping[str, Tensor], strict: bool = True
     ) -> _IncompatibleKeys:
-        return super().load_state_dict(state_dict, strict=False)
+        """Default behavior for load_state_dict, unless resume_training
+        is active.
+
+        In case resume_training is active, allow loading in a non-strict
+        manner to allow loss, visualizer and metric nodes to be absent.
+        """
+        if self.cfg.trainer.resume_training:
+            return super().load_state_dict(state_dict, strict=False)
+        return super().load_state_dict(state_dict, strict=strict)
 
     @property
     def progress_bar(self) -> BaseLuxonisProgressBar:
