@@ -471,7 +471,7 @@ def checkpoint(
 
     ckpt["version"] = lxt.__version__
 
-    if version < Version(4) or force_full_upgrade:
+    if version < Version(3, 10) or force_full_upgrade:
         logger.info("Performing a full checkpoint upgrade.")
         model = create_model(config=None, weights=path)
         model.lightning_module.load_checkpoint(path)
