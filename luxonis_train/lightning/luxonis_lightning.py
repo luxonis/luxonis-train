@@ -1,6 +1,6 @@
 import re
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -12,6 +12,7 @@ from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
 from packaging import version
 from torch import Size, Tensor
+from torch.nn.modules.module import _IncompatibleKeys
 from typing_extensions import override
 
 import luxonis_train
@@ -153,6 +154,20 @@ class LuxonisLightningModule(pl.LightningModule):
                 "luxonis_ml_version": luxonis_ml_version,
             }
         )
+
+    @override
+    def load_state_dict(
+        self, state_dict: Mapping[str, Tensor], strict: bool = True
+    ) -> _IncompatibleKeys:
+        """Default behavior for load_state_dict, unless resume_training
+        is active.
+
+        In case resume_training is active, allow loading in a non-strict
+        manner to allow loss, visualizer and metric nodes to be absent.
+        """
+        if self.cfg.trainer.resume_training:
+            return super().load_state_dict(state_dict, strict=False)
+        return super().load_state_dict(state_dict, strict=strict)
 
     @property
     def progress_bar(self) -> BaseLuxonisProgressBar:
@@ -564,6 +579,10 @@ class LuxonisLightningModule(pl.LightningModule):
         if "state_dict" not in ckpt:
             raise ValueError("Checkpoint does not contain state_dict.")
 
+        previous_cfg = ckpt.get("config", None)
+        if self.cfg.trainer.resume_training and isinstance(previous_cfg, dict):
+            self._check_valid_epoch_counts(previous_cfg)
+
         state_dict = ckpt["state_dict"]
         order_mapping = self._load_execution_order_mapping(ckpt)
         ver = version.parse(ckpt.get("version", "0.3.0"))
@@ -632,6 +651,20 @@ class LuxonisLightningModule(pl.LightningModule):
                         "Loading checkpoint with strict=False, some weights may not be loaded"
                     )
                     node.module.load_checkpoint(sub_state_dict, strict=False)
+
+    def _check_valid_epoch_counts(self, ckpt_config: dict) -> None:
+        previous_trainer_cfg = ckpt_config.get("trainer", {})
+        previous_epochs = previous_trainer_cfg.get("epochs", None)
+
+        if (
+            previous_epochs is not None
+            and previous_epochs > self.cfg.trainer.epochs
+        ):
+            logger.warning(
+                f"Checkpoint was previously trained for {previous_epochs} epochs, "
+                f"but current config requests only {self.cfg.trainer.epochs} epochs. "
+                "Please set a number of epochs that is higher than the previously-trained epoch number."
+            )
 
     def _evaluation_step(
         self,

@@ -440,6 +440,7 @@ training_strategy:
   ##### 2. **Resume Training Continuously Example**
 
   - Set `resume_training: true` to continue training from the last checkpoint in `model.weights`.
+  - In this mode, the epochs value must be set higher than the number of epochs already completed, since training continues from the previous epoch count. For example, if the previous checkpoint was trained on 300 epochs, training will only resume in this mode if the number of epochs set is higher than 300.
   - LR continues from where the previous run ended, keeping scheduler continuity.
   - Example: Extending training (e.g., 400 `epochs` after 300) while adjusting `T_max` (e.g., 400 after 300) and `eta_min` (e.g., reduced 10x). The final LR from the previous run is retained, overriding the initial config LR, and training LR completes with the new `eta_min` value.
 

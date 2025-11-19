@@ -338,6 +338,12 @@ class LuxonisModel:
                 "Resume training is enabled but no weights were provided. "
                 "Training will start from scratch."
             )
+        elif resume_weights and self.cfg.trainer.resume_training is False:
+            logger.warning(
+                "Weights argument was given but resume_training is not set to True. "
+                "Training will start from scratch."
+                "To resume training from the given checkpoint, set resume_training to True."
+            )
 
         def graceful_exit(signum: int, _: Any) -> None:  # pragma: no cover
             logger.info(
