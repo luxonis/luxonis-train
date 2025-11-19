@@ -558,6 +558,20 @@ class LuxonisLightningModule(pl.LightningModule):
             self.cfg, self.parameters(), self.nodes.main_metric, self.nodes
         )
 
+    def check_valid_epoch_counts(self, ckpt_config: dict):
+        previous_trainer_cfg = ckpt_config.get("trainer", {})
+        previous_epochs = previous_trainer_cfg.get("epochs", None)
+
+        if (
+            previous_epochs is not None
+            and previous_epochs > self.cfg.trainer.epochs
+        ):
+            logger.warning(
+                f"Checkpoint was previously trained for {previous_epochs} epochs, "
+                f"but current config requests only {self.cfg.trainer.epochs} epochs. "
+                "Please set a number of epochs that is higher than the previously-trained epoch number."
+            )
+
     def load_checkpoint(self, ckpt: PathType | dict[str, Any] | None) -> None:
         """Loads checkpoint weights from provided path.
 
@@ -578,6 +592,10 @@ class LuxonisLightningModule(pl.LightningModule):
 
         if "state_dict" not in ckpt:
             raise ValueError("Checkpoint does not contain state_dict.")
+
+        previous_cfg = ckpt.get("config", None)
+        if self.cfg.trainer.resume_training and isinstance(previous_cfg, dict):
+            self.check_valid_epoch_counts(previous_cfg)
 
         state_dict = ckpt["state_dict"]
         order_mapping = self._load_execution_order_mapping(ckpt)
