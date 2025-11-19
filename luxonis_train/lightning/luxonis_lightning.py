@@ -558,7 +558,7 @@ class LuxonisLightningModule(pl.LightningModule):
             self.cfg, self.parameters(), self.nodes.main_metric, self.nodes
         )
 
-    def check_valid_epoch_counts(self, ckpt_config: dict):
+    def check_valid_epoch_counts(self, ckpt_config: dict) -> None:
         previous_trainer_cfg = ckpt_config.get("trainer", {})
         previous_epochs = previous_trainer_cfg.get("epochs", None)
 
