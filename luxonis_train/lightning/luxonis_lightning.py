@@ -561,7 +561,13 @@ class LuxonisLightningModule(pl.LightningModule):
             if not pattern.match(k)
         }
         checkpoint["execution_order"] = get_model_execution_order(self)
-        checkpoint["config"] = self.cfg.model_dump()
+
+        cfg = self.cfg.model_dump()
+        cfg["tracker"]["save_directory"] = str(
+            cfg["tracker"]["save_directory"]
+        )
+
+        checkpoint["config"] = cfg
         checkpoint["dataset_metadata"] = self.dataset_metadata.dump()
 
     @override
