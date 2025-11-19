@@ -529,44 +529,15 @@ class LuxonisLightningModule(pl.LightningModule):
         pattern = re.compile(
             r"^nodes\.[^.]+\.(metrics|visualizers|losses)\..*_node\..*"
         )
-        if getattr(self, "_export", False):
-            checkpoint["state_dict"] = {
-                k: v
-                for k, v in checkpoint["state_dict"].items()
-                if not pattern.match(k)
-            }
+        checkpoint["state_dict"] = {
+            k: v
+            for k, v in checkpoint["state_dict"].items()
+            if not pattern.match(k)
+        }
         checkpoint["version"] = luxonis_train.__version__
         checkpoint["execution_order"] = get_model_execution_order(self)
         checkpoint["config"] = self.cfg.model_dump()
         checkpoint["dataset_metadata"] = self.dataset_metadata.dump()
-
-    @override
-    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
-        """Workaround for PyTorch >= 2.1 / TorchMetrics 1.6 inference-
-        mode bug.
-
-        The confusion matrix buffer in
-        `luxonis_train/metrics/recognition_confusion_matrix.py`) is saved
-        by Lightning while the model is in `torch.inference_mode()`.
-        This causes the underlying tensors to be marked
-        as inference tensors, which cannot be modified in-place.
-
-        During resumed training, the metric update call:
-
-        self.metric.update(preds.argmax(...), targets.argmax(...))
-
-        tries to perform an in-place update on the confusion-matrix buffer,
-        which raises a RuntimeError
-
-        Lightning calls `on_load_checkpoint()` before loading the state_dict
-        into the module, so by cloning the checkpoint tensors here we ensure
-        they become normal writable tensors again.
-        """
-        state_dict = checkpoint.get("state_dict", {})
-
-        for key, value in list(state_dict.items()):
-            if isinstance(value, torch.Tensor):
-                state_dict[key] = value.clone()
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:
