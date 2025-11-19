@@ -76,6 +76,7 @@ class LuxonisModel:
         opts: Params | list[str] | tuple[str, ...] | None = None,
         *,
         debug_mode: bool = False,
+        dataset_metadata: DatasetMetadata | None = None,
     ):
         """Constructs a new Core instance.
 
@@ -259,9 +260,12 @@ class LuxonisModel:
                 else None,
             )
 
-        self.dataset_metadata = DatasetMetadata.from_loader(
-            self.loaders["train"]
-        )
+        if dataset_metadata is not None:
+            self.dataset_metadata = dataset_metadata
+        else:
+            self.dataset_metadata = DatasetMetadata.from_loader(
+                self.loaders["train"]
+            )
         self.config_file = self.run_save_dir / "training_config.yaml"
         self.cfg.save_data(self.config_file)
 

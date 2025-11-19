@@ -9,7 +9,6 @@ from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
 from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
-from semver import Version
 from torch import Size, Tensor
 from typing_extensions import override
 
@@ -607,20 +606,17 @@ class LuxonisLightningModule(pl.LightningModule):
 
         state_dict = ckpt["state_dict"]
         order_mapping = self._load_execution_order_mapping(ckpt)
-        ver = Version.parse(ckpt.get("version", "0.3.0"))
 
         for node_name, node in self.nodes.items():
             sub_state_dict = {
                 self._strip_state_prefix(k): v
                 for k, v in state_dict.items()
-                if k.startswith(
-                    f"nodes.{node_name}.{'module.' if ver >= Version(0, 4) else ''}"
-                )
+                if k.startswith(f"nodes.{node_name}.")
             }
             try:
                 node.load_checkpoint(sub_state_dict, strict=True)
             except RuntimeError:  # pragma: no cover
-                logger.error(
+                logger.exception(
                     f"Failed to load checkpoint for node '{node_name}'"
                 )
 
@@ -964,4 +960,4 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @staticmethod
     def _strip_state_prefix(key: str) -> str:
-        return ".".join(key.split(".")[3:])
+        return ".".join(key.split(".")[2:])

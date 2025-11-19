@@ -364,23 +364,23 @@ class BaseNode(
         return self._get_nth_size(-1)
 
     def load_checkpoint(
-        self, ckpt: str | dict[str, Tensor], *, strict: bool = True
+        self, path: str | dict[str, Tensor], *, strict: bool = True
     ) -> None:
         """Loads checkpoint for the module.
 
-        @type ckpt: str | dict[str, Tensor] | None
-        @param ckpt: Path to local or remote .ckpt file.
+        @type path: str | dict[str, Tensor] | None
+        @param path: Path to local or remote .ckpt file.
         @type strict: bool
         @param strict: Whether to load weights strictly or not. Defaults
             to True.
         """
-        if not isinstance(ckpt, dict):
-            logger.info(f"Loading weights from '{ckpt}'")
+        if not isinstance(path, dict):
+            logger.info(f"Loading weights from '{path}'")
 
-        if isinstance(ckpt, dict):
-            state_dict = ckpt
+        if isinstance(path, dict):
+            state_dict = path
         else:
-            local_path = safe_download(url=ckpt)
+            local_path = safe_download(url=path)
             if local_path:
                 # load explicitly to cpu, PL takes care of transfering to CUDA is needed
                 state_dict = torch.load(  # nosemgrep

@@ -102,7 +102,7 @@ def train(
         suppresses some exceptions to allow training without a fully
         defined model.
     """
-    create_model(config, opts, debug).train(weights=weights)
+    create_model(config, opts, debug_mode=debug).train(weights=weights)
 
 
 @app.command(group=training_group, sort_key=2)
@@ -224,7 +224,9 @@ def test(
         suppresses some exceptions to allow training without a fully
         defined model.
     """
-    create_model(config, opts, debug).test(view=view, weights=weights)
+    create_model(config, opts, debug_mode=debug).test(
+        view=view, weights=weights
+    )
 
 
 @app.command(group=evaluation_group, sort_key=2)
@@ -259,7 +261,7 @@ def infer(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    create_model(config, opts).infer(
+    create_model(config, opts, debug_mode=True).infer(
         view=view,
         save_dir=save_dir,
         source_path=source_path,
