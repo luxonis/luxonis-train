@@ -1,12 +1,15 @@
+import json
 import subprocess
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from types import EllipsisType
 from typing import Any
 
 import requests
+import yaml
 from loguru import logger
-from luxonis_ml.typing import Params, ParamValue
+from luxonis_ml.typing import Params, ParamValue, PathType
 from semver import Version
 
 import luxonis_train as lxt
@@ -89,9 +92,14 @@ class NestedDict:
         logger.info(f"Changed config field '{old_field}' to '{new_field}'")
 
 
-def upgrade_config(cfg: Params | NestedDict) -> Params:
-    if not isinstance(cfg, NestedDict):
-        cfg = NestedDict(cfg)
+def upgrade_config(path: PathType) -> Params:
+    path = Path(path)
+    if path.suffix == "json":
+        cfg = json.loads(path.read_text(encoding="utf-8"))
+    else:
+        cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
+
+    cfg = NestedDict(cfg)
 
     if "config_version" in cfg:
         old_version = Version(0, 3)
@@ -138,12 +146,13 @@ def upgrade_config(cfg: Params | NestedDict) -> Params:
 
     heads: dict[str, NestedDict] = {}
     for node in map(NestedDict, nodes):
-        node.replace("params.variant", "variant")
+        if lxt.__semver__ >= Version(0, 4):
+            node.replace("params.variant", "variant")
         node_name = node["alias"] or node["name"]
         if "Head" in node["name"]:
             heads[node_name] = node
 
-    if "exporter.output_names" in cfg:
+    if cfg["exporter.output_names"] is not None:
         if len(heads) == 1:
             output_names = cfg.pop("exporter.output_names")
             head = next(iter(heads.values()))

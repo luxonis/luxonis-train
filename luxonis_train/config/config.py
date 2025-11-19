@@ -319,7 +319,9 @@ class ModelConfig(BaseModelExtraForbid):
                     if not isinstance(cfg, list):
                         cfg = [cfg]
                     for c in cfg:
-                        c["attached_to"] = node.get("alias", node.get("name"))
+                        c["attached_to"] = node.get("alias") or node.get(
+                            "name"
+                        )
                     section_data = data[section]
                     if not check_type(section_data, list[dict]):
                         raise ValueError(
@@ -327,6 +329,7 @@ class ModelConfig(BaseModelExtraForbid):
                             "Expected a list of dictionaries."
                         )
                     section_data.extend(cfg)
+
         return data
 
 

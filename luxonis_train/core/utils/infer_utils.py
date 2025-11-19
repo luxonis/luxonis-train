@@ -160,6 +160,12 @@ def infer_from_loader(
             break
         assert isinstance(outputs, LuxonisOutput)
         visualizations = outputs.visualizations
+        if not visualizations:
+            raise RuntimeError(
+                "No visualizations were computed during inference. "
+                "Ensure that the model is configured to compute "
+                "visualizations."
+            )
         renders = process_visualizations(visualizations)
         batch_size = len(next(iter(renders.values())))
         for i in range(batch_size):

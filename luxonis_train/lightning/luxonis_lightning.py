@@ -560,6 +560,7 @@ class LuxonisLightningModule(pl.LightningModule):
             for k, v in checkpoint["state_dict"].items()
             if not pattern.match(k)
         }
+        checkpoint["version"] = luxonis_train.__version__
         checkpoint["execution_order"] = get_model_execution_order(self)
 
         cfg = self.cfg.model_dump()
