@@ -48,6 +48,11 @@ class NestedDict:
             current = current[k]
         current[keys[-1]] = value
 
+    def get(self, key: str, default: Any = None) -> Any:
+        if key not in self:
+            return default
+        return self[key]
+
     def pop(self, key: str, default: Any = ...) -> Any:
         if key not in self:
             if default is not ...:
@@ -100,14 +105,8 @@ def upgrade_config(path: PathType) -> Params:
         cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
 
     cfg = NestedDict(cfg)
+    old_version = Version.parse(cfg.get("version", "0.3.0"))
 
-    if "config_version" in cfg:
-        old_version = Version(0, 3)
-        cfg.pop("config_version")
-    elif "version" in cfg:
-        old_version = Version.parse(cfg["version"])
-    else:
-        raise ValueError("The config does not contain the 'version' field")
     if old_version >= lxt.__semver__:
         logger.info(
             f"The config is already at the latest version"
@@ -140,6 +139,8 @@ def upgrade_config(path: PathType) -> Params:
         if cfg["tuner.storage.storage_type"] == "local"
         else "postgresql",
     )
+    if "tuner" in cfg and cfg["tuner"] is None:
+        cfg.pop("tuner")
 
     nodes = cfg["model"]["nodes"] or []
     assert isinstance(nodes, list)
