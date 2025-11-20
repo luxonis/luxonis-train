@@ -629,7 +629,7 @@ class LuxonisLightningModule(pl.LightningModule):
             try:
                 node.load_checkpoint(sub_state_dict, strict=True)
             except RuntimeError:  # pragma: no cover
-                logger.exception(
+                logger.error(
                     f"Failed to load checkpoint for node '{node_name}'"
                 )
 
