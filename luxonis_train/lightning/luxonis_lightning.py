@@ -11,6 +11,7 @@ from loguru import logger
 from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
 from packaging import version
+from semver import Version
 from torch import Size, Tensor
 from typing_extensions import override
 
@@ -571,15 +572,15 @@ class LuxonisLightningModule(pl.LightningModule):
             raise ValueError("Checkpoint does not contain state_dict.")
 
         state_dict = ckpt["state_dict"]
+        ver = Version.parse(ckpt.get("version", "0.3.0"))
         order_mapping = self._load_execution_order_mapping(ckpt)
-        ver = version.parse(ckpt.get("version", "0.3.0"))
 
         for node_name, node in self.nodes.items():
             sub_state_dict = {
                 self._strip_state_prefix(k): v
                 for k, v in state_dict.items()
                 if k.startswith(
-                    f"nodes.{node_name}.{'module.' if ver >= version.parse('0.4.0') else ''}"
+                    f"nodes.{node_name}.{'module.' if ver >= Version(0, 4) else ''}"
                 )
             }
             try:
@@ -603,14 +604,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
                         bare_name = ".".join(old_name_parts)
                         new_name = order_mapping[node_name][bare_name]
-                        if old_name in sub_state_dict:
-                            new_state_dict[f"{new_name}.{parameter_name}"] = (
-                                value
-                            )
-                        else:
-                            logger.warning(
-                                f"Key '{bare_name}' not found in state dict for node '{node_name}'."
-                            )
+                        new_state_dict[f"{new_name}.{parameter_name}"] = value
                     try:
                         node.module.load_checkpoint(
                             new_state_dict, strict=True
@@ -938,4 +932,5 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @staticmethod
     def _strip_state_prefix(key: str) -> str:
-        return ".".join(key.split(".")[3:])
+        idx = 3 if "module." in key else 2
+        return ".".join(key.split(".")[idx:])

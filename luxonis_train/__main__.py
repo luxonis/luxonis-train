@@ -11,8 +11,7 @@ from typing import TYPE_CHECKING, Annotated, Literal
 import yaml
 from cyclopts import App, Group, Parameter, validators
 from loguru import logger
-from luxonis_ml.typing import PathType
-from semver import Version
+from luxonis_ml.typing import Params, PathType
 
 from luxonis_train.config import Config
 from luxonis_train.upgrade import upgrade_config, upgrade_installation
@@ -40,7 +39,7 @@ management_group = Group.create_ordered("Management")
 
 
 def create_model(
-    config: PathType | None,
+    config: PathType | Params | None,
     opts: list[str] | None = None,
     weights: PathType | None = None,
     debug_mode: bool = False,
@@ -273,7 +272,7 @@ def infer(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    create_model(config, opts, weights=weights).infer(
+    create_model(config, opts, weights=weights, debug_mode=True).infer(
         view=view,
         save_dir=save_dir,
         source_path=source_path,
@@ -441,15 +440,15 @@ def config(
 
 @upgrade_app.command(name=["checkpoint", "ckpt"])
 def checkpoint(
+    opts: list[str] | None = None,
+    /,
+    *,
     path: Annotated[
         Path,
         Parameter(validator=validators.Path(exists=True)),
     ],
     output: Path | None = None,
-    force_full_upgrade: Annotated[
-        bool,
-        Parameter(name=["--force_full_upgrade", "-f"]),
-    ] = False,
+    config: Path | None = None,
 ):
     """Upgrade luxonis-train checkpoint file.
 
@@ -459,41 +458,21 @@ def checkpoint(
     @param new: Where to save the upgraded checkpoint. If left empty,
         the old file will be overriden.
     """
-    import torch
+    logger.info("Performing a full checkpoint upgrade.")
+    cfg = None
+    if config is not None:
+        cfg = upgrade_config(config)
+    model = create_model(config=cfg, weights=path, opts=opts, debug_mode=True)
+    model.lightning_module.load_checkpoint(path)
 
-    import luxonis_train as lxt
-
-    ckpt = torch.load(path)
-    version = ckpt.pop("version", Version(0, 3))
-    if version == lxt.__semver__:
-        logger.info(f"Checkpoint '{path}' is already up to date.")
-        return
-
-    ckpt["version"] = lxt.__version__
-
-    if version < Version(0, 3, 10) or force_full_upgrade:
-        logger.info("Performing a full checkpoint upgrade.")
-        model = create_model(config=None, weights=path)
-        model.lightning_module.load_checkpoint(path)
-
-        # Needs to be called in order to attach the model to the trainer
-        model.pl_trainer.validate(
-            model.lightning_module,
-            model.pytorch_loaders["val"],
-            verbose=False,
-        )
-        model.pl_trainer.save_checkpoint(output or path, weights_only=False)
-        logger.info(f"Saved upgraded checkpoint to '{output}'")
-    else:
-        logger.info("Performing a partial checkpoint upgrade.")
-        if "config" not in ckpt:
-            raise ValueError(
-                f"Checkpoint '{path}' does not contain the 'config' key. "
-                "Cannot perform partial upgrade."
-            )
-        ckpt["config"] = upgrade_config(ckpt["config"])
-        torch.save(ckpt, output or path)
-        logger.info(f"Saved upgraded checkpoint to '{output or path}'")
+    # Needs to be called in order to attach the model to the trainer
+    model.pl_trainer.validate(
+        model.lightning_module,
+        model.pytorch_loaders["val"],
+        verbose=False,
+    )
+    model.pl_trainer.save_checkpoint(output or path, weights_only=False)
+    logger.info(f"Saved upgraded checkpoint to '{output}'")
 
 
 @upgrade_app.default()

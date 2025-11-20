@@ -1,12 +1,15 @@
+import json
 import subprocess
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from types import EllipsisType
 from typing import Any
 
 import requests
+import yaml
 from loguru import logger
-from luxonis_ml.typing import Params, ParamValue
+from luxonis_ml.typing import Params, ParamValue, PathType
 from semver import Version
 
 import luxonis_train as lxt
@@ -89,8 +92,16 @@ class NestedDict:
         logger.info(f"Changed config field '{old_field}' to '{new_field}'")
 
 
-def upgrade_config(cfg: Params | NestedDict) -> Params:
-    if not isinstance(cfg, NestedDict):
+def upgrade_config(config: PathType | Params) -> Params:
+    if isinstance(config, dict):
+        cfg = NestedDict(config)
+    else:
+        config = Path(config)
+        if config.suffix == "json":
+            cfg = json.loads(config.read_text(encoding="utf-8"))
+        else:
+            cfg = yaml.safe_load(config.read_text(encoding="utf-8"))
+
         cfg = NestedDict(cfg)
 
     if "config_version" in cfg:
@@ -138,18 +149,19 @@ def upgrade_config(cfg: Params | NestedDict) -> Params:
 
     heads: dict[str, NestedDict] = {}
     for node in map(NestedDict, nodes):
-        node.replace("params.variant", "variant")
+        if lxt.__semver__ >= Version(0, 4):
+            node.replace("params.variant", "variant")
         node_name = node["alias"] or node["name"]
         if "Head" in node["name"]:
             heads[node_name] = node
 
-    if "exporter.output_names" in cfg:
+    export_output_names = cfg.pop("exporter.output_names")
+    if export_output_names is not None:
         if len(heads) == 1:
-            output_names = cfg.pop("exporter.output_names")
             head = next(iter(heads.values()))
             if "params" not in head:
                 head["params"] = {}
-            head["params.export_output_names"] = output_names
+            head["params.export_output_names"] = export_output_names
         else:
             logger.error(
                 "Multiple heads found in model, cannot assign "
