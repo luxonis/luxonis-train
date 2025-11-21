@@ -699,7 +699,7 @@ def get_model_execution_order(
     handles = []
 
     for name, module in model.named_modules():
-        if name and list(module.parameters()):
+        if name and list(module.parameters()) and not list(module.children()):
             handle = module.register_forward_hook(
                 lambda mod, inp, out, n=name: order.append(n)
             )
