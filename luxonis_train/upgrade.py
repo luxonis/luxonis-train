@@ -110,6 +110,9 @@ def upgrade_config(config: PathType | Params) -> Params:
         cfg = NestedDict(cfg)
 
     old_version = Version.parse(cfg.get("version", "0.3.0"))
+    if "config_version" in cfg:
+        logger.info("Found deprecated field 'config_version' in config.")
+        cfg.pop("config_version")
     if old_version >= lxt.__semver__:
         logger.info(
             f"The config is already at the latest version"
@@ -155,6 +158,8 @@ def upgrade_config(config: PathType | Params) -> Params:
         node_name = node["alias"] or node["name"]
         if "Head" in node["name"]:
             heads[node_name] = node
+        if node.pop("params.download_weights", False):
+            node["params.weights"] = "download"
 
     export_output_names = cfg.pop("exporter.output_names")
     if export_output_names is not None:
