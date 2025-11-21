@@ -360,9 +360,9 @@ def export(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the
     """
-    create_model(config, opts, debug_mode=True).export(
-        save_path=save_path, weights=weights, ckpt_only=ckpt_only
-    )
+    create_model(
+        config=config, opts=opts, weights=weights, debug_mode=True
+    ).export(save_path=save_path, weights=weights, ckpt_only=ckpt_only)
 
 
 @app.command(group=export_group, sort_key=2)

@@ -97,14 +97,18 @@ class NestedDict:
         logger.info(f"Changed config field '{old_field}' to '{new_field}'")
 
 
-def upgrade_config(path: PathType) -> Params:
-    path = Path(path)
-    if path.suffix == "json":
-        cfg = json.loads(path.read_text(encoding="utf-8"))
+def upgrade_config(config: PathType | Params) -> Params:
+    if isinstance(config, dict):
+        cfg = NestedDict(config)
     else:
-        cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
+        config = Path(config)
+        if config.suffix == "json":
+            cfg = json.loads(config.read_text(encoding="utf-8"))
+        else:
+            cfg = yaml.safe_load(config.read_text(encoding="utf-8"))
 
-    cfg = NestedDict(cfg)
+        cfg = NestedDict(cfg)
+
     old_version = Version.parse(cfg.get("version", "0.3.0"))
 
     if old_version >= lxt.__semver__:
