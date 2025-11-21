@@ -698,9 +698,10 @@ def get_model_execution_order(
     """Get the execution order of the model's nodes."""
     order = []
     handles = []
+    model.eval()
 
     for name, module in model.named_modules():
-        if name and list(module.parameters()):
+        if list(module.parameters()) and not list(module.children()):
             handle = module.register_forward_hook(
                 lambda mod, inp, out, n=name: order.append(n)
             )
