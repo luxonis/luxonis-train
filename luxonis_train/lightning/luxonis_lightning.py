@@ -768,7 +768,6 @@ class LuxonisLightningModule(pl.LightningModule):
 
         table = defaultdict(dict)
         main_metric = self.nodes.main_metric
-        logger.warning("This is our main metric: " + main_metric.metric_name)
 
         for node_name, node in self.nodes.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
