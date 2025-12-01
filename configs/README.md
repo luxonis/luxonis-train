@@ -246,6 +246,8 @@ Here you can change everything related to actual training of the model.
 | `optimizer`               | `dict`                                         | `{"name": "Adam", "params": {}}`       | What optimizer to use for training. See [Optimizer](#optimizer) section for details and examples                                                 |
 | `scheduler`               | `dict`                                         | `{"name": "ConstantLR", "params": {}}` | What scheduler to use for training. See [Scheduler](#scheduler) section for details and examples                                                 |
 | `training_strategy`       | `dict`                                         | `{}`                                   | Defines the training strategy to be used. See [Training Strategy](#training-strategy) section for details and examples                           |
+| `log_sub_losses`          | `bool`                                         | `True`                                 | Log all sub losses. If set to False, only the main loss will be logged.                                                                          |
+| `log_sub_metrics`         | `bool`                                         | `True`                                 | Log all sub metrics. If set to False, only the main metric will be logged.                                                                       |
 
 ```yaml
 
