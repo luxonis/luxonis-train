@@ -523,7 +523,9 @@ def build_callbacks(
     return callbacks
 
 
-def postprocess_metrics(name: str, values: Any, log_sub_metrics: bool=True) -> dict[str, Tensor]:
+def postprocess_metrics(
+    name: str, values: Any, log_sub_metrics: bool = True
+) -> dict[str, Tensor]:
     """Convert metric computation result into a dictionary of values."""
     match values:
         case (Tensor(data=value), dict(submetrics)):

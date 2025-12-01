@@ -773,13 +773,17 @@ class LuxonisLightningModule(pl.LightningModule):
             formatted_node_name = self.nodes.formatted_name(node_name)
             for metric_name, metric in node.metrics.items():
                 if (
-                        not self.cfg.trainer.log_sub_metrics
-                        and main_metric is not None
-                        and (node_name, metric_name)
-                        != (main_metric.node_name, main_metric.metric_name)
+                    not self.cfg.trainer.log_sub_metrics
+                    and main_metric is not None
+                    and (node_name, metric_name)
+                    != (main_metric.node_name, main_metric.metric_name)
                 ):
                     continue
-                values = postprocess_metrics(metric_name, metric.compute(), log_sub_metrics=self.cfg.trainer.log_sub_metrics)
+                values = postprocess_metrics(
+                    metric_name,
+                    metric.compute(),
+                    log_sub_metrics=self.cfg.trainer.log_sub_metrics,
+                )
                 metric.reset()
 
                 if isinstance(
@@ -893,13 +897,17 @@ class LuxonisLightningModule(pl.LightningModule):
             formatted_node_name = self.nodes.formatted_name(node_name)
             for metric_name, metric in node.metrics.items():
                 if (
-                        not self.cfg.trainer.log_sub_metrics
-                        and main_metric is not None
-                        and (node_name, metric_name)
-                        != (main_metric.node_name, main_metric.metric_name)
+                    not self.cfg.trainer.log_sub_metrics
+                    and main_metric is not None
+                    and (node_name, metric_name)
+                    != (main_metric.node_name, main_metric.metric_name)
                 ):
                     continue
-                values = postprocess_metrics(metric_name, metric.compute(), log_sub_metrics=self.cfg.trainer.log_sub_metrics)
+                values = postprocess_metrics(
+                    metric_name,
+                    metric.compute(),
+                    log_sub_metrics=self.cfg.trainer.log_sub_metrics,
+                )
                 for sub_name in values:
                     if "confusion_matrix" in sub_name:
                         for epoch_idx in sorted([0, *val_eval_epochs]):
