@@ -412,52 +412,6 @@ class LuxonisLightningModule(pl.LightningModule):
 
         return Path(save_path)
 
-    def process_losses(
-        self,
-        losses_dict: dict[
-            str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]
-        ],
-    ) -> tuple[Tensor, dict[str, Tensor]]:
-        """Processes individual losses from the model run.
-
-        Goes over the computed losses and computes the final loss as a
-        weighted sum of all the losses.
-
-        @type losses_dict: dict[str, dict[str, Tensor | tuple[Tensor,
-            dict[str, Tensor]]]]
-        @param losses_dict: Dictionary of computed losses. Each node can
-            have multiple losses attached. The first key identifies the
-            node, the second key identifies the specific loss. Values
-            are either single tensors or tuples of tensors and sub-
-            losses.
-        @rtype: tuple[Tensor, dict[str, Tensor]]
-        @return: Tuple of final loss and dictionary of processed sub-
-            losses. The dictionary is in a format of {loss_name:
-            loss_value}.
-        """
-        final_loss = torch.zeros(1, device=self.device)
-        training_step_output: dict[str, Tensor] = {}
-        for node_name, losses in losses_dict.items():
-            formatted_node_name = self.nodes.formatted_name(node_name)
-            for loss_name, loss_values in losses.items():
-                if isinstance(loss_values, tuple):
-                    loss, sublosses = loss_values
-                else:
-                    loss = loss_values
-                    sublosses = {}
-
-                final_loss += loss
-                training_step_output[
-                    f"loss/{formatted_node_name}/{loss_name}"
-                ] = loss.detach().cpu()
-                if self.cfg.trainer.log_sub_losses and sublosses:
-                    for subloss_name, subloss_value in sublosses.items():
-                        training_step_output[
-                            f"loss/{formatted_node_name}/{loss_name}/{subloss_name}"
-                        ] = subloss_value.detach().cpu()
-        training_step_output["loss"] = final_loss.detach().cpu()
-        return final_loss, training_step_output
-
     @override
     def training_step(
         self, train_batch: tuple[dict[str, Tensor], Labels]
@@ -767,10 +721,15 @@ class LuxonisLightningModule(pl.LightningModule):
             self.log(f"{mode}/{formated_name}", value, sync_dist=True)
 
         table = defaultdict(dict)
+
         for node_name, node in self.nodes.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
             for metric_name, metric in node.metrics.items():
-                values = postprocess_metrics(metric_name, metric.compute())
+                values = postprocess_metrics(
+                    metric_name,
+                    metric.compute(),
+                    log_sub_metrics=self.cfg.trainer.log_sub_metrics,
+                )
                 metric.reset()
 
                 if isinstance(
@@ -881,7 +840,11 @@ class LuxonisLightningModule(pl.LightningModule):
         for node_name, node in self.nodes.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
             for metric_name, metric in node.metrics.items():
-                values = postprocess_metrics(metric_name, metric.compute())
+                values = postprocess_metrics(
+                    metric_name,
+                    metric.compute(),
+                    log_sub_metrics=self.cfg.trainer.log_sub_metrics,
+                )
                 for sub_name in values:
                     if "confusion_matrix" in sub_name:
                         for epoch_idx in sorted([0, *val_eval_epochs]):
