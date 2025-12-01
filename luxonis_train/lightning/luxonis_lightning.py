@@ -767,18 +767,10 @@ class LuxonisLightningModule(pl.LightningModule):
             self.log(f"{mode}/{formated_name}", value, sync_dist=True)
 
         table = defaultdict(dict)
-        main_metric = self.nodes.main_metric
 
         for node_name, node in self.nodes.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
             for metric_name, metric in node.metrics.items():
-                if (
-                    not self.cfg.trainer.log_sub_metrics
-                    and main_metric is not None
-                    and (node_name, metric_name)
-                    != (main_metric.node_name, main_metric.metric_name)
-                ):
-                    continue
                 values = postprocess_metrics(
                     metric_name,
                     metric.compute(),
@@ -891,18 +883,9 @@ class LuxonisLightningModule(pl.LightningModule):
                         f"{mode}/loss/{formatted_node_name}/{loss_name}"
                     )
 
-        main_metric = self.nodes.main_metric
-
         for node_name, node in self.nodes.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
             for metric_name, metric in node.metrics.items():
-                if (
-                    not self.cfg.trainer.log_sub_metrics
-                    and main_metric is not None
-                    and (node_name, metric_name)
-                    != (main_metric.node_name, main_metric.metric_name)
-                ):
-                    continue
                 values = postprocess_metrics(
                     metric_name,
                     metric.compute(),
