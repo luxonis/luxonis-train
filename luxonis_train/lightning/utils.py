@@ -523,14 +523,18 @@ def build_callbacks(
     return callbacks
 
 
-def postprocess_metrics(name: str, values: Any) -> dict[str, Tensor]:
+def postprocess_metrics(name: str, values: Any, log_sub_metrics: bool=True) -> dict[str, Tensor]:
     """Convert metric computation result into a dictionary of values."""
     match values:
         case (Tensor(data=value), dict(submetrics)):
+            if not log_sub_metrics:
+                return {name: value}
             return {name: value} | submetrics
         case Tensor() as value:
             return {name: value}
         case dict(submetrics):
+            if not log_sub_metrics:
+                return {}
             return submetrics
         case unknown:  # pragma: no cover
             raise ValueError(
