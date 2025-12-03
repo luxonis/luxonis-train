@@ -1,3 +1,4 @@
+import os
 import signal
 import sys
 import threading
@@ -345,6 +346,35 @@ class LuxonisModel:
                 "To resume training from the given checkpoint, set resume_training to True."
             )
 
+        shutdown_in_progress = {"flag": False}
+
+        def ctrl_c_exit(signum: int, _: Any) -> None:
+            sig = signal.Signals(signum).name
+
+            # If this is the second Ctrl+C terminate immediately
+            if shutdown_in_progress["flag"]:
+                logger.warning(f"Second {sig} received — forcing immediate exit.")
+                signal.signal(signum, signal.SIG_DFL)
+                os.kill(os.getpid(), signum)
+                return
+
+            shutdown_in_progress["flag"] = True
+            logger.warning(f"{sig} received")
+
+            try:
+                ckpt_path = self.run_save_dir / "resume.ckpt"
+                logger.info(f"Saving interrupt checkpoint to {ckpt_path}, run CTRL + C again to skip this step")
+                self.pl_trainer.save_checkpoint(ckpt_path)
+                self.tracker.upload_artifact(
+                    ckpt_path, typ="checkpoints", name="resume.ckpt"
+                )
+                self.tracker._finalize(status="failed")
+                logger.warning("Graceful shutdown complete.")
+            except Exception:
+                logger.exception("Error during graceful shutdown.")
+            finally:
+                sys.exit(0)
+
         def graceful_exit(signum: int, _: Any) -> None:  # pragma: no cover
             logger.info(
                 f"{signal.Signals(signum).name} received, stopping training..."
@@ -357,6 +387,7 @@ class LuxonisModel:
             self.tracker._finalize(status="failed")
             sys.exit()
 
+        signal.signal(signal.SIGTERM, ctrl_c_exit)
         signal.signal(signal.SIGTERM, graceful_exit)
 
         if not new_thread:

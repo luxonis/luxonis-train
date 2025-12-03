@@ -14,7 +14,6 @@ from packaging import version
 from torch import Size, Tensor
 from torch.nn.modules.module import _IncompatibleKeys
 from typing_extensions import override
-import signal
 
 import luxonis_train
 from luxonis_train.attached_modules.visualizers import (
@@ -140,7 +139,6 @@ class LuxonisLightningModule(pl.LightningModule):
         self.cfg = cfg
         self.image_source = cfg.loader.image_source
         self.dataset_metadata = dataset_metadata or DatasetMetadata()
-        self.interrupted = False
         self.save_dir = Path(save_dir)
 
         self.outputs = self.cfg.model.outputs
@@ -157,28 +155,6 @@ class LuxonisLightningModule(pl.LightningModule):
                 "luxonis_ml_version": luxonis_ml_version,
             }
         )
-
-        signal.signal(signal.SIGTERM, self._handle_sigterm)
-
-    def _handle_sigterm(self, signum, frame):
-        self.interrupted = True
-        logger.warning("SIGTERM received, will save intermediate checkpoint...")
-
-    @override
-    def on_exception(self, exception: Exception) -> None:
-        if self.interrupted:
-            dump_dir = self._save_dir / "intermediate_dump"
-            dump_dir.mkdir(exist_ok=True, parents=True)
-
-            intermediate_model_name = "interrupt_" + str(self.current_epoch) + ".ckpt"
-            path = dump_dir / intermediate_model_name
-            logger.warning(f"Saving intermediate checkpoint to: {path}")
-
-            self.trainer.save_checkpoint(path)
-
-            logger.warning("Exiting gracefully.")
-
-        return super().on_exception(exception)
 
     @override
     def load_state_dict(
