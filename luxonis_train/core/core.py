@@ -351,6 +351,11 @@ class LuxonisModel:
         def ctrl_c_exit(signum: int, _: Any) -> None:
             sig = signal.Signals(signum).name
 
+            is_global_zero = getattr(self.pl_trainer, "is_global_zero", True)
+
+            if not is_global_zero:
+                sys.exit(0)
+
             # If this is the second Ctrl+C terminate immediately
             if shutdown_in_progress["flag"]:
                 logger.warning(f"Second {sig} received — forcing immediate exit.")
