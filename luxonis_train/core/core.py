@@ -387,7 +387,7 @@ class LuxonisModel:
             self.tracker._finalize(status="failed")
             sys.exit()
 
-        signal.signal(signal.SIGTERM, ctrl_c_exit)
+        signal.signal(signal.SIGINT, ctrl_c_exit)
         signal.signal(signal.SIGTERM, graceful_exit)
 
         if not new_thread:
