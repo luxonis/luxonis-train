@@ -346,7 +346,6 @@ class LuxonisModel:
 
         resume_weights = weights if self.cfg.trainer.resume_training else None
 
-
         main_pid = os.getpid()
         shutdown_in_progress = {"flag": False}
 
@@ -391,10 +390,10 @@ class LuxonisModel:
                 sys.exit(0)
 
         def graceful_exit(signum: int, _: Any) -> None:  # pragma: no cover
-            logger.info(
-                f"{signal.Signals(signum).name} received, stopping training..."
-            )
             ckpt_path = self.run_save_dir / "resume.ckpt"
+            logger.info(
+                f"{signal.Signals(signum).name} received, stopping training and saving resume checkpoint to {ckpt_path}..."
+            )
             self.pl_trainer.save_checkpoint(ckpt_path)
             self.tracker.upload_artifact(
                 ckpt_path, typ="checkpoints", name="resume.ckpt"
