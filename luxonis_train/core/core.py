@@ -332,14 +332,12 @@ class LuxonisModel:
         else:
             weights = self.cfg.model.weights
 
-        resume_weights = weights if self.cfg.trainer.resume_training else None
-
-        if self.cfg.trainer.resume_training and resume_weights is None:
+        if self.cfg.trainer.resume_training and weights is None:
             logger.warning(
                 "Resume training is enabled but no weights were provided. "
                 "Training will start from scratch."
             )
-        elif resume_weights and self.cfg.trainer.resume_training is False:
+        elif weights and self.cfg.trainer.resume_training is False:
             logger.warning(
                 "Weights argument was given but resume_training is not set to True. "
                 "Training will start from scratch."
