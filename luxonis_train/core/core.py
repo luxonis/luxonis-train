@@ -352,18 +352,19 @@ class LuxonisModel:
         def ctrl_c_exit(signum: int, _: Any) -> None:
             sig = signal.Signals(signum).name
 
+            # Makes the interrupt agnostic to num_workers
             if os.getpid() != main_pid:
-                # We're in a forked worker process – exit quietly
                 os._exit(0)
 
             is_global_zero = getattr(self.pl_trainer, "is_global_zero", True)
             if not is_global_zero:
-                # Not the logging/checkpointing rank → exit quietly
                 sys.exit(0)
 
             # If this is the second Ctrl+C terminate immediately
             if shutdown_in_progress["flag"]:
-                logger.warning(f"Second {sig} received, forcing immediate exit.")
+                logger.warning(
+                    "Second CTRL + C received, forcing immediate exit."
+                )
                 signal.signal(signum, signal.SIG_DFL)
                 os.kill(os.getpid(), signum)
                 return
