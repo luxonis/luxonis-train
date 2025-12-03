@@ -2,6 +2,7 @@ import torch
 from torch import Tensor
 from torchvision.utils import draw_keypoints
 
+from .keypoint_visualizer import KeypointVisualizer
 from luxonis_train.attached_modules.visualizers import BBoxVisualizer
 from luxonis_train.tasks import Tasks
 
@@ -16,9 +17,10 @@ class FOMOVisualizer(BBoxVisualizer):
         keypoints: list[Tensor],
         target_boundingbox: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:
-        pred_viz = self.draw_predictions_per_class(
-            prediction_canvas, keypoints
-        )
+        pred_viz = KeypointVisualizer.draw_predictions(prediction_canvas, keypoints, colors="red", radius=5)
+        # pred_viz = self.draw_predictions_per_class(
+        #     prediction_canvas, keypoints
+        # )
         if target_boundingbox is None:
             return pred_viz
 
