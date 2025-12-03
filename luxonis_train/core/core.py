@@ -344,6 +344,9 @@ class LuxonisModel:
                 "To resume training from the given checkpoint, set resume_training to True."
             )
 
+        resume_weights = weights if self.cfg.trainer.resume_training else None
+
+
         main_pid = os.getpid()
         shutdown_in_progress = {"flag": False}
 
