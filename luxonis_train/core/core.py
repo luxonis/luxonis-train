@@ -1,11 +1,8 @@
-import os
-import signal
-import sys
 import threading
 from collections.abc import Mapping
 from pathlib import Path
 from threading import ExceptHookArgs
-from typing import Any, Literal, overload
+from typing import Literal, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -24,6 +21,7 @@ from luxonis_ml.utils import Environ, LuxonisFileSystem
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
+    GracefulInterruptCallback,
     LuxonisRichProgressBar,
     LuxonisTQDMProgressBar,
 )
@@ -131,11 +129,12 @@ class LuxonisModel:
         self.pl_trainer = create_trainer(
             self.cfg.trainer,
             logger=self.tracker,
-            callbacks=(
+            callbacks=[
+                GracefulInterruptCallback(self.run_save_dir, self.tracker),
                 LuxonisRichProgressBar()
                 if self.cfg.rich_logging
-                else LuxonisTQDMProgressBar()
-            ),
+                else LuxonisTQDMProgressBar(),
+            ],
             precision=self.cfg.trainer.precision,
         )
 
@@ -345,64 +344,6 @@ class LuxonisModel:
             )
 
         resume_weights = weights if self.cfg.trainer.resume_training else None
-
-        main_pid = os.getpid()
-        shutdown_in_progress = {"flag": False}
-
-        def ctrl_c_exit(signum: int, _: Any) -> None:
-            sig = signal.Signals(signum).name
-
-            # Makes the interrupt agnostic to num_workers
-            if os.getpid() != main_pid:
-                os._exit(0)
-
-            is_global_zero = getattr(self.pl_trainer, "is_global_zero", True)
-            if not is_global_zero:
-                sys.exit(0)
-
-            # If this is the second Ctrl+C terminate immediately
-            if shutdown_in_progress["flag"]:
-                logger.warning(
-                    "Second CTRL + C received, forcing immediate exit."
-                )
-                signal.signal(signum, signal.SIG_DFL)
-                os.kill(os.getpid(), signum)
-                return
-
-            shutdown_in_progress["flag"] = True
-            logger.warning(f"{sig} received")
-
-            try:
-                ckpt_path = self.run_save_dir / "resume.ckpt"
-                logger.info(
-                    f"Saving interrupt checkpoint to {ckpt_path}, "
-                    "run CTRL + C again to skip this step"
-                )
-                self.pl_trainer.save_checkpoint(ckpt_path)
-                self.tracker.upload_artifact(
-                    ckpt_path, typ="checkpoints", name="resume.ckpt"
-                )
-                self.tracker._finalize(status="failed")
-                logger.warning("Graceful shutdown complete.")
-            except Exception:
-                logger.exception("Error during graceful shutdown.")
-            finally:
-                sys.exit(0)
-
-        def graceful_exit(signum: int, _: Any) -> None:  # pragma: no cover
-            ckpt_path = self.run_save_dir / "resume.ckpt"
-            logger.info(
-                f"{signal.Signals(signum).name} received, stopping training and saving resume checkpoint to {ckpt_path}..."
-            )
-            self.pl_trainer.save_checkpoint(ckpt_path)
-            self.tracker.upload_artifact(
-                ckpt_path, typ="checkpoints", name="resume.ckpt"
-            )
-            self.tracker._finalize(status="failed")
-            sys.exit()
-
-        signal.signal(signal.SIGINT, ctrl_c_exit)
-        signal.signal(signal.SIGTERM, graceful_exit)
 
         if not new_thread:
             logger.info(f"Checkpoints will be saved in: {self.run_save_dir}")
@@ -858,7 +799,11 @@ class LuxonisModel:
             pruner_callback = PyTorchLightningPruningCallback(
                 trial, monitor=monitor
             )
+            graceful_interrupt_callback = GracefulInterruptCallback(
+                self.run_save_dir, self.tracker
+            )
             callbacks.append(pruner_callback)
+            callbacks.append(graceful_interrupt_callback)
 
             if self.cfg.trainer.seed is not None:
                 pl.seed_everything(cfg.trainer.seed, workers=True)
