@@ -11,10 +11,11 @@ from luxonis_train.utils.tracker import LuxonisTrackerPL
 
 
 class GracefulInterruptCallback(pl.Callback):
-    """Handles SIGINT/SIGTERM:
+    """Handles SIGINT/SIGTERM.
 
-    - First interrupt: save checkpoint, stop training, skip all train-end callbacks
-    - Second interrupt: immediate exit, skip saving resume.ckpt
+    Behavior:
+     - First interrupt: save checkpoint, stop training, skip all train-end callbacks.
+     - Second interrupt: immediate exit, skip saving resume.ckpt.
     """
 
     def __init__(self, save_dir: Path, tracker: LuxonisTrackerPL):
