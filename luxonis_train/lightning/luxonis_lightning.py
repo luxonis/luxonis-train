@@ -140,7 +140,6 @@ class LuxonisLightningModule(pl.LightningModule):
         self.image_source = cfg.loader.image_source
         self.dataset_metadata = dataset_metadata or DatasetMetadata()
         self.save_dir = Path(save_dir)
-
         self.outputs = self.cfg.model.outputs
 
         self.nodes = Nodes(cfg, self.dataset_metadata, input_shapes)

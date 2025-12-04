@@ -1,10 +1,10 @@
 import os
 import signal
 import sys
+from pathlib import Path
 
 import lightning.pytorch as pl
 from loguru import logger
-from pathlib import Path
 
 
 class GracefulInterruptCallback(pl.Callback):
