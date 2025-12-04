@@ -7,6 +7,7 @@ from types import FrameType
 import lightning.pytorch as pl
 from loguru import logger
 
+import luxonis_train as lxt
 from luxonis_train.utils.tracker import LuxonisTrackerPL
 
 
@@ -18,7 +19,9 @@ class GracefulInterruptCallback(pl.Callback):
      - Second interrupt: immediate exit, skip saving resume.ckpt.
     """
 
-    def __init__(self, save_dir: Path, tracker: LuxonisTrackerPL):
+    def __init__(
+        self, save_dir: Path, tracker: LuxonisTrackerPL | None = None
+    ):
         super().__init__()
         self.save_dir = Path(save_dir)
         self.tracker = tracker
@@ -30,7 +33,7 @@ class GracefulInterruptCallback(pl.Callback):
     def setup(
         self,
         trainer: pl.Trainer,
-        pl_module: pl.LightningModule,
+        pl_module: "lxt.LuxonisLightningModule",
         stage: str | None = None,
     ) -> None:
         self._trainer = trainer
@@ -72,17 +75,18 @@ class GracefulInterruptCallback(pl.Callback):
             logger.exception("Failed to save interrupt checkpoint.")
 
         try:
-            self.tracker.upload_artifact(
-                ckpt_path, typ="checkpoints", name="resume.ckpt"
-            )
-            self.tracker._finalize(status="failed")
+            if self.tracker:
+                self.tracker.upload_artifact(
+                    ckpt_path, typ="checkpoints", name="resume.ckpt"
+                )
+                self.tracker._finalize(status="failed")
         except Exception:
             logger.exception(
                 "Failed to upload checkpoint or finalize tracker."
             )
 
     def on_train_end(
-        self, trainer: pl.Trainer, pl_module: pl.LightningModule
+        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
         """Prevent all other train-end callbacks (TestOnTrainEnd,
         ExportOnTrainEnd, etc) from running if the training terminated
