@@ -151,10 +151,11 @@ Visualizer for **FOMO object detection**.
 
 **Parameters**:
 
-| Key                    | Type    | Default value | Description                                                                                                             |
-| ---------------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `visibility_threshold` | `float` | `0.5`         | Threshold for visibility of detected points. If the visibility of a point is below this threshold, it will not be shown |
-| `scale`                | `float` | `1.0`         | Scales the canvas and the annotations by a given factor                                                                 |
+| Key                    | Type                                                                                  | Default value | Description                                                                                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `colors`               | `dict[int, tuple[int, int, int] \| str] \| list[tuple[int, int, int] \| str] \| None` | `None`        | Colors to use for the different point classes. Either a dictionary mapping class names to colors, or a list of colors. Color can be either a tuple of RGB values or a hex string |
+| `visibility_threshold` | `float`                                                                               | `0.5`         | Threshold for visibility of detected points. If the visibility of a point is below this threshold, it will not be shown                                                          |
+| `scale`                | `float`                                                                               | `1.0`         | Scales the canvas and the annotations by a given factor                                                                                                                          |
 
 **Example:**
 
