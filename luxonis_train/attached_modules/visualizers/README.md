@@ -154,6 +154,7 @@ Visualizer for **FOMO object detection**.
 | Key                    | Type    | Default value | Description                                                                                                             |
 | ---------------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `visibility_threshold` | `float` | `0.5`         | Threshold for visibility of detected points. If the visibility of a point is below this threshold, it will not be shown |
+| `scale`                | `float` | `1.0`         | Scales the canvas and the annotations by a given factor                                                                 |
 
 **Example:**
 
