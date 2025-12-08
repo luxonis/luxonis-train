@@ -49,7 +49,8 @@ class BaseDetectionHead(BaseHead):
             )
             self.n_heads = len(self.in_channels)
 
-        self.attach_index = (-self.n_heads - 1, -1)
+        if "attach_index" not in kwargs:
+            self.attach_index = (-self.n_heads - 1, -1)
 
         self.stride = self.fit_stride_to_heads()
 
