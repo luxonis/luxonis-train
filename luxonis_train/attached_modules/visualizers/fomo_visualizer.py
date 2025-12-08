@@ -11,9 +11,12 @@ from .keypoint_visualizer import KeypointVisualizer
 class FOMOVisualizer(BBoxVisualizer):
     supported_tasks = [Tasks.FOMO]
 
-    def __init__(self, visibility_threshold: float = 0.5, **kwargs):
+    def __init__(
+        self, visibility_threshold: float = 0.5, radius: int = 5, **kwargs
+    ):
         super().__init__(**kwargs)
         self.visibility_threshold = visibility_threshold
+        self.radius = radius
 
     def forward(
         self,
@@ -87,7 +90,7 @@ class FOMOVisualizer(BBoxVisualizer):
                 viz[i] = draw_keypoints(
                     image=viz[i],
                     keypoints=cls_points.int().unsqueeze(1),
-                    radius=5,
+                    radius=self.radius,
                     colors=color,
                 )
 
