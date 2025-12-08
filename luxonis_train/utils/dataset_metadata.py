@@ -34,7 +34,11 @@ class DatasetMetadata:
         """
         self._classes = classes or {}
         self._n_keypoints = n_keypoints or {}
-        self._metadata_types = metadata_types or {}
+        metadata_types = metadata_types or {}
+        self._metadata_types = {
+            k: self._parse_type(v) if isinstance(v, str) else v
+            for k, v in metadata_types.items()
+        }
         self._loader = loader
 
     def dump(self) -> dict[str, Any]:
@@ -50,6 +54,18 @@ class DatasetMetadata:
                 k: v.__name__ for k, v in self._metadata_types.items()
             },
         }
+
+    @staticmethod
+    def _parse_type(type_name: str) -> type:
+        if type_name == "int":
+            return int
+        if type_name == "float":
+            return float
+        if type_name == "str":
+            return str
+        if type_name == "Category":
+            return Category
+        raise ValueError(f"Unknown type name: {type_name}")
 
     @property
     def task_names(self) -> set[str]:
