@@ -428,10 +428,8 @@ class LuxonisModel:
             logger.info("Re-exporting the checkpoint file.")
             with replace_weights(self.lightning_module, weights):
                 # Needs to be called to attach the model to the trainer
-                self.pl_trainer.validate(
-                    self.lightning_module,
-                    self.pytorch_loaders["val"],
-                    verbose=False,
+                self.pl_trainer.strategy._lightning_module = (
+                    self.lightning_module
                 )
                 self.pl_trainer.save_checkpoint(
                     str(export_path.with_suffix(".ckpt")), weights_only=False
