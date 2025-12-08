@@ -32,6 +32,8 @@ class DebugLoader(BaseLoaderTorch):
         image_source: str = "image",
         color_space: Literal["RGB", "BGR", "GRAY"] = "RGB",
         n_keypoints: int = 3,
+        n_classes: int = 1,
+        **kwargs,
     ):
         super().__init__(
             view=view,
@@ -41,6 +43,7 @@ class DebugLoader(BaseLoaderTorch):
             color_space=color_space,
         )
         self.n_keypoints = n_keypoints
+        self.n_classes = n_classes
         self.batch_size = cfg.trainer.batch_size
         self.labels: dict[str, set[str | Metadata]] = defaultdict(set)
         for node in cfg.model.nodes:
@@ -82,7 +85,10 @@ class DebugLoader(BaseLoaderTorch):
 
     @override
     def get_classes(self) -> dict[str, dict[str, int]]:
-        return {task_name: {"x": 0} for task_name in self.labels}
+        return {
+            task_name: {str(i): i for i in range(self.n_classes)}
+            for task_name in self.labels
+        }
 
     @override
     def get_n_keypoints(self) -> dict[str, int] | None:

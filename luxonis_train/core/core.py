@@ -181,13 +181,6 @@ class LuxonisModel:
                     f"Failed to initialize loader '{loader_name}' "
                     f"for view '{view}'. Using `DummyLoader` instead."
                 )
-                n_keypoints = self.cfg.loader.params.get("n_keypoints", 3)
-                if not isinstance(n_keypoints, int) or n_keypoints < 1:
-                    logger.warning(
-                        "Invalid `n_keypoints` value in the config. "
-                        "Using default value of 3."
-                    )
-                    n_keypoints = 3
                 self.loaders[view] = DebugLoader(
                     cfg=self.cfg,
                     view={
@@ -199,7 +192,7 @@ class LuxonisModel:
                     height=self.cfg_preprocessing.train_image_size.height,
                     width=self.cfg_preprocessing.train_image_size.width,
                     color_space=self.cfg_preprocessing.color_space,
-                    n_keypoints=n_keypoints,
+                    **self.cfg.loader.params,  # type: ignore
                 )
 
         for name, loader in self.loaders.items():
