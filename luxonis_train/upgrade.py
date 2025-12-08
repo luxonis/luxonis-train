@@ -153,8 +153,12 @@ def upgrade_config(config: PathType | Params) -> Params:
 
     heads: dict[str, NestedDict] = {}
     for node in map(NestedDict, nodes):
+        node_class = node["name"]
         if lxt.__semver__ >= Version(0, 4):
             node.replace("params.variant", "variant")
+            if node_class == "FOMOHead":
+                node.replace("params.num_conv_layers", "params.n_conv_layers")
+
         node_name = node["alias"] or node["name"]
         if "Head" in node["name"]:
             heads[node_name] = node
