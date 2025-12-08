@@ -144,3 +144,17 @@ Visualizer for **instance segmentation tasks**.
 **Example:**
 
 ![instance_esg_viz_example](../../../media/example_viz/instance_seg.png)
+
+## `FOMOVisualizer`
+
+Visualizer for **FOMO object detection**.
+
+**Parameters**:
+
+| Key                    | Type    | Default value | Description                                                                                                             |
+| ---------------------- | ------- | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `visibility_threshold` | `float` | `0.5`         | Threshold for visibility of detected points. If the visibility of a point is below this threshold, it will not be shown |
+
+**Example:**
+
+![fomo_viz_example](../../../media/example_viz/fomo_parking_lot.png)
