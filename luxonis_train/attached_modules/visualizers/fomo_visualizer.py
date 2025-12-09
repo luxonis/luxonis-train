@@ -28,7 +28,7 @@ class FOMOVisualizer(BBoxVisualizer):
         single_class = self._determine_single_class(keypoints)
         if single_class:
             pred_viz = KeypointVisualizer.draw_predictions(
-                prediction_canvas, keypoints, colors="red", radius=5
+                prediction_canvas, keypoints, colors="red", radius=self.radius
             )
         else:
             pred_viz = self.draw_predictions_per_class(
