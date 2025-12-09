@@ -21,6 +21,7 @@ from luxonis_ml.utils import (
     is_acyclic,
 )
 from pydantic import (
+    AliasChoices,
     Field,
     ModelWrapValidatorHandler,
     SecretStr,
@@ -713,7 +714,13 @@ class Config(LuxonisConfig):
     archiver: ArchiveConfig = Field(default_factory=ArchiveConfig)
     tuner: TunerConfig = Field(default_factory=TunerConfig)
 
-    config_version: str = str(CONFIG_VERSION)
+    config_version: Annotated[
+        str,
+        Field(
+            frozen=True,
+            validation_alias=AliasChoices("version", "config_version"),
+        ),
+    ] = str(CONFIG_VERSION)
 
     ENVIRON: Environ = Field(exclude=True, default_factory=Environ)
 
