@@ -144,3 +144,20 @@ Visualizer for **instance segmentation tasks**.
 **Example:**
 
 ![instance_esg_viz_example](../../../media/example_viz/instance_seg.png)
+
+## `FOMOVisualizer`
+
+Visualizer for **FOMO object detection**.
+
+**Parameters**:
+
+| Key                    | Type                                                                                  | Default value | Description                                                                                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `colors`               | `dict[int, tuple[int, int, int] \| str] \| list[tuple[int, int, int] \| str] \| None` | `None`        | Colors to use for the different point classes. Either a dictionary mapping class names to colors, or a list of colors. Color can be either a tuple of RGB values or a hex string |
+| `visibility_threshold` | `float`                                                                               | `0.5`         | Threshold for visibility of detected points. If the visibility of a point is below this threshold, it will not be shown                                                          |
+| `radius`               | `int`                                                                                 | `5`           | Radius to draw the points                                                                                                                                                        |
+| `scale`                | `float`                                                                               | `1.0`         | Scales the canvas and the annotations by a given factor                                                                                                                          |
+
+**Example:**
+
+![fomo_viz_example](../../../media/example_viz/fomo_parking_lot.png)

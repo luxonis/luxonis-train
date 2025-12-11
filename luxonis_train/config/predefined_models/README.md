@@ -216,7 +216,7 @@ FPS (frames per second) for `light` and `heavy` variants on different devices wi
 
 There is a trade-off in this simple model: training with a larger `object_weight` in the loss parameters may result in more false positives (FP), but it will improve accuracy. NMS is enabled by default (`use_nms: True` in `head_params`). It reduces false positives but may also lower true positives for close neighbors.
 
-For larger heatmaps and improved accuracy, you can adjust the `attach_index` in the `head_params` to a lower value. This will connect the head to an earlier layer in the backbone, resulting in larger heatmaps. However, be aware that this may lead to slower inference times.
+For larger heatmaps and improved accuracy, you can adjust the `attach_index` in the `head_params` to a lower value. This will connect the head to an earlier layer in the backbone, resulting in larger heatmaps. By default, this is set to 1, so the FOMO head pulls its features from the second layer of the backbone. However, be aware that changing the `attach_index` value may lead to slower inference times.
 
 ### **Components**
 

@@ -1,6 +1,6 @@
 import re
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -12,6 +12,7 @@ from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
 from packaging import version
 from torch import Size, Tensor
+from torch.nn.modules.module import _IncompatibleKeys
 from typing_extensions import override
 
 import luxonis_train
@@ -153,6 +154,20 @@ class LuxonisLightningModule(pl.LightningModule):
                 "luxonis_ml_version": luxonis_ml_version,
             }
         )
+
+    @override
+    def load_state_dict(
+        self, state_dict: Mapping[str, Tensor], strict: bool = True
+    ) -> _IncompatibleKeys:
+        """Default behavior for load_state_dict, unless resume_training
+        is active.
+
+        In case resume_training is active, allow loading in a non-strict
+        manner to allow loss, visualizer and metric nodes to be absent.
+        """
+        if self.cfg.trainer.resume_training:
+            return super().load_state_dict(state_dict, strict=False)
+        return super().load_state_dict(state_dict, strict=strict)
 
     @property
     def progress_bar(self) -> BaseLuxonisProgressBar:
@@ -397,52 +412,6 @@ class LuxonisLightningModule(pl.LightningModule):
 
         return Path(save_path)
 
-    def process_losses(
-        self,
-        losses_dict: dict[
-            str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]
-        ],
-    ) -> tuple[Tensor, dict[str, Tensor]]:
-        """Processes individual losses from the model run.
-
-        Goes over the computed losses and computes the final loss as a
-        weighted sum of all the losses.
-
-        @type losses_dict: dict[str, dict[str, Tensor | tuple[Tensor,
-            dict[str, Tensor]]]]
-        @param losses_dict: Dictionary of computed losses. Each node can
-            have multiple losses attached. The first key identifies the
-            node, the second key identifies the specific loss. Values
-            are either single tensors or tuples of tensors and sub-
-            losses.
-        @rtype: tuple[Tensor, dict[str, Tensor]]
-        @return: Tuple of final loss and dictionary of processed sub-
-            losses. The dictionary is in a format of {loss_name:
-            loss_value}.
-        """
-        final_loss = torch.zeros(1, device=self.device)
-        training_step_output: dict[str, Tensor] = {}
-        for node_name, losses in losses_dict.items():
-            formatted_node_name = self.nodes.formatted_name(node_name)
-            for loss_name, loss_values in losses.items():
-                if isinstance(loss_values, tuple):
-                    loss, sublosses = loss_values
-                else:
-                    loss = loss_values
-                    sublosses = {}
-
-                final_loss += loss
-                training_step_output[
-                    f"loss/{formatted_node_name}/{loss_name}"
-                ] = loss.detach().cpu()
-                if self.cfg.trainer.log_sub_losses and sublosses:
-                    for subloss_name, subloss_value in sublosses.items():
-                        training_step_output[
-                            f"loss/{formatted_node_name}/{loss_name}/{subloss_name}"
-                        ] = subloss_value.detach().cpu()
-        training_step_output["loss"] = final_loss.detach().cpu()
-        return final_loss, training_step_output
-
     @override
     def training_step(
         self, train_batch: tuple[dict[str, Tensor], Labels]
@@ -564,6 +533,10 @@ class LuxonisLightningModule(pl.LightningModule):
         if "state_dict" not in ckpt:
             raise ValueError("Checkpoint does not contain state_dict.")
 
+        previous_cfg = ckpt.get("config", None)
+        if self.cfg.trainer.resume_training and isinstance(previous_cfg, dict):
+            self._check_valid_epoch_counts(previous_cfg)
+
         state_dict = ckpt["state_dict"]
         order_mapping = self._load_execution_order_mapping(ckpt)
         ver = version.parse(ckpt.get("version", "0.3.0"))
@@ -632,6 +605,20 @@ class LuxonisLightningModule(pl.LightningModule):
                         "Loading checkpoint with strict=False, some weights may not be loaded"
                     )
                     node.module.load_checkpoint(sub_state_dict, strict=False)
+
+    def _check_valid_epoch_counts(self, ckpt_config: dict) -> None:
+        previous_trainer_cfg = ckpt_config.get("trainer", {})
+        previous_epochs = previous_trainer_cfg.get("epochs", None)
+
+        if (
+            previous_epochs is not None
+            and previous_epochs > self.cfg.trainer.epochs
+        ):
+            logger.warning(
+                f"Checkpoint was previously trained for {previous_epochs} epochs, "
+                f"but current config requests only {self.cfg.trainer.epochs} epochs. "
+                "Please set a number of epochs that is higher than the previously-trained epoch number."
+            )
 
     def _evaluation_step(
         self,
@@ -734,10 +721,15 @@ class LuxonisLightningModule(pl.LightningModule):
             self.log(f"{mode}/{formated_name}", value, sync_dist=True)
 
         table = defaultdict(dict)
+
         for node_name, node in self.nodes.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
             for metric_name, metric in node.metrics.items():
-                values = postprocess_metrics(metric_name, metric.compute())
+                values = postprocess_metrics(
+                    metric_name,
+                    metric.compute(),
+                    log_sub_metrics=self.cfg.trainer.log_sub_metrics,
+                )
                 metric.reset()
 
                 if isinstance(
@@ -848,7 +840,11 @@ class LuxonisLightningModule(pl.LightningModule):
         for node_name, node in self.nodes.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
             for metric_name, metric in node.metrics.items():
-                values = postprocess_metrics(metric_name, metric.compute())
+                values = postprocess_metrics(
+                    metric_name,
+                    metric.compute(),
+                    log_sub_metrics=self.cfg.trainer.log_sub_metrics,
+                )
                 for sub_name in values:
                     if "confusion_matrix" in sub_name:
                         for epoch_idx in sorted([0, *val_eval_epochs]):
