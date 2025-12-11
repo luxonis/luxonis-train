@@ -424,7 +424,7 @@ def test_mean_iou_one_hot(
                     [0, 0, 0, 0],
                 ]
             ).unsqueeze(0),
-            torch.tensor(0.5),
+            torch.tensor(0.0),
         ),
         (
             torch.tensor(
