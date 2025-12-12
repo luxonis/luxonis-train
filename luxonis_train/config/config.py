@@ -114,7 +114,7 @@ class ModelConfig(BaseModelExtraForbid):
     predefined_model: Annotated[
         PredefinedModelConfig | None, Field(exclude=True)
     ] = None
-    weights: FilePath | None = None
+    weights: Annotated[FilePath | None, Field(exclude=True)] = None
     nodes: list[NodeConfig] = []
     outputs: list[str] = []
 
@@ -302,7 +302,7 @@ class TrackerConfig(BaseModelExtraForbid):
     project_id: str | None = None
     run_name: str | None = None
     run_id: str | None = None
-    save_directory: Path = Path("output")
+    save_directory: Annotated[Path, Field(exclude=True)] = Path("output")
     is_tensorboard: bool = True
     is_wandb: bool = False
     wandb_entity: str | None = None
