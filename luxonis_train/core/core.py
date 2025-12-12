@@ -142,7 +142,11 @@ class LuxonisModel:
         Loader = LOADERS.get(loader_name)
         if issubclass(Loader, LuxonisLoaderTorch):
             model_tasks = sorted(
-                {node.task_name for node in self.cfg.model.nodes if node.task_name}
+                {
+                    node.task_name
+                    for node in self.cfg.model.nodes
+                    if node.task_name
+                }
             )
             if model_tasks:
                 self.cfg.loader.params["filter_task_names"] = model_tasks
