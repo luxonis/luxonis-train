@@ -185,6 +185,7 @@ class LuxonisModel:
                     f"Failed to initialize loader '{loader_name}' "
                     f"for view '{view}'. Using `DummyLoader` instead."
                 )
+                self.cfg.loader.name = DebugLoader.__name__
                 self.loaders[view] = DebugLoader(
                     cfg=self.cfg,
                     view={
