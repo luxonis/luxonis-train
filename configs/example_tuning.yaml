@@ -24,7 +24,7 @@ trainer:
       - name: Sharpen
         params:
           p: 0.1
-      - name: Flip
+      - name: VerticalFlip
 
   batch_size: 8
   epochs: &epochs 200
