@@ -566,16 +566,12 @@ class LuxonisLightningModule(pl.LightningModule):
             for k, v in checkpoint["state_dict"].items()
             if not pattern.match(k)
         }
-        checkpoint["version"] = luxonis_train.__version__
-        checkpoint["execution_order"] = get_model_execution_order(self)
-
-        cfg = self.cfg.model_dump()
-        cfg["tracker"]["save_directory"] = str(
-            cfg["tracker"]["save_directory"]
-        )
-
-        checkpoint["config"] = cfg
-        checkpoint["dataset_metadata"] = self.dataset_metadata.dump()
+        checkpoint |= {
+            "version": luxonis_train.__version__,
+            "execution_order": get_model_execution_order(self),
+            "config": self.cfg.model_dump(),
+            "dataset_metadata": self.dataset_metadata.dump(),
+        }
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:
