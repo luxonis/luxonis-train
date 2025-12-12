@@ -100,7 +100,7 @@ trainer:
       - name: Sharpen
         params:
           p: 0.1
-      - name: Flip
+      - name: HorizontalFlip
       - name: RandomRotate90
       - name: Mosaic4
 

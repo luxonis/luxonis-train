@@ -293,7 +293,7 @@ Additionally, we support `Mosaic4` and `MixUp` batch augmentations and letterbox
 | `params` | `dict` | `{}`          | Parameters of the augmentation     |
 
 > [!NOTE]
-> **Important:** The `Flip` augmentation can disrupt the order of keypoints, which may break the training process if your task relies on a specific keypoint order.
+> **Important:** The `HorizontalFlip` augmentation can disrupt the order of keypoints, which may break the training process if your task relies on a specific keypoint order.
 
 **Example:**
 
@@ -314,7 +314,7 @@ trainer:
       - name: "Sharpen"
         params:
           p: 0.1
-      - name: "Flip"
+      - name: "HorizontalFlip"
       - name: "RandomRotate90"
       - name: "Mosaic4"
         params:
@@ -587,7 +587,7 @@ tuner:
     trainer.optimizer.params.lr_float: [0.0001, 0.001]
     trainer.batch_size_int: [4, 16, 4]
     # each run will have 2 of the following augmentations active
-    trainer.preprocessing.augmentations_subset: [["Defocus", "Sharpen", "Flip"], 2]
+    trainer.preprocessing.augmentations_subset: [["Defocus", "Sharpen", "HorizontalFlip"], 2]
 ```
 
 ## ENVIRON

@@ -183,7 +183,7 @@ trainer:
     augmentations:
       - name: Defocus
       - name: Sharpen
-      - name: Flip
+      - name: HorizontalFlip
 
   callbacks:
     - name: ExportOnTrainEnd

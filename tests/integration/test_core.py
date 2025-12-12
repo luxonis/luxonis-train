@@ -23,7 +23,13 @@ def test_tune(opts: Params, coco_dataset: LuxonisDataset, tempdir: Path):
             "trainer.optimizer.params.lr_float": [0.0001, 0.001],
             "trainer.batch_size_int": [4, 16, 4],
             "trainer.preprocessing.augmentations_subset": [
-                ["Defocus", "Sharpen", "Flip", "Normalize", "invalid"],
+                [
+                    "Defocus",
+                    "Sharpen",
+                    "HorizontalFlip",
+                    "Normalize",
+                    "invalid",
+                ],
                 2,
             ],
             "model.losses.0.weight_uniform": [0.1, 0.9],
