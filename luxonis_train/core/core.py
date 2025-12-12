@@ -146,7 +146,9 @@ class LuxonisModel:
                 node.task_name for node in self.cfg.model.head_nodes
             }
             if model_tasks and None not in model_tasks:
-                logger.info(f"Using {model_tasks} to filter task names from the dataset")
+                logger.info(
+                    f"Using {model_tasks} to filter task names from the dataset"
+                )
                 self.cfg.loader.params["filter_task_names"] = sorted(
                     model_tasks  # type: ignore
                 )
