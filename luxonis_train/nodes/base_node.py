@@ -502,10 +502,6 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         @param mode: Value to set the export mode to.
         """
         self._export = mode
-        if mode:
-            logger.info(f"Reparametrizing '{self.name}'")
-        else:
-            logger.info(f"Restoring reparametrized '{self.name}'")
 
         for name, module in self.named_modules():
             if isinstance(module, Reparametrizable):
