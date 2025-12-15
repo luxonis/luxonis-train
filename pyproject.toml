@@ -3,13 +3,13 @@ name = "luxonis-train"
 description = "Luxonis training framework for seamless training of various neural networks."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { file = "LICENSE" }
+license-files = ["LICENSE"]
+license = "Apache-2.0"
 authors = [{ name = "Luxonis", email = "support@luxonis.com" }]
 maintainers = [{ name = "Luxonis", email = "support@luxonis.com" }]
 keywords = ["ml", "training", "luxonis", "oak"]
 dynamic = ["dependencies", "optional-dependencies", "version"]
 classifiers = [
-  "License :: OSI Approved :: Apache Software License",
   "Development Status :: 4 - Beta",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
