@@ -141,7 +141,7 @@ def create_dataset(tempdir: Path) -> LuxonisDataset:
             path = create_image(i, tempdir)
 
         path = create_image(11, tempdir)
-        yield {"file": str(path)}
+        yield {"file": str(path), "task_name": "animals"}
         definitions["val"].append(str(path))
 
     dataset = LuxonisDataset("non_balanced", delete_local=True)
