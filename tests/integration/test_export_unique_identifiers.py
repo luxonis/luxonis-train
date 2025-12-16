@@ -19,7 +19,8 @@ def test_unique_initializers_creates_unique_names(
     opts: Params,
     test_datasets: LuxonisTestDatasets,
 ):
-    """Test that unique_onnx_initializers flag actually makes all initializer names unique."""
+    """Test that unique_onnx_initializers flag actually makes all
+    initializer names unique."""
     config_file, opts, _ = prepare_predefined_model_config(
         config_name, opts, test_datasets
     )
@@ -54,7 +55,8 @@ def test_unique_initializers_model_validity(
     opts: Params,
     test_datasets: LuxonisTestDatasets,
 ):
-    """Test that the model with unique initializers passes ONNX checker."""
+    """Test that the model with unique initializers passes ONNX
+    checker."""
     config_file, opts, _ = prepare_predefined_model_config(
         config_name, opts, test_datasets
     )
@@ -76,8 +78,11 @@ def test_unique_initializers_no_shared_weights(
     opts: Params,
     test_datasets: LuxonisTestDatasets,
 ):
-    """Test that no initializer is referenced by multiple nodes after transformation.
-    Each initializer should be used at most once"""
+    """Test that no initializer is referenced by multiple nodes after
+    transformation.
+
+    Each initializer should be used at most once
+    """
     config_file, opts, _ = prepare_predefined_model_config(
         config_name, opts, test_datasets
     )
@@ -92,7 +97,7 @@ def test_unique_initializers_no_shared_weights(
 
     initializer_names = {init.name for init in onnx_model.graph.initializer}
 
-    usage_count: dict[str, int] = {name: 0 for name in initializer_names}
+    usage_count: dict[str, int] = dict.fromkeys(initializer_names, 0)
 
     for node in onnx_model.graph.node:
         for input_name in node.input:
@@ -113,7 +118,8 @@ def test_unique_initializers_numerical_equivalence(
     opts: Params,
     test_datasets: LuxonisTestDatasets,
 ):
-    """Run inference on both models (exported with flag True and False) and test that the outputs are the same."""
+    """Run inference on both models (exported with flag True and False)
+    and test that the outputs are the same."""
     config_file, opts, _ = prepare_predefined_model_config(
         config_name, opts, test_datasets
     )
@@ -137,7 +143,9 @@ def test_unique_initializers_numerical_equivalence(
     # Test inputs based on model input specs
     test_inputs = {}
     for input_info in model_normal.graph.input:
-        initializer_names = {init.name for init in model_normal.graph.initializer}
+        initializer_names = {
+            init.name for init in model_normal.graph.initializer
+        }
         if input_info.name in initializer_names:
             continue
 

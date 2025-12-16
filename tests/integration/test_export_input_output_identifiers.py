@@ -17,7 +17,8 @@ def test_unique_initializers_preserves_input_output_names(
     opts: Params,
     test_datasets: LuxonisTestDatasets,
 ):
-    """Test that unique_onnx_initializers flag does not change input/output names."""
+    """Test that unique_onnx_initializers flag does not change
+    input/output names."""
     config_file, opts, _ = prepare_predefined_model_config(
         config_name, opts, test_datasets
     )
@@ -54,10 +55,14 @@ def test_unique_initializers_preserves_input_output_names(
     }
 
     normal_actual_inputs = [
-        name for name in normal_input_names if name not in normal_initializer_names
+        name
+        for name in normal_input_names
+        if name not in normal_initializer_names
     ]
     unique_actual_inputs = [
-        name for name in unique_input_names if name not in unique_initializer_names
+        name
+        for name in unique_input_names
+        if name not in unique_initializer_names
     ]
 
     assert normal_actual_inputs == unique_actual_inputs, (

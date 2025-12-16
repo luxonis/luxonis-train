@@ -408,6 +408,9 @@ class LuxonisModel:
             This is useful for updating the metadata in the checkpoint
             file in case they changed (e.g. new configuration file,
             architectural changes affecting the exection order etc.)
+        @type unique_onnx_initializers: bool
+        @param unique_onnx_initializers: If True, a single pass through the
+        onnx model is done after export to ensure that identifiers are unique.
         @raises RuntimeError: If C{onnxsim} fails to simplify the model.
         """
         weights = weights or self.cfg.model.weights
