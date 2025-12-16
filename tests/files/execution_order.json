@@ -39,7 +39,6 @@
     "nodes.DDRNet.module.layer3_skip.0.1.block.1",
     "nodes.DDRNet.module.layer3_skip.0.1.block.3",
     "nodes.DDRNet.module.layer3_skip.0.1.block.4",
-    "nodes.DDRNet.module.layer3_skip.0.1.block",
     "nodes.DDRNet.module.down3.0.conv",
     "nodes.DDRNet.module.down3.0.bn",
     "nodes.DDRNet.module.compression3.0.conv",
