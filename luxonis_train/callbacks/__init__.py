@@ -15,6 +15,7 @@ from .archive_on_train_end import ArchiveOnTrainEnd
 from .ema import EMACallback
 from .export_on_train_end import ExportOnTrainEnd
 from .gpu_stats_monitor import GPUStatsMonitor
+from .graceful_interrupt import GracefulInterruptCallback
 from .gradcam_visualizer import GradCamCallback
 from .luxonis_model_summary import LuxonisModelSummary
 from .luxonis_progress_bar import (
@@ -39,6 +40,7 @@ CALLBACKS.register(module=ModelPruning)
 CALLBACKS.register(module=GradCamCallback)
 CALLBACKS.register(module=EMACallback)
 CALLBACKS.register(module=TrainingManager)
+CALLBACKS.register(module=GracefulInterruptCallback)
 
 
 __all__ = [
@@ -47,6 +49,7 @@ __all__ = [
     "EMACallback",
     "ExportOnTrainEnd",
     "GPUStatsMonitor",
+    "GracefulInterruptCallback",
     "GradCamCallback",
     "LuxonisModelSummary",
     "LuxonisRichProgressBar",

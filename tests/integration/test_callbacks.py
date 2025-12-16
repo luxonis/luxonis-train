@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import torch
 from luxonis_ml.data import LuxonisDataset
@@ -8,7 +9,7 @@ from luxonis_train.config import Config
 from luxonis_train.core import LuxonisModel
 
 
-def test_callbacks(coco_dataset: LuxonisDataset, opts: Params):
+def test_callbacks(coco_dataset: LuxonisDataset, opts: Params, save_dir: Path):
     config_file = "configs/segmentation_light_model.yaml"
     opts |= {
         "rich_logging": False,
@@ -23,6 +24,10 @@ def test_callbacks(coco_dataset: LuxonisDataset, opts: Params):
             },
             {"name": "TestOnTrainEnd"},
             {"name": "UploadCheckpoint"},
+            {
+                "name": "GracefulInterruptCallback",
+                "params": {"save_dir": str(save_dir)},
+            },
             {"name": "ExportOnTrainEnd"},
             {
                 "name": "ExportOnTrainEnd",

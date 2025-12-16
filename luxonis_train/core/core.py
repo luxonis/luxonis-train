@@ -1,10 +1,8 @@
-import signal
-import sys
 import threading
 from collections.abc import Mapping
 from pathlib import Path
 from threading import ExceptHookArgs
-from typing import Any, Literal, overload
+from typing import Literal, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -23,6 +21,7 @@ from luxonis_ml.utils import Environ, LuxonisFileSystem
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
+    GracefulInterruptCallback,
     LuxonisRichProgressBar,
     LuxonisTQDMProgressBar,
 )
@@ -130,11 +129,12 @@ class LuxonisModel:
         self.pl_trainer = create_trainer(
             self.cfg.trainer,
             logger=self.tracker,
-            callbacks=(
+            callbacks=[
+                GracefulInterruptCallback(self.run_save_dir, self.tracker),
                 LuxonisRichProgressBar()
                 if self.cfg.rich_logging
-                else LuxonisTQDMProgressBar()
-            ),
+                else LuxonisTQDMProgressBar(),
+            ],
             precision=self.cfg.trainer.precision,
         )
 
@@ -146,6 +146,9 @@ class LuxonisModel:
                 node.task_name for node in self.cfg.model.head_nodes
             }
             if model_tasks and None not in model_tasks:
+                logger.info(
+                    f"Using {model_tasks} to filter task names from the dataset"
+                )
                 self.cfg.loader.params["filter_task_names"] = sorted(
                     model_tasks  # type: ignore
                 )
@@ -325,27 +328,19 @@ class LuxonisModel:
         else:
             weights = self.cfg.model.weights
 
-        resume_weights = weights if self.cfg.trainer.resume_training else None
-
-        if self.cfg.trainer.resume_training and resume_weights is None:
+        if self.cfg.trainer.resume_training and weights is None:
             logger.warning(
                 "Resume training is enabled but no weights were provided. "
                 "Training will start from scratch."
             )
-
-        def graceful_exit(signum: int, _: Any) -> None:  # pragma: no cover
-            logger.info(
-                f"{signal.Signals(signum).name} received, stopping training..."
+        elif weights and self.cfg.trainer.resume_training is False:
+            logger.warning(
+                "Weights argument was given but resume_training is not set to True. "
+                "Training will start from scratch."
+                "To resume training from the given checkpoint, set resume_training to True."
             )
-            ckpt_path = self.run_save_dir / "resume.ckpt"
-            self.pl_trainer.save_checkpoint(ckpt_path)
-            self.tracker.upload_artifact(
-                ckpt_path, typ="checkpoints", name="resume.ckpt"
-            )
-            self.tracker._finalize(status="failed")
-            sys.exit()
 
-        signal.signal(signal.SIGTERM, graceful_exit)
+        resume_weights = weights if self.cfg.trainer.resume_training else None
 
         if not new_thread:
             logger.info(f"Checkpoints will be saved in: {self.run_save_dir}")
@@ -799,7 +794,11 @@ class LuxonisModel:
             pruner_callback = PyTorchLightningPruningCallback(
                 trial, monitor=monitor
             )
+            graceful_interrupt_callback = GracefulInterruptCallback(
+                self.run_save_dir, self.tracker
+            )
             callbacks.append(pruner_callback)
+            callbacks.append(graceful_interrupt_callback)
 
             if self.cfg.trainer.seed is not None:
                 pl.seed_everything(cfg.trainer.seed, workers=True)

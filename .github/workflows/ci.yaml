@@ -1,8 +1,11 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
+      - 'requirements.txt'
+      - 'pyproject.toml'
       - 'luxonis_train/**'
       - 'tests/**'
       - .github/workflows/ci.yaml
