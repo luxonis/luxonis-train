@@ -50,6 +50,7 @@ from .utils.archive_utils import (
 from .utils.export_utils import (
     blobconverter_export,
     get_preprocessing,
+    make_initializers_unique,
     replace_weights,
     try_onnx_simplify,
 )
@@ -385,6 +386,7 @@ class LuxonisModel:
         weights: PathType | None = None,
         ignore_missing_weights: bool = False,
         ckpt_only: bool = False,
+        unique_onnx_initializers: bool = False,
     ) -> None:
         """Runs export.
 
@@ -453,6 +455,10 @@ class LuxonisModel:
 
         if not self.cfg.exporter.onnx.disable_onnx_simplification:
             try_onnx_simplify(onnx_save_path)
+
+        if unique_onnx_initializers:
+            make_initializers_unique(onnx_save_path)
+
         self._exported_models["onnx"] = Path(onnx_save_path)
 
         mean, scale, color_space = get_preprocessing(

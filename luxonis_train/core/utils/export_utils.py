@@ -115,3 +115,83 @@ def blobconverter_export(
     )
     logger.info(f".blob model saved to {blob_path}")
     return Path(blob_path)
+
+
+def make_initializers_unique(onnx_path: PathType) -> None:
+    """Each initializer that is used by multiple nodes gets duplicated
+    so each node has its own copy.
+
+    @type onnx_path: PathType
+    @param onnx_path: Path to the ONNX model file to modify.
+    """
+    import copy
+    from collections import defaultdict
+
+    import onnx
+
+    onnx_path = str(onnx_path)
+    model = onnx.load(onnx_path)
+    graph = model.graph
+
+    initializer_info = {}
+    for initializer in graph.initializer:
+        initializer_info[initializer.name] = {
+            "data": copy.deepcopy(initializer),
+            "usage_count": 0,
+        }
+
+    if not initializer_info:
+        logger.warning("No initializers found in the model")
+        return
+
+    for node in graph.node:
+        for input_name in node.input:
+            if input_name in initializer_info:
+                initializer_info[input_name]["usage_count"] += 1
+
+    name_mapping = defaultdict(list)
+    new_initializers = []
+
+    for original_name, info in initializer_info.items():
+        usage_count = max(info["usage_count"], 1)  # At least one copy
+
+        for i in range(usage_count):
+            new_name = f"{original_name}_unique_{i}"
+            name_mapping[original_name].append(new_name)
+
+            new_initializer = copy.deepcopy(info["data"])
+            new_initializer.name = new_name
+            new_initializers.append(new_initializer)
+
+    del graph.initializer[:]
+    graph.initializer.extend(new_initializers)
+
+    usage_counters = dict.fromkeys(name_mapping, 0)
+
+    for node in graph.node:
+        new_inputs = []
+        for input_name in node.input:
+            if input_name in name_mapping:
+                counter = usage_counters[input_name]
+                new_name = name_mapping[input_name][counter]
+                usage_counters[input_name] += 1
+                new_inputs.append(new_name)
+            else:
+                new_inputs.append(input_name)
+
+        del node.input[:]
+        node.input.extend(new_inputs)
+
+    onnx.save(model, onnx_path)
+
+    try:
+        onnx.checker.check_model(onnx_path)
+    except Exception as e:
+        logger.warning(
+            f"ONNX checker failed after making initializers unique: {e}. "
+            "If you encounter issues, try exporting with unique_onnx_initializers=False."
+        )
+
+    logger.info(
+        f"Made {len(initializer_info)} initializers unique in ONNX model"
+    )
