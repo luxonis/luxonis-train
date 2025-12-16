@@ -26,9 +26,11 @@ def test_unique_initializers_creates_unique_names(
     )
     extra_opts = extra_opts or {}
 
-    model = LuxonisModel(config_file, opts | extra_opts)
-
-    model.export(unique_onnx_initializers=True)
+    model = LuxonisModel(
+        config_file,
+        opts | extra_opts | {"exporter.onnx.unique_onnx_initializers": True},
+    )
+    model.export()
 
     onnx_path = model.run_save_dir / "export" / f"{model.cfg.model.name}.onnx"
     onnx_model = onnx.load(str(onnx_path))
@@ -56,9 +58,11 @@ def test_unique_initializers_model_validity(
     )
     extra_opts = extra_opts or {}
 
-    model = LuxonisModel(config_file, opts | extra_opts)
-
-    model.export(unique_onnx_initializers=True)
+    model = LuxonisModel(
+        config_file,
+        opts | extra_opts | {"exporter.onnx.unique_onnx_initializers": True},
+    )
+    model.export()
 
     onnx_path = model.run_save_dir / "export" / f"{model.cfg.model.name}.onnx"
 
@@ -75,16 +79,18 @@ def test_unique_initializers_no_shared_weights(
     """Test that no initializer is referenced by multiple nodes after
     transformation.
 
-    Each initializer should be used at most once
+    Each initializer should be used at most once.
     """
     config_file, opts, _ = prepare_predefined_model_config(
         config_name, opts, test_datasets
     )
     extra_opts = extra_opts or {}
 
-    model = LuxonisModel(config_file, opts | extra_opts)
-
-    model.export(unique_onnx_initializers=True)
+    model = LuxonisModel(
+        config_file,
+        opts | extra_opts | {"exporter.onnx.unique_onnx_initializers": True},
+    )
+    model.export()
 
     onnx_path = model.run_save_dir / "export" / f"{model.cfg.model.name}.onnx"
     onnx_model = onnx.load(str(onnx_path))
@@ -119,26 +125,37 @@ def test_unique_initializers_numerical_equivalence(
     )
     extra_opts = extra_opts or {}
 
-    model = LuxonisModel(config_file, opts | extra_opts)
-
-    model.export(unique_onnx_initializers=False)
+    model_normal = LuxonisModel(
+        config_file,
+        opts | extra_opts | {"exporter.onnx.unique_onnx_initializers": False},
+    )
+    model_normal.export()
     onnx_path_normal = (
-        model.run_save_dir / "export" / f"{model.cfg.model.name}.onnx"
+        model_normal.run_save_dir
+        / "export"
+        / f"{model_normal.cfg.model.name}.onnx"
     )
 
-    export_path_unique = model.run_save_dir / "export_unique"
-    model.export(save_path=export_path_unique, unique_onnx_initializers=True)
-    onnx_path_unique = export_path_unique / f"{model.cfg.model.name}.onnx"
+    model_unique = LuxonisModel(
+        config_file,
+        opts | extra_opts | {"exporter.onnx.unique_onnx_initializers": True},
+    )
+    model_unique.export()
+    onnx_path_unique = (
+        model_unique.run_save_dir
+        / "export"
+        / f"{model_unique.cfg.model.name}.onnx"
+    )
 
-    model_normal = onnx.load(str(onnx_path_normal))
+    onnx_model_normal = onnx.load(str(onnx_path_normal))
     session_normal = ort.InferenceSession(str(onnx_path_normal))
     session_unique = ort.InferenceSession(str(onnx_path_unique))
 
     # Test inputs based on model input specs
     test_inputs = {}
-    for input_info in model_normal.graph.input:
+    for input_info in onnx_model_normal.graph.input:
         initializer_names = {
-            init.name for init in model_normal.graph.initializer
+            init.name for init in onnx_model_normal.graph.initializer
         }
         if input_info.name in initializer_names:
             continue
@@ -163,7 +180,6 @@ def test_unique_initializers_numerical_equivalence(
         test_inputs[input_info.name] = np.random.randn(*shape).astype(dtype)
 
     # Run inference on both models and compare outputs
-
     outputs_normal = session_normal.run(None, test_inputs)
     outputs_unique = session_unique.run(None, test_inputs)
 
@@ -175,8 +191,8 @@ def test_unique_initializers_numerical_equivalence(
     for i, (out_normal, out_unique) in enumerate(
         zip(outputs_normal, outputs_unique, strict=True)
     ):
-        out_normal_arr = np.asarray(out_normal)  # for PyRight errors
-        out_unique_arr = np.asarray(out_unique)  # for PyRight errors
+        out_normal_arr = np.asarray(out_normal)  # For PyRight errors
+        out_unique_arr = np.asarray(out_unique)  # For PyRight errors
         assert np.allclose(
             out_normal_arr, out_unique_arr, rtol=1e-5, atol=1e-6
         ), (

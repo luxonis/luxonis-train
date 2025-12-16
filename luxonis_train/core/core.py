@@ -386,7 +386,6 @@ class LuxonisModel:
         weights: PathType | None = None,
         ignore_missing_weights: bool = False,
         ckpt_only: bool = False,
-        unique_onnx_initializers: bool = False,
     ) -> None:
         """Runs export.
 
@@ -450,7 +449,10 @@ class LuxonisModel:
 
         with replace_weights(self.lightning_module, weights):
             onnx_kwargs = self.cfg.exporter.onnx.model_dump(
-                exclude={"disable_onnx_simplification"}
+                exclude={
+                    "disable_onnx_simplification",
+                    "unique_onnx_initializers",
+                }
             )
             onnx_save_path = self.lightning_module.export_onnx(
                 export_path.with_suffix(".onnx"), **onnx_kwargs
@@ -459,7 +461,7 @@ class LuxonisModel:
         if not self.cfg.exporter.onnx.disable_onnx_simplification:
             try_onnx_simplify(onnx_save_path)
 
-        if unique_onnx_initializers:
+        if self.cfg.exporter.onnx.unique_onnx_initializers:
             make_initializers_unique(onnx_save_path)
 
         self._exported_models["onnx"] = Path(onnx_save_path)

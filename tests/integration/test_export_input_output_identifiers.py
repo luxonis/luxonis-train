@@ -24,34 +24,44 @@ def test_unique_initializers_preserves_input_output_names(
     )
     extra_opts = extra_opts or {}
 
-    model = LuxonisModel(config_file, opts | extra_opts)
-
-    model.export(unique_onnx_initializers=False)
+    # Export without unique initializers
+    model_normal = LuxonisModel(
+        config_file,
+        opts | extra_opts | {"exporter.onnx.unique_onnx_initializers": False},
+    )
+    model_normal.export()
     onnx_path_normal = (
-        model.run_save_dir / "export" / f"{model.cfg.model.name}.onnx"
+        model_normal.run_save_dir
+        / "export"
+        / f"{model_normal.cfg.model.name}.onnx"
     )
-    model_normal = onnx.load(str(onnx_path_normal))
+    onnx_model_normal = onnx.load(str(onnx_path_normal))
 
-    normal_input_names = [inp.name for inp in model_normal.graph.input]
-    normal_output_names = [out.name for out in model_normal.graph.output]
+    normal_input_names = [inp.name for inp in onnx_model_normal.graph.input]
+    normal_output_names = [out.name for out in onnx_model_normal.graph.output]
 
-    export_path_unique = model.run_save_dir / "export_unique"
-    model.export(
-        save_path=export_path_unique,
-        unique_onnx_initializers=True,
+    # Export with unique initializers
+    model_unique = LuxonisModel(
+        config_file,
+        opts | extra_opts | {"exporter.onnx.unique_onnx_initializers": True},
     )
-    onnx_path_unique = export_path_unique / f"{model.cfg.model.name}.onnx"
-    model_unique = onnx.load(str(onnx_path_unique))
+    model_unique.export()
+    onnx_path_unique = (
+        model_unique.run_save_dir
+        / "export"
+        / f"{model_unique.cfg.model.name}.onnx"
+    )
+    onnx_model_unique = onnx.load(str(onnx_path_unique))
 
-    unique_input_names = [inp.name for inp in model_unique.graph.input]
-    unique_output_names = [out.name for out in model_unique.graph.output]
+    unique_input_names = [inp.name for inp in onnx_model_unique.graph.input]
+    unique_output_names = [out.name for out in onnx_model_unique.graph.output]
 
     # Filter out initializer names from inputs (ONNX includes initializers in inputs)
     normal_initializer_names = {
-        init.name for init in model_normal.graph.initializer
+        init.name for init in onnx_model_normal.graph.initializer
     }
     unique_initializer_names = {
-        init.name for init in model_unique.graph.initializer
+        init.name for init in onnx_model_unique.graph.initializer
     }
 
     normal_actual_inputs = [
