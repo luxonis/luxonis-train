@@ -41,12 +41,6 @@ def test_unique_initializers_creates_unique_names(
         f"{len(set(initializer_names))} unique names."
     )
 
-    for name in initializer_names:
-        assert "_unique_" in name, (
-            f"Initializer '{name}' in {config_name} does not follow the expected "
-            "naming convention (should contain '_unique_')"
-        )
-
 
 @pytest.mark.parametrize(("config_name", "extra_opts"), PREDEFINED_MODELS)
 def test_unique_initializers_model_validity(

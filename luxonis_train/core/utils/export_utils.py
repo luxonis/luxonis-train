@@ -151,17 +151,23 @@ def make_initializers_unique(onnx_path: PathType) -> None:
 
     name_mapping = defaultdict(list)
     new_initializers = []
+    duplicated_count = 0
 
     for original_name, info in initializer_info.items():
-        usage_count = max(info["usage_count"], 1)  # At least one copy
+        usage_count = info["usage_count"]
 
-        for i in range(usage_count):
-            new_name = f"{original_name}_unique_{i}"
-            name_mapping[original_name].append(new_name)
+        if usage_count <= 1:
+            name_mapping[original_name].append(original_name)
+            new_initializers.append(info["data"])
+        else:
+            duplicated_count += 1
+            for i in range(usage_count):
+                new_name = f"{original_name}_unique_{i}"
+                name_mapping[original_name].append(new_name)
 
-            new_initializer = copy.deepcopy(info["data"])
-            new_initializer.name = new_name
-            new_initializers.append(new_initializer)
+                new_initializer = copy.deepcopy(info["data"])
+                new_initializer.name = new_name
+                new_initializers.append(new_initializer)
 
     del graph.initializer[:]
     graph.initializer.extend(new_initializers)
@@ -193,5 +199,6 @@ def make_initializers_unique(onnx_path: PathType) -> None:
         )
 
     logger.info(
-        f"Made {len(initializer_info)} initializers unique in ONNX model"
+        f"Processed {len(initializer_info)} initializers: "
+        f"{duplicated_count} shared initializers were duplicated"
     )
