@@ -181,7 +181,11 @@ def test_unique_initializers_numerical_equivalence(
     for i, (out_normal, out_unique) in enumerate(
         zip(outputs_normal, outputs_unique, strict=True)
     ):
-        assert np.allclose(out_normal, out_unique, rtol=1e-5, atol=1e-6), (
+        out_normal_arr = np.asarray(out_normal)  # for PyRight errors
+        out_unique_arr = np.asarray(out_unique)  # for PyRight errors
+        assert np.allclose(
+            out_normal_arr, out_unique_arr, rtol=1e-5, atol=1e-6
+        ), (
             f"Output {i} differs for {config_name}. "
-            f"Max absolute difference: {np.max(np.abs(out_normal - out_unique))}"
+            f"Max absolute difference: {np.max(np.abs(out_normal_arr - out_unique_arr))}"
         )
