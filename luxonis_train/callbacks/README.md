@@ -108,8 +108,8 @@ Callback that publishes training progress and timing metrics to MLflow. This cal
 
 **Parameters:**
 
-| Key                   | Type  | Default value | Description                                                                                                                    |
-| --------------------- | ----- | ------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Key                   | Type  | Default value | Description                                                                                                             |
+| --------------------- | ----- | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `log_every_n_batches` | `int` | `1`           | How often to log progress metrics (every N batches). 1 for real-time updates, higher values to reduce logging overhead. |
 
 **Published Metrics:**
@@ -118,4 +118,3 @@ Callback that publishes training progress and timing metrics to MLflow. This cal
 | ------------------------------ | --------------------------------------------- |
 | `train/epoch_progress_percent` | Percentage (0-100) of current epoch completed |
 | `train/epoch_duration_sec`     | Duration of completed epoch in seconds        |
-
