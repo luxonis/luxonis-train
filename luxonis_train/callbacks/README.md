@@ -7,6 +7,7 @@ List of all supported callbacks.
 ## Table Of Contents
 
 - [`PytorchLightning` Callbacks](#pytorchlightning-callbacks)
+- [`LuxonisBatchSizeFinder`](#batchsizefinder)
 - [`ExportOnTrainEnd`](#exportontrainend)
 - [`ArchiveOnTrainEnd`](#archiveontrainend)
 - [`MetadataLogger`](#metadatalogger)
@@ -29,6 +30,41 @@ List of supported callbacks from `lightning.pytorch`.
 - [`StochasticWeightAveraging`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.StochasticWeightAveraging.html#lightning.pytorch.callbacks.StochasticWeightAveraging): Averages model weights to improve generalization.
 - [`Timer`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.Timer.html#lightning.pytorch.callbacks.Timer): Times training, validation, and test loops.
 - [`ModelPruning`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.ModelPruning.html#lightning.pytorch.callbacks.ModelPruning): Prunes model weights during training.
+
+## `LuxonisBatchSizeFinder`
+
+Automatically finds the largest batch size that fits in memory without causing out-of-memory (OOM) errors. This callback extends [PyTorch Lightning's LuxonisBatchSizeFinder](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.BatchSizeFinder.html) to also update the training config with the optimal batch size found.
+
+When the optimal batch size is found:
+- If the found batch size is **higher** than the configured batch size, the batch size is automatically updated to account for the hardware being able to handle larger batches.
+- If the found batch size is **lower** than the configured batch size, the batch size is automatically updated to prevent OOM errors.
+- The updated batch size is persisted to the training config file.
+
+**Note**: This is an [experimental](https://lightning.ai/docs/pytorch/stable/versioning.html#experimental-api) feature from PyTorch Lightning.
+
+**Parameters:**
+
+| Key               | Type                           | Default value  | Description                                                                                                        |
+| ----------------- | ------------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `mode`            | `Literal["power", "binsearch"]`| `"power"`      | Search strategy. `"power"` increases batch size by powers of 2. `"binsearch"` performs binary search after OOM.    |
+| `steps_per_trial` | `int`                          | `3`            | Number of steps to run for each batch size trial.                                                                  |
+| `init_val`        | `int`                          | `2`            | Initial batch size to start the search from.                                                                       |
+| `max_trials`      | `int`                          | `25`           | Maximum number of trials to run before terminating.                                                                |
+| `batch_arg_name`  | `str`                          | `"batch_size"` | Name of the batch size attribute in the data loader.                                                               |
+
+**Example Configuration:**
+
+```yaml
+trainer:
+  batch_size: 2  # Start with a small batch size
+  callbacks:
+    - name: LuxonisBatchSizeFinder
+      params:
+        mode: power
+        steps_per_trial: 3
+        init_val: 2
+        max_trials: 25
+```
 
 ## `ExportOnTrainEnd`
 

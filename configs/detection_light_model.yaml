@@ -48,6 +48,9 @@ trainer:
         decay_tau: 2000
     - name: ExportOnTrainEnd
     - name: TestOnTrainEnd
+    - name: BatchSizeFinder
+      params:
+        mode: binsearch
 
   training_strategy:
     name: "TripleLRSGDStrategy"

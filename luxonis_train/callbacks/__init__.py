@@ -12,6 +12,7 @@ from lightning.pytorch.callbacks import (
 from luxonis_train.registry import CALLBACKS
 
 from .archive_on_train_end import ArchiveOnTrainEnd
+from .batch_size_finder import LuxonisBatchSizeFinder
 from .ema import EMACallback
 from .export_on_train_end import ExportOnTrainEnd
 from .gpu_stats_monitor import GPUStatsMonitor
@@ -41,6 +42,7 @@ CALLBACKS.register(module=GradCamCallback)
 CALLBACKS.register(module=EMACallback)
 CALLBACKS.register(module=TrainingManager)
 CALLBACKS.register(module=GracefulInterruptCallback)
+CALLBACKS.register(module=LuxonisBatchSizeFinder)
 
 
 __all__ = [
@@ -51,6 +53,7 @@ __all__ = [
     "GPUStatsMonitor",
     "GracefulInterruptCallback",
     "GradCamCallback",
+    "LuxonisBatchSizeFinder",
     "LuxonisModelSummary",
     "LuxonisRichProgressBar",
     "LuxonisTQDMProgressBar",
