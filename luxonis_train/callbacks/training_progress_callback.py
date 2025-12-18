@@ -11,10 +11,9 @@ import luxonis_train as lxt
 
 
 class TrainingProgressCallback(pl.Callback):
-    """Publish training progress metrics to MLflow for HubAI
-    integration.
+    """Publish training progress metrics.
 
-    This callback only logs when MLflow is enabled. Metrics published:
+    Metrics published:
         - C{train/epoch_progress_percent}: Percentage of current epoch completed
         - C{train/epoch_duration_sec}: Duration of completed epoch in seconds
     """
@@ -30,16 +29,6 @@ class TrainingProgressCallback(pl.Callback):
         super().__init__()
         self.log_every_n_batches = max(1, log_every_n_batches)
         self._epoch_start_time: float | None = None
-        self._is_mlflow: bool = False
-
-    @override
-    def setup(
-        self,
-        trainer: pl.Trainer,
-        pl_module: "lxt.LuxonisLightningModule",
-        stage: str | None = None,
-    ) -> None:
-        self._is_mlflow = pl_module.cfg.tracker.is_mlflow
 
     @override
     def on_train_epoch_start(
@@ -49,11 +38,6 @@ class TrainingProgressCallback(pl.Callback):
     ) -> None:
         self._epoch_start_time = time.time()
 
-        if not self._is_mlflow:
-            logger.warning(
-                "TrainingProgressCallback logs epoch-specific progress as MLFlow keys; please set is_mlflow to True in the tracker config to enable this."
-            )
-            return
         if trainer.logger is None:
             logger.warning(
                 "TrainingProgressCallback requires a logger to be configured."
@@ -77,7 +61,7 @@ class TrainingProgressCallback(pl.Callback):
         batch: Any,
         batch_idx: int,
     ) -> None:
-        if not self._is_mlflow or trainer.logger is None:
+        if trainer.logger is None:
             return
 
         # Log every N batches to reduce overhead
@@ -85,10 +69,11 @@ class TrainingProgressCallback(pl.Callback):
             return
 
         total_batches = trainer.num_training_batches
-        current_batch = batch_idx + 1  # 1-indexed
 
         progress_percent = (
-            (current_batch / total_batches) * 100 if total_batches > 0 else 0.0
+            ((batch_idx + 1) / total_batches) * 100
+            if total_batches > 0
+            else 0.0
         )
 
         trainer.logger.log_metrics(
@@ -105,7 +90,7 @@ class TrainingProgressCallback(pl.Callback):
         trainer: pl.Trainer,
         pl_module: "lxt.LuxonisLightningModule",
     ) -> None:
-        if not self._is_mlflow or trainer.logger is None:
+        if trainer.logger is None:
             return
 
         epoch_duration = (
