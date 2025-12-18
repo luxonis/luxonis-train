@@ -104,7 +104,7 @@ A callback that maintains an exponential moving average (EMA) of the model's par
 
 ## `TrainingProgressCallback`
 
-Callback that publishes training progress and timing metrics to MLflow. This callback **only logs when MLflow is enabled** (`is_mlflow: true` in tracker config).
+Callback that publishes training progress and timing metrics.
 
 **Parameters:**
 
