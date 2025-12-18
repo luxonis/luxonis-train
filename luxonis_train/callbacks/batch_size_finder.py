@@ -18,7 +18,6 @@ class LuxonisBatchSizeFinder(BatchSizeFinder):
         steps_per_trial: int = 3,
         init_val: int = 2,
         max_trials: int = 25,
-        batch_arg_name: str = "batch_size",
     ):  # if we upgrade to Lightning 2.6.0, we can add the "margin" and the max_val parameters
         """
         @type mode: Literal["power", "binsearch"]
@@ -33,16 +32,13 @@ class LuxonisBatchSizeFinder(BatchSizeFinder):
         @param init_val: Initial batch size to start the search from.
         @type max_trials: int
         @param max_trials: Maximum number of trials to run.
-        @type batch_arg_name: str
-        @param batch_arg_name: Name of the batch size attribute in the
-            data loader.
         """
         super().__init__(
             mode=mode,
             steps_per_trial=steps_per_trial,
             init_val=init_val,
             max_trials=max_trials,
-            batch_arg_name=batch_arg_name,
+            batch_arg_name="batch_size",
         )
         self._original_batch_size: int | None = None
 

@@ -50,21 +50,7 @@ When the optimal batch size is found:
 | `steps_per_trial` | `int`                          | `3`            | Number of steps to run for each batch size trial.                                                                  |
 | `init_val`        | `int`                          | `2`            | Initial batch size to start the search from.                                                                       |
 | `max_trials`      | `int`                          | `25`           | Maximum number of trials to run before terminating.                                                                |
-| `batch_arg_name`  | `str`                          | `"batch_size"` | Name of the batch size attribute in the data loader.                                                               |
 
-**Example Configuration:**
-
-```yaml
-trainer:
-  batch_size: 2  # Start with a small batch size
-  callbacks:
-    - name: LuxonisBatchSizeFinder
-      params:
-        mode: power
-        steps_per_trial: 3
-        init_val: 2
-        max_trials: 25
-```
 
 ## `ExportOnTrainEnd`
 
