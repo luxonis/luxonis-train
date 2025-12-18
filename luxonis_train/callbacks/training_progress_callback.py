@@ -50,7 +50,7 @@ class TrainingProgressCallback(pl.Callback):
         self._epoch_start_time = time.time()
 
         if not self._is_mlflow or trainer.logger is None:
-            logger.warning("TrainingProgressCallback logs epoch-specific progress as MLFlow keys; please set is_mlflow in the tracker config to enable this.")
+            logger.warning("TrainingProgressCallback logs epoch-specific progress as MLFlow keys; please set is_mlflow to True in the tracker config to enable this.")
             return
 
         trainer.logger.log_metrics(
