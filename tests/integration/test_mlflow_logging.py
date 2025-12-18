@@ -135,6 +135,8 @@ def test_mlflow_logging(xor_dataset: LuxonisDataset, subtests: SubTests):
         [
             "train/loss",
             "train/loss/XORHead/CrossEntropyLoss",
+            "train/epoch_progress_percent",
+            "train/epoch_duration_sec",
             "val/loss",
             "val/metric/XORHead/Accuracy",
             "val/metric/XORHead/F1Score",
@@ -218,6 +220,7 @@ def get_config() -> Params:
                 {"name": "ArchiveOnTrainEnd"},
                 {"name": "UploadCheckpoint"},
                 {"name": "DeviceStatsMonitor"},
+                {"name": "TrainingProgressCallback"},
             ],
         },
         "tracker": {
