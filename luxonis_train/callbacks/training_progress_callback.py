@@ -15,17 +15,17 @@ class TrainingProgressCallback(pl.Callback):
     integration.
 
     This callback only logs when MLflow is enabled. Metrics published:
-    - C{train/epoch_progress_percent}: Percentage of current epoch completed
-    - C{train/epoch_duration_sec}: Duration of completed epoch in seconds
+        - C{train/epoch_progress_percent}: Percentage of current epoch completed
+        - C{train/epoch_duration_sec}: Duration of completed epoch in seconds
     """
 
     def __init__(self, log_every_n_batches: int = 1):
         """
         @type log_every_n_batches: int
         @param log_every_n_batches: How often to log progress metrics
-            (every N batches). Can be set to higher to prevent logging
-             in real-time if there is too much logging overhead.
-             By default 1 means real-time.
+        (every N batches). Can be set to higher to prevent logging
+        in real-time if there is too much logging overhead.
+        By default 1 means real-time.
         """
         super().__init__()
         self.log_every_n_batches = max(1, log_every_n_batches)
