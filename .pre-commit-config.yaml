@@ -2,7 +2,7 @@ default_language_version:
     python: python3
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.11
+    rev: v0.14.10
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
@@ -18,11 +18,11 @@ repos:
         args: [--in-place, --style=epytext]
 
   - repo: https://github.com/executablebooks/mdformat
-    rev: 0.7.22
+    rev: 1.0.0
     hooks:
       - id: mdformat
         additional_dependencies:
-          - mdformat-gfm==0.3.6
+          - mdformat-gfm~=1.0
 
   - repo: https://github.com/ComPWA/taplo-pre-commit
     rev: v0.9.3
