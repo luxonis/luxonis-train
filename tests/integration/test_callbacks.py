@@ -44,6 +44,7 @@ def test_callbacks(coco_dataset: LuxonisDataset, opts: Params, save_dir: Path):
                     "task": "segmentation",
                 },
             },
+            {"name": "TrainingProgressCallback"},
         ],
         "exporter.scale_values": [0.5, 0.5, 0.5],
         "exporter.mean_values": [0.5, 0.5, 0.5],

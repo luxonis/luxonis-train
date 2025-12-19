@@ -135,6 +135,7 @@ def test_mlflow_logging(xor_dataset: LuxonisDataset, subtests: SubTests):
         [
             "train/loss",
             "train/loss/XORHead/CrossEntropyLoss",
+            "train/epoch_completion_sec",
             "val/loss",
             "val/metric/XORHead/Accuracy",
             "val/metric/XORHead/F1Score",
@@ -152,6 +153,7 @@ def test_mlflow_logging(xor_dataset: LuxonisDataset, subtests: SubTests):
         [
             set(range(10)),
             set(range(10)),
+            set(range(1, 11)),
             {4, 9},
             {4, 9},
             {4, 9},
@@ -173,6 +175,22 @@ def test_mlflow_logging(xor_dataset: LuxonisDataset, subtests: SubTests):
             assert len(history) == len(expected_steps)
             assert {m.step for m in history} == expected_steps
             assert key in all_mlflow_logging_keys["metrics"]
+
+    # Tests for unique steps where metrics are logged multiple times per epoch
+    with subtests.test("train/epoch_progress_percent"):
+        history = client.get_metric_history(
+            run_id, "train/epoch_progress_percent"
+        )
+        assert {m.step for m in history} == set(range(11))
+        assert (
+            "train/epoch_progress_percent"
+            in all_mlflow_logging_keys["metrics"]
+        )
+
+    with subtests.test("train/epoch_duration_sec"):
+        history = client.get_metric_history(run_id, "train/epoch_duration_sec")
+        assert {m.step for m in history} == set(range(1, 11))
+        assert "train/epoch_duration_sec" in all_mlflow_logging_keys["metrics"]
 
 
 def get_config() -> Params:
@@ -218,6 +236,7 @@ def get_config() -> Params:
                 {"name": "ArchiveOnTrainEnd"},
                 {"name": "UploadCheckpoint"},
                 {"name": "DeviceStatsMonitor"},
+                {"name": "TrainingProgressCallback"},
             ],
         },
         "tracker": {

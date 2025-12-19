@@ -26,6 +26,7 @@ from .luxonis_progress_bar import (
 from .metadata_logger import MetadataLogger
 from .test_on_train_end import TestOnTrainEnd
 from .training_manager import TrainingManager
+from .training_progress_callback import TrainingProgressCallback
 from .upload_checkpoint import UploadCheckpoint
 
 CALLBACKS.register(module=EarlyStopping)
@@ -41,6 +42,7 @@ CALLBACKS.register(module=GradCamCallback)
 CALLBACKS.register(module=EMACallback)
 CALLBACKS.register(module=TrainingManager)
 CALLBACKS.register(module=GracefulInterruptCallback)
+CALLBACKS.register(module=TrainingProgressCallback)
 
 
 __all__ = [
@@ -57,5 +59,6 @@ __all__ = [
     "MetadataLogger",
     "TestOnTrainEnd",
     "TrainingManager",
+    "TrainingProgressCallback",
     "UploadCheckpoint",
 ]
