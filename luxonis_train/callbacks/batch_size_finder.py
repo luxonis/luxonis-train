@@ -14,7 +14,7 @@ class LuxonisBatchSizeFinder(BatchSizeFinder):
 
     def __init__(
         self,
-        mode: Literal["power", "binsearch"] = "power",  # maybe for now we force power?
+        mode: Literal["power", "binsearch"] = "power",  # maybe for now we force power? So no weird batch sizes like 17
         steps_per_trial: int = 3,
         init_val: int = 2,
         max_trials: int = 25,
