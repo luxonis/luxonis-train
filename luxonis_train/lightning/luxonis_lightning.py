@@ -892,6 +892,7 @@ class LuxonisLightningModule(pl.LightningModule):
                     {
                         "train/epoch_progress_percent",
                         "train/epoch_duration_sec",
+                        "train/epoch_completion_sec",
                     }
                 )
 

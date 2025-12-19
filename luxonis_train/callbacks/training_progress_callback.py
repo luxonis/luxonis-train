@@ -15,7 +15,8 @@ class TrainingProgressCallback(pl.Callback):
 
     Metrics published:
         - C{train/epoch_progress_percent}: Percentage of current epoch completed
-        - C{train/epoch_duration_sec}: Duration of completed epoch in seconds
+        - C{train/epoch_duration_sec}: Time elapsed so far in current epoch (updated per batch)
+        - C{train/epoch_completion_sec}: Total duration of completed epoch in seconds
     """
 
     def __init__(self, log_every_n_batches: int = 1):
@@ -76,9 +77,16 @@ class TrainingProgressCallback(pl.Callback):
             else 0.0
         )
 
+        epoch_duration = (
+            time.time() - self._epoch_start_time
+            if self._epoch_start_time is not None
+            else 0.0
+        )
+
         trainer.logger.log_metrics(
             {
                 "train/epoch_progress_percent": progress_percent,
+                "train/epoch_duration_sec": epoch_duration,
             },
             step=trainer.global_step,
         )
@@ -101,7 +109,7 @@ class TrainingProgressCallback(pl.Callback):
 
         trainer.logger.log_metrics(
             {
-                "train/epoch_duration_sec": epoch_duration,
+                "train/epoch_completion_sec": epoch_duration,
                 "train/epoch_progress_percent": 100.0,
             },
             step=trainer.global_step,
