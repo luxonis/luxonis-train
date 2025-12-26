@@ -52,7 +52,7 @@ class LCNetV3Block(nn.Module):
             groups=in_channels,
             n_branches=n_branches,
             refine_block=AffineBlock(),
-            activation=AffineActivation(),
+            activation=AffineActivation() if stride != 2 else None,
         )
         if use_se:
             self.se = SqueezeExciteBlock(
@@ -71,7 +71,7 @@ class LCNetV3Block(nn.Module):
             stride=1,
             n_branches=n_branches,
             refine_block=AffineBlock(),
-            activation=AffineActivation(),
+            activation=AffineActivation() if stride != 2 else None,
             use_scale_layer=False,
         )
 

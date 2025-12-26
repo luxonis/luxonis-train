@@ -455,6 +455,8 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         @param strict: Whether to load weights strictly or not. Defaults
             to True.
         """
+        if isinstance(ckpt, dict) and not ckpt:
+            raise RuntimeError("Provided checkpoint dictionary is empty.")
         ckpt = ckpt or self._get_weights_url()
         if not isinstance(ckpt, dict):
             logger.info(f"Loading weights from '{ckpt}'")
@@ -500,10 +502,6 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         @param mode: Value to set the export mode to.
         """
         self._export = mode
-        if mode:
-            logger.info(f"Reparametrizing '{self.name}'")
-        else:
-            logger.info(f"Restoring reparametrized '{self.name}'")
 
         for name, module in self.named_modules():
             if isinstance(module, Reparametrizable):

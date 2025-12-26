@@ -60,8 +60,8 @@ class PreciseDecoupledBlock(nn.Module):
         )
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
-        classes = self.classification_branch(x)
         regressions = self.regression_branch(x)
+        classes = self.classification_branch(x)
         features = torch.cat([classes, regressions], dim=1)
         return features, classes, regressions
 
