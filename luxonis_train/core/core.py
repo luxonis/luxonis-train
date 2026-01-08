@@ -50,6 +50,7 @@ from .utils.archive_utils import (
 from .utils.export_utils import (
     blobconverter_export,
     get_preprocessing,
+    hubai_export,
     make_initializers_unique,
     replace_weights,
     try_onnx_simplify,
@@ -407,10 +408,6 @@ class LuxonisModel:
             This is useful for updating the metadata in the checkpoint
             file in case they changed (e.g. new configuration file,
             architectural changes affecting the exection order etc.)
-        @type unique_onnx_initializers: bool
-        @param unique_onnx_initializers: If True, a single pass through the
-        onnx model is done after export to ensure that identifiers are unique.
-        @raises RuntimeError: If C{onnxsim} fails to simplify the model.
         """
         weights = weights or self.cfg.model.weights
 
@@ -471,34 +468,6 @@ class LuxonisModel:
         )
         scale_values = self.cfg.exporter.scale_values or scale
         mean_values = self.cfg.exporter.mean_values or mean
-        if self.cfg.exporter.reverse_input_channels is not None:
-            reverse_input_channels = self.cfg.exporter.reverse_input_channels
-        else:
-            logger.info(
-                "`exporter.reverse_input_channels` not specified. "
-                "Using the `trainer.preprocessing.color_space` value "
-                "to determine if the channels should be reversed. "
-                f"`color_space` = '{color_space}' -> "
-                f"`reverse_input_channels` = `{color_space == 'RGB'}`"
-            )
-            reverse_input_channels = color_space == "RGB"
-
-        if self.cfg.exporter.blobconverter.active:
-            try:
-                self._exported_models["blob"] = blobconverter_export(
-                    self.cfg.exporter,
-                    scale_values,
-                    mean_values,
-                    reverse_input_channels,
-                    str(export_save_dir),
-                    onnx_save_path,
-                )
-            except ImportError:
-                logger.error("Failed to import `blobconverter`")
-                logger.warning(
-                    "`blobconverter` not installed. Skipping .blob model conversion. "
-                    "Ensure `blobconverter` is installed in your environment."
-                )
 
         for path in self._exported_models.values():
             if self.cfg.exporter.upload_to_run:
@@ -1045,6 +1014,115 @@ class LuxonisModel:
             self.tracker.upload_artifact(archive_path, typ="archive")
 
         return Path(archive_path)
+
+    def convert(
+        self,
+        weights: PathType | None = None,
+        save_dir: PathType | None = None,
+    ) -> Path:
+        """Exports the model to ONNX, creates an NN Archive, and
+        converts to target platform format (RVC2/RVC3/RVC4/Hailo).
+
+        This is a unified method that combines export, archive, and platform
+        conversion steps.
+
+        @type weights: PathType | None
+        @param weights: Path to the checkpoint from which to load weights.
+            If not specified, the value of `model.weights` from the
+            configuration file will be used.
+        @type save_dir: PathType | None
+        @param save_dir: Directory where the outputs will be saved.
+            If not specified, the default run save directory will be used.
+        @rtype: Path
+        @return: Path to the generated NN Archive.
+        """
+        self.export(weights=weights, save_path=save_dir)
+
+        onnx_path = self._exported_models.get("onnx")
+        if onnx_path is None:
+            raise RuntimeError(
+                "ONNX export failed, cannot proceed with conversion."
+            )
+
+        archive_path = self.archive(
+            path=onnx_path, weights=weights, save_dir=save_dir
+        )
+
+        mean, scale, color_space = get_preprocessing(
+            self.cfg_preprocessing, "Model conversion"
+        )
+        scale_values = self.cfg.exporter.scale_values or scale
+        mean_values = self.cfg.exporter.mean_values or mean
+        if self.cfg.exporter.reverse_input_channels is not None:
+            reverse_input_channels = self.cfg.exporter.reverse_input_channels
+        else:
+            logger.info(
+                "`exporter.reverse_input_channels` not specified. "
+                "Using the `trainer.preprocessing.color_space` value "
+                "to determine if the channels should be reversed. "
+                f"`color_space` = '{color_space}' -> "
+                f"`reverse_input_channels` = `{color_space == 'RGB'}`"
+            )
+            reverse_input_channels = color_space == "RGB"
+
+        convert_save_dir = (
+            Path(save_dir) if save_dir else Path(self.run_save_dir)
+        )
+
+        if self.cfg.exporter.blobconverter.active:
+            logger.warning(
+                "blobconverter is deprecated and only supports RVC2 conversion. "
+                "Please consider using the HubAI SDK instead."
+            )
+            try:
+                blob_path = blobconverter_export(
+                    self.cfg.exporter,
+                    scale_values,
+                    mean_values,
+                    reverse_input_channels,
+                    str(convert_save_dir),
+                    str(onnx_path),
+                )
+                self._exported_models["blob"] = blob_path
+                if self.cfg.exporter.upload_to_run:
+                    self.tracker.upload_artifact(blob_path, typ="export")
+                if self.cfg.exporter.upload_url is not None:
+                    LuxonisFileSystem.upload(
+                        blob_path, self.cfg.exporter.upload_url
+                    )
+            except ImportError:
+                logger.error("Failed to import `blobconverter`")
+                logger.warning(
+                    "`blobconverter` not installed. Skipping .blob model conversion. "
+                    "Ensure `blobconverter` is installed in your environment."
+                )
+
+        if self.cfg.exporter.hubai.active:
+            try:
+                hubai_archive_path = hubai_export(
+                    cfg=self.cfg.exporter.hubai,
+                    data_type=self.cfg.exporter.data_type,
+                    archive_path=archive_path,
+                    export_path=convert_save_dir,
+                )
+                if self.cfg.archiver.upload_to_run:
+                    self.tracker.upload_artifact(
+                        hubai_archive_path, typ="archive"
+                    )
+                if self.cfg.archiver.upload_url is not None:
+                    LuxonisFileSystem.upload(
+                        hubai_archive_path, self.cfg.archiver.upload_url
+                    )
+            except ImportError:
+                logger.error("Failed to import `hubai_sdk`")
+                logger.warning(
+                    "`hubai-sdk` not installed. Skipping HubAI conversion. "
+                    "Ensure `hubai-sdk` is installed in your environment."
+                )
+            except ValueError as e:
+                logger.error(f"HubAI conversion failed: {e}")
+
+        return archive_path
 
     @property
     def environ(self) -> Environ:

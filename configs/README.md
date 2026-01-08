@@ -28,7 +28,8 @@ You can create your own config or use/edit one of the examples.
   - [Trainer Tips](#trainer-tips)
 - [Exporter](#exporter)
   - [`ONNX`](#onnx)
-  - [Blob](#blob)
+  - [HubAI](#hubai)
+  - [Blob (Deprecated)](#blob-deprecated)
 - [Tuner](#tuner)
   - [Storage](#storage)
 - [ENVIRON](#environ)
@@ -355,9 +356,12 @@ trainer:
         patience: 3
         monitor: "val/loss"
         mode: "min"
-    - name: "ExportOnTrainEnd"
+    - name: "ConvertOnTrainEnd"
     - name: "TestOnTrainEnd"
 ```
+
+> [!NOTE]
+> `ConvertOnTrainEnd` is the recommended callback for model conversion. It combines export, archive, and platform-specific conversion (blobconverter/HubAI SDK) into a single step. Use this instead of separate `ExportOnTrainEnd` and `ArchiveOnTrainEnd` callbacks.
 
 ### Optimizer
 
@@ -497,7 +501,8 @@ Here you can define configuration for exporting.
 | `upload_to_run`          | `bool`                            | `True`        | Whether to upload the exported files to tracked run as artifact                                |
 | `upload_url`             | `str \| None`                     | `None`        | Exported model will be uploaded to this URL if specified                                       |
 | `onnx`                   | `dict`                            | `{}`          | Options specific for ONNX export. See [ONNX](#onnx) section for details                        |
-| `blobconverter`          | `dict`                            | `{}`          | Options for converting to BLOB format. See [Blob](#blob) section for details                   |
+| `hubai`                  | `dict`                            | `{}`          | Options for HubAI SDK conversion. See [HubAI](#hubai) section for details                      |
+| `blobconverter`          | `dict`                            | `{}`          | Options for converting to BLOB format (deprecated). See [Blob](#blob-deprecated) section       |
 
 ### `ONNX`
 
@@ -510,7 +515,36 @@ Option specific for `ONNX` export.
 | `disable_onnx_simplification` | `bool`                   | `False`       | Disable ONNX simplification after export                                        |
 | `unique_onnx_initializers`    | `bool`                   | `False`       | Re-assign names to identifiers after export to ensure they are per-block unique |
 
-### `Blob`
+### `HubAI`
+
+The HubAI SDK provides model conversion for multiple platforms (RVC2, RVC3, RVC4, Hailo).
+This is the recommended way to convert models for deployment.
+
+> [!NOTE]
+> Requires `HUBAI_API_KEY` environment variable to be set.
+
+| Key        | Type                                       | Default value | Description                                                       |
+| ---------- | ------------------------------------------ | ------------- | ----------------------------------------------------------------- |
+| `active`   | `bool`                                     | `False`       | Whether to use HubAI SDK for conversion                           |
+| `platform` | `Literal["rvc2", "rvc3", "rvc4", "hailo"]` | `None`        | Target platform for conversion. Required when `active` is `True`  |
+| `params`   | `dict`                                     | `{}`          | Additional parameters passed to the HubAI SDK conversion function |
+
+**Example:**
+
+```yaml
+exporter:
+  data_type: fp16
+  hubai:
+    active: true
+    platform: rvc2
+    params:
+      number_of_shaves: 8
+```
+
+### `Blob` (Deprecated)
+
+> [!WARNING]
+> `blobconverter` is deprecated and only supports RVC2 conversion.
 
 | Key       | Type                                                             | Default value | Description                              |
 | --------- | ---------------------------------------------------------------- | ------------- | ---------------------------------------- |
@@ -554,6 +588,7 @@ Here you can specify options for tuning.
 > - `UploadCheckpoint`
 > - `ExportOnTrainEnd`
 > - `ArchiveOnTrainEnd`
+> - `ConvertOnTrainEnd`
 > - `TestOnTrainEnd`
 
 ### Storage
@@ -609,6 +644,7 @@ For more info on the variables, see [Credentials](../README.md#credentials).
 | `AWS_ACCESS_KEY_ID`        | `str \| None`                                              | `None`           |
 | `AWS_SECRET_ACCESS_KEY`    | `str \| None`                                              | `None`           |
 | `AWS_S3_ENDPOINT_URL`      | `str \| None`                                              | `None`           |
+| `HUBAI_API_KEY`            | `str \| None`                                              | `None`           |
 | `MLFLOW_CLOUDFLARE_ID`     | `str \| None`                                              | `None`           |
 | `MLFLOW_CLOUDFLARE_SECRET` | `str \| None`                                              | `None`           |
 | `MLFLOW_S3_BUCKET`         | `str \| None`                                              | `None`           |

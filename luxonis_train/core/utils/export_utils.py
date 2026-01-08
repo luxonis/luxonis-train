@@ -1,3 +1,4 @@
+import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
@@ -8,7 +9,7 @@ from luxonis_ml.typing import PathType, check_type
 
 import luxonis_train as lxt
 from luxonis_train.config import ExportConfig
-from luxonis_train.config.config import PreprocessingConfig
+from luxonis_train.config.config import HubAIExportConfig, PreprocessingConfig
 
 
 @contextmanager
@@ -115,6 +116,99 @@ def blobconverter_export(
     )
     logger.info(f".blob model saved to {blob_path}")
     return Path(blob_path)
+
+
+def hubai_export(
+    cfg: HubAIExportConfig,
+    data_type: str,
+    archive_path: PathType,
+    export_path: PathType,
+) -> Path:
+    """Convert an ONNX NNArchive to a platform-specific NNArchive using
+    HubAI SDK.
+
+    @type cfg: HubAIExportConfig
+    @param cfg: HubAI export configuration containing platform and
+        params.
+    @type data_type: str
+    @param data_type: Target precision (int8, fp16, fp32).
+    @type archive_path: PathType
+    @param archive_path: Path to the ONNX NNArchive to convert.
+    @type export_path: PathType
+    @param export_path: Directory where the converted archive will be
+        saved.
+    @rtype: Path
+    @return: Path to the converted platform-specific NNArchive.
+    """
+    from hubai_sdk import HubAIClient
+
+    hubai_token = os.environ.get("HUBAI_API_KEY")
+    if not hubai_token:
+        raise ValueError(
+            "HUBAI_API_KEY environment variable is not set. "
+            "Please set it to use HubAI SDK for model conversion. "
+        )
+
+    logger.info(
+        f"Converting NNArchive to {cfg.platform.upper()} format using HubAI SDK"
+    )
+
+    precision_map = {
+        "int8": "INT8",
+        "fp16": "FP16",
+        "fp32": "FP32",
+    }
+    target_precision = precision_map.get(data_type.lower(), "FP16")
+
+    client = HubAIClient(api_key=hubai_token)
+
+    archive_path = Path(archive_path)
+
+    # Generate a unique name to avoid conflicts with existing models on HubAI
+    import uuid
+
+    unique_suffix = uuid.uuid4().hex[:8]
+    unique_name = f"luxonis-train-{unique_suffix}"
+
+    base_kwargs: dict = {
+        "path": str(archive_path),
+        "name": unique_name,
+        "target_precision": target_precision,
+    }
+
+    if cfg.params:
+        base_kwargs.update(cfg.params)
+
+    try:
+        if cfg.platform == "rvc2":
+            response = client.convert.RVC2(**base_kwargs)
+        elif cfg.platform == "rvc3":
+            response = client.convert.RVC3(**base_kwargs)
+        elif cfg.platform == "rvc4":
+            response = client.convert.RVC4(**base_kwargs)
+        else:
+            response = client.convert.Hailo(**base_kwargs)
+
+        downloaded_path = Path(response.downloaded_path)
+
+        export_path = Path(export_path)
+        output_path = export_path / downloaded_path.name
+
+        import shutil
+
+        shutil.move(downloaded_path, output_path)
+
+        logger.info(f"HubAI converted archive saved to {output_path}")
+        return output_path
+    finally:
+        # delete the temporary model created on HubAI
+        try:
+            client.models.delete_model(unique_name)
+            logger.debug(f"Cleaned up temporary HubAI model: {unique_name}")
+        except Exception as e:
+            logger.warning(
+                f"Failed to cleanup HubAI model '{unique_name}': {e}"
+            )
 
 
 def make_initializers_unique(onnx_path: PathType) -> None:

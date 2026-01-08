@@ -559,6 +559,22 @@ class TrainerConfig(BaseModelExtraForbid):
         self.callbacks.sort(key=lambda v: 0 if v.name == "EMACallback" else 1)
         return self
 
+    @model_validator(mode="after")
+    def check_convert_callbacks(self) -> Self:
+        """Check if both ExportOnTrainEnd and ArchiveOnTrainEnd are set,
+        and suggest using ConvertOnTrainEnd instead."""
+        callback_names = {cb.name for cb in self.callbacks if cb.active}
+        has_export = "ExportOnTrainEnd" in callback_names
+        has_archive = "ArchiveOnTrainEnd" in callback_names
+
+        if has_export and has_archive:
+            logger.warning(
+                "Both 'ExportOnTrainEnd' and 'ArchiveOnTrainEnd' callbacks are set. "
+                "Consider using 'ConvertOnTrainEnd' instead, which combines both "
+                "and also handles platform-specific conversions (blobconverter/HubAI SDK)."
+            )
+        return self
+
 
 class OnnxExportConfig(BaseModelExtraForbid):
     opset_version: PositiveInt = 16
@@ -573,6 +589,21 @@ class BlobconverterExportConfig(BaseModelExtraForbid):
     version: Literal["2021.2", "2021.3", "2021.4", "2022.1", "2022.3_RVC3"] = (
         "2022.1"
     )
+
+
+class HubAIExportConfig(BaseModelExtraForbid):
+    active: bool = False
+    platform: Literal["rvc2", "rvc3", "rvc4", "hailo"] | None = None
+    params: Params = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_platform(self) -> Self:
+        if self.active and self.platform is None:
+            raise ValueError(
+                "The `platform` field is required when `hubai.active` is True. "
+                "Please specify a target platform: 'rvc2', 'rvc3', 'rvc4', or 'hailo'."
+            )
+        return self
 
 
 class ArchiveConfig(BaseModelExtraForbid):
@@ -592,6 +623,7 @@ class ExportConfig(ArchiveConfig):
     blobconverter: BlobconverterExportConfig = Field(
         default_factory=BlobconverterExportConfig
     )
+    hubai: HubAIExportConfig = Field(default_factory=HubAIExportConfig)
 
     @field_validator("scale_values", "mean_values", mode="before")
     @classmethod
@@ -862,8 +894,7 @@ class Config(LuxonisConfig):
         default_callbacks = [
             "UploadCheckpoint",
             "TestOnTrainEnd",
-            "ExportOnTrainEnd",
-            "ArchiveOnTrainEnd",
+            "ConvertOnTrainEnd",
         ]
 
         for cb_name in default_callbacks:
