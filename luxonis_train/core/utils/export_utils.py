@@ -120,7 +120,7 @@ def blobconverter_export(
 
 def hubai_export(
     cfg: HubAIExportConfig,
-    data_type: str,
+    target_precision: str,
     archive_path: PathType,
     export_path: PathType,
 ) -> Path:
@@ -130,8 +130,8 @@ def hubai_export(
     @type cfg: HubAIExportConfig
     @param cfg: HubAI export configuration containing platform and
         params.
-    @type data_type: str
-    @param data_type: Target precision (int8, fp16, fp32).
+    @type target_precision: str
+    @param target_precision: Target precision (int8, fp16, fp32).
     @type archive_path: PathType
     @param archive_path: Path to the ONNX NNArchive to convert.
     @type export_path: PathType
@@ -160,7 +160,7 @@ def hubai_export(
         "fp16": "FP16",
         "fp32": "FP32",
     }
-    target_precision = precision_map.get(data_type.lower(), "FP16")
+    precision = precision_map.get(target_precision.lower(), "FP16")
 
     client = HubAIClient(api_key=hubai_token)
 
@@ -173,7 +173,7 @@ def hubai_export(
     base_kwargs: dict = {
         "path": str(archive_path),
         "name": unique_name,
-        "target_precision": target_precision,
+        "target_precision": precision,
     }
 
     if cfg.params:

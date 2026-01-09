@@ -1101,7 +1101,7 @@ class LuxonisModel:
             try:
                 hubai_archive_path = hubai_export(
                     cfg=self.cfg.exporter.hubai,
-                    data_type=self.cfg.exporter.data_type,
+                    target_precision=self.cfg.exporter.data_type,
                     archive_path=archive_path,
                     export_path=convert_save_dir,
                 )
