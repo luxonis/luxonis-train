@@ -181,6 +181,8 @@ def hubai_export(
 
     try:
         if cfg.platform == "hailo":
+            if "quantization_data" not in base_kwargs:
+                base_kwargs["quantization_data"] = "RANDOM"
             response = client.convert.Hailo(**base_kwargs)
         elif cfg.platform == "rvc3":
             response = client.convert.RVC3(**base_kwargs)
