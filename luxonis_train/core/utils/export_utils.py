@@ -151,8 +151,8 @@ def hubai_export(
             "Please set it to use HubAI SDK for model conversion. "
         )
 
-    logger.info(
-        f"Converting NNArchive to {cfg.platform.upper()} format using HubAI SDK"
+    logger.info(  # defaults to rvc2 when platform is None
+        f"Converting NNArchive to {(cfg.platform or 'rvc2').upper()} format using HubAI SDK"
     )
 
     precision_map = {
@@ -180,14 +180,14 @@ def hubai_export(
         base_kwargs.update(cfg.params)
 
     try:
-        if cfg.platform == "rvc2":
-            response = client.convert.RVC2(**base_kwargs)
+        if cfg.platform == "hailo":
+            response = client.convert.Hailo(**base_kwargs)
         elif cfg.platform == "rvc3":
             response = client.convert.RVC3(**base_kwargs)
         elif cfg.platform == "rvc4":
             response = client.convert.RVC4(**base_kwargs)
         else:
-            response = client.convert.Hailo(**base_kwargs)
+            response = client.convert.RVC2(**base_kwargs)
 
         downloaded_path = Path(response.downloaded_path)
 
