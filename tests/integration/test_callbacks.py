@@ -28,13 +28,8 @@ def test_callbacks(coco_dataset: LuxonisDataset, opts: Params, save_dir: Path):
                 "name": "GracefulInterruptCallback",
                 "params": {"save_dir": str(save_dir)},
             },
-            {"name": "ExportOnTrainEnd"},
             {
-                "name": "ExportOnTrainEnd",
-                "params": {"preferred_checkpoint": "loss"},
-            },
-            {
-                "name": "ArchiveOnTrainEnd",
+                "name": "ConvertOnTrainEnd",
                 "params": {"preferred_checkpoint": "loss"},
             },
             {

@@ -561,13 +561,26 @@ class TrainerConfig(BaseModelExtraForbid):
 
     @model_validator(mode="after")
     def check_convert_callbacks(self) -> Self:
-        """Check if both ExportOnTrainEnd and ArchiveOnTrainEnd are set,
-        and suggest using ConvertOnTrainEnd instead."""
         callback_names = {cb.name for cb in self.callbacks if cb.active}
+        has_convert = "ConvertOnTrainEnd" in callback_names
         has_export = "ExportOnTrainEnd" in callback_names
         has_archive = "ArchiveOnTrainEnd" in callback_names
 
-        if has_export and has_archive:
+        if has_convert and (has_export or has_archive):
+            redundant = []
+            for cb in self.callbacks:
+                if (
+                    cb.name in ("ExportOnTrainEnd", "ArchiveOnTrainEnd")
+                    and cb.active
+                ):
+                    cb.active = False
+                    redundant.append(cb.name)
+            if redundant:
+                logger.warning(
+                    f"Deactivated {redundant} because 'ConvertOnTrainEnd' is active "
+                    "and already includes export and archive functionality."
+                )
+        elif has_export and has_archive:
             logger.warning(
                 "Both 'ExportOnTrainEnd' and 'ArchiveOnTrainEnd' callbacks are set. "
                 "Consider using 'ConvertOnTrainEnd' instead, which combines both "

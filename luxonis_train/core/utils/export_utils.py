@@ -1,6 +1,6 @@
 import os
 from collections.abc import Generator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import Literal
 
@@ -140,6 +140,8 @@ def hubai_export(
     @rtype: Path
     @return: Path to the converted platform-specific NNArchive.
     """
+    import uuid
+
     from hubai_sdk import HubAIClient
 
     hubai_token = os.environ.get("HUBAI_API_KEY")
@@ -165,8 +167,6 @@ def hubai_export(
     archive_path = Path(archive_path)
 
     # Generate a unique name to avoid conflicts with existing models on HubAI
-    import uuid
-
     unique_suffix = uuid.uuid4().hex[:8]
     unique_name = f"luxonis-train-{unique_suffix}"
 
@@ -196,7 +196,13 @@ def hubai_export(
 
         import shutil
 
+        downloaded_parent = downloaded_path.parent
+
         shutil.move(downloaded_path, output_path)
+
+        if downloaded_parent.exists() and downloaded_parent != Path.cwd():
+            with suppress(OSError):
+                downloaded_parent.rmdir()
 
         logger.info(f"HubAI converted archive saved to {output_path}")
         return output_path

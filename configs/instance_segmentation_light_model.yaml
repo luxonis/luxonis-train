@@ -42,8 +42,7 @@ trainer:
         decay: 0.9999
         use_dynamic_decay: True
         decay_tau: 2000
-    - name: ExportOnTrainEnd
-    - name: TestOnTrainEnd
+    - name: ConvertOnTrainEnd
     - name: GradientAccumulationScheduler
       params:
         scheduling: # warmup phase is 3 epochs

@@ -373,8 +373,7 @@ def opts(save_dir: Path, image_size: tuple[int, int]) -> Params:
         "trainer.validation_interval": 1,
         "trainer.callbacks": [
             {"name": "TestOnTrainEnd", "active": False},
-            {"name": "ExportOnTrainEnd", "active": False},
-            {"name": "ArchiveOnTrainEnd", "active": False},
+            {"name": "ConvertOnTrainEnd", "active": False},
             {"name": "UploadCheckpoint", "active": False},
         ],
         "tracker.save_directory": str(save_dir),

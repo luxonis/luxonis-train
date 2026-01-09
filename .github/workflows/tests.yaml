@@ -29,6 +29,9 @@ on:
       CODECOV_TOKEN:
         description: 'Codecov upload token'
         required: true
+      HUBAI_API_KEY:
+        description: 'HubAI API key'
+        required: true
 
 permissions:
   pull-requests: write
@@ -92,6 +95,7 @@ jobs:
       working-directory: luxonis-train
       env:
         LUXONISML_BUCKET: luxonis-test-bucket
+        HUBAI_API_KEY: ${{ secrets.HUBAI_API_KEY }}
       run: pytest --cov --junitxml=junit.xml -o junit_family=legacy
 
     - name: Upload test results to Codecov

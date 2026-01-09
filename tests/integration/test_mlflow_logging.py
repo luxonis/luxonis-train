@@ -232,8 +232,7 @@ def get_config() -> Params:
             },
             "callbacks": [
                 {"name": "TestOnTrainEnd"},
-                {"name": "ExportOnTrainEnd"},
-                {"name": "ArchiveOnTrainEnd"},
+                {"name": "ConvertOnTrainEnd"},
                 {"name": "UploadCheckpoint"},
                 {"name": "DeviceStatsMonitor"},
                 {"name": "TrainingProgressCallback"},
