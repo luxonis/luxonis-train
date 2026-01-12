@@ -544,7 +544,7 @@ exporter:
 ### `Blob` (Deprecated)
 
 > [!WARNING]
-> `blobconverter` is deprecated and only supports RVC2 conversion.
+> `blobconverter` is deprecated and only supports RVC2 legacy conversion to `.blob`.
 
 | Key       | Type                                                             | Default value | Description                              |
 | --------- | ---------------------------------------------------------------- | ------------- | ---------------------------------------- |
