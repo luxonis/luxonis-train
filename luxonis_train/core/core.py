@@ -1120,7 +1120,7 @@ class LuxonisModel:
                     "Ensure `hubai-sdk` is installed in your environment."
                 )
             except ValueError as e:
-                logger.error(f"HubAI conversion failed: {e}")
+                raise ValueError(f"HubAI conversion failed: {e}") from e
 
         return archive_path
 

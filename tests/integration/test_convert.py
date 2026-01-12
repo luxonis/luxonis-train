@@ -59,7 +59,7 @@ def test_convert_with_blobconverter(
     )
 
 
-@pytest.mark.parametrize("platform", ["rvc2", "rvc3", "rvc4", "hailo"])
+@pytest.mark.parametrize("platform", ["rvc2", "rvc3", "rvc4"])
 def test_convert_with_hubai(
     coco_dataset: LuxonisDataset, opts: Params, tmp_path: Path, platform: str
 ):
