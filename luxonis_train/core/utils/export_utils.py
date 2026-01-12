@@ -1,4 +1,5 @@
 import os
+import shutil
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from pathlib import Path
@@ -151,10 +152,6 @@ def hubai_export(
             "Please set it to use HubAI SDK for model conversion. "
         )
 
-    logger.info(  # defaults to rvc2 when platform is None
-        f"Converting NNArchive to {(cfg.platform or 'rvc2').upper()} format using HubAI SDK"
-    )
-
     precision_map = {
         "int8": "INT8",
         "fp16": "FP16",
@@ -195,8 +192,6 @@ def hubai_export(
 
         export_path = Path(export_path)
         output_path = export_path / downloaded_path.name
-
-        import shutil
 
         downloaded_parent = downloaded_path.parent
 

@@ -517,7 +517,7 @@ Option specific for `ONNX` export.
 
 ### `HubAI`
 
-The HubAI SDK provides model conversion for multiple platforms (RVC2, RVC3, RVC4, Hailo).
+The [HubAI SDK](https://github.com/luxonis/hubai-sdk) provides model conversion for multiple platforms (RVC2, RVC3, RVC4, Hailo).
 This is the recommended way to convert models for deployment.
 
 > [!NOTE]
@@ -538,7 +538,7 @@ exporter:
     active: true
     platform: rvc2
     params:
-      number_of_shaves: 8
+      superblob: True
 ```
 
 ### `Blob` (Deprecated)

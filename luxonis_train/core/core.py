@@ -1071,7 +1071,7 @@ class LuxonisModel:
 
         if self.cfg.exporter.blobconverter.active:
             logger.warning(
-                "blobconverter is deprecated and only supports RVC2 conversion. "
+                "blobconverter is deprecated and only supports RVC2 legacy conversion to `.blob`."
                 "Please consider using the HubAI SDK instead."
             )
             try:
