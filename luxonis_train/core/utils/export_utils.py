@@ -1,5 +1,6 @@
 import os
 import shutil
+import uuid
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from pathlib import Path
@@ -124,9 +125,14 @@ def hubai_export(
     target_precision: str,
     archive_path: PathType,
     export_path: PathType,
+    model_name: str | None = None,
 ) -> Path:
     """Convert an ONNX NNArchive to a platform-specific NNArchive using
     HubAI SDK.
+
+    If a model with the given name already exists on HubAI, a new
+    variant will be created under that model. Otherwise, a new model
+    will be created.
 
     @type cfg: HubAIExportConfig
     @param cfg: HubAI export configuration containing platform and
@@ -138,11 +144,12 @@ def hubai_export(
     @type export_path: PathType
     @param export_path: Directory where the converted archive will be
         saved.
+    @type model_name: str | None
+    @param model_name: Name for the model on HubAI. If None, a unique
+        name will be generated.
     @rtype: Path
     @return: Path to the converted platform-specific NNArchive.
     """
-    import uuid
-
     from hubai_sdk import HubAIClient
 
     hubai_token = os.environ.get("HUBAI_API_KEY")
@@ -163,18 +170,44 @@ def hubai_export(
 
     archive_path = Path(archive_path)
 
-    # Generate a unique name to avoid conflicts with existing models on HubAI
-    unique_suffix = uuid.uuid4().hex[:8]
-    unique_name = f"luxonis-train-{unique_suffix}"
+    if model_name is None:
+        unique_suffix = uuid.uuid4().hex[:8]
+        model_name = f"luxonis-train-{unique_suffix}"
+
+    existing_model = None
+    created_new_model = True
+    try:
+        models = client.models.list_models()
+        if models:
+            existing_model = next(
+                (m for m in models if m.name == model_name), None
+            )
+    except Exception as e:
+        logger.warning(f"Failed to check for existing model: {e}")
 
     base_kwargs: dict = {
         "path": str(archive_path),
-        "name": unique_name,
         "target_precision": precision,
     }
 
+    if existing_model:
+        variant_suffix = uuid.uuid4().hex[:8]
+        unique_variant_name = f"{model_name}-{variant_suffix}"
+        base_kwargs["model_id"] = str(existing_model.id)
+        base_kwargs["name"] = unique_variant_name
+        created_new_model = False
+        logger.info(
+            f"Model '{model_name}' already exists on HubAI. "
+            f"Creating new variant '{unique_variant_name}' under existing model."
+        )
+    else:
+        base_kwargs["name"] = model_name
+        logger.info(f"Creating new model '{model_name}' on HubAI.")
+
     if cfg.params:
         base_kwargs.update(cfg.params)
+
+    variant_id = None
 
     try:
         if cfg.platform == "hailo":
@@ -187,6 +220,11 @@ def hubai_export(
             response = client.convert.RVC4(**base_kwargs)
         else:
             response = client.convert.RVC2(**base_kwargs)
+
+        if hasattr(response, "instance") and hasattr(
+            response.instance, "model_version_id"
+        ):
+            variant_id = str(response.instance.model_version_id)
 
         downloaded_path = Path(response.downloaded_path)
 
@@ -204,14 +242,25 @@ def hubai_export(
         logger.info(f"HubAI converted archive saved to {output_path}")
         return output_path
     finally:
-        # delete the temporary model created on HubAI
-        try:
-            client.models.delete_model(unique_name)
-            logger.debug(f"Cleaned up temporary HubAI model: {unique_name}")
-        except Exception as e:
-            logger.warning(
-                f"Failed to cleanup HubAI model '{unique_name}': {e}"
-            )
+        if cfg.delete_remote_model:
+            try:
+                if created_new_model:
+                    client.models.delete_model(model_name)
+                    logger.debug(
+                        f"Cleaned up temporary HubAI model: {model_name}"
+                    )
+                elif variant_id:
+                    client.variants.delete_variant(variant_id)
+                    logger.debug(
+                        f"Cleaned up temporary HubAI variant: {variant_id}"
+                    )
+            except Exception as e:
+                resource_type = "model" if created_new_model else "variant"
+                resource_id = model_name if created_new_model else variant_id
+                logger.warning(
+                    f"Failed to cleanup HubAI {resource_type} "
+                    f"'{resource_id}': {e}"
+                )
 
 
 def make_initializers_unique(onnx_path: PathType) -> None:

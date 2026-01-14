@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import cast
 
 import pytest
 from luxonis_ml.data import LuxonisDataset
@@ -180,10 +181,13 @@ def test_convert_callback_deactivates_export_and_archive(
     """Test that ConvertOnTrainEnd deactivates ExportOnTrainEnd and
     ArchiveOnTrainEnd."""
     cfg = Config.get_config(
-        {
-            "model": {"nodes": [{"name": "ResNet"}]},
-            "trainer": {"callbacks": callbacks_input},
-        }
+        cast(
+            Params,
+            {
+                "model": {"nodes": [{"name": "ResNet"}]},
+                "trainer": {"callbacks": callbacks_input},
+            },
+        )
     )
 
     callbacks_by_name = {cb.name: cb for cb in cfg.trainer.callbacks}

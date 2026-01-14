@@ -608,6 +608,7 @@ class HubAIExportConfig(BaseModelExtraForbid):
     active: bool = False
     platform: Literal["rvc2", "rvc3", "rvc4", "hailo"] | None = None
     params: Params = Field(default_factory=dict)
+    delete_remote_model: bool = False
 
     @model_validator(mode="after")
     def validate_platform(self) -> Self:

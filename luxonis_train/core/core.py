@@ -1104,6 +1104,7 @@ class LuxonisModel:
                     target_precision=self.cfg.exporter.data_type,
                     archive_path=archive_path,
                     export_path=convert_save_dir,
+                    model_name=self.cfg.model.name,
                 )
                 if self.cfg.archiver.upload_to_run:
                     self.tracker.upload_artifact(
