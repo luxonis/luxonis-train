@@ -2,7 +2,9 @@ from typing import Literal, TypeAlias, cast
 
 import torch
 from loguru import logger
+from luxonis_ml.typing import Kwargs
 from torch import Tensor, nn
+from typing_extensions import override
 
 from luxonis_train.nodes.backbones.dinov3.rope_position_encoding import (
     RopePositionEmbedding,
@@ -209,3 +211,19 @@ class DinoV3(BaseNode):
         model = cast(TransformerBackboneReturnsIntermediateLayers, model)
         patch_size = getattr(model, "patch_size", 16)
         return model, patch_size
+
+    @override
+    @staticmethod
+    def get_variants() -> tuple[str, dict[str, Kwargs]]:
+        return "vits16", {
+            "vits16": {"variant": "vits16"},
+            "vits16plus": {"variant": "vits16plus"},
+            "vitb16": {"variant": "vitb16"},
+            "vitl16": {"variant": "vitl16"},
+            "vith16plus": {"variant": "vith16plus"},
+            "vit7b16": {"variant": "vit7b16"},
+            "convnext_tiny": {"variant": "convnext_tiny"},
+            "convnext_small": {"variant": "convnext_small"},
+            "convnext_base": {"variant": "convnext_base"},
+            "convnext_large": {"variant": "convnext_large"},
+        }
