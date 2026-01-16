@@ -1099,12 +1099,20 @@ class LuxonisModel:
 
         if self.cfg.exporter.hubai.active:
             try:
+                dataset_name = None
+                if "train" in self.loaders and hasattr(
+                    self.loaders["train"], "dataset"
+                ):
+                    dataset = getattr(self.loaders["train"], "dataset", None)
+                    if dataset is not None:
+                        dataset_name = getattr(dataset, "dataset_name", None)
                 hubai_archive_path = hubai_export(
                     cfg=self.cfg.exporter.hubai,
-                    target_precision=self.cfg.exporter.data_type,
+                    target_precision=self.cfg.exporter.target_precision,
                     archive_path=archive_path,
                     export_path=convert_save_dir,
                     model_name=self.cfg.model.name,
+                    dataset_name=dataset_name,
                 )
                 if self.cfg.archiver.upload_to_run:
                     self.tracker.upload_artifact(

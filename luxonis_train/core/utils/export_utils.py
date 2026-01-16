@@ -1,6 +1,5 @@
 import os
 import shutil
-import uuid
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from pathlib import Path
@@ -110,7 +109,7 @@ def blobconverter_export(
     blob_path = blobconverter.from_onnx(
         model=str(onnx_path),
         optimizer_params=optimizer_params,
-        data_type=cfg.data_type.upper(),
+        data_type=cfg.target_precision.upper(),
         shaves=cfg.blobconverter.shaves,
         version=cfg.blobconverter.version,
         use_cache=False,
@@ -125,7 +124,8 @@ def hubai_export(
     target_precision: str,
     archive_path: PathType,
     export_path: PathType,
-    model_name: str | None = None,
+    model_name: str,
+    dataset_name: str | None = None,
 ) -> Path:
     """Convert an ONNX NNArchive to a platform-specific NNArchive using
     HubAI SDK.
@@ -144,9 +144,10 @@ def hubai_export(
     @type export_path: PathType
     @param export_path: Directory where the converted archive will be
         saved.
-    @type model_name: str | None
-    @param model_name: Name for the model on HubAI. If None, a unique
-        name will be generated.
+    @type model_name: str
+    @param model_name: Name for the model on HubAI.
+    @type dataset_name: str | None
+    @param dataset_name: Name of the dataset the model was trained on.
     @rtype: Path
     @return: Path to the converted platform-specific NNArchive.
     """
@@ -167,15 +168,10 @@ def hubai_export(
     precision = precision_map.get(target_precision.lower(), "FP16")
 
     client = HubAIClient(api_key=hubai_token)
-
     archive_path = Path(archive_path)
 
-    if model_name is None:
-        unique_suffix = uuid.uuid4().hex[:8]
-        model_name = f"luxonis-train-{unique_suffix}"
-
     existing_model = None
-    created_new_model = True
+    created_new_model = False
     try:
         models = client.models.list_models()
         if models:
@@ -185,24 +181,30 @@ def hubai_export(
     except Exception as e:
         logger.warning(f"Failed to check for existing model: {e}")
 
+    variant_name = (
+        f"{model_name}:{dataset_name}" if dataset_name else f"{model_name}"
+    )
+
     base_kwargs: dict = {
         "path": str(archive_path),
         "target_precision": precision,
+        "name": variant_name,
     }
 
     if existing_model:
-        variant_suffix = uuid.uuid4().hex[:8]
-        unique_variant_name = f"{model_name}-{variant_suffix}"
         base_kwargs["model_id"] = str(existing_model.id)
-        base_kwargs["name"] = unique_variant_name
-        created_new_model = False
         logger.info(
             f"Model '{model_name}' already exists on HubAI. "
-            f"Creating new variant '{unique_variant_name}' under existing model."
+            f"Creating new variant '{variant_name}' under existing model."
         )
     else:
-        base_kwargs["name"] = model_name
-        logger.info(f"Creating new model '{model_name}' on HubAI.")
+        new_model = client.models.create_model(model_name, silent=True)
+        base_kwargs["model_id"] = str(new_model.id)
+        created_new_model = True
+        logger.info(
+            f"Created new model '{model_name}' on HubAI. "
+            f"Creating variant '{variant_name}' under it."
+        )
 
     if cfg.params:
         base_kwargs.update(cfg.params)
@@ -225,7 +227,6 @@ def hubai_export(
             response.instance, "model_version_id"
         ):
             variant_id = str(response.instance.model_version_id)
-
         downloaded_path = Path(response.downloaded_path)
 
         export_path = Path(export_path)

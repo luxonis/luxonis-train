@@ -14,15 +14,12 @@ import pytest
 import torchvision
 from _pytest.config import Config
 from _pytest.python import Function
-from dotenv import load_dotenv
 from luxonis_ml.data import Category, DatasetIterator, LuxonisDataset
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.typing import Params
 from luxonis_ml.utils import LuxonisFileSystem, environ
 
 from luxonis_train.config.config import OnnxExportConfig
-
-load_dotenv()
 
 
 @pytest.fixture(scope="session")

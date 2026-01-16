@@ -494,7 +494,7 @@ Here you can define configuration for exporting.
 | ------------------------ | --------------------------------- | ------------- | ---------------------------------------------------------------------------------------------- |
 | `name`                   | `str \| None`                     | `None`        | Name of the exported model                                                                     |
 | `input_shape`            | `list\[int\] \| None`             | `None`        | Input shape of the model. If not provided, inferred from the dataset                           |
-| `data_type`              | `Literal["INT8", "FP16", "FP32"]` | `"FP16"`      | Data type of the exported model. Only used for conversion to BLOB                              |
+| `target_precision`       | `Literal["INT8", "FP16", "FP32"]` | `"FP16"`      | Data type of the exported model. Alias: `data_type`                                            |
 | `reverse_input_channels` | `bool`                            | `True`        | Whether to reverse the image channels in the exported model. Relevant for `BLOB` export        |
 | `scale_values`           | `list[float] \| None`             | `None`        | What scale values to use for input normalization. If not provided, inferred from augmentations |
 | `mean_values`            | `list[float] \| None`             | `None`        | What mean values to use for input normalization. If not provided, inferred from augmentations  |
@@ -534,7 +534,7 @@ This is the recommended way to convert models for deployment.
 
 ```yaml
 exporter:
-  data_type: fp16
+  target_precision: fp16
   hubai:
     active: true
     platform: rvc2
