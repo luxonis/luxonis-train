@@ -629,10 +629,20 @@ class ArchiveConfig(BaseModelExtraForbid):
 class ExportConfig(ArchiveConfig):
     name: str | None = None
     input_shape: list[int] | None = None
-    target_precision: Annotated[
-        Literal["int8", "fp16", "fp32"],
-        Field(validation_alias=AliasChoices("target_precision", "data_type")),
-    ] = "fp16"
+    quantization_mode: Annotated[
+        Literal[
+            "INT8_STANDARD",
+            "INT8_ACCURACY_FOCUSED",
+            "INT8_INT16_MIXED",
+            "FP16_STANDARD",
+            "FP32_STANDARD",
+        ],
+        Field(
+            validation_alias=AliasChoices(
+                "quantization_mode", "target_precision", "data_type"
+            )
+        ),
+    ] = "INT8_STANDARD"
     reverse_input_channels: bool | None = None
     scale_values: list[float] | None = None
     mean_values: list[float] | None = None

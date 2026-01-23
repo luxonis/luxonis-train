@@ -1108,7 +1108,7 @@ class LuxonisModel:
                         dataset_name = getattr(dataset, "dataset_name", None)
                 hubai_archive_path = hubai_export(
                     cfg=self.cfg.exporter.hubai,
-                    target_precision=self.cfg.exporter.target_precision,
+                    quantization_mode=self.cfg.exporter.quantization_mode,
                     archive_path=archive_path,
                     export_path=convert_save_dir,
                     model_name=self.cfg.model.name,

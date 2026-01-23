@@ -106,10 +106,20 @@ def blobconverter_export(
     if reverse_channels:
         optimizer_params.append("--reverse_input_channels")
 
+    # Map quantization_mode to blobconverter data_type
+    quantization_to_dtype = {
+        "INT8_STANDARD": "INT8",
+        "INT8_ACCURACY_FOCUSED": "INT8",
+        "INT8_INT16_MIXED": "INT8",
+        "FP16_STANDARD": "FP16",
+        "FP32_STANDARD": "FP32",
+    }
+    data_type = quantization_to_dtype.get(cfg.quantization_mode, "FP16")
+
     blob_path = blobconverter.from_onnx(
         model=str(onnx_path),
         optimizer_params=optimizer_params,
-        data_type=cfg.target_precision.upper(),
+        data_type=data_type,
         shaves=cfg.blobconverter.shaves,
         version=cfg.blobconverter.version,
         use_cache=False,
@@ -121,7 +131,7 @@ def blobconverter_export(
 
 def hubai_export(
     cfg: HubAIExportConfig,
-    target_precision: str,
+    quantization_mode: str,
     archive_path: PathType,
     export_path: PathType,
     model_name: str,
@@ -137,8 +147,8 @@ def hubai_export(
     @type cfg: HubAIExportConfig
     @param cfg: HubAI export configuration containing platform and
         params.
-    @type target_precision: str
-    @param target_precision: Target precision (int8, fp16, fp32).
+    @type quantization_mode: str
+    @param quantization_mode: Quantization mode for model conversion.
     @type archive_path: PathType
     @param archive_path: Path to the ONNX NNArchive to convert.
     @type export_path: PathType
@@ -160,13 +170,6 @@ def hubai_export(
             "Please set it to use HubAI SDK for model conversion. "
         )
 
-    precision_map = {
-        "int8": "INT8",
-        "fp16": "FP16",
-        "fp32": "FP32",
-    }
-    precision = precision_map.get(target_precision.lower(), "FP16")
-
     client = HubAIClient(api_key=hubai_token)
     archive_path = Path(archive_path)
 
@@ -187,7 +190,7 @@ def hubai_export(
 
     base_kwargs: dict = {
         "path": str(archive_path),
-        "target_precision": precision,
+        "quantization_mode": quantization_mode,
         "name": variant_name,
     }
 
