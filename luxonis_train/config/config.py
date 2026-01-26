@@ -626,6 +626,16 @@ class ArchiveConfig(BaseModelExtraForbid):
     upload_url: str | None = None
 
 
+def _normalize_quantization_mode(value: str) -> str:
+    if isinstance(value, str):
+        shorthand_map = {
+            "FP16": "FP16_STANDARD",
+            "FP32": "FP32_STANDARD",
+        }
+        return shorthand_map.get(value.upper(), value)
+    return value
+
+
 class ExportConfig(ArchiveConfig):
     name: str | None = None
     input_shape: list[int] | None = None
@@ -637,6 +647,7 @@ class ExportConfig(ArchiveConfig):
             "FP16_STANDARD",
             "FP32_STANDARD",
         ],
+        BeforeValidator(_normalize_quantization_mode),
         Field(
             validation_alias=AliasChoices(
                 "quantization_mode", "target_precision", "data_type"

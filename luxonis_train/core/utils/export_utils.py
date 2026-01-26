@@ -107,14 +107,17 @@ def blobconverter_export(
         optimizer_params.append("--reverse_input_channels")
 
     # Map quantization_mode to blobconverter data_type
+    # blobconverter only supports FP16 and FP32 for ONNX conversion.
     quantization_to_dtype = {
-        "INT8_STANDARD": "INT8",
-        "INT8_ACCURACY_FOCUSED": "INT8",
-        "INT8_INT16_MIXED": "INT8",
         "FP16_STANDARD": "FP16",
         "FP32_STANDARD": "FP32",
     }
     data_type = quantization_to_dtype.get(cfg.quantization_mode, "FP16")
+    if cfg.quantization_mode not in quantization_to_dtype:
+        logger.warning(
+            f"blobconverter does not support '{cfg.quantization_mode}' quantization. "
+            f"Falling back to 'FP16'."
+        )
 
     blob_path = blobconverter.from_onnx(
         model=str(onnx_path),
