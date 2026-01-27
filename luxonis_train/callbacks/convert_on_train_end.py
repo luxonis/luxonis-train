@@ -27,7 +27,9 @@ class ConvertOnTrainEnd(NeedsCheckpoint):
 
         # Avoid multiple display error with conversion progress bar
         progress_bar = trainer.progress_bar_callback
-        if hasattr(progress_bar, "_stop_progress"):
-            progress_bar._stop_progress()
+        if progress_bar is not None:
+            stop_progress = getattr(progress_bar, "_stop_progress", None)
+            if callable(stop_progress):
+                stop_progress()
 
         pl_module.core.convert(weights=checkpoint)
