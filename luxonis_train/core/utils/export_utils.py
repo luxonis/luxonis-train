@@ -218,11 +218,9 @@ def hubai_export(
     variant_id = None
 
     try:
-        if cfg.platform == "hailo":
-            if "quantization_data" not in base_kwargs:
-                base_kwargs["quantization_data"] = "RANDOM"
-            response = client.convert.Hailo(**base_kwargs)
-        elif cfg.platform == "rvc3":
+        # TODO: reintroduce Hailo conversion when modelconv is released
+        # and hubai-sdk is updated accordingly
+        if cfg.platform == "rvc3":
             response = client.convert.RVC3(**base_kwargs)
         elif cfg.platform == "rvc4":
             response = client.convert.RVC4(**base_kwargs)

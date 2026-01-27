@@ -1021,7 +1021,7 @@ class LuxonisModel:
         save_dir: PathType | None = None,
     ) -> Path:
         """Exports the model to ONNX, creates an NN Archive, and
-        converts to target platform format (RVC2/RVC3/RVC4/Hailo).
+        converts to target platform format (RVC2/RVC3/RVC4).
 
         This is a unified method that combines export, archive, and platform
         conversion steps.
@@ -1071,7 +1071,7 @@ class LuxonisModel:
 
         if self.cfg.exporter.blobconverter.active:
             logger.warning(
-                "blobconverter is deprecated and only supports RVC2 legacy conversion to `.blob`."
+                "blobconverter is deprecated and only supports RVC2 legacy conversion to `.blob`. "
                 "Please consider using the HubAI SDK instead."
             )
             try:

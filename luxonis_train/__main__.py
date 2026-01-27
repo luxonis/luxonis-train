@@ -413,7 +413,7 @@ def convert(
     """Export, archive, and convert the model to target platform format.
 
     This is a unified command that combines export, archive, and
-    platform conversion (RVC2/RVC3/RVC4/Hailo) steps based on the
+    platform conversion (RVC2/RVC3/RVC4) steps based on the
     configuration.
 
     @type config: str

@@ -517,18 +517,18 @@ Option specific for `ONNX` export.
 
 ### `HubAI`
 
-The [HubAI SDK](https://github.com/luxonis/hubai-sdk) provides model conversion for multiple platforms (RVC2, RVC3, RVC4, Hailo).
+The [HubAI SDK](https://github.com/luxonis/hubai-sdk) provides model conversion for multiple platforms (RVC2, RVC3, RVC4).
 This is the recommended way to convert models for deployment.
 
 > [!NOTE]
 > Requires `HUBAI_API_KEY` environment variable to be set.
 
-| Key                   | Type                                       | Default value | Description                                                       |
-| --------------------- | ------------------------------------------ | ------------- | ----------------------------------------------------------------- |
-| `active`              | `bool`                                     | `False`       | Whether to use HubAI SDK for conversion                           |
-| `platform`            | `Literal["rvc2", "rvc3", "rvc4", "hailo"]` | `None`        | Target platform for conversion. Required when `active` is `True`  |
-| `delete_remote_model` | `bool`                                     | `False`       | Clean up by deleting remote uploaded variant in HubAI             |
-| `params`              | `dict`                                     | `{}`          | Additional parameters passed to the HubAI SDK conversion function |
+| Key                   | Type                              | Default value | Description                                                       |
+| --------------------- | --------------------------------- | ------------- | ----------------------------------------------------------------- |
+| `active`              | `bool`                            | `False`       | Whether to use HubAI SDK for conversion                           |
+| `platform`            | `Literal["rvc2", "rvc3", "rvc4"]` | `None`        | Target platform for conversion. Required when `active` is `True`  |
+| `delete_remote_model` | `bool`                            | `False`       | Clean up by deleting remote uploaded variant in HubAI             |
+| `params`              | `dict`                            | `{}`          | Additional parameters passed to the HubAI SDK conversion function |
 
 **Example:**
 
