@@ -606,7 +606,7 @@ class BlobconverterExportConfig(BaseModelExtraForbid):
 
 class HubAIExportConfig(BaseModelExtraForbid):
     active: bool = False
-    platform: Literal["rvc2", "rvc3", "rvc4", "hailo"] | None = None
+    platform: Literal["rvc2", "rvc3", "rvc4"] | None = None
     params: Params = Field(default_factory=dict)
     delete_remote_model: bool = False
 
@@ -615,7 +615,7 @@ class HubAIExportConfig(BaseModelExtraForbid):
         if self.active and self.platform is None:
             raise ValueError(
                 "The `platform` field is required when `hubai.active` is True. "
-                "Please specify a target platform: 'rvc2', 'rvc3', 'rvc4', or 'hailo'."
+                "Please specify a target platform: 'rvc2', 'rvc3', 'rvc4'."
             )
         return self
 
@@ -626,13 +626,21 @@ class ArchiveConfig(BaseModelExtraForbid):
     upload_url: str | None = None
 
 
-def _normalize_quantization_mode(value: str) -> str:
-    if isinstance(value, str):
-        shorthand_map = {
-            "FP16": "FP16_STANDARD",
-            "FP32": "FP32_STANDARD",
-        }
-        return shorthand_map.get(value.upper(), value)
+def _validate_quantization_mode(value: str) -> str:
+    from hubai_sdk.utils.hubai_models import EnumQuantizationMode
+
+    shorthand_map = {
+        "FP16": "FP16_STANDARD",
+        "FP32": "FP32_STANDARD",
+    }
+    value = shorthand_map.get(value.upper(), value)
+
+    valid_modes = {e.value for e in EnumQuantizationMode}
+    if value not in valid_modes:
+        raise ValueError(
+            f"Invalid quantization_mode: '{value}'. "
+            f"Valid options are: {sorted(valid_modes)}"
+        )
     return value
 
 
@@ -640,14 +648,8 @@ class ExportConfig(ArchiveConfig):
     name: str | None = None
     input_shape: list[int] | None = None
     quantization_mode: Annotated[
-        Literal[
-            "INT8_STANDARD",
-            "INT8_ACCURACY_FOCUSED",
-            "INT8_INT16_MIXED",
-            "FP16_STANDARD",
-            "FP32_STANDARD",
-        ],
-        BeforeValidator(_normalize_quantization_mode),
+        str,
+        BeforeValidator(_validate_quantization_mode),
         Field(
             validation_alias=AliasChoices(
                 "quantization_mode", "target_precision", "data_type"

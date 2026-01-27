@@ -11,7 +11,7 @@ class ConvertOnTrainEnd(NeedsCheckpoint):
     end."""
 
     def on_train_end(
-        self, _: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
+        self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
         """Converts the model on train end.
 
@@ -24,5 +24,10 @@ class ConvertOnTrainEnd(NeedsCheckpoint):
         if checkpoint is None:  # pragma: no cover
             logger.warning("Skipping model conversion.")
             return
+
+        # Avoid multiple display error with conversion progress bar
+        progress_bar = trainer.progress_bar_callback
+        if hasattr(progress_bar, "_stop_progress"):
+            progress_bar._stop_progress()
 
         pl_module.core.convert(weights=checkpoint)
