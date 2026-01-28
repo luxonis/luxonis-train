@@ -520,6 +520,8 @@ Option specific for `ONNX` export.
 The [HubAI SDK](https://github.com/luxonis/hubai-sdk) provides model conversion for multiple platforms (RVC2, RVC3, RVC4).
 This is the recommended way to convert models for deployment.
 
+Depending on the model name, the dataset and the image input shapes, either a new model, a new variant under this model, or a new version of a variant is uploaded to HubAI. The logical division between these concepts is described in detail in the [Luxonis Documentation](https://docs.luxonis.com/cloud/hubai/model-registry/concepts/).
+
 > [!NOTE]
 > Requires `HUBAI_API_KEY` environment variable to be set.
 
