@@ -77,11 +77,19 @@ def test_convert_with_hubai(
     save_dir = tmp_path / f"convert_hubai_{platform}_output"
     archive_path = model.convert(save_dir=save_dir)
 
-    assert archive_path.exists(), "Archive was not created"
+    assert archive_path.exists(), "Base archive was not created"
 
-    platform_archives = list(save_dir.glob("*.tar.xz"))
-    assert len(platform_archives) > 0, (
-        f"No platform-specific archive created for {platform}"
+    # HubAI conversion should create a platform-specific archive in addition
+    # to the base ONNX archive. The platform archive has platform identifier
+    # in its name
+    all_archives = list(save_dir.glob("*.tar.xz"))
+    platform_identifier = platform.upper()
+    platform_archives = [
+        p for p in all_archives if platform_identifier in p.name.upper()
+    ]
+    assert len(platform_archives) >= 1, (
+        f"No platform-specific archive containing '{platform_identifier}' "
+        f"found for {platform}. Archives found: {[p.name for p in all_archives]}"
     )
 
 
