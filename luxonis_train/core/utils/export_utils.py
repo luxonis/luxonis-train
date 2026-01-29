@@ -224,13 +224,14 @@ def hubai_export(
             response = client.convert.RVC3(**base_kwargs)
         elif cfg.platform == "rvc4":
             response = client.convert.RVC4(**base_kwargs)
+        elif cfg.platform == "hailo":
+            raise NotImplementedError(
+                "Hailo platform conversion is not yet supported."
+            )
         else:
             response = client.convert.RVC2(**base_kwargs)
 
-        if hasattr(response, "instance") and hasattr(
-            response.instance, "model_version_id"
-        ):
-            variant_id = str(response.instance.model_version_id)
+        variant_id = str(response.instance.model_version_id)
         downloaded_path = Path(response.downloaded_path)
 
         export_path = Path(export_path)

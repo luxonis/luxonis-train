@@ -606,7 +606,7 @@ class BlobconverterExportConfig(BaseModelExtraForbid):
 
 class HubAIExportConfig(BaseModelExtraForbid):
     active: bool = False
-    platform: Literal["rvc2", "rvc3", "rvc4"] | None = None
+    platform: Literal["rvc2", "rvc3", "rvc4", "hailo"] | None = None
     params: Params = Field(default_factory=dict)
     delete_remote_model: bool = False
 
@@ -616,6 +616,10 @@ class HubAIExportConfig(BaseModelExtraForbid):
             raise ValueError(
                 "The `platform` field is required when `hubai.active` is True. "
                 "Please specify a target platform: 'rvc2', 'rvc3', 'rvc4'."
+            )
+        if self.platform == "hailo":
+            raise NotImplementedError(
+                "Hailo platform conversion is not yet supported."
             )
         return self
 
@@ -650,11 +654,7 @@ class ExportConfig(ArchiveConfig):
     quantization_mode: Annotated[
         str,
         BeforeValidator(_validate_quantization_mode),
-        Field(
-            validation_alias=AliasChoices(
-                "quantization_mode", "target_precision", "data_type"
-            )
-        ),
+        Field(validation_alias=AliasChoices("quantization_mode", "data_type")),
     ] = "INT8_STANDARD"
     reverse_input_channels: bool | None = None
     scale_values: list[float] | None = None

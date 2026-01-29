@@ -490,19 +490,19 @@ training_strategy:
 
 Here you can define configuration for exporting.
 
-| Key                      | Type                                                                                                      | Default value     | Description                                                                                    |
-| ------------------------ | --------------------------------------------------------------------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------- |
-| `name`                   | `str \| None`                                                                                             | `None`            | Name of the exported model                                                                     |
-| `input_shape`            | `list\[int\] \| None`                                                                                     | `None`            | Input shape of the model. If not provided, inferred from the dataset                           |
-| `quantization_mode`      | `Literal["INT8_STANDARD", "INT8_ACCURACY_FOCUSED", "INT8_INT16_MIXED", "FP16_STANDARD", "FP32_STANDARD"]` | `"INT8_STANDARD"` | Quantization mode for model conversion. Aliases: `target_precision`, `data_type`               |
-| `reverse_input_channels` | `bool`                                                                                                    | `True`            | Whether to reverse the image channels in the exported model. Relevant for `BLOB` export        |
-| `scale_values`           | `list[float] \| None`                                                                                     | `None`            | What scale values to use for input normalization. If not provided, inferred from augmentations |
-| `mean_values`            | `list[float] \| None`                                                                                     | `None`            | What mean values to use for input normalization. If not provided, inferred from augmentations  |
-| `upload_to_run`          | `bool`                                                                                                    | `True`            | Whether to upload the exported files to tracked run as artifact                                |
-| `upload_url`             | `str \| None`                                                                                             | `None`            | Exported model will be uploaded to this URL if specified                                       |
-| `onnx`                   | `dict`                                                                                                    | `{}`              | Options specific for ONNX export. See [ONNX](#onnx) section for details                        |
-| `hubai`                  | `dict`                                                                                                    | `{}`              | Options for HubAI SDK conversion. See [HubAI](#hubai) section for details                      |
-| `blobconverter`          | `dict`                                                                                                    | `{}`              | Options for converting to BLOB format (deprecated). See [Blob](#blob-deprecated) section       |
+| Key                      | Type                  | Default value     | Description                                                                                    |
+| ------------------------ | --------------------- | ----------------- | ---------------------------------------------------------------------------------------------- |
+| `name`                   | `str \| None`         | `None`            | Name of the exported model                                                                     |
+| `input_shape`            | `list\[int\] \| None` | `None`            | Input shape of the model. If not provided, inferred from the dataset                           |
+| `quantization_mode`      | `str`                 | `"INT8_STANDARD"` | Quantization mode for model conversion. Alias: `data_type`                                     |
+| `reverse_input_channels` | `bool`                | `True`            | Whether to reverse the image channels in the exported model. Relevant for `BLOB` export        |
+| `scale_values`           | `list[float] \| None` | `None`            | What scale values to use for input normalization. If not provided, inferred from augmentations |
+| `mean_values`            | `list[float] \| None` | `None`            | What mean values to use for input normalization. If not provided, inferred from augmentations  |
+| `upload_to_run`          | `bool`                | `True`            | Whether to upload the exported files to tracked run as artifact                                |
+| `upload_url`             | `str \| None`         | `None`            | Exported model will be uploaded to this URL if specified                                       |
+| `onnx`                   | `dict`                | `{}`              | Options specific for ONNX export. See [ONNX](#onnx) section for details                        |
+| `hubai`                  | `dict`                | `{}`              | Options for HubAI SDK conversion. See [HubAI](#hubai) section for details                      |
+| `blobconverter`          | `dict`                | `{}`              | Options for converting to BLOB format (deprecated). See [Blob](#blob-deprecated) section       |
 
 ### `ONNX`
 
