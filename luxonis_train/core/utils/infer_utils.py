@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 import torch
 import torch.utils.data as torch_data
+from loguru import logger
 from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from luxonis_ml.typing import PathType
 from torch import Tensor
@@ -281,6 +282,23 @@ def infer_from_directory(
     inner_loader.dataset.delete_dataset(delete_local=True)
 
 
+class _LimitedLoader:
+    """Wrapper around a DataLoader that limits the number of batches."""
+
+    def __init__(self, loader: torch_data.DataLoader, n_batches: int) -> None:
+        self._loader = loader
+        self._n_batches = n_batches
+
+    def __iter__(self):
+        for i, batch in enumerate(self._loader):
+            if i >= self._n_batches:
+                break
+            yield batch
+
+    def __len__(self) -> int:
+        return min(self._n_batches, len(self._loader))
+
+
 def infer_from_dataset(
     model: "lxt.LuxonisModel",
     view: Literal["train", "val", "test"],
@@ -296,4 +314,12 @@ def infer_from_dataset(
     @param save_dir: The directory to save the visualizations to.
     """
     loader = model.pytorch_loaders[view]
-    infer_from_loader(model, loader, save_dir)
+    overfit_batches = model.cfg.trainer.overfit_batches
+    if overfit_batches > 0 and view == "train":
+        logger.warning(
+            f"Using limited loader with {overfit_batches} batches because "
+            "`trainer.overfit_batches` is set. If this is not intended, "
+            "remove `overfit_batches` from your config."
+        )
+        loader = _LimitedLoader(loader, overfit_batches)  # type: ignore[assignment]
+    infer_from_loader(model, loader, save_dir)  # type: ignore[arg-type]
