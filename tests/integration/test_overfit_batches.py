@@ -22,6 +22,8 @@ def test_overfit_batches_training(
     model = LuxonisModel(cfg, opts)
 
     assert model.cfg.trainer.overfit_batches == 1
-    assert model.pl_trainer.overfit_batches == 1
+    # Ignore because PyTorch Lightning's type stubs don't expose
+    # overfit_batches as a public attribute on the Trainer class
+    assert model.pl_trainer.overfit_batches == 1  # type: ignore[attr-defined]
 
     model.train()
