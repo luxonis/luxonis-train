@@ -1,7 +1,22 @@
+from collections.abc import Generator
+
+import pytest
+import torch
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import Params
 
 from luxonis_train.core import LuxonisModel
+
+
+@pytest.fixture(autouse=True)
+def reset_deterministic_state() -> Generator[None]:
+    """Reset PyTorch deterministic state after test.
+
+    Setting a seed auto-enables deterministic mode, which is global
+    state that would otherwise leak into the next performed tests.
+    """
+    yield
+    torch.use_deterministic_algorithms(False)
 
 
 def test_overfit_batches_training(
