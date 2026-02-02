@@ -24,8 +24,7 @@ trainer:
   n_log_images: 8
 
   callbacks:
-    - name: TestOnTrainEnd
-    - name: ExportOnTrainEnd
+    - name: ConvertOnTrainEnd
 
   optimizer:
     name: SGD

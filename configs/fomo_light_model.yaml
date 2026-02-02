@@ -27,5 +27,4 @@ trainer:
   gradient_clip_val: 10
 
   callbacks:
-    - name: ExportOnTrainEnd
-    - name: TestOnTrainEnd
+    - name: ConvertOnTrainEnd

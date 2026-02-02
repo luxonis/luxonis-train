@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import cast
 
 import pytest
 from luxonis_ml.data import LuxonisDataset
@@ -124,3 +125,78 @@ def test_config_invalid():
     }
     with pytest.raises(ValueError, match="Only one main metric"):
         Config.get_config(cfg)
+
+
+@pytest.mark.parametrize(
+    ("callbacks_input", "expected_active"),
+    [
+        (
+            [{"name": "ConvertOnTrainEnd"}],
+            {"ConvertOnTrainEnd": True},
+        ),
+        (
+            [{"name": "ExportOnTrainEnd"}],
+            {"ExportOnTrainEnd": True},
+        ),
+        (
+            [{"name": "ArchiveOnTrainEnd"}],
+            {"ArchiveOnTrainEnd": True},
+        ),
+        (
+            [{"name": "ExportOnTrainEnd"}, {"name": "ArchiveOnTrainEnd"}],
+            {"ExportOnTrainEnd": True, "ArchiveOnTrainEnd": True},
+        ),
+        (
+            [{"name": "ConvertOnTrainEnd"}, {"name": "ExportOnTrainEnd"}],
+            {"ConvertOnTrainEnd": True, "ExportOnTrainEnd": False},
+        ),
+        (
+            [{"name": "ConvertOnTrainEnd"}, {"name": "ArchiveOnTrainEnd"}],
+            {"ConvertOnTrainEnd": True, "ArchiveOnTrainEnd": False},
+        ),
+        (
+            [
+                {"name": "ConvertOnTrainEnd"},
+                {"name": "ExportOnTrainEnd"},
+                {"name": "ArchiveOnTrainEnd"},
+            ],
+            {
+                "ConvertOnTrainEnd": True,
+                "ExportOnTrainEnd": False,
+                "ArchiveOnTrainEnd": False,
+            },
+        ),
+        (
+            [
+                {"name": "ConvertOnTrainEnd"},
+                {"name": "ExportOnTrainEnd", "active": False},
+            ],
+            {"ConvertOnTrainEnd": True, "ExportOnTrainEnd": False},
+        ),
+    ],
+)
+def test_convert_callback_deactivates_export_and_archive(
+    callbacks_input: list[Params], expected_active: dict[str, bool]
+):
+    """Test that ConvertOnTrainEnd deactivates ExportOnTrainEnd and
+    ArchiveOnTrainEnd."""
+    cfg = Config.get_config(
+        cast(
+            Params,
+            {
+                "model": {"nodes": [{"name": "ResNet"}]},
+                "trainer": {"callbacks": callbacks_input},
+            },
+        )
+    )
+
+    callbacks_by_name = {cb.name: cb for cb in cfg.trainer.callbacks}
+
+    for callback_name, should_be_active in expected_active.items():
+        assert callback_name in callbacks_by_name, (
+            f"Callback '{callback_name}' not found in config"
+        )
+        assert callbacks_by_name[callback_name].active == should_be_active, (
+            f"Callback '{callback_name}' expected active={should_be_active}, "
+            f"got active={callbacks_by_name[callback_name].active}"
+        )

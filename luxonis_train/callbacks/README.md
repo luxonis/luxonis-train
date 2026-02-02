@@ -9,6 +9,7 @@ List of all supported callbacks.
 - [`PytorchLightning` Callbacks](#pytorchlightning-callbacks)
 - [`ExportOnTrainEnd`](#exportontrainend)
 - [`ArchiveOnTrainEnd`](#archiveontrainend)
+- [`ConvertOnTrainEnd`](#convertontrainend)
 - [`MetadataLogger`](#metadatalogger)
 - [`TestOnTrainEnd`](#testontrainend)
 - [`UploadCheckpoint`](#uploadcheckpoint)
@@ -44,6 +45,25 @@ Performs export on train end with best weights.
 ## `ArchiveOnTrainEnd`
 
 Callback to create an `NN Archive` at the end of the training.
+
+**Parameters:**
+
+| Key                    | Type                        | Default value | Description                                                                                                                                                     |
+| ---------------------- | --------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preferred_checkpoint` | `Literal["metric", "loss"]` | `"metric"`    | Which checkpoint should the callback use. If the preferred checkpoint is not available, the other option is used. If none is available, the callback is skipped |
+
+## `ConvertOnTrainEnd`
+
+Unified callback that exports, archives, and converts the archive to the target platform at the end of training. This is the recommended callback for model conversion as it combines the functionality of `ExportOnTrainEnd` and `ArchiveOnTrainEnd`, and also runs platform-specific conversions (blobconverter or HubAI SDK) if configured.
+
+**Steps:**
+
+<ol>
+  <li>Exports the model to ONNX</li>
+  <li>Creates an NN Archive from the ONNX</li>
+  <li>Runs blobconverter if `exporter.blobconverter.active` is `true`</li>
+  <li>Runs HubAI SDK conversion if `exporter.hubai.active` is `true`</li>
+</ol>
 
 **Parameters:**
 

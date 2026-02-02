@@ -46,8 +46,7 @@ trainer:
         decay: 0.9999
         use_dynamic_decay: True
         decay_tau: 2000
-    - name: ExportOnTrainEnd
-    - name: TestOnTrainEnd
+    - name: ConvertOnTrainEnd
 
   training_strategy:
     name: "TripleLRSGDStrategy"

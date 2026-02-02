@@ -887,6 +887,13 @@ class LuxonisLightningModule(pl.LightningModule):
                 artifact_keys.add(
                     f"{self.cfg.exporter.name or self.cfg.model.name}.onnx.tar.xz"
                 )
+            elif callback.name == "ConvertOnTrainEnd":
+                artifact_keys.add(
+                    f"{self.cfg.exporter.name or self.cfg.model.name}.onnx"
+                )
+                artifact_keys.add(
+                    f"{self.cfg.exporter.name or self.cfg.model.name}.onnx.tar.xz"
+                )
             elif callback.name == "TrainingProgressCallback":
                 metric_keys.update(
                     {

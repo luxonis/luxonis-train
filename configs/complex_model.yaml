@@ -116,8 +116,7 @@ trainer:
         patience: 3
         monitor: val/loss
         mode: min
-    - name: ExportOnTrainEnd
-    - name: ArchiveOnTrainEnd
+    - name: ConvertOnTrainEnd
     - name: TestOnTrainEnd
 
   optimizer:

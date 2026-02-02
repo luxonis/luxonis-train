@@ -28,7 +28,8 @@ You can create your own config or use/edit one of the examples.
   - [Trainer Tips](#trainer-tips)
 - [Exporter](#exporter)
   - [`ONNX`](#onnx)
-  - [Blob](#blob)
+  - [HubAI](#hubai)
+  - [Blob (Deprecated)](#blob-deprecated)
 - [Tuner](#tuner)
   - [Storage](#storage)
 - [ENVIRON](#environ)
@@ -356,9 +357,12 @@ trainer:
         patience: 3
         monitor: "val/loss"
         mode: "min"
-    - name: "ExportOnTrainEnd"
+    - name: "ConvertOnTrainEnd"
     - name: "TestOnTrainEnd"
 ```
+
+> [!NOTE]
+> `ConvertOnTrainEnd` is the recommended callback for model conversion. It combines export, archive, and platform-specific conversion (blobconverter/HubAI SDK) into a single step. Use this instead of separate `ExportOnTrainEnd` and `ArchiveOnTrainEnd` callbacks.
 
 ### Optimizer
 
@@ -487,18 +491,19 @@ training_strategy:
 
 Here you can define configuration for exporting.
 
-| Key                      | Type                              | Default value | Description                                                                                    |
-| ------------------------ | --------------------------------- | ------------- | ---------------------------------------------------------------------------------------------- |
-| `name`                   | `str \| None`                     | `None`        | Name of the exported model                                                                     |
-| `input_shape`            | `list\[int\] \| None`             | `None`        | Input shape of the model. If not provided, inferred from the dataset                           |
-| `data_type`              | `Literal["INT8", "FP16", "FP32"]` | `"FP16"`      | Data type of the exported model. Only used for conversion to BLOB                              |
-| `reverse_input_channels` | `bool`                            | `True`        | Whether to reverse the image channels in the exported model. Relevant for `BLOB` export        |
-| `scale_values`           | `list[float] \| None`             | `None`        | What scale values to use for input normalization. If not provided, inferred from augmentations |
-| `mean_values`            | `list[float] \| None`             | `None`        | What mean values to use for input normalization. If not provided, inferred from augmentations  |
-| `upload_to_run`          | `bool`                            | `True`        | Whether to upload the exported files to tracked run as artifact                                |
-| `upload_url`             | `str \| None`                     | `None`        | Exported model will be uploaded to this URL if specified                                       |
-| `onnx`                   | `dict`                            | `{}`          | Options specific for ONNX export. See [ONNX](#onnx) section for details                        |
-| `blobconverter`          | `dict`                            | `{}`          | Options for converting to BLOB format. See [Blob](#blob) section for details                   |
+| Key                      | Type                  | Default value     | Description                                                                                    |
+| ------------------------ | --------------------- | ----------------- | ---------------------------------------------------------------------------------------------- |
+| `name`                   | `str \| None`         | `None`            | Name of the exported model                                                                     |
+| `input_shape`            | `list\[int\] \| None` | `None`            | Input shape of the model. If not provided, inferred from the dataset                           |
+| `quantization_mode`      | `str`                 | `"INT8_STANDARD"` | Quantization mode for model conversion. Alias: `data_type`                                     |
+| `reverse_input_channels` | `bool`                | `True`            | Whether to reverse the image channels in the exported model. Relevant for `BLOB` export        |
+| `scale_values`           | `list[float] \| None` | `None`            | What scale values to use for input normalization. If not provided, inferred from augmentations |
+| `mean_values`            | `list[float] \| None` | `None`            | What mean values to use for input normalization. If not provided, inferred from augmentations  |
+| `upload_to_run`          | `bool`                | `True`            | Whether to upload the exported files to tracked run as artifact                                |
+| `upload_url`             | `str \| None`         | `None`            | Exported model will be uploaded to this URL if specified                                       |
+| `onnx`                   | `dict`                | `{}`              | Options specific for ONNX export. See [ONNX](#onnx) section for details                        |
+| `hubai`                  | `dict`                | `{}`              | Options for HubAI SDK conversion. See [HubAI](#hubai) section for details                      |
+| `blobconverter`          | `dict`                | `{}`              | Options for converting to BLOB format (deprecated). See [Blob](#blob-deprecated) section       |
 
 ### `ONNX`
 
@@ -511,7 +516,37 @@ Option specific for `ONNX` export.
 | `disable_onnx_simplification` | `bool`                   | `False`       | Disable ONNX simplification after export                                        |
 | `unique_onnx_initializers`    | `bool`                   | `False`       | Re-assign names to identifiers after export to ensure they are per-block unique |
 
-### `Blob`
+### `HubAI`
+
+The [HubAI SDK](https://github.com/luxonis/hubai-sdk) provides model conversion for multiple platforms (RVC2, RVC3, RVC4).
+This is the recommended way to convert models for deployment.
+
+Depending on the model name, the dataset and the image input shapes, either a new model, a new variant under this model, or a new version of a variant is uploaded to HubAI. The logical division between these concepts is described in detail in the [Luxonis Documentation](https://docs.luxonis.com/cloud/hubai/model-registry/concepts/).
+
+> [!NOTE]
+> Requires `HUBAI_API_KEY` environment variable to be set.
+
+| Key                   | Type                              | Default value | Description                                                       |
+| --------------------- | --------------------------------- | ------------- | ----------------------------------------------------------------- |
+| `active`              | `bool`                            | `False`       | Whether to use HubAI SDK for conversion                           |
+| `platform`            | `Literal["rvc2", "rvc3", "rvc4"]` | `None`        | Target platform for conversion. Required when `active` is `True`  |
+| `delete_remote_model` | `bool`                            | `False`       | Clean up by deleting remote uploaded variant in HubAI             |
+| `params`              | `dict`                            | `{}`          | Additional parameters passed to the HubAI SDK conversion function |
+
+**Example:**
+
+```yaml
+exporter:
+  quantization_mode: INT8_STANDARD
+  hubai:
+    active: true
+    platform: rvc4
+```
+
+### `Blob` (Deprecated)
+
+> [!WARNING]
+> `blobconverter` is deprecated and only supports RVC2 legacy conversion to `.blob`.
 
 | Key       | Type                                                             | Default value | Description                              |
 | --------- | ---------------------------------------------------------------- | ------------- | ---------------------------------------- |
@@ -555,6 +590,7 @@ Here you can specify options for tuning.
 > - `UploadCheckpoint`
 > - `ExportOnTrainEnd`
 > - `ArchiveOnTrainEnd`
+> - `ConvertOnTrainEnd`
 > - `TestOnTrainEnd`
 
 ### Storage
@@ -610,6 +646,7 @@ For more info on the variables, see [Credentials](../README.md#credentials).
 | `AWS_ACCESS_KEY_ID`        | `str \| None`                                              | `None`           |
 | `AWS_SECRET_ACCESS_KEY`    | `str \| None`                                              | `None`           |
 | `AWS_S3_ENDPOINT_URL`      | `str \| None`                                              | `None`           |
+| `HUBAI_API_KEY`            | `str \| None`                                              | `None`           |
 | `MLFLOW_CLOUDFLARE_ID`     | `str \| None`                                              | `None`           |
 | `MLFLOW_CLOUDFLARE_SECRET` | `str \| None`                                              | `None`           |
 | `MLFLOW_S3_BUCKET`         | `str \| None`                                              | `None`           |

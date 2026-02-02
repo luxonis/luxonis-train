@@ -401,6 +401,36 @@ def archive(
     )
 
 
+@app.command(group=export_group, sort_key=3)
+def convert(
+    opts: list[str] | None = None,
+    /,
+    *,
+    config: str | None = None,
+    save_dir: str | None = None,
+    weights: str | None = None,
+):
+    """Export, archive, and convert the model to target platform format.
+
+    This is a unified command that combines export, archive, and
+    platform conversion (RVC2/RVC3/RVC4) steps based on the
+    configuration.
+
+    @type config: str
+    @param config: Path to the configuration file.
+    @type save_dir: str
+    @param save_dir: Directory where all outputs will be saved. If not
+        specified, the default run save directory will be used.
+    @type weights: str
+    @param weights: Path to the model weights.
+    @type opts: list[str]
+    @param opts: A list of optional CLI overrides of the config file.
+    """
+    create_model(config, opts, weights=weights).convert(
+        weights=weights, save_dir=save_dir
+    )
+
+
 @upgrade_app.command()
 def config(
     config: Annotated[
