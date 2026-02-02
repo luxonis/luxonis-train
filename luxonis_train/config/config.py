@@ -454,6 +454,7 @@ class TrainerConfig(BaseModelExtraForbid):
     gradient_clip_algorithm: Literal["norm", "value"] | None = None
     use_weighted_sampler: bool = False
     epochs: PositiveInt = 100
+    overfit_batches: NonNegativeInt = 0
     resume_training: bool = False
     n_workers: NonNegativeInt = 4
     validation_interval: Literal[-1] | PositiveInt = 5
@@ -529,6 +530,16 @@ class TrainerConfig(BaseModelExtraForbid):
                 "`trainer.deterministic` to 'warn'."
             )
             self.deterministic = True
+        return self
+
+    @model_validator(mode="after")
+    def validate_overfit_batches(self) -> Self:
+        if self.overfit_batches > 0 and self.seed is None:
+            logger.warning(
+                "Using `overfit_batches` without setting `seed` may cause "
+                "different batches to be selected each run due to shuffling. "
+                "Consider setting `trainer.seed` for reproducible results."
+            )
         return self
 
     @model_validator(mode="after")
