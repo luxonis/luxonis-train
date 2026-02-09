@@ -71,7 +71,7 @@ class LCNetV3Block(nn.Module):
             stride=1,
             n_branches=n_branches,
             refine_block=AffineBlock(),
-            activation=AffineActivation() if stride != 2 else None,
+            activation=AffineActivation(),
             use_scale_layer=False,
         )
 

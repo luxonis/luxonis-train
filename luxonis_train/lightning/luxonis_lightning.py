@@ -597,6 +597,11 @@ class LuxonisLightningModule(pl.LightningModule):
                             )
 
                             bare_name = ".".join(old_name_parts)
+                            if bare_name not in order_mapping:
+                                logger.warning(
+                                    f"Skipping weight {bare_name} as it is not present in the execution order of the old weights."
+                                )
+                                continue
                             new_name = order_mapping[bare_name]
                             new_state_dict[f"{new_name}.{parameter_name}"] = (
                                 value
