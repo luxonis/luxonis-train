@@ -49,8 +49,7 @@ trainer:
         decay: 0.9999
         use_dynamic_decay: True
         decay_tau: 2000
-    - name: ExportOnTrainEnd
-    - name: TestOnTrainEnd
+    - name: ConvertOnTrainEnd
     # For best results, always accumulate gradients to
     # effectively use 64 batch size
     - name: GradientAccumulationScheduler

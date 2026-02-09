@@ -38,12 +38,17 @@ def test_callbacks(coco_dataset: LuxonisDataset, opts: Params, save_dir: Path):
                 "params": {"preferred_checkpoint": "loss"},
             },
             {
+                "name": "ConvertOnTrainEnd",
+                "params": {"preferred_checkpoint": "loss"},
+            },
+            {
                 "name": "GradCamCallback",
                 "params": {
                     "target_layer": 10,
                     "task": "segmentation",
                 },
             },
+            {"name": "TrainingProgressCallback"},
         ],
         "exporter.scale_values": [0.5, 0.5, 0.5],
         "exporter.mean_values": [0.5, 0.5, 0.5],

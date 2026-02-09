@@ -28,7 +28,8 @@ You can create your own config or use/edit one of the examples.
   - [Trainer Tips](#trainer-tips)
 - [Exporter](#exporter)
   - [`ONNX`](#onnx)
-  - [Blob](#blob)
+  - [HubAI](#hubai)
+  - [Blob (Deprecated)](#blob-deprecated)
 - [Tuner](#tuner)
   - [Storage](#storage)
 - [ENVIRON](#environ)
@@ -215,39 +216,40 @@ loader:
 
 Here you can change everything related to actual training of the model.
 
-| Key                       | Type                                           | Default value                          | Description                                                                                                                                                                                                  |
-| ------------------------- | ---------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `seed`                    | `int`                                          | `None`                                 | Seed for reproducibility                                                                                                                                                                                     |
-| `deterministic`           | `bool \| "warn" \| None`                       | `None`                                 | Whether PyTorch should use deterministic backend                                                                                                                                                             |
-| `batch_size`              | `int`                                          | `32`                                   | Batch size used for training                                                                                                                                                                                 |
-| `accumulate_grad_batches` | `int`                                          | `1`                                    | Number of batches for gradient accumulation                                                                                                                                                                  |
-| `precision`               | `Literal["16-mixed", "32"]`                    | `32`                                   | Controls training precision. `"16-mixed"` can **significantly speed up training** on supported GPUs.                                                                                                         |
-| `gradient_clip_val`       | `NonNegativeFloat \| None`                     | `None`                                 | Value for gradient clipping. If `None`, gradient clipping is disabled. Clipping can help prevent exploding gradients.                                                                                        |
-| `gradient_clip_algorithm` | `Literal["norm", "value"] \| None`             | `None`                                 | Algorithm to use for gradient clipping. Options are `"norm"` (clip by norm) or `"value"` (clip element-wise).                                                                                                |
-| `use_weighted_sampler`    | `bool`                                         | `False`                                | Whether to use `WeightedRandomSampler` for training, only works with classification tasks                                                                                                                    |
-| `epochs`                  | `int`                                          | `100`                                  | Number of training epochs                                                                                                                                                                                    |
-| `n_workers`               | `int`                                          | `4`                                    | Number of workers for data loading                                                                                                                                                                           |
-| `validation_interval`     | `int`                                          | `5`                                    | Frequency at which metrics and visualizations are computed on validation data                                                                                                                                |
-| `n_log_images`            | `int`                                          | `4`                                    | Maximum number of images to visualize and log per output head                                                                                                                                                |
-| `skip_last_batch`         | `bool`                                         | `True`                                 | Whether to skip last batch while training                                                                                                                                                                    |
-| `accelerator`             | `Literal["auto", "cpu", "gpu"]`                | `"auto"`                               | What accelerator to use for training                                                                                                                                                                         |
-| `devices`                 | `int \| list[int] \| str`                      | `"auto"`                               | Either specify how many devices to use (int), list specific devices, or use "auto" for automatic configuration based on the selected accelerator                                                             |
-| `matmul_precision`        | `Literal["medium", "high", "highest"] \| None` | `None`                                 | Sets the internal precision of float32 matrix multiplications                                                                                                                                                |
-| `strategy`                | `Literal["auto", "ddp"]`                       | `"auto"`                               | What strategy to use for training                                                                                                                                                                            |
-| `n_sanity_val_steps`      | `int`                                          | `2`                                    | Number of sanity validation steps performed before training                                                                                                                                                  |
-| `profiler`                | `Literal["simple", "advanced"] \| None`        | `None`                                 | PL profiler for GPU/CPU/RAM utilization analysis                                                                                                                                                             |
-| `pin_memory`              | `bool`                                         | `True`                                 | Whether to pin memory in the `DataLoader`                                                                                                                                                                    |
-| `save_top_k`              | `-1 \| NonNegativeInt`                         | `3`                                    | Save top K checkpoints based on validation loss when training                                                                                                                                                |
-| `n_validation_batches`    | `PositiveInt \| None`                          | `None`                                 | Limits the number of validation/test batches and makes the val/test loaders deterministic                                                                                                                    |
-| `smart_cfg_auto_populate` | `bool`                                         | `True`                                 | Automatically populate sensible default values for missing config fields and log warnings. See [Trainer Tips](#trainer-tips) for more details                                                                |
-| `resume_training`         | `bool`                                         | `False`                                | Whether to resume training from a checkpoint. See [Trainer Tips](#trainer-tips) for more details                                                                                                             |
-| `preprocessing`           | `dict`                                         | `{}`                                   | Configuration for image preprocessing and augmentations. [See preprocessing](#preprocessing) for more details                                                                                                |
-| `callbacks`               | `list`                                         | `[]`                                   | List of callback configurations to use during training. See [Callbacks](#callbacks) section for details and examples                                                                                         |
-| `optimizer`               | `dict`                                         | `{"name": "Adam", "params": {}}`       | What optimizer to use for training. See [Optimizer](#optimizer) section for details and examples                                                                                                             |
-| `scheduler`               | `dict`                                         | `{"name": "ConstantLR", "params": {}}` | What scheduler to use for training. See [Scheduler](#scheduler) section for details and examples                                                                                                             |
-| `training_strategy`       | `dict`                                         | `{}`                                   | Defines the training strategy to be used. See [Training Strategy](#training-strategy) section for details and examples                                                                                       |
-| `log_sub_losses`          | `bool`                                         | `True`                                 | Log all sub-losses. If set to False, only the main loss will be logged.                                                                                                                                      |
-| `log_sub_metrics`         | `bool`                                         | `True`                                 | Log all sub-metrics. If set to False, only the main metric will be logged. For example, if True, metrics like mAP and F1 score will be logged while sub-metrics like mAP_small and mAR_small will be skipped |
+| Key                       | Type                                           | Default value                          | Description                                                                                                                                                                                                                                                 |
+| ------------------------- | ---------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `seed`                    | `int`                                          | `None`                                 | Seed for reproducibility                                                                                                                                                                                                                                    |
+| `deterministic`           | `bool \| "warn" \| None`                       | `None`                                 | Whether PyTorch should use deterministic backend                                                                                                                                                                                                            |
+| `batch_size`              | `int`                                          | `32`                                   | Batch size used for training                                                                                                                                                                                                                                |
+| `accumulate_grad_batches` | `int`                                          | `1`                                    | Number of batches for gradient accumulation                                                                                                                                                                                                                 |
+| `precision`               | `Literal["16-mixed", "32"]`                    | `32`                                   | Controls training precision. `"16-mixed"` can **significantly speed up training** on supported GPUs.                                                                                                                                                        |
+| `gradient_clip_val`       | `NonNegativeFloat \| None`                     | `None`                                 | Value for gradient clipping. If `None`, gradient clipping is disabled. Clipping can help prevent exploding gradients.                                                                                                                                       |
+| `gradient_clip_algorithm` | `Literal["norm", "value"] \| None`             | `None`                                 | Algorithm to use for gradient clipping. Options are `"norm"` (clip by norm) or `"value"` (clip element-wise).                                                                                                                                               |
+| `use_weighted_sampler`    | `bool`                                         | `False`                                | Whether to use `WeightedRandomSampler` for training, only works with classification tasks                                                                                                                                                                   |
+| `epochs`                  | `int`                                          | `100`                                  | Number of training epochs                                                                                                                                                                                                                                   |
+| `overfit_batches`         | `int`                                          | `0`                                    | Number of batches to overfit on for debugging. Training and validation each use consistent batches across epochs but draw from different sets of data. Useful for testing visualizers, configs, or verifying model learning. Set `seed` for reproducibility |
+| `n_workers`               | `int`                                          | `4`                                    | Number of workers for data loading                                                                                                                                                                                                                          |
+| `validation_interval`     | `int`                                          | `5`                                    | Frequency at which metrics and visualizations are computed on validation data                                                                                                                                                                               |
+| `n_log_images`            | `int`                                          | `4`                                    | Maximum number of images to visualize and log per output head                                                                                                                                                                                               |
+| `skip_last_batch`         | `bool`                                         | `True`                                 | Whether to skip last batch while training                                                                                                                                                                                                                   |
+| `accelerator`             | `Literal["auto", "cpu", "gpu"]`                | `"auto"`                               | What accelerator to use for training                                                                                                                                                                                                                        |
+| `devices`                 | `int \| list[int] \| str`                      | `"auto"`                               | Either specify how many devices to use (int), list specific devices, or use "auto" for automatic configuration based on the selected accelerator                                                                                                            |
+| `matmul_precision`        | `Literal["medium", "high", "highest"] \| None` | `None`                                 | Sets the internal precision of float32 matrix multiplications                                                                                                                                                                                               |
+| `strategy`                | `Literal["auto", "ddp"]`                       | `"auto"`                               | What strategy to use for training                                                                                                                                                                                                                           |
+| `n_sanity_val_steps`      | `int`                                          | `2`                                    | Number of sanity validation steps performed before training                                                                                                                                                                                                 |
+| `profiler`                | `Literal["simple", "advanced"] \| None`        | `None`                                 | PL profiler for GPU/CPU/RAM utilization analysis                                                                                                                                                                                                            |
+| `pin_memory`              | `bool`                                         | `True`                                 | Whether to pin memory in the `DataLoader`                                                                                                                                                                                                                   |
+| `save_top_k`              | `-1 \| NonNegativeInt`                         | `3`                                    | Save top K checkpoints based on validation loss when training                                                                                                                                                                                               |
+| `n_validation_batches`    | `PositiveInt \| None`                          | `None`                                 | Limits the number of validation/test batches and makes the val/test loaders deterministic                                                                                                                                                                   |
+| `smart_cfg_auto_populate` | `bool`                                         | `True`                                 | Automatically populate sensible default values for missing config fields and log warnings. See [Trainer Tips](#trainer-tips) for more details                                                                                                               |
+| `resume_training`         | `bool`                                         | `False`                                | Whether to resume training from a checkpoint. See [Trainer Tips](#trainer-tips) for more details                                                                                                                                                            |
+| `preprocessing`           | `dict`                                         | `{}`                                   | Configuration for image preprocessing and augmentations. [See preprocessing](#preprocessing) for more details                                                                                                                                               |
+| `callbacks`               | `list`                                         | `[]`                                   | List of callback configurations to use during training. See [Callbacks](#callbacks) section for details and examples                                                                                                                                        |
+| `optimizer`               | `dict`                                         | `{"name": "Adam", "params": {}}`       | What optimizer to use for training. See [Optimizer](#optimizer) section for details and examples                                                                                                                                                            |
+| `scheduler`               | `dict`                                         | `{"name": "ConstantLR", "params": {}}` | What scheduler to use for training. See [Scheduler](#scheduler) section for details and examples                                                                                                                                                            |
+| `training_strategy`       | `dict`                                         | `{}`                                   | Defines the training strategy to be used. See [Training Strategy](#training-strategy) section for details and examples                                                                                                                                      |
+| `log_sub_losses`          | `bool`                                         | `True`                                 | Log all sub-losses. If set to False, only the main loss will be logged.                                                                                                                                                                                     |
+| `log_sub_metrics`         | `bool`                                         | `True`                                 | Log all sub-metrics. If set to False, only the main metric will be logged. For example, if True, metrics like mAP and F1 score will be logged while sub-metrics like mAP_small and mAR_small will be skipped                                                |
 
 ```yaml
 
@@ -355,9 +357,12 @@ trainer:
         patience: 3
         monitor: "val/loss"
         mode: "min"
-    - name: "ExportOnTrainEnd"
+    - name: "ConvertOnTrainEnd"
     - name: "TestOnTrainEnd"
 ```
+
+> [!NOTE]
+> `ConvertOnTrainEnd` is the recommended callback for model conversion. It combines export, archive, and platform-specific conversion (blobconverter/HubAI SDK) into a single step. Use this instead of separate `ExportOnTrainEnd` and `ArchiveOnTrainEnd` callbacks.
 
 ### Optimizer
 
@@ -486,30 +491,62 @@ training_strategy:
 
 Here you can define configuration for exporting.
 
-| Key                      | Type                              | Default value | Description                                                                                    |
-| ------------------------ | --------------------------------- | ------------- | ---------------------------------------------------------------------------------------------- |
-| `name`                   | `str \| None`                     | `None`        | Name of the exported model                                                                     |
-| `input_shape`            | `list\[int\] \| None`             | `None`        | Input shape of the model. If not provided, inferred from the dataset                           |
-| `data_type`              | `Literal["INT8", "FP16", "FP32"]` | `"FP16"`      | Data type of the exported model. Only used for conversion to BLOB                              |
-| `reverse_input_channels` | `bool`                            | `True`        | Whether to reverse the image channels in the exported model. Relevant for `BLOB` export        |
-| `scale_values`           | `list[float] \| None`             | `None`        | What scale values to use for input normalization. If not provided, inferred from augmentations |
-| `mean_values`            | `list[float] \| None`             | `None`        | What mean values to use for input normalization. If not provided, inferred from augmentations  |
-| `upload_to_run`          | `bool`                            | `True`        | Whether to upload the exported files to tracked run as artifact                                |
-| `upload_url`             | `str \| None`                     | `None`        | Exported model will be uploaded to this URL if specified                                       |
-| `onnx`                   | `dict`                            | `{}`          | Options specific for ONNX export. See [ONNX](#onnx) section for details                        |
-| `blobconverter`          | `dict`                            | `{}`          | Options for converting to BLOB format. See [Blob](#blob) section for details                   |
+| Key                      | Type                  | Default value     | Description                                                                                    |
+| ------------------------ | --------------------- | ----------------- | ---------------------------------------------------------------------------------------------- |
+| `name`                   | `str \| None`         | `None`            | Name of the exported model                                                                     |
+| `input_shape`            | `list\[int\] \| None` | `None`            | Input shape of the model. If not provided, inferred from the dataset                           |
+| `quantization_mode`      | `str`                 | `"INT8_STANDARD"` | Quantization mode for model conversion. Alias: `data_type`                                     |
+| `reverse_input_channels` | `bool`                | `True`            | Whether to reverse the image channels in the exported model. Relevant for `BLOB` export        |
+| `scale_values`           | `list[float] \| None` | `None`            | What scale values to use for input normalization. If not provided, inferred from augmentations |
+| `mean_values`            | `list[float] \| None` | `None`            | What mean values to use for input normalization. If not provided, inferred from augmentations  |
+| `upload_to_run`          | `bool`                | `True`            | Whether to upload the exported files to tracked run as artifact                                |
+| `upload_url`             | `str \| None`         | `None`            | Exported model will be uploaded to this URL if specified                                       |
+| `onnx`                   | `dict`                | `{}`              | Options specific for ONNX export. See [ONNX](#onnx) section for details                        |
+| `hubai`                  | `dict`                | `{}`              | Options for HubAI SDK conversion. See [HubAI](#hubai) section for details                      |
+| `blobconverter`          | `dict`                | `{}`              | Options for converting to BLOB format (deprecated). See [Blob](#blob-deprecated) section       |
 
 ### `ONNX`
 
 Option specific for `ONNX` export.
 
-| Key                           | Type                     | Default value | Description                              |
-| ----------------------------- | ------------------------ | ------------- | ---------------------------------------- |
-| `opset_version`               | `int`                    | `12`          | Which `ONNX` opset version to use        |
-| `dynamic_axes`                | `dict[str, Any] \| None` | `None`        | Whether to specify dynamic axes          |
-| `disable_onnx_simplification` | `bool`                   | `False`       | Disable ONNX simplification after export |
+| Key                           | Type                     | Default value | Description                                                                     |
+| ----------------------------- | ------------------------ | ------------- | ------------------------------------------------------------------------------- |
+| `opset_version`               | `int`                    | `12`          | Which `ONNX` opset version to use                                               |
+| `dynamic_axes`                | `dict[str, Any] \| None` | `None`        | Whether to specify dynamic axes                                                 |
+| `disable_onnx_simplification` | `bool`                   | `False`       | Disable ONNX simplification after export                                        |
+| `unique_onnx_initializers`    | `bool`                   | `False`       | Re-assign names to identifiers after export to ensure they are per-block unique |
 
-### `Blob`
+### `HubAI`
+
+The [HubAI SDK](https://github.com/luxonis/hubai-sdk) provides model conversion for multiple platforms (RVC2, RVC3, RVC4).
+This is the recommended way to convert models for deployment.
+
+Depending on the model name, the dataset and the image input shapes, either a new model, a new variant under this model, or a new version of a variant is uploaded to HubAI. The logical division between these concepts is described in detail in the [Luxonis Documentation](https://docs.luxonis.com/cloud/hubai/model-registry/concepts/).
+
+> [!NOTE]
+> Requires `HUBAI_API_KEY` environment variable to be set.
+
+| Key                   | Type                              | Default value | Description                                                       |
+| --------------------- | --------------------------------- | ------------- | ----------------------------------------------------------------- |
+| `active`              | `bool`                            | `False`       | Whether to use HubAI SDK for conversion                           |
+| `platform`            | `Literal["rvc2", "rvc3", "rvc4"]` | `None`        | Target platform for conversion. Required when `active` is `True`  |
+| `delete_remote_model` | `bool`                            | `False`       | Clean up by deleting remote uploaded variant in HubAI             |
+| `params`              | `dict`                            | `{}`          | Additional parameters passed to the HubAI SDK conversion function |
+
+**Example:**
+
+```yaml
+exporter:
+  quantization_mode: INT8_STANDARD
+  hubai:
+    active: true
+    platform: rvc4
+```
+
+### `Blob` (Deprecated)
+
+> [!WARNING]
+> `blobconverter` is deprecated and only supports RVC2 legacy conversion to `.blob`.
 
 | Key       | Type                                                             | Default value | Description                              |
 | --------- | ---------------------------------------------------------------- | ------------- | ---------------------------------------- |
@@ -553,6 +590,7 @@ Here you can specify options for tuning.
 > - `UploadCheckpoint`
 > - `ExportOnTrainEnd`
 > - `ArchiveOnTrainEnd`
+> - `ConvertOnTrainEnd`
 > - `TestOnTrainEnd`
 
 ### Storage
@@ -608,6 +646,7 @@ For more info on the variables, see [Credentials](../README.md#credentials).
 | `AWS_ACCESS_KEY_ID`        | `str \| None`                                              | `None`           |
 | `AWS_SECRET_ACCESS_KEY`    | `str \| None`                                              | `None`           |
 | `AWS_S3_ENDPOINT_URL`      | `str \| None`                                              | `None`           |
+| `HUBAI_API_KEY`            | `str \| None`                                              | `None`           |
 | `MLFLOW_CLOUDFLARE_ID`     | `str \| None`                                              | `None`           |
 | `MLFLOW_CLOUDFLARE_SECRET` | `str \| None`                                              | `None`           |
 | `MLFLOW_S3_BUCKET`         | `str \| None`                                              | `None`           |

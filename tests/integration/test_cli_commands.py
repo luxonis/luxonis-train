@@ -15,6 +15,7 @@ from pytest_subtests import SubTests
 from luxonis_train.__main__ import (
     _yield_visualizations,
     archive,
+    convert,
     export,
     inspect,
     train,
@@ -42,6 +43,7 @@ def test_cli_command_success(
         (export, {"save_path": tmp_path}),
         (_yield_visualizations, {}),
         (archive, {"executable": tmp_path / "export.onnx"}),
+        (convert, {"save_dir": tmp_path / "convert_output"}),
     ]:
         with subtests.test(command.__name__):
             res = command(
@@ -97,6 +99,7 @@ def test_cli_command_success(
             },
         ),
         (archive, {"config": "nonexistent.yaml"}),
+        (convert, {"config": "nonexistent.yaml"}),
     ],
 )
 def test_cli_command_failure(

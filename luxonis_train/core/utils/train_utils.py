@@ -25,5 +25,6 @@ def create_trainer(cfg: TrainerConfig, **kwargs: Any) -> pl.Trainer:
         deterministic=cfg.deterministic,
         gradient_clip_val=cfg.gradient_clip_val,
         gradient_clip_algorithm=cfg.gradient_clip_algorithm,
+        overfit_batches=cfg.overfit_batches,
         **kwargs,
     )

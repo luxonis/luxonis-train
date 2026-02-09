@@ -9,11 +9,13 @@ List of all supported callbacks.
 - [`PytorchLightning` Callbacks](#pytorchlightning-callbacks)
 - [`ExportOnTrainEnd`](#exportontrainend)
 - [`ArchiveOnTrainEnd`](#archiveontrainend)
+- [`ConvertOnTrainEnd`](#convertontrainend)
 - [`MetadataLogger`](#metadatalogger)
 - [`TestOnTrainEnd`](#testontrainend)
 - [`UploadCheckpoint`](#uploadcheckpoint)
 - [`GradCamCallback`](#gradcamcallback)
 - [`EMACallback`](#emacallback)
+- [`TrainingProgressCallback`](#trainingprogresscallback)
 
 ## `PytorchLightning` Callbacks
 
@@ -43,6 +45,25 @@ Performs export on train end with best weights.
 ## `ArchiveOnTrainEnd`
 
 Callback to create an `NN Archive` at the end of the training.
+
+**Parameters:**
+
+| Key                    | Type                        | Default value | Description                                                                                                                                                     |
+| ---------------------- | --------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preferred_checkpoint` | `Literal["metric", "loss"]` | `"metric"`    | Which checkpoint should the callback use. If the preferred checkpoint is not available, the other option is used. If none is available, the callback is skipped |
+
+## `ConvertOnTrainEnd`
+
+Unified callback that exports, archives, and converts the archive to the target platform at the end of training. This is the recommended callback for model conversion as it combines the functionality of `ExportOnTrainEnd` and `ArchiveOnTrainEnd`, and also runs platform-specific conversions (blobconverter or HubAI SDK) if configured.
+
+**Steps:**
+
+<ol>
+  <li>Exports the model to ONNX</li>
+  <li>Creates an NN Archive from the ONNX</li>
+  <li>Runs blobconverter if `exporter.blobconverter.active` is `true`</li>
+  <li>Runs HubAI SDK conversion if `exporter.hubai.active` is `true`</li>
+</ol>
 
 **Parameters:**
 
@@ -100,3 +121,21 @@ A callback that maintains an exponential moving average (EMA) of the model's par
 | `decay`             | `float` | `0.5`         | The decay factor for updating the EMA. Higher values yield slower updates.         |
 | `use_dynamic_decay` | `bool`  | `True`        | If enabled, adjusts the decay factor dynamically based on the training iteration.  |
 | `decay_tau`         | `float` | `2000`        | The time constant (tau) for dynamic decay, influencing how quickly the EMA adapts. |
+
+## `TrainingProgressCallback`
+
+Callback that publishes training progress and timing metrics.
+
+**Parameters:**
+
+| Key                   | Type  | Default value | Description                                                                                                             |
+| --------------------- | ----- | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `log_every_n_batches` | `int` | `1`           | How often to log progress metrics (every N batches). 1 for real-time updates, higher values to reduce logging overhead. |
+
+**Published Metrics:**
+
+| Metric Key                     | Description                                   |
+| ------------------------------ | --------------------------------------------- |
+| `train/epoch_progress_percent` | Percentage (0-100) of current epoch completed |
+| `train/epoch_duration_sec`     | Time elapsed so far in current epoch          |
+| `train/epoch_completion_sec`   | Total duration of completed epoch in seconds  |

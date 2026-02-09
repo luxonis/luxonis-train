@@ -469,6 +469,7 @@ class TrainerConfig(BaseModelExtraForbid):
     gradient_clip_algorithm: Literal["norm", "value"] | None = None
     use_weighted_sampler: bool = False
     epochs: PositiveInt = 100
+    overfit_batches: NonNegativeInt = 0
     resume_training: bool = False
     n_workers: NonNegativeInt = 4
     validation_interval: Literal[-1] | PositiveInt = 5
@@ -547,6 +548,16 @@ class TrainerConfig(BaseModelExtraForbid):
         return self
 
     @model_validator(mode="after")
+    def validate_overfit_batches(self) -> Self:
+        if self.overfit_batches > 0 and self.seed is None:
+            logger.warning(
+                "Using `overfit_batches` without setting `seed` may cause "
+                "different batches to be selected each run due to shuffling. "
+                "Consider setting `trainer.seed` for reproducible results."
+            )
+        return self
+
+    @model_validator(mode="after")
     def check_n_workes_platform(self) -> Self:
         if (
             sys.platform == "win32" or sys.platform == "darwin"
@@ -574,11 +585,41 @@ class TrainerConfig(BaseModelExtraForbid):
         self.callbacks.sort(key=lambda v: 0 if v.name == "EMACallback" else 1)
         return self
 
+    @model_validator(mode="after")
+    def check_convert_callbacks(self) -> Self:
+        callback_names = {cb.name for cb in self.callbacks if cb.active}
+        has_convert = "ConvertOnTrainEnd" in callback_names
+        has_export = "ExportOnTrainEnd" in callback_names
+        has_archive = "ArchiveOnTrainEnd" in callback_names
+
+        if has_convert and (has_export or has_archive):
+            redundant = []
+            for cb in self.callbacks:
+                if (
+                    cb.name in ("ExportOnTrainEnd", "ArchiveOnTrainEnd")
+                    and cb.active
+                ):
+                    cb.active = False
+                    redundant.append(cb.name)
+            if redundant:
+                logger.warning(
+                    f"Deactivated {redundant} because 'ConvertOnTrainEnd' is active "
+                    "and already includes export and archive functionality."
+                )
+        elif has_export and has_archive:
+            logger.warning(
+                "Both 'ExportOnTrainEnd' and 'ArchiveOnTrainEnd' callbacks are set. "
+                "Consider using 'ConvertOnTrainEnd' instead, which combines both "
+                "and also handles platform-specific conversions (blobconverter/HubAI SDK)."
+            )
+        return self
+
 
 class OnnxExportConfig(BaseModelExtraForbid):
     opset_version: PositiveInt = 16
     dynamic_axes: Params | None = None
     disable_onnx_simplification: bool = False
+    unique_onnx_initializers: bool = False
 
 
 class BlobconverterExportConfig(BaseModelExtraForbid):
@@ -589,16 +630,58 @@ class BlobconverterExportConfig(BaseModelExtraForbid):
     )
 
 
+class HubAIExportConfig(BaseModelExtraForbid):
+    active: bool = False
+    platform: Literal["rvc2", "rvc3", "rvc4", "hailo"] | None = None
+    params: Params = Field(default_factory=dict)
+    delete_remote_model: bool = False
+
+    @model_validator(mode="after")
+    def validate_platform(self) -> Self:
+        if self.active and self.platform is None:
+            raise ValueError(
+                "The `platform` field is required when `hubai.active` is True. "
+                "Please specify a target platform: 'rvc2', 'rvc3', 'rvc4'."
+            )
+        if self.platform == "hailo":
+            raise NotImplementedError(
+                "Hailo platform conversion is not yet supported."
+            )
+        return self
+
+
 class ArchiveConfig(BaseModelExtraForbid):
     name: str | None = None
     upload_to_run: bool = True
     upload_url: str | None = None
 
 
+def _validate_quantization_mode(value: str) -> str:
+    from hubai_sdk.utils.hubai_models import EnumQuantizationMode
+
+    shorthand_map = {
+        "FP16": "FP16_STANDARD",
+        "FP32": "FP32_STANDARD",
+    }
+    value = shorthand_map.get(value.upper(), value)
+
+    valid_modes = {e.value for e in EnumQuantizationMode}
+    if value not in valid_modes:
+        raise ValueError(
+            f"Invalid quantization_mode: '{value}'. "
+            f"Valid options are: {sorted(valid_modes)}"
+        )
+    return value
+
+
 class ExportConfig(ArchiveConfig):
     name: str | None = None
     input_shape: list[int] | None = None
-    data_type: Literal["int8", "fp16", "fp32"] = "fp16"
+    quantization_mode: Annotated[
+        str,
+        BeforeValidator(_validate_quantization_mode),
+        Field(validation_alias=AliasChoices("quantization_mode", "data_type")),
+    ] = "INT8_STANDARD"
     reverse_input_channels: bool | None = None
     scale_values: list[float] | None = None
     mean_values: list[float] | None = None
@@ -606,6 +689,7 @@ class ExportConfig(ArchiveConfig):
     blobconverter: BlobconverterExportConfig = Field(
         default_factory=BlobconverterExportConfig
     )
+    hubai: HubAIExportConfig = Field(default_factory=HubAIExportConfig)
 
     @field_validator("scale_values", "mean_values", mode="before")
     @classmethod
@@ -876,8 +960,7 @@ class Config(LuxonisConfig):
         default_callbacks = [
             "UploadCheckpoint",
             "TestOnTrainEnd",
-            "ExportOnTrainEnd",
-            "ArchiveOnTrainEnd",
+            "ConvertOnTrainEnd",
         ]
 
         for cb_name in default_callbacks:
