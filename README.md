@@ -90,6 +90,7 @@ Get started with `LuxonisTrain` in just a few steps:
 - [🧠 Inference](#inference)
 - [🤖 Exporting](#exporting)
 - [🗂️ NN Archive](#nn-archive)
+- [🔁 Convert](#convert)
 - [🔬 Tuning](#tuning)
 - [🎨 Customizations](#customizations)
 - [📚 Tutorials and Examples](#tutorials-and-examples)
@@ -128,8 +129,9 @@ The CLI is the most straightforward way how to use `LuxonisTrain`. The CLI provi
 - `train` - Start the training process
 - `test` - Test the model on a specific dataset view
 - `infer` - Run inference on a dataset, image directory, or a video file.
-- `export` - Export the model to either `ONNX` or `BLOB` format that can be run on edge devices
-- `archive` - Create an `NN Archive` file that can be used with our `DepthAI` API (coming soon)
+- `export` - Export the model to `ONNX`
+- `archive` - Create an `NN Archive` (`.tar.xz`) from an `ONNX` model
+- `convert` - Export + archive + platform-specific conversion (RVC2/RVC3/RVC4)
 - `tune` - Tune the hyperparameters of the model for better performance
 - `inspect` - Inspect the dataset you are using and visualize the annotations
 - `annotate` - Annotate a directory using the model’s predictions and generate a new LDF.
@@ -186,8 +188,7 @@ trainer:
       - name: Flip
 
   callbacks:
-    - name: ExportOnTrainEnd
-    - name: ArchiveOnTrainEnd
+    - name: ConvertOnTrainEnd
     - name: TestOnTrainEnd
 
   optimizer:
@@ -469,14 +470,9 @@ model.infer(
 
 ## 🤖 Exporting
 
-Export your trained models to formats suitable for deployment on edge devices.
+Export your trained models to `ONNX` for downstream conversion and deployment.
 
-Supported formats:
-
-- **ONNX**: Open Neural Network Exchange format.
-- **BLOB**: Format compatible with OAK-D cameras.
-
-To configure the exporter, you can specify the [exporter](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#exporter) section in the config file.
+To configure the exporter, you can specify the [exporter](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#exporter) section in the config file. Note that `exporter.hubai` and `exporter.blobconverter` are only used by `convert` (or `ConvertOnTrainEnd`), not by `export` alone.
 
 You can see an example export configuration [here](https://github.com/luxonis/luxonis-train/blob/main/configs/example_export.yaml).
 
@@ -495,7 +491,7 @@ model = LuxonisModel("configs/example_export.yaml")
 model.export(weights="path/to/weights.ckpt")
 ```
 
-Model export can be run automatically at the end of the training by using the `ExportOnTrainEnd` callback.
+Model export can be run automatically at the end of the training by using the `ExportOnTrainEnd` callback. For a full export + archive + platform conversion pipeline, use `ConvertOnTrainEnd`.
 
 The exported models are saved in the export directory within your `output` folder.
 
@@ -503,7 +499,7 @@ The exported models are saved in the export directory within your `output` folde
 
 ## 🗂️ NN Archive
 
-Create an `NN Archive` file for easy deployment with the `DepthAI` API.
+Create an `NN Archive` (`.tar.xz`) file for easy deployment with the `DepthAI` API. If you do not provide an `ONNX` executable, the model is exported to `ONNX` first.
 
 The archive contains the exported model together with all the metadata needed for running the model.
 
@@ -525,6 +521,35 @@ model.archive(weights="path/to/checkpoint.ckpt")
 ```
 
 The archive can be created automatically at the end of the training by using the `ArchiveOnTrainEnd` callback.
+
+<a name="convert"></a>
+
+## 🔁 Convert
+
+Convert is the unified flow for deployment. It performs:
+
+1. **Export**: `.pt/.ckpt` -> `.onnx`
+1. **Archive**: `.onnx` -> `.tar.xz` (NN Archive)
+1. **Platform-specific conversion** (optional): NN Archive -> platform NN Archive via HubAI SDK (recommended) or `blobconverter` (deprecated, RVC2 legacy `.blob`)
+
+Configure conversion via the [exporter](https://github.com/luxonis/luxonis-train/blob/main/configs/README.md#exporter) section (`exporter.hubai` or `exporter.blobconverter`).
+
+**CLI:**
+
+```bash
+luxonis_train convert --config configs/detection_light_model.yaml --weights path/to/checkpoint.ckpt
+```
+
+**Python API:**
+
+```python
+from luxonis_train import LuxonisModel
+
+model = LuxonisModel("configs/detection_light_model.yaml")
+model.convert(weights="path/to/checkpoint.ckpt")
+```
+
+Convert can be run automatically at the end of the training by using the `ConvertOnTrainEnd` callback.
 
 <a name="tuning"></a>
 

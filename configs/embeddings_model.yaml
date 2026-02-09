@@ -41,4 +41,4 @@ trainer:
   n_log_images: 8
 
   callbacks:
-    - name: ExportOnTrainEnd
+    - name: ConvertOnTrainEnd
