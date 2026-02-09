@@ -35,6 +35,7 @@ List of supported callbacks from `lightning.pytorch`.
 ## `ExportOnTrainEnd`
 
 Performs export on train end with best weights.
+This callback only exports to ONNX; it does not run HubAI or blobconverter conversions.
 
 **Parameters:**
 
