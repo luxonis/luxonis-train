@@ -25,7 +25,7 @@ class DummyOCRCTCHead(OCRCTCHead, register=False):
                 self.char_to_int = mapping
 
             def __call__(self, targets: Tensor) -> Tensor:
-                return targets.view(-1)
+                return targets
 
         self._encoder = DummyEncoder(mapping)
 

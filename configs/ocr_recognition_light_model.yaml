@@ -9,6 +9,8 @@ model:
       alphabet: english
       max_text_len: 40
       ignore_unknown: true
+      loss_params:
+        use_focal_loss: false
 
 loader:
   params:
@@ -22,7 +24,10 @@ trainer:
       active: true
 
   batch_size: 4
-  epochs: 400
+  accumulate_grad_batches: 2
+  gradient_clip_val: 1.0
+  gradient_clip_algorithm: norm
+  epochs: 200
   n_workers: 4
   validation_interval: 10
   n_log_images: 8
@@ -31,9 +36,13 @@ trainer:
     - name: ConvertOnTrainEnd
 
   optimizer:
-    name: Adam
+    name: AdamW
     params:
-      lr: 0.002
+      lr: 0.001
+      weight_decay: 0.00005
 
   scheduler:
-    name: ConstantLR
+    name: CosineAnnealingLR
+    params:
+      T_max: 200
+      eta_min: 0.0001

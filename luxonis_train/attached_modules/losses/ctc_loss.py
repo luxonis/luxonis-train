@@ -34,8 +34,8 @@ class CTCLoss(BaseLoss):
         @rtype: Tensor
         @return: The computed loss as a scalar tensor.
         """
-        target_lengths = torch.sum(target != 0, dim=1)
         target = self.node.encoder(target).to(predictions.device)
+        target_lengths = torch.sum(target != 0, dim=1)
 
         predictions = predictions.permute(1, 0, 2)
         predictions = predictions.log_softmax(-1)
