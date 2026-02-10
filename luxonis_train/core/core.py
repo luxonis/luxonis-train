@@ -190,13 +190,7 @@ class LuxonisModel:
                     f"Failed to initialize loader '{loader_name}' "
                     f"for view '{view}'. Using `DummyLoader` instead."
                 )
-                n_keypoints = self.cfg.loader.params.get("n_keypoints", 3)
-                if not isinstance(n_keypoints, int) or n_keypoints < 1:
-                    logger.warning(
-                        "Invalid `n_keypoints` value in the config. "
-                        "Using default value of 3."
-                    )
-                    n_keypoints = 3
+                self.cfg.loader.name = DebugLoader.__name__
                 self.loaders[view] = DebugLoader(
                     cfg=self.cfg,
                     view={
@@ -208,7 +202,7 @@ class LuxonisModel:
                     height=self.cfg_preprocessing.train_image_size.height,
                     width=self.cfg_preprocessing.train_image_size.width,
                     color_space=self.cfg_preprocessing.color_space,
-                    n_keypoints=n_keypoints,
+                    **self.cfg.loader.params,  # type: ignore
                 )
 
         for name, loader in self.loaders.items():
@@ -431,10 +425,8 @@ class LuxonisModel:
             logger.info("Re-exporting the checkpoint file.")
             with replace_weights(self.lightning_module, weights):
                 # Needs to be called to attach the model to the trainer
-                self.pl_trainer.validate(
-                    self.lightning_module,
-                    self.pytorch_loaders["val"],
-                    verbose=False,
+                self.pl_trainer.strategy._lightning_module = (
+                    self.lightning_module
                 )
                 self.pl_trainer.save_checkpoint(
                     str(export_path.with_suffix(".ckpt")), weights_only=False

@@ -27,6 +27,7 @@ from pydantic import (
     PlainSerializer,
     SecretStr,
     SerializationInfo,
+    field_serializer,
     field_validator,
     model_serializer,
     model_validator,
@@ -114,7 +115,7 @@ class ModelConfig(BaseModelExtraForbid):
     predefined_model: Annotated[
         PredefinedModelConfig | None, Field(exclude=True)
     ] = None
-    weights: FilePath | None = None
+    weights: Annotated[FilePath | None, Field(exclude=True)] = None
     nodes: list[NodeConfig] = []
     outputs: list[str] = []
 
@@ -302,7 +303,7 @@ class TrackerConfig(BaseModelExtraForbid):
     project_id: str | None = None
     run_name: str | None = None
     run_id: str | None = None
-    save_directory: Path = Path("output")
+    save_directory: Annotated[Path, Field(exclude=True)] = Path("output")
     is_tensorboard: bool = True
     is_wandb: bool = False
     wandb_entity: str | None = None
@@ -315,6 +316,20 @@ class LoaderConfig(ConfigItem):
     train_view: list[str] = ["train"]
     val_view: list[str] = ["val"]
     test_view: list[str] = ["test"]
+
+    @field_serializer("params")
+    def serialize_params(self, info: SerializationInfo) -> Any:
+        data = self.params.copy()
+        if self.name == "DebugLoader":
+            data.pop("n_classes", None)
+            data.pop("n_keypoints", None)
+        return data
+
+    @field_serializer("name")
+    def serialize_name(self, info: SerializationInfo) -> str:
+        if self.name == "DebugLoader":
+            return "LuxonisLoaderTorch"
+        return self.name
 
     @field_validator("train_view", "val_view", "test_view", mode="before")
     @classmethod

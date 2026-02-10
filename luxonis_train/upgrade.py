@@ -1,12 +1,15 @@
+import json
 import subprocess
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from types import EllipsisType
 from typing import Any
 
 import requests
+import yaml
 from loguru import logger
-from luxonis_ml.typing import Params, ParamValue
+from luxonis_ml.typing import Params, ParamValue, PathType
 from semver import Version
 
 import luxonis_train as lxt
@@ -44,6 +47,11 @@ class NestedDict:
                 current[k] = {}
             current = current[k]
         current[keys[-1]] = value
+
+    def get(self, key: str, default: Any = None) -> Any:
+        if key not in self:
+            return default
+        return self[key]
 
     def pop(self, key: str, default: Any = ...) -> Any:
         if key not in self:
@@ -89,17 +97,22 @@ class NestedDict:
         logger.info(f"Changed config field '{old_field}' to '{new_field}'")
 
 
-def upgrade_config(cfg: Params | NestedDict) -> Params:
-    if not isinstance(cfg, NestedDict):
+def upgrade_config(config: PathType | Params) -> Params:
+    if isinstance(config, dict):
+        cfg = NestedDict(config)
+    else:
+        config = Path(config)
+        if config.suffix == "json":
+            cfg = json.loads(config.read_text(encoding="utf-8"))
+        else:
+            cfg = yaml.safe_load(config.read_text(encoding="utf-8"))
+
         cfg = NestedDict(cfg)
 
+    old_version = Version.parse(cfg.get("version", "0.3.0"))
     if "config_version" in cfg:
-        old_version = Version(0, 3)
+        logger.info("Found deprecated field 'config_version' in config.")
         cfg.pop("config_version")
-    elif "version" in cfg:
-        old_version = Version.parse(cfg["version"])
-    else:
-        raise ValueError("The config does not contain the 'version' field")
     if old_version >= lxt.__semver__:
         logger.info(
             f"The config is already at the latest version"
@@ -132,24 +145,33 @@ def upgrade_config(cfg: Params | NestedDict) -> Params:
         if cfg["tuner.storage.storage_type"] == "local"
         else "postgresql",
     )
+    if "tuner" in cfg and cfg["tuner"] is None:
+        cfg.pop("tuner")
 
     nodes = cfg["model"]["nodes"] or []
     assert isinstance(nodes, list)
 
     heads: dict[str, NestedDict] = {}
     for node in map(NestedDict, nodes):
-        node.replace("params.variant", "variant")
+        node_class = node["name"]
+        if lxt.__semver__ >= Version(0, 4):
+            node.replace("params.variant", "variant")
+            if node_class == "FOMOHead":
+                node.replace("params.num_conv_layers", "params.n_conv_layers")
+
         node_name = node["alias"] or node["name"]
         if "Head" in node["name"]:
             heads[node_name] = node
+        if node.pop("params.download_weights", False):
+            node["params.weights"] = "download"
 
-    if "exporter.output_names" in cfg:
+    export_output_names = cfg.pop("exporter.output_names")
+    if export_output_names is not None:
         if len(heads) == 1:
-            output_names = cfg.pop("exporter.output_names")
             head = next(iter(heads.values()))
             if "params" not in head:
                 head["params"] = {}
-            head["params.export_output_names"] = output_names
+            head["params.export_output_names"] = export_output_names
         else:
             logger.error(
                 "Multiple heads found in model, cannot assign "
