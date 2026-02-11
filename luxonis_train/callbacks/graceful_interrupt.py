@@ -47,6 +47,9 @@ class GracefulInterruptCallback(pl.Callback):
         logger.info("Added GracefulInterrupt callback")
 
     def _handle_signal(self, signum: int, frame: FrameType | None) -> None:
+        if os.getpid() != self._main_pid:
+            return
+
         if self._interrupted_once:
             logger.warning("Second interrupt, forcing immediate exit.")
             os._exit(1)
