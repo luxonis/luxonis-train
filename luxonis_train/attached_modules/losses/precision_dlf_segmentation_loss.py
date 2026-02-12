@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 from torchvision.ops import box_convert
+from loguru import logger
 
 from luxonis_train.nodes import PrecisionSegmentBBoxHead
 from luxonis_train.tasks import Tasks
@@ -59,6 +60,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             batch_size).
         """
         self._init_parameters(features)
+        raw_target_bboxes = target_boundingbox
         batch_size, _, mask_h, mask_w = prototypes.shape
         pred_distri, pred_scores = torch.cat(
             [xi.view(batch_size, self.node.no, -1) for xi in features], 2
@@ -79,6 +81,71 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
                 (mask_h, mask_w),
                 mode="nearest",
             ).squeeze(0)
+
+        if not hasattr(self, "_debug_mask_bbox_logged"):
+            self._debug_mask_bbox_logged = True
+            with torch.no_grad():
+                if (
+                    target_instance_segmentation.numel() > 0
+                    and raw_target_bboxes.numel() > 0
+                ):
+                    n_masks = target_instance_segmentation.shape[0]
+                    n_boxes = raw_target_bboxes.shape[0]
+                    n = min(n_masks, n_boxes, 20)
+                    scale = torch.tensor(
+                        [mask_w, mask_h, mask_w, mask_h],
+                        device=raw_target_bboxes.device,
+                        dtype=raw_target_bboxes.dtype,
+                    )
+                    boxes_xyxy = box_convert(
+                        raw_target_bboxes[:n, 2:6] * scale,
+                        in_fmt="xywh",
+                        out_fmt="xyxy",
+                    )
+                    ious = []
+                    for i in range(n):
+                        mask = target_instance_segmentation[i] > 0.5
+                        if not mask.any():
+                            ious.append(0.0)
+                            continue
+                        ys, xs = mask.nonzero(as_tuple=True)
+                        mask_box = torch.tensor(
+                            [
+                                xs.min(),
+                                ys.min(),
+                                xs.max() + 1,
+                                ys.max() + 1,
+                            ],
+                            device=boxes_xyxy.device,
+                            dtype=boxes_xyxy.dtype,
+                        )
+                        box = boxes_xyxy[i]
+                        inter_left = torch.max(mask_box[0], box[0])
+                        inter_top = torch.max(mask_box[1], box[1])
+                        inter_right = torch.min(mask_box[2], box[2])
+                        inter_bottom = torch.min(mask_box[3], box[3])
+                        inter_w = (inter_right - inter_left).clamp(min=0)
+                        inter_h = (inter_bottom - inter_top).clamp(min=0)
+                        inter = inter_w * inter_h
+                        area_mask = (
+                            (mask_box[2] - mask_box[0])
+                            * (mask_box[3] - mask_box[1])
+                        ).clamp(min=1)
+                        area_box = (
+                            (box[2] - box[0]) * (box[3] - box[1])
+                        ).clamp(min=1)
+                        union = area_mask + area_box - inter
+                        ious.append((inter / union).item())
+                    if ious:
+                        ious_sorted = sorted(ious)
+                        median_iou = ious_sorted[len(ious_sorted) // 2]
+                        logger.info(
+                            "Seg debug: bbox/mask IoU (first {}): min={:.4f} median={:.4f} max={:.4f}",
+                            len(ious),
+                            min(ious),
+                            median_iou,
+                            max(ious),
+                        )
 
         pred_distri = pred_distri.permute(0, 2, 1).contiguous()
         pred_scores = pred_scores.permute(0, 2, 1).contiguous()
