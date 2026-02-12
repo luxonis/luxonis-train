@@ -11,7 +11,7 @@ class InstanceSegmentationModel(SimplePredefinedModel):
                 "backbone": "EfficientRep",
                 "neck": "RepPANNeck",
                 "head": "PrecisionSegmentBBoxHead",
-                "loss": "PrecisionDFLSegmentationLoss",
+                "loss": "WeightedPrecisionDFLSegmentationLoss",
                 "metrics": "MeanAveragePrecision",
                 "confusion_matrix_available": True,
                 "visualizer": "InstanceSegmentationVisualizer",

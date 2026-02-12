@@ -13,6 +13,9 @@ from .reconstruction_segmentation_loss import ReconstructionSegmentationLoss
 from .sigmoid_focal_loss import SigmoidFocalLoss
 from .smooth_bce_with_logits import SmoothBCEWithLogitsLoss
 from .softmax_focal_loss import SoftmaxFocalLoss
+from .weighted_precision_dfl_segmentation_loss import (
+    WeightedPrecisionDFLSegmentationLoss,
+)
 
 __all__ = [
     "AdaptiveDetectionLoss",
@@ -30,4 +33,5 @@ __all__ = [
     "SigmoidFocalLoss",
     "SmoothBCEWithLogitsLoss",
     "SoftmaxFocalLoss",
+    "WeightedPrecisionDFLSegmentationLoss",
 ]

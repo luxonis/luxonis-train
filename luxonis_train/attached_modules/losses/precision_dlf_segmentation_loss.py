@@ -44,14 +44,20 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             **kwargs,
         )
 
-    def forward(
+    def _compute_individual_losses(
         self,
         features: list[Tensor],
         prototypes: Tensor,
         mask_coeficients: Tensor,
         target_boundingbox: Tensor,
         target_instance_segmentation: Tensor,
-    ) -> tuple[Tensor, dict[str, Tensor]]:
+    ) -> tuple[Tensor, Tensor, Tensor, Tensor, int]:
+        """Compute all individual loss components.
+
+        @rtype: tuple[Tensor, Tensor, Tensor, Tensor, int]
+        @return: Tuple of (loss_cls, loss_iou, loss_dfl, loss_seg,
+            batch_size).
+        """
         self._init_parameters(features)
         batch_size, _, mask_h, mask_w = prototypes.shape
         pred_distri, pred_scores = torch.cat(
@@ -127,6 +133,26 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             img_idx,
             prototypes,
             mask_coeficients,
+        )
+
+        return loss_cls, loss_iou, loss_dfl, loss_seg, batch_size
+
+    def forward(
+        self,
+        features: list[Tensor],
+        prototypes: Tensor,
+        mask_coeficients: Tensor,
+        target_boundingbox: Tensor,
+        target_instance_segmentation: Tensor,
+    ) -> tuple[Tensor, dict[str, Tensor]]:
+        loss_cls, loss_iou, loss_dfl, loss_seg, batch_size = (
+            self._compute_individual_losses(
+                features,
+                prototypes,
+                mask_coeficients,
+                target_boundingbox,
+                target_instance_segmentation,
+            )
         )
 
         loss = (
