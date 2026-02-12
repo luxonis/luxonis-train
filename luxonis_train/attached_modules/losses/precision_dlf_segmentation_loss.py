@@ -89,6 +89,12 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
                     target_instance_segmentation.numel() > 0
                     and raw_target_bboxes.numel() > 0
                 ):
+                    classes = raw_target_bboxes[:, 1]
+                    coords = raw_target_bboxes[:, 2:6]
+                    coord_min = coords.min().item()
+                    coord_max = coords.max().item()
+                    coord_mean = coords.mean().item()
+                    cls_unique = torch.unique(classes).tolist()
                     n_masks = target_instance_segmentation.shape[0]
                     n_boxes = raw_target_bboxes.shape[0]
                     n = min(n_masks, n_boxes, 20)
@@ -146,6 +152,13 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
                             median_iou,
                             max(ious),
                         )
+                    logger.info(
+                        "Seg debug: bbox coords min={:.4f} max={:.4f} mean={:.4f}; class ids={}",
+                        coord_min,
+                        coord_max,
+                        coord_mean,
+                        cls_unique,
+                    )
 
         pred_distri = pred_distri.permute(0, 2, 1).contiguous()
         pred_scores = pred_scores.permute(0, 2, 1).contiguous()
