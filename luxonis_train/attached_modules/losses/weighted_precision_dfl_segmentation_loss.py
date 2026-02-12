@@ -77,7 +77,7 @@ class WeightedPrecisionDFLSegmentationLoss(PrecisionDFLSegmentationLoss):
             "seg": loss_seg.detach(),
         }
 
-        return loss * batch_size, sub_losses
+        return loss, sub_losses
 
     def compute_segmentation_loss(
         self,
