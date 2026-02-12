@@ -23,20 +23,21 @@ class WeightedPrecisionDFLSegmentationLoss(PrecisionDFLSegmentationLoss):
         """Instance Segmentation loss with configurable mask weighting.
 
         Extends L{PrecisionDFLSegmentationLoss} with two additional
-        parameters for better control over mask loss, especially
-        useful for objects where the mask occupies a small fraction of
-        the bounding box
+        parameters for better control over mask loss, especially useful
+        for objects where the mask occupies a small fraction of the
+        bounding box
 
         @type seg_loss_weight: float | None
         @param seg_loss_weight: Independent weight for the segmentation
             mask loss. Defaults to C{None}, which falls back to
-            C{bbox_loss_weight} (same behavior as PrecisionDFLSegmentationLoss).
+            C{bbox_loss_weight} (same behavior as
+            PrecisionDFLSegmentationLoss).
         @type mask_pos_weight: float
         @param mask_pos_weight: Weight applied to positive (foreground)
-            pixels in the mask BCE loss. Values > 1 increase the
-            penalty for missed foreground pixels. For example with mask_pos_weight=9,
-            the foreground pixels now contribute 9x more loss each.
-            Defaults to 1.0 (no reweighting).
+            pixels in the mask BCE loss. Values > 1 increase the penalty
+            for missed foreground pixels. For example with
+            mask_pos_weight=9, the foreground pixels now contribute 9x
+            more loss each. Defaults to 1.0 (no reweighting).
         """
         super().__init__(**kwargs)
         self.seg_loss_weight = (
@@ -92,8 +93,9 @@ class WeightedPrecisionDFLSegmentationLoss(PrecisionDFLSegmentationLoss):
         """Compute the segmentation loss with foreground pixel
         reweighting.
 
-        Same as the PrecisionDFLSegmentationLoss, but applies L{mask_pos_weight} to
-        the BCE loss to weight foreground pixels more.
+        Same as the PrecisionDFLSegmentationLoss, but applies
+        L{mask_pos_weight} to the BCE loss to weight foreground pixels
+        more.
         """
         _, _, h, w = proto.shape
         total_loss = 0
@@ -127,7 +129,9 @@ class WeightedPrecisionDFLSegmentationLoss(PrecisionDFLSegmentationLoss):
 
                 pred_mask = torch.einsum("in,nhw->ihw", pred[fg], pr)
                 loss = F.binary_cross_entropy_with_logits(
-                    pred_mask, gt_mask, reduction="none",
+                    pred_mask,
+                    gt_mask,
+                    reduction="none",
                     pos_weight=pos_weight,
                 )
                 total_loss += (

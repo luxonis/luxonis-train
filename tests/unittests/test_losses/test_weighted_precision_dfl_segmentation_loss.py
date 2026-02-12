@@ -64,15 +64,17 @@ def test_mask_pos_weight_increases_seg_loss():
     """A mask_pos_weight > 1 should increase the seg sub-loss."""
     dummy_node = DummyPrecisionSegmentBBoxHead()
     base_loss = WeightedPrecisionDFLSegmentationLoss(
-        node=dummy_node, mask_pos_weight=1.0,
+        node=dummy_node,
+        mask_pos_weight=1.0,
     )
     weighted_loss = WeightedPrecisionDFLSegmentationLoss(
-        node=dummy_node, mask_pos_weight=5.0,
+        node=dummy_node,
+        mask_pos_weight=5.0,
     )
 
-    model_inputs = load_checkpoint(
-        "precision_dfl_segmentation_loss_data.pt"
-    )[:-1]
+    model_inputs = load_checkpoint("precision_dfl_segmentation_loss_data.pt")[
+        :-1
+    ]
 
     _, base_sub = base_loss(*model_inputs)
     _, weighted_sub = weighted_loss(*model_inputs)
