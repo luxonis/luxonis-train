@@ -19,6 +19,7 @@ def replace_weights(
 ) -> Generator:
     old_weights = None
     if weights is not None:
+        logger.info("Loading model weights from '{}'", weights)
         old_weights = module.state_dict()
         module.load_checkpoint(str(weights))
 
