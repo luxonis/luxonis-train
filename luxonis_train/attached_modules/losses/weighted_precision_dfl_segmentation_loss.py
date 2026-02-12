@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 from torchvision.ops import box_convert
+from loguru import logger
 
 from luxonis_train.nodes import PrecisionSegmentBBoxHead
 from luxonis_train.tasks import Tasks
@@ -104,6 +105,36 @@ class WeightedPrecisionDFLSegmentationLoss(PrecisionDFLSegmentationLoss):
         bboxes_scaled = bboxes_norm * torch.tensor(
             [w, h, w, h], device=proto.device
         )
+
+        if not hasattr(self, "_debug_logged"):
+            self._debug_logged = True
+            with torch.no_grad():
+                if gt_masks.numel() > 0:
+                    mask_min = gt_masks.min().item()
+                    mask_max = gt_masks.max().item()
+                    mask_mean = gt_masks.float().mean().item()
+                    mask_shape = tuple(gt_masks.shape)
+                else:
+                    mask_min = mask_max = mask_mean = 0.0
+                    mask_shape = tuple(gt_masks.shape)
+                area_flat = bbox_area[fg_mask].flatten()
+                if area_flat.numel() > 0:
+                    area_min = area_flat.min().item()
+                    area_max = area_flat.max().item()
+                    area_median = area_flat.median().item()
+                else:
+                    area_min = area_max = area_median = 0.0
+                logger.info(
+                    "Seg debug: masks shape={} min={:.4f} max={:.4f} mean={:.6f}; "
+                    "bbox area (pos) min={:.6f} median={:.6f} max={:.6f}",
+                    mask_shape,
+                    mask_min,
+                    mask_max,
+                    mask_mean,
+                    area_min,
+                    area_median,
+                    area_max,
+                )
 
         pos_weight = torch.tensor(
             self.mask_pos_weight, device=proto.device, dtype=proto.dtype
