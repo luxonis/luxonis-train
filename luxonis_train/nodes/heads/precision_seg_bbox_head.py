@@ -93,7 +93,7 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
             for head, x in zip(self.segmentation_heads, inputs, strict=True)
         ]
 
-        features_list, classes_list, regressions_list = super()._forward(
+        features_list, classes_list, regressions_list = self.forward_heads(
             inputs
         )
 
