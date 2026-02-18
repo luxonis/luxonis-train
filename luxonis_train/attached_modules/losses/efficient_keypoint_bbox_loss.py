@@ -228,7 +228,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             "visibility": visibility_loss.detach(),
         }
 
-        return loss * batch_size, sub_losses
+        return loss, sub_losses
 
     def _preprocess_kpts_target(
         self, kpts_target: Tensor, batch_size: int, scale_tensor: Tensor

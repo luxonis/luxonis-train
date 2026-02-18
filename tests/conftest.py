@@ -400,6 +400,9 @@ def pytest_collection_modifyitems(items: list[Function]):
         elif "test_combinations.py" in path:
             item.add_marker(pytest.mark.combinations)
             item.add_marker(pytest.mark.order(3))
+        elif "test_overfit_convergence.py" in path:
+            item.add_marker(pytest.mark.overfit_convergence)
+            item.add_marker(pytest.mark.order(4))
         else:
             item.add_marker(pytest.mark.misc)
             item.add_marker(pytest.mark.order(1))
@@ -415,4 +418,8 @@ def pytest_configure(config: Config):
     )
     config.addinivalue_line(
         "markers", "misc: mark test as a miscellaneous test"
+    )
+    config.addinivalue_line(
+        "markers",
+        "overfit_convergence: mark test as an overfit convergence test",
     )
