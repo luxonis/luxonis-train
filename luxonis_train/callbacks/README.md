@@ -7,6 +7,12 @@ List of all supported callbacks.
 ## Table Of Contents
 
 - [`PytorchLightning` Callbacks](#pytorchlightning-callbacks)
+- [`GracefulInterruptCallback`](#gracefulinterruptcallback)
+- [`FailOnNoTrainBatches`](#failonnotrainbatches)
+- [`LuxonisModelSummary`](#luxonismodelsummary)
+- [`LuxonisRichProgressBar`](#luxonisrichprogressbar)
+- [`LuxonisTQDMProgressBar`](#luxonistqdmprogressbar)
+- [`TrainingManager`](#trainingmanager)
 - [`ExportOnTrainEnd`](#exportontrainend)
 - [`ArchiveOnTrainEnd`](#archiveontrainend)
 - [`ConvertOnTrainEnd`](#convertontrainend)
@@ -32,6 +38,57 @@ List of supported callbacks from `lightning.pytorch`.
 - [`Timer`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.Timer.html#lightning.pytorch.callbacks.Timer): Times training, validation, and test loops.
 - [`ModelPruning`](https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.callbacks.ModelPruning.html#lightning.pytorch.callbacks.ModelPruning): Prunes model weights during training.
 
+**Default**: `ModelCheckpoint` is added automatically (minimum validation loss, and best main metric if configured). `GradientAccumulationScheduler` is added automatically when `trainer.accumulate_grad_batches` is set and no scheduler is configured.
+
+## `GracefulInterruptCallback`
+
+Handles SIGINT/SIGTERM gracefully. On the first interrupt it saves a `resume.ckpt`, stops training, and skips remaining train-end callbacks. On the second interrupt it exits immediately.
+
+**Default**: Added automatically.
+
+**Parameters:**
+
+| Key        | Type                       | Default value | Description                                               |
+| ---------- | -------------------------- | ------------- | --------------------------------------------------------- |
+| `save_dir` | `Path`                     | -             | Directory where `resume.ckpt` will be stored.             |
+| `tracker`  | `LuxonisTrackerPL \| None` | `None`        | Optional tracker used to upload the interrupt checkpoint. |
+
+## `FailOnNoTrainBatches`
+
+Raises an error if Lightning computes zero training batches after data setup. The error message includes the current dataset size and the minimum required size based on `batch_size`, `world_size`, `drop_last`, and `limit_train_batches`.
+
+**Default**: Added automatically.
+
+## `LuxonisModelSummary`
+
+Custom model summary based on `RichModelSummary`. It prints a rich table to the console when `rich_logging=True`, and a plain table otherwise. A copy is also logged to the log file.
+
+**Default**: Added automatically with `max_depth=2`, and `rich` set from `cfg.rich_logging`.
+
+**Parameters:**
+
+| Key    | Type   | Default value | Description                                                    |
+| ------ | ------ | ------------- | -------------------------------------------------------------- |
+| `rich` | `bool` | `True`        | Enables rich rendering. Falls back to plain text when `False`. |
+
+## `LuxonisRichProgressBar`
+
+Rich progress bar used when `rich_logging=True`. It prints metrics in rich tables and mirrors output to the log file.
+
+**Default**: Added automatically when `rich_logging=True`.
+
+## `LuxonisTQDMProgressBar`
+
+TQDM progress bar used when `rich_logging=False`. It prints metrics as tables in logs.
+
+**Default**: Added automatically when `rich_logging=False`.
+
+## `TrainingManager`
+
+Manages frozen nodes and training strategies. It freezes configured nodes before training, unfreezes them at the specified epoch, and updates strategy parameters after backprop.
+
+**Default**: Added automatically.
+
 ## `ExportOnTrainEnd`
 
 Performs export on train end with best weights.
@@ -56,6 +113,8 @@ Callback to create an `NN Archive` at the end of the training.
 ## `ConvertOnTrainEnd`
 
 Unified callback that exports, archives, and converts the archive to the target platform at the end of training. This is the recommended callback for model conversion as it combines the functionality of `ExportOnTrainEnd` and `ArchiveOnTrainEnd`, and also runs platform-specific conversions (blobconverter or HubAI SDK) if configured.
+
+**Default**: Added automatically when `smart_cfg_auto_populate=True` (default).
 
 **Steps:**
 
@@ -88,15 +147,19 @@ Metadata include all defined hyperparameters together with git hashes of `luxoni
 
 Callback to perform a test run at the end of the training.
 
+**Default**: Added automatically when `smart_cfg_auto_populate=True` (default).
+
 **Parameters:**
 
 | Key    | Type                              | Default value | Description                     |
 | ------ | --------------------------------- | ------------- | ------------------------------- |
-| `view` | `Literal["train", "val", "test"]` | \`"test"      | Which view to use for the test. |
+| `view` | `Literal["train", "val", "test"]` | `"test"`      | Which view to use for the test. |
 
 ## `UploadCheckpoint`
 
 Callback that uploads currently the best checkpoint (based on validation loss) to the tracker location - where all other logs are stored.
+
+**Default**: Added automatically when `smart_cfg_auto_populate=True` (default).
 
 ## `GradCamCallback`
 
