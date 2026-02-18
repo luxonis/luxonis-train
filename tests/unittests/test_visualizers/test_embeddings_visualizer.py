@@ -1,4 +1,4 @@
-import matplotlib
+import matplotlib as mpl
 import numpy as np
 import torch
 from torch import Tensor
@@ -20,13 +20,15 @@ class DummyEmbeddingNode(BaseNode, register=False):
 
 
 def _tensor_to_image(tensor: Tensor) -> np.ndarray:
-    """Convert a [1, C, H, W] uint8 tensor to a [H, W, C] numpy array."""
+    """Convert a [1, C, H, W] uint8 tensor to a [H, W, C] numpy
+    array."""
     return tensor.squeeze(0).permute(1, 2, 0).cpu().numpy()
 
 
 def _generate_visualizations() -> tuple[Tensor, Tensor]:
-    """Generate the kdeplot and scatterplot tensors deterministically."""
-    matplotlib.use("Agg")
+    """Generate the kdeplot and scatterplot tensors
+    deterministically."""
+    mpl.use("Agg")
 
     visualizer = EmbeddingsVisualizer(node=DummyEmbeddingNode())
 
