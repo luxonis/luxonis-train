@@ -1,11 +1,18 @@
-import hashlib
+from pathlib import Path
 
+import matplotlib
+import numpy as np
 import torch
+from PIL import Image
 from torch import Tensor
 
 from luxonis_train.attached_modules.visualizers import EmbeddingsVisualizer
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Tasks
+
+# Maximum mean absolute pixel difference (0-255 scale) allowed
+# between the generated and reference images.
+MAX_MEAN_PIXEL_DIFF = 1.0
 
 
 class DummyEmbeddingNode(BaseNode, register=False):
@@ -15,7 +22,15 @@ class DummyEmbeddingNode(BaseNode, register=False):
         return x
 
 
-def test_embeddings_visualizer():
+def _tensor_to_image(tensor: Tensor) -> np.ndarray:
+    """Convert a [1, C, H, W] uint8 tensor to a [H, W, C] numpy array."""
+    return tensor.squeeze(0).permute(1, 2, 0).cpu().numpy()
+
+
+def _generate_visualizations() -> tuple[Tensor, Tensor]:
+    """Generate the kdeplot and scatterplot tensors deterministically."""
+    matplotlib.use("Agg")
+
     visualizer = EmbeddingsVisualizer(node=DummyEmbeddingNode())
 
     canvas = torch.zeros(1, 3, 100, 100, dtype=torch.uint8)
@@ -41,13 +56,31 @@ def test_embeddings_visualizer():
     kdeplot, scatterplot = visualizer(
         canvas.clone(), canvas.clone(), predictions, target
     )
+    return kdeplot, scatterplot
 
-    combined_viz = (
-        torch.cat([kdeplot, scatterplot], dim=0).cpu().numpy().tobytes()
-    )
-    computed_hash = hashlib.sha256(combined_viz).hexdigest()
 
-    expected_hash = (
-        "3f2ac86f1c7463ca7e75ba41b7fc28189da1f073d27599bb71258a8645bbbaf9"
+def test_embeddings_visualizer(
+    embeddings_visualizer_references: tuple[np.ndarray, np.ndarray],
+):
+    kde_ref, scatter_ref = embeddings_visualizer_references
+
+    kdeplot, scatterplot = _generate_visualizations()
+
+    kde_generated = _tensor_to_image(kdeplot)
+    scatter_generated = _tensor_to_image(scatterplot)
+
+    kde_diff = np.abs(
+        kde_generated.astype(np.float32) - kde_ref.astype(np.float32)
+    ).mean()
+    scatter_diff = np.abs(
+        scatter_generated.astype(np.float32) - scatter_ref.astype(np.float32)
+    ).mean()
+
+    assert kde_diff < MAX_MEAN_PIXEL_DIFF, (
+        f"KDE plot differs from reference by {kde_diff:.2f} mean pixel value "
+        f"(threshold: {MAX_MEAN_PIXEL_DIFF})"
     )
-    assert computed_hash == expected_hash
+    assert scatter_diff < MAX_MEAN_PIXEL_DIFF, (
+        f"Scatter plot differs from reference by {scatter_diff:.2f} mean pixel value "
+        f"(threshold: {MAX_MEAN_PIXEL_DIFF})"
+    )

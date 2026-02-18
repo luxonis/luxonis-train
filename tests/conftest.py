@@ -19,6 +19,8 @@ from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.typing import Params
 from luxonis_ml.utils import LuxonisFileSystem, environ
 
+from PIL import Image
+
 from luxonis_train.config.config import OnnxExportConfig
 
 
@@ -363,6 +365,32 @@ def test_datasets(
         embedding_dataset,
         anomaly_detection_dataset,
     )
+
+
+@pytest.fixture(scope="session")
+def embeddings_visualizer_references(
+    data_dir: Path,
+) -> tuple[np.ndarray, np.ndarray]:
+    remote_dir = "gs://luxonis-test-bucket/luxonis-train-test-data/reference_images/embeddings_visualizer"
+    ref_dir = data_dir / "reference_images" / "embeddings_visualizer"
+    ref_dir.mkdir(parents=True, exist_ok=True)
+
+    kde_ref_path = ref_dir / "kdeplot.png"
+    scatter_ref_path = ref_dir / "scatterplot.png"
+
+    if not kde_ref_path.exists():
+        LuxonisFileSystem.download(
+            f"{remote_dir}/kdeplot.png", dest=ref_dir
+        )
+    if not scatter_ref_path.exists():
+        LuxonisFileSystem.download(
+            f"{remote_dir}/scatterplot.png", dest=ref_dir
+        )
+
+    kde_ref = np.array(Image.open(kde_ref_path).convert("RGB"))
+    scatter_ref = np.array(Image.open(scatter_ref_path).convert("RGB"))
+
+    return kde_ref, scatter_ref
 
 
 @pytest.fixture
