@@ -21,6 +21,7 @@ from luxonis_ml.utils import Environ, LuxonisFileSystem
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
+    FailOnNoTrainBatches,
     GracefulInterruptCallback,
     LuxonisRichProgressBar,
     LuxonisTQDMProgressBar,
@@ -133,6 +134,7 @@ class LuxonisModel:
             logger=self.tracker,
             callbacks=[
                 GracefulInterruptCallback(self.run_save_dir, self.tracker),
+                FailOnNoTrainBatches(),
                 LuxonisRichProgressBar()
                 if self.cfg.rich_logging
                 else LuxonisTQDMProgressBar(),
@@ -733,7 +735,7 @@ class LuxonisModel:
                 input_shapes=self.loaders["train"].input_shapes,
                 _core=self,
             )
-            callbacks = [
+            callbacks: list[pl.Callback] = [
                 (
                     LuxonisRichProgressBar()
                     if cfg.rich_logging
@@ -777,8 +779,11 @@ class LuxonisModel:
             graceful_interrupt_callback = GracefulInterruptCallback(
                 self.run_save_dir, self.tracker
             )
+            fail_no_train_batches_callback = FailOnNoTrainBatches()
+
             callbacks.append(pruner_callback)
             callbacks.append(graceful_interrupt_callback)
+            callbacks.append(fail_no_train_batches_callback)
 
             if self.cfg.trainer.seed is not None:
                 pl.seed_everything(cfg.trainer.seed, workers=True)

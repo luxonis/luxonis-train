@@ -15,6 +15,7 @@ from .archive_on_train_end import ArchiveOnTrainEnd
 from .convert_on_train_end import ConvertOnTrainEnd
 from .ema import EMACallback
 from .export_on_train_end import ExportOnTrainEnd
+from .fail_on_no_train_batches import FailOnNoTrainBatches
 from .gpu_stats_monitor import GPUStatsMonitor
 from .graceful_interrupt import GracefulInterruptCallback
 from .gradcam_visualizer import GradCamCallback
@@ -45,6 +46,7 @@ CALLBACKS.register(module=TrainingManager)
 CALLBACKS.register(module=GracefulInterruptCallback)
 CALLBACKS.register(module=TrainingProgressCallback)
 CALLBACKS.register(module=ConvertOnTrainEnd)
+CALLBACKS.register(module=FailOnNoTrainBatches)
 
 
 __all__ = [
@@ -53,6 +55,7 @@ __all__ = [
     "ConvertOnTrainEnd",
     "EMACallback",
     "ExportOnTrainEnd",
+    "FailOnNoTrainBatches",
     "GPUStatsMonitor",
     "GracefulInterruptCallback",
     "GradCamCallback",

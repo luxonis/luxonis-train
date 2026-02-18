@@ -28,6 +28,10 @@ def test_callbacks(coco_dataset: LuxonisDataset, opts: Params, save_dir: Path):
                 "name": "GracefulInterruptCallback",
                 "params": {"save_dir": str(save_dir)},
             },
+            {
+                "name": "FailOnNoTrainBatches",
+                "params": {"batch_size": 8},
+            },
             {"name": "ExportOnTrainEnd"},
             {
                 "name": "ExportOnTrainEnd",
