@@ -879,6 +879,7 @@ class Config(LuxonisConfig):
             )
             model_name = predefined_model_cfg.name
             accumulate_grad_batches = int(64 / self.trainer.batch_size)
+            self.trainer.accumulate_grad_batches = accumulate_grad_batches
             logger.info(
                 f"Setting 'accumulate_grad_batches' to "
                 f"{accumulate_grad_batches} "
