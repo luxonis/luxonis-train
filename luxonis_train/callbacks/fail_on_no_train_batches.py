@@ -63,6 +63,7 @@ class FailOnNoTrainBatches(pl.Callback):
                 and drop_last is not None
                 and min_batches_needed is not None
             ):
+                assert isinstance(batch_size, int)
                 if drop_last:
                     min_required = batch_size * world_size * min_batches_needed
                 else:
