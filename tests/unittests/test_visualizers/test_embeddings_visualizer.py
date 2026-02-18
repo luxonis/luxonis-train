@@ -1,9 +1,6 @@
-from pathlib import Path
-
 import matplotlib
 import numpy as np
 import torch
-from PIL import Image
 from torch import Tensor
 
 from luxonis_train.attached_modules.visualizers import EmbeddingsVisualizer

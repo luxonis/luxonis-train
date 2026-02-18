@@ -18,7 +18,6 @@ from luxonis_ml.data import Category, DatasetIterator, LuxonisDataset
 from luxonis_ml.data.parsers import LuxonisParser
 from luxonis_ml.typing import Params
 from luxonis_ml.utils import LuxonisFileSystem, environ
-
 from PIL import Image
 
 from luxonis_train.config.config import OnnxExportConfig
@@ -379,9 +378,7 @@ def embeddings_visualizer_references(
     scatter_ref_path = ref_dir / "scatterplot.png"
 
     if not kde_ref_path.exists():
-        LuxonisFileSystem.download(
-            f"{remote_dir}/kdeplot.png", dest=ref_dir
-        )
+        LuxonisFileSystem.download(f"{remote_dir}/kdeplot.png", dest=ref_dir)
     if not scatter_ref_path.exists():
         LuxonisFileSystem.download(
             f"{remote_dir}/scatterplot.png", dest=ref_dir
