@@ -30,7 +30,6 @@ def test_callbacks(coco_dataset: LuxonisDataset, opts: Params, save_dir: Path):
             },
             {
                 "name": "FailOnNoTrainBatches",
-                "params": {"batch_size": 8},
             },
             {"name": "ExportOnTrainEnd"},
             {
