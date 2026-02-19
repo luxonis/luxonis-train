@@ -55,7 +55,7 @@ class EmbeddingsVisualizer(BaseVisualizer):
         embeddings_np = predictions.detach().cpu().numpy()
         ids_np = target.detach().cpu().numpy().astype(int)
 
-        pca = PCA(n_components=2)
+        pca = PCA(n_components=2, random_state=42)
         embeddings_2d = pca.fit_transform(embeddings_np)
         embeddings_2d, ids_np = self._filter_outliers(embeddings_2d, ids_np)
 
