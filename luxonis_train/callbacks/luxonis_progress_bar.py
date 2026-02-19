@@ -2,6 +2,7 @@ import time
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from io import StringIO
+from typing import Any
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import (
@@ -13,10 +14,12 @@ from loguru import logger
 from rich.console import Console
 from rich.table import Table
 from tabulate import tabulate
+from torch import Tensor
 from typing_extensions import override
 
 import luxonis_train as lxt
 from luxonis_train.registry import CALLBACKS
+from luxonis_train.tasks import Tasks
 
 
 class BaseLuxonisProgressBar(ABC, ProgressBar):
@@ -38,6 +41,7 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         stage: str,
         loss: float,
         metrics: Mapping[str, Mapping[str, int | str | float]],
+        matrices: Mapping[str, Mapping[str, Mapping[str, Any]]],
     ) -> None:
         """Prints results to the console.
 
@@ -50,6 +54,9 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         @param loss: Loss value.
         @type metrics: Mapping[str, Mapping[str, int | str | float]]
         @param metrics: Metrics in format {table_name: table}.
+        @type matrices: Mapping[str, Mapping[str, Mapping[str, Any]]]
+        @param matrices: Matrices in format {table_name: {name:
+            matrix}}.
         """
         ...
 
@@ -69,6 +76,66 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
             f"[Epoch {trainer.current_epoch}/{trainer.max_epochs}] Duration: {duration:.2f}s | Train Loss: {loss_str}"
         )
 
+    def format_matrix_for_printing(
+        self, node: Any, name: str, value: Tensor
+    ) -> dict[str, Any]:
+        matrix = value.detach().cpu()
+        rows, cols = matrix.shape
+
+        row_labels = [str(i) for i in range(rows)]
+        col_labels = [str(i) for i in range(cols)]
+
+        module = getattr(node, "module", node)
+        try:
+            class_names = module.class_names
+        except RuntimeError:
+            class_names = []
+
+        if len(class_names) == rows:
+            row_labels = class_names
+        elif len(class_names) + 1 == rows:
+            row_labels = [*class_names, "background"]
+
+        if len(class_names) == cols:
+            col_labels = class_names
+        elif len(class_names) + 1 == cols:
+            col_labels = [*class_names, "background"]
+
+        row_axis, col_axis = self._get_matrix_axes(module, name)
+
+        return {
+            "values": matrix.tolist(),
+            "row_labels": row_labels,
+            "col_labels": col_labels,
+            "row_axis": row_axis,
+            "col_axis": col_axis,
+        }
+
+    def _get_matrix_axes(self, node: Any, name: str) -> tuple[str, str]:
+        # Check for InstanceSegmentationConfusionMatrix
+        if name.startswith("segmentation_"):
+            return "GT", "Pred"
+        if name.startswith("detection_"):
+            return "Pred", "GT"
+
+        task = getattr(node, "task", None)
+        # Default TorchMetric ConfusionMatrix
+        if task in {
+            Tasks.CLASSIFICATION,
+            Tasks.SEGMENTATION,
+        }:
+            return "GT", "Pred"
+        # Custom LuxonisTrain ConfusionMatrix implementation
+        if task in {
+            Tasks.BOUNDINGBOX,
+            Tasks.INSTANCE_KEYPOINTS,
+            Tasks.INSTANCE_SEGMENTATION,
+            Tasks.FOMO,
+        }:
+            return "Pred", "GT"
+
+        return "Rows", "Cols"
+
 
 @CALLBACKS.register()
 class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
@@ -84,12 +151,25 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         stage: str,
         loss: float,
         metrics: Mapping[str, Mapping[str, int | str | float]],
+        matrices: Mapping[str, Mapping[str, Mapping[str, Any]]],
     ) -> None:
         self._rule(stage)
         logger.info(f"Loss: {loss}")
         logger.info("Metrics:")
         for table_name, table in metrics.items():
             self._print_table(table_name, table)
+            for matrix_name, matrix in matrices.get(table_name, {}).items():
+                self._print_matrix(
+                    self._format_matrix_title(matrix_name), matrix
+                )
+        for table_name, table in matrices.items():
+            if table_name in metrics:
+                continue
+            for matrix_name, matrix in table.items():
+                self._print_matrix(
+                    f"{table_name}/{self._format_matrix_title(matrix_name)}",
+                    matrix,
+                )
         self._rule()
 
     def _rule(self, title: str | None = None) -> None:
@@ -125,6 +205,29 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
             numalign="right",
         )
         logger.info(f"\n{formatted}\n")
+
+    def _print_matrix(self, title: str, matrix: Mapping[str, Any]) -> None:
+        values = matrix["values"]
+        row_axis = matrix.get("row_axis", "Rows")
+        col_axis = matrix.get("col_axis", "Cols")
+        row_labels = matrix.get("row_labels") or [
+            str(i) for i in range(len(values))
+        ]
+        col_labels = matrix.get("col_labels") or [
+            str(i) for i in range(len(values[0]) if values else 0)
+        ]
+        rows = [[row_labels[i], *values[i]] for i in range(len(values))]
+        self._rule(f"{title} (rows={row_axis}, cols={col_axis})")
+        formatted = tabulate(
+            rows,
+            headers=[f"{row_axis} \\ {col_axis}", *list(col_labels)],
+            tablefmt="fancy_grid",
+            numalign="right",
+        )
+        logger.info(f"\n{formatted}\n")
+
+    def _format_matrix_title(self, name: str) -> str:
+        return name.replace("_", " ").title()
 
     def on_train_epoch_start(
         self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
@@ -166,6 +269,7 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         stage: str,
         loss: float,
         metrics: Mapping[str, Mapping[str, int | str | float]],
+        matrices: Mapping[str, Mapping[str, Mapping[str, Any]]],
     ) -> None:
         # Terminal output
         self.console.rule(f"{stage}", style="bold magenta")
@@ -175,6 +279,18 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         self.console.print("[bold magenta]Metrics:[/bold magenta]")
         for table_name, table in metrics.items():
             self._print_table(table_name, table)
+            for matrix_name, matrix in matrices.get(table_name, {}).items():
+                self._print_matrix(
+                    self._format_matrix_title(matrix_name), matrix
+                )
+        for table_name, table in matrices.items():
+            if table_name in metrics:
+                continue
+            for matrix_name, matrix in table.items():
+                self._print_matrix(
+                    f"{table_name}/{self._format_matrix_title(matrix_name)}",
+                    matrix,
+                )
         self.console.rule(style="bold magenta")
 
         # Log file output
@@ -183,6 +299,21 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         self._log_console.print("Metrics:")
         for table_name, table in metrics.items():
             self._print_table(table_name, table, console=self._log_console)
+            for matrix_name, matrix in matrices.get(table_name, {}).items():
+                self._print_matrix(
+                    self._format_matrix_title(matrix_name),
+                    matrix,
+                    console=self._log_console,
+                )
+        for table_name, table in matrices.items():
+            if table_name in metrics:
+                continue
+            for matrix_name, matrix in table.items():
+                self._print_matrix(
+                    f"{table_name}/{self._format_matrix_title(matrix_name)}",
+                    matrix,
+                    console=self._log_console,
+                )
         self._log_console.rule()
 
         # Dump to logger
@@ -215,13 +346,50 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         """
         console = console or self.console
         rich_table = Table(
-            title=title, show_header=True, header_style="bold magenta"
+            title=title,
+            show_header=True,
+            header_style="bold magenta",
+            title_style="bold",
         )
         rich_table.add_column(key_name, style="magenta")
         rich_table.add_column(value_name, style="white")
         for name, value in table.items():
             rich_table.add_row(name, f"{value:.5f}")
         console.print(rich_table)
+
+    def _print_matrix(
+        self,
+        title: str,
+        matrix: Mapping[str, Any],
+        console: Console | None = None,
+    ) -> None:
+        console = console or self.console
+        values = matrix["values"]
+        row_axis = matrix.get("row_axis", "Rows")
+        col_axis = matrix.get("col_axis", "Cols")
+        row_labels = matrix.get("row_labels") or [
+            str(i) for i in range(len(values))
+        ]
+        col_labels = matrix.get("col_labels") or [
+            str(i) for i in range(len(values[0]) if values else 0)
+        ]
+
+        rich_table = Table(
+            title=f"{title} (rows={row_axis}, cols={col_axis})",
+            show_header=True,
+            header_style="bold magenta",
+            title_style="italic",
+        )
+        rich_table.add_column(f"{row_axis} \\ {col_axis}", style="magenta")
+        for col in col_labels:
+            rich_table.add_column(str(col), style="white", justify="right")
+        for idx, row in enumerate(values):
+            label = row_labels[idx] if idx < len(row_labels) else str(idx)
+            rich_table.add_row(label, *[str(v) for v in row])
+        console.print(rich_table)
+
+    def _format_matrix_title(self, name: str) -> str:
+        return name.replace("_", " ").title()
 
     def on_train_epoch_start(
         self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
