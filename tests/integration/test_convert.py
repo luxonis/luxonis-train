@@ -85,7 +85,9 @@ def test_convert_with_hubai(
     all_archives = list(save_dir.glob("*.tar.xz"))
     platform_identifier = platform.upper()
     platform_archives = [
-        p for p in all_archives if platform_identifier in p.name.upper()
+        p
+        for p in all_archives
+        if platform_identifier in p.name.upper() and p != archive_path
     ]
     assert len(platform_archives) >= 1, (
         f"No platform-specific archive containing '{platform_identifier}' "

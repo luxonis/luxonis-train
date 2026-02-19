@@ -739,6 +739,7 @@ class LuxonisLightningModule(pl.LightningModule):
             self.log(f"{mode}/{formated_name}", value, sync_dist=True)
 
         table = defaultdict(dict)
+        matrices = defaultdict(dict)
 
         for node_name, node in self.nodes.items():
             formatted_node_name = self.nodes.formatted_name(node_name)
@@ -768,6 +769,11 @@ class LuxonisLightningModule(pl.LightningModule):
                             f"{formatted_node_name}/{name}",
                             step=self.current_epoch,
                         )
+                        matrices[node_name][name] = (
+                            self.progress_bar.format_matrix_for_printing(
+                                node, name, value
+                            )
+                        )
                     else:
                         table[node_name][name] = value.cpu().item()
                         self.log(
@@ -780,6 +786,7 @@ class LuxonisLightningModule(pl.LightningModule):
             stage="Validation" if mode == "val" else "Test",
             loss=self._loss_accumulators[mode]["loss"],
             metrics=table,
+            matrices=matrices,
         )
 
         if self._n_logged_images != self.cfg.trainer.n_log_images:
@@ -811,13 +818,17 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @rank_zero_only
     def _print_results(
-        self, stage: str, loss: float, metrics: dict[str, dict[str, float]]
+        self,
+        stage: str,
+        loss: float,
+        metrics: dict[str, dict[str, float]],
+        matrices: dict[str, dict[str, dict[str, Any]]],
     ) -> None:
         """Prints validation metrics in the console."""
         logger.info(f"{stage} loss: {loss:.4f}")
 
         self.progress_bar.print_results(
-            stage=stage, loss=loss, metrics=metrics
+            stage=stage, loss=loss, metrics=metrics, matrices=matrices
         )
 
         if self.nodes.main_metric is not None:
