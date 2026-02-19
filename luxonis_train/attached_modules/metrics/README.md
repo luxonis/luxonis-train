@@ -131,6 +131,10 @@ Works with **classification, segmentation, object detection, instance keypoint d
 > **Important:** Confusion Matrix is sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.
 >
 > **Note:** The Confusion Matrix should not be used as the primary metric for model evaluation.
+>
+> **Axis convention (all tasks):** rows = **GT**, columns = **Pred** (TorchMetrics style).
+> For detection-style tasks (object/keypoint/instance), an extra **background** row/column is appended at index `n_classes`.
+> For instance segmentation, two matrices are produced: `detection_confusion_matrix` and `segmentation_confusion_matrix` (both follow the same GT/Pred orientation).
 
 | Key             | Type    | Default value | Description                                                                |
 | --------------- | ------- | ------------- | -------------------------------------------------------------------------- |

@@ -19,7 +19,6 @@ from typing_extensions import override
 
 import luxonis_train as lxt
 from luxonis_train.registry import CALLBACKS
-from luxonis_train.tasks import Tasks
 
 
 class BaseLuxonisProgressBar(ABC, ProgressBar):
@@ -101,40 +100,13 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         elif len(class_names) + 1 == cols:
             col_labels = [*class_names, "background"]
 
-        row_axis, col_axis = self._get_matrix_axes(module, name)
-
         return {
             "values": matrix.tolist(),
             "row_labels": row_labels,
             "col_labels": col_labels,
-            "row_axis": row_axis,
-            "col_axis": col_axis,
+            "row_axis": "GT",
+            "col_axis": "Pred",
         }
-
-    def _get_matrix_axes(self, node: Any, name: str) -> tuple[str, str]:
-        # Check for InstanceSegmentationConfusionMatrix
-        if name.startswith("segmentation_"):
-            return "GT", "Pred"
-        if name.startswith("detection_"):
-            return "Pred", "GT"
-
-        task = getattr(node, "task", None)
-        # Default TorchMetric ConfusionMatrix
-        if task in {
-            Tasks.CLASSIFICATION,
-            Tasks.SEGMENTATION,
-        }:
-            return "GT", "Pred"
-        # Custom LuxonisTrain ConfusionMatrix implementation
-        if task in {
-            Tasks.BOUNDINGBOX,
-            Tasks.INSTANCE_KEYPOINTS,
-            Tasks.INSTANCE_SEGMENTATION,
-            Tasks.FOMO,
-        }:
-            return "Pred", "GT"
-
-        return "Rows", "Cols"
 
 
 @CALLBACKS.register()
@@ -217,7 +189,7 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
             str(i) for i in range(len(values[0]) if values else 0)
         ]
         rows = [[row_labels[i], *values[i]] for i in range(len(values))]
-        self._rule(f"{title} (rows={row_axis}, cols={col_axis})")
+        self._rule(title)
         formatted = tabulate(
             rows,
             headers=[f"{row_axis} \\ {col_axis}", *list(col_labels)],
@@ -375,7 +347,7 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         ]
 
         rich_table = Table(
-            title=f"{title} (rows={row_axis}, cols={col_axis})",
+            title=title,
             show_header=True,
             header_style="bold magenta",
             title_style="italic",
