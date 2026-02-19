@@ -130,7 +130,7 @@ class SimplePredefinedModel(BasePredefinedModel):
             self._metrics_params["torchmetrics_task"] = torchmetrics_task
 
         if per_class_metrics is not None:
-            self._metrics_params["per_class_metrics"] = per_class_metrics
+            self._metrics_params["class_metrics"] = per_class_metrics
 
         self._visualizer = visualizer
         self._visualizer_params = visualizer_params or {}
