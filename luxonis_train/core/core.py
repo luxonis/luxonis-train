@@ -1066,6 +1066,7 @@ class LuxonisModel:
             Path(save_dir) if save_dir else Path(self.run_save_dir)
         )
 
+        blob_path: Path | None = None
         if self.cfg.exporter.blobconverter.active:
             logger.warning(
                 "blobconverter is deprecated and only supports RVC2 legacy conversion to `.blob`. "
@@ -1080,6 +1081,7 @@ class LuxonisModel:
                     str(convert_save_dir),
                     str(onnx_path),
                 )
+                blob_path = Path(blob_path)
                 self._exported_models["blob"] = blob_path
                 if self.cfg.exporter.upload_to_run:
                     self.tracker.upload_artifact(blob_path, typ="export")
@@ -1129,7 +1131,7 @@ class LuxonisModel:
             except ValueError as e:
                 raise ValueError(f"HubAI conversion failed: {e}") from e
 
-        return hubai_archive_path or archive_path
+        return hubai_archive_path or blob_path or archive_path
 
     @property
     def environ(self) -> Environ:
