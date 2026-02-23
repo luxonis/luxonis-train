@@ -695,7 +695,7 @@ def compute_visualization_buffer(
         if node_buf:
             leftovers[node_name] = node_buf
 
-    return leftovers if leftovers else None
+    return leftovers or None
 
 
 def get_model_execution_order(

@@ -285,7 +285,7 @@ class BaseLoaderTorch(
         torch_dictionary = {}
 
         for task, array in numpy_dictionary.items():
-            if array.dtype.kind in "U":
+            if array.dtype.kind == "U":
                 array = np.array([ord(c) for c in array[0]], dtype=np.int32)
             torch_dictionary[task] = torch.tensor(array, dtype=torch.float32)
 
