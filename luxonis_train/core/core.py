@@ -1094,6 +1094,7 @@ class LuxonisModel:
                     "Ensure `blobconverter` is installed in your environment."
                 )
 
+        hubai_archive_path: Path | None = None
         if self.cfg.exporter.hubai.active:
             try:
                 dataset_name = None
@@ -1128,7 +1129,7 @@ class LuxonisModel:
             except ValueError as e:
                 raise ValueError(f"HubAI conversion failed: {e}") from e
 
-        return archive_path
+        return hubai_archive_path or archive_path
 
     @property
     def environ(self) -> Environ:
