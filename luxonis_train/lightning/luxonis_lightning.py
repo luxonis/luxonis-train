@@ -878,10 +878,10 @@ class LuxonisLightningModule(pl.LightningModule):
                     if "confusion_matrix" in sub_name:
                         for epoch_idx in sorted([0, *val_eval_epochs]):
                             artifact_keys.add(
-                                f"val/metrics/{epoch_idx}/{formatted_node_name}/confusion_matrix.json"
+                                f"val/metrics/{epoch_idx}/{formatted_node_name}/{sub_name}.json"
                             )
                         artifact_keys.add(
-                            f"test/metrics/{test_eval_epoch}/{formatted_node_name}/confusion_matrix.json"
+                            f"test/metrics/{test_eval_epoch}/{formatted_node_name}/{sub_name}.json"
                         )
                     else:
                         for _ in sorted(val_eval_epochs):
