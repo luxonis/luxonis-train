@@ -32,15 +32,14 @@ class TripleLRScheduler:
         self.step = 0
         self.lrf = self.lre / self.optimizer.defaults["lr"]
         if self.cosine_annealing:
-            self.lf = (
-                lambda x: ((1 - math.cos(x * math.pi / self.epochs)) / 2)
+            self.lf = lambda x: (
+                ((1 - math.cos(x * math.pi / self.epochs)) / 2)
                 * (self.lrf - 1)
                 + 1
             )
         else:
-            self.lf = (
-                lambda x: max(1 - x / self.epochs, 0) * (1.0 - self.lrf)
-                + self.lrf
+            self.lf = lambda x: (
+                max(1 - x / self.epochs, 0) * (1.0 - self.lrf) + self.lrf
             )
 
     def create_scheduler(self) -> LambdaLR:
