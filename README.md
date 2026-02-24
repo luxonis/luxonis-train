@@ -552,6 +552,7 @@ archive_path, conversion_artifacts = model.convert(
 ```
 
 `convert()` returns a tuple where:
+
 - first item is the ONNX-based NN Archive path (`.tar.xz`)
 - second item is a `dict[str, Path]` with additional conversion artifacts (for example `blob` or `hubai_archive`)
 
