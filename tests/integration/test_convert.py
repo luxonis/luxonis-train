@@ -22,7 +22,7 @@ def test_convert_basic(
     model = LuxonisModel(config_file, opts)
 
     save_dir = tmp_path / "convert_output"
-    archive_path = model.convert(save_dir=save_dir)
+    archive_path, _ = model.convert(save_dir=save_dir)
 
     assert archive_path.exists(), "Archive was not created"
     assert archive_path.suffix == ".xz", "Archive should be a .xz file"
@@ -47,7 +47,7 @@ def test_convert_with_blobconverter(
     model = LuxonisModel(config_file, opts)
 
     save_dir = tmp_path / "convert_blob_output"
-    archive_path = model.convert(save_dir=save_dir)
+    archive_path, _ = model.convert(save_dir=save_dir)
 
     assert archive_path.exists(), "Archive was not created"
 
@@ -75,7 +75,7 @@ def test_convert_with_hubai(
     model = LuxonisModel(config_file, opts)
 
     save_dir = tmp_path / f"convert_hubai_{platform}_output"
-    archive_path = model.convert(save_dir=save_dir)
+    archive_path, _ = model.convert(save_dir=save_dir)
 
     assert archive_path.exists(), "Base archive was not created"
 
@@ -107,6 +107,6 @@ def test_convert_saves_to_default_directory(
     }
     model = LuxonisModel(config_file, opts)
 
-    archive_path = model.convert()
+    archive_path, _ = model.convert()
 
     assert archive_path.exists(), "Archive was not created"
