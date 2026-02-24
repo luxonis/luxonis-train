@@ -546,8 +546,14 @@ luxonis_train convert --config configs/detection_light_model.yaml --weights path
 from luxonis_train import LuxonisModel
 
 model = LuxonisModel("configs/detection_light_model.yaml")
-model.convert(weights="path/to/checkpoint.ckpt")
+archive_path, conversion_artifacts = model.convert(
+    weights="path/to/checkpoint.ckpt"
+)
 ```
+
+`convert()` returns a tuple where:
+- first item is the ONNX-based NN Archive path (`.tar.xz`)
+- second item is a `dict[str, Path]` with additional conversion artifacts (for example `blob` or `hubai_archive`)
 
 Convert can be run automatically at the end of the training by using the `ConvertOnTrainEnd` callback.
 

@@ -1016,7 +1016,7 @@ class LuxonisModel:
         self,
         weights: PathType | None = None,
         save_dir: PathType | None = None,
-    ) -> Path:
+    ) -> tuple[Path, dict[str, Path]]:
         """Exports the model to ONNX, creates an NN Archive, and
         converts to target platform format (RVC2/RVC3/RVC4).
 
@@ -1030,8 +1030,10 @@ class LuxonisModel:
         @type save_dir: PathType | None
         @param save_dir: Directory where the outputs will be saved.
             If not specified, the default run save directory will be used.
-        @rtype: Path
-        @return: Path to the generated NN Archive.
+        @rtype: tuple[Path, dict[str, Path]]
+        @return: A tuple of:
+            1) Path to the generated ONNX-based NN Archive.
+            2) Mapping of additional conversion artifact names to their paths.
         """
         self.export(weights=weights, save_path=save_dir)
 
@@ -1066,7 +1068,7 @@ class LuxonisModel:
             Path(save_dir) if save_dir else Path(self.run_save_dir)
         )
 
-        blob_path: Path | None = None
+        conversion_artifacts: dict[str, Path] = {}
         if self.cfg.exporter.blobconverter.active:
             logger.warning(
                 "blobconverter is deprecated and only supports RVC2 legacy conversion to `.blob`. "
@@ -1083,6 +1085,7 @@ class LuxonisModel:
                 )
                 blob_path = Path(blob_path)
                 self._exported_models["blob"] = blob_path
+                conversion_artifacts["blob"] = blob_path
                 if self.cfg.exporter.upload_to_run:
                     self.tracker.upload_artifact(blob_path, typ="export")
                 if self.cfg.exporter.upload_url is not None:
@@ -1096,7 +1099,6 @@ class LuxonisModel:
                     "Ensure `blobconverter` is installed in your environment."
                 )
 
-        hubai_archive_path: Path | None = None
         if self.cfg.exporter.hubai.active:
             try:
                 dataset_name = None
@@ -1106,14 +1108,18 @@ class LuxonisModel:
                     dataset = getattr(self.loaders["train"], "dataset", None)
                     if dataset is not None:
                         dataset_name = getattr(dataset, "dataset_name", None)
-                hubai_archive_path = hubai_export(
-                    cfg=self.cfg.exporter.hubai,
-                    quantization_mode=self.cfg.exporter.quantization_mode,
-                    archive_path=archive_path,
-                    export_path=convert_save_dir,
-                    model_name=self.cfg.model.name,
-                    dataset_name=dataset_name,
+                hubai_archive_path = Path(
+                    hubai_export(
+                        cfg=self.cfg.exporter.hubai,
+                        quantization_mode=self.cfg.exporter.quantization_mode,
+                        archive_path=archive_path,
+                        export_path=convert_save_dir,
+                        model_name=self.cfg.model.name,
+                        dataset_name=dataset_name,
+                    )
                 )
+                conversion_artifacts["hubai_archive"] = hubai_archive_path
+                self._exported_models["hubai_archive"] = hubai_archive_path
                 if self.cfg.archiver.upload_to_run:
                     self.tracker.upload_artifact(
                         hubai_archive_path, typ="archive"
@@ -1131,7 +1137,7 @@ class LuxonisModel:
             except ValueError as e:
                 raise ValueError(f"HubAI conversion failed: {e}") from e
 
-        return hubai_archive_path or blob_path or archive_path
+        return archive_path, conversion_artifacts
 
     @property
     def environ(self) -> Environ:
