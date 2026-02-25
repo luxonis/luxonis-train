@@ -1,6 +1,6 @@
 import math
 
-from luxonis_ml.typing import Params
+from luxonis_ml.typing import Kwargs, Params
 from torch import Tensor, nn
 from torch.nn import functional as F
 from typing_extensions import override
@@ -112,6 +112,34 @@ class OCRCTCHead(BaseHead):
         return self.encoder.n_classes
 
     @override
+    def get_parameter_groups(self) -> list[Kwargs]:
+        """Returns parameter groups for the head.
+
+        @rtype: list[dict]
+        @return: Parameter groups for the head.
+        """
+
+        return [
+            {
+                "params": (
+                    p
+                    for m in self.children()
+                    for p in m.parameters()
+                    if isinstance(m, nn.Linear)
+                ),
+                "weight_decay": self.fc_decay,
+            },
+            {
+                "params": (
+                    p
+                    for m in self.children()
+                    for p in m.parameters()
+                    if not isinstance(m, nn.Linear)
+                )
+            },
+        ]
+
+    @override
     def initialize_weights(self, method: str | None = None) -> None:
         super().initialize_weights(method)
         for m in self.modules():
@@ -119,11 +147,3 @@ class OCRCTCHead(BaseHead):
                 std = 1.0 / math.sqrt(m.in_features)
                 nn.init.uniform_(m.weight, -std, std)
                 nn.init.uniform_(m.bias, -std, std)
-
-                # TODO: This doesn't work in PyTorch. In PyTorch,
-                # per-parameter regularizers are set by creating
-                # multiple paremeter groups in the optimizer.
-                # We need to first add support for this in
-                # `LuxonisLightningModule`.
-                m.weight.regularizer = self.fc_decay  # type: ignore
-                m.bias.regularizer = self.fc_decay  # type: ignore

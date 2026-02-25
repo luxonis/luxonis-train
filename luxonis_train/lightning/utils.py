@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeVar
 
@@ -9,13 +9,17 @@ from lightning.pytorch.callbacks import (
     GradientAccumulationScheduler,
     ModelCheckpoint,
 )
+from lightning.pytorch.utilities.types import (
+    LRSchedulerConfig,
+    OptimizerLRScheduler,
+)
 from loguru import logger
 from luxonis_ml.typing import ConfigItem, check_type
 from luxonis_ml.utils import traverse_graph
 from luxonis_ml.utils.registry import Registry
 from torch import Size, Tensor, nn
+from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler, SequentialLR
-from torch.optim.optimizer import Optimizer
 
 import luxonis_train as lxt
 from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
@@ -313,6 +317,84 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
     ) -> Iterator[tuple[str, NodeWrapper, list[str], list[str]]]:
         yield from traverse_graph(self.graph, self)
 
+    def build_optimizers(self, cfg: Config) -> OptimizerLRScheduler:
+        """Configures model optimizers and schedulers."""
+
+        cfg_optimizer = cfg.trainer.optimizer
+        cfg_scheduler = cfg.trainer.scheduler
+        groups = [
+            cfg_optimizer.params | g
+            for node in self.values()
+            for g in node.module.get_parameter_groups()
+        ]
+
+        optimizer = from_registry(OPTIMIZERS, cfg_optimizer.name, groups)
+
+        def _get_scheduler(
+            cfg: ConfigItem, optimizer: Optimizer
+        ) -> LRScheduler:
+            return from_registry(
+                SCHEDULERS, cfg.name, **cfg.params, optimizer=optimizer
+            )
+
+        if cfg_scheduler.name == "SequentialLR":
+            if "schedulers" not in cfg_scheduler.params:
+                raise ValueError(
+                    "'SequentialLR' scheduler requires 'schedulers' "
+                    "parameter containing the configurations of the "
+                    "individual schedulers."
+                )
+            schedulers = cfg_scheduler.params["schedulers"]
+            if not check_type(schedulers, list[dict]):
+                raise TypeError(
+                    "'schedulers' parameter of 'SequentialLR' scheduler "
+                    f"must be a list of dictionaries. Got `{schedulers}`."
+                )
+            schedulers_list = [
+                _get_scheduler(ConfigItem(**scheduler_cfg), optimizer)
+                for scheduler_cfg in schedulers
+            ]
+
+            if "milestones" not in cfg_scheduler.params:
+                raise ValueError(
+                    "'SequentialLR' scheduler requires 'milestones' parameter."
+                )
+
+            milestones = cfg_scheduler.params["milestones"]
+            if not check_type(milestones, list[int]):
+                raise TypeError(
+                    "'milestones' parameter of 'SequentialLR' scheduler must be a list of integers. "
+                    f"Got `{milestones}`."
+                )
+
+            scheduler = SequentialLR(
+                optimizer, schedulers=schedulers_list, milestones=milestones
+            )
+
+        elif cfg_scheduler.name == "ReduceLROnPlateau":
+            scheduler = _get_scheduler(cfg_scheduler, optimizer)
+            if cfg_scheduler.params.get("mode") == "max":
+                if self.main_metric is None:
+                    raise ValueError(
+                        "ReduceLROnPlateau with 'max' mode requires a main_metric."
+                    )
+                node_name, metric_name = self.main_metric
+                formatted = self.formatted_name(node_name)
+                monitor = f"val/metric/{formatted}/{metric_name}"
+            else:
+                monitor = "val/loss"
+
+            scheduler = LRSchedulerConfig(
+                scheduler=scheduler,
+                monitor=monitor,
+                frequency=cfg.trainer.validation_interval,
+            )
+
+        else:
+            scheduler = _get_scheduler(cfg_scheduler, optimizer)
+
+        return [optimizer], [scheduler]
+
 
 def compute_losses(
     cfg: Config,
@@ -374,87 +456,6 @@ def build_training_strategy(
             pl_module=pl_module,
         )
     return None
-
-
-def build_optimizers(
-    cfg: Config,
-    parameters: Iterable[nn.Parameter],
-    main_metric: tuple[str, str] | None,
-    nodes: Nodes,
-) -> tuple[list[Optimizer], list[LRScheduler | dict[str, Any]]]:
-    """Configures model optimizers and schedulers."""
-    cfg_optimizer = cfg.trainer.optimizer
-    cfg_scheduler = cfg.trainer.scheduler
-
-    optimizer = from_registry(
-        OPTIMIZERS,
-        cfg_optimizer.name,
-        **cfg_optimizer.params,
-        params=[p for p in parameters if p.requires_grad],
-    )
-
-    def _get_scheduler(cfg: ConfigItem, optimizer: Optimizer) -> LRScheduler:
-        return from_registry(
-            SCHEDULERS, cfg.name, **cfg.params, optimizer=optimizer
-        )
-
-    if cfg_scheduler.name == "SequentialLR":
-        if "schedulers" not in cfg_scheduler.params:
-            raise ValueError(
-                "'SequentialLR' scheduler requires 'schedulers' "
-                "parameter containing the configurations of the "
-                "individual schedulers."
-            )
-        schedulers = cfg_scheduler.params["schedulers"]
-        if not check_type(schedulers, list[dict]):
-            raise TypeError(
-                "'schedulers' parameter of 'SequentialLR' scheduler "
-                f"must be a list of dictionaries. Got `{schedulers}`."
-            )
-        schedulers_list = [
-            _get_scheduler(ConfigItem(**scheduler_cfg), optimizer)
-            for scheduler_cfg in schedulers
-        ]
-
-        if "milestones" not in cfg_scheduler.params:
-            raise ValueError(
-                "'SequentialLR' scheduler requires 'milestones' parameter."
-            )
-
-        milestones = cfg_scheduler.params["milestones"]
-        if not check_type(milestones, list[int]):
-            raise TypeError(
-                "'milestones' parameter of 'SequentialLR' scheduler must be a list of integers. "
-                f"Got `{milestones}`."
-            )
-
-        scheduler = SequentialLR(
-            optimizer, schedulers=schedulers_list, milestones=milestones
-        )
-
-    elif cfg_scheduler.name == "ReduceLROnPlateau":
-        scheduler = _get_scheduler(cfg_scheduler, optimizer)
-        if cfg_scheduler.params.get("mode") == "max":
-            if main_metric is None:
-                raise ValueError(
-                    "ReduceLROnPlateau with 'max' mode requires a main_metric."
-                )
-            node_name, metric_name = main_metric
-            formatted = nodes.formatted_name(node_name)
-            monitor = f"val/metric/{formatted}/{metric_name}"
-        else:
-            monitor = "val/loss"
-
-        scheduler = {
-            "scheduler": scheduler,
-            "monitor": monitor,
-            "frequency": cfg.trainer.validation_interval,
-        }
-
-    else:
-        scheduler = _get_scheduler(cfg_scheduler, optimizer)
-
-    return [optimizer], [scheduler]
 
 
 def build_callbacks(
@@ -695,7 +696,7 @@ def compute_visualization_buffer(
         if node_buf:
             leftovers[node_name] = node_buf
 
-    return leftovers if leftovers else None
+    return leftovers or None
 
 
 def get_model_execution_order(

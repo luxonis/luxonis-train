@@ -186,6 +186,22 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
                 ):
                     m.inplace = True
 
+    def get_parameter_groups(self) -> list[Kwargs]:
+        """Returns parameter groups for the node.
+
+        By default, returns a single parameter group containing all
+        parameters of the node. Subclasses can override this method to
+        provide custom parameter groups, for example to set different
+        learning rates for different parts of the model.
+
+        @rtype: list[dict]
+        @return: A list of parameter groups, where each group is a
+            dictionary containing a "params" key with a list of
+            parameters and optionally other keys like "lr" for learning
+            rate.
+        """
+        return [{"params": self.parameters()}]
+
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
         """Returns a name of the default varaint and a dictionary of

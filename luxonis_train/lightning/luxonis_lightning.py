@@ -7,6 +7,7 @@ from typing import Any, Literal, cast
 import lightning.pytorch as pl
 import torch
 from lightning.pytorch.utilities import rank_zero_only
+from lightning.pytorch.utilities.types import OptimizerLRScheduler
 from loguru import logger
 from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
@@ -32,7 +33,6 @@ from .utils import (
     LossAccumulator,
     Nodes,
     build_callbacks,
-    build_optimizers,
     build_training_strategy,
     check_tensor_device,
     compute_losses,
@@ -503,17 +503,10 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
     @override
-    def configure_optimizers(
-        self,
-    ) -> tuple[
-        list[torch.optim.Optimizer],
-        list[torch.optim.lr_scheduler.LRScheduler | dict[str, Any]],
-    ]:
+    def configure_optimizers(self) -> OptimizerLRScheduler:
         if self.training_strategy is not None:
             return self.training_strategy.configure_optimizers()
-        return build_optimizers(
-            self.cfg, self.parameters(), self.nodes.main_metric, self.nodes
-        )
+        return self.nodes.build_optimizers(self.cfg)
 
     def load_checkpoint(self, ckpt: PathType | dict[str, Any] | None) -> None:
         """Loads checkpoint weights from provided path.
