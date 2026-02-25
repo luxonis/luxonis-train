@@ -184,7 +184,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
                 viz[i],
                 image_bboxes[:, 2:],
                 width=width,
-                labels=cls_labels if cls_labels else None,
+                labels=cls_labels or None,
                 colors=cls_colors,
             ).to(canvas.device)
 

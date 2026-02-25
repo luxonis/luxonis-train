@@ -63,10 +63,12 @@ class DetectionConfusionMatrix(BaseMetric):
                 self.confusion_matrix[self.n_classes, self.n_classes] += 1
 
             elif target.numel() == 0:
-                self.confusion_matrix[pred_classes, self.n_classes] += 1
+                # False positives -> GT is background
+                self.confusion_matrix[self.n_classes, pred_classes] += 1
 
             elif pred.numel() == 0:
-                self.confusion_matrix[self.n_classes, target_classes] += 1
+                # False negatives -> Pred is background
+                self.confusion_matrix[target_classes, self.n_classes] += 1
 
             elif (
                 iou := box_iou(target[:, 1:], pred[:, :4]) > self.iou_threshold
@@ -80,8 +82,8 @@ class DetectionConfusionMatrix(BaseMetric):
 
                 self.confusion_matrix.index_put_(
                     (
-                        pred_classes[predictions_kept],
                         target_classes[targets_kept],
+                        pred_classes[predictions_kept],
                     ),
                     torch.tensor(1),
                     accumulate=True,
@@ -91,18 +93,18 @@ class DetectionConfusionMatrix(BaseMetric):
                     targets_kept, len(target)
                 ):
                     self.confusion_matrix[
-                        self.n_classes, target_classes[target_idx]
+                        target_classes[target_idx], self.n_classes
                     ] += 1
 
                 for pred_idx in self._get_unmatched(
                     predictions_kept, len(pred)
                 ):
                     self.confusion_matrix[
-                        pred_classes[pred_idx], self.n_classes
+                        self.n_classes, pred_classes[pred_idx]
                     ] += 1
             else:
-                self.confusion_matrix[self.n_classes, target_classes] += 1
-                self.confusion_matrix[pred_classes, self.n_classes] += 1
+                self.confusion_matrix[target_classes, self.n_classes] += 1
+                self.confusion_matrix[self.n_classes, pred_classes] += 1
 
     def _get_unmatched(self, index: Tensor, size: int) -> Tensor:
         return torch.arange(size, device=self.device)[
