@@ -1,6 +1,5 @@
 # An example configuration for a more complex network.
 
-
 model:
   name: complex_model
   nodes:
