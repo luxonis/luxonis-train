@@ -32,6 +32,7 @@ def test_overfit_batches_training(
         "loader.test_view": "train",
         "trainer.overfit_batches": 1,
         "trainer.seed": 42,
+        "trainer.deterministic": "warn",
         "trainer.epochs": 1,
     }
     model = LuxonisModel(cfg, opts)

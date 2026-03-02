@@ -86,6 +86,7 @@ def test_overfit_convergence(
         ],
         "tracker.save_directory": str(save_dir),
     }
+    opts["trainer.deterministic"] = "warn"
 
     if extra_opts:
         opts |= extra_opts
