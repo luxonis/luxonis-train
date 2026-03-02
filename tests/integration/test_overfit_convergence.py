@@ -86,8 +86,7 @@ def test_overfit_convergence(
         ],
         "tracker.save_directory": str(save_dir),
     }
-    if config_name == "ocr_recognition_light_model":
-        opts["trainer.deterministic"] = "warn"
+    opts["trainer.deterministic"] = "warn"
 
     if extra_opts:
         opts |= extra_opts
