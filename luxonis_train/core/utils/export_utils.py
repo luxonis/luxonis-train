@@ -21,10 +21,12 @@ def replace_weights(
     if weights is not None:
         old_weights = module.state_dict()
         module.load_checkpoint(str(weights))
+        module._weights_explicitly_loaded = True
 
     yield
 
     if old_weights is not None:
+        module._weights_explicitly_loaded = False
         module.load_state_dict(old_weights)
         del old_weights
 
