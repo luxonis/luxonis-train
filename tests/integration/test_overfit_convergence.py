@@ -1,3 +1,4 @@
+import math
 from collections.abc import Generator
 from pathlib import Path
 
@@ -171,10 +172,13 @@ def test_metric_equivalence_callback_an_eval(
     for key in callback_test_metrics:
         if key not in standalone_results:
             continue
-        assert callback_test_metrics[key] == pytest.approx(
-            standalone_results[key]
-        ), (
+        callback_val = callback_test_metrics[key]
+        standalone_val = standalone_results[key]
+        # nan != nan in floating point, so handle it explicitly
+        if math.isnan(callback_val) and math.isnan(standalone_val):
+            continue
+        assert callback_val == pytest.approx(standalone_val), (
             f"Metric mismatch for '{key}': "
-            f"TestOnTrainEnd={callback_test_metrics[key]:.6f} vs "
-            f"standalone={standalone_results[key]:.6f}"
+            f"TestOnTrainEnd={callback_val:.6f} vs "
+            f"standalone={standalone_val:.6f}"
         )
