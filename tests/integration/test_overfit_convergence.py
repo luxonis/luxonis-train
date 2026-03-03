@@ -169,10 +169,9 @@ def test_metric_equivalence_callback_an_eval(
     assert standalone_results, "Standalone test returned no results"
 
     # Compare both
-    for key in callback_test_metrics:
+    for key, callback_val in callback_test_metrics.items():
         if key not in standalone_results:
             continue
-        callback_val = callback_test_metrics[key]
         standalone_val = standalone_results[key]
         # nan != nan in floating point, so handle it explicitly
         if math.isnan(callback_val) and math.isnan(standalone_val):
