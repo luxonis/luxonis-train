@@ -280,6 +280,8 @@ class EMACallback(pl.Callback):
 
         The current state is saved so that it can be restored later.
         """
+        if getattr(pl_module, "_weights_explicitly_loaded", False):
+            return
         self.collected_state_dict = deepcopy(pl_module.state_dict())
         if self._ema is not None:
             pl_module.load_state_dict(self._ema.state_dict_ema)
@@ -290,5 +292,7 @@ class EMACallback(pl.Callback):
         This method reverts the model to its state prior to the EMA
         weight swap.
         """
+        if getattr(pl_module, "_weights_explicitly_loaded", False):
+            return
         if self.collected_state_dict is not None:
             pl_module.load_state_dict(self.collected_state_dict)

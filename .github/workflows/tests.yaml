@@ -4,33 +4,33 @@ on:
   workflow_dispatch:
     inputs:
       ml_ref:
-         description: 'luxonis-ml version (branch/tag/SHA)'
-         required: true
-         default: main
+        description: "luxonis-ml version (branch/tag/SHA)"
+        required: true
+        default: main
       train_ref:
-         description: 'luxonis-train version (branch/tag/SHA)'
-         required: true
-         default: main
+        description: "luxonis-train version (branch/tag/SHA)"
+        required: true
+        default: main
 
   workflow_call:
     inputs:
       ml_ref:
-        description: 'luxonis-ml version (branch/tag/SHA)'
+        description: "luxonis-ml version (branch/tag/SHA)"
         required: true
         type: string
       train_ref:
-        description: 'luxonis-train version (branch/tag/SHA)'
+        description: "luxonis-train version (branch/tag/SHA)"
         required: true
         type: string
     secrets:
       GOOGLE_APPLICATION_CREDENTIALS:
-        description: 'GCP service-account JSON'
+        description: "GCP service-account JSON"
         required: true
       CODECOV_TOKEN:
-        description: 'Codecov upload token'
+        description: "Codecov upload token"
         required: true
       HUBAI_API_KEY:
-        description: 'HubAI API key'
+        description: "HubAI API key"
         required: true
 
 permissions:
@@ -48,66 +48,66 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        repository: Luxonis/luxonis-train
-        ref:        ${{ inputs.train_ref }}
-        path:       luxonis-train
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: Luxonis/luxonis-train
+          ref: ${{ inputs.train_ref }}
+          path: luxonis-train
 
-    - name: Free Disk Space (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      uses: jlumbroso/free-disk-space@main
-      with:
-        tool-cache: false
-        large-packages: false
+      - name: Free Disk Space (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          large-packages: false
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-        cache: pip
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
 
-    - name: Install dependencies
-      working-directory: luxonis-train
-      run: pip install -e .[dev]
+      - name: Install dependencies
+        working-directory: luxonis-train
+        run: pip install -e .[dev]
 
-    - name: Install specified luxonis-ml
-      shell: bash
-      env:
-        ML_REF: ${{ inputs.ml_ref }}
-      run: |
-        pip uninstall luxonis-ml -y
-        pip install \
-          "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}" \
-          --upgrade --force-reinstall
+      - name: Install specified luxonis-ml
+        shell: bash
+        env:
+          ML_REF: ${{ inputs.ml_ref }}
+        run: |
+          pip uninstall luxonis-ml -y
+          pip install \
+            "luxonis-ml[data,tracker] @ git+https://github.com/luxonis/luxonis-ml.git@${ML_REF}" \
+            --upgrade --force-reinstall
 
-    - name: Authenticate to Google Cloud
-      id: google-auth
-      uses: google-github-actions/auth@v2
-      with:
-        credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
-        create_credentials_file: true
-        export_environment_variables: true
-        token_format: access_token
+      - name: Authenticate to Google Cloud
+        id: google-auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          create_credentials_file: true
+          export_environment_variables: true
+          token_format: access_token
 
-    - name: Run pytest
-      working-directory: luxonis-train
-      env:
-        LUXONISML_BUCKET: luxonis-test-bucket
-        HUBAI_API_KEY: ${{ secrets.HUBAI_API_KEY }}
-      run: pytest --cov --junitxml=junit.xml -o junit_family=legacy
+      - name: Run pytest
+        working-directory: luxonis-train
+        env:
+          LUXONISML_BUCKET: luxonis-test-bucket
+          HUBAI_API_KEY: ${{ secrets.HUBAI_API_KEY }}
+        run: pytest --cov --junitxml=junit.xml -o junit_family=legacy
 
-    - name: Upload test results to Codecov
-      if: matrix.os == 'ubuntu-t4-4core'
-      uses: codecov/test-results-action@v1
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: false
+      - name: Upload test results to Codecov
+        if: matrix.os == 'ubuntu-t4-4core'
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
-    - name: Upload coverage results to Codecov
-      if: matrix.os == 'ubuntu-t4-4core'
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        fail_ci_if_error: false
+      - name: Upload coverage results to Codecov
+        if: matrix.os == 'ubuntu-t4-4core'
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
