@@ -773,7 +773,9 @@ class LuxonisLightningModule(pl.LightningModule):
                             name=f"{mode}/metrics/{self.current_epoch}/"
                             f"{formatted_node_name}/{name}",
                             step=self.current_epoch,
-                            class_names=matrix_info["row_labels"],
+                            extra_data={
+                                "class_names": matrix_info["row_labels"]
+                            },
                         )
                         matrices[node_name][name] = matrix_info
                     else:
