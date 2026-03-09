@@ -8,10 +8,10 @@ import torch
 from luxonis_ml.data import Category
 from luxonis_ml.data.utils import get_task_type, task_is_metadata
 from luxonis_ml.utils.registry import AutoRegisterMeta
-from luxonis_train.config.config import AugmentationConfig
 from torch import Size, Tensor
 from torch.utils.data import Dataset
 
+from luxonis_train.config.config import AugmentationConfig
 from luxonis_train.registry import LOADERS
 from luxonis_train.typing import Labels
 from luxonis_train.utils.general import get_attribute_check_none
