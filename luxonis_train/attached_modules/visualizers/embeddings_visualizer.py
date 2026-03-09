@@ -57,6 +57,14 @@ class EmbeddingsVisualizer(BaseVisualizer):
 
         pca = PCA(n_components=2, random_state=42)
         embeddings_2d = pca.fit_transform(embeddings_np)
+        if (
+            pca.explained_variance_.shape[0] > 1
+            and pca.explained_variance_[1] < 1e-12
+        ):
+            # Stabilize PCA sign when embeddings are effectively 1-D.
+            ref = embeddings_np.sum(axis=1)
+            if np.dot(embeddings_2d[:, 0], ref) < 0:
+                embeddings_2d[:, 0] *= -1
         embeddings_2d, ids_np = self._filter_outliers(embeddings_2d, ids_np)
 
         kdeplot = self.plot_to_tensor(embeddings_2d, ids_np, self.kde_plot)

@@ -3,7 +3,7 @@ cyclopts~=4.2
 faster-coco-eval~=1.7
 grad-cam~=1.5
 lightning~=2.5
-luxonis-ml[data,tracker,s3,gcs,roboflow]>=0.8.1
+luxonis-ml[data,tracker,s3,gcs,roboflow]>=0.8.2
 mlflow~=3.6
 onnxruntime~=1.23
 onnxscript~=0.5
@@ -21,4 +21,4 @@ tensorboard~=2.20
 termcolor~=3.2
 torchmetrics~=1.8
 torchvision~=0.24
-hubai-sdk
+hubai-sdk>=0.2.1
