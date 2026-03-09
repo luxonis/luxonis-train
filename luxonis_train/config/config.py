@@ -375,6 +375,7 @@ class NormalizeAugmentationConfig(BaseModelExtraForbid):
 
 class AugmentationConfig(ConfigItem):
     active: bool = True
+    use_for_resizing: bool = False
 
 
 class PreprocessingConfig(BaseModelExtraForbid):
@@ -413,6 +414,43 @@ class PreprocessingConfig(BaseModelExtraForbid):
             )
         return self
 
+    @model_validator(mode="after")
+    def check_use_for_resizing(self) -> Self:
+        train_h, train_w = self.train_image_size
+        for aug in self.augmentations:
+            if not aug.use_for_resizing:
+                continue
+
+            aug_h = aug.params.get("height")
+            aug_w = aug.params.get("width")
+            if aug_h != train_h or aug_w != train_w:
+                logger.warning(
+                    f"Augmentation '{aug.name}' is marked as 'use_for_resizing' "
+                    f"but its (height, width) doesn't match "
+                    f"train_image_size ({train_h}, {train_w}). "
+                    f"Overriding to match train_image_size."
+                )
+            aug.params["height"] = train_h
+            aug.params["width"] = train_w
+
+            aug_p = aug.params.get("p")
+            if aug_p != 1:
+                if aug_p is not None:
+                    logger.warning(
+                        f"Augmentation '{aug.name}' is marked as 'use_for_resizing' "
+                        f"but has p={aug_p}. Overriding to p=1."
+                    )
+                aug.params["p"] = 1
+
+            if self.keep_aspect_ratio:
+                logger.warning(
+                    f"Augmentation '{aug.name}' is marked as 'use_for_resizing'. "
+                    f"The 'keep_aspect_ratio' preprocessing parameter is ignored "
+                    f"when a custom resizing augmentation is used."
+                )
+
+        return self
+
     @model_serializer
     def serialize_model(self, info: SerializationInfo) -> Params:
         data = {
@@ -429,14 +467,18 @@ class PreprocessingConfig(BaseModelExtraForbid):
 
         return data
 
-    def get_active_augmentations(self) -> list[ConfigItem]:
+    def get_active_augmentations(self) -> list[AugmentationConfig]:
         """Returns list of augmentations that are active.
 
         @rtype: list[AugmentationConfig]
         @return: Filtered list of active augmentation configs
         """
         return [
-            ConfigItem(name=aug.name, params=aug.params)
+            AugmentationConfig(
+                name=aug.name,
+                params=aug.params,
+                use_for_resizing=aug.use_for_resizing,
+            )
             for aug in self.augmentations
             if aug.active
         ]

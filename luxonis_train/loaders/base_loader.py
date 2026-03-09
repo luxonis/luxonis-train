@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from typing import Any, Literal
 
 import cv2
@@ -32,7 +33,7 @@ class BaseLoaderTorch(
         height: int | None = None,
         width: int | None = None,
         augmentation_engine: str = "albumentations",
-        augmentation_config: list[ConfigItem] | None = None,
+        augmentation_config: Sequence[ConfigItem] | None = None,
         image_source: str = "image",
         keep_aspect_ratio: bool = True,
         color_space: Literal["RGB", "BGR", "GRAY"] = "RGB",
@@ -58,7 +59,7 @@ class BaseLoaderTorch(
         @param augmentation_engine: Name of the augmentation engine. Can
             be used to enable swapping between different augmentation engines or making use of pre-defined engines, e.g. C{AlbumentationsEngine}.
 
-        @type augmentation_config: list[ConfigItem] | None
+        @type augmentation_config: Sequence[ConfigItem] | None
         @param augmentation_config: List of augmentation configurations.
             Individual configurations are in the form of::
 
@@ -125,10 +126,10 @@ class BaseLoaderTorch(
         return self._getter_check_none("augmentation_engine")
 
     @property
-    def augmentation_config(self) -> list[ConfigItem]:
+    def augmentation_config(self) -> Sequence[ConfigItem]:
         """List of augmentation configurations.
 
-        @type: list[ConfigItem]
+        @type: Sequence[ConfigItem]
         """
         return self._getter_check_none("augmentation_config")
 
