@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
 from typing import Any, Literal
 
 import cv2
@@ -8,8 +7,8 @@ import numpy.typing as npt
 import torch
 from luxonis_ml.data import Category
 from luxonis_ml.data.utils import get_task_type, task_is_metadata
-from luxonis_ml.typing import ConfigItem
 from luxonis_ml.utils.registry import AutoRegisterMeta
+from luxonis_train.config.config import AugmentationConfig
 from torch import Size, Tensor
 from torch.utils.data import Dataset
 
@@ -33,7 +32,7 @@ class BaseLoaderTorch(
         height: int | None = None,
         width: int | None = None,
         augmentation_engine: str = "albumentations",
-        augmentation_config: Sequence[ConfigItem] | None = None,
+        augmentation_config: list[AugmentationConfig] | None = None,
         image_source: str = "image",
         keep_aspect_ratio: bool = True,
         color_space: Literal["RGB", "BGR", "GRAY"] = "RGB",
@@ -59,7 +58,7 @@ class BaseLoaderTorch(
         @param augmentation_engine: Name of the augmentation engine. Can
             be used to enable swapping between different augmentation engines or making use of pre-defined engines, e.g. C{AlbumentationsEngine}.
 
-        @type augmentation_config: Sequence[ConfigItem] | None
+        @type augmentation_config: list[AugmentationConfig] | None
         @param augmentation_config: List of augmentation configurations.
             Individual configurations are in the form of::
 
@@ -126,10 +125,10 @@ class BaseLoaderTorch(
         return self._getter_check_none("augmentation_engine")
 
     @property
-    def augmentation_config(self) -> Sequence[ConfigItem]:
+    def augmentation_config(self) -> list[AugmentationConfig]:
         """List of augmentation configurations.
 
-        @type: Sequence[ConfigItem]
+        @type: list[AugmentationConfig]
         """
         return self._getter_check_none("augmentation_config")
 
