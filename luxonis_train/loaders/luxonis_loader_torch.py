@@ -130,7 +130,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             view=self.view,
             augmentation_engine=self.augmentation_engine,
             augmentation_config=[
-                aug.model_dump() for aug in self.augmentation_config
+                aug.model_dump(exclude={"active"})
+                for aug in self.augmentation_config
             ],
             height=self.height,
             width=self.width,
