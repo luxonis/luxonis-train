@@ -19,6 +19,8 @@ model:
           name: SGD
           params:
             lr: 0.01
+        scheduler:
+          name: ConstantLR
 
     - name: EfficientKeypointBBoxHead
       inputs:

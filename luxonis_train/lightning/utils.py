@@ -19,7 +19,6 @@ from loguru import logger
 from luxonis_ml.typing import Kwargs
 from luxonis_ml.utils import traverse_graph
 from luxonis_ml.utils.registry import Registry
-from rich import print
 from torch import Size, Tensor, nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler, SequentialLR
@@ -288,7 +287,9 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
     ) -> Iterable[tuple[OptimizerConfig, SchedulerConfig]]:
         cfg_base_optimizer = self.cfg.trainer.optimizer
         cfg_base_scheduler = self.cfg.trainer.scheduler
-        groups: dict[str, tuple[list[Kwargs], SchedulerConfig]] = {}
+        groups: dict[
+            tuple[str, str], tuple[list[Kwargs], SchedulerConfig]
+        ] = {}
         used_params = set()
         for node in self.values():
             for finetuning in [
@@ -312,7 +313,6 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                     ):
                         for param_name, p in module.named_parameters():
                             name = f"{module.__class__.__name__}.{module_name}.{param_name}"
-                            print(name)
                             if (
                                 finetuning.parameter_regex.search(name)
                                 and p.requires_grad
@@ -323,15 +323,18 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
 
                 if params:
                     if cfg_optimizer.name not in groups:
-                        groups[cfg_optimizer.name] = (
+                        groups[(cfg_optimizer.name, cfg_scheduler.name)] = (
                             [],
                             cfg_scheduler,
                         )
-                    groups[cfg_optimizer.name][0].append(
+                    groups[(cfg_optimizer.name, cfg_scheduler.name)][0].append(
                         {"params": params} | cfg_optimizer.params
                     )
 
-        for optimizer_name, (optimizer_params, scheduler) in groups.items():
+        for (optimizer_name, _), (
+            optimizer_params,
+            scheduler,
+        ) in groups.items():
             yield (
                 OptimizerConfig(
                     name=optimizer_name,
