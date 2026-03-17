@@ -7,7 +7,10 @@ from typing import Any, Literal, cast
 import lightning.pytorch as pl
 import torch
 from lightning.pytorch.utilities import rank_zero_only
-from lightning.pytorch.utilities.types import OptimizerLRScheduler
+from lightning.pytorch.utilities.types import (
+    LRSchedulerTypeUnion,
+    OptimizerLRScheduler,
+)
 from loguru import logger
 from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
@@ -15,6 +18,7 @@ from packaging import version
 from semver import Version
 from torch import Size, Tensor
 from torch.nn.modules.module import _IncompatibleKeys
+from torch.optim import Optimizer
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from typing_extensions import override
 
@@ -538,6 +542,8 @@ class LuxonisLightningModule(pl.LightningModule):
         if len(optimizers) > 1:
             self.automatic_optimization = False
 
+        self._log_optimizer_scheduler_info(optimizers, schedulers)
+
         return optimizers, schedulers
 
     def load_checkpoint(self, ckpt: PathType | dict[str, Any] | None) -> None:
@@ -996,3 +1002,20 @@ class LuxonisLightningModule(pl.LightningModule):
     def _strip_state_prefix(key: str) -> str:
         idx = 3 if "module." in key else 2
         return ".".join(key.split(".")[idx:])
+
+    def _log_optimizer_scheduler_info(
+        self,
+        optimizers: list[Optimizer],
+        schedulers: list[LRSchedulerTypeUnion],
+    ) -> None:
+        logger.info(f"Using {len(optimizers)} optimizer(s).")
+        for optimizer, scheduler in zip(optimizers, schedulers, strict=True):
+            optimizer_name = type(optimizer).__name__
+            if isinstance(scheduler, dict):
+                scheduler_name = type(scheduler["scheduler"]).__name__
+            else:
+                scheduler_name = type(scheduler).__name__
+            logger.info(
+                f"Using optimizer: '{optimizer_name}' with scheduler: '{scheduler_name}'"
+            )
+            logger.info(optimizer)
