@@ -531,13 +531,14 @@ class LuxonisLightningModule(pl.LightningModule):
     @override
     def configure_optimizers(self) -> OptimizerLRScheduler:
         if self.training_strategy is not None:
-            optimizer, scheduler = (
+            optimizers, schedulers = (
                 self.training_strategy.configure_optimizers()
             )
-        optimizer, scheduler = self.nodes.build_optimizers()
-        if len(optimizer) > 1:
+        optimizers, schedulers = self.nodes.build_optimizers()
+        if len(optimizers) > 1:
             self.automatic_optimization = False
-        return optimizer, scheduler
+
+        return optimizers, schedulers
 
     def load_checkpoint(self, ckpt: PathType | dict[str, Any] | None) -> None:
         """Loads checkpoint weights from provided path.

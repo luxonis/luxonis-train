@@ -47,27 +47,6 @@ import luxonis_train as lxt
 from luxonis_train.registry import MODELS, NODES, from_registry
 
 
-class SequentialLRParams(BaseModelExtraForbid):
-    schedulers: list[ConfigItem]
-    milestones: list[int]
-    last_epoch: int = -1
-
-
-class SchedulerConfig(ConfigItem):
-    def get_sequential_lr_params(self) -> SequentialLRParams:
-        if self.name != "SequentialLR":
-            raise RuntimeError(
-                f"Scheduler '{self.name}' is not 'SequentialLR'. "
-                "Cannot get `SequentialLR` parameters."
-            )
-
-        if "schedulers" not in self.params or "milestones" not in self.params:
-            raise ValueError(
-                "SequentialLR requires 'schedulers' and 'milestones' parameters."
-            )
-        return SequentialLRParams(**self.params)  # type: ignore
-
-
 class ImageSize(NamedTuple):
     height: int
     width: int
@@ -104,11 +83,6 @@ class FreezingConfig(BaseModelExtraForbid):
     lr_after_unfreeze: NonNegativeFloat | None = None
 
 
-class OptimizerConfig(BaseModelExtraForbid):
-    name: str = "Adam"
-    params: Params = Field(default_factory=dict)
-
-
 class ParameterPattern(BaseModelExtraForbid):
     name: str | None = None
     module_type: str | None = None
@@ -129,10 +103,51 @@ class ParameterPattern(BaseModelExtraForbid):
         return self.name or self.module_type  # type: ignore
 
 
+class SchedulerConfig(ConfigItem):
+    name: str = "ConstantLR"
+
+    def get_sequential_lr_params(self) -> "SequentialLRParams":
+        if self.name != "SequentialLR":
+            raise RuntimeError(
+                f"Scheduler '{self.name}' is not 'SequentialLR'. "
+                "Cannot get `SequentialLR` parameters."
+            )
+
+        if "schedulers" not in self.params or "milestones" not in self.params:
+            raise ValueError(
+                "SequentialLR requires 'schedulers' and 'milestones' parameters."
+            )
+        return SequentialLRParams(**self.params)  # type: ignore
+
+    def to_finetuning(self) -> "FinetuningSchedulerConfig":
+        return FinetuningSchedulerConfig(name=self.name, params=self.params)
+
+
+class SequentialLRParams(BaseModelExtraForbid):
+    schedulers: list[SchedulerConfig]
+    milestones: list[int]
+    last_epoch: int = -1
+
+
+class FinetuningSchedulerConfig(SchedulerConfig):
+    name: str | None = None
+
+
+class OptimizerConfig(ConfigItem):
+    name: str = "Adam"
+
+    def to_finetuning(self) -> "FinetuningOptimizerConfig":
+        return FinetuningOptimizerConfig(name=self.name, params=self.params)
+
+
+class FinetuningOptimizerConfig(OptimizerConfig):
+    name: str | None = None
+
+
 class FinetuningConfig(BaseModelExtraForbid):
     parameters: list[ParameterPattern] | None = None
-    optimizer: ConfigItem | None = None
-    scheduler: SchedulerConfig | None = None
+    optimizer: FinetuningOptimizerConfig | None = None
+    scheduler: FinetuningSchedulerConfig | None = None
 
     @field_validator("parameters", mode="before")
     @classmethod
@@ -568,12 +583,8 @@ class TrainerConfig(BaseModelExtraForbid):
 
     callbacks: list[CallbackConfig] = []
 
-    optimizer: ConfigItem = Field(
-        default_factory=lambda: ConfigItem(name="Adam")
-    )
-    scheduler: SchedulerConfig = Field(
-        default_factory=lambda: SchedulerConfig(name="ConstantLR")
-    )
+    optimizer: OptimizerConfig = Field(default_factory=OptimizerConfig)
+    scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig)
 
     training_strategy: ConfigItem | None = None
 

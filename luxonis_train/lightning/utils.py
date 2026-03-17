@@ -1,11 +1,8 @@
-import hashlib
-import json
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Sequence
-from copy import deepcopy
 from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeVar, overload
 
 import lightning.pytorch as pl
 import torch
@@ -19,9 +16,10 @@ from lightning.pytorch.utilities.types import (
     LRSchedulerTypeUnion,
 )
 from loguru import logger
-from luxonis_ml.typing import ConfigItem, Kwargs
+from luxonis_ml.typing import Kwargs
 from luxonis_ml.utils import traverse_graph
 from luxonis_ml.utils.registry import Registry
+from rich import print
 from torch import Size, Tensor, nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler, SequentialLR
@@ -35,7 +33,10 @@ from luxonis_train.callbacks import LuxonisModelSummary, TrainingManager
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.config.config import (
     FinetuningConfig,
+    FinetuningOptimizerConfig,
+    FinetuningSchedulerConfig,
     NodeConfig,
+    OptimizerConfig,
     ParameterPattern,
     SchedulerConfig,
 )
@@ -284,69 +285,60 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
 
     def _extract_optimizer_params(
         self,
-    ) -> Iterable[tuple[Kwargs, ConfigItem, SchedulerConfig]]:
-        base_optimizer_cfg = self.cfg.trainer.optimizer
-        base_scheduler_cfg = self.cfg.trainer.scheduler
-        groups: dict[tuple[str, str], Any] = {}
+    ) -> Iterable[tuple[OptimizerConfig, SchedulerConfig]]:
+        cfg_base_optimizer = self.cfg.trainer.optimizer
+        cfg_base_scheduler = self.cfg.trainer.scheduler
+        groups: dict[str, tuple[list[Kwargs], SchedulerConfig]] = {}
         used_params = set()
         for node in self.values():
-            finetuning_cfgs = deepcopy(node.cfg.finetuning)
-            finetuning_cfgs.append(
+            for finetuning in [
+                *node.cfg.finetuning,
                 FinetuningConfig(
                     parameters=[ParameterPattern(name=".*")],
-                    optimizer=base_optimizer_cfg,
-                    scheduler=base_scheduler_cfg,
-                )
-            )
-            for finetuning in finetuning_cfgs:
+                    optimizer=cfg_base_optimizer.to_finetuning(),
+                    scheduler=cfg_base_scheduler.to_finetuning(),
+                ),
+            ]:
                 cfg_optimizer = merge_config_items(
-                    base_optimizer_cfg, finetuning.optimizer
+                    cfg_base_optimizer, finetuning.optimizer
                 )
                 cfg_scheduler = merge_config_items(
-                    base_scheduler_cfg, finetuning.scheduler
+                    cfg_base_scheduler, finetuning.scheduler
                 )
-                group_hash = (
-                    _hash_dict(cfg_optimizer.model_dump()),
-                    _hash_dict(cfg_scheduler.model_dump()),
-                )
-                parameters: list[nn.Parameter] = []
-                for n, p in node.module.named_parameters():
-                    if (
-                        finetuning.parameter_regex.search(n)
-                        and p.requires_grad
-                        and id(p) not in used_params
+                params = []
+                for module_name, module in node.module.named_modules():
+                    if list(module.parameters()) and not list(
+                        module.children()
                     ):
-                        parameters.append(p)
-                        used_params.add(id(p))
-                if group_hash not in groups:
-                    groups[group_hash] = (
-                        [{"params": parameters}],
-                        cfg_optimizer,
-                        cfg_scheduler,
+                        for param_name, p in module.named_parameters():
+                            name = f"{module.__class__.__name__}.{module_name}.{param_name}"
+                            print(name)
+                            if (
+                                finetuning.parameter_regex.search(name)
+                                and p.requires_grad
+                                and id(p) not in used_params
+                            ):
+                                params.append(p)
+                                used_params.add(id(p))
+
+                if params:
+                    if cfg_optimizer.name not in groups:
+                        groups[cfg_optimizer.name] = (
+                            [],
+                            cfg_scheduler,
+                        )
+                    groups[cfg_optimizer.name][0].append(
+                        {"params": params} | cfg_optimizer.params
                     )
-                else:
-                    groups[group_hash][0].append({"params": parameters})
 
-        parameters = []
-        for node in self.values():
-            for p in node.module.parameters():
-                if p.requires_grad and id(p) not in used_params:
-                    parameters.append(p)
-        group_hash = (
-            _hash_dict(cfg_optimizer.model_dump()),
-            _hash_dict(cfg_scheduler.model_dump()),
-        )
-        if group_hash not in groups:
-            groups[group_hash] = (
-                [{"params": parameters}],
-                cfg_optimizer,
-                cfg_scheduler,
+        for optimizer_name, (optimizer_params, scheduler) in groups.items():
+            yield (
+                OptimizerConfig(
+                    name=optimizer_name,
+                    params={"params": optimizer_params},  # type: ignore
+                ),
+                scheduler,
             )
-        else:
-            groups[group_hash][0].append({"params": parameters})
-
-        for parameters, cfg_optimizer, cfg_scheduler in groups.values():
-            yield {"params": parameters}, cfg_optimizer, cfg_scheduler
 
     def _get_freezing(
         self, node_cfg: NodeConfig, total_epochs: int
@@ -419,17 +411,12 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         optimizers = []
         schedulers = []
 
-        for (
-            optimizer_kwargs,
-            cfg_optimizer,
-            cfg_scheduler,
-        ) in self._extract_optimizer_params():
+        for cfg_optimizer, cfg_scheduler in self._extract_optimizer_params():
             optimizer, scheduler = build_optimizer_scheduler(
                 self.main_metric,
                 cfg_optimizer,
                 cfg_scheduler,
                 self.cfg.trainer.validation_interval,
-                optimizer_kwargs=optimizer_kwargs,
             )
             optimizers.append(optimizer)
             schedulers.append(scheduler)
@@ -870,39 +857,53 @@ def check_tensor_device(
     raise TypeError(f"Expected Tensor or list[Tensor], got {type(x)!r}")
 
 
-M = TypeVar("M", ConfigItem, SchedulerConfig)
+@overload
+def merge_config_items(
+    base: OptimizerConfig,
+    override: FinetuningOptimizerConfig | FinetuningSchedulerConfig | None,
+) -> OptimizerConfig: ...
 
 
-def merge_config_items(base: M, override: M | None) -> M:
+@overload
+def merge_config_items(
+    base: SchedulerConfig,
+    override: FinetuningOptimizerConfig | FinetuningSchedulerConfig | None,
+) -> SchedulerConfig: ...
+
+
+def merge_config_items(
+    base: OptimizerConfig | SchedulerConfig,
+    override: FinetuningOptimizerConfig | FinetuningSchedulerConfig | None,
+) -> OptimizerConfig | SchedulerConfig:
     if override is None:
-        return base
+        return base.to_finetuning()
 
-    if override.name == base.name:
+    if override.name is None or override.name == base.name:
+        name = base.name
         params = base.params | override.params
     else:
+        name = override.name
         params = override.params
 
-    return type(override)(name=override.name, params=params)
+    return type(base)(name=name, params=params)
 
 
 def build_optimizer_scheduler(
     main_metric: MainMetric | None,
-    cfg_optimizer: ConfigItem,
+    cfg_optimizer: OptimizerConfig,
     cfg_scheduler: SchedulerConfig,
     validation_interval: int,
-    optimizer_kwargs: Kwargs | None = None,
 ) -> tuple[Optimizer, LRScheduler | LRSchedulerConfigType]:
     """Configures model optimizers and schedulers."""
-    optimizer_kwargs = optimizer_kwargs or {}
 
     optimizer = from_registry(
-        OPTIMIZERS,
-        cfg_optimizer.name,
-        **(cfg_optimizer.params | optimizer_kwargs),
+        OPTIMIZERS, cfg_optimizer.name, **cfg_optimizer.params
     )
     scheduler: LRScheduler | LRSchedulerConfigType
 
-    def _get_scheduler(cfg: ConfigItem, optimizer: Optimizer) -> LRScheduler:
+    def _get_scheduler(
+        cfg: SchedulerConfig, optimizer: Optimizer
+    ) -> LRScheduler:
         return from_registry(
             SCHEDULERS, cfg.name, **cfg.params, optimizer=optimizer
         )
@@ -944,12 +945,3 @@ def build_optimizer_scheduler(
         scheduler = _get_scheduler(cfg_scheduler, optimizer)
 
     return optimizer, scheduler
-
-
-def _hash_dict(d: dict) -> str:
-    """Recursively hash a dictionary."""
-
-    serialized_dict = json.dumps(d, sort_keys=True).encode("utf-8")
-
-    hash_object = hashlib.sha256(serialized_dict)
-    return hash_object.hexdigest()

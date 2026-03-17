@@ -7,7 +7,6 @@ model:
       finetuning:
         parameters: repvgg_encoder
         optimizer:
-          name: SGD
           params:
             nesterov: false
 
