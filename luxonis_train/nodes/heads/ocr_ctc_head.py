@@ -129,14 +129,6 @@ class OCRCTCHead(BaseHead):
                 ),
                 "weight_decay": self.fc_decay,
             },
-            {
-                "params": (
-                    p
-                    for m in self.children()
-                    for p in m.parameters()
-                    if not isinstance(m, nn.Linear)
-                )
-            },
         ]
 
     @override

@@ -200,7 +200,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             parameters and optionally other keys like "lr" for learning
             rate.
         """
-        return [{"params": self.parameters()}]
+        raise NotImplementedError
 
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:

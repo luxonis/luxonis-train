@@ -1,6 +1,8 @@
+import re
 import sys
 from collections.abc import Mapping
 from contextlib import suppress
+from functools import cached_property
 from pathlib import Path
 from typing import Annotated, Any, Literal, NamedTuple
 
@@ -45,6 +47,27 @@ import luxonis_train as lxt
 from luxonis_train.registry import MODELS, NODES, from_registry
 
 
+class SequentialLRParams(BaseModelExtraForbid):
+    schedulers: list[ConfigItem]
+    milestones: list[int]
+    last_epoch: int = -1
+
+
+class SchedulerConfig(ConfigItem):
+    def get_sequential_lr_params(self) -> SequentialLRParams:
+        if self.name != "SequentialLR":
+            raise RuntimeError(
+                f"Scheduler '{self.name}' is not 'SequentialLR'. "
+                "Cannot get `SequentialLR` parameters."
+            )
+
+        if "schedulers" not in self.params or "milestones" not in self.params:
+            raise ValueError(
+                "SequentialLR requires 'schedulers' and 'milestones' parameters."
+            )
+        return SequentialLRParams(**self.params)  # type: ignore
+
+
 class ImageSize(NamedTuple):
     height: int
     width: int
@@ -81,11 +104,65 @@ class FreezingConfig(BaseModelExtraForbid):
     lr_after_unfreeze: NonNegativeFloat | None = None
 
 
+class OptimizerConfig(BaseModelExtraForbid):
+    name: str = "Adam"
+    params: Params = Field(default_factory=dict)
+
+
+class ParameterPattern(BaseModelExtraForbid):
+    name: str | None = None
+    module_type: str | None = None
+
+    @model_validator(mode="after")
+    def validate(self) -> Self:
+        if self.name is None and self.module_type is None:
+            raise ValueError(
+                "At least one of `name` or `module_type` must be specified for parameter pattern."
+            )
+        return self
+
+    def identifier(self) -> str:
+        if self.name is None and self.module_type is None:
+            raise ValueError(
+                "At least one of `name` or `module_type` must be specified for parameter pattern."
+            )
+        return self.name or self.module_type  # type: ignore
+
+
+class FinetuningConfig(BaseModelExtraForbid):
+    parameters: list[ParameterPattern] | None = None
+    optimizer: ConfigItem | None = None
+    scheduler: SchedulerConfig | None = None
+
+    @field_validator("parameters", mode="before")
+    @classmethod
+    def validate_parameters(cls, value: Any) -> Any:
+        parsed_patterns = []
+        if isinstance(value, str):
+            value = [value]
+        if not isinstance(value, list):
+            return value
+        for item in value:
+            if isinstance(item, str):
+                parsed_patterns.append(ParameterPattern(name=item))
+            elif isinstance(item, dict):
+                parsed_patterns.append(ParameterPattern(**item))
+        return parsed_patterns
+
+    @cached_property
+    def parameter_regex(self) -> re.Pattern:
+        if not self.parameters:
+            return re.compile(".*")
+        return re.compile(
+            "|".join(f"(?:{p.identifier()})" for p in self.parameters),
+            flags=re.IGNORECASE,
+        )
+
+
 class NodeConfig(ConfigItem):
     alias: str | None = None
     inputs: list[str] = []  # From preceding nodes
     input_sources: list[str] = []  # From data loader
-    freezing: FreezingConfig = Field(default_factory=FreezingConfig)
     remove_on_export: bool = False
     task_name: str | None = None
     metadata_task_override: str | dict[str, str] | None = None
@@ -97,6 +174,15 @@ class NodeConfig(ConfigItem):
     losses: list[LossModuleConfig] = []
     metrics: list[MetricModuleConfig] = []
     visualizers: list[AttachedModuleConfig] = []
+    finetuning: list[FinetuningConfig] = []
+    freezing: FreezingConfig = Field(default_factory=FreezingConfig)
+
+    @field_validator("finetuning", mode="before")
+    @classmethod
+    def validate_finetuning(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return [value]
+        return value
 
     @property
     def identifier(self) -> str:
@@ -485,8 +571,8 @@ class TrainerConfig(BaseModelExtraForbid):
     optimizer: ConfigItem = Field(
         default_factory=lambda: ConfigItem(name="Adam")
     )
-    scheduler: ConfigItem = Field(
-        default_factory=lambda: ConfigItem(name="ConstantLR")
+    scheduler: SchedulerConfig = Field(
+        default_factory=lambda: SchedulerConfig(name="ConstantLR")
     )
 
     training_strategy: ConfigItem | None = None

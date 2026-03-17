@@ -15,6 +15,7 @@ from packaging import version
 from semver import Version
 from torch import Size, Tensor
 from torch.nn.modules.module import _IncompatibleKeys
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from typing_extensions import override
 
 import luxonis_train
@@ -32,7 +33,6 @@ from .luxonis_output import LuxonisOutput
 from .utils import (
     LossAccumulator,
     Nodes,
-    build_callbacks,
     build_training_strategy,
     check_tensor_device,
     compute_losses,
@@ -423,6 +423,34 @@ class LuxonisLightningModule(pl.LightningModule):
 
         loss, losses = compute_losses(self.cfg, outputs.losses, self.device)
         self._loss_accumulators["train"].update(losses)
+        if self.automatic_optimization:
+            return loss
+        optimizers = self.optimizers()
+        schedulers = self.lr_schedulers()
+        assert isinstance(optimizers, list)
+        assert isinstance(schedulers, list)
+        for optimizer in optimizers:
+            optimizer.zero_grad()
+        self.manual_backward(loss)
+        for optimizer in optimizers:
+            optimizer.step()
+        if self.trainer.is_last_batch:
+            for scheduler in schedulers:
+                if isinstance(scheduler, ReduceLROnPlateau):
+                    if scheduler.mode == "min":
+                        scheduler.step(loss)
+                    else:
+                        match self.nodes.main_metric_reference.compute():
+                            case dict():
+                                raise ValueError(
+                                    "Cannot use ReduceLROnPlateau scheduler when main metric is a dictionary. "
+                                    "Consider changing the main metric to return a single value or using a different scheduler."
+                                )
+                            case (value, _) | value:
+                                scheduler.step(value)
+
+                else:
+                    scheduler.step()
         return loss
 
     @override
@@ -498,15 +526,18 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:
-        return build_callbacks(
-            self.cfg, self.nodes.main_metric, self.save_dir, self.nodes
-        )
+        return self.nodes.build_callbacks(self.save_dir)
 
     @override
     def configure_optimizers(self) -> OptimizerLRScheduler:
         if self.training_strategy is not None:
-            return self.training_strategy.configure_optimizers()
-        return self.nodes.build_optimizers(self.cfg)
+            optimizer, scheduler = (
+                self.training_strategy.configure_optimizers()
+            )
+        optimizer, scheduler = self.nodes.build_optimizers()
+        if len(optimizer) > 1:
+            self.automatic_optimization = False
+        return optimizer, scheduler
 
     def load_checkpoint(self, ckpt: PathType | dict[str, Any] | None) -> None:
         """Loads checkpoint weights from provided path.
