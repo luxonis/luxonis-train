@@ -1,6 +1,6 @@
 import math
 
-from luxonis_ml.typing import Kwargs, Params
+from luxonis_ml.typing import Params
 from torch import Tensor, nn
 from torch.nn import functional as F
 from typing_extensions import override
@@ -20,7 +20,6 @@ class OCRCTCHead(BaseHead):
         self,
         alphabet: list[str],
         ignore_unknown: bool = True,
-        fc_decay: float = 0.0004,
         mid_channels: int | None = None,
         return_feats: bool = False,
         **kwargs,
@@ -53,7 +52,6 @@ class OCRCTCHead(BaseHead):
             raise ValueError("Alphabet has duplicate characters.")
 
         self.return_feats = return_feats
-        self.fc_decay = fc_decay
 
         self._encoder = OCREncoder(alphabet, ignore_unknown)
         self._decoder = OCRDecoder(self._encoder.char_to_int)
@@ -110,26 +108,6 @@ class OCRCTCHead(BaseHead):
     @property
     def out_channels(self) -> int:
         return self.encoder.n_classes
-
-    @override
-    def get_parameter_groups(self) -> list[Kwargs]:
-        """Returns parameter groups for the head.
-
-        @rtype: list[dict]
-        @return: Parameter groups for the head.
-        """
-
-        return [
-            {
-                "params": (
-                    p
-                    for m in self.children()
-                    for p in m.parameters()
-                    if isinstance(m, nn.Linear)
-                ),
-                "weight_decay": self.fc_decay,
-            },
-        ]
 
     @override
     def initialize_weights(self, method: str | None = None) -> None:
