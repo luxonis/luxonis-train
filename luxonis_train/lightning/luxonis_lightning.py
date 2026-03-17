@@ -1,6 +1,6 @@
 import re
 from collections import defaultdict
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -8,6 +8,7 @@ import lightning.pytorch as pl
 import torch
 from lightning.pytorch.utilities import rank_zero_only
 from lightning.pytorch.utilities.types import (
+    LRSchedulerConfig,
     LRSchedulerTypeUnion,
     OptimizerLRScheduler,
 )
@@ -1005,8 +1006,8 @@ class LuxonisLightningModule(pl.LightningModule):
 
     def _log_optimizer_scheduler_info(
         self,
-        optimizers: list[Optimizer],
-        schedulers: list[LRSchedulerTypeUnion],
+        optimizers: Sequence[Optimizer],
+        schedulers: Sequence[LRSchedulerTypeUnion | LRSchedulerConfig],
     ) -> None:
         logger.info(f"Using {len(optimizers)} optimizer(s).")
         for optimizer, scheduler in zip(optimizers, schedulers, strict=True):
