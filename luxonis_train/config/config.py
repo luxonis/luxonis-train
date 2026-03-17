@@ -589,26 +589,6 @@ class TrainerConfig(BaseModelExtraForbid):
     training_strategy: ConfigItem | None = None
 
     @model_validator(mode="after")
-    def validate_scheduler(self) -> Self:
-        if self.scheduler.name == "CosineAnnealingLR":
-            if "T_max" not in self.scheduler.params:
-                self.scheduler.params["T_max"] = self.epochs
-                logger.warning(
-                    "`T_max` was not set for 'CosineAnnealingLR'"
-                    "Automatically setting `T_max` to number of epochs."
-                )
-            elif self.scheduler.params["T_max"] != self.epochs:
-                logger.warning(
-                    "Parameter `T_max` of 'CosineAnnealingLR' is "
-                    "not equal to the number of epochs. "
-                    "Make sure this is intended."
-                    f"`T_max`: {self.scheduler.params['T_max']}, "
-                    f"Number of epochs: {self.epochs}"
-                )
-
-        return self
-
-    @model_validator(mode="after")
     def validate_gradient_acc_scheduler(self) -> Self:
         """Keys in the GradientAccumulationSheduler.params.scheduling
         should be ints but yaml can sometime auto-convert them to

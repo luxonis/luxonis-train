@@ -416,10 +416,10 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
 
         for cfg_optimizer, cfg_scheduler in self._extract_optimizer_params():
             optimizer, scheduler = build_optimizer_scheduler(
+                self.cfg,
                 self.main_metric,
                 cfg_optimizer,
                 cfg_scheduler,
-                self.cfg.trainer.validation_interval,
             )
             optimizers.append(optimizer)
             schedulers.append(scheduler)
@@ -892,10 +892,10 @@ def merge_config_items(
 
 
 def build_optimizer_scheduler(
+    cfg: Config,
     main_metric: MainMetric | None,
     cfg_optimizer: OptimizerConfig,
     cfg_scheduler: SchedulerConfig,
-    validation_interval: int,
 ) -> tuple[Optimizer, LRScheduler | LRSchedulerConfigType]:
     """Configures model optimizers and schedulers."""
 
@@ -910,6 +910,22 @@ def build_optimizer_scheduler(
         return from_registry(
             SCHEDULERS, cfg.name, **cfg.params, optimizer=optimizer
         )
+
+    if cfg_scheduler.name == "CosineAnnealingLR":
+        if "T_max" not in cfg_scheduler.params:
+            cfg_scheduler.params["T_max"] = cfg.trainer.epochs
+            logger.warning(
+                "`T_max` was not set for 'CosineAnnealingLR'"
+                "Automatically setting `T_max` to number of epochs."
+            )
+        elif cfg_scheduler.params["T_max"] != cfg.trainer.epochs:
+            logger.warning(
+                "Parameter `T_max` of 'CosineAnnealingLR' is "
+                "not equal to the number of epochs. "
+                "Make sure this is intended."
+                f"`T_max`: {cfg_scheduler.params['T_max']}, "
+                f"Number of epochs: {cfg.trainer.epochs}"
+            )
 
     if cfg_scheduler.name == "SequentialLR":
         scheduler_params = cfg_scheduler.get_sequential_lr_params()
@@ -941,7 +957,7 @@ def build_optimizer_scheduler(
         scheduler = {
             "scheduler": reduce_scheduler,
             "monitor": monitor,
-            "frequency": validation_interval,
+            "frequency": cfg.trainer.validation_interval,
         }
 
     else:
