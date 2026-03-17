@@ -83,6 +83,7 @@ For all available node names and their `params`, see [nodes](../luxonis_train/no
 | `losses`                     | `list`                 | `[]`          | List of losses attached to this node (see [Losses](#losses))                                                                                                                  |
 | `metrics`                    | `list`                 | `[]`          | List of metrics attached to this node (see [Metrics](#metrics))                                                                                                               |
 | `visualizers`                | `list`                 | `[]`          | List of visualizers attached to this node (see [Visualizers](#visualizers))                                                                                                   |
+| `finetuning`                 | `list[dict] \| dict`   | `[]`          | Advanced finetuning configurations to apply to this node. See [Finetuning](#finetuning) for more details.                                                                     |
 
 #### Losses
 
@@ -117,6 +118,16 @@ You can see the list of all currently supported visualizers and their parameters
 | `alias`  | `str`  | `None`        | Custom name for the visualizer           |
 | `params` | `dict` | `{}`          | Additional parameters for the visualizer |
 
+#### Finetuning
+
+This section allows you to specify advanced finetuning configurations for each node. You can specify different optimizer and scheduler parameters (or different optimizers/schedulers altogether) for different nodes, as well as only for certain parameters of each node. This is useful for more granular control over the training process, especially when using pretrained models where you might want to use a lower learning rate for the pretrained backbone and a higher learning rate for the newly initialized head.
+
+| Key          | Type                                                 | Default value | Description                                                                                                                                                                                                                                        |
+| ------------ | ---------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `parameters` | `list[ParameterPattern] \| ParameterPattern \| None` | `None`        | Which parameters to apply the finetuning configuration to. If `None`, the configuration is applied to all parameters of the node.                                                                                                                  |
+| `optimizer`  | `dict \| None`                                       | `None`        | Overrides the main optimizer for the specified parameter set. If left empty, the main optimizer from the trainer is used. See [Optimizer](#optimizer) for more details. If the `name` field is left empty it is set to the main optimizer's name.  |
+| `scheduler`  | `dict \| None`                                       | `None`        | Overrides the main scheduler for the specified parameter set. If left empty, the main scheduler from the trainer is used. See [Scheduler](#scheduler) for more detauls. If the `name` field is left empty, it is set to the main scheduler's name. |
+
 **Example:**
 
 ```yaml
@@ -136,6 +147,10 @@ visualizers:
   - name: "SegmentationVisualizer"
     params:
       colors: "#FF5055"
+finetuning:
+  optimizer:
+    params:
+      lr: 0.04
 ```
 
 ## Tracker
