@@ -27,7 +27,7 @@ model:
         - RepPANNeck
 
       finetuning:
-        - parameters: keypoint_heads.1
+        - parameters: keypoint_heads
           optimizer:
             name: Adam
             params:
@@ -36,6 +36,10 @@ model:
             name: ReduceLROnPlateau
             params:
               mode: max
+        - parameters: Conv2d
+          optimizer:
+            params:
+              weight_decay: 0.0001
 
       losses:
         - name: EfficientKeypointBBoxLoss
