@@ -108,7 +108,6 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
     ) -> tuple[Tensor, Tensor] | Tensor:
         # Draw predictions: masks + bboxes + keypoints
         pred_viz = InstanceSegmentationVisualizer.draw_predictions(
-            self,
             prediction_canvas,
             boundingbox,
             instance_segmentation,
