@@ -81,8 +81,8 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         self.draw_labels = draw_labels
         self.alpha = alpha
 
+    @staticmethod
     def draw_predictions(
-        self,
         canvas: Tensor,
         pred_bboxes: list[Tensor],
         pred_masks: list[Tensor],
