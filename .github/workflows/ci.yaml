@@ -89,10 +89,10 @@ jobs:
   # not installed.
   config-test:
     runs-on: ubuntu-latest
-    # needs:
-    #   - pre-commit
-    #   - type-check
-    #   - docs
+    needs:
+      - pre-commit
+      - type-check
+      - docs
 
     steps:
       - name: Checkout
