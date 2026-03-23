@@ -763,17 +763,21 @@ class LuxonisLightningModule(pl.LightningModule):
 
                 for name, value in values.items():
                     if value.dim() == 2:
+                        matrix_info = (
+                            self.progress_bar.format_matrix_for_printing(
+                                node, name, value
+                            )
+                        )
                         self.tracker.log_matrix(
                             matrix=value.cpu().numpy(),
                             name=f"{mode}/metrics/{self.current_epoch}/"
                             f"{formatted_node_name}/{name}",
                             step=self.current_epoch,
+                            extra_data={
+                                "class_names": matrix_info["row_labels"]
+                            },
                         )
-                        matrices[node_name][name] = (
-                            self.progress_bar.format_matrix_for_printing(
-                                node, name, value
-                            )
-                        )
+                        matrices[node_name][name] = matrix_info
                     else:
                         table[node_name][name] = value.cpu().item()
                         self.log(

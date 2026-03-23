@@ -19,7 +19,12 @@ from .utils import fix_empty_tensor
 
 
 class ObjectKeypointSimilarity(BaseMetric):
-    supported_tasks = [Tasks.KEYPOINTS, Tasks.INSTANCE_KEYPOINTS, Tasks.FOMO]
+    supported_tasks = [
+        Tasks.KEYPOINTS,
+        Tasks.INSTANCE_KEYPOINTS,
+        Tasks.INSTANCE_SEGMENTATION_KEYPOINTS,
+        Tasks.FOMO,
+    ]
 
     pred_keypoints: Annotated[list[Tensor], MetricState()]
     target_keypoints: Annotated[list[Tensor], MetricState()]
