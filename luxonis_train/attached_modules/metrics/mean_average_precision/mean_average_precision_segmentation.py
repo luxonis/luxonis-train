@@ -9,7 +9,10 @@ from .utils import compute_metric_lists, postprocess_metrics
 
 
 class MeanAveragePrecisionSegmentation(MeanAveragePrecision, BaseMetric):
-    supported_tasks = [Tasks.INSTANCE_SEGMENTATION]
+    supported_tasks = [
+        Tasks.INSTANCE_SEGMENTATION,
+        Tasks.INSTANCE_SEGMENTATION_KEYPOINTS,
+    ]
 
     def __init__(self, **kwargs):
         super().__init__(iou_type=("bbox", "segm"), **kwargs)
