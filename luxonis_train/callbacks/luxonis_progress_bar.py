@@ -93,12 +93,12 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         if len(class_names) == rows:
             row_labels = class_names
         elif len(class_names) + 1 == rows:
-            row_labels = [*class_names, "background"]
+            row_labels = [*class_names, "no match"]
 
         if len(class_names) == cols:
             col_labels = class_names
         elif len(class_names) + 1 == cols:
-            col_labels = [*class_names, "background"]
+            col_labels = [*class_names, "no match"]
 
         return {
             "values": matrix.tolist(),
