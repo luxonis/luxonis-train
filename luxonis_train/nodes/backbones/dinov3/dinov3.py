@@ -77,10 +77,10 @@ class DinoV3(BaseNode):
         started/locally/}
         @type weights_link: string
 
-        @param return_sequence: If True, return the patch sequence
-        [B, N, C] directly to be processed by transformer heads.
-        Otherwise, turn patch embeddings into [B, C, H, W] feature
-        map to be passed to traditional heads
+        @param return_sequence: If True, return the CLS embedding
+        [B, C] for downstream classification heads. Otherwise, turn
+        patch embeddings into [B, C, H, W] feature maps to be passed
+        to dense prediction heads
         @type return_sequence: bool
 
         @param variant: Architecture variant of the DINOv3 backbone.
@@ -155,12 +155,13 @@ class DinoV3(BaseNode):
         self.backbone.rope_embed = RopePositionEmbedding(**rope_kwargs)
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
-        """If self.return_sequence is True, the CLS token is returned
-        and this can be used for downstream classification tasks.
+        """If self.return_sequence is True, a list containing the CLS
+        token embedding [B, C] is returned and this can be used for
+        downstream classification tasks.
 
         Otherwise, the last `self.depth` layers of the network are
-        returned, which can be used for downstream segmentation and
-        other dense feature tasks
+        returned as [B, C, H, W] feature maps, which can be used for
+        downstream segmentation and other dense feature tasks
         """
         outs: list[Tensor] = []
 
