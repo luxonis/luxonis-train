@@ -706,7 +706,7 @@ def _validate_quantization_mode(value: str) -> str:
         "FP32": "FP32_STANDARD",
     }
     # values are taken from hubai_sdk enum definition:
-    # from hubai_sdk.utils.hubai_models import EnumQuantizationMode
+    # hubai_sdk.utils.hubai_models.EnumQuantizationMode
     valid_modes = (
         "INT8_STANDARD",
         "INT8_ACCURACY_FOCUSED",
@@ -724,6 +724,7 @@ def _validate_quantization_mode(value: str) -> str:
             f"Valid options are: {sorted(valid_modes)}"
         )
     return value
+
 
 class ExportConfig(ArchiveConfig):
     name: str | None = None
