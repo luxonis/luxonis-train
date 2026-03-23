@@ -6,10 +6,12 @@ from typing import Literal, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
+import onnx
 import rich.traceback
 import torch
 import torch.utils.data as torch_data
 import yaml
+from aimet_onnx.quantsim import QuantizationSimModel
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
@@ -1138,6 +1140,12 @@ class LuxonisModel:
                 raise ValueError(f"HubAI conversion failed: {e}") from e
 
         return archive_path, conversion_artifacts
+
+    def quantize(
+        self, onnx_path: PathType, mode: Literal["PTQ", "QAT"]
+    ) -> None:
+        model = onnx.load_model(onnx_path)
+        sim = QuantizationSimModel(model=model)
 
     @property
     def environ(self) -> Environ:
