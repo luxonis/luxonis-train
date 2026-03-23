@@ -120,7 +120,9 @@ jobs:
           pip install semver~=3.0 pydantic-extra-types~=2.10
           pip install -e . --no-deps
           python -c 'from luxonis_train.config import Config; \
-                     Config.get_config("configs/complex_model.yaml")'
+                     from pathlib import Path; \
+                     for p in Path("configs").rglob("*.yaml"): \
+                         Config.get_config(p)'
 
   tests:
     needs:
