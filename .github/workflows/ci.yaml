@@ -121,8 +121,8 @@ jobs:
           pip install -e . --no-deps
           python -c 'from luxonis_train.config import Config; \
                      from pathlib import Path; \
-                     for p in Path("configs").rglob("*.yaml"):
-                         Config.get_config(p)'
+                     [Config.get_config(p)
+                       for p in Path("configs").rglob("*.yaml")]'
 
   tests:
     needs:
