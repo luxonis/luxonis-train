@@ -129,6 +129,7 @@ reportIncompatibleVariableOverride = "none"
 reportIncompatibleMethodOverride = "none"
 reportUnnecessaryIsInstance = "none"
 reportMatchNotExhaustive = "error"
+extraPaths = ["../luxonis-ml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

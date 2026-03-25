@@ -1,5 +1,8 @@
+from collections.abc import Sequence
+
 import torch
 import torch.nn.functional as F
+from loguru import logger
 from luxonis_ml.typing import all_not_none, any_not_none
 from torch import Tensor, nn
 
@@ -16,6 +19,8 @@ class TaskAlignedAssigner(nn.Module):
         alpha: float = 1.0,
         beta: float = 6.0,
         eps: float = 1e-9,
+        strides: Sequence[int] | Tensor | None = None,
+        skip_stal: bool = False,
     ):
         """Task Aligned Assigner.
 
@@ -35,6 +40,11 @@ class TaskAlignedAssigner(nn.Module):
         @param beta: Defaults to 6.0.
         @type eps: float
         @param eps: Defaults to 1e-9.
+        @type strides: Sequence[int] | Tensor | None
+        @param strides: Detection strides (usually 8/16/32).
+        @type skip_stal: bool
+        @param skip_stal: If True, disables Small-Target-Aware Label
+            Assignment candidate expansion.
         """
         super().__init__()
 
@@ -43,6 +53,35 @@ class TaskAlignedAssigner(nn.Module):
         self.alpha = alpha
         self.beta = beta
         self.eps = eps
+        normalized_strides = self._normalize_strides(strides)
+        self.strides = normalized_strides or None
+        if not skip_stal and self.strides is None:
+            logger.warning(
+                "STAL was requested for TaskAlignedAssigner, but no valid "
+                "`strides` were provided. `strides` should be the detection "
+                "head stride values in pixels, for example `[8, 16, 32]`. "
+                "nodes inheriting from `BaseDetectionHead` provide this "
+                "attribute. "
+            )
+        self.skip_stal = bool(skip_stal or not self.strides)
+        self.min_stride = self.strides[0] if self.strides is not None else None
+        self.stal_target_size = (
+            self.strides[1]
+            if self.strides is not None and len(self.strides) > 1
+            else self.min_stride
+        )
+
+    @staticmethod
+    def _normalize_strides(
+        strides: Sequence[int] | Tensor | None,
+    ) -> tuple[int, ...] | None:
+        if strides is None:
+            return None
+
+        if isinstance(strides, Tensor):
+            strides = strides.detach().cpu().tolist()
+
+        return tuple(sorted({int(stride) for stride in strides}))
 
     @torch.no_grad()
     def forward(
@@ -138,8 +177,9 @@ class TaskAlignedAssigner(nn.Module):
         )
 
         # Select top-k bboxes as candidates for each GT
-        is_in_gts = candidates_in_gt(anchor_points, gt_bboxes.reshape(-1, 4))
-        is_in_gts = is_in_gts.reshape(self.bs, self.n_max_boxes, -1)
+        is_in_gts = self._select_candidates_in_gts(
+            anchor_points, gt_bboxes, mask_gt
+        )
         is_in_topk = self._select_topk_candidates(
             align_metric * is_in_gts,
             topk_mask=mask_gt.repeat(1, 1, self.topk).bool(),
@@ -245,6 +285,31 @@ class TaskAlignedAssigner(nn.Module):
         align_metric = bbox_scores.pow(self.alpha) * overlaps.pow(self.beta)
 
         return align_metric, overlaps
+
+    def _select_candidates_in_gts(
+        self, anchor_points: Tensor, gt_bboxes: Tensor, mask_gt: Tensor
+    ) -> Tensor:
+        if not self.skip_stal:
+            gt_bboxes = self._expand_small_gt_bboxes(gt_bboxes, mask_gt)
+        is_in_gts = candidates_in_gt(anchor_points, gt_bboxes.reshape(-1, 4))
+        return is_in_gts.reshape(self.bs, self.n_max_boxes, -1)
+
+    def _expand_small_gt_bboxes(
+        self, gt_bboxes: Tensor, mask_gt: Tensor
+    ) -> Tensor:
+        if self.min_stride is None or self.stal_target_size is None:
+            return gt_bboxes
+
+        gt_centers = (gt_bboxes[..., :2] + gt_bboxes[..., 2:]) / 2
+        gt_wh = (gt_bboxes[..., 2:] - gt_bboxes[..., :2]).clamp_min(0)
+        small_mask = (gt_wh < self.min_stride) & mask_gt.bool()
+        expanded_wh = torch.where(
+            small_mask,
+            torch.full_like(gt_wh, float(self.stal_target_size)),
+            gt_wh,
+        )
+        half_wh = expanded_wh / 2
+        return torch.cat((gt_centers - half_wh, gt_centers + half_wh), dim=-1)
 
     def _select_topk_candidates(
         self,
