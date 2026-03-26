@@ -71,18 +71,6 @@ class TaskAlignedAssigner(nn.Module):
             else self.min_stride
         )
 
-    @staticmethod
-    def _normalize_strides(
-        strides: Sequence[int] | Tensor | None,
-    ) -> tuple[int, ...] | None:
-        if strides is None:
-            return None
-
-        if isinstance(strides, Tensor):
-            strides = strides.detach().cpu().tolist()
-
-        return tuple(sorted({int(stride) for stride in strides}))
-
     @torch.no_grad()
     def forward(
         self,
@@ -220,6 +208,17 @@ class TaskAlignedAssigner(nn.Module):
             out_mask_positive,
             assigned_gt_idx,
         )
+
+    def _normalize_strides(
+        self, strides: Sequence[int] | Tensor | None
+    ) -> tuple[int, ...] | None:
+        if strides is None:
+            return None
+
+        if isinstance(strides, Tensor):
+            strides = strides.detach().cpu().tolist()
+
+        return tuple(sorted({int(stride) for stride in strides}))
 
     def _get_alignment_metric(
         self,
