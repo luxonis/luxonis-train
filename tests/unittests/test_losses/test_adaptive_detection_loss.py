@@ -1,3 +1,4 @@
+import pytest
 import torch
 from torch import Size, Tensor
 
@@ -37,13 +38,21 @@ class DummyEfficientBBoxHead(EfficientBBoxHead, register=False):
     def forward(self, _: Tensor) -> Tensor: ...
 
 
-def test_adaptive_detection_loss():
+@pytest.mark.parametrize("skip_stal", [True, False])
+def test_adaptive_detection_loss(skip_stal: bool):
     loss = AdaptiveDetectionLoss(
-        node=DummyEfficientBBoxHead(), iou_type="siou", n_warmup_epochs=0
+        node=DummyEfficientBBoxHead(),
+        iou_type="siou",
+        n_warmup_epochs=0,
+        skip_stal=skip_stal,
     )
     features, class_scores, distributions, target, expected_sub_losses = (
         load_checkpoint("adaptive_detection_loss_data.pt")
     )
     result = loss(features, class_scores, distributions, target)[1]
+    assert result.keys() == expected_sub_losses.keys()
     for key, value in result.items():
-        assert torch.isclose(value, expected_sub_losses[key], atol=1e-3)
+        assert value.ndim == 0
+        assert torch.isfinite(value)
+        if skip_stal:
+            assert torch.isclose(value, expected_sub_losses[key], atol=1e-3)
