@@ -515,6 +515,7 @@ class TrainerConfig(BaseModelExtraForbid):
     resume_training: bool = False
     n_workers: NonNegativeInt = 4
     validation_interval: Literal[-1] | PositiveInt = 5
+    run_validation_after_first_epoch: bool = False
     n_log_images: NonNegativeInt = 4
     skip_last_batch: bool = True
     pin_memory: bool = True

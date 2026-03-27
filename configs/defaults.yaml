@@ -60,6 +60,7 @@ trainer:
 
   n_workers: 4
   validation_interval: 5
+  run_validation_after_first_epoch: false
   n_log_images: 4
   skip_last_batch: true
   pin_memory: true

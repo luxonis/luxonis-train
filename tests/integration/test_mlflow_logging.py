@@ -4,7 +4,7 @@ import subprocess
 import time
 from contextlib import suppress
 from pathlib import Path
-from typing import Final
+from typing import Final, cast
 
 import mlflow
 import psutil
@@ -136,6 +136,7 @@ def test_mlflow_logging(xor_dataset: LuxonisDataset, subtests: SubTests):
             "train/loss",
             "train/loss/XORHead/CrossEntropyLoss",
             "train/epoch_completion_sec",
+            "val/epoch_completion_sec",
             "val/loss",
             "val/metric/XORHead/Accuracy",
             "val/metric/XORHead/F1Score",
@@ -154,6 +155,7 @@ def test_mlflow_logging(xor_dataset: LuxonisDataset, subtests: SubTests):
             set(range(10)),
             set(range(10)),
             set(range(1, 11)),
+            {4, 9},
             {4, 9},
             {4, 9},
             {4, 9},
@@ -193,57 +195,102 @@ def test_mlflow_logging(xor_dataset: LuxonisDataset, subtests: SubTests):
         assert "train/epoch_duration_sec" in all_mlflow_logging_keys["metrics"]
 
 
-def get_config() -> Params:
-    return {
-        "model": {
-            "name": "xor_model",
-            "nodes": [
-                {
-                    "name": "XORHead",
-                    "losses": [{"name": "CrossEntropyLoss"}],
-                    "metrics": [
-                        {"name": "Accuracy", "is_main_metric": True},
-                        {"name": "ConfusionMatrix"},
-                        {"name": "F1Score", "params": {"average": None}},
-                    ],
-                    "visualizers": [{"name": "ClassificationVisualizer"}],
-                }
-            ],
+def get_config(trainer_overrides: Params | None = None) -> Params:
+    trainer_cfg: Params = {
+        "precision": "16-mixed",
+        "preprocessing": {
+            "train_image_size": [1, 2],
+            "keep_aspect_ratio": False,
         },
-        "loader": {
-            "name": "LuxonisLoaderTorch",
-            "train_view": "train",
-            "val_view": "train",
-            "test_view": "train",
+        "batch_size": 4,
+        "epochs": 10,
+        "n_log_images": 3,
+        "validation_interval": 5,
+        "scheduler": {
+            "name": "StepLR",
+            "params": {"step_size": 10, "gamma": 0.1},
         },
-        "trainer": {
-            "precision": "16-mixed",
-            "preprocessing": {
-                "train_image_size": [1, 2],
-                "keep_aspect_ratio": False,
-            },
-            "batch_size": 4,
-            "epochs": 10,
-            "n_log_images": 3,
-            "validation_interval": 5,
-            "scheduler": {
-                "name": "StepLR",
-                "params": {"step_size": 10, "gamma": 0.1},
-            },
-            "callbacks": [
-                {"name": "TestOnTrainEnd"},
-                {"name": "ConvertOnTrainEnd"},
-                {"name": "UploadCheckpoint"},
-                {"name": "DeviceStatsMonitor"},
-                {"name": "TrainingProgressCallback"},
-            ],
-        },
-        "tracker": {
-            "is_mlflow": True,
-            "project_name": "xor_project",
-            "run_name": "xor_run",
-        },
+        "callbacks": [
+            {"name": "TestOnTrainEnd"},
+            {"name": "ConvertOnTrainEnd"},
+            {"name": "UploadCheckpoint"},
+            {"name": "DeviceStatsMonitor"},
+            {"name": "TrainingProgressCallback"},
+        ],
     }
+    if trainer_overrides is not None:
+        trainer_cfg |= trainer_overrides
+
+    return cast(
+        Params,
+        {
+            "model": {
+                "name": "xor_model",
+                "nodes": [
+                    {
+                        "name": "XORHead",
+                        "losses": [{"name": "CrossEntropyLoss"}],
+                        "metrics": [
+                            {"name": "Accuracy", "is_main_metric": True},
+                            {"name": "ConfusionMatrix"},
+                            {"name": "F1Score", "params": {"average": None}},
+                        ],
+                        "visualizers": [{"name": "ClassificationVisualizer"}],
+                    }
+                ],
+            },
+            "loader": {
+                "name": "LuxonisLoaderTorch",
+                "train_view": "train",
+                "val_view": "train",
+                "test_view": "train",
+            },
+            "trainer": trainer_cfg,
+            "tracker": {
+                "is_mlflow": True,
+                "project_name": "xor_project",
+                "run_name": "xor_run",
+            },
+        },
+    )
+
+
+@pytest.mark.timeout(TIMEOUT)
+def test_mlflow_logging_with_first_epoch_validation(
+    xor_dataset: LuxonisDataset, subtests: SubTests
+):
+    model = LuxonisModel(
+        get_config(
+            trainer_overrides={
+                "epochs": 6,
+                "validation_interval": 5,
+                "run_validation_after_first_epoch": True,
+            }
+        ),
+        {"loader.params.dataset_name": xor_dataset.identifier},
+    )
+    model.train()
+
+    client = mlflow.tracking.MlflowClient()
+    experiments = mlflow.search_experiments()
+    experiment_id = experiments[0].experiment_id
+    run_id = client.search_runs(
+        experiment_ids=[experiment_id],
+        order_by=["start_time desc"],
+        filter_string='tags.mlflow.runName="xor_run"',
+    )[0].info.run_id
+
+    all_mlflow_logging_keys = model.get_mlflow_logging_keys()
+
+    for key in [
+        "val/loss",
+        "val/metric/XORHead/Accuracy",
+        "val/epoch_completion_sec",
+    ]:
+        with subtests.test(key):
+            history = client.get_metric_history(run_id, key)
+            assert {m.step for m in history} == {0, 4}
+            assert key in all_mlflow_logging_keys["metrics"]
 
 
 def kill_process_tree(pid: int) -> None:
