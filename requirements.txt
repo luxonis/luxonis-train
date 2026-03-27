@@ -19,6 +19,7 @@ semver~=3.0
 tabulate~=0.9
 tensorboard~=2.20
 termcolor~=3.2
+torch<2.11 # temporary pin: GitHub runner image does not yet support the newer NVIDIA driver requirement used by torch 2.11 wheels
 torchmetrics~=1.8
 torchvision~=0.24
 hubai-sdk>=0.2.1

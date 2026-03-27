@@ -20,6 +20,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         class_loss_weight: float = 0.5,
         bbox_loss_weight: float = 7.5,
         dfl_loss_weight: float = 1.5,
+        skip_stal: bool = False,
         **kwargs,
     ):
         """Instance Segmentation and BBox loss adapted from  U{Real-Time Flying Object Detection with YOLOv8
@@ -35,12 +36,15 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         @param bbox_loss_weight: Weight for bbox loss. Defaults to 7.5. For optimal results, multiply with accumulate_grad_batches.
         @type dfl_loss_weight: float
         @param dfl_loss_weight: Weight for DFL loss. Defaults to 1.5. For optimal results, multiply with accumulate_grad_batches.
+        @type skip_stal: bool
+        @param skip_stal: If True, disables Small-Target-Aware Label Assignment candidate expansion. Defaults to False.
         """
         super().__init__(
             tal_topk=tal_topk,
             class_loss_weight=class_loss_weight,
             bbox_loss_weight=bbox_loss_weight,
             dfl_loss_weight=dfl_loss_weight,
+            skip_stal=skip_stal,
             **kwargs,
         )
 
