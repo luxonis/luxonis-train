@@ -154,7 +154,7 @@ def test_mlflow_logging(xor_dataset: LuxonisDataset, subtests: SubTests):
         [
             set(range(10)),
             set(range(10)),
-            set(range(1, 11)),
+            set(range(10)),
             {4, 9},
             {4, 9},
             {4, 9},
