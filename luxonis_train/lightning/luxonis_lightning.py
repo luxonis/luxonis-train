@@ -155,6 +155,8 @@ class LuxonisLightningModule(pl.LightningModule):
                 "luxonis_ml_version": luxonis_ml_version,
             }
         )
+        self._restore_validation_interval_after_first_epoch = False
+        self._original_check_val_every_n_epoch: int | None = None
 
     @override
     def load_state_dict(
@@ -453,6 +455,46 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
     @override
+    def setup(self, stage: str) -> None:
+        """Temporarily make validation run after the first training
+        epoch if the config item `run_validation_after_first_epoch` is
+        set.
+
+        Lightning decides whether validation should run at epoch end from
+        the public trainer attribute `check_val_every_n_epoch`. When
+        `trainer.run_validation_after_first_epoch` is enabled, we want to
+        keep using Lightning's normal validation path, but also ensure
+        that epoch 1 gets validated even if the configured `validation_interval`
+        normally skips it.
+
+        `trainer.check_val_every_n_epoch` is temporarily overriden to `1` before fitting starts.
+        After that first real validation epoch
+        completes, `on_validation_epoch_end()` restores the original
+        interval so the rest of training follows the configured cadence.
+
+        This override is intentionally applied only when `run_validation_after_first_epoch=True`
+        """
+        if getattr(stage, "value", stage) != "fit":
+            return
+
+        if (
+            not self.cfg.trainer.run_validation_after_first_epoch
+            or self.trainer.current_epoch != 0
+            or self.trainer.check_val_every_n_epoch is None
+            or self.trainer.check_val_every_n_epoch <= 1
+        ):
+            return
+
+        if self._restore_validation_interval_after_first_epoch:
+            return
+
+        self._original_check_val_every_n_epoch = (
+            self.trainer.check_val_every_n_epoch
+        )
+        self.trainer.check_val_every_n_epoch = 1
+        self._restore_validation_interval_after_first_epoch = True
+
+    @override
     def on_train_epoch_start(self) -> None:
         for node in self.nodes.values():
             node.module.current_epoch = self.current_epoch
@@ -473,7 +515,21 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def on_validation_epoch_end(self) -> None:
-        return self._evaluation_epoch_end("val")
+        """Restore the original validation interval after epoch 1
+        validation."""
+        self._evaluation_epoch_end("val")
+
+        if (
+            not self.trainer.sanity_checking
+            and self._restore_validation_interval_after_first_epoch
+            and self.current_epoch == 0
+            and self._original_check_val_every_n_epoch is not None
+        ):
+            self.trainer.check_val_every_n_epoch = (
+                self._original_check_val_every_n_epoch
+            )
+            self._restore_validation_interval_after_first_epoch = False
+            self._original_check_val_every_n_epoch = None
 
     @override
     def on_test_epoch_end(self) -> None:
@@ -852,13 +908,16 @@ class LuxonisLightningModule(pl.LightningModule):
         artifact_keys = set()
         metric_keys = set()
 
-        val_eval_epochs = []
-        for i in range(
-            self.cfg.trainer.validation_interval,
-            self.cfg.trainer.epochs + 1,
-            self.cfg.trainer.validation_interval,
-        ):
-            val_eval_epochs.append(max(0, i - 1))
+        val_eval_epochs = {
+            max(0, i - 1)
+            for i in range(
+                self.cfg.trainer.validation_interval,
+                self.cfg.trainer.epochs + 1,
+                self.cfg.trainer.validation_interval,
+            )
+        }
+        if self.cfg.trainer.run_validation_after_first_epoch:
+            val_eval_epochs.add(0)
         test_eval_epoch = self.cfg.trainer.epochs
 
         for mode in ["train", "val", "test"]:
@@ -880,7 +939,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 )
                 for sub_name in values:
                     if "confusion_matrix" in sub_name:
-                        for epoch_idx in sorted([0, *val_eval_epochs]):
+                        for epoch_idx in sorted({0, *val_eval_epochs}):
                             artifact_keys.add(
                                 f"val/metrics/{epoch_idx}/{formatted_node_name}/{sub_name}.json"
                             )
@@ -897,7 +956,7 @@ class LuxonisLightningModule(pl.LightningModule):
                         )
 
             for viz_name in node.visualizers:
-                for epoch_idx in sorted([0, *val_eval_epochs]):
+                for epoch_idx in sorted({0, *val_eval_epochs}):
                     for i in range(self.cfg.trainer.n_log_images):
                         artifact_keys.add(
                             f"val/visualizations/{formatted_node_name}/{viz_name}/{epoch_idx}/{i}.png"
@@ -933,6 +992,7 @@ class LuxonisLightningModule(pl.LightningModule):
                         "train/epoch_progress_percent",
                         "train/epoch_duration_sec",
                         "train/epoch_completion_sec",
+                        "val/epoch_completion_sec",
                     }
                 )
 
