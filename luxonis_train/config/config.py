@@ -699,15 +699,25 @@ class ArchiveConfig(BaseModelExtraForbid):
 
 
 def _validate_quantization_mode(value: str) -> str:
-    from hubai_sdk.utils.hubai_models import EnumQuantizationMode
+    value = value.upper()
 
     shorthand_map = {
         "FP16": "FP16_STANDARD",
         "FP32": "FP32_STANDARD",
     }
-    value = shorthand_map.get(value.upper(), value)
+    # values are taken from hubai_sdk enum definition:
+    # hubai_sdk.utils.hubai_models.EnumQuantizationMode
+    valid_modes = (
+        "INT8_STANDARD",
+        "INT8_ACCURACY_FOCUSED",
+        "INT8_INT16_MIXED",
+        "INT8_INT16_MIXED_ACCURACY_FOCUSED",
+        "FP16_STANDARD",
+        "FP32_STANDARD",
+    )
 
-    valid_modes = {e.value for e in EnumQuantizationMode}
+    value = shorthand_map.get(value, value)
+
     if value not in valid_modes:
         raise ValueError(
             f"Invalid quantization_mode: '{value}'. "

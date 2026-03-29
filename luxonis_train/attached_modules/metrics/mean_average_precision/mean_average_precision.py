@@ -38,6 +38,8 @@ class MeanAveragePrecision:
                 )
             case Tasks.INSTANCE_KEYPOINTS:
                 return MeanAveragePrecisionKeypoints(node=node, **kwargs)
+            case Tasks.INSTANCE_SEGMENTATION_KEYPOINTS:
+                return MeanAveragePrecisionKeypoints(node=node, **kwargs)
             case _:  # pragma: no cover
                 raise ValueError(
                     f"'MeanAveragePrecision' does not support task '{node.task.name}'"

@@ -38,6 +38,7 @@ class AdaptiveDetectionLoss(BaseLoss):
         class_loss_weight: float = 1.0,
         iou_loss_weight: float = 2.5,
         per_class_weights: list[float] | None = None,
+        skip_stal: bool = False,
         **kwargs,
     ):
         """BBox loss adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
@@ -57,6 +58,10 @@ class AdaptiveDetectionLoss(BaseLoss):
         @param iou_loss_weight: Weight of IoU loss. Defaults to 2.5. For optimal results, multiply with accumulate_grad_batches.
         @type per_class_weights: list[float] | None
         @param per_class_weights: A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
+        @type skip_stal: bool
+        @param skip_stal: If True, disables the
+            Small-Target-Aware Label Assignment candidate expansion
+            when the loss switches to TAL after warmup.
         """
         super().__init__(**kwargs)
 
@@ -70,7 +75,12 @@ class AdaptiveDetectionLoss(BaseLoss):
         self.n_warmup_epochs = n_warmup_epochs
         self.atss_assigner = ATSSAssigner(topk=9, n_classes=self.n_classes)
         self.tal_assigner = TaskAlignedAssigner(
-            topk=13, n_classes=self.n_classes, alpha=1.0, beta=6.0
+            topk=13,
+            n_classes=self.n_classes,
+            alpha=1.0,
+            beta=6.0,
+            strides=self.stride,
+            skip_stal=skip_stal,
         )
 
         if per_class_weights is not None:

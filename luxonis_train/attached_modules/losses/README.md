@@ -112,13 +112,14 @@ Compatible with: [`EfficientBBoxHead`](../../nodes/README.md#efficientbboxhead)
 
 **Parameters:**
 
-| Key                 | Type                                              | Default value | Description                                                                                                                                                                                                                                              |
-| ------------------- | ------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `n_warmup_epochs`   | `int`                                             | `0`           | Number of epochs using the ATSS assigner before switching to the TAL assigner.                                                                                                                                                                           |
-| `iou_type`          | `Literal["none", "giou", "diou", "ciou", "siou"]` | `"giou"`      | Type of IoU used for bounding box regression loss.                                                                                                                                                                                                       |
-| `class_loss_weight` | `float`                                           | `1.0`         | Weight for the classification component of the loss.                                                                                                                                                                                                     |
-| `iou_loss_weight`   | `float`                                           | `2.5`         | Weight for the IoU regression component of the loss.                                                                                                                                                                                                     |
-| `per_class_weights` | `list`                                            | `None`        | A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes. |
+| Key                 | Type                                              | Default value | Description                                                                                                                                                                                                                                                                           |
+| ------------------- | ------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `n_warmup_epochs`   | `int`                                             | `0`           | Number of epochs using the ATSS assigner before switching to the TAL assigner.                                                                                                                                                                                                        |
+| `iou_type`          | `Literal["none", "giou", "diou", "ciou", "siou"]` | `"giou"`      | Type of IoU used for bounding box regression loss.                                                                                                                                                                                                                                    |
+| `class_loss_weight` | `float`                                           | `1.0`         | Weight for the classification component of the loss.                                                                                                                                                                                                                                  |
+| `iou_loss_weight`   | `float`                                           | `2.5`         | Weight for the IoU regression component of the loss.                                                                                                                                                                                                                                  |
+| `per_class_weights` | `list`                                            | `None`        | A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.                              |
+| `skip_stal`         | `bool`                                            | `False`       | Disables Small-Target-Aware Label Assignment candidate expansion. This is a mechanism that temporarily enlarges very small ground-truth boxes during TAL candidate selection so nearby anchors are less likely to be discarded, which can help improve supervision for small objects. |
 
 #### `PrecisionDFLDetectionLoss`
 
@@ -128,12 +129,13 @@ Compatible with: [`PrecisionBBoxHead`](../../nodes/README.md#precisionbboxhead)
 
 **Parameters:**
 
-| Key                 | Type    | Default value | Description                                    |
-| ------------------- | ------- | ------------- | ---------------------------------------------- |
-| `tal_topk`          | `int`   | `10`          | Number of anchors considered during selection. |
-| `class_loss_weight` | `float` | `0.5`         | Weight for the classification loss.            |
-| `bbox_loss_weight`  | `float` | `7.5`         | Weight for the bounding box regression loss.   |
-| `dfl_loss_weigth`   | `float` | `1.5`         | Weight for the Distribution Focal Loss (DFL).  |
+| Key                 | Type    | Default value | Description                                                                          |
+| ------------------- | ------- | ------------- | ------------------------------------------------------------------------------------ |
+| `tal_topk`          | `int`   | `10`          | Number of anchors considered during selection.                                       |
+| `class_loss_weight` | `float` | `0.5`         | Weight for the classification loss.                                                  |
+| `bbox_loss_weight`  | `float` | `7.5`         | Weight for the bounding box regression loss.                                         |
+| `dfl_loss_weight`   | `float` | `1.5`         | Weight for the Distribution Focal Loss (DFL).                                        |
+| `skip_stal`         | `bool`  | `False`       | Disables Small-Target-Aware Label Assignment candidate expansion when set to `True`. |
 
 ### Instance Keypoint Detection Losses
 
@@ -179,12 +181,13 @@ Compatible with: [`PrecisionSegmentBBoxHead`](../../nodes/README.md#precisionseg
 
 **Parameters:**
 
-| Key                 | Type    | Default value | Description                                        |
-| ------------------- | ------- | ------------- | -------------------------------------------------- |
-| `tal_topk`          | `int`   | `10`          | Number of anchors considered during selection.     |
-| `class_loss_weight` | `float` | `0.5`         | Weight for the classification loss.                |
-| `bbox_loss_weight`  | `float` | `7.5`         | Weight for the bounding box and segmentation loss. |
-| `dfl_loss_weigth`   | `float` | `1.5`         | Weight for the Distribution Focal Loss (DFL).      |
+| Key                 | Type    | Default value | Description                                                                          |
+| ------------------- | ------- | ------------- | ------------------------------------------------------------------------------------ |
+| `tal_topk`          | `int`   | `10`          | Number of anchors considered during selection.                                       |
+| `class_loss_weight` | `float` | `0.5`         | Weight for the classification loss.                                                  |
+| `bbox_loss_weight`  | `float` | `7.5`         | Weight for the bounding box and segmentation loss.                                   |
+| `dfl_loss_weight`   | `float` | `1.5`         | Weight for the Distribution Focal Loss (DFL).                                        |
+| `skip_stal`         | `bool`  | `False`       | Disables Small-Target-Aware Label Assignment candidate expansion when set to `True`. |
 
 ## Anomaly Detection Losses
 

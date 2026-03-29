@@ -28,6 +28,7 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         class_loss_weight: float = 0.5,
         bbox_loss_weight: float = 7.5,
         dfl_loss_weight: float = 1.5,
+        skip_stal: bool = False,
         **kwargs,
     ):
         """BBox loss adapted from  U{Real-Time Flying Object Detection with YOLOv8
@@ -43,6 +44,10 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         @param bbox_loss_weight: Weight for bbox loss. Defaults to 7.5. For optimal results, multiply with accumulate_grad_batches.
         @type dfl_loss_weight: float
         @param dfl_loss_weight: Weight for DFL loss. Defaults to 1.5. For optimal results, multiply with accumulate_grad_batches.
+        @type skip_stal: bool
+        @param skip_stal: If True, disables the
+            Small-Target-Aware Label Assignment candidate expansion.
+            Defaults to False.
         """
         super().__init__(**kwargs)
         self.stride = self.node.stride
@@ -55,7 +60,12 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         self.dfl_loss_weight = dfl_loss_weight
 
         self.assigner = TaskAlignedAssigner(
-            n_classes=self.n_classes, topk=tal_topk, alpha=0.5, beta=6.0
+            n_classes=self.n_classes,
+            topk=tal_topk,
+            alpha=0.5,
+            beta=6.0,
+            strides=self.stride,
+            skip_stal=skip_stal,
         )
         self.bbox_loss = BBoxLoss(self.node.reg_max)
         self.proj = torch.arange(self.node.reg_max, dtype=torch.float)

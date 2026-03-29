@@ -1,0 +1,133 @@
+rich_logging: true
+
+model:
+  name: model
+  nodes: []
+  outputs: []
+
+loader:
+  name: LuxonisLoaderTorch
+  image_source: image
+  train_view: [train]
+  val_view: [val]
+  test_view: [test]
+  params: {}
+
+tracker:
+  project_name: null
+  project_id: null
+  run_name: null
+  run_id: null
+  is_tensorboard: true
+  is_wandb: false
+  wandb_entity: null
+  is_mlflow: false
+
+trainer:
+  preprocessing:
+    train_image_size: [256, 256]
+    keep_aspect_ratio: true
+    color_space: RGB
+    normalize:
+      active: true
+      params:
+        mean: [0.485, 0.456, 0.406]
+        std: [0.229, 0.224, 0.225]
+    augmentations: []
+
+  precision: "32"
+  accelerator: auto
+  devices: auto
+  strategy: auto
+  n_sanity_val_steps: 2
+  profiler: null
+  matmul_precision: null
+
+  seed: null
+  n_validation_batches: null
+  deterministic: null
+  smart_cfg_auto_populate: true
+
+  batch_size: 32
+  accumulate_grad_batches: null
+  gradient_clip_val: null
+  gradient_clip_algorithm: null
+  use_weighted_sampler: false
+
+  epochs: 100
+  overfit_batches: 0
+  resume_training: false
+
+  n_workers: 4
+  validation_interval: 5
+  n_log_images: 4
+  skip_last_batch: true
+  pin_memory: true
+
+  log_sub_metrics: true
+  log_sub_losses: true
+  save_top_k: 3
+
+  callbacks: []
+
+  optimizer:
+    name: Adam
+    params: {}
+
+  scheduler:
+    name: ConstantLR
+    params: {}
+
+  training_strategy: null
+
+exporter:
+  name: null
+  input_shape: null
+  quantization_mode: INT8_STANDARD
+  reverse_input_channels: null
+  scale_values: null
+  mean_values: null
+
+  onnx:
+    opset_version: 16
+    dynamic_axes: null
+    disable_onnx_simplification: false
+    unique_onnx_initializers: false
+
+  blobconverter:
+    active: false
+    shaves: 6
+    version: "2022.1"
+
+  hubai:
+    active: false
+    platform: null
+    params: {}
+    delete_remote_model: false
+
+  upload_to_run: true
+  upload_url: null
+
+archiver:
+  name: null
+  upload_to_run: true
+  upload_url: null
+
+tuner:
+  study_name: test-study
+  continue_existing_study: true
+  use_pruner: true
+  n_trials: 15
+  timeout: null
+
+  storage:
+    active: true
+    backend: sqlite
+    username: null
+    password: null
+    host: null
+    port: null
+    database: null
+
+  params: {}
+  monitor: loss
