@@ -10,7 +10,6 @@ from lightning.pytorch.utilities import rank_zero_only
 from lightning.pytorch.utilities.types import (
     LRSchedulerConfig,
     LRSchedulerTypeUnion,
-    OptimizerLRScheduler,
 )
 from loguru import logger
 from luxonis_ml import __version__ as luxonis_ml_version
@@ -531,15 +530,35 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:
-        return self.nodes.build_callbacks(self.save_dir)
+        optimizers, _ = self.configure_optimizers()
+        return self.nodes.build_callbacks(self.save_dir, len(optimizers))
 
     @override
-    def configure_optimizers(self) -> OptimizerLRScheduler:
+    def configure_optimizers(
+        self,
+    ) -> tuple[
+        Sequence[Optimizer], Sequence[LRSchedulerTypeUnion | LRSchedulerConfig]
+    ]:
         if self.training_strategy is not None:
-            optimizers, schedulers = (
+            strategy_optimizers, strategy_schedulers = (
                 self.training_strategy.configure_optimizers()
             )
-        optimizers, schedulers = self.nodes.build_optimizers()
+            base_optimizer_cfg, base_scheduler_cfg = (
+                self.training_strategy.get_base_configs()
+            )
+            used_params = {
+                id(p)
+                for optimizer in strategy_optimizers
+                for group in optimizer.param_groups
+                for p in group["params"]
+            }
+            optimizers, schedulers = self.nodes.build_optimizers(
+                base_optimizer_cfg, base_scheduler_cfg, used_params
+            )
+            optimizers = [*strategy_optimizers, *optimizers]
+            schedulers = [*strategy_schedulers, *schedulers]
+        else:
+            optimizers, schedulers = self.nodes.build_optimizers()
         if len(optimizers) > 1:
             self.automatic_optimization = False
 

@@ -284,9 +284,11 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
 
     def _extract_optimizer_params(
         self,
+        cfg_base_optimizer: OptimizerConfig | None,
+        cfg_base_scheduler: SchedulerConfig | None,
     ) -> Iterable[tuple[OptimizerConfig, SchedulerConfig]]:
-        cfg_base_optimizer = self.cfg.trainer.optimizer
-        cfg_base_scheduler = self.cfg.trainer.scheduler
+        cfg_base_optimizer = cfg_base_optimizer or self.cfg.trainer.optimizer
+        cfg_base_scheduler = cfg_base_scheduler or self.cfg.trainer.scheduler
         groups: dict[
             tuple[str, str], tuple[list[Kwargs], SchedulerConfig]
         ] = {}
@@ -322,7 +324,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                                 used_params.add(id(p))
 
                 if params:
-                    if cfg_optimizer.name not in groups:
+                    if (cfg_optimizer.name, cfg_scheduler.name) not in groups:
                         groups[(cfg_optimizer.name, cfg_scheduler.name)] = (
                             [],
                             cfg_scheduler,
@@ -406,6 +408,9 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
 
     def build_optimizers(
         self,
+        base_optimizer: OptimizerConfig | None = None,
+        base_scheduler: SchedulerConfig | None = None,
+        used_params: set[int] | None = None,
     ) -> tuple[
         Sequence[Optimizer],
         Sequence[LRSchedulerTypeUnion | LRSchedulerConfig],
@@ -413,8 +418,11 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
 
         optimizers = []
         schedulers = []
+        used_params = used_params or set()
 
-        for cfg_optimizer, cfg_scheduler in self._extract_optimizer_params():
+        for cfg_optimizer, cfg_scheduler in self._extract_optimizer_params(
+            base_optimizer, base_scheduler
+        ):
             optimizer, scheduler = build_optimizer_scheduler(
                 self.cfg,
                 self.main_metric,
@@ -426,7 +434,9 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
 
         return optimizers, schedulers
 
-    def build_callbacks(self, save_dir: Path) -> list[pl.Callback]:
+    def build_callbacks(
+        self, save_dir: Path, n_optimizers: int
+    ) -> list[pl.Callback]:
         """Configures Pytorch Lightning callbacks."""
         model_name = self.cfg.model.name
 
@@ -461,13 +471,11 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                 )
             )
 
-        optimizers, _ = self.build_optimizers()
-
         for callback in self.cfg.trainer.callbacks:
             if callback.active:
                 if (
                     callback.name == "GradientAccumulationScheduler"
-                    and len(optimizers) > 1
+                    and n_optimizers > 1
                 ):
                     logger.warning(
                         "Gradient accumulation scheduling is not supported for multiple optimizers. "
@@ -481,7 +489,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                 logger.info(f"Callback '{callback.name}' is inactive.")
 
         if self.cfg.trainer.accumulate_grad_batches is not None:
-            if len(optimizers) > 1:
+            if n_optimizers > 1:
                 logger.warning(
                     "Gradient accumulation scheduling is not supported for multiple optimizers. "
                     "The `accumulate_grad_batches` parameter in the config will be ignored."

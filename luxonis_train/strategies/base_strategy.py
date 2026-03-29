@@ -9,6 +9,7 @@ from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch.optim import Optimizer
 
 import luxonis_train as lxt
+from luxonis_train.config.config import OptimizerConfig, SchedulerConfig
 from luxonis_train.registry import STRATEGIES
 
 
@@ -28,3 +29,6 @@ class BaseTrainingStrategy(
 
     @abstractmethod
     def update_parameters(self) -> None: ...
+
+    @abstractmethod
+    def get_base_configs(self) -> tuple[OptimizerConfig, SchedulerConfig]: ...
