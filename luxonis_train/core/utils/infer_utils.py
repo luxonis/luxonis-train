@@ -58,8 +58,8 @@ def prepare_and_infer_image(
     npy_img = model.loaders["val"].augment_test_image(images)
     torch_img = torch.tensor(npy_img).unsqueeze(0).permute(0, 3, 1, 2).float()
 
-    return model.lightning_module.forward(
-        {"image": torch_img},
+    return model.lightning_module.run_forward_step(
+        {model.lightning_module.image_source: torch_img},
         images=get_denormalized_images(model.cfg, torch_img),
         compute_visualizations=True,
     )

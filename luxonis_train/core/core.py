@@ -1,17 +1,16 @@
 import threading
 from collections.abc import Mapping
+from copy import deepcopy
 from pathlib import Path
-from threading import ExceptHookArgs
+from threading import ExceptHookArgs, Thread
 from typing import Literal, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
-import onnx
 import rich.traceback
 import torch
 import torch.utils.data as torch_data
 import yaml
-from aimet_onnx.quantsim import QuantizationSimModel
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
@@ -20,6 +19,7 @@ from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.typing import Params, PathType
 from luxonis_ml.utils import Environ, LuxonisFileSystem
+from torch import nn
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
@@ -80,6 +80,7 @@ class LuxonisModel:
         cfg: PathType | Params | Config | None,
         opts: Params | list[str] | tuple[str, ...] | None = None,
         *,
+        weights: PathType | None = None,
         debug_mode: bool = False,
         dataset_metadata: DatasetMetadata | None = None,
     ):
@@ -286,6 +287,16 @@ class LuxonisModel:
             _core=self,
         )
 
+        if weights is not None:
+            weights = LuxonisFileSystem.download(
+                str(weights), self.run_save_dir
+            )
+            if self.cfg.model.weights is not None:
+                logger.warning(
+                    "Weights provided in the command line, but config weights are set. "
+                    "Ignoring weights provided in config."
+                )
+            self.lightning_module.load_checkpoint(weights)
         self._exported_models: dict[str, Path] = {}
 
     def _train(self, resume: PathType | None, *args, **kwargs) -> None:
@@ -385,7 +396,7 @@ class LuxonisModel:
         weights: PathType | None = None,
         ignore_missing_weights: bool = False,
         ckpt_only: bool = False,
-    ) -> None:
+    ) -> Path:
         """Runs export.
 
         @type save_path: PathType | None
@@ -406,6 +417,9 @@ class LuxonisModel:
             This is useful for updating the metadata in the checkpoint
             file in case they changed (e.g. new configuration file,
             architectural changes affecting the exection order etc.)
+
+        @rtype: Path
+        @return: Path to the exported ONNX model file or .ckpt file if ckpt_only is True.
         """
         weights = weights or self.cfg.model.weights
 
@@ -438,7 +452,7 @@ class LuxonisModel:
                 logger.info(
                     f"Checkpoint saved to {export_path.with_suffix('.ckpt')}"
                 )
-            return
+            return export_path.with_suffix(".ckpt")
 
         with replace_weights(self.lightning_module, weights):
             onnx_kwargs = self.cfg.exporter.onnx.model_dump(
@@ -476,7 +490,7 @@ class LuxonisModel:
                 "Generating modelconverter config for a model "
                 "with multiple inputs is not implemented yet."
             )
-            return
+            return onnx_save_path
 
         inputs = []
         outputs = []
@@ -518,6 +532,8 @@ class LuxonisModel:
             if self.cfg.exporter.upload_url is not None:  # pragma: no cover
                 LuxonisFileSystem.upload(f.name, self.cfg.exporter.upload_url)
 
+        return onnx_save_path
+
     @overload
     def test(
         self,
@@ -532,7 +548,7 @@ class LuxonisModel:
         new_thread: Literal[True] = ...,
         view: Literal["train", "test", "val"] = "test",
         weights: PathType | None = ...,
-    ) -> None: ...
+    ) -> Thread: ...
 
     @typechecked
     def test(
@@ -540,22 +556,22 @@ class LuxonisModel:
         new_thread: bool = False,
         view: Literal["train", "val", "test"] = "test",
         weights: PathType | None = None,
-    ) -> Mapping[str, float] | None:
+    ) -> Mapping[str, float] | Thread:
         """Runs testing.
 
         @type new_thread: bool
         @param new_thread: Runs testing in a new thread if set to True.
         @type view: Literal["train", "test", "val"]
         @param view: Which view to run the testing on. Defauls to "test".
-        @rtype: Mapping[str, float] | None
-        @return: If new_thread is False, returns a dictionary test
-            results.
         @type weights: PathType | None
         @param weights: Path to the checkpoint from which to load weights.
             If not specified, the value of `model.weights` from the
             configuration file will be used. The current weights of the
             model will be temporarily replaced with the weights from the
             specified checkpoint.
+        @rtype: Mapping[str, float] | Thread
+        @return: If new_thread is False, returns a dictionary test
+            results.
         """
         weights = weights or self.cfg.model.weights
         loader = self.pytorch_loaders[view]
@@ -567,7 +583,8 @@ class LuxonisModel:
                     args=(self.lightning_module, loader),
                     daemon=True,
                 )
-                return self.thread.start()
+                self.thread.start()
+                return self.thread
             return self.pl_trainer.test(self.lightning_module, loader)[0]
 
     def infer(
@@ -1141,11 +1158,59 @@ class LuxonisModel:
 
         return archive_path, conversion_artifacts
 
-    def quantize(
-        self, onnx_path: PathType, mode: Literal["PTQ", "QAT"]
-    ) -> None:
-        model = onnx.load_model(onnx_path)
-        sim = QuantizationSimModel(model=model)
+    def quantize(self) -> None:
+        from aimet_torch import QuantizationSimModel
+
+        model = self.lightning_module
+        save_dir = self.run_save_dir / "aimet"
+        save_dir.mkdir(parents=True, exist_ok=True)
+        pre_quant_test = self.test(view="val")
+
+        inputs = {
+            input_name: torch.randn([1, *shape]).to(model.device)
+            for shapes in model.nodes.loader_input_shapes.values()
+            for input_name, shape in shapes.items()
+        }
+
+        if len(inputs) > 1:
+            raise NotImplementedError(
+                "Quantization is not yet supported for models "
+                "with multiple inputs."
+            )
+        input_names = list(inputs.keys())
+        output_names = model._get_output_onnx_names(deepcopy(inputs))
+        inputs = next(iter(inputs.values()))
+
+        sim = QuantizationSimModel(
+            model=model,
+            dummy_input=inputs,
+            in_place=True,
+        )
+
+        def pass_calibration_data(model: nn.Module) -> None:
+            for imgs, _ in self.pytorch_loaders["val"]:
+                model.forward(imgs)
+
+        sim.compute_encodings(pass_calibration_data)
+
+        post_quant_test = self.test(view="val")
+        model.set_export_mode(mode=True)
+        sim.onnx.export(
+            inputs,
+            (save_dir / self.cfg.model.name).with_suffix(".onnx"),
+            input_names=input_names,
+            output_names=output_names,
+        )
+        model.set_export_mode(mode=False)
+        table = []
+        for key, value in pre_quant_test.items():
+            log_key = key.replace("test/metric/", "").replace("test/loss/", "")
+            table.append((log_key, value, post_quant_test[key]))
+        model.progress_bar.print_table(
+            "Quantization results",
+            table,
+            ["Name", "Pre-quantization", "Post-quantization"],
+        )
 
     @property
     def environ(self) -> Environ:

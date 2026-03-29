@@ -75,10 +75,13 @@ def create_model(
                     )
 
         return LuxonisModel(
-            cfg, debug_mode=debug_mode, dataset_metadata=dataset_metadata
+            cfg,
+            debug_mode=debug_mode,
+            dataset_metadata=dataset_metadata,
+            weights=weights,
         )
 
-    return LuxonisModel(config, opts, debug_mode=debug_mode)
+    return LuxonisModel(config, opts, weights=weights, debug_mode=debug_mode)
 
 
 @app.command(group=training_group, sort_key=1)
@@ -429,6 +432,18 @@ def convert(
     create_model(config, opts, weights=weights).convert(
         weights=weights, save_dir=save_dir
     )
+
+
+@app.command(group=export_group, sort_key=1)
+def quantize(
+    opts: list[str] | None = None,
+    /,
+    *,
+    config: str | None = None,
+    weights: str | None = None,
+):
+    model = create_model(config, opts, weights=weights, debug_mode=True)
+    model.quantize()
 
 
 @upgrade_app.command()
