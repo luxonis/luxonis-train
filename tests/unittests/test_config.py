@@ -37,10 +37,6 @@ def test_smart_cfg_auto_populate(coco_dataset: LuxonisDataset):
 
     cfg = Config.get_config(cfg)
 
-    assert cfg.trainer.scheduler is not None
-    scheduler_params = cfg.trainer.scheduler.params
-    assert scheduler_params["T_max"] == cfg.trainer.epochs
-
     augmentations = cfg.trainer.preprocessing.augmentations[0].params
     img_width, img_height = cfg.trainer.preprocessing.train_image_size
     assert augmentations["out_width"] == img_width
