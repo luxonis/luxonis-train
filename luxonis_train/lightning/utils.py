@@ -51,7 +51,7 @@ class MainMetric(NamedTuple):
 
 
 class LossAccumulator(defaultdict[str, float]):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__(float)
         self.counts = defaultdict(int)
 
