@@ -1,3 +1,4 @@
+from contextlib import suppress
 from typing import Literal, cast
 
 import torch
@@ -277,6 +278,10 @@ class VarifocalLoss(nn.Module):
         self.alpha = alpha
         self.gamma = gamma
         self.per_class_weights = per_class_weights
+        with suppress(ImportError):
+            from aimet_torch.v2.nn import QuantizationMixin
+
+            QuantizationMixin.ignore(self.__class__)
 
     def forward(
         self, pred_score: Tensor, target_score: Tensor, label: Tensor

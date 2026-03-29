@@ -81,6 +81,10 @@ class BaseAttachedModule(
             self._task = None
 
         self._check_node_type_override()
+        with suppress(ImportError):
+            from aimet_torch.v2.nn import QuantizationMixin
+
+            QuantizationMixin.ignore(self.__class__)
 
     @property
     def current_epoch(self) -> int:
