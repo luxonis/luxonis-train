@@ -162,6 +162,8 @@ class FinetuningConfig(BaseModelExtraForbid):
                 parsed_patterns.append(ParameterPattern(name=item))
             elif isinstance(item, dict):
                 parsed_patterns.append(ParameterPattern(**item))
+            elif isinstance(item, ParameterPattern):
+                parsed_patterns.append(item)
         return parsed_patterns
 
     @cached_property
