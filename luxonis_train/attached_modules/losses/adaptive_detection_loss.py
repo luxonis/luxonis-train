@@ -30,6 +30,7 @@ class AdaptiveDetectionLoss(BaseLoss):
     n_anchors_list: list[int]
     stride_tensor: Tensor
     gt_bboxes_scale: Tensor
+    anchor_points_strided: Tensor
 
     def __init__(
         self,
@@ -103,6 +104,19 @@ class AdaptiveDetectionLoss(BaseLoss):
         self.class_loss_weight = class_loss_weight
         self.iou_loss_weight = iou_loss_weight
 
+        self.register_buffer(
+            "gt_bboxes_scale",
+            torch.tensor(
+                [
+                    self.original_img_size[1],
+                    self.original_img_size[0],
+                    self.original_img_size[1],
+                    self.original_img_size[0],
+                ],
+            ),
+            persistent=False,
+        )
+
         self._logged_assigner_change = False
 
     def forward(
@@ -164,21 +178,12 @@ class AdaptiveDetectionLoss(BaseLoss):
         return loss, sub_losses
 
     def _init_parameters(self, features: list[Tensor]) -> None:
-        if not hasattr(self, "gt_bboxes_scale"):
-            self.gt_bboxes_scale = torch.tensor(
-                [
-                    self.original_img_size[1],
-                    self.original_img_size[0],
-                    self.original_img_size[1],
-                    self.original_img_size[0],
-                ],
-                device=features[0].device,
-            )
+        if not hasattr(self, "anchors"):
             (
-                self.anchors,
-                self.anchor_points,
-                self.n_anchors_list,
-                self.stride_tensor,
+                anchors,
+                anchor_points,
+                n_anchors_list,
+                stride_tensor,
             ) = anchors_for_fpn_features(
                 features,
                 self.stride,
@@ -186,8 +191,22 @@ class AdaptiveDetectionLoss(BaseLoss):
                 self.grid_cell_offset,
                 multiply_with_stride=True,
             )
-            self.anchor_points_strided = (
-                self.anchor_points / self.stride_tensor
+            self.register_buffer("anchors", anchors, persistent=False)
+            self.register_buffer(
+                "anchor_points", anchor_points, persistent=False
+            )
+            self.register_buffer(
+                "n_anchors_list",
+                torch.tensor(n_anchors_list),
+                persistent=False,
+            )
+            self.register_buffer(
+                "stride_tensor", stride_tensor, persistent=False
+            )
+            self.register_buffer(
+                "anchor_points_strided",
+                anchor_points / stride_tensor,
+                persistent=False,
             )
 
     def _run_assigner(

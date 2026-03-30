@@ -441,9 +441,10 @@ def quantize(
     *,
     config: str | None = None,
     weights: str | None = None,
+    epochs: int = 4,
 ):
     model = create_model(config, opts, weights=weights, debug_mode=True)
-    model.quantize()
+    model.quantize(epochs=epochs)
 
 
 @upgrade_app.command()

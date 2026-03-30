@@ -11,6 +11,7 @@ import rich.traceback
 import torch
 import torch.utils.data as torch_data
 import yaml
+from lightning.pytorch.accelerators import CUDAAccelerator
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
@@ -19,7 +20,8 @@ from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.typing import Params, PathType
 from luxonis_ml.utils import Environ, LuxonisFileSystem
-from torch import nn
+from rich.progress import track
+from torch import Tensor, nn
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
@@ -224,7 +226,10 @@ class LuxonisModel:
                 "Weighted sampler is not implemented yet."
             )
 
-        self.pytorch_loaders: dict[View, torch_data.DataLoader] = {}
+        self.pytorch_loaders: dict[
+            View,
+            torch_data.DataLoader[tuple[dict[str, Tensor], dict[str, Tensor]]],
+        ] = {}
         for view in ("train", "val", "test"):
             if self.cfg.trainer.n_validation_batches is not None and view in {
                 "val",
@@ -1158,7 +1163,7 @@ class LuxonisModel:
 
         return archive_path, conversion_artifacts
 
-    def quantize(self) -> None:
+    def quantize(self, epochs: int = 4) -> None:
         from aimet_torch import QuantizationSimModel
 
         model = self.lightning_module
@@ -1193,8 +1198,39 @@ class LuxonisModel:
 
         sim.compute_encodings(pass_calibration_data)
 
-        post_quant_test = self.test(view="val")
+        ptq_test = self.test(view="val")
+        model.train()
+        if CUDAAccelerator.is_available():
+            model.cuda()
+        model.automatic_optimization = False
+
+        for e in track(
+            range(epochs), description="Running Quantization-Aware Training..."
+        ):
+            for imgs, labels in self.pytorch_loaders["train"]:
+                imgs = {k: v.to(model.device) for k, v in imgs.items()}
+                labels = {k: v.to(model.device) for k, v in labels.items()}
+                loss = model.training_step((imgs, labels))
+                optimizers = model.optimizers()
+                schedulers = model.lr_schedulers()
+                if not isinstance(optimizers, list):
+                    optimizers = [optimizers]
+                if not isinstance(schedulers, list):
+                    schedulers = [schedulers]
+                for optimizer in optimizers:
+                    optimizer.zero_grad()
+                model.manual_backward(loss)
+                for optimizer in optimizers:
+                    optimizer.step()
+                for scheduler in schedulers:
+                    if scheduler is not None:
+                        scheduler.step(e)
+
+        model.automatic_optimization = True
+        model.eval()
+        qat_test = self.test(view="val")
         model.set_export_mode(mode=True)
+
         sim.onnx.export(
             inputs,
             (save_dir / self.cfg.model.name).with_suffix(".onnx"),
@@ -1205,11 +1241,11 @@ class LuxonisModel:
         table = []
         for key, value in pre_quant_test.items():
             log_key = key.replace("test/metric/", "").replace("test/loss/", "")
-            table.append((log_key, value, post_quant_test[key]))
+            table.append((log_key, value, ptq_test[key], qat_test[key]))
         model.progress_bar.print_table(
             "Quantization results",
             table,
-            ["Name", "Pre-quantization", "Post-quantization"],
+            ["Name", "Pre-Quant", "PTQ", "QAT"],
         )
 
     @property
