@@ -1193,12 +1193,18 @@ class LuxonisModel:
         )
 
         def pass_calibration_data(model: nn.Module) -> None:
-            for imgs, _ in self.pytorch_loaders["val"]:
+            for imgs, _ in track(
+                self.pytorch_loaders["val"],
+                description="Computing quantization encodings...",
+                total=len(self.pytorch_loaders["val"]),
+            ):
+                imgs = {k: v.to(model.device) for k, v in imgs.items()}
                 model.forward(imgs)
 
         sim.compute_encodings(pass_calibration_data)
 
         ptq_test = self.test(view="val")
+
         model.train()
         if CUDAAccelerator.is_available():
             model.cuda()
