@@ -11,6 +11,8 @@ import rich.traceback
 import torch
 import torch.utils.data as torch_data
 import yaml
+from aimet_torch import QuantizationSimModel
+from aimet_torch.common.defs import QuantizationDataType, QuantScheme
 from lightning.pytorch.accelerators import CUDAAccelerator
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.utilities import rank_zero_only
@@ -1163,10 +1165,43 @@ class LuxonisModel:
 
         return archive_path, conversion_artifacts
 
-    def quantize(self, epochs: int = 4) -> None:
-        from aimet_torch import QuantizationSimModel
+    def quantize(
+        self,
+        weights: PathType | None = None,
+        epochs: int = 4,
+        quant_scheme: str | QuantScheme = QuantScheme.min_max,
+        default_output_bw: int = 8,
+        default_param_bw: int = 8,
+        config_file: str | None = None,
+        default_data_type: QuantizationDataType = QuantizationDataType.int,
+    ) -> None:
+        """Runs post-training quantization and quantization-aware
+        training using AIMET.
+
+        @type weights: PathType | None
+        @param weights: Path to the checkpoint from which to load weights.
+        @type epochs: int
+        @param epochs: Number of epochs to run quantization-aware training for.
+        @type quant_scheme: str | QuantScheme
+        @param quant_scheme: Quantization scheme to use. Can be either a string
+            or an instance of `aimet_common.defs.QuantScheme`. If a string is
+            provided, it will be converted to the corresponding `QuantScheme`
+            instance. Defaults to `QuantScheme.min_max`.
+        @type default_output_bw: int
+        @param default_output_bw: Default bitwidth to use for quantizing outputs.
+        @type default_param_bw: int
+        @param default_param_bw: Default bitwidth to use for quantizing parameters.
+        @type config_file: str | None
+        @param config_file: Path to the AIMET config file specifying quantization settings for specific layers. If not provided, default quantization settings will be applied to all layers.
+        @type default_data_type: QuantizationDataType
+        @param default_data_type: Data type to use for quantization (e.g. integer or float). Defaults to `QuantizationDataType.int`.
+        """
 
         model = self.lightning_module
+
+        if weights is not None:
+            model.load_checkpoint(weights)
+
         save_dir = self.run_save_dir / "aimet"
         save_dir.mkdir(parents=True, exist_ok=True)
         pre_quant_test = self.test(view="val")
@@ -1189,6 +1224,11 @@ class LuxonisModel:
         sim = QuantizationSimModel(
             model=model,
             dummy_input=inputs,
+            quant_scheme=quant_scheme,
+            default_output_bw=default_output_bw,
+            default_param_bw=default_param_bw,
+            config_file=config_file,
+            default_data_type=default_data_type,
             in_place=True,
         )
 
