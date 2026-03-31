@@ -1,9 +1,11 @@
+import json
 import sys
 from collections.abc import Mapping
 from contextlib import suppress
 from pathlib import Path
 from typing import Annotated, Any, Literal, NamedTuple
 
+from aimet_torch.common.defs import QuantizationDataType, QuantScheme
 from loguru import logger
 from luxonis_ml.enums import DatasetType
 from luxonis_ml.typing import (
@@ -726,6 +728,29 @@ def _validate_quantization_mode(value: str) -> str:
     return value
 
 
+class AIMETConfig(BaseModelExtraForbid):
+    active: bool = False
+    epochs: PositiveInt = 4
+    default_output_bw: Literal[4, 8, 16] = 8
+    default_param_bw: Literal[4, 8, 16] = 8
+    default_data_type: QuantizationDataType = QuantizationDataType.int
+    quant_scheme: QuantScheme = QuantScheme.min_max
+    config: Params | None = None
+
+    @field_validator("config", mode="before")
+    @classmethod
+    def validate_config(cls, value: ParamValue) -> Any:
+        if isinstance(value, str):
+            try:
+                fs = LuxonisFileSystem(value)
+                return json.loads(fs.read_text(""))
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to load AIMET config from file '{value}': {e}"
+                ) from e
+        return value
+
+
 class ExportConfig(ArchiveConfig):
     name: str | None = None
     input_shape: list[int] | None = None
@@ -742,6 +767,7 @@ class ExportConfig(ArchiveConfig):
         default_factory=BlobconverterExportConfig
     )
     hubai: HubAIExportConfig = Field(default_factory=HubAIExportConfig)
+    aimet: AIMETConfig = Field(default_factory=AIMETConfig)
 
     @field_validator("scale_values", "mean_values", mode="before")
     @classmethod

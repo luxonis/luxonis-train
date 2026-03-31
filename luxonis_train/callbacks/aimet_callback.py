@@ -16,8 +16,9 @@ class AIMETCallback(NeedsCheckpoint):
         default_param_bw: int = 8,
         config_file: str | None = None,
         default_data_type: QuantizationDataType = QuantizationDataType.int,
+        **kwargs,
     ):
-        super().__init__()
+        super().__init__(**kwargs)
         self.epochs = epochs
         self.quant_scheme = quant_scheme
         self.default_output_bw = default_output_bw

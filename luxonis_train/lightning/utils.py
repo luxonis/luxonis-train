@@ -519,6 +519,20 @@ def build_callbacks(
                 "in the callbacks list. The `accumulate_grad_batches` "
                 "parameter in the config will be ignored."
             )
+    if cfg.exporter.aimet.active:
+        aimet_cfg = cfg.exporter.aimet
+        callbacks.append(
+            from_registry(
+                CALLBACKS,
+                "AIMETCallback",
+                epochs=aimet_cfg.epochs,
+                quant_scheme=aimet_cfg.quant_scheme,
+                default_output_bw=aimet_cfg.default_output_bw,
+                default_param_bw=aimet_cfg.default_param_bw,
+                default_data_type=aimet_cfg.default_data_type,
+                config_file=aimet_cfg.config,
+            )
+        )
 
     return callbacks
 
