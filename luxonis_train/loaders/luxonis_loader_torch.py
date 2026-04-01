@@ -151,11 +151,13 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
     @property
     @override
     def input_shapes(self) -> dict[str, Size]:
-        img = self[0][0][self.image_source]
+        img = self[0][0]
+        if isinstance(img, dict):
+            img = img[self.image_source]
         return {self.image_source: img.shape}
 
     @override
-    def get(self, idx: int) -> tuple[dict[str, Tensor], Labels]:
+    def get(self, idx: int) -> tuple[dict[str, Tensor] | Tensor, Labels]:
         img, labels = self.loader[idx]
         if isinstance(img, np.ndarray):
             img = {self.image_source: img}
@@ -164,6 +166,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             labels = self._remap_keypoints(labels)
 
         img = {k: self.img_numpy_to_torch(v) for k, v in img.items()}
+        if len(img) == 1:
+            img = next(iter(img.values()))
 
         return img, self.dict_numpy_to_torch(labels)
 

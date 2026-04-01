@@ -57,7 +57,7 @@ class BaseAttachedModule(
         @param kwargs: Additional keyword arguments.
         """
         super().__init__(**kwargs)
-        self._node = node
+        self._node = (node,)
 
         if node is not None and node.task is not None:
             if (
@@ -124,12 +124,13 @@ class BaseAttachedModule(
         @raises RuntimeError: If the node was not provided during
             initialization.
         """
-        if self._node is None:
+        node = self._node[0]
+        if node is None:
             raise RuntimeError(
                 "Attempt to access `node` reference, but it was not "
                 "provided during initialization."
             )
-        return self._node
+        return node
 
     @property
     def n_keypoints(self) -> int:

@@ -467,7 +467,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
     @override
     def reparametrize(self) -> None:
         if self.fused_branch is not None:
-            raise RuntimeError(f"{self.name} is already reparametrized")
+            return
 
         kernel, bias = self._fuse_parameters()
         fused_branch = nn.Conv2d(

@@ -25,6 +25,8 @@ from luxonis_train.attached_modules.visualizers import (
 from luxonis_train.callbacks import BaseLuxonisProgressBar
 from luxonis_train.config import Config
 from luxonis_train.nodes import BaseNode
+from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
+from luxonis_train.registry import _INTERNAL
 from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
 
@@ -188,9 +190,45 @@ class LuxonisLightningModule(pl.LightningModule):
             raise ValueError("Core reference is not set.")
         return self._core
 
-    def run_forward_step(
+    @override
+    def forward(
+        self, inputs: dict[str, Tensor] | Tensor
+    ) -> tuple[Tensor, ...]:
+        """Forward pass of the model.
+
+        @type inputs: L{Tensor}
+        @param inputs: Input tensors.
+        @rtype: dict[str, L{Packet}[L{Tensor}]]
+        @return: Output of the model.
+        """
+        outputs = self._run_forward(
+            inputs,
+            compute_loss=False,
+            compute_metrics=False,
+            compute_visualizations=False,
+        ).outputs
+
+        output_order = sorted(
+            [
+                (node_name, output_name, i)
+                for node_name, outs in outputs.items()
+                for output_name, out in outs.items()
+                for i in range(len(out))
+            ]
+        )
+        new_outputs = []
+        for node_name, output_name, i in output_order:
+            node_output = outputs[node_name][output_name]
+            if isinstance(node_output, Tensor):
+                new_outputs.append(node_output)
+            else:
+                new_outputs.append(node_output[i])
+
+        return tuple(new_outputs)
+
+    def _run_forward(
         self,
-        inputs: dict[str, Tensor],
+        inputs: dict[str, Tensor] | Tensor,
         labels: Labels | None = None,
         images: Tensor | None = None,
         *,
@@ -224,6 +262,12 @@ class LuxonisLightningModule(pl.LightningModule):
         @rtype: L{LuxonisOutput}
         @return: Output of the model.
         """
+        if isinstance(inputs, Tensor):
+            inputs = {self.image_source: inputs}
+
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        if labels is not None:
+            labels = {k: v.to(self.device) for k, v in labels.items()}
         losses: dict[
             str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]
         ] = defaultdict(dict)
@@ -286,49 +330,15 @@ class LuxonisLightningModule(pl.LightningModule):
             outputs=outputs_dict, losses=losses, visualizations=visualizations
         )
 
-    @override
-    def forward(
-        self, inputs: dict[str, Tensor] | Tensor
-    ) -> tuple[Tensor, ...]:
-        """Forward pass of the model.
-
-        @type inputs: L{Tensor}
-        @param inputs: Input tensors.
-        @rtype: dict[str, L{Packet}[L{Tensor}]]
-        @return: Output of the model.
-        """
-        if isinstance(inputs, Tensor):
-            inputs = {self.image_source: inputs}
-
-        outputs = self.run_forward_step(
-            inputs,
-            compute_loss=False,
-            compute_metrics=False,
-            compute_visualizations=False,
-        ).outputs
-
-        output_order = sorted(
-            [
-                (node_name, output_name, i)
-                for node_name, outs in outputs.items()
-                for output_name, out in outs.items()
-                for i in range(len(out))
-            ]
-        )
-        new_outputs = []
-        for node_name, output_name, i in output_order:
-            node_output = outputs[node_name][output_name]
-            if isinstance(node_output, Tensor):
-                new_outputs.append(node_output)
-            else:
-                new_outputs.append(node_output[i])
-
-        return tuple(new_outputs)
-
     def set_export_mode(self, *, mode: bool) -> None:
         for module in self.modules():
             if isinstance(module, BaseNode):
                 module.set_export_mode(mode=mode)
+
+    def reparametrize(self) -> None:
+        for module in self.modules():
+            if isinstance(module, Reparametrizable):
+                module.reparametrize()
 
     def export_onnx(self, save_path: PathType, **kwargs) -> Path:
         """Exports the model to ONNX format.
@@ -380,7 +390,7 @@ class LuxonisLightningModule(pl.LightningModule):
     def training_step(
         self, train_batch: tuple[dict[str, Tensor], Labels]
     ) -> Tensor:
-        outputs = self.run_forward_step(*train_batch)
+        outputs = self._run_forward(*train_batch)
         if not outputs.losses:
             raise ValueError("Losses are empty, check if you defined any loss")
 
@@ -406,7 +416,7 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> LuxonisOutput:
         inputs, labels = batch
         images = get_denormalized_images(self.cfg, inputs[self.image_source])
-        return self.run_forward_step(
+        return self._run_forward(
             inputs,
             labels,
             images=images,
@@ -612,10 +622,12 @@ class LuxonisLightningModule(pl.LightningModule):
     def _evaluation_step(
         self,
         mode: Literal["test", "val"],
-        inputs: dict[str, Tensor],
+        inputs: dict[str, Tensor] | Tensor,
         labels: Labels,
     ) -> dict[str, Tensor]:
         max_log_images = self.cfg.trainer.n_log_images
+        if isinstance(inputs, Tensor):
+            inputs = {self.image_source: inputs}
         input_image = inputs[self.image_source]
 
         # Smart logging is decided based on the classification task keys that are merged for all tasks
@@ -626,7 +638,7 @@ class LuxonisLightningModule(pl.LightningModule):
         if self._n_logged_images < max_log_images:
             images = get_denormalized_images(self.cfg, input_image)
 
-        outputs = self.run_forward_step(
+        outputs = self._run_forward(
             inputs,
             labels,
             images=images,
@@ -919,7 +931,17 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def __getstate__(self):
-        return super().__getstate__() | {"_core": None}
+        state = super().__getstate__()
+        state["_core"] = None
+        _INTERNAL["trainer"] = self._trainer
+        _INTERNAL["core"] = self._core
+        return state
+
+    @override
+    def __setstate__(self, state: Any):
+        super().__setstate__(state)
+        self._trainer = _INTERNAL.get("trainer")  # type: ignore
+        self._core = _INTERNAL.get("core")
 
     def _get_node_order_mapping(
         self, node_name: str, old_order: list[str], new_order: list[str]
@@ -949,7 +971,7 @@ class LuxonisLightningModule(pl.LightningModule):
         return ".".join(key.split(".")[idx:])
 
     def _get_output_onnx_names(self, inputs: dict[str, Tensor]) -> list[str]:
-        outputs = self.run_forward_step(inputs).outputs
+        outputs = self._run_forward(inputs).outputs
         output_order = sorted(
             [
                 (node_name, output_name, i)

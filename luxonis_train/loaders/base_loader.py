@@ -16,7 +16,7 @@ from luxonis_train.registry import LOADERS
 from luxonis_train.typing import Labels
 from luxonis_train.utils.general import get_attribute_check_none
 
-LuxonisLoaderTorchOutput = tuple[dict[str, Tensor], Labels]
+LuxonisLoaderTorchOutput = tuple[dict[str, Tensor] | Tensor, Labels]
 
 
 class BaseLoaderTorch(
@@ -225,10 +225,7 @@ class BaseLoaderTorch(
         )
 
     def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
-        img, labels = self.get(idx)
-        if isinstance(img, Tensor):
-            img = {self.image_source: img}
-        return img, labels
+        return self.get(idx)
 
     @abstractmethod
     def __len__(self) -> int:
@@ -342,13 +339,16 @@ class BaseLoaderTorch(
         @return: Tuple of inputs and annotations in the format expected
             by the model.
         """
-        inputs: tuple[dict[str, Tensor], ...]
+        inputs: tuple[dict[str, Tensor], ...] | tuple[Tensor, ...]
         labels: tuple[Labels, ...]
         inputs, labels = zip(*batch, strict=True)
 
-        out_inputs = {
-            k: torch.stack([i[k] for i in inputs], 0) for k in inputs[0]
-        }
+        if isinstance(inputs[0], dict):
+            out_inputs = {
+                k: torch.stack([i[k] for i in inputs], 0) for k in inputs[0]
+            }
+        else:
+            out_inputs = torch.stack(inputs, 0)
 
         out_labels: Labels = {}
 
