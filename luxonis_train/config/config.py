@@ -2,6 +2,7 @@ import json
 import sys
 from collections.abc import Mapping
 from contextlib import suppress
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, Any, Literal, NamedTuple
 
@@ -748,6 +749,12 @@ class AIMETConfig(BaseModelExtraForbid):
                 raise ValueError(
                     f"Failed to load AIMET config from file '{value}': {e}"
                 ) from e
+        return value
+
+    @field_serializer("default_data_type", "quant_scheme")
+    def serialize_enums(self, value: Any) -> str:
+        if isinstance(value, Enum):
+            return value.name
         return value
 
 
