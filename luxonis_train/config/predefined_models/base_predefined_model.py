@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from typing import Literal
 
+from loguru import logger
 from luxonis_ml.typing import Kwargs, Params, check_type
 from typeguard import typechecked
 from typing_extensions import override
@@ -12,7 +13,7 @@ from luxonis_train.config import (
     NodeConfig,
 )
 from luxonis_train.config.config import FreezingConfig
-from luxonis_train.registry import MODELS
+from luxonis_train.registry import METRICS, MODELS, NODES
 from luxonis_train.variants import VariantBase
 
 
@@ -125,12 +126,10 @@ class SimplePredefinedModel(BasePredefinedModel):
                 )
         self._main_metric = main_metric
         self._metrics_params = metrics_params or {}
+        self._per_class_metrics = per_class_metrics
 
         if torchmetrics_task is not None:
             self._metrics_params["torchmetrics_task"] = torchmetrics_task
-
-        if per_class_metrics is not None:
-            self._metrics_params["class_metrics"] = per_class_metrics
 
         self._visualizer = visualizer
         self._visualizer_params = visualizer_params or {}
@@ -145,6 +144,39 @@ class SimplePredefinedModel(BasePredefinedModel):
     @property
     @override
     def nodes(self) -> list[NodeConfig]:
+        task = NODES.get(self._head).task
+        metrics = []
+        applied_per_class_override = False
+
+        for metric in self._metrics:
+            metric_params = dict(self._metrics_params)
+            if self._per_class_metrics is not None:
+                metric_cls = METRICS.get(metric)
+                aliases = metric_cls.get_predefined_model_params_aliases(task)
+                param_name = aliases.get("per_class_metrics")
+                if param_name is not None:
+                    metric_params[param_name] = self._per_class_metrics
+                    applied_per_class_override = True
+
+            metrics.append(
+                MetricModuleConfig(
+                    name=metric,
+                    params=metric_params,
+                    is_main_metric=metric == self._main_metric,
+                )
+            )
+
+        if (
+            self._per_class_metrics is not None
+            and self._metrics
+            and not applied_per_class_override
+        ):
+            logger.warning(
+                "Ignoring `per_class_metrics` for predefined model metrics "
+                f"{self._metrics} because none of them support a per-class "
+                "override."
+            )
+
         nodes = [
             NodeConfig(
                 name=self._backbone,
@@ -182,14 +214,7 @@ class SimplePredefinedModel(BasePredefinedModel):
                         weight=1.0,
                     )
                 ],
-                metrics=[
-                    MetricModuleConfig(
-                        name=metric,
-                        params=self._metrics_params,
-                        is_main_metric=metric == self._main_metric,
-                    )
-                    for metric in self._metrics
-                ]
+                metrics=metrics
                 + (
                     [
                         MetricModuleConfig(

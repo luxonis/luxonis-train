@@ -13,6 +13,7 @@ class MIoU(BaseMetric):
     """Mean IoU metric for SEGMENTATION tasks."""
 
     supported_tasks = [Tasks.SEGMENTATION]
+    predefined_model_params_aliases = {"per_class_metrics": "per_class"}
 
     def __init__(
         self,
