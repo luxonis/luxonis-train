@@ -1,11 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from collections.abc import Sequence
 
+from lightning.pytorch.utilities.types import (
+    LRSchedulerConfig,
+    LRSchedulerTypeUnion,
+)
 from luxonis_ml.utils.registry import AutoRegisterMeta
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import LRScheduler
 
 import luxonis_train as lxt
+from luxonis_train.config.config import OptimizerConfig, SchedulerConfig
 from luxonis_train.registry import STRATEGIES
 
 
@@ -18,7 +22,13 @@ class BaseTrainingStrategy(
     @abstractmethod
     def configure_optimizers(
         self,
-    ) -> tuple[list[Optimizer], list[LRScheduler | dict[str, Any]]]: ...
+    ) -> tuple[
+        Sequence[Optimizer],
+        Sequence[LRSchedulerTypeUnion | LRSchedulerConfig],
+    ]: ...
 
     @abstractmethod
     def update_parameters(self) -> None: ...
+
+    @abstractmethod
+    def get_base_configs(self) -> tuple[OptimizerConfig, SchedulerConfig]: ...

@@ -10,6 +10,7 @@ from torch.optim.optimizer import Optimizer
 from typing_extensions import override
 
 import luxonis_train as lxt
+from luxonis_train.config.config import OptimizerConfig, SchedulerConfig
 
 from .base_strategy import BaseTrainingStrategy
 
@@ -104,12 +105,17 @@ class TripleLRSGD:
                 {
                     "params": regular_weights,
                     "weight_decay": self.weight_decay,
+                    "lr": self.lr,
+                    "momentum": self.momentum,
+                    "nesterov": self.nesterov,
                 },
-                {"params": biases},
+                {
+                    "params": biases,
+                    "lr": self.lr,
+                    "momentum": self.momentum,
+                    "nesterov": self.nesterov,
+                },
             ],
-            lr=self.lr,
-            momentum=self.momentum,
-            nesterov=self.nesterov,
         )
 
 
@@ -145,6 +151,10 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
         """
         self.model = pl_module
         self.cfg = pl_module.cfg
+        self.lr = lr
+        self.momentum = momentum
+        self.weight_decay = weight_decay
+        self.nesterov = nesterov
 
         max_stepnum = math.ceil(
             len(self.model.core.loaders["train"]) / self.cfg.trainer.batch_size
@@ -167,6 +177,20 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
             cosine_annealing=cosine_annealing,
             epochs=self.cfg.trainer.epochs,
             max_stepnum=max_stepnum,
+        )
+
+    @override
+    def get_base_configs(self) -> tuple[OptimizerConfig, SchedulerConfig]:
+        return OptimizerConfig(
+            name="SGD",
+            params={
+                "lr": self.lr,
+                "momentum": self.momentum,
+                "weight_decay": self.weight_decay,
+                "nesterov": self.nesterov,
+            },
+        ), SchedulerConfig(
+            name="LambdaLR", params={"lr_lambda": self.scheduler.lf}
         )
 
     @override

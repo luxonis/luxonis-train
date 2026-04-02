@@ -1,6 +1,8 @@
+import re
 import sys
 from collections.abc import Mapping
 from contextlib import suppress
+from functools import cached_property
 from pathlib import Path
 from typing import Annotated, Any, Literal, NamedTuple
 
@@ -81,11 +83,103 @@ class FreezingConfig(BaseModelExtraForbid):
     lr_after_unfreeze: NonNegativeFloat | None = None
 
 
+class ParameterPattern(BaseModelExtraForbid):
+    name: str | None = None
+    module_type: str | None = None
+
+    @model_validator(mode="after")
+    def validate(self) -> Self:
+        if self.name is None and self.module_type is None:
+            raise ValueError(
+                "At least one of `name` or `module_type` must be specified for parameter pattern."
+            )
+        return self
+
+    def identifier(self) -> str:
+        if self.name is None and self.module_type is None:
+            raise ValueError(
+                "At least one of `name` or `module_type` must be specified for parameter pattern."
+            )
+        return self.name or self.module_type  # type: ignore
+
+
+class SchedulerConfig(ConfigItem):
+    name: str = "ConstantLR"
+
+    def get_sequential_lr_params(self) -> "SequentialLRParams":
+        if self.name != "SequentialLR":
+            raise RuntimeError(
+                f"Scheduler '{self.name}' is not 'SequentialLR'. "
+                "Cannot get `SequentialLR` parameters."
+            )
+
+        if "schedulers" not in self.params or "milestones" not in self.params:
+            raise ValueError(
+                "SequentialLR requires 'schedulers' and 'milestones' parameters."
+            )
+        return SequentialLRParams(**self.params)  # type: ignore
+
+    def to_finetuning(self) -> "FinetuningSchedulerConfig":
+        return FinetuningSchedulerConfig(name=self.name, params=self.params)
+
+
+class SequentialLRParams(BaseModelExtraForbid):
+    schedulers: list[SchedulerConfig]
+    milestones: list[int]
+    last_epoch: int = -1
+
+
+class FinetuningSchedulerConfig(SchedulerConfig):
+    name: str | None = None
+
+
+class OptimizerConfig(ConfigItem):
+    name: str = "Adam"
+
+    def to_finetuning(self) -> "FinetuningOptimizerConfig":
+        return FinetuningOptimizerConfig(name=self.name, params=self.params)
+
+
+class FinetuningOptimizerConfig(OptimizerConfig):
+    name: str | None = None
+
+
+class FinetuningConfig(BaseModelExtraForbid):
+    parameters: list[ParameterPattern] | None = None
+    optimizer: FinetuningOptimizerConfig | None = None
+    scheduler: FinetuningSchedulerConfig | None = None
+
+    @field_validator("parameters", mode="before")
+    @classmethod
+    def validate_parameters(cls, value: Any) -> Any:
+        parsed_patterns = []
+        if isinstance(value, str):
+            value = [value]
+        if not isinstance(value, list):
+            return value
+        for item in value:
+            if isinstance(item, str):
+                parsed_patterns.append(ParameterPattern(name=item))
+            elif isinstance(item, dict):
+                parsed_patterns.append(ParameterPattern(**item))
+            elif isinstance(item, ParameterPattern):
+                parsed_patterns.append(item)
+        return parsed_patterns
+
+    @cached_property
+    def parameter_regex(self) -> re.Pattern:
+        if not self.parameters:
+            return re.compile(".*")
+        return re.compile(
+            "|".join(f"(?:{p.identifier()})" for p in self.parameters),
+            flags=re.IGNORECASE,
+        )
+
+
 class NodeConfig(ConfigItem):
     alias: str | None = None
     inputs: list[str] = []  # From preceding nodes
     input_sources: list[str] = []  # From data loader
-    freezing: FreezingConfig = Field(default_factory=FreezingConfig)
     remove_on_export: bool = False
     task_name: str | None = None
     metadata_task_override: str | dict[str, str] | None = None
@@ -97,6 +191,15 @@ class NodeConfig(ConfigItem):
     losses: list[LossModuleConfig] = []
     metrics: list[MetricModuleConfig] = []
     visualizers: list[AttachedModuleConfig] = []
+    finetuning: list[FinetuningConfig] = []
+    freezing: FreezingConfig = Field(default_factory=FreezingConfig)
+
+    @field_validator("finetuning", mode="before")
+    @classmethod
+    def validate_finetuning(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return [value]
+        return value
 
     @property
     def identifier(self) -> str:
@@ -525,34 +628,10 @@ class TrainerConfig(BaseModelExtraForbid):
 
     callbacks: list[CallbackConfig] = []
 
-    optimizer: ConfigItem = Field(
-        default_factory=lambda: ConfigItem(name="Adam")
-    )
-    scheduler: ConfigItem = Field(
-        default_factory=lambda: ConfigItem(name="ConstantLR")
-    )
+    optimizer: OptimizerConfig = Field(default_factory=OptimizerConfig)
+    scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig)
 
     training_strategy: ConfigItem | None = None
-
-    @model_validator(mode="after")
-    def validate_scheduler(self) -> Self:
-        if self.scheduler.name == "CosineAnnealingLR":
-            if "T_max" not in self.scheduler.params:
-                self.scheduler.params["T_max"] = self.epochs
-                logger.warning(
-                    "`T_max` was not set for 'CosineAnnealingLR'"
-                    "Automatically setting `T_max` to number of epochs."
-                )
-            elif self.scheduler.params["T_max"] != self.epochs:
-                logger.warning(
-                    "Parameter `T_max` of 'CosineAnnealingLR' is "
-                    "not equal to the number of epochs. "
-                    "Make sure this is intended."
-                    f"`T_max`: {self.scheduler.params['T_max']}, "
-                    f"Number of epochs: {self.epochs}"
-                )
-
-        return self
 
     @model_validator(mode="after")
     def validate_gradient_acc_scheduler(self) -> Self:
