@@ -10,6 +10,7 @@ from luxonis_train.attached_modules.metrics.dice_coefficient import (
 from luxonis_train.attached_modules.metrics.mean_iou import MIoU
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Tasks
+from luxonis_train.utils.dataset_metadata import DatasetMetadata
 
 
 class DummyNodeSegmentation(BaseNode, register=False):
@@ -563,14 +564,22 @@ def test_mean_iou_per_class(
         include_background=True,
         per_class=True,
         input_format="one-hot",
-        node=DummyNodeSegmentation(n_classes=2),
+        node=DummyNodeSegmentation(
+            n_classes=2,
+            dataset_metadata=DatasetMetadata(
+                classes={"": {"background": 0, "vehicle": 1}}
+            ),
+        ),
     )
 
     metric.update(predictions, targets)
     result = metric.compute()
-    assert torch.allclose(result, expected, atol=1e-4), (
-        f"Expected {expected}, got {result}"
+    assert isinstance(result, tuple)
+    assert torch.allclose(result[0], expected.mean(), atol=1e-4), (
+        f"Expected mean {expected.mean()}, got {result[0]}"
     )
+    assert torch.allclose(result[1]["MIoU_background"], expected[0], atol=1e-4)
+    assert torch.allclose(result[1]["MIoU_vehicle"], expected[1], atol=1e-4)
 
 
 def test_batch_updates():

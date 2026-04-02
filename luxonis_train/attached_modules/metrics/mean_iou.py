@@ -67,8 +67,19 @@ class MIoU(BaseMetric):
 
         self.metric.update(converted_preds, converted_target)
 
-    def compute(self) -> Tensor:
-        return self.metric.compute()
+    def compute(self) -> Tensor | tuple[Tensor, dict[str, Tensor]]:
+        x = self.metric.compute()
+        if x.ndim == 0 or x.numel() == 1:
+            return x
+
+        class_names = {
+            class_idx: class_name
+            for class_name, class_idx in self.classes.items()
+        }
+
+        return x.mean(), {
+            f"{self.name}_{class_names[i]}": x[i] for i in range(x.numel())
+        }
 
     def reset(self) -> None:
         self.metric.reset()
