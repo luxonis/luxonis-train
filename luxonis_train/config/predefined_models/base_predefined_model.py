@@ -115,7 +115,7 @@ class SimplePredefinedModel(BasePredefinedModel):
         self._metrics = (
             [metrics] if isinstance(metrics, str) else metrics or []
         )
-        if main_metric is None:
+        if main_metric is None and self._metrics:
             if len(self._metrics) == 1:
                 main_metric = self._metrics[0]
             else:

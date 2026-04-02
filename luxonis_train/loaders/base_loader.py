@@ -224,16 +224,8 @@ class BaseLoaderTorch(
             "`augment_test_image` method to expose this functionality."
         )
 
+    @abstractmethod
     def __getitem__(self, idx: int) -> LuxonisLoaderTorchOutput:
-        return self.get(idx)
-
-    @abstractmethod
-    def __len__(self) -> int:
-        """Returns length of the dataset."""
-        ...
-
-    @abstractmethod
-    def get(self, idx: int) -> tuple[Tensor | dict[str, Tensor], Labels]:
         """Loads sample from dataset.
 
         @type idx: int
@@ -241,6 +233,11 @@ class BaseLoaderTorch(
         @rtype: L{LuxonisLoaderTorchOutput}
         @return: Sample's data in L{LuxonisLoaderTorchOutput} format.
         """
+        ...
+
+    @abstractmethod
+    def __len__(self) -> int:
+        """Returns length of the dataset."""
         ...
 
     @abstractmethod
@@ -328,7 +325,7 @@ class BaseLoaderTorch(
     def collate_fn(
         self,
         batch: list[LuxonisLoaderTorchOutput],
-    ) -> tuple[dict[str, Tensor], Labels]:
+    ) -> tuple[dict[str, Tensor] | Tensor, Labels]:
         """Default collate function used for training.
 
         @type batch: list[LuxonisLoaderTorchOutput]
@@ -345,10 +342,14 @@ class BaseLoaderTorch(
 
         if isinstance(inputs[0], dict):
             out_inputs = {
-                k: torch.stack([i[k] for i in inputs], 0) for k in inputs[0]
+                k: torch.stack(
+                    [i[k] for i in inputs],  # type: ignore
+                    0,
+                )
+                for k in inputs[0]
             }
         else:
-            out_inputs = torch.stack(inputs, 0)
+            out_inputs = torch.stack(inputs, 0)  # type: ignore
 
         out_labels: Labels = {}
 

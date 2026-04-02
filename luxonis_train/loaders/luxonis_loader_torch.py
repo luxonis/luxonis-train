@@ -157,7 +157,9 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         return {self.image_source: img.shape}
 
     @override
-    def get(self, idx: int) -> tuple[dict[str, Tensor] | Tensor, Labels]:
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[dict[str, Tensor] | Tensor, Labels]:
         img, labels = self.loader[idx]
         if isinstance(img, np.ndarray):
             img = {self.image_source: img}
