@@ -114,6 +114,7 @@ def test_dice_coefficient_one_hot(
 
     metric.update(predictions, targets)
     result = metric.compute()
+    assert isinstance(result, Tensor)
     assert torch.isclose(result, expected, atol=1e-4), (
         f"Expected {expected}, got {result}"
     )
@@ -182,6 +183,7 @@ def test_dice_coefficient_index(
 
     metric.update(predictions, targets)
     result = metric.compute()
+    assert isinstance(result, Tensor)
     assert torch.isclose(result, expected, atol=1e-4), (
         f"Expected {expected}, got {result}"
     )
@@ -320,6 +322,7 @@ def test_dice_coefficient_background(
 
     metric.update(predictions, targets)
     result = metric.compute()
+    assert isinstance(result, Tensor)
     assert torch.isclose(result, expected, atol=1e-4), (
         f"Expected {expected}, got {result}"
     )
@@ -389,6 +392,7 @@ def test_mean_iou_one_hot(
 
     metric.update(predictions, targets)
     result = metric.compute()
+    assert isinstance(result, Tensor)
     assert torch.isclose(result, expected, atol=1e-4), (
         f"Expected {expected}, got {result}"
     )
@@ -456,6 +460,7 @@ def test_mean_iou_index(
 
     metric.update(predictions, targets)
     result = metric.compute()
+    assert isinstance(result, Tensor)
     assert torch.isclose(result, expected, atol=1e-4), (
         f"Expected {expected}, got {result}"
     )
@@ -513,6 +518,7 @@ def test_mean_iou_background(
 
     metric.update(predictions, targets)
     result = metric.compute()
+    assert isinstance(result, Tensor)
     assert torch.isclose(result, expected, atol=1e-4), (
         f"Expected {expected}, got {result}"
     )
@@ -636,6 +642,7 @@ def test_batch_updates():
     iou_metric.update(batch2_pred, batch2_target)
     iou_result = iou_metric.compute()
 
+    assert isinstance(iou_result, Tensor)
     assert torch.isclose(iou_result, torch.tensor(0.5), atol=1e-4)
 
 
@@ -709,4 +716,5 @@ def test_edge_cases(
 
     iou_metric.update(predictions, targets)
     iou_result = iou_metric.compute()
+    assert isinstance(iou_result, Tensor)
     assert torch.isclose(iou_result, expected_iou, atol=1e-4)
