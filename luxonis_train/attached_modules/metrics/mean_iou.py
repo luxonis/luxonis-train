@@ -13,6 +13,7 @@ class MIoU(BaseMetric):
     """Mean IoU metric for SEGMENTATION tasks."""
 
     supported_tasks = [Tasks.SEGMENTATION]
+    predefined_model_params_aliases = {"per_class_metrics": "per_class"}
 
     def __init__(
         self,
@@ -36,6 +37,8 @@ class MIoU(BaseMetric):
         """
         super().__init__(**kwargs)
         self.input_format = input_format
+        self.include_background = include_background
+        self.per_class = per_class
         self.metric = MeanIoU(
             num_classes=num_classes,
             include_background=include_background,
@@ -66,8 +69,24 @@ class MIoU(BaseMetric):
 
         self.metric.update(converted_preds, converted_target)
 
-    def compute(self) -> Tensor:
-        return self.metric.compute()
+    def compute(self) -> Tensor | tuple[Tensor, dict[str, Tensor]]:
+        x = self.metric.compute()
+        if not self.per_class or x.ndim == 0 or x.numel() == 1:
+            return x
+
+        class_names = [
+            class_name
+            for class_name, _ in sorted(
+                self.classes.items(), key=lambda item: item[1]
+            )
+        ]
+        if not self.include_background:
+            class_names = class_names[1:]
+
+        return x.mean(), {
+            f"{self.name}_{class_name}": value
+            for class_name, value in zip(class_names, x, strict=True)
+        }
 
     def reset(self) -> None:
         self.metric.reset()

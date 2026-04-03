@@ -6,6 +6,7 @@ from inspect import Parameter
 from types import EllipsisType
 from typing import (
     Annotated,
+    ClassVar,
     Literal,
     get_args,
     get_origin,
@@ -19,6 +20,7 @@ from torchmetrics import Metric
 
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.registry import METRICS
+from luxonis_train.tasks import Task
 from luxonis_train.typing import Labels, Packet, get_signature
 
 
@@ -87,6 +89,14 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
     automatic registration of defined subclasses to a L{METRICS}
     registry.
     """
+
+    predefined_model_params_aliases: ClassVar[dict[str, str]] = {}
+
+    @classmethod
+    def get_predefined_model_params_aliases(
+        cls, task: Task | None = None
+    ) -> dict[str, str]:
+        return cls.predefined_model_params_aliases
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

@@ -10,6 +10,7 @@ from luxonis_train.attached_modules.metrics.dice_coefficient import (
 from luxonis_train.attached_modules.metrics.mean_iou import MIoU
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Tasks
+from luxonis_train.utils.dataset_metadata import DatasetMetadata
 
 
 class DummyNodeSegmentation(BaseNode, register=False):
@@ -113,6 +114,7 @@ def test_dice_coefficient_one_hot(
 
     metric.update(predictions, targets)
     result = metric.compute()
+    assert isinstance(result, Tensor)
     assert torch.isclose(result, expected, atol=1e-4), (
         f"Expected {expected}, got {result}"
     )
@@ -181,6 +183,7 @@ def test_dice_coefficient_index(
 
     metric.update(predictions, targets)
     result = metric.compute()
+    assert isinstance(result, Tensor)
     assert torch.isclose(result, expected, atol=1e-4), (
         f"Expected {expected}, got {result}"
     )
@@ -319,6 +322,7 @@ def test_dice_coefficient_background(
 
     metric.update(predictions, targets)
     result = metric.compute()
+    assert isinstance(result, Tensor)
     assert torch.isclose(result, expected, atol=1e-4), (
         f"Expected {expected}, got {result}"
     )
@@ -388,6 +392,7 @@ def test_mean_iou_one_hot(
 
     metric.update(predictions, targets)
     result = metric.compute()
+    assert isinstance(result, Tensor)
     assert torch.isclose(result, expected, atol=1e-4), (
         f"Expected {expected}, got {result}"
     )
@@ -455,6 +460,7 @@ def test_mean_iou_index(
 
     metric.update(predictions, targets)
     result = metric.compute()
+    assert isinstance(result, Tensor)
     assert torch.isclose(result, expected, atol=1e-4), (
         f"Expected {expected}, got {result}"
     )
@@ -512,6 +518,7 @@ def test_mean_iou_background(
 
     metric.update(predictions, targets)
     result = metric.compute()
+    assert isinstance(result, Tensor)
     assert torch.isclose(result, expected, atol=1e-4), (
         f"Expected {expected}, got {result}"
     )
@@ -563,14 +570,91 @@ def test_mean_iou_per_class(
         include_background=True,
         per_class=True,
         input_format="one-hot",
-        node=DummyNodeSegmentation(n_classes=2),
+        node=DummyNodeSegmentation(
+            n_classes=2,
+            dataset_metadata=DatasetMetadata(
+                classes={"": {"background": 0, "vehicle": 1}}
+            ),
+        ),
     )
 
     metric.update(predictions, targets)
     result = metric.compute()
-    assert torch.allclose(result, expected, atol=1e-4), (
-        f"Expected {expected}, got {result}"
+    assert isinstance(result, tuple)
+    assert torch.allclose(result[0], expected.mean(), atol=1e-4), (
+        f"Expected mean {expected.mean()}, got {result[0]}"
     )
+    assert torch.allclose(result[1]["MIoU_background"], expected[0], atol=1e-4)
+    assert torch.allclose(result[1]["MIoU_vehicle"], expected[1], atol=1e-4)
+
+
+@pytest.mark.parametrize(
+    ("include_background", "expected_keys"),
+    [
+        (
+            True,
+            ("MIoU_background", "MIoU_vehicle", "MIoU_pedestrian"),
+        ),
+        (
+            False,
+            ("MIoU_vehicle", "MIoU_pedestrian"),
+        ),
+    ],
+)
+def test_mean_iou_per_class_metric_names_respect_background_setting(
+    include_background: bool, expected_keys: tuple[str, ...]
+):
+    predictions = torch.tensor(
+        [
+            [
+                [1.0, 0.0],
+                [1.0, 0.0],
+            ],
+            [
+                [0.0, 1.0],
+                [0.0, 0.0],
+            ],
+            [
+                [0.0, 0.0],
+                [0.0, 1.0],
+            ],
+        ]
+    ).unsqueeze(0)
+    targets = predictions.clone()
+
+    metric = MIoU(
+        num_classes=3,
+        include_background=include_background,
+        per_class=True,
+        input_format="one-hot",
+        node=DummyNodeSegmentation(
+            n_classes=3,
+            dataset_metadata=DatasetMetadata(
+                classes={
+                    "": {
+                        "background": 0,
+                        "vehicle": 1,
+                        "pedestrian": 2,
+                    }
+                }
+            ),
+        ),
+    )
+
+    metric.update(predictions, targets)
+    result = metric.compute()
+
+    assert isinstance(result, tuple)
+    assert metric.classes == {
+        "background": 0,
+        "vehicle": 1,
+        "pedestrian": 2,
+    }
+    assert torch.allclose(result[0], torch.tensor(1.0), atol=1e-4)
+    assert len(result[1]) == len(expected_keys)
+    assert tuple(result[1]) == expected_keys
+    for key in expected_keys:
+        assert torch.allclose(result[1][key], torch.tensor(1.0))
 
 
 def test_batch_updates():
@@ -627,6 +711,7 @@ def test_batch_updates():
     iou_metric.update(batch2_pred, batch2_target)
     iou_result = iou_metric.compute()
 
+    assert isinstance(iou_result, Tensor)
     assert torch.isclose(iou_result, torch.tensor(0.5), atol=1e-4)
 
 
@@ -700,4 +785,5 @@ def test_edge_cases(
 
     iou_metric.update(predictions, targets)
     iou_result = iou_metric.compute()
+    assert isinstance(iou_result, Tensor)
     assert torch.isclose(iou_result, expected_iou, atol=1e-4)

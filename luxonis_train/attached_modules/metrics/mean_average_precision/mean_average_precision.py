@@ -1,6 +1,6 @@
 from luxonis_train.nodes import BaseNode
 from luxonis_train.registry import METRICS
-from luxonis_train.tasks import Tasks
+from luxonis_train.tasks import Task, Tasks
 
 from .mean_average_precision_bbox import MeanAveragePrecisionBBox
 from .mean_average_precision_keypoints import MeanAveragePrecisionKeypoints
@@ -15,6 +15,14 @@ class MeanAveragePrecision:
 
     Creates the appropriate mAP metric based on the task of the node.
     """
+
+    @classmethod
+    def get_predefined_model_params_aliases(
+        cls, task: Task | None = None
+    ) -> dict[str, str]:
+        if task in {Tasks.BOUNDINGBOX, Tasks.INSTANCE_SEGMENTATION}:
+            return {"per_class_metrics": "class_metrics"}
+        return {}
 
     def __new__(
         cls, node: BaseNode, **kwargs
