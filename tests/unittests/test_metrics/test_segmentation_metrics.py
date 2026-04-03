@@ -588,6 +588,75 @@ def test_mean_iou_per_class(
     assert torch.allclose(result[1]["MIoU_vehicle"], expected[1], atol=1e-4)
 
 
+@pytest.mark.parametrize(
+    ("include_background", "expected_keys"),
+    [
+        (
+            True,
+            ("MIoU_background", "MIoU_vehicle", "MIoU_pedestrian"),
+        ),
+        (
+            False,
+            ("MIoU_vehicle", "MIoU_pedestrian"),
+        ),
+    ],
+)
+def test_mean_iou_per_class_metric_names_respect_background_setting(
+    include_background: bool, expected_keys: tuple[str, ...]
+):
+    predictions = torch.tensor(
+        [
+            [
+                [1.0, 0.0],
+                [1.0, 0.0],
+            ],
+            [
+                [0.0, 1.0],
+                [0.0, 0.0],
+            ],
+            [
+                [0.0, 0.0],
+                [0.0, 1.0],
+            ],
+        ]
+    ).unsqueeze(0)
+    targets = predictions.clone()
+
+    metric = MIoU(
+        num_classes=3,
+        include_background=include_background,
+        per_class=True,
+        input_format="one-hot",
+        node=DummyNodeSegmentation(
+            n_classes=3,
+            dataset_metadata=DatasetMetadata(
+                classes={
+                    "": {
+                        "background": 0,
+                        "vehicle": 1,
+                        "pedestrian": 2,
+                    }
+                }
+            ),
+        ),
+    )
+
+    metric.update(predictions, targets)
+    result = metric.compute()
+
+    assert isinstance(result, tuple)
+    assert metric.classes == {
+        "background": 0,
+        "vehicle": 1,
+        "pedestrian": 2,
+    }
+    assert torch.allclose(result[0], torch.tensor(1.0), atol=1e-4)
+    assert len(result[1]) == len(expected_keys)
+    assert tuple(result[1]) == expected_keys
+    for key in expected_keys:
+        assert torch.allclose(result[1][key], torch.tensor(1.0))
+
+
 def test_batch_updates():
     batch1_pred = torch.tensor(
         [

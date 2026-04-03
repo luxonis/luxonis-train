@@ -37,6 +37,7 @@ class MIoU(BaseMetric):
         """
         super().__init__(**kwargs)
         self.input_format = input_format
+        self.include_background = include_background
         self.per_class = per_class
         self.metric = MeanIoU(
             num_classes=num_classes,
@@ -73,13 +74,18 @@ class MIoU(BaseMetric):
         if not self.per_class or x.ndim == 0 or x.numel() == 1:
             return x
 
-        class_names = {
-            class_idx: class_name
-            for class_name, class_idx in self.classes.items()
-        }
+        class_names = [
+            class_name
+            for class_name, _ in sorted(
+                self.classes.items(), key=lambda item: item[1]
+            )
+        ]
+        if not self.include_background:
+            class_names = class_names[1:]
 
         return x.mean(), {
-            f"{self.name}_{class_names[i]}": x[i] for i in range(x.numel())
+            f"{self.name}_{class_name}": value
+            for class_name, value in zip(class_names, x, strict=True)
         }
 
     def reset(self) -> None:
