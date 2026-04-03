@@ -141,22 +141,29 @@ class SimplePredefinedModel(BasePredefinedModel):
         )
         self._confusion_matrix_params = confusion_matrix_params or {}
 
-    @property
-    @override
-    def nodes(self) -> list[NodeConfig]:
+    def _generate_metrics(self) -> list[MetricModuleConfig]:
+        if self._per_class_metrics is None:
+            return [
+                MetricModuleConfig(
+                    name=metric,
+                    params=self._metrics_params,
+                    is_main_metric=metric == self._main_metric,
+                )
+                for metric in self._metrics
+            ]
+
         task = NODES.get(self._head).task
         metrics = []
         applied_per_class_override = False
 
         for metric in self._metrics:
             metric_params = dict(self._metrics_params)
-            if self._per_class_metrics is not None:
-                metric_cls = METRICS.get(metric)
-                aliases = metric_cls.get_predefined_model_params_aliases(task)
-                param_name = aliases.get("per_class_metrics")
-                if param_name is not None:
-                    metric_params[param_name] = self._per_class_metrics
-                    applied_per_class_override = True
+            metric_cls = METRICS.get(metric)
+            aliases = metric_cls.get_predefined_model_params_aliases(task)
+            param_name = aliases.get("per_class_metrics")
+            if param_name is not None:
+                metric_params[param_name] = self._per_class_metrics
+                applied_per_class_override = True
 
             metrics.append(
                 MetricModuleConfig(
@@ -166,16 +173,19 @@ class SimplePredefinedModel(BasePredefinedModel):
                 )
             )
 
-        if (
-            self._per_class_metrics is not None
-            and self._metrics
-            and not applied_per_class_override
-        ):
+        if self._metrics and not applied_per_class_override:
             logger.warning(
                 "Ignoring `per_class_metrics` for predefined model metrics "
                 f"{self._metrics} because none of them support a per-class "
                 "override."
             )
+
+        return metrics
+
+    @property
+    @override
+    def nodes(self) -> list[NodeConfig]:
+        metrics = self._generate_metrics()
 
         nodes = [
             NodeConfig(

@@ -37,6 +37,7 @@ class MIoU(BaseMetric):
         """
         super().__init__(**kwargs)
         self.input_format = input_format
+        self.per_class = per_class
         self.metric = MeanIoU(
             num_classes=num_classes,
             include_background=include_background,
@@ -69,7 +70,7 @@ class MIoU(BaseMetric):
 
     def compute(self) -> Tensor | tuple[Tensor, dict[str, Tensor]]:
         x = self.metric.compute()
-        if x.ndim == 0 or x.numel() == 1:
+        if not self.per_class or x.ndim == 0 or x.numel() == 1:
             return x
 
         class_names = {
