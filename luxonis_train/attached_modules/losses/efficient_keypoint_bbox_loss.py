@@ -3,7 +3,7 @@ from typing import Literal
 import torch
 import torch.nn.functional as F
 from loguru import logger
-from torch import Tensor
+from torch import Tensor, nn
 
 from luxonis_train.attached_modules.losses import AdaptiveDetectionLoss
 from luxonis_train.nodes import EfficientKeypointBBoxHead
@@ -16,8 +16,6 @@ from luxonis_train.utils import (
 )
 from luxonis_train.utils.boundingbox import IoUType
 from luxonis_train.utils.keypoints import insert_class
-
-from .bce_with_logits import BCEWithLogitsLoss
 
 
 class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
@@ -74,7 +72,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             **kwargs,
         )
 
-        self.b_cross_entropy = BCEWithLogitsLoss(
+        self.b_cross_entropy = nn.BCEWithLogitsLoss(
             pos_weight=torch.tensor([viz_pw])
         )
         self.sigmas = get_sigmas(
