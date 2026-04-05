@@ -729,14 +729,28 @@ def _validate_quantization_mode(value: str) -> str:
     return value
 
 
+class AdaroundConfig(BaseModelExtraForbid):
+    active: bool = False
+    default_num_iterations: PositiveInt | None = None
+    default_reg_param: float = 0.01
+    default_beta_range: tuple[int, int] = (20, 2)
+    default_warm_start: float = 0.2
+
+
 class AIMETConfig(BaseModelExtraForbid):
     active: bool = False
-    epochs: PositiveInt = 4
+    epochs: PositiveInt = 20
     default_output_bw: Literal[4, 8, 16] = 8
     default_param_bw: Literal[4, 8, 16] = 8
     default_data_type: QuantizationDataType = QuantizationDataType.int
     quant_scheme: QuantScheme = QuantScheme.min_max
     config: Params | None = None
+    fold_batch_norms: bool = False
+    cross_layer_equalization: bool = False
+    batch_norm_reestimation: bool = False
+    adaround: AdaroundConfig = Field(default_factory=AdaroundConfig)
+    optimizer: ConfigItem | None = None
+    scheduler: ConfigItem | None = None
 
     @field_validator("config", mode="before")
     @classmethod
