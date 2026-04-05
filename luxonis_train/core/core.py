@@ -29,6 +29,8 @@ from luxonis_ml.typing import Params, PathType
 from luxonis_ml.utils import Environ, LuxonisFileSystem
 from rich.progress import track
 from torch import nn
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LRScheduler, StepLR
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
@@ -46,7 +48,7 @@ from luxonis_train.loaders import (
     LuxonisLoaderTorch,
 )
 from luxonis_train.loaders.base_loader import LuxonisLoaderTorchOutput
-from luxonis_train.registry import LOADERS
+from luxonis_train.registry import LOADERS, OPTIMIZERS, from_registry
 from luxonis_train.typing import View
 from luxonis_train.utils import (
     DatasetMetadata,
@@ -1180,11 +1182,13 @@ class LuxonisModel:
         default_param_bw: int = 8,
         config_file: str | None = None,
         default_data_type: QuantizationDataType = QuantizationDataType.int,
-        adaround: bool = True,
+        adaround: bool = False,
         adaround_iterations: int | None = None,
         fold_batch_norms: bool = False,
         cross_layer_equalization: bool = False,
         batch_norm_reestimation: bool = False,
+        optimizer: Optimizer | None = None,
+        scheduler: LRScheduler | None = None,
     ) -> None:
         """Runs post-training quantization and quantization-aware
         training using AIMET.
@@ -1223,6 +1227,7 @@ class LuxonisModel:
             ):
                 model.forward(imgs)
 
+        cfg = self.cfg.exporter.aimet
         model = self.lightning_module
         model.reparametrize()
         loader = self.pytorch_loaders["val"]
@@ -1310,25 +1315,27 @@ class LuxonisModel:
             model.cuda()
         model.automatic_optimization = False
 
+        if optimizer is None:
+            opt_cfg = cfg.optimizer or self.cfg.trainer.optimizer
+            optimizer = from_registry(
+                OPTIMIZERS,
+                opt_cfg.name,
+                params=model.parameters(),
+                **opt_cfg.params,
+            )
+
+        if scheduler is None:
+            scheduler = StepLR(optimizer, step_size=5, gamma=0.1)
+
         for e in track(
             range(epochs), description="Running Quantization-Aware Training..."
         ):
             for imgs, labels in self.pytorch_loaders["train"]:
+                optimizer.zero_grad()
                 loss = model.training_step((imgs, labels))
-                optimizers = model.optimizers()
-                schedulers = model.lr_schedulers()
-                if not isinstance(optimizers, list):
-                    optimizers = [optimizers]
-                if not isinstance(schedulers, list):
-                    schedulers = [schedulers]
-                for optimizer in optimizers:
-                    optimizer.zero_grad()
                 model.manual_backward(loss)
-                for optimizer in optimizers:
-                    optimizer.step()
-                for scheduler in schedulers:
-                    if scheduler is not None:
-                        scheduler.step(e)
+                optimizer.step()
+            scheduler.step(e)
 
         if batch_norm_reestimation:
             logger.info("Reestimating batch norm statistics")
