@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
 from threading import ExceptHookArgs, Thread
-from typing import Literal, overload
+from typing import Literal, cast, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -1224,7 +1224,7 @@ class LuxonisModel:
         )
 
         model = deepcopy(self.lightning_module)
-        model.reparametrize()
+        model.reparametrize().eval()
         pre_quant_test = self.pl_trainer.test(
             model, self.pytorch_loaders["val"]
         )[0]
@@ -1266,11 +1266,10 @@ class LuxonisModel:
             cross_layer_equalization,
             batch_norm_reestimation,
         )
+        model = cast(LuxonisLightningModule, sim.model)
 
-        ptq_test = self.pl_trainer.test(
-            sim.model,  # type: ignore
-            self.pytorch_loaders["val"],
-        )[0]
+        model.eval()
+        ptq_test = self.pl_trainer.test(model, self.pytorch_loaders["val"])[0]
 
         if optimizer is None:
             opt_cfg = cfg.optimizer or self.cfg.trainer.optimizer
@@ -1300,7 +1299,7 @@ class LuxonisModel:
             epochs or cfg.epochs,
             fold_batch_norms,
             batch_norm_reestimation,
-        )
+        ).eval()
 
         qat_test = self.pl_trainer.test(model, self.pytorch_loaders["val"])[0]
 
@@ -1312,7 +1311,6 @@ class LuxonisModel:
             input_names=input_names,
             output_names=output_names,
         )
-        model.set_export_mode(mode=False)
 
         table = []
         for key, value in pre_quant_test.items():

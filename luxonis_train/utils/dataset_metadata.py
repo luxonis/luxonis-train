@@ -129,11 +129,7 @@ class DatasetMetadata:
             task types.
         """
         if task_name is not None:
-            if task_name not in self._n_keypoints:
-                raise ValueError(
-                    f"Task '{task_name}' is not present in the dataset."
-                )
-            return self._n_keypoints[task_name]
+            return self._n_keypoints.get(task_name, 0)
         n_keypoints = next(iter(self._n_keypoints.values()))
         for n in self._n_keypoints.values():
             if n != n_keypoints:

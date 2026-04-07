@@ -1,3 +1,5 @@
+from contextlib import suppress
+
 from torch import Tensor
 from torchmetrics.classification import (
     BinaryConfusionMatrix,
@@ -26,6 +28,11 @@ class RecognitionConfusionMatrix(BaseMetric):
             self.metric = BinaryConfusionMatrix()
         else:
             self.metric = MulticlassConfusionMatrix(num_classes=self.n_classes)
+
+        with suppress(ImportError):
+            from aimet_torch.v2.nn import QuantizationMixin
+
+            QuantizationMixin.ignore(self.metric.__class__)
 
     @override
     def update(self, predictions: Tensor, targets: Tensor) -> None:

@@ -1,3 +1,4 @@
+from contextlib import suppress
 from math import exp
 from typing import Literal
 
@@ -83,6 +84,11 @@ class SSIM(nn.Module):
         # Assume 1 channel for SSIM
         self.channel = 1
         self.window = create_window(window_size)
+
+        with suppress(ImportError):
+            from aimet_torch.v2.nn import QuantizationMixin
+
+            QuantizationMixin.ignore(self.__class__)
 
     def forward(self, img1: Tensor, img2: Tensor) -> Tensor:
         device = img1.device

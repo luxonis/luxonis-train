@@ -39,10 +39,14 @@ def post_training_quantization(
     cross_layer_equalization: bool = False,
     batch_norm_reestimation: bool = False,
 ) -> QuantizationSimModel:
+
     def pass_calibration_data(model: nn.Module) -> None:
+        assert len(val_loader) > 0, (
+            "Validation loader must have at least one batch"
+        )
         for imgs, _ in track(
             val_loader,
-            description="Computing quantization encodings...",
+            description="Computing quantization encodings",
             total=len(val_loader),
         ):
             model.forward(imgs)
@@ -50,6 +54,8 @@ def post_training_quantization(
     if CUDAAccelerator.is_available():
         dummy_inputs = dummy_inputs.cuda()
         model.cuda()
+
+    model.eval()
 
     if fold_batch_norms and not batch_norm_reestimation:
         logger.info("Folding batch norms into preceding layers")
@@ -124,7 +130,9 @@ def quantization_aware_training(
     model.automatic_optimization = False
 
     for e in track(
-        range(epochs), description="Running Quantization-Aware Training..."
+        range(epochs),
+        description="Running Quantization-Aware Training",
+        total=epochs,
     ):
         for imgs, labels in train_loader:
             optimizer.zero_grad()

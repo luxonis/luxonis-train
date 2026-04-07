@@ -489,10 +489,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
     @override
     def restore(self) -> None:
         if self.fused_branch is None:
-            raise RuntimeError(
-                f"Cannot restore '{self.name}' "
-                "that has not yet been reparametrized."
-            )
+            return
 
         # Not sure if this is necessary
         for param in self.fused_branch.parameters():

@@ -52,6 +52,10 @@ class TorchMetricWrapper(BaseMetric):
             kwargs["num_labels"] = n_classes
 
         self.metric = self.Metric(**kwargs)
+        with suppress(ImportError):
+            from aimet_torch.v2.nn import QuantizationMixin
+
+            QuantizationMixin.ignore(self.metric.__class__)
 
     @override
     def update(self, predictions: Tensor, target: Tensor) -> None:

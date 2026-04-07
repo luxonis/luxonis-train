@@ -71,7 +71,9 @@ class DebugLoader(BaseLoaderTorch):
         return self.batch_size * 10
 
     @override
-    def get(self, idx: int) -> tuple[Tensor | dict[str, Tensor], Labels]:
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[Tensor | dict[str, Tensor], Labels]:
         img = torch.zeros(self.n_channels, self.height, self.width)
         label_shapes = self.get_label_shapes(self.labels)
         labels = {
