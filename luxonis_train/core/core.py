@@ -23,6 +23,7 @@ from luxonis_ml.typing import Params, PathType
 from luxonis_ml.utils import Environ, LuxonisFileSystem
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
+from torch.utils.data.dataloader import DataLoader
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
@@ -315,6 +316,18 @@ class LuxonisModel:
             self.lightning_module.load_checkpoint(weights)
         self._exported_models: dict[str, Path] = {}
 
+    @property
+    def train_loader(self) -> DataLoader:
+        return self.pytorch_loaders["train"]
+
+    @property
+    def val_loader(self) -> DataLoader:
+        return self.pytorch_loaders["val"]
+
+    @property
+    def test_loader(self) -> DataLoader:
+        return self.pytorch_loaders["test"]
+
     def _train(self, resume: PathType | None, *args, **kwargs) -> None:
         status = "success"
         try:
@@ -381,8 +394,8 @@ class LuxonisModel:
             self._train(
                 resume_weights,
                 self.lightning_module,
-                self.pytorch_loaders["train"],
-                self.pytorch_loaders["val"],
+                self.train_loader,
+                self.val_loader,
             )
             logger.info("Training finished")
             logger.info(f"Checkpoints saved in: {self.run_save_dir}")
@@ -399,8 +412,8 @@ class LuxonisModel:
                 args=(
                     resume_weights,
                     self.lightning_module,
-                    self.pytorch_loaders["train"],
-                    self.pytorch_loaders["val"],
+                    self.train_loader,
+                    self.val_loader,
                 ),
                 daemon=True,
             )
@@ -830,8 +843,8 @@ class LuxonisModel:
             try:
                 pl_trainer.fit(
                     lightning_module,
-                    self.pytorch_loaders["train"],
-                    self.pytorch_loaders["val"],
+                    self.train_loader,
+                    self.val_loader,
                 )
                 pruner_callback.check_pruned()
 
@@ -1225,9 +1238,7 @@ class LuxonisModel:
 
         model = deepcopy(self.lightning_module)
         model.reparametrize().eval()
-        pre_quant_test = self.pl_trainer.test(
-            model, self.pytorch_loaders["val"]
-        )[0]
+        pre_quant_test = self.pl_trainer.test(model, self.val_loader)[0]
 
         if weights is not None:
             model.load_checkpoint(weights)
@@ -1250,7 +1261,7 @@ class LuxonisModel:
         sim = post_training_quantization(
             model,
             dummy_inputs,
-            self.pytorch_loaders["val"],
+            self.val_loader,
             save_dir,
             quant_scheme or cfg.quant_scheme,
             default_output_bw or cfg.default_output_bw,
@@ -1269,7 +1280,7 @@ class LuxonisModel:
         model = cast(LuxonisLightningModule, sim.model)
 
         model.eval()
-        ptq_test = self.pl_trainer.test(model, self.pytorch_loaders["val"])[0]
+        ptq_test = self.pl_trainer.test(model, self.val_loader)[0]
 
         if optimizer is None:
             opt_cfg = cfg.optimizer or self.cfg.trainer.optimizer
@@ -1290,7 +1301,7 @@ class LuxonisModel:
         model = quantization_aware_training(
             sim,
             dummy_inputs,
-            self.pytorch_loaders["train"],
+            self.train_loader,
             optimizer,
             scheduler,
             epochs or cfg.epochs,
@@ -1298,7 +1309,7 @@ class LuxonisModel:
             batch_norm_reestimation,
         ).eval()
 
-        qat_test = self.pl_trainer.test(model, self.pytorch_loaders["val"])[0]
+        qat_test = self.pl_trainer.test(model, self.val_loader)[0]
 
         model.set_export_mode(mode=True)
 
