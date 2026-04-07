@@ -749,7 +749,9 @@ class AIMETConfig(BaseModelExtraForbid):
     cross_layer_equalization: bool = False
     batch_norm_reestimation: bool = False
     adaround: AdaroundConfig = Field(default_factory=AdaroundConfig)
-    optimizer: ConfigItem | None = None
+    optimizer: ConfigItem = Field(
+        default_factory=lambda: ConfigItem(name="SGD", params={"lr": 1e-5})
+    )
     scheduler: ConfigItem = Field(
         default_factory=lambda: ConfigItem(
             name="StepLR", params={"step_size": 5, "gamma": 0.1}

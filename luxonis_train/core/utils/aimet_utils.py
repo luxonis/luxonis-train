@@ -137,7 +137,7 @@ def quantization_aware_training(
         for imgs, labels in train_loader:
             optimizer.zero_grad()
             loss = model.training_step((imgs, labels))
-            model.manual_backward(loss)
+            loss.backward()
             optimizer.step()
         scheduler.step()
 
