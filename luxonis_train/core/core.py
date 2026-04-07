@@ -1,11 +1,10 @@
 import json
-import math
 import threading
 from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
 from threading import ExceptHookArgs, Thread
-from typing import Any, Literal, cast, overload
+from typing import Literal, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -13,25 +12,17 @@ import rich.traceback
 import torch
 import torch.utils.data as torch_data
 import yaml
-from aimet_torch import QuantizationSimModel
-from aimet_torch.adaround.adaround_weight import Adaround, AdaroundParameters
-from aimet_torch.bn_reestimation import reestimate_bn_stats
 from aimet_torch.common.defs import QuantizationDataType, QuantScheme
-from aimet_torch.cross_layer_equalization import equalize_model
-from aimet_torch.v1.batch_norm_fold import fold_all_batch_norms
-from lightning.pytorch.accelerators import CUDAAccelerator
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
-from luxonis_ml.typing import Params, PathType
+from luxonis_ml.typing import ConfigItem, Params, PathType
 from luxonis_ml.utils import Environ, LuxonisFileSystem
-from rich.progress import track
-from torch import nn
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import LRScheduler, StepLR
+from torch.optim.lr_scheduler import LRScheduler
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
@@ -49,7 +40,12 @@ from luxonis_train.loaders import (
     LuxonisLoaderTorch,
 )
 from luxonis_train.loaders.base_loader import LuxonisLoaderTorchOutput
-from luxonis_train.registry import LOADERS, OPTIMIZERS, from_registry
+from luxonis_train.registry import (
+    LOADERS,
+    OPTIMIZERS,
+    SCHEDULERS,
+    from_registry,
+)
 from luxonis_train.typing import View
 from luxonis_train.utils import (
     DatasetMetadata,
@@ -57,6 +53,10 @@ from luxonis_train.utils import (
     setup_logging,
 )
 
+from .utils.aimet_utils import (
+    post_training_quantization,
+    quantization_aware_training,
+)
 from .utils.annotate_utils import annotate_from_directory
 from .utils.archive_utils import (
     get_head_configs,
@@ -1194,73 +1194,19 @@ class LuxonisModel:
         optimizer: Optimizer | None = None,
         scheduler: LRScheduler | None = None,
     ) -> None:
-        """Runs post-training quantization and quantization-aware
-        training using AIMET.
-
-        @type weights: PathType | None
-        @param weights: Path to the checkpoint from which to load weights.
-        @type epochs: int
-        @param epochs: Number of epochs to run quantization-aware training for.
-        @type quant_scheme: str | QuantScheme
-        @param quant_scheme: Quantization scheme to use. Can be either a string
-            or an instance of `aimet_common.defs.QuantScheme`. If a string is
-            provided, it will be converted to the corresponding `QuantScheme`
-            instance. Defaults to `QuantScheme.min_max`.
-        @type default_output_bw: int
-        @param default_output_bw: Default bitwidth to use for quantizing outputs.
-        @type default_param_bw: int
-        @param default_param_bw: Default bitwidth to use for quantizing parameters.
-        @type config_file: str | None
-        @param config_file: Path to the AIMET config file specifying quantization settings for specific layers. If not provided, default quantization settings will be applied to all layers.
-        @type default_data_type: QuantizationDataType
-        @param default_data_type: Data type to use for quantization (e.g. integer or float). Defaults to `QuantizationDataType.int`.
-
-        @warning: Only in-place quantization is currently supported,
-            meaning that the original model will be modified and
-            exported ONNX model will be the quantized version of
-            the original model. Make sure to keep a backup of the
-            original model weights if you want to continue training
-            or exporting the original model after quantization.
-        """
-
-        def pass_calibration_data(model: nn.Module) -> None:
-            for imgs, _ in track(
-                self.pytorch_loaders["val"],
-                description="Computing quantization encodings...",
-                total=len(self.pytorch_loaders["val"]),
-            ):
-                model.forward(imgs)
 
         save_dir = self.run_save_dir / "aimet"
         save_dir.mkdir(parents=True, exist_ok=True)
 
         cfg = self.cfg.exporter.aimet
-        epochs = epochs or cfg.epochs
-        quant_scheme = quant_scheme or cfg.quant_scheme
-        if isinstance(quant_scheme, str):
-            quant_scheme = QuantScheme.from_str(quant_scheme)
-        default_output_bw = default_output_bw or cfg.default_output_bw
-        default_param_bw = default_param_bw or cfg.default_param_bw
-        default_data_type = default_data_type or cfg.default_data_type
-        adaround = adaround if adaround is not None else cfg.adaround.active
-        adaround_iterations = (
-            adaround_iterations or cfg.adaround.default_num_iterations
-        )
-        adaround_reg_param = (
-            adaround_reg_param or cfg.adaround.default_reg_param
-        )
-        adaround_beta_range = (
-            adaround_beta_range or cfg.adaround.default_beta_range
-        )
-        adaround_warm_start = (
-            adaround_warm_start or cfg.adaround.default_warm_start
-        )
+
         aimet_config_file = config_file or cfg.config
         if isinstance(aimet_config_file, dict):
             with open(save_dir / "aimet_config.json", "w") as f:
                 json.dump(aimet_config_file, f, indent=4)
             aimet_config_file = str(save_dir / "aimet_config.json")
 
+        adaround = adaround if adaround is not None else cfg.adaround.active
         fold_batch_norms = (
             fold_batch_norms
             if fold_batch_norms is not None
@@ -1271,144 +1217,103 @@ class LuxonisModel:
             if cross_layer_equalization is not None
             else cfg.cross_layer_equalization
         )
+        batch_norm_reestimation = (
+            batch_norm_reestimation
+            if batch_norm_reestimation is not None
+            else cfg.batch_norm_reestimation
+        )
 
-        model = self.lightning_module
+        model = deepcopy(self.lightning_module)
         model.reparametrize()
-        loader = self.pytorch_loaders["val"]
+        pre_quant_test = self.pl_trainer.test(
+            model, self.pytorch_loaders["val"]
+        )[0]
 
         if weights is not None:
             model.load_checkpoint(weights)
 
-        pre_quant_test = self.test(view="val")
-
-        inputs = {
+        dummy_inputs = {
             input_name: torch.randn([1, *shape]).to(model.device)
             for shapes in model.nodes.loader_input_shapes.values()
             for input_name, shape in shapes.items()
         }
 
-        if len(inputs) > 1:
+        if len(dummy_inputs) > 1:
             raise NotImplementedError(
                 "Quantization is not yet supported for models "
                 "with multiple inputs."
             )
-        input_names = list(inputs.keys())
-        output_names = model._get_output_onnx_names(deepcopy(inputs))
-        inputs = next(iter(inputs.values()))
+        input_names = list(dummy_inputs.keys())
+        output_names = model._get_output_onnx_names(deepcopy(dummy_inputs))
+        dummy_inputs = next(iter(dummy_inputs.values()))
 
-        if CUDAAccelerator.is_available():
-            inputs = inputs.cuda()
-            model.cuda()
-
-        if fold_batch_norms and not batch_norm_reestimation:
-            logger.info("Folding batch norms into preceding layers")
-            fold_all_batch_norms(
-                model, input_shapes=inputs.shape, dummy_input=inputs
-            )
-        if cross_layer_equalization:
-            logger.info("Applying cross-layer equalization")
-            equalize_model(
-                model, input_shapes=inputs.shape, dummy_input=inputs
-            )
-
-        if adaround:
-            ada_params = AdaroundParameters(
-                data_loader=loader,
-                num_batches=min(
-                    len(loader),
-                    math.ceil(2000 / self.cfg.trainer.batch_size),
-                ),
-                default_num_iterations=adaround_iterations,  # type: ignore
-            )
-            model = cast(
-                LuxonisLightningModule,
-                Adaround.apply_adaround(
-                    model,
-                    inputs,
-                    ada_params,
-                    path=str(save_dir),
-                    filename_prefix="adaround",
-                ),
-            )
-
-        sim = QuantizationSimModel(
-            model=model,
-            dummy_input=inputs,
-            quant_scheme=quant_scheme,
-            default_output_bw=default_output_bw,
-            default_param_bw=default_param_bw,
-            config_file=config_file,
-            default_data_type=default_data_type,
-            in_place=True,
+        sim = post_training_quantization(
+            model,
+            dummy_inputs,
+            self.pytorch_loaders["val"],
+            save_dir,
+            quant_scheme or cfg.quant_scheme,
+            default_output_bw or cfg.default_output_bw,
+            default_param_bw or cfg.default_param_bw,
+            default_data_type or cfg.default_data_type,
+            aimet_config_file,
+            adaround,
+            adaround_iterations or cfg.adaround.default_num_iterations,
+            adaround_reg_param or cfg.adaround.default_reg_param,
+            adaround_beta_range or cfg.adaround.default_beta_range,
+            adaround_warm_start or cfg.adaround.default_warm_start,
+            fold_batch_norms,
+            cross_layer_equalization,
+            batch_norm_reestimation,
         )
-        model = cast(LuxonisLightningModule, sim.model)
 
-        if adaround:
-            sim.set_and_freeze_param_encodings(
-                str(save_dir / "adaround.encodings")
-            )
-
-        sim.compute_encodings(pass_calibration_data)
-
-        ptq_test = self.pl_trainer.test(model, self.pytorch_loaders["val"])[0]
-
-        model.train()
-        if CUDAAccelerator.is_available():
-            model.cuda()
-        model.automatic_optimization = False
+        ptq_test = self.pl_trainer.test(
+            sim.model,  # type: ignore
+            self.pytorch_loaders["val"],
+        )[0]
 
         if optimizer is None:
             opt_cfg = cfg.optimizer or self.cfg.trainer.optimizer
             optimizer = from_registry(
                 OPTIMIZERS,
                 opt_cfg.name,
-                params=model.parameters(),
+                params=sim.model.parameters(),
                 **opt_cfg.params,
             )
-
         if scheduler is None:
-            scheduler = StepLR(optimizer, step_size=5, gamma=0.1)
-
-        for e in track(
-            range(epochs), description="Running Quantization-Aware Training..."
-        ):
-            for imgs, labels in self.pytorch_loaders["train"]:
-                optimizer.zero_grad()
-                loss = model.training_step((imgs, labels))
-                model.manual_backward(loss)
-                optimizer.step()
-            scheduler.step(e)
-
-        if batch_norm_reestimation:
-            logger.info("Reestimating batch norm statistics")
-
-            def _forward_pass(
-                model: nn.Module, inputs: LuxonisLoaderTorchOutput
-            ) -> Any:
-                return model(inputs[0])
-
-            reestimate_bn_stats(
-                model, self.pytorch_loaders["train"], forward_fn=_forward_pass
+            sch_cfg = cfg.scheduler or ConfigItem(
+                name="StepLR", params={"step_size": 5, "gamma": 0.1}
+            )
+            scheduler = from_registry(
+                SCHEDULERS,
+                sch_cfg.name,
+                optimizer=optimizer,
+                **sch_cfg.params,
             )
 
-            if fold_batch_norms:
-                logger.info("Folding batch norms into preceding layers")
-                fold_all_batch_norms(
-                    model, input_shapes=inputs.shape, dummy_input=inputs
-                )
+        model = quantization_aware_training(
+            sim,
+            dummy_inputs,
+            self.pytorch_loaders["train"],
+            optimizer,
+            scheduler,
+            epochs or cfg.epochs,
+            fold_batch_norms,
+            batch_norm_reestimation,
+        )
 
-        model.automatic_optimization = True
-        model.eval()
         qat_test = self.pl_trainer.test(model, self.pytorch_loaders["val"])[0]
+
         model.set_export_mode(mode=True)
 
         sim.onnx.export(
-            inputs,
+            dummy_inputs,
             (save_dir / self.cfg.model.name).with_suffix(".onnx"),
             input_names=input_names,
             output_names=output_names,
         )
         model.set_export_mode(mode=False)
+
         table = []
         for key, value in pre_quant_test.items():
             log_key = key.replace("test/metric/", "").replace("test/loss/", "")

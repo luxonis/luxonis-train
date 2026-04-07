@@ -23,6 +23,7 @@ from luxonis_train.attached_modules.base_attached_module import (
     BaseAttachedModule,
 )
 from luxonis_train.callbacks import LuxonisModelSummary, TrainingManager
+from luxonis_train.callbacks.aimet_callback import AIMETCallback
 from luxonis_train.config import AttachedModuleConfig, Config
 from luxonis_train.config.config import NodeConfig
 from luxonis_train.nodes import BaseNode
@@ -520,19 +521,7 @@ def build_callbacks(
                 "parameter in the config will be ignored."
             )
     if cfg.exporter.aimet.active:
-        aimet_cfg = cfg.exporter.aimet
-        callbacks.append(
-            from_registry(
-                CALLBACKS,
-                "AIMETCallback",
-                epochs=aimet_cfg.epochs,
-                quant_scheme=aimet_cfg.quant_scheme,
-                default_output_bw=aimet_cfg.default_output_bw,
-                default_param_bw=aimet_cfg.default_param_bw,
-                default_data_type=aimet_cfg.default_data_type,
-                config_file=aimet_cfg.config,
-            )
-        )
+        callbacks.append(AIMETCallback())
 
     return callbacks
 
