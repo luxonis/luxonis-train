@@ -1,3 +1,4 @@
+import json
 import math
 import threading
 from collections.abc import Mapping
@@ -1176,17 +1177,20 @@ class LuxonisModel:
     def quantize(
         self,
         weights: PathType | None = None,
-        epochs: int = 20,
-        quant_scheme: str | QuantScheme = QuantScheme.min_max,
-        default_output_bw: int = 8,
-        default_param_bw: int = 8,
+        epochs: int | None = None,
+        quant_scheme: str | QuantScheme | None = None,
+        default_output_bw: int | None = None,
+        default_param_bw: int | None = None,
         config_file: str | None = None,
-        default_data_type: QuantizationDataType = QuantizationDataType.int,
-        adaround: bool = False,
+        default_data_type: QuantizationDataType | None = None,
+        adaround: bool | None = None,
         adaround_iterations: int | None = None,
-        fold_batch_norms: bool = False,
-        cross_layer_equalization: bool = False,
-        batch_norm_reestimation: bool = False,
+        adaround_reg_param: float | None = None,
+        adaround_beta_range: tuple[int, int] | None = None,
+        adaround_warm_start: float | None = None,
+        fold_batch_norms: bool | None = None,
+        cross_layer_equalization: bool | None = None,
+        batch_norm_reestimation: bool | None = None,
         optimizer: Optimizer | None = None,
         scheduler: LRScheduler | None = None,
     ) -> None:
@@ -1227,7 +1231,47 @@ class LuxonisModel:
             ):
                 model.forward(imgs)
 
+        save_dir = self.run_save_dir / "aimet"
+        save_dir.mkdir(parents=True, exist_ok=True)
+
         cfg = self.cfg.exporter.aimet
+        epochs = epochs or cfg.epochs
+        quant_scheme = quant_scheme or cfg.quant_scheme
+        if isinstance(quant_scheme, str):
+            quant_scheme = QuantScheme.from_str(quant_scheme)
+        default_output_bw = default_output_bw or cfg.default_output_bw
+        default_param_bw = default_param_bw or cfg.default_param_bw
+        default_data_type = default_data_type or cfg.default_data_type
+        adaround = adaround if adaround is not None else cfg.adaround.active
+        adaround_iterations = (
+            adaround_iterations or cfg.adaround.default_num_iterations
+        )
+        adaround_reg_param = (
+            adaround_reg_param or cfg.adaround.default_reg_param
+        )
+        adaround_beta_range = (
+            adaround_beta_range or cfg.adaround.default_beta_range
+        )
+        adaround_warm_start = (
+            adaround_warm_start or cfg.adaround.default_warm_start
+        )
+        aimet_config_file = config_file or cfg.config
+        if isinstance(aimet_config_file, dict):
+            with open(save_dir / "aimet_config.json", "w") as f:
+                json.dump(aimet_config_file, f, indent=4)
+            aimet_config_file = str(save_dir / "aimet_config.json")
+
+        fold_batch_norms = (
+            fold_batch_norms
+            if fold_batch_norms is not None
+            else cfg.fold_batch_norms
+        )
+        cross_layer_equalization = (
+            cross_layer_equalization
+            if cross_layer_equalization is not None
+            else cfg.cross_layer_equalization
+        )
+
         model = self.lightning_module
         model.reparametrize()
         loader = self.pytorch_loaders["val"]
@@ -1235,8 +1279,6 @@ class LuxonisModel:
         if weights is not None:
             model.load_checkpoint(weights)
 
-        save_dir = self.run_save_dir / "aimet"
-        save_dir.mkdir(parents=True, exist_ok=True)
         pre_quant_test = self.test(view="val")
 
         inputs = {
