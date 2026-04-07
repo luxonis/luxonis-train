@@ -3,6 +3,7 @@ from functools import cached_property
 from inspect import Parameter
 
 import torch.nn.functional as F
+from luxonis_ml.data.utils import ColorMap
 from torch import Tensor
 from typing_extensions import TypeVarTuple, Unpack
 
@@ -33,6 +34,10 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
             mode="bilinear",
             align_corners=False,
         )
+
+    @cached_property
+    def colormap(self) -> ColorMap:
+        return ColorMap()
 
     @abstractmethod
     def forward(

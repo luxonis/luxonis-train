@@ -3,7 +3,6 @@ from collections.abc import Callable
 import numpy as np
 import seaborn as sns
 from loguru import logger
-from luxonis_ml.data.utils import ColorMap
 from matplotlib import pyplot as plt
 from sklearn.decomposition import PCA
 from torch import Tensor
@@ -25,11 +24,10 @@ class EmbeddingsVisualizer(BaseVisualizer):
             outliers.
         """
         super().__init__(**kwargs)
-        self.colors = ColorMap()
         self.z_score_threshold = z_score_threshold
 
     def _get_color(self, label: int) -> tuple[float, float, float]:
-        r, g, b = self.colors[label]
+        r, g, b = self.colormap[label]
         return r / 255, g / 255, b / 255
 
     def forward(
