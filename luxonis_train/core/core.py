@@ -19,7 +19,7 @@ from loguru import logger
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
-from luxonis_ml.typing import ConfigItem, Params, PathType
+from luxonis_ml.typing import Params, PathType
 from luxonis_ml.utils import Environ, LuxonisFileSystem
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
@@ -1280,14 +1280,11 @@ class LuxonisModel:
                 **opt_cfg.params,
             )
         if scheduler is None:
-            sch_cfg = cfg.scheduler or ConfigItem(
-                name="StepLR", params={"step_size": 5, "gamma": 0.1}
-            )
             scheduler = from_registry(
                 SCHEDULERS,
-                sch_cfg.name,
+                cfg.scheduler.name,
                 optimizer=optimizer,
-                **sch_cfg.params,
+                **cfg.scheduler.params,
             )
 
         model = quantization_aware_training(

@@ -750,7 +750,25 @@ class AIMETConfig(BaseModelExtraForbid):
     batch_norm_reestimation: bool = False
     adaround: AdaroundConfig = Field(default_factory=AdaroundConfig)
     optimizer: ConfigItem | None = None
-    scheduler: ConfigItem | None = None
+    scheduler: ConfigItem = Field(
+        default_factory=lambda: ConfigItem(
+            name="StepLR", params={"step_size": 5, "gamma": 0.1}
+        )
+    )
+
+    @field_validator("quant_scheme", mode="before")
+    @classmethod
+    def validate_quant_scheme(cls, value: ParamValue) -> Any:
+        if isinstance(value, str):
+            return QuantScheme.from_str(value)
+        return value
+
+    @field_validator("default_data_type", mode="before")
+    @classmethod
+    def validate_default_data_type(cls, value: ParamValue) -> Any:
+        if isinstance(value, str):
+            return QuantizationDataType[value.lower()]
+        return value
 
     @field_validator("config", mode="before")
     @classmethod
