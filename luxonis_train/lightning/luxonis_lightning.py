@@ -15,7 +15,7 @@ from packaging import version
 from semver import Version
 from torch import Size, Tensor
 from torch.nn.modules.module import _IncompatibleKeys
-from typing_extensions import override
+from typing_extensions import Self, override
 
 import luxonis_train
 from luxonis_train.attached_modules.visualizers import (
@@ -330,15 +330,17 @@ class LuxonisLightningModule(pl.LightningModule):
             outputs=outputs_dict, losses=losses, visualizations=visualizations
         )
 
-    def set_export_mode(self, *, mode: bool) -> None:
+    def set_export_mode(self, mode: bool) -> Self:
         for module in self.modules():
             if isinstance(module, BaseNode):
                 module.set_export_mode(mode=mode)
+        return self
 
-    def reparametrize(self) -> None:
+    def reparametrize(self) -> Self:
         for module in self.modules():
             if isinstance(module, Reparametrizable):
                 module.reparametrize()
+        return self
 
     def export_onnx(self, save_path: PathType, **kwargs) -> Path:
         """Exports the model to ONNX format.
