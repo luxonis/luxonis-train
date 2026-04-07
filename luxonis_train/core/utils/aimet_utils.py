@@ -129,7 +129,7 @@ def quantization_aware_training(
         model.cuda()
     model.automatic_optimization = False
 
-    for e in track(
+    for _ in track(
         range(epochs),
         description="Running Quantization-Aware Training",
         total=epochs,
@@ -139,7 +139,7 @@ def quantization_aware_training(
             loss = model.training_step((imgs, labels))
             model.manual_backward(loss)
             optimizer.step()
-        scheduler.step(e)
+        scheduler.step()
 
     if batch_norm_reestimation:
         logger.info("Reestimating batch norm statistics")
