@@ -56,6 +56,13 @@ def test_callbacks(coco_dataset: LuxonisDataset, opts: Params, save_dir: Path):
         "exporter.scale_values": [0.5, 0.5, 0.5],
         "exporter.mean_values": [0.5, 0.5, 0.5],
         "exporter.blobconverter.active": True,
+        "exporter.aimet": {
+            "active": True,
+            "fold_batch_norms": True,
+            "batch_norm_reestimation": True,
+            "cross_layer_equalization": True,
+        },
+        "exporter.aimet.adaround.active": True,
         "loader.params.dataset_name": coco_dataset.identifier,
     }
     model = LuxonisModel(config_file, opts, debug_mode=True)
