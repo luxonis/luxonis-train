@@ -1018,7 +1018,7 @@ class LuxonisModel:
         save_dir: PathType | None = None,
     ) -> tuple[Path, dict[str, Path]]:
         """Exports the model to ONNX, creates an NN Archive, and
-        converts to target platform format (RVC2/RVC3/RVC4).
+        converts to target platform format (RVC2/RVC3/RVC4/Hailo).
 
         This is a unified method that combines export, archive, and platform
         conversion steps.

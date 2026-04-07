@@ -220,16 +220,12 @@ def hubai_export(
     variant_id = None
 
     try:
-        # TODO: reintroduce Hailo conversion when modelconv is released
-        # and hubai-sdk is updated accordingly
         if cfg.platform == "rvc3":
             response = client.convert.RVC3(**base_kwargs)
         elif cfg.platform == "rvc4":
             response = client.convert.RVC4(**base_kwargs)
         elif cfg.platform == "hailo":
-            raise NotImplementedError(
-                "Hailo platform conversion is not yet supported."
-            )
+            response = client.convert.Hailo(**base_kwargs)
         else:
             response = client.convert.RVC2(**base_kwargs)
 

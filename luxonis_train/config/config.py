@@ -683,11 +683,7 @@ class HubAIExportConfig(BaseModelExtraForbid):
         if self.active and self.platform is None:
             raise ValueError(
                 "The `platform` field is required when `hubai.active` is True. "
-                "Please specify a target platform: 'rvc2', 'rvc3', 'rvc4'."
-            )
-        if self.platform == "hailo":
-            raise NotImplementedError(
-                "Hailo platform conversion is not yet supported."
+                "Please specify a target platform: 'rvc2', 'rvc3', 'rvc4', `hailo."
             )
         return self
 
