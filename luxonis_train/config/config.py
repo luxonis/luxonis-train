@@ -739,16 +739,19 @@ class AdaroundConfig(BaseModelExtraForbid):
 
 class AIMETConfig(BaseModelExtraForbid):
     active: bool = False
-    epochs: PositiveInt = 20
+
     default_output_bw: Literal[4, 8, 16] = 8
     default_param_bw: Literal[4, 8, 16] = 8
     default_data_type: QuantizationDataType = QuantizationDataType.int
     quant_scheme: QuantScheme = QuantScheme.min_max
     config: Params | None = None
+
     fold_batch_norms: bool = False
     cross_layer_equalization: bool = False
     batch_norm_reestimation: bool = False
     adaround: AdaroundConfig = Field(default_factory=AdaroundConfig)
+
+    epochs: PositiveInt = 20
     optimizer: ConfigItem = Field(
         default_factory=lambda: ConfigItem(name="SGD", params={"lr": 1e-5})
     )
