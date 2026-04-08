@@ -111,6 +111,15 @@ pip install luxonis-train
 
 This will also install the `luxonis_train` CLI. For more information on how to use it, see [CLI Usage](#cli).
 
+### AIMET Quantization Support
+
+To enable support for AIMET quantization, install the `luxonis-train[aimet]` extra:
+
+```bash
+pip install luxonis-train[aimet] --extra-index-url https://download.pytorch.org/whl/cu126
+
+```
+
 <a name="usage"></a>
 
 ## 📝 Usage
