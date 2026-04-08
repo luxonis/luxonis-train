@@ -1,4 +1,5 @@
 import torch
+from aimet_torch.v2.nn import QuantizationMixin
 from torch import Tensor, nn
 from typeguard import typechecked
 
@@ -29,6 +30,31 @@ class AffineBlock(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         return self.scale * x + self.bias
+
+
+@QuantizationMixin.implements(AffineBlock)
+class QuantizedAffineBlock(QuantizationMixin, AffineBlock):
+    def __quant_init__(self):
+        super().__quant_init__()
+
+        # Declare the number of input/output quantizers
+        self.input_quantizers = nn.ModuleList([None])  # type: ignore
+        self.output_quantizers = nn.ModuleList([None])  # type: ignore
+
+    def forward(self, x: Tensor) -> Tensor:
+        # Quantize input tensors
+        if self.input_quantizers[0]:
+            x = self.input_quantizers[0](x)
+
+        # Run forward with quantized inputs and parameters
+        with self._patch_quantized_parameters():
+            ret = super().forward(x)
+
+        # Quantize output tensors
+        if self.output_quantizers[0]:
+            ret = self.output_quantizers[0](ret)
+
+        return ret
 
 
 class LCNetV3Block(nn.Module):
