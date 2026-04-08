@@ -58,6 +58,7 @@ def test_callbacks(coco_dataset: LuxonisDataset, opts: Params, save_dir: Path):
         "exporter.blobconverter.active": True,
         "exporter.aimet": {
             "active": True,
+            "default_num_iterations": 1,
             "fold_batch_norms": True,
             "batch_norm_reestimation": True,
             "cross_layer_equalization": True,
