@@ -201,7 +201,7 @@ class LuxonisLightningModule(pl.LightningModule):
         @rtype: dict[str, L{Packet}[L{Tensor}]]
         @return: Output of the model.
         """
-        outputs = self._run_forward(
+        outputs = self.full_forward(
             inputs,
             compute_loss=False,
             compute_metrics=False,
@@ -226,7 +226,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         return tuple(new_outputs)
 
-    def _run_forward(
+    def full_forward(
         self,
         inputs: dict[str, Tensor] | Tensor,
         labels: Labels | None = None,
@@ -397,7 +397,7 @@ class LuxonisLightningModule(pl.LightningModule):
     def training_step(
         self, train_batch: tuple[dict[str, Tensor], Labels]
     ) -> Tensor:
-        outputs = self._run_forward(*train_batch)
+        outputs = self.full_forward(*train_batch)
         if not outputs.losses:
             raise ValueError("Losses are empty, check if you defined any loss")
 
@@ -423,7 +423,7 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> LuxonisOutput:
         inputs, labels = batch
         images = get_denormalized_images(self.cfg, inputs[self.image_source])
-        return self._run_forward(
+        return self.full_forward(
             inputs,
             labels,
             images=images,
@@ -645,7 +645,7 @@ class LuxonisLightningModule(pl.LightningModule):
         if self._n_logged_images < max_log_images:
             images = get_denormalized_images(self.cfg, input_image)
 
-        outputs = self._run_forward(
+        outputs = self.full_forward(
             inputs,
             labels,
             images=images,
@@ -978,7 +978,7 @@ class LuxonisLightningModule(pl.LightningModule):
         return ".".join(key.split(".")[idx:])
 
     def _get_output_onnx_names(self, inputs: dict[str, Tensor]) -> list[str]:
-        outputs = self._run_forward(inputs).outputs
+        outputs = self.full_forward(inputs).outputs
         output_order = sorted(
             [
                 (node_name, output_name, i)

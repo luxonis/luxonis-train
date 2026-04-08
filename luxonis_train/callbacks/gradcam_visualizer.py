@@ -47,7 +47,7 @@ class PLModuleWrapper(pl.LightningModule):
         @return: The processed output based on the task type.
         """
         input_dict = {"image": inputs}
-        output = self.pl_module._run_forward(input_dict, *args, **kwargs)
+        output = self.pl_module.full_forward(input_dict, *args, **kwargs)
         if len(output.outputs) > 1:
             logger.warning(
                 "Model has multiple heads. Using the first head for Grad-CAM."
