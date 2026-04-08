@@ -83,6 +83,13 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         )
         self.regr_kpts_loss_weight = regr_kpts_loss_weight
         self.vis_kpts_loss_weight = vis_kpts_loss_weight
+        self.register_buffer(
+            "gt_kpts_scale",
+            torch.tensor(
+                [self.original_img_size[1], self.original_img_size[0]],
+            ),
+            persistent=False,
+        )
 
     def forward(
         self,
@@ -93,13 +100,13 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         target_boundingbox: Tensor,
         target_keypoints: Tensor,
     ) -> tuple[Tensor, dict[str, Tensor]]:
+        self._init_parameters(features)
+
         device = keypoints_raw.device
         target_keypoints = insert_class(target_keypoints, target_boundingbox)
 
         batch_size = class_scores.shape[0]
         n_kpts = (target_keypoints.shape[1] - 2) // 3
-
-        self._init_parameters(features)
 
         pred_bboxes = dist2bbox(distributions, self.anchor_points_strided)
         keypoints_raw = self.dist2kpts_noscale(
@@ -262,12 +269,3 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         adj_kpts[..., 0] += x_adj
         adj_kpts[..., 1] += y_adj
         return adj_kpts
-
-    def _init_parameters(self, features: list[Tensor]) -> None:
-        if hasattr(self, "gt_kpts_scale"):
-            return
-        super()._init_parameters(features)
-        self.gt_kpts_scale = torch.tensor(
-            [self.original_img_size[1], self.original_img_size[0]],
-            device=features[0].device,
-        )

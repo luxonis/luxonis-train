@@ -83,9 +83,9 @@ class NodeWrapper(nn.Module):
         super().__init__()
         self.name = name
         self.module = module
-        self.losses = _to_module_dict(losses)
-        self.metrics = _to_module_dict(metrics)
-        self.visualizers = _to_module_dict(visualizers)
+        self.losses = losses
+        self.metrics = metrics
+        self.visualizers = visualizers
         self.unfreeze_after = unfreeze_after
         self.lr_after_unfreeze = lr_after_unfreeze
         self.inputs = inputs or []
@@ -566,10 +566,6 @@ def _init_attached_module(
 
 
 A = TypeVar("A", BaseLoss, BaseMetric, BaseVisualizer)
-
-
-def _to_module_dict(modules: dict[str, A]) -> dict[str, A]:
-    return nn.ModuleDict(modules)  # type: ignore
 
 
 def log_balanced_class_images(
