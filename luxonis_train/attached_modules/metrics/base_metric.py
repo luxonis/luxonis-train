@@ -165,7 +165,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         return super().compute()
 
     def __eq__(self, other: object) -> bool:
-        return id(self) == id(other)
+        return self is other
 
     def __hash__(self) -> int:
         return id(self)
