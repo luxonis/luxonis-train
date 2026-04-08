@@ -142,10 +142,14 @@ def _yield_visualizations(
 
     loader = model.loaders[view]
     for images, labels in loader:
-        np_images = {
-            k: v.numpy().transpose(1, 2, 0) for k, v in images.items()
-        }
-        main_image = np_images[loader.image_source]
+        if isinstance(images, dict):
+            np_images = {
+                k: v.numpy().transpose(1, 2, 0) for k, v in images.items()
+            }
+            main_image = np_images[loader.image_source]
+        else:
+            main_image = images.numpy().transpose(1, 2, 0)
+
         main_image = cv2.cvtColor(main_image, cv2.COLOR_RGB2BGR).astype(
             np.uint8
         )
