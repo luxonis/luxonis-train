@@ -743,7 +743,7 @@ class AIMETConfig(BaseModelExtraForbid):
     default_output_bw: Literal[4, 8, 16] = 8
     default_param_bw: Literal[4, 8, 16] = 8
     default_data_type: Literal["int", "float"] = "int"
-    quant_scheme: Literal["min_max", "tf_enhanced"] = "min_max"
+    quant_scheme: Literal["min_max", "tf", "tf_enhanced"] = "min_max"
     config: Params | None = None
 
     fold_batch_norms: bool = False

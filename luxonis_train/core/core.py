@@ -12,7 +12,6 @@ import rich.traceback
 import torch
 import torch.utils.data as torch_data
 import yaml
-from aimet_torch.common.defs import QuantizationDataType, QuantScheme
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
@@ -54,10 +53,6 @@ from luxonis_train.utils import (
     setup_logging,
 )
 
-from .utils.aimet_utils import (
-    post_training_quantization,
-    quantization_aware_training,
-)
 from .utils.annotate_utils import annotate_from_directory
 from .utils.archive_utils import (
     get_head_configs,
@@ -1191,11 +1186,11 @@ class LuxonisModel:
         self,
         weights: PathType | None = None,
         epochs: int | None = None,
-        quant_scheme: str | QuantScheme | None = None,
+        quant_scheme: Literal["min_max", "tf", "tf_enhanced"] | None = None,
         default_output_bw: int | None = None,
         default_param_bw: int | None = None,
         config_file: str | None = None,
-        default_data_type: QuantizationDataType | None = None,
+        default_data_type: Literal["int", "float"] | None = None,
         adaround: bool | None = None,
         adaround_iterations: int | None = None,
         adaround_reg_param: float | None = None,
@@ -1286,6 +1281,12 @@ class LuxonisModel:
             memory but will overwrite the original model's weights and
             structure.
         """
+        from aimet_torch.common.defs import QuantizationDataType, QuantScheme
+
+        from .utils.aimet_utils import (
+            post_training_quantization,
+            quantization_aware_training,
+        )
 
         save_dir = self.run_save_dir / "aimet"
         save_dir.mkdir(parents=True, exist_ok=True)
@@ -1346,10 +1347,10 @@ class LuxonisModel:
             dummy_inputs,
             self.val_loader,
             save_dir,
-            quant_scheme or QuantScheme.from_str(cfg.quant_scheme),
+            QuantScheme.from_str(quant_scheme or cfg.quant_scheme),
             default_output_bw or cfg.default_output_bw,
             default_param_bw or cfg.default_param_bw,
-            default_data_type or QuantizationDataType[cfg.default_data_type],
+            QuantizationDataType[default_data_type or cfg.default_data_type],
             aimet_config_file,
             adaround,
             adaround_iterations or cfg.adaround.default_num_iterations,

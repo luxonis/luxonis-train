@@ -1,5 +1,6 @@
+from contextlib import suppress
+
 import torch
-from aimet_torch.v2.nn import QuantizationMixin
 from torch import Tensor, nn
 from typeguard import typechecked
 
@@ -32,29 +33,32 @@ class AffineBlock(nn.Module):
         return self.scale * x + self.bias
 
 
-@QuantizationMixin.implements(AffineBlock)
-class QuantizedAffineBlock(QuantizationMixin, AffineBlock):
-    def __quant_init__(self):
-        super().__quant_init__()
+with suppress(ImportError):
+    from aimet_torch.v2.nn import QuantizationMixin
 
-        # Declare the number of input/output quantizers
-        self.input_quantizers = nn.ModuleList([None])  # type: ignore
-        self.output_quantizers = nn.ModuleList([None])  # type: ignore
+    @QuantizationMixin.implements(AffineBlock)
+    class QuantizedAffineBlock(QuantizationMixin, AffineBlock):
+        def __quant_init__(self):
+            super().__quant_init__()
 
-    def forward(self, x: Tensor) -> Tensor:
-        # Quantize input tensors
-        if self.input_quantizers[0]:
-            x = self.input_quantizers[0](x)
+            # Declare the number of input/output quantizers
+            self.input_quantizers = nn.ModuleList([None])  # type: ignore
+            self.output_quantizers = nn.ModuleList([None])  # type: ignore
 
-        # Run forward with quantized inputs and parameters
-        with self._patch_quantized_parameters():
-            ret = super().forward(x)
+        def forward(self, x: Tensor) -> Tensor:
+            # Quantize input tensors
+            if self.input_quantizers[0]:
+                x = self.input_quantizers[0](x)
 
-        # Quantize output tensors
-        if self.output_quantizers[0]:
-            ret = self.output_quantizers[0](ret)
+            # Run forward with quantized inputs and parameters
+            with self._patch_quantized_parameters():
+                ret = super().forward(x)
 
-        return ret
+            # Quantize output tensors
+            if self.output_quantizers[0]:
+                ret = self.output_quantizers[0](ret)
+
+            return ret
 
 
 class LCNetV3Block(nn.Module):
