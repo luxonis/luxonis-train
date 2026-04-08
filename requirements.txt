@@ -22,4 +22,4 @@ termcolor~=3.2
 torchmetrics~=1.8
 torchvision~=0.24
 hubai-sdk>=0.2.1
-aimet-torch~=2.27
+aimet-torch==2.27
