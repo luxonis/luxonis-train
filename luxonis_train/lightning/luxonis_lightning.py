@@ -294,10 +294,14 @@ class LuxonisLightningModule(pl.LightningModule):
 
             if compute_loss and node.losses and labels is not None:
                 for loss_name, loss in node.losses.items():
+                    loss.to(self.device)
+                    if self.training:
+                        loss.train()
                     losses[node_name][loss_name] = loss.run(outputs, labels)
 
             if compute_metrics and node.metrics and labels is not None:
                 for metric in node.metrics.values():
+                    metric.to(self.device)
                     metric.run_update(outputs, labels)
 
             if (
@@ -306,6 +310,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 and images is not None
             ):
                 for viz_name, visualizer in node.visualizers.items():
+                    visualizer.to(self.device)
                     viz = combine_visualizations(
                         visualizer.run(images, images, outputs, labels),
                     )
