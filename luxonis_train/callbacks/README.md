@@ -206,4 +206,11 @@ Callback that publishes training progress and timing metrics.
 
 ## `AIMETCallback`
 
-Callback to perform AIMET quantization at the end of the training.
+# Callback to perform AIMET quantization at the end of the training.
+
+| Metric Key                     | Description                                             |
+| ------------------------------ | ------------------------------------------------------- |
+| `train/epoch_progress_percent` | Percentage (0-100) of current epoch completed           |
+| `train/epoch_duration_sec`     | Time elapsed so far in current epoch                    |
+| `train/epoch_completion_sec`   | Total duration of completed training epoch in seconds   |
+| `val/epoch_completion_sec`     | Total duration of completed validation epoch in seconds |
