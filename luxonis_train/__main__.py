@@ -134,6 +134,33 @@ def _yield_visualizations(
 
     from luxonis_train.utils.general import decode_text_metadata_labels
 
+    def get_visualization_item(
+        idx: int,
+    ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
+        raw_loader = getattr(loader, "loader", None)
+        if raw_loader is not None:
+            np_images, np_labels = raw_loader[idx]
+            if isinstance(np_images, np.ndarray):
+                np_images = {loader.image_source: np_images}
+
+            remap_keypoints = getattr(loader, "_remap_keypoints", None)
+            if (
+                getattr(loader, "kpts_mapping_per_task", None) is not None
+                and remap_keypoints is not None
+            ):
+                np_labels = remap_keypoints(np_labels)
+
+            return np_images, np_labels
+
+        images, labels = loader[idx]
+        return (
+            {
+                name: image.numpy().transpose(1, 2, 0)
+                for name, image in images.items()
+            },
+            {task: label.numpy() for task, label in labels.items()},
+        )
+
     opts = opts or []
     opts.extend(["trainer.preprocessing.normalize.active", "False"])
 
@@ -142,18 +169,13 @@ def _yield_visualizations(
     loader = model.loaders[view]
     metadata_types = loader.get_metadata_types()
     categorical_encodings = loader.get_categorical_encodings()
-    for images, labels in loader:
-        np_images = {
-            k: v.numpy().transpose(1, 2, 0) for k, v in images.items()
-        }
+    for idx in range(len(loader)):
+        np_images, np_labels = get_visualization_item(idx)
         main_image = np_images[loader.image_source]
         main_image = cv2.cvtColor(main_image, cv2.COLOR_RGB2BGR).astype(
             np.uint8
         )
-        np_labels = decode_text_metadata_labels(
-            {task: label.numpy() for task, label in labels.items()},
-            metadata_types,
-        )
+        np_labels = decode_text_metadata_labels(np_labels, metadata_types)
 
         h, w, _ = main_image.shape
         new_h, new_w = int(h * size_multiplier), int(w * size_multiplier)
