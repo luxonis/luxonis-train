@@ -203,3 +203,7 @@ Callback that publishes training progress and timing metrics.
 | `train/epoch_progress_percent` | Percentage (0-100) of current epoch completed |
 | `train/epoch_duration_sec`     | Time elapsed so far in current epoch          |
 | `train/epoch_completion_sec`   | Total duration of completed epoch in seconds  |
+
+## `AIMETCallback`
+
+Callback to perform AIMET quantization at the end of the training.

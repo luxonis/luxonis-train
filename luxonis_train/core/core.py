@@ -1206,7 +1206,86 @@ class LuxonisModel:
         batch_norm_reestimation: bool | None = None,
         optimizer: Optimizer | None = None,
         scheduler: LRScheduler | None = None,
+        in_place: bool = False,
     ) -> None:
+        """Runs quantization of the model using AIMET.
+
+        @type weights: PathType | None
+        @param weights: Path to the checkpoint from which to load
+            weights.
+        @type epochs: int | None
+        @param epochs: Number of epochs to run quantization-aware
+            training for.
+        @type quant_scheme: str | QuantScheme | None
+        @param quant_scheme: Quantization scheme to use. If not
+            specified, the value from the configuration file will be
+            used.
+        @type default_output_bw: int | None
+        @param default_output_bw: Default bitwidth to use for quantizing
+            outputs. If not specified, the value from the configuration
+            file will be used.
+        @type default_param_bw: int | None
+        @param default_param_bw: Default bitwidth to use for quantizing
+            parameters. If not specified, the value from the
+            configuration file will be used.
+        @type config_file: str | None
+        @param config_file: Path to the AIMET configuration file or a
+            dictionary containing the AIMET configuration. If not
+            specified, the value from the configuration file will be
+            used.
+        @type default_data_type: QuantizationDataType | None
+        @param default_data_type: Default data type to use for
+            quantization. If not specified, the value from the
+            configuration file will be used.
+        @type adaround: bool | None
+        @param adaround: Whether to use Adaround for weight
+            quantization. If not specified, the value from the
+            configuration file will be used.
+        @type adaround_iterations: int | None
+        @param adaround_iterations: Number of iterations to run Adaround
+            for. If not specified, the value from the configuration file
+            will be used.
+        @type adaround_reg_param: float | None
+        @param adaround_reg_param: Regularization parameter to use for
+            Adaround. If not specified, the value from the configuration
+            file will be used.
+        @type adaround_beta_range: tuple[int, int] | None
+        @param adaround_beta_range: Beta range to use for Adaround. If
+            not specified, the value from the configuration file will be
+            used.
+        @type adaround_warm_start: float | None = None
+        @param adaround_warm_start: Warm start value to use for
+            Adaround. If not specified, the value from the configuration
+            file will be used.
+        @type fold_batch_norms: bool | None
+        @param fold_batch_norms: Whether to fold batch norms before
+            quantization. If not specified, the value from the
+            configuration file will be used.
+        @type cross_layer_equalization: bool | None
+        @param cross_layer_equalization: Whether to perform cross-layer
+            equalization before quantization. If not specified, the
+            value from the configuration file will be used.
+        @type batch_norm_reestimation: bool | None
+        @param batch_norm_reestimation: Whether to perform batch norm
+            reestimation after folding batch norms. If not specified,
+            the value from the configuration file will be used.
+        @type optimizer: Optimizer | None
+        @param optimizer: Optimizer to use for quantization-aware
+            training. If not specified, the optimizer from the
+            configuration file will be used.
+        @type scheduler: LRScheduler | None
+        @param scheduler: Learning rate scheduler to use for
+            quantization-aware training. If not specified, the scheduler
+            from the configuration file will be used.
+        @type in_place: bool
+        @param in_place: Whether to perform quantization in-place on the
+            original model or to create a copy of the model for
+            quantization. Defaults to False, which means that a copy of
+            the model will be created for quantization. Setting this to
+            True will modify the original model in-place, which may save
+            memory but will overwrite the original model's weights and
+            structure.
+        """
 
         save_dir = self.run_save_dir / "aimet"
         save_dir.mkdir(parents=True, exist_ok=True)
@@ -1236,7 +1315,11 @@ class LuxonisModel:
             else cfg.batch_norm_reestimation
         )
 
-        model = deepcopy(self.lightning_module)
+        if not in_place:
+            model = deepcopy(self.lightning_module)
+        else:
+            model = self.lightning_module
+
         model.reparametrize().eval()
         pre_quant_test = self.pl_trainer.test(model, self.val_loader)[0]
 
