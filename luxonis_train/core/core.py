@@ -1366,12 +1366,11 @@ class LuxonisModel:
         ptq_test = self.pl_trainer.test(model, self.val_loader)[0]
 
         if optimizer is None:
-            opt_cfg = cfg.optimizer or self.cfg.trainer.optimizer
             optimizer = from_registry(
                 OPTIMIZERS,
-                opt_cfg.name,
+                cfg.optimizer.name,
                 params=sim.model.parameters(),
-                **opt_cfg.params,
+                **cfg.optimizer.params,
             )
         if scheduler is None:
             scheduler = from_registry(
