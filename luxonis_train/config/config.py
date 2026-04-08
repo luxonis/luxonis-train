@@ -6,7 +6,6 @@ from enum import Enum
 from pathlib import Path
 from typing import Annotated, Any, Literal, NamedTuple
 
-from aimet_torch.common.defs import QuantizationDataType, QuantScheme
 from loguru import logger
 from luxonis_ml.enums import DatasetType
 from luxonis_ml.typing import (
@@ -743,8 +742,8 @@ class AIMETConfig(BaseModelExtraForbid):
 
     default_output_bw: Literal[4, 8, 16] = 8
     default_param_bw: Literal[4, 8, 16] = 8
-    default_data_type: QuantizationDataType = QuantizationDataType.int
-    quant_scheme: QuantScheme = QuantScheme.min_max
+    default_data_type: Literal["int", "float"] = "int"
+    quant_scheme: Literal["min_max", "tf_enhanced"] = "min_max"
     config: Params | None = None
 
     fold_batch_norms: bool = False
@@ -761,20 +760,6 @@ class AIMETConfig(BaseModelExtraForbid):
             name="StepLR", params={"step_size": 5, "gamma": 0.1}
         )
     )
-
-    @field_validator("quant_scheme", mode="before")
-    @classmethod
-    def validate_quant_scheme(cls, value: ParamValue) -> Any:
-        if isinstance(value, str):
-            return QuantScheme.from_str(value)
-        return value
-
-    @field_validator("default_data_type", mode="before")
-    @classmethod
-    def validate_default_data_type(cls, value: ParamValue) -> Any:
-        if isinstance(value, str):
-            return QuantizationDataType[value.lower()]
-        return value
 
     @field_validator("config", mode="before")
     @classmethod
