@@ -41,6 +41,7 @@ from luxonis_train.utils import (
     LuxonisTrackerPL,
     setup_logging,
 )
+from luxonis_train.utils.general import safe_download
 
 from .utils.annotate_utils import annotate_from_directory
 from .utils.archive_utils import (
@@ -104,10 +105,11 @@ class LuxonisModel:
             without it being fully functional.
         """
         if weights is not None:
-            weights = LuxonisFileSystem.download(
-                str(weights), self.run_save_dir
-            )
-
+            weights = safe_download(str(weights))
+            if weights is None:
+                raise RuntimeError(
+                    f"Failed to download weights from {weights}."
+                )
             ckpt = torch.load(weights, map_location="cpu")  # nosemgre
             if cfg is None:
                 cfg = ckpt.get("config")
@@ -1202,9 +1204,9 @@ class LuxonisModel:
     def resolve_weights(self, weights: PathType | None) -> PathType | None:
 
         if weights is None:
-            return self.weights
+            return safe_download(str(self.weights))
         logger.warning(
             "Weights provided on the command line, but config weights are set. "
             "Ignoring weights provided in config or during LuxonisModel initialization."
         )
-        return LuxonisFileSystem.download(str(weights), self.run_save_dir)
+        return safe_download(str(weights))
