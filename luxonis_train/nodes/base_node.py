@@ -470,7 +470,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         if isinstance(ckpt, dict):
             state_dict = ckpt
         else:
-            local_path = safe_download(url=ckpt)
+            local_path = safe_download(ckpt)
             if local_path:
                 # load explicitly to cpu, PL takes care of transfering to CUDA is needed
                 state_dict = torch.load(  # nosemgrep

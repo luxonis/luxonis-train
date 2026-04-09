@@ -105,7 +105,7 @@ class LuxonisModel:
             without it being fully functional.
         """
         if weights is not None:
-            weights = safe_download(str(weights))
+            weights = safe_download(weights)
             if weights is None:
                 raise RuntimeError(
                     f"Failed to download weights from {weights}."
@@ -1204,9 +1204,9 @@ class LuxonisModel:
     def resolve_weights(self, weights: PathType | None) -> PathType | None:
 
         if weights is None:
-            return safe_download(str(self.weights))
+            return safe_download(self.weights)
         logger.warning(
             "Weights provided on the command line, but config weights are set. "
             "Ignoring weights provided in config or during LuxonisModel initialization."
         )
-        return safe_download(str(weights))
+        return safe_download(weights)
