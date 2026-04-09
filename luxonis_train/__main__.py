@@ -16,7 +16,6 @@ from luxonis_train.upgrade import upgrade_config, upgrade_installation
 if TYPE_CHECKING:
     import numpy as np
 
-    from luxonis_train import LuxonisModel
 
 app = App(
     help="Luxonis Train CLI",
@@ -57,6 +56,8 @@ def train(
         suppresses some exceptions to allow training without a fully
         defined model.
     """
+    from luxonis_train import LuxonisModel
+
     LuxonisModel(config, opts, weights=weights, debug_mode=debug).train(
         weights=weights
     )
@@ -71,6 +72,8 @@ def tune(opts: list[str] | None = None, /, *, config: str | None = None):
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
+    from luxonis_train import LuxonisModel
+
     LuxonisModel(config, opts).tune()
 
 
@@ -85,6 +88,8 @@ def _yield_visualizations(
     import cv2
     import numpy as np
     from luxonis_ml.data.utils.visualizations import visualize
+
+    from luxonis_train import LuxonisModel
 
     opts = opts or []
     opts.extend(["trainer.preprocessing.normalize.active", "False"])
@@ -189,6 +194,8 @@ def test(
         suppresses some exceptions to allow training without a fully
         defined model.
     """
+    from luxonis_train import LuxonisModel
+
     LuxonisModel(config, opts, weights=weights, debug_mode=debug).test(
         view=view, weights=weights
     )
@@ -226,6 +233,8 @@ def infer(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
+    from luxonis_train import LuxonisModel
+
     LuxonisModel(config, opts, weights=weights, debug_mode=True).infer(
         view=view,
         save_dir=save_dir,
@@ -276,6 +285,8 @@ def annotate(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
+    from luxonis_train import LuxonisModel
+
     model = LuxonisModel(
         config,
         opts,
@@ -323,6 +334,8 @@ def export(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the
     """
+    from luxonis_train import LuxonisModel
+
     LuxonisModel(config, opts, weights=weights, debug_mode=True).export(
         save_path=save_path, weights=weights, ckpt_only=ckpt_only
     )
@@ -349,6 +362,8 @@ def archive(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
+    from luxonis_train import LuxonisModel
+
     LuxonisModel(str(config), opts, weights=weights).archive(
         path=executable, weights=weights
     )
@@ -379,6 +394,8 @@ def convert(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
+    from luxonis_train import LuxonisModel
+
     LuxonisModel(config, opts, weights=weights).convert(
         weights=weights, save_dir=save_dir
     )
@@ -441,6 +458,8 @@ def checkpoint(
     @param new: Where to save the upgraded checkpoint. If left empty,
         the old file will be overriden.
     """
+    from luxonis_train import LuxonisModel
+
     logger.info("Performing a full checkpoint upgrade.")
     model = LuxonisModel(config, opts, weights=path, debug_mode=True)
     model.lightning_module.load_checkpoint(path)
