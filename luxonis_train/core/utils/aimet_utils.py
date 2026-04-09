@@ -1,4 +1,5 @@
 import math
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Any, cast
 
@@ -18,6 +19,15 @@ from torch.utils.data import DataLoader
 
 from luxonis_train.lightning import LuxonisLightningModule
 from luxonis_train.loaders.base_loader import LuxonisLoaderTorchOutput
+
+
+def check_aimet_available() -> None:
+    if not find_spec("aimet_torch"):
+        raise ImportError(
+            "AIMET library is not installed. Please install "
+            "`luxonis-train` with the `aimet` extra enabled "
+            "(pip install luxonis-train[aimet] --extra-index-url https://download.pytorch.org/whl/cu126)"
+        )
 
 
 def post_training_quantization(
