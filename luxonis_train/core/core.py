@@ -1203,4 +1203,8 @@ class LuxonisModel:
 
         if weights is None:
             return self.weights
+        logger.warning(
+            "Weights provided on the command line, but config weights are set. "
+            "Ignoring weights provided in config or during LuxonisModel initialization."
+        )
         return LuxonisFileSystem.download(str(weights), self.run_save_dir)
