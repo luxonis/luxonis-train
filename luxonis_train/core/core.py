@@ -2,7 +2,7 @@ import threading
 from collections.abc import Mapping
 from pathlib import Path
 from threading import ExceptHookArgs
-from typing import Literal, overload
+from typing import Any, Literal, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -79,7 +79,7 @@ class LuxonisModel:
         cfg: PathType | Params | Config | None,
         opts: Params | list[str] | tuple[str, ...] | None = None,
         *,
-        weights: PathType | None = None,
+        weights: PathType | dict[str, Any] | None = None,
         debug_mode: bool = False,
         dataset_metadata: DatasetMetadata | None = None,
     ):
@@ -105,12 +105,21 @@ class LuxonisModel:
             without it being fully functional.
         """
         if weights is not None:
-            weights = safe_download(weights)
-            if weights is None:
-                raise RuntimeError(
-                    f"Failed to download weights from {weights}."
+            if isinstance(weights, dict):
+                ckpt = weights
+            elif isinstance(weights, PathType):
+                weights = safe_download(weights)
+                if weights is None:
+                    raise RuntimeError(
+                        f"Failed to download weights from {weights}."
+                    )
+                ckpt = torch.load(weights, map_location="cpu")  # nosemgre
+            else:  # pragma: no cover
+                raise ValueError(
+                    f"Invalid type for weights: {type(weights)}. "
+                    "Expected str or dict."
                 )
-            ckpt = torch.load(weights, map_location="cpu")  # nosemgre
+
             if cfg is None:
                 cfg = ckpt.get("config")
             if "dataset_metadata" in ckpt:
@@ -329,7 +338,9 @@ class LuxonisModel:
             self.tracker._finalize(status)
 
     def train(
-        self, new_thread: bool = False, weights: PathType | None = None
+        self,
+        new_thread: bool = False,
+        weights: PathType | None = None,
     ) -> None:
         """Runs training.
 
@@ -348,7 +359,7 @@ class LuxonisModel:
                 self.cfg.trainer.matmul_precision
             )
 
-        weights = self.resolve_weights(weights)
+        weights = self.resolve_weights(weights)  # type: ignore
 
         if self.cfg.trainer.resume_training and weights is None:
             logger.warning(
@@ -398,7 +409,7 @@ class LuxonisModel:
     def export(
         self,
         save_path: PathType | None = None,
-        weights: PathType | None = None,
+        weights: PathType | dict[str, Any] | None = None,
         ignore_missing_weights: bool = False,
         ckpt_only: bool = False,
     ) -> None:
@@ -539,7 +550,7 @@ class LuxonisModel:
         self,
         new_thread: Literal[False] = ...,
         view: Literal["train", "test", "val"] = "test",
-        weights: PathType | None = ...,
+        weights: PathType | dict[str, Any] | None = ...,
     ) -> Mapping[str, float]: ...
 
     @overload
@@ -547,7 +558,7 @@ class LuxonisModel:
         self,
         new_thread: Literal[True] = ...,
         view: Literal["train", "test", "val"] = "test",
-        weights: PathType | None = ...,
+        weights: PathType | dict[str, Any] | None = ...,
     ) -> None: ...
 
     @typechecked
@@ -555,7 +566,7 @@ class LuxonisModel:
         self,
         new_thread: bool = False,
         view: Literal["train", "val", "test"] = "test",
-        weights: PathType | None = None,
+        weights: PathType | dict[str, Any] | None = None,
     ) -> Mapping[str, float] | None:
         """Runs testing.
 
@@ -591,7 +602,7 @@ class LuxonisModel:
         view: Literal["train", "val", "test"] = "val",
         save_dir: PathType | None = None,
         source_path: PathType | None = None,
-        weights: PathType | None = None,
+        weights: PathType | dict[str, Any] | None = None,
     ) -> None:
         """Runs inference.
 
@@ -645,7 +656,7 @@ class LuxonisModel:
         self,
         dir_path: PathType,
         dataset_name: str,
-        weights: PathType | None = None,
+        weights: PathType | dict[str, Any] | None = None,
         bucket_storage: Literal["local", "gcs"] = "local",
         delete_local: bool = True,
         delete_remote: bool = True,
@@ -914,7 +925,7 @@ class LuxonisModel:
     def archive(
         self,
         path: PathType | None = None,
-        weights: PathType | None = None,
+        weights: PathType | dict[str, Any] | None = None,
         save_dir: PathType | None = None,
     ) -> Path:
         """Generates an NN Archive out of a model executable.
@@ -1032,7 +1043,7 @@ class LuxonisModel:
 
     def convert(
         self,
-        weights: PathType | None = None,
+        weights: PathType | dict[str, Any] | None = None,
         save_dir: PathType | None = None,
     ) -> tuple[Path, dict[str, Path]]:
         """Exports the model to ONNX, creates an NN Archive, and
@@ -1201,10 +1212,18 @@ class LuxonisModel:
         """
         return self.lightning_module.get_mlflow_logging_keys()
 
-    def resolve_weights(self, weights: PathType | None) -> PathType | None:
+    def resolve_weights(
+        self, weights: PathType | dict[str, Any] | None
+    ) -> PathType | dict[str, Any] | None:
+
+        if isinstance(weights, dict):
+            return weights
 
         if weights is None:
+            if isinstance(self.weights, dict):
+                return self.weights
             return safe_download(self.weights)
+
         logger.warning(
             "Weights provided on the command line, but config weights are set. "
             "Ignoring weights provided in config or during LuxonisModel initialization."
