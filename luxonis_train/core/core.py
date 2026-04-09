@@ -78,6 +78,7 @@ class LuxonisModel:
         cfg: PathType | Params | Config | None,
         opts: Params | list[str] | tuple[str, ...] | None = None,
         *,
+        weights: PathType | None = None,
         debug_mode: bool = False,
         dataset_metadata: DatasetMetadata | None = None,
     ):
@@ -92,15 +93,37 @@ class LuxonisModel:
         @type opts: list[str] | tuple[str, ...] | dict[str, Any] | None
         @param opts: Argument dict provided through command line, used for config overriding.
 
+        @type weights: str | None
+        @param weights: Path to the weights. If user specifies weights
+            in the config file, the weights provided here will take
+            precedence.
+
         @type debug_mode: bool
         @param debug_mode: If set to True, enables debug mode which ignores some
             normaly unrecovarable exceptions and allows to test the model
             without it being fully functional.
         """
+        if weights is not None:
+            ckpt = torch.load(weights, map_location="cpu")  # nosemgre
+            if cfg is None:
+                cfg = ckpt.get("config")
+            if "dataset_metadata" in ckpt:
+                try:
+                    dataset_metadata = DatasetMetadata(
+                        **ckpt["dataset_metadata"]
+                    )
+                except Exception as e:  # pragma: no cover
+                    logger.error(
+                        "Failed to load dataset metadata from the checkpoint. "
+                        f"Error: {e}"
+                    )
+
         if isinstance(cfg, Config):
             self.cfg = cfg
         else:
             self.cfg = Config.get_config(cfg, opts)
+
+        self.weights = weights or self.cfg.model.weights
 
         self.debug_mode = debug_mode
 
@@ -319,18 +342,7 @@ class LuxonisModel:
                 self.cfg.trainer.matmul_precision
             )
 
-        if weights is not None:
-            weights = LuxonisFileSystem.download(
-                str(weights), self.run_save_dir
-            )
-            if self.cfg.model.weights is not None:
-                logger.warning(
-                    "Weights provided in the command line, but config weights are set. "
-                    "Ignoring weights provided in config."
-                )
-            self.lightning_module.load_checkpoint(weights)
-        else:
-            weights = self.cfg.model.weights
+        weights = self.resolve_weights(weights)
 
         if self.cfg.trainer.resume_training and weights is None:
             logger.warning(
@@ -405,7 +417,7 @@ class LuxonisModel:
             file in case they changed (e.g. new configuration file,
             architectural changes affecting the exection order etc.)
         """
-        weights = weights or self.cfg.model.weights
+        weights = self.resolve_weights(weights)
 
         if not ignore_missing_weights and weights is None:
             logger.warning(
@@ -555,7 +567,7 @@ class LuxonisModel:
             model will be temporarily replaced with the weights from the
             specified checkpoint.
         """
-        weights = weights or self.cfg.model.weights
+        weights = self.resolve_weights(weights)
         loader = self.pytorch_loaders[view]
 
         with replace_weights(self.lightning_module, weights):
@@ -595,7 +607,7 @@ class LuxonisModel:
             specified checkpoint.
         """
         self.lightning_module.eval()
-        weights = weights or self.cfg.model.weights
+        weights = self.resolve_weights(weights)
 
         with replace_weights(self.lightning_module, weights):
             if save_dir is not None:
@@ -634,7 +646,7 @@ class LuxonisModel:
         team_id: str | None = None,
     ) -> LuxonisDataset:
         self.lightning_module.eval()
-        weights = weights or self.cfg.model.weights
+        weights = self.resolve_weights(weights)
 
         with replace_weights(self.lightning_module, weights):
             dir_path = Path(dir_path)
@@ -913,7 +925,7 @@ class LuxonisModel:
         @rtype: Path
         @return: Path to the generated NN Archive.
         """
-        weights = weights or self.cfg.model.weights
+        weights = self.resolve_weights(weights)
         with replace_weights(self.lightning_module, weights):
             return self._archive(path, save_dir)
 
@@ -1182,3 +1194,9 @@ class LuxonisModel:
         2) "artifacts"  -> Keys expected to be logged as artifacts (e.g. confusion_matrix.json, visualizations)
         """
         return self.lightning_module.get_mlflow_logging_keys()
+
+    def resolve_weights(self, weights: PathType | None) -> PathType | None:
+
+        if weights is None:
+            return self.weights
+        return LuxonisFileSystem.download(str(weights), self.run_save_dir)

@@ -43,6 +43,7 @@ from typing_extensions import Self, override
 
 import luxonis_train as lxt
 from luxonis_train.registry import MODELS, NODES, from_registry
+from luxonis_train.upgrade import upgrade_config
 
 
 class ImageSize(NamedTuple):
@@ -865,6 +866,9 @@ class Config(LuxonisConfig):
         cfg: PathType | Params | None = None,
         overrides: Params | list[str] | tuple[str, ...] | None = None,
     ) -> "Config":
+        if cfg is not None:
+            cfg = upgrade_config(cfg)
+
         instance = super().get_config(cfg, overrides)
         if not isinstance(cfg, str):
             return instance.smart_auto_populate()
