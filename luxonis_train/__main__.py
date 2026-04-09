@@ -442,10 +442,7 @@ def checkpoint(
         the old file will be overriden.
     """
     logger.info("Performing a full checkpoint upgrade.")
-    cfg = None
-    if config is not None:
-        cfg = upgrade_config(config)
-    model = LuxonisModel(cfg, opts, weights=path, debug_mode=True)
+    model = LuxonisModel(config, opts, weights=path, debug_mode=True)
     model.lightning_module.load_checkpoint(path)
 
     # Needs to be called in order to attach the model to the trainer
