@@ -6,7 +6,6 @@ from pathlib import Path
 from types import EllipsisType
 from typing import Any
 
-import requests
 import yaml
 from loguru import logger
 from luxonis_ml.typing import Params, ParamValue, PathType
@@ -62,7 +61,7 @@ class NestedDict:
         current = self._dict
         for k in keys[:-1]:
             current = current[k]
-        return current.pop(keys[-1])
+        return current.pop(keys[-1], default)
 
     def update(self, key: str, value: Any) -> None:
         old_value = self[key]
@@ -148,7 +147,7 @@ def upgrade_config(config: PathType | Params) -> Params:
     if "tuner" in cfg and cfg["tuner"] is None:
         cfg.pop("tuner")
 
-    nodes = cfg["model"]["nodes"] or []
+    nodes = cfg.get("model.nodes", [])
     assert isinstance(nodes, list)
 
     heads: dict[str, NestedDict] = {}
@@ -165,7 +164,7 @@ def upgrade_config(config: PathType | Params) -> Params:
         if node.pop("params.download_weights", False):
             node["params.weights"] = "download"
 
-    export_output_names = cfg.pop("exporter.output_names")
+    export_output_names = cfg.pop("exporter.output_names", None)
     if export_output_names is not None:
         if len(heads) == 1:
             head = next(iter(heads.values()))
@@ -225,6 +224,8 @@ def upgrade_installation() -> None:
 
 
 def get_latest_version() -> Version | None:
+    import requests
+
     url = "https://pypi.org/pypi/luxonis_train/json"
     response = requests.get(url, timeout=5)
     if response.status_code == 200:
