@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
 from typing import Any, TypeVar, overload
 
+import numpy as np
 import torch
 from loguru import logger
 from luxonis_ml.typing import PathType
@@ -340,6 +341,56 @@ def instances_from_batch(
                 get_batch_instances(i, bboxes, payload)
                 for payload in [None, *args]
             )
+
+
+def decode_text_metadata_labels(
+    labels: dict[str, np.ndarray],
+    metadata_types: dict[str, type],
+) -> dict[str, np.ndarray]:
+    """Decode text metadata labels from character-code arrays."""
+    decoded_labels: dict[str, np.ndarray] = {}
+
+    for task, label in labels.items():
+        if metadata_types.get(task) is not str:
+            decoded_labels[task] = label
+            continue
+
+        arr = np.asarray(label)
+        if arr.size == 0 or arr.dtype.kind in {"U", "S", "O"}:
+            decoded_labels[task] = arr
+            continue
+
+        decoded_values: list[str] = []
+        for row in np.atleast_2d(arr):
+            chars: list[str] = []
+            for value in np.asarray(row).reshape(-1):
+                if isinstance(value, np.generic):
+                    value = value.item()
+                if isinstance(value, float):
+                    if not value.is_integer():
+                        decoded_values = []
+                        break
+                    value = int(value)
+                elif not isinstance(value, int):
+                    decoded_values = []
+                    break
+
+                if value == 0:
+                    break
+                if value < 0:
+                    decoded_values = []
+                    break
+                chars.append(chr(value))
+
+            if not decoded_values and not chars and arr.size != 0:
+                break
+            decoded_values.append("".join(chars))
+
+        decoded_labels[task] = (
+            np.asarray(decoded_values) if decoded_values else arr
+        )
+
+    return decoded_labels
 
 
 class Counter:
