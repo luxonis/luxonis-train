@@ -104,6 +104,10 @@ class LuxonisModel:
             without it being fully functional.
         """
         if weights is not None:
+            weights = LuxonisFileSystem.download(
+                str(weights), self.run_save_dir
+            )
+
             ckpt = torch.load(weights, map_location="cpu")  # nosemgre
             if cfg is None:
                 cfg = ckpt.get("config")
