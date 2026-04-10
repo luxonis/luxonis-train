@@ -424,6 +424,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
 
             aug_h = aug.params.get("height")
             aug_w = aug.params.get("width")
+            aug.params.setdefault("p", 1.0)
             if aug_h != train_h or aug_w != train_w:
                 logger.warning(
                     f"Augmentation '{aug.name}' is marked as 'use_for_resizing' "
@@ -434,16 +435,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
             aug.params["height"] = train_h
             aug.params["width"] = train_w
 
-            aug_p = aug.params.get("p")
-            if aug_p != 1:
-                if aug_p is not None:
-                    logger.warning(
-                        f"Augmentation '{aug.name}' is marked as 'use_for_resizing' "
-                        f"but has p={aug_p}. Overriding to p=1."
-                    )
-                aug.params["p"] = 1
-
-            if self.keep_aspect_ratio:
+            if self.keep_aspect_ratio and aug.params["p"] == 1:
                 logger.warning(
                     f"Augmentation '{aug.name}' is marked as 'use_for_resizing'. "
                     f"The 'keep_aspect_ratio' preprocessing parameter is ignored "
