@@ -1,6 +1,7 @@
 import importlib
 import importlib.util
 import json
+import sys
 from collections.abc import Iterator
 from functools import lru_cache
 from importlib.metadata import version
@@ -10,11 +11,14 @@ from typing import TYPE_CHECKING, Annotated, Literal
 import yaml
 from cyclopts import App, Group, Parameter, validators
 from loguru import logger
+from luxonis_ml.typing import Params, PathType
 
 from luxonis_train.upgrade import upgrade_config, upgrade_installation
 
 if TYPE_CHECKING:
     import numpy as np
+
+    from luxonis_train import LuxonisModel
 
 
 app = App(
@@ -32,6 +36,24 @@ evaluation_group = Group.create_ordered("Evaluation")
 export_group = Group.create_ordered("Export")
 annotation_group = Group.create_ordered("Annotation")
 management_group = Group.create_ordered("Management")
+
+
+def create_model(
+    config: PathType | Params | None,
+    opts: list[str] | None = None,
+    weights: PathType | None = None,
+    debug_mode: bool = False,
+) -> "LuxonisModel":
+    importlib.reload(sys.modules["luxonis_train"])
+
+    from luxonis_train import LuxonisModel
+
+    return LuxonisModel(
+        config,
+        opts,
+        weights=weights,
+        debug_mode=debug_mode,
+    )
 
 
 @app.command(group=training_group, sort_key=1)
@@ -56,9 +78,7 @@ def train(
         suppresses some exceptions to allow training without a fully
         defined model.
     """
-    from luxonis_train import LuxonisModel
-
-    LuxonisModel(config, opts, weights=weights, debug_mode=debug).train(
+    create_model(config, opts, weights=weights, debug_mode=debug).train(
         weights=weights
     )
 
@@ -72,9 +92,7 @@ def tune(opts: list[str] | None = None, /, *, config: str | None = None):
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    from luxonis_train import LuxonisModel
-
-    LuxonisModel(config, opts).tune()
+    create_model(config, opts).tune()
 
 
 def _yield_visualizations(
@@ -89,7 +107,6 @@ def _yield_visualizations(
     import numpy as np
     from luxonis_ml.data.utils.visualizations import visualize
 
-    from luxonis_train import LuxonisModel
     from luxonis_train.utils.general import decode_text_metadata_labels
 
     def get_visualization_item(
@@ -122,7 +139,7 @@ def _yield_visualizations(
     opts = opts or []
     opts.extend(["trainer.preprocessing.normalize.active", "False"])
 
-    model = LuxonisModel(config, opts)
+    model = create_model(config, opts)
 
     loader = model.loaders[view]
     metadata_types = loader.get_metadata_types()
@@ -223,9 +240,7 @@ def test(
         suppresses some exceptions to allow training without a fully
         defined model.
     """
-    from luxonis_train import LuxonisModel
-
-    LuxonisModel(config, opts, weights=weights, debug_mode=debug).test(
+    create_model(config, opts, weights=weights, debug_mode=debug).test(
         view=view, weights=weights
     )
 
@@ -262,9 +277,7 @@ def infer(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    from luxonis_train import LuxonisModel
-
-    LuxonisModel(config, opts, weights=weights, debug_mode=True).infer(
+    create_model(config, opts, weights=weights, debug_mode=True).infer(
         view=view,
         save_dir=save_dir,
         source_path=source_path,
@@ -314,14 +327,7 @@ def annotate(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    from luxonis_train import LuxonisModel
-
-    model = LuxonisModel(
-        config,
-        opts,
-        weights=weights,
-        debug_mode=debug,
-    )
+    model = create_model(config, opts, weights=weights, debug_mode=debug)
 
     model.annotate(
         dir_path=dir_path,
@@ -363,9 +369,7 @@ def export(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the
     """
-    from luxonis_train import LuxonisModel
-
-    LuxonisModel(config, opts, weights=weights, debug_mode=True).export(
+    create_model(config, opts, weights=weights, debug_mode=True).export(
         save_path=save_path, weights=weights, ckpt_only=ckpt_only
     )
 
@@ -391,9 +395,7 @@ def archive(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    from luxonis_train import LuxonisModel
-
-    LuxonisModel(str(config), opts, weights=weights).archive(
+    create_model(config, opts, weights=weights, debug_mode=True).archive(
         path=executable, weights=weights
     )
 
@@ -423,10 +425,8 @@ def convert(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    from luxonis_train import LuxonisModel
-
-    LuxonisModel(config, opts, weights=weights).convert(
-        weights=weights, save_dir=save_dir
+    create_model(config, opts, weights=weights, debug_mode=True).convert(
+        save_dir=save_dir, weights=weights
     )
 
 

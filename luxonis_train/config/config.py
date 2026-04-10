@@ -859,10 +859,9 @@ class Config(LuxonisConfig):
         overrides: Params | list[str] | tuple[str, ...] | None = None,
     ) -> "Config":
         if isinstance(cfg, PathType):
-            fs = LuxonisFileSystem(
-                str(cfg), cache_storage=".cache/luxonis_train"
-            )
-            cfg = fs.get_file("", ".cache/luxonis_train")
+            cache = Path(".cache/luxonis_train/")
+            cache.mkdir(parents=True, exist_ok=True)
+            cfg = LuxonisFileSystem.download(str(cfg), cache)
 
         if cfg is not None:
             cfg = upgrade_config(cfg)
