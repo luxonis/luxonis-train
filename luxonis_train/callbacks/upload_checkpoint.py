@@ -1,4 +1,4 @@
-from copy import deepcopy
+from copy import copy
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +33,7 @@ class UploadCheckpoint(pl.Callback):
         module: "lxt.LuxonisLightningModule",
         checkpoint: dict[str, Any],
     ) -> None:
-        checkpoint = deepcopy(checkpoint)
+        checkpoint = copy(checkpoint)
         module._add_custom_data_to_checkpoint(checkpoint)
         checkpoint_paths = [
             c.best_model_path
