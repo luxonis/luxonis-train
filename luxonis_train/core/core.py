@@ -106,6 +106,8 @@ class LuxonisModel:
         """
         if weights is not None:
             if isinstance(weights, dict):
+                if "state_dict" not in weights:
+                    weights = {"state_dict": weights}
                 ckpt = weights
             elif isinstance(weights, PathType):
                 weights = safe_download(weights)
