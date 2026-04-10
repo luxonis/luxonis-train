@@ -124,7 +124,7 @@ class LuxonisModel:
 
             if cfg is None:
                 cfg = ckpt.get("config")
-            if "dataset_metadata" in ckpt:
+            if "dataset_metadata" in ckpt and dataset_metadata is None:
                 try:
                     dataset_metadata = DatasetMetadata(
                         **ckpt["dataset_metadata"]
@@ -311,6 +311,7 @@ class LuxonisModel:
             self.dataset_metadata = DatasetMetadata.from_loader(
                 self.loaders["train"]
             )
+        logger.info(f"Dataset metadata: {self.dataset_metadata}")
         self.config_file = self.run_save_dir / "training_config.yaml"
         self.cfg.save_data(self.config_file)
 

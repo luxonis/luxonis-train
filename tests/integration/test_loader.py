@@ -44,6 +44,7 @@ def test_splits(
     model = LuxonisModel(cfg, opts)
 
     for key, exp_len in expected.items():
+        assert len(model.loaders[key]) == exp_len
         assert len(model.pytorch_loaders[key]) == exp_len
 
 

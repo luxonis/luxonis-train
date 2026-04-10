@@ -867,15 +867,14 @@ class Config(LuxonisConfig):
             cfg = upgrade_config(cfg)
 
         instance = super().get_config(cfg, overrides)
-        if not isinstance(cfg, str):
-            return instance.smart_auto_populate()
-        fs = LuxonisFileSystem(cfg)
-        if fs.is_mlflow:
-            logger.info(
-                "Setting `project_id` and `run_id` to config's MLFlow run"
-            )
-            instance.tracker.project_id = fs.experiment_id
-            instance.tracker.run_id = fs.run_id
+        if isinstance(cfg, str):
+            fs = LuxonisFileSystem(cfg)
+            if fs.is_mlflow:
+                logger.info(
+                    "Setting `project_id` and `run_id` to config's MLFlow run"
+                )
+                instance.tracker.project_id = fs.experiment_id
+                instance.tracker.run_id = fs.run_id
 
         if instance.trainer.smart_cfg_auto_populate:
             return instance.smart_auto_populate()
