@@ -293,12 +293,31 @@ class LuxonisModel:
         weights_only: bool | None = None,
         storage_options: Any = None,
     ) -> Path:
+        """Saves a checkpoint of the model.
+
+        @type path: PathType
+        @param path: Path where checkpoint will be saved.
+        @type weights_only: bool | None
+        @param weights_only: If `True`, will only save the model weights.
+        @type storage_options: Any
+        @param storage_options: parameter for how to save to storage, passed to `CheckpointIO` plugin
+        @rtype: Path
+        @return: Path to the saved checkpoint.
+        """
         self.pl_trainer.save_checkpoint(
             path, weights_only=weights_only, storage_options=storage_options
         )
         return Path(path)
 
     def get_checkpoint(self, weights_only: bool = True) -> dict[str, Any]:
+        """Gets the checkpoint of the model as a dictionary.
+
+        @type weights_only: bool
+        @param weights_only: If `True`, will only include the model weights in the checkpoint.
+        @rtype: dict[str, Any]
+        @return: Checkpoint of the model as a dictionary.
+        """
+
         with tempfile.NamedTemporaryFile(suffix=".ckpt") as tmp:
             checkpoint_path = self.save_checkpoint(tmp.name, weights_only)
             return torch.load(checkpoint_path, map_location="cpu")
