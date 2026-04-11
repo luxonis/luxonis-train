@@ -1,8 +1,9 @@
+import tempfile
 import threading
 from collections.abc import Mapping
 from pathlib import Path
 from threading import ExceptHookArgs
-from typing import Literal, overload
+from typing import Any, Literal, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -285,6 +286,22 @@ class LuxonisModel:
         )
 
         self._exported_models: dict[str, Path] = {}
+
+    def save_checkpoint(
+        self,
+        path: PathType,
+        weights_only: bool | None = None,
+        storage_options: Any = None,
+    ) -> Path:
+        self.pl_trainer.save_checkpoint(
+            path, weights_only=weights_only, storage_options=storage_options
+        )
+        return Path(path)
+
+    def get_checkpoint(self, weights_only: bool = True) -> dict[str, Any]:
+        with tempfile.NamedTemporaryFile(suffix=".ckpt") as tmp:
+            checkpoint_path = self.save_checkpoint(tmp.name, weights_only)
+            return torch.load(checkpoint_path, map_location="cpu")
 
     def _train(self, resume: PathType | None, *args, **kwargs) -> None:
         status = "success"

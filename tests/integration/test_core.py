@@ -68,6 +68,17 @@ def test_weights_loading(cifar10_dataset: LuxonisDataset, opts: Params):
     assert test_results == model.test(weights=weights)
 
 
+def test_checkpoint(tmp_path: Path):
+    model = LuxonisModel("configs/detection_light_model.yaml")
+    ckpt = model.get_checkpoint()
+    assert "config" in ckpt
+    assert "state_dict" in ckpt
+    assert "version" in ckpt
+    assert "dataset_metadata" in ckpt
+    ckpt_path = model.save_checkpoint(tmp_path / "checkpoint.ckpt")
+    assert ckpt_path.exists()
+
+
 def test_precision_fallback_to_bf16_on_cpu(
     cifar10_dataset: LuxonisDataset, opts: Params
 ):
