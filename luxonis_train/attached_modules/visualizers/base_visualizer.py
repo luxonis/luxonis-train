@@ -5,7 +5,7 @@ from inspect import Parameter
 import torch.nn.functional as F
 from luxonis_ml.data.utils import ColorMap
 from torch import Tensor
-from typing_extensions import TypeVarTuple, Unpack
+from typing_extensions import TypeVarTuple, Unpack, override
 
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.registry import VISUALIZERS
@@ -25,6 +25,13 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
     def __init__(self, *args, scale: float = 1.0, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.scale = scale
+
+    @override
+    def __getstate__(self) -> dict:
+        state = super().__getstate__()
+        if "colormap" in state:
+            del state["colormap"]
+        return state
 
     @staticmethod
     def scale_canvas(canvas: Tensor, scale: float = 1.0) -> Tensor:
