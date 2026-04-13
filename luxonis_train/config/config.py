@@ -859,6 +859,7 @@ class Config(LuxonisConfig):
         cfg: PathType | Params | None = None,
         overrides: Params | list[str] | tuple[str, ...] | None = None,
     ) -> "Config":
+        orig_cfg = cfg
         if isinstance(cfg, PathType):
             cache = Path(".cache/luxonis_train/")
             cache.mkdir(parents=True, exist_ok=True)
@@ -868,8 +869,8 @@ class Config(LuxonisConfig):
             cfg = upgrade_config(cfg)
 
         instance = super().get_config(cfg, overrides)
-        if isinstance(cfg, str):
-            fs = LuxonisFileSystem(cfg)
+        if isinstance(orig_cfg, str):
+            fs = LuxonisFileSystem(orig_cfg)
             if fs.is_mlflow:
                 logger.info(
                     "Setting `project_id` and `run_id` to config's MLFlow run"
