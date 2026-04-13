@@ -741,6 +741,7 @@ class AIMETConfig(BaseModelExtraForbid):
     fold_batch_norms: bool = False
     cross_layer_equalization: bool = False
     batch_norm_reestimation: bool = False
+    sequential_mse: bool = False
     adaround: AdaroundConfig = Field(default_factory=AdaroundConfig)
 
     epochs: PositiveInt = 20
@@ -762,6 +763,7 @@ class AIMETConfig(BaseModelExtraForbid):
             "fold_batch_norms",
             "cross_layer_equalization",
             "batch_norm_reestimation",
+            "sequential_mse",
         ]:
             if required_field not in data:
                 raise ValueError(

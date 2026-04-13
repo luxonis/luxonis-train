@@ -1199,10 +1199,11 @@ class LuxonisModel:
         fold_batch_norms: bool | None = None,
         cross_layer_equalization: bool | None = None,
         batch_norm_reestimation: bool | None = None,
+        sequential_mse: bool | None = None,
         optimizer: Optimizer | None = None,
         scheduler: LRScheduler | None = None,
         in_place: bool = False,
-    ) -> None:
+    ) -> Path:
         """Runs quantization of the model using AIMET.
 
         @type weights: PathType | None
@@ -1315,6 +1316,11 @@ class LuxonisModel:
             if batch_norm_reestimation is not None
             else cfg.batch_norm_reestimation
         )
+        sequential_mse = (
+            sequential_mse
+            if sequential_mse is not None
+            else cfg.sequential_mse
+        )
 
         if not in_place:
             model = deepcopy(self.lightning_module)
@@ -1360,6 +1366,7 @@ class LuxonisModel:
             fold_batch_norms,
             cross_layer_equalization,
             batch_norm_reestimation,
+            sequential_mse,
         )
         model = cast(LuxonisLightningModule, sim.model)
 
@@ -1412,6 +1419,7 @@ class LuxonisModel:
             table,
             ["Name", "Pre-Quant", "PTQ", "QAT"],
         )
+        return save_dir
 
     @property
     def environ(self) -> Environ:

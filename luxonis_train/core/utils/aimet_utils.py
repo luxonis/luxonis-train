@@ -7,7 +7,11 @@ from aimet_torch import QuantizationSimModel
 from aimet_torch.adaround.adaround_weight import Adaround, AdaroundParameters
 from aimet_torch.bn_reestimation import reestimate_bn_stats
 from aimet_torch.common.defs import QuantizationDataType, QuantScheme
+from aimet_torch.common.quantsim_config.utils import (
+    get_path_for_per_channel_config,
+)
 from aimet_torch.cross_layer_equalization import equalize_model
+from aimet_torch.seq_mse import apply_seq_mse
 from aimet_torch.v1.batch_norm_fold import fold_all_batch_norms
 from lightning.pytorch.accelerators import CUDAAccelerator
 from loguru import logger
@@ -48,6 +52,7 @@ def post_training_quantization(
     fold_batch_norms: bool = False,
     cross_layer_equalization: bool = False,
     batch_norm_reestimation: bool = False,
+    sequential_mse: bool = False,
 ) -> QuantizationSimModel:
 
     def pass_calibration_data(model: nn.Module) -> None:
@@ -101,6 +106,9 @@ def post_training_quantization(
             ),
         )
 
+    if batch_norm_reestimation and config_file is None:
+        config_file = get_path_for_per_channel_config()
+
     sim = QuantizationSimModel(
         model=model,
         dummy_input=dummy_inputs,
@@ -111,6 +119,13 @@ def post_training_quantization(
         default_data_type=default_data_type,
         in_place=True,
     )
+    if sequential_mse:
+        logger.info("Applying sequential MSE")
+        apply_seq_mse(
+            sim,
+            data_loader=(imgs for imgs, _ in val_loader),  # type: ignore
+            num_candidates=20,
+        )
 
     if adaround:
         sim.set_and_freeze_param_encodings(
