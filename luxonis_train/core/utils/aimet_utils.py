@@ -5,6 +5,7 @@ from typing import Any, cast
 
 from aimet_torch import QuantizationSimModel
 from aimet_torch.adaround.adaround_weight import Adaround, AdaroundParameters
+from aimet_torch.batch_norm_fold import fold_all_batch_norms
 from aimet_torch.bn_reestimation import reestimate_bn_stats
 from aimet_torch.common.defs import QuantizationDataType, QuantScheme
 from aimet_torch.common.quantsim_config.utils import (
@@ -12,7 +13,6 @@ from aimet_torch.common.quantsim_config.utils import (
 )
 from aimet_torch.cross_layer_equalization import equalize_model
 from aimet_torch.seq_mse import apply_seq_mse
-from aimet_torch.v1.batch_norm_fold import fold_all_batch_norms
 from lightning.pytorch.accelerators import CUDAAccelerator
 from loguru import logger
 from rich.progress import track
