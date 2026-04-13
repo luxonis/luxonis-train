@@ -318,9 +318,11 @@ class LuxonisModel:
         @return: Checkpoint of the model as a dictionary.
         """
 
-        with tempfile.NamedTemporaryFile(suffix=".ckpt") as tmp:
+        with tempfile.NamedTemporaryFile(suffix=".ckpt", delete=False) as tmp:
             checkpoint_path = self.save_checkpoint(tmp.name, weights_only)
-            return torch.load(checkpoint_path, map_location="cpu")
+            ckpt = torch.load(checkpoint_path, map_location="cpu")
+            checkpoint_path.unlink(missing_ok=True)
+        return ckpt
 
     def _train(self, resume: PathType | None, *args, **kwargs) -> None:
         status = "success"
