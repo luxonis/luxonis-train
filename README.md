@@ -144,6 +144,7 @@ The CLI is the most straightforward way how to use `LuxonisTrain`. The CLI provi
 - `tune` - Tune the hyperparameters of the model for better performance
 - `inspect` - Inspect the dataset you are using and visualize the annotations
 - `annotate` - Annotate a directory using the model’s predictions and generate a new LDF.
+- `quantize` - Quantize the model using `AIMET` quantization techniques
 
 **To get help on any command:**
 
