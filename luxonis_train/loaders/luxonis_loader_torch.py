@@ -219,6 +219,10 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         }
 
     @override
+    def get_categorical_encodings(self) -> dict[str, dict[str, int]]:
+        return self.dataset.get_categorical_encodings()
+
+    @override
     def augment_test_image(self, img: dict[str, Tensor]) -> Tensor:
         if self.loader.augmentations is None:
             return img[self.image_source]

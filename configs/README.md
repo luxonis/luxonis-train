@@ -302,6 +302,9 @@ Additionally, we support `Mosaic4` and `MixUp` batch augmentations and letterbox
 > [!NOTE]
 > The VerticalFlip and HorizontalFlip transforms do not change keypoint index ordering. They can be safely used only when the dataset has no symmetrical classes (e.g., left arm vs. right arm).
 
+> [!NOTE]
+> When `use_for_resizing: true`, the augmentation `height` and `width` are normalized to `train_image_size`. If `p < 1`, the default resize is used for the remaining probability mass so that resizing still always occurs.
+
 **Example:**
 
 ```yaml

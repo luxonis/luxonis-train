@@ -265,6 +265,9 @@ class BaseLoaderTorch(
     ) -> dict[str, type[int] | type[Category] | type[float] | type[str]]:
         return {}
 
+    def get_categorical_encodings(self) -> dict[str, dict[str, int]]:
+        return {}
+
     def dict_numpy_to_torch(
         self, numpy_dictionary: dict[str, np.ndarray]
     ) -> dict[str, Tensor]:
