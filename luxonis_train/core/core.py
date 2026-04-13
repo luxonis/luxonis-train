@@ -15,6 +15,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
 from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.data.utils.cli_utils import print_info
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.typing import Params, PathType
@@ -79,7 +80,7 @@ class LuxonisModel:
         cfg: PathType | Params | Config | None,
         opts: Params | list[str] | tuple[str, ...] | None = None,
         *,
-        debug_mode: bool = False,
+        allow_empty_dataset: bool = False,
         dataset_metadata: DatasetMetadata | None = None,
     ):
         """Constructs a new Core instance.
@@ -93,17 +94,16 @@ class LuxonisModel:
         @type opts: list[str] | tuple[str, ...] | dict[str, Any] | None
         @param opts: Argument dict provided through command line, used for config overriding.
 
-        @type debug_mode: bool
-        @param debug_mode: If set to True, enables debug mode which ignores some
-            normaly unrecovarable exceptions and allows to test the model
-            without it being fully functional.
+        @type allow_empty_dataset: bool
+        @param allow_empty_dataset: If set to True, the model will be initialized even if the dataset is empty or cannot be created
+            This is useful either for debugging or for running commands that don't require a dataset (e.g. export with existing weights).
         """
         if isinstance(cfg, Config):
             self.cfg = cfg
         else:
             self.cfg = Config.get_config(cfg, opts)
 
-        self.debug_mode = debug_mode
+        self.allow_empty_dataset = allow_empty_dataset
 
         self.cfg_preprocessing = self.cfg.trainer.preprocessing
 
@@ -183,7 +183,7 @@ class LuxonisModel:
                     **self.cfg.loader.params,  # type: ignore
                 )
             except Exception:
-                if not self.debug_mode:
+                if not self.allow_empty_dataset:
                     logger.error(
                         "Unable to initialize loader. If you want to run "
                         "the model in debug mode, set `debug_mode=True`."
@@ -701,6 +701,8 @@ class LuxonisModel:
                 raise ValueError(
                     f"Directory path {dir_path} is not a valid directory."
                 )
+
+        print_info(annotated_dataset)
 
         return annotated_dataset
 
