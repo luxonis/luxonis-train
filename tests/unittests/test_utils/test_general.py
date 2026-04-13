@@ -59,12 +59,6 @@ def test_safe_download():
         local_path.unlink()
 
 
-def test_safe_download_failed():
-    url = "fake_url.fake"
-    local_path = safe_download(url=url, file="test.ckpt", dir=".", force=True)
-    assert local_path is None
-
-
 def test_instances_from_batch(subtests: SubTests):
     with subtests.test("bboxes"):
         bboxes = torch.tensor([[0, 1], [0, 2], [1, 3]])

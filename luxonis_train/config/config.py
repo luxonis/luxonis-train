@@ -43,6 +43,7 @@ from typing_extensions import Self, override
 
 import luxonis_train as lxt
 from luxonis_train.registry import MODELS, NODES, from_registry
+from luxonis_train.upgrade import upgrade_config
 
 
 class ImageSize(NamedTuple):
@@ -857,16 +858,23 @@ class Config(LuxonisConfig):
         cfg: PathType | Params | None = None,
         overrides: Params | list[str] | tuple[str, ...] | None = None,
     ) -> "Config":
+        if isinstance(cfg, PathType):
+            cache = Path(".cache/luxonis_train/")
+            cache.mkdir(parents=True, exist_ok=True)
+            cfg = LuxonisFileSystem.download(str(cfg), cache)
+
+        if cfg is not None:
+            cfg = upgrade_config(cfg)
+
         instance = super().get_config(cfg, overrides)
-        if not isinstance(cfg, str):
-            return instance.smart_auto_populate()
-        fs = LuxonisFileSystem(cfg)
-        if fs.is_mlflow:
-            logger.info(
-                "Setting `project_id` and `run_id` to config's MLFlow run"
-            )
-            instance.tracker.project_id = fs.experiment_id
-            instance.tracker.run_id = fs.run_id
+        if isinstance(cfg, str):
+            fs = LuxonisFileSystem(cfg)
+            if fs.is_mlflow:
+                logger.info(
+                    "Setting `project_id` and `run_id` to config's MLFlow run"
+                )
+                instance.tracker.project_id = fs.experiment_id
+                instance.tracker.run_id = fs.run_id
 
         if instance.trainer.smart_cfg_auto_populate:
             return instance.smart_auto_populate()

@@ -44,6 +44,7 @@ def test_splits(
     model = LuxonisModel(cfg, opts)
 
     for key, exp_len in expected.items():
+        assert len(model.loaders[key]) == exp_len
         assert len(model.pytorch_loaders[key]) == exp_len
 
 
@@ -65,5 +66,5 @@ def test_debug_loader(opts: Params):
         "loader.params.dataset_name": "invalid_dataset_name",
         "model.nodes.6.name": "ClassificationHead",
     }
-    model = LuxonisModel(config_file, opts, debug_mode=True)
+    model = LuxonisModel(config_file, opts, allow_empty_dataset=True)
     model.train()

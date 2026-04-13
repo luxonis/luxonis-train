@@ -13,13 +13,13 @@ from cyclopts import App, Group, Parameter, validators
 from loguru import logger
 from luxonis_ml.typing import Params, PathType
 
-from luxonis_train.config import Config
 from luxonis_train.upgrade import upgrade_config, upgrade_installation
 
 if TYPE_CHECKING:
     import numpy as np
 
     from luxonis_train import LuxonisModel
+
 
 app = App(
     help="Luxonis Train CLI",
@@ -42,43 +42,18 @@ def create_model(
     config: PathType | Params | None,
     opts: list[str] | None = None,
     weights: PathType | None = None,
-    debug_mode: bool = False,
-    load_dataset_metadata: bool = True,
+    allow_empty_dataset: bool = False,
 ) -> "LuxonisModel":
     importlib.reload(sys.modules["luxonis_train"])
-    import torch
 
     from luxonis_train import LuxonisModel
-    from luxonis_train.utils.dataset_metadata import DatasetMetadata
 
-    if weights is not None and config is None:
-        ckpt = torch.load(weights, map_location="cpu")  # nosemgre
-        if "config" not in ckpt:  # pragma: no cover
-            raise ValueError(
-                f"Checkpoint '{weights}' does not contain the 'config' key. "
-                "Cannot restore `LuxonisModel` from checkpoint."
-            )
-        cfg = Config.get_config(upgrade_config(ckpt["config"]), opts)
-        dataset_metadata = None
-        if load_dataset_metadata:
-            if "dataset_metadata" not in ckpt:
-                logger.error("Checkpoint does not contain dataset metadata.")
-            else:
-                try:
-                    dataset_metadata = DatasetMetadata(
-                        **ckpt["dataset_metadata"]
-                    )
-                except Exception as e:  # pragma: no cover
-                    logger.error(
-                        "Failed to load dataset metadata from the checkpoint. "
-                        f"Error: {e}"
-                    )
-
-        return LuxonisModel(
-            cfg, debug_mode=debug_mode, dataset_metadata=dataset_metadata
-        )
-
-    return LuxonisModel(config, opts, debug_mode=debug_mode)
+    return LuxonisModel(
+        config,
+        opts,
+        weights=weights,
+        allow_empty_dataset=allow_empty_dataset,
+    )
 
 
 @app.command(group=training_group, sort_key=1)
@@ -103,21 +78,36 @@ def train(
         suppresses some exceptions to allow training without a fully
         defined model.
     """
-    create_model(config, opts, weights, debug_mode=debug).train(
-        weights=weights
-    )
+    create_model(
+        config, opts, weights=weights, allow_empty_dataset=debug
+    ).train(weights=weights)
 
 
 @app.command(group=training_group, sort_key=2)
-def tune(opts: list[str] | None = None, /, *, config: str | None = None):
+def tune(
+    opts: list[str] | None = None,
+    /,
+    *,
+    config: str | None = None,
+    weights: str | None = None,
+    debug: bool = False,
+):
     """Start hyperparameter tuning.
 
     @type config: str
     @param config: Path to the configuration file.
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
+    @type weights: str
+    @param weights: Path to the model weights.
+    @type debug: bool
+    @param debug: If True, the tuning will run in debug mode which
+        suppresses some exceptions to allow tuning without a fully
+        defined model.
     """
-    create_model(config, opts).tune()
+    create_model(
+        config, opts, weights=weights, allow_empty_dataset=debug
+    ).tune()
 
 
 def _yield_visualizations(
@@ -265,9 +255,9 @@ def test(
         suppresses some exceptions to allow training without a fully
         defined model.
     """
-    create_model(config, opts, weights, debug_mode=debug).test(
-        view=view, weights=weights
-    )
+    create_model(
+        config, opts, weights=weights, allow_empty_dataset=debug
+    ).test(view=view, weights=weights)
 
 
 @app.command(group=evaluation_group, sort_key=2)
@@ -302,7 +292,9 @@ def infer(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    create_model(config, opts, weights=weights, debug_mode=True).infer(
+    create_model(
+        config, opts, weights=weights, allow_empty_dataset=True
+    ).infer(
         view=view,
         save_dir=save_dir,
         source_path=source_path,
@@ -323,7 +315,6 @@ def annotate(
     delete_local: bool = True,
     delete_remote: bool = True,
     team_id: str | None = None,
-    debug: bool = False,
 ):
     """Run annotation on a custom directory of images.
 
@@ -353,11 +344,7 @@ def annotate(
     @param opts: A list of optional CLI overrides of the config file.
     """
     model = create_model(
-        config,
-        opts,
-        weights=weights,
-        load_dataset_metadata=True,
-        debug_mode=debug,
+        config, opts, weights=weights, allow_empty_dataset=True
     )
 
     model.annotate(
@@ -400,9 +387,9 @@ def export(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the
     """
-    create_model(config, opts, weights=weights, debug_mode=True).export(
-        save_path=save_path, weights=weights, ckpt_only=ckpt_only
-    )
+    create_model(
+        config, opts, weights=weights, allow_empty_dataset=True
+    ).export(save_path=save_path, weights=weights, ckpt_only=ckpt_only)
 
 
 @app.command(group=export_group, sort_key=2)
@@ -426,9 +413,9 @@ def archive(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    create_model(str(config), opts, weights=weights).archive(
-        path=executable, weights=weights
-    )
+    create_model(
+        config, opts, weights=weights, allow_empty_dataset=True
+    ).archive(path=executable, weights=weights)
 
 
 @app.command(group=export_group, sort_key=3)
@@ -456,9 +443,9 @@ def convert(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
-    create_model(config, opts, weights=weights).convert(
-        weights=weights, save_dir=save_dir
-    )
+    create_model(
+        config, opts, weights=weights, allow_empty_dataset=True
+    ).convert(save_dir=save_dir, weights=weights)
 
 
 @upgrade_app.command()
@@ -518,11 +505,10 @@ def checkpoint(
     @param new: Where to save the upgraded checkpoint. If left empty,
         the old file will be overriden.
     """
+    from luxonis_train import LuxonisModel
+
     logger.info("Performing a full checkpoint upgrade.")
-    cfg = None
-    if config is not None:
-        cfg = upgrade_config(config)
-    model = create_model(config=cfg, weights=path, opts=opts, debug_mode=True)
+    model = LuxonisModel(config, opts, weights=path, allow_empty_dataset=True)
     model.lightning_module.load_checkpoint(path)
 
     # Needs to be called in order to attach the model to the trainer

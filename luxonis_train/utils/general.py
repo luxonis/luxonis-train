@@ -153,7 +153,7 @@ def get_with_default(
 
 
 def safe_download(
-    url: str,
+    url: PathType | None,
     file: str | None = None,
     dir: PathType = ".cache/luxonis_train",
     retry: int = 3,
@@ -162,8 +162,9 @@ def safe_download(
     """Downloads file from the web and returns either local path or None
     if downloading failed.
 
-    @type url: str
-    @param url: URL of the file you want to download.
+    @type url: str | None
+    @param url: URL of the file you want to download. If None, returns
+        None.
     @type file: str | None
     @param file: Name of the saved file, if None infers it from URL.
         Defaults to None.
@@ -178,6 +179,10 @@ def safe_download(
     @rtype: Path | None
     @return: Path to local file or None if downloading failed.
     """
+    if url is None or isinstance(url, Path):
+        return url
+    if LuxonisFileSystem.get_protocol(url) == "file":
+        return Path(url)
     dir = Path(dir) / __version__
     dir.mkdir(parents=True, exist_ok=True)
     f = dir / (file or url2file(url))

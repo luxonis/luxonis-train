@@ -66,8 +66,9 @@ def test_weights_loading(cifar10_dataset: LuxonisDataset, opts: Params):
 
     model = LuxonisModel(config_file, opts)
     test_results = model.test()
-    weights = model.get_min_loss_checkpoint_path()
-    assert test_results == model.test(weights=weights)
+    assert test_results == model.test(
+        weights={"state_dict": model.lightning_module.state_dict()}
+    )
 
 
 def test_checkpoint(
