@@ -306,7 +306,25 @@ class LuxonisModel:
             )
 
         if dataset_metadata is not None:
-            self.dataset_metadata = dataset_metadata
+            if isinstance(self.loaders["train"], DummyLoader) and set(
+                self.cfg.loader.params.keys()
+            ).intersection(
+                {
+                    "class_names",
+                    "n_classes",
+                    "n_keypoints",
+                }
+            ):
+                logger.warning(
+                    "Dataset metadata from the checkpoint are "
+                    "overriden by extra loader parameters. "
+                    "The checkpoint metadata will not be used."
+                )
+                self.dataset_metadata = DatasetMetadata.from_loader(
+                    self.loaders["train"]
+                )
+            else:
+                self.dataset_metadata = dataset_metadata
         else:
             self.dataset_metadata = DatasetMetadata.from_loader(
                 self.loaders["train"]
