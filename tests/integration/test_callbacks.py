@@ -63,7 +63,10 @@ def test_callbacks(coco_dataset: LuxonisDataset, opts: Params, save_dir: Path):
             "batch_norm_reestimation": True,
             "cross_layer_equalization": True,
         },
-        "exporter.aimet.adaround.active": True,
+        "exporter.aimet.adaround": {
+            "active": True,
+            "default_num_iterations": 1,
+        },
         "loader.params.dataset_name": coco_dataset.identifier,
     }
     model = LuxonisModel(config_file, opts, debug_mode=True)
