@@ -97,7 +97,7 @@ class LuxonisLightningModule(pl.LightningModule):
     _trainer: pl.Trainer
     logger: LuxonisTrackerPL
 
-    __call__: Callable[..., LuxonisOutput]
+    __call__: Callable[..., tuple[Tensor, ...]]
 
     def __init__(
         self,
@@ -397,7 +397,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def training_step(
-        self, train_batch: tuple[dict[str, Tensor], Labels]
+        self, train_batch: tuple[dict[str, Tensor] | Tensor, Labels]
     ) -> Tensor:
         outputs = self.full_forward(*train_batch)
         if not outputs.losses:
@@ -409,22 +409,25 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def validation_step(
-        self, val_batch: tuple[dict[str, Tensor], Labels]
+        self, val_batch: tuple[dict[str, Tensor] | Tensor, Labels]
     ) -> dict[str, Tensor]:
         return self._evaluation_step("val", *val_batch)
 
     @override
     def test_step(
-        self, test_batch: tuple[dict[str, Tensor], Labels]
+        self, test_batch: tuple[dict[str, Tensor] | Tensor, Labels]
     ) -> dict[str, Tensor]:
         return self._evaluation_step("test", *test_batch)
 
     @override
     def predict_step(
-        self, batch: tuple[dict[str, Tensor], Labels]
+        self, batch: tuple[dict[str, Tensor] | Tensor, Labels]
     ) -> LuxonisOutput:
         inputs, labels = batch
-        images = get_denormalized_images(self.cfg, inputs[self.image_source])
+        images = get_denormalized_images(
+            self.cfg,
+            inputs[self.image_source] if isinstance(inputs, dict) else inputs,
+        )
         return self.full_forward(
             inputs,
             labels,
