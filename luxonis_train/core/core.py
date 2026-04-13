@@ -290,7 +290,7 @@ class LuxonisModel:
     def save_checkpoint(
         self,
         path: PathType,
-        weights_only: bool | None = None,
+        weights_only: bool = False,
         storage_options: Any = None,
     ) -> Path:
         """Saves a checkpoint of the model.
@@ -309,7 +309,7 @@ class LuxonisModel:
         )
         return Path(path)
 
-    def get_checkpoint(self, weights_only: bool = True) -> dict[str, Any]:
+    def get_checkpoint(self, weights_only: bool = False) -> dict[str, Any]:
         """Gets the checkpoint of the model as a dictionary.
 
         @type weights_only: bool
@@ -419,7 +419,7 @@ class LuxonisModel:
         weights: PathType | None = None,
         ignore_missing_weights: bool = False,
         ckpt_only: bool = False,
-    ) -> None:
+    ) -> Path:
         """Runs export.
 
         @type save_path: PathType | None
@@ -447,17 +447,21 @@ class LuxonisModel:
             logger.warning(
                 "No model weights specified. Exporting model without weights."
             )
-
-        export_save_dir = (
-            Path(save_path)
-            if save_path is not None
-            else Path(self.run_save_dir, "export")
-        )
-        export_save_dir.mkdir(parents=True, exist_ok=True)
-
-        export_path = export_save_dir / (
-            self.cfg.exporter.name or self.cfg.model.name
-        )
+        if save_path is None:
+            export_path = (
+                self.run_save_dir
+                / "export"
+                / (self.cfg.exporter.name or self.cfg.model.name)
+            )
+        else:
+            save_path = Path(save_path)
+            if save_path.suffix:
+                export_path = save_path.with_suffix("")
+            else:
+                export_path = save_path / (
+                    self.cfg.exporter.name or self.cfg.model.name
+                )
+        export_path.parent.mkdir(parents=True, exist_ok=True)
 
         if ckpt_only:
             logger.info("Re-exporting the checkpoint file.")
@@ -472,7 +476,7 @@ class LuxonisModel:
                 logger.info(
                     f"Checkpoint saved to {export_path.with_suffix('.ckpt')}"
                 )
-            return
+            return export_path.with_suffix(".ckpt")
 
         with replace_weights(self.lightning_module, weights):
             onnx_kwargs = self.cfg.exporter.onnx.model_dump(
@@ -510,7 +514,7 @@ class LuxonisModel:
                 "Generating modelconverter config for a model "
                 "with multiple inputs is not implemented yet."
             )
-            return
+            return onnx_save_path
 
         inputs = []
         outputs = []
@@ -551,6 +555,8 @@ class LuxonisModel:
                 self.tracker.upload_artifact(f.name, name=f.name, typ="export")
             if self.cfg.exporter.upload_url is not None:  # pragma: no cover
                 LuxonisFileSystem.upload(f.name, self.cfg.exporter.upload_url)
+
+        return onnx_save_path
 
     @overload
     def test(
