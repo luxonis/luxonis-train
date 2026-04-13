@@ -3,7 +3,7 @@ from typing import Literal
 import torch
 import torch.nn.functional as F
 from loguru import logger
-from torch import Tensor, nn
+from torch import Tensor
 
 from luxonis_train.attached_modules.losses import AdaptiveDetectionLoss
 from luxonis_train.nodes import EfficientKeypointBBoxHead
@@ -72,9 +72,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
             **kwargs,
         )
 
-        self.b_cross_entropy = nn.BCEWithLogitsLoss(
-            pos_weight=torch.tensor([viz_pw])
-        )
+        self.pos_weight = torch.tensor([viz_pw])
         self.sigmas = get_sigmas(
             sigmas=sigmas, n_keypoints=self.n_keypoints, caller_name=self.name
         )
@@ -129,7 +127,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         scaled_raw_keypoints = keypoints_raw.clone()
         scaled_raw_keypoints[..., :2] = scaled_raw_keypoints[
             ..., :2
-        ] * self.stride_tensor.view(1, -1, 1, 1)
+        ] * self.stride_tensor.clone().view(1, -1, 1, 1)
 
         sigmas = self.sigmas.to(device)
 
@@ -195,8 +193,11 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         regression_loss = (
             ((1 - torch.exp(-e)) * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-9)
         ).mean()
-        visibility_loss = self.b_cross_entropy.forward(
-            keypoints_raw[..., 2], mask
+
+        visibility_loss = F.binary_cross_entropy_with_logits(
+            keypoints_raw[..., 2],
+            mask,
+            pos_weight=self.pos_weight.clone().to(device),
         )
 
         one_hot_label = F.one_hot(assigned_labels.long(), self.n_classes + 1)[

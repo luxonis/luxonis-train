@@ -16,6 +16,7 @@ from luxonis_ml.utils.registry import Registry
 from torch import Size, Tensor, nn
 from torch.optim.lr_scheduler import LRScheduler, SequentialLR
 from torch.optim.optimizer import Optimizer
+from typing_extensions import override
 
 import luxonis_train as lxt
 from luxonis_train.attached_modules import BaseLoss, BaseMetric, BaseVisualizer
@@ -93,6 +94,17 @@ class NodeWrapper(nn.Module):
     @property
     def task_name(self) -> str:
         return self.module.task_name
+
+    @override
+    def train(self, mode: bool = True) -> "NodeWrapper":
+        self.module.train(mode)
+        for loss in self.losses.values():
+            loss.train(mode)
+        for metric in self.metrics.values():
+            metric.train(mode)
+        for visualizer in self.visualizers.values():
+            visualizer.train(mode)
+        return self
 
 
 class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):

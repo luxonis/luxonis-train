@@ -337,6 +337,13 @@ class LuxonisLightningModule(pl.LightningModule):
             outputs=outputs_dict, losses=losses, visualizations=visualizations
         )
 
+    @override
+    def train(self, mode: bool = True) -> Self:
+        super().train(mode)
+        for node in self.nodes.values():
+            node.train(mode)
+        return self
+
     def set_export_mode(self, mode: bool) -> Self:
         for module in self.modules():
             if isinstance(module, BaseNode):
