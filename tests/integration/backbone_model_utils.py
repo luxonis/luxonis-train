@@ -76,5 +76,7 @@ def prepare_predefined_model_config(
         }
     elif "ocr_recognition" in config_file:
         opts["trainer.preprocessing.train_image_size"] = [48, 320]
+    elif "instance_segmentation" in config_name:
+        opts |= {"exporter.aimet.batch_norm_reestimation": False}
 
     return config_file, opts, dataset

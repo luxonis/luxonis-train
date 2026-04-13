@@ -121,10 +121,12 @@ def post_training_quantization(
     )
     if sequential_mse:
         logger.info("Applying sequential MSE")
+
         apply_seq_mse(
             sim,
-            data_loader=(imgs for imgs, _ in val_loader),  # type: ignore
+            data_loader=val_loader,
             num_candidates=20,
+            forward_fn=_patched_forward_pass,
         )
 
     if adaround:
@@ -169,12 +171,9 @@ def quantization_aware_training(
     if batch_norm_reestimation:
         logger.info("Reestimating batch norm statistics")
 
-        def _forward_pass(
-            model: nn.Module, inputs: LuxonisLoaderTorchOutput
-        ) -> Any:
-            return model(inputs[0])
-
-        reestimate_bn_stats(model, train_loader, forward_fn=_forward_pass)
+        reestimate_bn_stats(
+            model, train_loader, forward_fn=_patched_forward_pass
+        )
 
         if fold_batch_norms:
             logger.info("Folding batch norms into preceding layers")
@@ -186,3 +185,9 @@ def quantization_aware_training(
 
     model.automatic_optimization = True
     return model
+
+
+def _patched_forward_pass(
+    model: nn.Module, inputs: LuxonisLoaderTorchOutput
+) -> Any:
+    return model(inputs[0])

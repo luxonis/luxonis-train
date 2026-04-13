@@ -65,6 +65,12 @@ def test_predefined_models(
             model.run_save_dir / "archive" / f"{config_name}.onnx.tar.xz"
         ).exists()
 
+    with subtests.test("quantize"):
+        save_dir = model.quantize()
+        assert (save_dir / f"{config_name}.encodings").exists()
+        assert (save_dir / f"{config_name}.onnx").exists()
+        assert (save_dir / f"{config_name}.onnx.data").exists()
+
     if config_name != "embeddings_model":
         with subtests.test("infer"):
             loader = LuxonisLoader(dataset)

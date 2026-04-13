@@ -51,6 +51,7 @@ class EmbeddingsVisualizer(BaseVisualizer):
         @return: An embedding space projection.
         """
         embeddings_np = predictions.detach().cpu().numpy()
+        embeddings_np[np.isnan(embeddings_np) | np.isinf(embeddings_np)] = 0.0
         ids_np = target.detach().cpu().numpy().astype(int)
 
         pca = PCA(n_components=2, random_state=42)
@@ -90,8 +91,9 @@ class EmbeddingsVisualizer(BaseVisualizer):
         plot_func: Callable[[plt.Axes, np.ndarray, np.ndarray], None],
     ) -> Tensor:
         fig, ax = plt.subplots(figsize=(10, 10))
-        ax.set_xlim(embeddings_2d[:, 0].min(), embeddings_2d[:, 0].max())
-        ax.set_ylim(embeddings_2d[:, 1].min(), embeddings_2d[:, 1].max())
+        if embeddings_2d.size > 0:
+            ax.set_xlim(embeddings_2d[:, 0].min(), embeddings_2d[:, 0].max())
+            ax.set_ylim(embeddings_2d[:, 1].min(), embeddings_2d[:, 1].max())
 
         plot_func(ax, embeddings_2d, ids_np)
         ax.axis("off")
