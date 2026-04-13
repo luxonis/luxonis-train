@@ -14,7 +14,7 @@ from luxonis_train.typing import Labels
 from .base_loader import BaseLoaderTorch
 
 
-class DebugLoader(BaseLoaderTorch):
+class DummyLoader(BaseLoaderTorch):
     """A dummy data loader for testing purposes.
 
     It serves as a placeholder in place of C{LuxonisLoaderTorch} when no
@@ -66,7 +66,7 @@ class DebugLoader(BaseLoaderTorch):
                 key: {str(i): i for i in range(n_classes)}
                 for key in self.labels
             }
-        self.class_names = class_names
+        self.class_names: dict[str, dict[str, int]] = class_names  # type: ignore
 
     @property
     @override
@@ -100,10 +100,7 @@ class DebugLoader(BaseLoaderTorch):
 
     @override
     def get_classes(self) -> dict[str, dict[str, int]]:
-        return {
-            task_name: {str(i): i for i in range(self.n_classes)}
-            for task_name in self.labels
-        }
+        return self.class_names
 
     @override
     def get_n_keypoints(self) -> dict[str, int] | None:

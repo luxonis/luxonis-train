@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from functools import lru_cache
 from importlib.metadata import version
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal, TypeAlias
 
 import yaml
 from cyclopts import App, Group, Parameter, validators
@@ -14,6 +14,10 @@ from loguru import logger
 from luxonis_ml.typing import Params, PathType
 
 from luxonis_train.upgrade import upgrade_config, upgrade_installation
+
+OptsType: TypeAlias = Annotated[
+    list[str] | None, Parameter(json_list=False, json_dict=False)
+]
 
 if TYPE_CHECKING:
     import numpy as np
@@ -58,7 +62,7 @@ def create_model(
 
 @app.command(group=training_group, sort_key=1)
 def train(
-    opts: list[str] | None = None,
+    opts: OptsType = None,
     /,
     *,
     config: str | None = None,
@@ -85,7 +89,7 @@ def train(
 
 @app.command(group=training_group, sort_key=2)
 def tune(
-    opts: list[str] | None = None,
+    opts: OptsType = None,
     /,
     *,
     config: str | None = None,
@@ -111,7 +115,7 @@ def tune(
 
 
 def _yield_visualizations(
-    opts: list[str] | None = None,
+    opts: OptsType = None,
     config: str | None = None,
     view: Literal["train", "val", "test"] = "train",
     size_multiplier: Annotated[
@@ -181,7 +185,7 @@ def _yield_visualizations(
 
 @app.command(group=training_group, sort_key=3)
 def inspect(
-    opts: list[str] | None = None,
+    opts: OptsType = None,
     /,
     *,
     config: str | None = None,
@@ -230,7 +234,7 @@ def inspect(
 
 @app.command(group=evaluation_group, sort_key=1)
 def test(
-    opts: list[str] | None = None,
+    opts: OptsType = None,
     /,
     *,
     config: str | None = None,
@@ -262,7 +266,7 @@ def test(
 
 @app.command(group=evaluation_group, sort_key=2)
 def infer(
-    opts: list[str] | None = None,
+    opts: OptsType = None,
     /,
     *,
     config: str | None = None,
@@ -304,7 +308,7 @@ def infer(
 
 @app.command(group=annotation_group, sort_key=0)
 def annotate(
-    opts: list[str] | None = None,
+    opts: OptsType = None,
     /,
     *,
     dir_path: Path,
@@ -360,7 +364,7 @@ def annotate(
 
 @app.command(group=export_group, sort_key=1)
 def export(
-    opts: list[str] | None = None,
+    opts: OptsType = None,
     /,
     *,
     config: str | None = None,
@@ -394,7 +398,7 @@ def export(
 
 @app.command(group=export_group, sort_key=2)
 def archive(
-    opts: list[str] | None = None,
+    opts: OptsType = None,
     /,
     *,
     config: str | None,
@@ -420,7 +424,7 @@ def archive(
 
 @app.command(group=export_group, sort_key=3)
 def convert(
-    opts: list[str] | None = None,
+    opts: OptsType = None,
     /,
     *,
     config: str | None = None,
@@ -487,7 +491,7 @@ def config(
 
 @upgrade_app.command(name=["checkpoint", "ckpt"])
 def checkpoint(
-    opts: list[str] | None = None,
+    opts: OptsType = None,
     /,
     *,
     path: Annotated[

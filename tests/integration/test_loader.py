@@ -60,7 +60,7 @@ def test_parsing(opts: Params):
     model.train()
 
 
-def test_debug_loader(opts: Params):
+def test_dummy_loader(opts: Params):
     config_file = "configs/complex_model.yaml"
     opts = opts | {
         "loader.params.dataset_name": "invalid_dataset_name",

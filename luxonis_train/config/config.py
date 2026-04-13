@@ -321,14 +321,15 @@ class LoaderConfig(ConfigItem):
     @field_serializer("params")
     def serialize_params(self, info: SerializationInfo) -> Any:
         data = self.params.copy()
-        if self.name == "DebugLoader":
+        if self.name == "DummyLoader":
             data.pop("n_classes", None)
             data.pop("n_keypoints", None)
+            data.pop("class_names", None)
         return data
 
     @field_serializer("name")
     def serialize_name(self, info: SerializationInfo) -> str:
-        if self.name == "DebugLoader":
+        if self.name == "DummyLoader":
             return "LuxonisLoaderTorch"
         return self.name
 
