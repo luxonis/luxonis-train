@@ -43,6 +43,7 @@ class EfficientNet(BaseNode):
                 "rwightman/gen-efficientnet-pytorch",
                 "efficientnet_lite0",
                 pretrained=weights == "download",
+                trust_repo=True,  # type: ignore
             ),
         )
         self.out_indices = out_indices or [0, 1, 2, 4, 6]

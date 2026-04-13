@@ -406,7 +406,7 @@ def opts(save_dir: Path, image_size: tuple[int, int]) -> Params:
         "tracker.save_directory": str(save_dir),
         "trainer.preprocessing.train_image_size": image_size,
         "exporter.aimet": {
-            "active": True,
+            "active": False,
             "epochs": 1,
             "fold_batch_norms": True,
             "batch_norm_reestimation": True,

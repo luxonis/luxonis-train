@@ -48,7 +48,9 @@ def test_predefined_models(
     tmp_path = tmp_path / config_name
     tmp_path.mkdir()
 
-    model = LuxonisModel(config_file, opts | extra_opts)
+    model = LuxonisModel(
+        config_file, opts | extra_opts | {"exporter.aimet.active": True}
+    )
 
     with subtests.test("train"):
         model.train()

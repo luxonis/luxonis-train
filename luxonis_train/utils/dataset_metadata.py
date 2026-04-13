@@ -103,7 +103,8 @@ class DatasetMetadata:
         if task_name is not None:
             if task_name not in self._classes:
                 raise ValueError(
-                    f"Task '{task_name}' is not present in the dataset."
+                    f"Task '{task_name}' is not present in the dataset. "
+                    f"Available tasks: {self.task_names}"
                 )
             return len(self._classes[task_name])
         n_classes = len(next(iter(self._classes.values())))
@@ -155,7 +156,8 @@ class DatasetMetadata:
         if task_name is not None:
             if task_name not in self._classes:
                 raise ValueError(
-                    f"Task '{task_name}' is not present in the dataset."
+                    f"Task '{task_name}' is not present in the dataset. "
+                    f"Available tasks: {self.task_names}"
                 )
             return bidict(self._classes[task_name])
         classes = next(iter(self._classes.values()))
