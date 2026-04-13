@@ -129,10 +129,6 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
     ):
         """TripleLRSGD strategy.
 
-        @type pl_module: pl.LightningModule
-        @param pl_module: The pl_module to be used.
-        @type params: dict
-        @param params: The parameters for the strategy. Those are:
             - lr: The learning rate.
             - momentum: The momentum.
             - weight_decay: The weight decay.
@@ -142,7 +138,13 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
             - warmup_momentum: The warmup momentum.
             - lre: The learning rate for the end of the training.
             - cosine_annealing: Whether to use cosine annealing.
-        """
+
+Parameters
+----------
+pl_module : pl.LightningModule
+    The pl_module to be used.
+params : dict
+    The parameters for the strategy. Those are:"""
         self.model = pl_module
         self.cfg = pl_module.cfg
 

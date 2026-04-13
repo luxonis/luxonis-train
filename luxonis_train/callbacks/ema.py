@@ -24,15 +24,16 @@ class ModelEma(nn.Module):
     ):
         """Constructs `ModelEma`.
 
-        @type model: L{pl.LightningModule}
-        @param model: Pytorch Lightning module.
-        @type decay: float
-        @param decay: Decay rate for the moving average.
-        @type use_dynamic_decay: bool
-        @param use_dynamic_decay: Use dynamic decay rate.
-        @type decay_tau: float
-        @param decay_tau: Decay tau for the moving average.
-        """
+Parameters
+----------
+model : ``pl.LightningModule``
+    Pytorch Lightning module.
+decay : float
+    Decay rate for the moving average.
+use_dynamic_decay : bool
+    Use dynamic decay rate.
+decay_tau : float
+    Decay tau for the moving average."""
         super().__init__()
         model.eval()
         self.state_dict_ema = deepcopy(model.state_dict())
@@ -52,9 +53,10 @@ class ModelEma(nn.Module):
 
         @license: U{Apache License 2.0<https://github.com/huggingface/pytorch-image-models/tree/main?tab=Apache-2.0-1-ov-file#readme>}
 
-        @type model: L{pl.LightningModule}
-        @param model: Pytorch Lightning module.
-        """
+Parameters
+----------
+model : ``pl.LightningModule``
+    Pytorch Lightning module."""
         with torch.no_grad():
             self.updates += 1
 
@@ -101,14 +103,16 @@ class EMACallback(pl.Callback):
     ):
         """Constructs `EMACallback`.
 
-        @type decay: float
-        @param decay: Decay rate for the moving average.
-        @type use_dynamic_decay: bool
-        @param use_dynamic_decay: Use dynamic decay rate. If True, the
             decay rate will be updated based on the number of updates.
-        @type decay_tau: float
-        @param decay_tau: Decay tau for the moving average.
-        """
+
+Parameters
+----------
+decay : float
+    Decay rate for the moving average.
+use_dynamic_decay : bool
+    Use dynamic decay rate. If True, the
+decay_tau : float
+    Decay tau for the moving average."""
         self.decay = decay
         self.use_dynamic_decay = use_dynamic_decay
         self.decay_tau = decay_tau
@@ -129,11 +133,12 @@ class EMACallback(pl.Callback):
         """Initialize `ModelEma` to keep a copy of the moving average of
         the weights.
 
-        @type trainer: L{pl.Trainer}
-        @param trainer: Pytorch Lightning trainer.
-        @type pl_module: L{pl.LightningModule}
-        @param pl_module: Pytorch Lightning module.
-        """
+Parameters
+----------
+trainer : ``pl.Trainer``
+    Pytorch Lightning trainer.
+pl_module : ``pl.LightningModule``
+    Pytorch Lightning module."""
         self._ema = ModelEma(
             pl_module,
             decay=self.decay,
@@ -161,17 +166,18 @@ class EMACallback(pl.Callback):
     ) -> None:
         """Update the stored parameters using a moving average.
 
-        @type trainer: L{pl.Trainer}
-        @param trainer: Pytorch Lightning trainer.
-        @type pl_module: L{pl.LightningModule}
-        @param pl_module: Pytorch Lightning module.
-        @type outputs: Any
-        @param outputs: Outputs from the training step.
-        @type batch: Any
-        @param batch: Batch data.
-        @type batch_idx: int
-        @param batch_idx: Batch index.
-        """
+Parameters
+----------
+trainer : ``pl.Trainer``
+    Pytorch Lightning trainer.
+pl_module : ``pl.LightningModule``
+    Pytorch Lightning module.
+outputs : Any
+    Outputs from the training step.
+batch : Any
+    Batch data.
+batch_idx : int
+    Batch index."""
         if (
             self._ema is not None
             and batch_idx % trainer.accumulate_grad_batches == 0
@@ -184,11 +190,12 @@ class EMACallback(pl.Callback):
         """Swap the model's weights to the EMA weights at the start of
         validation.
 
-        @type trainer: L{pl.Trainer}
-        @param trainer: Pytorch Lightning trainer.
-        @type pl_module: L{pl.LightningModule}
-        @param pl_module: Pytorch Lightning module.
-        """
+Parameters
+----------
+trainer : ``pl.Trainer``
+    Pytorch Lightning trainer.
+pl_module : ``pl.LightningModule``
+    Pytorch Lightning module."""
         self._swap_to_ema_weights(pl_module)
 
     def on_validation_end(
@@ -196,11 +203,12 @@ class EMACallback(pl.Callback):
     ) -> None:
         """Restore the original model weights after validation.
 
-        @type trainer: L{pl.Trainer}
-        @param trainer: Pytorch Lightning trainer.
-        @type pl_module: L{pl.LightningModule}
-        @param pl_module: Pytorch Lightning module.
-        """
+Parameters
+----------
+trainer : ``pl.Trainer``
+    Pytorch Lightning trainer.
+pl_module : ``pl.LightningModule``
+    Pytorch Lightning module."""
         self._restore_original_weights(pl_module)
 
     def on_test_epoch_start(
@@ -209,11 +217,12 @@ class EMACallback(pl.Callback):
         """Swap the model's weights to the EMA weights at the start of
         testing.
 
-        @type trainer: L{pl.Trainer}
-        @param trainer: Pytorch Lightning trainer.
-        @type pl_module: L{pl.LightningModule}
-        @param pl_module: Pytorch Lightning module.
-        """
+Parameters
+----------
+trainer : ``pl.Trainer``
+    Pytorch Lightning trainer.
+pl_module : ``pl.LightningModule``
+    Pytorch Lightning module."""
         self._swap_to_ema_weights(pl_module)
 
     def on_test_end(
@@ -221,11 +230,12 @@ class EMACallback(pl.Callback):
     ) -> None:
         """Restore the original model weights after testing.
 
-        @type trainer: L{pl.Trainer}
-        @param trainer: Pytorch Lightning trainer.
-        @type pl_module: L{pl.LightningModule}
-        @param pl_module: Pytorch Lightning module.
-        """
+Parameters
+----------
+trainer : ``pl.Trainer``
+    Pytorch Lightning trainer.
+pl_module : ``pl.LightningModule``
+    Pytorch Lightning module."""
         self._restore_original_weights(pl_module)
 
     def on_train_end(
@@ -236,11 +246,13 @@ class EMACallback(pl.Callback):
 
         This final update ensures that the trained model uses the EMA
         weights.
-        @type trainer: L{pl.Trainer}
-        @param trainer: Pytorch Lightning trainer.
-        @type pl_module: L{pl.LightningModule}
-        @param pl_module: Pytorch Lightning module.
-        """
+
+Parameters
+----------
+trainer : ``pl.Trainer``
+    Pytorch Lightning trainer.
+pl_module : ``pl.LightningModule``
+    Pytorch Lightning module."""
         self._swap_to_ema_weights(pl_module)
 
     def on_save_checkpoint(
@@ -251,13 +263,14 @@ class EMACallback(pl.Callback):
     ) -> None:  # or dict?
         """Save the EMA state dictionary into the checkpoint.
 
-        @type trainer: L{pl.Trainer}
-        @param trainer: Pytorch Lightning trainer.
-        @type pl_module: L{pl.LightningModule}
-        @param pl_module: Pytorch Lightning module.
-        @type checkpoint: dict
-        @param checkpoint: Pytorch Lightning checkpoint.
-        """
+Parameters
+----------
+trainer : ``pl.Trainer``
+    Pytorch Lightning trainer.
+pl_module : ``pl.LightningModule``
+    Pytorch Lightning module.
+checkpoint : dict
+    Pytorch Lightning checkpoint."""
         if self._ema is not None:
             checkpoint["state_dict"] = self._ema.state_dict_ema
 
@@ -269,9 +282,10 @@ class EMACallback(pl.Callback):
     ) -> None:
         """Load the EMA state dictionary from the checkpoint.
 
-        @type callback_state: dict
-        @param callback_state: Pytorch Lightning callback state.
-        """
+Parameters
+----------
+callback_state : dict
+    Pytorch Lightning callback state."""
         if callback_state and "state_dict" in callback_state:
             self.loaded_ema_state_dict = callback_state["state_dict"]
 

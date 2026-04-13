@@ -47,16 +47,18 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         This includes the stage name, loss value, and tables with
         metrics.
 
-        @type stage: str
-        @param stage: Stage name.
-        @type loss: float
-        @param loss: Loss value.
-        @type metrics: Mapping[str, Mapping[str, int | str | float]]
-        @param metrics: Metrics in format {table_name: table}.
-        @type matrices: Mapping[str, Mapping[str, Mapping[str, Any]]]
-        @param matrices: Matrices in format {table_name: {name:
             matrix}}.
-        """
+
+Parameters
+----------
+stage : str
+    Stage name.
+loss : float
+    Loss value.
+metrics : Mapping[str, Mapping[str, int | str | float]]
+    Metrics in format {table_name: table}.
+matrices : Mapping[str, Mapping[str, Mapping[str, Any]]]
+    Matrices in format {table_name: {name:"""
         ...
 
     def _log_progress(self, trainer: pl.Trainer) -> None:
@@ -159,16 +161,18 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
     ) -> None:
         """Prints table to the console using tabulate.
 
-        @type title: str
-        @param title: Title of the table
-        @type table: Mapping[str, int | str | float]
-        @param table: Table to print
-        @type key_name: str
-        @param key_name: Name of the key column. Defaults to C{"Name"}.
-        @type value_name: str
-        @param value_name: Name of the value column. Defaults to
             C{"Value"}.
-        """
+
+Parameters
+----------
+title : str
+    Title of the table
+table : Mapping[str, int | str | float]
+    Table to print
+key_name : str
+    Name of the key column. Defaults to ``"Name"``.
+value_name : str
+    Name of the value column. Defaults to"""
         self._rule(title)
         formatted = tabulate(
             table.items(),
@@ -303,19 +307,21 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
     ) -> None:
         """Prints table to the console using rich text.
 
-        @type title: str
-        @param title: Title of the table
-        @type table: Mapping[str, int | str | float]
-        @param table: Table to print
-        @type key_name: str
-        @param key_name: Name of the key column. Defaults to C{"Name"}.
-        @type value_name: str
-        @param value_name: Name of the value column. Defaults to
             C{"Value"}.
-        @param console: Console instance to use, if None use default
             console. Defaults to None.
-        @type console: Console | None
-        """
+
+Parameters
+----------
+title : str
+    Title of the table
+table : Mapping[str, int | str | float]
+    Table to print
+key_name : str
+    Name of the key column. Defaults to ``"Name"``.
+value_name : str
+    Name of the value column. Defaults to
+console : Console | None, optional
+    Console instance to use, if None use default"""
         console = console or self.console
         rich_table = Table(
             title=title,

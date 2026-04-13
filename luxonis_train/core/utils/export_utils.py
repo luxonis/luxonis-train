@@ -149,23 +149,28 @@ def hubai_export(
     variant will be created under that model. Otherwise, a new model
     will be created.
 
-    @type cfg: HubAIExportConfig
-    @param cfg: HubAI export configuration containing platform and
         params.
-    @type quantization_mode: str
-    @param quantization_mode: Quantization mode for model conversion.
-    @type archive_path: PathType
-    @param archive_path: Path to the ONNX NNArchive to convert.
-    @type export_path: PathType
-    @param export_path: Directory where the converted archive will be
         saved.
-    @type model_name: str
-    @param model_name: Name for the model on HubAI.
-    @type dataset_name: str | None
-    @param dataset_name: Name of the dataset the model was trained on.
-    @rtype: Path
-    @return: Path to the converted platform-specific NNArchive.
-    """
+
+Parameters
+----------
+cfg : HubAIExportConfig
+    HubAI export configuration containing platform and
+quantization_mode : str
+    Quantization mode for model conversion.
+archive_path : PathType
+    Path to the ONNX NNArchive to convert.
+export_path : PathType
+    Directory where the converted archive will be
+model_name : str
+    Name for the model on HubAI.
+dataset_name : str | None, optional
+    Name of the dataset the model was trained on.
+
+Returns
+-------
+Path
+    Path to the converted platform-specific NNArchive."""
     from hubai_sdk import HubAIClient
 
     hubai_token = os.environ.get("HUBAI_API_KEY")
@@ -275,9 +280,10 @@ def make_initializers_unique(onnx_path: PathType) -> None:
     """Each initializer that is used by multiple nodes gets duplicated
     so each node has its own copy.
 
-    @type onnx_path: PathType
-    @param onnx_path: Path to the ONNX model file to modify.
-    """
+Parameters
+----------
+onnx_path : PathType
+    Path to the ONNX model file to modify."""
     import copy
     from collections import defaultdict
 

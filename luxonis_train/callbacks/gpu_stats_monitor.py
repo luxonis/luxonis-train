@@ -63,20 +63,25 @@ class GPUStatsMonitor(pl.Callback):
             - C{temperature.gpu} - Core GPU temperature, in degrees C.
             - C{temperature.memory} - HBM memory temperature, in degrees C.
 
-        @type memory_utilization: bool
-        @param memory_utilization: Set to C{True} to monitor used, free and percentage of memory utilization at the start and end of each step. Defaults to C{True}.
-        @type gpu_utilization: bool
-        @param gpu_utilization: Set to C{True} to monitor percentage of GPU utilization at the start and end of each step. Defaults to C{True}.
-        @type intra_step_time: bool
-        @param intra_step_time: Set to C{True} to monitor the time of each step. Defaults to {False}.
-        @type inter_step_time: bool
-        @param inter_step_time: Set to C{True} to monitor the time between the end of one step and the start of the next step. Defaults to C{False}.
-        @type fan_speed: bool
-        @param fan_speed: Set to C{True} to monitor percentage of fan speed. Defaults to C{False}.
-        @type temperature: bool
-        @param temperature: Set to C{True} to monitor the memory and gpu temperature in degree Celsius. Defaults to C{False}.
-        @raises MisconfigurationException: If NVIDIA driver is not installed, not running on GPUs, or C{Trainer} has no logger.
-        """
+Parameters
+----------
+memory_utilization : bool
+    Set to ``True`` to monitor used, free and percentage of memory utilization at the start and end of each step. Defaults to ``True``.
+gpu_utilization : bool
+    Set to ``True`` to monitor percentage of GPU utilization at the start and end of each step. Defaults to ``True``.
+intra_step_time : bool
+    Set to ``True`` to monitor the time of each step. Defaults to {False}.
+inter_step_time : bool
+    Set to ``True`` to monitor the time between the end of one step and the start of the next step. Defaults to ``False``.
+fan_speed : bool
+    Set to ``True`` to monitor percentage of fan speed. Defaults to ``False``.
+temperature : bool
+    Set to ``True`` to monitor the memory and gpu temperature in degree Celsius. Defaults to ``False``.
+
+Raises
+------
+MisconfigurationException
+    If NVIDIA driver is not installed, not running on GPUs, or ``Trainer`` has no logger."""
         super().__init__()
 
         if shutil.which("nvidia-smi") is None:

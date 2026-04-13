@@ -15,9 +15,10 @@ class MetadataLogger(pl.Callback):
         hashes of luxonis-ml and luxonis-train packages. Also stores
         this information locally.
 
-        @type hyperparams: list[str]
-        @param hyperparams: List of hyperparameters to log.
-        """
+Parameters
+----------
+hyperparams : list[str]
+    List of hyperparameters to log."""
         super().__init__()
         self.hyperparams = hyperparams
 

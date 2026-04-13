@@ -17,9 +17,10 @@ class ArchiveMetadataDict(TypedDict):
 def get_inputs(path: Path) -> dict[str, ArchiveMetadataDict]:
     """Get inputs of a model executable.
 
-    @type path: Path
-    @param path: Path to model executable file.
-    """
+Parameters
+----------
+path : Path
+    Path to model executable file."""
     if path.suffix == ".onnx":
         return _get_onnx_inputs(path)
     raise NotImplementedError(
@@ -30,9 +31,10 @@ def get_inputs(path: Path) -> dict[str, ArchiveMetadataDict]:
 def get_outputs(path: Path) -> dict[str, ArchiveMetadataDict]:
     """Get outputs of a model executable.
 
-    @type path: Path
-    @param path: Path to model executable file.
-    """
+Parameters
+----------
+path : Path
+    Path to model executable file."""
     if path.suffix == ".onnx":
         return _get_onnx_outputs(path)
     raise NotImplementedError(
@@ -93,14 +95,19 @@ def _get_onnx_inputs(onnx_path: Path) -> dict[str, ArchiveMetadataDict]:
 def _get_head_outputs(outputs: list[dict], head_name: str) -> list[str]:
     """Get model outputs in a head-specific format.
 
-    @type outputs: list[dict]
-    @param outputs: List of NN Archive outputs.
-    @type head_name: str
-    @param head_name: Type of the head (e.g. 'EfficientBBoxHead') or its
         custom alias.
-    @rtype: list[str]
-    @return: List of output names.
-    """
+
+Parameters
+----------
+outputs : list[dict]
+    List of NN Archive outputs.
+head_name : str
+    Type of the head (e.g. 'EfficientBBoxHead') or its
+
+Returns
+-------
+list[str]
+    List of output names."""
     output_names = []
     for output in outputs:
         try:
@@ -118,13 +125,17 @@ def get_head_configs(
 ) -> list[dict]:
     """Get model heads.
 
-    @type lightning_module: LuxonisLightningModule
-    @param lightning_module: Lightning module.
-    @type outputs: list[dict]
-    @param outputs: List of NN Archive outputs.
-    @rtype: list[dict]
-    @return: List of head configurations.
-    """
+Parameters
+----------
+lightning_module : LuxonisLightningModule
+    Lightning module.
+outputs : list[dict]
+    List of NN Archive outputs.
+
+Returns
+-------
+list[dict]
+    List of head configurations."""
     head_configs = []
     head_names = set()
 
