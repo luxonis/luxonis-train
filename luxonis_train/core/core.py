@@ -361,6 +361,7 @@ class LuxonisModel:
         @param storage_options: parameter for how to save to storage, passed to `CheckpointIO` plugin
         @rtype: Path
         @return: Path to the saved checkpoint.
+        @raises AttributeError: If the module is not attached to the trainer yet. This can happen if you try to save a checkpoint before training / evaluating the model first.
         """
         self.pl_trainer.save_checkpoint(
             path, weights_only=weights_only, storage_options=storage_options
@@ -374,6 +375,7 @@ class LuxonisModel:
         @param weights_only: If `True`, will only include the model weights in the checkpoint.
         @rtype: dict[str, Any]
         @return: Checkpoint of the model as a dictionary.
+        @raises AttributeError: If the module is not attached to the trainer yet. This can happen if you try to save a checkpoint before training / evaluating the model first.
         """
 
         with tempfile.NamedTemporaryFile(suffix=".ckpt", delete=False) as tmp:
