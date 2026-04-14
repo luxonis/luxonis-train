@@ -5,6 +5,7 @@ from typing import Any
 import lightning.pytorch as pl
 import torch
 from lightning.pytorch.utilities.types import STEP_OUTPUT
+from loguru import logger
 from torch import nn
 
 
@@ -65,13 +66,13 @@ class ModelEma(nn.Module):
             else:
                 decay = self.decay
 
+            model_state_dict = model.state_dict()
             ema_lerp_values = []
             model_lerp_values = []
-            for ema_v, model_v in zip(
-                self.state_dict_ema.values(),
-                model.state_dict().values(),
-                strict=True,
-            ):
+            for key, ema_v in self.state_dict_ema.items():
+                model_v = model_state_dict.get(key)
+                if model_v is None:
+                    continue
                 if ema_v.is_floating_point():
                     ema_lerp_values.append(ema_v)
                     model_lerp_values.append(model_v)
@@ -115,7 +116,12 @@ class EMACallback(pl.Callback):
 
         self._ema = None
         self.loaded_ema_state_dict = None
+        self.loaded_ema_updates = None
         self.collected_state_dict = None
+
+    @staticmethod
+    def _format_key_list(keys: set[str]) -> str:
+        return ", ".join(sorted(keys)) if keys else "<none>"
 
     @property
     def ema(self) -> ModelEma:
@@ -144,12 +150,48 @@ class EMACallback(pl.Callback):
             target_device = next(
                 iter(self._ema.state_dict_ema.values())
             ).device
-            self.loaded_ema_state_dict = {
-                k: v.to(target_device)
-                for k, v in self.loaded_ema_state_dict.items()
+            current_state_dict = self._ema.state_dict_ema
+            current_keys = set(current_state_dict)
+            loaded_keys = set(self.loaded_ema_state_dict)
+            missing_in_checkpoint = current_keys - loaded_keys
+            extra_in_checkpoint = loaded_keys - current_keys
+            incompatible_shapes = {
+                key
+                for key in current_keys & loaded_keys
+                if current_state_dict[key].shape
+                != self.loaded_ema_state_dict[key].shape
             }
-            self._ema.state_dict_ema = self.loaded_ema_state_dict
+
+            if missing_in_checkpoint:
+                logger.warning(
+                    "EMA checkpoint is missing keys present in the current model. "
+                    "Keeping freshly initialized EMA values for: "
+                    f"{self._format_key_list(missing_in_checkpoint)}"
+                )
+            if extra_in_checkpoint:
+                logger.warning(
+                    "EMA checkpoint contains keys not present in the current model. "
+                    "Ignoring: "
+                    f"{self._format_key_list(extra_in_checkpoint)}"
+                )
+            if incompatible_shapes:
+                logger.warning(
+                    "EMA checkpoint contains keys with incompatible shapes. "
+                    "Ignoring: "
+                    f"{self._format_key_list(incompatible_shapes)}"
+                )
+
+            for key, value in self.loaded_ema_state_dict.items():
+                if (
+                    key in current_state_dict
+                    and key not in incompatible_shapes
+                ):
+                    current_state_dict[key] = value.to(target_device)
+            self._ema.state_dict_ema = current_state_dict
+            if self.loaded_ema_updates is not None:
+                self._ema.updates = self.loaded_ema_updates
             self.loaded_ema_state_dict = None
+            self.loaded_ema_updates = None
 
     def on_train_batch_end(
         self,
@@ -248,7 +290,7 @@ class EMACallback(pl.Callback):
         trainer: pl.Trainer,
         pl_module: pl.LightningModule,
         checkpoint: dict,
-    ) -> None:  # or dict?
+    ) -> dict[str, Any] | None:
         """Save the EMA state dictionary into the checkpoint.
 
         @type trainer: L{pl.Trainer}
@@ -260,6 +302,11 @@ class EMACallback(pl.Callback):
         """
         if self._ema is not None:
             checkpoint["state_dict"] = self._ema.state_dict_ema
+            return {
+                "ema_state_dict": self._ema.state_dict_ema,
+                "updates": self._ema.updates,
+            }
+        return None
 
     def on_load_checkpoint(
         self,
@@ -272,8 +319,13 @@ class EMACallback(pl.Callback):
         @type callback_state: dict
         @param callback_state: Pytorch Lightning callback state.
         """
-        if callback_state and "state_dict" in callback_state:
-            self.loaded_ema_state_dict = callback_state["state_dict"]
+        if callback_state:
+            self.loaded_ema_state_dict = callback_state.get(
+                "ema_state_dict", callback_state.get("state_dict")
+            )
+            updates = callback_state.get("updates")
+            if isinstance(updates, int):
+                self.loaded_ema_updates = updates
 
     def _swap_to_ema_weights(self, pl_module: pl.LightningModule) -> None:
         """Swap the current model weights with the EMA weights.
