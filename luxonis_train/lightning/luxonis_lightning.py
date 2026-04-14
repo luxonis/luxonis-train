@@ -1,4 +1,3 @@
-import re
 from collections import defaultdict
 from collections.abc import Callable, Mapping
 from pathlib import Path
@@ -26,6 +25,7 @@ from luxonis_train.config import Config
 from luxonis_train.nodes import BaseNode
 from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
+from luxonis_train.utils.checkpoint import filter_checkpoint_state_dict
 
 from .luxonis_output import LuxonisOutput
 from .utils import (
@@ -537,14 +537,9 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
-        pattern = re.compile(
-            r"^nodes\.[^.]+\.(metrics|visualizers|losses)\..*_node\..*"
+        checkpoint["state_dict"] = filter_checkpoint_state_dict(
+            checkpoint["state_dict"]
         )
-        checkpoint["state_dict"] = {
-            k: v
-            for k, v in checkpoint["state_dict"].items()
-            if not pattern.match(k)
-        }
         checkpoint |= {
             "version": luxonis_train.__version__,
             "execution_order": get_model_execution_order(self),

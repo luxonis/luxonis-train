@@ -1,5 +1,4 @@
 import math
-import re
 from copy import deepcopy
 from typing import Any
 
@@ -9,19 +8,7 @@ from lightning.pytorch.utilities.types import STEP_OUTPUT
 from loguru import logger
 from torch import nn
 
-EMA_IGNORED_STATE_DICT_PATTERN = re.compile(
-    r"^nodes\.[^.]+\.(metrics|visualizers|losses)\..*_node\..*"
-)
-
-
-def _filter_ema_state_dict(
-    state_dict: dict[str, torch.Tensor],
-) -> dict[str, torch.Tensor]:
-    return {
-        key: value
-        for key, value in state_dict.items()
-        if not EMA_IGNORED_STATE_DICT_PATTERN.match(key)
-    }
+from luxonis_train.utils.checkpoint import filter_checkpoint_state_dict
 
 
 class ModelEma(nn.Module):
@@ -166,10 +153,10 @@ class EMACallback(pl.Callback):
                 iter(self._ema.state_dict_ema.values())
             ).device
             current_state_dict = self._ema.state_dict_ema
-            comparable_current_state_dict = _filter_ema_state_dict(
+            comparable_current_state_dict = filter_checkpoint_state_dict(
                 current_state_dict
             )
-            comparable_loaded_state_dict = _filter_ema_state_dict(
+            comparable_loaded_state_dict = filter_checkpoint_state_dict(
                 self.loaded_ema_state_dict
             )
             current_keys = set(comparable_current_state_dict)
