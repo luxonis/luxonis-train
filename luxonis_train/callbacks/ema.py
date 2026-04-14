@@ -1,4 +1,5 @@
 import math
+import re
 from copy import deepcopy
 from typing import Any
 
@@ -7,6 +8,20 @@ import torch
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 from loguru import logger
 from torch import nn
+
+EMA_IGNORED_STATE_DICT_PATTERN = re.compile(
+    r"^nodes\.[^.]+\.(metrics|visualizers|losses)\..*_node\..*"
+)
+
+
+def _filter_ema_state_dict(
+    state_dict: dict[str, torch.Tensor],
+) -> dict[str, torch.Tensor]:
+    return {
+        key: value
+        for key, value in state_dict.items()
+        if not EMA_IGNORED_STATE_DICT_PATTERN.match(key)
+    }
 
 
 class ModelEma(nn.Module):
@@ -151,15 +166,21 @@ class EMACallback(pl.Callback):
                 iter(self._ema.state_dict_ema.values())
             ).device
             current_state_dict = self._ema.state_dict_ema
-            current_keys = set(current_state_dict)
-            loaded_keys = set(self.loaded_ema_state_dict)
+            comparable_current_state_dict = _filter_ema_state_dict(
+                current_state_dict
+            )
+            comparable_loaded_state_dict = _filter_ema_state_dict(
+                self.loaded_ema_state_dict
+            )
+            current_keys = set(comparable_current_state_dict)
+            loaded_keys = set(comparable_loaded_state_dict)
             missing_in_checkpoint = current_keys - loaded_keys
             extra_in_checkpoint = loaded_keys - current_keys
             incompatible_shapes = {
                 key
                 for key in current_keys & loaded_keys
-                if current_state_dict[key].shape
-                != self.loaded_ema_state_dict[key].shape
+                if comparable_current_state_dict[key].shape
+                != comparable_loaded_state_dict[key].shape
             }
 
             if missing_in_checkpoint:
