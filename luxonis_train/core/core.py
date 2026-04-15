@@ -124,6 +124,11 @@ class LuxonisModel:
 
             if cfg is None:
                 cfg = ckpt.get("config")
+                if cfg is None:
+                    raise ValueError(
+                        "Checkpoint does not contain the 'config' key. "
+                        "Cannot restore `LuxonisModel` from checkpoint."
+                    )
             if "dataset_metadata" in ckpt and dataset_metadata is None:
                 try:
                     dataset_metadata = DatasetMetadata(
