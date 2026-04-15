@@ -78,9 +78,9 @@ def train(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     @type debug: bool
-    @param debug: If True, the training will run in debug mode which
-        suppresses some exceptions to allow training without a fully
-        defined model.
+    @param debug: If true, allows the model to be constructed without
+    a valid dataset by setting `allow_empty_dataset` to True. This can
+    be useful for quick testing of the training loop.
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=debug
@@ -105,9 +105,9 @@ def tune(
     @type weights: str
     @param weights: Path to the model weights.
     @type debug: bool
-    @param debug: If True, the tuning will run in debug mode which
-        suppresses some exceptions to allow tuning without a fully
-        defined model.
+    @param debug: If true, allows the model to be constructed without
+    a valid dataset by setting `allow_empty_dataset` to True. This can
+    be useful for quick testing of the tuning.
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=debug
@@ -255,9 +255,9 @@ def test(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     @type debug: bool
-    @param debug: If True, the training will run in debug mode which
-        suppresses some exceptions to allow training without a fully
-        defined model.
+    @param debug: If true, allows the model to be constructed without
+    a valid dataset by setting `allow_empty_dataset` to True. This can
+    be useful for quick testing of the evaluation loop.
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=debug
