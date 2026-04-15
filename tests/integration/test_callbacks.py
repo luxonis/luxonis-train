@@ -58,7 +58,7 @@ def test_callbacks(coco_dataset: LuxonisDataset, opts: Params, save_dir: Path):
         "exporter.blobconverter.active": True,
         "loader.params.dataset_name": coco_dataset.identifier,
     }
-    model = LuxonisModel(config_file, opts, debug_mode=True)
+    model = LuxonisModel(config_file, opts, allow_empty_dataset=True)
     model.train()
 
     ckpt_path = model.get_best_metric_checkpoint_path()

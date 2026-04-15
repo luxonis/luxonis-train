@@ -537,15 +537,8 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
-        checkpoint["state_dict"] = filter_checkpoint_state_dict(
-            checkpoint["state_dict"]
-        )
-        checkpoint |= {
-            "version": luxonis_train.__version__,
-            "execution_order": get_model_execution_order(self),
-            "config": self.cfg.model_dump(),
-            "dataset_metadata": self.dataset_metadata.dump(),
-        }
+        super().on_save_checkpoint(checkpoint)
+        self._add_custom_data_to_checkpoint(checkpoint)
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:
@@ -1030,3 +1023,16 @@ class LuxonisLightningModule(pl.LightningModule):
     def _strip_state_prefix(key: str) -> str:
         idx = 3 if "module." in key else 2
         return ".".join(key.split(".")[idx:])
+
+    def _add_custom_data_to_checkpoint(
+        self, checkpoint: dict[str, Any]
+    ) -> None:
+        checkpoint["state_dict"] = filter_checkpoint_state_dict(
+            checkpoint["state_dict"]
+        )
+        checkpoint |= {
+            "version": luxonis_train.__version__,
+            "execution_order": get_model_execution_order(self),
+            "config": self.cfg.model_dump(),
+            "dataset_metadata": self.dataset_metadata.dump(),
+        }

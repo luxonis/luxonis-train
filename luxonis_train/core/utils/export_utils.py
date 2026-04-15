@@ -3,7 +3,7 @@ import shutil
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from loguru import logger
 from luxonis_ml.typing import PathType, check_type
@@ -15,12 +15,13 @@ from luxonis_train.config.config import HubAIExportConfig, PreprocessingConfig
 
 @contextmanager
 def replace_weights(
-    module: "lxt.LuxonisLightningModule", weights: PathType | None = None
+    module: "lxt.LuxonisLightningModule",
+    weights: PathType | dict[str, Any] | None = None,
 ) -> Generator:
     old_weights = None
     if weights is not None:
         old_weights = module.state_dict()
-        module.load_checkpoint(str(weights))
+        module.load_checkpoint(weights)
         object.__setattr__(module, "_weights_explicitly_loaded", True)
 
     yield
