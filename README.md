@@ -144,6 +144,10 @@ luxonis_train <command> --help
 
 Specific usage examples can be found in the respective sections below.
 
+> [!NOTE]
+> CLI commands `train`, `test`, and `tune` can be run with `--debug`
+> flag which allows the model to be used without a functional dataset.
+
 <a name="configuration"></a>
 
 ## ⚙️ Configuration
