@@ -105,12 +105,13 @@ See [Mean Average Precision](https://lightning.ai/docs/torchmetrics/stable/detec
 
 **Instance Keypoint Params**
 
-| Key           | Type                                | Default value | Description                                                           |
-| ------------- | ----------------------------------- | ------------- | --------------------------------------------------------------------- |
-| `sigmas`      | `list[float] \| None`               | `None`        | List of sigmas for each keypoint. If `None`, the COCO sigmas are used |
-| `area_factor` | `float`                             | `0.53`        | Factor by which to multiply the bounding box area                     |
-| `max_dets`    | `int`                               | `20`          | Maximum number of detections per image                                |
-| `box_fotmat`  | `Literal["xyxy", "xywh", "cxcywh"]` | `"xyxy"`      | Format of the bounding boxes                                          |
+| Key             | Type                                | Default value | Description                                                           |
+| --------------- | ----------------------------------- | ------------- | --------------------------------------------------------------------- |
+| `sigmas`        | `list[float] \| None`               | `None`        | List of sigmas for each keypoint. If `None`, the COCO sigmas are used |
+| `area_factor`   | `float`                             | `0.53`        | Factor by which to multiply the bounding box area                     |
+| `max_dets`      | `int`                               | `20`          | Maximum number of detections per image                                |
+| `box_fotmat`    | `Literal["xyxy", "xywh", "cxcywh"]` | `"xyxy"`      | Format of the bounding boxes                                          |
+| `class_metrics` | `bool`                              | `False`       | Whether to calculate and display per-class keypoint mAP/mAR           |
 
 > [!NOTE]
 > **Important:** Mean Average Precision Keypoints metric is sensitive to NMS parameters, such as confidence and IoU thresholds. Make sure to adjust these settings appropriately for your specific use case.

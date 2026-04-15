@@ -10,6 +10,7 @@ from typing_extensions import override
 from luxonis_train.attached_modules.metrics import BaseMetric, MetricState
 from luxonis_train.attached_modules.metrics.mean_average_precision.utils import (
     add_f1_metrics,
+    process_class_metrics,
 )
 from luxonis_train.attached_modules.metrics.utils import (
     fix_empty_tensor,
@@ -24,6 +25,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
     Uses C{OKS} as IoU measure.
     """
+
+    predefined_model_params_aliases = {"per_class_metrics": "class_metrics"}
 
     supported_tasks = [
         Tasks.INSTANCE_KEYPOINTS,
@@ -46,6 +49,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         area_factor: float | None = None,
         max_dets: int = 20,
         box_format: Literal["xyxy", "xywh", "cxcywh"] = "xyxy",
+        class_metrics: bool = False,
         **kwargs,
     ):
         """Implementation of the mean average precision metric for
@@ -66,6 +70,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         @param max_dets: Maximum number of detections to be considered per image. Defaults to C{20}.
         @type box_format: Literal["xyxy", "xywh", "cxcywh"]
         @param box_format: Input bounding box format. Defaults to C{"xyxy"}.
+        @type class_metrics: bool
+        @param class_metrics: Whether to compute per-class keypoint mAP and mAR.
         """
         super().__init__(**kwargs)
 
@@ -75,6 +81,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         )
         self.max_dets = max_dets
         self.box_format = box_format
+        self.class_metrics = class_metrics
 
     @override
     def update(
@@ -142,19 +149,63 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
             self.coco_eval.stats, dtype=torch.float32, device=self.device
         )
 
-        return stats[0], add_f1_metrics(
-            {
-                "kpt_map_50": stats[1],
-                "kpt_map_75": stats[2],
-                "kpt_map_medium": stats[3],
-                "kpt_map_large": stats[4],
-                "kpt_mar": stats[5],
-                "kpt_mar_50": stats[6],
-                "kpt_mar_75": stats[7],
-                "kpt_mar_medium": stats[8],
-                "kpt_mar_large": stats[9],
-            }
+        metrics = {
+            "kpt_map_50": stats[1],
+            "kpt_map_75": stats[2],
+            "kpt_map_medium": stats[3],
+            "kpt_map_large": stats[4],
+            "kpt_mar": stats[5],
+            "kpt_mar_50": stats[6],
+            "kpt_mar_75": stats[7],
+            "kpt_mar_medium": stats[8],
+            "kpt_mar_large": stats[9],
+        }
+        metrics = add_f1_metrics(metrics)
+
+        if self.class_metrics:
+            metrics |= self._compute_class_metrics()
+            metrics = process_class_metrics(metrics, self.classes.inverse)
+
+        return stats[0], metrics
+
+    def _compute_class_metrics(self) -> dict[str, Tensor]:
+        precision = torch.as_tensor(
+            self.coco_eval.eval["precision"],
+            dtype=torch.float32,
+            device=self.device,
         )
+        recall = torch.as_tensor(
+            self.coco_eval.eval["recall"],
+            dtype=torch.float32,
+            device=self.device,
+        )
+        classes = torch.tensor(
+            self.coco_eval.params.catIds,
+            dtype=torch.int64,
+            device=self.device,
+        )
+
+        return {
+            "classes": classes,
+            "kpt_map_per_class": self._mean_valid_entries(
+                precision.permute(2, 0, 1, 3, 4).reshape(classes.numel(), -1)
+            ),
+            "kpt_mar_per_class": self._mean_valid_entries(
+                recall.permute(1, 0, 2, 3).reshape(classes.numel(), -1)
+            ),
+        }
+
+    def _mean_valid_entries(self, metric: Tensor) -> Tensor:
+        valid = metric > -1
+        count = valid.sum(dim=1)
+        values = torch.where(valid, metric, torch.zeros_like(metric)).sum(
+            dim=1
+        )
+        result = torch.full(
+            (metric.shape[0],), -1.0, dtype=torch.float32, device=self.device
+        )
+        result[count > 0] = values[count > 0] / count[count > 0]
+        return result
 
     def _get_coco(
         self,
