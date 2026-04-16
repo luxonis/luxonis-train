@@ -212,13 +212,30 @@ class InferenceSaveWriter(BasePredictionWriter):
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> None:
-        del trainer, pl_module, batch_indices, batch, batch_idx, dataloader_idx
+        del trainer, pl_module, batch, batch_idx, dataloader_idx
 
         renders = process_visualizations(prediction.visualizations)
         if not renders:
             return
 
-        self._save_renders(renders)
+        batch_img_paths = None
+        if self.img_paths is not None and batch_indices is not None:
+            try:
+                indices = [int(idx) for idx in batch_indices]
+            except TypeError:
+                indices = [int(batch_indices)]
+
+            try:
+                batch_img_paths = [
+                    Path(self.img_paths[idx]) for idx in indices
+                ]
+            except IndexError:
+                batch_img_paths = None
+
+        self._save_renders(
+            renders,
+            batch_img_paths,
+        )
 
     def write_on_epoch_end(
         self,
@@ -230,18 +247,26 @@ class InferenceSaveWriter(BasePredictionWriter):
         del trainer, pl_module, predictions, batch_indices
 
     def _save_renders(
-        self, renders: dict[tuple[str, str], list[np.ndarray]]
+        self,
+        renders: dict[tuple[str, str], list[np.ndarray]],
+        batch_img_paths: list[Path] | None = None,
     ) -> None:
         """Persist a rendered batch to disk."""
         batch_size = len(next(iter(renders.values())))
+        if batch_img_paths is not None and len(batch_img_paths) != batch_size:
+            batch_img_paths = None
 
         for i in range(batch_size):
-            if self.img_paths is not None:
+            img_path: Path | None = None
+            if batch_img_paths is not None:
+                img_path = batch_img_paths[i]
+            elif self.img_paths is not None:
                 idx = self.counter()
-                img_path = Path(self.img_paths[idx])
+                if idx < len(self.img_paths):
+                    img_path = Path(self.img_paths[idx])
             for (node_name, viz_name), visualizations in renders.items():
                 viz = visualizations[i]
-                if self.img_paths is not None:
+                if img_path is not None:
                     name = f"{img_path.stem}_{node_name}_{viz_name}"
                 else:
                     name = f"{node_name}_{viz_name}_{self.counter()}"
