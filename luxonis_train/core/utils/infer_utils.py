@@ -148,7 +148,8 @@ def infer_from_loader(
     """
     if save_dir is not None:
         writer = InferenceSaveWriter(Path(save_dir), img_paths)
-        model.pl_trainer.callbacks.append(writer)
+        callbacks = cast(list[Any], model.pl_trainer.callbacks)
+        callbacks.append(writer)
         try:
             model.pl_trainer.predict(
                 model.lightning_module,
@@ -157,7 +158,7 @@ def infer_from_loader(
             )
         finally:
             with suppress(ValueError):
-                model.pl_trainer.callbacks.remove(writer)
+                callbacks.remove(writer)
         return
 
     predictions = model.pl_trainer.predict(model.lightning_module, loader)
