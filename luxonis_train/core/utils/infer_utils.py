@@ -186,29 +186,6 @@ def infer_from_loader(
         cv2.destroyAllWindows()
 
 
-def save_renders(
-    renders: dict[tuple[str, str], list[np.ndarray]],
-    save_dir: Path,
-    counter: Counter,
-    img_paths: list[PathType] | None = None,
-) -> None:
-    """Persist a rendered batch to disk."""
-    batch_size = len(next(iter(renders.values())))
-
-    for i in range(batch_size):
-        if img_paths is not None:
-            idx = counter()
-            img_path = Path(img_paths[idx])
-        for (node_name, viz_name), visualizations in renders.items():
-            viz = visualizations[i]
-            if img_paths is not None:
-                name = f"{img_path.stem}_{node_name}_{viz_name}"
-            else:
-                name = f"{node_name}_{viz_name}_{counter()}"
-            name = name.replace("/", "-")
-            cv2.imwrite(str(save_dir / f"{name}.png"), viz)
-
-
 class InferenceSaveWriter(BasePredictionWriter):
     """Writes rendered inference batches as soon as they are
     predicted."""
@@ -239,7 +216,7 @@ class InferenceSaveWriter(BasePredictionWriter):
         if not renders:
             return
 
-        save_renders(renders, self.save_dir, self.counter, self.img_paths)
+        self._save_renders(renders)
 
     def write_on_epoch_end(
         self,
@@ -249,6 +226,25 @@ class InferenceSaveWriter(BasePredictionWriter):
         batch_indices: Any,
     ) -> None:
         del trainer, pl_module, predictions, batch_indices
+
+    def _save_renders(
+        self, renders: dict[tuple[str, str], list[np.ndarray]]
+    ) -> None:
+        """Persist a rendered batch to disk."""
+        batch_size = len(next(iter(renders.values())))
+
+        for i in range(batch_size):
+            if self.img_paths is not None:
+                idx = self.counter()
+                img_path = Path(self.img_paths[idx])
+            for (node_name, viz_name), visualizations in renders.items():
+                viz = visualizations[i]
+                if self.img_paths is not None:
+                    name = f"{img_path.stem}_{node_name}_{viz_name}"
+                else:
+                    name = f"{node_name}_{viz_name}_{self.counter()}"
+                name = name.replace("/", "-")
+                cv2.imwrite(str(self.save_dir / f"{name}.png"), viz)
 
 
 def create_loader_from_directory(
