@@ -1,4 +1,5 @@
 import math
+from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any
 
@@ -189,7 +190,7 @@ class EMACallback(pl.Callback):
                     f"{self._format_key_list(incompatible_shapes)}"
                 )
 
-            for key, value in self.loaded_ema_state_dict.items():
+            for key, value in comparable_loaded_state_dict.items():
                 if (
                     key in current_state_dict
                     and key not in incompatible_shapes
@@ -298,7 +299,7 @@ class EMACallback(pl.Callback):
         trainer: pl.Trainer,
         pl_module: pl.LightningModule,
         checkpoint: dict,
-    ) -> dict[str, Any] | None:
+    ) -> None:
         """Save the EMA state dictionary into the checkpoint.
 
         @type trainer: L{pl.Trainer}
@@ -310,11 +311,19 @@ class EMACallback(pl.Callback):
         """
         if self._ema is not None:
             checkpoint["state_dict"] = self._ema.state_dict_ema
-            return {
-                "ema_state_dict": self._ema.state_dict_ema,
-                "updates": self._ema.updates,
-            }
-        return None
+
+    def state_dict(self) -> dict[str, Any]:
+        if self._ema is None:
+            return {}
+        return {
+            "ema_state_dict": filter_checkpoint_state_dict(
+                self._ema.state_dict_ema
+            ),
+            "updates": self._ema.updates,
+        }
+
+    def load_state_dict(self, state_dict: dict[str, Any]) -> None:
+        self._load_ema_state(state_dict)
 
     def on_load_checkpoint(
         self,
@@ -327,11 +336,16 @@ class EMACallback(pl.Callback):
         @type callback_state: dict
         @param callback_state: Pytorch Lightning callback state.
         """
-        if callback_state:
-            self.loaded_ema_state_dict = callback_state.get(
-                "ema_state_dict", callback_state.get("state_dict")
+        self._load_ema_state(callback_state)
+
+    def _load_ema_state(self, state_dict: dict[str, Any]) -> None:
+        if state_dict:
+            loaded_state_dict = state_dict.get(
+                "ema_state_dict", state_dict.get("state_dict")
             )
-            updates = callback_state.get("updates")
+            if isinstance(loaded_state_dict, Mapping):
+                self.loaded_ema_state_dict = loaded_state_dict
+            updates = state_dict.get("updates")
             if isinstance(updates, int):
                 self.loaded_ema_updates = updates
 
