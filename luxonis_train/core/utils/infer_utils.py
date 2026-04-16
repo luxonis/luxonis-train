@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 import torch
 import torch.utils.data as torch_data
+from lightning.pytorch.callbacks import BasePredictionWriter
 from loguru import logger
 from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from luxonis_ml.typing import PathType
@@ -145,13 +146,25 @@ def infer_from_loader(
     @type img_paths: list[Path] | None
     @param img_paths: The paths to the images.
     """
+    if save_dir is not None:
+        writer = InferenceSaveWriter(Path(save_dir), img_paths)
+        model.pl_trainer.callbacks.append(writer)
+        try:
+            model.pl_trainer.predict(
+                model.lightning_module,
+                loader,
+                return_predictions=False,
+            )
+        finally:
+            with suppress(ValueError):
+                model.pl_trainer.callbacks.remove(writer)
+        return
+
     predictions = model.pl_trainer.predict(model.lightning_module, loader)
 
     broken = False
     if predictions is None:  # pragma: no cover
         return
-
-    counter = Counter()
 
     for outputs in predictions:
         if broken:  # pragma: no cover
@@ -161,30 +174,81 @@ def infer_from_loader(
         renders = process_visualizations(visualizations)
         batch_size = len(next(iter(renders.values())))
         for i in range(batch_size):
-            if img_paths is not None:
-                idx = counter()
             for (node_name, viz_name), visualizations in renders.items():
                 viz = visualizations[i]
-                if save_dir is not None:
-                    save_dir = Path(save_dir)
-                    if img_paths is not None:
-                        img_path = Path(img_paths[idx])
-                        name = f"{img_path.stem}_{node_name}_{viz_name}"
-                    else:
-                        name = f"{node_name}_{viz_name}_{counter()}"
-                    name = name.replace("/", "-")
-                    save_path = save_dir / f"{name}.png"
-                    cv2.imwrite(str(save_path), viz)
-                else:
-                    cv2.imshow(f"{node_name}/{viz_name}", viz)
+                cv2.imshow(f"{node_name}/{viz_name}", viz)
 
-            if not save_dir and window_closed():  # pragma: no cover
+            if window_closed():  # pragma: no cover
                 broken = True
                 break
 
-    if save_dir is None:  # pragma: no cover
-        with suppress(cv2.error):  # type: ignore
-            cv2.destroyAllWindows()
+    with suppress(cv2.error):  # pragma: no cover
+        cv2.destroyAllWindows()
+
+
+def save_renders(
+    renders: dict[tuple[str, str], list[np.ndarray]],
+    save_dir: Path,
+    counter: Counter,
+    img_paths: list[PathType] | None = None,
+) -> None:
+    """Persist a rendered batch to disk."""
+    batch_size = len(next(iter(renders.values())))
+
+    for i in range(batch_size):
+        if img_paths is not None:
+            idx = counter()
+            img_path = Path(img_paths[idx])
+        for (node_name, viz_name), visualizations in renders.items():
+            viz = visualizations[i]
+            if img_paths is not None:
+                name = f"{img_path.stem}_{node_name}_{viz_name}"
+            else:
+                name = f"{node_name}_{viz_name}_{counter()}"
+            name = name.replace("/", "-")
+            cv2.imwrite(str(save_dir / f"{name}.png"), viz)
+
+
+class InferenceSaveWriter(BasePredictionWriter):
+    """Writes rendered inference batches as soon as they are
+    predicted."""
+
+    def __init__(
+        self,
+        save_dir: Path,
+        img_paths: list[PathType] | None = None,
+    ) -> None:
+        super().__init__(write_interval="batch")
+        self.save_dir = Path(save_dir)
+        self.img_paths = img_paths
+        self.counter = Counter()
+
+    def write_on_batch_end(
+        self,
+        trainer: Any,
+        pl_module: Any,
+        prediction: LuxonisOutput,
+        batch_indices: Any,
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int = 0,
+    ) -> None:
+        del trainer, pl_module, batch_indices, batch, batch_idx, dataloader_idx
+
+        renders = process_visualizations(prediction.visualizations)
+        if not renders:
+            return
+
+        save_renders(renders, self.save_dir, self.counter, self.img_paths)
+
+    def write_on_epoch_end(
+        self,
+        trainer: Any,
+        pl_module: Any,
+        predictions: Any,
+        batch_indices: Any,
+    ) -> None:
+        del trainer, pl_module, predictions, batch_indices
 
 
 def create_loader_from_directory(
