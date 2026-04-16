@@ -988,6 +988,7 @@ class LuxonisModel:
             # If wandb used then init parent tracker separately at the end
             wandb_parent_tracker = LuxonisTrackerPL(
                 rank=rank_zero_only.rank,
+                _auto_finalize=True,
                 **(
                     self.cfg.tracker.model_dump()
                     | {"run_name": self.parent_tracker.run_name}
