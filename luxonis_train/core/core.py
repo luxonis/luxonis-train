@@ -152,13 +152,11 @@ class LuxonisModel:
 
         rich.traceback.install(suppress=[pl, torch], show_locals=False)
 
-        tracker_params = self.cfg.tracker.model_dump()
-        tracker_params.pop("_auto_finalize", None)
         self.tracker = LuxonisTrackerPL(
             rank=rank_zero_only.rank,
             mlflow_tracking_uri=self.environ.MLFLOW_TRACKING_URI,
-            **tracker_params,
             _auto_finalize=False,
+            **self.cfg.tracker.model_dump(),
         )
 
         self.run_save_dir = (

@@ -148,7 +148,8 @@ def infer_from_loader(
     """
     if save_dir is not None:
         writer = InferenceSaveWriter(Path(save_dir), img_paths)
-        callbacks = cast(list[Any], model.pl_trainer.callbacks)
+        trainer = cast(Any, model.pl_trainer)
+        callbacks = cast(list[Any], trainer.callbacks)
         callbacks.append(writer)
         try:
             model.pl_trainer.predict(
