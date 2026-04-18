@@ -3,7 +3,7 @@ from typing import Final
 
 from pydantic_extra_types.semantic_version import SemanticVersion
 
-__version__: Final[str] = "0.4.3"
+__version__: Final[str] = "0.4.4"
 __semver__: Final[SemanticVersion] = SemanticVersion.parse(__version__)
 
 
