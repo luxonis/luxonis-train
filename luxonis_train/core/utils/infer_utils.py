@@ -74,16 +74,17 @@ def infer_from_video(
 ) -> None:
     """Runs inference on individual frames from a video.
 
-Parameters
-----------
-model : ``LuxonisModel``
-    The model to use for inference.
-video_path : PathType
-    The path to the video.
-save_dir : Path | None, optional
-    The directory to save the visualizations to.
-show : bool
-    Whether to display the visualizations."""
+    Parameters
+    ----------
+    model : ``LuxonisModel``
+        The model to use for inference.
+    video_path : PathType
+        The path to the video.
+    save_dir : Path | None, optional
+        The directory to save the visualizations to.
+    show : bool
+        Whether to display the visualizations.
+    """
     cap = cv2.VideoCapture(filename=str(video_path))
 
     writers: dict[str, cv2.VideoWriter] = {}
@@ -137,16 +138,17 @@ def infer_from_loader(
 ) -> None:
     """Runs inference on images from the dataset.
 
-Parameters
-----------
-model : ``LuxonisModel``
-    The model to use for inference.
-loader : torch_data.DataLoader
-    The loader to use for inference.
-save_dir : PathType | None, optional
-    The directory to save the visualizations to.
-img_paths : list[Path] | None, optional
-    The paths to the images."""
+    Parameters
+    ----------
+    model : ``LuxonisModel``
+        The model to use for inference.
+    loader : torch_data.DataLoader
+        The loader to use for inference.
+    save_dir : PathType | None, optional
+        The directory to save the visualizations to.
+    img_paths : list[Path] | None, optional
+        The paths to the images.
+    """
     predictions = model.pl_trainer.predict(model.lightning_module, loader)
 
     broken = False
@@ -197,24 +199,25 @@ def create_loader_from_directory(
 ) -> torch_data.DataLoader:
     """Creates a DataLoader from a directory of images.
 
-        annotation in the dataset.
-        the model's default batch size.
+            annotation in the dataset.
+            the model's default batch size.
 
-Parameters
-----------
-img_paths : Iterable[PathType]
-    Iterable of paths to the images.
-model : ``LuxonisModel``
-    The model to use for inference.
-add_path_annotation : bool
-    Whether to add the image path as an
-batch_size : int | None, optional
-    The batch size for the DataLoader. If None, uses
+    Parameters
+    ----------
+    img_paths : Iterable[PathType]
+        Iterable of paths to the images.
+    model : ``LuxonisModel``
+        The model to use for inference.
+    add_path_annotation : bool
+        Whether to add the image path as an
+    batch_size : int | None, optional
+        The batch size for the DataLoader. If None, uses
 
-Returns
--------
-torch_data.DataLoader
-    The DataLoader for the images."""
+    Returns
+    -------
+    torch_data.DataLoader
+        The DataLoader for the images.
+    """
     dataset_name = "infer_from_directory"
     dataset = LuxonisDataset(dataset_name=dataset_name, delete_local=True)
 
@@ -272,14 +275,15 @@ def infer_from_directory(
 ) -> None:
     """Runs inference on individual images from a directory.
 
-Parameters
-----------
-model : ``LuxonisModel``
-    The model to use for inference.
-img_paths : Iterable[Path]
-    Iterable of paths to the images.
-save_dir : Path | None, optional
-    The directory to save the visualizations to."""
+    Parameters
+    ----------
+    model : ``LuxonisModel``
+        The model to use for inference.
+    img_paths : Iterable[Path]
+        Iterable of paths to the images.
+    save_dir : Path | None, optional
+        The directory to save the visualizations to.
+    """
     img_paths = list(img_paths)
 
     loader = create_loader_from_directory(img_paths, model)
@@ -314,14 +318,15 @@ def infer_from_dataset(
 ) -> None:
     """Runs inference on images from the dataset.
 
-Parameters
-----------
-model : ``LuxonisModel``
-    The model to use for inference.
-view : Literal["train", "val", "test"]
-    The view of the dataset to use.
-save_dir : PathType | None, optional
-    The directory to save the visualizations to."""
+    Parameters
+    ----------
+    model : ``LuxonisModel``
+        The model to use for inference.
+    view : Literal["train", "val", "test"]
+        The view of the dataset to use.
+    save_dir : PathType | None, optional
+        The directory to save the visualizations to.
+    """
     loader = model.pytorch_loaders[view]
     overfit_batches = model.cfg.trainer.overfit_batches
     if overfit_batches > 0 and view == "train":

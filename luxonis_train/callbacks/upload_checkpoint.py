@@ -20,10 +20,11 @@ class UploadCheckpoint(pl.Callback):
     def __init__(self):
         """Constructs `UploadCheckpoint`.
 
-Parameters
-----------
-upload_directory : str
-    Path used as upload directory"""
+        Parameters
+        ----------
+        upload_directory : str
+            Path used as upload directory
+        """
         super().__init__()
         self.last_best_checkpoints = set()
 

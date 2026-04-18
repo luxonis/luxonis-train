@@ -129,22 +129,23 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
     ):
         """TripleLRSGD strategy.
 
-            - lr: The learning rate.
-            - momentum: The momentum.
-            - weight_decay: The weight decay.
-            - nesterov: Whether to use nesterov.
-            - warmup_epochs: The number of warmup epochs.
-            - warmup_bias_lr: The warmup bias learning rate.
-            - warmup_momentum: The warmup momentum.
-            - lre: The learning rate for the end of the training.
-            - cosine_annealing: Whether to use cosine annealing.
+                    - lr: The learning rate.
+                    - momentum: The momentum.
+                    - weight_decay: The weight decay.
+                    - nesterov: Whether to use nesterov.
+                    - warmup_epochs: The number of warmup epochs.
+                    - warmup_bias_lr: The warmup bias learning rate.
+                    - warmup_momentum: The warmup momentum.
+                    - lre: The learning rate for the end of the training.
+                    - cosine_annealing: Whether to use cosine annealing.
 
-Parameters
-----------
-pl_module : pl.LightningModule
-    The pl_module to be used.
-params : dict
-    The parameters for the strategy. Those are:"""
+        Parameters
+        ----------
+        pl_module : pl.LightningModule
+            The pl_module to be used.
+        params : dict
+            The parameters for the strategy. Those are:
+        """
         self.model = pl_module
         self.cfg = pl_module.cfg
 

@@ -42,11 +42,12 @@ class TrainingManager(BaseFinetuning):
         """PyTorch Lightning hook that is called after the backward
         pass.
 
-Parameters
-----------
-trainer : pl.Trainer
-    The trainer object.
-pl_module : pl.LightningModule
-    The pl_module object."""
+        Parameters
+        ----------
+        trainer : pl.Trainer
+            The trainer object.
+        pl_module : pl.LightningModule
+            The pl_module object.
+        """
         if pl_module.training_strategy is not None:
             pl_module.training_strategy.update_parameters()

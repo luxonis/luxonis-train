@@ -511,7 +511,8 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def on_validation_epoch_end(self) -> None:
-        """Restore validation interval after the first forced validation."""
+        """Restore validation interval after the first forced
+        validation."""
         self._evaluation_epoch_end("val")
 
         if (

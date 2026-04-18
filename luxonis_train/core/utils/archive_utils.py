@@ -17,10 +17,11 @@ class ArchiveMetadataDict(TypedDict):
 def get_inputs(path: Path) -> dict[str, ArchiveMetadataDict]:
     """Get inputs of a model executable.
 
-Parameters
-----------
-path : Path
-    Path to model executable file."""
+    Parameters
+    ----------
+    path : Path
+        Path to model executable file.
+    """
     if path.suffix == ".onnx":
         return _get_onnx_inputs(path)
     raise NotImplementedError(
@@ -31,10 +32,11 @@ path : Path
 def get_outputs(path: Path) -> dict[str, ArchiveMetadataDict]:
     """Get outputs of a model executable.
 
-Parameters
-----------
-path : Path
-    Path to model executable file."""
+    Parameters
+    ----------
+    path : Path
+        Path to model executable file.
+    """
     if path.suffix == ".onnx":
         return _get_onnx_outputs(path)
     raise NotImplementedError(
@@ -95,19 +97,20 @@ def _get_onnx_inputs(onnx_path: Path) -> dict[str, ArchiveMetadataDict]:
 def _get_head_outputs(outputs: list[dict], head_name: str) -> list[str]:
     """Get model outputs in a head-specific format.
 
-        custom alias.
+            custom alias.
 
-Parameters
-----------
-outputs : list[dict]
-    List of NN Archive outputs.
-head_name : str
-    Type of the head (e.g. 'EfficientBBoxHead') or its
+    Parameters
+    ----------
+    outputs : list[dict]
+        List of NN Archive outputs.
+    head_name : str
+        Type of the head (e.g. 'EfficientBBoxHead') or its
 
-Returns
--------
-list[str]
-    List of output names."""
+    Returns
+    -------
+    list[str]
+        List of output names.
+    """
     output_names = []
     for output in outputs:
         try:
@@ -125,17 +128,18 @@ def get_head_configs(
 ) -> list[dict]:
     """Get model heads.
 
-Parameters
-----------
-lightning_module : LuxonisLightningModule
-    Lightning module.
-outputs : list[dict]
-    List of NN Archive outputs.
+    Parameters
+    ----------
+    lightning_module : LuxonisLightningModule
+        Lightning module.
+    outputs : list[dict]
+        List of NN Archive outputs.
 
-Returns
--------
-list[dict]
-    List of head configurations."""
+    Returns
+    -------
+    list[dict]
+        List of head configurations.
+    """
     head_configs = []
     head_names = set()
 

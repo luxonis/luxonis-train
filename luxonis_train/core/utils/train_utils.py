@@ -8,17 +8,18 @@ from luxonis_train.config import TrainerConfig
 def create_trainer(cfg: TrainerConfig, **kwargs: Any) -> pl.Trainer:
     """Creates Pytorch Lightning trainer.
 
-Parameters
-----------
-cfg : Config
-    Configuration object.
-kwargs : Any
-    Additional arguments to pass to the trainer.
+    Parameters
+    ----------
+    cfg : Config
+        Configuration object.
+    kwargs : Any
+        Additional arguments to pass to the trainer.
 
-Returns
--------
-pl.Trainer
-    Pytorch Lightning trainer."""
+    Returns
+    -------
+    pl.Trainer
+        Pytorch Lightning trainer.
+    """
     return pl.Trainer(
         accelerator=cfg.accelerator,
         devices=cfg.devices,

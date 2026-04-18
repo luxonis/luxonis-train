@@ -23,14 +23,15 @@ class PLModuleWrapper(pl.LightningModule):
     ) -> None:
         """Constructs `ModelWrapper`.
 
-            classification, keypoint_detection).
+                    classification, keypoint_detection).
 
-Parameters
-----------
-pl_module : LuxonisLightningModule
-    The model to be wrapped.
-task : str
-    The type of task (e.g., segmentation, detection,"""
+        Parameters
+        ----------
+        pl_module : LuxonisLightningModule
+            The model to be wrapped.
+        task : str
+            The type of task (e.g., segmentation, detection,
+        """
         super().__init__()
         self.pl_module = pl_module
         self.task = task
@@ -39,19 +40,20 @@ task : str
         """Forward pass through the model, returning the output based on
         the task type.
 
-Parameters
-----------
-inputs : Tensor
-    Input tensor for the model.
-args : Any
-    Additional positional arguments.
-kwargs : Any
-    Additional keyword arguments.
+        Parameters
+        ----------
+        inputs : Tensor
+            Input tensor for the model.
+        args : Any
+            Additional positional arguments.
+        kwargs : Any
+            Additional keyword arguments.
 
-Returns
--------
-Tensor
-    The processed output based on the task type."""
+        Returns
+        -------
+        Tensor
+            The processed output based on the task type.
+        """
         input_dict = {"image": inputs}
         output = self.pl_module(input_dict, *args, **kwargs)
         if len(output.outputs) > 1:
@@ -92,18 +94,19 @@ class GradCamCallback(pl.Callback):
     ) -> None:
         """Constructs `GradCamCallback`.
 
-            to None.
+                    to None.
 
-Parameters
-----------
-target_layer : int
-    Layer to visualize gradients.
-class_idx : int | None, optional
-    Index of the class for visualization. Defaults
-log_n_batches : int
-    Number of batches to log. Defaults to 1.
-task : str
-    The type of task. Defaults to "classification"."""
+        Parameters
+        ----------
+        target_layer : int
+            Layer to visualize gradients.
+        class_idx : int | None, optional
+            Index of the class for visualization. Defaults
+        log_n_batches : int
+            Number of batches to log. Defaults to 1.
+        task : str
+            The type of task. Defaults to "classification".
+        """
         super().__init__()
         self.target_layer = target_layer
         self.class_idx = class_idx
@@ -118,14 +121,15 @@ task : str
     ) -> None:
         """Initializes the model wrapper.
 
-Parameters
-----------
-trainer : pl.Trainer
-    The PyTorch Lightning trainer.
-pl_module : LuxonisLightningModule
-    The LuxonisLightningModule.
-stage : str
-    The stage of the training loop."""
+        Parameters
+        ----------
+        trainer : pl.Trainer
+            The PyTorch Lightning trainer.
+        pl_module : LuxonisLightningModule
+            The LuxonisLightningModule.
+        stage : str
+            The stage of the training loop.
+        """
         self.pl_module = PLModuleWrapper(pl_module, self.task)
 
     def on_validation_batch_end(
@@ -139,18 +143,19 @@ stage : str
         """At the end of first n batches, visualize the gradients using
         Grad-CAM.
 
-Parameters
-----------
-trainer : pl.Trainer
-    The PyTorch Lightning trainer.
-pl_module : LuxonisLightningModule
-    The PyTorch Lightning module.
-outputs : STEP_OUTPUT
-    The output of the model.
-batch : Any
-    The input batch.
-batch_idx : int
-    The index of the batch."""
+        Parameters
+        ----------
+        trainer : pl.Trainer
+            The PyTorch Lightning trainer.
+        pl_module : LuxonisLightningModule
+            The PyTorch Lightning module.
+        outputs : STEP_OUTPUT
+            The output of the model.
+        batch : Any
+            The input batch.
+        batch_idx : int
+            The index of the batch.
+        """
         if batch_idx < self.log_n_batches:
             images = batch[0][pl_module.image_source]
             self.visualize_gradients(trainer, pl_module, images, batch_idx)
@@ -164,16 +169,17 @@ batch_idx : int
     ) -> None:
         """Visualizes the gradients using Grad-CAM.
 
-Parameters
-----------
-trainer : pl.Trainer
-    The PyTorch Lightning trainer.
-pl_module : pl.LightningModule
-    The PyTorch Lightning module.
-images : Tensor
-    The input images.
-batch_idx : int
-    The index of the batch."""
+        Parameters
+        ----------
+        trainer : pl.Trainer
+            The PyTorch Lightning trainer.
+        pl_module : pl.LightningModule
+            The PyTorch Lightning module.
+        images : Tensor
+            The input images.
+        batch_idx : int
+            The index of the batch.
+        """
         target_layers = [m[1] for m in self.pl_module.named_modules()][
             self.target_layer : self.target_layer + 1
         ]

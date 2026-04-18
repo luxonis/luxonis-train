@@ -14,12 +14,13 @@ class ArchiveOnTrainEnd(NeedsCheckpoint):
     ) -> None:
         """Archives the model on train end.
 
-Parameters
-----------
-trainer : ``pl.Trainer``
-    Pytorch Lightning trainer.
-pl_module : ``pl.LightningModule``
-    Pytorch Lightning module."""
+        Parameters
+        ----------
+        trainer : ``pl.Trainer``
+            Pytorch Lightning trainer.
+        pl_module : ``pl.LightningModule``
+            Pytorch Lightning module.
+        """
         onnx_path = pl_module.core._exported_models.get("onnx")
         if onnx_path is None:  # pragma: no cover
             checkpoint = self.get_checkpoint(pl_module)
