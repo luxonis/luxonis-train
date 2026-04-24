@@ -97,6 +97,10 @@ def test_ema_state_saved_to_checkpoint(
     ema_callback.on_save_checkpoint(trainer, model, checkpoint)
 
     assert "state_dict" in checkpoint
+    assert (
+        checkpoint["state_dict"].keys()
+        == ema_callback.ema.state_dict_ema.keys()
+    )
 
 
 def test_load_from_checkpoint(
