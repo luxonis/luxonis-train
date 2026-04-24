@@ -1,17 +1,20 @@
-from luxonis_train.config.config import PreprocessingConfig
+from luxonis_train.config.config import (
+    NormalizeAugmentationConfig,
+    PreprocessingConfig,
+)
 from luxonis_train.core.utils.export_utils import get_preprocessing
 
 
 def test_get_preprocessing_skips_inactive_normalization():
     cfg = PreprocessingConfig(
         color_space="BGR",
-        normalize={
-            "active": False,
-            "params": {
+        normalize=NormalizeAugmentationConfig(
+            active=False,
+            params={
                 "mean": [0.485, 0.456, 0.406],
                 "std": [0.229, 0.224, 0.225],
             },
-        },
+        ),
     )
 
     mean, scale, color_space = get_preprocessing(
@@ -25,13 +28,13 @@ def test_get_preprocessing_skips_inactive_normalization():
 
 def test_get_preprocessing_returns_scaled_active_normalization():
     cfg = PreprocessingConfig(
-        normalize={
-            "active": True,
-            "params": {
+        normalize=NormalizeAugmentationConfig(
+            active=True,
+            params={
                 "mean": [0.5, 0.25, 0.125],
                 "std": [0.1, 0.2, 0.4],
             },
-        },
+        ),
     )
 
     mean, scale, color_space = get_preprocessing(cfg)
