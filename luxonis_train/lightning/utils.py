@@ -493,16 +493,6 @@ def build_callbacks(
                 "in the callbacks list. The `accumulate_grad_batches` "
                 "parameter in the config will be ignored."
             )
-    callbacks.append(
-        ModelCheckpoint(
-            dirpath=save_dir / "min_val_loss",
-            filename=f"{model_name}_loss={{val/loss:.4f}}_{{epoch:02d}}",
-            monitor="val/loss",
-            auto_insert_metric_name=False,
-            save_top_k=cfg.trainer.save_top_k,
-            mode="min",
-        ),
-    )
     if main_metric is not None:
         node_name, metric_name = main_metric
         formatted_node = nodes.formatted_name(node_name)
@@ -521,6 +511,16 @@ def build_callbacks(
             )
         )
 
+    callbacks.append(
+        ModelCheckpoint(
+            dirpath=save_dir / "min_val_loss",
+            filename=f"{model_name}_loss={{val/loss:.4f}}_{{epoch:02d}}",
+            monitor="val/loss",
+            auto_insert_metric_name=False,
+            save_top_k=cfg.trainer.save_top_k,
+            mode="min",
+        )
+    )
     return callbacks
 
 
