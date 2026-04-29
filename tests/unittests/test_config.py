@@ -102,6 +102,49 @@ def test_explicit_dataset_type(tmp_path: Path):
     )
 
 
+def test_augmentation_apply_on_stages_defaults_to_train():
+    cfg = Config.get_config(
+        cast(
+            Params,
+            {
+                "model": {"nodes": [{"name": "ResNet"}]},
+                "trainer": {
+                    "preprocessing": {"augmentations": [{"name": "Defocus"}]}
+                },
+            },
+        )
+    )
+
+    assert cfg.trainer.preprocessing.augmentations[0].apply_on_stages == [
+        "train"
+    ]
+
+
+def test_get_active_augmentations_preserves_apply_on_stages():
+    cfg = Config.get_config(
+        cast(
+            Params,
+            {
+                "model": {"nodes": [{"name": "ResNet"}]},
+                "trainer": {
+                    "preprocessing": {
+                        "augmentations": [
+                            {
+                                "name": "Defocus",
+                                "apply_on_stages": ["train", "test"],
+                            }
+                        ]
+                    }
+                },
+            },
+        )
+    )
+
+    active_augmentations = cfg.trainer.preprocessing.get_active_augmentations()
+
+    assert active_augmentations[0].apply_on_stages == ["train", "test"]
+
+
 def test_config_invalid():
     cfg: Params = {
         "model": {
