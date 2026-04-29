@@ -1,6 +1,6 @@
 from collections import defaultdict
 from collections.abc import Iterable
-from contextlib import suppress
+from contextlib import nullcontext, suppress
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -8,7 +8,6 @@ import cv2
 import numpy as np
 import torch
 import torch.utils.data as torch_data
-from lightning.pytorch.callbacks import BasePredictionWriter
 from loguru import logger
 from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from luxonis_ml.typing import PathType
@@ -147,19 +146,30 @@ def infer_from_loader(
     @param img_paths: The paths to the images.
     """
     if save_dir is not None:
-        writer = InferenceSaveWriter(Path(save_dir), img_paths)
+        # Save outputs as each batch is predicted so we do not keep the full
+        # prediction list in memory before writing visualizations to disk.
+        save_dir = Path(save_dir)
+        lt_module = model.lightning_module.eval()
+        counter = Counter()
         trainer = cast(Any, model.pl_trainer)
-        callbacks = cast(list[Any], trainer.callbacks)
-        callbacks.append(writer)
-        try:
-            model.pl_trainer.predict(
-                model.lightning_module,
-                loader,
-                return_predictions=False,
+        # Prefer the trainer strategy's root device when available so this
+        # path follows the same placement as Trainer.predict().
+        device = getattr(
+            getattr(trainer, "strategy", None),
+            "root_device",
+            lt_module.device,
+        )
+
+        for batch in loader:
+            batch = _move_batch_to_device(batch, trainer, device)
+            with torch.inference_mode(), _get_predict_context(trainer):
+                outputs = lt_module.predict_step(batch)
+            _save_renders_batch(
+                process_visualizations(outputs.visualizations),
+                save_dir,
+                counter,
+                img_paths,
             )
-        finally:
-            with suppress(ValueError):
-                callbacks.remove(writer)
         return
 
     predictions = model.pl_trainer.predict(model.lightning_module, loader)
@@ -188,90 +198,60 @@ def infer_from_loader(
         cv2.destroyAllWindows()
 
 
-class InferenceSaveWriter(BasePredictionWriter):
-    """Writes rendered inference batches as soon as they are
-    predicted."""
+def _get_predict_context(trainer: Any) -> Any:
+    strategy = getattr(trainer, "strategy", None)
+    # The precision plugin is owned by the strategy. Fall back to a no-op
+    # context for tests or simplified trainers that do not attach one.
+    precision_plugin = getattr(strategy, "precision_plugin", None)
+    if precision_plugin is None:
+        return nullcontext()
+    return precision_plugin.forward_context()
 
-    def __init__(
-        self,
-        save_dir: Path,
-        img_paths: list[PathType] | None = None,
-    ) -> None:
-        super().__init__(write_interval="batch")
-        self.save_dir = Path(save_dir)
-        self.img_paths = img_paths
-        self.counter = Counter()
 
-    def write_on_batch_end(
-        self,
-        trainer: Any,
-        pl_module: Any,
-        prediction: LuxonisOutput,
-        batch_indices: Any,
-        batch: Any,
-        batch_idx: int,
-        dataloader_idx: int = 0,
-    ) -> None:
-        del trainer, pl_module, batch, batch_idx, dataloader_idx
-
-        renders = process_visualizations(prediction.visualizations)
-        if not renders:
-            return
-
-        batch_img_paths = None
-        if self.img_paths is not None and batch_indices is not None:
-            try:
-                indices = [int(idx) for idx in batch_indices]
-            except TypeError:
-                indices = [int(batch_indices)]
-
-            try:
-                batch_img_paths = [
-                    Path(self.img_paths[idx]) for idx in indices
-                ]
-            except IndexError:
-                batch_img_paths = None
-
-        self._save_renders(
-            renders,
-            batch_img_paths,
+def _move_batch_to_device(
+    batch: tuple[dict[str, Tensor], dict[str, Tensor]],
+    trainer: Any,
+    device: torch.device,
+) -> tuple[dict[str, Tensor], dict[str, Tensor]]:
+    strategy = getattr(trainer, "strategy", None)
+    # Reuse Lightning's device transfer when it exists so accelerator- or
+    # strategy-specific batch handling still applies on this narrower path.
+    if strategy is not None and hasattr(strategy, "batch_to_device"):
+        return cast(
+            tuple[dict[str, Tensor], dict[str, Tensor]],
+            strategy.batch_to_device(batch, device, 0),
         )
 
-    def write_on_epoch_end(
-        self,
-        trainer: Any,
-        pl_module: Any,
-        predictions: Any,
-        batch_indices: Any,
-    ) -> None:
-        del trainer, pl_module, predictions, batch_indices
+    inputs, labels = batch
+    # Simple fallback for code paths that do not expose a Lightning strategy.
+    return (
+        {name: tensor.to(device) for name, tensor in inputs.items()},
+        {name: tensor.to(device) for name, tensor in labels.items()},
+    )
 
-    def _save_renders(
-        self,
-        renders: dict[tuple[str, str], list[np.ndarray]],
-        batch_img_paths: list[Path] | None = None,
-    ) -> None:
-        """Persist a rendered batch to disk."""
-        batch_size = len(next(iter(renders.values())))
-        if batch_img_paths is not None and len(batch_img_paths) != batch_size:
-            batch_img_paths = None
 
-        for i in range(batch_size):
-            img_path: Path | None = None
-            if batch_img_paths is not None:
-                img_path = batch_img_paths[i]
-            elif self.img_paths is not None:
-                idx = self.counter()
-                if idx < len(self.img_paths):
-                    img_path = Path(self.img_paths[idx])
-            for (node_name, viz_name), visualizations in renders.items():
-                viz = visualizations[i]
-                if img_path is not None:
-                    name = f"{img_path.stem}_{node_name}_{viz_name}"
-                else:
-                    name = f"{node_name}_{viz_name}_{self.counter()}"
-                name = name.replace("/", "-")
-                cv2.imwrite(str(self.save_dir / f"{name}.png"), viz)
+def _save_renders_batch(
+    renders: dict[tuple[str, str], list[np.ndarray]],
+    save_dir: Path,
+    counter: Counter,
+    img_paths: list[PathType] | None = None,
+) -> None:
+    if not renders:
+        return
+
+    batch_size = len(next(iter(renders.values())))
+    for i in range(batch_size):
+        img_path: Path | None = None
+        if img_paths is not None:
+            img_path = Path(img_paths[counter()])
+        for (node_name, viz_name), visualizations in renders.items():
+            viz = visualizations[i]
+            if img_path is not None:
+                name = f"{img_path.stem}_{node_name}_{viz_name}"
+            else:
+                name = f"{node_name}_{viz_name}_{counter()}"
+            name = name.replace("/", "-")
+            cv2.imwrite(str(save_dir / f"{name}.png"), viz)
 
 
 def create_loader_from_directory(
