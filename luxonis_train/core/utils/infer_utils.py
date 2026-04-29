@@ -152,16 +152,8 @@ def infer_from_loader(
         lt_module = model.lightning_module.eval()
         counter = Counter()
         trainer = cast(Any, model.pl_trainer)
-        # Prefer the trainer strategy's root device when available so this
-        # path follows the same placement as Trainer.predict().
-        device = getattr(
-            getattr(trainer, "strategy", None),
-            "root_device",
-            lt_module.device,
-        )
 
         for batch in loader:
-            batch = _move_batch_to_device(batch, trainer, device)
             with torch.inference_mode(), _get_predict_context(trainer):
                 outputs = lt_module.predict_step(batch)
             _save_renders_batch(
@@ -206,28 +198,6 @@ def _get_predict_context(trainer: Any) -> Any:
     if precision_plugin is None:
         return nullcontext()
     return precision_plugin.forward_context()
-
-
-def _move_batch_to_device(
-    batch: tuple[dict[str, Tensor], dict[str, Tensor]],
-    trainer: Any,
-    device: torch.device,
-) -> tuple[dict[str, Tensor], dict[str, Tensor]]:
-    strategy = getattr(trainer, "strategy", None)
-    # Reuse Lightning's device transfer when it exists so accelerator- or
-    # strategy-specific batch handling still applies on this narrower path.
-    if strategy is not None and hasattr(strategy, "batch_to_device"):
-        return cast(
-            tuple[dict[str, Tensor], dict[str, Tensor]],
-            strategy.batch_to_device(batch, device, 0),
-        )
-
-    inputs, labels = batch
-    # Simple fallback for code paths that do not expose a Lightning strategy.
-    return (
-        {name: tensor.to(device) for name, tensor in inputs.items()},
-        {name: tensor.to(device) for name, tensor in labels.items()},
-    )
 
 
 def _save_renders_batch(
