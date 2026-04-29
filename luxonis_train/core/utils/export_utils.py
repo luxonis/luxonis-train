@@ -63,6 +63,9 @@ def get_preprocessing(
 ) -> tuple[
     list[float] | None, list[float] | None, Literal["RGB", "BGR", "GRAY"]
 ]:
+    if not cfg.normalize.active:
+        return None, None, cfg.color_space
+
     def _get_norm_param(key: Literal["mean", "std"]) -> list[float] | None:
         params = cfg.normalize.params
         if key not in params:  # pragma: no cover
