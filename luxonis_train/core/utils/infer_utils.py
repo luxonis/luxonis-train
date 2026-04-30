@@ -1,6 +1,6 @@
 from collections import defaultdict
-from collections.abc import Iterable
-from contextlib import nullcontext, suppress
+from collections.abc import Generator, Iterable
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 import torch
 import torch.utils.data as torch_data
+from lightning.pytorch.callbacks import BasePredictionWriter
 from loguru import logger
 from luxonis_ml.data import DatasetIterator, LuxonisDataset
 from luxonis_ml.typing import PathType
@@ -146,21 +147,13 @@ def infer_from_loader(
     @param img_paths: The paths to the images.
     """
     if save_dir is not None:
-        # Save outputs as each batch is predicted so we do not keep the full
-        # prediction list in memory before writing visualizations to disk.
         save_dir = Path(save_dir)
-        lt_module = model.lightning_module.eval()
-        counter = Counter()
-        trainer = cast(Any, model.pl_trainer)
-
-        for batch in loader:
-            with torch.inference_mode(), _get_predict_context(trainer):
-                outputs = lt_module.predict_step(batch)
-            _save_renders_batch(
-                process_visualizations(outputs.visualizations),
-                save_dir,
-                counter,
-                img_paths,
+        writer = _VisualizationPredictionWriter(save_dir, img_paths)
+        with _temporary_callback(model.pl_trainer, writer):
+            model.pl_trainer.predict(
+                model.lightning_module,
+                loader,
+                return_predictions=False,
             )
         return
 
@@ -190,14 +183,49 @@ def infer_from_loader(
         cv2.destroyAllWindows()
 
 
-def _get_predict_context(trainer: Any) -> Any:
-    strategy = getattr(trainer, "strategy", None)
-    # The precision plugin is owned by the strategy. Fall back to a no-op
-    # context for tests or simplified trainers that do not attach one.
-    precision_plugin = getattr(strategy, "precision_plugin", None)
-    if precision_plugin is None:
-        return nullcontext()
-    return precision_plugin.forward_context()
+class _VisualizationPredictionWriter(BasePredictionWriter):
+    def __init__(
+        self,
+        save_dir: Path,
+        img_paths: list[PathType] | None = None,
+    ) -> None:
+        super().__init__(write_interval="batch")
+        self.save_dir = save_dir
+        self.img_paths = img_paths
+        self.counter = Counter()
+
+    def write_on_batch_end(
+        self,
+        trainer: Any,
+        pl_module: Any,
+        prediction: Any,
+        batch_indices: Any,
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int = 0,
+    ) -> None:
+        del trainer, pl_module, batch_indices, batch, batch_idx, dataloader_idx
+
+        assert isinstance(prediction, LuxonisOutput)
+        renders = process_visualizations(prediction.visualizations)
+        _save_renders_batch(
+            renders,
+            self.save_dir,
+            self.counter,
+            self.img_paths,
+        )
+
+
+@contextmanager
+def _temporary_callback(
+    trainer: Any, callback: Any
+) -> Generator[None, None, None]:
+    trainer.callbacks.append(callback)
+    try:
+        yield
+    finally:
+        with suppress(ValueError):
+            trainer.callbacks.remove(callback)
 
 
 def _save_renders_batch(
