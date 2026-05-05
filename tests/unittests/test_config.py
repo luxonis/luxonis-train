@@ -1,11 +1,16 @@
 from pathlib import Path
-from typing import cast
+from typing import Any, Literal, cast
 
 import pytest
-from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.data import AlbumentationsEngine, LuxonisDataset
+from luxonis_ml.data.loaders.luxonis_loader import LuxonisLoader
 from luxonis_ml.typing import Params
 
-from luxonis_train.config.config import Config
+from luxonis_train.config.config import (
+    AugmentationConfig,
+    Config,
+    PreprocessingConfig,
+)
 
 
 def test_smart_cfg_auto_populate(coco_dataset: LuxonisDataset):
@@ -143,6 +148,83 @@ def test_get_active_augmentations_preserves_apply_on_stages():
     active_augmentations = cfg.trainer.preprocessing.get_active_augmentations()
 
     assert active_augmentations[0].apply_on_stages == ["train", "test"]
+
+
+def test_apply_on_stages_reaches_stage_specific_augmentation_engines():
+    def get_transform_names(wrapped_transform: Any) -> list[str]:
+        if wrapped_transform is None:
+            return []
+        return next(
+            (
+                [type(item).__name__ for item in cell.cell_contents.transforms]
+                for cell in wrapped_transform.__closure__
+                if hasattr(cell.cell_contents, "transforms")
+            ),
+            [],
+        )
+
+    def resolve_pipeline_stage(
+        view: list[str],
+    ) -> Literal["train", "val", "test"]:
+        loader = LuxonisLoader.__new__(LuxonisLoader)
+        loader.view = view
+        return loader._get_augmentation_pipeline_stage()
+
+    preprocessing = PreprocessingConfig(
+        augmentations=[
+            AugmentationConfig(
+                name="HorizontalFlip",
+                params={"p": 1.0},
+                apply_on_stages=["train"],
+            ),
+            AugmentationConfig(
+                name="Defocus",
+                params={"p": 1.0},
+                apply_on_stages=["train", "val"],
+            ),
+        ]
+    )
+    engine_config = [
+        augmentation.model_dump(exclude={"active"})
+        for augmentation in preprocessing.get_active_augmentations()
+    ]
+
+    expected = {
+        "train": {
+            "spatial": ["HorizontalFlip"],
+            "pixel": ["Defocus", "Normalize"],
+        },
+        "val": {
+            "spatial": [],
+            "pixel": ["Defocus", "Normalize"],
+        },
+        "test": {
+            "spatial": [],
+            "pixel": ["Normalize"],
+        },
+    }
+
+    for loader_name, view in {
+        "train": ["train"],
+        "val": ["val"],
+        "test": ["test"],
+    }.items():
+        engine = AlbumentationsEngine(
+            256,
+            256,
+            {"/classification": "classification"},
+            {"/classification": 1},
+            ["image"],
+            engine_config,
+            pipeline_stage=resolve_pipeline_stage(view),
+        )
+
+        actual = {
+            "spatial": get_transform_names(engine.spatial_transform),
+            "pixel": get_transform_names(engine.pixel_transform),
+        }
+
+        assert actual == expected[loader_name]
 
 
 def test_config_invalid():
