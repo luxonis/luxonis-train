@@ -3,7 +3,7 @@ cyclopts~=4.2
 faster-coco-eval~=1.7
 grad-cam~=1.5
 lightning~=2.5
-luxonis-ml[data,tracker,s3,gcs,roboflow]>=0.8.4
+luxonis-ml[data,tracker,s3,gcs,roboflow]>=0.8.5
 mlflow~=3.6
 onnxruntime~=1.23
 onnxscript~=0.5
@@ -22,4 +22,4 @@ termcolor~=3.2
 torch<2.11 # temporary pin: GitHub runner image does not yet support the newer NVIDIA driver requirement used by torch 2.11 wheels
 torchmetrics~=1.8
 torchvision~=0.24
-hubai-sdk>=0.2.1
+hubai-sdk>=0.2.5

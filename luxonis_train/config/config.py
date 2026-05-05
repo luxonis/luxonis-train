@@ -378,6 +378,9 @@ class NormalizeAugmentationConfig(BaseModelExtraForbid):
 class AugmentationConfig(ConfigItem):
     active: bool = True
     use_for_resizing: bool = False
+    apply_on_stages: list[Literal["train", "val", "test"]] = Field(
+        default_factory=lambda: ["train"]
+    )
 
 
 class PreprocessingConfig(BaseModelExtraForbid):
@@ -472,6 +475,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
                 name=aug.name,
                 params=aug.params,
                 use_for_resizing=aug.use_for_resizing,
+                apply_on_stages=aug.apply_on_stages,
             )
             for aug in self.augmentations
             if aug.active
