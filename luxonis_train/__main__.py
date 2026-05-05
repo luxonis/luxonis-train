@@ -121,10 +121,17 @@ def _yield_visualizations(
     size_multiplier: Annotated[
         float, Parameter(["--size_multiplier", "-s"])
     ] = 1.0,
+    list_augmentations: bool = False,
 ) -> Iterator["np.ndarray"]:
     import cv2
     import numpy as np
-    from luxonis_ml.data.utils.visualizations import visualize
+    from luxonis_ml.data.utils.augmentations_collector import (
+        AugmentationsCollector,
+    )
+    from luxonis_ml.data.utils.visualizations import (
+        add_augmentation_footer,
+        visualize,
+    )
 
     from luxonis_train.utils.general import decode_text_metadata_labels
 
@@ -161,6 +168,19 @@ def _yield_visualizations(
     model = create_model(config, opts)
 
     loader = model.loaders[view]
+    raw_loader = getattr(loader, "loader", None)
+    if list_augmentations and raw_loader is not None:
+        collector = AugmentationsCollector(
+            raw_loader.augmentations,  # type: ignore[attr-defined]
+            [
+                aug.model_dump()
+                for aug in model.cfg_preprocessing.get_active_augmentations()
+            ],
+        )
+        get_applied_augmentations = collector.get_applied_augmentations
+    else:
+        get_applied_augmentations = list
+
     metadata_types = loader.get_metadata_types()
     categorical_encodings = loader.get_categorical_encodings()
     for idx in range(len(loader)):
@@ -174,13 +194,16 @@ def _yield_visualizations(
         h, w, _ = main_image.shape
         new_h, new_w = int(h * size_multiplier), int(w * size_multiplier)
         main_image = cv2.resize(main_image, (new_w, new_h))
-        yield visualize(
+        viz = visualize(
             image=main_image,
             labels=np_labels,
             classes=loader.get_classes(),
             source_name=loader.image_source,
             categorical_encodings=categorical_encodings,
         )
+        if list_augmentations:
+            viz = add_augmentation_footer(viz, get_applied_augmentations())
+        yield viz
 
 
 @app.command(group=training_group, sort_key=3)
@@ -193,6 +216,7 @@ def inspect(
     size_multiplier: Annotated[
         float, Parameter(["--size_multiplier", "-s"])
     ] = 1.0,
+    list_augmentations: bool = False,
 ):
     """Inspect the dataset as specified in the configuration.
 
@@ -207,6 +231,9 @@ def inspect(
     @param size_multiplier: Multiplier for the image size. By default
         the images are shown in their original size. Use this option to
         scale them.
+    @type list_augmentations: bool
+    @param list_augmentations: Show the augmentations applied to each
+        displayed image in the footer.
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     """
@@ -222,6 +249,7 @@ def inspect(
         config=config,
         view=view,
         size_multiplier=size_multiplier,
+        list_augmentations=list_augmentations,
         opts=opts,
     ):
         window_name = get_window()
