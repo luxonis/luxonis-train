@@ -60,7 +60,8 @@ def test_convert_with_blobconverter(
 
 
 # TODO: reintroduce Hailo conversion when modelconv is released and hub-ai is updated accordingly
-@pytest.mark.parametrize("platform", ["rvc2", "rvc3", "rvc4"])
+# TODO: reintroduce RVC3 conversion when remote-side conversion issue is resolved
+@pytest.mark.parametrize("platform", ["rvc2", "rvc4"])
 def test_convert_with_hubai(
     coco_dataset: LuxonisDataset, opts: Params, tmp_path: Path, platform: str
 ):
