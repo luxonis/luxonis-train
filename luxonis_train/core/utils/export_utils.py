@@ -13,12 +13,20 @@ from luxonis_train.config.config import PreprocessingConfig
 
 @contextmanager
 def replace_weights(
-    module: "lxt.LuxonisLightningModule", weights: PathType | None = None
+    module: "lxt.LuxonisLightningModule",
+    weights: PathType | None = None,
+    *,
+    strict: bool | None = None,
 ) -> Generator:
+    strict = (
+        module.cfg.model.strict_checkpoint_loading
+        if strict is None
+        else strict
+    )
     old_weights = None
     if weights is not None:
         old_weights = module.state_dict()
-        module.load_checkpoint(str(weights))
+        module.load_checkpoint(str(weights), strict=strict)
 
     yield
 
@@ -26,6 +34,8 @@ def replace_weights(
         try:
             module.load_state_dict(old_weights)
         except RuntimeError:
+            if strict:
+                raise
             logger.opt(depth=2).error(
                 "Failed to strictly load old weights. "
                 "The model likely underwent re-parametrization, "

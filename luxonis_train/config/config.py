@@ -87,6 +87,7 @@ class ModelConfig(BaseModelExtraForbid):
         PredefinedModelConfig | None, Field(exclude=True)
     ] = None
     weights: FilePath | None = None
+    strict_checkpoint_loading: bool = False
     nodes: list[NodeConfig] = []
     losses: list[LossModuleConfig] = []
     metrics: list[MetricModuleConfig] = []
@@ -463,6 +464,7 @@ class TrainerConfig(BaseModelExtraForbid):
     n_workers: NonNegativeInt = 4
     validation_interval: Literal[-1] | PositiveInt = 5
     n_log_images: NonNegativeInt = 4
+    disable_balanced_log_images: bool = False
     skip_last_batch: bool = True
     pin_memory: bool = True
     log_sub_losses: bool = True
