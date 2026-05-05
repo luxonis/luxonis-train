@@ -464,7 +464,6 @@ class TrainerConfig(BaseModelExtraForbid):
     n_workers: NonNegativeInt = 4
     validation_interval: Literal[-1] | PositiveInt = 5
     n_log_images: NonNegativeInt = 4
-    disable_balanced_log_images: bool = False
     skip_last_batch: bool = True
     pin_memory: bool = True
     log_sub_losses: bool = True

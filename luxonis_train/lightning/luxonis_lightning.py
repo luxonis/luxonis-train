@@ -654,10 +654,7 @@ class LuxonisLightningModule(pl.LightningModule):
         self._loss_accumulators[mode].update(losses)
 
         if outputs.visualizations:
-            if (
-                cls_key is not None
-                and not self.cfg.trainer.disable_balanced_log_images
-            ):
+            if cls_key is not None:
                 # Smart logging: balance class representation
                 n_classes = labels[cls_key].shape[1]
                 if (
@@ -736,13 +733,9 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
         if self._n_logged_images != self.cfg.trainer.n_log_images:
-            reasons = ["a small number of images in the split"]
-            if not self.cfg.trainer.disable_balanced_log_images:
-                reasons.insert(0, "class imbalance")
             logger.warning(
                 f"Logged images ({self._n_logged_images}) != expected ({self.cfg.trainer.n_log_images}). Possible reasons: "
-                + " or ".join(reasons)
-                + "."
+                f"class imbalance or a small number of images in the split."
             )
 
         self._n_logged_images = 0
