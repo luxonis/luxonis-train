@@ -168,7 +168,10 @@ def test_apply_on_stages_reaches_stage_specific_augmentation_engines():
     ) -> Literal["train", "val", "test"]:
         loader = LuxonisLoader.__new__(LuxonisLoader)
         loader.view = view
-        return loader._get_augmentation_pipeline_stage()
+        return cast(
+            Literal["train", "val", "test"],
+            loader._get_augmentation_pipeline_stage(),
+        )
 
     preprocessing = PreprocessingConfig(
         augmentations=[
