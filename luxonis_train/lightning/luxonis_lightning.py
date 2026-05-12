@@ -1,4 +1,3 @@
-import re
 from collections import defaultdict
 from collections.abc import Callable, Mapping
 from copy import deepcopy
@@ -29,6 +28,7 @@ from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
 from luxonis_train.registry import _INTERNAL
 from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
+from luxonis_train.utils.checkpoint import filter_checkpoint_state_dict
 
 from .luxonis_output import LuxonisOutput
 from .utils import (
@@ -527,20 +527,8 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
-        pattern = re.compile(
-            r"^nodes\.[^.]+\.(metrics|visualizers|losses)\..*_node\..*"
-        )
-        checkpoint["state_dict"] = {
-            k: v
-            for k, v in checkpoint["state_dict"].items()
-            if not pattern.match(k)
-        }
-        checkpoint |= {
-            "version": luxonis_train.__version__,
-            "execution_order": get_model_execution_order(self),
-            "config": self.cfg.model_dump(),
-            "dataset_metadata": self.dataset_metadata.dump(),
-        }
+        super().on_save_checkpoint(checkpoint)
+        self._add_custom_data_to_checkpoint(checkpoint)
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:
@@ -1097,3 +1085,16 @@ class LuxonisLightningModule(pl.LightningModule):
                     f"{self.nodes[node_name].task_name}/{node_name}/{output_name}/{i}"
                 )
         return output_names
+
+    def _add_custom_data_to_checkpoint(
+        self, checkpoint: dict[str, Any]
+    ) -> None:
+        checkpoint["state_dict"] = filter_checkpoint_state_dict(
+            checkpoint["state_dict"]
+        )
+        checkpoint |= {
+            "version": luxonis_train.__version__,
+            "execution_order": get_model_execution_order(self),
+            "config": self.cfg.model_dump(),
+            "dataset_metadata": self.dataset_metadata.dump(),
+        }

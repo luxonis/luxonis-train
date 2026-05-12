@@ -482,33 +482,7 @@ def build_callbacks(
     callbacks: list[pl.Callback] = [
         TrainingManager(),
         LuxonisModelSummary(max_depth=2, rich=cfg.rich_logging),
-        ModelCheckpoint(
-            dirpath=save_dir / "min_val_loss",
-            filename=f"{model_name}_loss={{val/loss:.4f}}_{{epoch:02d}}",
-            monitor="val/loss",
-            auto_insert_metric_name=False,
-            save_top_k=cfg.trainer.save_top_k,
-            mode="min",
-        ),
     ]
-
-    if main_metric is not None:
-        node_name, metric_name = main_metric
-        formatted_node = nodes.formatted_name(node_name)
-        metric_path = f"{formatted_node}/{metric_name}"
-        filename_path = metric_path.replace("/", "_")
-        callbacks.append(
-            ModelCheckpoint(
-                dirpath=save_dir / "best_val_metric",
-                filename=f"{model_name}_{filename_path}="
-                f"{{val/metric/{metric_path}:.4f}}"
-                f"_loss={{val/loss:.4f}}_{{epoch:02d}}",
-                monitor=f"val/metric/{metric_path}",
-                auto_insert_metric_name=False,
-                save_top_k=cfg.trainer.save_top_k,
-                mode="max",
-            )
-        )
 
     for callback in cfg.trainer.callbacks:
         if callback.active:
@@ -535,6 +509,34 @@ def build_callbacks(
     if cfg.exporter.aimet.active:
         callbacks.append(AIMETCallback())
 
+    if main_metric is not None:
+        node_name, metric_name = main_metric
+        formatted_node = nodes.formatted_name(node_name)
+        metric_path = f"{formatted_node}/{metric_name}"
+        filename_path = metric_path.replace("/", "_")
+        callbacks.append(
+            ModelCheckpoint(
+                dirpath=save_dir / "best_val_metric",
+                filename=f"{model_name}_{filename_path}="
+                f"{{val/metric/{metric_path}:.4f}}"
+                f"_loss={{val/loss:.4f}}_{{epoch:02d}}",
+                monitor=f"val/metric/{metric_path}",
+                auto_insert_metric_name=False,
+                save_top_k=cfg.trainer.save_top_k,
+                mode="max",
+            )
+        )
+
+    callbacks.append(
+        ModelCheckpoint(
+            dirpath=save_dir / "min_val_loss",
+            filename=f"{model_name}_loss={{val/loss:.4f}}_{{epoch:02d}}",
+            monitor="val/loss",
+            auto_insert_metric_name=False,
+            save_top_k=cfg.trainer.save_top_k,
+            mode="min",
+        )
+    )
     return callbacks
 
 

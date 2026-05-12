@@ -1,10 +1,11 @@
 import json
+import tempfile
 import threading
 from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
 from threading import ExceptHookArgs, Thread
-from typing import Literal, cast, overload
+from typing import Any, Literal, cast, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -16,6 +17,7 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.utilities import rank_zero_only
 from loguru import logger
 from luxonis_ml.data import LuxonisDataset
+from luxonis_ml.data.utils.cli_utils import print_info
 from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.typing import Params, PathType
@@ -36,7 +38,7 @@ from luxonis_train.lightning import LuxonisLightningModule
 from luxonis_train.lightning.utils import get_main_metric
 from luxonis_train.loaders import (
     BaseLoaderTorch,
-    DebugLoader,
+    DummyLoader,
     LuxonisLoaderTorch,
 )
 from luxonis_train.loaders.base_loader import LuxonisLoaderTorchOutput
@@ -52,6 +54,7 @@ from luxonis_train.utils import (
     LuxonisTrackerPL,
     setup_logging,
 )
+from luxonis_train.utils.general import safe_download
 
 from .utils.annotate_utils import annotate_from_directory
 from .utils.archive_utils import (
@@ -89,8 +92,8 @@ class LuxonisModel:
         cfg: PathType | Params | Config | None,
         opts: Params | list[str] | tuple[str, ...] | None = None,
         *,
-        weights: PathType | None = None,
-        debug_mode: bool = False,
+        weights: PathType | dict[str, Any] | None = None,
+        allow_empty_dataset: bool = False,
         dataset_metadata: DatasetMetadata | None = None,
     ):
         """Constructs a new Core instance.
@@ -104,17 +107,57 @@ class LuxonisModel:
         @type opts: list[str] | tuple[str, ...] | dict[str, Any] | None
         @param opts: Argument dict provided through command line, used for config overriding.
 
-        @type debug_mode: bool
-        @param debug_mode: If set to True, enables debug mode which ignores some
-            normaly unrecovarable exceptions and allows to test the model
-            without it being fully functional.
+        @type allow_empty_dataset: bool
+        @param allow_empty_dataset: If set to True, the model will be initialized even if the dataset is empty or cannot be created
+            This is useful either for debugging or for running commands that don't require a dataset (e.g. export with existing weights).
+        @type weights: str | None
+        @param weights: Path to the weights. If user specifies weights
+            in the config file, the weights provided here will take
+            precedence.
         """
+        if weights is not None:
+            if isinstance(weights, dict):
+                if "state_dict" not in weights:
+                    weights = {"state_dict": weights}
+                ckpt = weights
+            elif isinstance(weights, PathType):
+                weights = safe_download(weights)
+                if weights is None:
+                    raise RuntimeError(
+                        f"Failed to download weights from {weights}."
+                    )
+                ckpt = torch.load(weights, map_location="cpu")  # nosemgre
+            else:  # pragma: no cover
+                raise ValueError(
+                    f"Invalid type for weights: {type(weights)}. "
+                    "Expected str or dict."
+                )
+
+            if cfg is None:
+                cfg = ckpt.get("config")
+                if cfg is None:
+                    raise ValueError(
+                        "Checkpoint does not contain the 'config' key. "
+                        "Cannot restore `LuxonisModel` from checkpoint."
+                    )
+            if "dataset_metadata" in ckpt and dataset_metadata is None:
+                try:
+                    dataset_metadata = DatasetMetadata(
+                        **ckpt["dataset_metadata"]
+                    )
+                except Exception as e:  # pragma: no cover
+                    logger.error(
+                        "Failed to load dataset metadata from the checkpoint. "
+                        f"Error: {e}"
+                    )
+
         if isinstance(cfg, Config):
             self.cfg = cfg
         else:
             self.cfg = Config.get_config(cfg, opts)
 
-        self.debug_mode = debug_mode
+        self.allow_empty_dataset = allow_empty_dataset
+        self.weights = weights or self.cfg.model.weights
 
         self.cfg_preprocessing = self.cfg.trainer.preprocessing
 
@@ -194,18 +237,19 @@ class LuxonisModel:
                     **self.cfg.loader.params,  # type: ignore
                 )
             except Exception:
-                if not self.debug_mode:
+                if not self.allow_empty_dataset:
                     logger.error(
                         "Unable to initialize loader. If you want to run "
-                        "the model in debug mode, set `debug_mode=True`."
+                        "the model without an existing dataset, "
+                        "set `allow_empty_dataset=True`."
                     )
                     raise
                 logger.warning(
                     f"Failed to initialize loader '{loader_name}' "
                     f"for view '{view}'. Using `DummyLoader` instead."
                 )
-                self.cfg.loader.name = DebugLoader.__name__
-                self.loaders[view] = DebugLoader(
+                self.cfg.loader.name = DummyLoader.__name__
+                self.loaders[view] = DummyLoader(
                     cfg=self.cfg,
                     view={
                         "train": self.cfg.loader.train_view,
@@ -281,11 +325,30 @@ class LuxonisModel:
             )
 
         if dataset_metadata is not None:
-            self.dataset_metadata = dataset_metadata
+            if isinstance(self.loaders["train"], DummyLoader) and set(
+                self.cfg.loader.params.keys()
+            ).intersection(
+                {
+                    "class_names",
+                    "n_classes",
+                    "n_keypoints",
+                }
+            ):
+                logger.warning(
+                    "Dataset metadata from the checkpoint are "
+                    "overriden by extra loader parameters. "
+                    "The checkpoint metadata will not be used."
+                )
+                self.dataset_metadata = DatasetMetadata.from_loader(
+                    self.loaders["train"]
+                )
+            else:
+                self.dataset_metadata = dataset_metadata
         else:
             self.dataset_metadata = DatasetMetadata.from_loader(
                 self.loaders["train"]
             )
+        logger.info(f"Dataset metadata: {self.dataset_metadata}")
         self.config_file = self.run_save_dir / "training_config.yaml"
         self.cfg.save_data(self.config_file)
 
@@ -323,6 +386,45 @@ class LuxonisModel:
     def test_loader(self) -> DataLoader:
         return self.pytorch_loaders["test"]
 
+    def save_checkpoint(
+        self,
+        path: PathType,
+        weights_only: bool = False,
+        storage_options: Any = None,
+    ) -> Path:
+        """Saves a checkpoint of the model.
+
+        @type path: PathType
+        @param path: Path where checkpoint will be saved.
+        @type weights_only: bool | None
+        @param weights_only: If `True`, will only save the model weights.
+        @type storage_options: Any
+        @param storage_options: parameter for how to save to storage, passed to `CheckpointIO` plugin
+        @rtype: Path
+        @return: Path to the saved checkpoint.
+        @raises AttributeError: If the module is not attached to the trainer yet. This can happen if you try to save a checkpoint before training / evaluating the model first.
+        """
+        self.pl_trainer.save_checkpoint(
+            path, weights_only=weights_only, storage_options=storage_options
+        )
+        return Path(path)
+
+    def get_checkpoint(self, weights_only: bool = False) -> dict[str, Any]:
+        """Gets the checkpoint of the model as a dictionary.
+
+        @type weights_only: bool
+        @param weights_only: If `True`, will only include the model weights in the checkpoint.
+        @rtype: dict[str, Any]
+        @return: Checkpoint of the model as a dictionary.
+        @raises AttributeError: If the module is not attached to the trainer yet. This can happen if you try to save a checkpoint before training / evaluating the model first.
+        """
+
+        with tempfile.NamedTemporaryFile(suffix=".ckpt", delete=False) as tmp:
+            checkpoint_path = self.save_checkpoint(tmp.name, weights_only)
+            ckpt = torch.load(checkpoint_path, map_location="cpu")
+            checkpoint_path.unlink(missing_ok=True)
+        return ckpt
+
     def _train(self, resume: PathType | None, *args, **kwargs) -> None:
         status = "success"
         try:
@@ -337,7 +439,9 @@ class LuxonisModel:
             self.tracker._finalize(status)
 
     def train(
-        self, new_thread: bool = False, weights: PathType | None = None
+        self,
+        new_thread: bool = False,
+        weights: PathType | None = None,
     ) -> None:
         """Runs training.
 
@@ -356,18 +460,7 @@ class LuxonisModel:
                 self.cfg.trainer.matmul_precision
             )
 
-        if weights is not None:
-            weights = LuxonisFileSystem.download(
-                str(weights), self.run_save_dir
-            )
-            if self.cfg.model.weights is not None:
-                logger.warning(
-                    "Weights provided in the command line, but config weights are set. "
-                    "Ignoring weights provided in config."
-                )
-            self.lightning_module.load_checkpoint(weights)
-        else:
-            weights = self.cfg.model.weights
+        weights = self.resolve_weights(weights)  # type: ignore
 
         if self.cfg.trainer.resume_training and weights is None:
             logger.warning(
@@ -417,7 +510,7 @@ class LuxonisModel:
     def export(
         self,
         save_path: PathType | None = None,
-        weights: PathType | None = None,
+        weights: PathType | dict[str, Any] | None = None,
         ignore_missing_weights: bool = False,
         ckpt_only: bool = False,
     ) -> Path:
@@ -445,23 +538,27 @@ class LuxonisModel:
         @rtype: Path
         @return: Path to the exported ONNX model file or .ckpt file if ckpt_only is True.
         """
-        weights = weights or self.cfg.model.weights
+        weights = self.resolve_weights(weights)
 
         if not ignore_missing_weights and weights is None:
             logger.warning(
                 "No model weights specified. Exporting model without weights."
             )
-
-        export_save_dir = (
-            Path(save_path)
-            if save_path is not None
-            else Path(self.run_save_dir, "export")
-        )
-        export_save_dir.mkdir(parents=True, exist_ok=True)
-
-        export_path = export_save_dir / (
-            self.cfg.exporter.name or self.cfg.model.name
-        )
+        if save_path is None:
+            export_path = (
+                self.run_save_dir
+                / "export"
+                / (self.cfg.exporter.name or self.cfg.model.name)
+            )
+        else:
+            save_path = Path(save_path)
+            if save_path.suffix:
+                export_path = save_path.with_suffix("")
+            else:
+                export_path = save_path / (
+                    self.cfg.exporter.name or self.cfg.model.name
+                )
+        export_path.parent.mkdir(parents=True, exist_ok=True)
 
         if ckpt_only:
             logger.info("Re-exporting the checkpoint file.")
@@ -563,7 +660,7 @@ class LuxonisModel:
         self,
         new_thread: Literal[False] = ...,
         view: Literal["train", "test", "val"] = "test",
-        weights: PathType | None = ...,
+        weights: PathType | dict[str, Any] | None = ...,
     ) -> Mapping[str, float]: ...
 
     @overload
@@ -571,7 +668,7 @@ class LuxonisModel:
         self,
         new_thread: Literal[True] = ...,
         view: Literal["train", "test", "val"] = "test",
-        weights: PathType | None = ...,
+        weights: PathType | dict[str, Any] | None = ...,
     ) -> Thread: ...
 
     @typechecked
@@ -579,7 +676,7 @@ class LuxonisModel:
         self,
         new_thread: bool = False,
         view: Literal["train", "val", "test"] = "test",
-        weights: PathType | None = None,
+        weights: PathType | dict[str, Any] | None = None,
     ) -> Mapping[str, float] | Thread:
         """Runs testing.
 
@@ -597,7 +694,7 @@ class LuxonisModel:
         @return: If new_thread is False, returns a dictionary test
             results.
         """
-        weights = weights or self.cfg.model.weights
+        weights = self.resolve_weights(weights)
         loader = self.pytorch_loaders[view]
 
         with replace_weights(self.lightning_module, weights):
@@ -616,7 +713,7 @@ class LuxonisModel:
         view: Literal["train", "val", "test"] = "val",
         save_dir: PathType | None = None,
         source_path: PathType | None = None,
-        weights: PathType | None = None,
+        weights: PathType | dict[str, Any] | None = None,
     ) -> None:
         """Runs inference.
 
@@ -638,7 +735,7 @@ class LuxonisModel:
             specified checkpoint.
         """
         self.lightning_module.eval()
-        weights = weights or self.cfg.model.weights
+        weights = self.resolve_weights(weights)
 
         with replace_weights(self.lightning_module, weights):
             if save_dir is not None:
@@ -670,14 +767,14 @@ class LuxonisModel:
         self,
         dir_path: PathType,
         dataset_name: str,
-        weights: PathType | None = None,
+        weights: PathType | dict[str, Any] | None = None,
         bucket_storage: Literal["local", "gcs"] = "local",
         delete_local: bool = True,
         delete_remote: bool = True,
         team_id: str | None = None,
     ) -> LuxonisDataset:
         self.lightning_module.eval()
-        weights = weights or self.cfg.model.weights
+        weights = self.resolve_weights(weights)
 
         with replace_weights(self.lightning_module, weights):
             dir_path = Path(dir_path)
@@ -700,6 +797,8 @@ class LuxonisModel:
                 raise ValueError(
                     f"Directory path {dir_path} is not a valid directory."
                 )
+
+        print_info(annotated_dataset)
 
         return annotated_dataset
 
@@ -929,6 +1028,7 @@ class LuxonisModel:
             # If wandb used then init parent tracker separately at the end
             wandb_parent_tracker = LuxonisTrackerPL(
                 rank=rank_zero_only.rank,
+                _auto_finalize=True,
                 **(
                     self.cfg.tracker.model_dump()
                     | {"run_name": self.parent_tracker.run_name}
@@ -939,7 +1039,7 @@ class LuxonisModel:
     def archive(
         self,
         path: PathType | None = None,
-        weights: PathType | None = None,
+        weights: PathType | dict[str, Any] | None = None,
         save_dir: PathType | None = None,
     ) -> Path:
         """Generates an NN Archive out of a model executable.
@@ -956,7 +1056,7 @@ class LuxonisModel:
         @rtype: Path
         @return: Path to the generated NN Archive.
         """
-        weights = weights or self.cfg.model.weights
+        weights = self.resolve_weights(weights)
         with replace_weights(self.lightning_module, weights):
             return self._archive(path, save_dir)
 
@@ -1057,7 +1157,7 @@ class LuxonisModel:
 
     def convert(
         self,
-        weights: PathType | None = None,
+        weights: PathType | dict[str, Any] | None = None,
         save_dir: PathType | None = None,
     ) -> tuple[Path, dict[str, Path]]:
         """Exports the model to ONNX, creates an NN Archive, and
@@ -1464,3 +1564,21 @@ class LuxonisModel:
         2) "artifacts"  -> Keys expected to be logged as artifacts (e.g. confusion_matrix.json, visualizations)
         """
         return self.lightning_module.get_mlflow_logging_keys()
+
+    def resolve_weights(
+        self, weights: PathType | dict[str, Any] | None
+    ) -> PathType | dict[str, Any] | None:
+
+        if isinstance(weights, dict):
+            return weights
+
+        if weights is None:
+            if isinstance(self.weights, dict):
+                return self.weights
+            return safe_download(self.weights)
+
+        logger.warning(
+            "Weights provided on the command line, but config weights are set. "
+            "Ignoring weights provided in config or during LuxonisModel initialization."
+        )
+        return safe_download(weights)

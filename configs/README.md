@@ -292,12 +292,13 @@ Additionally, we support `Mosaic4` and `MixUp` batch augmentations and letterbox
 
 #### Augmentations
 
-| Key                | Type   | Default value | Description                                                    |
-| ------------------ | ------ | ------------- | -------------------------------------------------------------- |
-| `name`             | `str`  | -             | Name of the augmentation                                       |
-| `active`           | `bool` | `True`        | Whether the augmentation is active                             |
-| `use_for_resizing` | `bool` | `False`       | Indicates whether the augmentation should be used for resizing |
-| `params`           | `dict` | `{}`          | Parameters of the augmentation                                 |
+| Key                | Type        | Default value | Description                                                                  |
+| ------------------ | ----------- | ------------- | ---------------------------------------------------------------------------- |
+| `name`             | `str`       | -             | Name of the augmentation                                                     |
+| `active`           | `bool`      | `True`        | Whether the augmentation is active                                           |
+| `use_for_resizing` | `bool`      | `False`       | Indicates whether the augmentation should be used for resizing               |
+| `apply_on_stages`  | `list[str]` | `["train"]`   | Which pipeline stages should apply the augmentation (`train`, `val`, `test`) |
+| `params`           | `dict`      | `{}`          | Parameters of the augmentation                                               |
 
 > [!NOTE]
 > The VerticalFlip and HorizontalFlip transforms do not change keypoint index ordering. They can be safely used only when the dataset has no symmetrical classes (e.g., left arm vs. right arm).

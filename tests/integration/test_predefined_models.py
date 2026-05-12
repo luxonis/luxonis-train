@@ -24,7 +24,7 @@ def test_model_construction():
             "model.predefined_model.include_metrics": False,
             "model.predefined_model.include_visualizers": False,
         },
-        debug_mode=True,
+        allow_empty_dataset=True,
     )
     for node in model.lightning_module.nodes.values():
         assert not node.losses

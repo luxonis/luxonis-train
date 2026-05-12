@@ -1,11 +1,13 @@
 import sqlite3
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import pytest
+import torch
 from luxonis_ml.data import LuxonisDataset
-from luxonis_ml.typing import Params
+from luxonis_ml.data.datasets.utils import shutil
+from luxonis_ml.typing import Params, PathType
 
 from luxonis_train.core import LuxonisModel
 
@@ -64,8 +66,58 @@ def test_weights_loading(cifar10_dataset: LuxonisDataset, opts: Params):
 
     model = LuxonisModel(config_file, opts)
     test_results = model.test()
-    weights = model.get_min_loss_checkpoint_path()
-    assert test_results == model.test(weights=weights)
+    assert test_results == model.test(
+        weights={"state_dict": model.lightning_module.state_dict()}
+    )
+
+
+def test_checkpoint(
+    tmp_path: Path, opts: Params, coco_dataset: LuxonisDataset
+):
+    def check_ckpt(path: Path | dict[str, Any]) -> None:
+        if isinstance(path, dict):
+            ckpt = path
+        else:
+            assert path.exists()
+            ckpt = torch.load(path, map_location="cpu", weights_only=False)
+        assert "config" in ckpt
+        assert "state_dict" in ckpt
+        assert "version" in ckpt
+        assert "dataset_metadata" in ckpt
+
+    model = LuxonisModel(
+        "configs/detection_light_model.yaml",
+        opts
+        | {
+            "loader.params.dataset_name": coco_dataset.identifier,
+            "trainer.callbacks": [
+                {
+                    "name": "UploadCheckpoint",
+                    "active": True,
+                },
+            ],
+        },  # type: ignore
+    )
+    model.test()
+
+    ckpt = model.get_checkpoint()
+    check_ckpt(ckpt)
+
+    ckpt_path = model.save_checkpoint(tmp_path / "saved.ckpt")
+    check_ckpt(ckpt_path)
+
+    model.export(tmp_path / "exported.ckpt", ckpt_only=True)
+    check_ckpt(tmp_path / "exported.ckpt")
+
+    def upload_artifact(path: PathType, *args, **kwargs) -> None:
+        path = Path(path)
+        if path.suffix == ".ckpt":
+            shutil.copy(path, tmp_path / "uploaded.ckpt")
+
+    model.lightning_module.logger.upload_artifact = upload_artifact
+    model.train()
+    assert (tmp_path / "uploaded.ckpt").exists()
+    check_ckpt(tmp_path / "uploaded.ckpt")
 
 
 def test_precision_fallback_to_bf16_on_cpu(

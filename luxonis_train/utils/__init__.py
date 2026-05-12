@@ -9,6 +9,10 @@ from .boundingbox import (
     keypoints_to_bboxes,
     non_max_suppression,
 )
+from .checkpoint import (
+    CHECKPOINT_FILTERED_STATE_DICT_PATTERN,
+    filter_checkpoint_state_dict,
+)
 from .dataset_metadata import DatasetMetadata
 from .exceptions import IncompatibleError
 from .general import (
@@ -41,6 +45,7 @@ from .spatial_transforms import (
 from .tracker import LuxonisTrackerPL
 
 __all__ = [
+    "CHECKPOINT_FILTERED_STATE_DICT_PATTERN",
     "Counter",
     "DatasetMetadata",
     "IncompatibleError",
@@ -55,6 +60,7 @@ __all__ = [
     "compute_pose_oks",
     "default_annotate",
     "dist2bbox",
+    "filter_checkpoint_state_dict",
     "get_attribute_check_none",
     "get_batch_instances",
     "get_center_keypoints",

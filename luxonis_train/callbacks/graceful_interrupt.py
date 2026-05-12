@@ -3,6 +3,7 @@ import signal
 import sys
 from pathlib import Path
 from types import FrameType
+from typing import Any
 
 import lightning.pytorch as pl
 from loguru import logger
@@ -29,6 +30,7 @@ class GracefulInterruptCallback(pl.Callback):
         self._interrupted = False
         self._trainer: pl.Trainer | None = None
         self._main_pid = os.getpid()
+        self._signal_handlers: dict[int, Any] = {}
 
     def setup(
         self,
@@ -38,13 +40,29 @@ class GracefulInterruptCallback(pl.Callback):
     ) -> None:
         self._trainer = trainer
 
-        if (
-            os.getpid() == self._main_pid
-        ):  # to avoid problem with multiple workers
-            signal.signal(signal.SIGINT, self._handle_signal)
-            signal.signal(signal.SIGTERM, self._handle_signal)
+        if stage != "fit":
+            return
+
+        if os.getpid() == self._main_pid:
+            for signum in (signal.SIGINT, signal.SIGTERM):
+                self._signal_handlers[signum] = signal.getsignal(signum)
+                signal.signal(signum, self._handle_signal)
 
         logger.info("Added GracefulInterrupt callback")
+
+    def teardown(
+        self,
+        trainer: pl.Trainer,
+        pl_module: "lxt.LuxonisLightningModule",
+        stage: str | None = None,
+    ) -> None:
+        if stage != "fit":
+            return
+
+        if os.getpid() == self._main_pid:
+            for signum, handler in self._signal_handlers.items():
+                signal.signal(signum, handler)
+            self._signal_handlers.clear()
 
     def _handle_signal(self, signum: int, frame: FrameType | None) -> None:
         if os.getpid() != self._main_pid:

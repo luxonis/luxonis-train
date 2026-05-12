@@ -145,8 +145,9 @@ class DatasetMetadata:
 
         @type task_name: str | None
         @param task_name: Task to get the class names for.
-        @rtype: list[str]
-        @return: List of class names for the specified task type.
+        @rtype: bidict[str, int]
+        @return: Bidirectional dictionary mapping class names to their
+            indices for the specified task type.
         @raises ValueError: If the C{task} is not present in the
             dataset.
         @raises RuntimeError: If the C{task} was not provided and the
