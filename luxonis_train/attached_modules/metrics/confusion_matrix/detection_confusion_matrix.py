@@ -50,6 +50,7 @@ class DetectionConfusionMatrix(BaseMetric):
             "confusion_matrix": self.confusion_matrix,
         }
 
+    @torch.inference_mode()
     def _update(self, predictions: list[Tensor], targets: Tensor) -> None:
         for pred, target in zip(
             predictions,
