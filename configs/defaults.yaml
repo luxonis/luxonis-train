@@ -2,6 +2,7 @@ rich_logging: true
 
 model:
   name: model
+  strict_weights_loading: false
   nodes: []
   outputs: []
 

@@ -55,14 +55,15 @@ The `Model` section is a crucial part of the configuration and **must always be 
 
 ### Configuration Options
 
-| Key                | Type   | Default Value | Description                                                                                        |
-| ------------------ | ------ | ------------- | -------------------------------------------------------------------------------------------------- |
-| `name`             | `str`  | `"model"`     | Name of the model                                                                                  |
-| `weights`          | `path` | `None`        | Path to a checkpoint file containing all model states, including weights, optimizer, and scheduler |
-| `nodes`            | `list` | `[]`          | List of nodes (see [Nodes](#nodes))                                                                |
-| `outputs`          | `list` | `[]`          | List of output nodes. If not specified, they are inferred from `nodes`                             |
-| `predefined_model` | `dict` | `None`        | Dictionary specifying the predefined model name and its parameters                                 |
-| `params`           | `dict` | `{}`          | Parameters for the predefined model                                                                |
+| Key                      | Type   | Default Value | Description                                                                                                                        |
+| ------------------------ | ------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                   | `str`  | `"model"`     | Name of the model                                                                                                                  |
+| `weights`                | `path` | `None`        | Path to a checkpoint file containing all model states, including weights, optimizer, and scheduler                                 |
+| `strict_weights_loading` | `bool` | `False`       | If `True`, only strict checkpoint loading is attempted and any incompatibility fails immediately instead of using fallback loading |
+| `nodes`                  | `list` | `[]`          | List of nodes (see [Nodes](#nodes))                                                                                                |
+| `outputs`                | `list` | `[]`          | List of output nodes. If not specified, they are inferred from `nodes`                                                             |
+| `predefined_model`       | `dict` | `None`        | Dictionary specifying the predefined model name and its parameters                                                                 |
+| `params`                 | `dict` | `{}`          | Parameters for the predefined model                                                                                                |
 
 ### Nodes
 

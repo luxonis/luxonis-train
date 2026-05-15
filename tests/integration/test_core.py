@@ -12,6 +12,21 @@ from luxonis_ml.typing import Params, PathType
 from luxonis_train.core import LuxonisModel
 
 
+def _get_incompatible_checkpoint(
+    model: LuxonisModel,
+) -> dict[str, Any]:
+    state_dict = model.lightning_module.state_dict()
+    removed_key = next(key for key in state_dict if key.startswith("nodes."))
+    incompatible_state_dict = {
+        key: value for key, value in state_dict.items() if key != removed_key
+    }
+    version = "0.4.0" if ".module." in removed_key else "0.3.0"
+    return {
+        "state_dict": incompatible_state_dict,
+        "version": version,
+    }
+
+
 @pytest.mark.skipif(
     sys.platform == "win32", reason="Tuning not supported on Windows"
 )
@@ -69,6 +84,39 @@ def test_weights_loading(cifar10_dataset: LuxonisDataset, opts: Params):
     assert test_results == model.test(
         weights={"state_dict": model.lightning_module.state_dict()}
     )
+
+
+def test_weights_loading_falls_back_to_non_strict_by_default(
+    cifar10_dataset: LuxonisDataset, opts: Params
+):
+    config_file = "configs/classification_light_model.yaml"
+    opts |= {
+        "loader.params.dataset_name": cifar10_dataset.dataset_name,
+    }
+
+    model = LuxonisModel(config_file, opts)
+    incompatible_ckpt = _get_incompatible_checkpoint(model)
+
+    model.lightning_module.load_checkpoint(incompatible_ckpt)
+
+
+def test_strict_weights_loading_fails_fast(
+    cifar10_dataset: LuxonisDataset, opts: Params
+):
+    config_file = "configs/classification_light_model.yaml"
+    strict_opts = opts | {
+        "loader.params.dataset_name": cifar10_dataset.dataset_name,
+        "model.strict_weights_loading": True,
+    }
+
+    model = LuxonisModel(config_file, strict_opts)
+    incompatible_ckpt = _get_incompatible_checkpoint(model)
+
+    with pytest.raises(
+        RuntimeError,
+        match="Strict weight loading is enabled",
+    ):
+        model.lightning_module.load_checkpoint(incompatible_ckpt)
 
 
 def test_checkpoint(

@@ -600,10 +600,17 @@ class LuxonisLightningModule(pl.LightningModule):
             }
             try:
                 node.module.load_checkpoint(sub_state_dict, strict=True)
-            except RuntimeError:  # pragma: no cover
+            except RuntimeError as e:
+                if self.cfg.model.strict_weights_loading:
+                    raise RuntimeError(
+                        "Strict weight loading is enabled and checkpoint "
+                        f"for node '{node_name}' could not be loaded strictly. "
+                        f"Inconsistent keys: {e}"
+                    ) from e
                 logger.error(
                     f"Failed to load checkpoint for node '{node_name}'"
                 )
+                logger.error(str(e))
                 if old_order is None:
                     logger.error(
                         "Execution order not found in the checkpoint. "
@@ -657,10 +664,11 @@ class LuxonisLightningModule(pl.LightningModule):
                             logger.info(
                                 f"Successfully loaded transformed checkpoint for node '{node_name}'"
                             )
-                        except RuntimeError:
+                        except RuntimeError as e:
                             logger.error(
                                 f"Failed to load transformed checkpoint for node '{node_name}'"
                             )
+                            logger.error(str(e))
                             logger.info(
                                 "Loading checkpoint with strict=False, some weights may not be loaded"
                             )
