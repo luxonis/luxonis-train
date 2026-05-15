@@ -1,3 +1,4 @@
+from copy import copy
 from pathlib import Path
 from typing import Any
 
@@ -5,6 +6,7 @@ import lightning.pytorch as pl
 import torch
 from lightning.pytorch.callbacks import ModelCheckpoint
 from loguru import logger
+from typing_extensions import override
 
 import luxonis_train as lxt
 from luxonis_train.registry import CALLBACKS
@@ -24,12 +26,15 @@ class UploadCheckpoint(pl.Callback):
         super().__init__()
         self.last_best_checkpoints = set()
 
+    @override
     def on_save_checkpoint(
         self,
         trainer: pl.Trainer,
         module: "lxt.LuxonisLightningModule",
         checkpoint: dict[str, Any],
     ) -> None:
+        checkpoint = copy(checkpoint)
+        module._add_custom_data_to_checkpoint(checkpoint)
         checkpoint_paths = [
             c.best_model_path
             for c in trainer.checkpoint_callbacks

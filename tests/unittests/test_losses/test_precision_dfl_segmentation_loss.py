@@ -1,3 +1,4 @@
+import pytest
 import torch
 from torch import Size, Tensor
 
@@ -37,8 +38,11 @@ class DummyPrecisionSegmentBBoxHead(PrecisionSegmentBBoxHead, register=False):
     def forward(self, _: Tensor) -> Tensor: ...
 
 
-def test_precision_segmentation_loss():
-    loss = PrecisionDFLSegmentationLoss(node=DummyPrecisionSegmentBBoxHead())
+@pytest.mark.parametrize("skip_stal", [True, False])
+def test_precision_segmentation_loss(skip_stal: bool):
+    loss = PrecisionDFLSegmentationLoss(
+        node=DummyPrecisionSegmentBBoxHead(), skip_stal=skip_stal
+    )
     (
         features,
         prototypes,
@@ -54,5 +58,9 @@ def test_precision_segmentation_loss():
         target_boundingbox,
         target_instance_segmentation,
     )[1]
+    assert result.keys() == expected_sub_losses.keys()
     for key, value in result.items():
-        assert torch.isclose(value, expected_sub_losses[key], atol=1e-3)
+        assert value.ndim == 0
+        assert torch.isfinite(value)
+        if skip_stal:
+            assert torch.isclose(value, expected_sub_losses[key], atol=1e-3)

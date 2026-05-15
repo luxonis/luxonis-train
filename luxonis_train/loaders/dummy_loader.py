@@ -2,6 +2,7 @@ from collections import defaultdict
 from typing import Literal
 
 import torch
+from luxonis_ml.typing import check_type
 from torch import Size, Tensor
 from typing_extensions import override
 
@@ -13,7 +14,7 @@ from luxonis_train.typing import Labels
 from .base_loader import BaseLoaderTorch
 
 
-class DebugLoader(BaseLoaderTorch):
+class DummyLoader(BaseLoaderTorch):
     """A dummy data loader for testing purposes.
 
     It serves as a placeholder in place of C{LuxonisLoaderTorch} when no
@@ -33,6 +34,10 @@ class DebugLoader(BaseLoaderTorch):
         color_space: Literal["RGB", "BGR", "GRAY"] = "RGB",
         n_keypoints: int = 3,
         n_classes: int = 1,
+        class_names: list[str]
+        | dict[str, int]
+        | dict[str, dict[str, int]]
+        | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -52,6 +57,16 @@ class DebugLoader(BaseLoaderTorch):
                 for label in Node.task.required_labels:
                     self.labels[f"{node.task_name or ''}"].add(label)
         self.n_channels = 1 if color_space == "GRAY" else 3
+        if isinstance(class_names, list):
+            class_names = {name: i for i, name in enumerate(class_names)}
+        if check_type(class_names, dict[str, int]):
+            class_names = dict.fromkeys(self.labels, class_names)
+        if class_names is None:
+            class_names = {
+                key: {str(i): i for i in range(n_classes)}
+                for key in self.labels
+            }
+        self.class_names: dict[str, dict[str, int]] = class_names  # type: ignore
 
     @property
     @override
@@ -85,10 +100,7 @@ class DebugLoader(BaseLoaderTorch):
 
     @override
     def get_classes(self) -> dict[str, dict[str, int]]:
-        return {
-            task_name: {str(i): i for i in range(self.n_classes)}
-            for task_name in self.labels
-        }
+        return self.class_names
 
     @override
     def get_n_keypoints(self) -> dict[str, int] | None:

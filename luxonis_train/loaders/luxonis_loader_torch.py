@@ -130,7 +130,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             view=self.view,
             augmentation_engine=self.augmentation_engine,
             augmentation_config=[
-                aug.model_dump() for aug in self.augmentation_config
+                aug.model_dump(exclude={"active"})
+                for aug in self.augmentation_config
             ],
             height=self.height,
             width=self.width,
@@ -210,6 +211,10 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             k: {"float": float, "int": int, "str": str, "Category": int}[v]
             for k, v in self.dataset.get_metadata_types().items()
         }
+
+    @override
+    def get_categorical_encodings(self) -> dict[str, dict[str, int]]:
+        return self.dataset.get_categorical_encodings()
 
     @override
     def augment_test_image(self, img: dict[str, Tensor]) -> Tensor:

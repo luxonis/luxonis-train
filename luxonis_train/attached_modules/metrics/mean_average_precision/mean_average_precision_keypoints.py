@@ -25,7 +25,10 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
     Uses C{OKS} as IoU measure.
     """
 
-    supported_tasks = [Tasks.INSTANCE_KEYPOINTS]
+    supported_tasks = [
+        Tasks.INSTANCE_KEYPOINTS,
+        Tasks.INSTANCE_SEGMENTATION_KEYPOINTS,
+    ]
 
     pred_bboxes: Annotated[list[Tensor], MetricState()]
     pred_scores: Annotated[list[Tensor], MetricState()]

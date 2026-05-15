@@ -1,4 +1,3 @@
-import re
 from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
@@ -32,6 +31,7 @@ from luxonis_train.config import Config
 from luxonis_train.nodes import BaseNode
 from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
+from luxonis_train.utils.checkpoint import filter_checkpoint_state_dict
 
 from .luxonis_output import LuxonisOutput
 from .utils import (
@@ -159,6 +159,8 @@ class LuxonisLightningModule(pl.LightningModule):
                 "luxonis_ml_version": luxonis_ml_version,
             }
         )
+        self._restore_validation_interval_after_first_epoch = False
+        self._original_check_val_every_n_epoch: int | None = None
 
     @override
     def load_state_dict(
@@ -485,6 +487,46 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
     @override
+    def setup(self, stage: str) -> None:
+        """Temporarily make validation run after the first training
+        epoch if the config item `run_validation_after_first_epoch` is
+        set.
+
+        Lightning decides whether validation should run at epoch end from
+        the public trainer attribute `check_val_every_n_epoch`. When
+        `trainer.run_validation_after_first_epoch` is enabled, we want to
+        keep using Lightning's normal validation path, but also ensure
+        that epoch 1 gets validated even if the configured `validation_interval`
+        normally skips it.
+
+        `trainer.check_val_every_n_epoch` is temporarily overriden to `1` before fitting starts.
+        After that first real validation epoch
+        completes, `on_validation_epoch_end()` restores the original
+        interval so the rest of training follows the configured cadence.
+
+        This override is intentionally applied only when `run_validation_after_first_epoch=True`
+        """
+        if getattr(stage, "value", stage) != "fit":
+            return
+
+        if (
+            not self.cfg.trainer.run_validation_after_first_epoch
+            or self.trainer.current_epoch != 0
+            or self.trainer.check_val_every_n_epoch is None
+            or self.trainer.check_val_every_n_epoch <= 1
+        ):
+            return
+
+        if self._restore_validation_interval_after_first_epoch:
+            return
+
+        self._original_check_val_every_n_epoch = (
+            self.trainer.check_val_every_n_epoch
+        )
+        self.trainer.check_val_every_n_epoch = 1
+        self._restore_validation_interval_after_first_epoch = True
+
+    @override
     def on_train_epoch_start(self) -> None:
         for node in self.nodes.values():
             node.module.current_epoch = self.current_epoch
@@ -505,7 +547,21 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def on_validation_epoch_end(self) -> None:
-        return self._evaluation_epoch_end("val")
+        """Restore the original validation interval after epoch 1
+        validation."""
+        self._evaluation_epoch_end("val")
+
+        if (
+            not self.trainer.sanity_checking
+            and self._restore_validation_interval_after_first_epoch
+            and self.current_epoch == 0
+            and self._original_check_val_every_n_epoch is not None
+        ):
+            self.trainer.check_val_every_n_epoch = (
+                self._original_check_val_every_n_epoch
+            )
+            self._restore_validation_interval_after_first_epoch = False
+            self._original_check_val_every_n_epoch = None
 
     @override
     def on_test_epoch_end(self) -> None:
@@ -513,20 +569,8 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
-        pattern = re.compile(
-            r"^nodes\.[^.]+\.(metrics|visualizers|losses)\..*_node\..*"
-        )
-        checkpoint["state_dict"] = {
-            k: v
-            for k, v in checkpoint["state_dict"].items()
-            if not pattern.match(k)
-        }
-        checkpoint |= {
-            "version": luxonis_train.__version__,
-            "execution_order": get_model_execution_order(self),
-            "config": self.cfg.model_dump(),
-            "dataset_metadata": self.dataset_metadata.dump(),
-        }
+        super().on_save_checkpoint(checkpoint)
+        self._add_custom_data_to_checkpoint(checkpoint)
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:
@@ -814,17 +858,21 @@ class LuxonisLightningModule(pl.LightningModule):
 
                 for name, value in values.items():
                     if value.dim() == 2:
+                        matrix_info = (
+                            self.progress_bar.format_matrix_for_printing(
+                                node, name, value
+                            )
+                        )
                         self.tracker.log_matrix(
                             matrix=value.cpu().numpy(),
                             name=f"{mode}/metrics/{self.current_epoch}/"
                             f"{formatted_node_name}/{name}",
                             step=self.current_epoch,
+                            extra_data={
+                                "class_names": matrix_info["row_labels"]
+                            },
                         )
-                        matrices[node_name][name] = (
-                            self.progress_bar.format_matrix_for_printing(
-                                node, name, value
-                            )
-                        )
+                        matrices[node_name][name] = matrix_info
                     else:
                         table[node_name][name] = value.cpu().item()
                         self.log(
@@ -899,13 +947,16 @@ class LuxonisLightningModule(pl.LightningModule):
         artifact_keys = set()
         metric_keys = set()
 
-        val_eval_epochs = []
-        for i in range(
-            self.cfg.trainer.validation_interval,
-            self.cfg.trainer.epochs + 1,
-            self.cfg.trainer.validation_interval,
-        ):
-            val_eval_epochs.append(max(0, i - 1))
+        val_eval_epochs = {
+            max(0, i - 1)
+            for i in range(
+                self.cfg.trainer.validation_interval,
+                self.cfg.trainer.epochs + 1,
+                self.cfg.trainer.validation_interval,
+            )
+        }
+        if self.cfg.trainer.run_validation_after_first_epoch:
+            val_eval_epochs.add(0)
         test_eval_epoch = self.cfg.trainer.epochs
 
         for mode in ["train", "val", "test"]:
@@ -927,7 +978,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 )
                 for sub_name in values:
                     if "confusion_matrix" in sub_name:
-                        for epoch_idx in sorted([0, *val_eval_epochs]):
+                        for epoch_idx in sorted({0, *val_eval_epochs}):
                             artifact_keys.add(
                                 f"val/metrics/{epoch_idx}/{formatted_node_name}/{sub_name}.json"
                             )
@@ -944,7 +995,7 @@ class LuxonisLightningModule(pl.LightningModule):
                         )
 
             for viz_name in node.visualizers:
-                for epoch_idx in sorted([0, *val_eval_epochs]):
+                for epoch_idx in sorted({0, *val_eval_epochs}):
                     for i in range(self.cfg.trainer.n_log_images):
                         artifact_keys.add(
                             f"val/visualizations/{formatted_node_name}/{viz_name}/{epoch_idx}/{i}.png"
@@ -980,6 +1031,7 @@ class LuxonisLightningModule(pl.LightningModule):
                         "train/epoch_progress_percent",
                         "train/epoch_duration_sec",
                         "train/epoch_completion_sec",
+                        "val/epoch_completion_sec",
                     }
                 )
 
@@ -1039,3 +1091,16 @@ class LuxonisLightningModule(pl.LightningModule):
                 f"Using optimizer: '{optimizer_name}' with scheduler: '{scheduler_name}'"
             )
             logger.info(optimizer)
+
+    def _add_custom_data_to_checkpoint(
+        self, checkpoint: dict[str, Any]
+    ) -> None:
+        checkpoint["state_dict"] = filter_checkpoint_state_dict(
+            checkpoint["state_dict"]
+        )
+        checkpoint |= {
+            "version": luxonis_train.__version__,
+            "execution_order": get_model_execution_order(self),
+            "config": self.cfg.model_dump(),
+            "dataset_metadata": self.dataset_metadata.dump(),
+        }

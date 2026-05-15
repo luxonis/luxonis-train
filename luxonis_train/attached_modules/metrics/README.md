@@ -10,6 +10,7 @@ List of all the available metrics.
 
 - [Accuracy](#accuracy)
 - [JaccardIndex](#jaccardindex)
+- [MIoU](#miou)
 - [F1Score](#f1score)
 - [Precision](#precision)
 - [Recall](#recall)
@@ -31,6 +32,21 @@ Works with tasks such as **classification, segmentation, and anomaly detection.*
 Jaccard Index (Intersection over Union) metric from the [`torchmetrics`](https://lightning.ai/docs/torchmetrics/stable/classification/jaccard_index.html) module.
 
 Works with tasks such as **classification, segmentation, and anomaly detection.**
+
+## MIoU
+
+Mean Intersection over Union metric from the [`torchmetrics`](https://lightning.ai/docs/torchmetrics/stable/segmentation/mean_iou.html) module.
+
+Works with **segmentation tasks.**
+
+**Params**
+
+| Key                  | Type                          | Default value | Description                                                    |
+| -------------------- | ----------------------------- | ------------- | -------------------------------------------------------------- |
+| `num_classes`        | `int`                         | required      | Number of classes                                              |
+| `include_background` | `bool`                        | `True`        | Whether to include the background class in the IoU computation |
+| `per_class`          | `bool`                        | `False`       | Whether to return IoU values for individual classes            |
+| `input_format`       | `Literal["one-hot", "index"]` | `"index"`     | Format of the input predictions and targets                    |
 
 ## F1Score
 

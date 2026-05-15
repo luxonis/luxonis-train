@@ -98,6 +98,15 @@ class InstanceKeypoints(InstanceBaseTask):
         return super().required_labels | {"keypoints"}
 
 
+class InstanceSegmentationKeypoints(InstanceBaseTask):
+    def __init__(self):
+        super().__init__("instance_segmentation_keypoints")
+
+    @cached_property
+    def required_labels(self) -> set[str | Metadata]:
+        return super().required_labels | {"instance_segmentation", "keypoints"}
+
+
 class Keypoints(Task):
     def __init__(self):
         super().__init__("pointcloud")
@@ -183,6 +192,10 @@ class Tasks:
     @staticproperty
     def OCR() -> Ocr:
         return Ocr()
+
+    @staticproperty
+    def INSTANCE_SEGMENTATION_KEYPOINTS() -> InstanceSegmentationKeypoints:
+        return InstanceSegmentationKeypoints()
 
     @staticproperty
     def FOMO() -> Fomo:

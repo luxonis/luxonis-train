@@ -207,9 +207,6 @@ Adapted from [here](https://arxiv.org/abs/2108.07610)
 
 Adapted from [here](https://arxiv.org/abs/2205.14756)
 
-> [!NOTE]
-> Tested export functionality with `opset_version` set to 16.
-
 **Parameters:**
 
 | Key            | Type                                                              | Default value                    | Description                                         |
@@ -232,12 +229,15 @@ Adapted from [here](https://arxiv.org/abs/2205.14756)
 
 Adapted from [here](https://github.com/facebookresearch/dinov3)
 
-> [!NOTE]
-> Tested export functionality with `opset_version` set to 16.
+**Parameters:**
 
-| Key       | Type                                                                                                                                                 | Default value | Description            |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------------- |
-| `variant` | `Literal["vits16", "vits16plus", "vitb16", "vitl16", "vith16plus", "vit7b16", "convnext_tiny", "convnext_small", "convnext_base", "convnext_large"]` | `"vitb16"`    | Variant of the network |
+| Key               | Type                                                                                                                                                 | Default value | Description                                                                                                                                                               |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `weights_link`    | `str`                                                                                                                                                |               | Weights link for the specific model.                                                                                                                                      |
+| `return_sequence` | `bool`                                                                                                                                               | `False`       | If `True`, returns a list containing the CLS embedding with shape `[B, C]`. If `False`, returns `depth` feature maps with shape `[B, C, H / patch_size, W / patch_size]`. |
+| `variant`         | `Literal["vits16", "vits16plus", "vitb16", "vitl16", "vith16plus", "vit7b16", "convnext_tiny", "convnext_small", "convnext_base", "convnext_large"]` | `"vits16"`    | Variant of the network.                                                                                                                                                   |
+| `freeze_backbone` | `bool`                                                                                                                                               | `False`       | If `True`, freezes backbone parameters so only downstream heads remain trainable.                                                                                         |
+| `depth`           | `int`                                                                                                                                                | `4`           | Number of last transformer layers returned as feature maps when `return_sequence` is `False`.                                                                             |
 
 ## Necks
 
@@ -282,7 +282,7 @@ For predefined model that utilizes it, see [`ClassificationModel`](../config/pre
 
 ### `TransformerClassificationHead`
 
-A transformer-based classification head that takes as input [B, N, C] patch-level embeddings and works with transformer
+A transformer-based classification head that takes as input a `[B, C]` CLS embedding and works with transformer
 backbones, for example [`DINOv3`](#dinov3).
 
 **Parameters:**
@@ -324,7 +324,7 @@ Adapted from [this repository](https://github.com/ydhongHIT/DDRNet). It works we
 
 ### `TransformerSegmentationHead`
 
-A transformer-based segmentation head that takes as input [B, N, C] patch-level embeddings and works with transformer
+A transformer-based segmentation head that takes as input a list of `[B, C, H, W]` feature maps and works with transformer
 backbones, for example [`DINOv3`](#dinov3).
 The steps taken by this head like applying Layer Norm, reshaping to a feature map and upsampling are based on Meta's
 DINOv3 segmentation head [here](https://github.com/facebookresearch/dinov3/blob/main/dinov3/eval/segmentation/inference.py)

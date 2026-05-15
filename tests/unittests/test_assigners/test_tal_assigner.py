@@ -12,6 +12,34 @@ def test_init():
     assert assigner.alpha == 1.0
     assert assigner.beta == 6.0
     assert assigner.eps == 1e-9
+    assert assigner.skip_stal is True
+
+
+def test_select_candidates_in_gts_stal_expands_small_boxes():
+    anchor_points = torch.tensor(
+        [[4.0, 4.0], [12.0, 4.0], [4.0, 12.0], [12.0, 12.0], [20.0, 20.0]]
+    )
+    gt_bboxes = torch.tensor([[[6.0, 6.0, 10.0, 10.0]]])
+    mask_gt = torch.tensor([[[1.0]]])
+
+    assigner = TaskAlignedAssigner(n_classes=1, topk=1)
+    assigner.bs = 1
+    assigner.n_max_boxes = 1
+    baseline = assigner._select_candidates_in_gts(
+        anchor_points, gt_bboxes, mask_gt
+    )
+
+    stal_assigner = TaskAlignedAssigner(
+        n_classes=1, topk=1, strides=[8, 16, 32], skip_stal=False
+    )
+    stal_assigner.bs = 1
+    stal_assigner.n_max_boxes = 1
+    expanded = stal_assigner._select_candidates_in_gts(
+        anchor_points, gt_bboxes, mask_gt
+    )
+
+    assert baseline.sum().item() == 0
+    assert expanded.sum().item() == 4
 
 
 def test_forward():

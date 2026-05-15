@@ -222,6 +222,48 @@ def test_compute_mean_average_precision_bbox(
     assert torch.isclose(result, expected, atol=5e-3)
 
 
+def test_compute_mean_average_precision_bbox_for_instance_keypoints():
+    class DummyNodeKeypoints(BaseNode, register=False):
+        task = Tasks.INSTANCE_KEYPOINTS
+
+        def forward(self, _: Tensor) -> Tensor: ...
+
+    image_size = Size([3, 200, 200])
+    metric = MeanAveragePrecisionBBox(
+        node=DummyNodeKeypoints(
+            n_classes=2,
+            n_keypoints=4,
+            dataset_metadata=DatasetMetadata(
+                classes={"": {"class1": 0, "class2": 1}}
+            ),
+            original_in_shape=image_size,
+        )
+    )
+
+    predictions = [
+        torch.tensor(
+            [
+                [12, 12, 48, 48, 0.9, 0],
+                [62, 60, 98, 100, 0.8, 1],
+                [15, 15, 45, 45, 0.75, 0],
+            ]
+        )
+    ]
+    targets = convert_bboxes_to_xyxy_and_normalize(
+        torch.tensor(
+            [
+                [0, 0, 10, 10, 50, 50],
+                [0, 1, 60, 60, 100, 100],
+            ]
+        ),
+        image_size,
+    )
+
+    metric.update(predictions, targets)
+    result = metric.compute()[0]
+    assert torch.isclose(result, torch.tensor(0.8), atol=5e-3)
+
+
 @pytest.mark.parametrize(
     (
         "keypoints",

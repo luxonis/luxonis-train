@@ -45,6 +45,7 @@ from typing_extensions import Self, override
 
 import luxonis_train as lxt
 from luxonis_train.registry import MODELS, NODES, from_registry
+from luxonis_train.upgrade import upgrade_config
 
 
 class ImageSize(NamedTuple):
@@ -423,14 +424,15 @@ class LoaderConfig(ConfigItem):
     @field_serializer("params")
     def serialize_params(self, info: SerializationInfo) -> Any:
         data = self.params.copy()
-        if self.name == "DebugLoader":
+        if self.name == "DummyLoader":
             data.pop("n_classes", None)
             data.pop("n_keypoints", None)
+            data.pop("class_names", None)
         return data
 
     @field_serializer("name")
     def serialize_name(self, info: SerializationInfo) -> str:
-        if self.name == "DebugLoader":
+        if self.name == "DummyLoader":
             return "LuxonisLoaderTorch"
         return self.name
 
@@ -478,6 +480,10 @@ class NormalizeAugmentationConfig(BaseModelExtraForbid):
 
 class AugmentationConfig(ConfigItem):
     active: bool = True
+    use_for_resizing: bool = False
+    apply_on_stages: list[Literal["train", "val", "test"]] = Field(
+        default_factory=lambda: ["train"]
+    )
 
 
 class PreprocessingConfig(BaseModelExtraForbid):
@@ -516,6 +522,35 @@ class PreprocessingConfig(BaseModelExtraForbid):
             )
         return self
 
+    @model_validator(mode="after")
+    def check_use_for_resizing(self) -> Self:
+        train_h, train_w = self.train_image_size
+        for aug in self.augmentations:
+            if not aug.use_for_resizing:
+                continue
+
+            aug_h = aug.params.get("height")
+            aug_w = aug.params.get("width")
+            aug.params.setdefault("p", 1.0)
+            if aug_h != train_h or aug_w != train_w:
+                logger.warning(
+                    f"Augmentation '{aug.name}' is marked as 'use_for_resizing' "
+                    f"but its (height, width) doesn't match "
+                    f"train_image_size ({train_h}, {train_w}). "
+                    f"Overriding to match train_image_size."
+                )
+            aug.params["height"] = train_h
+            aug.params["width"] = train_w
+
+            if self.keep_aspect_ratio and aug.params["p"] == 1:
+                logger.warning(
+                    f"Augmentation '{aug.name}' is marked as 'use_for_resizing'. "
+                    f"The 'keep_aspect_ratio' preprocessing parameter is ignored "
+                    f"when a custom resizing augmentation is used."
+                )
+
+        return self
+
     @model_serializer
     def serialize_model(self, info: SerializationInfo) -> Params:
         data = {
@@ -532,14 +567,19 @@ class PreprocessingConfig(BaseModelExtraForbid):
 
         return data
 
-    def get_active_augmentations(self) -> list[ConfigItem]:
+    def get_active_augmentations(self) -> list[AugmentationConfig]:
         """Returns list of augmentations that are active.
 
         @rtype: list[AugmentationConfig]
         @return: Filtered list of active augmentation configs
         """
         return [
-            ConfigItem(name=aug.name, params=aug.params)
+            AugmentationConfig(
+                name=aug.name,
+                params=aug.params,
+                use_for_resizing=aug.use_for_resizing,
+                apply_on_stages=aug.apply_on_stages,
+            )
             for aug in self.augmentations
             if aug.active
         ]
@@ -576,6 +616,7 @@ class TrainerConfig(BaseModelExtraForbid):
     resume_training: bool = False
     n_workers: NonNegativeInt = 4
     validation_interval: Literal[-1] | PositiveInt = 5
+    run_validation_after_first_epoch: bool = False
     n_log_images: NonNegativeInt = 4
     skip_last_batch: bool = True
     pin_memory: bool = True
@@ -736,15 +777,25 @@ class ArchiveConfig(BaseModelExtraForbid):
 
 
 def _validate_quantization_mode(value: str) -> str:
-    from hubai_sdk.utils.hubai_models import EnumQuantizationMode
+    value = value.upper()
 
     shorthand_map = {
         "FP16": "FP16_STANDARD",
         "FP32": "FP32_STANDARD",
     }
-    value = shorthand_map.get(value.upper(), value)
+    # values are taken from hubai_sdk enum definition:
+    # hubai_sdk.utils.hubai_models.EnumQuantizationMode
+    valid_modes = (
+        "INT8_STANDARD",
+        "INT8_ACCURACY_FOCUSED",
+        "INT8_INT16_MIXED",
+        "INT8_INT16_MIXED_ACCURACY_FOCUSED",
+        "FP16_STANDARD",
+        "FP32_STANDARD",
+    )
 
-    valid_modes = {e.value for e in EnumQuantizationMode}
+    value = shorthand_map.get(value, value)
+
     if value not in valid_modes:
         raise ValueError(
             f"Invalid quantization_mode: '{value}'. "
@@ -891,16 +942,24 @@ class Config(LuxonisConfig):
         cfg: PathType | Params | None = None,
         overrides: Params | list[str] | tuple[str, ...] | None = None,
     ) -> "Config":
+        orig_cfg = cfg
+        if isinstance(cfg, PathType):
+            cache = Path(".cache/luxonis_train/")
+            cache.mkdir(parents=True, exist_ok=True)
+            cfg = LuxonisFileSystem.download(str(cfg), cache)
+
+        if cfg is not None:
+            cfg = upgrade_config(cfg)
+
         instance = super().get_config(cfg, overrides)
-        if not isinstance(cfg, str):
-            return instance.smart_auto_populate()
-        fs = LuxonisFileSystem(cfg)
-        if fs.is_mlflow:
-            logger.info(
-                "Setting `project_id` and `run_id` to config's MLFlow run"
-            )
-            instance.tracker.project_id = fs.experiment_id
-            instance.tracker.run_id = fs.run_id
+        if isinstance(orig_cfg, str):
+            fs = LuxonisFileSystem(orig_cfg)
+            if fs.is_mlflow:
+                logger.info(
+                    "Setting `project_id` and `run_id` to config's MLFlow run"
+                )
+                instance.tracker.project_id = fs.experiment_id
+                instance.tracker.run_id = fs.run_id
 
         if instance.trainer.smart_cfg_auto_populate:
             return instance.smart_auto_populate()

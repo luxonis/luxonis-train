@@ -3,6 +3,7 @@ from .bbox_visualizer import BBoxVisualizer
 from .classification_visualizer import ClassificationVisualizer
 from .embeddings_visualizer import EmbeddingsVisualizer
 from .fomo_visualizer import FOMOVisualizer
+from .instance_seg_keypoint_visualizer import InstanceSegKeypointVisualizer
 from .instance_segmentation_visualizer import InstanceSegmentationVisualizer
 from .keypoint_visualizer import KeypointVisualizer
 from .ocr_visualizer import OCRVisualizer
@@ -24,6 +25,7 @@ __all__ = [
     "ClassificationVisualizer",
     "EmbeddingsVisualizer",
     "FOMOVisualizer",
+    "InstanceSegKeypointVisualizer",
     "InstanceSegmentationVisualizer",
     "KeypointVisualizer",
     "OCRVisualizer",
