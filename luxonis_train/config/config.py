@@ -544,6 +544,7 @@ class TrainerConfig(BaseModelExtraForbid):
 class OnnxExportConfig(BaseModelExtraForbid):
     opset_version: PositiveInt = 12
     dynamic_axes: Params | None = None
+    dynamo: bool = False
 
 
 class BlobconverterExportConfig(BaseModelExtraForbid):

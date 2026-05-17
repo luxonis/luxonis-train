@@ -418,7 +418,7 @@ class LuxonisLightningModule(pl.LightningModule):
         if "output_names" not in kwargs:
             kwargs["output_names"] = output_names
 
-        self.to_onnx(save_path, inputs_for_onnx, **kwargs)
+        self.to_onnx(save_path, (inputs_for_onnx,), **kwargs)
 
         self.forward = old_forward  # type: ignore
 
