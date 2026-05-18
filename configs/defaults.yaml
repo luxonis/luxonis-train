@@ -2,7 +2,6 @@ rich_logging: true
 
 model:
   name: model
-  strict_weights_loading: false
   nodes: []
   outputs: []
 
@@ -58,6 +57,7 @@ trainer:
   epochs: 100
   overfit_batches: 0
   resume_training: false
+  strict_weights_loading: false
 
   n_workers: 4
   validation_interval: 5

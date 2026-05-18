@@ -175,7 +175,7 @@ class LuxonisLightningModule(pl.LightningModule):
         """
         if self.cfg.trainer.resume_training:
             incompatible = super().load_state_dict(state_dict, strict=False)
-            if not self.cfg.model.strict_weights_loading:
+            if not self.cfg.trainer.strict_weights_loading:
                 return incompatible
 
             missing_keys = [
@@ -621,7 +621,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         state_dict = ckpt["state_dict"]
         ver = Version.parse(ckpt.get("version", "0.3.0"))
-        strict_weights_loading = self.cfg.model.strict_weights_loading
+        strict_weights_loading = self.cfg.trainer.strict_weights_loading
 
         old_order = ckpt.get("execution_order")
         new_order = get_model_execution_order(self)

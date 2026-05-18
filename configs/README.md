@@ -55,15 +55,14 @@ The `Model` section is a crucial part of the configuration and **must always be 
 
 ### Configuration Options
 
-| Key                      | Type   | Default Value | Description                                                                                                                                                                            |
-| ------------------------ | ------ | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`                   | `str`  | `"model"`     | Name of the model                                                                                                                                                                      |
-| `weights`                | `path` | `None`        | Path to a checkpoint file containing all model states, including weights, optimizer, and scheduler                                                                                     |
-| `strict_weights_loading` | `bool` | `False`       | Require strict compatibility for model weights when loading checkpoints. Missing loss/visualizer/metric checkpoint state is still allowed where those keys are intentionally filtered. |
-| `nodes`                  | `list` | `[]`          | List of nodes (see [Nodes](#nodes))                                                                                                                                                    |
-| `outputs`                | `list` | `[]`          | List of output nodes. If not specified, they are inferred from `nodes`                                                                                                                 |
-| `predefined_model`       | `dict` | `None`        | Dictionary specifying the predefined model name and its parameters                                                                                                                     |
-| `params`                 | `dict` | `{}`          | Parameters for the predefined model                                                                                                                                                    |
+| Key                | Type   | Default Value | Description                                                                                        |
+| ------------------ | ------ | ------------- | -------------------------------------------------------------------------------------------------- |
+| `name`             | `str`  | `"model"`     | Name of the model                                                                                  |
+| `weights`          | `path` | `None`        | Path to a checkpoint file containing all model states, including weights, optimizer, and scheduler |
+| `nodes`            | `list` | `[]`          | List of nodes (see [Nodes](#nodes))                                                                |
+| `outputs`          | `list` | `[]`          | List of output nodes. If not specified, they are inferred from `nodes`                             |
+| `predefined_model` | `dict` | `None`        | Dictionary specifying the predefined model name and its parameters                                 |
+| `params`           | `dict` | `{}`          | Parameters for the predefined model                                                                |
 
 ### Nodes
 
@@ -245,6 +244,7 @@ Here you can change everything related to actual training of the model.
 | `n_validation_batches`             | `PositiveInt \| None`                          | `None`                                 | Limits the number of validation/test batches and makes the val/test loaders deterministic                                                                                                                                                                   |
 | `smart_cfg_auto_populate`          | `bool`                                         | `True`                                 | Automatically populate sensible default values for missing config fields and log warnings. See [Trainer Tips](#trainer-tips) for more details                                                                                                               |
 | `resume_training`                  | `bool`                                         | `False`                                | Whether to resume training from a checkpoint. See [Trainer Tips](#trainer-tips) for more details                                                                                                                                                            |
+| `strict_weights_loading`           | `bool`                                         | `False`                                | Require strict compatibility for model weights when loading checkpoints. Missing loss/visualizer/metric checkpoint state is still allowed where those keys are intentionally filtered.                                                                      |
 | `preprocessing`                    | `dict`                                         | `{}`                                   | Configuration for image preprocessing and augmentations. [See preprocessing](#preprocessing) for more details                                                                                                                                               |
 | `callbacks`                        | `list`                                         | `[]`                                   | List of callback configurations to use during training. See [Callbacks](#callbacks) section for details and examples                                                                                                                                        |
 | `optimizer`                        | `dict`                                         | `{"name": "Adam", "params": {}}`       | What optimizer to use for training. See [Optimizer](#optimizer) section for details and examples                                                                                                                                                            |
