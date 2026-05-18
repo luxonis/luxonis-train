@@ -100,8 +100,10 @@ def test_training_with_weights_without_resume_loads_checkpoint_only(
 
     fresh_model.train(weights=ckpt_path)
 
-    fresh_model.lightning_module.load_checkpoint.assert_called_once_with(
-        ckpt_path
-    )
+    fresh_model.lightning_module.load_checkpoint.assert_called_once()
+    assert fresh_model.lightning_module.load_checkpoint.call_args is not None
+    assert Path(
+        fresh_model.lightning_module.load_checkpoint.call_args.args[0]
+    ) == Path(ckpt_path)
     assert fresh_model._train.call_args is not None
     assert fresh_model._train.call_args.args[0] is None
