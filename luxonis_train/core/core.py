@@ -432,11 +432,12 @@ class LuxonisModel:
                 "Training will start from scratch."
             )
         elif weights and self.cfg.trainer.resume_training is False:
-            logger.warning(
-                "Weights argument was given but resume_training is not set to True. "
-                "Training will start from scratch."
-                "To resume training from the given checkpoint, set resume_training to True."
+            logger.info(
+                "Weights argument was given and resume_training is set to False. "
+                "Training will start from the provided weights while resetting "
+                "optimizer, scheduler, and epoch state."
             )
+            self.lightning_module.load_checkpoint(weights)
 
         resume_weights = weights if self.cfg.trainer.resume_training else None
 

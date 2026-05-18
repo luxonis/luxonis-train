@@ -55,14 +55,15 @@ The `Model` section is a crucial part of the configuration and **must always be 
 
 ### Configuration Options
 
-| Key                | Type   | Default Value | Description                                                                                        |
-| ------------------ | ------ | ------------- | -------------------------------------------------------------------------------------------------- |
-| `name`             | `str`  | `"model"`     | Name of the model                                                                                  |
-| `weights`          | `path` | `None`        | Path to a checkpoint file containing all model states, including weights, optimizer, and scheduler |
-| `nodes`            | `list` | `[]`          | List of nodes (see [Nodes](#nodes))                                                                |
-| `outputs`          | `list` | `[]`          | List of output nodes. If not specified, they are inferred from `nodes`                             |
-| `predefined_model` | `dict` | `None`        | Dictionary specifying the predefined model name and its parameters                                 |
-| `params`           | `dict` | `{}`          | Parameters for the predefined model                                                                |
+| Key                      | Type   | Default Value | Description                                                                                                                                                                            |
+| ------------------------ | ------ | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                   | `str`  | `"model"`     | Name of the model                                                                                                                                                                      |
+| `weights`                | `path` | `None`        | Path to a checkpoint file containing all model states, including weights, optimizer, and scheduler                                                                                     |
+| `strict_weights_loading` | `bool` | `False`       | Require strict compatibility for model weights when loading checkpoints. Missing loss/visualizer/metric checkpoint state is still allowed where those keys are intentionally filtered. |
+| `nodes`                  | `list` | `[]`          | List of nodes (see [Nodes](#nodes))                                                                                                                                                    |
+| `outputs`                | `list` | `[]`          | List of output nodes. If not specified, they are inferred from `nodes`                                                                                                                 |
+| `predefined_model`       | `dict` | `None`        | Dictionary specifying the predefined model name and its parameters                                                                                                                     |
+| `params`                 | `dict` | `{}`          | Parameters for the predefined model                                                                                                                                                    |
 
 ### Nodes
 
@@ -447,8 +448,9 @@ training_strategy:
   ##### 1. **Fine-Tuning with Custom Configuration Example**
 
   - Set `resume_training: false`.
+  - Provide `model.weights` or pass `--weights` to initialize the model from an existing checkpoint.
   - Override the previous learning rate (LR), e.g., use `0.1` instead of `0.001`.
-  - Training starts fresh with the new LR, resetting the scheduler/optimizer (can use different ones).
+  - Training starts from the provided weights but with a fresh training state, resetting the scheduler/optimizer/epoch count (and can use different optimizer settings).
 
   ##### 2. **Resume Training Continuously Example**
 

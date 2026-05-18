@@ -117,6 +117,7 @@ class ModelConfig(BaseModelExtraForbid):
         PredefinedModelConfig | None, Field(exclude=True)
     ] = None
     weights: Annotated[FilePath | None, Field(exclude=True)] = None
+    strict_weights_loading: bool = False
     nodes: list[NodeConfig] = []
     outputs: list[str] = []
 
