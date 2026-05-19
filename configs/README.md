@@ -510,7 +510,7 @@ Here you can define configuration for exporting.
 | `onnx`                   | `dict`                | `{}`              | Options specific for ONNX export. See [ONNX](#onnx) section for details                        |
 | `hubai`                  | `dict`                | `{}`              | Options for HubAI SDK conversion. See [HubAI](#hubai) section for details                      |
 | `blobconverter`          | `dict`                | `{}`              | Options for converting to BLOB format (deprecated). See [Blob](#blob-deprecated) section       |
-| `aimet`                  |                       | `dict`            | `{}`                                                                                           |
+| `aimet`                  | `dict`                | `{}`              | Options for AIMET quantization. See [AIMET](#aimet)\]                                          |
 
 ### `ONNX`
 
