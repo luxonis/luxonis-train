@@ -58,6 +58,8 @@ class DetectionConfusionMatrix(BaseMetric):
         ):
             pred_classes = pred[:, 5].int()
             target_classes = target[:, 0].int()
+            if self.confusion_matrix.is_inference():
+                self.confusion_matrix = self.confusion_matrix.clone()
 
             if target.numel() == pred.numel() == 0:
                 self.confusion_matrix[self.n_classes, self.n_classes] += 1
