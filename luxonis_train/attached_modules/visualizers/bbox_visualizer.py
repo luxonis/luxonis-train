@@ -17,6 +17,7 @@ class BBoxVisualizer(BaseVisualizer):
         self,
         labels: dict[int, str] | list[str] | None = None,
         draw_labels: bool = True,
+        draw_scores: bool = False,
         colors: dict[str, Color] | list[Color] | None = None,
         fill: bool = False,
         width: int | None = None,
@@ -36,6 +37,10 @@ class BBoxVisualizer(BaseVisualizer):
         @type draw_labels: bool
         @param draw_labels: Whether or not to draw labels. Defaults to
             C{True}.
+        @type draw_scores: bool
+        @param draw_scores: Whether or not to append prediction
+            confidence scores to the rendered labels. Defaults to
+            C{False}.
         @type colors: dict[int, Color] | list[Color] | None
         @param colors: Either a dictionary mapping class indices to
             colors, or a list of colors. If list is provided, the color
@@ -74,6 +79,7 @@ class BBoxVisualizer(BaseVisualizer):
         self.font = font
         self.font_size = font_size
         self.draw_labels = draw_labels
+        self.draw_scores = draw_scores
 
     def draw_targets(self, canvas: Tensor, targets: Tensor) -> Tensor:
         viz = torch.zeros_like(canvas)
@@ -117,11 +123,7 @@ class BBoxVisualizer(BaseVisualizer):
                 boxes *= scale
 
             prediction_classes = prediction[..., 5].int()
-            cls_labels = (
-                [self.label_dict[int(c)] for c in prediction_classes]
-                if self.draw_labels and self.label_dict is not None
-                else None
-            )
+            cls_labels = self._get_prediction_labels(prediction)
             cls_colors = (
                 [
                     self.colors[self.label_dict[int(c)]]
@@ -165,7 +167,7 @@ class BBoxVisualizer(BaseVisualizer):
         @type prediction: Tensor
         @param prediction: The predicted bounding boxes. The shape
             should be [N, 6], where N is the number of bounding boxes
-            and the last dimension is [x1, y1, x2, y2, class, conf].
+            and the last dimension is [x1, y1, x2, y2, conf, class].
         @type targets: Tensor
         @param targets: The target bounding boxes.
         """
@@ -177,3 +179,28 @@ class BBoxVisualizer(BaseVisualizer):
 
         targets_viz = self.draw_targets(target_canvas, targets)
         return targets_viz, predictions_viz
+
+    def _get_prediction_labels(self, prediction: Tensor) -> list[str] | None:
+        if not (self.draw_labels or self.draw_scores):
+            return None
+
+        prediction_classes = prediction[..., 5].int()
+        prediction_scores = prediction[..., 4]
+
+        labels: list[str] = []
+        for score, class_id in zip(
+            prediction_scores, prediction_classes, strict=True
+        ):
+            parts: list[str] = []
+            if self.draw_labels:
+                if self.label_dict is not None:
+                    parts.append(
+                        self.label_dict.get(int(class_id), str(int(class_id)))
+                    )
+                else:
+                    parts.append(str(int(class_id)))
+            if self.draw_scores:
+                parts.append(f"{float(score):.2f}")
+            labels.append(" ".join(parts))
+
+        return labels
