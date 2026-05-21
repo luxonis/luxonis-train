@@ -1460,10 +1460,16 @@ class LuxonisModel:
             QuantizationDataType[default_data_type or cfg.default_data_type],
             aimet_config_file,
             adaround,
-            adaround_iterations or cfg.adaround.default_num_iterations,
-            adaround_reg_param or cfg.adaround.default_reg_param,
+            adaround_iterations
+            if adaround_iterations is not None
+            else cfg.adaround.default_num_iterations,
+            adaround_reg_param
+            if adaround_reg_param is not None
+            else cfg.adaround.default_reg_param,
             adaround_beta_range or cfg.adaround.default_beta_range,
-            adaround_warm_start or cfg.adaround.default_warm_start,
+            adaround_warm_start
+            if adaround_warm_start is not None
+            else cfg.adaround.default_warm_start,
             fold_batch_norms,
             cross_layer_equalization,
             batch_norm_reestimation,
@@ -1495,7 +1501,7 @@ class LuxonisModel:
             self.train_loader,
             optimizer,
             scheduler,
-            epochs or cfg.epochs,
+            epochs if epochs is not None else cfg.epochs,
             fold_batch_norms,
             batch_norm_reestimation,
         ).eval()
