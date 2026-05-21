@@ -87,18 +87,21 @@ class LuxonisModel:
     ):
         """Constructs a new Core instance.
 
-        Loads the config and initializes loaders, dataloaders, augmentations,
-        lightning components, etc.
+        Loads the config and initializes loaders, dataloaders,
+        augmentations, lightning components, etc.
 
         @type cfg: str | dict[str, Any] | Config
-        @param cfg: Path to config file or config dict used to setup training.
-
+        @param cfg: Path to config file or config dict used to setup
+            training.
         @type opts: list[str] | tuple[str, ...] | dict[str, Any] | None
-        @param opts: Argument dict provided through command line, used for config overriding.
-
+        @param opts: Argument dict provided through command line, used
+            for config overriding.
         @type allow_empty_dataset: bool
-        @param allow_empty_dataset: If set to True, the model will be initialized even if the dataset is empty or cannot be created
-            This is useful either for debugging or for running commands that don't require a dataset (e.g. export with existing weights).
+        @param allow_empty_dataset: If set to True, the model will be
+            initialized even if the dataset is empty or cannot be
+            created This is useful either for debugging or for running
+            commands that don't require a dataset (e.g. export with
+            existing weights).
         @type weights: str | None
         @param weights: Path to the weights. If user specifies weights
             in the config file, the weights provided here will take
@@ -361,12 +364,16 @@ class LuxonisModel:
         @type path: PathType
         @param path: Path where checkpoint will be saved.
         @type weights_only: bool | None
-        @param weights_only: If `True`, will only save the model weights.
+        @param weights_only: If `True`, will only save the model
+            weights.
         @type storage_options: Any
-        @param storage_options: parameter for how to save to storage, passed to `CheckpointIO` plugin
+        @param storage_options: parameter for how to save to storage,
+            passed to `CheckpointIO` plugin
         @rtype: Path
         @return: Path to the saved checkpoint.
-        @raises AttributeError: If the module is not attached to the trainer yet. This can happen if you try to save a checkpoint before training / evaluating the model first.
+        @raises AttributeError: If the module is not attached to the
+            trainer yet. This can happen if you try to save a checkpoint
+            before training / evaluating the model first.
         """
         self.pl_trainer.save_checkpoint(
             path, weights_only=weights_only, storage_options=storage_options
@@ -377,12 +384,14 @@ class LuxonisModel:
         """Gets the checkpoint of the model as a dictionary.
 
         @type weights_only: bool
-        @param weights_only: If `True`, will only include the model weights in the checkpoint.
+        @param weights_only: If `True`, will only include the model
+            weights in the checkpoint.
         @rtype: dict[str, Any]
         @return: Checkpoint of the model as a dictionary.
-        @raises AttributeError: If the module is not attached to the trainer yet. This can happen if you try to save a checkpoint before training / evaluating the model first.
+        @raises AttributeError: If the module is not attached to the
+            trainer yet. This can happen if you try to save a checkpoint
+            before training / evaluating the model first.
         """
-
         with tempfile.NamedTemporaryFile(suffix=".ckpt", delete=False) as tmp:
             checkpoint_path = self.save_checkpoint(tmp.name, weights_only)
             ckpt = torch.load(checkpoint_path, map_location="cpu")
@@ -481,23 +490,24 @@ class LuxonisModel:
         """Runs export.
 
         @type save_path: PathType | None
-        @param save_path: Directory where to save all exported model files.
-        If not specified, files will be saved to the "export" directory
-        in the run save directory.
+        @param save_path: Directory where to save all exported model
+            files. If not specified, files will be saved to the "export"
+            directory in the run save directory.
         @type weights: PathType | None
-        @param weights: Path to the checkpoint from which to load weights.
-            If not specified, the value of `model.weights` from the
-            configuration file will be used. The current weights of the
-            model will be temporarily replaced with the weights from the
-            specified checkpoint.
+        @param weights: Path to the checkpoint from which to load
+            weights. If not specified, the value of `model.weights` from
+            the configuration file will be used. The current weights of
+            the model will be temporarily replaced with the weights from
+            the specified checkpoint.
         @type ignore_missing_weights: bool
         @param ignore_missing_weights: If set to True, the warning about
             missing weights will be suppressed.
         @type ckpt_only: bool
-        @param ckpt_only: If True, only the `.ckpt` file will be exported.
-            This is useful for updating the metadata in the checkpoint
-            file in case they changed (e.g. new configuration file,
-            architectural changes affecting the exection order etc.)
+        @param ckpt_only: If True, only the `.ckpt` file will be
+            exported. This is useful for updating the metadata in the
+            checkpoint file in case they changed (e.g. new configuration
+            file, architectural changes affecting the exection order
+            etc.)
         """
         weights = self.resolve_weights(weights)
 
@@ -644,16 +654,17 @@ class LuxonisModel:
         @type new_thread: bool
         @param new_thread: Runs testing in a new thread if set to True.
         @type view: Literal["train", "test", "val"]
-        @param view: Which view to run the testing on. Defauls to "test".
+        @param view: Which view to run the testing on. Defauls to
+            "test".
         @rtype: Mapping[str, float] | None
         @return: If new_thread is False, returns a dictionary test
             results.
         @type weights: PathType | None
-        @param weights: Path to the checkpoint from which to load weights.
-            If not specified, the value of `model.weights` from the
-            configuration file will be used. The current weights of the
-            model will be temporarily replaced with the weights from the
-            specified checkpoint.
+        @param weights: Path to the checkpoint from which to load
+            weights. If not specified, the value of `model.weights` from
+            the configuration file will be used. The current weights of
+            the model will be temporarily replaced with the weights from
+            the specified checkpoint.
         """
         weights = self.resolve_weights(weights)
         loader = self.pytorch_loaders[view]
@@ -1008,11 +1019,11 @@ class LuxonisModel:
         @param path: Path to the model executable. If not specified, the
             model will be exported first.
         @type weights: PathType | None
-        @param weights: Path to the checkpoint from which to load weights.
-            If not specified, the value of `model.weights` from the
-            configuration file will be used. The current weights of the
-            model will be temporarily replaced with the weights from the
-            specified checkpoint.
+        @param weights: Path to the checkpoint from which to load
+            weights. If not specified, the value of `model.weights` from
+            the configuration file will be used. The current weights of
+            the model will be temporarily replaced with the weights from
+            the specified checkpoint.
         @rtype: Path
         @return: Path to the generated NN Archive.
         """
@@ -1123,20 +1134,20 @@ class LuxonisModel:
         """Exports the model to ONNX, creates an NN Archive, and
         converts to target platform format (RVC2/RVC3/RVC4).
 
-        This is a unified method that combines export, archive, and platform
-        conversion steps.
+        This is a unified method that combines export, archive, and
+        platform conversion steps.
 
         @type weights: PathType | None
-        @param weights: Path to the checkpoint from which to load weights.
-            If not specified, the value of `model.weights` from the
-            configuration file will be used.
+        @param weights: Path to the checkpoint from which to load
+            weights. If not specified, the value of `model.weights` from
+            the configuration file will be used.
         @type save_dir: PathType | None
-        @param save_dir: Directory where the outputs will be saved.
-            If not specified, the default run save directory will be used.
+        @param save_dir: Directory where the outputs will be saved. If
+            not specified, the default run save directory will be used.
         @rtype: tuple[Path, dict[str, Path]]
-        @return: A tuple of:
-            1) Path to the generated ONNX-based NN Archive.
-            2) Mapping of additional conversion artifact names to their paths.
+        @return: A tuple of: 1) Path to the generated ONNX-based NN
+            Archive. 2) Mapping of additional conversion artifact names
+            to their paths.
         """
         self.export(weights=weights, save_path=save_dir)
 

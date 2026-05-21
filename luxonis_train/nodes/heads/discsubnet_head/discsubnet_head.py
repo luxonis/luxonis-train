@@ -37,9 +37,10 @@ class DiscSubNetHead(BaseHead):
         @type out_channels: int
         @param out_channels: Number of output channels for the decoder.
             Defaults to 2 (for segmentation masks).
-
         @type base_channels: int
-        @param base_channels: The base number of filters used in the encoder and decoder blocks. If None, it is determined based on the variant.
+        @param base_channels: The base number of filters used in the
+            encoder and decoder blocks. If None, it is determined based
+            on the variant.
         """
         super().__init__(**kwargs)
 

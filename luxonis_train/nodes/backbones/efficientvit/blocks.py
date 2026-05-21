@@ -188,13 +188,17 @@ class EfficientViTBlock(nn.Module):
         @type n_channels: int
         @param n_channels: The number of input and output channels.
         @type attention_ratio: float
-        @param attention_ratio: Ratio for determining the number of attention heads. Default is 1.0.
+        @param attention_ratio: Ratio for determining the number of
+            attention heads. Default is 1.0.
         @type head_dim: int
-        @param head_dim: Dimension size for each attention head. Default is 32.
+        @param head_dim: Dimension size for each attention head. Default
+            is 32.
         @type expansion_factor: float
-        @param expansion_factor: Factor by which channels expand in the local module. Default is 4.0.
+        @param expansion_factor: Factor by which channels expand in the
+            local module. Default is 4.0.
         @type aggregation_scales: tuple[int, ...]
-        @param aggregation_scales: Tuple defining the scales for aggregation in the attention module. Default is (5,).
+        @param aggregation_scales: Tuple defining the scales for
+            aggregation in the attention module. Default is (5,).
         """
         super().__init__()
 

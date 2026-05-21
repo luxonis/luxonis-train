@@ -33,7 +33,6 @@ class BaseDetectionHead(BaseHead):
         @type max_det: int
         @param max_det: Maximum number of detections retained after NMS.
         """
-
         super().__init__(**kwargs)
 
         self.n_heads = n_heads

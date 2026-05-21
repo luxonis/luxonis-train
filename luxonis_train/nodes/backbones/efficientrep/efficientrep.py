@@ -45,8 +45,10 @@ class EfficientRep(BaseNode):
         weights: str = "yolo",
         **kwargs,
     ):
-        """Implementation of the EfficientRep backbone. Supports the
-        version with RepBlock and CSPStackRepBlock (for larger networks)
+        """Implementation of the EfficientRep backbone.
+
+        Supports the version with RepBlock and CSPStackRepBlock (for
+        larger networks)
 
         Adapted from U{YOLOv6: A Single-Stage Object Detection Framework
         for Industrial Applications

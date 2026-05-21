@@ -218,7 +218,6 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
     ) -> tuple[list[Tensor], list[Tensor]]:
         """Performs post-processing of the output and returns bboxs
         after NMS."""
-
         detections = super()._postprocess_detections(
             features,
             class_scores,

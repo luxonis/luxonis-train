@@ -460,19 +460,21 @@ class LuxonisLightningModule(pl.LightningModule):
         epoch if the config item `run_validation_after_first_epoch` is
         set.
 
-        Lightning decides whether validation should run at epoch end from
-        the public trainer attribute `check_val_every_n_epoch`. When
-        `trainer.run_validation_after_first_epoch` is enabled, we want to
-        keep using Lightning's normal validation path, but also ensure
-        that epoch 1 gets validated even if the configured `validation_interval`
-        normally skips it.
+        Lightning decides whether validation should run at epoch end
+        from the public trainer attribute `check_val_every_n_epoch`.
+        When `trainer.run_validation_after_first_epoch` is enabled, we
+        want to keep using Lightning's normal validation path, but also
+        ensure that epoch 1 gets validated even if the configured
+        `validation_interval` normally skips it.
 
-        `trainer.check_val_every_n_epoch` is temporarily overriden to `1` before fitting starts.
-        After that first real validation epoch
-        completes, `on_validation_epoch_end()` restores the original
-        interval so the rest of training follows the configured cadence.
+        `trainer.check_val_every_n_epoch` is temporarily overriden to
+        `1` before fitting starts. After that first real validation
+        epoch completes, `on_validation_epoch_end()` restores the
+        original interval so the rest of training follows the configured
+        cadence.
 
-        This override is intentionally applied only when `run_validation_after_first_epoch=True`
+        This override is intentionally applied only when
+        `run_validation_after_first_epoch=True`
         """
         if getattr(stage, "value", stage) != "fit":
             return

@@ -242,8 +242,8 @@ class ConvBlock(nn.Module):
         @type bias: bool
         @param bias: Whether to use bias. Defaults to False.
         @type activation: L{nn.Module} | None | bool
-        @param activation: Activation function. Defaults to `nn.Relu`
-            if not explicitly set to C{None} or C{False}.
+        @param activation: Activation function. Defaults to `nn.Relu` if
+            not explicitly set to C{None} or C{False}.
         @type use_norm: bool
         @param use_norm: Whether to use batch normalization. Defaults to
             True.
@@ -584,8 +584,10 @@ class BlockRepeater(nn.Sequential):
     def __init__(
         self, module: Callable[..., nn.Module], /, *, n_repeats: int, **kwargs
     ):
-        """Module which repeats the block n times. First block accepts
-        in_channels and outputs out_channels while subsequent blocks.
+        """Module which repeats the block n times.
+
+        First block accepts in_channels and outputs out_channels while
+        subsequent blocks.
 
         @type module: C{type[nn.Module]}
         @param module: Module to repeat.

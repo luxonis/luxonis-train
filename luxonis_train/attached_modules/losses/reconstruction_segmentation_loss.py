@@ -31,13 +31,17 @@ class ReconstructionSegmentationLoss(BaseLoss):
         loss for segmentation.
 
         @type alpha: float
-        @param alpha: Weighting factor for the rare class in the focal loss. Defaults to C{1}.
+        @param alpha: Weighting factor for the rare class in the focal
+            loss. Defaults to C{1}.
         @type gamma: float
-        @param gamma: Focusing parameter for the focal loss. Defaults to C{2.0}.
+        @param gamma: Focusing parameter for the focal loss. Defaults to
+            C{2.0}.
         @type smooth: float
-        @param smooth: Label smoothing factor for the focal loss.  Defaults to C{0.0}.
+        @param smooth: Label smoothing factor for the focal loss.
+            Defaults to C{0.0}.
         @type reduction: Literal["none", "mean", "sum"]
-        @param reduction: Reduction type for the focal loss.. Defaults to C{"mean"}.
+        @param reduction: Reduction type for the focal loss.. Defaults
+            to C{"mean"}.
         """
         super().__init__(**kwargs)
         self.loss_l2 = nn.MSELoss()

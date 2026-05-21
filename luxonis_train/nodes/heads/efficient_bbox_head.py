@@ -171,7 +171,6 @@ class EfficientBBoxHead(BaseDetectionHead):
     ) -> list[Tensor]:
         """Performs post-processing of the output and returns bboxs
         after NMS."""
-
         tail = tail or []
         bboxes = dist2bbox(distributions, anchor_points, out_format="xyxy")
 

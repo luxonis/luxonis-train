@@ -49,9 +49,9 @@ DINOv3Variant: TypeAlias = Literal[
 
 
 class DinoV3(BaseNode):
-    """DINOv3 backbone: a self-supervised vision transformer
-    encoder that learns strong, dense feature representations
-    useful for various downstream tasks.
+    """DINOv3 backbone: a self-supervised vision transformer encoder
+    that learns strong, dense feature representations useful for various
+    downstream tasks.
 
     Source: U{https://github.com/facebookresearch/dinov3}
     @license: U{https://github.com/facebookresearch/dinov3?
