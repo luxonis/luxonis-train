@@ -46,8 +46,8 @@ class BBoxVisualizer(BaseVisualizer):
         @param draw_scores: Whether or not to append prediction
             confidence scores to the rendered labels. Defaults to
             C{False}.
-        @type colors: dict[int, Color] | list[Color] | None
-        @param colors: Either a dictionary mapping class indices to
+        @type colors: dict[str, Color] | list[Color] | None
+        @param colors: Either a dictionary mapping class names to
             colors, or a list of colors. If list is provided, the color
             mapping is done by index. By default, random colors are
             used.
