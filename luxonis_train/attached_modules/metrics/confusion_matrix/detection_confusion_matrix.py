@@ -51,6 +51,9 @@ class DetectionConfusionMatrix(BaseMetric):
         }
 
     def _update(self, predictions: list[Tensor], targets: Tensor) -> None:
+        if self.confusion_matrix.is_inference():
+            self.confusion_matrix = self.confusion_matrix.clone()
+
         for pred, target in zip(
             predictions,
             instances_from_batch(targets, batch_size=len(predictions)),
@@ -58,8 +61,6 @@ class DetectionConfusionMatrix(BaseMetric):
         ):
             pred_classes = pred[:, 5].int()
             target_classes = target[:, 0].int()
-            if self.confusion_matrix.is_inference():
-                self.confusion_matrix = self.confusion_matrix.clone()
 
             if target.numel() == pred.numel() == 0:
                 self.confusion_matrix[self.n_classes, self.n_classes] += 1
