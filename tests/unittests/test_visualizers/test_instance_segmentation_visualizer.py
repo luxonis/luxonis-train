@@ -181,3 +181,28 @@ def test_instance_segmentation_visualizer_draw_scores(
     )
 
     assert captured_labels == [["class1 0.90", "class2 0.80"]]
+
+    visualizer_scores_only = InstanceSegmentationVisualizer(
+        draw_labels=False,
+        draw_scores=True,
+        node=DummyInstanceSegmentationNode(
+            n_classes=2,
+            dataset_metadata=DatasetMetadata(
+                classes={"": {"class1": 0, "class2": 1}}
+            ),
+        ),
+    )
+    visualizer_scores_only.draw_predictions(
+        canvas,
+        predictions_bbox,
+        predictions_masks,
+        visualizer_scores_only.width,
+        visualizer_scores_only.bbox_labels,
+        visualizer_scores_only.colors,
+        visualizer_scores_only.draw_labels,
+        visualizer_scores_only.draw_scores,
+        visualizer_scores_only.alpha,
+        visualizer_scores_only.scale,
+    )
+
+    assert captured_labels[-1] == ["0.90", "0.80"]
