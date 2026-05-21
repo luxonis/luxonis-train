@@ -13,6 +13,7 @@ from .utils import (
     draw_bounding_boxes,
     draw_segmentation_targets,
     get_color,
+    get_prediction_labels,
     potentially_upscale_masks,
 )
 
@@ -114,7 +115,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
 
             image_masks = potentially_upscale_masks(image_masks, scale)
 
-            cls_labels = cls._get_prediction_labels(
+            cls_labels = get_prediction_labels(
                 image_bboxes,
                 label_dict,
                 draw_labels,
@@ -255,34 +256,3 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             self.scale,
         )
         return targets_viz, predictions_viz
-
-    @staticmethod
-    def _get_prediction_labels(
-        prediction: Tensor,
-        label_dict: Mapping[int, str] | None,
-        draw_labels: bool,
-        draw_scores: bool,
-    ) -> list[str] | None:
-        if not (draw_labels or draw_scores):
-            return None
-
-        prediction_classes = prediction[..., 5].int()
-        prediction_scores = prediction[..., 4]
-
-        labels: list[str] = []
-        for score, class_id in zip(
-            prediction_scores, prediction_classes, strict=True
-        ):
-            parts: list[str] = []
-            if draw_labels:
-                if label_dict is not None:
-                    parts.append(
-                        label_dict.get(int(class_id), str(int(class_id)))
-                    )
-                else:
-                    parts.append(str(int(class_id)))
-            if draw_scores:
-                parts.append(f"{float(score):.2f}")
-            labels.append(" ".join(parts))
-
-        return labels

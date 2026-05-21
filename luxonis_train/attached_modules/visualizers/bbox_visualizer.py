@@ -7,7 +7,12 @@ from torchvision.utils import draw_bounding_boxes
 from luxonis_train.tasks import Tasks
 
 from .base_visualizer import BaseVisualizer
-from .utils import Color, draw_bounding_box_labels, get_color
+from .utils import (
+    Color,
+    draw_bounding_box_labels,
+    get_color,
+    get_prediction_labels,
+)
 
 
 class BBoxVisualizer(BaseVisualizer):
@@ -123,7 +128,12 @@ class BBoxVisualizer(BaseVisualizer):
                 boxes *= scale
 
             prediction_classes = prediction[..., 5].int()
-            cls_labels = self._get_prediction_labels(prediction)
+            cls_labels = get_prediction_labels(
+                prediction,
+                self.label_dict,
+                self.draw_labels,
+                self.draw_scores,
+            )
             cls_colors = (
                 [
                     self.colors[self.label_dict[int(c)]]
@@ -179,28 +189,3 @@ class BBoxVisualizer(BaseVisualizer):
 
         targets_viz = self.draw_targets(target_canvas, targets)
         return targets_viz, predictions_viz
-
-    def _get_prediction_labels(self, prediction: Tensor) -> list[str] | None:
-        if not (self.draw_labels or self.draw_scores):
-            return None
-
-        prediction_classes = prediction[..., 5].int()
-        prediction_scores = prediction[..., 4]
-
-        labels: list[str] = []
-        for score, class_id in zip(
-            prediction_scores, prediction_classes, strict=True
-        ):
-            parts: list[str] = []
-            if self.draw_labels:
-                if self.label_dict is not None:
-                    parts.append(
-                        self.label_dict.get(int(class_id), str(int(class_id)))
-                    )
-                else:
-                    parts.append(str(int(class_id)))
-            if self.draw_scores:
-                parts.append(f"{float(score):.2f}")
-            labels.append(" ".join(parts))
-
-        return labels
