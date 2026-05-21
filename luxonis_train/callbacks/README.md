@@ -188,7 +188,15 @@ A callback that maintains an exponential moving average (EMA) of the model's par
 
 ## `AIMETCallback`
 
-# Callback to perform AIMET quantization at the end of the training.
+Callback to perform AIMET quantization at the end of the training.
+
+This callback runs AIMET post-training static quantization using the best checkpoint (by default based on the main metric) at the end of training.
+
+**Parameters:**
+
+| Key                    | Type                        | Default value | Description                                                                                                                                                     |
+| ---------------------- | --------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preferred_checkpoint` | `Literal["metric", "loss"]` | `"metric"`    | Which checkpoint should the callback use. If the preferred checkpoint is not available, the other option is used. If none is available, the callback is skipped |
 
 ## `TrainingProgressCallback`
 

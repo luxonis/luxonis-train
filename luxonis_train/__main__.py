@@ -490,6 +490,15 @@ def quantize(
     config: str | None = None,
     weights: str | None = None,
 ):
+    """Quantize the model using AIMET.
+
+    @type config: str
+    @param config: Path to the configuration file.
+    @type weights: str
+    @param weights: Path to the model weights.
+    @type opts: list[str]
+    @param opts: A list of optional CLI overrides of the config file.
+    """
     model = create_model(
         config, opts, weights=weights, allow_empty_dataset=True
     )

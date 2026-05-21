@@ -70,8 +70,8 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
 
         @type title: str
         @param title: Title of the table
-        @type table: Mapping[str, int | str | float]
-        @param table: Table to print
+        @type table: Iterable[tuple[str | int | float, ...]]
+        @param table: Table to print as an iterable of rows, where each row is a tuple of values.
         @type column_names: list[str]
         @param column_names: Names of the columns in the table
         """
@@ -181,13 +181,10 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
 
         @type title: str
         @param title: Title of the table
-        @type table: Mapping[str, int | str | float]
-        @param table: Table to print
-        @type key_name: str
-        @param key_name: Name of the key column. Defaults to C{"Name"}.
-        @type value_name: str
-        @param value_name: Name of the value column. Defaults to
-            C{"Value"}.
+        @type table: Iterable[tuple[str | int | float, ...]]
+        @param table: Table to print as an iterable of rows, where each row is a tuple of values.
+        @type column_names: list[str]
+        @param column_names: Names of the columns in the table
         """
         self._rule(title)
         formatted = tabulate(
@@ -332,13 +329,10 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
 
         @type title: str
         @param title: Title of the table
-        @type table: Mapping[str, int | str | float]
-        @param table: Table to print
-        @type key_name: str
-        @param key_name: Name of the key column. Defaults to C{"Name"}.
-        @type value_name: str
-        @param value_name: Name of the value column. Defaults to
-            C{"Value"}.
+        @type table: Iterable[tuple[str | int | float, ...]]
+        @param table: Table to print as an iterable of rows, where each row is a tuple of values.
+        @type column_names: list[str]
+        @param column_names: Names of the columns in the table
         @param console: Console instance to use, if None use default
             console. Defaults to None.
         @type console: Console | None

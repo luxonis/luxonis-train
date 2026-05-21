@@ -122,9 +122,8 @@ class DatasetMetadata:
         @type task_name: str | None
         @param task_name: Task to get the number of keypoints for.
         @rtype: int
-        @return: Number of keypoints for the specified task type.
-        @raises ValueError: If the C{task} is not present in the
-            dataset.
+        @return: Number of keypoints for the specified task type or 0 if
+            the task does not involve keypoints.
         @raises RuntimeError: If the C{task} was not provided and the
             dataset contains different number of keypoints for different
             task types.
