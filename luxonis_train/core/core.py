@@ -1428,10 +1428,11 @@ class LuxonisModel:
             model = self.lightning_module
 
         model.reparametrize().eval()
-        pre_quant_test = self.pl_trainer.test(model, self.val_loader)[0]
 
         if weights is not None:
             model.load_checkpoint(weights)
+
+        pre_quant_test = self.pl_trainer.test(model, self.val_loader)[0]
 
         dummy_inputs = {
             input_name: torch.randn([1, *shape]).to(model.device)
