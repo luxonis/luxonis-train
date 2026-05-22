@@ -26,6 +26,10 @@ class BaseLoaderTorch(
     register=False,
     registry=LOADERS,
 ):
+    """Base abstract loader class that enforces LuxonisLoaderTorchOutput
+    output label structure.
+    """
+
     def __init__(
         self,
         view: list[str],
@@ -38,8 +42,7 @@ class BaseLoaderTorch(
         color_space: Literal["RGB", "BGR", "GRAY"] = "RGB",
         seed: int | None = None,
     ):
-        """Base abstract loader class that enforces
-        LuxonisLoaderTorchOutput output label structure.
+        """
 
         @type view: list[str]
         @param view: List of splits that form the view.
@@ -176,9 +179,8 @@ class BaseLoaderTorch(
     @property
     @abstractmethod
     def input_shapes(self) -> dict[str, Size]:
-        """
-        Shape (c, h, w) of each loader group (sub-element), WITHOUT batch dimension.
-        Examples:
+        """Shape (c, h, w) of each loader group (sub-element), WITHOUT
+        batch dimension.
 
             1. Single image input::
                 {
@@ -232,12 +234,12 @@ class BaseLoaderTorch(
 
     @abstractmethod
     def __len__(self) -> int:
-        """Returns length of the dataset."""
+        """Get the length of the dataset."""
         ...
 
     @abstractmethod
     def get(self, idx: int) -> tuple[Tensor | dict[str, Tensor], Labels]:
-        """Loads sample from dataset.
+        """Load sample from dataset.
 
         @type idx: int
         @param idx: Sample index.
@@ -248,7 +250,7 @@ class BaseLoaderTorch(
 
     @abstractmethod
     def get_classes(self) -> dict[str, dict[str, int]]:
-        """Gets classes according to computer vision task.
+        """Get classes according to computer vision task.
 
         @rtype: dict[LabelType, dict[str, int]]
         @return: A dictionary mapping tasks to their classes as a
@@ -257,8 +259,8 @@ class BaseLoaderTorch(
         ...
 
     def get_n_keypoints(self) -> dict[str, int] | None:
-        """Returns the dictionary defining the semantic skeleton for
-        each class using keypoints.
+        """Get a dictionary defining the semantic skeleton for each
+        class using keypoints.
 
         @rtype: dict[str, Dict] | None
         @return: A dictionary mapping classes to their skeleton
@@ -277,8 +279,8 @@ class BaseLoaderTorch(
     def dict_numpy_to_torch(
         self, numpy_dictionary: dict[str, np.ndarray]
     ) -> dict[str, Tensor]:
-        """Converts a dictionary of numpy arrays to a dictionary of
-        torch tensors.
+        """Convert a dictionary of numpy arrays to a dictionary of torch
+        tensors.
 
         @type numpy_dictionary: dict[str, np.ndarray]
         @param numpy_dictionary: Dictionary of numpy arrays.
@@ -295,7 +297,7 @@ class BaseLoaderTorch(
         return torch_dictionary
 
     def read_image(self, path: str) -> npt.NDArray[np.uint8]:
-        """Reads an image from a file and returns an unnormalized image
+        """Read an image from a file and returns an unnormalized image
         as a numpy array.
 
         @type path: str

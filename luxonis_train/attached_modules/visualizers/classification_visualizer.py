@@ -44,7 +44,10 @@ class ClassificationVisualizer(BaseVisualizer):
         self.multilabel = multilabel
 
     def _get_class_name(self, pred: Tensor) -> str:
-        """Handles both single-label and multi-label classification."""
+        """Get the class names.
+
+        Handles both single-label and multi-label classification.
+        """
         if self.multilabel:
             idxs = (pred > 0.5).nonzero(as_tuple=True)[0].tolist()
             return ", ".join([self.classes.inverse[idx] for idx in idxs])

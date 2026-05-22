@@ -1,5 +1,5 @@
 import torch
-from luxonis_ml.typing import Kwargs, Params
+from luxonis_ml.typing import Kwargs
 from torch import Tensor
 from typing_extensions import override
 
@@ -54,7 +54,7 @@ class DiscSubNetHead(BaseHead):
     def forward(
         self, reconstruction: Tensor, original: Tensor
     ) -> Packet[Tensor]:
-        """Performs the forward pass through the encoder and decoder."""
+        """Perform the forward pass through the encoder and decoder."""
         x = torch.cat([reconstruction, original], dim=1)
         seg_out = self.decoder_segment(self.encoder_segment(x))
 
@@ -65,15 +65,6 @@ class DiscSubNetHead(BaseHead):
             self.task.main_output: seg_out,
             "reconstruction": reconstruction,
         }
-
-    @override
-    def get_custom_head_config(self) -> Params:
-        """Returns custom head configuration.
-
-        @rtype: dict
-        @return: Custom head configuration.
-        """
-        return {}
 
     @staticmethod
     @override

@@ -9,7 +9,10 @@ from luxonis_train.loaders import BaseLoaderTorch
 
 
 class DatasetMetadata:
-    """Metadata about the dataset."""
+    """A class encapsulating various metadata about a dataset, such as
+    the number of classes, the number of keypoints, and the types of
+    additional labels.
+    """
 
     def __init__(
         self,
@@ -22,9 +25,7 @@ class DatasetMetadata:
         | None = None,
         loader: BaseLoaderTorch | None = None,
     ):
-        """An object containing metadata about the dataset.
-
-        Used to infer the number of classes, number of keypoints,
+        """Use to infer the number of classes, number of keypoints,
         I{etc.} instead of passing them as arguments to the model.
 
         @type classes: dict[str, dict[str, int]] | None
@@ -54,7 +55,7 @@ class DatasetMetadata:
         yield from self.dump().items()
 
     def dump(self) -> dict[str, Any]:
-        """Dumps the metadata to a dictionary.
+        """Dump the metadata to a dictionary.
 
         @rtype: dict[str, dict[str, int] | int | dict[str, type]]
         @return: Dictionary containing the metadata.
@@ -89,7 +90,7 @@ class DatasetMetadata:
         return set(self._classes.keys())
 
     def n_classes(self, task_name: str | None = None) -> int:
-        """Gets the number of classes for the specified task.
+        """Get the number of classes for the specified task.
 
         @type task_name: str | None
         @param task_name: Task to get the number of classes for.
@@ -117,7 +118,7 @@ class DatasetMetadata:
         return n_classes
 
     def n_keypoints(self, task_name: str | None = None) -> int:
-        """Gets the number of keypoints for the specified task.
+        """Get the number of keypoints for the specified task.
 
         @type task_name: str | None
         @param task_name: Task to get the number of keypoints for.
@@ -145,7 +146,7 @@ class DatasetMetadata:
         return n_keypoints
 
     def classes(self, task_name: str | None = None) -> bidict[str, int]:
-        """Gets the class names for the specified task.
+        """Get the class names for the specified task.
 
         @type task_name: str | None
         @param task_name: Task to get the class names for.
@@ -189,7 +190,7 @@ class DatasetMetadata:
 
     @classmethod
     def from_loader(cls, loader: BaseLoaderTorch) -> "DatasetMetadata":
-        """Creates a L{DatasetMetadata} object from a L{LuxonisDataset}.
+        """Create a L{DatasetMetadata} object from a L{LuxonisDataset}.
 
         @type loader: LuxonisDataset
         @param loader: Loader to read the metadata from.

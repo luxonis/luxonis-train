@@ -121,9 +121,4 @@ class DDRNetSegmentationHead(BaseHead):
 
     @override
     def get_custom_head_config(self) -> Params:
-        """Returns custom head configuration.
-
-        @rtype: dict
-        @return: Custom head configuration.
-        """
         return {"is_softmax": False}

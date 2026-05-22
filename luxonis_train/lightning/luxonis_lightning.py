@@ -106,7 +106,7 @@ class LuxonisLightningModule(pl.LightningModule):
         _core: "luxonis_train.core.LuxonisModel | None" = None,
         **kwargs,
     ):
-        """Constructs an instance of `LuxonisModel` from `Config`.
+        """Construct an instance of `LuxonisModel` from `Config`.
 
         @type cfg: L{Config}
         @param cfg: Config object.
@@ -184,7 +184,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @property
     def core(self) -> "luxonis_train.core.LuxonisModel":
-        """Returns the core model."""
+        """Get a reference to the core model."""
         if self._core is None:  # pragma: no cover
             raise ValueError("Core reference is not set.")
         return self._core
@@ -294,7 +294,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 module.set_export_mode(mode=mode)
 
     def export_onnx(self, save_path: PathType, **kwargs) -> Path:
-        """Exports the model to ONNX format.
+        """Export the model to ONNX format.
 
         @type save_path: str
         @param save_path: Path where the exported model will be saved.
@@ -518,7 +518,8 @@ class LuxonisLightningModule(pl.LightningModule):
     @override
     def on_validation_epoch_end(self) -> None:
         """Restore the original validation interval after epoch 1
-        validation."""
+        validation.
+        """
         self._evaluation_epoch_end("val")
 
         if (
@@ -562,7 +563,7 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
     def load_checkpoint(self, ckpt: PathType | dict[str, Any] | None) -> None:
-        """Loads checkpoint weights from provided path.
+        """Load checkpoint weights from provided path.
 
         Loads the checkpoints gracefully, ignoring keys that are not
         found in the model state dict or in the checkpoint.
@@ -874,7 +875,7 @@ class LuxonisLightningModule(pl.LightningModule):
         metrics: dict[str, dict[str, float]],
         matrices: dict[str, dict[str, dict[str, Any]]],
     ) -> None:
-        """Prints validation metrics in the console."""
+        """Print validation metrics in the console."""
         logger.info(f"{stage} loss: {loss:.4f}")
 
         self.progress_bar.print_results(
@@ -891,9 +892,9 @@ class LuxonisLightningModule(pl.LightningModule):
 
     def get_mlflow_logging_keys(self) -> dict[str, list[str]]:
         """
-        Returns a dictionary with two lists of keys:
+        Return a dictionary with two lists of keys:
         1) "metrics"    -> Keys expected to be logged as standard metrics
-        2) "artifacts"  -> Keys expected to be logged as artifacts (e.g. confusion_matrix.json, visualizations)
+        2) "artifacts"  -> Keys expected to be logged as artifacts (e.g. confusion_matrix.json, visualizations).
         """
         artifact_keys = set()
         metric_keys = set()
@@ -1002,7 +1003,7 @@ class LuxonisLightningModule(pl.LightningModule):
     def _get_node_order_mapping(
         self, node_name: str, old_order: list[str], new_order: list[str]
     ) -> dict[str, str]:
-        """Loads mapping from old to new parameter names based on
+        """Load mapping from old to new parameter names based on
         execution order.
 
         Returns a mapping dictionary or an error string if mapping

@@ -71,7 +71,7 @@ def bbox_iou(
     iou_type: IoUType = "none",
     element_wise: bool = False,
 ) -> Tensor:
-    """Computes IoU between two sets of bounding boxes.
+    """Compute IoU between two sets of bounding boxes.
 
     @type bbox1: Tensor
     @param bbox1: First set of bboxes [N, 4].
@@ -333,7 +333,7 @@ def anchors_for_fpn_features(
     grid_cell_offset: float = 0.5,
     multiply_with_stride: bool = False,
 ) -> tuple[Tensor, Tensor, list[int], Tensor]:
-    """Generates anchor boxes, points and strides based on FPN feature
+    """Generate anchor boxes, points and strides based on FPN feature
     shapes and strides.
 
     @type features: list[Tensor]
@@ -446,7 +446,7 @@ def compute_iou_loss(
     bbox_format: BBoxFormatType = "xyxy",
     reduction: Literal["sum", "mean"] = "mean",
 ) -> tuple[Tensor, Tensor]:
-    """Computes an IoU loss between 2 sets of bounding boxes.
+    """Compute an IoU loss between 2 sets of bounding boxes.
 
     @type pred_bboxes: Tensor
     @param pred_bboxes: Predicted bounding boxes.

@@ -20,7 +20,8 @@ from .utils import (
 class InstanceSegmentationVisualizer(BaseVisualizer):
     """Visualizer for instance segmentation tasks, supporting the
     visualization of predicted and ground truth bounding boxes and
-    instance segmentation masks."""
+    instance segmentation masks.
+    """
 
     supported_tasks = [Tasks.INSTANCE_SEGMENTATION]
 
@@ -199,7 +200,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         target_boundingbox: Tensor | None,
         target_instance_segmentation: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:
-        """Creates visualizations of the predicted and target bounding
+        """Create visualizations of the predicted and target bounding
         boxes and instance masks.
 
         @type target_canvas: Tensor

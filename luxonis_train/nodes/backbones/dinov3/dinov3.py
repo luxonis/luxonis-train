@@ -10,7 +10,7 @@ from luxonis_train.nodes.backbones.dinov3.rope_position_encoding import (
     RopePositionEmbedding,
 )
 from luxonis_train.nodes.base_node import BaseNode
-from luxonis_train.typing import get_signature
+from luxonis_train.utils import get_signature
 
 
 class TransformerBackboneReturnsIntermediateLayers(nn.Module):
@@ -72,10 +72,8 @@ class DinoV3(BaseNode):
         **kwargs,
     ):
         """
-        @param weights:link: a weights link for the specific model,
-        which needs to be requested here U{https://pytorch.org/get-
-        started/locally/}
         @type weights_link: string
+        @param weights_link: A link for the specific model, which needs to be requested here U{https://pytorch.org/get-started/locally/}.
 
         @param return_sequence: If True, return the CLS embedding
         [B, C] for downstream classification heads. Otherwise, turn
@@ -133,7 +131,7 @@ class DinoV3(BaseNode):
             )
 
     def _replace_rope_embedding(self) -> None:
-        """Replaces the default RoPE embedding in the DINOv3 backbone
+        """Replace the default RoPE embedding in the DINOv3 backbone
         with a nearly-identical implementation that is ONNX-
         convertible.
 

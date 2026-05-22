@@ -13,7 +13,7 @@ class ATSSAssigner(nn.Module):
         Code is adapted from: U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/
         ppyoloe/assigner/atss_assigner.py} and
         U{https://github.com/fcjian/TOOD/blob/master/mmdet/core/bbox/
-        assigners/atss_assigner.py}
+        assigners/atss_assigner.py}.
 
         @type n_classes: int
         @param n_classes: Number of classes in the dataset.
@@ -34,7 +34,7 @@ class ATSSAssigner(nn.Module):
         mask_gt: Tensor,
         pred_bboxes: Tensor,
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
-        """Assigner's forward method which generates final assignments.
+        """Generate final assignments.
 
         @type anchor_bboxes: Tensor
         @param anchor_bboxes: Anchor bboxes of shape [n_anchors, 4]
@@ -132,7 +132,7 @@ class ATSSAssigner(nn.Module):
         )
 
     def _get_bbox_center(self, bbox: Tensor) -> Tensor:
-        """Computes centers of bbox with shape [N,4]"""
+        """Compute centers of bbox with shape [N,4]."""
         cx = (bbox[:, 0] + bbox[:, 2]) / 2.0
         cy = (bbox[:, 1] + bbox[:, 3]) / 2.0
         return torch.stack((cx, cy), dim=1).to(bbox.device)
@@ -185,7 +185,7 @@ class ATSSAssigner(nn.Module):
     def _get_positive_samples(
         self, is_in_topk: Tensor, topk_idxs: Tensor, overlaps: Tensor
     ) -> Tensor:
-        """Computes threshold and returns mask for samples over
+        """Compute threshold and returns mask for samples over
         threshold.
 
         @type is_in_topk: Tensor

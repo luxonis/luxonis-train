@@ -21,7 +21,8 @@ from torchmetrics import Metric
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.registry import METRICS
 from luxonis_train.tasks import Task
-from luxonis_train.typing import Labels, Packet, get_signature
+from luxonis_train.typing import Labels, Packet
+from luxonis_train.utils import get_signature
 
 
 @dataclass(kw_only=True, slots=True)
@@ -142,7 +143,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
 
     @abstractmethod
     def update(self, *args: Tensor | list[Tensor]) -> None:
-        """Updates the inner state of the metric.
+        """Update the inner state of the metric.
 
         @type args: Unpack[Ts]
         @param args: Prepared inputs from the L{prepare} method.
@@ -153,7 +154,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
     def compute(
         self,
     ) -> Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]:
-        """Computes the metric.
+        """Compute the metric.
 
         @rtype: Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]
         @return: The computed metric. Can be one of:
@@ -169,7 +170,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         return get_signature(self.update)
 
     def run_update(self, inputs: Packet[Tensor], labels: Labels) -> None:
-        """Calls the metric's update method.
+        """Call the metric's update method.
 
         Validates and prepares the inputs, then calls the metric's
         update method.

@@ -307,7 +307,8 @@ def test_convert_callback_deactivates_export_and_archive(
     callbacks_input: list[Params], expected_active: dict[str, bool]
 ):
     """Test that ConvertOnTrainEnd deactivates ExportOnTrainEnd and
-    ArchiveOnTrainEnd."""
+    ArchiveOnTrainEnd.
+    """
     cfg = Config.get_config(
         cast(
             Params,

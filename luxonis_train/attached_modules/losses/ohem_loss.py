@@ -21,8 +21,7 @@ class OHEMLoss(BaseLoss):
         ohem_threshold: float = 0.7,
         **kwargs,
     ):
-        """Initializes the criterion.
-
+        """
         @type criterion: BaseLoss | str | Literal["auto"]
         @param criterion: The criterion to use. It can be a string name
             of the criterion (e.g., "CrossEntropyLoss"), a class that

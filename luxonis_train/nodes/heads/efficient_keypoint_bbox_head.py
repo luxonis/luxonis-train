@@ -168,11 +168,6 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
 
     @override
     def get_custom_head_config(self) -> Params:
-        """Returns custom head configuration.
-
-        @rtype: dict
-        @return: Custom head configuration.
-        """
         return super().get_custom_head_config() | {
             "n_keypoints": self.n_keypoints
         }
@@ -216,8 +211,9 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         anchor_points: Tensor,
         stride_tensor: Tensor,
     ) -> tuple[list[Tensor], list[Tensor]]:
-        """Performs post-processing of the output and returns bboxs
-        after NMS."""
+        """Perform post-processing of the output and returns bboxs after
+        NMS.
+        """
         detections = super()._postprocess_detections(
             features,
             class_scores,

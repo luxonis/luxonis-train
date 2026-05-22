@@ -7,8 +7,9 @@ from typing_extensions import override
 from luxonis_train.nodes.heads import BaseHead
 
 
-# TODO: Maybe change `heads` to `branches`?
 class BaseDetectionHead(BaseHead):
+    """Base class for YOLO-like multi-head instance detection heads."""
+
     parser = "YOLO"
 
     in_channels: list[int]
@@ -22,7 +23,7 @@ class BaseDetectionHead(BaseHead):
         max_det: int,
         **kwargs,
     ):
-        """Base class for YOLO-like multi-head instance detection heads.
+        """
 
         @type n_heads: int
         @param n_heads: Number of output heads.
@@ -69,11 +70,6 @@ class BaseDetectionHead(BaseHead):
 
     @override
     def get_custom_head_config(self) -> Params:
-        """Returns custom head configuration.
-
-        @rtype: dict[str, Any]
-        @return: Custom head configuration.
-        """
         return {
             "iou_threshold": self.iou_thres,
             "conf_threshold": self.conf_thres,

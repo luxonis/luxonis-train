@@ -10,8 +10,9 @@ from .base_loss import BaseLoss
 
 
 class CrossEntropyLoss(BaseLoss):
-    """This criterion computes the cross entropy loss between input
-    logits and target."""
+    """Computes the cross entropy loss between input logits and
+    target.
+    """
 
     supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 

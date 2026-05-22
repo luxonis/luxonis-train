@@ -85,7 +85,7 @@ class LuxonisModel:
         weights: PathType | dict[str, Any] | None = None,
         dataset_metadata: DatasetMetadata | None = None,
     ):
-        """Constructs a new Core instance.
+        """Construct a new Core instance.
 
         Loads the config and initializes loaders, dataloaders,
         augmentations, lightning components, etc.
@@ -359,7 +359,7 @@ class LuxonisModel:
         weights_only: bool = False,
         storage_options: Any = None,
     ) -> Path:
-        """Saves a checkpoint of the model.
+        """Save a checkpoint of the model.
 
         @type path: PathType
         @param path: Path where checkpoint will be saved.
@@ -381,7 +381,7 @@ class LuxonisModel:
         return Path(path)
 
     def get_checkpoint(self, weights_only: bool = False) -> dict[str, Any]:
-        """Gets the checkpoint of the model as a dictionary.
+        """Get the checkpoint of the model as a dictionary.
 
         @type weights_only: bool
         @param weights_only: If `True`, will only include the model
@@ -416,7 +416,7 @@ class LuxonisModel:
         new_thread: bool = False,
         weights: PathType | None = None,
     ) -> None:
-        """Runs training.
+        """Run the training.
 
         @type new_thread: bool
         @param new_thread: Runs training in new thread if set to True.
@@ -487,7 +487,7 @@ class LuxonisModel:
         ignore_missing_weights: bool = False,
         ckpt_only: bool = False,
     ) -> Path:
-        """Runs export.
+        """Run the export.
 
         @type save_path: PathType | None
         @param save_path: Directory where to save all exported model
@@ -686,7 +686,7 @@ class LuxonisModel:
         source_path: PathType | None = None,
         weights: PathType | dict[str, Any] | None = None,
     ) -> None:
-        """Runs inference.
+        """Run the inference.
 
         @type view: str
         @param view: Which split to run the inference on. Valid values
@@ -774,7 +774,7 @@ class LuxonisModel:
         return annotated_dataset
 
     def tune(self) -> None:
-        """Runs Optuna tuning of hyperparameters."""
+        """Run Optuna tuning of hyperparameters."""
         import optuna
         from optuna.integration import PyTorchLightningPruningCallback
         from sqlalchemy import URL
@@ -1013,7 +1013,7 @@ class LuxonisModel:
         weights: PathType | dict[str, Any] | None = None,
         save_dir: PathType | None = None,
     ) -> Path:
-        """Generates an NN Archive out of a model executable.
+        """Generate an NN Archive out of a model executable.
 
         @type path: PathType | None
         @param path: Path to the model executable. If not specified, the
@@ -1131,8 +1131,8 @@ class LuxonisModel:
         weights: PathType | dict[str, Any] | None = None,
         save_dir: PathType | None = None,
     ) -> tuple[Path, dict[str, Path]]:
-        """Exports the model to ONNX, creates an NN Archive, and
-        converts to target platform format (RVC2/RVC3/RVC4).
+        """Export the model to ONNX, creates an NN Archive, and converts
+        to target platform format (RVC2/RVC3/RVC4).
 
         This is a unified method that combines export, archive, and
         platform conversion steps.
@@ -1259,7 +1259,7 @@ class LuxonisModel:
 
     @rank_zero_only
     def get_min_loss_checkpoint_path(self) -> str | None:
-        """Return best checkpoint path with respect to minimal
+        """Get the best checkpoint path with respect to minimal
         validation loss.
 
         @rtype: str
@@ -1275,7 +1275,7 @@ class LuxonisModel:
 
     @rank_zero_only
     def get_best_metric_checkpoint_path(self) -> str | None:
-        """Return best checkpoint path with respect to best validation
+        """Get the best checkpoint path with respect to best validation
         metric.
 
         @rtype: str
@@ -1291,9 +1291,9 @@ class LuxonisModel:
 
     def get_mlflow_logging_keys(self) -> dict[str, list[str]]:
         """
-        Returns a dictionary with two lists of keys:
+        Return a dictionary with two lists of keys:
         1) "metrics"    -> Keys expected to be logged as standard metrics
-        2) "artifacts"  -> Keys expected to be logged as artifacts (e.g. confusion_matrix.json, visualizations)
+        2) "artifacts"  -> Keys expected to be logged as artifacts (e.g. confusion_matrix.json, visualizations).
         """
         return self.lightning_module.get_mlflow_logging_keys()
 

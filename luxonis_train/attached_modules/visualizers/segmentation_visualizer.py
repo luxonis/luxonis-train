@@ -97,7 +97,7 @@ class SegmentationVisualizer(BaseVisualizer):
         predictions: Tensor,
         target: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:
-        """Creates a visualization of the segmentation predictions and
+        """Create a visualization of the segmentation predictions and
         labels.
 
         @type target_canvas: Tensor

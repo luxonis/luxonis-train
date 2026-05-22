@@ -1,6 +1,8 @@
+import inspect
 import math
 import urllib.parse
-from collections.abc import Iterator
+from collections.abc import Callable, Collection, Iterator
+from inspect import Parameter
 from pathlib import Path, PurePosixPath
 from typing import Any, TypeVar, overload
 
@@ -97,7 +99,7 @@ def infer_upscale_factor(
 
 
 def to_shape_packet(packet: Packet[Tensor]) -> Packet[Size]:
-    """Converts a packet of tensors to a packet of shapes.
+    """Convert a packet of tensors to a packet of shapes.
 
     Used for debugging purposes.
 
@@ -126,8 +128,10 @@ def get_with_default(
     *,
     default: T,
 ) -> T:
-    """Returns value if it is not C{None}, otherwise returns the default
-    value and log an info.
+    """Get value with default.
+
+    Returns the value if it is not C{None}, otherwise returns the
+    default value and log an info.
 
     @type value: T | None
     @param value: Value to return.
@@ -153,6 +157,29 @@ def get_with_default(
     return default
 
 
+def get_signature(
+    func: Callable, exclude: Collection[str] | None = None
+) -> dict[str, Parameter]:
+    """Get the signature of a function, excluding certain parameters
+    like 'self' and 'kwargs'.
+
+    @type func: Callable
+    @param func: The function to get the signature of.
+    @type exclude: Collection[str] | None
+    @param exclude: A collection of parameter names to exclude from the
+        signature. Defaults to None, which excludes 'self' and 'kwargs'.
+    @rtype: dict[str, Parameter]
+    @return: A dictionary mapping parameter names to their Parameter
+        objects, excluding the specified parameters.
+    """
+    exclude = set(exclude or [])
+    exclude |= {"self", "kwargs"}
+    signature = dict(inspect.signature(func).parameters)
+    return {
+        name: param for name, param in signature.items() if name not in exclude
+    }
+
+
 def safe_download(
     url: PathType | None,
     file: str | None = None,
@@ -160,7 +187,7 @@ def safe_download(
     retry: int = 3,
     force: bool = False,
 ) -> Path | None:
-    """Downloads file from the web and returns either local path or None
+    """Download file from the web and returns either local path or None
     if downloading failed.
 
     @type url: str | None
@@ -224,7 +251,6 @@ def get_attribute_check_none(obj: object, attribute: str) -> Any:
     """Get private attribute from object and check if it is not None.
 
     Example:
-
         >>> class Person:
         ...     def __init__(self, age: int | None = None):
         ...         self._age = age
@@ -252,6 +278,7 @@ def get_attribute_check_none(obj: object, attribute: str) -> Any:
     @return: Value of the attribute.
 
     @raise ValueError: If the attribute is None.
+
     """
     value = getattr(obj, f"_{attribute}")
     if value is None:
@@ -401,7 +428,8 @@ def decode_text_metadata_labels(
 
 class Counter:
     """Simple counter that can be used to generate unique IDs or
-    indices."""
+    indices.
+    """
 
     def __init__(self, start: int = 0):
         self._count = start

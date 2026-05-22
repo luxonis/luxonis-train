@@ -47,7 +47,7 @@ class BaseHead(BaseNode):
         }
 
     def get_custom_head_config(self) -> Params:
-        """Get custom head configuration.
+        """Get a custom head configuration.
 
         @rtype: dict
         @return: Custom head configuration.

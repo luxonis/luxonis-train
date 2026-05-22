@@ -20,7 +20,8 @@ def test_unique_initializers_creates_unique_names(
     test_datasets: LuxonisTestDatasets,
 ):
     """Test that unique_onnx_initializers flag actually makes all
-    initializer names unique."""
+    initializer names unique.
+    """
     config_file, opts, _ = prepare_predefined_model_config(
         config_name, opts, test_datasets
     )
@@ -52,7 +53,8 @@ def test_unique_initializers_model_validity(
     test_datasets: LuxonisTestDatasets,
 ):
     """Test that the model with unique initializers passes ONNX
-    checker."""
+    checker.
+    """
     config_file, opts, _ = prepare_predefined_model_config(
         config_name, opts, test_datasets
     )
@@ -119,7 +121,8 @@ def test_unique_initializers_numerical_equivalence(
     test_datasets: LuxonisTestDatasets,
 ):
     """Run inference on both models (exported with flag True and False)
-    and test that the outputs are the same."""
+    and test that the outputs are the same.
+    """
     config_file, opts, _ = prepare_predefined_model_config(
         config_name, opts, test_datasets
     )

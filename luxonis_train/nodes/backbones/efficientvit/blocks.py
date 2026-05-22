@@ -344,7 +344,7 @@ class LightweightMLABlock(nn.Module):
 
     @torch.autocast(device_type="cuda", enabled=False)
     def linear_attention(self, qkv_tensor: Tensor) -> Tensor:
-        """Implements ReLU-based linear attention."""
+        """ReLU-based linear attention."""
         batch, _, height, width = qkv_tensor.size()
 
         if qkv_tensor.dtype == torch.float16:
@@ -375,7 +375,7 @@ class LightweightMLABlock(nn.Module):
 
     @torch.autocast(device_type="cuda", enabled=False)
     def quadratic_attention(self, qkv_tensor: Tensor) -> Tensor:
-        """Implements ReLU-based quadratic attention."""
+        """ReLU-based quadratic attention."""
         batch, _, height, width = qkv_tensor.size()
 
         qkv_tensor = qkv_tensor.reshape(

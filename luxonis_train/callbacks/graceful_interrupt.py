@@ -111,7 +111,8 @@ class GracefulInterruptCallback(pl.Callback):
     ) -> None:
         """Prevent all other train-end callbacks (TestOnTrainEnd,
         ExportOnTrainEnd, etc) from running if the training terminated
-        due to interrupt."""
+        due to interrupt.
+        """
         if not self._interrupted:
             return
 

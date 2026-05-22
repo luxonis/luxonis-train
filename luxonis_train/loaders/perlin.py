@@ -128,7 +128,7 @@ def generate_perlin_noise(
 def apply_anomaly_to_img(
     img: Tensor, anomaly_img: Tensor, beta: float | None = None
 ) -> tuple[Tensor, Tensor]:
-    """Applies Perlin noise-based anomalies to a single image (C, H, W).
+    """Apply Perlin noise-based anomalies to a single image (C, H, W).
 
     @type img: Tensor
     @param img: The input image tensor of shape (C, H, W).

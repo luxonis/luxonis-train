@@ -169,8 +169,9 @@ class EfficientBBoxHead(BaseDetectionHead):
         *,
         tail: list[Tensor] | None = None,
     ) -> list[Tensor]:
-        """Performs post-processing of the output and returns bboxs
-        after NMS."""
+        """Perform post-processing of the output and returns bboxs after
+        NMS.
+        """
         tail = tail or []
         bboxes = dist2bbox(distributions, anchor_points, out_format="xyxy")
 
@@ -201,9 +202,4 @@ class EfficientBBoxHead(BaseDetectionHead):
 
     @override
     def get_custom_head_config(self) -> Params:
-        """Returns custom head configuration.
-
-        @rtype: dict
-        @return: Custom head configuration.
-        """
         return super().get_custom_head_config() | {"subtype": "yolov6r2"}
