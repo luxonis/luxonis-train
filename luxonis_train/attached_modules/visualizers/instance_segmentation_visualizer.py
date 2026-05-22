@@ -13,6 +13,7 @@ from .utils import (
     draw_bounding_boxes,
     draw_segmentation_targets,
     get_color,
+    get_prediction_labels,
     potentially_upscale_masks,
 )
 
@@ -28,6 +29,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         self,
         labels: dict[int, str] | list[str] | None = None,
         draw_labels: bool = True,
+        draw_scores: bool = False,
         colors: dict[str, Color] | list[Color] | None = None,
         fill: bool = False,
         width: int | None = None,
@@ -43,6 +45,9 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         @type draw_labels: bool
         @param draw_labels: Whether to draw class labels on the
             visualizations.
+        @type draw_scores: bool
+        @param draw_scores: Whether to append prediction confidence
+            scores to the rendered labels. Defaults to C{False}.
         @type colors: dict[str, L{Color}] | list[L{Color}] | None
         @param colors: Dicionary mapping class labels to colors.
         @type fill: bool | None
@@ -79,10 +84,12 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         self.font = font
         self.font_size = font_size
         self.draw_labels = draw_labels
+        self.draw_scores = draw_scores
         self.alpha = alpha
 
-    @staticmethod
+    @classmethod
     def draw_predictions(
+        cls,
         canvas: Tensor,
         pred_bboxes: list[Tensor],
         pred_masks: list[Tensor],
@@ -90,6 +97,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         label_dict: Mapping[int, str],
         color_dict: dict[str, Color],
         draw_labels: bool,
+        draw_scores: bool,
         alpha: float,
         scale: float = 1.0,
     ) -> Tensor:
@@ -107,10 +115,11 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
 
             image_masks = potentially_upscale_masks(image_masks, scale)
 
-            cls_labels = (
-                [label_dict[int(c)] for c in prediction_classes]
-                if draw_labels and label_dict is not None
-                else None
+            cls_labels = get_prediction_labels(
+                image_bboxes,
+                label_dict,
+                draw_labels,
+                draw_scores,
             )
             cls_colors = (
                 [color_dict[label_dict[int(c)]] for c in prediction_classes]
@@ -229,6 +238,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             self.bbox_labels,
             self.colors,
             self.draw_labels,
+            self.draw_scores,
             self.alpha,
             self.scale,
         )

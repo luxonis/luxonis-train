@@ -1,5 +1,6 @@
 import colorsys
 import io
+from collections.abc import Mapping
 from typing import Literal
 
 import cv2
@@ -22,6 +23,35 @@ from torchvision.utils import (
 from luxonis_train.config import Config
 
 Color = str | tuple[int, int, int]
+
+
+def get_prediction_labels(
+    prediction: Tensor,
+    label_dict: Mapping[int, str] | None,
+    draw_labels: bool,
+    draw_scores: bool,
+) -> list[str] | None:
+    if not (draw_labels or draw_scores):
+        return None
+
+    prediction_classes = prediction[..., 5].int()
+    prediction_scores = prediction[..., 4]
+
+    labels: list[str] = []
+    for score, class_id in zip(
+        prediction_scores, prediction_classes, strict=True
+    ):
+        parts: list[str] = []
+        if draw_labels:
+            if label_dict is not None:
+                parts.append(label_dict.get(int(class_id), str(int(class_id))))
+            else:
+                parts.append(str(int(class_id)))
+        if draw_scores:
+            parts.append(f"{float(score):.2f}")
+        labels.append(" ".join(parts))
+
+    return labels
 
 
 def figure_to_torch(fig: Figure, width: int, height: int) -> Tensor:
