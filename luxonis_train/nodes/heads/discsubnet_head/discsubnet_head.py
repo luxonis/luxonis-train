@@ -34,13 +34,20 @@ class DiscSubNetHead(BaseHead):
         of anomalies by distinguishing between the reconstructed image
         and the input.
 
+        @type base_channels: int
+        @param base_channels: The base number of filters used in the
+            encoder and decoder blocks.
+        @type width_multipliers: list[float]
+        @param width_multipliers: A list of multipliers that determine
+            the number of filters in each block of the encoder and
+            decoder. Each multiplier is applied to the base_channels to
+            calculate the number of filters for that block. For example,
+            if base_channels is 32 and width_multipliers is [1, 2], the
+            first block will have 32 filters and the second block will
+            have 64 filters.
         @type out_channels: int
         @param out_channels: Number of output channels for the decoder.
             Defaults to 2 (for segmentation masks).
-        @type base_channels: int
-        @param base_channels: The base number of filters used in the
-            encoder and decoder blocks. If None, it is determined based
-            on the variant.
         """
         super().__init__(**kwargs)
 

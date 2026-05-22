@@ -99,7 +99,7 @@ class LuxonisModel:
         @type allow_empty_dataset: bool
         @param allow_empty_dataset: If set to True, the model will be
             initialized even if the dataset is empty or cannot be
-            created This is useful either for debugging or for running
+            created. This is useful either for debugging or for running
             commands that don't require a dataset (e.g. export with
             existing weights).
         @type weights: str | None
@@ -325,7 +325,7 @@ class LuxonisModel:
             ):
                 logger.warning(
                     "Dataset metadata from the checkpoint are "
-                    "overriden by extra loader parameters. "
+                    "overridden by extra loader parameters. "
                     "The checkpoint metadata will not be used."
                 )
                 self.dataset_metadata = DatasetMetadata.from_loader(
@@ -506,7 +506,7 @@ class LuxonisModel:
         @param ckpt_only: If True, only the `.ckpt` file will be
             exported. This is useful for updating the metadata in the
             checkpoint file in case they changed (e.g. new configuration
-            file, architectural changes affecting the exection order
+            file, architectural changes affecting the execution order
             etc.)
         """
         weights = self.resolve_weights(weights)
@@ -654,7 +654,7 @@ class LuxonisModel:
         @type new_thread: bool
         @param new_thread: Runs testing in a new thread if set to True.
         @type view: Literal["train", "test", "val"]
-        @param view: Which view to run the testing on. Defauls to
+        @param view: Which view to run the testing on. Defaults to
             "test".
         @rtype: Mapping[str, float] | None
         @return: If new_thread is False, returns a dictionary test

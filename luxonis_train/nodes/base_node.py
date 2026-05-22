@@ -549,9 +549,8 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         @type inputs: list[Packet[Tensor]]
         @param inputs: Inputs to the module.
         @rtype: L{Packet}[Tensor]
-        @return: Outputs of the module as a dictionary of list of
-            tensors: C{{"features": [Tensor, ...], "segmentation":
-            [Tensor]}}
+        @return: Outputs of the module as a packet of tensors:
+            C{{"features": [Tensor, ...], "segmentation": Tensor}}
         """
         kwargs = {}
 

@@ -245,7 +245,7 @@ class ConvBlock(nn.Module):
         @type bias: bool
         @param bias: Whether to use bias. Defaults to False.
         @type activation: L{nn.Module} | None | bool
-        @param activation: Activation function. Defaults to `nn.Relu` if
+        @param activation: Activation function. Defaults to `nn.ReLu` if
             not explicitly set to C{None} or C{False}.
         @type use_norm: bool
         @param use_norm: Whether to use batch normalization. Defaults to

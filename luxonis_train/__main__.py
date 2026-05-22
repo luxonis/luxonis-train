@@ -413,7 +413,7 @@ def export(
     @param ckpt_only: If True, only the `.ckpt` file will be exported.
         This is useful for updating the metadata in the checkpoint file
         in case they changed (e.g. new configuration file, architectural
-        changes affecting the exection order etc.)
+        changes affecting the execution order etc.)
     @type weights: str
     @param weights: Path to the model weights.
     @type opts: list[str]

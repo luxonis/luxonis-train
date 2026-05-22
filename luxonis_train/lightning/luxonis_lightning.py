@@ -467,7 +467,7 @@ class LuxonisLightningModule(pl.LightningModule):
         ensure that epoch 1 gets validated even if the configured
         `validation_interval` normally skips it.
 
-        `trainer.check_val_every_n_epoch` is temporarily overriden to
+        `trainer.check_val_every_n_epoch` is temporarily overridden to
         `1` before fitting starts. After that first real validation
         epoch completes, `on_validation_epoch_end()` restores the
         original interval so the rest of training follows the configured

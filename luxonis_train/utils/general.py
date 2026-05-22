@@ -183,7 +183,7 @@ def get_signature(
 def safe_download(
     url: PathType | None,
     file: str | None = None,
-    dir: PathType = ".cache/luxonis_train",
+    cache_dir: PathType = ".cache/luxonis_train",
     retry: int = 3,
     force: bool = False,
 ) -> Path | None:
@@ -211,9 +211,9 @@ def safe_download(
         return url
     if LuxonisFileSystem.get_protocol(url) == "file":
         return Path(url)
-    dir = Path(dir) / __version__
-    dir.mkdir(parents=True, exist_ok=True)
-    f = dir / (file or url2file(url))
+    cache_dir = Path(cache_dir) / __version__
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    f = cache_dir / (file or url2file(url))
     if f.is_file() and not force:
         logger.warning(f"File {f} is already cached, using that one.")
         return f

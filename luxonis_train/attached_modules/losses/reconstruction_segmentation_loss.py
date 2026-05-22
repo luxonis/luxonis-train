@@ -38,10 +38,10 @@ class ReconstructionSegmentationLoss(BaseLoss):
             C{2.0}.
         @type smooth: float
         @param smooth: Label smoothing factor for the focal loss.
-            Defaults to C{0.0}.
+            Defaults to C{1e-5}.
         @type reduction: Literal["none", "mean", "sum"]
-        @param reduction: Reduction type for the focal loss.. Defaults
-            to C{"mean"}.
+        @param reduction: Reduction type for the focal loss. Defaults to
+            C{"mean"}.
         """
         super().__init__(**kwargs)
         self.loss_l2 = nn.MSELoss()
