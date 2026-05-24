@@ -130,19 +130,25 @@ def apply_anomaly_to_img(
 ) -> tuple[Tensor, Tensor]:
     """Applies Perlin noise-based anomalies to a single image (C, H, W).
 
-    @type img: Tensor
-    @param img: The input image tensor of shape (C, H, W).
-    @type anomaly_source_paths: list[str]
-    @param anomaly_source_paths: List of file paths to the anomaly images.
-    @type pixel_augs: list[Callable] | None
-    @param pixel_augs: A list of albumentations augmentations to apply to the anomaly image. Defaults to C{None}.
-    @type beta: float | None
-    @param beta: A blending factor for anomaly and noise. If None, a random value in the range [0, 0.8]
-                 is used. Defaults to C{None}.
-    @rtype: tuple[Tensor, Tensor]
-    @return: A tuple containing:
-        - augmented_img (Tensor): The augmented image with applied anomaly and Perlin noise.
-        - perlin_mask (Tensor): The Perlin noise mask applied to the image.
+                     is used. Defaults to C{None}.
+            - augmented_img (Tensor): The augmented image with applied anomaly and Perlin noise.
+            - perlin_mask (Tensor): The Perlin noise mask applied to the image.
+
+    Parameters
+    ----------
+    img : Tensor
+        The input image tensor of shape (C, H, W).
+    anomaly_source_paths : list[str]
+        List of file paths to the anomaly images.
+    pixel_augs : list[Callable] | None, optional
+        A list of albumentations augmentations to apply to the anomaly image. Defaults to ``None``.
+    beta : float | None, optional
+        A blending factor for anomaly and noise. If None, a random value in the range [0, 0.8]
+
+    Returns
+    -------
+    tuple[Tensor, Tensor]
+        A tuple containing:
     """
     perlin_mask = generate_perlin_noise(shape=(img.shape[1], img.shape[2]))
 

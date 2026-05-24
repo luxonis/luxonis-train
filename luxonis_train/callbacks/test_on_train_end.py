@@ -14,8 +14,10 @@ class TestOnTrainEnd(NeedsCheckpoint):
     def __init__(self, view: View = "test") -> None:
         """Callback to perform a test run at the end of the training.
 
-        @type view: Literal["train", "val", "test"]
-        @param view: The view to use for testing. Defaults to "test".
+        Parameters
+        ----------
+        view : Literal["train", "val", "test"]
+            The view to use for testing. Defaults to "test".
         """
         super().__init__()
         self.view: View = view

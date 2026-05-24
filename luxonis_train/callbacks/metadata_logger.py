@@ -11,12 +11,14 @@ class MetadataLogger(pl.Callback):
     def __init__(self, hyperparams: list[str]):
         """Callback that logs training metadata.
 
-        Metadata include all defined hyperparameters together with git
-        hashes of luxonis-ml and luxonis-train packages. Also stores
-        this information locally.
+                Metadata include all defined hyperparameters together with git
+                hashes of luxonis-ml and luxonis-train packages. Also stores
+                this information locally.
 
-        @type hyperparams: list[str]
-        @param hyperparams: List of hyperparameters to log.
+        Parameters
+        ----------
+        hyperparams : list[str]
+            List of hyperparameters to log.
         """
         super().__init__()
         self.hyperparams = hyperparams

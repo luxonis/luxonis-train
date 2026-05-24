@@ -21,12 +21,14 @@ class TrainingProgressCallback(pl.Callback):
     """
 
     def __init__(self, log_every_n_batches: int = 1):
-        """
-        @type log_every_n_batches: int
-        @param log_every_n_batches: How often to log progress metrics
-        (every N batches). Can be set to higher to prevent logging
-        in real-time if there is too much logging overhead.
-        By default 1 means real-time.
+        """(every N batches). Can be set to higher to prevent logging in
+        real-time if there is too much logging overhead. By default 1
+        means real-time.
+
+        Parameters
+        ----------
+        log_every_n_batches : int
+            How often to log progress metrics
         """
         super().__init__()
         self.log_every_n_batches = max(1, log_every_n_batches)
