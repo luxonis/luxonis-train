@@ -174,7 +174,14 @@ class LuxonisLightningModule(pl.LightningModule):
         attached-module keys may be missing or unexpected.
         """
         if self.cfg.trainer.resume_training:
-            incompatible = super().load_state_dict(state_dict, strict=False)
+            filtered_state_dict = (
+                filter_checkpoint_state_dict(state_dict)
+                if self.cfg.trainer.strict_weights_loading
+                else state_dict
+            )
+            incompatible = super().load_state_dict(
+                filtered_state_dict, strict=False
+            )
             if not self.cfg.trainer.strict_weights_loading:
                 return incompatible
 
