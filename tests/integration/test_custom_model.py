@@ -30,7 +30,7 @@ class CustomMultiInputLoader(BaseLoaderTorch):
             "pointcloud": torch.Size([self.n_points, 3]),
         }
 
-    def get(self, _: int) -> LuxonisLoaderTorchOutput:
+    def __getitem__(self, _: int) -> LuxonisLoaderTorchOutput:
         left = torch.rand(3, self.height, self.width, dtype=torch.float32)
         right = torch.rand(3, self.height, self.width, dtype=torch.float32)
         disparity = torch.rand(1, self.height, self.width, dtype=torch.float32)

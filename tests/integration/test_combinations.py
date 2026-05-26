@@ -143,7 +143,9 @@ def test_combinations(
     subtests: SubTests,
 ):
     config = get_config(backbone, dinov3_weights)
-    opts |= {"loader.params.dataset_name": parking_lot_dataset.identifier}
+    opts |= {
+        "loader.params.dataset_name": parking_lot_dataset.identifier,
+    }
     model = LuxonisModel(config, opts)
 
     with subtests.test("train"):

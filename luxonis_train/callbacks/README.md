@@ -186,6 +186,18 @@ A callback that maintains an exponential moving average (EMA) of the model's par
 | `use_dynamic_decay` | `bool`  | `True`        | If enabled, adjusts the decay factor dynamically based on the training iteration.  |
 | `decay_tau`         | `float` | `2000`        | The time constant (tau) for dynamic decay, influencing how quickly the EMA adapts. |
 
+## `AIMETCallback`
+
+Callback to perform AIMET quantization at the end of the training.
+
+This callback runs AIMET post-training static quantization using the best checkpoint (by default based on the main metric) at the end of training.
+
+**Parameters:**
+
+| Key                    | Type                        | Default value | Description                                                                                                                                                     |
+| ---------------------- | --------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preferred_checkpoint` | `Literal["metric", "loss"]` | `"metric"`    | Which checkpoint should the callback use. If the preferred checkpoint is not available, the other option is used. If none is available, the callback is skipped |
+
 ## `TrainingProgressCallback`
 
 Callback that publishes training progress and timing metrics.
@@ -198,9 +210,8 @@ Callback that publishes training progress and timing metrics.
 
 **Published Metrics:**
 
-| Metric Key                     | Description                                             |
-| ------------------------------ | ------------------------------------------------------- |
-| `train/epoch_progress_percent` | Percentage (0-100) of current epoch completed           |
-| `train/epoch_duration_sec`     | Time elapsed so far in current epoch                    |
-| `train/epoch_completion_sec`   | Total duration of completed training epoch in seconds   |
-| `val/epoch_completion_sec`     | Total duration of completed validation epoch in seconds |
+| Metric Key                     | Description                                   |
+| ------------------------------ | --------------------------------------------- |
+| `train/epoch_progress_percent` | Percentage (0-100) of current epoch completed |
+| `train/epoch_duration_sec`     | Time elapsed so far in current epoch          |
+| `train/epoch_completion_sec`   | Total duration of completed epoch in seconds  |

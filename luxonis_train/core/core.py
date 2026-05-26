@@ -1,9 +1,11 @@
+import json
 import tempfile
 import threading
 from collections.abc import Mapping
+from copy import deepcopy
 from pathlib import Path
-from threading import ExceptHookArgs
-from typing import Any, Literal, overload
+from threading import ExceptHookArgs, Thread
+from typing import Any, Literal, cast, overload
 
 import lightning.pytorch as pl
 import lightning_utilities.core.rank_zero as rank_zero_module
@@ -20,6 +22,9 @@ from luxonis_ml.nn_archive import ArchiveGenerator
 from luxonis_ml.nn_archive.config import CONFIG_VERSION
 from luxonis_ml.typing import Params, PathType
 from luxonis_ml.utils import Environ, LuxonisFileSystem
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LRScheduler
+from torch.utils.data.dataloader import DataLoader
 from typeguard import typechecked
 
 from luxonis_train.callbacks import (
@@ -36,7 +41,13 @@ from luxonis_train.loaders import (
     DummyLoader,
     LuxonisLoaderTorch,
 )
-from luxonis_train.registry import LOADERS
+from luxonis_train.loaders.base_loader import LuxonisLoaderTorchOutput
+from luxonis_train.registry import (
+    LOADERS,
+    OPTIMIZERS,
+    SCHEDULERS,
+    from_registry,
+)
 from luxonis_train.typing import View
 from luxonis_train.utils import (
     DatasetMetadata,
@@ -81,8 +92,8 @@ class LuxonisModel:
         cfg: PathType | Params | Config | None,
         opts: Params | list[str] | tuple[str, ...] | None = None,
         *,
-        allow_empty_dataset: bool = False,
         weights: PathType | dict[str, Any] | None = None,
+        allow_empty_dataset: bool = False,
         dataset_metadata: DatasetMetadata | None = None,
     ):
         """Constructs a new Core instance.
@@ -268,7 +279,10 @@ class LuxonisModel:
                 "Weighted sampler is not implemented yet."
             )
 
-        self.pytorch_loaders: dict[View, torch_data.DataLoader] = {}
+        self.pytorch_loaders: dict[
+            View,
+            torch_data.DataLoader[LuxonisLoaderTorchOutput],
+        ] = {}
         for view in ("train", "val", "test"):
             if self.cfg.trainer.n_validation_batches is not None and view in {
                 "val",
@@ -350,7 +364,29 @@ class LuxonisModel:
             _core=self,
         )
 
+        if weights is not None:
+            weights = LuxonisFileSystem.download(
+                str(weights), self.run_save_dir
+            )
+            if self.cfg.model.weights is not None:
+                logger.warning(
+                    "Weights provided in the command line, but config weights are set. "
+                    "Ignoring weights provided in config."
+                )
+            self.lightning_module.load_checkpoint(weights)
         self._exported_models: dict[str, Path] = {}
+
+    @property
+    def train_loader(self) -> DataLoader:
+        return self.pytorch_loaders["train"]
+
+    @property
+    def val_loader(self) -> DataLoader:
+        return self.pytorch_loaders["val"]
+
+    @property
+    def test_loader(self) -> DataLoader:
+        return self.pytorch_loaders["test"]
 
     def save_checkpoint(
         self,
@@ -449,8 +485,8 @@ class LuxonisModel:
             self._train(
                 resume_weights,
                 self.lightning_module,
-                self.pytorch_loaders["train"],
-                self.pytorch_loaders["val"],
+                self.train_loader,
+                self.val_loader,
             )
             logger.info("Training finished")
             logger.info(f"Checkpoints saved in: {self.run_save_dir}")
@@ -467,8 +503,8 @@ class LuxonisModel:
                 args=(
                     resume_weights,
                     self.lightning_module,
-                    self.pytorch_loaders["train"],
-                    self.pytorch_loaders["val"],
+                    self.train_loader,
+                    self.val_loader,
                 ),
                 daemon=True,
             )
@@ -501,6 +537,9 @@ class LuxonisModel:
             This is useful for updating the metadata in the checkpoint
             file in case they changed (e.g. new configuration file,
             architectural changes affecting the exection order etc.)
+
+        @rtype: Path
+        @return: Path to the exported ONNX model file or .ckpt file if ckpt_only is True.
         """
         weights = self.resolve_weights(weights)
 
@@ -633,7 +672,7 @@ class LuxonisModel:
         new_thread: Literal[True] = ...,
         view: Literal["train", "test", "val"] = "test",
         weights: PathType | dict[str, Any] | None = ...,
-    ) -> None: ...
+    ) -> Thread: ...
 
     @typechecked
     def test(
@@ -641,22 +680,22 @@ class LuxonisModel:
         new_thread: bool = False,
         view: Literal["train", "val", "test"] = "test",
         weights: PathType | dict[str, Any] | None = None,
-    ) -> Mapping[str, float] | None:
+    ) -> Mapping[str, float] | Thread:
         """Runs testing.
 
         @type new_thread: bool
         @param new_thread: Runs testing in a new thread if set to True.
         @type view: Literal["train", "test", "val"]
         @param view: Which view to run the testing on. Defauls to "test".
-        @rtype: Mapping[str, float] | None
-        @return: If new_thread is False, returns a dictionary test
-            results.
         @type weights: PathType | None
         @param weights: Path to the checkpoint from which to load weights.
             If not specified, the value of `model.weights` from the
             configuration file will be used. The current weights of the
             model will be temporarily replaced with the weights from the
             specified checkpoint.
+        @rtype: Mapping[str, float] | Thread
+        @return: If new_thread is False, returns a dictionary test
+            results.
         """
         weights = self.resolve_weights(weights)
         loader = self.pytorch_loaders[view]
@@ -668,7 +707,8 @@ class LuxonisModel:
                     args=(self.lightning_module, loader),
                     daemon=True,
                 )
-                return self.thread.start()
+                self.thread.start()
+                return self.thread
             return self.pl_trainer.test(self.lightning_module, loader)[0]
 
     def infer(
@@ -900,8 +940,8 @@ class LuxonisModel:
             try:
                 pl_trainer.fit(
                     lightning_module,
-                    self.pytorch_loaders["train"],
-                    self.pytorch_loaders["val"],
+                    self.train_loader,
+                    self.val_loader,
                 )
                 pruner_callback.check_pruned()
 
@@ -1244,6 +1284,252 @@ class LuxonisModel:
                 raise ValueError(f"HubAI conversion failed: {e}") from e
 
         return archive_path, conversion_artifacts
+
+    def quantize(
+        self,
+        weights: PathType | None = None,
+        epochs: int | None = None,
+        quant_scheme: Literal["min_max", "tf", "tf_enhanced"] | None = None,
+        default_output_bw: int | None = None,
+        default_param_bw: int | None = None,
+        config_file: str | None = None,
+        default_data_type: Literal["int", "float"] | None = None,
+        adaround: bool | None = None,
+        adaround_iterations: int | None = None,
+        adaround_reg_param: float | None = None,
+        adaround_beta_range: tuple[int, int] | None = None,
+        adaround_warm_start: float | None = None,
+        fold_batch_norms: bool | None = None,
+        cross_layer_equalization: bool | None = None,
+        batch_norm_reestimation: bool | None = None,
+        sequential_mse: bool | None = None,
+        optimizer: Optimizer | None = None,
+        scheduler: LRScheduler | None = None,
+        in_place: bool = False,
+    ) -> Path:
+        """Runs quantization of the model using AIMET.
+
+        @type weights: PathType | None
+        @param weights: Path to the checkpoint from which to load
+            weights.
+        @type epochs: int | None
+        @param epochs: Number of epochs to run quantization-aware
+            training for.
+        @type quant_scheme: str | QuantScheme | None
+        @param quant_scheme: Quantization scheme to use. If not
+            specified, the value from the configuration file will be
+            used.
+        @type default_output_bw: int | None
+        @param default_output_bw: Default bitwidth to use for quantizing
+            outputs. If not specified, the value from the configuration
+            file will be used.
+        @type default_param_bw: int | None
+        @param default_param_bw: Default bitwidth to use for quantizing
+            parameters. If not specified, the value from the
+            configuration file will be used.
+        @type config_file: str | None
+        @param config_file: Path to the AIMET configuration file or a
+            dictionary containing the AIMET configuration. If not
+            specified, the value from the configuration file will be
+            used.
+        @type default_data_type: QuantizationDataType | None
+        @param default_data_type: Default data type to use for
+            quantization. If not specified, the value from the
+            configuration file will be used.
+        @type adaround: bool | None
+        @param adaround: Whether to use Adaround for weight
+            quantization. If not specified, the value from the
+            configuration file will be used.
+        @type adaround_iterations: int | None
+        @param adaround_iterations: Number of iterations to run Adaround
+            for. If not specified, the value from the configuration file
+            will be used.
+        @type adaround_reg_param: float | None
+        @param adaround_reg_param: Regularization parameter to use for
+            Adaround. If not specified, the value from the configuration
+            file will be used.
+        @type adaround_beta_range: tuple[int, int] | None
+        @param adaround_beta_range: Beta range to use for Adaround. If
+            not specified, the value from the configuration file will be
+            used.
+        @type adaround_warm_start: float | None = None
+        @param adaround_warm_start: Warm start value to use for
+            Adaround. If not specified, the value from the configuration
+            file will be used.
+        @type fold_batch_norms: bool | None
+        @param fold_batch_norms: Whether to fold batch norms before
+            quantization. If not specified, the value from the
+            configuration file will be used.
+        @type cross_layer_equalization: bool | None
+        @param cross_layer_equalization: Whether to perform cross-layer
+            equalization before quantization. If not specified, the
+            value from the configuration file will be used.
+        @type batch_norm_reestimation: bool | None
+        @param batch_norm_reestimation: Whether to perform batch norm
+            reestimation after folding batch norms. If not specified,
+            the value from the configuration file will be used.
+        @type optimizer: Optimizer | None
+        @param optimizer: Optimizer to use for quantization-aware
+            training. If not specified, the optimizer from the
+            configuration file will be used.
+        @type scheduler: LRScheduler | None
+        @param scheduler: Learning rate scheduler to use for
+            quantization-aware training. If not specified, the scheduler
+            from the configuration file will be used.
+        @type in_place: bool
+        @param in_place: Whether to perform quantization in-place on the
+            original model or to create a copy of the model for
+            quantization. Defaults to False, which means that a copy of
+            the model will be created for quantization. Setting this to
+            True will modify the original model in-place, which may save
+            memory but will overwrite the original model's weights and
+            structure.
+        """
+        from aimet_torch.common.defs import QuantizationDataType, QuantScheme
+
+        from .utils.aimet_utils import (
+            post_training_quantization,
+            quantization_aware_training,
+        )
+
+        save_dir = self.run_save_dir / "aimet"
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        cfg = self.cfg.exporter.aimet
+
+        aimet_config_file = config_file or cfg.config
+        if isinstance(aimet_config_file, dict):
+            with open(save_dir / "aimet_config.json", "w") as f:
+                json.dump(aimet_config_file, f, indent=4)
+            aimet_config_file = str(save_dir / "aimet_config.json")
+
+        adaround = adaround if adaround is not None else cfg.adaround.active
+        fold_batch_norms = (
+            fold_batch_norms
+            if fold_batch_norms is not None
+            else cfg.fold_batch_norms
+        )
+        cross_layer_equalization = (
+            cross_layer_equalization
+            if cross_layer_equalization is not None
+            else cfg.cross_layer_equalization
+        )
+        batch_norm_reestimation = (
+            batch_norm_reestimation
+            if batch_norm_reestimation is not None
+            else cfg.batch_norm_reestimation
+        )
+        sequential_mse = (
+            sequential_mse
+            if sequential_mse is not None
+            else cfg.sequential_mse
+        )
+
+        if not in_place:
+            model = deepcopy(self.lightning_module)
+        else:
+            model = self.lightning_module
+
+        model.reparametrize().eval()
+
+        if weights is not None:
+            model.load_checkpoint(weights)
+
+        pre_quant_test = self.pl_trainer.test(model, self.val_loader)[0]
+
+        dummy_inputs = {
+            input_name: torch.randn([1, *shape]).to(model.device)
+            for shapes in model.nodes.loader_input_shapes.values()
+            for input_name, shape in shapes.items()
+        }
+
+        if len(dummy_inputs) > 1:
+            raise NotImplementedError(
+                "Quantization is not yet supported for models "
+                "with multiple inputs."
+            )
+        input_names = list(dummy_inputs.keys())
+        output_names = model._get_output_onnx_names(deepcopy(dummy_inputs))
+        dummy_inputs = next(iter(dummy_inputs.values()))
+
+        sim = post_training_quantization(
+            model,
+            dummy_inputs,
+            self.val_loader,
+            save_dir,
+            QuantScheme.from_str(quant_scheme or cfg.quant_scheme),
+            default_output_bw or cfg.default_output_bw,
+            default_param_bw or cfg.default_param_bw,
+            QuantizationDataType[default_data_type or cfg.default_data_type],
+            aimet_config_file,
+            adaround,
+            adaround_iterations
+            if adaround_iterations is not None
+            else cfg.adaround.default_num_iterations,
+            adaround_reg_param
+            if adaround_reg_param is not None
+            else cfg.adaround.default_reg_param,
+            adaround_beta_range or cfg.adaround.default_beta_range,
+            adaround_warm_start
+            if adaround_warm_start is not None
+            else cfg.adaround.default_warm_start,
+            fold_batch_norms,
+            cross_layer_equalization,
+            batch_norm_reestimation,
+            sequential_mse,
+        )
+        model = cast(LuxonisLightningModule, sim.model)
+
+        model.eval()
+        ptq_test = self.pl_trainer.test(model, self.val_loader)[0]
+
+        if optimizer is None:
+            optimizer = from_registry(
+                OPTIMIZERS,
+                cfg.optimizer.name,
+                params=sim.model.parameters(),
+                **cfg.optimizer.params,
+            )
+        if scheduler is None:
+            scheduler = from_registry(
+                SCHEDULERS,
+                cfg.scheduler.name,
+                optimizer=optimizer,
+                **cfg.scheduler.params,
+            )
+
+        model = quantization_aware_training(
+            sim,
+            dummy_inputs,
+            self.train_loader,
+            optimizer,
+            scheduler,
+            epochs if epochs is not None else cfg.epochs,
+            fold_batch_norms,
+            batch_norm_reestimation,
+        ).eval()
+
+        qat_test = self.pl_trainer.test(model, self.val_loader)[0]
+
+        model.set_export_mode(mode=True)
+
+        sim.onnx.export(
+            dummy_inputs,
+            (save_dir / self.cfg.model.name).with_suffix(".onnx"),
+            input_names=input_names,
+            output_names=output_names,
+        )
+
+        table = []
+        for key, value in pre_quant_test.items():
+            log_key = key.replace("test/metric/", "").replace("test/loss/", "")
+            table.append((log_key, value, ptq_test[key], qat_test[key]))
+        model.progress_bar.print_table(
+            "Quantization results",
+            table,
+            ["Name", "Pre-Quant", "PTQ", "QAT"],
+        )
+        return save_dir
 
     @property
     def environ(self) -> Environ:

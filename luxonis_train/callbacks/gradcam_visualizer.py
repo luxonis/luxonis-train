@@ -47,7 +47,7 @@ class PLModuleWrapper(pl.LightningModule):
         @return: The processed output based on the task type.
         """
         input_dict = {"image": inputs}
-        output = self.pl_module(input_dict, *args, **kwargs)
+        output = self.pl_module.full_forward(input_dict, *args, **kwargs)
         if len(output.outputs) > 1:
             logger.warning(
                 "Model has multiple heads. Using the first head for Grad-CAM."
@@ -142,7 +142,9 @@ class GradCamCallback(pl.Callback):
         @param batch_idx: The index of the batch.
         """
         if batch_idx < self.log_n_batches:
-            images = batch[0][pl_module.image_source]
+            images = batch[0]
+            if isinstance(images, dict):
+                images = images[pl_module.image_source]
             self.visualize_gradients(trainer, pl_module, images, batch_idx)
 
     def visualize_gradients(

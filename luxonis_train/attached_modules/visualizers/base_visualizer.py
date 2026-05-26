@@ -3,8 +3,9 @@ from functools import cached_property
 from inspect import Parameter
 
 import torch.nn.functional as F
+from luxonis_ml.data.utils import ColorMap
 from torch import Tensor
-from typing_extensions import TypeVarTuple, Unpack
+from typing_extensions import TypeVarTuple, Unpack, override
 
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.registry import VISUALIZERS
@@ -25,6 +26,13 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
         super().__init__(*args, **kwargs)
         self.scale = scale
 
+    @override
+    def __getstate__(self) -> dict:
+        state = super().__getstate__()
+        if "colormap" in state:
+            del state["colormap"]
+        return state
+
     @staticmethod
     def scale_canvas(canvas: Tensor, scale: float = 1.0) -> Tensor:
         return F.interpolate(
@@ -33,6 +41,10 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
             mode="bilinear",
             align_corners=False,
         )
+
+    @cached_property
+    def colormap(self) -> ColorMap:
+        return ColorMap()
 
     @abstractmethod
     def forward(

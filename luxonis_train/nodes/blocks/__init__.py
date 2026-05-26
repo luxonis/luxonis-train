@@ -1,3 +1,5 @@
+from contextlib import suppress
+
 from .blocks import (
     DFL,
     AttentionRefinmentBlock,
@@ -26,6 +28,12 @@ from .unet import (
     UNetEncoder,
     UpBlock,
 )
+
+with suppress(ImportError):
+    from aimet_torch.v2.nn import QuantizationMixin
+
+    QuantizationMixin.ignore(DropPath)
+    QuantizationMixin.ignore(UpscaleOnline)
 
 __all__ = [
     "DFL",

@@ -103,7 +103,8 @@ class DatasetMetadata:
         if task_name is not None:
             if task_name not in self._classes:
                 raise ValueError(
-                    f"Task '{task_name}' is not present in the dataset."
+                    f"Task '{task_name}' is not present in the dataset. "
+                    f"Available tasks: {self.task_names}"
                 )
             return len(self._classes[task_name])
         n_classes = len(next(iter(self._classes.values())))
@@ -121,19 +122,14 @@ class DatasetMetadata:
         @type task_name: str | None
         @param task_name: Task to get the number of keypoints for.
         @rtype: int
-        @return: Number of keypoints for the specified task type.
-        @raises ValueError: If the C{task} is not present in the
-            dataset.
+        @return: Number of keypoints for the specified task type or 0 if
+            the task does not involve keypoints.
         @raises RuntimeError: If the C{task} was not provided and the
             dataset contains different number of keypoints for different
             task types.
         """
         if task_name is not None:
-            if task_name not in self._n_keypoints:
-                raise ValueError(
-                    f"Task '{task_name}' is not present in the dataset."
-                )
-            return self._n_keypoints[task_name]
+            return self._n_keypoints.get(task_name, 0)
         n_keypoints = next(iter(self._n_keypoints.values()))
         for n in self._n_keypoints.values():
             if n != n_keypoints:
@@ -160,7 +156,8 @@ class DatasetMetadata:
         if task_name is not None:
             if task_name not in self._classes:
                 raise ValueError(
-                    f"Task '{task_name}' is not present in the dataset."
+                    f"Task '{task_name}' is not present in the dataset. "
+                    f"Available tasks: {self.task_names}"
                 )
             return bidict(self._classes[task_name])
         classes = next(iter(self._classes.values()))

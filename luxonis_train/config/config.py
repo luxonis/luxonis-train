@@ -1,6 +1,8 @@
+import json
 import sys
 from collections.abc import Mapping
 from contextlib import suppress
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, Any, Literal, NamedTuple
 
@@ -726,6 +728,87 @@ def _validate_quantization_mode(value: str) -> str:
     return value
 
 
+class AdaroundConfig(BaseModelExtraForbid):
+    active: bool = False
+    default_num_iterations: PositiveInt | None = None
+    default_reg_param: float = 0.01
+    default_beta_range: tuple[int, int] = (20, 2)
+    default_warm_start: float = 0.2
+
+
+class AIMETConfig(BaseModelExtraForbid):
+    active: bool = False
+
+    default_output_bw: Literal[4, 8, 16] = 8
+    default_param_bw: Literal[4, 8, 16] = 8
+    default_data_type: Literal["int", "float"] = "int"
+    quant_scheme: Literal["min_max", "tf", "tf_enhanced"] = "min_max"
+    config: Params | None = None
+
+    fold_batch_norms: bool = False
+    cross_layer_equalization: bool = False
+    batch_norm_reestimation: bool = False
+    sequential_mse: bool = False
+    adaround: AdaroundConfig = Field(default_factory=AdaroundConfig)
+
+    epochs: PositiveInt = 20
+    optimizer: ConfigItem = Field(
+        default_factory=lambda: ConfigItem(name="SGD", params={"lr": 1e-5})
+    )
+    scheduler: ConfigItem = Field(
+        default_factory=lambda: ConfigItem(
+            name="StepLR", params={"step_size": 5, "gamma": 0.1}
+        )
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_active(cls, data: Params) -> Params:
+        if not data.get("active", False):
+            return data
+        for required_field in [
+            "fold_batch_norms",
+            "cross_layer_equalization",
+            "batch_norm_reestimation",
+            "sequential_mse",
+        ]:
+            if required_field not in data:
+                raise ValueError(
+                    f"AIMET config is active but missing required field '{required_field}'."
+                )
+        adaround = data.get("adaround", {})
+        if not isinstance(adaround, dict):
+            raise TypeError(
+                f"Invalid type for 'adaround': {type(adaround)}. "
+                "Expected a dict."
+            )
+        if "active" not in adaround:
+            raise ValueError(
+                "AIMET config is active but missing required field "
+                "'adaround.active'."
+            )
+        return data
+
+    @field_validator("config", mode="before")
+    @classmethod
+    def validate_config(cls, value: ParamValue) -> Any:
+        if isinstance(value, str):
+            try:
+                fs = LuxonisFileSystem(value)
+                return json.loads(fs.read_text(""))
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to load AIMET config from file '{value}': {e}"
+                ) from e
+        return value
+
+    @field_serializer("default_data_type", "quant_scheme")
+    def serialize_enums(self, value: Any) -> str:
+        if isinstance(value, Enum):
+            return value.name
+        return value
+
+
 class ExportConfig(ArchiveConfig):
     name: str | None = None
     input_shape: list[int] | None = None
@@ -742,6 +825,7 @@ class ExportConfig(ArchiveConfig):
         default_factory=BlobconverterExportConfig
     )
     hubai: HubAIExportConfig = Field(default_factory=HubAIExportConfig)
+    aimet: AIMETConfig = Field(default_factory=AIMETConfig)
 
     @field_validator("scale_values", "mean_values", mode="before")
     @classmethod
