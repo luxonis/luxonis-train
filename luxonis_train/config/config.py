@@ -511,6 +511,7 @@ class TrainerConfig(BaseModelExtraForbid):
     epochs: PositiveInt = 100
     overfit_batches: NonNegativeInt = 0
     resume_training: bool = False
+    strict_weights_loading: bool = False
     n_workers: NonNegativeInt = 4
     validation_interval: Literal[-1] | PositiveInt = 5
     run_validation_after_first_epoch: bool = False

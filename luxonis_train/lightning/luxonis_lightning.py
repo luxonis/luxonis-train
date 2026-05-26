@@ -25,7 +25,10 @@ from luxonis_train.config import Config
 from luxonis_train.nodes import BaseNode
 from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
-from luxonis_train.utils.checkpoint import filter_checkpoint_state_dict
+from luxonis_train.utils.checkpoint import (
+    CHECKPOINT_FILTERED_STATE_DICT_PATTERN,
+    filter_checkpoint_state_dict,
+)
 
 from .luxonis_output import LuxonisOutput
 from .utils import (
@@ -167,9 +170,48 @@ class LuxonisLightningModule(pl.LightningModule):
 
         In case resume_training is active, allow loading in a non-strict
         manner to allow loss, visualizer and metric nodes to be absent.
+        When strict weight loading is enabled, only those filtered
+        attached-module keys may be missing or unexpected.
         """
         if self.cfg.trainer.resume_training:
-            return super().load_state_dict(state_dict, strict=False)
+            filtered_state_dict = (
+                filter_checkpoint_state_dict(state_dict)
+                if self.cfg.trainer.strict_weights_loading
+                else state_dict
+            )
+            incompatible = super().load_state_dict(
+                filtered_state_dict, strict=False
+            )
+            if not self.cfg.trainer.strict_weights_loading:
+                return incompatible
+
+            missing_keys = [
+                key
+                for key in incompatible.missing_keys
+                if not CHECKPOINT_FILTERED_STATE_DICT_PATTERN.match(key)
+            ]
+            unexpected_keys = [
+                key
+                for key in incompatible.unexpected_keys
+                if not CHECKPOINT_FILTERED_STATE_DICT_PATTERN.match(key)
+            ]
+
+            if missing_keys or unexpected_keys:
+                raise RuntimeError(
+                    "Error(s) in loading state_dict for "
+                    f"{self.__class__.__name__}:\n"
+                    + (
+                        f"\tMissing key(s): {', '.join(missing_keys)}.\n"
+                        if missing_keys
+                        else ""
+                    )
+                    + (
+                        f"\tUnexpected key(s): {', '.join(unexpected_keys)}.\n"
+                        if unexpected_keys
+                        else ""
+                    )
+                )
+            return _IncompatibleKeys([], [])
         return super().load_state_dict(state_dict, strict=strict)
 
     @property
@@ -586,6 +628,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         state_dict = ckpt["state_dict"]
         ver = Version.parse(ckpt.get("version", "0.3.0"))
+        strict_weights_loading = self.cfg.trainer.strict_weights_loading
 
         old_order = ckpt.get("execution_order")
         new_order = get_model_execution_order(self)
@@ -604,6 +647,8 @@ class LuxonisLightningModule(pl.LightningModule):
                 logger.error(
                     f"Failed to load checkpoint for node '{node_name}'"
                 )
+                if strict_weights_loading:
+                    raise
                 if old_order is None:
                     logger.error(
                         "Execution order not found in the checkpoint. "

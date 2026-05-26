@@ -146,6 +146,8 @@ class LuxonisModel:
             self.cfg = Config.get_config(cfg, opts)
 
         self.allow_empty_dataset = allow_empty_dataset
+        self._weights_provided_during_init = weights is not None
+        self._weights_provided_in_config = self.cfg.model.weights is not None
         self.weights = weights or self.cfg.model.weights
 
         self.cfg_preprocessing = self.cfg.trainer.preprocessing
@@ -432,11 +434,12 @@ class LuxonisModel:
                 "Training will start from scratch."
             )
         elif weights and self.cfg.trainer.resume_training is False:
-            logger.warning(
-                "Weights argument was given but resume_training is not set to True. "
-                "Training will start from scratch."
-                "To resume training from the given checkpoint, set resume_training to True."
+            logger.info(
+                "Weights argument was given and resume_training is set to False. "
+                "Training will start from the provided weights while resetting "
+                "optimizer, scheduler, and epoch state."
             )
+            self.lightning_module.load_checkpoint(weights)
 
         resume_weights = weights if self.cfg.trainer.resume_training else None
 
@@ -1289,7 +1292,6 @@ class LuxonisModel:
     def resolve_weights(
         self, weights: PathType | dict[str, Any] | None
     ) -> PathType | dict[str, Any] | None:
-
         if isinstance(weights, dict):
             return weights
 
@@ -1298,8 +1300,12 @@ class LuxonisModel:
                 return self.weights
             return safe_download(self.weights)
 
-        logger.warning(
-            "Weights provided on the command line, but config weights are set. "
-            "Ignoring weights provided in config or during LuxonisModel initialization."
-        )
+        if (
+            self._weights_provided_in_config
+            and not self._weights_provided_during_init
+        ):
+            logger.warning(
+                "Weights provided on the command line, but config weights are set. "
+                "Ignoring weights provided in config."
+            )
         return safe_download(weights)
