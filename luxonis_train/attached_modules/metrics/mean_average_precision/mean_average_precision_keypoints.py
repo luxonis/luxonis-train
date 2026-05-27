@@ -9,7 +9,7 @@ from typing_extensions import override
 
 from luxonis_train.attached_modules.metrics import BaseMetric, MetricState
 from luxonis_train.attached_modules.metrics.mean_average_precision.utils import (
-    add_f1_metrics,
+    postprocess_metrics,
 )
 from luxonis_train.attached_modules.metrics.utils import (
     fix_empty_tensor,
@@ -46,6 +46,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         area_factor: float | None = None,
         max_dets: int = 20,
         box_format: Literal["xyxy", "xywh", "cxcywh"] = "xyxy",
+        class_metrics: bool = False,
         **kwargs,
     ):
         """Implementation of the mean average precision metric for
@@ -75,6 +76,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         )
         self.max_dets = max_dets
         self.box_format = box_format
+        self.class_metrics = class_metrics
 
     @override
     def update(
@@ -118,42 +120,140 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
     @override
     def compute(self) -> tuple[Tensor, dict[str, Tensor]]:
         """Torchmetric compute function."""
-        coco_target = self._get_coco(
+        stats = self._run_coco_eval(
             self.target_bboxes,
             self.target_keypoints,
             self.target_classes,
-        )
-        coco_preds = self._get_coco(
             self.pred_bboxes,
             self.pred_keypoints,
             self.pred_classes,
             self.pred_scores,
         )
 
-        self.coco_eval = COCOeval_faster(
+        metrics = self._stats_to_metrics(stats)
+
+        if self.class_metrics:
+            class_ids = self._get_present_class_ids()
+            if len(class_ids) > 1:
+                per_class_map_values = []
+                for class_id in class_ids:
+                    class_stats = self._run_coco_eval(
+                        *self._filter_by_class(
+                            self.target_bboxes,
+                            self.target_keypoints,
+                            self.target_classes,
+                            class_id,
+                        ),
+                        *self._filter_by_class(
+                            self.pred_bboxes,
+                            self.pred_keypoints,
+                            self.pred_classes,
+                            class_id,
+                            self.pred_scores,
+                        ),
+                    )
+                    per_class_map_values.append(class_stats[0])
+
+                metrics["classes"] = torch.tensor(
+                    class_ids, device=self.device, dtype=torch.int64
+                )
+                metrics["kpt_map_per_class"] = torch.stack(
+                    per_class_map_values
+                )
+
+        return postprocess_metrics(
+            metrics, self.classes.inverse, "kpt_map", self.device
+        )
+
+    def _run_coco_eval(
+        self,
+        target_bboxes: list[Tensor],
+        target_keypoints: list[Tensor],
+        target_classes: list[Tensor],
+        pred_bboxes: list[Tensor],
+        pred_keypoints: list[Tensor],
+        pred_classes: list[Tensor],
+        pred_scores: list[Tensor],
+    ) -> Tensor:
+        coco_target = self._get_coco(
+            target_bboxes,
+            target_keypoints,
+            target_classes,
+        )
+        coco_preds = self._get_coco(
+            pred_bboxes,
+            pred_keypoints,
+            pred_classes,
+            pred_scores,
+        )
+
+        coco_eval = COCOeval_faster(
             coco_target, coco_preds, iouType="keypoints"
         )
-        self.coco_eval.params.kpt_oks_sigmas = self.sigmas.cpu().numpy()
-        self.coco_eval.params.maxDets = [self.max_dets]
+        coco_eval.params.kpt_oks_sigmas = self.sigmas.cpu().numpy()
+        coco_eval.params.maxDets = [self.max_dets]
+        coco_eval.run()
 
-        self.coco_eval.run()
-
-        stats = torch.tensor(
-            self.coco_eval.stats, dtype=torch.float32, device=self.device
+        self.coco_eval = coco_eval
+        return torch.tensor(
+            coco_eval.stats, dtype=torch.float32, device=self.device
         )
 
-        return stats[0], add_f1_metrics(
-            {
-                "kpt_map_50": stats[1],
-                "kpt_map_75": stats[2],
-                "kpt_map_medium": stats[3],
-                "kpt_map_large": stats[4],
-                "kpt_mar": stats[5],
-                "kpt_mar_50": stats[6],
-                "kpt_mar_75": stats[7],
-                "kpt_mar_medium": stats[8],
-                "kpt_mar_large": stats[9],
-            }
+    def _stats_to_metrics(self, stats: Tensor) -> dict[str, Tensor]:
+        return {
+            "kpt_map": stats[0],
+            "kpt_map_50": stats[1],
+            "kpt_map_75": stats[2],
+            "kpt_map_medium": stats[3],
+            "kpt_map_large": stats[4],
+            "kpt_mar": stats[5],
+            "kpt_mar_50": stats[6],
+            "kpt_mar_75": stats[7],
+            "kpt_mar_medium": stats[8],
+            "kpt_mar_large": stats[9],
+        }
+
+    def _get_present_class_ids(self) -> list[int]:
+        return sorted(
+            int(class_id)
+            for class_id in torch.cat(
+                self.pred_classes + self.target_classes
+            ).unique()
+        )
+
+    def _filter_by_class(
+        self,
+        bboxes_list: list[Tensor],
+        keypoints_list: list[Tensor],
+        classes_list: list[Tensor],
+        class_id: int,
+        scores_list: list[Tensor] | None = None,
+    ) -> (
+        tuple[list[Tensor], list[Tensor], list[Tensor]]
+        | tuple[list[Tensor], list[Tensor], list[Tensor], list[Tensor]]
+    ):
+        filtered_bboxes: list[Tensor] = []
+        filtered_keypoints: list[Tensor] = []
+        filtered_classes: list[Tensor] = []
+        filtered_scores: list[Tensor] = []
+
+        for idx, (bboxes, keypoints, classes) in enumerate(
+            zip(bboxes_list, keypoints_list, classes_list, strict=True)
+        ):
+            mask = classes == class_id
+            filtered_bboxes.append(bboxes[mask])
+            filtered_keypoints.append(keypoints[mask])
+            filtered_classes.append(classes[mask])
+            if scores_list is not None:
+                filtered_scores.append(scores_list[idx][mask])
+
+        if scores_list is None:
+            return filtered_bboxes, filtered_keypoints, filtered_classes
+        return (
+            filtered_bboxes,
+            filtered_keypoints,
+            filtered_classes,
+            filtered_scores,
         )
 
     def _get_coco(

@@ -35,8 +35,13 @@ def add_f1_metrics(metrics: dict[str, Tensor]) -> dict[str, Tensor]:
 def process_class_metrics(
     metrics: dict[str, Tensor], class_names: Mapping[int, str]
 ) -> dict[str, Tensor]:
-    classes = metrics.pop("classes")
     per_class_metrics = [key for key in metrics if key.endswith("_per_class")]
+    if not per_class_metrics:
+        return metrics
+
+    classes = metrics.pop("classes", None)
+    if classes is None:
+        return metrics
 
     for metric_name in per_class_metrics:
         metric = metrics.pop(metric_name)
