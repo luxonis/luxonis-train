@@ -1,6 +1,7 @@
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 from torch import nn
@@ -13,6 +14,9 @@ import luxonis_train as lxt
 from luxonis_train.config.config import OptimizerConfig, SchedulerConfig
 
 from .base_strategy import BaseTrainingStrategy
+
+if TYPE_CHECKING:
+    from luxonis_train.lightning.optimization_planner import ParameterGroupSpec
 
 
 @dataclass
@@ -51,8 +55,12 @@ class TripleLRScheduler:
         curr_step = self.step + self.max_stepnum * current_epoch
 
         if curr_step <= self.warmup_stepnum:
-            for k, param in enumerate(self.optimizer.param_groups):
-                warmup_bias_lr = self.warmup_bias_lr if k == 2 else 0.0
+            for param in self.optimizer.param_groups:
+                warmup_bias_lr = (
+                    self.warmup_bias_lr
+                    if param.get("strategy_role") == "bias"
+                    else 0.0
+                )
                 param["lr"] = np.interp(
                     curr_step,
                     [0, self.warmup_stepnum],
@@ -101,6 +109,7 @@ class TripleLRSGD:
                     "lr": self.lr,
                     "momentum": self.momentum,
                     "nesterov": self.nesterov,
+                    "strategy_role": "batch_norm_weight",
                 },
                 {
                     "params": regular_weights,
@@ -108,14 +117,17 @@ class TripleLRSGD:
                     "lr": self.lr,
                     "momentum": self.momentum,
                     "nesterov": self.nesterov,
+                    "strategy_role": "regular_weight",
                 },
                 {
                     "params": biases,
                     "lr": self.lr,
                     "momentum": self.momentum,
                     "nesterov": self.nesterov,
+                    "strategy_role": "bias",
                 },
             ],
+            lr=self.lr,
         )
 
 
@@ -167,6 +179,7 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
             weight_decay=weight_decay,
             nesterov=nesterov,
         ).create_optimizer()
+        self._parameter_roles = self._collect_parameter_roles()
 
         self.scheduler = TripleLRScheduler(
             optimizer=self.optimizer,
@@ -198,6 +211,84 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
         return [self.optimizer], [self.scheduler.create_scheduler()]
 
     @override
+    def transform_groups(
+        self, groups: Sequence["ParameterGroupSpec"]
+    ) -> list["ParameterGroupSpec"]:
+        from luxonis_train.lightning.optimization_planner import (
+            ParameterGroupSpec,
+        )
+
+        split_groups: list[ParameterGroupSpec] = []
+        for group in groups:
+            by_role = {
+                "batch_norm_weight": [],
+                "weight": [],
+                "bias": [],
+            }
+            for parameter in group.params:
+                role = self._parameter_roles.get(id(parameter), "weight")
+                by_role[role].append(parameter)
+
+            for role, params in by_role.items():
+                if not params:
+                    continue
+                optimizer_params = dict(group.optimizer_params)
+                if role == "batch_norm_weight":
+                    optimizer_params.pop("weight_decay", None)
+                elif role == "weight":
+                    optimizer_params.setdefault(
+                        "weight_decay", self.weight_decay
+                    )
+                elif role == "bias":
+                    optimizer_params.pop("weight_decay", None)
+
+                split_groups.append(
+                    ParameterGroupSpec(
+                        params=params,
+                        optimizer_name="SGD",
+                        optimizer_params=optimizer_params,
+                        scheduler_name=group.scheduler_name,
+                        scheduler_params=dict(group.scheduler_params),
+                        source=f"strategy:TripleLRSGD.{role}:{group.source}",
+                        tags={*group.tags, "strategy:TripleLRSGD", role},
+                        strategy_role=(
+                            "regular_weight" if role == "weight" else role
+                        ),
+                    )
+                )
+        return split_groups
+
+    @override
+    def create_scheduler(
+        self,
+        optimizer: Optimizer,
+        group_specs: Sequence["ParameterGroupSpec"],
+        default_scheduler: LambdaLR,
+    ) -> LambdaLR:
+        _ = group_specs, default_scheduler
+        self.scheduler.optimizer = optimizer
+        return self.scheduler.create_scheduler()
+
+    @override
+    def supports_optimizer_override(self, optimizer_name: str) -> bool:
+        return optimizer_name == "SGD"
+
+    @override
     def update_parameters(self) -> None:
         current_epoch = self.model.current_epoch
         self.scheduler.update_learning_rate(current_epoch)
+
+    def _collect_parameter_roles(self) -> dict[int, str]:
+        roles: dict[int, str] = {}
+        for module in self.model.modules():
+            if hasattr(module, "bias") and isinstance(
+                module.bias, nn.Parameter
+            ):
+                roles[id(module.bias)] = "bias"
+            if isinstance(module, nn.BatchNorm2d):
+                roles[id(module.weight)] = "batch_norm_weight"
+            elif hasattr(module, "weight") and isinstance(
+                module.weight, nn.Parameter
+            ):
+                roles[id(module.weight)] = "weight"
+        return roles

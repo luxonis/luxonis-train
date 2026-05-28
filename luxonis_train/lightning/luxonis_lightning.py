@@ -34,6 +34,7 @@ from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
 from luxonis_train.utils.checkpoint import filter_checkpoint_state_dict
 
 from .luxonis_output import LuxonisOutput
+from .optimization_planner import OptimizationPlanner
 from .utils import (
     LossAccumulator,
     Nodes,
@@ -150,6 +151,12 @@ class LuxonisLightningModule(pl.LightningModule):
         self.nodes = Nodes(cfg, self.dataset_metadata, input_shapes)
 
         self.training_strategy = build_training_strategy(self.cfg, self)
+        self.optimization_planner = OptimizationPlanner(
+            cfg=self.cfg,
+            nodes=self.nodes,
+            main_metric=self.nodes.main_metric,
+            training_strategy=self.training_strategy,
+        )
 
         self.load_checkpoint(self.cfg.model.weights)
 
@@ -574,8 +581,9 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:
-        optimizers, _ = self.configure_optimizers()
-        return self.nodes.build_callbacks(self.save_dir, len(optimizers))
+        return self.nodes.build_callbacks(
+            self.save_dir, self.optimization_planner.optimizer_count()
+        )
 
     @override
     def configure_optimizers(
@@ -583,28 +591,10 @@ class LuxonisLightningModule(pl.LightningModule):
     ) -> tuple[
         Sequence[Optimizer], Sequence[LRSchedulerTypeUnion | LRSchedulerConfig]
     ]:
-        if self.training_strategy is not None:
-            strategy_optimizers, strategy_schedulers = (
-                self.training_strategy.configure_optimizers()
-            )
-            base_optimizer_cfg, base_scheduler_cfg = (
-                self.training_strategy.get_base_configs()
-            )
-            used_params = {
-                id(p)
-                for optimizer in strategy_optimizers
-                for group in optimizer.param_groups
-                for p in group["params"]
-            }
-            optimizers, schedulers = self.nodes.build_optimizers(
-                base_optimizer_cfg, base_scheduler_cfg, used_params
-            )
-            optimizers = [*strategy_optimizers, *optimizers]
-            schedulers = [*strategy_schedulers, *schedulers]
-        else:
-            optimizers, schedulers = self.nodes.build_optimizers()
-        if len(optimizers) > 1:
-            self.automatic_optimization = False
+        plan = self.optimization_planner.plan
+        optimizers = plan.optimizers
+        schedulers = plan.schedulers
+        self.automatic_optimization = not plan.uses_manual_optimization
 
         self._log_optimizer_scheduler_info(optimizers, schedulers)
 
