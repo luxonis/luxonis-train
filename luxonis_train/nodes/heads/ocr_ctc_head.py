@@ -20,7 +20,6 @@ class OCRCTCHead(BaseHead):
         self,
         alphabet: list[str],
         ignore_unknown: bool = True,
-        fc_decay: float = 0.0004,
         mid_channels: int | None = None,
         return_feats: bool = False,
         **kwargs,
@@ -53,7 +52,6 @@ class OCRCTCHead(BaseHead):
             raise ValueError("Alphabet has duplicate characters.")
 
         self.return_feats = return_feats
-        self.fc_decay = fc_decay
 
         self._encoder = OCREncoder(alphabet, ignore_unknown)
         self._decoder = OCRDecoder(self._encoder.char_to_int)
@@ -119,11 +117,3 @@ class OCRCTCHead(BaseHead):
                 std = 1.0 / math.sqrt(m.in_features)
                 nn.init.uniform_(m.weight, -std, std)
                 nn.init.uniform_(m.bias, -std, std)
-
-                # TODO: This doesn't work in PyTorch. In PyTorch,
-                # per-parameter regularizers are set by creating
-                # multiple paremeter groups in the optimizer.
-                # We need to first add support for this in
-                # `LuxonisLightningModule`.
-                m.weight.regularizer = self.fc_decay  # type: ignore
-                m.bias.regularizer = self.fc_decay  # type: ignore

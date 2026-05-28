@@ -449,7 +449,6 @@ Adapted from [here](https://github.com/PaddlePaddle/PaddleOCR). Works well with 
 | ---------------- | ----------- | ------------- | --------------------------------------------- |
 | `alphabet`       | `list[str]` |               | List of characters for the head to recognize. |
 | `ignore_unknown` | `bool`      | `True`        | Whether to ignore unknown characters.         |
-| `fc_decay`       | `float`     | `0.0004`      | L2 regularization factor.                     |
 | `mid_channels`   | `int`       | `None`        | Number of middle channels.                    |
 | `return_feats`   | `bool`      | `False`       | Whether to return features.                   |
 

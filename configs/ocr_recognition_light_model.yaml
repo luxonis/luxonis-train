@@ -11,6 +11,13 @@ model:
       ignore_unknown: true
       loss_params:
         use_focal_loss: false
+      finetuning:
+        head:
+          - parameters:
+              - module_type: Linear
+            optimizer:
+              params:
+                weight_decay: 0.0004
 
 loader:
   params:
