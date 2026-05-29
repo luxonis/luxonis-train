@@ -18,17 +18,17 @@ class GhostFaceNet(BaseNode):
     GhostFaceNetsV2 is a convolutional neural network architecture focused on face recognition, but it is
     adaptable to generic embedding tasks. It is based on the GhostNet architecture and uses Ghost BottleneckV2 blocks.
 
-    Source: U{https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py}
+    Source: `https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py <https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py>`_
 
     Variants
     ========
     This backbone offers a single variant, V2, which is the default variant.
 
-    @license: U{MIT License
-        <https://github.com/Hazqeel09/ellzaf_ml/blob/main/LICENSE>}
+    Notes:
+        License: `MIT License <https://github.com/Hazqeel09/ellzaf_ml/blob/main/LICENSE>`_
 
-    @see: U{GhostFaceNets: Lightweight Face Recognition Model From Cheap Operations
-        <https://www.researchgate.net/publication/369930264_GhostFaceNets_Lightweight_Face_Recognition_Model_from_Cheap_Operations>}
+    See Also:
+        `GhostFaceNets: Lightweight Face Recognition Model From Cheap Operations <https://www.researchgate.net/publication/369930264_GhostFaceNets_Lightweight_Face_Recognition_Model_from_Cheap_Operations>`_
     """
 
     in_channels: int
@@ -41,19 +41,13 @@ class GhostFaceNet(BaseNode):
         layer_params: list["LayerParamsDict"],
         **kwargs,
     ):
-        """
-        @type width_multiplier: int
-        @param width_multiplier: Width multiplier for the blocks.
-        @type kernel_sizes: list[list[int]]
-        @param kernel_sizes: List of kernel sizes for block in each stage.
-        @type expand_sizes: list[list[int]]
-        @param expand_sizes: List of expansion sizes for block in each stage.
-        @type output_channels: list[list[int]]
-        @param output_channels: List of output channels for block in each stage.
-        @type se_ratios: list[list[float]]
-        @param se_ratios: List of Squeeze-and-Excitation ratios for block in each stage.
-        @type strides: list[list[int]]
-        @param strides: List of strides for block in each stage.
+        """        Args:
+            width_multiplier (int): Width multiplier for the blocks.
+            kernel_sizes (list[list[int]]): List of kernel sizes for block in each stage.
+            expand_sizes (list[list[int]]): List of expansion sizes for block in each stage.
+            output_channels (list[list[int]]): List of output channels for block in each stage.
+            se_ratios (list[list[float]]): List of Squeeze-and-Excitation ratios for block in each stage.
+            strides (list[list[int]]): List of strides for block in each stage.
         """
         super().__init__(**kwargs)
 

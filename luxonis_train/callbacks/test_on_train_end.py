@@ -15,8 +15,8 @@ class TestOnTrainEnd(NeedsCheckpoint):
 
     def __init__(self, view: View = "test") -> None:
         """
-        @type view: Literal["train", "val", "test"]
-        @param view: The view to use for testing. Defaults to "test".
+        Args:
+            view (Literal["train", "val", "test"]): The view to use for testing. Defaults to "test".
         """
         super().__init__()
         self.view: View = view

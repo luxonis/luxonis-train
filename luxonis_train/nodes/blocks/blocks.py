@@ -74,12 +74,10 @@ class EfficientDecoupledBlock(nn.Module):
         """Efficient Decoupled block used for class and regression
         predictions.
 
-        @type n_classes: int
-        @param n_classes: Number of classes.
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type prior_probability: float
-        @param prior_probability: ???
+        Args:
+            n_classes (int): Number of classes.
+            in_channels (int): Number of input channels.
+            prior_probability (float): ???
         """
         super().__init__()
 
@@ -138,13 +136,10 @@ class SegProto(nn.Sequential):
     ):
         """Initialize the segmentation prototype generator.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type mid_channels: int
-        @param mid_channels: Number of intermediate channels. Defaults
-            to 256.
-        @type out_channels: int
-        @param out_channels: Number of output channels. Defaults to 32.
+        Args:
+            in_channels (int): Number of input channels.
+            mid_channels (int): Number of intermediate channels. Defaults to 256.
+            out_channels (int): Number of output channels. Defaults to 32.
         """
         super().__init__(
             ConvBlock(
@@ -189,11 +184,8 @@ class DFL(nn.Module):
 
     @typechecked
     def __init__(self, reg_max: int = 16):
-        """
-
-        @type reg_max: int
-        @param reg_max: Maximum number of regression outputs. Defaults
-            to 16.
+        """        Args:
+            reg_max (int): Maximum number of regression outputs. Defaults to 16.
         """
         super().__init__()
         self.conv = nn.Conv2d(reg_max, 1, kernel_size=1, bias=False)
@@ -228,28 +220,17 @@ class ConvBlock(nn.Module):
     ):
         """Conv2d + Optional BN + Activation.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Kernel size.
-        @type stride: int
-        @param stride: Stride. Defaults to 1.
-        @type padding: int | str
-        @param padding: Padding. Defaults to 0.
-        @type dilation: int
-        @param dilation: Dilation. Defaults to 1.
-        @type groups: int
-        @param groups: Groups. Defaults to 1.
-        @type bias: bool
-        @param bias: Whether to use bias. Defaults to False.
-        @type activation: L{nn.Module} | None | bool
-        @param activation: Activation function. Defaults to `nn.ReLu` if
-            not explicitly set to C{None} or C{False}.
-        @type use_norm: bool
-        @param use_norm: Whether to use batch normalization. Defaults to
-            True.
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            kernel_size (int): Kernel size.
+            stride (int): Stride. Defaults to 1.
+            padding (int | str): Padding. Defaults to 0.
+            dilation (int): Dilation. Defaults to 1.
+            groups (int): Groups. Defaults to 1.
+            bias (bool): Whether to use bias. Defaults to False.
+            activation (`nn.Module` | None | bool): Activation function. Defaults to `nn.ReLu` if not explicitly set to ``None`` or ``False``.
+            use_norm (bool): Whether to use batch normalization. Defaults to True.
         """
         super().__init__()
 
@@ -302,17 +283,14 @@ class SqueezeExciteBlock(nn.Sequential):
         activation: nn.Module | None = None,
     ):
         """Squeeze and Excite block,
-        Adapted from U{Squeeze-and-Excitation Networks<https://arxiv.org/pdf/1709.01507.pdf>}.
-        Code adapted from U{https://github.com/apple/ml-mobileone/blob/main/mobileone.py}.
+        Adapted from `Squeeze-and-Excitation Networks <https://arxiv.org/pdf/1709.01507.pdf>`_.
+        Code adapted from `https://github.com/apple/ml-mobileone/blob/main/mobileone.py <https://github.com/apple/ml-mobileone/blob/main/mobileone.py>`_.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type intermediate_channels: int
-        @param intermediate_channels: Number of intermediate channels.
-        @type hard_sigmoid: bool
-        @param hard_sigmoid: Whether to use hard sigmoid function. Defaults to False.
-        @type activation: L{nn.Module} | None
-        @param activation: Activation function. Defaults to L{nn.ReLU}.
+        Args:
+            in_channels (int): Number of input channels.
+            intermediate_channels (int): Number of intermediate channels.
+            hard_sigmoid (bool): Whether to use hard sigmoid function. Defaults to False.
+            activation (`nn.Module` | None): Activation function. Defaults to `nn.ReLU`.
         """
         super().__init__(
             nn.AdaptiveAvgPool2d(1),
@@ -359,36 +337,19 @@ class GeneralReparametrizableBlock(Reparametrizable):
         """GeneralReparametrizableBlock is a basic rep-style block,
         including training and deploy status.
 
-        @see: U{https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py}.
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            kernel_size (int): Kernel size. Defaults to ``3``.
+            stride (int): Stride. Defaults to ``1``.
+            padding (int): Padding. Defaults to ``1``.
+            groups (int): Groups. Defaults to ``1``.
+            n_branches (int): Number of convolutional branches. During reparametrization, the branches are fused to a single convolutional layer. Defaults to ``1``.
+            refine_block (nn.Module | Literal["se"] | None): A block to refine the output. Placed after the convolutional branches and before the activation function. Can be one of the following: - torch module - string `"se"` which will use `SqueezeExciteBlock` - None for no operation Defaults to ``None``.
+            activation (nn.Module | None | bool): Activation function. By default ``nn.ReLU``. If ``False`` or ``None`` then no activation.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Kernel size. Defaults to C{3}.
-        @type stride: int
-        @param stride: Stride. Defaults to C{1}.
-        @type padding: int
-        @param padding: Padding. Defaults to C{1}.
-        @type groups: int
-        @param groups: Groups. Defaults to C{1}.
-        @type n_branches: int
-        @param n_branches: Number of convolutional branches.
-            During reparametrization, the branches are fused to a single
-            convolutional layer. Defaults to C{1}.
-        @type refine_block: nn.Module | Literal["se"] | None
-        @param refine_block: A block to refine the output.
-            Placed after the convolutional branches and before the
-            activation function.
-            Can be one of the following:
-              - torch module
-              - string `"se"` which will use L{SqueezeExciteBlock}
-              - None for no operation
-            Defaults to C{None}.
-        @type activation: nn.Module | None | bool
-        @param activation: Activation function. By default C{nn.ReLU}.
-            If C{False} or C{None} then no activation.
+        See Also:
+            `https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py <https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py>`_.
         """
         super().__init__()
 
@@ -595,13 +556,10 @@ class BlockRepeater(nn.Sequential):
     def __init__(
         self, module: Callable[..., nn.Module], /, *, n_repeats: int, **kwargs
     ):
-        """
-        @type module: C{type[nn.Module]}
-        @param module: Module to repeat.
-        @type n_repeats: int
-        @param n_repeats: Number of blocks to repeat. Defaults to C{1}.
-        @param kwargs: Additional keyword arguments to be passed to the
-            module.
+        """        Args:
+            module (``type[nn.Module]``): Module to repeat.
+            n_repeats (int): Number of blocks to repeat. Defaults to ``1``.
+            kwargs (Any): Additional keyword arguments to be passed to the module.
         """
         blocks = [module(**kwargs)]
 
@@ -628,16 +586,11 @@ class CSPStackRepBlock(nn.Module):
         n_blocks: int = 1,
         e: float = 0.5,
     ):
-        """
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_blocks: int
-        @param n_blocks: Number of blocks to repeat. Defaults to C{1}.
-        @type e: float
-        @param e: Factor for number of intermediate channels. Defaults
-            to C{0.5}.
+        """        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            n_blocks (int): Number of blocks to repeat. Defaults to ``1``.
+            e (float): Factor for number of intermediate channels. Defaults to ``0.5``.
         """
         super().__init__()
         intermediate_channels = int(out_channels * e)
@@ -686,18 +639,12 @@ class BottleRep(nn.Module):
     ):
         """RepVGG bottleneck module.
 
-        @type block: Callable[..., nn.Module]
-        @param block: Block to use. Defaults to
-            L{GeneralReparametrizableBlock}.
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type weight: bool
-        @param weight: If using learnable or static shortcut weight.
-            Defaults to C{True}.
-        @param kwargs: Additional keyword arguments to be passed to the
-            module.
+        Args:
+            block (Callable[..., nn.Module]): Block to use. Defaults to `GeneralReparametrizableBlock`.
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            weight (bool): If using learnable or static shortcut weight. Defaults to ``True``.
+            kwargs (Any): Additional keyword arguments to be passed to the module.
         """
         super().__init__()
         self.conv_1 = module(
@@ -723,12 +670,10 @@ class SpatialPyramidPoolingBlock(nn.Module):
         """Spatial Pyramid Pooling block with ReLU activation on three
         different scales.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Kernel size. Defaults to C{5}.
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            kernel_size (int): Kernel size. Defaults to ``5``.
         """
         super().__init__()
 
@@ -754,12 +699,11 @@ class AttentionRefinmentBlock(nn.Module):
     @typechecked
     def __init__(self, in_channels: int, out_channels: int):
         """Attention Refinment block adapted from
-        U{https://github.com/taveraantonio/BiseNetv1}.
+        `https://github.com/taveraantonio/BiseNetv1 <https://github.com/taveraantonio/BiseNetv1>`_.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
         """
         super().__init__()
 
@@ -791,14 +735,12 @@ class FeatureFusionBlock(nn.Module):
     def __init__(
         self, in_channels: int, out_channels: int, reduction: int = 1
     ):
-        """Feature Fusion block adapted from: U{https://github.com/taveraantonio/BiseNetv1}.
+        """Feature Fusion block adapted from: `https://github.com/taveraantonio/BiseNetv1 <https://github.com/taveraantonio/BiseNetv1>`_.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type reduction: int
-        @param reduction: Reduction factor. Defaults to C{1}.
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            reduction (int): Reduction factor. Defaults to ``1``.
         """
         super().__init__()
 
@@ -829,13 +771,12 @@ class FeatureFusionBlock(nn.Module):
 class UpscaleOnline(nn.Module):
     """Upscale tensor to a specified size during the forward pass.
 
-    This class supports cases where the required scale/size is only
+    This class supports cases where the required scale or size is only
     known when the input is received. Only the interpolation mode is set
     in advance.
 
-    @type mode: str
-    @param mode: Interpolation mode for resizing. Defaults to
-        "bilinear".
+    Args:
+        mode (str): Interpolation mode for resizing. Defaults to ``"bilinear"``.
     """
 
     @typechecked
@@ -848,13 +789,13 @@ class UpscaleOnline(nn.Module):
     ) -> Tensor:
         """Upscale the input tensor to the specified height and width.
 
-        @type x: Tensor
-        @param x: Input tensor to be upscaled.
-        @type output_height: int
-        @param output_height: Desired height of the output tensor.
-        @type output_width: int
-        @param output_width: Desired width of the output tensor.
-        @return: Upscaled tensor.
+        Args:
+            x (Tensor): Input tensor to be upscaled.
+            output_height (int): Desired height of the output tensor.
+            output_width (int): Desired width of the output tensor.
+
+        Returns:
+            Tensor: Upscaled tensor.
         """
         return F.interpolate(
             x, size=[output_height, output_width], mode=self.mode
@@ -862,28 +803,19 @@ class UpscaleOnline(nn.Module):
 
 
 class DropPath(nn.Module):
-    """Drop paths (Stochastic Depth) per sample, when applied in the
-    main path of residual blocks.
+    """Drop paths per sample in the main path of residual blocks.
 
-    Intended usage of this block is as follows:
+    Args:
+        drop_prob (float): Probability of zeroing out each sample path.
+            Defaults to ``0.0``.
+        scale_by_keep (bool): Whether to scale the output by the keep
+            probability. Defaults to ``True``.
 
-    >>> class ResNetBlock(nn.Module):
-    ...   def __init__(self, ..., drop_path_rate: float):
-    ...     self.drop_path = DropPath(drop_path_rate)
+    Notes:
+        License: `Apache License 2.0 <https://github.com/huggingface/pytorch-image-models?tab=Apache-2.0-1-ov-file#readme>`_.
 
-    ...   def forward(self, x):
-    ...     return x + self.drop_path(self.conv_bn_act(x))
-
-    @see: U{Original code (TIMM) <https://github.com/rwightman/pytorch-image-models>}
-    @license: U{Apache License 2.0 <https://github.com/huggingface/pytorch-image-models?tab=Apache-2.0-1-ov-file#readme>}
-
-    @type drop_prob: float
-    @param drop_prob: Probability of zeroing out individual vectors
-        (channel dimension) of each feature map. Defaults to 0.0.
-    @type scale_by_keep: bool
-    @param scale_by_keep: Whether to scale the output by the keep
-        probability. Enabled by default to maintain output mean &
-        std in the same range as without DropPath. Defaults to True.
+    See Also:
+        `Original code (TIMM) <https://github.com/rwightman/pytorch-image-models>`_.
     """
 
     @typechecked
@@ -893,19 +825,13 @@ class DropPath(nn.Module):
         self.scale_by_keep = scale_by_keep
 
     def drop_path(self, x: Tensor) -> Tensor:
-        """Drop paths (Stochastic Depth) per sample when applied in the
-        main path of residual blocks.
+        """Drop paths per sample when training.
 
-        @type x: Tensor
-        @param x: Input tensor.
-        @type drop_prob: float
-        @param drop_prob: Probability of dropping a path. Defaults to
-            0.0.
-        @type scale_by_keep: bool
-        @param scale_by_keep: Whether to scale the output by the keep
-            probability. Defaults to True.
-        @return: Tensor with dropped paths based on the provided drop
-            probability.
+        Args:
+            x (Tensor): Input tensor.
+
+        Returns:
+            Tensor: Tensor with paths dropped according to ``drop_prob``.
         """
         keep_prob = 1 - self.drop_prob
         shape = (x.shape[0],) + (1,) * (x.ndim - 1)
@@ -924,14 +850,12 @@ class ConvStack(BlockRepeater):
     def __init__(
         self, in_channels: int, out_channels: int, *, n_repeats: int = 2
     ):
-        """Stack of ConvBlocks.
+        """Stack convolution blocks.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of ConvBlocks to stack.
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            n_repeats (int): Number of ``ConvBlock`` modules to stack.
         """
         super().__init__(
             ConvBlock,

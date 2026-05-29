@@ -15,14 +15,12 @@ class OCRDecoder:
     ):
         """Initialize the OCR decoder.
 
-        @type char_to_int: dict
-        @param char_to_int: A dictionary mapping characters to integers.
-        @type ignored_tokens: list[int]
-        @param ignored_tokens: A list of tokens to ignore when decoding.
-            Defaults to [0].
-        @type is_remove_duplicate: bool
-        @param is_remove_duplicate: Whether to remove duplicate
-            characters. Defaults to True.
+        Args:
+            char_to_int (dict): Mapping from characters to integer token IDs.
+            ignored_tokens (list[int] | None): Token IDs to ignore when
+                decoding. Defaults to ``[0]``.
+            is_remove_duplicate (bool): Whether to remove duplicate
+                characters. Defaults to ``True``.
         """
         if ignored_tokens is None:
             self.ignored_tokens = [0]
@@ -33,11 +31,12 @@ class OCRDecoder:
     def decode(self, preds: Tensor) -> list[tuple[str, float]]:
         """Decode the model predictions to text.
 
-        @type preds: Tensor
-        @param preds: A tensor containing the model predictions.
-        @rtype: list[tuple[str, float]]
-        @return: A list of tuples containing the decoded text and
-            confidence score.
+        Args:
+            preds (Tensor): Tensor containing model predictions.
+
+        Returns:
+            list[tuple[str, float]]: Decoded text and confidence score for
+            each prediction.
         """
         preds = F.softmax(preds, dim=-1)
         pred_probs, pred_ids = torch.max(preds, dim=-1)
@@ -79,11 +78,10 @@ class OCREncoder:
     def __init__(self, alphabet: list[str], ignore_unknown: bool = True):
         """Initialize the OCR encoder.
 
-        @type alphabet: list[str]
-        @param alphabet: A list of characters in the alphabet.
-        @type ignore_unknown: bool
-        @param ignore_unknown: Whether to ignore unknown characters.
-            Defaults to True.
+        Args:
+            alphabet (list[str]): Characters in the alphabet.
+            ignore_unknown (bool): Whether to ignore unknown characters.
+                Defaults to ``True``.
         """
         self._alphabet = ["", *np.unique(alphabet)]
         self.char_to_int = {char: i for i, char in enumerate(self._alphabet)}
@@ -96,10 +94,12 @@ class OCREncoder:
     def encode(self, targets: Tensor) -> Tensor:
         """Encode the text targets to model targets.
 
-        @type targets: list[int]
-        @param targets: A list of text targets.
-        @rtype: Tensor
-        @return: A tensor containing the encoded targets.
+        Args:
+            targets (Tensor): Text targets represented as character-code
+                tensors.
+
+        Returns:
+            Tensor: Encoded target tensor.
         """
         encoded_targets = []
         for target in targets:
@@ -126,8 +126,10 @@ class OCREncoder:
 
     @property
     def alphabet(self) -> list[str]:
+        """list[str]: Alphabet used by the encoder."""
         return self._alphabet
 
     @property
     def n_classes(self) -> int:
+        """int: Number of output classes."""
         return len(self._alphabet)

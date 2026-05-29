@@ -41,27 +41,19 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
     ):
         """Visualizer for instance segmentation tasks.
 
-        @type labels: dict[int, str] | list[str] | None
-        @param labels: Dictionary mapping class indices to class labels.
-        @type draw_labels: bool
-        @param draw_labels: Whether to draw class labels on the
-            visualizations.
-        @type draw_scores: bool
-        @param draw_scores: Whether to append prediction confidence
-            scores to the rendered labels. Defaults to C{False}.
-        @type colors: dict[str, L{Color}] | list[L{Color}] | None
-        @param colors: Dicionary mapping class labels to colors.
-        @type fill: bool | None
-        @param fill: Whether to fill the boundingbox with color.
-        @type width: int | None
-        @param width: Width of the bounding box Lines.
-        @type font: str | None
-        @param font: Font of the clas labels.
-        @type font_size: int | None
-        @param font_size: Font size of the class Labels.
-        @type alpha: float
-        @param alpha: Alpha value of the segmentation masks. Defaults to
-            C{0.6}.
+        Args:
+            labels (dict[int, str] | list[str] | None): Dictionary mapping class indices to class
+                labels.
+            draw_labels (bool): Whether to draw class labels on the visualizations.
+            draw_scores (bool): Whether to append prediction confidence scores to the rendered
+                labels. Defaults to ``False``.
+            colors (dict[str, `Color`] | list[`Color`] | None): Dicionary mapping class labels to
+                colors.
+            fill (bool | None): Whether to fill the boundingbox with color.
+            width (int | None): Width of the bounding box Lines.
+            font (str | None): Font of the clas labels.
+            font_size (int | None): Font size of the class Labels.
+            alpha (float): Alpha value of the segmentation masks. Defaults to ``0.6``.
         """
         super().__init__(**kwargs)
 
@@ -212,24 +204,14 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         """Create visualizations of the predicted and target bounding
         boxes and instance masks.
 
-        @type target_canvas: Tensor
-        @param target_canvas: Tensor containing the target
-            visualizations.
-        @type prediction_canvas: Tensor
-        @param prediction_canvas: Tensor containing the predicted
-            visualizations.
-        @type target_bboxes: Tensor | None
-        @param target_bboxes: Tensor containing the target bounding
-            boxes.
-        @type target_masks: Tensor | None
-        @param target_masks: Tensor containing the target instance
-            masks.
-        @type predicted_bboxes: list[Tensor]
-        @param predicted_bboxes: List of tensors containing the
-            predicted bounding boxes.
-        @type predicted_masks: list[Tensor]
-        @param predicted_masks: List of tensors containing the predicted
-            instance masks.
+        Args:
+            target_canvas (Tensor): Tensor containing the target visualizations.
+            prediction_canvas (Tensor): Tensor containing the predicted visualizations.
+            target_bboxes (Tensor | None): Tensor containing the target bounding boxes.
+            target_masks (Tensor | None): Tensor containing the target instance masks.
+            predicted_bboxes (list[Tensor]): List of tensors containing the predicted bounding
+                boxes.
+            predicted_masks (list[Tensor]): List of tensors containing the predicted instance masks.
         """
         predictions_viz = self.draw_predictions(
             prediction_canvas,

@@ -24,27 +24,28 @@ class TaskAlignedAssigner(nn.Module):
     ):
         """Task Aligned Assigner.
 
-        Adapted from: U{TOOD: Task-aligned One-stage Object Detection<https://arxiv.org/pdf/2108.07755.pdf>}.
-        Code is adapted from: U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/assigner/tal_assigner.py}.
+        Adapted from `TOOD: Task-aligned One-stage Object Detection
+        <https://arxiv.org/pdf/2108.07755.pdf>`_. Code is adapted from
+        `PPYOLOE_pytorch <https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/assigner/tal_assigner.py>`_.
 
-        @license: U{Apache License, Version 2.0<https://github.com/Nioolek/PPYOLOE_pytorch/
-            tree/master?tab=Apache-2.0-1-ov-file#readme>}
+        The adapted implementation is distributed under the `Apache License,
+        Version 2.0
+        <https://github.com/Nioolek/PPYOLOE_pytorch/tree/master?tab=Apache-2.0-1-ov-file#readme>`_.
 
-        @type n_classes: int
-        @param n_classes: Number of classes in the dataset.
-        @type topk: int
-        @param topk: Number of anchors considered in selection. Defaults to 13.
-        @type alpha: float
-        @param alpha: Defaults to 1.0.
-        @type beta: float
-        @param beta: Defaults to 6.0.
-        @type eps: float
-        @param eps: Defaults to 1e-9.
-        @type strides: Sequence[int] | Tensor | None
-        @param strides: Detection strides (usually 8/16/32).
-        @type skip_stal: bool
-        @param skip_stal: If True, disables Small-Target-Aware Label
-            Assignment candidate expansion.
+        Args:
+            n_classes (int): Number of classes in the dataset.
+            topk (int): Number of anchors considered in selection.
+                Defaults to ``13``.
+            alpha (float): Classification score exponent. Defaults to
+                ``1.0``.
+            beta (float): Localization overlap exponent. Defaults to
+                ``6.0``.
+            eps (float): Small value used to avoid division by zero.
+                Defaults to ``1e-9``.
+            strides (Sequence[int] | Tensor | None): Detection strides,
+                usually ``8``, ``16``, and ``32``.
+            skip_stal (bool): If ``True``, disables Small-Target-Aware Label
+                Assignment candidate expansion.
         """
         super().__init__()
 
@@ -91,34 +92,38 @@ class TaskAlignedAssigner(nn.Module):
         computed and used in the alignment metric; the final tuple then
         includes assigned poses.
 
-        @type pred_scores: Tensor
-        @param pred_scores: Predicted scores [bs, n_anchors, 1]
-        @type pred_bboxes: Tensor
-        @param pred_bboxes: Predicted bboxes [bs, n_anchors, 4]
-        @type anchor_points: Tensor
-        @param anchor_points: Anchor points [n_anchors, 2]
-        @type gt_labels: Tensor
-        @param gt_labels: Initial GT labels [bs, n_max_boxes, 1]
-        @type gt_bboxes: Tensor
-        @param gt_bboxes: Initial GT bboxes [bs, n_max_boxes, 4]
-        @type mask_gt: Tensor
-        @param mask_gt: Mask for valid GTs [bs, n_max_boxes, 1]
-        @type pred_kpts: Tensor | None
-        @param pred_kpts: Predicted keypoints [bs, n_anchors, n_kpts,
-            3] (optional)
-        @type gt_kpts: Tensor | None
-        @param gt_kpts: Ground truth keypoints [bs, n_max_boxes,
-            n_kpts, 3] (optional)
-        @type sigmas: Tensor | None
-        @param sigmas: Sigmas for OKS computation if keypoints are used.
-        @type area_factor: float | None
-        @param area_factor: Area factor for OKS computation. Defaults to
-            0.53.
-        @rtype: tuple[Tensor, Tensor, Tensor, Tensor, Tensor]
-        @return: Assigned labels of shape [bs, n_anchors], assigned
-            bboxes of shape [bs, n_anchors, 4], assigned scores of shape
-            [bs, n_anchors, n_classes] and output mask of shape [bs,
-            n_anchors]
+        Args:
+            pred_scores (Tensor): Predicted scores with shape
+                ``[bs, n_anchors, 1]``.
+            pred_bboxes (Tensor): Predicted bboxes with shape
+                ``[bs, n_anchors, 4]``.
+            anchor_points (Tensor): Anchor points with shape
+                ``[n_anchors, 2]``.
+            gt_labels (Tensor): Initial GT labels with shape
+                ``[bs, n_max_boxes, 1]``.
+            gt_bboxes (Tensor): Initial GT bboxes with shape
+                ``[bs, n_max_boxes, 4]``.
+            mask_gt (Tensor): Mask for valid GTs with shape
+                ``[bs, n_max_boxes, 1]``.
+            pred_kpts (Tensor | None): Optional predicted keypoints with
+                shape ``[bs, n_anchors, n_kpts, 3]``.
+            gt_kpts (Tensor | None): Optional ground truth keypoints with
+                shape ``[bs, n_max_boxes, n_kpts, 3]``.
+            sigmas (Tensor | None): Sigmas for OKS computation if keypoints
+                are used.
+            area_factor (float | None): Area factor for OKS computation.
+
+        Returns:
+            tuple[Tensor, Tensor, Tensor, Tensor, Tensor]: Assigned labels
+            with shape ``[bs, n_anchors]``, assigned bboxes with shape
+            ``[bs, n_anchors, 4]``, assigned scores with shape
+            ``[bs, n_anchors, n_classes]``, output mask with shape
+            ``[bs, n_anchors]``, and assigned GT indices with shape
+            ``[bs, n_anchors]``.
+
+        Raises:
+            ValueError: If only some of ``pred_kpts``, ``gt_kpts``,
+                ``sigmas``, and ``area_factor`` are provided.
         """
         if any_not_none(
             [pred_kpts, gt_kpts, sigmas, area_factor]
@@ -212,6 +217,15 @@ class TaskAlignedAssigner(nn.Module):
     def _normalize_strides(
         self, strides: Sequence[int] | Tensor | None
     ) -> tuple[int, ...] | None:
+        """Normalize stride values to a sorted tuple.
+
+        Args:
+            strides (Sequence[int] | Tensor | None): Detection stride values.
+
+        Returns:
+            tuple[int, ...] | None: Sorted unique integer stride values, or
+            ``None`` when no strides are provided.
+        """
         if strides is None:
             return None
 
@@ -234,29 +248,26 @@ class TaskAlignedAssigner(nn.Module):
         """Calculate anchor alignment metric and IoU between GTs and
         predicted bboxes (optionally incorporating pose OKS).
 
-        @type pred_scores: Tensor
-        @param pred_scores: Predicted scores [bs, n_anchors, 1]
-        @type pred_bboxes: Tensor
-        @param pred_bboxes: Predicted bboxes [bs, n_anchors, 4]
-        @type gt_labels: Tensor
-        @param gt_labels: Initial GT labels [bs, n_max_boxes, 1]
-        @type gt_bboxes: Tensor
-        @param gt_bboxes: Initial GT bboxes [bs, n_max_boxes, 4]
-        @type pred_kpts: Tensor | None
-        @param pred_kpts: Predicted keypoints [bs, n_anchors, n_kpts, 3]
-            (optional)
-        @type gt_kpts: Tensor | None
-        @param gt_kpts: Ground truth keypoints [bs, n_max_boxes, n_kpts,
-            3] (optional)
-        @type sigmas: Tensor | None
-        @param sigmas: Sigmas for OKS computation if keypoints are used.
-            (optional)
-        @type area_factor: float | None
-        @param area_factor: Area factor for OKS computation if keypoints
-            are used.
-        @rtype: tuple[Tensor, Tensor]
-        @return: Alignment metric and IoU between GTs and predicted
-            bboxes, optionally incorporating pose OKS.
+        Args:
+            pred_scores (Tensor): Predicted scores with shape
+                ``[bs, n_anchors, 1]``.
+            pred_bboxes (Tensor): Predicted bboxes with shape
+                ``[bs, n_anchors, 4]``.
+            gt_labels (Tensor): Initial GT labels with shape
+                ``[bs, n_max_boxes, 1]``.
+            gt_bboxes (Tensor): Initial GT bboxes with shape
+                ``[bs, n_max_boxes, 4]``.
+            pred_kpts (Tensor | None): Optional predicted keypoints with
+                shape ``[bs, n_anchors, n_kpts, 3]``.
+            gt_kpts (Tensor | None): Optional ground truth keypoints with
+                shape ``[bs, n_max_boxes, n_kpts, 3]``.
+            sigmas (Tensor | None): Optional sigmas for OKS computation.
+            area_factor (float | None): Optional area factor for OKS
+                computation.
+
+        Returns:
+            tuple[Tensor, Tensor]: Alignment metric and IoU between GTs and
+            predicted bboxes, optionally incorporating pose OKS.
         """
         pred_scores = pred_scores.permute(0, 2, 1)
         gt_labels = gt_labels.to(torch.long)
@@ -288,6 +299,20 @@ class TaskAlignedAssigner(nn.Module):
     def _select_candidates_in_gts(
         self, anchor_points: Tensor, gt_bboxes: Tensor, mask_gt: Tensor
     ) -> Tensor:
+        """Select anchors whose centers lie inside ground truth boxes.
+
+        Args:
+            anchor_points (Tensor): Anchor points with shape
+                ``[n_anchors, 2]``.
+            gt_bboxes (Tensor): Ground truth bboxes with shape
+                ``[bs, n_max_boxes, 4]``.
+            mask_gt (Tensor): Mask for valid GTs with shape
+                ``[bs, n_max_boxes, 1]``.
+
+        Returns:
+            Tensor: Candidate mask with shape
+            ``[bs, n_max_boxes, n_anchors]``.
+        """
         if not self.skip_stal:
             gt_bboxes = self._expand_small_gt_bboxes(gt_bboxes, mask_gt)
         is_in_gts = candidates_in_gt(anchor_points, gt_bboxes.reshape(-1, 4))
@@ -296,6 +321,18 @@ class TaskAlignedAssigner(nn.Module):
     def _expand_small_gt_bboxes(
         self, gt_bboxes: Tensor, mask_gt: Tensor
     ) -> Tensor:
+        """Expand small ground truth boxes for STAL candidate selection.
+
+        Args:
+            gt_bboxes (Tensor): Ground truth bboxes with shape
+                ``[bs, n_max_boxes, 4]``.
+            mask_gt (Tensor): Mask for valid GTs with shape
+                ``[bs, n_max_boxes, 1]``.
+
+        Returns:
+            Tensor: Possibly expanded GT bboxes with shape
+            ``[bs, n_max_boxes, 4]``.
+        """
         if self.min_stride is None or self.stal_target_size is None:
             return gt_bboxes
 
@@ -318,18 +355,17 @@ class TaskAlignedAssigner(nn.Module):
     ) -> Tensor:
         """Select k anchors based on provided metrics tensor.
 
-        @type metrics: Tensor
-        @param metrics: Metrics tensor of shape [bs, n_max_boxes,
-            n_anchors]
-        @type largest: bool
-        @param largest: Flag if should keep largest topK. Defaults to
-            True.
-        @type topk_mask: Tensor
-        @param topk_mask: Mask for valid GTs of shape [bs, n_max_boxes,
-            topk]
-        @rtype: Tensor
-        @return: Mask of selected anchors of shape [bs, n_max_boxes,
-            n_anchors]
+        Args:
+            metrics (Tensor): Metrics tensor with shape
+                ``[bs, n_max_boxes, n_anchors]``.
+            largest (bool): Whether to keep the largest top-k values.
+                Defaults to ``True``.
+            topk_mask (Tensor | None): Optional mask for valid GTs with shape
+                ``[bs, n_max_boxes, topk]``.
+
+        Returns:
+            Tensor: Mask of selected anchors with shape
+            ``[bs, n_max_boxes, n_anchors]``.
         """
         n_anchors = metrics.shape[-1]
         topk_metrics, topk_idxs = torch.topk(
@@ -357,18 +393,21 @@ class TaskAlignedAssigner(nn.Module):
     ) -> tuple[Tensor, Tensor, Tensor]:
         """Generate final assignments based on the mask.
 
-        @type gt_labels: Tensor
-        @param gt_labels: Initial GT labels [bs, n_max_boxes, 1]
-        @type gt_bboxes: Tensor
-        @param gt_bboxes: Initial GT bboxes [bs, n_max_boxes, 4]
-        @type assigned_gt_idx: Tensor
-        @param assigned_gt_idx: Indices of matched GTs [bs, n_anchors]
-        @type mask_pos_sum: Tensor
-        @param mask_pos_sum: Mask of matched GTs [bs, n_anchors]
-        @rtype: tuple[Tensor, Tensor, Tensor]
-        @return: Assigned labels of shape [bs, n_anchors], assigned
-            bboxes of shape [bs, n_anchors, 4], assigned scores of shape
-            [bs, n_anchors, n_classes].
+        Args:
+            gt_labels (Tensor): Initial GT labels with shape
+                ``[bs, n_max_boxes, 1]``.
+            gt_bboxes (Tensor): Initial GT bboxes with shape
+                ``[bs, n_max_boxes, 4]``.
+            assigned_gt_idx (Tensor): Indices of matched GTs with shape
+                ``[bs, n_anchors]``.
+            mask_pos_sum (Tensor): Mask of matched GTs with shape
+                ``[bs, n_anchors]``.
+
+        Returns:
+            tuple[Tensor, Tensor, Tensor]: Assigned labels with shape
+            ``[bs, n_anchors]``, assigned bboxes with shape
+            ``[bs, n_anchors, 4]``, and assigned scores with shape
+            ``[bs, n_anchors, n_classes]``.
         """
         # assigned target labels
         batch_ind = torch.arange(

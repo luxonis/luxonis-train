@@ -13,9 +13,10 @@ def merge_bbox_kpt_targets(
 ) -> Tensor:
     """Merge the bounding box and keypoint targets into a single tensor.
 
-    @param target_boundingbox: The bounding box targets.
-    @param target_keypoints: The keypoint targets.
-    @param device: The device to use.
+    Args:
+        target_boundingbox (Tensor): The bounding box targets.
+        target_keypoints (Tensor): The keypoint targets.
+        device (torch.device | None): The device to use.
     """
     target_keypoints = insert_class(target_keypoints, target_boundingbox)
     n_keypoints = (target_keypoints.shape[1] - 2) // 3

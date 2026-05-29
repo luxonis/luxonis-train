@@ -12,16 +12,15 @@ from luxonis_train.nodes.necks.svtr_neck.blocks import SVTRBlock
 class SVTRNeck(BaseNode):
     """SVTR neck.
 
-    @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/
-        blob/main/ppocr/modeling/necks/rnn.py>}
-    @see: U{Original code <https://github.com/PaddlePaddle/PaddleOCR>}
-    @license: U{Apache License, Version 2.0
-        <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE >}
-    @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/
-        blob/main/ppocr/modeling/necks/rnn.py>}
-    @see: U{Original code <https://github.com/PaddlePaddle/PaddleOCR>}
-    @license: U{Apache License, Version 2.0
-        <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE >}
+    Notes:
+        License: `Apache License, Version 2.0 <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE>`_
+        License: `Apache License, Version 2.0 <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE>`_
+
+    See Also:
+        `Adapted from <https://github.com/PaddlePaddle/PaddleOCR/ blob/main/ppocr/modeling/necks/rnn.py>`_
+        `Original code <https://github.com/PaddlePaddle/PaddleOCR>`_
+        `Adapted from <https://github.com/PaddlePaddle/PaddleOCR/ blob/main/ppocr/modeling/necks/rnn.py>`_
+        `Original code <https://github.com/PaddlePaddle/PaddleOCR>`_
     """
 
     in_channels: int

@@ -11,12 +11,12 @@ class TransformerSegmentationHead(BaseHead):
     """Semantic segmentation decoder head that takes feature maps as
     inputs.
 
-    Section 6.3.2 of the DINOv3 paper (U{
-    https://arxiv.org/abs/2508.10104/})
+    Section 6.3.2 of the DINOv3 paper (`https://arxiv.org/abs/2508.10104/ <https://arxiv.org/abs/2508.10104/>`_)
     mentions a ViT-adapter without the injection followed by Mask2Former.
     In this implementation, Mask2Former is replaced by a simple convolutional head.
 
     Converts a list of [B, C, H, W] feature maps to segmentation logits [B, n_classes, H, W]
+
     """
 
     n_classes: int
@@ -52,16 +52,14 @@ class TransformerSegmentationHead(BaseHead):
         """Semantic segmentation head for feature maps from a
         transformer backbone.
 
-        @param x: List of successive feature maps of the same dimension
-        @type x: list[Tensor]
-        @return: Segmentation logits
+        Args:
+            x (list[Tensor]): List of successive feature maps of the same dimension
 
-        @note: Steps:
-            1. Project each feature map to a channel dim of 256 using 1x1 convolutions.
-            2. Upsample the  feature maps to 1/4 of the image size.
-            3. Fuse the projected feature maps through summation.
-            4. Apply segmentation head.
-            5. Upsample to original input resolution.
+        Returns:
+            Any: Segmentation logits
+
+        Notes:
+            Steps: 1. Project each feature map to a channel dim of 256 using 1x1 convolutions. 2. Upsample the feature maps to 1/4 of the image size. 3. Fuse the projected feature maps through summation. 4. Apply segmentation head. 5. Upsample to original input resolution.
         """
         h, w = self.original_in_shape[1:]
 

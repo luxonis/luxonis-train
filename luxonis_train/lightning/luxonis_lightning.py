@@ -54,44 +54,13 @@ class LuxonisLightningModule(pl.LightningModule):
     The model topology is defined as an acyclic graph of nodes.
     The graph is saved as a dictionary of predecessors.
 
-    @type save_dir: str
-    @ivar save_dir: Directory to save checkpoints and logs.
-
-    @type nodes: L{nn.ModuleDict}[str, L{LuxonisModule}]
-    @ivar nodes: Nodes of the model. Keys are node names, unique for each node.
-
-    @type graph: dict[str, list[str]]
-    @ivar graph: Graph of the model in a format of a dictionary of predecessors.
-        Keys are node names, values are inputs to the node (list of node names).
-        Nodes with no inputs are considered inputs of the whole model.
-
-    @type loss_weights: dict[str, float]
-    @ivar loss_weights: Dictionary of loss weights. Keys are loss names, values are weights.
-
-    @type input_shapes: dict[str, list[L{Size}]]
-    @ivar input_shapes: Dictionary of input shapes. Keys are node names, values are lists of shapes
-        (understood as shapes of the "feature" field in L{Packet}[L{Tensor}]).
-
-    @type outputs: list[str]
-    @ivar outputs: List of output node names.
-
-    @type losses: L{nn.ModuleDict}[str, L{nn.ModuleDict}[str, L{LuxonisLoss}]]
-    @ivar losses: Nested dictionary of losses used in the model. Each node can have multiple
-        losses attached. The first key identifies the node, the second key identifies the
-        specific loss.
-
-    @type visualizers: dict[str, dict[str, L{LuxonisVisualizer}]]
-    @ivar visualizers: Dictionary of visualizers to be used with the model.
-
-    @type metrics: dict[str, dict[str, L{LuxonisMetric}]]
-    @ivar metrics: Dictionary of metrics to be used with the model.
-
-    @type dataset_metadata: L{DatasetMetadata}
-    @ivar dataset_metadata: Metadata of the dataset.
-
-    @type main_metric: str | None
-    @ivar main_metric: Name of the main metric to be used for model checkpointing.
-        If not set, the model with the best metric score won't be saved.
+    Attributes:
+        save_dir (Path): Directory where checkpoints and logs are saved.
+        nodes (Nodes): Model nodes keyed by unique node name.
+        dataset_metadata (DatasetMetadata): Metadata of the dataset.
+        outputs (list[str]): Names of output nodes.
+        training_strategy (BaseTrainingStrategy | None): Optional strategy
+            that configures optimizers and schedulers.
     """
 
     _trainer: pl.Trainer
@@ -111,18 +80,15 @@ class LuxonisLightningModule(pl.LightningModule):
     ):
         """Construct an instance of `LuxonisModel` from `Config`.
 
-        @type cfg: L{Config}
-        @param cfg: Config object.
-        @type save_dir: str
-        @param save_dir: Directory to save checkpoints.
-        @type input_shapes: dict[str, Size]
-        @param input_shapes: Dictionary of input shapes. Keys are input
-            names, values are shapes.
-        @type dataset_metadata: L{DatasetMetadata} | None
-        @param dataset_metadata: Dataset metadata.
-        @type kwargs: Any
-        @param kwargs: Additional arguments to pass to the
-            L{LightningModule} constructor.
+        Args:
+            cfg (Config): Config object.
+            save_dir (PathType): Directory where checkpoints are saved.
+            input_shapes (dict[str, Size]): Input shapes keyed by input name.
+            dataset_metadata (DatasetMetadata | None): Dataset metadata.
+            _core (luxonis_train.core.LuxonisModel | None): Optional core
+                model reference.
+            **kwargs (Any): Additional arguments passed to the
+                `LightningModule` constructor.
         """
         super().__init__(**kwargs)
         self._export: bool = False
@@ -226,7 +192,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @property
     def core(self) -> "luxonis_train.core.LuxonisModel":
-        """Get a reference to the core model."""
+        """luxonis_train.core.LuxonisModel: Reference to the core model."""
         if self._core is None:  # pragma: no cover
             raise ValueError("Core reference is not set.")
         return self._core
@@ -249,24 +215,20 @@ class LuxonisLightningModule(pl.LightningModule):
         predecessors are computed. Once the outputs are not needed
         anymore, they are removed from the memory.
 
-        @type inputs: L{Tensor}
-        @param inputs: Input tensor.
-        @type task_labels: L{TaskLabels} | None
-        @param task_labels: Labels dictionary. Defaults to C{None}.
-        @type images: L{Tensor} | None
-        @param images: Canvas tensor for visualizers. Defaults to
-            C{None}.
-        @type compute_loss: bool
-        @param compute_loss: Whether to compute losses. Defaults to
-            C{True}.
-        @type compute_metrics: bool
-        @param compute_metrics: Whether to update metrics. Defaults to
-            C{True}.
-        @type compute_visualizations: bool
-        @param compute_visualizations: Whether to compute
-            visualizations. Defaults to C{False}.
-        @rtype: L{LuxonisOutput}
-        @return: Output of the model.
+        Args:
+            inputs (dict[str, Tensor]): Input tensors keyed by input name.
+            labels (Labels | None): Labels dictionary. Defaults to ``None``.
+            images (Tensor | None): Canvas tensor for visualizers. Defaults to
+                ``None``.
+            compute_loss (bool): Whether to compute losses. Defaults to
+                ``True``.
+            compute_metrics (bool): Whether to update metrics. Defaults to
+                ``False``.
+            compute_visualizations (bool): Whether to compute visualizations.
+                Defaults to ``False``.
+
+        Returns:
+            LuxonisOutput: Output of the model.
         """
         losses: dict[
             str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]
@@ -338,13 +300,12 @@ class LuxonisLightningModule(pl.LightningModule):
     def export_onnx(self, save_path: PathType, **kwargs) -> Path:
         """Export the model to ONNX format.
 
-        @type save_path: str
-        @param save_path: Path where the exported model will be saved.
-        @type kwargs: Any
-        @param kwargs: Additional arguments for the L{torch.onnx.export}
-            method.
-        @rtype: Path
-        @return: Path to the exported model.
+        Args:
+            save_path (PathType): Path where the exported model will be saved.
+            **kwargs (Any): Additional arguments for `torch.onnx.export`.
+
+        Returns:
+            Path: Path to the exported model.
         """
         device_before = self.device
 
@@ -610,9 +571,12 @@ class LuxonisLightningModule(pl.LightningModule):
         Loads the checkpoints gracefully, ignoring keys that are not
         found in the model state dict or in the checkpoint.
 
-        @type ckpt: PathType | dict | None
-        @param path: Either a path to or a loaded checkpoint. If
-            C{None}, no checkpoint will be loaded.
+        Args:
+            ckpt (PathType | dict[str, Any] | None): Either a path to or a
+                loaded checkpoint. If ``None``, no checkpoint will be loaded.
+
+        Raises:
+            ValueError: If the checkpoint does not contain ``state_dict``.
         """
         if ckpt is None:
             return

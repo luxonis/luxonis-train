@@ -23,11 +23,9 @@ class FOMOHead(BaseHead):
     ):
         """FOMO Head for object detection using heatmaps.
 
-        @type n_conv_layers: int
-        @param n_conv_layers: Number of convolutional layers to use.
-        @type conv_channels: int
-        @param conv_channels: Number of channels to use in the
-            convolutional layers.
+        Args:
+            n_conv_layers (int): Number of convolutional layers to use.
+            conv_channels (int): Number of channels to use in the convolutional layers.
         """
         super().__init__(**kwargs)
         self.n_conv_layers = n_conv_layers
@@ -84,8 +82,8 @@ class FOMOHead(BaseHead):
         """Convert heatmap to keypoint pairs using local-max NMS so that
         only the strongest local peak in a neighborhood is retained.
 
-        @type heatmap: Tensor
-        @param heatmap: Heatmap to convert to keypoints.
+        Args:
+            heatmap (Tensor): Heatmap to convert to keypoints.
         """
         device = heatmap.device
         batch_size, n_classes, height, width = heatmap.shape
@@ -124,9 +122,11 @@ class FOMOHead(BaseHead):
     def _get_keypoint_mask(self, prob_map: Tensor) -> Tensor:
         """Generate a mask for keypoints using NMS if enabled.
 
-        @type prob_map: Tensor
-        @param prob_map: Probability map for a specific class.
-        @return: Binary mask indicating keypoint positions.
+        Args:
+            prob_map (Tensor): Probability map for a specific class.
+
+        Returns:
+            Any: Binary mask indicating keypoint positions.
         """
         if self.use_nms:
             pooled_map = (

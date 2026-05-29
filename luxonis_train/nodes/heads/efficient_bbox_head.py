@@ -32,20 +32,14 @@ class EfficientBBoxHead(BaseDetectionHead):
     ):
         """Head for object detection.
 
-        Adapted from U{YOLOv6: A Single-Stage Object Detection Framework
-        for Industrial Applications
-        <https://arxiv.org/pdf/2209.02976.pdf>}.
-        @type n_heads: Literal[2,3,4]
-        @param n_heads: Number of output heads. Defaults to 3. B{Note:}
-            Should be same also on neck in most cases.
-        @type conf_thres: float
-        @param conf_thres: Threshold for confidence. Defaults to
-            C{0.25}.
-        @type iou_thres: float
-        @param iou_thres: Threshold for IoU. Defaults to C{0.45}.
-        @type max_det: int
-        @param max_det: Maximum number of detections retained after NMS.
-            Defaults to C{300}.
+        Adapted from `YOLOv6: A Single-Stage Object Detection Framework
+        for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
+
+        Args:
+            n_heads (Literal[2,3,4]): Number of output heads. Defaults to 3. B{Note:} Should be same also on neck in most cases.
+            conf_thres (float): Threshold for confidence. Defaults to ``0.25``.
+            iou_thres (float): Threshold for IoU. Defaults to ``0.45``.
+            max_det (int): Maximum number of detections retained after NMS. Defaults to ``300``.
         """
         super().__init__(
             n_heads=n_heads,

@@ -48,23 +48,19 @@ class RepVGG(BaseNode):
             - 3x3 convolutions and ReLU activations.
             - No automatic search, manual refinement or compound scaling.
 
-        @license: U{MIT
-            <https://github.com/DingXiaoH/RepVGG/blob/main/LICENSE>}.
+        Args:
+            n_blocks (tuple[int, int, int, int]): Number of blocks in each stage.
+            width_multiplier (tuple[float, float, float, float]): Width multiplier for each stage.
+            override_groups_map (dict[int, int] | None): Dictionary mapping layer index to number of groups. The layers are indexed starting from 0.
+            use_se (bool): Whether to use Squeeze-and-Excitation blocks.
 
-        @see: U{https://github.com/DingXiaoH/RepVGG}
-        @see: U{https://paperswithcode.com/method/repvgg}
-        @see: U{RepVGG: Making VGG-style ConvNets Great Again
-            <https://arxiv.org/abs/2101.03697>}
+        Notes:
+            License: `MIT <https://github.com/DingXiaoH/RepVGG/blob/main/LICENSE>`_.
 
-
-        @type n_blocks: tuple[int, int, int, int]
-        @param n_blocks: Number of blocks in each stage.
-        @type width_multiplier: tuple[float, float, float, float]
-        @param width_multiplier: Width multiplier for each stage.
-        @type override_groups_map: dict[int, int] | None
-        @param override_groups_map: Dictionary mapping layer index to number of groups. The layers are indexed starting from 0.
-        @type use_se: bool
-        @param use_se: Whether to use Squeeze-and-Excitation blocks.
+        See Also:
+            `https://github.com/DingXiaoH/RepVGG <https://github.com/DingXiaoH/RepVGG>`_
+            `https://paperswithcode.com/method/repvgg <https://paperswithcode.com/method/repvgg>`_
+            `RepVGG: Making VGG-style ConvNets Great Again <https://arxiv.org/abs/2101.03697>`_
         """
         super().__init__(**kwargs)
 

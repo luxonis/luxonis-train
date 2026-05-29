@@ -23,12 +23,10 @@ class OCRVisualizer(BaseVisualizer):
     ):
         """Initialize the OCR visualizer.
 
-        @type font_scale: float
-        @param font_scale: Font scale of the text. Defaults to C{0.5}.
-        @type color: tuple[int, int, int]
-        @param color: Color of the text. Defaults to C{(0, 0, 0)}.
-        @type thickness: int
-        @param thickness: Thickness of the text. Defaults to C{1}.
+        Args:
+            font_scale (float): Font scale of the text. Defaults to ``0.5``.
+            color (tuple[int, int, int]): Color of the text. Defaults to ``(0, 0, 0)``.
+            thickness (int): Thickness of the text. Defaults to ``1``.
         """
         super().__init__(**kwargs)
         self.font_scale = font_scale
@@ -44,16 +42,14 @@ class OCRVisualizer(BaseVisualizer):
     ) -> tuple[Tensor, Tensor]:
         """Create a visualization of the OCR predictions and labels.
 
-        @type label_canvas: Tensor
-        @param label_canvas: The canvas to draw the labels on.
-        @type prediction_canvas: Tensor
-        @param prediction_canvas: The canvas to draw the predictions on.
-        @type predictions: list[str]
-        @param predictions: The predictions to visualize.
-        @type targets: list[str]
-        @param targets: The targets to visualize.
-        @rtype: tuple[Tensor, Tensor]
-        @return: A tuple of the label and prediction visualizations.
+        Args:
+            label_canvas (Tensor): The canvas to draw the labels on.
+            prediction_canvas (Tensor): The canvas to draw the predictions on.
+            predictions (list[str]): The predictions to visualize.
+            targets (list[str]): The targets to visualize.
+
+        Returns:
+            tuple[Tensor, Tensor]: A tuple of the label and prediction visualizations.
         """
         decoded_predictions = self.node.decoder(predictions)
 

@@ -24,30 +24,17 @@ class DepthWiseSeparableConv(nn.Module):
     ):
         """Depthwise separable convolution.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Kernel size. Defaults to 3.
-        @type stride: int
-        @param stride: Stride. Defaults to 1.
-        @type depthwise_bias: bool
-        @param depthwise_bias: Whether to use bias for the depthwise
-            convolution.
-        @type pointwise_bias: bool
-        @param pointwise_bias: Whether to use bias for the pointwise
-            convolution.
-        @type depthwise_activation: nn.Module
-        @param depthwise_activation: Activation function for the
-            depthwise convolution. Defaults to nn.ReLU6().
-        @type pointwise_activation: nn.Module
-        @param pointwise_activation: Activation function for the
-            pointwise convolution.
-        @type padding: int | str | None
-        @param padding: Padding. Defaults to None.
-        @type dilation: int | tuple[int, int]
-        @param dilation: Dilation. Defaults to 1.
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            kernel_size (int): Kernel size. Defaults to 3.
+            stride (int): Stride. Defaults to 1.
+            depthwise_bias (bool): Whether to use bias for the depthwise convolution.
+            pointwise_bias (bool): Whether to use bias for the pointwise convolution.
+            depthwise_activation (nn.Module): Activation function for the depthwise convolution. Defaults to nn.ReLU6().
+            pointwise_activation (nn.Module): Activation function for the pointwise convolution.
+            padding (int | str | None): Padding. Defaults to None.
+            dilation (int | tuple[int, int]): Dilation. Defaults to 1.
         """
         super().__init__()
 
@@ -97,28 +84,16 @@ class MobileBottleneckBlock(nn.Module):
         """MobileBottleneckBlock is a block used in the EfficientViT
         model.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Kernel size. Defaults to 3.
-        @type stride: int
-        @param stride: Stride. Defaults to 1.
-        @type expand_ratio: float
-        @param expand_ratio: Expansion ratio. Defaults to 6.
-        @type use_bias: list[bool, bool, bool]
-        @param use_bias: Whether to use bias for the depthwise and
-            pointwise convolutions.
-        @type use_norm: list[bool, bool, bool]
-        @param use_norm: Whether to use normalization for the depthwise
-            and pointwise convolutions.
-        @type activation: list[nn.Module, nn.Module, nn.Module]
-        @param activation: Activation functions for the depthwise and
-            pointwise convolutions.
-        @type use_residual: bool
-        @param use_residual: Whether to use residual connection.
-            Defaults to False.
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            kernel_size (int): Kernel size. Defaults to 3.
+            stride (int): Stride. Defaults to 1.
+            expand_ratio (float): Expansion ratio. Defaults to 6.
+            use_bias (list[bool, bool, bool]): Whether to use bias for the depthwise and pointwise convolutions.
+            use_norm (list[bool, bool, bool]): Whether to use normalization for the depthwise and pointwise convolutions.
+            activation (list[nn.Module, nn.Module, nn.Module]): Activation functions for the depthwise and pointwise convolutions.
+            use_residual (bool): Whether to use residual connection. Defaults to False.
         """
         super().__init__()
 
@@ -185,20 +160,12 @@ class EfficientViTBlock(nn.Module):
         designed for multi-scale linear attention and local feature
         processing.
 
-        @type n_channels: int
-        @param n_channels: The number of input and output channels.
-        @type attention_ratio: float
-        @param attention_ratio: Ratio for determining the number of
-            attention heads. Default is 1.0.
-        @type head_dim: int
-        @param head_dim: Dimension size for each attention head. Default
-            is 32.
-        @type expansion_factor: float
-        @param expansion_factor: Factor by which channels expand in the
-            local module. Default is 4.0.
-        @type aggregation_scales: tuple[int, ...]
-        @param aggregation_scales: Tuple defining the scales for
-            aggregation in the attention module. Default is (5,).
+        Args:
+            n_channels (int): The number of input and output channels.
+            attention_ratio (float): Ratio for determining the number of attention heads. Default is 1.0.
+            head_dim (int): Dimension size for each attention head. Default is 32.
+            expansion_factor (float): Factor by which channels expand in the local module. Default is 4.0.
+            aggregation_scales (tuple[int, ...]): Tuple defining the scales for aggregation in the attention module. Default is (5,).
         """
         super().__init__()
 
@@ -225,10 +192,11 @@ class EfficientViTBlock(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         """Forward pass of the block.
 
-        @param x: Input tensor with shape [batch, channels, height,
-            width].
-        @return: Output tensor after attention and local feature
-            processing.
+        Args:
+            x (Any): Input tensor with shape [batch, channels, height, width].
+
+        Returns:
+            Any: Output tensor after attention and local feature processing.
         """
         return self.feature_module(self.attention_module(x))
 
@@ -254,32 +222,17 @@ class LightweightMLABlock(nn.Module):
         EfficientViT framework. It facilitates efficient multi-scale
         linear attention.
 
-        @type input_channels: int
-        @param input_channels: Number of input channels.
-        @type output_channels: int
-        @param output_channels: Number of output channels.
-        @type n_heads: int
-        @param n_heads: Number of attention heads. Default is None.
-        @type head_ratio: float
-        @param head_ratio: Ratio to determine the number of heads.
-            Default is 1.0.
-        @type dimension: int
-        @param dimension: Size of each head. Default is 8.
-        @type use_bias: list[bool, bool]
-        @param biases: List specifying if bias is used in qkv and
-            projection layers.
-        @type use_norm: list[bool, bool]
-        @param norms: List specifying if normalization is applied in qkv
-            and projection layers.
-        @type activations: list[nn.Module, nn.Module]
-        @param activations: List of activation functions for qkv and
-            projection layers.
-        @type scale_factors: tuple[int, ...]
-        @param scale_factors: Tuple defining scales for aggregation.
-            Default is (5,).
-        @type epsilon: float
-        @param epsilon: Epsilon value for numerical stability. Default
-            is 1e-15.
+        Args:
+            input_channels (int): Number of input channels.
+            output_channels (int): Number of output channels.
+            n_heads (int): Number of attention heads. Default is None.
+            head_ratio (float): Ratio to determine the number of heads. Default is 1.0.
+            dimension (int): Size of each head. Default is 8.
+            biases (Any): List specifying if bias is used in qkv and projection layers.
+            norms (Any): List specifying if normalization is applied in qkv and projection layers.
+            activations (list[nn.Module, nn.Module]): List of activation functions for qkv and projection layers.
+            scale_factors (tuple[int, ...]): Tuple defining scales for aggregation. Default is (5,).
+            epsilon (float): Epsilon value for numerical stability. Default is 1e-15.
         """
         super().__init__()
 

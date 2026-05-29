@@ -22,15 +22,11 @@ class SoftmaxFocalLoss(BaseLoss):
         """Focal loss implementation for classification and segmentation
         tasks using Softmax.
 
-        @type alpha: float | list[float]
-        @param alpha: Weighting factor for the rare class. Defaults to
-            C{0.25}.
-        @type gamma: float
-        @param gamma: Focusing parameter. Defaults to C{2.0}.
-        @type smooth: float
-        @param smooth: Label smoothing factor. Defaults to C{0.0}.
-        @type reduction: Literal["none", "mean", "sum"]
-        @param reduction: Reduction type. Defaults to C{"mean"}.
+        Args:
+            alpha (float | list[float]): Weighting factor for the rare class. Defaults to ``0.25``.
+            gamma (float): Focusing parameter. Defaults to ``2.0``.
+            smooth (float): Label smoothing factor. Defaults to ``0.0``.
+            reduction (Literal["none", "mean", "sum"]): Reduction type. Defaults to ``"mean"``.
         """
         super().__init__(**kwargs)
 

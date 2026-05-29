@@ -20,9 +20,8 @@ class EmbeddingsVisualizer(BaseVisualizer):
     def __init__(self, z_score_threshold: float = 3, **kwargs):
         """Visualizer for embedding tasks like reID.
 
-        @type z_score_threshold: float
-        @param z_score_threshold: The threshold for filtering out
-            outliers.
+        Args:
+            z_score_threshold (float): The threshold for filtering out outliers.
         """
         super().__init__(**kwargs)
         self.colors = ColorMap()
@@ -41,16 +40,14 @@ class EmbeddingsVisualizer(BaseVisualizer):
     ) -> tuple[Tensor, Tensor]:
         """Create a visualization of the embeddings.
 
-        @type target_canvas: Tensor
-        @param target_canvas: The canvas to draw the labels on.
-        @type prediction_canvas: Tensor
-        @param prediction_canvas: The canvas to draw the predictions on.
-        @type embeddings: Tensor
-        @param embeddings: The embeddings to visualize.
-        @type target: Tensor
-        @param target: Ids of the embeddings.
-        @rtype: Tensor
-        @return: An embedding space projection.
+        Args:
+            target_canvas (Tensor): The canvas to draw the labels on.
+            prediction_canvas (Tensor): The canvas to draw the predictions on.
+            embeddings (Tensor): The embeddings to visualize.
+            target (Tensor): Ids of the embeddings.
+
+        Returns:
+            Tensor: An embedding space projection.
         """
         embeddings_np = predictions.detach().cpu().numpy()
         ids_np = target.detach().cpu().numpy().astype(int)

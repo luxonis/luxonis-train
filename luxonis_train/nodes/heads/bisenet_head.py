@@ -19,15 +19,16 @@ class BiSeNetHead(BaseHead):
     def __init__(self, intermediate_channels: int = 64, **kwargs):
         """BiSeNet segmentation head.
 
-        Source: U{BiseNetV1<https://github.com/taveraantonio/BiseNetv1>}
-        @license: NOT SPECIFIED.
-        @see: U{BiseNetv1: Bilateral Segmentation Network for
-            Real-time Semantic Segmentation
-            <https://arxiv.org/abs/1808.00897>}
+        Source: `BiseNetV1 <https://github.com/taveraantonio/BiseNetv1>`_
 
-        @type intermediate_channels: int
-        @param intermediate_channels: How many intermediate channels to use.
-            Defaults to C{64}.
+        Args:
+            intermediate_channels (int): How many intermediate channels to use. Defaults to ``64``.
+
+        Notes:
+            License: NOT SPECIFIED.
+
+        See Also:
+            `BiseNetv1: Bilateral Segmentation Network for Real-time Semantic Segmentation <https://arxiv.org/abs/1808.00897>`_
         """
         super().__init__(**kwargs)
 

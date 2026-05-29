@@ -78,9 +78,8 @@ class MicroNet(BaseNode):
         specified variant. It consists of a stem layer followed by
         multiple MicroBlocks.
 
-        @type out_indices: list[int] | None
-        @param out_indices: Indices of the output layers. If provided,
-            overrides the variant value.
+        Args:
+            out_indices (list[int] | None): Indices of the output layers. If provided, overrides the variant value.
         """
         super().__init__(**kwargs)
         out_indices = out_indices or [1, 2, 4, 7]

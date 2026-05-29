@@ -27,21 +27,14 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
     ):
         """Head for object and keypoint detection.
 
-        Adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial
-        Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
+        Adapted from `YOLOv6: A Single-Stage Object Detection Framework for Industrial
+        Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
 
-        @param n_heads: Number of output heads. Defaults to C{3}.
-            B{Note:} Should be same also on neck in most cases.
-        @type n_heads: int
-
-        @param conf_thres: Threshold for confidence. Defaults to C{0.25}.
-        @type conf_thres: float
-
-        @param iou_thres: Threshold for IoU. Defaults to C{0.45}.
-        @type iou_thres: float
-
-        @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
-        @type max_det: int
+        Args:
+            n_heads (int): Number of output heads. Defaults to ``3``. B{Note:} Should be same also on neck in most cases.
+            conf_thres (float): Threshold for confidence. Defaults to ``0.25``.
+            iou_thres (float): Threshold for IoU. Defaults to ``0.45``.
+            max_det (int): Maximum number of detections retained after NMS. Defaults to ``300``.
         """
         super().__init__(
             n_heads=n_heads,

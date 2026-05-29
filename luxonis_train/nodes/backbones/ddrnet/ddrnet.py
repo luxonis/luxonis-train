@@ -48,53 +48,30 @@ class DDRNet(BaseNode):
     ):
         """DDRNet backbone.
 
-        @see: U{Adapted from <https://github.com/Deci-AI/super-gradients/blob/master/src
-            /super_gradients/training/models/segmentation_models/ddrnet.py>}
-        @see: U{Original code <https://github.com/ydhongHIT/DDRNet>}
-        @see: U{Paper <https://arxiv.org/pdf/2101.06085.pdf>}
-        @license: U{Apache License, Version 2.0 <https://github.com/Deci-AI/super-
-            gradients/blob/master/LICENSE.md>}
-        @type channels: int | None
-        @param channels: Base number of channels. If provided, overrides the variant values.
-        @type high_resolution_channels: int | None
-        @param high_resolution_channels: Number of channels in the high resolution net.
-            If provided, overrides the variant values.
-        @type use_aux_heads: bool
-        @param use_aux_heads: Whether to use auxiliary heads. Defaults to True.
-        @type upscale_module: nn.Module
-        @param upscale_module: Module for upscaling (e.g., bilinear interpolation).
-            Defaults to UpscaleOnline().
-        @type spp_width: int
-        @param spp_width: Width of the branches in the SPP block. Defaults to 128.
-        @type ssp_interpolation_mode: str
-        @param ssp_interpolation_mode: Interpolation mode for the SPP block. Defaults to
-            "bilinear".
-        @type segmentation_interpolation_mode: str
-        @param segmentation_interpolation_mode: Interpolation mode for the segmentation head.
-            Defaults to "bilinear".
-        @type block: type[nn.Module]
-        @param block: type of block to use in the backbone. Defaults to
-            ResNetBlock.
-        @type skip_block: type[nn.Module]
-        @param skip_block: type of block for skip connections. Defaults to
-            ResNetBlock.
-        @type layer5_block: type[nn.Module]
-        @param layer5_block: type of block for layer5 and layer5_skip. Defaults to
-            Bottleneck.
-        @type layer5_bottleneck_expansion: int
-        @param layer5_bottleneck_expansion: Expansion factor for Bottleneck block in
-            layer5. Defaults to 2.
-        @type spp_kernel_sizes: list[int]
-        @param spp_kernel_sizes: Kernel sizes for the SPP module pooling. Defaults to
-            [1, 5, 9, 17, 0].
-        @type spp_strides: list[int]
-        @param spp_strides: Strides for the SPP module pooling. Defaults to [1, 2, 4, 8,
-            0].
-        @type layer3_repeats: int
-        @param layer3_repeats: Number of times to repeat the 3rd stage. Defaults to 1.
-        @type layers: list[int]
-        @param layers: Number of blocks in each layer of the backbone. Defaults to [2,
-            2, 2, 2, 1, 2, 2, 1].
+        Args:
+            channels (int | None): Base number of channels. If provided, overrides the variant values.
+            high_resolution_channels (int | None): Number of channels in the high resolution net. If provided, overrides the variant values.
+            use_aux_heads (bool): Whether to use auxiliary heads. Defaults to True.
+            upscale_module (nn.Module): Module for upscaling (e.g., bilinear interpolation). Defaults to UpscaleOnline().
+            spp_width (int): Width of the branches in the SPP block. Defaults to 128.
+            ssp_interpolation_mode (str): Interpolation mode for the SPP block. Defaults to "bilinear".
+            segmentation_interpolation_mode (str): Interpolation mode for the segmentation head. Defaults to "bilinear".
+            block (type[nn.Module]): type of block to use in the backbone. Defaults to ResNetBlock.
+            skip_block (type[nn.Module]): type of block for skip connections. Defaults to ResNetBlock.
+            layer5_block (type[nn.Module]): type of block for layer5 and layer5_skip. Defaults to Bottleneck.
+            layer5_bottleneck_expansion (int): Expansion factor for Bottleneck block in layer5. Defaults to 2.
+            spp_kernel_sizes (list[int]): Kernel sizes for the SPP module pooling. Defaults to [1, 5, 9, 17, 0].
+            spp_strides (list[int]): Strides for the SPP module pooling. Defaults to [1, 2, 4, 8, 0].
+            layer3_repeats (int): Number of times to repeat the 3rd stage. Defaults to 1.
+            layers (list[int]): Number of blocks in each layer of the backbone. Defaults to [2, 2, 2, 2, 1, 2, 2, 1].
+
+        Notes:
+            License: `Apache License, Version 2.0 <https://github.com/Deci-AI/super- gradients/blob/master/LICENSE.md>`_
+
+        See Also:
+            `Adapted from <https://github.com/Deci-AI/super-gradients/blob/master/src /super_gradients/training/models/segmentation_models/ddrnet.py>`_
+            `Original code <https://github.com/ydhongHIT/DDRNet>`_
+            `Paper <https://arxiv.org/pdf/2101.06085.pdf>`_
         """
         super().__init__(**kwargs)
 

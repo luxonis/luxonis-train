@@ -46,15 +46,11 @@ class EfficientViT(BaseNode):
         expand_ratio: int = 4,
         **kwargs,
     ):
-        """
-        @type width_list: list[int]
-        @param width_list: List of number of channels for each block.
-        @type depth_list: list[int]
-        @param depth_list: List of number of layers in each block.
-        @type dim: int | None
-        @param dim: Dimension of the transformer.
-        @type expand_ratio: int
-        @param expand_ratio: Expansion ratio for the L{MobileBottleneckBlock}. Defaults to C{4}.
+        """        Args:
+            width_list (list[int]): List of number of channels for each block.
+            depth_list (list[int]): List of number of layers in each block.
+            dim (int | None): Dimension of the transformer.
+            expand_ratio (int): Expansion ratio for the `MobileBottleneckBlock`. Defaults to ``4``.
         """
         super().__init__(**kwargs)
         width_list = width_list or [8, 16, 32, 64, 128]

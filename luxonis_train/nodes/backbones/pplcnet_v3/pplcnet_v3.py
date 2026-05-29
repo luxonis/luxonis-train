@@ -17,13 +17,12 @@ class PPLCNetV3(BaseNode):
     ========
     Only one variant is available, "rec-light".
 
-    @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/
-        blob/main/ppocr/modeling/backbones/rec_lcnetv3.py>}
-    @see: U{Original code
-        <https://github.com/PaddlePaddle/PaddleOCR>}
-    @license: U{Apache License, Version 2.0
-        <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE
-        >}
+    Notes:
+        License: `Apache License, Version 2.0 <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE>`_
+
+    See Also:
+        `Adapted from <https://github.com/PaddlePaddle/PaddleOCR/ blob/main/ppocr/modeling/backbones/rec_lcnetv3.py>`_
+        `Original code <https://github.com/PaddlePaddle/PaddleOCR>`_
     """
 
     in_channels: int
@@ -38,17 +37,11 @@ class PPLCNetV3(BaseNode):
         layer_params: list["LayerParamsDict"] | None = None,
         **kwargs,
     ):
-        """
-        @type scale: float
-        @param scale: Scale factor. Defaults to 0.95.
-        @type n_branches: int
-        @param n_branches: Number of convolution branches.
-            Defaults to 4.
-        @type use_detection_backbone: bool
-        @param use_detection_backbone: Whether to use the detection backbone.
-            Defaults to False.
-        @type max_text_len: int
-        @param max_text_len: Maximum text length. Defaults to 40.
+        """        Args:
+            scale (float): Scale factor. Defaults to 0.95.
+            n_branches (int): Number of convolution branches. Defaults to 4.
+            use_detection_backbone (bool): Whether to use the detection backbone. Defaults to False.
+            max_text_len (int): Maximum text length. Defaults to 40.
         """
         super().__init__(**kwargs)
         layer_params = layer_params or []

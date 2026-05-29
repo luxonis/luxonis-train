@@ -22,17 +22,15 @@ class FOMOLocalizationLoss(BaseLoss):
     ):
         """FOMO Localization Loss for object detection using heatmaps.
 
-        @type object_weight: float
-        @param object_weight: Weight multiplier for keypoint pixels in
-            loss calculation. Typical values range from 100-1000
-            depending on keypoint sparsity.
-        @type alpha: float
-        @param alpha: Focal loss alpha parameter for class balance (0-1
-            range). Lower values reduce positive example weighting.
-        @type gamma: float
-        @param gamma: Focal loss gamma parameter for hard example
-            focusing (gamma >= 0). Higher values focus more on hard
-            misclassified examples.
+        Args:
+            object_weight (float): Weight multiplier for keypoint pixels in loss
+                calculation. Typical values range from 100-1000 depending on
+                keypoint sparsity.
+            alpha (float): Focal loss alpha parameter for class balance (0-1
+                range). Lower values reduce positive example weighting.
+            gamma (float): Focal loss gamma parameter for hard example focusing
+                (gamma >= 0). Higher values focus more on hard misclassified
+                examples.
         """
         super().__init__(**kwargs)
         self.original_img_size = self.original_in_shape[1:]

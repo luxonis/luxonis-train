@@ -53,21 +53,13 @@ class ResNetBlock(GenericResidualBlock):
         final_relu: bool = True,
         droppath_prob: float = 0.0,
     ):
-        """
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type hidden_channels: int
-        @param hidden_channels: Number of output channels.
-        @type stride: int
-        @param stride: Stride for the convolutional layers. Defaults to 1.
-        @type expansion: int
-        @param expansion: Expansion factor for the output channels. Defaults to 1.
-        @type final_relu: bool
-        @param final_relu: Whether to apply a ReLU activation after the residual
-            addition. Defaults to True.
-        @type droppath_prob: float
-        @param droppath_prob: Drop path probability for stochastic depth. Defaults to
-            0.0.
+        """        Args:
+            in_channels (int): Number of input channels.
+            hidden_channels (int): Number of output channels.
+            stride (int): Stride for the convolutional layers. Defaults to 1.
+            expansion (int): Expansion factor for the output channels. Defaults to 1.
+            final_relu (bool): Whether to apply a ReLU activation after the residual addition. Defaults to True.
+            droppath_prob (float): Drop path probability for stochastic depth. Defaults to 0.0.
         """
         super().__init__(
             in_channels=in_channels,
@@ -113,22 +105,13 @@ class ResNetBottleneck(GenericResidualBlock):
         final_relu: bool = True,
         droppath_prob: float = 0.0,
     ):
-        """
-
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type hidden_channels: int
-        @param hidden_channels: Number of intermediate channels.
-        @type stride: int
-        @param stride: Stride for the second convolutional layer. Defaults to 1.
-        @type expansion: int
-        @param expansion: Expansion factor for the output channels. Defaults to 4.
-        @type final_relu: bool
-        @param final_relu: Whether to apply a ReLU activation after the residual
-            addition. Defaults to True.
-        @type droppath_prob: float
-        @param droppath_prob: Drop path probability for stochastic depth. Defaults to
-            0.0.
+        """        Args:
+            in_channels (int): Number of input channels.
+            hidden_channels (int): Number of intermediate channels.
+            stride (int): Stride for the second convolutional layer. Defaults to 1.
+            expansion (int): Expansion factor for the output channels. Defaults to 4.
+            final_relu (bool): Whether to apply a ReLU activation after the residual addition. Defaults to True.
+            droppath_prob (float): Drop path probability for stochastic depth. Defaults to 0.0.
         """
         super().__init__(
             in_channels=in_channels,

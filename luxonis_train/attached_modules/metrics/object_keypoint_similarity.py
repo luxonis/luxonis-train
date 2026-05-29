@@ -40,17 +40,13 @@ class ObjectKeypointSimilarity(BaseMetric):
         """Object Keypoint Similarity metric for evaluating keypoint
         predictions.
 
-        @type sigmas: list[float] | None
-        @param sigmas: Sigma for each keypoint to weigh its importance,
-            if C{None}, then use COCO if possible otherwise defaults.
-            Defaults to C{None}.
-        @type area_factor: float | None
-        @param area_factor: Factor by which we multiply the bounding box
-            area. If not set, the default factor of C{0.53} is used.
-        @type use_cocoeval_oks: bool
-        @param use_cocoeval_oks: Whether to use same OKS formula as in
-            COCOeval or use the one from definition. Defaults to
-            C{True}.
+        Args:
+            sigmas (list[float] | None): Sigma for each keypoint to weigh its importance, if
+                ``None``, then use COCO if possible otherwise defaults. Defaults to ``None``.
+            area_factor (float | None): Factor by which we multiply the bounding box area. If not
+                set, the default factor of ``0.53`` is used.
+            use_cocoeval_oks (bool): Whether to use same OKS formula as in COCOeval or use the one
+                from definition. Defaults to ``True``.
         """
         super().__init__(**kwargs)
 

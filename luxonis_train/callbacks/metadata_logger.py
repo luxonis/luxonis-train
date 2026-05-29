@@ -17,8 +17,8 @@ class MetadataLogger(pl.Callback):
 
     def __init__(self, hyperparams: list[str]):
         """
-        @type hyperparams: list[str]
-        @param hyperparams: List of hyperparameters to log.
+        Args:
+            hyperparams (list[str]): List of hyperparameters to log.
         """
         super().__init__()
         self.hyperparams = hyperparams

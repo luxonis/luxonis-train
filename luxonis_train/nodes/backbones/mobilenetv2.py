@@ -16,7 +16,7 @@ class MobileNetV2(BaseNode):
         """MobileNetV2 backbone.
 
         This class implements the MobileNetV2 model as described in:
-        U{MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/pdf/1801.04381v4>} by Sandler I{et al.}
+        `MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/pdf/1801.04381v4>`_ by Sandler *et al.*
 
         The network consists of an initial fully convolutional layer, followed by
         19 bottleneck residual blocks, and a final 1x1 convolution. It can be used
@@ -28,8 +28,8 @@ class MobileNetV2(BaseNode):
             - Depth-wise separable convolutions for efficiency
             - Configurable width multiplier and input resolution
 
-        @type out_indices: list[int] | None
-        @param out_indices: Indices of the output layers. Defaults to [3, 6, 13, 18].
+        Args:
+            out_indices (list[int] | None): Indices of the output layers. Defaults to [3, 6, 13, 18].
         """
         super().__init__(**kwargs)
 

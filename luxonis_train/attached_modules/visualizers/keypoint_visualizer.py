@@ -26,23 +26,17 @@ class KeypointVisualizer(BBoxVisualizer):
     ):
         """Visualizer for keypoints.
 
-        @type visibility_threshold: float
-        @param visibility_threshold: Threshold for visibility of
-            keypoints. If the visibility of a keypoint is below this
-            threshold, it is considered as not visible. Defaults to
-            C{0.5}.
-        @type connectivity: list[tuple[int, int]] | None
-        @param connectivity: List of tuples of keypoint indices that
-            define the connections in the skeleton. Defaults to C{None}.
-        @type visible_color: L{Color}
-        @param visible_color: Color of visible keypoints. Either a
-            string or a tuple of RGB values. Defaults to C{"red"}.
-        @type nonvisible_color: L{Color} | None
-        @param nonvisible_color: Color of nonvisible keypoints. If
-            C{None}, nonvisible keypoints are not drawn. Defaults to
-            C{None}.
-        @type radius: int | None
-        @param radius: the radius of drawn keypoints
+        Args:
+            visibility_threshold (float): Threshold for visibility of keypoints. If the visibility
+                of a keypoint is below this threshold, it is considered as not visible. Defaults to
+                ``0.5``.
+            connectivity (list[tuple[int, int]] | None): List of tuples of keypoint indices that
+                define the connections in the skeleton. Defaults to ``None``.
+            visible_color (`Color`): Color of visible keypoints. Either a string or a tuple of RGB
+                values. Defaults to ``"red"``.
+            nonvisible_color (`Color` | None): Color of nonvisible keypoints. If ``None``,
+                nonvisible keypoints are not drawn. Defaults to ``None``.
+            radius (int | None): the radius of drawn keypoints
         """
         super().__init__(**kwargs)
         self.visibility_threshold = visibility_threshold

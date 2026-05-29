@@ -20,22 +20,14 @@ class ContextSpatial(BaseNode):
     ):
         """Context Spatial backbone introduced in BiseNetV1.
 
-        Source: U{BiseNetV1<https://github.com/taveraantonio/BiseNetv1>}
+        Source: `BiseNetV1 <https://github.com/taveraantonio/BiseNetv1>`_
 
-        @see: U{BiseNetv1: Bilateral Segmentation Network for
-            Real-time Semantic Segmentation
-            <https://arxiv.org/abs/1808.00897>}
+    Args:
+        context_backbone (str): Backbone used in the context path. Can be either a string or a ``nn.Module``. If a string argument is used, it has to be a name of a module stored in the `NODES` registry. Defaults to ``MobileNetV2``.
+        backbone_kwargs (dict): Keyword arguments for the backbone. Only used when the ``context_backbone`` argument is a string.
 
-        @type context_backbone: str
-        @param context_backbone: Backbone used in the context path.
-            Can be either a string or a C{nn.Module}.
-            If a string argument is used, it has to be a name of a module
-            stored in the L{NODES} registry. Defaults to C{MobileNetV2}.
-
-        @type backbone_kwargs: dict
-        @param backbone_kwargs: Keyword arguments for the backbone.
-            Only used when the C{context_backbone} argument is a string.
-        """
+    See Also:
+        `BiseNetv1: Bilateral Segmentation Network for Real-time Semantic Segmentation <https://arxiv.org/abs/1808.00897>`_"""
         super().__init__(**kwargs)
 
         if isinstance(context_backbone, str):

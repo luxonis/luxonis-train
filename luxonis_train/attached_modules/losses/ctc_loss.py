@@ -14,9 +14,8 @@ class CTCLoss(BaseLoss):
     def __init__(self, use_focal_loss: bool = True, **kwargs):
         """Initialize the CTC loss with optional focal loss support.
 
-        @type use_focal_loss: bool
-        @param use_focal_loss: Whether to apply focal loss weighting to
-            the CTC loss. Defaults to True.
+        Args:
+            use_focal_loss (bool): Whether to apply focal loss weighting to the CTC loss. Defaults to True.
         """
         super().__init__(**kwargs)
         self.loss_func = nn.CTCLoss(blank=0, reduction="none")
@@ -25,14 +24,12 @@ class CTCLoss(BaseLoss):
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
         """Compute the CTC loss, optionally applying focal loss.
 
-        @type preds: Tensor
-        @param preds: Network predictions of shape (B, T, C), where T is
-            the sequence length, B is the batch size, and C is the
-            number of classes.
-        @type targets: Tensor
-        @param targets: Encoded target sequences.
-        @rtype: Tensor
-        @return: The computed loss as a scalar tensor.
+        Args:
+            preds (Tensor): Network predictions of shape (B, T, C), where T is the sequence length, B is the batch size, and C is the number of classes.
+            targets (Tensor): Encoded target sequences.
+
+        Returns:
+            Tensor: The computed loss as a scalar tensor.
         """
         target = self.node.encoder(target).to(predictions.device)
         target_lengths = torch.sum(target != 0, dim=1)

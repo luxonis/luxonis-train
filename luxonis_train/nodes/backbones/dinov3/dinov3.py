@@ -53,9 +53,10 @@ class DinoV3(BaseNode):
     that learns strong, dense feature representations useful for various
     downstream tasks.
 
-    Source: U{https://github.com/facebookresearch/dinov3}
-    @license: U{https://github.com/facebookresearch/dinov3?
-    tab=License-1-ov-file#readme}
+    Source: `https://github.com/facebookresearch/dinov3 <https://github.com/facebookresearch/dinov3>`_
+
+    Notes:
+        License: `https://github.com/facebookresearch/dinov3? tab=License-1-ov-file#readme <https://github.com/facebookresearch/dinov3? tab=License-1-ov-file#readme>`_
     """
 
     in_height: int
@@ -71,31 +72,13 @@ class DinoV3(BaseNode):
         depth: int = 4,
         **kwargs,
     ):
-        """
-        @type weights_link: string
-        @param weights_link: A link for the specific model, which needs to be requested here U{https://pytorch.org/get-started/locally/}.
-
-        @param return_sequence: If True, return the CLS embedding
-        [B, C] for downstream classification heads. Otherwise, turn
-        patch embeddings into [B, C, H, W] feature maps to be passed
-        to dense prediction heads
-        @type return_sequence: bool
-
-        @param variant: Architecture variant of the DINOv3 backbone.
-        @type variant: Literal DINOv3Variant.
-
-        @param repo_dir: "facebookresearch/dinov3" if the repository
-        is not locally downloaded or cached, "local" otherwise
-        @type repo_dir: str
-
-        @param freeze_backbone: if True, freeze the backbone;
-        this will lead to a transfer learning scenario where
-        only the head contains trainable parameters
-        @type freeze_backbone: bool
-
-        @param depth: number of last layers that are taken
-        from the transformer output and converted to feature maps
-        @type depth: int
+        """        Args:
+            weights_link (string): A link for the specific model, which needs to be requested here `https://pytorch.org/get-started/locally/ <https://pytorch.org/get-started/locally/>`_.
+            return_sequence (bool): If True, return the CLS embedding [B, C] for downstream classification heads. Otherwise, turn patch embeddings into [B, C, H, W] feature maps to be passed to dense prediction heads
+            variant (Literal DINOv3Variant.): Architecture variant of the DINOv3 backbone.
+            repo_dir (str): "facebookresearch/dinov3" if the repository is not locally downloaded or cached, "local" otherwise
+            freeze_backbone (bool): if True, freeze the backbone; this will lead to a transfer learning scenario where only the head contains trainable parameters
+            depth (int): number of last layers that are taken from the transformer output and converted to feature maps
         """
         super().__init__(**kwargs)
 

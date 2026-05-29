@@ -40,30 +40,20 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         area_factor: float | None = None,
         **kwargs,
     ):
-        """BBox loss adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
-        <https://arxiv.org/pdf/2209.02976.pdf>}. It combines IoU based bbox regression loss and varifocal loss
+        """BBox loss adapted from `YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_. It combines IoU based bbox regression loss and varifocal loss
         for classification.
-        Code is adapted from U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models}.
+        Code is adapted from `https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models <https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models>`_.
 
-        @type n_warmup_epochs: int
-        @param n_warmup_epochs: Number of epochs where ATSS assigner is used, after that we switch to TAL assigner.
-        @type iou_type: Literal["none", "giou", "diou", "ciou", "siou"]
-        @param iou_type: IoU type used for bbox regression loss.
-        @type reduction: Literal["sum", "mean"]
-        @param reduction: Reduction type for loss.
-        @type class_loss_weight: float
-        @param class_loss_weight: Weight of classification loss for bounding boxes.
-        @type regr_kpts_loss_weight: float
-        @param regr_kpts_loss_weight: Weight of regression loss for keypoints. Defaults to 12.0. For optimal results, multiply with accumulate_grad_batches.
-        @type vis_kpts_loss_weight: float
-        @param vis_kpts_loss_weight: Weight of visibility loss for keypoints. Defaults to 1.0. For optimal results, multiply with accumulate_grad_batches.
-        @type iou_loss_weight: float
-        @param iou_loss_weight: Weight of IoU loss. Defaults to 2.5. For optimal results, multiply with accumulate_grad_batches.
-        @type sigmas: list[float] | None
-        @param sigmas: Sigmas used in keypoint loss for OKS metric. If None then use COCO ones if possible or default ones. Defaults to C{None}.
-        @type area_factor: float | None
-        @param area_factor: Factor by which we multiply bounding box area which is used in the keypoint loss.
-            If not set, the default factor of `0.53` is used.
+        Args:
+            n_warmup_epochs (int): Number of epochs where ATSS assigner is used, after that we switch to TAL assigner.
+            iou_type (Literal["none", "giou", "diou", "ciou", "siou"]): IoU type used for bbox regression loss.
+            reduction (Literal["sum", "mean"]): Reduction type for loss.
+            class_loss_weight (float): Weight of classification loss for bounding boxes.
+            regr_kpts_loss_weight (float): Weight of regression loss for keypoints. Defaults to 12.0. For optimal results, multiply with accumulate_grad_batches.
+            vis_kpts_loss_weight (float): Weight of visibility loss for keypoints. Defaults to 1.0. For optimal results, multiply with accumulate_grad_batches.
+            iou_loss_weight (float): Weight of IoU loss. Defaults to 2.5. For optimal results, multiply with accumulate_grad_batches.
+            sigmas (list[float] | None): Sigmas used in keypoint loss for OKS metric. If None then use COCO ones if possible or default ones. Defaults to ``None``.
+            area_factor (float | None): Factor by which we multiply bounding box area which is used in the keypoint loss. If not set, the default factor of `0.53` is used.
         """
         super().__init__(
             n_warmup_epochs=n_warmup_epochs,

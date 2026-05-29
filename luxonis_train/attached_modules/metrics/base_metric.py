@@ -36,14 +36,14 @@ class MetricState:
     `add_state` method. The state will be accessible as an attribute
     of the metric instance.
 
-    Metric state variables are either C{Tensor} or an empty list, which
+    Metric state variables are either ``Tensor`` or an empty list, which
     can be appended to by the metric.  Metric states behave like buffers
-    and parameters of C{nn.Module} as they are also updated when C{.to()}
+    and parameters of ``nn.Module`` as they are also updated when ``.to()``
     is called. Unlike parameters and buffers, metric states are not by
-    default saved in the modules C{nn.Module.state_dict}.
+    default saved in the modules ``nn.Module.state_dict``.
 
     The metric state variables are automatically reset to their default
-    values when the metric's C{reset()} method is called.
+    values when the metric's ``reset()`` method is called.
 
     Example usage::
 
@@ -52,24 +52,21 @@ class MetricState:
             false_positives: Annotated[Tensor, MetricState(default=0)]
             total: Annotated[Tensor, MetricState(default=0)]
 
-    @keyword name: The name of the state variable. The variable will then
-        be accessible at C{self.name}.
-    @keyword default: Default value of the state; can either be a
-        C{Tensor} or an empty list. The state will be reset to this
-        value when C{self.reset()} is called. If the default value is a
-        float, it will be converted to a C{Tensor}.
-    @keyword dist_reduce_fx: Function to reduce state across multiple
-        processes in distributed mode. If value is C{"sum"}, C{"mean"},
-        C{"cat"}, C{"min"} or C{"max"} we will use C{torch.sum},
-        C{torch.mean}, C{torch.cat}, C{torch.min} and C{torch.max}
-        respectively, each with argument C{dim=0}. Note that the
-        C{"cat"} reduction only makes sense if the state is a list, and
-        not a tensor. The user can also pass a custom function in this
-        parameter.
-        If not specified, the default is C{"sum"} if the default value
-        is a tensor, and C{"cat"} if the default value is a list.
-    @keyword persistent: Whether the state will be saved as part of the
-        modules C{state_dict}. Default is C{False}.
+    Keyword Args:
+        name (Any): The name of the state variable. The variable will then be accessible at
+            ``self.name``.
+        default (Any): Default value of the state; can either be a ``Tensor`` or an empty list.
+            The state will be reset to this value when ``self.reset()`` is called. If the
+            default value is a float, it will be converted to a ``Tensor``.
+        dist_reduce_fx (Any): Function to reduce state across multiple processes in distributed
+            mode. If value is ``"sum"``, ``"mean"``, ``"cat"``, ``"min"`` or ``"max"`` we will
+            use ``torch.sum``, ``torch.mean``, ``torch.cat``, ``torch.min`` and ``torch.max``
+            respectively, each with argument ``dim=0``. Note that the ``"cat"`` reduction only
+            makes sense if the state is a list, and not a tensor. The user can also pass a
+            custom function in this parameter. If not specified, the default is ``"sum"`` if
+            the default value is a tensor, and ``"cat"`` if the default value is a list.
+        persistent (Any): Whether the state will be saved as part of the modules
+            ``state_dict``. Default is ``False``.
     """
 
     default: Tensor | Number | list | None = None
@@ -87,7 +84,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
     """A base class for all metrics.
 
     This class defines the basic interface for all metrics. It utilizes
-    automatic registration of defined subclasses to a L{METRICS}
+    automatic registration of defined subclasses to a `METRICS`
     registry.
     """
 
@@ -145,8 +142,8 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
     def update(self, *args: Tensor | list[Tensor]) -> None:
         """Update the inner state of the metric.
 
-        @type args: Unpack[Ts]
-        @param args: Prepared inputs from the L{prepare} method.
+        Args:
+            *args (Unpack[Ts]): Prepared inputs from the `prepare` method.
         """
         super().update(*args)
 
@@ -156,12 +153,11 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
     ) -> Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]:
         """Compute the metric.
 
-        @rtype: Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]
-        @return: The computed metric. Can be one of:
-           - A single Tensor.
-           - A tuple of a Tensor and a dictionary of sub-metrics.
-           - A dictionary of sub-metrics. If this is the case, then the metric
-              cannot be used as the main metric of the model.
+        Returns:
+            Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]: The computed metric. Can
+                be one of: - A single Tensor. - A tuple of a Tensor and a dictionary of
+                sub-metrics. - A dictionary of sub-metrics. If this is the case, then the metric
+                cannot be used as the main metric of the model.
         """
         return super().compute()
 
@@ -175,11 +171,11 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         Validates and prepares the inputs, then calls the metric's
         update method.
 
-        @type inputs: Packet[Tensor]
-        @param inputs: The outputs of the model.
-        @type labels: Labels
-        @param labels: The labels of the model. @raises
-            L{IncompatibleError}: If the inputs are not compatible with
-            the module.
+        Args:
+            inputs (Packet[Tensor]): The outputs of the model.
+            labels (Labels): The labels of the model.
+
+        Raises:
+            IncompatibleError: If the inputs are not compatible with the module.
         """
         self.update(**self.get_parameters(inputs, labels))

@@ -22,12 +22,12 @@ from luxonis_train.utils import get_sigmas, get_with_default
 class MeanAveragePrecisionKeypoints(BaseMetric):
     """Mean Average Precision metric for keypoints detections.
 
-    Uses C{OKS} as IoU measure.
+    Uses ``OKS`` as IoU measure.
 
-    Adapted from: U{https://github.com/Lightning-AI/torchmetrics/blob/v1.0.1/src/
-    torchmetrics/detection/mean_ap.py}.
+    Adapted from `torchmetrics mean AP <https://github.com/Lightning-AI/torchmetrics/blob/v1.0.1/src/torchmetrics/detection/mean_ap.py>`_.
 
-    @license: Apache License, Version 2.0
+    Notes:
+        License: Apache License, Version 2.0.
     """
 
     supported_tasks = [
@@ -54,17 +54,15 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         **kwargs,
     ):
         """
-
-        @type sigmas: list[float] | None
-        @param sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then
-            use COCO if possible otherwise defaults. Defaults to C{None}.
-        @type area_factor: float | None
-        @param area_factor: Factor by which we multiply the bounding box area.
-            If not set, the default factor of C{0.53} is used.
-        @type max_dets: int,
-        @param max_dets: Maximum number of detections to be considered per image. Defaults to C{20}.
-        @type box_format: Literal["xyxy", "xywh", "cxcywh"]
-        @param box_format: Input bounding box format. Defaults to C{"xyxy"}.
+        Args:
+            sigmas (list[float] | None): Sigma for each keypoint to weigh its importance, if
+                ``None``, then use COCO if possible otherwise defaults. Defaults to ``None``.
+            area_factor (float | None): Factor by which we multiply the bounding box area. If not
+                set, the default factor of ``0.53`` is used.
+            max_dets (int): Maximum number of detections to be considered per image. Defaults to
+                ``20``.
+            box_format (Literal["xyxy", "xywh", "cxcywh"]): Input bounding box format. Defaults to
+                ``"xyxy"``.
         """
         super().__init__(**kwargs)
 
@@ -165,8 +163,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         """Transform and get all cached targets or predictions in COCO
         format.
 
-        Format is defined at U{
-        https://cocodataset.org/#format-data}.
+        Format is defined in the `COCO data format <https://cocodataset.org/#format-data>`_.
         """
         annotations = []
 

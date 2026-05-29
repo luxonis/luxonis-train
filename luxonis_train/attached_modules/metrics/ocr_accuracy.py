@@ -25,8 +25,8 @@ class OCRAccuracy(BaseMetric):
 
     def __init__(self, blank_class: int = 0, **kwargs):
         """
-        @type blank_class: int
-        @param blank_class: Index of the blank class. Defaults to C{0}.
+    Args:
+            blank_class (int): Index of the blank class. Defaults to ``0``.
         """
         super().__init__(**kwargs)
         self.blank_class = blank_class
@@ -36,10 +36,9 @@ class OCRAccuracy(BaseMetric):
         """Update the running metric with the given predictions and
         targets.
 
-        @type predictions: Tensor
-        @param predictions: A tensor containing the network predictions.
-        @type targets: Tensor
-        @param targets: A tensor containing the target labels.
+        Args:
+            predictions (Tensor): A tensor containing the network predictions.
+            targets (Tensor): A tensor containing the target labels.
         """
         target = self.node.encoder(target).to(self.device)
 
@@ -74,9 +73,9 @@ class OCRAccuracy(BaseMetric):
     def compute(self) -> tuple[Tensor, dict[str, Tensor]]:
         """Compute the OCR accuracy.
 
-        @rtype: tuple[Tensor, dict[str, Tensor]]
-        @return: A tuple containing the OCR accuracy and a dictionary of
-            individual accuracies.
+        Returns:
+            tuple[Tensor, dict[str, Tensor]]: A tuple containing the OCR accuracy and a dictionary
+                of individual accuracies.
         """
         return self.rank_0 / self.total, {
             "rank_0": self.rank_0 / self.total,

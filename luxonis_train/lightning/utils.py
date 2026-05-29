@@ -321,16 +321,19 @@ def compute_losses(
 ) -> tuple[Tensor, dict[str, Tensor]]:
     """Compute the final loss as a weighted sum of all the losses.
 
-    @type losses: dict[str, dict[str, Tensor | tuple[Tensor, dict[str,
-        Tensor]]]]
-    @param losses: Dictionary of computed losses. Each node can have
-        multiple losses attached. The first key identifies the node, the
-        second key identifies the specific loss. Values are either
-        single tensors or tuples of tensors and sub- losses.
-    @rtype: tuple[Tensor, dict[str, Tensor]]
-    @return: Tuple of final loss and dictionary of all losses for
-        logging. The dictionary is in a format of C{{loss_name:
-        loss_value}}.
+    Args:
+        cfg (Config): Training configuration that controls loss logging.
+        losses (dict[str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]]):
+            Computed losses. Each node can have multiple losses attached. The
+            first key identifies the node, and the second key identifies the
+            specific loss. Values are either single tensors or tuples of a
+            tensor and sub-loss dictionary.
+        device (torch.device): Device on which to create the accumulated loss.
+
+    Returns:
+        tuple[Tensor, dict[str, Tensor]]: A tuple ``(final_loss, all_losses)``,
+            where ``final_loss`` is the weighted sum and ``all_losses`` maps
+            loss names to tensors for logging.
     """
     final_loss = torch.zeros(1, device=device)
     all_losses: dict[str, Tensor] = {}
@@ -654,21 +657,25 @@ def compute_visualization_buffer(
     logged_idxs: list[int],
     max_log_images: int,
 ) -> dict[str, dict[str, Tensor]] | None:
-    """Build a buffer of leftover visualizations to fill up to
-    `max_log_images` frames.
+    """Build a buffer of leftover visualizations for image logging.
 
-    @type seq_buffer: list[dict[str, dict[str, Tensor]]]
-    @param seq_buffer: Previously buffered visualizations; each item maps node names to
-                        dicts of viz names to Tensors of shape [N, …].
-    @type visualizations: dict[str, dict[str, Tensor]]
-    @param visualizations: Current batch's visualizations with the same nested structure.
-    @type logged_idxs: list[int]
-    @param logged_idxs: List of batch indices already logged by the smart (class-balanced) logger.
-    @type max_log_images: int
-    @param max_log_images: Total number of images we aim to log per epoch.
-    @return: A dict `{ node_name: { viz_name: Tensor[...] } }` containing up to the remaining
-             number of images needed to reach `max_log_images`, excluding any indices in
-             `logged_idxs`. Returns `None` if the buffer is already full or no leftovers exist.
+    The buffer fills up to ``max_log_images`` frames.
+
+    Args:
+        seq_buffer (list[dict[str, dict[str, Tensor]]]): Previously buffered
+            visualizations. Each item maps node names to visualization names
+            and tensors with shape ``[N, ...]``.
+        visualizations (dict[str, dict[str, Tensor]]): Current batch
+            visualizations with the same nested structure.
+        logged_idxs (list[int]): Batch indices already logged by the
+            class-balanced logger.
+        max_log_images (int): Total number of images to log per epoch.
+
+    Returns:
+        dict[str, dict[str, Tensor]] | None: Up to the remaining number of
+            images needed to reach ``max_log_images``, excluding indices in
+            ``logged_idxs``. Returns ``None`` if the buffer is already full or
+            no leftovers exist.
     """
     if seq_buffer:
         first_map = seq_buffer[0]
@@ -742,14 +749,18 @@ def get_main_metric(cfg: Config) -> MainMetric | None:
 def check_tensor_device(
     x: Tensor | list[Tensor], device: torch.device
 ) -> bool:
-    """
-    @type x: Tensor | list[Tensor]
-    @param x: A tensor or a list of tensors to check.
-    @type device: torch.device
-    @param device: The device to check against.
-    @rtype: bool
-    @return: Return whether the tensor
-        (or every tensor in a sequence) resides on a given device.
+    """Check whether one or more tensors reside on a device.
+
+    Args:
+        x (Tensor | list[Tensor]): Tensor or list of tensors to check.
+        device (torch.device): Device to check against.
+
+    Returns:
+        bool: Whether the tensor, or every tensor in a sequence, resides on
+        the given device.
+
+    Raises:
+        TypeError: If ``x`` is not a tensor or list of tensors.
     """
     if isinstance(x, Tensor):
         return x.device == device

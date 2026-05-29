@@ -18,10 +18,8 @@ class ClassificationHead(BaseHead):
     parser: str = "ClassificationParser"
 
     def __init__(self, dropout_rate: float = 0.2, **kwargs):
-        """
-        @type dropout_rate: float
-        @param dropout_rate: Dropout rate before last layer, range C{[0,
-            1]}. Defaults to C{0.2}.
+        """        Args:
+            dropout_rate (float): Dropout rate before last layer, range ``[0, 1]``. Defaults to ``0.2``.
         """
         super().__init__(**kwargs)
 

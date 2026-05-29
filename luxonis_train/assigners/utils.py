@@ -10,14 +10,15 @@ def candidates_in_gt(
 ) -> Tensor:
     """Check if anchor box's center is in any GT bbox.
 
-    @type anchor_centers: Tensor
-    @param anchor_centers: Centers of anchor bboxes [n_anchors, 2]
-    @type gt_bboxes: Tensor
-    @param gt_bboxes: Ground truth bboxes [bs * n_max_boxes, 4]
-    @type eps: float
-    @param eps: Threshold for minimum delta. Defaults to 1e-9.
-    @rtype: Tensor
-    @return: Mask for anchors inside any GT bbox
+    Args:
+        anchor_centers (Tensor): Centers of anchor bboxes with shape
+            ``[n_anchors, 2]``.
+        gt_bboxes (Tensor): Ground truth bboxes with shape
+            ``[bs * n_max_boxes, 4]``.
+        eps (float): Threshold for minimum delta. Defaults to ``1e-9``.
+
+    Returns:
+        Tensor: Mask for anchors inside any GT bbox.
     """
     n_anchors = anchor_centers.size(0)
     anchor_centers = anchor_centers.unsqueeze(0).repeat(
@@ -34,19 +35,19 @@ def candidates_in_gt(
 def fix_collisions(
     mask_pos: Tensor, overlaps: Tensor, n_max_boxes: int
 ) -> tuple[Tensor, Tensor, Tensor]:
-    """If an anchor is assigned to multiple GTs, the one with highest
-    IoU is selected.
+    """Resolve anchors assigned to multiple GTs by selecting highest IoU.
 
-    @type mask_pos: Tensor
-    @param mask_pos: Mask of assigned anchors [bs, n_max_boxes,
-        n_anchors]
-    @type overlaps: Tensor
-    @param overlaps: IoUs between GTs and anchors [bx, n_max_boxes,
-        n_anchors]
-    @type n_max_boxes: int
-    @param n_max_boxes: Number of maximum boxes per image
-    @rtype: tuple[Tensor, Tensor, Tensor]
-    @return: Assigned indices, sum of positive mask, positive mask
+    Args:
+        mask_pos (Tensor): Mask of assigned anchors with shape
+            ``[bs, n_max_boxes, n_anchors]``.
+        overlaps (Tensor): IoUs between GTs and anchors with shape
+            ``[bs, n_max_boxes, n_anchors]``.
+        n_max_boxes (int): Maximum number of boxes per image.
+
+    Returns:
+        tuple[Tensor, Tensor, Tensor]: A tuple
+        ``(assigned_gt_idx, mask_pos_sum, mask_pos)`` containing assigned
+        indices, the positive-mask sum, and the resolved positive mask.
     """
     mask_pos_sum = mask_pos.sum(dim=-2)
     if mask_pos_sum.max() > 1:
@@ -64,14 +65,17 @@ def fix_collisions(
 
 def batch_iou(batch1: Tensor, batch2: Tensor) -> Tensor:
     """Calculate IoU for each pair of bounding boxes in the batch.
+
     Bounding boxes must be in the "xyxy" format.
 
-    @type batch1: Tensor
-    @param batch1: Tensor of shape C{[bs, N, 4]}
-    @type batch2: Tensor
-    @param batch2: Tensor of shape C{[bs, M, 4]}
-    @rtype: Tensor
-    @return: Per image box IoU of shape C{[bs, N, M]}
+    Args:
+        batch1 (Tensor): Tensor of bounding boxes with shape
+            ``[bs, N, 4]``.
+        batch2 (Tensor): Tensor of bounding boxes with shape
+            ``[bs, M, 4]``.
+
+    Returns:
+        Tensor: Per-image box IoU values with shape ``[bs, N, M]``.
     """
     return torch.stack(
         [bbox_iou(batch1[i], batch2[i]) for i in range(batch1.size(0))], dim=0

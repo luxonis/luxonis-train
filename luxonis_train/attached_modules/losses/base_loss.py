@@ -15,15 +15,16 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
     """A base class for all loss functions.
 
     This class defines the basic interface for all loss functions. It
-    utilizes automatic registration of defined subclasses to a L{LOSSES}
+    utilizes automatic registration of defined subclasses to a `LOSSES`
     registry.
+
     """
 
     @typechecked
     def __init__(self, final_loss_weight: float = 1.0, **kwargs):
         """
-        @type weight: float
-        @param weight: Optional weight by which the final loss is multiplied.
+        Args:
+            weight (float): Optional weight by which the final loss is multiplied.
         """
         super().__init__(**kwargs)
         self.__final_loss_weight = final_loss_weight
@@ -34,12 +35,8 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
     ) -> Tensor | tuple[Tensor, dict[str, Tensor]]:
         """Forward pass of the loss function.
 
-        @type *args: Tensor | list[Tensor] @param *args: Inputs to the
-        loss function.
-        @rtype: Tensor | tuple[Tensor, dict[str, Tensor]]
-        @return: The main loss and optional a dictionary of sub-losses
-            (for logging). Only the main loss is used for
-            backpropagation.
+        Returns:
+            Tensor | tuple[Tensor, dict[str, Tensor]]: The main loss and optional a dictionary of sub-losses (for logging). Only the main loss is used for backpropagation.
         """
         ...
 
@@ -53,16 +50,15 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
         """Call the loss function after validating and preparing the
         inputs.
 
-        @type inputs: Packet[Tensor]
-        @param inputs: Outputs from the node.
-        @type labels: L{Labels}
-        @param labels: Labels from the dataset.
-        @rtype: Tensor | tuple[Tensor, dict[str, Tensor]]
-        @return: The main loss and optional a dictionary of sub-losses
-            (for logging). Only the main loss is used for
-            backpropagation.
-        @raises IncompatibleError: If the inputs are not compatible with
-            the module.
+        Args:
+            inputs (Packet[Tensor]): Outputs from the node.
+            labels (`Labels`): Labels from the dataset.
+
+        Returns:
+            Tensor | tuple[Tensor, dict[str, Tensor]]: The main loss and optional a dictionary of sub-losses (for logging). Only the main loss is used for backpropagation.
+
+        Raises:
+            IncompatibleError: If the inputs are not compatible with the module.
         """
         loss = self(**self.get_parameters(inputs, labels))
         if isinstance(loss, Tensor):

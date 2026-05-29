@@ -71,16 +71,12 @@ def train(
 ):
     """Start the training process.
 
-    @type config: str
-    @param config: Path to the configuration file.
-    @type weights: str
-    @param weights: Path to the model weights.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
-    @type debug: bool
-    @param debug: If true, allows the model to be constructed without a
-        valid dataset by setting `allow_empty_dataset` to True. This can
-        be useful for quick testing of the training loop.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): Path to the configuration file.
+        weights (str | None): Path to the model weights.
+        debug (bool): If ``True``, allows the model to be constructed without
+            a valid dataset by setting ``allow_empty_dataset`` to ``True``.
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=debug
@@ -98,16 +94,12 @@ def tune(
 ):
     """Start hyperparameter tuning.
 
-    @type config: str
-    @param config: Path to the configuration file.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
-    @type weights: str
-    @param weights: Path to the model weights.
-    @type debug: bool
-    @param debug: If true, allows the model to be constructed without a
-        valid dataset by setting `allow_empty_dataset` to True. This can
-        be useful for quick testing of the tuning.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): Path to the configuration file.
+        weights (str | None): Path to the model weights.
+        debug (bool): If ``True``, allows the model to be constructed without
+            a valid dataset by setting ``allow_empty_dataset`` to ``True``.
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=debug
@@ -220,22 +212,16 @@ def inspect(
 ):
     """Inspect the dataset as specified in the configuration.
 
-    To close the window press 'q' or 'Esc'.
+    To close the window press ``"q"`` or ``"Esc"``.
 
-    @type config: str
-    @param config: Path to the configuration file.
-    @type view: Literal["train", "val", "test"]
-    @param view: Which dataset view to use. Only relevant when the
-        source_path is not provided.
-    @type size_multiplier: float
-    @param size_multiplier: Multiplier for the image size. By default
-        the images are shown in their original size. Use this option to
-        scale them.
-    @type list_augmentations: bool
-    @param list_augmentations: Show the augmentations applied to each
-        displayed image in the footer.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): Path to the configuration file.
+        view (Literal["train", "val", "test"]): Dataset view to inspect.
+        size_multiplier (float): Multiplier for the image size. By default,
+            images are shown in their original size.
+        list_augmentations (bool): Whether to show applied augmentations in the
+            footer.
     """
     import cv2
 
@@ -272,20 +258,14 @@ def test(
 ):
     """Evaluate a trained model.
 
-    @type config: str
-    @param config: Path to the configuration file or a name of a
-        predefined model.
-    @type view: str
-    @param view: Which dataset view to use. Only relevant when the
-        source_path is not provided.
-    @type weights: str
-    @param weights: Path to the model weights.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
-    @type debug: bool
-    @param debug: If true, allows the model to be constructed without a
-        valid dataset by setting `allow_empty_dataset` to True. This can
-        be useful for quick testing of the evaluation loop.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): Path to the configuration file or predefined model
+            name.
+        view (Literal["train", "val", "test"]): Dataset view to evaluate.
+        weights (str | None): Path to the model weights.
+        debug (bool): If ``True``, allows the model to be constructed without
+            a valid dataset by setting ``allow_empty_dataset`` to ``True``.
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=debug
@@ -307,22 +287,17 @@ def infer(
 
     Supports both images and video files.
 
-    @type config: str
-    @param config: Path to the configuration file or a name of a
-        predefined model.
-    @type view: str
-    @param view: Which dataset view to use. Only relevant when the
-        source_path is not provided.
-    @type save_dir: Path
-    @param save_dir: Where to save the inference results.
-    @type source_path: str
-    @param source_path: Path to an image file, a directory containing
-        images or a video file for inference. If not provided, the
-        loader from the configuation file will be used.
-    @type weights: Path
-    @param weights: Path to the model weights.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): Path to the configuration file or predefined model
+            name.
+        view (Literal["train", "val", "test"]): Dataset view to use when
+            ``source_path`` is not provided.
+        save_dir (Path | None): Directory where inference results are saved.
+        source_path (str | None): Path to an image file, image directory, or
+            video file. If not provided, the loader from the configuration file
+            is used.
+        weights (str | None): Path to the model weights.
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=True
@@ -350,30 +325,22 @@ def annotate(
 ):
     """Run annotation on a custom directory of images.
 
-    @type config: str
-    @param config: Path to the configuration file used by the model to
-        annotate images.
-    @type dir_path: str
-    @param dir_path: Path to the directory containing images to
-        annotate.
-    @type dataset_name: str
-    @param dataset_name: Name of the dataset for the annotated images.
-    @type weights: Path | None
-    @param weights: Path to the model weights. If provided, the model
-        will use these weights instead of those in the configuration
-        file.
-    @type bucket_storage: Literal["local", "gcs"]
-    @param bucket_storage: Storage type for the new annotated dataset.
-    @type delete_local: bool
-    @param delete_local: Whether to delete local dataset or append data
-        to existing dataset.
-    @type delete_remote: bool
-    @param delete_remote: Whether to delete remote dataset or append
-        data to existing dataset.
-    @type team_id: str | None
-    @param team_id: Optional team ID for the dataset.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        dir_path (Path): Path to the directory containing images to annotate.
+        dataset_name (str): Name of the dataset for the annotated images.
+        config (str | None): Path to the configuration file used by the model
+            to annotate images.
+        weights (str | None): Path to the model weights. If provided, the
+            model uses these weights instead of those in the configuration
+            file.
+        bucket_storage (Literal["local", "gcs"]): Storage type for the new
+            annotated dataset.
+        delete_local (bool): Whether to delete the local dataset before
+            writing.
+        delete_remote (bool): Whether to delete the remote dataset before
+            writing.
+        team_id (str | None): Optional team ID for the dataset.
     """
     model = create_model(
         config, opts, weights=weights, allow_empty_dataset=True
@@ -402,22 +369,15 @@ def export(
 ):
     """Export the model to ONNX or BLOB format.
 
-    @type config: str
-    @param config: Path to the configuration file or a name of a
-        predefined model.
-    @type save_path: str
-    @param save_path: Directory where to save all exported model files.
-        If not specified, files will be saved to the 'export' directory
-        in the run save directory.
-    @type ckpt_only: bool
-    @param ckpt_only: If True, only the `.ckpt` file will be exported.
-        This is useful for updating the metadata in the checkpoint file
-        in case they changed (e.g. new configuration file, architectural
-        changes affecting the execution order etc.)
-    @type weights: str
-    @param weights: Path to the model weights.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): Path to the configuration file or predefined model
+            name.
+        save_path (str | None): Directory where exported model files are
+            saved. If not specified, files are saved to the ``"export"``
+            directory in the run save directory.
+        weights (str | None): Path to the model weights.
+        ckpt_only (bool): If ``True``, only the ``.ckpt`` file is exported.
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=True
@@ -435,15 +395,12 @@ def archive(
 ):
     """Convert the model to an NN Archive format.
 
-    @type config: str
-    @param config: Path to the configuration file.
-    @type executable: str
-    @param executable: Path to the exported model, usually an ONNX file.
-        If not provided, the model will be exported first.
-    @type weights: str
-    @param weights: Path to the model weights.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): Path to the configuration file.
+        executable (str | None): Path to the exported model, usually an ONNX
+            file. If not provided, the model is exported first.
+        weights (str | None): Path to the model weights.
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=True
@@ -465,15 +422,12 @@ def convert(
     platform conversion (RVC2/RVC3/RVC4) steps based on the
     configuration.
 
-    @type config: str
-    @param config: Path to the configuration file.
-    @type save_dir: str
-    @param save_dir: Directory where all outputs will be saved. If not
-        specified, the default run save directory will be used.
-    @type weights: str
-    @param weights: Path to the model weights.
-    @type opts: list[str]
-    @param opts: A list of optional CLI overrides of the config file.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        config (str | None): Path to the configuration file.
+        save_dir (str | None): Directory where outputs are saved. If not
+            specified, the default run save directory is used.
+        weights (str | None): Path to the model weights.
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=True
@@ -494,11 +448,10 @@ def config(
 ):
     """Upgrade luxonis-train configuration file.
 
-    @type config: Path
-    @param config: Path to configuration file to be upgraded.
-    @type output: Path | None
-    @param output: Where to save the upgraded config. If left empty, the
-        old file will be overriden.
+    Args:
+        config (Path): Path to configuration file to be upgraded.
+        output (Path | None): Where to save the upgraded config. If omitted,
+            the old file is overwritten.
     """
     if config.suffix == "json":
         cfg = json.loads(config.read_text(encoding="utf-8"))
@@ -531,11 +484,13 @@ def checkpoint(
 ):
     """Upgrade luxonis-train checkpoint file.
 
-    @type path: Path
-    @param path: Path to the checkpoint
-    @type output: Path | None
-    @param new: Where to save the upgraded checkpoint. If left empty,
-        the old file will be overriden.
+    Args:
+        opts (list[str]): A list of optional CLI overrides of the config file.
+        path (Path): Path to the checkpoint.
+        output (Path | None): Where to save the upgraded checkpoint. If
+            omitted, the old file is overwritten.
+        config (Path | None): Optional configuration file used to construct the
+            model.
     """
     from luxonis_train import LuxonisModel
 

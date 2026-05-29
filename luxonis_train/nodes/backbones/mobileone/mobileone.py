@@ -29,10 +29,9 @@ class MobileOne(BaseNode):
       - Uses only basic operators available across platforms (no custom activations)
 
 
-    Reference: U{MobileOne: An Improved One millisecond Mobile Backbone
-    <https://arxiv.org/abs/2206.04040>}
+    Reference: `MobileOne: An Improved One millisecond Mobile Backbone <https://arxiv.org/abs/2206.04040>`_
 
-    Source: U{<https://github.com/apple/ml-mobileone>}
+    Source: ` <https://github.com/apple/ml-mobileone>`_
 
     Variants
     ========
@@ -48,7 +47,8 @@ class MobileOne(BaseNode):
         - s3: width_multipliers=(2.0, 2.5, 3.0, 4.0)
         - s4: width_multipliers=(3.0, 3.5, 3.5, 4.0), use_se=True
 
-    @license: U{Apple<https://github.com/apple/ml-mobileone/blob/main/LICENSE>}
+    Notes:
+        License: `Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>`_
     """
 
     in_channels: int
@@ -66,13 +66,10 @@ class MobileOne(BaseNode):
         use_se: bool = False,
         **kwargs,
     ):
-        """
-        @type width_multipliers: tuple[float, float, float, float]
-        @param width_multipliers: Width multipliers for each stage.
-        @type n_conv_branches: int
-        @param n_conv_branches: Number of linear convolution branches in MobileOne block.
-        @type use_se: bool
-        @param use_se: Whether to use C{Squeeze-and-Excitation} blocks in the network. Default is C{False}.
+        """        Args:
+            width_multipliers (tuple[float, float, float, float]): Width multipliers for each stage.
+            n_conv_branches (int): Number of linear convolution branches in MobileOne block.
+            use_se (bool): Whether to use ``Squeeze-and-Excitation`` blocks in the network. Default is ``False``.
         """
         super().__init__(**kwargs)
 
@@ -150,14 +147,13 @@ class MobileOne(BaseNode):
     ) -> nn.Sequential:
         """Build a stage of MobileOne model.
 
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_blocks: int
-        @param n_blocks: Number of blocks in this stage.
-        @type n_se_blocks: int
-        @param n_se_blocks: Number of SE blocks in this stage.
-        @rtype: nn.Sequential
-        @return: A stage of MobileOne model.
+        Args:
+            out_channels (int): Number of output channels.
+            n_blocks (int): Number of blocks in this stage.
+            n_se_blocks (int): Number of SE blocks in this stage.
+
+        Returns:
+            nn.Sequential: A stage of MobileOne model.
         """
         # Get strides for all layers
         strides = [2] + [1] * (n_blocks - 1)

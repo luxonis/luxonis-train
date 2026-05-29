@@ -25,18 +25,16 @@ class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
     @staticmethod
     @abstractmethod
     def get_variants() -> tuple[str, dict[str, Params]]:
-        """Get a name of the default varaint and a dictionary of
-        available model variants with their parameters.
+        """Get the default variant name and available variants.
 
-        The keys are the variant names, and the values are dictionaries
-        of parameters which can be used as C{**kwargs} for the
-        predefined model constructor.
+        The keys are the variant names, and the values are dictionaries of
+        parameters that can be used as ``**kwargs`` for the predefined model
+        constructor.
 
-        @rtype: tuple[str, dict[str, Params]]
-        @return: A tuple containing the default variant name and a
-            dictionary of available variants with their parameters.
+        Returns:
+            tuple[str, dict[str, Params]]: Default variant name and available
+            variants with their parameters.
         """
-
     def generate_nodes(
         self,
         include_losses: bool = True,

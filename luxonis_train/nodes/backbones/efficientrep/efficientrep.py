@@ -21,9 +21,8 @@ class EfficientRep(BaseNode):
     Supports the version with RepBlock and CSPStackRepBlock (for
     larger networks)
 
-    Adapted from U{YOLOv6: A Single-Stage Object Detection Framework
-    for Industrial Applications
-    <https://arxiv.org/pdf/2209.02976.pdf>}.
+    Adapted from `YOLOv6: A Single-Stage Object Detection Framework
+    for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
 
     Variants
     ========
@@ -37,6 +36,7 @@ class EfficientRep(BaseNode):
       - "s" or "small": depth_multiplier=0.33, width_multiplier=0.50, block=RepBlock, e=None
       - "m" or "medium": depth_multiplier=0.60, width_multiplier=0.75, block=CSPStackRepBlock, e=2/3
       - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0, block=CSPStackRepBlock, e=1/2
+
     """
 
     in_channels: int
@@ -52,26 +52,13 @@ class EfficientRep(BaseNode):
         weights: str = "yolo",
         **kwargs,
     ):
-        """
-        @type channels_list: list[int] | None
-        @param channels_list: List of number of channels for each block.
-            If unspecified, defaults to [64, 128, 256, 512, 1024].
-        @type n_repeats: list[int] | None
-        @param n_repeats: List of number of repeats of RepVGGBlock. If
-            unspecified, defaults to [1, 6, 12, 18, 6].
-        @type depth_mul: float
-        @param depth_mul: Depth multiplier. If provided, overrides the
-            variant value.
-        @type width_mul: float
-        @param width_mul: Width multiplier. If provided, overrides the
-            variant value.
-        @type block: Literal["RepBlock", "CSPStackRepBlock"] | None
-        @param block: Base block used when building the backbone. If
-            provided, overrides the variant value.
-        @type csp_e: float | None
-        @param csp_e: Factor that controls number of intermediate
-            channels if block="CSPStackRepBlock". If provided, overrides
-            the variant value.
+        """        Args:
+            channels_list (list[int] | None): List of number of channels for each block. If unspecified, defaults to [64, 128, 256, 512, 1024].
+            n_repeats (list[int] | None): List of number of repeats of RepVGGBlock. If unspecified, defaults to [1, 6, 12, 18, 6].
+            depth_mul (float): Depth multiplier. If provided, overrides the variant value.
+            width_mul (float): Width multiplier. If provided, overrides the variant value.
+            block (Literal["RepBlock", "CSPStackRepBlock"] | None): Base block used when building the backbone. If provided, overrides the variant value.
+            csp_e (float | None): Factor that controls number of intermediate channels if block="CSPStackRepBlock". If provided, overrides the variant value.
         """
         super().__init__(weights=weights, **kwargs)
 

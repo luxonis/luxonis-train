@@ -34,19 +34,17 @@ class DDRNetSegmentationHead(BaseHead):
     ):
         """DDRNet segmentation head.
 
-        @see: U{Adapted from <https://github.com/Deci-AI/super-gradients/blob/master/src
-            /super_gradients/training/models/segmentation_models/ddrnet.py>}
-        @see: U{Original code <https://github.com/ydhongHIT/DDRNet>}
-        @see: U{Paper <https://arxiv.org/pdf/2101.06085.pdf>}
-        @license: U{Apache License, Version 2.0 <https://github.com/Deci-AI/super-
-            gradients/blob/master/LICENSE.md>}
-        @type inter_channels: int
-        @param inter_channels: Width of internal conv. Must be a multiple of
-            scale_factor^2 when inter_mode is pixel_shuffle. Defaults to 64.
-        @type inter_mode: str
-        @param inter_mode: Upsampling method. One of nearest, linear, bilinear, bicubic,
-            trilinear, area or pixel_shuffle. If pixel_shuffle is set, nn.PixelShuffle
-            is used for scaling. Defaults to "bilinear".
+        Args:
+            inter_channels (int): Width of internal conv. Must be a multiple of scale_factor^2 when inter_mode is pixel_shuffle. Defaults to 64.
+            inter_mode (str): Upsampling method. One of nearest, linear, bilinear, bicubic, trilinear, area or pixel_shuffle. If pixel_shuffle is set, nn.PixelShuffle is used for scaling. Defaults to "bilinear".
+
+        Notes:
+            License: `Apache License, Version 2.0 <https://github.com/Deci-AI/super- gradients/blob/master/LICENSE.md>`_
+
+        See Also:
+            `Adapted from <https://github.com/Deci-AI/super-gradients/blob/master/src /super_gradients/training/models/segmentation_models/ddrnet.py>`_
+            `Original code <https://github.com/ydhongHIT/DDRNet>`_
+            `Paper <https://arxiv.org/pdf/2101.06085.pdf>`_
         """
         super().__init__(**kwargs)
         model_in_h, model_in_w = self.original_in_shape[1:]

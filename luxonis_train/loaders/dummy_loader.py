@@ -17,11 +17,11 @@ from .base_loader import BaseLoaderTorch
 class DummyLoader(BaseLoaderTorch):
     """A dummy data loader for testing purposes.
 
-    It serves as a placeholder in place of C{LuxonisLoaderTorch} when no
-    real data is available.
+    It serves as a placeholder in place of `LuxonisLoaderTorch` when no real
+    data is available.
 
     It can be extended to be used instead of custom loaders as well by
-    overriding the C{get_label_shapes} method.
+    overriding the `get_label_shapes` method.
     """
 
     def __init__(

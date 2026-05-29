@@ -21,39 +21,34 @@ from luxonis_train.utils import IncompatibleError
 class BaseAttachedModule(
     nn.Module, ABC, metaclass=AutoRegisterMeta, register=False
 ):
-    """Base class for all modules that are attached to a L{LuxonisNode}.
+    """Base class for all modules that are attached to a `LuxonisNode`.
 
     Attached modules include losses, metrics and visualizers.
 
-    This class contains a default implementation of C{prepare} method, which
+    This class contains a default implementation of ``prepare`` method, which
     should be sufficient for most simple cases. More complex modules should
-    override the C{prepare} method.
+    override the ``prepare`` method.
 
     When subclassing, the following methods can be overridden:
-        - L{prepare}: Prepares node outputs for the forward pass of the module.
+        - `prepare`: Prepares node outputs for the forward pass of the module.
           Override this method if the default implementation is not sufficient.
 
     Additionally, the following attributes can be overridden:
-        - L{supported_tasks}: List of task types that the module supports.
+        - `supported_tasks`: List of task types that the module supports.
           Used to determine which labels to extract from the dataset and to validate
           compatibility with the node based on the node's tasks.
 
-
-    @type supported_tasks: list[Task] | None
-    @ivar supported_tasks: List of task types that the module supports.
-        Elements of the list can be either a single task type or a tuple of
-        task types. In case of the latter, the module requires all of the
-        specified labels in the tuple to be present.
+    Attributes:
+        supported_tasks (list[Task] | None): List of task types that the module supports. Elements of the list can be either a single task type or a tuple of task types. In case of the latter, the module requires all of the specified labels in the tuple to be present.
     """
 
     supported_tasks: Sequence[Task] | None = None
 
     def __init__(self, *, node: BaseNode | None = None, **kwargs):
         """
-        @type node: BaseNode
-        @param node: Reference to the node that this module is attached
-            to.
-        @param kwargs: Additional keyword arguments.
+        Args:
+            node (BaseNode): Reference to the node that this module is attached to.
+            kwargs (Any): Additional keyword arguments.
         """
         super().__init__(**kwargs)
         self._node = node
@@ -115,9 +110,8 @@ class BaseAttachedModule(
     def node(self) -> BaseNode:
         """Reference to the node that this module is attached to.
 
-        @type: L{BaseNode}
-        @raises RuntimeError: If the node was not provided during
-            initialization.
+        Raises:
+            RuntimeError: If the node was not provided during initialization.
         """
         if self._node is None:
             raise RuntimeError(
@@ -130,9 +124,9 @@ class BaseAttachedModule(
     def n_keypoints(self) -> int:
         """Getter for the number of keypoints.
 
-        @type: int
-        @raises ValueError: If the node does not support keypoints.
-        @raises RuntimeError: If the node doesn't define any task.
+        Raises:
+            ValueError: If the node does not support keypoints.
+            RuntimeError: If the node doesn't define any task.
         """
         return self.node.n_keypoints
 
@@ -140,31 +134,24 @@ class BaseAttachedModule(
     def n_classes(self) -> int:
         """Getter for the number of classes.
 
-        @type: int
-        @raises RuntimeError: If the node doesn't define any task.
-        @raises ValueError: If the number of classes is different for
-            different tasks. In that case, use the L{get_n_classes}
-            method.
+        Raises:
+            RuntimeError: If the node doesn't define any task.
+            ValueError: If the number of classes is different for different tasks. In that case, use the `get_n_classes` method.
         """
         return self.node.n_classes
 
     @property
     def original_in_shape(self) -> Size:
-        """Getter for the original input shape as [N, H, W].
-
-        @type: Size
-        """
+        """Getter for the original input shape as [N, H, W]."""
         return self.node.original_in_shape
 
     @property
     def classes(self) -> bidict[str, int]:
         """Getter for the class mapping.
 
-        @type: dict[str, int]
-        @raises RuntimeError: If the node doesn't define any task.
-        @raises ValueError: If the class names are different for
-            different tasks. In that case, use the L{get_class_names}
-            method.
+        Raises:
+            RuntimeError: If the node doesn't define any task.
+            ValueError: If the class names are different for different tasks. In that case, use the `get_class_names` method.
         """
         return self.node.classes
 

@@ -20,8 +20,8 @@ class UploadCheckpoint(pl.Callback):
 
     def __init__(self):
         """
-        @type upload_directory: str
-        @param upload_directory: Path used as upload directory.
+        Args:
+            upload_directory (str): Path used as upload directory.
         """
         super().__init__()
         self.last_best_checkpoints = set()

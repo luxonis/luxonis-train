@@ -31,18 +31,11 @@ class RecSubNet(BaseNode):
         This architecture is based on the paper:
         "Data-Efficient Image Transformers: A Deeper Look" (https://arxiv.org/abs/2108.07610).
 
-        @type out_channels: int
-        @param out_channels: Number of output channels for the decoder. Defaults to 3.
-
-        @type base_channels: int
-        @param base_channels: The base width of the network.
-            Determines the number of filters in the encoder and decoder.
-
-        @type encoder: nn.Module
-        @param encoder: The encoder block to use. Defaults to Encoder.
-
-        @type decoder: nn.Module
-        @param decoder: The decoder block to use. Defaults to Decoder.
+        Args:
+            out_channels (int): Number of output channels for the decoder. Defaults to 3.
+            base_channels (int): The base width of the network. Determines the number of filters in the encoder and decoder.
+            encoder (nn.Module): The encoder block to use. Defaults to Encoder.
+            decoder (nn.Module): The decoder block to use. Defaults to Decoder.
         """
         super().__init__(**kwargs)
         width_multipliers = width_multipliers or [1, 2, 4, 8]

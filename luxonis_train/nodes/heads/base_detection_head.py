@@ -23,16 +23,11 @@ class BaseDetectionHead(BaseHead):
         max_det: int,
         **kwargs,
     ):
-        """
-
-        @type n_heads: int
-        @param n_heads: Number of output heads.
-        @type conf_thres: float
-        @param conf_thres: Confidence threshold for NMS.
-        @type iou_thres: float
-        @param iou_thres: IoU threshold for NMS.
-        @type max_det: int
-        @param max_det: Maximum number of detections retained after NMS.
+        """        Args:
+            n_heads (int): Number of output heads.
+            conf_thres (float): Confidence threshold for NMS.
+            iou_thres (float): IoU threshold for NMS.
+            max_det (int): Maximum number of detections retained after NMS.
         """
         super().__init__(**kwargs)
 

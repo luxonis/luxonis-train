@@ -36,37 +36,25 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
         **kwargs,
     ):
         """
-        @type labels: dict[int, str] | list[str] | None
-        @param labels: Dictionary mapping class indices to class labels.
-        @type draw_labels: bool
-        @param draw_labels: Whether to draw class labels.
-        @type draw_scores: bool
-        @param draw_scores: Whether to append prediction confidence
-            scores to the rendered labels. Defaults to C{False}.
-        @type colors: dict[str, L{Color}] | list[L{Color}] | None
-        @param colors: Dictionary mapping class labels to colors.
-        @type fill: bool
-        @param fill: Whether to fill bounding boxes.
-        @type width: int | None
-        @param width: Width of the bounding box lines.
-        @type font: str | None
-        @param font: TrueType font filename.
-        @type font_size: int | None
-        @param font_size: Font size for labels.
-        @type alpha: float
-        @param alpha: Alpha value for segmentation masks.
-        @type visibility_threshold: float
-        @param visibility_threshold: Threshold for keypoint visibility.
-        @type connectivity: list[tuple[int, int]] | None
-        @param connectivity: Keypoint skeleton connections.
-        @type visible_color: L{Color}
-        @param visible_color: Color for visible keypoints.
-        @type nonvisible_color: L{Color} | None
-        @param nonvisible_color: Color for non-visible keypoints.
-        @type radius: int | None
-        @param radius: Keypoint radius.
-        @type draw_indices: bool
-        @param draw_indices: Whether to draw keypoint indices.
+    Args:
+            labels (dict[int, str] | list[str] | None): Dictionary mapping class indices to class
+                labels.
+            draw_labels (bool): Whether to draw class labels.
+            draw_scores (bool): Whether to append prediction confidence scores to the rendered
+                labels. Defaults to ``False``.
+            colors (dict[str, `Color`] | list[`Color`] | None): Dictionary mapping class labels to
+                colors.
+            fill (bool): Whether to fill bounding boxes.
+            width (int | None): Width of the bounding box lines.
+            font (str | None): TrueType font filename.
+            font_size (int | None): Font size for labels.
+            alpha (float): Alpha value for segmentation masks.
+            visibility_threshold (float): Threshold for keypoint visibility.
+            connectivity (list[tuple[int, int]] | None): Keypoint skeleton connections.
+            visible_color (`Color`): Color for visible keypoints.
+            nonvisible_color (`Color` | None): Color for non-visible keypoints.
+            radius (int | None): Keypoint radius.
+            draw_indices (bool): Whether to draw keypoint indices.
         """
         super().__init__(**kwargs)
 

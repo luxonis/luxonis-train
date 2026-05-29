@@ -17,17 +17,17 @@ class EfficientNet(BaseNode):
 
         EfficientNet is a convolutional neural network architecture and scaling method that uniformly scales all dimensions of depth/width/resolution using a compound coefficient. Unlike conventional practice that arbitrary scales these factors, the EfficientNet scaling method uniformly scales network width, depth, and resolution with a set of fixed scaling coefficients.
 
-        Source: U{https://github.com/rwightman/gen-efficientnet-pytorch}
+        Source: `https://github.com/rwightman/gen-efficientnet-pytorch <https://github.com/rwightman/gen-efficientnet-pytorch>`_
 
-        @license: U{Apache License, Version 2.0
-            <https://github.com/rwightman/gen-efficientnet-pytorch/blob/master/LICENSE>}
+        Args:
+            out_indices (list[int] | None): Indices of the output layers. Defaults to [0, 1, 2, 4, 6].
 
-        @see: U{https://paperswithcode.com/method/efficientnet}
-        @see: U{EfficientNet: Rethinking Model Scaling for
-            Convolutional Neural Networks
-            <https://arxiv.org/abs/1905.11946>}
-        @type out_indices: list[int] | None
-        @param out_indices: Indices of the output layers. Defaults to [0, 1, 2, 4, 6].
+        Notes:
+            License: `Apache License, Version 2.0 <https://github.com/rwightman/gen-efficientnet-pytorch/blob/master/LICENSE>`_
+
+        See Also:
+            `https://paperswithcode.com/method/efficientnet <https://paperswithcode.com/method/efficientnet>`_
+            `EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks <https://arxiv.org/abs/1905.11946>`_
         """
         super().__init__(**kwargs)
 

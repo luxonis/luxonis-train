@@ -173,11 +173,11 @@ class MedianDistances(BaseMetric):
 def _get_pairwise_distances(embeddings: Tensor) -> Tensor:
     """Compute the 2D matrix of distances between all the embeddings.
 
-    @type embeddings: Tensor
-    @param embeddings: Tensor of shape (batch_size, embed_dim)
-    @rtype: Tensor
-    @return: pairwise_distances: tensor of shape (batch_size,
-        batch_size)
+    Args:
+        embeddings (Tensor): Tensor of shape (batch_size, embed_dim)
+
+    Returns:
+        Tensor: pairwise_distances: tensor of shape (batch_size, batch_size)
     """
     dot_product = embeddings @ embeddings.T
 

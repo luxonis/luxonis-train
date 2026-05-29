@@ -24,15 +24,11 @@ class DiceCoefficient(BaseMetric):
         **kwargs,
     ):
         """
-        @type num_classes: int
-        @param num_classes: Number of classes.
-        @type include_background: bool
-        @param include_background: Whether to include the background
-            class.
-        @type average: Literal["micro", "macro", "weighted", "none"]
-        @param average: Type of averaging.
-        @type input_format: Literal["one-hot", "index"]
-        @param input_format: Format of the input.
+    Args:
+            num_classes (int): Number of classes.
+            include_background (bool): Whether to include the background class.
+            average (Literal["micro", "macro", "weighted", "none"]): Type of averaging.
+            input_format (Literal["one-hot", "index"]): Format of the input.
         """
         super().__init__(**kwargs)
         self.input_format = input_format

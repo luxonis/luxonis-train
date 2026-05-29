@@ -14,19 +14,17 @@ class TrainingProgressCallback(pl.Callback):
     """Publish training progress metrics.
 
     Metrics published:
-        - C{train/epoch_progress_percent}: Percentage of current epoch completed
-        - C{train/epoch_duration_sec}: Time elapsed so far in current epoch (updated per batch)
-        - C{train/epoch_completion_sec}: Total duration of completed training epoch in seconds
-        - C{val/epoch_completion_sec}: Total duration of completed validation epoch in seconds
+        - ``train/epoch_progress_percent``: Percentage of current epoch completed
+        - ``train/epoch_duration_sec``: Time elapsed so far in current epoch (updated per batch)
+        - ``train/epoch_completion_sec``: Total duration of completed training epoch in seconds
+        - ``val/epoch_completion_sec``: Total duration of completed validation epoch in seconds
+
     """
 
     def __init__(self, log_every_n_batches: int = 1):
         """
-        @type log_every_n_batches: int
-        @param log_every_n_batches: How often to log progress metrics
-        (every N batches). Can be set to higher to prevent logging
-        in real-time if there is too much logging overhead.
-        By default 1 means real-time.
+        Args:
+            log_every_n_batches (int): How often to log progress metrics (every N batches). Can be set to higher to prevent logging in real-time if there is too much logging overhead. By default 1 means real-time.
         """
         super().__init__()
         self.log_every_n_batches = max(1, log_every_n_batches)

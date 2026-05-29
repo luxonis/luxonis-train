@@ -42,10 +42,11 @@ def compute_mcc(cm: Tensor) -> Tensor:
     """Compute the Matthews correlation coefficient from a confusion
     matrix.
 
-    @type cm: Tensor
-    @param cm: Confusion matrix.
-    @rtype: Tensor
-    @return: Matthews correlation coefficient.
+    Args:
+        cm (Tensor): Confusion matrix.
+
+    Returns:
+        Tensor: Matthews correlation coefficient.
     """
     N = cm.sum()
     if N == 0:

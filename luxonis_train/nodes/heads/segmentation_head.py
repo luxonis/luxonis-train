@@ -22,9 +22,10 @@ class SegmentationHead(BaseHead):
 
     def __init__(self, **kwargs: Any):
         """
-        Adapted from: U{https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py}.
+        Adapted from: `https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py <https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py>`_.
 
-        @license: U{BSD-3 <https://github.com/pytorch/vision/blob/main/LICENSE>}
+        Notes:
+            License: `BSD-3 <https://github.com/pytorch/vision/blob/main/LICENSE>`_
         """
         super().__init__(**kwargs)
         h, w = self.original_in_shape[1:]

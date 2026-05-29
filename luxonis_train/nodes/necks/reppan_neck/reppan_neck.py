@@ -17,8 +17,8 @@ class RepPANNeck(BaseNode):
 
     Supports the version with RepBlock and CSPStackRepBlock (for larger networks)
 
-    Adapted from U{YOLOv6: A Single-Stage Object Detection Framework
-    for Industrial Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
+    Adapted from `YOLOv6: A Single-Stage Object Detection Framework
+    for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
     It has the balance of feature fusion ability and hardware efficiency.
 
     Variants
@@ -29,6 +29,7 @@ class RepPANNeck(BaseNode):
         - "s" or "small": depth_multiplier=0.33, width_multiplier=0.50, block=RepBlock
         - "m" or "medium": depth_multiplier=0.60, width_multiplier=0.75, block=CSPStackRepBlock, e=2/3
         - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0, block=CSPStackRepBlock, e=1/2
+
     """
 
     in_channels: list[int]
@@ -47,26 +48,14 @@ class RepPANNeck(BaseNode):
         weights: str = "yolo",
         **kwargs,
     ):
-        """
-        @type n_heads: Literal[2,3,4]
-        @param n_heads: Number of output heads. Defaults to 3. B{Note: Should be same
-            also on head in most cases.}
-        @type channels_list: list[int] | None
-        @param channels_list: List of number of channels for each block.
-            Defaults to C{[256, 128, 128, 256, 256, 512]}.
-        @type n_repeats: list[int] | None
-        @param n_repeats: List of number of repeats of RepVGGBlock.
-            Defaults to C{[12, 12, 12, 12]}.
-        @type depth_multiplier: float
-        @param depth_multiplier: Depth multiplier. Defaults to C{0.33} ("n" variant).
-        @type width_multiplier: float
-        @param width_muliplier: Width multiplier. Defaults to C{0.25} ("n" variant).
-        @type block: Literal["RepBlock", "CSPStackRepBlock"]
-        @param block: Base block used when building the backbone.
-            Defaults to C{"RepBlock"} ("n" variant).
-        @tpe e: float | None
-        @param e: Factor that controls number of intermediate channels.
-            Only used when block="CSPStackRepBlock". Defaults to C{None}.
+        """        Args:
+            n_heads (Literal[2,3,4]): Number of output heads. Defaults to 3. B{Note: Should be same also on head in most cases.}
+            channels_list (list[int] | None): List of number of channels for each block. Defaults to ``[256, 128, 128, 256, 256, 512]``.
+            n_repeats (list[int] | None): List of number of repeats of RepVGGBlock. Defaults to ``[12, 12, 12, 12]``.
+            depth_multiplier (float): Depth multiplier. Defaults to ``0.33`` ("n" variant).
+            width_muliplier (Any): Width multiplier. Defaults to ``0.25`` ("n" variant).
+            block (Literal["RepBlock", "CSPStackRepBlock"]): Base block used when building the backbone. Defaults to ``"RepBlock"`` ("n" variant). @tpe e: float | None
+            e (Any): Factor that controls number of intermediate channels. Only used when block="CSPStackRepBlock". Defaults to ``None``.
         """
         super().__init__(weights=weights, **kwargs)
 

@@ -10,15 +10,18 @@ def get_sigmas(
 ) -> Tensor:
     """Validate or create sigma values for each keypoint.
 
-    @type sigmas: list[float] | None
-    @param sigmas: List of sigmas for each keypoint. If C{None}, then
-        default sigmas are used.
-    @type n_keypoints: int
-    @param n_keypoints: Number of keypoints.
-    @type caller_name: str | None
-    @param caller_name: Name of the caller function. Used for logging.
-    @rtype: Tensor
-    @return: Tensor of sigmas.
+    Args:
+        sigmas (list[float] | None): Sigma values for each keypoint. If
+            ``None``, default sigmas are used.
+        n_keypoints (int): Number of keypoints.
+        caller_name (str | None): Name of the caller function, used for
+            logging. Defaults to ``None``.
+
+    Returns:
+        Tensor: Sigma tensor.
+
+    Raises:
+        ValueError: If `sigmas` length differs from `n_keypoints`.
     """
     if sigmas is not None:
         if len(sigmas) == n_keypoints:
@@ -66,14 +69,15 @@ def get_center_keypoints(
 ) -> Tensor:
     """Get center keypoints from bounding boxes.
 
-    @type bboxes: Tensor
-    @param bboxes: Tensor of bounding boxes.
-    @type height: int
-    @param height: Image height. Defaults to C{1} (normalized).
-    @type width: int
-    @param width: Image width. Defaults to C{1} (normalized).
-    @rtype: Tensor
-    @return: Tensor of center keypoints.
+    Args:
+        bboxes (Tensor): Bounding box tensor.
+        height (int): Image height. Defaults to ``1`` for normalized
+            coordinates.
+        width (int): Image width. Defaults to ``1`` for normalized
+            coordinates.
+
+    Returns:
+        Tensor: Center keypoint tensor.
     """
     keypoints = torch.full(
         (bboxes.shape[0], 4), 2, device=bboxes.device, dtype=bboxes.dtype
@@ -87,12 +91,12 @@ def get_center_keypoints(
 def insert_class(keypoints: Tensor, bboxes: Tensor) -> Tensor:
     """Insert class index into keypoints tensor.
 
-    @type keypoints: Tensor
-    @param keypoints: Tensor of keypoints.
-    @type bboxes: Tensor
-    @param bboxes: Tensor of bounding boxes with class index.
-    @rtype: Tensor
-    @return: Tensor of keypoints with class index.
+    Args:
+        keypoints (Tensor): Keypoint tensor.
+        bboxes (Tensor): Bounding box tensor with class index.
+
+    Returns:
+        Tensor: Keypoint tensor with class index inserted.
     """
     classes = bboxes[:, 1]
     return torch.cat(
@@ -115,31 +119,32 @@ def compute_pose_oks(
     area_factor: float = 0.53,
     use_cocoeval_oks: bool = True,
 ) -> Tensor:
-    """Compute batched Object Keypoint Similarity (OKS) between ground
-    truth and predicted keypoints.
+    """Compute batched Object Keypoint Similarity between keypoints.
 
-    @type pred_kpts: Tensor
-    @param pred_kpts: Predicted keypoints with shape [N, M2,
-        n_keypoints, 3]
-    @type gt_kpts: Tensor
-    @param gt_kpts: Ground truth keypoints with shape [N, M1,
-        n_keypoints, 3]
-    @type sigmas: Tensor
-    @param sigmas: Sigmas for each keypoint, shape [n_keypoints]
-    @type gt_bboxes: Tensor
-    @param gt_bboxes: Ground truth bounding boxes in XYXY format with
-        shape [N, M1, 4]
-    @type pose_area: Tensor
-    @param pose_area: Area of the pose, shape [N, M1, 1, 1]
-    @type eps: float
-    @param eps: A small constant to ensure numerical stability
-    @type area_factor: float
-    @param area_factor: Factor to scale the area of the pose
-    @type use_cocoeval_oks: bool
-    @param use_cocoeval_oks: Whether to use the same OKS formula as in
-        COCOEval or use the one from the definition. Defaults to True.
-    @rtype: Tensor
-    @return: A tensor of OKS values with shape [N, M1, M2]
+    Args:
+        predictions (Tensor): Predicted keypoints with shape
+            ``[N, M2, n_keypoints, 3]``.
+        targets (Tensor): Ground-truth keypoints with shape
+            ``[N, M1, n_keypoints, 3]``.
+        sigmas (Tensor): Sigma values for each keypoint, with shape
+            ``[n_keypoints]``.
+        gt_bboxes (Tensor | None): Ground-truth bounding boxes in ``xyxy``
+            format with shape ``[N, M1, 4]``. Required when `pose_area` is
+            ``None``. Defaults to ``None``.
+        pose_area (Tensor | None): Pose area with shape ``[N, M1, 1, 1]``.
+            Defaults to ``None``.
+        eps (float): Small constant for numerical stability. Defaults to
+            ``1e-9``.
+        area_factor (float): Factor used to scale pose area. Defaults to
+            ``0.53``.
+        use_cocoeval_oks (bool): Whether to use the COCOEval OKS formula
+            instead of the original definition. Defaults to ``True``.
+
+    Returns:
+        Tensor: OKS values with shape ``[N, M1, M2]``.
+
+    Raises:
+        ValueError: If neither `pose_area` nor `gt_bboxes` is provided.
     """
     if pose_area is None:
         if gt_bboxes is None:

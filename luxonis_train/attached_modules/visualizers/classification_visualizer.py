@@ -29,12 +29,11 @@ class ClassificationVisualizer(BaseVisualizer):
     ):
         """Visualizer for classification tasks.
 
-        @type include_plot: bool
-        @param include_plot: Whether to include a plot of the class
-            probabilities in the visualization. Defaults to C{True}.
-        @type font_scale: float | None = None,
-        @param font_scale: Font scale for text. If None, scales
-            proportionally to the image height and width
+        Args:
+            include_plot (bool): Whether to include a plot of the class probabilities in the
+                visualization. Defaults to ``True``.
+            font_scale (float | None): Font scale for text. If None, scales proportionally
+                to the image height and width
         """
         super().__init__(**kwargs)
         self.include_plot = include_plot
