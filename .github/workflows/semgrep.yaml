@@ -24,7 +24,7 @@ jobs:
     steps:
       # Fetch project source with GitHub Actions Checkout.
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Perform Semgrep Analysis
         # @NOTE: This is the actual semgrep command to scan your code.
