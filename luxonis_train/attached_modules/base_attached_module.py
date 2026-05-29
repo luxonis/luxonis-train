@@ -49,8 +49,7 @@ class BaseAttachedModule(
     supported_tasks: Sequence[Task] | None = None
 
     def __init__(self, *, node: BaseNode | None = None, **kwargs):
-        """Constructor for teh C{BaseAttachedModule}
-
+        """
         @type node: BaseNode
         @param node: Reference to the node that this module is attached
             to.

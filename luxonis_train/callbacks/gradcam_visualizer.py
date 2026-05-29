@@ -21,8 +21,7 @@ class PLModuleWrapper(pl.LightningModule):
     def __init__(
         self, pl_module: "lxt.LuxonisLightningModule", task: str
     ) -> None:
-        """Constructs `ModelWrapper`.
-
+        """
         @type pl_module: LuxonisLightningModule
         @param pl_module: The model to be wrapped.
         @type task: str
@@ -84,8 +83,7 @@ class GradCamCallback(pl.Callback):
         log_n_batches: int = 1,
         task: str = "classification",
     ) -> None:
-        """Constructs `GradCamCallback`.
-
+        """
         @type target_layer: int
         @param target_layer: Layer to visualize gradients.
         @type class_idx: int | None
@@ -108,7 +106,7 @@ class GradCamCallback(pl.Callback):
         pl_module: "lxt.LuxonisLightningModule",
         stage: str,
     ) -> None:
-        """Initializes the model wrapper.
+        """Initialize the model wrapper.
 
         @type trainer: pl.Trainer
         @param trainer: The PyTorch Lightning trainer.

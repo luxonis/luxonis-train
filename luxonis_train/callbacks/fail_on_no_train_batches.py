@@ -6,7 +6,8 @@ from lightning.fabric.utilities.data import sized_len
 
 class FailOnNoTrainBatches(pl.Callback):
     """Handles cases where number of training batches is 0 either due to
-    too large effective batch size or skipping the last batch."""
+    too large effective batch size or skipping the last batch.
+    """
 
     def on_fit_start(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule

@@ -100,7 +100,7 @@ class VariantBase(ABC, metaclass=VariantMeta, register=False):
     @staticmethod
     @abstractmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
-        """Returns a name of the default varaint and a dictionary of
+        """Get the name of the default varaint and a dictionary of
         available variants.
 
         The keys are the variant names, and the values are dictionaries
@@ -118,7 +118,7 @@ def add_variant_aliases(
     variants: dict[str, Kwargs],
     aliases: dict[str, Collection[str]] | Literal["yolo"] = "yolo",
 ) -> dict[str, Kwargs]:
-    """Adds yolo-style aliases to the variants dictionary."""
+    """Add yolo-style aliases to the variants dictionary."""
     if aliases == "yolo":
         aliases = {
             "tiny": ["t"],

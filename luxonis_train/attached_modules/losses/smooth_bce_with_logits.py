@@ -51,7 +51,7 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
         )
 
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
-        """Computes the BCE loss with label smoothing.
+        """Compute the BCE loss with label smoothing.
 
         @type predictions: Tensor
         @param predictions: Network predictions of shape (N, C, ...)

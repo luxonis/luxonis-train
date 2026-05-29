@@ -21,7 +21,7 @@ class OCRVisualizer(BaseVisualizer):
         thickness: int = 1,
         **kwargs,
     ):
-        """Initializes the OCR visualizer.
+        """Initialize the OCR visualizer.
 
         @type font_scale: float
         @param font_scale: Font scale of the text. Defaults to C{0.5}.
@@ -42,7 +42,7 @@ class OCRVisualizer(BaseVisualizer):
         predictions: Tensor,
         targets: Tensor | None,
     ) -> tuple[Tensor, Tensor]:
-        """Creates a visualization of the OCR predictions and labels.
+        """Create a visualization of the OCR predictions and labels.
 
         @type label_canvas: Tensor
         @param label_canvas: The canvas to draw the labels on.

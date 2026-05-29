@@ -153,7 +153,6 @@ class KeypointVisualizer(BBoxVisualizer):
         Text is centered around each keypoint, so offsets behave
         symmetrically.
         """
-
         ndarr = canvas.permute(1, 2, 0).detach().cpu().numpy()
         img = Image.fromarray(ndarr)
         draw = ImageDraw.Draw(img)

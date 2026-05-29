@@ -12,11 +12,12 @@ from luxonis_train.nodes.blocks import (
 
 
 class PANUpBlockBase(ABC, nn.Module):
+    """Base RepPANNeck up block."""
+
     def __init__(
         self, in_channels: int, out_channels: int, encode_block: nn.Module
     ):
-        """Base RepPANNeck up block.
-
+        """
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type out_channels: int
@@ -118,14 +119,15 @@ class CSPUpBlock(PANUpBlockBase):
 
 
 class PANDownBlockBase(ABC, nn.Module):
+    """Base RepPANNeck down block."""
+
     def __init__(
         self,
         in_channels: int,
         downsample_out_channels: int,
         encode_block: nn.Module,
     ):
-        """Base RepPANNeck up block.
-
+        """
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type downsample_out_channels: int

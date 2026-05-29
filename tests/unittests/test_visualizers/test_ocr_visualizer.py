@@ -21,7 +21,8 @@ class DummyOCRNode(OCRCTCHead, register=False):
 
     def decoder(self, predictions: Tensor):
         """For this test, just treat each non-zero int as an ASCII
-        character, then return a dummy probability of 1.0."""
+        character, then return a dummy probability of 1.0.
+        """
         results = []
         for row in predictions:
             row = row[row != 0]

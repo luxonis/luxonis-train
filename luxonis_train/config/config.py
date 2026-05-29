@@ -465,7 +465,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
         return data
 
     def get_active_augmentations(self) -> list[AugmentationConfig]:
-        """Returns list of augmentations that are active.
+        """Get a list of augmentations that are active.
 
         @rtype: list[AugmentationConfig]
         @return: Filtered list of active augmentation configs
@@ -623,7 +623,8 @@ class TrainerConfig(BaseModelExtraForbid):
     @model_validator(mode="after")
     def reorder_callbacks(self) -> Self:
         """Reorder callbacks so that EMA is the first callback, since it
-        needs to be updated before other callbacks."""
+        needs to be updated before other callbacks.
+        """
         self.callbacks.sort(key=lambda v: 0 if v.name == "EMACallback" else 1)
         return self
 
@@ -890,7 +891,8 @@ class Config(LuxonisConfig):
 
     def smart_auto_populate(self) -> Self:
         """Automatically populates config fields based on rules, with
-        warnings."""
+        warnings.
+        """
         # Rule: Mosaic4 should have out_width and out_height
         # matching train_image_size if not provided
         for augmentation in self.trainer.preprocessing.augmentations:

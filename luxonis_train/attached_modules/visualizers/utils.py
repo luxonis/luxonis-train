@@ -55,7 +55,7 @@ def get_prediction_labels(
 
 
 def figure_to_torch(fig: Figure, width: int, height: int) -> Tensor:
-    """Converts a matplotlib `Figure` to a `Tensor`."""
+    """Convert a matplotlib `Figure` to a `Tensor`."""
     buf = io.BytesIO()
     fig.savefig(buf, format="png", bbox_inches="tight", pad_inches=0)
     buf.seek(0)
@@ -70,7 +70,7 @@ def figure_to_torch(fig: Figure, width: int, height: int) -> Tensor:
 def torch_img_to_numpy(
     img: Tensor, reverse_colors: bool = False
 ) -> npt.NDArray[np.uint8]:
-    """Converts a torch image (CHW) to a numpy array (HWC).
+    """Convert a torch image (CHW) to a numpy array (HWC).
 
     @type img: Tensor
     @param img: Torch image (CHW)
@@ -91,7 +91,7 @@ def torch_img_to_numpy(
 
 
 def numpy_to_torch_img(img: np.ndarray) -> Tensor:
-    """Converts numpy image (HWC) to torch image (CHW)."""
+    """Convert numpy image (HWC) to torch image (CHW)."""
     return torch.from_numpy(img).permute(2, 0, 1)
 
 
@@ -100,7 +100,7 @@ def preprocess_images(
     mean: list[float] | float | None = None,
     std: list[float] | float | None = None,
 ) -> Tensor:
-    """Performs preprocessing on a batch of images.
+    """Perform preprocessing on a batch of images.
 
     Preprocessing includes denormalizing and converting to uint8.
 
@@ -264,7 +264,7 @@ def hsl_to_rgb(hsl: tuple[float, float, float]) -> Color:
 
 
 def get_color(seed: int) -> Color:
-    """Generates a random color from a seed.
+    """Generate a random color from a seed.
 
     @type seed: int
     @param seed: Seed to use for the generator.
@@ -362,7 +362,8 @@ def combine_visualizations(
     | tuple[Tensor, list[Tensor]],
 ) -> Tensor:
     """Default way of combining multiple visualizations into one final
-    image."""
+    image.
+    """
 
     def resize_to_match(
         fst: Tensor,

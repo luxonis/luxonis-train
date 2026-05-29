@@ -156,11 +156,6 @@ class PrecisionBBoxHead(BaseDetectionHead):
 
     @override
     def get_custom_head_config(self) -> Params:
-        """Returns custom head configuration.
-
-        @rtype: dict
-        @return: Custom head configuration.
-        """
         return super().get_custom_head_config() | {"subtype": "yolov8"}
 
     def _construct_raw_bboxes(
@@ -180,7 +175,8 @@ class PrecisionBBoxHead(BaseDetectionHead):
         self, classes_list: list[Tensor], regressions_list: list[Tensor]
     ) -> Tensor:
         """Perform inference on predicted bounding boxes and class
-        probabilities."""
+        probabilities.
+        """
         raw_bboxes = self._construct_raw_bboxes(classes_list, regressions_list)
         bbox_distributions = []
         class_probabilities = []

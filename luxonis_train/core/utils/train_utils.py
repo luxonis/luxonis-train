@@ -6,7 +6,7 @@ from luxonis_train.config import TrainerConfig
 
 
 def create_trainer(cfg: TrainerConfig, **kwargs: Any) -> pl.Trainer:
-    """Creates Pytorch Lightning trainer.
+    """Create Pytorch Lightning trainer.
 
     @type cfg: Config
     @param cfg: Configuration object.

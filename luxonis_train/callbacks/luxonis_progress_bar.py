@@ -42,7 +42,7 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
         metrics: Mapping[str, Mapping[str, int | str | float]],
         matrices: Mapping[str, Mapping[str, Mapping[str, Any]]],
     ) -> None:
-        """Prints results to the console.
+        """Print the results to the console.
 
         This includes the stage name, loss value, and tables with
         metrics.
@@ -112,7 +112,8 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
 @CALLBACKS.register()
 class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
     """Custom text progress bar based on TQDMProgressBar from Pytorch
-    Lightning."""
+    Lightning.
+    """
 
     def __init__(self):
         super().__init__(leave=True)
@@ -157,7 +158,7 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
         key_name: str = "Name",
         value_name: str = "Value",
     ) -> None:
-        """Prints table to the console using tabulate.
+        """Print a table to the console using tabulate.
 
         @type title: str
         @param title: Title of the table
@@ -217,7 +218,8 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
 @CALLBACKS.register()
 class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
     """Custom rich text progress bar based on RichProgressBar from
-    Pytorch Lightning."""
+    Pytorch Lightning.
+    """
 
     def __init__(self):
         super().__init__(leave=True)
@@ -301,7 +303,7 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
         value_name: str = "Value",
         console: Console | None = None,
     ) -> None:
-        """Prints table to the console using rich text.
+        """Print a table to the console using rich text.
 
         @type title: str
         @param title: Title of the table

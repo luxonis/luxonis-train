@@ -15,13 +15,13 @@ from luxonis_train.registry import CALLBACKS
 @CALLBACKS.register()
 class UploadCheckpoint(pl.Callback):
     """Callback that uploads best checkpoint based on the validation
-    loss."""
+    loss.
+    """
 
     def __init__(self):
-        """Constructs `UploadCheckpoint`.
-
+        """
         @type upload_directory: str
-        @param upload_directory: Path used as upload directory
+        @param upload_directory: Path used as upload directory.
         """
         super().__init__()
         self.last_best_checkpoints = set()

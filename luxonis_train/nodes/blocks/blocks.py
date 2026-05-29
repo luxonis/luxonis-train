@@ -136,7 +136,7 @@ class SegProto(nn.Sequential):
     def __init__(
         self, in_channels: int, mid_channels: int = 256, out_channels: int = 32
     ):
-        """Initializes the segmentation prototype generator.
+        """Initialize the segmentation prototype generator.
 
         @type in_channels: int
         @param in_channels: Number of input channels.
@@ -182,11 +182,14 @@ class SegProto(nn.Sequential):
 
 
 class DFL(nn.Module):
+    """The DFL (Distribution Focal Loss) module processes input tensors
+    by applying softmax over a specified dimension and projecting the
+    resulting tensor to produce output logits.
+    """
+
     @typechecked
     def __init__(self, reg_max: int = 16):
-        """The DFL (Distribution Focal Loss) module processes input
-        tensors by applying softmax over a specified dimension and
-        projecting the resulting tensor to produce output logits.
+        """
 
         @type reg_max: int
         @param reg_max: Maximum number of regression outputs. Defaults
@@ -242,8 +245,8 @@ class ConvBlock(nn.Module):
         @type bias: bool
         @param bias: Whether to use bias. Defaults to False.
         @type activation: L{nn.Module} | None | bool
-        @param activation: Activation function. Defaults to `nn.Relu`
-            if not explicitly set to C{None} or C{False}.
+        @param activation: Activation function. Defaults to `nn.ReLu` if
+            not explicitly set to C{None} or C{False}.
         @type use_norm: bool
         @param use_norm: Whether to use batch normalization. Defaults to
             True.
@@ -580,13 +583,19 @@ class GeneralReparametrizableBlock(Reparametrizable):
 
 
 class BlockRepeater(nn.Sequential):
+    """Module which repeats a given block n times.
+
+    If the block has an `out_channels` and `in_channels` argument, the
+    `in_channels` of the next block will be set to the `out_channels` of
+    the previous block. This allows for repeating blocks which change
+    the number of channels.
+    """
+
     @typechecked
     def __init__(
         self, module: Callable[..., nn.Module], /, *, n_repeats: int, **kwargs
     ):
-        """Module which repeats the block n times. First block accepts
-        in_channels and outputs out_channels while subsequent blocks.
-
+        """
         @type module: C{type[nn.Module]}
         @param module: Module to repeat.
         @type n_repeats: int
@@ -606,6 +615,11 @@ class BlockRepeater(nn.Sequential):
 
 
 class CSPStackRepBlock(nn.Module):
+    """Module composed of three 1x1 conv layers and a stack of sub-
+    blocks consisting of two RepVGG blocks with a residual
+    connection.
+    """
+
     @typechecked
     def __init__(
         self,
@@ -614,10 +628,7 @@ class CSPStackRepBlock(nn.Module):
         n_blocks: int = 1,
         e: float = 0.5,
     ):
-        """Module composed of three 1x1 conv layers and a stack of sub-
-        blocks consisting of two RepVGG blocks with a residual
-        connection.
-
+        """
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type out_channels: int

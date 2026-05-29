@@ -7,7 +7,8 @@ from typeguard import typechecked
 
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.registry import LOSSES
-from luxonis_train.typing import Labels, Packet, get_signature
+from luxonis_train.typing import Labels, Packet
+from luxonis_train.utils import get_signature
 
 
 class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
@@ -49,9 +50,8 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
     def run(
         self, inputs: Packet[Tensor], labels: Labels
     ) -> Tensor | tuple[Tensor, dict[str, Tensor]]:
-        """Calls the loss function.
-
-        Validates and prepares the inputs, then calls the loss function.
+        """Call the loss function after validating and preparing the
+        inputs.
 
         @type inputs: Packet[Tensor]
         @param inputs: Outputs from the node.

@@ -13,7 +13,7 @@ class OCRDecoder:
         ignored_tokens: list[int] | None = None,
         is_remove_duplicate: bool = True,
     ):
-        """Initializes the OCR decoder.
+        """Initialize the OCR decoder.
 
         @type char_to_int: dict
         @param char_to_int: A dictionary mapping characters to integers.
@@ -31,7 +31,7 @@ class OCRDecoder:
         self.is_remove_duplicate = is_remove_duplicate
 
     def decode(self, preds: Tensor) -> list[tuple[str, float]]:
-        """Decodes the model predictions to text.
+        """Decode the model predictions to text.
 
         @type preds: Tensor
         @param preds: A tensor containing the model predictions.
@@ -77,7 +77,7 @@ class OCREncoder:
     """OCR encoder for converting text to model targets."""
 
     def __init__(self, alphabet: list[str], ignore_unknown: bool = True):
-        """Initializes the OCR encoder.
+        """Initialize the OCR encoder.
 
         @type alphabet: list[str]
         @param alphabet: A list of characters in the alphabet.
@@ -94,7 +94,7 @@ class OCREncoder:
             self.char_to_int["<UNK>"] = len(self.char_to_int)
 
     def encode(self, targets: Tensor) -> Tensor:
-        """Encodes the text targets to model targets.
+        """Encode the text targets to model targets.
 
         @type targets: list[int]
         @param targets: A list of text targets.

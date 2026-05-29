@@ -9,6 +9,15 @@ from .base_loss import BaseLoss
 
 
 class BCEWithLogitsLoss(BaseLoss):
+    """Combines a L{nn.Sigmoid} layer and the L{nn.BCELoss} in one
+    single class.
+
+    This version is more numerically stable than using a plain
+    C{Sigmoid} followed by a {BCELoss} as, by combining the operations
+    into one layer, we take advantage of the log-sum-exp trick for
+    numerical stability.
+    """
+
     supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 
     def __init__(
@@ -18,11 +27,7 @@ class BCEWithLogitsLoss(BaseLoss):
         pos_weight: Tensor | None = None,
         **kwargs,
     ):
-        """This loss combines a L{nn.Sigmoid} layer and the
-        L{nn.BCELoss} in one single class. This version is more
-        numerically stable than using a plain C{Sigmoid} followed by a
-        {BCELoss} as, by combining the operations into one layer, we
-        take advantage of the log-sum-exp trick for numerical stability.
+        """
 
         @type weight: list[float] | None
         @param weight: a manual rescaling weight given to the loss of
@@ -58,7 +63,7 @@ class BCEWithLogitsLoss(BaseLoss):
         )
 
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
-        """Computes the BCE loss from logits.
+        """Compute the BCE loss from logits.
 
         @type predictions: Tensor
         @param predictions: Network predictions of shape (N, C, ...)

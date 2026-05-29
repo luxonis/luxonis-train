@@ -8,8 +8,9 @@ def compute_ratio_and_padding(
     train_size: tuple[int, int],
     keep_aspect_ratio: bool,
 ) -> tuple[float | None, float, float]:
-    """Computes the ratio and padding needed to transform bounding
-    boxes, keypoints, and masks."""
+    """Compute the ratio and padding needed to transform bounding boxes,
+    keypoints, and masks.
+    """
     train_h, train_w = train_size
     if keep_aspect_ratio:
         ratio = min(train_h / orig_h, train_w / orig_w)
@@ -28,8 +29,9 @@ def transform_boxes(
     train_size: tuple[int, int],
     keep_aspect_ratio: bool,
 ) -> np.ndarray:
-    """Transforms raw bounding boxes to normalized coordinates based on
-    the original image size and training size."""
+    """Transform raw bounding boxes to normalized coordinates based on
+    the original image size and training size.
+    """
     ratio, pad_x, pad_y = compute_ratio_and_padding(
         orig_h, orig_w, train_size, keep_aspect_ratio
     )
@@ -54,8 +56,9 @@ def transform_keypoints(
     train_size: tuple[int, int],
     keep_aspect_ratio: bool,
 ) -> np.ndarray:
-    """Transforms raw keypoints to normalized coordinates based on the
-    original image size and training size."""
+    """Transform raw keypoints to normalized coordinates based on the
+    original image size and training size.
+    """
     ratio, pad_x, pad_y = compute_ratio_and_padding(
         orig_h, orig_w, train_size, keep_aspect_ratio
     )
@@ -78,8 +81,9 @@ def transform_masks(
     train_size: tuple[int, int],
     keep_aspect_ratio: bool,
 ) -> np.ndarray:
-    """Transforms raw masks to normalized size based on the original
-    image size and training size."""
+    """Transform raw masks to normalized size based on the original
+    image size and training size.
+    """
     ratio, pad_x, pad_y = compute_ratio_and_padding(
         orig_h, orig_w, train_size, keep_aspect_ratio
     )

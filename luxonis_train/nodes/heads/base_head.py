@@ -47,7 +47,7 @@ class BaseHead(BaseNode):
         }
 
     def get_custom_head_config(self) -> Params:
-        """Get custom head configuration.
+        """Get a custom head configuration.
 
         @rtype: dict
         @return: Custom head configuration.
@@ -60,17 +60,24 @@ class BaseHead(BaseNode):
         image_paths: list[Path],
         config_preprocessing: PreprocessingConfig,
     ) -> DatasetIterator:
-        """Convert head output to a DatasetIterator for dataset annotation. Data should be in standard
-        U{luxonis-ml record format  <https://github.com/luxonis/luxonis-ml/blob/main/luxonis_ml/data/README.md>}.
+        """Convert head output to a DatasetIterator for dataset
+        annotation.
+
+        Data should be in standard U{luxonis-ml record format
+        <https://github.com/luxonis/luxonis-
+        ml/blob/main/luxonis_ml/data/README.md>}.
 
         @type head_output: Packet[Tensor]
         @param head_output: Raw outputs from this head.
         @type image_paths: list[Path]
-        @param image_paths: List of original image file paths to annotate.
+        @param image_paths: List of original image file paths to
+            annotate.
         @type config_preprocessing: PreprocessingConfig
-        @param config_preprocessing: Config containing train_image_size, keep_aspect_ratio, etc.
+        @param config_preprocessing: Config containing train_image_size,
+            keep_aspect_ratio, etc.
         @rtype: DatasetIterator
-        @return: Iterator yielding annotation records in luxonis-ml format.
+        @return: Iterator yielding annotation records in luxonis-ml
+            format.
         """
         return default_annotate(
             self, head_output, image_paths, config_preprocessing

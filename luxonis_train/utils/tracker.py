@@ -5,7 +5,8 @@ from luxonis_ml.tracker import LuxonisTracker
 
 class LuxonisTrackerPL(LuxonisTracker, Logger):
     """Implementation of LuxonisTracker that is compatible with
-    PytorchLightning."""
+    PytorchLightning.
+    """
 
     def __init__(self, *, _auto_finalize: bool = True, **kwargs):
         """
@@ -23,7 +24,7 @@ class LuxonisTrackerPL(LuxonisTracker, Logger):
 
     @rank_zero_only
     def _finalize(self, status: str = "success") -> None:  # pragma: no cover
-        """Finalizes current run."""
+        """Finalize current run."""
         if self.is_tensorboard:
             self.experiment["tensorboard"].flush()
             self.experiment["tensorboard"].close()

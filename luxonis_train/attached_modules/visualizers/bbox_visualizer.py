@@ -167,7 +167,7 @@ class BBoxVisualizer(BaseVisualizer):
         predictions: list[Tensor],
         targets: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:
-        """Creates a visualization of the bounding box predictions and
+        """Create a visualization of the bounding box predictions and
         labels.
 
         @type target_canvas: Tensor
