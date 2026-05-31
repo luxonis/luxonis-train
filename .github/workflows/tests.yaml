@@ -49,7 +49,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           repository: Luxonis/luxonis-train
           ref: ${{ inputs.train_ref }}
@@ -57,13 +57,13 @@ jobs:
 
       - name: Free Disk Space (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@v1.3.1
         with:
           tool-cache: false
           large-packages: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6.2.0
         with:
           python-version: "3.10"
           cache: pip
@@ -84,7 +84,7 @@ jobs:
 
       - name: Authenticate to Google Cloud
         id: google-auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3.0.0
         with:
           credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
           create_credentials_file: true
@@ -100,14 +100,14 @@ jobs:
 
       - name: Upload test results to Codecov
         if: matrix.os == 'ubuntu-t4-4core'
-        uses: codecov/test-results-action@v1
+        uses: codecov/test-results-action@v1.2.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
       - name: Upload coverage results to Codecov
         if: matrix.os == 'ubuntu-t4-4core'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
