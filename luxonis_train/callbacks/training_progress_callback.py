@@ -129,7 +129,7 @@ class TrainingProgressCallback(pl.Callback):
             return
 
         # Log every N batches to reduce overhead
-        if not self._should_log_batch(batch_idx):
+        if not self._should_log_batch(batch_idx + 1):
             return
 
         total_batches = trainer.num_training_batches
@@ -223,7 +223,7 @@ class TrainingProgressCallback(pl.Callback):
         if trainer.logger is None:
             return
 
-        if not self._should_log_batch(batch_idx):
+        if not self._should_log_batch(self._val_epoch_batch_count):
             return
 
         total_batches = self._total_batches(trainer.num_val_batches)
@@ -257,13 +257,16 @@ class TrainingProgressCallback(pl.Callback):
 
         epoch_duration = self._elapsed(self._val_epoch_start_time)
 
-        trainer.logger.log_metrics(
-            {
-                "val/epoch_progress_percent": 100.0,
-                "val/epoch_duration_sec": epoch_duration,
-            },
-            step=self._val_batch_step,
-        )
+        if self._val_epoch_batch_count > 0 and not self._should_log_batch(
+            self._val_epoch_batch_count
+        ):
+            trainer.logger.log_metrics(
+                {
+                    "val/epoch_progress_percent": 100.0,
+                    "val/epoch_duration_sec": epoch_duration,
+                },
+                step=self._val_batch_step,
+            )
         trainer.logger.log_metrics(
             {"val/epoch_completion_sec": epoch_duration},
             step=trainer.current_epoch,
@@ -314,7 +317,7 @@ class TrainingProgressCallback(pl.Callback):
         if trainer.logger is None:
             return
 
-        if not self._should_log_batch(batch_idx):
+        if not self._should_log_batch(self._test_epoch_batch_count):
             return
 
         total_batches = self._total_batches(trainer.num_test_batches)
@@ -348,17 +351,20 @@ class TrainingProgressCallback(pl.Callback):
 
         epoch_duration = self._elapsed(self._test_epoch_start_time)
 
-        trainer.logger.log_metrics(
-            {
-                "test/epoch_progress_percent": 100.0,
-                "test/epoch_duration_sec": epoch_duration,
-            },
-            step=self._test_batch_step,
-        )
+        if self._test_epoch_batch_count > 0 and not self._should_log_batch(
+            self._test_epoch_batch_count
+        ):
+            trainer.logger.log_metrics(
+                {
+                    "test/epoch_progress_percent": 100.0,
+                    "test/epoch_duration_sec": epoch_duration,
+                },
+                step=self._test_batch_step,
+            )
         trainer.logger.log_metrics(
             {"test/epoch_completion_sec": epoch_duration},
             step=trainer.current_epoch,
         )
 
-    def _should_log_batch(self, batch_idx: int) -> bool:
-        return (batch_idx + 1) % self.log_every_n_batches == 0
+    def _should_log_batch(self, seen_batches: int) -> bool:
+        return seen_batches % self.log_every_n_batches == 0
