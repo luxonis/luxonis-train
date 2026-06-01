@@ -1025,10 +1025,18 @@ class LuxonisLightningModule(pl.LightningModule):
             elif callback.name == "TrainingProgressCallback":
                 metric_keys.update(
                     {
+                        "train/batch_total_sec",
                         "train/epoch_progress_percent",
                         "train/epoch_duration_sec",
                         "train/epoch_completion_sec",
+                        "val/batch_total_sec",
+                        "val/epoch_progress_percent",
+                        "val/epoch_duration_sec",
                         "val/epoch_completion_sec",
+                        "test/batch_total_sec",
+                        "test/epoch_progress_percent",
+                        "test/epoch_duration_sec",
+                        "test/epoch_completion_sec",
                     }
                 )
 
