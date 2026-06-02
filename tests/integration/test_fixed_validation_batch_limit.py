@@ -90,9 +90,5 @@ def test_unlimited_validation_batches_keep_full_eval_loaders():
 
     assert len(model.loaders["val"]) < len(model.loaders["test"])
     assert model.cfg.trainer.n_validation_batches == -1
-    assert len(model.pytorch_loaders["val"].dataset) == len(
-        model.loaders["val"]
-    )
-    assert len(model.pytorch_loaders["test"].dataset) == len(
-        model.loaders["test"]
-    )
+    assert len(model.pytorch_loaders["val"]) == len(model.loaders["val"])
+    assert len(model.pytorch_loaders["test"]) == len(model.loaders["test"])
