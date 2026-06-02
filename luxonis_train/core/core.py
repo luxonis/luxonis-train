@@ -409,8 +409,7 @@ class LuxonisModel:
             status = "failed"
             raise
         finally:
-            self._upload_run_metadata()
-            self.tracker._finalize(status)
+            self.finalize_run(status)
 
     def train(
         self,
@@ -674,7 +673,8 @@ class LuxonisModel:
         @param finalize_tracker: If True, uploads final run metadata and
             finalizes the tracker after testing. Set to False only when
             the current run is expected to continue with additional
-            actions such as export or archive.
+            actions such as export or archive, in which case the caller
+            is responsible for eventually calling L{finalize_run()}.
         """
         weights = self.resolve_weights(weights)
         loader = self.pytorch_loaders[view]
@@ -691,9 +691,8 @@ class LuxonisModel:
                 status = "failed"
                 raise
             finally:
-                self._upload_run_metadata()
                 if finalize_tracker:
-                    self.tracker._finalize(status)
+                    self.finalize_run(status)
 
         if new_thread:  # pragma: no cover
             self.thread = threading.Thread(
@@ -702,6 +701,15 @@ class LuxonisModel:
             )
             return self.thread.start()
         return _run_test()
+
+    def finalize_run(self, status: str = "success") -> None:
+        """Upload run metadata and finalize the tracker.
+
+        @type status: str
+        @param status: Final run status passed to the tracker.
+        """
+        self._upload_run_metadata()
+        self.tracker._finalize(status)
 
     def _upload_run_metadata(self) -> None:
         self.tracker.upload_artifact(self.log_file, typ="logs")

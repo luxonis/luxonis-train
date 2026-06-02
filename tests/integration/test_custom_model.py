@@ -160,6 +160,8 @@ def test_custom_model(opts: Params, tmp_path: Path, subtests: SubTests):
             == len(model.pytorch_loaders["val"].dataset) * 2  # type: ignore
         )
 
+    model.finalize_run()
+
 
 def sort_by_name(config: dict, keys: list[str]) -> None:
     for key in keys:

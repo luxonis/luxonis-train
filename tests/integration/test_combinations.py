@@ -157,3 +157,5 @@ def test_combinations(
 
     with subtests.test("archive"):
         model.archive()
+
+    model.finalize_run()

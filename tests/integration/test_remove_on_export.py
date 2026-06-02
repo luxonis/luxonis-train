@@ -15,6 +15,7 @@ def test_train_only_heads(coco_dataset: LuxonisDataset, opts: Params):
     is_in_results = any(name_to_check in key for key in results)
 
     model.export()
+    model.finalize_run()
 
     sess = rt.InferenceSession(
         model.run_save_dir / "export" / f"{model.cfg.model.name}.onnx"
