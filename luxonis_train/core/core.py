@@ -280,17 +280,23 @@ class LuxonisModel:
                 generator = torch.Generator()
                 generator.manual_seed(self.cfg.trainer.seed or 42)
                 if self.cfg.trainer.n_validation_batches == -1:
-                    self.cfg.trainer.n_validation_batches = len(
-                        self.loaders["val"]
-                    )
-                    n_samples = len(self.loaders[view])
+                    loader = self.loaders[view]
                 else:
                     n_samples = (
                         self.cfg.trainer.n_validation_batches
                         * self.cfg.trainer.batch_size
                     )
-                indices = range(min(n_samples, len(self.loaders[view])))
-                loader = torch_data.Subset(self.loaders[view], indices)
+                    subset_size = min(n_samples, len(self.loaders[view]))
+                    if subset_size < len(self.loaders[view]):
+                        logger.warning(
+                            f"Limiting {view} evaluation to the first "
+                            f"{subset_size} / {len(self.loaders[view])} "
+                            f"samples because "
+                            f"`n_validation_batches="
+                            f"{self.cfg.trainer.n_validation_batches}`."
+                        )
+                    indices = range(subset_size)
+                    loader = torch_data.Subset(self.loaders[view], indices)
             else:
                 loader = self.loaders[view]
 
