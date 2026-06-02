@@ -120,7 +120,7 @@ def test_custom_model(opts: Params, tmp_path: Path, subtests: SubTests):
         model.train()
 
     with subtests.test("test"):
-        model.test(view="val")
+        model.test(view="val", finalize_tracker=False)
 
     with subtests.test("export"):
         model.export()

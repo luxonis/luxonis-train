@@ -409,8 +409,7 @@ class LuxonisModel:
             status = "failed"
             raise
         finally:
-            self.tracker.upload_artifact(self.log_file, typ="logs")
-            self.tracker.upload_artifact(self.config_file, typ="config")
+            self._upload_run_metadata()
             self.tracker._finalize(status)
 
     def train(
@@ -635,6 +634,7 @@ class LuxonisModel:
         new_thread: Literal[False] = ...,
         view: Literal["train", "test", "val"] = "test",
         weights: PathType | dict[str, Any] | None = ...,
+        finalize_tracker: bool = True,
     ) -> Mapping[str, float]: ...
 
     @overload
@@ -643,6 +643,7 @@ class LuxonisModel:
         new_thread: Literal[True] = ...,
         view: Literal["train", "test", "val"] = "test",
         weights: PathType | dict[str, Any] | None = ...,
+        finalize_tracker: bool = True,
     ) -> None: ...
 
     @typechecked
@@ -651,6 +652,7 @@ class LuxonisModel:
         new_thread: bool = False,
         view: Literal["train", "val", "test"] = "test",
         weights: PathType | dict[str, Any] | None = None,
+        finalize_tracker: bool = True,
     ) -> Mapping[str, float] | None:
         """Runs testing.
 
@@ -668,19 +670,42 @@ class LuxonisModel:
             the configuration file will be used. The current weights of
             the model will be temporarily replaced with the weights from
             the specified checkpoint.
+        @type finalize_tracker: bool
+        @param finalize_tracker: If True, uploads final run metadata and
+            finalizes the tracker after testing. Set to False only when
+            the current run is expected to continue with additional
+            actions such as export or archive.
         """
         weights = self.resolve_weights(weights)
         loader = self.pytorch_loaders[view]
 
-        with replace_weights(self.lightning_module, weights):
-            if new_thread:  # pragma: no cover
-                self.thread = threading.Thread(
-                    target=self.pl_trainer.test,
-                    args=(self.lightning_module, loader),
-                    daemon=True,
-                )
-                return self.thread.start()
-            return self.pl_trainer.test(self.lightning_module, loader)[0]
+        def _run_test() -> Mapping[str, float]:
+            status = "success"
+            try:
+                with replace_weights(self.lightning_module, weights):
+                    return self.pl_trainer.test(self.lightning_module, loader)[
+                        0
+                    ]
+            except Exception:  # pragma: no cover
+                logger.exception("Encountered an exception during testing.")
+                status = "failed"
+                raise
+            finally:
+                self._upload_run_metadata()
+                if finalize_tracker:
+                    self.tracker._finalize(status)
+
+        if new_thread:  # pragma: no cover
+            self.thread = threading.Thread(
+                target=_run_test,
+                daemon=True,
+            )
+            return self.thread.start()
+        return _run_test()
+
+    def _upload_run_metadata(self) -> None:
+        self.tracker.upload_artifact(self.log_file, typ="logs")
+        self.tracker.upload_artifact(self.config_file, typ="config")
 
     def infer(
         self,

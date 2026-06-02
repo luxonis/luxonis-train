@@ -65,7 +65,7 @@ def test_weights_loading(cifar10_dataset: LuxonisDataset, opts: Params):
     }
 
     model = LuxonisModel(config_file, opts)
-    test_results = model.test()
+    test_results = model.test(finalize_tracker=False)
     assert test_results == model.test(
         weights={"state_dict": model.lightning_module.state_dict()}
     )
@@ -98,7 +98,7 @@ def test_checkpoint(
             ],
         },  # type: ignore
     )
-    model.test()
+    model.test(finalize_tracker=False)
 
     ckpt = model.get_checkpoint()
     check_ckpt(ckpt)
