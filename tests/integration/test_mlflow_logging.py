@@ -143,6 +143,7 @@ def test_mlflow_logging(xor_dataset: LuxonisDataset, subtests: SubTests):
             "val/metric/XORHead/mcc",
             "val/metric/XORHead/MulticlassF1Score_xor_0",
             "val/metric/XORHead/MulticlassF1Score_xor_1",
+            "test/epoch_completion_sec",
             "test/loss",
             "test/loss/XORHead/CrossEntropyLoss",
             "test/metric/XORHead/Accuracy",
@@ -154,7 +155,7 @@ def test_mlflow_logging(xor_dataset: LuxonisDataset, subtests: SubTests):
         [
             set(range(10)),
             set(range(10)),
-            set(range(10)),
+            set(range(1, 11)),
             {4, 9},
             {4, 9},
             {4, 9},
@@ -162,6 +163,7 @@ def test_mlflow_logging(xor_dataset: LuxonisDataset, subtests: SubTests):
             {4, 9},
             {4, 9},
             {4, 9},
+            {10},
             {10},
             {10},
             {10},
@@ -193,6 +195,49 @@ def test_mlflow_logging(xor_dataset: LuxonisDataset, subtests: SubTests):
         history = client.get_metric_history(run_id, "train/epoch_duration_sec")
         assert {m.step for m in history} == set(range(1, 11))
         assert "train/epoch_duration_sec" in all_mlflow_logging_keys["metrics"]
+
+    with subtests.test("train/batch_total_sec"):
+        history = client.get_metric_history(run_id, "train/batch_total_sec")
+        assert {m.step for m in history} == set(range(1, 11))
+        assert "train/batch_total_sec" in all_mlflow_logging_keys["metrics"]
+
+    with subtests.test("val/batch_total_sec"):
+        history = client.get_metric_history(run_id, "val/batch_total_sec")
+        assert {m.step for m in history} == {1, 2}
+        assert "val/batch_total_sec" in all_mlflow_logging_keys["metrics"]
+
+    with subtests.test("val/epoch_progress_percent"):
+        history = client.get_metric_history(
+            run_id, "val/epoch_progress_percent"
+        )
+        assert {m.step for m in history} == {0, 1, 2}
+        assert (
+            "val/epoch_progress_percent" in all_mlflow_logging_keys["metrics"]
+        )
+
+    with subtests.test("val/epoch_duration_sec"):
+        history = client.get_metric_history(run_id, "val/epoch_duration_sec")
+        assert {m.step for m in history} == {1, 2}
+        assert "val/epoch_duration_sec" in all_mlflow_logging_keys["metrics"]
+
+    with subtests.test("test/batch_total_sec"):
+        history = client.get_metric_history(run_id, "test/batch_total_sec")
+        assert {m.step for m in history} == {1}
+        assert "test/batch_total_sec" in all_mlflow_logging_keys["metrics"]
+
+    with subtests.test("test/epoch_progress_percent"):
+        history = client.get_metric_history(
+            run_id, "test/epoch_progress_percent"
+        )
+        assert {m.step for m in history} == {0, 1}
+        assert (
+            "test/epoch_progress_percent" in all_mlflow_logging_keys["metrics"]
+        )
+
+    with subtests.test("test/epoch_duration_sec"):
+        history = client.get_metric_history(run_id, "test/epoch_duration_sec")
+        assert {m.step for m in history} == {1}
+        assert "test/epoch_duration_sec" in all_mlflow_logging_keys["metrics"]
 
 
 def get_config(trainer_overrides: Params | None = None) -> Params:
@@ -285,11 +330,22 @@ def test_mlflow_logging_with_first_epoch_validation(
     for key in [
         "val/loss",
         "val/metric/XORHead/Accuracy",
+        "val/batch_total_sec",
+        "val/epoch_progress_percent",
+        "val/epoch_duration_sec",
         "val/epoch_completion_sec",
     ]:
         with subtests.test(key):
             history = client.get_metric_history(run_id, key)
-            assert {m.step for m in history} == {0, 4}
+            if key == "val/batch_total_sec":
+                expected_steps = {1, 2}
+            elif key == "val/epoch_progress_percent":
+                expected_steps = {0, 1, 2}
+            elif key == "val/epoch_duration_sec":
+                expected_steps = {1, 2}
+            else:
+                expected_steps = {0, 4}
+            assert {m.step for m in history} == expected_steps
             assert key in all_mlflow_logging_keys["metrics"]
 
 
