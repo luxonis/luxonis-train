@@ -18,3 +18,5 @@ jobs:
         uses: saadmk11/github-actions-version-updater@v0.9.0
         with:
           token: ${{ secrets.WORKFLOW_SECRET }}
+          update_version_with: "release-commit-sha"
+          pull_request_labels: "automated"
