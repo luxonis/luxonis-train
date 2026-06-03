@@ -240,6 +240,35 @@ def test_mlflow_logging(xor_dataset: LuxonisDataset, subtests: SubTests):
         assert "test/epoch_duration_sec" in all_mlflow_logging_keys["metrics"]
 
 
+@pytest.mark.timeout(TIMEOUT)
+def test_mlflow_logging_on_standalone_test(xor_dataset: LuxonisDataset):
+    model = LuxonisModel(
+        get_config(),
+        {
+            "loader.params.dataset_name": xor_dataset.identifier,
+            "tracker.run_name": "xor_test_only_run",
+        },
+    )
+
+    model.test()
+
+    client = mlflow.tracking.MlflowClient()
+    experiments = mlflow.search_experiments()
+    experiment_id = experiments[0].experiment_id
+    run_id = client.search_runs(
+        experiment_ids=[experiment_id],
+        order_by=["start_time desc"],
+        filter_string='tags.mlflow.runName="xor_test_only_run"',
+    )[0].info.run_id
+
+    all_artifacts = list_artifacts(client, run_id)
+    run = client.get_run(run_id)
+
+    assert "luxonis_train.log" in all_artifacts
+    assert "training_config.yaml" in all_artifacts
+    assert run.info.status == "FINISHED"
+
+
 def get_config(trainer_overrides: Params | None = None) -> Params:
     trainer_cfg: Params = {
         "precision": "16-mixed",

@@ -9,12 +9,13 @@ def test_train_only_heads(coco_dataset: LuxonisDataset, opts: Params):
     opts |= {"loader.params.dataset_name": coco_dataset.dataset_name}
 
     model = LuxonisModel(get_config(), opts)
-    results = model.test()
+    results = model.test(finalize_tracker=False)
 
     name_to_check = "aux_segmentation_head"
     is_in_results = any(name_to_check in key for key in results)
 
     model.export()
+    model.finalize_run()
 
     sess = rt.InferenceSession(
         model.run_save_dir / "export" / f"{model.cfg.model.name}.onnx"

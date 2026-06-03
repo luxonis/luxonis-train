@@ -120,7 +120,7 @@ def test_custom_model(opts: Params, tmp_path: Path, subtests: SubTests):
         model.train()
 
     with subtests.test("test"):
-        model.test(view="val")
+        model.test(view="val", finalize_tracker=False)
 
     with subtests.test("export"):
         model.export()
@@ -159,6 +159,8 @@ def test_custom_model(opts: Params, tmp_path: Path, subtests: SubTests):
             len(list(tmp_path.glob("*.png")))
             == len(model.pytorch_loaders["val"].dataset) * 2  # type: ignore
         )
+
+    model.finalize_run()
 
 
 def sort_by_name(config: dict, keys: list[str]) -> None:
