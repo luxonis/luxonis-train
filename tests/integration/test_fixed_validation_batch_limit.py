@@ -1,7 +1,40 @@
+import torch
 from luxonis_ml.data import LuxonisDataset
 from luxonis_ml.typing import Params
+from torch import Size, Tensor
+from typing_extensions import override
 
 from luxonis_train.core import LuxonisModel
+from luxonis_train.loaders import BaseLoaderTorch
+from luxonis_train.typing import Labels
+
+
+class SplitLengthLoader(BaseLoaderTorch):
+    LENGTHS = {
+        ("train",): 20,
+        ("val",): 3,
+        ("test",): 11,
+        ("train", "val", "test"): 34,
+    }
+
+    @property
+    @override
+    def input_shapes(self) -> dict[str, Size]:
+        return {self.image_source: Size([3, self.height, self.width])}
+
+    @override
+    def __len__(self) -> int:
+        return self.LENGTHS[tuple(self.view)]
+
+    @override
+    def get(self, idx: int) -> tuple[Tensor | dict[str, Tensor], Labels]:
+        image = torch.zeros(3, self.height, self.width)
+        labels = {"vehicles/boundingbox": torch.zeros(1, 5)}
+        return image, labels
+
+    @override
+    def get_classes(self) -> dict[str, dict[str, int]]:
+        return {"vehicles": {"car": 0}}
 
 
 def test_fixed_validation_batch_limit(
@@ -31,3 +64,32 @@ def test_fixed_validation_batch_limit(
     assert len(model.pytorch_loaders["test"]) > 1, (
         "Test loader should contain all test samples"
     )
+
+
+def test_unlimited_validation_batches_keep_full_eval_loaders():
+    model = LuxonisModel(
+        {
+            "model": {
+                "predefined_model": {
+                    "name": "DetectionModel",
+                    "params": {"task_name": "vehicles"},
+                }
+            },
+            "loader": {
+                "name": "SplitLengthLoader",
+                "train_view": "train",
+                "val_view": "val",
+                "test_view": ["train", "val", "test"],
+            },
+            "trainer": {
+                "batch_size": 1,
+                "n_validation_batches": -1,
+            },
+        }
+    )
+
+    assert len(model.loaders["val"]) == 3
+    assert len(model.loaders["test"]) == 34
+    assert model.cfg.trainer.n_validation_batches == -1
+    assert len(model.pytorch_loaders["val"]) == len(model.loaders["val"])
+    assert len(model.pytorch_loaders["test"]) == len(model.loaders["test"])
