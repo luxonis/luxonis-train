@@ -78,19 +78,26 @@ class TripleLRSGD:
     momentum: float
     weight_decay: float
     nesterov: bool
+    excluded_params: set[int] | None = None
 
     def create_optimizer(self) -> Optimizer:
         batch_norm_weights, regular_weights, biases = [], [], []
+        excluded_params = self.excluded_params or set()
 
         for module in self.model.modules():
-            if hasattr(module, "bias") and isinstance(
-                module.bias, nn.Parameter
+            if (
+                hasattr(module, "bias")
+                and isinstance(module.bias, nn.Parameter)
+                and id(module.bias) not in excluded_params
             ):
                 biases.append(module.bias)
             if isinstance(module, nn.BatchNorm2d):
-                batch_norm_weights.append(module.weight)
-            elif hasattr(module, "weight") and isinstance(
-                module.weight, nn.Parameter
+                if id(module.weight) not in excluded_params:
+                    batch_norm_weights.append(module.weight)
+            elif (
+                hasattr(module, "weight")
+                and isinstance(module.weight, nn.Parameter)
+                and id(module.weight) not in excluded_params
             ):
                 regular_weights.append(module.weight)
 
@@ -116,6 +123,9 @@ class TripleLRSGD:
                     "nesterov": self.nesterov,
                 },
             ],
+            lr=self.lr,
+            momentum=self.momentum,
+            nesterov=self.nesterov,
         )
 
 
@@ -155,28 +165,40 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
         self.momentum = momentum
         self.weight_decay = weight_decay
         self.nesterov = nesterov
+        self.warmup_epochs = warmup_epochs
+        self.warmup_bias_lr = warmup_bias_lr
+        self.warmup_momentum = warmup_momentum
+        self.lre = lre
+        self.cosine_annealing = cosine_annealing
 
-        max_stepnum = math.ceil(
+        self.max_stepnum = math.ceil(
             len(self.model.core.loaders["train"]) / self.cfg.trainer.batch_size
         )
+        self._excluded_params: set[int] = set()
+        self._build_optimizer_scheduler()
 
+    def _build_optimizer_scheduler(
+        self, excluded_params: set[int] | None = None
+    ) -> None:
+        self._excluded_params = set(excluded_params or set())
         self.optimizer = TripleLRSGD(
             model=self.model,
-            lr=lr,
-            momentum=momentum,
-            weight_decay=weight_decay,
-            nesterov=nesterov,
+            lr=self.lr,
+            momentum=self.momentum,
+            weight_decay=self.weight_decay,
+            nesterov=self.nesterov,
+            excluded_params=self._excluded_params,
         ).create_optimizer()
 
         self.scheduler = TripleLRScheduler(
             optimizer=self.optimizer,
-            warmup_epochs=warmup_epochs,
-            warmup_bias_lr=warmup_bias_lr,
-            warmup_momentum=warmup_momentum,
-            lre=lre,
-            cosine_annealing=cosine_annealing,
+            warmup_epochs=self.warmup_epochs,
+            warmup_bias_lr=self.warmup_bias_lr,
+            warmup_momentum=self.warmup_momentum,
+            lre=self.lre,
+            cosine_annealing=self.cosine_annealing,
             epochs=self.cfg.trainer.epochs,
-            max_stepnum=max_stepnum,
+            max_stepnum=self.max_stepnum,
         )
 
     @override
@@ -195,7 +217,14 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
         )
 
     @override
-    def configure_optimizers(self) -> tuple[list[Optimizer], list[LambdaLR]]:
+    def configure_optimizers(
+        self, excluded_params: set[int] | None = None
+    ) -> tuple[list[Optimizer], list[LambdaLR]]:
+        excluded_params = set(excluded_params or set())
+        if excluded_params != self._excluded_params:
+            self._build_optimizer_scheduler(excluded_params)
+        if all(not group["params"] for group in self.optimizer.param_groups):
+            return [], []
         return [self.optimizer], [self.scheduler.create_scheduler()]
 
     @override

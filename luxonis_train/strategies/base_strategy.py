@@ -21,7 +21,7 @@ class BaseTrainingStrategy(
 
     @abstractmethod
     def configure_optimizers(
-        self,
+        self, excluded_params: set[int] | None = None
     ) -> tuple[
         Sequence[Optimizer],
         Sequence[LRSchedulerTypeUnion | LRSchedulerConfig],

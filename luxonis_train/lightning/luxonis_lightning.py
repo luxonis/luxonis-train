@@ -629,23 +629,25 @@ class LuxonisLightningModule(pl.LightningModule):
         Sequence[Optimizer], Sequence[LRSchedulerTypeUnion | LRSchedulerConfig]
     ]:
         if self.training_strategy is not None:
-            strategy_optimizers, strategy_schedulers = (
-                self.training_strategy.configure_optimizers()
-            )
             base_optimizer_cfg, base_scheduler_cfg = (
                 self.training_strategy.get_base_configs()
             )
+            optimizers, schedulers = self.nodes.build_optimizers(
+                base_optimizer_cfg,
+                base_scheduler_cfg,
+                include_default=False,
+            )
             used_params = {
                 id(p)
-                for optimizer in strategy_optimizers
+                for optimizer in optimizers
                 for group in optimizer.param_groups
                 for p in group["params"]
             }
-            optimizers, schedulers = self.nodes.build_optimizers(
-                base_optimizer_cfg, base_scheduler_cfg, used_params
+            strategy_optimizers, strategy_schedulers = (
+                self.training_strategy.configure_optimizers(used_params)
             )
-            optimizers = [*strategy_optimizers, *optimizers]
-            schedulers = [*strategy_schedulers, *schedulers]
+            optimizers = [*optimizers, *strategy_optimizers]
+            schedulers = [*schedulers, *strategy_schedulers]
         else:
             optimizers, schedulers = self.nodes.build_optimizers()
         if len(optimizers) > 1:

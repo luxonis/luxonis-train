@@ -94,6 +94,12 @@ class ParameterPattern(BaseModelExtraForbid):
             raise ValueError(
                 "At least one of `name` or `module_type` must be specified for parameter pattern."
             )
+        if self.name == "":
+            raise ValueError("Parameter pattern `name` cannot be empty.")
+        if self.module_type == "":
+            raise ValueError(
+                "Parameter pattern `module_type` cannot be empty."
+            )
         return self
 
     def identifier(self) -> str:
@@ -102,6 +108,18 @@ class ParameterPattern(BaseModelExtraForbid):
                 "At least one of `name` or `module_type` must be specified for parameter pattern."
             )
         return self.name or self.module_type  # type: ignore
+
+    def matches(self, module_type: str, parameter_name: str) -> bool:
+        if self.name is not None and not re.search(
+            self.name, parameter_name, flags=re.IGNORECASE
+        ):
+            return False
+        return not (
+            self.module_type is not None
+            and not re.search(
+                self.module_type, module_type, flags=re.IGNORECASE
+            )
+        )
 
 
 class SchedulerConfig(ConfigItem):
@@ -158,6 +176,10 @@ class FinetuningConfig(BaseModelExtraForbid):
             value = [value]
         if not isinstance(value, list):
             return value
+        if not value:
+            raise ValueError(
+                "`parameters` must contain at least one parameter pattern."
+            )
         for item in value:
             if isinstance(item, str):
                 parsed_patterns.append(ParameterPattern(name=item))
@@ -165,6 +187,11 @@ class FinetuningConfig(BaseModelExtraForbid):
                 parsed_patterns.append(ParameterPattern(**item))
             elif isinstance(item, ParameterPattern):
                 parsed_patterns.append(item)
+            else:
+                raise TypeError(
+                    "Parameter patterns must be strings, dictionaries, "
+                    "or ParameterPattern instances."
+                )
         return parsed_patterns
 
     @cached_property
