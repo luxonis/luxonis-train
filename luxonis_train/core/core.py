@@ -1,3 +1,5 @@
+import hashlib
+import json
 import threading
 from collections.abc import Mapping
 from pathlib import Path
@@ -557,6 +559,7 @@ class LuxonisModel:
         """
         weights = weights or self.cfg.model.weights
         loader = self.pytorch_loaders[view]
+        self._log_test_dataset_manifest(view, loader)
 
         with replace_weights(self.lightning_module, weights):
             if new_thread:  # pragma: no cover
@@ -567,6 +570,121 @@ class LuxonisModel:
                 )
                 return self.thread.start()
             return self.pl_trainer.test(self.lightning_module, loader)[0]
+
+    def _log_test_dataset_manifest(
+        self, view: View, loader: torch_data.DataLoader
+    ) -> None:
+        """Log hashes for the exact dataset evaluated by `test`.
+
+        This is intentionally based on post-loader tensors and labels
+        rather than file names, so it catches changed samples, labels,
+        ordering, preprocessing, and DataLoader subsetting.
+        """
+        try:
+            manifest = self._build_dataset_manifest(view, loader)
+            manifest_hash = manifest["manifest_sha256"]
+            manifest_path = (
+                self.run_save_dir
+                / f"dataset_{view}_manifest_{manifest_hash[:12]}.json"
+            )
+            self.run_save_dir.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
+            self.tracker.upload_artifact(
+                manifest_path,
+                name=f"dataset_manifests/{manifest_path.name}",
+                typ="dataset_debug",
+            )
+            self.tracker.log_hyperparams(
+                {
+                    f"debug/{view}/dataset_manifest_sha256": manifest_hash,
+                    f"debug/{view}/dataset_input_sha256": manifest[
+                        "inputs_sha256"
+                    ],
+                    f"debug/{view}/dataset_label_sha256": manifest[
+                        "labels_sha256"
+                    ],
+                    f"debug/{view}/dataset_sample_count": manifest[
+                        "sample_count"
+                    ],
+                }
+            )
+            self.tracker.log_metrics(
+                {
+                    f"debug/{view}/dataset_sample_count": float(
+                        manifest["sample_count"]
+                    ),
+                    f"debug/{view}/dataset_manifest_fingerprint": float(
+                        int(manifest_hash[:12], 16)
+                    ),
+                },
+                step=0,
+            )
+            logger.info(
+                f"Logged {view} dataset manifest hash: {manifest_hash}"
+            )
+        except Exception:
+            logger.exception("Failed to log test dataset manifest.")
+
+    @staticmethod
+    def _build_dataset_manifest(
+        view: View, loader: torch_data.DataLoader
+    ) -> dict[str, object]:
+        dataset = loader.dataset
+        inputs_hasher = hashlib.sha256()
+        labels_hasher = hashlib.sha256()
+        samples: list[dict[str, object]] = []
+
+        for idx in range(len(dataset)):  # type: ignore[arg-type]
+            inputs, labels = dataset[idx]  # type: ignore[index]
+            input_hashes = LuxonisModel._hash_tensor_mapping(inputs)
+            label_hashes = LuxonisModel._hash_tensor_mapping(labels)
+
+            sample_record = {
+                "index": idx,
+                "inputs": input_hashes,
+                "labels": label_hashes,
+            }
+            inputs_hasher.update(
+                json.dumps(input_hashes, sort_keys=True).encode()
+            )
+            labels_hasher.update(
+                json.dumps(label_hashes, sort_keys=True).encode()
+            )
+            samples.append(sample_record)
+
+        inputs_sha = inputs_hasher.hexdigest()
+        labels_sha = labels_hasher.hexdigest()
+        manifest_hasher = hashlib.sha256()
+        manifest_hasher.update(view.encode())
+        manifest_hasher.update(str(len(samples)).encode())
+        manifest_hasher.update(inputs_sha.encode())
+        manifest_hasher.update(labels_sha.encode())
+
+        return {
+            "view": view,
+            "sample_count": len(samples),
+            "inputs_sha256": inputs_sha,
+            "labels_sha256": labels_sha,
+            "manifest_sha256": manifest_hasher.hexdigest(),
+            "samples": samples,
+        }
+
+    @staticmethod
+    def _hash_tensor_mapping(
+        mapping: Mapping[str, torch.Tensor],
+    ) -> dict[str, dict[str, object]]:
+        hashes: dict[str, dict[str, object]] = {}
+        for key, tensor in sorted(mapping.items()):
+            tensor = tensor.detach().cpu().contiguous()
+            hashes[key] = {
+                "dtype": str(tensor.dtype),
+                "shape": list(tensor.shape),
+                "sha256": hashlib.sha256(tensor.numpy().tobytes()).hexdigest(),
+            }
+        return hashes
 
     def infer(
         self,
