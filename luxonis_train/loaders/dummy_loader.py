@@ -111,7 +111,7 @@ class DummyLoader(BaseLoaderTorch):
     def get_label_shapes(
         self, labels: dict[str, set[str | Metadata]]
     ) -> dict[str, tuple[int, ...]]:
-        """Creates a dictionary with shape information for each label
+        """Create a dictionary with shape information for each label
         based on the task type.
 
         Handles all LDF-native labels by default, but needs to be

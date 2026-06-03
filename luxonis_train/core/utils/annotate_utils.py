@@ -76,8 +76,9 @@ def annotate_from_directory(
 def annotated_dataset_generator(
     model: "lxt.LuxonisModel", loader: torch_data.DataLoader
 ) -> DatasetIterator:
-    """Generator that yields annotations for images processed by the
-    model."""
+    """Create a generator that yields annotations for images processed
+    by the model.
+    """
     lt_module = model.lightning_module.eval()
 
     for imgs, metas in loader:

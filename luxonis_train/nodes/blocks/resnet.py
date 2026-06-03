@@ -41,6 +41,8 @@ class GenericResidualBlock(nn.Module):
 
 
 class ResNetBlock(GenericResidualBlock):
+    """A basic residual block for ResNet."""
+
     @typechecked
     def __init__(
         self,
@@ -51,8 +53,7 @@ class ResNetBlock(GenericResidualBlock):
         final_relu: bool = True,
         droppath_prob: float = 0.0,
     ):
-        """A basic residual block for ResNet.
-
+        """
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type hidden_channels: int
@@ -100,6 +101,8 @@ class ResNetBlock(GenericResidualBlock):
 
 
 class ResNetBottleneck(GenericResidualBlock):
+    """A bottleneck block for ResNet."""
+
     @typechecked
     def __init__(
         self,
@@ -110,7 +113,7 @@ class ResNetBottleneck(GenericResidualBlock):
         final_relu: bool = True,
         droppath_prob: float = 0.0,
     ):
-        """A bottleneck block for ResNet.
+        """
 
         @type in_channels: int
         @param in_channels: Number of input channels.

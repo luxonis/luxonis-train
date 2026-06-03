@@ -12,8 +12,9 @@ def preprocess_instance_masks(
     width: int,
     device: torch.device,
 ) -> tuple[Tensor, Tensor]:
-    """Turns an instance segmentation mask into a semantic one by
-    merging the masks of the same class."""
+    """Merge instance segmentation masks of the same class into a single
+    semantic mask.
+    """
     batch_size = len(predicted_boundingbox)
     return (
         _merge_predicted_masks(
@@ -38,7 +39,7 @@ def preprocess_instance_masks(
 
 
 def compute_mcc(cm: Tensor) -> Tensor:
-    """ " Compute the Matthews correlation coefficient from a confusion
+    """Compute the Matthews correlation coefficient from a confusion
     matrix.
 
     @type cm: Tensor

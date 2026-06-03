@@ -18,7 +18,8 @@ def test_unique_initializers_preserves_input_output_names(
     test_datasets: LuxonisTestDatasets,
 ):
     """Test that unique_onnx_initializers flag does not change
-    input/output names."""
+    input/output names.
+    """
     config_file, opts, _ = prepare_predefined_model_config(
         config_name, opts, test_datasets
     )

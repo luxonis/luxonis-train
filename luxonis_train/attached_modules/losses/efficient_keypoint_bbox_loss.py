@@ -241,7 +241,8 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
     ) -> Tensor:
         """Preprocesses the target keypoints in shape [batch_size, N,
         n_keypoints, 3] where N is the maximum number of keypoints in
-        one image."""
+        one image.
+        """
         _, counts = torch.unique(kpts_target[:, 0].int(), return_counts=True)
         max_kpts = int(counts.max()) if counts.numel() > 0 else 0
         batched_keypoints = torch.zeros(
@@ -259,8 +260,9 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         return batched_keypoints
 
     def dist2kpts_noscale(self, anchor_points: Tensor, kpts: Tensor) -> Tensor:
-        """Adjusts and scales predicted keypoints relative to anchor
-        points without considering image stride."""
+        """Adjust and scale predicted keypoints relative to anchor
+        points without considering image stride.
+        """
         adj_kpts = kpts.clone()
         scale = 2.0
         x_adj = anchor_points[:, [0]] - 0.5

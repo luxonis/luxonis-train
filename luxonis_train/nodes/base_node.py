@@ -16,10 +16,11 @@ from typeguard import typechecked
 from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
 from luxonis_train.registry import NODES
 from luxonis_train.tasks import Task
-from luxonis_train.typing import AttachIndexType, Packet, get_signature
+from luxonis_train.typing import AttachIndexType, Packet
 from luxonis_train.utils import (
     DatasetMetadata,
     IncompatibleError,
+    get_signature,
     safe_download,
 )
 from luxonis_train.variants import VariantBase
@@ -73,7 +74,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         task_name: str | None = None,
         weights: str | Literal["download", "yolo", "none"] | None = None,
     ):
-        """Constructor for the C{BaseNode}.
+        """Initialize the node.
 
         @type input_shapes: list[Packet[Size]] | None
         @param input_shapes: List of input shapes for the module.
@@ -161,7 +162,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
     def initialize_weights(
         self, method: Literal["yolo", "none"] | str | None = None
     ) -> None:
-        """Initializes the weights of the module.
+        """Initialize the weights of the module.
 
         This method should be overridden in subclasses to provide custom
         weight initialization.
@@ -188,7 +189,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
-        """Returns a name of the default varaint and a dictionary of
+        """Get the name of the default varaint and a dictionary of
         available model variants with their parameters.
 
         The keys are the variant names, and the values are dictionaries
@@ -397,7 +398,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         return self._get_nth_size(-1)
 
     def get_weights_url(self) -> str:
-        """Returns the URL to the weights of the node.
+        """Get the URL to the weights of the node.
 
         Subclasses can override this method to provide a URL to support
         loading weights from a remote location.
@@ -447,7 +448,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         *,
         strict: bool = True,
     ) -> None:
-        """Loads checkpoint for the module.
+        """Load checkpoint for the module.
 
         @type ckpt: str | dict[str, Tensor] | None
         @param ckpt: Path to local or remote .ckpt file.
@@ -492,11 +493,11 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     @export.setter
     def export(self, mode: bool) -> None:
-        """Sets the module to export mode."""
+        """Set the module to export mode."""
         self.set_export_mode(mode)
 
     def set_export_mode(self, /, mode: bool) -> None:
-        """Sets the module to export mode.
+        """Set the module to export mode.
 
         @type mode: bool
         @param mode: Value to set the export mode to.
@@ -542,15 +543,14 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         ...
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:
-        """Combines the forward pass with automatic wrapping and
+        """Combine the forward pass with automatic wrapping and
         unwrapping of the inputs.
 
         @type inputs: list[Packet[Tensor]]
         @param inputs: Inputs to the module.
-
         @rtype: L{Packet}[Tensor]
-        @return: Outputs of the module as a dictionary of list of tensors:
-            C{{"features": [Tensor, ...], "segmentation": [Tensor]}}
+        @return: Outputs of the module as a packet of tensors:
+            C{{"features": [Tensor, ...], "segmentation": Tensor}}
         """
         kwargs = {}
 
@@ -665,7 +665,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
     T = TypeVar("T", Tensor, Size)
 
     def get_attached(self, value: list[T] | T) -> list[T] | T:
-        """Gets the attached elements from a list.
+        """Get the attached elements from a list.
 
         This method is used to get the attached elements from a list
         based on the C{attach_index} attribute.

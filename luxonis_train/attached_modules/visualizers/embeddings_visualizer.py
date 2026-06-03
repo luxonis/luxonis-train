@@ -37,7 +37,7 @@ class EmbeddingsVisualizer(BaseVisualizer):
         predictions: Tensor,
         target: Tensor,
     ) -> tuple[Tensor, Tensor]:
-        """Creates a visualization of the embeddings.
+        """Create a visualization of the embeddings.
 
         @type target_canvas: Tensor
         @param target_canvas: The canvas to draw the labels on.

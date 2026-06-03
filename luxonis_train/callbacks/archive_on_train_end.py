@@ -12,7 +12,7 @@ class ArchiveOnTrainEnd(NeedsCheckpoint):
     def on_train_end(
         self, _: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
-        """Archives the model on train end.
+        """Archive the model on train end.
 
         @type trainer: L{pl.Trainer}
         @param trainer: Pytorch Lightning trainer.

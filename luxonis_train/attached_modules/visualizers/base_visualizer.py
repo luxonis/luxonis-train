@@ -9,7 +9,8 @@ from typing_extensions import TypeVarTuple, Unpack, override
 
 from luxonis_train.attached_modules import BaseAttachedModule
 from luxonis_train.registry import VISUALIZERS
-from luxonis_train.typing import Labels, Packet, get_signature
+from luxonis_train.typing import Labels, Packet
+from luxonis_train.utils import get_signature
 
 Ts = TypeVarTuple("Ts")
 

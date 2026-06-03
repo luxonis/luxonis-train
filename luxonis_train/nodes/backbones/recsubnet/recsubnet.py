@@ -60,7 +60,7 @@ class RecSubNet(BaseNode):
         )
 
     def forward(self, x: Tensor) -> Packet[Tensor]:
-        """Performs the forward pass through the encoder and decoder."""
+        """Perform the forward pass through the encoder and decoder."""
         return {
             "reconstruction": self.decoder(self.encoder(x)),
             "original": x,

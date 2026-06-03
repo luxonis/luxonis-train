@@ -11,6 +11,8 @@ from luxonis_train.utils import infer_upscale_factor
 
 
 class SegmentationHead(BaseHead):
+    """Basic segmentation FCN head."""
+
     in_height: int
     in_width: int
     in_channels: int
@@ -19,9 +21,9 @@ class SegmentationHead(BaseHead):
     parser: str = "SegmentationParser"
 
     def __init__(self, **kwargs: Any):
-        """Basic segmentation FCN head.
+        """
+        Adapted from: U{https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py}.
 
-        Adapted from: U{https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py}
         @license: U{BSD-3 <https://github.com/pytorch/vision/blob/main/LICENSE>}
         """
         super().__init__(**kwargs)
@@ -54,9 +56,4 @@ class SegmentationHead(BaseHead):
 
     @override
     def get_custom_head_config(self) -> Params:
-        """Returns custom head configuration.
-
-        @rtype: dict
-        @return: Custom head configuration.
-        """
         return {"is_softmax": False}

@@ -18,6 +18,13 @@ from luxonis_train.variants import add_variant_aliases
 class EfficientRep(BaseNode):
     """EfficientRep backbone for object detection.
 
+    Supports the version with RepBlock and CSPStackRepBlock (for
+    larger networks)
+
+    Adapted from U{YOLOv6: A Single-Stage Object Detection Framework
+    for Industrial Applications
+    <https://arxiv.org/pdf/2209.02976.pdf>}.
+
     Variants
     ========
     The variant determines the depth and width multipliers,
@@ -45,13 +52,7 @@ class EfficientRep(BaseNode):
         weights: str = "yolo",
         **kwargs,
     ):
-        """Implementation of the EfficientRep backbone. Supports the
-        version with RepBlock and CSPStackRepBlock (for larger networks)
-
-        Adapted from U{YOLOv6: A Single-Stage Object Detection Framework
-        for Industrial Applications
-        <https://arxiv.org/pdf/2209.02976.pdf>}.
-
+        """
         @type channels_list: list[int] | None
         @param channels_list: List of number of channels for each block.
             If unspecified, defaults to [64, 128, 256, 512, 1024].

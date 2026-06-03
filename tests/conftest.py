@@ -76,6 +76,30 @@ def dinov3_weights() -> Path:
     return LuxonisFileSystem.download(remote_path, dest=dest_dir)
 
 
+@pytest.fixture(scope="session")
+def strict_loading_original_ckpt() -> Path:
+    checkpoint_name = "original_ckpt.ckpt"
+    dest_dir = Path("tests", "data", "checkpoints")
+    remote_path = f"gs://luxonis-test-bucket/luxonis-train-test-data/checkpoints/{checkpoint_name}"
+    return LuxonisFileSystem.download(remote_path, dest=dest_dir)
+
+
+@pytest.fixture(scope="session")
+def strict_loading_modified_model_ckpt() -> Path:
+    checkpoint_name = "modified_model_ckpt.ckpt"
+    dest_dir = Path("tests", "data", "checkpoints")
+    remote_path = f"gs://luxonis-test-bucket/luxonis-train-test-data/checkpoints/{checkpoint_name}"
+    return LuxonisFileSystem.download(remote_path, dest=dest_dir)
+
+
+@pytest.fixture(scope="session")
+def strict_loading_modified_attached_modules_ckpt() -> Path:
+    checkpoint_name = "modified_attached_modules_ckpt.ckpt"
+    dest_dir = Path("tests", "data", "checkpoints")
+    remote_path = f"gs://luxonis-test-bucket/luxonis-train-test-data/checkpoints/{checkpoint_name}"
+    return LuxonisFileSystem.download(remote_path, dest=dest_dir)
+
+
 class LuxonisTestDataset(LuxonisDataset):
     def __init__(self, *args, source_path: Path, **kwargs):
         super().__init__(*args, **kwargs)

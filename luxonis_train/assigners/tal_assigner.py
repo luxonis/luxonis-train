@@ -85,7 +85,7 @@ class TaskAlignedAssigner(nn.Module):
         sigmas: Tensor | None = None,
         area_factor: float | None = None,
     ) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
-        """Assigner's forward method which generates final assignments.
+        """Generate final assignments.
 
         If both pred_kpts and gt_kpts are provided, a pose OKS is
         computed and used in the alignment metric; the final tuple then
@@ -231,7 +231,7 @@ class TaskAlignedAssigner(nn.Module):
         sigmas: Tensor | None = None,
         area_factor: float | None = None,
     ) -> tuple[Tensor, Tensor]:
-        """Calculates anchor alignment metric and IoU between GTs and
+        """Calculate anchor alignment metric and IoU between GTs and
         predicted bboxes (optionally incorporating pose OKS).
 
         @type pred_scores: Tensor
@@ -316,7 +316,7 @@ class TaskAlignedAssigner(nn.Module):
         largest: bool = True,
         topk_mask: Tensor | None = None,
     ) -> Tensor:
-        """Selects k anchors based on provided metrics tensor.
+        """Select k anchors based on provided metrics tensor.
 
         @type metrics: Tensor
         @param metrics: Metrics tensor of shape [bs, n_max_boxes,

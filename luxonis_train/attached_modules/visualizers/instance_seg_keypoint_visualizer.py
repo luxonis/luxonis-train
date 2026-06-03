@@ -20,6 +20,7 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
         self,
         labels: dict[int, str] | list[str] | None = None,
         draw_labels: bool = True,
+        draw_scores: bool = False,
         colors: dict[str, Color] | list[Color] | None = None,
         fill: bool = False,
         width: int | None = None,
@@ -39,6 +40,9 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
         @param labels: Dictionary mapping class indices to class labels.
         @type draw_labels: bool
         @param draw_labels: Whether to draw class labels.
+        @type draw_scores: bool
+        @param draw_scores: Whether to append prediction confidence
+            scores to the rendered labels. Defaults to C{False}.
         @type colors: dict[str, L{Color}] | list[L{Color}] | None
         @param colors: Dictionary mapping class labels to colors.
         @type fill: bool
@@ -86,6 +90,7 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
         self.font = font
         self.font_size = font_size
         self.draw_labels = draw_labels
+        self.draw_scores = draw_scores
         self.alpha = alpha
 
         self.visibility_threshold = visibility_threshold
@@ -115,6 +120,7 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
             self.bbox_labels,
             self.colors,
             self.draw_labels,
+            self.draw_scores,
             self.alpha,
             self.scale,
         )

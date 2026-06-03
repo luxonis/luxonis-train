@@ -267,7 +267,6 @@ class UpBlock(nn.Sequential):
         @param align_corners: Align corners option for upsampling
             methods that support it. Defaults to False.
         """
-
         layers = []
 
         if upsample_mode == "conv_transpose":

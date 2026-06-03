@@ -1,6 +1,3 @@
-"""This module implements a metaclass for automatic registration of
-classes."""
-
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from luxonis_ml.utils.registry import Registry

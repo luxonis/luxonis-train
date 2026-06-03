@@ -247,7 +247,8 @@ class AdaptiveDetectionLoss(BaseLoss):
         self, target: Tensor, batch_size: int
     ) -> Tensor:
         """Preprocess target in shape [batch_size, N, 5] where N is the
-        maximum number of instances in one image."""
+        maximum number of instances in one image.
+        """
         sample_ids, counts = cast(
             tuple[Tensor, Tensor],
             torch.unique(target[:, 0].int(), return_counts=True),
@@ -282,7 +283,7 @@ class VarifocalLoss(nn.Module):
     ):
         """Varifocal Loss is a loss function for training a dense object detector to predict
         the IoU-aware classification score, inspired by focal loss.
-        Code is adapted from: U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models/losses.py}
+        Code is adapted from: U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models/losses.py}.
 
         @type alpha: float
         @param alpha: alpha parameter in focal loss, default is 0.75.

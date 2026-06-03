@@ -7,7 +7,12 @@ from torchvision.utils import draw_bounding_boxes
 from luxonis_train.tasks import Tasks
 
 from .base_visualizer import BaseVisualizer
-from .utils import Color, draw_bounding_box_labels, get_color
+from .utils import (
+    Color,
+    draw_bounding_box_labels,
+    get_color,
+    get_prediction_labels,
+)
 
 
 class BBoxVisualizer(BaseVisualizer):
@@ -17,6 +22,7 @@ class BBoxVisualizer(BaseVisualizer):
         self,
         labels: dict[int, str] | list[str] | None = None,
         draw_labels: bool = True,
+        draw_scores: bool = False,
         colors: dict[str, Color] | list[Color] | None = None,
         fill: bool = False,
         width: int | None = None,
@@ -36,8 +42,12 @@ class BBoxVisualizer(BaseVisualizer):
         @type draw_labels: bool
         @param draw_labels: Whether or not to draw labels. Defaults to
             C{True}.
-        @type colors: dict[int, Color] | list[Color] | None
-        @param colors: Either a dictionary mapping class indices to
+        @type draw_scores: bool
+        @param draw_scores: Whether or not to append prediction
+            confidence scores to the rendered labels. Defaults to
+            C{False}.
+        @type colors: dict[str, Color] | list[Color] | None
+        @param colors: Either a dictionary mapping class names to
             colors, or a list of colors. If list is provided, the color
             mapping is done by index. By default, random colors are
             used.
@@ -74,6 +84,7 @@ class BBoxVisualizer(BaseVisualizer):
         self.font = font
         self.font_size = font_size
         self.draw_labels = draw_labels
+        self.draw_scores = draw_scores
 
     def draw_targets(self, canvas: Tensor, targets: Tensor) -> Tensor:
         viz = torch.zeros_like(canvas)
@@ -117,10 +128,11 @@ class BBoxVisualizer(BaseVisualizer):
                 boxes *= scale
 
             prediction_classes = prediction[..., 5].int()
-            cls_labels = (
-                [self.label_dict[int(c)] for c in prediction_classes]
-                if self.draw_labels and self.label_dict is not None
-                else None
+            cls_labels = get_prediction_labels(
+                prediction,
+                self.label_dict,
+                self.draw_labels,
+                self.draw_scores,
             )
             cls_colors = (
                 [
@@ -155,7 +167,7 @@ class BBoxVisualizer(BaseVisualizer):
         predictions: list[Tensor],
         targets: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:
-        """Creates a visualization of the bounding box predictions and
+        """Create a visualization of the bounding box predictions and
         labels.
 
         @type target_canvas: Tensor
@@ -165,7 +177,7 @@ class BBoxVisualizer(BaseVisualizer):
         @type prediction: Tensor
         @param prediction: The predicted bounding boxes. The shape
             should be [N, 6], where N is the number of bounding boxes
-            and the last dimension is [x1, y1, x2, y2, class, conf].
+            and the last dimension is [x1, y1, x2, y2, conf, class].
         @type targets: Tensor
         @param targets: The target bounding boxes.
         """

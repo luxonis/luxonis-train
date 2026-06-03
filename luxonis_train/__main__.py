@@ -78,9 +78,9 @@ def train(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     @type debug: bool
-    @param debug: If true, allows the model to be constructed without
-    a valid dataset by setting `allow_empty_dataset` to True. This can
-    be useful for quick testing of the training loop.
+    @param debug: If true, allows the model to be constructed without a
+        valid dataset by setting `allow_empty_dataset` to True. This can
+        be useful for quick testing of the training loop.
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=debug
@@ -105,9 +105,9 @@ def tune(
     @type weights: str
     @param weights: Path to the model weights.
     @type debug: bool
-    @param debug: If true, allows the model to be constructed without
-    a valid dataset by setting `allow_empty_dataset` to True. This can
-    be useful for quick testing of the tuning.
+    @param debug: If true, allows the model to be constructed without a
+        valid dataset by setting `allow_empty_dataset` to True. This can
+        be useful for quick testing of the tuning.
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=debug
@@ -285,9 +285,9 @@ def test(
     @type opts: list[str]
     @param opts: A list of optional CLI overrides of the config file.
     @type debug: bool
-    @param debug: If true, allows the model to be constructed without
-    a valid dataset by setting `allow_empty_dataset` to True. This can
-    be useful for quick testing of the evaluation loop.
+    @param debug: If true, allows the model to be constructed without a
+        valid dataset by setting `allow_empty_dataset` to True. This can
+        be useful for quick testing of the evaluation loop.
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=debug
@@ -413,9 +413,9 @@ def export(
         in the run save directory.
     @type ckpt_only: bool
     @param ckpt_only: If True, only the `.ckpt` file will be exported.
-        This is useful for updating the metadata in the checkpoint
-        file in case they changed (e.g. new configuration file,
-        architectural changes affecting the exection order etc.)
+        This is useful for updating the metadata in the checkpoint file
+        in case they changed (e.g. new configuration file, architectural
+        changes affecting the execution order etc.)
     @type weights: str
     @param weights: Path to the model weights.
     @type opts: list[str]

@@ -28,7 +28,10 @@ from luxonis_train.nodes.blocks.reparametrizable import Reparametrizable
 from luxonis_train.registry import _INTERNAL
 from luxonis_train.typing import Labels, Packet
 from luxonis_train.utils import DatasetMetadata, LuxonisTrackerPL
-from luxonis_train.utils.checkpoint import filter_checkpoint_state_dict
+from luxonis_train.utils.checkpoint import (
+    CHECKPOINT_FILTERED_STATE_DICT_PATTERN,
+    filter_checkpoint_state_dict,
+)
 
 from .luxonis_output import LuxonisOutput
 from .utils import (
@@ -109,7 +112,7 @@ class LuxonisLightningModule(pl.LightningModule):
         _core: "luxonis_train.core.LuxonisModel | None" = None,
         **kwargs,
     ):
-        """Constructs an instance of `LuxonisModel` from `Config`.
+        """Construct an instance of `LuxonisModel` from `Config`.
 
         @type cfg: L{Config}
         @param cfg: Config object.
@@ -170,9 +173,48 @@ class LuxonisLightningModule(pl.LightningModule):
 
         In case resume_training is active, allow loading in a non-strict
         manner to allow loss, visualizer and metric nodes to be absent.
+        When strict weight loading is enabled, only those filtered
+        attached-module keys may be missing or unexpected.
         """
         if self.cfg.trainer.resume_training:
-            return super().load_state_dict(state_dict, strict=False)
+            filtered_state_dict = (
+                filter_checkpoint_state_dict(state_dict)
+                if self.cfg.trainer.strict_weights_loading
+                else state_dict
+            )
+            incompatible = super().load_state_dict(
+                filtered_state_dict, strict=False
+            )
+            if not self.cfg.trainer.strict_weights_loading:
+                return incompatible
+
+            missing_keys = [
+                key
+                for key in incompatible.missing_keys
+                if not CHECKPOINT_FILTERED_STATE_DICT_PATTERN.match(key)
+            ]
+            unexpected_keys = [
+                key
+                for key in incompatible.unexpected_keys
+                if not CHECKPOINT_FILTERED_STATE_DICT_PATTERN.match(key)
+            ]
+
+            if missing_keys or unexpected_keys:
+                raise RuntimeError(
+                    "Error(s) in loading state_dict for "
+                    f"{self.__class__.__name__}:\n"
+                    + (
+                        f"\tMissing key(s): {', '.join(missing_keys)}.\n"
+                        if missing_keys
+                        else ""
+                    )
+                    + (
+                        f"\tUnexpected key(s): {', '.join(unexpected_keys)}.\n"
+                        if unexpected_keys
+                        else ""
+                    )
+                )
+            return _IncompatibleKeys([], [])
         return super().load_state_dict(state_dict, strict=strict)
 
     @property
@@ -187,7 +229,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @property
     def core(self) -> "luxonis_train.core.LuxonisModel":
-        """Returns the core model."""
+        """Get a reference to the core model."""
         if self._core is None:  # pragma: no cover
             raise ValueError("Core reference is not set.")
         return self._core
@@ -357,7 +399,7 @@ class LuxonisLightningModule(pl.LightningModule):
         return self
 
     def export_onnx(self, save_path: PathType, **kwargs) -> Path:
-        """Exports the model to ONNX format.
+        """Export the model to ONNX format.
 
         @type save_path: str
         @param save_path: Path where the exported model will be saved.
@@ -450,19 +492,21 @@ class LuxonisLightningModule(pl.LightningModule):
         epoch if the config item `run_validation_after_first_epoch` is
         set.
 
-        Lightning decides whether validation should run at epoch end from
-        the public trainer attribute `check_val_every_n_epoch`. When
-        `trainer.run_validation_after_first_epoch` is enabled, we want to
-        keep using Lightning's normal validation path, but also ensure
-        that epoch 1 gets validated even if the configured `validation_interval`
-        normally skips it.
+        Lightning decides whether validation should run at epoch end
+        from the public trainer attribute `check_val_every_n_epoch`.
+        When `trainer.run_validation_after_first_epoch` is enabled, we
+        want to keep using Lightning's normal validation path, but also
+        ensure that epoch 1 gets validated even if the configured
+        `validation_interval` normally skips it.
 
-        `trainer.check_val_every_n_epoch` is temporarily overriden to `1` before fitting starts.
-        After that first real validation epoch
-        completes, `on_validation_epoch_end()` restores the original
-        interval so the rest of training follows the configured cadence.
+        `trainer.check_val_every_n_epoch` is temporarily overridden to
+        `1` before fitting starts. After that first real validation
+        epoch completes, `on_validation_epoch_end()` restores the
+        original interval so the rest of training follows the configured
+        cadence.
 
-        This override is intentionally applied only when `run_validation_after_first_epoch=True`
+        This override is intentionally applied only when
+        `run_validation_after_first_epoch=True`
         """
         if getattr(stage, "value", stage) != "fit":
             return
@@ -506,7 +550,8 @@ class LuxonisLightningModule(pl.LightningModule):
     @override
     def on_validation_epoch_end(self) -> None:
         """Restore the original validation interval after epoch 1
-        validation."""
+        validation.
+        """
         self._evaluation_epoch_end("val")
 
         if (
@@ -550,7 +595,7 @@ class LuxonisLightningModule(pl.LightningModule):
         )
 
     def load_checkpoint(self, ckpt: PathType | dict[str, Any] | None) -> None:
-        """Loads checkpoint weights from provided path.
+        """Load checkpoint weights from provided path.
 
         Loads the checkpoints gracefully, ignoring keys that are not
         found in the model state dict or in the checkpoint.
@@ -576,6 +621,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         state_dict = ckpt["state_dict"]
         ver = Version.parse(ckpt.get("version", "0.3.0"))
+        strict_weights_loading = self.cfg.trainer.strict_weights_loading
 
         old_order = ckpt.get("execution_order")
         new_order = get_model_execution_order(self)
@@ -594,6 +640,8 @@ class LuxonisLightningModule(pl.LightningModule):
                 logger.error(
                     f"Failed to load checkpoint for node '{node_name}'"
                 )
+                if strict_weights_loading:
+                    raise
                 if old_order is None:
                     logger.error(
                         "Execution order not found in the checkpoint. "
@@ -872,7 +920,7 @@ class LuxonisLightningModule(pl.LightningModule):
         metrics: dict[str, dict[str, float]],
         matrices: dict[str, dict[str, dict[str, Any]]],
     ) -> None:
-        """Prints validation metrics in the console."""
+        """Print validation metrics in the console."""
         logger.info(f"{stage} loss: {loss:.4f}")
 
         self.progress_bar.print_results(
@@ -889,9 +937,9 @@ class LuxonisLightningModule(pl.LightningModule):
 
     def get_mlflow_logging_keys(self) -> dict[str, list[str]]:
         """
-        Returns a dictionary with two lists of keys:
+        Return a dictionary with two lists of keys:
         1) "metrics"    -> Keys expected to be logged as standard metrics
-        2) "artifacts"  -> Keys expected to be logged as artifacts (e.g. confusion_matrix.json, visualizations)
+        2) "artifacts"  -> Keys expected to be logged as artifacts (e.g. confusion_matrix.json, visualizations).
         """
         artifact_keys = set()
         metric_keys = set()
@@ -974,10 +1022,18 @@ class LuxonisLightningModule(pl.LightningModule):
             elif callback.name == "TrainingProgressCallback":
                 metric_keys.update(
                     {
+                        "train/batch_total_sec",
                         "train/epoch_progress_percent",
                         "train/epoch_duration_sec",
                         "train/epoch_completion_sec",
+                        "val/batch_total_sec",
+                        "val/epoch_progress_percent",
+                        "val/epoch_duration_sec",
                         "val/epoch_completion_sec",
+                        "test/batch_total_sec",
+                        "test/epoch_progress_percent",
+                        "test/epoch_duration_sec",
+                        "test/epoch_completion_sec",
                     }
                 )
 
@@ -1011,7 +1067,7 @@ class LuxonisLightningModule(pl.LightningModule):
     def _get_node_order_mapping(
         self, node_name: str, old_order: list[str], new_order: list[str]
     ) -> dict[str, str]:
-        """Loads mapping from old to new parameter names based on
+        """Load mapping from old to new parameter names based on
         execution order.
 
         Returns a mapping dictionary or an error string if mapping

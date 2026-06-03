@@ -244,6 +244,7 @@ Here you can change everything related to actual training of the model.
 | `n_validation_batches`             | `PositiveInt \| None`                          | `None`                                 | Limits the number of validation/test batches and makes the val/test loaders deterministic                                                                                                                                                                   |
 | `smart_cfg_auto_populate`          | `bool`                                         | `True`                                 | Automatically populate sensible default values for missing config fields and log warnings. See [Trainer Tips](#trainer-tips) for more details                                                                                                               |
 | `resume_training`                  | `bool`                                         | `False`                                | Whether to resume training from a checkpoint. See [Trainer Tips](#trainer-tips) for more details                                                                                                                                                            |
+| `strict_weights_loading`           | `bool`                                         | `False`                                | Require strict compatibility for model weights when loading checkpoints. Missing loss/visualizer/metric checkpoint state is still allowed where those keys are intentionally filtered.                                                                      |
 | `preprocessing`                    | `dict`                                         | `{}`                                   | Configuration for image preprocessing and augmentations. [See preprocessing](#preprocessing) for more details                                                                                                                                               |
 | `callbacks`                        | `list`                                         | `[]`                                   | List of callback configurations to use during training. See [Callbacks](#callbacks) section for details and examples                                                                                                                                        |
 | `optimizer`                        | `dict`                                         | `{"name": "Adam", "params": {}}`       | What optimizer to use for training. See [Optimizer](#optimizer) section for details and examples                                                                                                                                                            |
@@ -447,8 +448,9 @@ training_strategy:
   ##### 1. **Fine-Tuning with Custom Configuration Example**
 
   - Set `resume_training: false`.
+  - Provide `model.weights` or pass `--weights` to initialize the model from an existing checkpoint.
   - Override the previous learning rate (LR), e.g., use `0.1` instead of `0.001`.
-  - Training starts fresh with the new LR, resetting the scheduler/optimizer (can use different ones).
+  - Training starts from the provided weights but with a fresh training state, resetting the scheduler/optimizer/epoch count (and can use different optimizer settings).
 
   ##### 2. **Resume Training Continuously Example**
 

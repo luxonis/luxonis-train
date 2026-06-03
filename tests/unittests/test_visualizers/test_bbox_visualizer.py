@@ -1,5 +1,6 @@
 import hashlib
 
+import pytest
 import torch
 from torch import Tensor
 
@@ -74,3 +75,50 @@ def test_bbox_visualizer():
         computed_hash
         == "5fbd68cb6486681905d515497ac7b08ce3f5425caa2614daf0a0932c9d72fac1"
     )
+
+
+def test_bbox_visualizer_draw_scores(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_labels: list[list[str] | None] = []
+
+    def mock_draw_bounding_boxes(
+        image: Tensor,
+        boxes: Tensor,
+        width: int,
+        labels: list[str] | None,
+        colors: list[tuple[int, int, int]] | None,
+    ) -> Tensor:
+        del boxes, width, colors
+        captured_labels.append(labels)
+        return image
+
+    monkeypatch.setattr(
+        "luxonis_train.attached_modules.visualizers.bbox_visualizer.draw_bounding_boxes",
+        mock_draw_bounding_boxes,
+    )
+
+    visualizer = BBoxVisualizer(
+        draw_scores=True,
+        node=DummyBBoxNode(
+            n_classes=2,
+            dataset_metadata=DatasetMetadata(
+                classes={"": {"class1": 0, "class2": 1}}
+            ),
+        ),
+    )
+
+    canvas = torch.zeros(1, 3, 100, 100, dtype=torch.uint8)
+    predictions = [
+        torch.tensor(
+            [
+                [0, 0, 30, 30, 0.9, 0],
+                [30, 30, 70, 70, 0.8, 1],
+            ],
+            dtype=torch.float,
+        )
+    ]
+
+    visualizer.draw_predictions(canvas, predictions)
+
+    assert captured_labels == [["class1 0.90", "class2 0.80"]]

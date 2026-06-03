@@ -55,7 +55,7 @@ def process_visualizations(
 def prepare_and_infer_image(
     model: "lxt.LuxonisModel", images: dict[str, Tensor]
 ) -> LuxonisOutput:
-    """Prepares the image for inference and runs the model."""
+    """Prepare the image for inference and runs the model."""
     npy_img = model.loaders["val"].augment_test_image(images)
     torch_img = torch.tensor(npy_img).unsqueeze(0).permute(0, 3, 1, 2).float()
 
@@ -73,7 +73,7 @@ def window_closed() -> bool:  # pragma: no cover
 def infer_from_video(
     model: "lxt.LuxonisModel", video_path: PathType, save_dir: Path | None
 ) -> None:
-    """Runs inference on individual frames from a video.
+    """Run inference on individual frames from a video.
 
     @type model: L{LuxonisModel}
     @param model: The model to use for inference.
@@ -135,7 +135,7 @@ def infer_from_loader(
     save_dir: PathType | None,
     img_paths: list[PathType] | None = None,
 ) -> None:
-    """Runs inference on images from the dataset.
+    """Run inference on images from the dataset.
 
     @type model: L{LuxonisModel}
     @param model: The model to use for inference.
@@ -258,7 +258,7 @@ def create_loader_from_directory(
     add_path_annotation: bool = False,
     batch_size: int | None = None,
 ) -> torch_data.DataLoader:
-    """Creates a DataLoader from a directory of images.
+    """Create a DataLoader from a directory of images.
 
     @type img_paths: Iterable[PathType]
     @param img_paths: Iterable of paths to the images.
@@ -328,7 +328,7 @@ def infer_from_directory(
     img_paths: Iterable[PathType],
     save_dir: Path | None,
 ) -> None:
-    """Runs inference on individual images from a directory.
+    """Run inference on individual images from a directory.
 
     @type model: L{LuxonisModel}
     @param model: The model to use for inference.
@@ -369,7 +369,7 @@ def infer_from_dataset(
     view: Literal["train", "val", "test"],
     save_dir: PathType | None,
 ) -> None:
-    """Runs inference on images from the dataset.
+    """Run inference on images from the dataset.
 
     @type model: L{LuxonisModel}
     @param model: The model to use for inference.

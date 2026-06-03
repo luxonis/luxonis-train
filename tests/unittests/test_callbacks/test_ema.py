@@ -147,7 +147,8 @@ def test_ema_swapping_across_training(
 ):
     class PreCheckCallback(pl.Callback):
         """Captures the training (original) weights before EMA swaps
-        in."""
+        in.
+        """
 
         def on_train_epoch_start(
             self, trainer: pl.Trainer, pl_module: DummyModel

@@ -11,9 +11,10 @@ from .needs_checkpoint import NeedsCheckpoint
 
 @CALLBACKS.register()
 class TestOnTrainEnd(NeedsCheckpoint):
-    def __init__(self, view: View = "test") -> None:
-        """Callback to perform a test run at the end of the training.
+    """Callback to perform a test run at the end of the training."""
 
+    def __init__(self, view: View = "test") -> None:
+        """
         @type view: Literal["train", "val", "test"]
         @param view: The view to use for testing. Defaults to "test".
         """

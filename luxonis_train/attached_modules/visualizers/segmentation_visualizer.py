@@ -28,15 +28,18 @@ class SegmentationVisualizer(BaseVisualizer):
         """Visualizer for segmentation tasks.
 
         @type colors: L{Color} | list[L{Color}]
-        @param colors: Color of the segmentation masks. Defaults to C{"#5050FF"}.
+        @param colors: Color of the segmentation masks. Defaults to
+            C{"#5050FF"}.
         @type background_class: int | None
-        @param background_class: Index of the background class. Defaults to C{0}.
-          If set, the background class will be drawn with the `background_color`.
+        @param background_class: Index of the background class. Defaults
+            to C{0}. If set, the background class will be drawn with the
+            `background_color`.
         @type background_color: L{Color} | None
-        @param background_color: Color of the background class.
-            Defaults to C{"#000000"}.
+        @param background_color: Color of the background class. Defaults
+            to C{"#000000"}.
         @type alpha: float
-        @param alpha: Alpha value of the segmentation masks. Defaults to C{0.6}.
+        @param alpha: Alpha value of the segmentation masks. Defaults to
+            C{0.6}.
         """
         super().__init__(**kwargs)
         if colors is not None and not isinstance(colors, list):
@@ -92,7 +95,7 @@ class SegmentationVisualizer(BaseVisualizer):
         predictions: Tensor,
         target: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:
-        """Creates a visualization of the segmentation predictions and
+        """Create a visualization of the segmentation predictions and
         labels.
 
         @type target_canvas: Tensor
