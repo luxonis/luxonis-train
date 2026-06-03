@@ -37,7 +37,7 @@ class TransformerClassificationHead(BaseHead):
         """
         @param x: CLS tensor in the form [B, C], where C is the embedding dim.
         @type x: Tensor
-        @return: Class logits [B, n_classes]
+        @return: Class logits [B, n_classes].
 
         @note: Steps performed:
             1) Apply dropout to the CLS token.
@@ -48,9 +48,4 @@ class TransformerClassificationHead(BaseHead):
 
     @override
     def get_custom_head_config(self) -> Params:
-        """Returns custom head configuration.
-
-        @rtype: dict
-        @return: Custom head configuration.
-        """
         return {"is_softmax": False}

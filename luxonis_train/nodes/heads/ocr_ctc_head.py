@@ -76,12 +76,12 @@ class OCRCTCHead(BaseHead):
 
     @property
     def encoder(self) -> OCREncoder:
-        """Returns the OCR encoder."""
+        """Get the OCR encoder."""
         return self._encoder
 
     @property
     def decoder(self) -> OCRDecoder:
-        """Returns the OCR decoder."""
+        """Get the OCR decoder."""
         return self._decoder
 
     @property
@@ -91,11 +91,6 @@ class OCRCTCHead(BaseHead):
 
     @override
     def get_custom_head_config(self) -> Params:
-        """Returns custom head configuration.
-
-        @rtype: dict
-        @return: Custom head configuration.
-        """
         return {
             "classes": self.encoder.alphabet,
             "n_classes": self.encoder.n_classes,

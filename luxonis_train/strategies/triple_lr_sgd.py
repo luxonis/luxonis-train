@@ -190,7 +190,8 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
                 "nesterov": self.nesterov,
             },
         ), SchedulerConfig(
-            name="LambdaLR", params={"lr_lambda": self.scheduler.lf}
+            name="LambdaLR",
+            params={"lr_lambda": self.scheduler.lf},  # type: ignore
         )
 
     @override

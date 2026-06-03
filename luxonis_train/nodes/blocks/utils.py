@@ -17,10 +17,9 @@ def autopad(kernel_size: T, padding: T | None = None) -> T:
     @param kernel_size: Kernel size.
     @type padding: int | tuple[int, ...] | None
     @param padding: Padding. Defaults to None.
-
     @rtype: int | tuple[int, ...]
-    @return: Computed padding. The output type is the same as the type of the
-        C{kernel_size}.
+    @return: Computed padding. The output type is the same as the type
+        of the C{kernel_size}.
     """
     if padding is not None:
         return padding

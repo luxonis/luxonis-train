@@ -8,12 +8,13 @@ from .needs_checkpoint import NeedsCheckpoint
 
 class ConvertOnTrainEnd(NeedsCheckpoint):
     """Callback that exports, archives, and converts the model on train
-    end."""
+    end.
+    """
 
     def on_train_end(
         self, trainer: pl.Trainer, pl_module: "lxt.LuxonisLightningModule"
     ) -> None:
-        """Converts the model on train end.
+        """Convert the model on train end.
 
         @type trainer: L{pl.Trainer}
         @param trainer: Pytorch Lightning trainer.

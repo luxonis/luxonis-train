@@ -26,8 +26,7 @@ class ModelEma(nn.Module):
         use_dynamic_decay: bool = True,
         decay_tau: float = 2000,
     ):
-        """Constructs `ModelEma`.
-
+        """
         @type model: L{pl.LightningModule}
         @param model: Pytorch Lightning module.
         @type decay: float
@@ -95,7 +94,8 @@ class ModelEma(nn.Module):
 
 class EMACallback(pl.Callback):
     """Callback that updates the stored parameters using a moving
-    average."""
+    average.
+    """
 
     def __init__(
         self,
@@ -103,8 +103,7 @@ class EMACallback(pl.Callback):
         use_dynamic_decay: bool = True,
         decay_tau: float = 2000,
     ):
-        """Constructs `EMACallback`.
-
+        """
         @type decay: float
         @param decay: Decay rate for the moving average.
         @type use_dynamic_decay: bool

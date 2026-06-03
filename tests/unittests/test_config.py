@@ -60,6 +60,39 @@ def test_smart_cfg_auto_populate(coco_dataset: LuxonisDataset):
     assert loss_params["class_loss_weight"] == expected_class_weight
 
 
+def test_smart_cfg_auto_populate_validation_batch_limit():
+    cfg = Config.get_config(
+        cast(
+            Params,
+            {
+                "model": {"nodes": [{"name": "ResNet"}]},
+                "loader": {
+                    "train_view": "train",
+                    "val_view": "train",
+                    "test_view": "train",
+                },
+            },
+        )
+    )
+    assert cfg.trainer.n_validation_batches == 10
+
+    cfg = Config.get_config(
+        cast(
+            Params,
+            {
+                "model": {"nodes": [{"name": "ResNet"}]},
+                "loader": {
+                    "train_view": "train",
+                    "val_view": "train",
+                    "test_view": "train",
+                },
+                "trainer": {"n_validation_batches": -1},
+            },
+        )
+    )
+    assert cfg.trainer.n_validation_batches == -1
+
+
 def test_config_dump(coco_dataset: LuxonisDataset, tmp_path: Path):
     model_config_path = Path("configs", "detection_light_model.yaml")
     temp_config_path = tmp_path / "config.yaml"
@@ -303,7 +336,8 @@ def test_convert_callback_deactivates_export_and_archive(
     callbacks_input: list[Params], expected_active: dict[str, bool]
 ):
     """Test that ConvertOnTrainEnd deactivates ExportOnTrainEnd and
-    ArchiveOnTrainEnd."""
+    ArchiveOnTrainEnd.
+    """
     cfg = Config.get_config(
         cast(
             Params,

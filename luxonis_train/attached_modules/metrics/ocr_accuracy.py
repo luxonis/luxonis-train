@@ -24,8 +24,7 @@ class OCRAccuracy(BaseMetric):
     total: Annotated[Tensor, MetricState()]
 
     def __init__(self, blank_class: int = 0, **kwargs):
-        """Initializes the OCR accuracy metric.
-
+        """
         @type blank_class: int
         @param blank_class: Index of the blank class. Defaults to C{0}.
         """
@@ -34,7 +33,7 @@ class OCRAccuracy(BaseMetric):
 
     @override
     def update(self, predictions: Tensor, target: Tensor) -> None:
-        """Updates the running metric with the given predictions and
+        """Update the running metric with the given predictions and
         targets.
 
         @type predictions: Tensor
@@ -73,7 +72,7 @@ class OCRAccuracy(BaseMetric):
 
     @override
     def compute(self) -> tuple[Tensor, dict[str, Tensor]]:
-        """Computes the OCR accuracy.
+        """Compute the OCR accuracy.
 
         @rtype: tuple[Tensor, dict[str, Tensor]]
         @return: A tuple containing the OCR accuracy and a dictionary of

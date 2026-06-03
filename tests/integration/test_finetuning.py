@@ -121,7 +121,9 @@ def config() -> Params:
 
 def test_finetuning(config: Params, opts: Params):
     model = LuxonisModel(
-        config, opts | {"loader.params.n_classes": 10}, debug_mode=True
+        config,
+        opts | {"loader.params.n_classes": 10},
+        allow_empty_dataset=True,
     )
     model.train()
     optimizers = model.lightning_module.optimizers()

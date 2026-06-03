@@ -23,8 +23,7 @@ class MIoU(BaseMetric):
         input_format: Literal["one-hot", "index"] = "index",
         **kwargs,
     ):
-        """Initializes the mean IoU metric.
-
+        """
         @type num_classes: int
         @param num_classes: Number of classes.
         @type include_background: bool

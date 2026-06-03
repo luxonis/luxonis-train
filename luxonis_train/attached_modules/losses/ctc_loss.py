@@ -12,7 +12,7 @@ class CTCLoss(BaseLoss):
     node: OCRCTCHead
 
     def __init__(self, use_focal_loss: bool = True, **kwargs):
-        """Initializes the CTC loss with optional focal loss support.
+        """Initialize the CTC loss with optional focal loss support.
 
         @type use_focal_loss: bool
         @param use_focal_loss: Whether to apply focal loss weighting to
@@ -23,7 +23,7 @@ class CTCLoss(BaseLoss):
         self.use_focal_loss = use_focal_loss
 
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
-        """Computes the CTC loss, optionally applying focal loss.
+        """Compute the CTC loss, optionally applying focal loss.
 
         @type preds: Tensor
         @param preds: Network predictions of shape (B, T, C), where T is

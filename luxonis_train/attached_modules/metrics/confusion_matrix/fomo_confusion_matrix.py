@@ -26,7 +26,8 @@ class FomoConfusionMatrix(DetectionConfusionMatrix):
         target_boundingbox: Tensor,
     ) -> None:
         """Override update to convert FOMO keypoints into bounding boxes
-        before calling the parent update method."""
+        before calling the parent update method.
+        """
         pred_bboxes = keypoints_to_bboxes(
             keypoints,
             self.original_in_shape[1],

@@ -25,7 +25,7 @@ class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
     @staticmethod
     @abstractmethod
     def get_variants() -> tuple[str, dict[str, Params]]:
-        """Returns a name of the default varaint and a dictionary of
+        """Get a name of the default varaint and a dictionary of
         available model variants with their parameters.
 
         The keys are the variant names, and the values are dictionaries

@@ -20,9 +20,14 @@ from luxonis_train.utils import get_sigmas, get_with_default
 
 
 class MeanAveragePrecisionKeypoints(BaseMetric):
-    """Mean Average Precision metric for keypoints.
+    """Mean Average Precision metric for keypoints detections.
 
     Uses C{OKS} as IoU measure.
+
+    Adapted from: U{https://github.com/Lightning-AI/torchmetrics/blob/v1.0.1/src/
+    torchmetrics/detection/mean_ap.py}.
+
+    @license: Apache License, Version 2.0
     """
 
     supported_tasks = [
@@ -48,13 +53,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         box_format: Literal["xyxy", "xywh", "cxcywh"] = "xyxy",
         **kwargs,
     ):
-        """Implementation of the mean average precision metric for
-        keypoint detections.
-
-        Adapted from: U{https://github.com/Lightning-AI/torchmetrics/blob/v1.0.1/src/
-        torchmetrics/detection/mean_ap.py}.
-
-        @license: Apache License, Version 2.0
+        """
 
         @type sigmas: list[float] | None
         @param sigmas: Sigma for each keypoint to weigh its importance, if C{None}, then
@@ -163,8 +162,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         classes_list: list[Tensor],
         scores_list: list[Tensor] | None = None,
     ) -> COCO:
-        """Transforms and returns all cached targets or predictions in
-        COCO format.
+        """Transform and get all cached targets or predictions in COCO
+        format.
 
         Format is defined at U{
         https://cocodataset.org/#format-data}.
@@ -203,8 +202,9 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         return coco
 
     def _get_classes(self) -> list[dict]:
-        """Return a list of unique classes found in ground truth and
-        detection data."""
+        """Get a list of unique classes found in ground truth and
+        detection data.
+        """
         return [
             {"id": i, "name": str(i)}
             for i in torch.cat(self.pred_classes + self.target_classes)

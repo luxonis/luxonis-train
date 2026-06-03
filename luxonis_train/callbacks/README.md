@@ -198,9 +198,17 @@ Callback that publishes training progress and timing metrics.
 
 **Published Metrics:**
 
-| Metric Key                     | Description                                             |
-| ------------------------------ | ------------------------------------------------------- |
-| `train/epoch_progress_percent` | Percentage (0-100) of current epoch completed           |
-| `train/epoch_duration_sec`     | Time elapsed so far in current epoch                    |
-| `train/epoch_completion_sec`   | Total duration of completed training epoch in seconds   |
-| `val/epoch_completion_sec`     | Total duration of completed validation epoch in seconds |
+| Metric Key                     | Description                                              |
+| ------------------------------ | -------------------------------------------------------- |
+| `train/batch_total_sec`        | Time spent processing one training batch                 |
+| `train/epoch_progress_percent` | Percentage (0-100) of current epoch completed            |
+| `train/epoch_duration_sec`     | Time elapsed so far in current epoch                     |
+| `train/epoch_completion_sec`   | Total duration of completed training epoch in seconds    |
+| `val/batch_total_sec`          | Time spent processing one validation batch               |
+| `val/epoch_progress_percent`   | Percentage (0-100) of current validation epoch completed |
+| `val/epoch_duration_sec`       | Time elapsed so far in current validation epoch          |
+| `val/epoch_completion_sec`     | Total duration of completed validation epoch in seconds  |
+| `test/batch_total_sec`         | Time spent processing one test batch                     |
+| `test/epoch_progress_percent`  | Percentage (0-100) of current test epoch completed       |
+| `test/epoch_duration_sec`      | Time elapsed so far in current test epoch                |
+| `test/epoch_completion_sec`    | Total duration of completed test epoch in seconds        |

@@ -53,7 +53,9 @@ def test_infer_upscale_factor_fail(
 
 def test_safe_download():
     url = "https://github.com/luxonis/luxonis-train/releases/download/v0.1.0-beta/efficientrep_n_coco.ckpt"
-    local_path = safe_download(url=url, file="test.ckpt", dir=".", force=True)
+    local_path = safe_download(
+        url=url, file="test.ckpt", cache_dir=".", force=True
+    )
     if local_path is not None:
         assert local_path.is_file()
         local_path.unlink()

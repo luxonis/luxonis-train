@@ -13,6 +13,8 @@ from luxonis_train.nodes.blocks import ConvBlock, UpscaleOnline
 
 
 class DAPPMBranch(nn.Module):
+    """Branch of the DAPPM module."""
+
     def __init__(
         self,
         in_channels: int,
@@ -21,8 +23,7 @@ class DAPPMBranch(nn.Module):
         branch_channels: int,
         interpolation_mode: str = "bilinear",
     ):
-        """A DAPPM branch.
-
+        """
         @type in_channels: int
         @param in_channels: Number of input channels.
         @type kernel_size: int
@@ -75,6 +76,8 @@ class DAPPMBranch(nn.Module):
 
 
 class MergeDAPPMBranch(DAPPMBranch):
+    """A DAPPM branch working with an input from the previous branch."""
+
     def __init__(
         self,
         in_channels: int,
@@ -83,8 +86,7 @@ class MergeDAPPMBranch(DAPPMBranch):
         branch_channels: int,
         interpolation_mode: str = "bilinear",
     ):
-        """A DAPPM branch working with an input from the previous
-        branch.
+        """
 
         @type kernel_size: int
         @param kernel_size: The kernel size. When stride=0, this
@@ -339,7 +341,7 @@ def make_layer(
     stride: int = 1,
     expansion: int = 1,
 ) -> nn.Sequential:
-    """Creates a sequential layer consisting of a series of blocks.
+    """Create a sequential layer consisting of a series of blocks.
 
     @type block: Type[nn.Module]
     @param block: The block class to be used.

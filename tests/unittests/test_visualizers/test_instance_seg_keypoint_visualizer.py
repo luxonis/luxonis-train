@@ -1,10 +1,12 @@
 import hashlib
 
+import pytest
 import torch
 from torch import Tensor
 
 from luxonis_train.attached_modules.visualizers import (
     InstanceSegKeypointVisualizer,
+    InstanceSegmentationVisualizer,
 )
 from luxonis_train.nodes import BaseNode
 from luxonis_train.tasks import Tasks
@@ -146,3 +148,77 @@ def test_instance_seg_keypoint_visualizer():
         computed_hash
         == "ee56331a96bbe5f9b93c8b74f342c34a79691896570c39be8ae8bcd7b371e3ce"
     )
+
+
+def test_instance_seg_keypoint_visualizer_draw_scores(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_draw_scores: list[bool] = []
+
+    def mock_draw_predictions(
+        cls: type[InstanceSegmentationVisualizer],
+        canvas: Tensor,
+        pred_bboxes: list[Tensor],
+        pred_masks: list[Tensor],
+        width: int | None,
+        label_dict: dict[int, str],
+        color_dict: dict[str, tuple[int, int, int]],
+        draw_labels: bool,
+        draw_scores: bool,
+        alpha: float,
+        scale: float = 1.0,
+    ) -> Tensor:
+        del (
+            cls,
+            pred_bboxes,
+            pred_masks,
+            width,
+            label_dict,
+            color_dict,
+            draw_labels,
+            alpha,
+            scale,
+        )
+        captured_draw_scores.append(draw_scores)
+        return canvas.clone()
+
+    monkeypatch.setattr(
+        InstanceSegmentationVisualizer,
+        "draw_predictions",
+        classmethod(mock_draw_predictions),
+    )
+
+    visualizer = InstanceSegKeypointVisualizer(
+        draw_scores=True,
+        node=DummyInstanceSegKeypointNode(
+            n_classes=2,
+            dataset_metadata=DatasetMetadata(
+                classes={"": {"class1": 0, "class2": 1}}
+            ),
+        ),
+    )
+
+    canvas = torch.zeros(1, 3, 100, 100, dtype=torch.uint8)
+    predictions_bbox = [
+        torch.tensor([[0, 0, 30, 30, 0.9, 0]], dtype=torch.float)
+    ]
+    predictions_masks = [torch.stack([create_mask(0, 0, 30, 30)])]
+    predictions_keypoints = [
+        torch.tensor(
+            [[[10, 10, 1], [20, 10, 1], [10, 20, 1], [20, 20, 1]]],
+            dtype=torch.float,
+        )
+    ]
+
+    visualizer.forward(
+        canvas.clone(),
+        canvas.clone(),
+        predictions_bbox,
+        predictions_masks,
+        predictions_keypoints,
+        None,
+        None,
+        None,
+    )
+
+    assert captured_draw_scores == [True]

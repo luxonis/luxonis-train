@@ -6,7 +6,7 @@ from loguru import logger
 
 
 def _augs_to_indices(all_augs: list[str], aug_names: list[str]) -> list[int]:
-    """Maps augmentation names to indices."""
+    """Map augmentation names to indices."""
     aug_indices = []
     for aug_name in aug_names:
         if aug_name == "Normalize":

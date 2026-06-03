@@ -437,7 +437,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
     def build_callbacks(
         self, save_dir: Path, n_optimizers: int
     ) -> list[pl.Callback]:
-        """Configures Pytorch Lightning callbacks."""
+        """Configure Pytorch Lightning callbacks."""
         model_name = self.cfg.model.name
 
         callbacks: list[pl.Callback] = [
@@ -518,7 +518,7 @@ def compute_losses(
     losses: dict[str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]],
     device: torch.device,
 ) -> tuple[Tensor, dict[str, Tensor]]:
-    """Computes the final loss as a weighted sum of all the losses.
+    """Compute the final loss as a weighted sum of all the losses.
 
     @type losses: dict[str, dict[str, Tensor | tuple[Tensor, dict[str,
         Tensor]]]]
@@ -581,7 +581,7 @@ def build_callbacks(
     save_dir: Path,
     nodes: Nodes,
 ) -> list[pl.Callback]:
-    """Configures Pytorch Lightning callbacks."""
+    """Configure Pytorch Lightning callbacks."""
     model_name = cfg.model.name
 
     callbacks: list[pl.Callback] = [
@@ -860,8 +860,15 @@ def get_main_metric(cfg: Config) -> MainMetric | None:
 def check_tensor_device(
     x: Tensor | list[Tensor], device: torch.device
 ) -> bool:
-    """Return whether a tensor (or every tensor in a sequence) resides
-    on a given device."""
+    """
+    @type x: Tensor | list[Tensor]
+    @param x: A tensor or a list of tensors to check.
+    @type device: torch.device
+    @param device: The device to check against.
+    @rtype: bool
+    @return: Return whether the tensor
+        (or every tensor in a sequence) resides on a given device.
+    """
     if isinstance(x, Tensor):
         return x.device == device
     if isinstance(x, (list | tuple)):
@@ -906,8 +913,7 @@ def build_optimizer_scheduler(
     cfg_optimizer: OptimizerConfig,
     cfg_scheduler: SchedulerConfig,
 ) -> tuple[Optimizer, LRScheduler | LRSchedulerConfigType]:
-    """Configures model optimizers and schedulers."""
-
+    """Configure model optimizers and schedulers."""
     optimizer = from_registry(
         OPTIMIZERS, cfg_optimizer.name, **cfg_optimizer.params
     )

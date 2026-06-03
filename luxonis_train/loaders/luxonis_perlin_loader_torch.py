@@ -18,6 +18,10 @@ from .perlin import apply_anomaly_to_img
 
 
 class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
+    """A custom loader for LDF that adds Perlin noise during training
+    with a given probability.
+    """
+
     @override
     def __init__(
         self,
@@ -27,9 +31,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         beta: float | None = None,
         **kwargs,
     ):
-        """Custom loader for LDF that adds Perlin noise during training
-        with a given probability.
-
+        """
         @type anomaly_source_path: str
         @param anomaly_source_path: Path to the anomaly dataset from
             where random samples are drawn for noise.

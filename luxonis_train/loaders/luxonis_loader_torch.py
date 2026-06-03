@@ -171,7 +171,8 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         self, labels: dict[str, np.ndarray]
     ) -> dict[str, np.ndarray]:
         """Remap keypoint labels in `labels` using the configured
-        mappings."""
+        mappings.
+        """
         for task, new_mapping in self.kpts_mapping_per_task.items():  # type: ignore
             key = f"{task}/keypoints"
             if key not in labels:

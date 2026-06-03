@@ -13,8 +13,9 @@ from .blocks import CSPDownBlock, CSPUpBlock, RepDownBlock, RepUpBlock
 
 
 class RepPANNeck(BaseNode):
-    """Implementation of the RepPANNeck module. Supports the version
-    with RepBlock and CSPStackRepBlock (for larger networks)
+    """Implementation of the RepPANNeck module.
+
+    Supports the version with RepBlock and CSPStackRepBlock (for larger networks)
 
     Adapted from U{YOLOv6: A Single-Stage Object Detection Framework
     for Industrial Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
@@ -67,7 +68,6 @@ class RepPANNeck(BaseNode):
         @param e: Factor that controls number of intermediate channels.
             Only used when block="CSPStackRepBlock". Defaults to C{None}.
         """
-
         super().__init__(weights=weights, **kwargs)
 
         if (

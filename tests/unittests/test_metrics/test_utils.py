@@ -5,7 +5,7 @@ from torchvision.ops import box_convert
 def convert_bboxes_to_xyxy_and_normalize(
     targets: Tensor, original_in_shape: Size
 ) -> Tensor:
-    """ " Converts the targets to xyxy format and normalizes them."""
+    """Convert the targets to xyxy format and normalizes them."""
     targets = targets.float()
     targets[:, 2:] = box_convert(targets[:, 2:], "xyxy", "xywh")
     targets[:, [2, 4]] /= original_in_shape[2]

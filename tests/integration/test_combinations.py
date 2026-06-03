@@ -150,10 +150,12 @@ def test_combinations(
         model.train()
 
     with subtests.test("test"):
-        model.test()
+        model.test(finalize_tracker=False)
 
     with subtests.test("export"):
         model.export()
 
     with subtests.test("archive"):
         model.archive()
+
+    model.finalize_run()
