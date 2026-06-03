@@ -9,16 +9,23 @@ from .utils import compute_metric_lists, postprocess_metrics
 
 
 class MeanAveragePrecisionBBox(MeanAveragePrecision, BaseMetric):
-    supported_tasks = [Tasks.BOUNDINGBOX]
+    supported_tasks = [
+        Tasks.BOUNDINGBOX,
+        Tasks.INSTANCE_KEYPOINTS,
+        Tasks.INSTANCE_SEGMENTATION,
+        Tasks.INSTANCE_SEGMENTATION_KEYPOINTS,
+    ]
 
     def __init__(self, **kwargs):
         super().__init__(iou_type="bbox", **kwargs)
 
     @override
-    def update(self, predictions: list[Tensor], targets: Tensor) -> None:
+    def update(
+        self, boundingbox: list[Tensor], target_boundingbox: Tensor
+    ) -> None:
         super().update(
             *compute_metric_lists(
-                predictions, targets, *self.original_in_shape[1:]
+                boundingbox, target_boundingbox, *self.original_in_shape[1:]
             )
         )
 
