@@ -1,3 +1,5 @@
+import hashlib
+import json
 from collections import defaultdict
 from collections.abc import Callable, Mapping
 from pathlib import Path
@@ -129,6 +131,9 @@ class LuxonisLightningModule(pl.LightningModule):
         self._sequentially_logged_visualizations: list[
             dict[str, dict[str, Tensor]]
         ] = []
+        self._prediction_manifests: dict[
+            Literal["test", "val"], list[dict[str, Any]]
+        ] = {"test": [], "val": []}
         self._needs_vis_buffering = True
 
         self._loss_accumulators = {
@@ -713,6 +718,9 @@ class LuxonisLightningModule(pl.LightningModule):
             compute_metrics=True,
             compute_visualizations=True,
         )
+        self._collect_prediction_manifest(
+            mode, inputs, labels, outputs.outputs
+        )
 
         _, losses = compute_losses(self.cfg, outputs.losses, self.device)
 
@@ -869,7 +877,150 @@ class LuxonisLightningModule(pl.LightningModule):
         self._n_logged_images = 0
         if self._class_log_counts:
             self._class_log_counts = [0] * len(self._class_log_counts)
+        self._log_prediction_manifest(mode)
         self._loss_accumulators[mode].clear()
+
+    def _collect_prediction_manifest(
+        self,
+        mode: Literal["test", "val"],
+        inputs: dict[str, Tensor],
+        labels: Labels,
+        outputs: dict[str, Packet[Tensor]],
+    ) -> None:
+        try:
+            images = inputs[self.image_source]
+            batch_size = images.shape[0]
+            for batch_idx in range(batch_size):
+                input_hash = self._hash_tensor(images[batch_idx])
+                label_hashes = self._hash_sample_labels(
+                    labels, batch_idx, batch_size
+                )
+                prediction_hashes = self._hash_sample_predictions(
+                    outputs, batch_idx, batch_size
+                )
+                sample_id = hashlib.sha256(
+                    json.dumps(
+                        {
+                            "input": input_hash,
+                            "labels": label_hashes,
+                        },
+                        sort_keys=True,
+                    ).encode()
+                ).hexdigest()
+                self._prediction_manifests[mode].append(
+                    {
+                        "sample_id": sample_id,
+                        "input": input_hash,
+                        "labels": label_hashes,
+                        "predictions": prediction_hashes,
+                    }
+                )
+        except Exception:
+            logger.exception("Failed to collect prediction manifest.")
+
+    def _log_prediction_manifest(self, mode: Literal["test", "val"]) -> None:
+        records = self._prediction_manifests[mode]
+        if not records:
+            return
+
+        try:
+            sorted_records = sorted(
+                records, key=lambda item: str(item["sample_id"])
+            )
+            predictions_sha = hashlib.sha256(
+                json.dumps(sorted_records, sort_keys=True).encode()
+            ).hexdigest()
+            manifest = {
+                "mode": mode,
+                "sample_count": len(sorted_records),
+                "prediction_manifest_sha256": predictions_sha,
+                "samples": sorted_records,
+            }
+            manifest_path = (
+                self.save_dir
+                / f"prediction_{mode}_manifest_{predictions_sha[:12]}.json"
+            )
+            self.save_dir.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
+            self.tracker.upload_artifact(
+                manifest_path,
+                name=f"prediction_manifests/{manifest_path.name}",
+                typ="prediction_debug",
+            )
+            self.tracker.log_hyperparams(
+                {
+                    f"debug/{mode}/prediction_manifest_sha256": predictions_sha,
+                    f"debug/{mode}/prediction_sample_count": len(
+                        sorted_records
+                    ),
+                }
+            )
+            self.tracker.log_metrics(
+                {
+                    f"debug/{mode}/prediction_sample_count": float(
+                        len(sorted_records)
+                    ),
+                    f"debug/{mode}/prediction_manifest_fingerprint": float(
+                        int(predictions_sha[:12], 16)
+                    ),
+                },
+                step=0,
+            )
+            logger.info(
+                f"Logged {mode} prediction manifest hash: {predictions_sha}"
+            )
+        except Exception:
+            logger.exception("Failed to log prediction manifest.")
+        finally:
+            records.clear()
+
+    @classmethod
+    def _hash_sample_predictions(
+        cls,
+        outputs: dict[str, Packet[Tensor]],
+        batch_idx: int,
+        batch_size: int,
+    ) -> dict[str, dict[str, dict[str, object]]]:
+        hashes: dict[str, dict[str, dict[str, object]]] = {}
+        for node_name, packet in outputs.items():
+            node_hashes: dict[str, dict[str, object]] = {}
+            for key, value in packet.items():
+                if (isinstance(value, list) and len(value) == batch_size) or (
+                    isinstance(value, Tensor)
+                    and value.ndim > 0
+                    and value.shape[0] == batch_size
+                ):
+                    node_hashes[key] = cls._hash_tensor(value[batch_idx])
+            if node_hashes:
+                hashes[node_name] = node_hashes
+        return hashes
+
+    @classmethod
+    def _hash_sample_labels(
+        cls, labels: Labels, batch_idx: int, batch_size: int
+    ) -> dict[str, dict[str, object]]:
+        hashes: dict[str, dict[str, object]] = {}
+        for key, value in labels.items():
+            if value.ndim > 0 and value.shape[0] == batch_size:
+                hashes[key] = cls._hash_tensor(value[batch_idx])
+            elif value.ndim >= 2 and value.shape[1] > 0:
+                rows = value[value[:, 0] == batch_idx]
+                # Drop collate-time batch indices so the sample id is
+                # independent of dataloader order.
+                hashes[key] = cls._hash_tensor(rows[:, 1:])
+        return hashes
+
+    @staticmethod
+    def _hash_tensor(tensor: Tensor) -> dict[str, object]:
+        tensor = tensor.detach().cpu().contiguous()
+        return {
+            "dtype": str(tensor.dtype),
+            "shape": list(tensor.shape),
+            "sha256": hashlib.sha256(tensor.numpy().tobytes()).hexdigest(),
+        }
 
     @rank_zero_only
     def _print_results(

@@ -560,6 +560,7 @@ class LuxonisModel:
         weights = weights or self.cfg.model.weights
         loader = self.pytorch_loaders[view]
         self._log_test_dataset_manifest(view, loader)
+        self._log_test_weights_manifest(view, weights)
 
         with replace_weights(self.lightning_module, weights):
             if new_thread:  # pragma: no cover
@@ -685,6 +686,54 @@ class LuxonisModel:
                 "sha256": hashlib.sha256(tensor.numpy().tobytes()).hexdigest(),
             }
         return hashes
+
+    def _log_test_weights_manifest(
+        self, view: View, weights: PathType | None
+    ) -> None:
+        """Log the exact checkpoint file used for `test`, when
+        present."""
+        if weights is None:
+            self.tracker.log_hyperparams(
+                {f"debug/{view}/weights_path": "<none>"}
+            )
+            return
+
+        try:
+            weights_path = Path(weights)
+            if not weights_path.is_file():
+                self.tracker.log_hyperparams(
+                    {
+                        f"debug/{view}/weights_path": str(weights),
+                        f"debug/{view}/weights_file_exists": False,
+                    }
+                )
+                return
+
+            hasher = hashlib.sha256()
+            with weights_path.open("rb") as f:
+                for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                    hasher.update(chunk)
+
+            file_hash = hasher.hexdigest()
+            self.tracker.log_hyperparams(
+                {
+                    f"debug/{view}/weights_path": str(weights_path),
+                    f"debug/{view}/weights_file_exists": True,
+                    f"debug/{view}/weights_file_sha256": file_hash,
+                    f"debug/{view}/weights_file_size": weights_path.stat().st_size,
+                }
+            )
+            self.tracker.log_metrics(
+                {
+                    f"debug/{view}/weights_file_fingerprint": float(
+                        int(file_hash[:12], 16)
+                    )
+                },
+                step=0,
+            )
+            logger.info(f"Logged {view} weights hash: {file_hash}")
+        except Exception:
+            logger.exception("Failed to log test weights manifest.")
 
     def infer(
         self,
