@@ -11,6 +11,40 @@ from .precision_dfl_detection_loss import PrecisionDFLDetectionLoss
 
 
 class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
+    """Precision instance segmentation loss with DFL bbox terms.
+
+    Metadata:
+        - Module type: loss
+        - Registry name: ``PrecisionDFLSegmentationLoss``
+        - Task: INSTANCE_SEGMENTATION
+        - Attached node types: ``PrecisionSegmentBBoxHead``
+        - Inputs: ``features``, ``prototypes``, ``mask_coeficients``,
+          ``target_boundingbox``, ``target_instance_segmentation``
+        - Outputs: scalar total loss and ``class``/``iou``/``dfl``/``seg``
+          sub-losses
+
+    Prediction format:
+        ``features`` contains detection feature maps, ``prototypes`` contains
+        prototype masks, and ``mask_coeficients`` contains per-anchor mask
+        coefficients.
+
+    Target format:
+        ``target_boundingbox`` contains batch-indexed boxes with class IDs and
+        normalized ``xywh`` coordinates. ``target_instance_segmentation``
+        contains instance masks aligned to those boxes.
+
+    Formula:
+        Extends ``PrecisionDFLDetectionLoss`` with BCE mask reconstruction over
+        cropped prototype-composed masks.
+
+    Provenance:
+        - Source: YOLOv8 / YOLOv6 / PPYOLOE-inspired implementation
+        - License: Unknown
+        - Implementation notes: Reuses bbox assignment and DFL terms from the
+          detection loss and adds mask prototype supervision.
+
+    """
+
     node: PrecisionSegmentBBoxHead
     supported_tasks = [Tasks.INSTANCE_SEGMENTATION]
 
@@ -36,6 +70,8 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
                 multiply with accumulate_grad_batches.
             skip_stal (bool): If True, disables Small-Target-Aware Label Assignment candidate
                 expansion. Defaults to False.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(
             tal_topk=tal_topk,
@@ -166,6 +202,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             batch_ids (Tensor): Batch indices. Shape: (n, 1).
             proto (Tensor): Prototype masks. Shape: (B, 32, H, W).
             pred_masks (Tensor): Predicted mask coefficients. Shape: (B, N_anchor, 32).
+
         """
         _, _, h, w = proto.shape
         total_loss = 0

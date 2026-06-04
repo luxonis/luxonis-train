@@ -17,6 +17,35 @@ from .precision_bbox_head import PrecisionBBoxHead
 
 
 class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
+    """Precision instance segmentation and detection head.
+
+    Metadata:
+        - Node type: head
+        - Registry name: ``PrecisionSegmentBBoxHead``
+        - Task: instance_segmentation
+        - Attach index: ``(-n_heads - 1, -1)`` by default
+        - Inputs: list of feature tensors
+        - Outputs: training returns ``features``, ``prototypes``, and
+          ``mask_coeficients``; evaluation also returns
+          ``boundingbox`` and ``instance_segmentation``; export returns
+          raw ``boundingbox``, ``masks``, and ``prototypes`` tensors.
+
+    Provenance:
+        - Source: YOLOv8 and YOLOv6
+        - License: Unknown
+        - Implementation notes: Extends ``PrecisionBBoxHead`` with mask
+          coefficient heads and segmentation prototypes for instance
+          masks.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
+    """
+
     task: Task = Tasks.INSTANCE_SEGMENTATION
     parser: str = "YOLOExtendedParser"
 
@@ -30,8 +59,8 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         max_det: int = 300,
         **kwargs,
     ):
-        """
-        Head for instance segmentation and object detection.
+        """Head for instance segmentation and object detection.
+
         Adapted from `Real-Time Flying Object Detection with YOLOv8 <https://arxiv.org/pdf/2305.09972>`_ and from `YOLOv6: A Single-Stage Object Detection Framework
         for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
 
@@ -39,9 +68,11 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
             n_heads (Literal[2, 3, 4]): Number of output heads. Defaults to 3.
             n_masks (int): Number of masks.
             n_proto (int): Number of prototypes for segmentation.
-            conf_thres (flaot): Confidence threshold for NMS.
+            conf_thres (float): Confidence threshold for NMS.
             iou_thres (float): IoU threshold for NMS.
             max_det (int): Maximum number of detections retained after NMS.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(
             n_heads=n_heads,
@@ -188,6 +219,7 @@ def refine_and_apply_masks(
 
     Returns:
         Tensor: Binary mask tensor with shape ``[n_masks, height, width]``.
+
     """
     if predicted_masks.size(0) == 0 or bounding_boxes.size(0) == 0:
         return torch.zeros(

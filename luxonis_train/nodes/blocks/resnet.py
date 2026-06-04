@@ -53,13 +53,16 @@ class ResNetBlock(GenericResidualBlock):
         final_relu: bool = True,
         droppath_prob: float = 0.0,
     ):
-        """        Args:
+        """Initialize a basic ResNet residual block.
+
+        Args:
             in_channels (int): Number of input channels.
             hidden_channels (int): Number of output channels.
             stride (int): Stride for the convolutional layers. Defaults to 1.
             expansion (int): Expansion factor for the output channels. Defaults to 1.
             final_relu (bool): Whether to apply a ReLU activation after the residual addition. Defaults to True.
             droppath_prob (float): Drop path probability for stochastic depth. Defaults to 0.0.
+
         """
         super().__init__(
             in_channels=in_channels,
@@ -105,13 +108,16 @@ class ResNetBottleneck(GenericResidualBlock):
         final_relu: bool = True,
         droppath_prob: float = 0.0,
     ):
-        """        Args:
+        """Initialize a ResNet bottleneck residual block.
+
+        Args:
             in_channels (int): Number of input channels.
             hidden_channels (int): Number of intermediate channels.
             stride (int): Stride for the second convolutional layer. Defaults to 1.
             expansion (int): Expansion factor for the output channels. Defaults to 4.
             final_relu (bool): Whether to apply a ReLU activation after the residual addition. Defaults to True.
             droppath_prob (float): Drop path probability for stochastic depth. Defaults to 0.0.
+
         """
         super().__init__(
             in_channels=in_channels,

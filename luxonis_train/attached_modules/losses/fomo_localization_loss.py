@@ -10,6 +10,35 @@ from .base_loss import BaseLoss
 
 
 class FOMOLocalizationLoss(BaseLoss):
+    """FOMO localization loss over heatmap logits.
+
+    Metadata:
+        - Module type: loss
+        - Registry name: ``FOMOLocalizationLoss``
+        - Task: FOMO
+        - Attached node types: ``FOMOHead``
+        - Inputs: ``heatmap``, ``target``
+        - Outputs: scalar weighted focal BCE loss
+
+    Prediction format:
+        ``heatmap`` contains per-class logits shaped ``[B, C, H, W]``.
+
+    Target format:
+        ``target`` contains batch-indexed bounding boxes from which object
+        centers are converted into heatmap keypoints.
+
+    Formula:
+        Builds a sparse target heatmap, applies BCE with logits, focal weighting,
+        and an additional object-pixel weight.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Uses bounding-box centers as FOMO localization
+          targets.
+
+    """
+
     node: FOMOHead
     supported_tasks = [Tasks.FOMO]
 
@@ -31,6 +60,8 @@ class FOMOLocalizationLoss(BaseLoss):
             gamma (float): Focal loss gamma parameter for hard example focusing
                 (gamma >= 0). Higher values focus more on hard misclassified
                 examples.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.original_img_size = self.original_in_shape[1:]

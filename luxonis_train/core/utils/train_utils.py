@@ -14,6 +14,7 @@ def create_trainer(cfg: TrainerConfig, **kwargs: Any) -> pl.Trainer:
 
     Returns:
         pl.Trainer: Pytorch Lightning trainer.
+
     """
     return pl.Trainer(
         accelerator=cfg.accelerator,

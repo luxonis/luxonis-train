@@ -73,6 +73,7 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
             kpts_mapping_per_task (dict[str, list[int]] | None): Mapping of
                 task names to custom keypoint index orderings.
             **kwargs (Any): Arguments forwarded to `BaseLoaderTorch`.
+
         """
         super().__init__(**kwargs)
         if dataset_dir is not None:

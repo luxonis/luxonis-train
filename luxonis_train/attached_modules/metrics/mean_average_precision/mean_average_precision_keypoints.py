@@ -20,14 +20,41 @@ from luxonis_train.utils import get_sigmas, get_with_default
 
 
 class MeanAveragePrecisionKeypoints(BaseMetric):
-    """Mean Average Precision metric for keypoints detections.
+    """Mean average precision metric for keypoint detections.
 
     Uses ``OKS`` as IoU measure.
 
-    Adapted from `torchmetrics mean AP <https://github.com/Lightning-AI/torchmetrics/blob/v1.0.1/src/torchmetrics/detection/mean_ap.py>`_.
+    Metadata:
+        - Module type: metric
+        - Registry name: ``MeanAveragePrecisionKeypoints``
+        - Task: INSTANCE_KEYPOINTS, INSTANCE_SEGMENTATION_KEYPOINTS
+        - Attached node types: None
+        - Inputs: ``keypoints``, ``boundingbox``, ``target_keypoints``,
+          ``target_boundingbox``
+        - Outputs: main keypoint mAP tensor and dictionary of keypoint AP/AR/F1
+          sub-metrics
+        - State: ``pred_bboxes``, ``pred_scores``, ``pred_classes``,
+          ``pred_keypoints``, ``target_bboxes``, ``target_classes``,
+          ``target_keypoints``
 
-    Notes:
-        License: Apache License, Version 2.0.
+    Prediction format:
+        ``keypoints`` and ``boundingbox`` are per-image prediction lists with
+        keypoint triplets, boxes, scores, and class IDs.
+
+    Target format:
+        ``target_keypoints`` and ``target_boundingbox`` contain batch-indexed
+        normalized keypoint and bbox targets.
+
+    Formula:
+        Converts cached predictions and targets to COCO objects and evaluates
+        keypoint AP/AR using OKS.
+
+    Provenance:
+        - Source: torchmetrics mean AP adaptation
+        - License: Apache License, Version 2.0
+        - Implementation notes: Uses ``faster_coco_eval`` and configurable OKS
+          sigmas/max detections.
+
     """
 
     supported_tasks = [
@@ -53,7 +80,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         box_format: Literal["xyxy", "xywh", "cxcywh"] = "xyxy",
         **kwargs,
     ):
-        """
+        """Initialize the keypoint mean average precision metric.
+
         Args:
             sigmas (list[float] | None): Sigma for each keypoint to weigh its importance, if
                 ``None``, then use COCO if possible otherwise defaults. Defaults to ``None``.
@@ -63,6 +91,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
                 ``20``.
             box_format (Literal["xyxy", "xywh", "cxcywh"]): Input bounding box format. Defaults to
                 ``"xyxy"``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
 
@@ -160,10 +190,21 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         classes_list: list[Tensor],
         scores_list: list[Tensor] | None = None,
     ) -> COCO:
-        """Transform and get all cached targets or predictions in COCO
-        format.
+        """Transform cached targets or predictions into COCO format.
 
-        Format is defined in the `COCO data format <https://cocodataset.org/#format-data>`_.
+        Format is defined in the
+        `COCO data format <https://cocodataset.org/#format-data>`_.
+
+        Args:
+            bboxes_list (list[Tensor]): Bounding boxes grouped by image.
+            keypoints_list (list[Tensor]): Keypoints grouped by image.
+            classes_list (list[Tensor]): Class IDs grouped by image.
+            scores_list (list[Tensor] | None): Optional prediction scores
+                grouped by image.
+
+        Returns:
+            COCO: COCO object containing the cached annotations.
+
         """
         annotations = []
 
@@ -199,8 +240,8 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         return coco
 
     def _get_classes(self) -> list[dict]:
-        """Get a list of unique classes found in ground truth and
-        detection data.
+        """Get unique classes found in ground truth and detection
+        data.
         """
         return [
             {"id": i, "name": str(i)}

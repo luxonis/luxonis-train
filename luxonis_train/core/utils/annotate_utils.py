@@ -39,6 +39,7 @@ def annotate_from_directory(
 
     Returns:
         LuxonisDataset: Dataset containing generated annotations.
+
     """
     img_paths = list(img_paths)
 

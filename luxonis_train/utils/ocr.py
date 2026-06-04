@@ -21,6 +21,7 @@ class OCRDecoder:
                 decoding. Defaults to ``[0]``.
             is_remove_duplicate (bool): Whether to remove duplicate
                 characters. Defaults to ``True``.
+
         """
         if ignored_tokens is None:
             self.ignored_tokens = [0]
@@ -37,6 +38,7 @@ class OCRDecoder:
         Returns:
             list[tuple[str, float]]: Decoded text and confidence score for
             each prediction.
+
         """
         preds = F.softmax(preds, dim=-1)
         pred_probs, pred_ids = torch.max(preds, dim=-1)
@@ -82,6 +84,7 @@ class OCREncoder:
             alphabet (list[str]): Characters in the alphabet.
             ignore_unknown (bool): Whether to ignore unknown characters.
                 Defaults to ``True``.
+
         """
         self._alphabet = ["", *np.unique(alphabet)]
         self.char_to_int = {char: i for i, char in enumerate(self._alphabet)}
@@ -100,6 +103,7 @@ class OCREncoder:
 
         Returns:
             Tensor: Encoded target tensor.
+
         """
         encoded_targets = []
         for target in targets:
@@ -126,10 +130,10 @@ class OCREncoder:
 
     @property
     def alphabet(self) -> list[str]:
-        """list[str]: Alphabet used by the encoder."""
+        """List[str]: Alphabet used by the encoder."""
         return self._alphabet
 
     @property
     def n_classes(self) -> int:
-        """int: Number of output classes."""
+        """Int: Number of output classes."""
         return len(self._alphabet)

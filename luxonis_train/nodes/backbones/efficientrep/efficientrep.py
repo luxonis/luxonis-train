@@ -18,24 +18,57 @@ from luxonis_train.variants import add_variant_aliases
 class EfficientRep(BaseNode):
     """EfficientRep backbone for object detection.
 
-    Supports the version with RepBlock and CSPStackRepBlock (for
-    larger networks)
+    EfficientRep is a YOLOv6-style convolutional feature extractor with
+    scalable depth, width, and block type presets.
 
-    Adapted from `YOLOv6: A Single-Stage Object Detection Framework
-    for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
+    Metadata:
+        - Node type: backbone
+        - Registry name: ``EfficientRep``
+        - Task: None
+        - Attach index: ``-1``
+        - Inputs: ``features`` tensor
+        - Outputs: ``features`` list of tensors
 
-    Variants
-    ========
-    The variant determines the depth and width multipliers,
-    block used and intermediate channel scaling factor.
+    Provenance:
+        - Source: ``YOLOv6: A Single-Stage Object Detection Framework for
+          Industrial Applications``
+        - License: Unknown
+        - Implementation notes: Builds local YOLOv6-style stages with
+          configurable ``RepBlock`` or ``CSPStackRepBlock`` blocks.
 
-    The depth multiplier determines the number of blocks in each stage and the width multiplier determines the number of channels.
-
-    The following variants are available:
-      - "n" or "nano" (default): depth_multiplier=0.33, width_multiplier=0.25, block=RepBlock, e=None
-      - "s" or "small": depth_multiplier=0.33, width_multiplier=0.50, block=RepBlock, e=None
-      - "m" or "medium": depth_multiplier=0.60, width_multiplier=0.75, block=CSPStackRepBlock, e=2/3
-      - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0, block=CSPStackRepBlock, e=1/2
+    Variants:
+        - ``"n"``:
+            - Default: yes
+            - Aliases: ``"nano"``
+            - Parameters:
+                - ``depth_multiplier``: ``0.33``
+                - ``width_multiplier``: ``0.25``
+                - ``block``: ``"RepBlock"``
+                - ``csp_e``: ``None``
+        - ``"s"``:
+            - Default: no
+            - Aliases: ``"small"``
+            - Parameters:
+                - ``depth_multiplier``: ``0.33``
+                - ``width_multiplier``: ``0.50``
+                - ``block``: ``"RepBlock"``
+                - ``csp_e``: ``None``
+        - ``"m"``:
+            - Default: no
+            - Aliases: ``"medium"``
+            - Parameters:
+                - ``depth_multiplier``: ``0.60``
+                - ``width_multiplier``: ``0.75``
+                - ``block``: ``"CSPStackRepBlock"``
+                - ``csp_e``: ``2 / 3``
+        - ``"l"``:
+            - Default: no
+            - Aliases: ``"large"``
+            - Parameters:
+                - ``depth_multiplier``: ``1.0``
+                - ``width_multiplier``: ``1.0``
+                - ``block``: ``"CSPStackRepBlock"``
+                - ``csp_e``: ``1 / 2``
 
     """
 
@@ -52,13 +85,18 @@ class EfficientRep(BaseNode):
         weights: str = "yolo",
         **kwargs,
     ):
-        """        Args:
+        """Initialize the EfficientRep backbone.
+
+        Args:
             channels_list (list[int] | None): List of number of channels for each block. If unspecified, defaults to [64, 128, 256, 512, 1024].
             n_repeats (list[int] | None): List of number of repeats of RepVGGBlock. If unspecified, defaults to [1, 6, 12, 18, 6].
-            depth_mul (float): Depth multiplier. If provided, overrides the variant value.
-            width_mul (float): Width multiplier. If provided, overrides the variant value.
-            block (Literal["RepBlock", "CSPStackRepBlock"] | None): Base block used when building the backbone. If provided, overrides the variant value.
-            csp_e (float | None): Factor that controls number of intermediate channels if block="CSPStackRepBlock". If provided, overrides the variant value.
+            depth_multiplier (float): Depth multiplier. If provided, overrides the variant value.
+            width_multiplier (float): Width multiplier. If provided, overrides the variant value.
+            block (Literal["RepBlock", "CSPStackRepBlock"]): Base block used when building the backbone. If provided, overrides the variant value.
+            csp_e (float): Factor that controls number of intermediate channels if block="CSPStackRepBlock". If provided, overrides the variant value.
+            weights (str): Weights identifier forwarded to the parent class. Defaults to ``"yolo"``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(weights=weights, **kwargs)
 

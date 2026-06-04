@@ -141,6 +141,7 @@ class TripleLRSGDStrategy(BaseTrainingStrategy):
             warmup_momentum (float): Warmup momentum.
             lre (float): Learning rate at the end of training.
             cosine_annealing (bool): Whether to use cosine annealing.
+
         """
         self.model = pl_module
         self.cfg = pl_module.cfg

@@ -10,6 +10,35 @@ from .bce_with_logits import BCEWithLogitsLoss
 
 
 class SmoothBCEWithLogitsLoss(BaseLoss):
+    """BCE-with-logits loss with label smoothing.
+
+    Metadata:
+        - Module type: loss
+        - Registry name: ``SmoothBCEWithLogitsLoss``
+        - Task: SEGMENTATION, CLASSIFICATION
+        - Attached node types: None
+        - Inputs: ``predictions``, ``target``
+        - Outputs: scalar BCE-with-logits loss
+
+    Prediction format:
+        ``predictions`` contains logits with the same shape as ``target``.
+
+    Target format:
+        ``target`` contains binary or multi-label targets with the same shape
+        as ``predictions``.
+
+    Formula:
+        Smooths targets toward the opposite class, then delegates to
+        ``BCEWithLogitsLoss``.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Supports positive-class weighting through the
+          wrapped BCE loss.
+
+    """
+
     supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 
     def __init__(
@@ -34,6 +63,8 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
                 ``size_average`` and ``reduce`` are in the process of being deprecated, and in the
                 meantime, specifying either of those two args will override ``reduction``. Defaults
                 to ``'mean'``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.positive_smooth_const = 1.0 - label_smoothing
@@ -53,6 +84,7 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
 
         Returns:
             Tensor: A scalar tensor.
+
         """
         if predictions.shape != target.shape:
             raise RuntimeError(

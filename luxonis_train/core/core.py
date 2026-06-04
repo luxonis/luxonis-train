@@ -74,6 +74,7 @@ class LuxonisModel:
 
     This class contains common logic of the core components (trainer,
     evaluator, exporter, etc.).
+
     """
 
     def __init__(
@@ -105,6 +106,7 @@ class LuxonisModel:
             dataset_metadata (DatasetMetadata | None): Optional dataset
                 metadata. If omitted and present in a checkpoint, metadata is
                 restored from the checkpoint.
+
         """
         if weights is not None:
             if isinstance(weights, dict):
@@ -374,6 +376,7 @@ class LuxonisModel:
         Raises:
             AttributeError: If the module is not attached to the trainer yet.
                 This can happen before training or evaluating the model first.
+
         """
         self.pl_trainer.save_checkpoint(
             path, weights_only=weights_only, storage_options=storage_options
@@ -392,6 +395,7 @@ class LuxonisModel:
         Raises:
             AttributeError: If the module is not attached to the trainer yet.
                 This can happen before training or evaluating the model first.
+
         """
         with tempfile.NamedTemporaryFile(suffix=".ckpt", delete=False) as tmp:
             checkpoint_path = self.save_checkpoint(tmp.name, weights_only)
@@ -423,6 +427,7 @@ class LuxonisModel:
             new_thread (bool): Runs training in a new thread if ``True``.
             weights (PathType | None): Path to the weights. Explicit weights
                 take precedence over weights specified in the config file.
+
         """
         if self.cfg.trainer.matmul_precision is not None:
             logger.info(
@@ -502,6 +507,7 @@ class LuxonisModel:
 
         Returns:
             Path: Path to the exported artifact.
+
         """
         weights = self.resolve_weights(weights)
 
@@ -655,6 +661,7 @@ class LuxonisModel:
         Returns:
             Mapping[str, float] | None: Test results when ``new_thread`` is
             ``False``; otherwise ``None``.
+
         """
         weights = self.resolve_weights(weights)
         loader = self.pytorch_loaders[view]
@@ -688,6 +695,7 @@ class LuxonisModel:
             weights (PathType | dict[str, Any] | None): Checkpoint path or
                 in-memory checkpoint/state dictionary from which weights are
                 loaded. If omitted, ``model.weights`` from the config is used.
+
         """
         self.lightning_module.eval()
         weights = self.resolve_weights(weights)
@@ -1010,6 +1018,7 @@ class LuxonisModel:
 
         Returns:
             Path: Path to the generated NN Archive.
+
         """
         weights = self.resolve_weights(weights)
         with replace_weights(self.lightning_module, weights):
@@ -1115,7 +1124,8 @@ class LuxonisModel:
         weights: PathType | dict[str, Any] | None = None,
         save_dir: PathType | None = None,
     ) -> tuple[Path, dict[str, Path]]:
-        """Export, archive, and convert the model to target platform format.
+        """Export, archive, and convert the model to target platform
+        format.
 
         This unified method combines export, archive, and platform conversion
         steps for RVC2, RVC3, and RVC4 targets.
@@ -1131,6 +1141,7 @@ class LuxonisModel:
             tuple[Path, dict[str, Path]]: A tuple ``(archive_path,
             conversion_artifacts)`` containing the ONNX-based NN Archive path
             and additional conversion artifact paths.
+
         """
         self.export(weights=weights, save_path=save_dir)
 
@@ -1242,11 +1253,13 @@ class LuxonisModel:
 
     @rank_zero_only
     def get_min_loss_checkpoint_path(self) -> str | None:
-        """Get the best checkpoint path with respect to minimal validation loss.
+        """Get the best checkpoint path with respect to minimal
+        validation loss.
 
         Returns:
             str | None: Path to the best checkpoint, or ``None`` if no matching
             checkpoint callback is found.
+
         """
         for callback in self.pl_trainer.checkpoint_callbacks:
             if not isinstance(callback, ModelCheckpoint):
@@ -1257,11 +1270,13 @@ class LuxonisModel:
 
     @rank_zero_only
     def get_best_metric_checkpoint_path(self) -> str | None:
-        """Get the best checkpoint path with respect to best validation metric.
+        """Get the best checkpoint path with respect to best validation
+        metric.
 
         Returns:
             str | None: Path to the best checkpoint, or ``None`` if no matching
             checkpoint callback is found.
+
         """
         for callback in self.pl_trainer.checkpoint_callbacks:
             if not isinstance(callback, ModelCheckpoint):
@@ -1276,6 +1291,7 @@ class LuxonisModel:
         Returns:
             dict[str, list[str]]: Dictionary with ``"metrics"`` and
             ``"artifacts"`` keys.
+
         """
         return self.lightning_module.get_mlflow_logging_keys()
 

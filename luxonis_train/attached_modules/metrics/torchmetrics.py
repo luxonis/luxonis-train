@@ -11,6 +11,33 @@ from .base_metric import BaseMetric
 
 
 class TorchMetricWrapper(BaseMetric):
+    """Base wrapper for torchmetrics classification-style metrics.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``TorchMetricWrapper``
+        - Task: None
+        - Attached node types: None
+        - Inputs: ``predictions``, ``target``
+        - Outputs: scalar metric tensor, or scalar plus per-class sub-metrics
+        - State: wrapped ``torchmetrics.Metric`` state
+
+    Prediction format:
+        ``predictions`` contains logits or scores accepted by the wrapped
+        torchmetrics metric.
+
+    Target format:
+        ``target`` contains class labels or segmentation labels required by the
+        inferred torchmetrics task.
+
+    Provenance:
+        - Source: torchmetrics
+        - License: Apache License 2.0
+        - Implementation notes: Infers binary, multiclass, or multilabel mode
+          from parameters or the attached node.
+
+    """
+
     Metric: type[torchmetrics.Metric]
 
     def __init__(self, **kwargs):
@@ -88,6 +115,37 @@ class TorchMetricWrapper(BaseMetric):
 
 
 class Accuracy(TorchMetricWrapper):
+    """TorchMetrics accuracy adapter.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``Accuracy``
+        - Task: CLASSIFICATION, SEGMENTATION, ANOMALY_DETECTION
+        - Attached node types: None
+        - Inputs: ``predictions``, ``target``
+        - Outputs: scalar accuracy tensor, or scalar plus per-class sub-metrics
+        - State: wrapped ``torchmetrics.Accuracy`` state
+
+    Prediction format:
+        ``predictions`` contains logits or scores accepted by
+        ``torchmetrics.Accuracy``.
+
+    Target format:
+        ``target`` contains labels for classification or segmentation. For
+        anomaly detection, segmentation labels are used.
+
+    Formula:
+        Delegates accuracy accumulation and computation to
+        ``torchmetrics.Accuracy``.
+
+    Provenance:
+        - Source: torchmetrics
+        - License: Apache License 2.0
+        - Implementation notes: Uses ``TorchMetricWrapper`` task inference and
+          optional per-class output handling.
+
+    """
+
     supported_tasks = [
         Tasks.CLASSIFICATION,
         Tasks.SEGMENTATION,
@@ -97,6 +155,36 @@ class Accuracy(TorchMetricWrapper):
 
 
 class F1Score(TorchMetricWrapper):
+    """TorchMetrics F1 score adapter.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``F1Score``
+        - Task: CLASSIFICATION, SEGMENTATION, ANOMALY_DETECTION
+        - Attached node types: None
+        - Inputs: ``predictions``, ``target``
+        - Outputs: scalar F1 tensor, or scalar plus per-class sub-metrics
+        - State: wrapped ``torchmetrics.F1Score`` state
+
+    Prediction format:
+        ``predictions`` contains logits or scores accepted by
+        ``torchmetrics.F1Score``.
+
+    Target format:
+        ``target`` contains labels for classification or segmentation. For
+        anomaly detection, segmentation labels are used.
+
+    Formula:
+        Delegates F1 accumulation and computation to ``torchmetrics.F1Score``.
+
+    Provenance:
+        - Source: torchmetrics
+        - License: Apache License 2.0
+        - Implementation notes: Uses ``TorchMetricWrapper`` task inference and
+          optional per-class output handling.
+
+    """
+
     supported_tasks = [
         Tasks.CLASSIFICATION,
         Tasks.SEGMENTATION,
@@ -106,6 +194,38 @@ class F1Score(TorchMetricWrapper):
 
 
 class JaccardIndex(TorchMetricWrapper):
+    """TorchMetrics Jaccard index adapter.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``JaccardIndex``
+        - Task: CLASSIFICATION, SEGMENTATION, ANOMALY_DETECTION
+        - Attached node types: None
+        - Inputs: ``predictions``, ``target``
+        - Outputs: scalar Jaccard index tensor, or scalar plus per-class
+          sub-metrics
+        - State: wrapped ``torchmetrics.JaccardIndex`` state
+
+    Prediction format:
+        ``predictions`` contains logits or scores accepted by
+        ``torchmetrics.JaccardIndex``.
+
+    Target format:
+        ``target`` contains labels for classification or segmentation. For
+        anomaly detection, segmentation labels are used.
+
+    Formula:
+        Delegates Jaccard accumulation and computation to
+        ``torchmetrics.JaccardIndex``.
+
+    Provenance:
+        - Source: torchmetrics
+        - License: Apache License 2.0
+        - Implementation notes: Uses ``TorchMetricWrapper`` task inference and
+          optional per-class output handling.
+
+    """
+
     supported_tasks = [
         Tasks.CLASSIFICATION,
         Tasks.SEGMENTATION,
@@ -115,6 +235,37 @@ class JaccardIndex(TorchMetricWrapper):
 
 
 class Precision(TorchMetricWrapper):
+    """TorchMetrics precision adapter.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``Precision``
+        - Task: CLASSIFICATION, SEGMENTATION, ANOMALY_DETECTION
+        - Attached node types: None
+        - Inputs: ``predictions``, ``target``
+        - Outputs: scalar precision tensor, or scalar plus per-class sub-metrics
+        - State: wrapped ``torchmetrics.Precision`` state
+
+    Prediction format:
+        ``predictions`` contains logits or scores accepted by
+        ``torchmetrics.Precision``.
+
+    Target format:
+        ``target`` contains labels for classification or segmentation. For
+        anomaly detection, segmentation labels are used.
+
+    Formula:
+        Delegates precision accumulation and computation to
+        ``torchmetrics.Precision``.
+
+    Provenance:
+        - Source: torchmetrics
+        - License: Apache License 2.0
+        - Implementation notes: Uses ``TorchMetricWrapper`` task inference and
+          optional per-class output handling.
+
+    """
+
     supported_tasks = [
         Tasks.CLASSIFICATION,
         Tasks.SEGMENTATION,
@@ -124,6 +275,36 @@ class Precision(TorchMetricWrapper):
 
 
 class Recall(TorchMetricWrapper):
+    """TorchMetrics recall adapter.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``Recall``
+        - Task: CLASSIFICATION, SEGMENTATION, ANOMALY_DETECTION
+        - Attached node types: None
+        - Inputs: ``predictions``, ``target``
+        - Outputs: scalar recall tensor, or scalar plus per-class sub-metrics
+        - State: wrapped ``torchmetrics.Recall`` state
+
+    Prediction format:
+        ``predictions`` contains logits or scores accepted by
+        ``torchmetrics.Recall``.
+
+    Target format:
+        ``target`` contains labels for classification or segmentation. For
+        anomaly detection, segmentation labels are used.
+
+    Formula:
+        Delegates recall accumulation and computation to ``torchmetrics.Recall``.
+
+    Provenance:
+        - Source: torchmetrics
+        - License: Apache License 2.0
+        - Implementation notes: Uses ``TorchMetricWrapper`` task inference and
+          optional per-class output handling.
+
+    """
+
     supported_tasks = [
         Tasks.CLASSIFICATION,
         Tasks.SEGMENTATION,

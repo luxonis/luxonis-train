@@ -15,8 +15,9 @@ class ExportOnTrainEnd(NeedsCheckpoint):
         """Export the model on train end.
 
         Args:
-            trainer (`pl.Trainer`): Pytorch Lightning trainer.
+            _ (`pl.Trainer`): Pytorch Lightning trainer. Unused.
             pl_module (`pl.LightningModule`): Pytorch Lightning module.
+
         """
         checkpoint = self.get_checkpoint(pl_module)
         if checkpoint is None:  # pragma: no cover

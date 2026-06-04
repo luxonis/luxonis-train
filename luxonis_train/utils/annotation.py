@@ -57,6 +57,7 @@ def default_annotate(
         ValueError: If the task is unsupported or OCR output is missing a
             decoder.
         FileNotFoundError: If an input image cannot be read.
+
     """
     train_size = config_preprocessing.train_image_size
     keep_aspect_ratio = config_preprocessing.keep_aspect_ratio

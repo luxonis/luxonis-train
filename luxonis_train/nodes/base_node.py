@@ -48,6 +48,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     Attributes:
         attach_index (AttachIndexType): Index of previous output that this node attaches to. Can be a single integer to specify a single output, a tuple of two or three integers to specify a range of outputs or ``"all"`` to specify all outputs. Defaults to "all". Python indexing conventions apply.
+
     """
 
     attach_index: AttachIndexType = None
@@ -78,11 +79,14 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
             original_in_shape (Size | None): Original input shape of the model. Some nodes won't function if not provided.
             dataset_metadata (`DatasetMetadata` | None): Metadata of the dataset. Some nodes won't function if not provided.
             n_classes (int | None): Number of classes in the dataset. Provide only in case ``dataset_metadata`` is not provided. Defaults to None.
+            n_keypoints (int | None): Number of keypoints in the dataset. Provide only in case ``dataset_metadata`` is not provided. Defaults to None.
             in_sizes (Size | list[Size] | None): List of input sizes for the node. Provide only in case the ``input_shapes`` were not provided.
             remove_on_export (bool): If set to True, the node will be removed from the model during export. Defaults to False.
             export_output_names (list[str] | None): List of output names for the export.
-            attach_index (AttachIndexType): Index of previous output that this node attaches to. Can be a single integer to specify a single output, a tuple of two or three integers to specify a range of outputs or ``"all"`` to specify all outputs. Defaults to "all". Python indexing conventions apply. If provided as a constructor argument, overrides the class attribute.
+            attach_index (AttachIndexType | None): Index of previous output that this node attaches to. Can be a single integer to specify a single output, a tuple of two or three integers to specify a range of outputs or ``"all"`` to specify all outputs. Defaults to "all". Python indexing conventions apply. If provided as a constructor argument, overrides the class attribute.
             task_name (str | None): Specifies which task group from the dataset to use in case the dataset contains multiple tasks. Otherwise, the task group is inferred from the dataset metadata.
+            weights (str | Literal["download", "yolo", "none"] | None): Checkpoint URL, special initialization mode, or weight-loading mode. Defaults to None.
+
         """
         super().__init__()
 
@@ -145,6 +149,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         Args:
             method (str | None): Method to use for weight initialization. If set to "yolo", the weights are initialized using the YOLOv5 method. Defaults to None, which does not perform any initialization.
+
         """
         if method is None or method == "none":
             return
@@ -162,8 +167,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
     @staticmethod
     def get_variants() -> tuple[str, dict[str, Kwargs]]:
-        """Get the name of the default varaint and a dictionary of
-        available model variants with their parameters.
+        """Get the default variant name and available model variants.
 
         The keys are the variant names, and the values are dictionaries
         of parameters which can be used as ``**kwargs`` for the
@@ -171,6 +175,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         Returns:
             tuple[str, dict[str, Params]]: A tuple containing the default variant name and a dictionary of available variants with their parameters.
+
         """
         raise NotImplementedError
 
@@ -190,6 +195,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         Raises:
             ValueError: If the node does not support keypoints.
+
         """
         if self._n_keypoints is not None:
             return self._n_keypoints
@@ -222,6 +228,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         Raises:
             RuntimeError: If the ``input_shapes`` were not set during initialization.
+
         """
         if self._input_shapes is None:
             raise self._non_set_error("input_shapes")
@@ -233,6 +240,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         Raises:
             RuntimeError: If the ``original_in_shape`` were not set during initialization.
+
         """
         if self._original_in_shape is None:
             raise self._non_set_error("original_in_shape")
@@ -244,6 +252,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         Raises:
             RuntimeError: If the ``dataset_metadata`` were not set during initialization.
+
         """
         if self._dataset_metadata is None:
             raise RuntimeError(self._non_set_error("dataset_metadata"))
@@ -261,16 +270,17 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         Example::
 
-            >>> input_shapes = [{"features": [Size(64, 128, 128), Size(3, 224, 224)]}]
+            >>> input_shapes = [{"features": [Size((64, 128, 128)), Size((3, 224, 224))]}]
             >>> attach_index = -1
-            >>> in_sizes = Size(3, 224, 224)
+            >>> in_sizes = Size((3, 224, 224))
 
-            >>> input_shapes = [{"features": [Size(64, 128, 128), Size(3, 224, 224)]}]
+            >>> input_shapes = [{"features": [Size((64, 128, 128)), Size((3, 224, 224))]}]
             >>> attach_index = "all"
-            >>> in_sizes = [Size(64, 128, 128), Size(3, 224, 224)]
+            >>> in_sizes = [Size((64, 128, 128)), Size((3, 224, 224))]
 
         Raises:
             RuntimeError: If the ``input_shapes`` are too complicated for the default implementation.
+
         """
         if self._in_sizes is not None:
             return self._in_sizes
@@ -324,6 +334,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         Raises:
             RuntimeError: If the ``input_shapes`` are too complicated for the default implementation of ``in_sizes``.
+
         """
         return self._get_nth_size(-3)
 
@@ -337,6 +348,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         Raises:
             RuntimeError: If the ``input_shapes`` are too complicated for the default implementation of ``in_sizes``.
+
         """
         return self._get_nth_size(-2)
 
@@ -350,6 +362,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         Raises:
             RuntimeError: If the ``input_shapes`` are too complicated for the default implementation of ``in_sizes``.
+
         """
         return self._get_nth_size(-1)
 
@@ -359,14 +372,13 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         Subclasses can override this method to provide a URL to support
         loading weights from a remote location.
 
-        It is possible to use several special placeholders inside the URL:
-          - ``{github}`` - will be replaced with
-            ``"https://github.com/luxonis/luxonis-train/releases/download/{version}"``,
-            where ``{version}`` is the version of used `luxonis-train` library.
-              - A version tag can be added to use a specific version. e.g. ``{github:v0.3.0}``
-          - ``{variant}`` - will be replaced with the variant of the node.
-            If the node was not constructed from a variant, an error
-            is raised.
+        Supported placeholders:
+
+        - ``{github}`` is replaced with the Luxonis Train GitHub releases URL
+          for the default version.
+        - ``{github:v0.3.0}`` uses a specific release version.
+        - ``{variant}`` is replaced with the node variant. If the node was not
+          constructed from a variant, an error is raised.
 
         The file pointed to by the URL should be a ``.ckpt`` file
         that is directly loadable using ``nn.Module.load_state_dict``.
@@ -410,6 +422,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         Args:
             ckpt (str | dict[str, Tensor] | None): Path to local or remote .ckpt file.
             strict (bool): Whether to load weights strictly or not. Defaults to True.
+
         """
         if isinstance(ckpt, dict) and not ckpt:
             raise RuntimeError("Provided checkpoint dictionary is empty.")
@@ -456,6 +469,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         Args:
             mode (bool): Value to set the export mode to.
+
         """
         self._export = mode
 
@@ -492,18 +506,20 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         Returns:
             Tensor | list[Tensor] | Packet[Tensor]: Result of the forward pass. Can be either a single tensor, a list of tensors or a tensor packet.
+
         """
         ...
 
     def run(self, inputs: list[Packet[Tensor]]) -> Packet[Tensor]:
-        """Combine the forward pass with automatic wrapping and
-        unwrapping of the inputs.
+        """Combine the forward pass with automatic input wrapping.
 
         Args:
             inputs (list[Packet[Tensor]]): Inputs to the module.
 
         Returns:
-            `Packet`[Tensor]: Outputs of the module as a packet of tensors: ``{"features": [Tensor, ...], "segmentation": Tensor}``
+            Packet[Tensor]: Outputs of the module as a packet of tensors, for
+            example ``{"features": [Tensor, ...], "segmentation": Tensor}``.
+
         """
         kwargs = {}
 
@@ -631,6 +647,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         Raises:
             ValueError: If the ``attach_index`` is invalid.
+
         """
 
         def _normalize_index(index: int) -> int:

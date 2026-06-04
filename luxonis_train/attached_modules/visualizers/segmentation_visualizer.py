@@ -16,6 +16,35 @@ log_disable = False
 
 
 class SegmentationVisualizer(BaseVisualizer):
+    """Visualize semantic segmentation and anomaly masks.
+
+    Metadata:
+        - Module type: visualizer
+        - Registry name: ``SegmentationVisualizer``
+        - Task: segmentation, anomaly_detection
+        - Attached node types: None
+        - Inputs: prediction and target canvases, ``segmentation``
+          predictions, and optional ``segmentation`` targets.
+        - Outputs: prediction visualization, or ``(targets_vis,
+          predictions_vis)`` when targets are provided.
+        - State: Tracks whether the color-mismatch warning has already been
+          emitted.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Converts segmentation outputs to boolean
+          masks, optionally upscales masks, and overlays class colors.
+
+    Prediction format:
+        - ``predictions`` is a segmentation tensor converted by
+          ``seg_output_to_bool``.
+
+    Target format:
+        - ``target`` is an optional segmentation mask tensor.
+
+    """
+
     supported_tasks = [Tasks.SEGMENTATION, Tasks.ANOMALY_DETECTION]
 
     def __init__(
@@ -29,13 +58,15 @@ class SegmentationVisualizer(BaseVisualizer):
         """Visualizer for segmentation tasks.
 
         Args:
-            colors (`Color` | list[`Color`]): Color of the segmentation masks. Defaults to
+            colors (Color | list[Color] | None): Color of the segmentation masks. Defaults to
                 ``"#5050FF"``.
             background_class (int | None): Index of the background class. Defaults to ``0``. If
-                set, the background class will be drawn with the `background_color`.
-            background_color (`Color` | None): Color of the background class. Defaults to
+                set, the background class will be drawn with ``background_color``.
+            background_color (Color): Color of the background class. Defaults to
                 ``"#000000"``.
             alpha (float): Alpha value of the segmentation masks. Defaults to ``0.6``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         if colors is not None and not isinstance(colors, list):
@@ -92,17 +123,18 @@ class SegmentationVisualizer(BaseVisualizer):
         predictions: Tensor,
         target: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:
-        """Create a visualization of the segmentation predictions and
-        labels.
+        """Create visualizations of segmentation predictions and labels.
 
         Args:
-            target_canvas (Tensor): The canvas to draw the labels on.
             prediction_canvas (Tensor): The canvas to draw the predictions on.
+            target_canvas (Tensor): The canvas to draw the labels on.
             predictions (Tensor): The predictions to visualize.
-            targets (Tensor): The targets to visualize.
+            target (Tensor | None): The targets to visualize, or ``None`` when
+                targets are unavailable.
 
         Returns:
             tuple[Tensor, Tensor]: A tuple of the label and prediction visualizations.
+
         """
         colors = self._adjust_colors(
             self.colors, self.background_class, self.background_color

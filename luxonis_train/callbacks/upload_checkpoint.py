@@ -19,10 +19,7 @@ class UploadCheckpoint(pl.Callback):
     """
 
     def __init__(self):
-        """
-        Args:
-            upload_directory (str): Path used as upload directory.
-        """
+        """Initialize checkpoint upload state."""
         super().__init__()
         self.last_best_checkpoints = set()
 

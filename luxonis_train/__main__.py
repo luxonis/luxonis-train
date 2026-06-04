@@ -18,6 +18,16 @@ from luxonis_train.upgrade import upgrade_config, upgrade_installation
 OptsType: TypeAlias = Annotated[
     list[str] | None, Parameter(json_list=False, json_dict=False)
 ]
+_LauncherTokenType = Annotated[
+    str, Parameter(show=False, allow_leading_hyphen=True)
+]
+_LauncherSourceType = Annotated[
+    list[Path] | None,
+    Parameter(
+        help="Path to a python module with custom components. "
+        "This module will be sourced before running a command."
+    ),
+]
 
 if TYPE_CHECKING:
     import numpy as np
@@ -77,6 +87,7 @@ def train(
         weights (str | None): Path to the model weights.
         debug (bool): If ``True``, allows the model to be constructed without
             a valid dataset by setting ``allow_empty_dataset`` to ``True``.
+
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=debug
@@ -100,6 +111,7 @@ def tune(
         weights (str | None): Path to the model weights.
         debug (bool): If ``True``, allows the model to be constructed without
             a valid dataset by setting ``allow_empty_dataset`` to ``True``.
+
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=debug
@@ -222,6 +234,7 @@ def inspect(
             images are shown in their original size.
         list_augmentations (bool): Whether to show applied augmentations in the
             footer.
+
     """
     import cv2
 
@@ -266,6 +279,7 @@ def test(
         weights (str | None): Path to the model weights.
         debug (bool): If ``True``, allows the model to be constructed without
             a valid dataset by setting ``allow_empty_dataset`` to ``True``.
+
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=debug
@@ -298,6 +312,7 @@ def infer(
             video file. If not provided, the loader from the configuration file
             is used.
         weights (str | None): Path to the model weights.
+
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=True
@@ -341,6 +356,7 @@ def annotate(
         delete_remote (bool): Whether to delete the remote dataset before
             writing.
         team_id (str | None): Optional team ID for the dataset.
+
     """
     model = create_model(
         config, opts, weights=weights, allow_empty_dataset=True
@@ -378,6 +394,7 @@ def export(
             directory in the run save directory.
         weights (str | None): Path to the model weights.
         ckpt_only (bool): If ``True``, only the ``.ckpt`` file is exported.
+
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=True
@@ -401,6 +418,7 @@ def archive(
         executable (str | None): Path to the exported model, usually an ONNX
             file. If not provided, the model is exported first.
         weights (str | None): Path to the model weights.
+
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=True
@@ -428,6 +446,7 @@ def convert(
         save_dir (str | None): Directory where outputs are saved. If not
             specified, the default run save directory is used.
         weights (str | None): Path to the model weights.
+
     """
     create_model(
         config, opts, weights=weights, allow_empty_dataset=True
@@ -452,6 +471,7 @@ def config(
         config (Path): Path to configuration file to be upgraded.
         output (Path | None): Where to save the upgraded config. If omitted,
             the old file is overwritten.
+
     """
     if config.suffix == "json":
         cfg = json.loads(config.read_text(encoding="utf-8"))
@@ -491,6 +511,7 @@ def checkpoint(
             omitted, the old file is overwritten.
         config (Path | None): Optional configuration file used to construct the
             model.
+
     """
     from luxonis_train import LuxonisModel
 
@@ -512,22 +533,17 @@ def checkpoint(
 def upgrade():
     """Upgrade luxonis-train installation and user files.
 
-    Usage without a subcommand will trigger an upgrade of `luxonis-
-    train` PyPI package.
+    Usage without a subcommand will trigger an upgrade of the
+    ``luxonis-train`` PyPI package.
+
     """
     upgrade_installation()
 
 
 @app.meta.default
 def launcher(
-    *tokens: Annotated[str, Parameter(show=False, allow_leading_hyphen=True)],
-    source: Annotated[
-        list[Path] | None,
-        Parameter(
-            help="Path to a python module with custom components. "
-            "This module will be sourced before running a command."
-        ),
-    ] = None,
+    *tokens: _LauncherTokenType,
+    source: _LauncherSourceType = None,
 ):
     if source:
         for src in source:

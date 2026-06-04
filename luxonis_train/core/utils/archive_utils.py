@@ -22,6 +22,7 @@ def get_inputs(path: Path) -> dict[str, ArchiveMetadataDict]:
 
     Returns:
         dict[str, ArchiveMetadataDict]: Input metadata keyed by input name.
+
     """
     if path.suffix == ".onnx":
         return _get_onnx_inputs(path)
@@ -38,6 +39,7 @@ def get_outputs(path: Path) -> dict[str, ArchiveMetadataDict]:
 
     Returns:
         dict[str, ArchiveMetadataDict]: Output metadata keyed by output name.
+
     """
     if path.suffix == ".onnx":
         return _get_onnx_outputs(path)
@@ -106,6 +108,7 @@ def _get_head_outputs(outputs: list[dict], head_name: str) -> list[str]:
 
     Returns:
         list[str]: List of output names.
+
     """
     output_names = []
     for output in outputs:
@@ -130,6 +133,7 @@ def get_head_configs(
 
     Returns:
         list[dict]: List of head configurations.
+
     """
     head_configs = []
     head_names = set()

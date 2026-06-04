@@ -14,6 +14,35 @@ from .efficient_bbox_head import EfficientBBoxHead
 
 
 class EfficientKeypointBBoxHead(EfficientBBoxHead):
+    """Efficient object and keypoint detection head.
+
+    Metadata:
+        - Node type: head
+        - Registry name: ``EfficientKeypointBBoxHead``
+        - Task: keypoints
+        - Attach index: ``(-n_heads - 1, -1)`` by default
+        - Inputs: list of feature tensors
+        - Outputs: training returns detection intermediates and
+          ``keypoints_raw``; evaluation returns ``boundingbox``,
+          ``keypoints``, and intermediates; export returns raw
+          ``boundingbox`` and ``keypoints`` tensors.
+
+    Provenance:
+        - Source: YOLOv6
+        - License: Unknown
+        - Implementation notes: Extends ``EfficientBBoxHead`` with
+          per-scale keypoint heads and keypoint decoding relative to FPN
+          anchors.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
+    """
+
     parser = "YOLOExtendedParser"
     task = Tasks.INSTANCE_KEYPOINTS
 
@@ -31,10 +60,12 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
 
         Args:
-            n_heads (int): Number of output heads. Defaults to ``3``. B{Note:} Should be same also on neck in most cases.
+            n_heads (Literal[2, 3, 4]): Number of output heads. Defaults to ``3``. Note: Should be same also on neck in most cases.
             conf_thres (float): Threshold for confidence. Defaults to ``0.25``.
             iou_thres (float): Threshold for IoU. Defaults to ``0.45``.
             max_det (int): Maximum number of detections retained after NMS. Defaults to ``300``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(
             n_heads=n_heads,
@@ -204,7 +235,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         anchor_points: Tensor,
         stride_tensor: Tensor,
     ) -> tuple[list[Tensor], list[Tensor]]:
-        """Perform post-processing of the output and returns bboxs after
+        """Post-process output and return boxes and keypoints after
         NMS.
         """
         detections = super()._postprocess_detections(

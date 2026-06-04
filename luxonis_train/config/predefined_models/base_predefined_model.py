@@ -34,7 +34,9 @@ class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
         Returns:
             tuple[str, dict[str, Params]]: Default variant name and available
             variants with their parameters.
+
         """
+
     def generate_nodes(
         self,
         include_losses: bool = True,

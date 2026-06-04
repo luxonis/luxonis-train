@@ -67,6 +67,7 @@ class MetricState:
             the default value is a tensor, and ``"cat"`` if the default value is a list.
         persistent (Any): Whether the state will be saved as part of the modules
             ``state_dict``. Default is ``False``.
+
     """
 
     default: Tensor | Number | list | None = None
@@ -86,6 +87,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
     This class defines the basic interface for all metrics. It utilizes
     automatic registration of defined subclasses to a `METRICS`
     registry.
+
     """
 
     predefined_model_params_aliases: ClassVar[dict[str, str]] = {}
@@ -144,6 +146,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
 
         Args:
             *args (Unpack[Ts]): Prepared inputs from the `prepare` method.
+
         """
         super().update(*args)
 
@@ -158,6 +161,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
                 be one of: - A single Tensor. - A tuple of a Tensor and a dictionary of
                 sub-metrics. - A dictionary of sub-metrics. If this is the case, then the metric
                 cannot be used as the main metric of the model.
+
         """
         return super().compute()
 
@@ -177,5 +181,6 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
 
         Raises:
             IncompatibleError: If the inputs are not compatible with the module.
+
         """
         self.update(**self.get_parameters(inputs, labels))

@@ -11,6 +11,33 @@ from luxonis_train.utils.general import infer_upscale_factor
 
 
 class DDRNetSegmentationHead(BaseHead):
+    """DDRNet segmentation head.
+
+    Metadata:
+        - Node type: head
+        - Registry name: ``DDRNetSegmentationHead``
+        - Task: segmentation
+        - Attach index: None
+        - Inputs: ``features`` tensor
+        - Outputs: segmentation logits tensor; export returns integer
+          class masks or binary masks.
+
+    Provenance:
+        - Source: SuperGradients DDRNet implementation
+        - License: Apache License, Version 2.0
+        - Implementation notes: Applies batch normalization,
+          convolutional projection, and configurable upsampling to
+          segmentation logits.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
+    """
+
     in_height: int
     in_width: int
     in_channels: int
@@ -36,7 +63,8 @@ class DDRNetSegmentationHead(BaseHead):
 
         Args:
             inter_channels (int): Width of internal conv. Must be a multiple of scale_factor^2 when inter_mode is pixel_shuffle. Defaults to 64.
-            inter_mode (str): Upsampling method. One of nearest, linear, bilinear, bicubic, trilinear, area or pixel_shuffle. If pixel_shuffle is set, nn.PixelShuffle is used for scaling. Defaults to "bilinear".
+            inter_mode (Literal["nearest", "linear", "bilinear", "bicubic", "trilinear", "area", "pixel_shuffle"]): Upsampling method. If pixel_shuffle is set, nn.PixelShuffle is used for scaling. Defaults to "bilinear".
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
 
         Notes:
             License: `Apache License, Version 2.0 <https://github.com/Deci-AI/super- gradients/blob/master/LICENSE.md>`_
@@ -45,6 +73,7 @@ class DDRNetSegmentationHead(BaseHead):
             `Adapted from <https://github.com/Deci-AI/super-gradients/blob/master/src /super_gradients/training/models/segmentation_models/ddrnet.py>`_
             `Original code <https://github.com/ydhongHIT/DDRNet>`_
             `Paper <https://arxiv.org/pdf/2101.06085.pdf>`_
+
         """
         super().__init__(**kwargs)
         model_in_h, model_in_w = self.original_in_shape[1:]

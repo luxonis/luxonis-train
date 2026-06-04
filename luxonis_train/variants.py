@@ -18,12 +18,13 @@ class VariantMeta(AutoRegisterMeta):
     managing conflicts between explicitly provided arguments and variant
     parameters.
 
-    If the ``variant`` argument is not provided or is set to ``"none"``, the
-    class will be instantiated normally.
+    If the ``variant`` argument is not provided or is set to ``"none"``,
+    the class will be instantiated normally.
 
-    Additionally, if the class has a ``__post_init__`` method, it will be
-    called after the initialization. This method can be used for any
+    Additionally, if the class has a ``__post_init__`` method, it will
+    be called after the initialization. This method can be used for any
     additional setup that needs to occur after the object is created.
+
     """
 
     def __handle_variants(
@@ -32,7 +33,8 @@ class VariantMeta(AutoRegisterMeta):
         variant: str | None = None,
         **kwargs,
     ) -> "VariantBase":
-        """Create an instance with variant parameters merged into kwargs.
+        """Create an instance with variant parameters merged into
+        kwargs.
 
         Args:
             *args (Any): Positional arguments forwarded to the class
@@ -48,6 +50,7 @@ class VariantMeta(AutoRegisterMeta):
             NotImplementedError: If a non-default variant is requested but
                 the class does not implement ``get_variants``.
             ValueError: If the requested variant is not available.
+
         """
         obj = cls.__new__(cls, *args, **kwargs)
         variant = variant or "none"
@@ -114,6 +117,7 @@ class VariantMeta(AutoRegisterMeta):
 
         Returns:
             VariantBase: Created instance.
+
         """
         obj = cls.__handle_variants(*args, variant=variant, **kwargs)
         if isinstance(obj, cls):
@@ -129,6 +133,7 @@ class VariantBase(ABC, metaclass=VariantMeta, register=False):
     Attributes:
         _variant (str | None): Name of the selected variant, or ``None`` when
             no variant was selected.
+
     """
 
     _variant: str | None
@@ -146,6 +151,7 @@ class VariantBase(ABC, metaclass=VariantMeta, register=False):
             tuple[str, dict[str, Kwargs]]: A tuple containing the default
             variant name and a dictionary of available variants with their
             parameters.
+
         """
         ...
 
@@ -165,8 +171,10 @@ def add_variant_aliases(
     Returns:
         dict[str, Kwargs]: The input ``variants`` dictionary after alias
         handling.
+
     """
-    if aliases == "yolo":
+    skip_missing = aliases == "yolo"
+    if skip_missing:
         aliases = {
             "tiny": ["t"],
             "nano": ["n"],
@@ -174,9 +182,10 @@ def add_variant_aliases(
             "medium": ["m"],
             "large": ["l"],
         }
-    else:
-        for alias, names in aliases.items():
-            for name in names:
-                variants[alias] = variants[name]
+    for alias, names in aliases.items():
+        for name in names:
+            if skip_missing and name not in variants:
+                continue
+            variants[alias] = variants[name]
 
     return variants

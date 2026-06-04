@@ -13,8 +13,9 @@ AttachIndexType: TypeAlias = (
 )
 """TypeAlias: Output index specification for graph node attachment.
 
-It can be ``"all"`` for all outputs, an integer output index, or a tuple of
-output indices specifying a range of outputs.
+It can be ``"all"`` for all outputs, an integer output index, or a tuple
+of output indices specifying a range of outputs.
+
 """
 
 T = TypeVar("T", Tensor, Size)
@@ -22,4 +23,5 @@ Packet: TypeAlias = dict[str, list[T] | T]
 """TypeAlias: Dictionary containing tensors, sizes, or lists of them.
 
 Packets are used to pass data between nodes of the network graph.
+
 """

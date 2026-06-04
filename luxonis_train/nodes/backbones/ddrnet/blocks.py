@@ -5,7 +5,9 @@ Original source: `https://github.com/ydhongHIT/DDRNet <https://github.com/ydhong
 Paper: `https://arxiv.org/pdf/2101.06085.pdf <https://arxiv.org/pdf/2101.06085.pdf>`_
 
 Notes:
-    License: `https://github.com/Deci-AI/super-gradients/blob/master/LICENSE.md <https://github.com/Deci-AI/super-gradients/blob/master/LICENSE.md>`_"""
+    License: `https://github.com/Deci-AI/super-gradients/blob/master/LICENSE.md <https://github.com/Deci-AI/super-gradients/blob/master/LICENSE.md>`_
+
+"""
 
 import torch
 from torch import Tensor, nn
@@ -24,12 +26,16 @@ class DAPPMBranch(nn.Module):
         branch_channels: int,
         interpolation_mode: str = "bilinear",
     ):
-        """        Args:
+        """Initialize a DAPPM branch.
+
+        Args:
             in_channels (int): Number of input channels.
             kernel_size (int): The kernel size. When stride=0, this parameter is omitted, and AdaptiveAvgPool2d over all the input is performed.
             stride (int): Stride for the first convolution. When stride is set to 0, ``AdaptiveAvgPool2d`` over all the input is performed (output is 1x1). When set to 1, no operation is performed. When stride>1, a convolution with ``stride=stride`` is performed.
             branch_channels (int): Width after the first convolution.
-            interpolation_mode (str): Interpolation mode for upscaling. Defaults to "bilinear"."""
+            interpolation_mode (str): Interpolation mode for upscaling. Defaults to "bilinear".
+
+        """
         super().__init__()
 
         down_list = []
@@ -74,12 +80,16 @@ class MergeDAPPMBranch(DAPPMBranch):
         branch_channels: int,
         interpolation_mode: str = "bilinear",
     ):
-        """        Args:
+        """Initialize a merge DAPPM branch.
+
+        Args:
+            in_channels (int): Number of input channels.
             kernel_size (int): The kernel size. When stride=0, this parameter is omitted, and AdaptiveAvgPool2d over all the input is performed.
             stride (int): Stride for the first convolution. When stride is set to 0, ``AdaptiveAvgPool2d`` over all the input is performed (output is 1x1). When set to 1, no operation is performed. When stride>1, a convolution with ``stride=stride`` is performed.
-            in_channels (int): Number of input channels.
             branch_channels (int): Width after the first convolution.
-            interpolation_mode (str): Interpolation mode for upscaling. Defaults to "bilinear"."""
+            interpolation_mode (str): Interpolation mode for upscaling. Defaults to "bilinear".
+
+        """
         super().__init__(
             kernel_size=kernel_size,
             stride=stride,
@@ -126,7 +136,9 @@ class DAPPM(nn.Module):
             interpolation_mode (str): Interpolation mode for upscaling. Defaults to "bilinear".
 
         Raises:
-            ValueError: If the lengths of ``kernel_sizes`` and ``strides`` are not the same."""
+            ValueError: If the lengths of ``kernel_sizes`` and ``strides`` are not the same.
+
+        """
         super().__init__()
 
         self.start_branch = DAPPMBranch(
@@ -175,7 +187,9 @@ class DAPPM(nn.Module):
             x (Tensor): Input tensor.
 
         Returns:
-            Any: Output tensor after processing through all branches and compression."""
+            Tensor: Output tensor after processing through all branches and compression.
+
+        """
         x_list = [self.start_branch(x)]
 
         for i, branch in enumerate(self.branches):
@@ -200,7 +214,9 @@ class BasicDDRBackbone(nn.Module):
             stem_channels (int): Number of output channels in the stem layer.
             layers (list[int]): Number of blocks in each layer.
             in_channels (int): Number of input channels.
-            layer3_repeats (int): Number of repeats for layer3. Defaults to 1."""
+            layer3_repeats (int): Number of repeats for layer3. Defaults to 1.
+
+        """
         super().__init__()
         self.input_channels = in_channels
 
@@ -269,14 +285,16 @@ class BasicDDRBackbone(nn.Module):
         )
 
     def get_backbone_output_number_of_channels(self) -> dict[str, int]:
-        """Determine the number of output channels for each layer of the
-        backbone.
+        """Determine the number of output channels for each backbone
+        layer.
 
         Returns a dictionary with keys "layer2", "layer3", "layer4" and
         their respective number of output channels.
 
         Returns:
-            Any: Dictionary of output channel counts for each layer."""
+            dict[str, int]: Dictionary of output channel counts for each layer.
+
+        """
         output_shapes = {}
         x = torch.randn(1, self.input_channels, 320, 320)
         x = self.stem(x)
@@ -305,7 +323,7 @@ def make_layer(
     """Create a sequential layer consisting of a series of blocks.
 
     Args:
-        block (Type[nn.Module]): The block class to be used.
+        block (type[nn.Module]): The block class to be used.
         in_channels (int): Number of input channels.
         channels (int): Number of output channels.
         n_blocks (int): Number of blocks in the layer.
@@ -313,7 +331,9 @@ def make_layer(
         expansion (int): Expansion factor for the block. Defaults to 1.
 
     Returns:
-        Any: A sequential container of the blocks."""
+        nn.Sequential: A sequential container of the blocks.
+
+    """
     layers: list[nn.Module] = []
 
     layers.append(

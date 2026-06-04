@@ -470,6 +470,7 @@ class PreprocessingConfig(BaseModelExtraForbid):
         Returns:
             list[AugmentationConfig]: Filtered list of active augmentation
             configs.
+
         """
         return [
             AugmentationConfig(
@@ -561,6 +562,7 @@ class TrainerConfig(BaseModelExtraForbid):
         strings.
 
         This converts them back to ints if possible.
+
         """
         for callback in self.callbacks:
             if callback.name != "GradientAccumulationScheduler":

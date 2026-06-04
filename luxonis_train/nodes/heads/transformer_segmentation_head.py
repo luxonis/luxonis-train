@@ -8,14 +8,37 @@ from luxonis_train.tasks import Tasks
 
 
 class TransformerSegmentationHead(BaseHead):
-    """Semantic segmentation decoder head that takes feature maps as
-    inputs.
+    """Semantic segmentation decoder head for transformer feature maps.
 
-    Section 6.3.2 of the DINOv3 paper (`https://arxiv.org/abs/2508.10104/ <https://arxiv.org/abs/2508.10104/>`_)
+    Section 6.3.2 of the DINOv3 paper (`
+    https://arxiv.org/abs/2508.10104/
+    <https://arxiv.org/abs/2508.10104/>`_)
     mentions a ViT-adapter without the injection followed by Mask2Former.
     In this implementation, Mask2Former is replaced by a simple convolutional head.
 
-    Converts a list of [B, C, H, W] feature maps to segmentation logits [B, n_classes, H, W]
+    Converts a list of [B, C, H, W] feature maps to segmentation logits [B, n_classes, H, W].
+
+    Metadata:
+        - Node type: head
+        - Registry name: ``TransformerSegmentationHead``
+        - Task: segmentation
+        - Attach index: None
+        - Inputs: list of transformer feature-map tensors
+        - Outputs: segmentation logits tensor
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Projects each transformer feature map to
+          a common channel size, fuses by averaging, and upsamples logits
+          to the original input resolution.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
 
     """
 
@@ -49,17 +72,17 @@ class TransformerSegmentationHead(BaseHead):
         )
 
     def forward(self, x: list[Tensor]) -> Tensor:
-        """Semantic segmentation head for feature maps from a
-        transformer backbone.
+        """Decode transformer feature maps into segmentation logits.
 
         Args:
-            x (list[Tensor]): List of successive feature maps of the same dimension
+            x (list[Tensor]): List of successive feature maps of the same dimension.
 
         Returns:
-            Any: Segmentation logits
+            Tensor: Segmentation logits.
 
         Notes:
             Steps: 1. Project each feature map to a channel dim of 256 using 1x1 convolutions. 2. Upsample the feature maps to 1/4 of the image size. 3. Fuse the projected feature maps through summation. 4. Apply segmentation head. 5. Upsample to original input resolution.
+
         """
         h, w = self.original_in_shape[1:]
 

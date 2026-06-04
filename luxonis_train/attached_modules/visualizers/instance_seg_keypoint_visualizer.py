@@ -14,6 +14,37 @@ from luxonis_train.tasks import Tasks
 
 
 class InstanceSegKeypointVisualizer(BaseVisualizer):
+    """Visualize instance segmentation and keypoint predictions.
+
+    Metadata:
+        - Module type: visualizer
+        - Registry name: ``InstanceSegKeypointVisualizer``
+        - Task: instance_segmentation_keypoints
+        - Attached node types: None
+        - Inputs: prediction and target canvases, ``boundingbox``,
+          ``instance_segmentation``, and ``keypoints`` predictions, plus
+          optional matching targets.
+        - Outputs: prediction visualization, or ``(target_viz, pred_viz)``
+          when any targets are provided.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Composes the instance segmentation and
+          keypoint visualizer drawing helpers.
+
+    Prediction format:
+        - ``boundingbox`` and ``instance_segmentation`` follow the instance
+          segmentation visualizer formats.
+        - ``keypoints`` is a list of per-image keypoint tensors with
+          ``(x, y, visibility)`` values.
+
+    Target format:
+        - Target tensors mirror the bounding box, instance mask, and keypoint
+          formats used by the composed visualizers.
+
+    """
+
     supported_tasks = [Tasks.INSTANCE_SEGMENTATION_KEYPOINTS]
 
     def __init__(
@@ -35,14 +66,15 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
         draw_indices: bool = False,
         **kwargs,
     ):
-        """
-    Args:
+        """Initialize the instance segmentation keypoint visualizer.
+
+        Args:
             labels (dict[int, str] | list[str] | None): Dictionary mapping class indices to class
                 labels.
             draw_labels (bool): Whether to draw class labels.
             draw_scores (bool): Whether to append prediction confidence scores to the rendered
                 labels. Defaults to ``False``.
-            colors (dict[str, `Color`] | list[`Color`] | None): Dictionary mapping class labels to
+            colors (dict[str, Color] | list[Color] | None): Dictionary mapping class labels to
                 colors.
             fill (bool): Whether to fill bounding boxes.
             width (int | None): Width of the bounding box lines.
@@ -51,10 +83,12 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
             alpha (float): Alpha value for segmentation masks.
             visibility_threshold (float): Threshold for keypoint visibility.
             connectivity (list[tuple[int, int]] | None): Keypoint skeleton connections.
-            visible_color (`Color`): Color for visible keypoints.
-            nonvisible_color (`Color` | None): Color for non-visible keypoints.
+            visible_color (Color): Color for visible keypoints.
+            nonvisible_color (Color | None): Color for non-visible keypoints.
             radius (int | None): Keypoint radius.
             draw_indices (bool): Whether to draw keypoint indices.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
 

@@ -10,6 +10,40 @@ from luxonis_train.typing import Packet
 
 
 class DiscSubNetHead(BaseHead):
+    """Discriminative anomaly segmentation head.
+
+    Metadata:
+        - Node type: head
+        - Registry name: ``DiscSubNetHead``
+        - Task: anomaly_detection
+        - Attach index: ``-1``
+        - Inputs: reconstruction tensor and original tensor
+        - Outputs: export returns ``segmentation``; train and eval return
+          ``segmentation`` and ``reconstruction``.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Concatenates reconstruction and original
+          tensors, then applies a U-Net encoder-decoder segmentation
+          network.
+
+    Variants:
+        - ``"n"``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - ``base_channels``: ``32``
+                - ``width_multipliers``: ``[1, 1.1]``
+        - ``"l"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``base_channels``: ``64``
+                - ``width_multipliers``: ``[1, 2, 4, 8, 8]``
+
+    """
+
     task = Tasks.ANOMALY_DETECTION
 
     in_channels: int
@@ -24,8 +58,7 @@ class DiscSubNetHead(BaseHead):
         out_channels: int = 2,
         **kwargs,
     ):
-        """DiscSubNetHead: A discriminative sub-network that detects and
-        segments anomalies in images.
+        """Discriminative sub-network for segmenting anomalies.
 
         This model is designed to take an input image and generate a
         mask that highlights anomalies or regions of interest based on
@@ -38,6 +71,8 @@ class DiscSubNetHead(BaseHead):
             base_channels (int): The base number of filters used in the encoder and decoder blocks.
             width_multipliers (list[float]): A list of multipliers that determine the number of filters in each block of the encoder and decoder. Each multiplier is applied to the base_channels to calculate the number of filters for that block. For example, if base_channels is 32 and width_multipliers is [1, 2], the first block will have 32 filters and the second block will have 64 filters.
             out_channels (int): Number of output channels for the decoder. Defaults to 2 (for segmentation masks).
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
 

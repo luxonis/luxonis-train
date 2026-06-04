@@ -10,6 +10,54 @@ from luxonis_train.nodes.base_node import BaseNode
 
 
 class ResNet(BaseNode):
+    """ResNet backbone.
+
+    ResNet uses residual connections to train deep convolutional networks
+    and returns the four main residual stage outputs.
+
+    Metadata:
+        - Node type: backbone
+        - Registry name: ``ResNet``
+        - Task: None
+        - Attach index: ``-1``
+        - Inputs: ``features`` tensor
+        - Outputs: ``features`` list of tensors
+
+    Provenance:
+        - Source: ``torchvision.models.resnet``
+        - License: BSD-3-Clause
+        - Implementation notes: Wraps torchvision ResNet variants and
+          exposes residual stages ``layer1`` through ``layer4``.
+
+    Variants:
+        - ``"18"``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - ``variant``: ``"18"``
+        - ``"34"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``variant``: ``"34"``
+        - ``"50"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``variant``: ``"50"``
+        - ``"101"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``variant``: ``"101"``
+        - ``"152"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``variant``: ``"152"``
+
+    """
+
     def __init__(
         self,
         variant: Literal["18", "34", "50", "101", "152"] = "18",
@@ -44,14 +92,17 @@ class ResNet(BaseNode):
         Source: `https://pytorch.org/vision/main/models/resnet.html <https://pytorch.org/vision/main/models/resnet.html>`_
 
         Args:
-            variant (Literal["18", "34", "50", "101", "152"] @default variant: "18"): ResNet variant, determining the depth and structure of the network. Options are: - "18": 18 layers, uses basic blocks, smaller model suitable for simpler tasks. - "34": 34 layers, uses basic blocks, good balance of depth and computation. - "50": 50 layers, introduces bottleneck blocks, deeper feature extraction. - "101": 101 layers, uses bottleneck blocks, high capacity for complex tasks. - "152": 152 layers, deepest variant, highest capacity but most computationally intensive. The number in each variant represents the total number of weighted layers. Deeper networks generally offer higher accuracy but require more computation.
+            variant (Literal["18", "34", "50", "101", "152"]): ResNet variant, determining the depth and structure of the network. Defaults to ``"18"``.
             zero_init_residual (bool): Zero-initialize the last BN in each residual branch, so that the residual branch starts with zeros, and each residual block behaves like an identity. This improves the model by 0.2~0.3% according to `Accurate, Large Minibatch SGD: Training ImageNet in 1 Hour <https://arxiv.org/abs/1706.02677>`_. Defaults to ``False``.
             groups (int): Number of groups for each block. Defaults to 1. Can be set to a different value only for ResNet-50, ResNet-101, and ResNet-152. The width of the convolutional blocks is computed as ``int(in_channels * (width_per_group / 64.0)) * groups``
             width_per_group (int): Number of channels per group. Defaults to 64. Can be set to a different value only for ResNet-50, ResNet-101, and ResNet-152. The width of the convolutional blocks is computed as ``int(in_channels * (width_per_group / 64.0)) * groups``
             replace_stride_with_dilation (tuple[bool, bool, bool]): Tuple of booleans where each indicates if the 2x2 strides should be replaced with a dilated convolution instead. Defaults to (False, False, False). Can be set to a different value only for ResNet-50, ResNet-101, and ResNet-152.
+            weights (Literal["download", "none"] | None): Whether to download pretrained weights. Defaults to None.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
 
         Notes:
             License: `PyTorch <https://github.com/pytorch/pytorch/blob/master/LICENSE>`_
+
         """
         super().__init__(**kwargs)
         self.backbone = self._get_backbone(

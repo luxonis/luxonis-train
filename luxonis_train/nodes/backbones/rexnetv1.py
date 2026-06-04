@@ -7,6 +7,34 @@ from luxonis_train.utils import make_divisible
 
 
 class ReXNetV1_lite(BaseNode):
+    """Lite ReXNetV1 backbone for lightweight convolutional features.
+
+    ReXNetV1 expands channel dimensions across the network to improve
+    representational rank while keeping the model efficient.
+
+    Metadata:
+        - Node type: backbone
+        - Registry name: ``ReXNetV1_lite``
+        - Task: None
+        - Attach index: ``-1``
+        - Inputs: ``features`` tensor
+        - Outputs: ``features`` list of tensors
+
+    Provenance:
+        - Source: ``clovaai/rexnet``
+        - License: MIT
+        - Implementation notes: Implements the lite ReXNetV1 block schedule
+          locally and returns configured intermediate outputs.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
+    """
+
     def __init__(
         self,
         fix_head_stem: bool = False,
@@ -45,14 +73,15 @@ class ReXNetV1_lite(BaseNode):
             final_ch (int): Final channel dimension. Defaults to 164.
             multiplier (float): Channel dimension multiplier. Defaults to 1.0.
             kernel_sizes (int | list[int]): Kernel size for each block. Defaults to 3.
-            out_indices (Any): list[int] | None
-            out_indices (Any): Indices of the output layers. Defaults to [1, 4, 10, 17].
+            out_indices (list[int] | None): Indices of the output layers. Defaults to [1, 4, 10, 17].
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
 
         Notes:
-            License: `MIT <https://github.com/clovaai/rexnet/blob/master/LICENSE>`_ @copyright: 2021-present NAVER Corp.
+            License: `MIT <https://github.com/clovaai/rexnet/blob/master/LICENSE>`_. Copyright: 2021-present NAVER Corp.
 
         See Also:
             `Rethinking Channel Dimensions for Efficient Model Design <https://arxiv.org/abs/2007.00992>`_
+
         """
         super().__init__(**kwargs)
 

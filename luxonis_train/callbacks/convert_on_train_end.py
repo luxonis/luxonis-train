@@ -19,6 +19,7 @@ class ConvertOnTrainEnd(NeedsCheckpoint):
         Args:
             trainer (`pl.Trainer`): Pytorch Lightning trainer.
             pl_module (`pl.LightningModule`): Pytorch Lightning module.
+
         """
         checkpoint = self.get_checkpoint(pl_module)
         if checkpoint is None:  # pragma: no cover

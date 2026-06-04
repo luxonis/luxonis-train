@@ -10,8 +10,34 @@ from .base_loss import BaseLoss
 
 
 class CrossEntropyLoss(BaseLoss):
-    """Computes the cross entropy loss between input logits and
-    target.
+    """Compute cross entropy between logits and class targets.
+
+    Metadata:
+        - Module type: loss
+        - Registry name: ``CrossEntropyLoss``
+        - Task: SEGMENTATION, CLASSIFICATION
+        - Attached node types: None
+        - Inputs: ``predictions``, ``target``
+        - Outputs: scalar cross entropy loss
+
+    Prediction format:
+        ``predictions`` contains class logits. If a one-channel tensor is
+        provided for a binary task, a dummy channel is added before computing
+        the loss.
+
+    Target format:
+        ``target`` may contain class indices or one-hot class labels. One-hot
+        targets are converted with ``argmax`` along the channel dimension.
+
+    Formula:
+        Applies PyTorch ``nn.CrossEntropyLoss`` after target normalization.
+
+    Provenance:
+        - Source: PyTorch
+        - License: Project license
+        - Implementation notes: Handles one-hot targets and logs a warning
+          once when one-channel logits are adapted for cross entropy.
+
     """
 
     supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]

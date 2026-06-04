@@ -16,6 +16,34 @@ from .utils import (
 
 
 class BBoxVisualizer(BaseVisualizer):
+    """Visualize bounding box predictions and targets.
+
+    Metadata:
+        - Module type: visualizer
+        - Registry name: ``BBoxVisualizer``
+        - Task: boundingbox
+        - Attached node types: None
+        - Inputs: prediction and target canvases, ``boundingbox``
+          predictions, and optional ``boundingbox`` targets.
+        - Outputs: prediction visualization, or ``(target_viz,
+          prediction_viz)`` when targets are provided.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Draws boxes with ``torchvision`` and local
+          label/color helpers.
+
+    Prediction format:
+        - ``predictions`` is a list of per-image tensors with rows in
+          ``[x1, y1, x2, y2, conf, class]`` format.
+
+    Target format:
+        - ``targets`` is a tensor with rows grouped by image index and box
+          values consumed from columns ``2:``.
+
+    """
+
     supported_tasks = [Tasks.BOUNDINGBOX]
 
     def __init__(
@@ -49,6 +77,8 @@ class BBoxVisualizer(BaseVisualizer):
             width (int | None): The width of the bounding box lines. Defaults to ``1``.
             font (str | None): A filename containing a TrueType font. Defaults to ``None``.
             font_size (int | None): The font size to use for the labels. Defaults to ``None``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         if isinstance(labels, list):
@@ -153,16 +183,17 @@ class BBoxVisualizer(BaseVisualizer):
         predictions: list[Tensor],
         targets: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:
-        """Create a visualization of the bounding box predictions and
-        labels.
+        """Create visualizations of bounding box predictions and labels.
 
         Args:
-            target_canvas (Tensor): The canvas containing the labels.
             prediction_canvas (Tensor): The canvas containing the predictions.
-            prediction (Tensor): The predicted bounding boxes. The shape should be [N, 6], where N
-                is the number of bounding boxes and the last dimension is [x1, y1, x2, y2, conf,
-                class].
-            targets (Tensor): The target bounding boxes.
+            target_canvas (Tensor): The canvas containing the labels.
+            predictions (list[Tensor]): Predicted bounding boxes grouped by
+                image. Each tensor has shape ``[N, 6]`` with rows in
+                ``[x1, y1, x2, y2, conf, class]`` format.
+            targets (Tensor | None): Target bounding boxes, or ``None`` when
+                targets are unavailable.
+
         """
         predictions_viz = self.draw_predictions(
             prediction_canvas, predictions, scale=self.scale

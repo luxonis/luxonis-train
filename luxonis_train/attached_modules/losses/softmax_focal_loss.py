@@ -9,6 +9,36 @@ from luxonis_train.tasks import Tasks
 
 
 class SoftmaxFocalLoss(BaseLoss):
+    """Softmax focal loss for multiclass predictions.
+
+    Metadata:
+        - Module type: loss
+        - Registry name: ``SoftmaxFocalLoss``
+        - Task: SEGMENTATION, CLASSIFICATION
+        - Attached node types: None
+        - Inputs: ``predictions``, ``targets``
+        - Outputs: scalar or unreduced softmax focal loss, depending on
+          ``reduction``
+
+    Prediction format:
+        ``predictions`` contains multiclass logits with at least two channels.
+
+    Target format:
+        ``targets`` contains one-hot class targets with the same shape as
+        ``predictions``.
+
+    Formula:
+        Applies softmax, optional label smoothing, alpha weighting, and focal
+        modulation ``(1 - p_t) ** gamma``.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Rejects one-channel binary inputs and keeps the
+          focal computation in full precision under autocast.
+
+    """
+
     supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 
     def __init__(
@@ -19,14 +49,16 @@ class SoftmaxFocalLoss(BaseLoss):
         reduction: Literal["none", "mean", "sum"] = "mean",
         **kwargs,
     ):
-        """Focal loss implementation for classification and segmentation
-        tasks using Softmax.
+        """Compute focal loss for classification and segmentation with
+        Softmax.
 
         Args:
             alpha (float | list[float]): Weighting factor for the rare class. Defaults to ``0.25``.
             gamma (float): Focusing parameter. Defaults to ``2.0``.
             smooth (float): Label smoothing factor. Defaults to ``0.0``.
             reduction (Literal["none", "mean", "sum"]): Reduction type. Defaults to ``"mean"``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
 

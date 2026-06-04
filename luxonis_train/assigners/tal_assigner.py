@@ -46,6 +46,7 @@ class TaskAlignedAssigner(nn.Module):
                 usually ``8``, ``16``, and ``32``.
             skip_stal (bool): If ``True``, disables Small-Target-Aware Label
                 Assignment candidate expansion.
+
         """
         super().__init__()
 
@@ -124,6 +125,7 @@ class TaskAlignedAssigner(nn.Module):
         Raises:
             ValueError: If only some of ``pred_kpts``, ``gt_kpts``,
                 ``sigmas``, and ``area_factor`` are provided.
+
         """
         if any_not_none(
             [pred_kpts, gt_kpts, sigmas, area_factor]
@@ -225,6 +227,7 @@ class TaskAlignedAssigner(nn.Module):
         Returns:
             tuple[int, ...] | None: Sorted unique integer stride values, or
             ``None`` when no strides are provided.
+
         """
         if strides is None:
             return None
@@ -268,6 +271,7 @@ class TaskAlignedAssigner(nn.Module):
         Returns:
             tuple[Tensor, Tensor]: Alignment metric and IoU between GTs and
             predicted bboxes, optionally incorporating pose OKS.
+
         """
         pred_scores = pred_scores.permute(0, 2, 1)
         gt_labels = gt_labels.to(torch.long)
@@ -312,6 +316,7 @@ class TaskAlignedAssigner(nn.Module):
         Returns:
             Tensor: Candidate mask with shape
             ``[bs, n_max_boxes, n_anchors]``.
+
         """
         if not self.skip_stal:
             gt_bboxes = self._expand_small_gt_bboxes(gt_bboxes, mask_gt)
@@ -332,6 +337,7 @@ class TaskAlignedAssigner(nn.Module):
         Returns:
             Tensor: Possibly expanded GT bboxes with shape
             ``[bs, n_max_boxes, 4]``.
+
         """
         if self.min_stride is None or self.stal_target_size is None:
             return gt_bboxes
@@ -366,6 +372,7 @@ class TaskAlignedAssigner(nn.Module):
         Returns:
             Tensor: Mask of selected anchors with shape
             ``[bs, n_max_boxes, n_anchors]``.
+
         """
         n_anchors = metrics.shape[-1]
         topk_metrics, topk_idxs = torch.topk(
@@ -408,6 +415,7 @@ class TaskAlignedAssigner(nn.Module):
             ``[bs, n_anchors]``, assigned bboxes with shape
             ``[bs, n_anchors, 4]``, and assigned scores with shape
             ``[bs, n_anchors, n_classes]``.
+
         """
         # assigned target labels
         batch_ind = torch.arange(

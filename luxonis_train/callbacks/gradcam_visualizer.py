@@ -21,10 +21,12 @@ class PLModuleWrapper(pl.LightningModule):
     def __init__(
         self, pl_module: "lxt.LuxonisLightningModule", task: str
     ) -> None:
-        """
+        """Wrap a Luxonis Lightning module for Grad-CAM.
+
         Args:
             pl_module (LuxonisLightningModule): The model to be wrapped.
             task (str): The type of task (e.g., segmentation, detection, classification, keypoint_detection).
+
         """
         super().__init__()
         self.pl_module = pl_module
@@ -36,11 +38,12 @@ class PLModuleWrapper(pl.LightningModule):
 
         Args:
             inputs (Tensor): Input tensor for the model.
-            args (Any): Additional positional arguments.
-            kwargs (Any): Additional keyword arguments.
+            *args (Any): Additional positional arguments.
+            **kwargs (Any): Additional keyword arguments.
 
         Returns:
             Tensor: The processed output based on the task type.
+
         """
         input_dict = {"image": inputs}
         output = self.pl_module(input_dict, *args, **kwargs)
@@ -71,6 +74,7 @@ class GradCamCallback(pl.Callback):
     """Callback to visualize gradients using Grad-CAM (experimental).
 
     Works only during validation.
+
     """
 
     def __init__(
@@ -80,12 +84,14 @@ class GradCamCallback(pl.Callback):
         log_n_batches: int = 1,
         task: str = "classification",
     ) -> None:
-        """
+        """Initialize the Grad-CAM visualization callback.
+
         Args:
             target_layer (int): Layer to visualize gradients.
             class_idx (int | None): Index of the class for visualization. Defaults to None.
             log_n_batches (int): Number of batches to log. Defaults to 1.
             task (str): The type of task. Defaults to "classification".
+
         """
         super().__init__()
         self.target_layer = target_layer
@@ -105,6 +111,7 @@ class GradCamCallback(pl.Callback):
             trainer (pl.Trainer): The PyTorch Lightning trainer.
             pl_module (LuxonisLightningModule): The LuxonisLightningModule.
             stage (str): The stage of the training loop.
+
         """
         self.pl_module = PLModuleWrapper(pl_module, self.task)
 
@@ -125,6 +132,7 @@ class GradCamCallback(pl.Callback):
             outputs (STEP_OUTPUT): The output of the model.
             batch (Any): The input batch.
             batch_idx (int): The index of the batch.
+
         """
         if batch_idx < self.log_n_batches:
             images = batch[0][pl_module.image_source]
@@ -144,6 +152,7 @@ class GradCamCallback(pl.Callback):
             pl_module (pl.LightningModule): The PyTorch Lightning module.
             images (Tensor): The input images.
             batch_idx (int): The index of the batch.
+
         """
         target_layers = [m[1] for m in self.pl_module.named_modules()][
             self.target_layer : self.target_layer + 1

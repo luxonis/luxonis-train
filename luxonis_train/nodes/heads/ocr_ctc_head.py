@@ -11,6 +11,33 @@ from luxonis_train.utils import OCRDecoder, OCREncoder
 
 
 class OCRCTCHead(BaseHead):
+    """OCR CTC sequence classification head.
+
+    Metadata:
+        - Node type: head
+        - Registry name: ``OCRCTCHead``
+        - Task: ocr
+        - Attach index: None
+        - Inputs: ``features`` tensor
+        - Outputs: sequence logits tensor; export returns softmax
+          probabilities.
+
+    Provenance:
+        - Source: PaddleOCR
+        - License: Apache License, Version 2.0
+        - Implementation notes: Converts convolutional features to a
+          sequence and applies one or two linear layers for CTC character
+          predictions.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
+    """
+
     in_channels: int
     task = Tasks.OCR
 
@@ -31,8 +58,9 @@ class OCRCTCHead(BaseHead):
             alphabet (list[str]): List of characters.
             ignore_unknown (bool): Whether to ignore unknown characters. Defaults to True.
             fc_decay (float): L2 regularization factor. Defaults to 0.0004.
-            mid_channels (int): Number of middle channels. Defaults to None.
+            mid_channels (int | None): Number of middle channels. Defaults to None.
             return_feats (bool): Whether to return features. Defaults to False.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
 
         Notes:
             License: `Apache License, Version 2.0 <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE>`_
@@ -40,6 +68,7 @@ class OCRCTCHead(BaseHead):
         See Also:
             `Adapted from <https://github.com/PaddlePaddle/PaddleOCR/ blob/main/ppocr/modeling/heads/rec_ctc_head.py>`_
             `Original code <https://github.com/PaddlePaddle/PaddleOCR>`_
+
         """
         super().__init__(**kwargs)
         if len(set(alphabet)) != len(alphabet):  # pragma: no cover

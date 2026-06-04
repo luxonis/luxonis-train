@@ -334,6 +334,7 @@ def compute_losses(
         tuple[Tensor, dict[str, Tensor]]: A tuple ``(final_loss, all_losses)``,
             where ``final_loss`` is the weighted sum and ``all_losses`` maps
             loss names to tensors for logging.
+
     """
     final_loss = torch.zeros(1, device=device)
     all_losses: dict[str, Tensor] = {}
@@ -676,6 +677,7 @@ def compute_visualization_buffer(
             images needed to reach ``max_log_images``, excluding indices in
             ``logged_idxs``. Returns ``None`` if the buffer is already full or
             no leftovers exist.
+
     """
     if seq_buffer:
         first_map = seq_buffer[0]
@@ -761,6 +763,7 @@ def check_tensor_device(
 
     Raises:
         TypeError: If ``x`` is not a tensor or list of tensors.
+
     """
     if isinstance(x, Tensor):
         return x.device == device

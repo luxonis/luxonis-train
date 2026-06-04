@@ -12,43 +12,62 @@ from luxonis_train.nodes.blocks.utils import forward_gather
 
 
 class MobileOne(BaseNode):
-    """MobileOne: An efficient CNN backbone for mobile devices.
+    """MobileOne efficient CNN backbone for mobile devices.
 
-    The architecture focuses on reducing memory access costs and improving parallelism
-    while allowing aggressive parameter scaling for better representation capacity.
-    Different variants (S0-S4) offer various accuracy-latency tradeoffs.
+    MobileOne uses simple convolutional stages and scaled channel widths to
+    provide latency-focused feature extraction for mobile deployments.
 
-    Key features:
-      - Designed for low latency on mobile while maintaining high accuracy
-      - Uses re-parameterizable branches during training that get folded at inference
-      - Employs trivial over-parameterization branches for improved accuracy
-      - Simple feed-forward structure at inference with no branches/skip connections
-      - Variants achieve <1ms inference time on iPhone 12 with up to 75.9% top-1 ImageNet accuracy
-      - Outperforms other efficient architectures like MobileNets on image classification,
-          object detection and semantic segmentation tasks
-      - Uses only basic operators available across platforms (no custom activations)
+    Metadata:
+        - Node type: backbone
+        - Registry name: ``MobileOne``
+        - Task: None
+        - Attach index: ``-1``
+        - Inputs: ``features`` tensor
+        - Outputs: ``features`` list of tensors
 
+    Provenance:
+        - Source: ``apple/ml-mobileone``
+        - License: Apple
+        - Implementation notes: Local MobileOne-style staged backbone with
+          configurable width multipliers and optional squeeze-excitation.
 
-    Reference: `MobileOne: An Improved One millisecond Mobile Backbone <https://arxiv.org/abs/2206.04040>`_
+    Variants:
+        - ``"s0"``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - ``width_multipliers``: ``(0.75, 1.0, 1.0, 2.0)``
+                - ``n_conv_branches``: ``4``
+                - ``use_se``: ``False``
+        - ``"s1"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``width_multipliers``: ``(1.5, 1.5, 2.0, 2.5)``
+                - ``n_conv_branches``: ``4``
+                - ``use_se``: ``False``
+        - ``"s2"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``width_multipliers``: ``(1.5, 2.0, 2.5, 4.0)``
+                - ``n_conv_branches``: ``4``
+                - ``use_se``: ``False``
+        - ``"s3"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``width_multipliers``: ``(2.0, 2.5, 3.0, 4.0)``
+                - ``n_conv_branches``: ``4``
+                - ``use_se``: ``False``
+        - ``"s4"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``width_multipliers``: ``(3.0, 3.5, 3.5, 4.0)``
+                - ``n_conv_branches``: ``4``
+                - ``use_se``: ``True``
 
-    Source: ` <https://github.com/apple/ml-mobileone>`_
-
-    Variants
-    ========
-    Each variant specifies a predefined set of values for:
-      - width multipliers - A tuple of 4 float values specifying the width multipliers for each stage of the network. If the use of SE blocks is disabled, the last two values are ignored.
-      - number of convolution branches - An integer specifying the number of linear convolution branches in MobileOne block.
-      - use of SE blocks - A boolean specifying whether to use SE blocks in the network.
-
-    Available variants are:
-        - s0 (default): width_multipliers=(0.75, 1.0, 1.0, 2.0), n_conv_branches=4, use_se=False
-        - s1: width_multipliers=(1.5, 1.5, 2.0, 2.5)
-        - s2: width_multipliers=(1.5, 2.0, 2.5, 4.0)
-        - s3: width_multipliers=(2.0, 2.5, 3.0, 4.0)
-        - s4: width_multipliers=(3.0, 3.5, 3.5, 4.0), use_se=True
-
-    Notes:
-        License: `Apple <https://github.com/apple/ml-mobileone/blob/main/LICENSE>`_
     """
 
     in_channels: int
@@ -66,10 +85,14 @@ class MobileOne(BaseNode):
         use_se: bool = False,
         **kwargs,
     ):
-        """        Args:
+        """Initialize the MobileOne backbone.
+
+        Args:
             width_multipliers (tuple[float, float, float, float]): Width multipliers for each stage.
             n_conv_branches (int): Number of linear convolution branches in MobileOne block.
             use_se (bool): Whether to use ``Squeeze-and-Excitation`` blocks in the network. Default is ``False``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
 
@@ -154,6 +177,7 @@ class MobileOne(BaseNode):
 
         Returns:
             nn.Sequential: A stage of MobileOne model.
+
         """
         # Get strides for all layers
         strides = [2] + [1] * (n_blocks - 1)

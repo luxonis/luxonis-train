@@ -33,13 +33,14 @@ class MicroBlock(nn.Module):
             out_channels (int): Number of output channels.
             kernel_size (int): Size of the convolution kernel. Defaults to 3.
             stride (int): Stride of the convolution. Defaults to 1.
-            expansion_ratios (tuple[int, int]): Expansion ratios for the intermediate channels. Defaults to (2, 2).
+            expand_ratio (tuple[int, int]): Expansion ratios for the intermediate channels. Defaults to (2, 2).
             groups_1 (tuple[int, int]): Groups for the first set of convolutions. Defaults to (0, 6).
             groups_2 (tuple[int, int]): Groups for the second set of convolutions. Defaults to (1, 1).
-            use_dynamic_shift (tuple[int, int, int]): Flags to use Dynamic Shift-Max in different positions. Defaults to (2, 0, 1).
+            dy_shift (tuple[int, int, int]): Flags to use Dynamic Shift-Max in different positions. Defaults to (2, 0, 1).
             reduction_factor (int): Reduction factor for the squeeze-and- excitation-like operation. Defaults to 1.
             init_a (tuple[float, float]): Initialization parameters for Dynamic Shift-Max. Defaults to (1.0, 1.0).
             init_b (tuple[float, float]): Initialization parameters for Dynamic Shift-Max. Defaults to (0.0, 0.0).
+
         """
         super().__init__()
 
@@ -281,6 +282,7 @@ class ChannelShuffle(nn.Module):
 
         Args:
             groups (int): Number of groups to divide the channels into before shuffling.
+
         """
         super().__init__()
         self.groups = groups
@@ -320,6 +322,7 @@ class DYShiftMax(nn.Module):
             groups (int): Number of groups for channel shuffling. Defaults to 6.
             reduction (int): Reduction factor for the squeeze operation. Defaults to 4.
             expansion (bool): Whether to use expansion in grouping. Defaults to False.
+
         """
         super().__init__()
         self.exp: Literal[2, 4] = 4 if use_relu else 2

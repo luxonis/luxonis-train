@@ -4,7 +4,9 @@ from luxonis_ml.tracker import LuxonisTracker
 
 
 class LuxonisTrackerPL(LuxonisTracker, Logger):
-    """`LuxonisTracker` implementation compatible with PyTorch Lightning."""
+    """`LuxonisTracker` implementation compatible with PyTorch
+    Lightning.
+    """
 
     def __init__(self, *, _auto_finalize: bool = True, **kwargs):
         """Initialize the PyTorch Lightning tracker adapter.
@@ -13,10 +15,9 @@ class LuxonisTrackerPL(LuxonisTracker, Logger):
             _auto_finalize (bool): If ``True``, finalize the run automatically
                 when training ends. If ``False``, the user must call
                 `_finalize` manually.
-
-        Keyword Args:
             **kwargs (Any): Additional keyword arguments passed to
                 `LuxonisTracker`.
+
         """
         LuxonisTracker.__init__(self, **kwargs)
         Logger.__init__(self)
@@ -29,6 +30,7 @@ class LuxonisTrackerPL(LuxonisTracker, Logger):
 
         Args:
             status (str): Final run status. Defaults to ``"success"``.
+
         """
         if self.is_tensorboard:
             self.experiment["tensorboard"].flush()

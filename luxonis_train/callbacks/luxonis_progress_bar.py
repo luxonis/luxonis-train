@@ -52,6 +52,7 @@ class BaseLuxonisProgressBar(ABC, ProgressBar):
             loss (float): Loss value.
             metrics (Mapping[str, Mapping[str, int | str | float]]): Metrics in format {table_name: table}.
             matrices (Mapping[str, Mapping[str, Mapping[str, Any]]]): Matrices in format {table_name: {name: matrix}}.
+
         """
         ...
 
@@ -161,6 +162,7 @@ class LuxonisTQDMProgressBar(TQDMProgressBar, BaseLuxonisProgressBar):
             table (Mapping[str, int | str | float]): Table to print
             key_name (str): Name of the key column. Defaults to ``"Name"``.
             value_name (str): Name of the value column. Defaults to ``"Value"``.
+
         """
         self._rule(title)
         formatted = tabulate(
@@ -303,6 +305,7 @@ class LuxonisRichProgressBar(RichProgressBar, BaseLuxonisProgressBar):
             key_name (str): Name of the key column. Defaults to ``"Name"``.
             value_name (str): Name of the value column. Defaults to ``"Value"``.
             console (Console | None): Console instance to use, if None use default console. Defaults to None.
+
         """
         console = console or self.console
         rich_table = Table(

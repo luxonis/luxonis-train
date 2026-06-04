@@ -11,6 +11,41 @@ from .utils import preprocess_instance_masks
 class InstanceSegmentationConfusionMatrix(
     DetectionConfusionMatrix, RecognitionConfusionMatrix
 ):
+    """Confusion matrices for instance segmentation detection and masks.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``InstanceSegmentationConfusionMatrix``
+        - Task: INSTANCE_SEGMENTATION
+        - Attached node types: None
+        - Inputs: ``boundingbox``, ``instance_segmentation``,
+          ``target_boundingbox``, ``target_instance_segmentation``
+        - Outputs: dictionary with detection and segmentation MCC/confusion
+          matrix entries
+        - State: detection ``confusion_matrix`` and wrapped recognition
+          confusion-matrix state
+
+    Prediction format:
+        ``boundingbox`` is a list of per-image detections, and
+        ``instance_segmentation`` is a list of predicted instance masks.
+
+    Target format:
+        ``target_boundingbox`` contains batch-indexed boxes with class IDs and
+        normalized ``xywh`` coordinates. ``target_instance_segmentation``
+        contains instance masks aligned to those boxes.
+
+    Formula:
+        Updates the detection confusion matrix for boxes and the recognition
+        confusion matrix for preprocessed instance masks.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Combines ``DetectionConfusionMatrix`` and
+          ``RecognitionConfusionMatrix`` results with renamed output keys.
+
+    """
+
     supported_tasks = [Tasks.INSTANCE_SEGMENTATION]
 
     @override

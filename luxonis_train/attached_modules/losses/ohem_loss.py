@@ -10,7 +10,33 @@ from .base_loss import BaseLoss
 
 
 class OHEMLoss(BaseLoss):
-    """Generic OHEM loss that can be used with different criterions."""
+    """Online hard example mining wrapper for pixel or class losses.
+
+    Metadata:
+        - Module type: loss
+        - Registry name: ``OHEMLoss``
+        - Task: SEGMENTATION, CLASSIFICATION
+        - Attached node types: None
+        - Inputs: ``predictions``, ``target``
+        - Outputs: scalar OHEM-filtered loss
+
+    Prediction format:
+        ``predictions`` is forwarded to the configured criterion.
+
+    Target format:
+        ``target`` is forwarded to the configured criterion.
+
+    Formula:
+        Computes unreduced criterion losses, sorts them descending, then averages
+        losses above the threshold or the top ``ohem_ratio`` fraction.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Can infer ``BCEWithLogitsLoss`` or
+          ``CrossEntropyLoss`` when ``criterion="auto"``.
+
+    """
 
     supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 
@@ -21,8 +47,9 @@ class OHEMLoss(BaseLoss):
         ohem_threshold: float = 0.7,
         **kwargs,
     ):
-        """
-    Args:
+        """Initialize the OHEM loss.
+
+        Args:
             criterion (BaseLoss | str | Literal["auto"]): The criterion to use. It can be a string
                 name of the criterion (e.g., "CrossEntropyLoss"), a class that inherits from
                 ``BaseLoss``, or "auto" to infer the criterion based on the task and other
@@ -30,6 +57,7 @@ class OHEMLoss(BaseLoss):
             ohem_ratio (float): The ratio of pixels to keep.
             ohem_threshold (float): The threshold for pixels to keep.
             **kwargs (Any): Additional keyword arguments that are passed to the criterion.
+
         """
         super().__init__(**kwargs)
 

@@ -19,6 +19,34 @@ from luxonis_train.utils import (
 
 
 class EfficientBBoxHead(BaseDetectionHead):
+    """Efficient object detection head.
+
+    Metadata:
+        - Node type: head
+        - Registry name: ``EfficientBBoxHead``
+        - Task: boundingbox
+        - Attach index: ``(-n_heads - 1, -1)`` by default
+        - Inputs: list of feature tensors
+        - Outputs: training returns ``features``, ``class_scores``, and
+          ``distributions``; evaluation also returns ``boundingbox``;
+          export returns raw ``boundingbox`` tensors.
+
+    Provenance:
+        - Source: YOLOv6
+        - License: Unknown
+        - Implementation notes: Uses efficient decoupled prediction
+          blocks and post-processes detections with anchor generation,
+          distribution decoding, and NMS outside export mode.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
+    """
+
     task = Tasks.BOUNDINGBOX
 
     def __init__(
@@ -36,10 +64,13 @@ class EfficientBBoxHead(BaseDetectionHead):
         for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
 
         Args:
-            n_heads (Literal[2,3,4]): Number of output heads. Defaults to 3. B{Note:} Should be same also on neck in most cases.
+            n_heads (Literal[2, 3, 4]): Number of output heads. Defaults to 3. Note: Should be same also on neck in most cases.
             conf_thres (float): Threshold for confidence. Defaults to ``0.25``.
             iou_thres (float): Threshold for IoU. Defaults to ``0.45``.
             max_det (int): Maximum number of detections retained after NMS. Defaults to ``300``.
+            bias_init_p (float): Prior probability used to initialize class prediction bias. Defaults to ``1e-2``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(
             n_heads=n_heads,
@@ -163,9 +194,7 @@ class EfficientBBoxHead(BaseDetectionHead):
         *,
         tail: list[Tensor] | None = None,
     ) -> list[Tensor]:
-        """Perform post-processing of the output and returns bboxs after
-        NMS.
-        """
+        """Post-process output and return bounding boxes after NMS."""
         tail = tail or []
         bboxes = dist2bbox(distributions, anchor_points, out_format="xyxy")
 

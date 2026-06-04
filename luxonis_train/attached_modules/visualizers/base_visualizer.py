@@ -20,6 +20,7 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
     This class defines the basic interface for all visualizers. It
     utilizes automatic registration of defined subclasses to the
     `VISUALIZERS` registry.
+
     """
 
     def __init__(self, *args, scale: float = 1.0, **kwargs) -> None:
@@ -52,11 +53,11 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
         Takes an image and the prepared inputs from the `prepare` method and
         produces visualizations. Visualizations can be either:
 
-            - A single image (I{e.g.} for classification, weight visualization).
-            - A tuple of two images, representing (labels, predictions) (I{e.g.} for
+            - A single image (*e.g.* for classification, weight visualization).
+            - A tuple of two images, representing (labels, predictions) (*e.g.* for
               bounding boxes, keypoints).
             - A tuple of an image and a list of images,
-              representing (labels, multiple visualizations) (I{e.g.} for segmentation,
+              representing (labels, multiple visualizations) (*e.g.* for segmentation,
               depth estimation).
             - A list of images, representing unrelated visualizations.
 
@@ -71,6 +72,7 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
 
         Raises:
             IncompatibleError: If the inputs are not compatible with the module.
+
         """
         ...
 

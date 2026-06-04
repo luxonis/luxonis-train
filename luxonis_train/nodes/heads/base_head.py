@@ -17,6 +17,7 @@ class BaseHead(BaseNode):
 
     Attributes:
         parser (str): Parser to use for the head.
+
     """
 
     parser: str = ""
@@ -27,6 +28,7 @@ class BaseHead(BaseNode):
 
         Returns:
             dict: Head configuration.
+
         """
         config = self._get_base_head_config()
         config["metadata"] |= self.get_custom_head_config()
@@ -37,6 +39,7 @@ class BaseHead(BaseNode):
 
         Returns:
             dict: Base head configuration.
+
         """
         return {
             "parser": self.parser,
@@ -51,6 +54,7 @@ class BaseHead(BaseNode):
 
         Returns:
             dict: Custom head configuration.
+
         """
         return {}
 
@@ -60,8 +64,7 @@ class BaseHead(BaseNode):
         image_paths: list[Path],
         config_preprocessing: PreprocessingConfig,
     ) -> DatasetIterator:
-        """Convert head output to a DatasetIterator for dataset
-        annotation.
+        """Convert head output to a DatasetIterator for annotation.
 
         Data should be in standard `luxonis-ml record format <https://github.com/luxonis/luxonis-
         ml/blob/main/luxonis_ml/data/README.md>`_.
@@ -73,6 +76,7 @@ class BaseHead(BaseNode):
 
         Returns:
             DatasetIterator: Iterator yielding annotation records in luxonis-ml format.
+
         """
         return default_annotate(
             self, head_output, image_paths, config_preprocessing

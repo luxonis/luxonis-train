@@ -28,6 +28,7 @@ def make_divisible(x: float, divisor: int) -> int:
 
     Returns:
         int: Revised value.
+
     """
     return math.ceil(x / divisor) * divisor
 
@@ -49,6 +50,7 @@ def infer_upscale_factor(
     Raises:
         ValueError: If `in_size` cannot be upscaled to `orig_size` because the
             upscale factors are not integers or are different.
+
     """
 
     def _infer_upscale_factor(in_size: int, orig_size: int) -> int | float:
@@ -107,6 +109,7 @@ def to_shape_packet(packet: Packet[Tensor]) -> Packet[Size]:
 
     Returns:
         Packet[Size]: Packet of shapes.
+
     """
     shape_packet: Packet[Size] = {}
     for name, value in packet.items():
@@ -143,6 +146,7 @@ def get_with_default(
 
     Returns:
         T: `value` if it is not ``None``; otherwise `default`.
+
     """
     if value is not None:
         return value
@@ -170,6 +174,7 @@ def get_signature(
     Returns:
         dict[str, Parameter]: Parameter names mapped to their
         `inspect.Parameter` objects.
+
     """
     exclude = set(exclude or [])
     exclude |= {"self", "kwargs"}
@@ -201,6 +206,7 @@ def safe_download(
 
     Returns:
         Path | None: Local file path, or ``None`` if downloading failed.
+
     """
     if url is None or isinstance(url, Path):
         return url
@@ -272,6 +278,7 @@ def get_attribute_check_none(obj: object, attribute: str) -> Any:
         >>> print(amanda.age)
         Traceback (most recent call last):
         ValueError: attribute 'age' was not set
+
     """
     value = getattr(obj, f"_{attribute}")
     if value is None:
@@ -294,6 +301,7 @@ def get_batch_instances(
 
     Returns:
         Tensor: Instances from the batched data.
+
     """
     if payload is None:
         return bboxes[bboxes[:, 0] == batch_index][:, 1:]
@@ -340,11 +348,12 @@ def instances_from_batch(
 
     Examples:
         >>> bboxes = torch.tensor([[0, 1], [0, 2], [1, 3]])
-        >>> keypoints = torch.tensor([[0.1], [0.2], [0.3]])
+        >>> keypoints = torch.tensor([[10], [20], [30]])
         >>> for bbox, kpt in instances_from_batch(bboxes, keypoints):
-        ...     print(bbox, kpt)
-        tensor([[1], [2]]) tensor([[0.1], [0.2]])
-        tensor([[3]]) tensor([[0.3]])
+        ...     print(bbox.tolist(), kpt.tolist())
+        [[1], [2]] [[10], [20]]
+        [[3]] [[30]]
+
     """
     if not all(len(arg) == len(bboxes) for arg in args):
         raise ValueError("All tensors must have the same length.")

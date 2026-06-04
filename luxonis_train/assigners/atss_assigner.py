@@ -19,6 +19,7 @@ class ATSSAssigner(nn.Module):
             n_classes (int): Number of classes in the dataset.
             topk (int): Number of anchors considered in selection.
                 Defaults to ``9``.
+
         """
         super().__init__()
 
@@ -56,6 +57,7 @@ class ATSSAssigner(nn.Module):
             ``[bs, n_anchors, n_classes]``, output positive mask with shape
             ``[bs, n_anchors]``, and assigned GT indices with shape
             ``[bs, n_anchors]``.
+
         """
         self.n_anchors = anchor_bboxes.size(0)
         self.bs = gt_bboxes.size(0)
@@ -142,6 +144,7 @@ class ATSSAssigner(nn.Module):
 
         Returns:
             Tensor: Bounding-box centers with shape ``[N, 2]``.
+
         """
         cx = (bbox[:, 0] + bbox[:, 2]) / 2.0
         cy = (bbox[:, 1] + bbox[:, 3]) / 2.0
@@ -162,6 +165,7 @@ class ATSSAssigner(nn.Module):
         Returns:
             tuple[Tensor, Tensor]: A tuple ``(is_in_topk, topk_idxs)``
             containing the selected-anchor mask and selected-anchor indices.
+
         """
         mask_gt = mask_gt.repeat(1, 1, self.topk).bool()
         level_distances = distances.split(n_level_bboxes, dim=-1)
@@ -209,6 +213,7 @@ class ATSSAssigner(nn.Module):
         Returns:
             Tensor: Mask of positive samples with shape
             ``[bs, n_max_boxes, n_anchors]``.
+
         """
         n_bs_max_boxes = self.bs * self.n_max_boxes
         _candidate_overlaps = torch.where(
@@ -260,6 +265,7 @@ class ATSSAssigner(nn.Module):
             ``[bs, n_anchors]``, assigned bboxes with shape
             ``[bs, n_anchors, 4]``, and assigned scores with shape
             ``[bs, n_anchors, n_classes]``.
+
         """
         # assigned target labels
         batch_idx = torch.arange(

@@ -31,10 +31,12 @@ class DepthWiseSeparableConv(nn.Module):
             stride (int): Stride. Defaults to 1.
             depthwise_bias (bool): Whether to use bias for the depthwise convolution.
             pointwise_bias (bool): Whether to use bias for the pointwise convolution.
-            depthwise_activation (nn.Module): Activation function for the depthwise convolution. Defaults to nn.ReLU6().
-            pointwise_activation (nn.Module): Activation function for the pointwise convolution.
+            depthwise_activation (nn.Module | None): Activation function for the depthwise convolution. Defaults to nn.ReLU6().
+            pointwise_activation (nn.Module | None): Activation function for the pointwise convolution.
             padding (int | str | None): Padding. Defaults to None.
             dilation (int | tuple[int, int]): Dilation. Defaults to 1.
+            use_residual (bool): Whether to add the input tensor to the output. Defaults to False.
+
         """
         super().__init__()
 
@@ -81,8 +83,7 @@ class MobileBottleneckBlock(nn.Module):
         activation: list[nn.Module] | None = None,
         use_residual: bool = False,
     ):
-        """MobileBottleneckBlock is a block used in the EfficientViT
-        model.
+        """EfficientViT mobile bottleneck block.
 
         Args:
             in_channels (int): Number of input channels.
@@ -90,10 +91,11 @@ class MobileBottleneckBlock(nn.Module):
             kernel_size (int): Kernel size. Defaults to 3.
             stride (int): Stride. Defaults to 1.
             expand_ratio (float): Expansion ratio. Defaults to 6.
-            use_bias (list[bool, bool, bool]): Whether to use bias for the depthwise and pointwise convolutions.
-            use_norm (list[bool, bool, bool]): Whether to use normalization for the depthwise and pointwise convolutions.
-            activation (list[nn.Module, nn.Module, nn.Module]): Activation functions for the depthwise and pointwise convolutions.
+            use_bias (list[bool] | None): Whether to use bias for the depthwise and pointwise convolutions.
+            use_norm (list[bool] | None): Whether to use normalization for the depthwise and pointwise convolutions.
+            activation (list[nn.Module] | None): Activation functions for the depthwise and pointwise convolutions.
             use_residual (bool): Whether to use residual connection. Defaults to False.
+
         """
         super().__init__()
 
@@ -156,9 +158,8 @@ class EfficientViTBlock(nn.Module):
         expansion_factor: float = 4.0,
         aggregation_scales: tuple[int, ...] = (5,),
     ):
-        """EfficientVisionTransformerBlock is a modular component
-        designed for multi-scale linear attention and local feature
-        processing.
+        """EfficientViT block for multi-scale linear attention and local
+        features.
 
         Args:
             n_channels (int): The number of input and output channels.
@@ -166,6 +167,7 @@ class EfficientViTBlock(nn.Module):
             head_dim (int): Dimension size for each attention head. Default is 32.
             expansion_factor (float): Factor by which channels expand in the local module. Default is 4.0.
             aggregation_scales (tuple[int, ...]): Tuple defining the scales for aggregation in the attention module. Default is (5,).
+
         """
         super().__init__()
 
@@ -193,10 +195,11 @@ class EfficientViTBlock(nn.Module):
         """Forward pass of the block.
 
         Args:
-            x (Any): Input tensor with shape [batch, channels, height, width].
+            x (Tensor): Input tensor with shape [batch, channels, height, width].
 
         Returns:
-            Any: Output tensor after attention and local feature processing.
+            Tensor: Output tensor after attention and local feature processing.
+
         """
         return self.feature_module(self.attention_module(x))
 
@@ -218,21 +221,22 @@ class LightweightMLABlock(nn.Module):
         use_residual: bool = True,
         kernel_activation: nn.Module | None = None,
     ):
-        """LightweightMLABlock is a modular component used in the
-        EfficientViT framework. It facilitates efficient multi-scale
-        linear attention.
+        """Efficient multi-scale linear attention block.
 
         Args:
             input_channels (int): Number of input channels.
             output_channels (int): Number of output channels.
-            n_heads (int): Number of attention heads. Default is None.
+            n_heads (int | None): Number of attention heads. Defaults to None.
             head_ratio (float): Ratio to determine the number of heads. Default is 1.0.
             dimension (int): Size of each head. Default is 8.
-            biases (Any): List specifying if bias is used in qkv and projection layers.
-            norms (Any): List specifying if normalization is applied in qkv and projection layers.
-            activations (list[nn.Module, nn.Module]): List of activation functions for qkv and projection layers.
+            use_bias (list[bool] | None): List specifying if bias is used in qkv and projection layers.
+            use_norm (list[bool] | None): List specifying if normalization is applied in qkv and projection layers.
+            activations (list[nn.Module] | None): List of activation functions for qkv and projection layers.
             scale_factors (tuple[int, ...]): Tuple defining scales for aggregation. Default is (5,).
             epsilon (float): Epsilon value for numerical stability. Default is 1e-15.
+            use_residual (bool): Whether to add the input tensor to the output. Defaults to True.
+            kernel_activation (nn.Module | None): Activation used for attention kernels. Defaults to nn.ReLU().
+
         """
         super().__init__()
 

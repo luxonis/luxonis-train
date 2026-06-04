@@ -13,52 +13,307 @@ class MicroNet(BaseNode):
     # TODO: Check docs, add source
     """MicroNet backbone.
 
-    Variants
-    ========
-    The variant determines the architecture of the MicroNet backbone.
-    Available variants are:
-      - M1 (default):
-        - stem_channels: 6
-        - stem_groups: (3, 2)
-        - init_a: (1.0, 1.0)
-        - init_b: (0.0, 0.0)
-        - out_indices: [1, 2, 4, 7]
-        - strides: [2, 2, 2, 1, 2, 1, 1]
-        - out_channels: [8, 16, 16, 32, 64, 96, 576]
-        - kernel_sizes: [3, 3, 5, 5, 5, 3, 3]
-        - expand_ratios: [(2, 2), (2, 2), (2, 2), (1, 6), (1, 6), (1, 6), (1, 6)]
-        - groups_1: [(0, 6), (0, 8), (0, 16), (4, 4), (8, 8), (8, 8), (12, 12)]
-        - groups_2: [(2, 2), (4, 4), (4, 4), (4, 4), (8, 9), (8, 8), (0, 0)]
-        - dy_shifts: [(2, 0, 1), (2, 2, 1), (2, 2, 1), (2, 2, 1), (2, 2, 1), (2, 2, 1), (2, 2, 1)]
-        - reduction_factors: [1, 1, 1, 1, 1, 2, 2]
-      - M2:
-        - stem_channels: 8
-        - stem_groups: (4, 2)
-        - init_a: (1.0, 1.0)
-        - init_b: (0.0, 0.0)
-        - out_indices: [1, 3, 6, 9]
-        - strides: [2, 2, 1, 2, 1, 1, 2, 1, 1]
-        - out_channels: [12, 16, 24, 32, 32, 64, 96, 128, 768]
-        - kernel_sizes: [3, 3, 3, 5, 5, 5, 5, 3, 3]
-        - expand_ratios: [(2, 2), (2, 2), (2, 2), (1, 6), ...]
-        - groups_1: [(0, 8), (0, 12), (0, 16), (6, 6), (8, 8), (8, 8), (8, 8), (12, 12), (16, 16)]
-        - groups_2: [(4, 4), (4, 4), (4, 4), (4, 4), (8, 8), (8, 8), (8, 8), (0, 0)]
-        - dy_shifts: [(2, 0, 1), (2, 2, 1), ...]
-        - reduction_factors: [1, 1, 1, 1, 2, 2, 2, 2, 2]
-      - M3:
-        - stem_channels: 12
-        - stem_groups: (4, 3)
-        - init_a: (1.0, 0.5)
-        - init_b: (0.0, 0.5)
-        - out_indices: [1, 3, 8, 12]
-        - strides: [2, 2, 1, 2, 1, 1, 2, 1, 1, 1, 1, 1]
-        - out_channels: [16, 24, 24, 32, 32, 64, 80, 80, 120, 120, 144, 864]
-        - kernel_sizes: [3, 3, 3, 5, 5, 5, 5, 5, 5, 5, 3, 3]
-        - expand_ratios: [(2, 2), (2, 2), (2, 2), (1, 6), ...]
-        - groups_1: [(0, 12), (0, 16), (0, 24), (6, 6), (8, 8), (8, 8), (8, 8), (10, 10), (10, 10), (12, 12), (12, 12), (12, 12)]
-        - groups_2: [(4, 4), (4, 4), (4, 4), (4, 4), (4, 4), (8, 8), (8, 8), (8, 8), (10, 10), (10, 10), (12, 12), (0, 0)]
-        - dy_shifts: [(0, 2, 0), ...]
-        - reduction_factors: [1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2]
+    MicroNet is a lightweight convolutional backbone built from a stem and
+    Dynamic Shift-Max MicroBlock stages.
+
+    Metadata:
+        - Node type: backbone
+        - Registry name: ``MicroNet``
+        - Task: None
+        - Attach index: ``-1``
+        - Inputs: ``features`` tensor
+        - Outputs: ``features`` list of tensors
+
+    Provenance:
+        - Source: Unknown
+        - License: Unknown
+        - Implementation notes: Local MicroNet implementation with predefined
+          stem and MicroBlock layer schedules.
+
+    Variants:
+        - ``"M1"``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - ``stem_channels``: ``6``
+                - ``stem_groups``: ``(3, 2)``
+                - ``init_a``: ``(1.0, 1.0)``
+                - ``init_b``: ``(0.0, 0.0)``
+                - ``out_indices``: ``[1, 2, 4, 7]``
+            - Layers:
+                - ``0``:
+                    - ``out_channels``: ``8``
+                    - ``stride``: ``2``
+                    - ``kernel_size``: ``3``
+                    - ``expand_ratio``: ``(2, 2)``
+                    - ``groups_1``: ``(0, 6)``
+                    - ``groups_2``: ``(2, 2)``
+                    - ``dy_shift``: ``(2, 0, 1)``
+                    - ``reduction_factor``: ``1``
+                - ``1``:
+                    - ``out_channels``: ``16``
+                    - ``stride``: ``2``
+                    - ``kernel_size``: ``3``
+                    - ``expand_ratio``: ``(2, 2)``
+                    - ``groups_1``: ``(0, 8)``
+                    - ``groups_2``: ``(4, 4)``
+                    - ``dy_shift``: ``(2, 2, 1)``
+                    - ``reduction_factor``: ``1``
+                - ``2``:
+                    - ``out_channels``: ``16``
+                    - ``stride``: ``2``
+                    - ``kernel_size``: ``5``
+                    - ``expand_ratio``: ``(2, 2)``
+                    - ``groups_1``: ``(0, 16)``
+                    - ``groups_2``: ``(4, 4)``
+                    - ``dy_shift``: ``(2, 2, 1)``
+                    - ``reduction_factor``: ``1``
+                - ``3``:
+                    - ``out_channels``: ``32``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``5``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(4, 4)``
+                    - ``groups_2``: ``(4, 4)``
+                    - ``dy_shift``: ``(2, 2, 1)``
+                    - ``reduction_factor``: ``1``
+                - ``4``:
+                    - ``out_channels``: ``64``
+                    - ``stride``: ``2``
+                    - ``kernel_size``: ``5``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(8, 8)``
+                    - ``groups_2``: ``(8, 8)``
+                    - ``dy_shift``: ``(2, 2, 1)``
+                    - ``reduction_factor``: ``1``
+                - ``5``:
+                    - ``out_channels``: ``96``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``3``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(8, 8)``
+                    - ``groups_2``: ``(8, 8)``
+                    - ``dy_shift``: ``(2, 2, 1)``
+                    - ``reduction_factor``: ``2``
+                - ``6``:
+                    - ``out_channels``: ``576``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``3``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(12, 12)``
+                    - ``groups_2``: ``(0, 0)``
+                    - ``dy_shift``: ``(2, 2, 1)``
+                    - ``reduction_factor``: ``2``
+        - ``"M2"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``stem_channels``: ``8``
+                - ``stem_groups``: ``(4, 2)``
+                - ``init_a``: ``(1.0, 1.0)``
+                - ``init_b``: ``(0.0, 0.0)``
+                - ``out_indices``: ``[1, 3, 6, 9]``
+            - Layers:
+                - ``0``:
+                    - ``out_channels``: ``12``
+                    - ``stride``: ``2``
+                    - ``kernel_size``: ``3``
+                    - ``expand_ratio``: ``(2, 2)``
+                    - ``groups_1``: ``(0, 8)``
+                    - ``groups_2``: ``(4, 4)``
+                    - ``dy_shift``: ``(2, 0, 1)``
+                    - ``reduction_factor``: ``1``
+                - ``1``:
+                    - ``out_channels``: ``16``
+                    - ``stride``: ``2``
+                    - ``kernel_size``: ``3``
+                    - ``expand_ratio``: ``(2, 2)``
+                    - ``groups_1``: ``(0, 12)``
+                    - ``groups_2``: ``(4, 4)``
+                    - ``dy_shift``: ``(2, 2, 1)``
+                    - ``reduction_factor``: ``1``
+                - ``2``:
+                    - ``out_channels``: ``24``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``3``
+                    - ``expand_ratio``: ``(2, 2)``
+                    - ``groups_1``: ``(0, 16)``
+                    - ``groups_2``: ``(4, 4)``
+                    - ``dy_shift``: ``(2, 2, 1)``
+                    - ``reduction_factor``: ``1``
+                - ``3``:
+                    - ``out_channels``: ``32``
+                    - ``stride``: ``2``
+                    - ``kernel_size``: ``5``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(6, 6)``
+                    - ``groups_2``: ``(4, 4)``
+                    - ``dy_shift``: ``(2, 2, 1)``
+                    - ``reduction_factor``: ``1``
+                - ``4``:
+                    - ``out_channels``: ``32``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``5``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(8, 8)``
+                    - ``groups_2``: ``(4, 4)``
+                    - ``dy_shift``: ``(2, 2, 1)``
+                    - ``reduction_factor``: ``2``
+                - ``5``:
+                    - ``out_channels``: ``64``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``5``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(8, 8)``
+                    - ``groups_2``: ``(8, 8)``
+                    - ``dy_shift``: ``(2, 2, 1)``
+                    - ``reduction_factor``: ``2``
+                - ``6``:
+                    - ``out_channels``: ``96``
+                    - ``stride``: ``2``
+                    - ``kernel_size``: ``5``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(8, 8)``
+                    - ``groups_2``: ``(8, 8)``
+                    - ``dy_shift``: ``(2, 2, 1)``
+                    - ``reduction_factor``: ``2``
+                - ``7``:
+                    - ``out_channels``: ``128``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``3``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(12, 12)``
+                    - ``groups_2``: ``(8, 8)``
+                    - ``dy_shift``: ``(2, 2, 1)``
+                    - ``reduction_factor``: ``2``
+                - ``8``:
+                    - ``out_channels``: ``768``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``3``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(16, 16)``
+                    - ``groups_2``: ``(0, 0)``
+                    - ``dy_shift``: ``(2, 2, 1)``
+                    - ``reduction_factor``: ``2``
+        - ``"M3"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``stem_channels``: ``12``
+                - ``stem_groups``: ``(4, 3)``
+                - ``init_a``: ``(1.0, 0.5)``
+                - ``init_b``: ``(0.0, 0.5)``
+                - ``out_indices``: ``[1, 3, 8, 12]``
+            - Layers:
+                - ``0``:
+                    - ``out_channels``: ``16``
+                    - ``stride``: ``2``
+                    - ``kernel_size``: ``3``
+                    - ``expand_ratio``: ``(2, 2)``
+                    - ``groups_1``: ``(0, 12)``
+                    - ``groups_2``: ``(4, 4)``
+                    - ``dy_shift``: ``(0, 2, 0)``
+                    - ``reduction_factor``: ``1``
+                - ``1``:
+                    - ``out_channels``: ``24``
+                    - ``stride``: ``2``
+                    - ``kernel_size``: ``3``
+                    - ``expand_ratio``: ``(2, 2)``
+                    - ``groups_1``: ``(0, 16)``
+                    - ``groups_2``: ``(4, 4)``
+                    - ``dy_shift``: ``(0, 2, 0)``
+                    - ``reduction_factor``: ``1``
+                - ``2``:
+                    - ``out_channels``: ``24``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``3``
+                    - ``expand_ratio``: ``(2, 2)``
+                    - ``groups_1``: ``(0, 24)``
+                    - ``groups_2``: ``(4, 4)``
+                    - ``dy_shift``: ``(0, 2, 0)``
+                    - ``reduction_factor``: ``1``
+                - ``3``:
+                    - ``out_channels``: ``32``
+                    - ``stride``: ``2``
+                    - ``kernel_size``: ``5``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(6, 6)``
+                    - ``groups_2``: ``(4, 4)``
+                    - ``dy_shift``: ``(0, 2, 0)``
+                    - ``reduction_factor``: ``1``
+                - ``4``:
+                    - ``out_channels``: ``32``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``5``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(8, 8)``
+                    - ``groups_2``: ``(4, 4)``
+                    - ``dy_shift``: ``(0, 2, 0)``
+                    - ``reduction_factor``: ``2``
+                - ``5``:
+                    - ``out_channels``: ``64``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``5``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(8, 8)``
+                    - ``groups_2``: ``(8, 8)``
+                    - ``dy_shift``: ``(0, 2, 0)``
+                    - ``reduction_factor``: ``2``
+                - ``6``:
+                    - ``out_channels``: ``80``
+                    - ``stride``: ``2``
+                    - ``kernel_size``: ``5``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(8, 8)``
+                    - ``groups_2``: ``(8, 8)``
+                    - ``dy_shift``: ``(0, 2, 0)``
+                    - ``reduction_factor``: ``2``
+                - ``7``:
+                    - ``out_channels``: ``80``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``5``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(10, 10)``
+                    - ``groups_2``: ``(8, 8)``
+                    - ``dy_shift``: ``(0, 2, 0)``
+                    - ``reduction_factor``: ``2``
+                - ``8``:
+                    - ``out_channels``: ``120``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``5``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(10, 10)``
+                    - ``groups_2``: ``(10, 10)``
+                    - ``dy_shift``: ``(0, 2, 0)``
+                    - ``reduction_factor``: ``2``
+                - ``9``:
+                    - ``out_channels``: ``120``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``5``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(12, 12)``
+                    - ``groups_2``: ``(10, 10)``
+                    - ``dy_shift``: ``(0, 2, 0)``
+                    - ``reduction_factor``: ``2``
+                - ``10``:
+                    - ``out_channels``: ``144``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``3``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(12, 12)``
+                    - ``groups_2``: ``(12, 12)``
+                    - ``dy_shift``: ``(0, 2, 0)``
+                    - ``reduction_factor``: ``2``
+                - ``11``:
+                    - ``out_channels``: ``864``
+                    - ``stride``: ``1``
+                    - ``kernel_size``: ``3``
+                    - ``expand_ratio``: ``(1, 6)``
+                    - ``groups_1``: ``(12, 12)``
+                    - ``groups_2``: ``(0, 0)``
+                    - ``dy_shift``: ``(0, 2, 0)``
+                    - ``reduction_factor``: ``2``
+
     """
 
     @typechecked
@@ -79,7 +334,14 @@ class MicroNet(BaseNode):
         multiple MicroBlocks.
 
         Args:
+            stem_channels (int): Number of channels produced by the stem. Defaults to 6.
+            stem_groups (tuple[int, int]): Channel grouping used by the stem. Defaults to (3, 2).
+            init_a (tuple[float, float]): Initialization parameters for Dynamic Shift-Max. Defaults to (1.0, 1.0).
+            init_b (tuple[float, float]): Initialization parameters for Dynamic Shift-Max. Defaults to (0.0, 0.0).
             out_indices (list[int] | None): Indices of the output layers. If provided, overrides the variant value.
+            layer_params (list[LayerParamsDict] | None): Parameters for each MicroBlock. If provided, overrides the variant value.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         out_indices = out_indices or [1, 2, 4, 7]

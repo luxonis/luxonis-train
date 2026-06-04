@@ -36,6 +36,7 @@ def dist2bbox(
 
     Raises:
         ValueError: If `out_format` is not supported.
+
     """
     lt, rb = torch.split(distance, 2, dim=dim)
     x1y1 = anchor_points - lt
@@ -58,6 +59,7 @@ def bbox2dist(bbox: Tensor, anchor_points: Tensor, reg_max: float) -> Tensor:
 
     Returns:
         Tensor: Bounding boxes in distance ``ltrb`` format.
+
     """
     x1y1, x2y2 = torch.split(bbox, 2, -1)
     lt = anchor_points - x1y1
@@ -99,6 +101,7 @@ def bbox_iou(
 
     Raises:
         ValueError: If `iou_type` is not supported.
+
     """
     if bbox_format != "xyxy":
         bbox1 = box_convert(bbox1, in_fmt=bbox_format, out_fmt="xyxy")
@@ -224,6 +227,7 @@ def non_max_suppression(
 
     Raises:
         ValueError: If `conf_thres` or `iou_thres` is outside ``[0, 1]``.
+
     """
     if not (0 <= conf_thres <= 1):
         raise ValueError(
@@ -345,6 +349,7 @@ def anchors_for_fpn_features(
         tuple[Tensor, Tensor, list[int], Tensor]: A tuple containing bounding
         box anchors, center anchors, number of anchors per feature map, and
         stride tensor.
+
     """
     anchors: list[Tensor] = []
     anchor_points: list[Tensor] = []
@@ -409,6 +414,7 @@ def apply_bounding_box_to_masks(
 
     Returns:
         Tensor: Cropped masks tensor with shape ``[n, h, w]``.
+
     """
     _, mask_height, mask_width = masks.shape
     left, top, right, bottom = torch.split(
@@ -460,6 +466,7 @@ def compute_iou_loss(
         NotImplementedError: If ``reduction="sum"`` is used without
             `target_scores`.
         ValueError: If `reduction` or `iou_type` is unsupported.
+
     """
     device = pred_bboxes.device
     target_bboxes = target_bboxes.to(device)
@@ -538,6 +545,7 @@ def keypoints_to_bboxes(
     Returns:
         list[Tensor]: Bounding box tensors with shape ``[N, 6]`` in
         ``(x_min, y_min, x_max, y_max, score, cls_id)`` order.
+
     """
     half_box = box_width / 2
     bboxes_list = []

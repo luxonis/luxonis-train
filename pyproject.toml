@@ -132,6 +132,7 @@ unfixable = ["B905"]
 
 [tool.docformatter]
 black = true
+blank = true
 wrap-summaries = 72
 wrap-descriptions = 72
 

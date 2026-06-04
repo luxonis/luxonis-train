@@ -80,6 +80,7 @@ def infer_from_video(
         video_path (PathType): Path to the video.
         save_dir (Path | None): Directory where visualizations are saved. If
             ``None``, visualizations are displayed on screen.
+
     """
     cap = cv2.VideoCapture(filename=str(video_path))
 
@@ -140,6 +141,7 @@ def infer_from_loader(
         save_dir (PathType | None): Directory where visualizations are saved.
             If ``None``, visualizations are displayed on screen.
         img_paths (list[PathType] | None): Paths to the images.
+
     """
     if save_dir is not None:
         save_dir = Path(save_dir)
@@ -265,6 +267,7 @@ def create_loader_from_directory(
 
     Returns:
         torch_data.DataLoader: The DataLoader for the images.
+
     """
     dataset_name = "infer_from_directory"
     dataset = LuxonisDataset(dataset_name=dataset_name, delete_local=True)
@@ -328,6 +331,7 @@ def infer_from_directory(
         img_paths (Iterable[PathType]): Iterable of paths to the images.
         save_dir (Path | None): Directory where visualizations are saved. If
             ``None``, visualizations are displayed on screen.
+
     """
     img_paths = list(img_paths)
 
@@ -368,6 +372,7 @@ def infer_from_dataset(
         view (Literal["train", "val", "test"]): Dataset view to use.
         save_dir (PathType | None): Directory where visualizations are saved.
             If ``None``, visualizations are displayed on screen.
+
     """
     loader = model.pytorch_loaders[view]
     overfit_batches = model.cfg.trainer.overfit_batches

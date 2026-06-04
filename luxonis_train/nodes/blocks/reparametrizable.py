@@ -12,6 +12,7 @@ class Reparametrizable(nn.Module, ABC):
     Reparametrization is usually done to increase the performance of the
     model during inference by removing unnecessary parameters, fusing
     operations, and other methods.
+
     """
 
     @abstractmethod
@@ -19,6 +20,7 @@ class Reparametrizable(nn.Module, ABC):
         """Reparametrizes the module.
 
         This method is typically called before exporting the model.
+
         """
         ...
 

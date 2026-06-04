@@ -22,6 +22,7 @@ def get_sigmas(
 
     Raises:
         ValueError: If `sigmas` length differs from `n_keypoints`.
+
     """
     if sigmas is not None:
         if len(sigmas) == n_keypoints:
@@ -78,6 +79,7 @@ def get_center_keypoints(
 
     Returns:
         Tensor: Center keypoint tensor.
+
     """
     keypoints = torch.full(
         (bboxes.shape[0], 4), 2, device=bboxes.device, dtype=bboxes.dtype
@@ -97,6 +99,7 @@ def insert_class(keypoints: Tensor, bboxes: Tensor) -> Tensor:
 
     Returns:
         Tensor: Keypoint tensor with class index inserted.
+
     """
     classes = bboxes[:, 1]
     return torch.cat(
@@ -145,6 +148,7 @@ def compute_pose_oks(
 
     Raises:
         ValueError: If neither `pose_area` nor `gt_bboxes` is provided.
+
     """
     if pose_area is None:
         if gt_bboxes is None:

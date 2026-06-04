@@ -12,10 +12,33 @@ from .utils import compute_mcc
 
 
 class RecognitionConfusionMatrix(BaseMetric):
-    """Factory class for Recognition Confusion Matrix metrics.
+    """Confusion matrix for classification and semantic segmentation.
 
-    Creates the appropriate confusion matrix metric based on the number
-    of classes of the node.
+    Metadata:
+        - Module type: metric
+        - Registry name: ``RecognitionConfusionMatrix``
+        - Task: CLASSIFICATION, SEGMENTATION
+        - Attached node types: None
+        - Inputs: ``predictions``, ``targets``
+        - Outputs: dictionary with ``mcc`` and ``confusion_matrix``
+        - State: wrapped torchmetrics confusion-matrix state
+
+    Prediction format:
+        ``predictions`` contains binary logits or multiclass class scores.
+
+    Target format:
+        ``targets`` contains binary labels or one-hot multiclass labels.
+
+    Formula:
+        Delegates confusion-matrix accumulation to torchmetrics and computes
+        Matthews correlation coefficient from the resulting matrix.
+
+    Provenance:
+        - Source: torchmetrics
+        - License: Project license
+        - Implementation notes: Selects binary or multiclass confusion matrix
+          behavior from ``n_classes``.
+
     """
 
     supported_tasks = [Tasks.CLASSIFICATION, Tasks.SEGMENTATION]

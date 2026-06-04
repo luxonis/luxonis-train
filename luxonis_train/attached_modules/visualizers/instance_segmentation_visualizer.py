@@ -19,9 +19,36 @@ from .utils import (
 
 
 class InstanceSegmentationVisualizer(BaseVisualizer):
-    """Visualizer for instance segmentation tasks, supporting the
-    visualization of predicted and ground truth bounding boxes and
-    instance segmentation masks.
+    """Visualize instance segmentation predictions and targets.
+
+    Metadata:
+        - Module type: visualizer
+        - Registry name: ``InstanceSegmentationVisualizer``
+        - Task: instance_segmentation
+        - Attached node types: None
+        - Inputs: prediction and target canvases, ``boundingbox`` and
+          ``instance_segmentation`` predictions, and optional matching
+          targets.
+        - Outputs: prediction visualization, or ``(targets_viz,
+          predictions_viz)`` when targets are provided.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Overlays instance masks and draws matching
+          boxes with local visualizer utilities.
+
+    Prediction format:
+        - ``boundingbox`` is a list of per-image tensors with rows in
+          ``[x1, y1, x2, y2, conf, class]`` format.
+        - ``instance_segmentation`` is a list of per-image mask tensors.
+
+    Target format:
+        - ``target_boundingbox`` is a tensor with image index and class
+          columns before box coordinates.
+        - ``target_instance_segmentation`` is a tensor of target masks aligned
+          with ``target_boundingbox`` rows.
+
     """
 
     supported_tasks = [Tasks.INSTANCE_SEGMENTATION]
@@ -47,13 +74,15 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             draw_labels (bool): Whether to draw class labels on the visualizations.
             draw_scores (bool): Whether to append prediction confidence scores to the rendered
                 labels. Defaults to ``False``.
-            colors (dict[str, `Color`] | list[`Color`] | None): Dicionary mapping class labels to
+            colors (dict[str, Color] | list[Color] | None): Dictionary mapping class labels to
                 colors.
-            fill (bool | None): Whether to fill the boundingbox with color.
-            width (int | None): Width of the bounding box Lines.
-            font (str | None): Font of the clas labels.
-            font_size (int | None): Font size of the class Labels.
+            fill (bool): Whether to fill the bounding box with color.
+            width (int | None): Width of the bounding box lines.
+            font (str | None): Font of the class labels.
+            font_size (int | None): Font size of the class labels.
             alpha (float): Alpha value of the segmentation masks. Defaults to ``0.6``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
 
@@ -201,17 +230,21 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         target_boundingbox: Tensor | None,
         target_instance_segmentation: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:
-        """Create visualizations of the predicted and target bounding
-        boxes and instance masks.
+        """Create visualizations of predicted and target boxes and
+        masks.
 
         Args:
-            target_canvas (Tensor): Tensor containing the target visualizations.
             prediction_canvas (Tensor): Tensor containing the predicted visualizations.
-            target_bboxes (Tensor | None): Tensor containing the target bounding boxes.
-            target_masks (Tensor | None): Tensor containing the target instance masks.
-            predicted_bboxes (list[Tensor]): List of tensors containing the predicted bounding
-                boxes.
-            predicted_masks (list[Tensor]): List of tensors containing the predicted instance masks.
+            target_canvas (Tensor): Tensor containing the target visualizations.
+            boundingbox (list[Tensor]): Predicted bounding boxes grouped by
+                image.
+            instance_segmentation (list[Tensor]): Predicted instance masks
+                grouped by image.
+            target_boundingbox (Tensor | None): Target bounding boxes, or
+                ``None`` when targets are unavailable.
+            target_instance_segmentation (Tensor | None): Target instance
+                masks, or ``None`` when targets are unavailable.
+
         """
         predictions_viz = self.draw_predictions(
             prediction_canvas,

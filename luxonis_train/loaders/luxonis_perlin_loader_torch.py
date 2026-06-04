@@ -42,6 +42,7 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
             beta (float | None): Opacity of the anomaly mask. If ``None``, a
                 random value is chosen.
             **kwargs (Any): Keyword arguments forwarded to `LuxonisLoaderTorch`.
+
         """
         super().__init__(*args, **kwargs)
 

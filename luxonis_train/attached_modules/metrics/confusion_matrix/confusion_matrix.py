@@ -14,8 +14,24 @@ from .recognition_confusion_matrix import RecognitionConfusionMatrix
 class ConfusionMatrix:
     """Factory class for Confusion Matrix metrics.
 
-    Creates the appropriate Confusion Matrix based on the task of the
-    node.
+    Creates the appropriate Confusion Matrix based on the task of the node.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``ConfusionMatrix``
+        - Task: CLASSIFICATION, SEGMENTATION, BOUNDINGBOX,
+          INSTANCE_KEYPOINTS, INSTANCE_SEGMENTATION, FOMO
+        - Attached node types: classification, segmentation, detection,
+          keypoint, instance segmentation, and FOMO heads
+        - Inputs: attached node and metric keyword arguments
+        - Outputs: task-specific confusion matrix metric instance
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Registry-facing factory that returns the
+          concrete confusion matrix implementation for the attached node task.
+
     """
 
     def __new__(

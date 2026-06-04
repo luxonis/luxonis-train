@@ -26,7 +26,9 @@ class BaseLoaderTorch(
     register=False,
     registry=LOADERS,
 ):
-    """Base abstract loader class for `LuxonisLoaderTorchOutput` samples."""
+    """Base abstract loader class for `LuxonisLoaderTorchOutput`
+    samples.
+    """
 
     def __init__(
         self,
@@ -64,6 +66,7 @@ class BaseLoaderTorch(
             color_space (Literal["RGB", "BGR", "GRAY"]): Output image color
                 space.
             seed (int | None): Random seed used for augmentations.
+
         """
         self._view = view
         self._image_source = image_source
@@ -77,37 +80,39 @@ class BaseLoaderTorch(
 
     @property
     def image_source(self) -> str:
-        """str: Name of the input image group."""
+        """Str: Name of the input image group."""
         return self._getter_check_none("image_source")
 
     @property
     def view(self) -> list[str]:
-        """list[str]: Splits forming this dataset's view."""
+        """List[str]: Splits forming this dataset's view."""
         return self._view
 
     @property
     def augmentation_engine(self) -> str:
-        """str: Name of the augmentation engine."""
+        """Str: Name of the augmentation engine."""
         return self._getter_check_none("augmentation_engine")
 
     @property
     def augmentation_config(self) -> list[AugmentationConfig]:
-        """list[AugmentationConfig]: Augmentation configurations."""
+        """List[AugmentationConfig]: Augmentation configurations."""
         return self._getter_check_none("augmentation_config")
 
     @property
     def height(self) -> int:
-        """int: Height of the output image."""
+        """Int: Height of the output image."""
         return self._getter_check_none("height")
 
     @property
     def width(self) -> int:
-        """int: Width of the output image."""
+        """Int: Width of the output image."""
         return self._getter_check_none("width")
 
     @property
     def keep_aspect_ratio(self) -> bool:
-        """bool: Whether to keep the output image aspect ratio after resizing."""
+        """Bool: Whether to keep the output image aspect ratio after
+        resizing.
+        """
         return self._getter_check_none("keep_aspect_ratio")
 
     @property
@@ -117,13 +122,13 @@ class BaseLoaderTorch(
 
     @property
     def seed(self) -> int | None:
-        """int | None: Random seed used for augmentations."""
+        """Int | None: Random seed used for augmentations."""
         return self._seed
 
     @property
     @abstractmethod
     def input_shapes(self) -> dict[str, Size]:
-        """dict[str, Size]: Shape ``(c, h, w)`` of each loader group.
+        """Dict[str, Size]: Shape ``(c, h, w)`` of each loader group.
 
         Shapes do not include the batch dimension.
 
@@ -156,12 +161,15 @@ class BaseLoaderTorch(
                     "keypoints": torch.Size([17, 2]),
                     "point_cloud": torch.Size([20000, 3]),
                 }
+
         """
         ...
 
     @property
     def input_shape(self) -> Size:
-        """Size: Shape ``(c, h, w)`` of the input tensor without batch dimension."""
+        """Size: Shape ``(c, h, w)`` of the input tensor without batch
+        dimension.
+        """
         return self.input_shapes[self.image_source]
 
     def augment_test_image(self, img: dict[str, Tensor]) -> Tensor:
@@ -192,6 +200,7 @@ class BaseLoaderTorch(
         Returns:
             LuxonisLoaderTorchOutput: Sample data in
             `LuxonisLoaderTorchOutput` format.
+
         """
         ...
 
@@ -202,15 +211,18 @@ class BaseLoaderTorch(
         Returns:
             dict[str, dict[str, int]]: Mapping of task names to class name and
             class ID mappings.
+
         """
         ...
 
     def get_n_keypoints(self) -> dict[str, int] | None:
-        """Get semantic skeleton definitions for classes using keypoints.
+        """Get semantic skeleton definitions for classes using
+        keypoints.
 
         Returns:
             dict[str, int] | None: Mapping of task names to keypoint counts, or
             ``None`` when keypoints are not available.
+
         """
         return None
 
@@ -233,6 +245,7 @@ class BaseLoaderTorch(
 
         Returns:
             dict[str, Tensor]: Dictionary of torch tensors.
+
         """
         torch_dictionary = {}
 
@@ -251,6 +264,7 @@ class BaseLoaderTorch(
 
         Returns:
             np.ndarray[np.uint8]: Image as a NumPy array.
+
         """
         img = cv2.imread(path, cv2.IMREAD_COLOR)
         if self.color_space == "RGB":
@@ -293,6 +307,7 @@ class BaseLoaderTorch(
         Returns:
             tuple[dict[str, Tensor], Labels]: Inputs and annotations in the
             format expected by the model.
+
         """
         inputs: tuple[dict[str, Tensor], ...]
         labels: tuple[Labels, ...]

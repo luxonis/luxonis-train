@@ -16,6 +16,35 @@ from .utils import (
 
 
 class ClassificationVisualizer(BaseVisualizer):
+    """Visualize classification predictions and optional labels.
+
+    Metadata:
+        - Module type: visualizer
+        - Registry name: ``ClassificationVisualizer``
+        - Task: classification
+        - Attached node types: None
+        - Inputs: prediction and target canvases, ``classification``
+          predictions, and optional ``classification`` targets.
+        - Outputs: overlay visualization, or ``(overlay, probability_plot)``
+          when probability plots are enabled.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Renders predicted and target class names with
+          OpenCV and can add a Matplotlib probability bar plot.
+
+    Prediction format:
+        - ``predictions`` is a tensor of class logits/probabilities, with
+          sigmoid handling for multi-label mode and softmax handling for
+          single-label mode.
+
+    Target format:
+        - ``target`` matches the prediction class-vector format when labels
+          are available.
+
+    """
+
     supported_tasks = [Tasks.CLASSIFICATION]
 
     def __init__(
@@ -33,7 +62,14 @@ class ClassificationVisualizer(BaseVisualizer):
             include_plot (bool): Whether to include a plot of the class probabilities in the
                 visualization. Defaults to ``True``.
             font_scale (float | None): Font scale for text. If None, scales proportionally
-                to the image height and width
+                to the image height and width.
+            color (tuple[int, int, int]): Text color in RGB format. Defaults to
+                ``(255, 0, 0)``.
+            thickness (int): Text line thickness. Defaults to ``2``.
+            multilabel (bool): Whether predictions are multi-label. Defaults
+                to ``False``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.include_plot = include_plot
@@ -46,6 +82,7 @@ class ClassificationVisualizer(BaseVisualizer):
         """Get the class names.
 
         Handles both single-label and multi-label classification.
+
         """
         if self.multilabel:
             idxs = (pred > 0.5).nonzero(as_tuple=True)[0].tolist()

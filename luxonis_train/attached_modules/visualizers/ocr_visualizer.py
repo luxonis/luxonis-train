@@ -10,7 +10,31 @@ from .utils import numpy_to_torch_img, torch_img_to_numpy
 
 
 class OCRVisualizer(BaseVisualizer):
-    """Visualizer for OCR tasks."""
+    """Visualize OCR predictions and optional text targets.
+
+    Metadata:
+        - Module type: visualizer
+        - Registry name: ``OCRVisualizer``
+        - Task: ocr
+        - Attached node types: ``OCRCTCHead``
+        - Inputs: prediction and target canvases, OCR predictions, and
+          optional text targets.
+        - Outputs: ``(overlay, preds_targets)`` visualizations.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Decodes predictions with the attached
+          ``OCRCTCHead`` decoder and renders text with OpenCV.
+
+    Prediction format:
+        - ``predictions`` is the tensor expected by ``OCRCTCHead.decoder``.
+
+    Target format:
+        - ``targets`` is an optional padded tensor of character codes with
+          zeros ignored.
+
+    """
 
     node: OCRCTCHead
 
@@ -27,6 +51,8 @@ class OCRVisualizer(BaseVisualizer):
             font_scale (float): Font scale of the text. Defaults to ``0.5``.
             color (tuple[int, int, int]): Color of the text. Defaults to ``(0, 0, 0)``.
             thickness (int): Thickness of the text. Defaults to ``1``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.font_scale = font_scale
@@ -43,13 +69,15 @@ class OCRVisualizer(BaseVisualizer):
         """Create a visualization of the OCR predictions and labels.
 
         Args:
-            label_canvas (Tensor): The canvas to draw the labels on.
             prediction_canvas (Tensor): The canvas to draw the predictions on.
-            predictions (list[str]): The predictions to visualize.
-            targets (list[str]): The targets to visualize.
+            target_canvas (Tensor): The canvas to draw the labels on.
+            predictions (Tensor): The predictions to visualize.
+            targets (Tensor | None): The targets to visualize, or ``None``
+                when targets are unavailable.
 
         Returns:
             tuple[Tensor, Tensor]: A tuple of the label and prediction visualizations.
+
         """
         decoded_predictions = self.node.decoder(predictions)
 

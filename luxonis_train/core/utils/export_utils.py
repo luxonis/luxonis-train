@@ -167,6 +167,7 @@ def hubai_export(
 
     Raises:
         ValueError: If ``HUBAI_API_KEY`` is not set.
+
     """
     from hubai_sdk import HubAIClient
 
@@ -278,6 +279,7 @@ def make_initializers_unique(onnx_path: PathType) -> None:
 
     Args:
         onnx_path (PathType): Path to the ONNX model file to modify.
+
     """
     import copy
     from collections import defaultdict

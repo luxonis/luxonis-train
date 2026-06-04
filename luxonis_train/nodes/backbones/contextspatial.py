@@ -12,6 +12,34 @@ from luxonis_train.registry import NODES
 
 
 class ContextSpatial(BaseNode):
+    """BiSeNetV1-style context-spatial backbone for segmentation.
+
+    This node combines a context path from another backbone with a spatial
+    path and feature-fusion block to produce a segmentation feature map.
+
+    Metadata:
+        - Node type: backbone
+        - Registry name: ``ContextSpatial``
+        - Task: None
+        - Attach index: ``-1``
+        - Inputs: ``features`` tensor
+        - Outputs: ``features`` list with one tensor
+
+    Provenance:
+        - Source: ``BiseNetV1``
+        - License: Unknown
+        - Implementation notes: Builds the context path from a registry node
+          or provided module and fuses it with a local spatial path.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
+    """
+
     def __init__(
         self,
         context_backbone: str | nn.Module = "MobileNetV2",
@@ -22,12 +50,15 @@ class ContextSpatial(BaseNode):
 
         Source: `BiseNetV1 <https://github.com/taveraantonio/BiseNetv1>`_
 
-    Args:
-        context_backbone (str): Backbone used in the context path. Can be either a string or a ``nn.Module``. If a string argument is used, it has to be a name of a module stored in the `NODES` registry. Defaults to ``MobileNetV2``.
-        backbone_kwargs (dict): Keyword arguments for the backbone. Only used when the ``context_backbone`` argument is a string.
+        Args:
+            context_backbone (str | nn.Module): Backbone used in the context path. Can be either a string or a ``nn.Module``. If a string argument is used, it has to be a name of a module stored in the `NODES` registry. Defaults to ``MobileNetV2``.
+            backbone_kwargs (Kwargs | None): Keyword arguments for the backbone. Only used when the ``context_backbone`` argument is a string.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
 
-    See Also:
-        `BiseNetv1: Bilateral Segmentation Network for Real-time Semantic Segmentation <https://arxiv.org/abs/1808.00897>`_"""
+        See Also:
+            `BiseNetv1: Bilateral Segmentation Network for Real-time Semantic Segmentation <https://arxiv.org/abs/1808.00897>`_
+
+        """
         super().__init__(**kwargs)
 
         if isinstance(context_backbone, str):

@@ -22,9 +22,12 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
 
     @typechecked
     def __init__(self, final_loss_weight: float = 1.0, **kwargs):
-        """
+        """Initialize the base loss.
+
         Args:
-            weight (float): Optional weight by which the final loss is multiplied.
+            final_loss_weight (float): Optional weight by which the final loss is multiplied.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.__final_loss_weight = final_loss_weight
@@ -37,6 +40,7 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
 
         Returns:
             Tensor | tuple[Tensor, dict[str, Tensor]]: The main loss and optional a dictionary of sub-losses (for logging). Only the main loss is used for backpropagation.
+
         """
         ...
 
@@ -59,6 +63,7 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
 
         Raises:
             IncompatibleError: If the inputs are not compatible with the module.
+
         """
         loss = self(**self.get_parameters(inputs, labels))
         if isinstance(loss, Tensor):

@@ -7,6 +7,35 @@ from luxonis_train.nodes.base_node import BaseNode
 
 
 class MobileNetV2(BaseNode):
+    """MobileNetV2 backbone that returns intermediate feature maps.
+
+    MobileNetV2 uses inverted residual blocks and linear bottlenecks for
+    efficient convolutional feature extraction on resource-constrained
+    devices.
+
+    Metadata:
+        - Node type: backbone
+        - Registry name: ``MobileNetV2``
+        - Task: None
+        - Attach index: ``-1``
+        - Inputs: ``features`` tensor
+        - Outputs: ``features`` list of tensors
+
+    Provenance:
+        - Source: ``torchvision.models.mobilenet_v2``
+        - License: BSD-3-Clause
+        - Implementation notes: Uses the torchvision implementation and
+          returns configured feature-layer outputs.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
+    """
+
     def __init__(
         self,
         out_indices: list[int] | None = None,
@@ -30,6 +59,9 @@ class MobileNetV2(BaseNode):
 
         Args:
             out_indices (list[int] | None): Indices of the output layers. Defaults to [3, 6, 13, 18].
+            weights (Literal["download", "none"] | None): Whether to download pretrained weights. Defaults to None.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
 

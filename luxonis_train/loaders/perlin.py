@@ -140,6 +140,7 @@ def apply_anomaly_to_img(
         tuple[Tensor, Tensor]: A tuple ``(augmented_img, perlin_mask)``, where
         ``augmented_img`` is the image with the anomaly applied and
         ``perlin_mask`` is the mask applied to the image.
+
     """
     perlin_mask = generate_perlin_noise(shape=(img.shape[1], img.shape[2]))
 

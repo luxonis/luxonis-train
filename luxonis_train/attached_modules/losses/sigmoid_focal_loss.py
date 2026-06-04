@@ -8,6 +8,36 @@ from luxonis_train.tasks import Tasks
 
 
 class SigmoidFocalLoss(BaseLoss):
+    """Sigmoid focal loss for binary or multi-label predictions.
+
+    Metadata:
+        - Module type: loss
+        - Registry name: ``SigmoidFocalLoss``
+        - Task: SEGMENTATION, CLASSIFICATION
+        - Attached node types: None
+        - Inputs: ``predictions``, ``target``
+        - Outputs: scalar or unreduced sigmoid focal loss, depending on
+          ``reduction``
+
+    Prediction format:
+        ``predictions`` contains logits compatible with ``target``.
+
+    Target format:
+        ``target`` contains binary labels with the same broadcast-compatible
+        shape as ``predictions``.
+
+    Formula:
+        Applies torchvision sigmoid focal loss from the RetinaNet focal loss
+        formulation.
+
+    Provenance:
+        - Source: torchvision
+        - License: Project license
+        - Implementation notes: Thin wrapper around
+          ``torchvision.ops.sigmoid_focal_loss``.
+
+    """
+
     supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 
     def __init__(
@@ -26,6 +56,8 @@ class SigmoidFocalLoss(BaseLoss):
                 examples. Defaults to ``2.0``.
             reduction (Literal["none", "mean", "sum"]): Reduction type for loss. Defaults to
                 ``"mean"``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
 

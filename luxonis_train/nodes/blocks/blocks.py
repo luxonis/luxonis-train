@@ -71,13 +71,13 @@ class EfficientDecoupledBlock(nn.Module):
 
     @typechecked
     def __init__(self, in_channels: int, n_classes: int):
-        """Efficient Decoupled block used for class and regression
+        """Efficient decoupled block for class and regression
         predictions.
 
         Args:
-            n_classes (int): Number of classes.
             in_channels (int): Number of input channels.
-            prior_probability (float): ???
+            n_classes (int): Number of classes.
+
         """
         super().__init__()
 
@@ -140,6 +140,7 @@ class SegProto(nn.Sequential):
             in_channels (int): Number of input channels.
             mid_channels (int): Number of intermediate channels. Defaults to 256.
             out_channels (int): Number of output channels. Defaults to 32.
+
         """
         super().__init__(
             ConvBlock(
@@ -177,15 +178,21 @@ class SegProto(nn.Sequential):
 
 
 class DFL(nn.Module):
-    """The DFL (Distribution Focal Loss) module processes input tensors
-    by applying softmax over a specified dimension and projecting the
+    """Process distribution focal loss logits.
+
+    The DFL (Distribution Focal Loss) module processes input tensors by
+    applying softmax over a specified dimension and projecting the
     resulting tensor to produce output logits.
+
     """
 
     @typechecked
     def __init__(self, reg_max: int = 16):
-        """        Args:
+        """Initialize the DFL module.
+
+        Args:
             reg_max (int): Maximum number of regression outputs. Defaults to 16.
+
         """
         super().__init__()
         self.conv = nn.Conv2d(reg_max, 1, kernel_size=1, bias=False)
@@ -231,6 +238,8 @@ class ConvBlock(nn.Module):
             bias (bool): Whether to use bias. Defaults to False.
             activation (`nn.Module` | None | bool): Activation function. Defaults to `nn.ReLu` if not explicitly set to ``None`` or ``False``.
             use_norm (bool): Whether to use batch normalization. Defaults to True.
+            norm_momentum (float): Momentum for batch normalization. Defaults to 0.1.
+
         """
         super().__init__()
 
@@ -282,7 +291,8 @@ class SqueezeExciteBlock(nn.Sequential):
         hard_sigmoid: bool = False,
         activation: nn.Module | None = None,
     ):
-        """Squeeze and Excite block,
+        """Squeeze and Excite block.
+
         Adapted from `Squeeze-and-Excitation Networks <https://arxiv.org/pdf/1709.01507.pdf>`_.
         Code adapted from `https://github.com/apple/ml-mobileone/blob/main/mobileone.py <https://github.com/apple/ml-mobileone/blob/main/mobileone.py>`_.
 
@@ -291,6 +301,7 @@ class SqueezeExciteBlock(nn.Sequential):
             intermediate_channels (int): Number of intermediate channels.
             hard_sigmoid (bool): Whether to use hard sigmoid function. Defaults to False.
             activation (`nn.Module` | None): Activation function. Defaults to `nn.ReLU`.
+
         """
         super().__init__(
             nn.AdaptiveAvgPool2d(1),
@@ -334,8 +345,7 @@ class GeneralReparametrizableBlock(Reparametrizable):
         scale_layer_padding: int | tuple[int, int] | None = None,
         activation: nn.Module | None | bool = True,
     ):
-        """GeneralReparametrizableBlock is a basic rep-style block,
-        including training and deploy status.
+        """General reparametrizable block with train and deploy states.
 
         Args:
             in_channels (int): Number of input channels.
@@ -346,10 +356,13 @@ class GeneralReparametrizableBlock(Reparametrizable):
             groups (int): Groups. Defaults to ``1``.
             n_branches (int): Number of convolutional branches. During reparametrization, the branches are fused to a single convolutional layer. Defaults to ``1``.
             refine_block (nn.Module | Literal["se"] | None): A block to refine the output. Placed after the convolutional branches and before the activation function. Can be one of the following: - torch module - string `"se"` which will use `SqueezeExciteBlock` - None for no operation Defaults to ``None``.
+            use_scale_layer (bool): Whether to add a 1x1 scale branch. Defaults to ``True``.
+            scale_layer_padding (int | tuple[int, int] | None): Padding for the scale branch. Defaults to None.
             activation (nn.Module | None | bool): Activation function. By default ``nn.ReLU``. If ``False`` or ``None`` then no activation.
 
         See Also:
             `https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py <https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py>`_.
+
         """
         super().__init__()
 
@@ -430,6 +443,14 @@ class GeneralReparametrizableBlock(Reparametrizable):
 
     @override
     def reparametrize(self) -> None:
+        """Fuse training-time branches into a single convolution branch.
+
+        The method creates ``fused_branch`` from the dense, scale, and
+        skip branches and switches subsequent forward passes to the
+        fused branch. It raises ``RuntimeError`` if the block has
+        already been reparametrized.
+
+        """
         if self.fused_branch is not None:
             raise RuntimeError(f"{self.name} is already reparametrized")
 
@@ -550,16 +571,20 @@ class BlockRepeater(nn.Sequential):
     `in_channels` of the next block will be set to the `out_channels` of
     the previous block. This allows for repeating blocks which change
     the number of channels.
+
     """
 
     @typechecked
     def __init__(
         self, module: Callable[..., nn.Module], /, *, n_repeats: int, **kwargs
     ):
-        """        Args:
-            module (``type[nn.Module]``): Module to repeat.
+        """Initialize the repeated block stack.
+
+        Args:
+            module (Callable[..., nn.Module]): Module factory to repeat.
             n_repeats (int): Number of blocks to repeat. Defaults to ``1``.
-            kwargs (Any): Additional keyword arguments to be passed to the module.
+            **kwargs (Any): Keyword arguments forwarded to ``module``.
+
         """
         blocks = [module(**kwargs)]
 
@@ -573,10 +598,7 @@ class BlockRepeater(nn.Sequential):
 
 
 class CSPStackRepBlock(nn.Module):
-    """Module composed of three 1x1 conv layers and a stack of sub-
-    blocks consisting of two RepVGG blocks with a residual
-    connection.
-    """
+    """Stack RepVGG-style residual blocks inside a CSP block."""
 
     @typechecked
     def __init__(
@@ -586,11 +608,14 @@ class CSPStackRepBlock(nn.Module):
         n_blocks: int = 1,
         e: float = 0.5,
     ):
-        """        Args:
+        """Initialize the CSP stack.
+
+        Args:
             in_channels (int): Number of input channels.
             out_channels (int): Number of output channels.
             n_blocks (int): Number of blocks to repeat. Defaults to ``1``.
             e (float): Factor for number of intermediate channels. Defaults to ``0.5``.
+
         """
         super().__init__()
         intermediate_channels = int(out_channels * e)
@@ -640,11 +665,12 @@ class BottleRep(nn.Module):
         """RepVGG bottleneck module.
 
         Args:
-            block (Callable[..., nn.Module]): Block to use. Defaults to `GeneralReparametrizableBlock`.
             in_channels (int): Number of input channels.
             out_channels (int): Number of output channels.
+            module (ModuleFactory): Block factory to use. Defaults to `GeneralReparametrizableBlock`.
             weight (bool): If using learnable or static shortcut weight. Defaults to ``True``.
-            kwargs (Any): Additional keyword arguments to be passed to the module.
+            **kwargs (Any): Keyword arguments forwarded to ``module``.
+
         """
         super().__init__()
         self.conv_1 = module(
@@ -667,13 +693,14 @@ class SpatialPyramidPoolingBlock(nn.Module):
     def __init__(
         self, in_channels: int, out_channels: int, kernel_size: int = 5
     ):
-        """Spatial Pyramid Pooling block with ReLU activation on three
-        different scales.
+        """Spatial Pyramid Pooling block with three ReLU-activated
+        scales.
 
         Args:
             in_channels (int): Number of input channels.
             out_channels (int): Number of output channels.
             kernel_size (int): Kernel size. Defaults to ``5``.
+
         """
         super().__init__()
 
@@ -698,12 +725,14 @@ class SpatialPyramidPoolingBlock(nn.Module):
 class AttentionRefinmentBlock(nn.Module):
     @typechecked
     def __init__(self, in_channels: int, out_channels: int):
-        """Attention Refinment block adapted from
-        `https://github.com/taveraantonio/BiseNetv1 <https://github.com/taveraantonio/BiseNetv1>`_.
+        """Attention Refinment block.
+
+        Adapted from `https://github.com/taveraantonio/BiseNetv1 <https://github.com/taveraantonio/BiseNetv1>`_.
 
         Args:
             in_channels (int): Number of input channels.
             out_channels (int): Number of output channels.
+
         """
         super().__init__()
 
@@ -741,6 +770,7 @@ class FeatureFusionBlock(nn.Module):
             in_channels (int): Number of input channels.
             out_channels (int): Number of output channels.
             reduction (int): Reduction factor. Defaults to ``1``.
+
         """
         super().__init__()
 
@@ -777,6 +807,7 @@ class UpscaleOnline(nn.Module):
 
     Args:
         mode (str): Interpolation mode for resizing. Defaults to ``"bilinear"``.
+
     """
 
     @typechecked
@@ -796,6 +827,7 @@ class UpscaleOnline(nn.Module):
 
         Returns:
             Tensor: Upscaled tensor.
+
         """
         return F.interpolate(
             x, size=[output_height, output_width], mode=self.mode
@@ -816,6 +848,7 @@ class DropPath(nn.Module):
 
     See Also:
         `Original code (TIMM) <https://github.com/rwightman/pytorch-image-models>`_.
+
     """
 
     @typechecked
@@ -832,6 +865,7 @@ class DropPath(nn.Module):
 
         Returns:
             Tensor: Tensor with paths dropped according to ``drop_prob``.
+
         """
         keep_prob = 1 - self.drop_prob
         shape = (x.shape[0],) + (1,) * (x.ndim - 1)
@@ -856,6 +890,7 @@ class ConvStack(BlockRepeater):
             in_channels (int): Number of input channels.
             out_channels (int): Number of output channels.
             n_repeats (int): Number of ``ConvBlock`` modules to stack.
+
         """
         super().__init__(
             ConvBlock,

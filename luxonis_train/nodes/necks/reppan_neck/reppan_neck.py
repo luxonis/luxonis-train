@@ -15,20 +15,55 @@ from .blocks import CSPDownBlock, CSPUpBlock, RepDownBlock, RepUpBlock
 class RepPANNeck(BaseNode):
     """Implementation of the RepPANNeck module.
 
-    Supports the version with RepBlock and CSPStackRepBlock (for larger networks)
+    RepPANNeck is a YOLOv6-style neck that fuses multi-scale backbone
+    features with configurable head count, depth, width, and block presets.
 
-    Adapted from `YOLOv6: A Single-Stage Object Detection Framework
-    for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
-    It has the balance of feature fusion ability and hardware efficiency.
+    Metadata:
+        - Node type: neck
+        - Registry name: ``RepPANNeck``
+        - Task: None
+        - Attach index: ``all``
+        - Inputs: ``features`` list of tensors
+        - Outputs: ``features`` list of tensors
 
-    Variants
-    ========
-    The variant determines the depth and width multipliers, block used and intermediate channel scaling factor.
-    Available variants:
-        - "n" or "nano" (default): depth_multiplier=0.33, width_multiplier=0.25, block=RepBlock
-        - "s" or "small": depth_multiplier=0.33, width_multiplier=0.50, block=RepBlock
-        - "m" or "medium": depth_multiplier=0.60, width_multiplier=0.75, block=CSPStackRepBlock, e=2/3
-        - "l" or "large": depth_multiplier=1.0, width_multiplier=1.0, block=CSPStackRepBlock, e=1/2
+    Provenance:
+        - Source: ``YOLOv6: A Single-Stage Object Detection Framework for
+          Industrial Applications``
+        - License: Unknown
+        - Implementation notes: Builds local top-down and bottom-up feature
+          fusion blocks for two, three, or four output heads.
+
+    Variants:
+        - ``"n"``:
+            - Default: yes
+            - Aliases: ``"nano"``
+            - Parameters:
+                - ``depth_multiplier``: ``0.33``
+                - ``width_multiplier``: ``0.25``
+                - ``block``: ``"RepBlock"``
+        - ``"s"``:
+            - Default: no
+            - Aliases: ``"small"``
+            - Parameters:
+                - ``depth_multiplier``: ``0.33``
+                - ``width_multiplier``: ``0.50``
+                - ``block``: ``"RepBlock"``
+        - ``"m"``:
+            - Default: no
+            - Aliases: ``"medium"``
+            - Parameters:
+                - ``depth_multiplier``: ``0.60``
+                - ``width_multiplier``: ``0.75``
+                - ``block``: ``"CSPStackRepBlock"``
+                - ``e``: ``2 / 3``
+        - ``"l"``:
+            - Default: no
+            - Aliases: ``"large"``
+            - Parameters:
+                - ``depth_multiplier``: ``1.0``
+                - ``width_multiplier``: ``1.0``
+                - ``block``: ``"CSPStackRepBlock"``
+                - ``e``: ``1 / 2``
 
     """
 
@@ -48,14 +83,24 @@ class RepPANNeck(BaseNode):
         weights: str = "yolo",
         **kwargs,
     ):
-        """        Args:
-            n_heads (Literal[2,3,4]): Number of output heads. Defaults to 3. B{Note: Should be same also on head in most cases.}
-            channels_list (list[int] | None): List of number of channels for each block. Defaults to ``[256, 128, 128, 256, 256, 512]``.
-            n_repeats (list[int] | None): List of number of repeats of RepVGGBlock. Defaults to ``[12, 12, 12, 12]``.
-            depth_multiplier (float): Depth multiplier. Defaults to ``0.33`` ("n" variant).
-            width_muliplier (Any): Width multiplier. Defaults to ``0.25`` ("n" variant).
-            block (Literal["RepBlock", "CSPStackRepBlock"]): Base block used when building the backbone. Defaults to ``"RepBlock"`` ("n" variant). @tpe e: float | None
-            e (Any): Factor that controls number of intermediate channels. Only used when block="CSPStackRepBlock". Defaults to ``None``.
+        """Initialize the RepPAN neck.
+
+        Args:
+            n_heads (Literal[2, 3, 4]): Number of output heads. This should
+                usually match the downstream head. Defaults to ``3``.
+            channels_list (list[int] | None): Number of channels for each
+                block. Defaults to ``[256, 128, 128, 256, 256, 512]``.
+            n_repeats (list[int] | None): Number of repeats for each RepVGG
+                block. Defaults to ``[12, 12, 12, 12]``.
+            depth_multiplier (float): Depth multiplier. Defaults to ``0.33``.
+            width_multiplier (float): Width multiplier. Defaults to ``0.25``.
+            block (Literal["RepBlock", "CSPStackRepBlock"]): Base block used
+                when building the neck. Defaults to ``"RepBlock"``.
+            e (float | None): Intermediate-channel scaling factor used only
+                when ``block="CSPStackRepBlock"``. Defaults to ``None``.
+            weights (str): Weights preset name. Defaults to ``"yolo"``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(weights=weights, **kwargs)
 
@@ -234,6 +279,7 @@ class RepPANNeck(BaseNode):
         adding items.
 
         Also scales the numbers based on offset
+
         """
         if self.n_heads == 2:
             channels_list = [channels_list[i] for i in [0, 4, 5]]

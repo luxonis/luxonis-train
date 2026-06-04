@@ -12,6 +12,36 @@ from .utils import Color, draw_keypoint_labels, draw_keypoints
 
 
 class KeypointVisualizer(BBoxVisualizer):
+    """Visualize instance keypoints with optional bounding boxes.
+
+    Metadata:
+        - Module type: visualizer
+        - Registry name: ``KeypointVisualizer``
+        - Task: keypoints, fomo
+        - Attached node types: None
+        - Inputs: prediction and target canvases, ``keypoints`` and
+          ``boundingbox`` predictions, and optional matching targets.
+        - Outputs: prediction visualization, or ``(target_viz, pred_viz)``
+          when targets are provided.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Reuses bounding box visualization and draws
+          keypoints, optional skeleton connections, and optional indices.
+
+    Prediction format:
+        - ``keypoints`` is a list of per-image tensors with
+          ``(x, y, visibility)`` values.
+        - ``boundingbox`` follows the bounding box prediction format.
+
+    Target format:
+        - ``target_keypoints`` is grouped by image index before keypoint
+          values.
+        - ``target_boundingbox`` follows the bounding box target format.
+
+    """
+
     supported_tasks = [Tasks.INSTANCE_KEYPOINTS, Tasks.FOMO]
 
     def __init__(
@@ -36,7 +66,11 @@ class KeypointVisualizer(BBoxVisualizer):
                 values. Defaults to ``"red"``.
             nonvisible_color (`Color` | None): Color of nonvisible keypoints. If ``None``,
                 nonvisible keypoints are not drawn. Defaults to ``None``.
-            radius (int | None): the radius of drawn keypoints
+            radius (int | None): Radius of drawn keypoints.
+            draw_indices (bool): Whether to draw keypoint indices. Defaults
+                to ``False``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.visibility_threshold = visibility_threshold
@@ -53,6 +87,7 @@ class KeypointVisualizer(BBoxVisualizer):
         If the image is under 128 in both height and width: 1.
         If the image is more than 512 in either height or width: 6.
         Otherwise: 3.
+
         """
         height = canvas.size(-2)
         width = canvas.size(-1)
@@ -141,11 +176,21 @@ class KeypointVisualizer(BBoxVisualizer):
         offset: tuple[int, int] = (7, 7),
         colors: Color = "red",
     ) -> Tensor:
-        """Draw keypoint indices using PIL, cycling text offsets to
-        reduce overlap.
+        """Draw keypoint indices with PIL while cycling text offsets.
 
         Text is centered around each keypoint, so offsets behave
         symmetrically.
+
+        Args:
+            canvas (Tensor): Image tensor to draw on.
+            keypoints (Tensor): Keypoints with ``(x, y, visibility)`` values.
+            offset (tuple[int, int]): Text offset used for cycling label
+                positions. Defaults to ``(7, 7)``.
+            colors (Color): Text color. Defaults to ``"red"``.
+
+        Returns:
+            Tensor: Image tensor with keypoint indices drawn.
+
         """
         ndarr = canvas.permute(1, 2, 0).detach().cpu().numpy()
         img = Image.fromarray(ndarr)

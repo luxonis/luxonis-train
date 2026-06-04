@@ -11,13 +11,16 @@ __all__ = ["Metadata", "Task", "Tasks"]
 
 
 class staticproperty:
-    """Descriptor that exposes a zero-argument callable as a static property."""
+    """Descriptor that exposes a zero-argument callable as a static
+    property.
+    """
 
     def __init__(self, func: Callable) -> None:
         """Create a static property descriptor.
 
         Args:
             func (Callable): Zero-argument callable used to compute the value.
+
         """
         self.func = func
 
@@ -30,6 +33,7 @@ class staticproperty:
 
         Returns:
             Any: Value returned by the wrapped callable.
+
         """
         return self.func()
 
@@ -42,6 +46,7 @@ class Metadata:
         name (str): Metadata label name.
         typ (UnionType | type): Accepted metadata value type or union of
             accepted types.
+
     """
 
     name: str
@@ -52,6 +57,7 @@ class Metadata:
 
         Returns:
             str: Metadata label path.
+
         """
         return f"metadata/{self.name}"
 
@@ -60,6 +66,7 @@ class Metadata:
 
         Returns:
             str: Metadata label representation.
+
         """
         return str(self)
 
@@ -68,17 +75,20 @@ class Metadata:
 
         Returns:
             int: Hash value.
+
         """
         return hash(str(self))
 
     def check_type(self, typ: UnionType | type) -> bool:
-        """Check whether a type is accepted by this metadata requirement.
+        """Check whether a type is accepted by this metadata
+        requirement.
 
         Args:
             typ (UnionType | type): Type to check.
 
         Returns:
             bool: Whether `typ` is accepted.
+
         """
         if isinstance(self.typ, UnionType):
             return typ in get_args(self.typ)
@@ -91,6 +101,7 @@ class Task(ABC):
 
     Attributes:
         name (str): Task name used in model outputs and labels.
+
     """
 
     name: str
@@ -98,12 +109,12 @@ class Task(ABC):
     @cached_property
     @abstractmethod
     def required_labels(self) -> set[str | Metadata]:
-        """set[str | Metadata]: Labels required by this task."""
+        """Set[str | Metadata]: Labels required by this task."""
         ...
 
     @property
     def main_output(self) -> str:
-        """str: Main output name for this task."""
+        """Str: Main output name for this task."""
         return self.name
 
 
@@ -116,7 +127,7 @@ class Classification(Task):
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """set[str | Metadata]: Labels required by this task."""
+        """Set[str | Metadata]: Labels required by this task."""
         return {"classification"}
 
 
@@ -129,7 +140,7 @@ class Segmentation(Task):
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """set[str | Metadata]: Labels required by this task."""
+        """Set[str | Metadata]: Labels required by this task."""
         return {"segmentation"}
 
 
@@ -138,7 +149,7 @@ class InstanceBaseTask(Task):
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """set[str | Metadata]: Labels required by this task."""
+        """Set[str | Metadata]: Labels required by this task."""
         return {"boundingbox"}
 
 
@@ -159,7 +170,7 @@ class InstanceSegmentation(InstanceBaseTask):
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """set[str | Metadata]: Labels required by this task."""
+        """Set[str | Metadata]: Labels required by this task."""
         return super().required_labels | {"instance_segmentation"}
 
 
@@ -172,7 +183,7 @@ class InstanceKeypoints(InstanceBaseTask):
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """set[str | Metadata]: Labels required by this task."""
+        """Set[str | Metadata]: Labels required by this task."""
         return super().required_labels | {"keypoints"}
 
 
@@ -185,7 +196,7 @@ class InstanceSegmentationKeypoints(InstanceBaseTask):
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """set[str | Metadata]: Labels required by this task."""
+        """Set[str | Metadata]: Labels required by this task."""
         return super().required_labels | {"instance_segmentation", "keypoints"}
 
 
@@ -198,7 +209,7 @@ class Keypoints(Task):
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """set[str | Metadata]: Labels required by this task."""
+        """Set[str | Metadata]: Labels required by this task."""
         return {"keypoints"}
 
 
@@ -211,7 +222,7 @@ class Fomo(InstanceBaseTask):
 
     @property
     def main_output(self) -> str:
-        """str: Main output name for this task."""
+        """Str: Main output name for this task."""
         return "heatmap"
 
 
@@ -224,7 +235,7 @@ class Embeddings(Task):
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """set[str | Metadata]: Labels required by this task."""
+        """Set[str | Metadata]: Labels required by this task."""
         return {Metadata("id", int | Category)}
 
 
@@ -237,12 +248,12 @@ class AnomalyDetection(Task):
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """set[str | Metadata]: Labels required by this task."""
+        """Set[str | Metadata]: Labels required by this task."""
         return {"segmentation", "original_segmentation"}
 
     @property
     def main_output(self) -> str:
-        """str: Main output name for this task."""
+        """Str: Main output name for this task."""
         return "segmentation"
 
 
@@ -255,7 +266,7 @@ class Ocr(Task):
 
     @cached_property
     def required_labels(self) -> set[str | Metadata]:
-        """set[str | Metadata]: Labels required by this task."""
+        """Set[str | Metadata]: Labels required by this task."""
         return {Metadata("text", str)}
 
 
@@ -274,7 +285,9 @@ class Tasks:
 
     @staticproperty
     def INSTANCE_SEGMENTATION() -> InstanceSegmentation:
-        """InstanceSegmentation: Instance segmentation task definition."""
+        """InstanceSegmentation: Instance segmentation task
+        definition.
+        """
         return InstanceSegmentation()
 
     @staticproperty
@@ -309,7 +322,9 @@ class Tasks:
 
     @staticproperty
     def INSTANCE_SEGMENTATION_KEYPOINTS() -> InstanceSegmentationKeypoints:
-        """InstanceSegmentationKeypoints: Instance segmentation and keypoint task definition."""
+        """InstanceSegmentationKeypoints: Instance segmentation and
+        keypoint task definition.
+        """
         return InstanceSegmentationKeypoints()
 
     @staticproperty

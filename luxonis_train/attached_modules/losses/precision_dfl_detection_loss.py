@@ -19,6 +19,36 @@ from .base_loss import BaseLoss
 
 
 class PrecisionDFLDetectionLoss(BaseLoss):
+    """Precision bbox loss with distribution focal regression.
+
+    Metadata:
+        - Module type: loss
+        - Registry name: ``PrecisionDFLDetectionLoss``
+        - Task: BOUNDINGBOX
+        - Attached node types: ``PrecisionBBoxHead``
+        - Inputs: ``features``, ``target``
+        - Outputs: scalar total loss and ``class``/``iou``/``dfl`` sub-losses
+
+    Prediction format:
+        ``features`` contains detection feature maps whose channels are split
+        into bbox distribution logits and class logits.
+
+    Target format:
+        ``target`` contains batch-indexed bounding boxes with class IDs and
+        normalized ``xywh`` coordinates.
+
+    Formula:
+        Combines BCE classification loss, CIoU bbox loss, and distribution focal
+        loss after task-aligned assignment.
+
+    Provenance:
+        - Source: YOLOv8 / YOLOv6 / PPYOLOE-inspired implementation
+        - License: Unknown
+        - Implementation notes: Caches anchor points, stride tensors, bbox
+          scaling tensors, and projection bins from the attached node.
+
+    """
+
     node: PrecisionBBoxHead
     supported_tasks = [Tasks.BOUNDINGBOX]
 
@@ -44,6 +74,8 @@ class PrecisionDFLDetectionLoss(BaseLoss):
                 multiply with accumulate_grad_batches.
             skip_stal (bool): If True, disables the Small-Target-Aware Label Assignment candidate
                 expansion. Defaults to False.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.stride = self.node.stride
@@ -146,8 +178,8 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         return out_target
 
     def decode_bbox(self, anchor_points: Tensor, pred_dist: Tensor) -> Tensor:
-        """Decode predicted object bounding box coordinates from anchor
-        points and distribution.
+        """Decode predicted object bounding boxes from anchors and
+        distributions.
 
         Args:
             anchor_points (Tensor): Anchor points tensor of shape [N, 4] where N is the number of
@@ -157,6 +189,7 @@ class PrecisionDFLDetectionLoss(BaseLoss):
 
         Returns:
             Tensor: Return value.
+
         """
         if self.node.dfl:
             batch_size, n_anchors, n_channels = pred_dist.shape
@@ -199,6 +232,7 @@ class BBoxLoss(nn.Module):
 
         Args:
             reg_max (int): Maximum number of regression channels. Defaults to 16.
+
         """
         super().__init__()
         self.dist_loss = DFLoss(reg_max) if reg_max > 1 else None
@@ -247,6 +281,7 @@ class DFLoss(nn.Module):
 
         Args:
             reg_max (int): Maximum number of regression channels. Defaults to 16.
+
         """
         super().__init__()
         self.reg_max = reg_max

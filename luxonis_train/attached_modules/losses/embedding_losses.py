@@ -42,6 +42,36 @@ EMBEDDING_LOSSES = [
 for _loss_name in EMBEDDING_LOSSES:
 
     class EmbeddingLossWrapper(BaseLoss, register_name=_loss_name):
+        """Wrapper for pytorch-metric-learning embedding losses.
+
+        Metadata:
+            - Module type: loss
+            - Registry name: ``_loss_name`` entries from ``EMBEDDING_LOSSES``
+            - Task: EMBEDDINGS
+            - Attached node types: ``GhostFaceNetHead``
+            - Inputs: ``predictions``, ``target``
+            - Outputs: scalar embedding loss
+
+        Prediction format:
+            ``predictions`` contains embedding vectors.
+
+        Target format:
+            ``target`` contains embedding class or identity labels.
+
+        Formula:
+            Delegates to the selected pytorch-metric-learning loss, optionally
+            with miner, distance, reducer, regularizer, and cross-batch memory
+            wrappers.
+
+        Provenance:
+            - Source: pytorch-metric-learning
+            - License: Unknown
+            - Implementation notes: Registers one concrete loss per name in
+              ``EMBEDDING_LOSSES`` and exposes the selected registry name via
+              the ``name`` property.
+
+        """
+
         node: GhostFaceNetHead
         supported_tasks = [Tasks.EMBEDDINGS]
         miner: pml_miners.BaseMiner | None

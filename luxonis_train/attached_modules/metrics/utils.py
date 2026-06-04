@@ -17,6 +17,7 @@ def merge_bbox_kpt_targets(
         target_boundingbox (Tensor): The bounding box targets.
         target_keypoints (Tensor): The keypoint targets.
         device (torch.device | None): The device to use.
+
     """
     target_keypoints = insert_class(target_keypoints, target_boundingbox)
     n_keypoints = (target_keypoints.shape[1] - 2) // 3
@@ -33,8 +34,14 @@ def merge_bbox_kpt_targets(
 
 
 def fix_empty_tensor(tensor: Tensor) -> Tensor:
-    """Empty tensors can cause problems in DDP mode, this methods
-    corrects them.
+    """Correct empty tensors that can cause problems in DDP mode.
+
+    Args:
+        tensor (Tensor): Tensor to inspect.
+
+    Returns:
+        Tensor: The original tensor or an adjusted empty tensor.
+
     """
     if tensor.numel() == 0 and tensor.ndim == 1:
         return tensor.unsqueeze(0)

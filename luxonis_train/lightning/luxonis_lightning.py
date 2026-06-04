@@ -61,6 +61,7 @@ class LuxonisLightningModule(pl.LightningModule):
         outputs (list[str]): Names of output nodes.
         training_strategy (BaseTrainingStrategy | None): Optional strategy
             that configures optimizers and schedulers.
+
     """
 
     _trainer: pl.Trainer
@@ -89,6 +90,7 @@ class LuxonisLightningModule(pl.LightningModule):
                 model reference.
             **kwargs (Any): Additional arguments passed to the
                 `LightningModule` constructor.
+
         """
         super().__init__(**kwargs)
         self._export: bool = False
@@ -138,6 +140,7 @@ class LuxonisLightningModule(pl.LightningModule):
         manner to allow loss, visualizer and metric nodes to be absent.
         When strict weight loading is enabled, only those filtered
         attached-module keys may be missing or unexpected.
+
         """
         if self.cfg.trainer.resume_training:
             filtered_state_dict = (
@@ -192,7 +195,9 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @property
     def core(self) -> "luxonis_train.core.LuxonisModel":
-        """luxonis_train.core.LuxonisModel: Reference to the core model."""
+        """luxonis_train.core.LuxonisModel: Reference to the core
+        model.
+        """
         if self._core is None:  # pragma: no cover
             raise ValueError("Core reference is not set.")
         return self._core
@@ -229,6 +234,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         Returns:
             LuxonisOutput: Output of the model.
+
         """
         losses: dict[
             str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]
@@ -306,6 +312,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         Returns:
             Path: Path to the exported model.
+
         """
         device_before = self.device
 
@@ -478,6 +485,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         This override is intentionally applied only when
         `run_validation_after_first_epoch=True`
+
         """
         if getattr(stage, "value", stage) != "fit":
             return
@@ -577,6 +585,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         Raises:
             ValueError: If the checkpoint does not contain ``state_dict``.
+
         """
         if ckpt is None:
             return
@@ -1017,6 +1026,7 @@ class LuxonisLightningModule(pl.LightningModule):
 
         Returns a mapping dictionary or an error string if mapping
         cannot be created.
+
         """
         old_order = [name for name in old_order if f".{node_name}." in name]
         new_order = [name for name in new_order if f".{node_name}." in name]

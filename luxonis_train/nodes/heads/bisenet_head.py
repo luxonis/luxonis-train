@@ -9,6 +9,31 @@ from luxonis_train.utils import infer_upscale_factor
 
 
 class BiSeNetHead(BaseHead):
+    """BiSeNet segmentation head.
+
+    Metadata:
+        - Node type: head
+        - Registry name: ``BiSeNetHead``
+        - Task: segmentation
+        - Attach index: None
+        - Inputs: ``features`` tensor
+        - Outputs: segmentation logits tensor
+
+    Provenance:
+        - Source: BiseNetV1
+        - License: Unknown
+        - Implementation notes: Applies a convolutional projection and
+          pixel shuffle upsampling to produce segmentation logits.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
+    """
+
     in_height: int
     in_width: int
     in_channels: int
@@ -23,12 +48,14 @@ class BiSeNetHead(BaseHead):
 
         Args:
             intermediate_channels (int): How many intermediate channels to use. Defaults to ``64``.
+            **kwargs (Any): Keyword arguments forwarded to the parent class.
 
         Notes:
             License: NOT SPECIFIED.
 
         See Also:
             `BiseNetv1: Bilateral Segmentation Network for Real-time Semantic Segmentation <https://arxiv.org/abs/1808.00897>`_
+
         """
         super().__init__(**kwargs)
 

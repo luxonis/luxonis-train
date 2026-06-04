@@ -40,15 +40,19 @@ class BaseAttachedModule(
 
     Attributes:
         supported_tasks (list[Task] | None): List of task types that the module supports. Elements of the list can be either a single task type or a tuple of task types. In case of the latter, the module requires all of the specified labels in the tuple to be present.
+
     """
 
     supported_tasks: Sequence[Task] | None = None
 
     def __init__(self, *, node: BaseNode | None = None, **kwargs):
-        """
+        """Initialize the attached module and infer its task from the
+        node.
+
         Args:
             node (BaseNode): Reference to the node that this module is attached to.
-            kwargs (Any): Additional keyword arguments.
+            **kwargs (Any): Additional keyword arguments.
+
         """
         super().__init__(**kwargs)
         self._node = node
@@ -112,6 +116,7 @@ class BaseAttachedModule(
 
         Raises:
             RuntimeError: If the node was not provided during initialization.
+
         """
         if self._node is None:
             raise RuntimeError(
@@ -127,6 +132,7 @@ class BaseAttachedModule(
         Raises:
             ValueError: If the node does not support keypoints.
             RuntimeError: If the node doesn't define any task.
+
         """
         return self.node.n_keypoints
 
@@ -137,6 +143,7 @@ class BaseAttachedModule(
         Raises:
             RuntimeError: If the node doesn't define any task.
             ValueError: If the number of classes is different for different tasks. In that case, use the `get_n_classes` method.
+
         """
         return self.node.n_classes
 
@@ -152,6 +159,7 @@ class BaseAttachedModule(
         Raises:
             RuntimeError: If the node doesn't define any task.
             ValueError: If the class names are different for different tasks. In that case, use the `get_class_names` method.
+
         """
         return self.node.classes
 

@@ -11,8 +11,9 @@ from luxonis_train.loaders import BaseLoaderTorch
 class DatasetMetadata:
     """Dataset metadata used to configure model outputs.
 
-    The metadata includes class definitions, keypoint counts, and additional
-    label metadata types.
+    The metadata includes class definitions, keypoint counts, and
+    additional label metadata types.
+
     """
 
     def __init__(
@@ -37,6 +38,7 @@ class DatasetMetadata:
                 Dictionary mapping metadata names to metadata value types.
             loader (BaseLoaderTorch | None): Dataset loader associated with
                 this metadata.
+
         """
         self._classes = classes or {}
         self._n_keypoints = n_keypoints or {}
@@ -61,6 +63,7 @@ class DatasetMetadata:
 
         Returns:
             dict[str, Any]: Dictionary containing the metadata.
+
         """
         return {
             "classes": {k: dict(v) for k, v in self._classes.items()},
@@ -84,7 +87,7 @@ class DatasetMetadata:
 
     @property
     def task_names(self) -> set[str]:
-        """set[str]: Names of the tasks present in the dataset."""
+        """Set[str]: Names of the tasks present in the dataset."""
         return set(self._classes.keys())
 
     def n_classes(self, task_name: str | None = None) -> int:
@@ -101,6 +104,7 @@ class DatasetMetadata:
             ValueError: If `task_name` is not present in the dataset.
             RuntimeError: If `task_name` was not provided and the dataset
                 contains different numbers of classes for different tasks.
+
         """
         if task_name is not None:
             if task_name not in self._classes:
@@ -131,6 +135,7 @@ class DatasetMetadata:
             ValueError: If `task_name` is not present in the dataset.
             RuntimeError: If `task_name` was not provided and the dataset
                 contains different numbers of keypoints for different tasks.
+
         """
         if task_name is not None:
             if task_name not in self._n_keypoints:
@@ -162,6 +167,7 @@ class DatasetMetadata:
             ValueError: If `task_name` is not present in the dataset.
             RuntimeError: If `task_name` was not provided and the dataset
                 contains different class names for different tasks.
+
         """
         if task_name is not None:
             if task_name not in self._classes:
@@ -182,10 +188,12 @@ class DatasetMetadata:
     def metadata_types(
         self,
     ) -> dict[str, type[int] | type[Category] | type[float] | type[str]]:
-        """dict[str, type[int] | type[Category] | type[float] | type[str]]: Metadata names mapped to their types.
+        """Dict[str, type[int] | type[Category] | type[float] |
+        type[str]]: Metadata names mapped to their types.
 
         Raises:
             RuntimeError: If the dataset does not define metadata types.
+
         """
         if self._metadata_types is None:
             raise RuntimeError("The dataset does define metadata types.")
@@ -200,6 +208,7 @@ class DatasetMetadata:
 
         Returns:
             DatasetMetadata: Instance created from the provided loader.
+
         """
         return cls(
             classes=loader.get_classes(),

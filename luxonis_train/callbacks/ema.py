@@ -17,6 +17,7 @@ class ModelEma(nn.Module):
 
     Keeps a moving average of everything in the model.state_dict
     (parameters and buffers).
+
     """
 
     def __init__(
@@ -26,12 +27,14 @@ class ModelEma(nn.Module):
         use_dynamic_decay: bool = True,
         decay_tau: float = 2000,
     ):
-        """
+        """Initialize the exponential moving average state.
+
         Args:
             model (`pl.LightningModule`): Pytorch Lightning module.
             decay (float): Decay rate for the moving average.
             use_dynamic_decay (bool): Use dynamic decay rate.
             decay_tau (float): Decay tau for the moving average.
+
         """
         super().__init__()
         model.eval()
@@ -55,6 +58,7 @@ class ModelEma(nn.Module):
 
         Notes:
             License: `Apache License 2.0 <https://github.com/huggingface/pytorch-image-models/tree/main?tab=Apache-2.0-1-ov-file#readme>`_
+
         """
         with torch.no_grad():
             self.updates += 1
@@ -101,11 +105,13 @@ class EMACallback(pl.Callback):
         use_dynamic_decay: bool = True,
         decay_tau: float = 2000,
     ):
-        """
+        """Initialize the EMA callback configuration.
+
         Args:
             decay (float): Decay rate for the moving average.
             use_dynamic_decay (bool): Use dynamic decay rate. If True, the decay rate will be updated based on the number of updates.
             decay_tau (float): Decay tau for the moving average.
+
         """
         self.decay = decay
         self.use_dynamic_decay = use_dynamic_decay
@@ -135,6 +141,7 @@ class EMACallback(pl.Callback):
         Args:
             trainer (`pl.Trainer`): Pytorch Lightning trainer.
             pl_module (`pl.LightningModule`): Pytorch Lightning module.
+
         """
         self._ema = ModelEma(
             pl_module,
@@ -211,6 +218,7 @@ class EMACallback(pl.Callback):
             outputs (Any): Outputs from the training step.
             batch (Any): Batch data.
             batch_idx (int): Batch index.
+
         """
         if (
             self._ema is not None
@@ -227,6 +235,7 @@ class EMACallback(pl.Callback):
         Args:
             trainer (`pl.Trainer`): Pytorch Lightning trainer.
             pl_module (`pl.LightningModule`): Pytorch Lightning module.
+
         """
         self._swap_to_ema_weights(pl_module)
 
@@ -238,6 +247,7 @@ class EMACallback(pl.Callback):
         Args:
             trainer (`pl.Trainer`): Pytorch Lightning trainer.
             pl_module (`pl.LightningModule`): Pytorch Lightning module.
+
         """
         self._restore_original_weights(pl_module)
 
@@ -250,6 +260,7 @@ class EMACallback(pl.Callback):
         Args:
             trainer (`pl.Trainer`): Pytorch Lightning trainer.
             pl_module (`pl.LightningModule`): Pytorch Lightning module.
+
         """
         self._swap_to_ema_weights(pl_module)
 
@@ -261,6 +272,7 @@ class EMACallback(pl.Callback):
         Args:
             trainer (`pl.Trainer`): Pytorch Lightning trainer.
             pl_module (`pl.LightningModule`): Pytorch Lightning module.
+
         """
         self._restore_original_weights(pl_module)
 
@@ -276,6 +288,7 @@ class EMACallback(pl.Callback):
         Args:
             trainer (`pl.Trainer`): Pytorch Lightning trainer.
             pl_module (`pl.LightningModule`): Pytorch Lightning module.
+
         """
         self._swap_to_ema_weights(pl_module)
 
@@ -291,6 +304,7 @@ class EMACallback(pl.Callback):
             trainer (`pl.Trainer`): Pytorch Lightning trainer.
             pl_module (`pl.LightningModule`): Pytorch Lightning module.
             checkpoint (dict): Pytorch Lightning checkpoint.
+
         """
         if self._ema is not None:
             checkpoint["state_dict"] = self._ema.state_dict_ema
@@ -317,7 +331,10 @@ class EMACallback(pl.Callback):
         """Load the EMA state dictionary from the checkpoint.
 
         Args:
+            trainer (`pl.Trainer`): Pytorch Lightning trainer.
+            pl_module (`pl.LightningModule`): Pytorch Lightning module.
             callback_state (dict): Pytorch Lightning callback state.
+
         """
         self._load_ema_state(callback_state)
 
@@ -336,6 +353,7 @@ class EMACallback(pl.Callback):
         """Swap the current model weights with the EMA weights.
 
         The current state is saved so that it can be restored later.
+
         """
         if getattr(pl_module, "_weights_explicitly_loaded", False):
             return
@@ -348,6 +366,7 @@ class EMACallback(pl.Callback):
 
         This method reverts the model to its state prior to the EMA
         weight swap.
+
         """
         if getattr(pl_module, "_weights_explicitly_loaded", False):
             return
