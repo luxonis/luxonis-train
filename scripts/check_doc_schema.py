@@ -1,13 +1,17 @@
-"""Validate structured documentation sections for nodes and attached modules."""
+"""Validate structured documentation sections for nodes and attached
+modules.
+"""
 
 from __future__ import annotations
 
 import ast
 import re
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+
+from rich import print
 
 ROOT = Path(__file__).resolve().parents[1]
 NODE_ROOT = ROOT / "luxonis_train" / "nodes"
@@ -75,7 +79,9 @@ class ClassInfo:
 
 
 def base_name(base: ast.expr) -> str | None:
-    """Return the unqualified base class name for an AST base expression."""
+    """Return the unqualified base class name for an AST base
+    expression.
+    """
     if isinstance(base, ast.Name):
         return base.id
     if isinstance(base, ast.Attribute):
@@ -113,7 +119,9 @@ def collect_classes(root: Path) -> list[ClassInfo]:
 def transitive_subclasses(
     classes: Iterable[ClassInfo], root_bases: set[str]
 ) -> set[str]:
-    """Return class names that inherit from any name in ``root_bases``."""
+    """Return class names that inherit from any name in
+    ``root_bases``.
+    """
     bases_by_name = {cls.name: cls.bases for cls in classes}
     family = set(root_bases)
     changed = True
@@ -181,7 +189,9 @@ def check_forbidden_section_names() -> list[str]:
     """Reject old long-form schema section names."""
     errors: list[str] = []
     for root in [NODE_ROOT, ATTACHED_ROOT, ROOT / "docs"]:
-        for path in sorted(root.rglob("*.py" if root != ROOT / "docs" else "*.md")):
+        for path in sorted(
+            root.rglob("*.py" if root != ROOT / "docs" else "*.md")
+        ):
             text = path.read_text(encoding="utf-8")
             for forbidden in FORBIDDEN_SECTION_NAMES:
                 if forbidden in text:

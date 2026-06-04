@@ -27,6 +27,7 @@ class TrainingProgressCallback(pl.Callback):
         - ``test/epoch_duration_sec``: Time elapsed so far in current test epoch
         - ``test/epoch_completion_sec``: Total duration of completed test epoch in seconds
         - ``test/batch_total_sec``: Time spent processing one test batch
+
     """
 
     def __init__(self, log_every_n_batches: int = 1):

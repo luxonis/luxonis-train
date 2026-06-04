@@ -673,6 +673,7 @@ class LuxonisModel:
         Returns:
             Mapping[str, float] | None: Test results when ``new_thread`` is
             ``False``; otherwise ``None``.
+
         """
         weights = self.resolve_weights(weights)
         loader = self.pytorch_loaders[view]
@@ -703,8 +704,9 @@ class LuxonisModel:
     def finalize_run(self, status: str = "success") -> None:
         """Upload run metadata and finalize the tracker.
 
-        @type status: str
-        @param status: Final run status passed to the tracker.
+        @type status: str @param status: Final run status passed to the
+        tracker.
+
         """
         self._upload_run_metadata()
         self.tracker._finalize(status)
