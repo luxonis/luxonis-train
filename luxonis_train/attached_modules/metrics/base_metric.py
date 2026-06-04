@@ -145,7 +145,8 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         """Update the inner state of the metric.
 
         Args:
-            *args (Unpack[Ts]): Prepared inputs from the `prepare` method.
+            *args (Tensor | list[Tensor]): Arguments for the specific implementation
+                of the `update` method.
 
         """
         super().update(*args)

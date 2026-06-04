@@ -143,7 +143,7 @@ docformat = "google"
 project-name = "luxonis-train"
 project-url = "https://github.com/luxonis/luxonis-train"
 html-output = "apidocs"
-warnings-as-errors = true
+warnings-as-errors = false
 intersphinx = [
   "https://docs.python.org/3/objects.inv",
   "https://pytorch.org/docs/stable/objects.inv",

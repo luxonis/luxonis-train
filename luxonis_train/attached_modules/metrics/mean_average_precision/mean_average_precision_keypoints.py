@@ -144,7 +144,6 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
     @override
     def compute(self) -> tuple[Tensor, dict[str, Tensor]]:
-        """Torchmetric compute function."""
         coco_target = self._get_coco(
             self.target_bboxes,
             self.target_keypoints,
