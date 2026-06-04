@@ -40,7 +40,11 @@ class TestOnTrainEnd(NeedsCheckpoint):
 
         device_before = pl_module.device
 
-        pl_module.core.test(weights=checkpoint, view=self.view)
+        pl_module.core.test(
+            weights=checkpoint,
+            view=self.view,
+            finalize_tracker=False,
+        )
 
         # .test() moves pl_module to "cpu", we move it back to original device after
         pl_module.to(device_before)
