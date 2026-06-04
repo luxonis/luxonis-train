@@ -18,16 +18,6 @@ from luxonis_train.upgrade import upgrade_config, upgrade_installation
 OptsType: TypeAlias = Annotated[
     list[str] | None, Parameter(json_list=False, json_dict=False)
 ]
-_LauncherTokenType = Annotated[
-    str, Parameter(show=False, allow_leading_hyphen=True)
-]
-_LauncherSourceType = Annotated[
-    list[Path] | None,
-    Parameter(
-        help="Path to a python module with custom components. "
-        "This module will be sourced before running a command."
-    ),
-]
 
 if TYPE_CHECKING:
     import numpy as np
@@ -542,8 +532,14 @@ def upgrade():
 
 @app.meta.default
 def launcher(
-    *tokens: _LauncherTokenType,
-    source: _LauncherSourceType = None,
+    *tokens: Annotated[str, Parameter(show=False, allow_leading_hyphen=True)],
+    source: Annotated[
+        list[Path] | None,
+        Parameter(
+            help="Path to a python module with custom components. "
+            "This module will be sourced before running a command."
+        ),
+    ] = None,
 ):
     if source:
         for src in source:
