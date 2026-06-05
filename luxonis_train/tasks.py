@@ -19,7 +19,7 @@ class staticproperty:
         """Create a static property descriptor.
 
         Args:
-            func (Callable): Zero-argument callable used to compute the value.
+            func (``Callable``): Zero-argument callable used to compute the value.
 
         """
         self.func = func
@@ -28,11 +28,11 @@ class staticproperty:
         """Evaluate the wrapped callable.
 
         Args:
-            *_ (Any): Descriptor protocol arguments, ignored by this
+            *_ (``Any``): Descriptor protocol arguments, ignored by this
                 implementation.
 
         Returns:
-            Any: Value returned by the wrapped callable.
+            ``Any``: Value returned by the wrapped callable.
 
         """
         return self.func()
@@ -84,7 +84,7 @@ class Metadata:
         requirement.
 
         Args:
-            typ (UnionType | type): Type to check.
+            typ (UnionType | type): ``Type`` to check.
 
         Returns:
             bool: Whether `typ` is accepted.

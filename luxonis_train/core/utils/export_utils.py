@@ -155,15 +155,15 @@ def hubai_export(
         cfg (HubAIExportConfig): HubAI export configuration containing platform
             and params.
         quantization_mode (str): Quantization mode for model conversion.
-        archive_path (PathType): Path to the ONNX NNArchive to convert.
-        export_path (PathType): Directory where the converted archive will be
+        archive_path (`PathType <luxonis_ml.typing.PathType>`): ``Path`` to the ONNX NNArchive to convert.
+        export_path (`PathType <luxonis_ml.typing.PathType>`): Directory where the converted archive will be
             saved.
         model_name (str): Name for the model on HubAI.
         dataset_name (str | None): Name of the dataset the model was trained
             on.
 
     Returns:
-        Path: Path to the converted platform-specific NNArchive.
+        ``Path``: ``Path`` to the converted platform-specific NNArchive.
 
     Raises:
         ValueError: If ``HUBAI_API_KEY`` is not set.
@@ -278,7 +278,7 @@ def make_initializers_unique(onnx_path: PathType) -> None:
     """Duplicate ONNX initializers used by multiple nodes.
 
     Args:
-        onnx_path (PathType): Path to the ONNX model file to modify.
+        onnx_path (`PathType <luxonis_ml.typing.PathType>`): ``Path`` to the ONNX model file to modify.
 
     """
     import copy

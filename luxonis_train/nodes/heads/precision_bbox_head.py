@@ -65,12 +65,12 @@ class PrecisionBBoxHead(BaseDetectionHead):
         for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
 
         Args:
-            n_heads (Literal[2, 3, 4]): Number of output heads.
+            n_heads (``Literal[2, 3, 4]``): Number of output heads.
             conf_thres (float): Confidence threshold for NMS.
             iou_thres (float): IoU threshold for NMS.
             max_det (int): Maximum number of detections retained after NMS.
             reg_max (int): Maximum number of regression channels.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(

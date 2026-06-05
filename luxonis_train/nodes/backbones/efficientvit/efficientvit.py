@@ -85,7 +85,7 @@ class EfficientViT(BaseNode):
             depth_list (list[int] | None): List of number of layers in each block.
             dim (int): Dimension of the transformer.
             expand_ratio (int): Expansion ratio for the `MobileBottleneckBlock`. Defaults to ``4``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

@@ -4,7 +4,7 @@ from typing import Literal
 
 from loguru import logger
 from luxonis_ml.typing import Kwargs
-from luxonis_ml.utils.registry import AutoRegisterMeta
+from luxonis_ml.utils import AutoRegisterMeta
 
 
 class VariantMeta(AutoRegisterMeta):
@@ -37,10 +37,10 @@ class VariantMeta(AutoRegisterMeta):
         kwargs.
 
         Args:
-            *args (Any): Positional arguments forwarded to the class
+            *args (``Any``): Positional arguments forwarded to the class
                 constructor.
             variant (str | None): Variant name, ``"default"``, or ``None``.
-            **kwargs (Any): Keyword arguments forwarded to the class
+            **kwargs (``Any``): Keyword arguments forwarded to the class
                 constructor.
 
         Returns:
@@ -109,10 +109,10 @@ class VariantMeta(AutoRegisterMeta):
         """Create an instance and run ``__post_init__`` when available.
 
         Args:
-            *args (Any): Positional arguments forwarded to the class
+            *args (``Any``): Positional arguments forwarded to the class
                 constructor.
             variant (str | None): Variant name, ``"default"``, or ``None``.
-            **kwargs (Any): Keyword arguments forwarded to the class
+            **kwargs (``Any``): Keyword arguments forwarded to the class
                 constructor.
 
         Returns:
@@ -148,7 +148,7 @@ class VariantBase(ABC, metaclass=VariantMeta, register=False):
         constructor of a derived class.
 
         Returns:
-            tuple[str, dict[str, Kwargs]]: A tuple containing the default
+            ``tuple[str, dict[str, Kwargs]]``: A tuple containing the default
             variant name and a dictionary of available variants with their
             parameters.
 
@@ -163,13 +163,13 @@ def add_variant_aliases(
     """Add variant aliases to the variants dictionary.
 
     Args:
-        variants (dict[str, Kwargs]): Variant configuration dictionary to
+        variants (``dict[str, Kwargs]``): Variant configuration dictionary to
             mutate with alias entries.
-        aliases (dict[str, Collection[str]] | Literal["yolo"]): Alias mapping
+        aliases (``dict[str, Collection[str]] | Literal["yolo"]``): Alias mapping
             or ``"yolo"`` for the built-in YOLO alias mapping.
 
     Returns:
-        dict[str, Kwargs]: The input ``variants`` dictionary after alias
+        ``dict[str, Kwargs]``: The input ``variants`` dictionary after alias
         handling.
 
     """

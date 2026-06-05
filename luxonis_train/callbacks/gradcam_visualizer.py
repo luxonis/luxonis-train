@@ -37,12 +37,12 @@ class PLModuleWrapper(pl.LightningModule):
         the task type.
 
         Args:
-            inputs (Tensor): Input tensor for the model.
-            *args (Any): Additional positional arguments.
-            **kwargs (Any): Additional keyword arguments.
+            inputs (``Tensor``): Input tensor for the model.
+            *args (``Any``): Additional positional arguments.
+            **kwargs (``Any``): Additional keyword arguments.
 
         Returns:
-            Tensor: The processed output based on the task type.
+            ``Tensor``: The processed output based on the task type.
 
         """
         input_dict = {"image": inputs}
@@ -108,7 +108,7 @@ class GradCamCallback(pl.Callback):
         """Initialize the model wrapper.
 
         Args:
-            trainer (pl.Trainer): The PyTorch Lightning trainer.
+            trainer (``pl.Trainer``): The PyTorch Lightning trainer.
             pl_module (LuxonisLightningModule): The LuxonisLightningModule.
             stage (str): The stage of the training loop.
 
@@ -127,10 +127,10 @@ class GradCamCallback(pl.Callback):
         Grad-CAM.
 
         Args:
-            trainer (pl.Trainer): The PyTorch Lightning trainer.
+            trainer (``pl.Trainer``): The PyTorch Lightning trainer.
             pl_module (LuxonisLightningModule): The PyTorch Lightning module.
-            outputs (STEP_OUTPUT): The output of the model.
-            batch (Any): The input batch.
+            outputs (``STEP_OUTPUT``): The output of the model.
+            batch (``Any``): The input batch.
             batch_idx (int): The index of the batch.
 
         """
@@ -148,9 +148,9 @@ class GradCamCallback(pl.Callback):
         """Visualizes the gradients using Grad-CAM.
 
         Args:
-            trainer (pl.Trainer): The PyTorch Lightning trainer.
-            pl_module (pl.LightningModule): The PyTorch Lightning module.
-            images (Tensor): The input images.
+            trainer (``pl.Trainer``): The PyTorch Lightning trainer.
+            pl_module (``pl.LightningModule``): The PyTorch Lightning module.
+            images (``Tensor``): The input images.
             batch_idx (int): The index of the batch.
 
         """

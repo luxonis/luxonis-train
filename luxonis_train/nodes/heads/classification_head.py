@@ -44,7 +44,7 @@ class ClassificationHead(BaseHead):
 
         Args:
             dropout_rate (float): Dropout rate before last layer, range ``[0, 1]``. Defaults to ``0.2``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

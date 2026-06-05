@@ -65,9 +65,9 @@ class ReconstructionSegmentationLoss(BaseLoss):
             alpha (float): Weighting factor for the rare class in the focal loss. Defaults to ``1``.
             gamma (float): Focusing parameter for the focal loss. Defaults to ``2.0``.
             smooth (float): Label smoothing factor for the focal loss. Defaults to ``1e-5``.
-            reduction (Literal["none", "mean", "sum"]): Reduction type for the focal loss. Defaults
+            reduction (``Literal["none", "mean", "sum"]``): Reduction type for the focal loss. Defaults
                 to ``"mean"``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

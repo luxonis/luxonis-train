@@ -75,10 +75,10 @@ class TransformerSegmentationHead(BaseHead):
         """Decode transformer feature maps into segmentation logits.
 
         Args:
-            x (list[Tensor]): List of successive feature maps of the same dimension.
+            x (``list[Tensor]``): List of successive feature maps of the same dimension.
 
         Returns:
-            Tensor: Segmentation logits.
+            ``Tensor``: Segmentation logits.
 
         Notes:
             Steps: 1. Project each feature map to a channel dim of 256 using 1x1 convolutions. 2. Upsample the feature maps to 1/4 of the image size. 3. Fuse the projected feature maps through summation. 4. Apply segmentation head. 5. Upsample to original input resolution.

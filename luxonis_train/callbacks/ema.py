@@ -30,7 +30,7 @@ class ModelEma(nn.Module):
         """Initialize the exponential moving average state.
 
         Args:
-            model (`pl.LightningModule`): Pytorch Lightning module.
+            model (``pl.LightningModule``): Pytorch Lightning module.
             decay (float): Decay rate for the moving average.
             use_dynamic_decay (bool): Use dynamic decay rate.
             decay_tau (float): Decay tau for the moving average.
@@ -54,7 +54,7 @@ class ModelEma(nn.Module):
         Source: ` <https://github.com/huggingface/pytorch-image-models/blob/main/timm/utils/model_ema.py>`_
 
         Args:
-            model (`pl.LightningModule`): Pytorch Lightning module.
+            model (``pl.LightningModule``): Pytorch Lightning module.
 
         Notes:
             License: `Apache License 2.0 <https://github.com/huggingface/pytorch-image-models/tree/main?tab=Apache-2.0-1-ov-file#readme>`_
@@ -139,8 +139,8 @@ class EMACallback(pl.Callback):
         the weights.
 
         Args:
-            trainer (`pl.Trainer`): Pytorch Lightning trainer.
-            pl_module (`pl.LightningModule`): Pytorch Lightning module.
+            trainer (``pl.Trainer``): Pytorch Lightning trainer.
+            pl_module (``pl.LightningModule``): Pytorch Lightning module.
 
         """
         self._ema = ModelEma(
@@ -213,10 +213,10 @@ class EMACallback(pl.Callback):
         """Update the stored parameters using a moving average.
 
         Args:
-            trainer (`pl.Trainer`): Pytorch Lightning trainer.
-            pl_module (`pl.LightningModule`): Pytorch Lightning module.
-            outputs (Any): Outputs from the training step.
-            batch (Any): Batch data.
+            trainer (``pl.Trainer``): Pytorch Lightning trainer.
+            pl_module (``pl.LightningModule``): Pytorch Lightning module.
+            outputs (``Any``): Outputs from the training step.
+            batch (``Any``): Batch data.
             batch_idx (int): Batch index.
 
         """
@@ -233,8 +233,8 @@ class EMACallback(pl.Callback):
         validation.
 
         Args:
-            trainer (`pl.Trainer`): Pytorch Lightning trainer.
-            pl_module (`pl.LightningModule`): Pytorch Lightning module.
+            trainer (``pl.Trainer``): Pytorch Lightning trainer.
+            pl_module (``pl.LightningModule``): Pytorch Lightning module.
 
         """
         self._swap_to_ema_weights(pl_module)
@@ -245,8 +245,8 @@ class EMACallback(pl.Callback):
         """Restore the original model weights after validation.
 
         Args:
-            trainer (`pl.Trainer`): Pytorch Lightning trainer.
-            pl_module (`pl.LightningModule`): Pytorch Lightning module.
+            trainer (``pl.Trainer``): Pytorch Lightning trainer.
+            pl_module (``pl.LightningModule``): Pytorch Lightning module.
 
         """
         self._restore_original_weights(pl_module)
@@ -258,8 +258,8 @@ class EMACallback(pl.Callback):
         testing.
 
         Args:
-            trainer (`pl.Trainer`): Pytorch Lightning trainer.
-            pl_module (`pl.LightningModule`): Pytorch Lightning module.
+            trainer (``pl.Trainer``): Pytorch Lightning trainer.
+            pl_module (``pl.LightningModule``): Pytorch Lightning module.
 
         """
         self._swap_to_ema_weights(pl_module)
@@ -270,8 +270,8 @@ class EMACallback(pl.Callback):
         """Restore the original model weights after testing.
 
         Args:
-            trainer (`pl.Trainer`): Pytorch Lightning trainer.
-            pl_module (`pl.LightningModule`): Pytorch Lightning module.
+            trainer (``pl.Trainer``): Pytorch Lightning trainer.
+            pl_module (``pl.LightningModule``): Pytorch Lightning module.
 
         """
         self._restore_original_weights(pl_module)
@@ -286,8 +286,8 @@ class EMACallback(pl.Callback):
         weights.
 
         Args:
-            trainer (`pl.Trainer`): Pytorch Lightning trainer.
-            pl_module (`pl.LightningModule`): Pytorch Lightning module.
+            trainer (``pl.Trainer``): Pytorch Lightning trainer.
+            pl_module (``pl.LightningModule``): Pytorch Lightning module.
 
         """
         self._swap_to_ema_weights(pl_module)
@@ -301,8 +301,8 @@ class EMACallback(pl.Callback):
         """Save the EMA state dictionary into the checkpoint.
 
         Args:
-            trainer (`pl.Trainer`): Pytorch Lightning trainer.
-            pl_module (`pl.LightningModule`): Pytorch Lightning module.
+            trainer (``pl.Trainer``): Pytorch Lightning trainer.
+            pl_module (``pl.LightningModule``): Pytorch Lightning module.
             checkpoint (dict): Pytorch Lightning checkpoint.
 
         """
@@ -331,8 +331,8 @@ class EMACallback(pl.Callback):
         """Load the EMA state dictionary from the checkpoint.
 
         Args:
-            trainer (`pl.Trainer`): Pytorch Lightning trainer.
-            pl_module (`pl.LightningModule`): Pytorch Lightning module.
+            trainer (``pl.Trainer``): Pytorch Lightning trainer.
+            pl_module (``pl.LightningModule``): Pytorch Lightning module.
             callback_state (dict): Pytorch Lightning callback state.
 
         """

@@ -34,14 +34,14 @@ class LuxonisLoaderPerlinNoise(LuxonisLoaderTorch):
         """Initialize the Perlin noise loader.
 
         Args:
-            *args (Any): Positional arguments forwarded to
+            *args (``Any``): Positional arguments forwarded to
                 `LuxonisLoaderTorch`.
-            anomaly_source_path (PathType): Path to the anomaly dataset used
+            anomaly_source_path (`PathType <luxonis_ml.typing.PathType>`): ``Path`` to the anomaly dataset used
                 to draw random noise samples.
             noise_prob (float): Probability of applying Perlin noise.
             beta (float | None): Opacity of the anomaly mask. If ``None``, a
                 random value is chosen.
-            **kwargs (Any): Keyword arguments forwarded to `LuxonisLoaderTorch`.
+            **kwargs (``Any``): Keyword arguments forwarded to `LuxonisLoaderTorch`.
 
         """
         super().__init__(*args, **kwargs)

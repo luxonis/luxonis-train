@@ -70,7 +70,7 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
                 multiply with accumulate_grad_batches.
             skip_stal (bool): If True, disables Small-Target-Aware Label Assignment candidate
                 expansion. Defaults to False.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(
@@ -195,13 +195,13 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         """Compute the segmentation loss for the entire batch.
 
         Args:
-            fg_mask (Tensor): Foreground mask. Shape: (B, N_anchor).
-            gt_masks (Tensor): Ground truth masks. Shape: (n, H, W).
-            gt_idx (Tensor): Ground truth mask indices. Shape: (B, N_anchor).
-            bboxes (Tensor): Ground truth bounding boxes in xyxy format. Shape: (B, N_anchor, 4).
-            batch_ids (Tensor): Batch indices. Shape: (n, 1).
-            proto (Tensor): Prototype masks. Shape: (B, 32, H, W).
-            pred_masks (Tensor): Predicted mask coefficients. Shape: (B, N_anchor, 32).
+            fg_mask (``Tensor``): Foreground mask. Shape: (B, N_anchor).
+            gt_masks (``Tensor``): Ground truth masks. Shape: (n, H, W).
+            gt_idx (``Tensor``): Ground truth mask indices. Shape: (B, N_anchor).
+            bboxes (``Tensor``): Ground truth bounding boxes in xyxy format. Shape: (B, N_anchor, 4).
+            batch_ids (``Tensor``): Batch indices. Shape: (n, 1).
+            proto (``Tensor``): Prototype masks. Shape: (B, 32, H, W).
+            pred_masks (``Tensor``): Predicted mask coefficients. Shape: (B, N_anchor, 32).
 
         """
         _, _, h, w = proto.shape

@@ -32,7 +32,7 @@ class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
         constructor.
 
         Returns:
-            tuple[str, dict[str, Params]]: Default variant name and available
+            ``tuple[str, dict[str, Params]]``: Default variant name and available
             variants with their parameters.
 
         """

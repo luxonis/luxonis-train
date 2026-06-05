@@ -146,7 +146,7 @@ class DinoV3(BaseNode):
             repo_or_dir (str): GitHub repository or local directory passed to ``torch.hub.load``. Defaults to ``facebookresearch/dinov3``.
             freeze_backbone (bool): If True, freeze the backbone so only downstream heads contain trainable parameters.
             depth (int): Number of last layers taken from the transformer output and converted to feature maps.
-            **kwargs (Any): Keyword arguments forwarded to the parent class and ``torch.hub.load``.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class and ``torch.hub.load``.
 
         """
         super().__init__(**kwargs)
@@ -210,15 +210,15 @@ class DinoV3(BaseNode):
         embedding [B, C] is returned and this can be used for downstream
         classification tasks.
 
-        Otherwise, the last `self.depth` layers of the network are
+        Otherwise, the last ``self.depth`` layers of the network are
         returned as [B, C, H, W] feature maps, which can be used for
         downstream segmentation and other dense feature tasks.
 
         Args:
-            inputs (Tensor): Input image tensor with shape [B, C, H, W].
+            inputs (``Tensor``): Input image tensor with shape [B, C, H, W].
 
         Returns:
-            list[Tensor]: CLS token embeddings or dense feature maps.
+            ``list[Tensor]``: CLS token embeddings or dense feature maps.
 
         """
         outs: list[Tensor] = []

@@ -92,13 +92,13 @@ class ResNet(BaseNode):
         Source: `https://pytorch.org/vision/main/models/resnet.html <https://pytorch.org/vision/main/models/resnet.html>`_
 
         Args:
-            variant (Literal["18", "34", "50", "101", "152"]): ResNet variant, determining the depth and structure of the network. Defaults to ``"18"``.
+            variant (``Literal["18", "34", "50", "101", "152"]``): ResNet variant, determining the depth and structure of the network. Defaults to ``"18"``.
             zero_init_residual (bool): Zero-initialize the last BN in each residual branch, so that the residual branch starts with zeros, and each residual block behaves like an identity. This improves the model by 0.2~0.3% according to `Accurate, Large Minibatch SGD: Training ImageNet in 1 Hour <https://arxiv.org/abs/1706.02677>`_. Defaults to ``False``.
             groups (int): Number of groups for each block. Defaults to 1. Can be set to a different value only for ResNet-50, ResNet-101, and ResNet-152. The width of the convolutional blocks is computed as ``int(in_channels * (width_per_group / 64.0)) * groups``
             width_per_group (int): Number of channels per group. Defaults to 64. Can be set to a different value only for ResNet-50, ResNet-101, and ResNet-152. The width of the convolutional blocks is computed as ``int(in_channels * (width_per_group / 64.0)) * groups``
             replace_stride_with_dilation (tuple[bool, bool, bool]): Tuple of booleans where each indicates if the 2x2 strides should be replaced with a dilated convolution instead. Defaults to (False, False, False). Can be set to a different value only for ResNet-50, ResNet-101, and ResNet-152.
-            weights (Literal["download", "none"] | None): Whether to download pretrained weights. Defaults to None.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            weights (``Literal["download", "none"] | None``): Whether to download pretrained weights. Defaults to None.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         Notes:
             License: `PyTorch <https://github.com/pytorch/pytorch/blob/master/LICENSE>`_

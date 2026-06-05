@@ -60,7 +60,7 @@ class OCRCTCHead(BaseHead):
             fc_decay (float): L2 regularization factor. Defaults to 0.0004.
             mid_channels (int | None): Number of middle channels. Defaults to None.
             return_feats (bool): Whether to return features. Defaults to False.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         Notes:
             License: `Apache License, Version 2.0 <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE>`_

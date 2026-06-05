@@ -51,9 +51,9 @@ class ContextSpatial(BaseNode):
         Source: `BiseNetV1 <https://github.com/taveraantonio/BiseNetv1>`_
 
         Args:
-            context_backbone (str | nn.Module): Backbone used in the context path. Can be either a string or a ``nn.Module``. If a string argument is used, it has to be a name of a module stored in the `NODES` registry. Defaults to ``MobileNetV2``.
-            backbone_kwargs (Kwargs | None): Keyword arguments for the backbone. Only used when the ``context_backbone`` argument is a string.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            context_backbone (``str | nn.Module``): Backbone used in the context path. Can be either a string or a ``nn.Module``. If a string argument is used, it has to be a name of a module stored in the `NODES` registry. Defaults to ``MobileNetV2``.
+            backbone_kwargs (``Kwargs | None``): Keyword arguments for the backbone. Only used when the ``context_backbone`` argument is a string.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         See Also:
             `BiseNetv1: Bilateral Segmentation Network for Real-time Semantic Segmentation <https://arxiv.org/abs/1808.00897>`_

@@ -30,7 +30,7 @@ class BaseDetectionHead(BaseHead):
             conf_thres (float): Confidence threshold for NMS.
             iou_thres (float): IoU threshold for NMS.
             max_det (int): Maximum number of detections retained after NMS.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

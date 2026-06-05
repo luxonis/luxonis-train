@@ -16,6 +16,7 @@ from rich import print
 ROOT = Path(__file__).resolve().parents[1]
 NODE_ROOT = ROOT / "luxonis_train" / "nodes"
 ATTACHED_ROOT = ROOT / "luxonis_train" / "attached_modules"
+PACKAGE_ROOT = ROOT / "luxonis_train"
 
 NODE_BASES = {"BaseNode"}
 ATTACHED_BASES = {"BaseLoss", "BaseMetric", "BaseVisualizer"}
@@ -67,6 +68,36 @@ UNQUOTED_VARIANT_RE = re.compile(
     r"^        - ``(?!None``:|\")[^`]+``:", re.MULTILINE
 )
 UNQUOTED_ALIAS_RE = re.compile(r"Aliases: ``(?!\")[^`]+``")
+SCHEMA_LITERAL_SINGLE_BACKTICK_RE = re.compile(r"(?<!`)`([^`]+)`(?!`)")
+SCHEMA_LITERAL_NAMES = {
+    "None",
+    "True",
+    "False",
+    "train",
+    "eval",
+    "test",
+    "export",
+    "task_name",
+    "dataset_dir",
+    "dataset_name",
+    "weights",
+    "view",
+    "mode",
+    "node",
+    "inputs",
+    "outputs",
+    "predictions",
+    "targets",
+    "images",
+    "labels",
+}
+GOOGLE_ARG_SECTION_RE = re.compile(
+    r"^\s*(Args|Arguments|Parameters|Keyword Args):\s*$"
+)
+GOOGLE_SECTION_RE = re.compile(r"^\s*[A-Z][A-Za-z ]+:\s*$")
+GOOGLE_ARG_RE = re.compile(
+    r"^\s+(?P<name>\*{0,2}[A-Za-z_][A-Za-z0-9_]*)(?:\s*\([^)]*\))?:"
+)
 
 
 @dataclass(frozen=True)
@@ -75,6 +106,16 @@ class ClassInfo:
     name: str
     lineno: int
     bases: tuple[str, ...]
+    docstring: str
+
+
+@dataclass(frozen=True)
+class FunctionInfo:
+    path: Path
+    name: str
+    qualname: str
+    lineno: int
+    args: ast.arguments
     docstring: str
 
 
@@ -116,6 +157,52 @@ def collect_classes(root: Path) -> list[ClassInfo]:
     return classes
 
 
+def collect_functions(root: Path) -> list[FunctionInfo]:
+    """Collect function and method definitions under ``root``."""
+    functions: list[FunctionInfo] = []
+    for path in sorted(root.rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+
+        class Visitor(ast.NodeVisitor):
+            def __init__(self, source_path: Path) -> None:
+                self.source_path = source_path
+                self.stack: list[str] = []
+
+            def visit_ClassDef(self, node: ast.ClassDef) -> None:
+                self.stack.append(node.name)
+                self.generic_visit(node)
+                self.stack.pop()
+
+            def _visit_function(
+                self, node: ast.FunctionDef | ast.AsyncFunctionDef
+            ) -> None:
+                qualname = ".".join([*self.stack, node.name])
+                functions.append(
+                    FunctionInfo(
+                        path=self.source_path,
+                        name=node.name,
+                        qualname=qualname,
+                        lineno=node.lineno,
+                        args=node.args,
+                        docstring=ast.get_docstring(node) or "",
+                    )
+                )
+                self.stack.append(node.name)
+                self.generic_visit(node)
+                self.stack.pop()
+
+            def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+                self._visit_function(node)
+
+            def visit_AsyncFunctionDef(
+                self, node: ast.AsyncFunctionDef
+            ) -> None:
+                self._visit_function(node)
+
+        Visitor(path).visit(tree)
+    return functions
+
+
 def transitive_subclasses(
     classes: Iterable[ClassInfo], root_bases: set[str]
 ) -> set[str]:
@@ -138,6 +225,68 @@ def transitive_subclasses(
 def rel(path: Path) -> str:
     """Return a repository-relative path for messages."""
     return path.relative_to(ROOT).as_posix()
+
+
+def google_doc_arg_names(docstring: str) -> list[str]:
+    """Extract documented parameter names from Google-style arg
+    sections.
+    """
+    names: list[str] = []
+    lines = docstring.splitlines()
+    in_args = False
+    section_indent = 0
+    arg_indent: int | None = None
+    for line in lines:
+        section_match = GOOGLE_ARG_SECTION_RE.match(line)
+        if section_match:
+            in_args = True
+            section_indent = len(line) - len(line.lstrip())
+            arg_indent = None
+            continue
+
+        if not in_args:
+            continue
+
+        if (
+            GOOGLE_SECTION_RE.match(line)
+            and len(line) - len(line.lstrip()) <= section_indent
+        ):
+            in_args = False
+            continue
+
+        arg_match = GOOGLE_ARG_RE.match(line)
+        if not arg_match:
+            continue
+
+        line_indent = len(line) - len(line.lstrip())
+        if arg_indent is None:
+            arg_indent = line_indent
+        if line_indent == arg_indent:
+            names.append(arg_match.group("name"))
+    return names
+
+
+def signature_arg_names(args: ast.arguments) -> set[str]:
+    """Return valid documented parameter names for a function
+    signature.
+    """
+    names = {
+        arg.arg
+        for arg in [
+            *args.posonlyargs,
+            *args.args,
+            *args.kwonlyargs,
+        ]
+    }
+    names.discard("self")
+    names.discard("cls")
+    if args.vararg is not None:
+        names.add(args.vararg.arg)
+        names.add(f"*{args.vararg.arg}")
+    if args.kwarg is not None:
+        names.add(args.kwarg.arg)
+        names.add(f"**{args.kwarg.arg}")
+    return names
 
 
 def missing_markers(docstring: str, markers: Iterable[str]) -> list[str]:
@@ -231,12 +380,62 @@ def check_variant_format() -> list[str]:
     return errors
 
 
+def check_schema_single_backtick_literals() -> list[str]:
+    """Reject obvious single-backtick literals in schema docstrings."""
+    errors: list[str] = []
+    schema_classes = [
+        *collect_classes(NODE_ROOT),
+        *collect_classes(ATTACHED_ROOT),
+    ]
+    for cls in schema_classes:
+        if not cls.docstring or "Metadata:" not in cls.docstring:
+            continue
+        for match in SCHEMA_LITERAL_SINGLE_BACKTICK_RE.finditer(cls.docstring):
+            value = match.group(1)
+            if value in SCHEMA_LITERAL_NAMES or value.startswith(('"', "'")):
+                errors.append(
+                    f"{rel(cls.path)}:{cls.lineno}: {cls.name} uses "
+                    f"single-backtick literal `{value}` in schema docs; "
+                    "use double backticks"
+                )
+    return errors
+
+
+def check_function_doc_args_match_signatures() -> list[str]:
+    """Reject documented function arguments that are absent from
+    signatures.
+    """
+    errors: list[str] = []
+    for func in collect_functions(PACKAGE_ROOT):
+        if not func.docstring:
+            continue
+        documented = google_doc_arg_names(func.docstring)
+        if not documented:
+            continue
+        signature_names = signature_arg_names(func.args)
+        unknown = [
+            name
+            for name in documented
+            if name not in signature_names
+            and name.lstrip("*") not in signature_names
+        ]
+        if unknown:
+            errors.append(
+                f"{rel(func.path)}:{func.lineno}: {func.qualname} "
+                "documents arguments not present in the signature: "
+                f"{', '.join(unknown)}"
+            )
+    return errors
+
+
 def main() -> int:
     """Run all documentation schema checks."""
     errors = [
         *check_structured_docstrings(),
         *check_forbidden_section_names(),
         *check_variant_format(),
+        *check_schema_single_backtick_literals(),
+        *check_function_doc_args_match_signatures(),
     ]
     if errors:
         print("Documentation schema check failed:", file=sys.stderr)

@@ -43,7 +43,7 @@ class TransformerClassificationHead(BaseHead):
 
         Args:
             dropout_rate (float): Dropout rate before last layer. Defaults to ``0.2``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -62,10 +62,10 @@ class TransformerClassificationHead(BaseHead):
         """Classify transformer CLS token embeddings.
 
         Args:
-            x (Tensor): CLS tensor in the form [B, C], where C is the embedding dim.
+            x (``Tensor``): CLS tensor in the form [B, C], where C is the embedding dim.
 
         Returns:
-            Tensor: Class logits with shape ``[B, n_classes]``.
+            ``Tensor``: Class logits with shape ``[B, n_classes]``.
 
         Notes:
             Steps performed: 1) Apply dropout to the CLS token. 2) Apply a linear layer to produce class logits.

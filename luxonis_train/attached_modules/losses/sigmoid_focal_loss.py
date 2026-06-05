@@ -54,9 +54,9 @@ class SigmoidFocalLoss(BaseLoss):
                 or -1 for ignore. Defaults to ``0.25``.
             gamma (float): Exponent of the modulating factor (1 - p_t) to balance easy vs hard
                 examples. Defaults to ``2.0``.
-            reduction (Literal["none", "mean", "sum"]): Reduction type for loss. Defaults to
+            reduction (``Literal["none", "mean", "sum"]``): Reduction type for loss. Defaults to
                 ``"mean"``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

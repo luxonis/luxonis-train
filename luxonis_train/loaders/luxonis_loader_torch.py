@@ -10,9 +10,8 @@ from luxonis_ml.enums import DatasetType
 from torch import Size, Tensor
 from typing_extensions import override
 
+from luxonis_train.loaders import BaseLoaderTorch
 from luxonis_train.typing import Labels
-
-from .base_loader import BaseLoaderTorch
 
 
 class LuxonisLoaderTorch(BaseLoaderTorch):
@@ -43,19 +42,19 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 provided, ``dataset_dir`` must be provided instead. If both
                 ``dataset_dir`` and ``dataset_name`` are provided, the dataset
                 is parsed from the directory and saved with the provided name.
-            dataset_dir (str | None): Path to the dataset directory. It can be
+            dataset_dir (str | None): ``Path`` to the dataset directory. It can be
                 a local path, URL, or zip file. If not provided,
                 ``dataset_name`` for an existing dataset must be provided.
-            dataset_type (DatasetType | None): Type of the dataset. Only
+            dataset_type (DatasetType | None): ``Type`` of the dataset. Only
                 relevant when ``dataset_dir`` is provided. If not provided, the
                 type is inferred from the directory structure.
             team_id (str | None): Optional unique team identifier for cloud
                 datasets.
-            bucket_type (Literal["internal", "external"]): Bucket type for
+            bucket_type (``Literal["internal", "external"]``): Bucket type for
                 remote datasets.
-            bucket_storage (Literal["local", "s3", "gcs", "azure"]): Bucket
+            bucket_storage (``Literal["local", "s3", "gcs", "azure"]``): Bucket
                 storage type.
-            update_mode (Literal["all", "missing"]): Sync mode for media
+            update_mode (``Literal["all", "missing"]``): Sync mode for media
                 files of a remote dataset. Annotations and metadata are always
                 overwritten.
             delete_existing (bool): Whether to delete and re-parse an existing
@@ -68,11 +67,11 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
                 bounding box that must remain visible after augmentation.
             bbox_area_threshold (float): Minimum bounding box area threshold in
                 the range ``[0, 1]``.
-            class_order_per_task (dict[str, list[str]] | None): Mapping of task
+            class_order_per_task (dict[str, list[str]] | None): ``Mapping`` of task
                 names to class-name orderings.
-            kpts_mapping_per_task (dict[str, list[int]] | None): Mapping of
+            kpts_mapping_per_task (dict[str, list[int]] | None): ``Mapping`` of
                 task names to custom keypoint index orderings.
-            **kwargs (Any): Arguments forwarded to `BaseLoaderTorch`.
+            **kwargs (``Any``): Arguments forwarded to ``BaseLoaderTorch``.
 
         """
         super().__init__(**kwargs)

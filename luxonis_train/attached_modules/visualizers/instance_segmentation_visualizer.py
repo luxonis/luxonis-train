@@ -81,7 +81,7 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
             font (str | None): Font of the class labels.
             font_size (int | None): Font size of the class labels.
             alpha (float): Alpha value of the segmentation masks. Defaults to ``0.6``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -234,15 +234,15 @@ class InstanceSegmentationVisualizer(BaseVisualizer):
         masks.
 
         Args:
-            prediction_canvas (Tensor): Tensor containing the predicted visualizations.
-            target_canvas (Tensor): Tensor containing the target visualizations.
-            boundingbox (list[Tensor]): Predicted bounding boxes grouped by
+            prediction_canvas (``Tensor``): ``Tensor`` containing the predicted visualizations.
+            target_canvas (``Tensor``): ``Tensor`` containing the target visualizations.
+            boundingbox (``list[Tensor]``): Predicted bounding boxes grouped by
                 image.
-            instance_segmentation (list[Tensor]): Predicted instance masks
+            instance_segmentation (``list[Tensor]``): Predicted instance masks
                 grouped by image.
-            target_boundingbox (Tensor | None): Target bounding boxes, or
+            target_boundingbox (``Tensor | None``): Target bounding boxes, or
                 ``None`` when targets are unavailable.
-            target_instance_segmentation (Tensor | None): Target instance
+            target_instance_segmentation (``Tensor | None``): Target instance
                 masks, or ``None`` when targets are unavailable.
 
         """

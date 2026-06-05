@@ -68,7 +68,7 @@ class ClassificationVisualizer(BaseVisualizer):
             thickness (int): Text line thickness. Defaults to ``2``.
             multilabel (bool): Whether predictions are multi-label. Defaults
                 to ``False``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

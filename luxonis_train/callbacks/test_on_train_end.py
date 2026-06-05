@@ -17,7 +17,7 @@ class TestOnTrainEnd(NeedsCheckpoint):
         """Initialize the test-on-train-end callback.
 
         Args:
-            view (Literal["train", "val", "test"]): The view to use for testing. Defaults to "test".
+            view (``Literal["train", "val", "test"]``): The view to use for testing. Defaults to "test".
 
         """
         super().__init__()

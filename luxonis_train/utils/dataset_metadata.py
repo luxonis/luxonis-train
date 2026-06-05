@@ -5,8 +5,6 @@ from typing import Any
 from bidict import bidict
 from luxonis_ml.data import Category
 
-from luxonis_train.loaders import BaseLoaderTorch
-
 
 class DatasetMetadata:
     """Dataset metadata used to configure model outputs.
@@ -25,7 +23,7 @@ class DatasetMetadata:
             str, type[int] | type[Category] | type[float] | type[str]
         ]
         | None = None,
-        loader: BaseLoaderTorch | None = None,
+        loader: Any = None,
     ):
         """Create dataset metadata.
 
@@ -34,9 +32,9 @@ class DatasetMetadata:
                 task names to class-name-to-index mappings.
             n_keypoints (dict[str, int] | None): Dictionary mapping task names
                 to the number of keypoints.
-            metadata_types (dict[str, type[int] | type[Category] | type[float] | type[str]] | None):
+            metadata_types (``dict[str, type[int] | type[Category] | type[float] | type[str]] | None``):
                 Dictionary mapping metadata names to metadata value types.
-            loader (BaseLoaderTorch | None): Dataset loader associated with
+            loader (``BaseLoaderTorch | None``): Dataset loader associated with
                 this metadata.
 
         """
@@ -62,7 +60,7 @@ class DatasetMetadata:
         """Dump the metadata to a dictionary.
 
         Returns:
-            dict[str, Any]: Dictionary containing the metadata.
+            ``dict[str, Any]``: Dictionary containing the metadata.
 
         """
         return {
@@ -101,8 +99,8 @@ class DatasetMetadata:
             int: Number of classes for the specified task.
 
         Raises:
-            ValueError: If `task_name` is not present in the dataset.
-            RuntimeError: If `task_name` was not provided and the dataset
+            ValueError: If ``task_name`` is not present in the dataset.
+            RuntimeError: If ``task_name`` was not provided and the dataset
                 contains different numbers of classes for different tasks.
 
         """
@@ -132,8 +130,8 @@ class DatasetMetadata:
             int: Number of keypoints for the specified task.
 
         Raises:
-            ValueError: If `task_name` is not present in the dataset.
-            RuntimeError: If `task_name` was not provided and the dataset
+            ValueError: If ``task_name`` is not present in the dataset.
+            RuntimeError: If ``task_name`` was not provided and the dataset
                 contains different numbers of keypoints for different tasks.
 
         """
@@ -160,12 +158,12 @@ class DatasetMetadata:
                 to ``None``.
 
         Returns:
-            bidict[str, int]: Bidirectional dictionary mapping class names to
+            ``bidict[str, int]``: Bidirectional dictionary mapping class names to
             their indices for the specified task.
 
         Raises:
-            ValueError: If `task_name` is not present in the dataset.
-            RuntimeError: If `task_name` was not provided and the dataset
+            ValueError: If ``task_name`` is not present in the dataset.
+            RuntimeError: If ``task_name`` was not provided and the dataset
                 contains different class names for different tasks.
 
         """
@@ -188,7 +186,8 @@ class DatasetMetadata:
     def metadata_types(
         self,
     ) -> dict[str, type[int] | type[Category] | type[float] | type[str]]:
-        """Dict[str, type[int] | type[Category] | type[float] |
+        """Dict[str, type[int] | type[`Category
+        <luxonis_ml.data.datasets.Category>`] | type[float] |
         type[str]]: Metadata names mapped to their types.
 
         Raises:
@@ -200,11 +199,11 @@ class DatasetMetadata:
         return self._metadata_types
 
     @classmethod
-    def from_loader(cls, loader: BaseLoaderTorch) -> "DatasetMetadata":
+    def from_loader(cls, loader: Any) -> "DatasetMetadata":
         """Create a `DatasetMetadata` object from a dataset loader.
 
         Args:
-            loader (BaseLoaderTorch): Loader to read the metadata from.
+            loader (``BaseLoaderTorch``): Loader to read the metadata from.
 
         Returns:
             DatasetMetadata: Instance created from the provided loader.

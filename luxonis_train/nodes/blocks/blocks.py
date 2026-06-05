@@ -236,7 +236,7 @@ class ConvBlock(nn.Module):
             dilation (int): Dilation. Defaults to 1.
             groups (int): Groups. Defaults to 1.
             bias (bool): Whether to use bias. Defaults to False.
-            activation (`nn.Module` | None | bool): Activation function. Defaults to `nn.ReLu` if not explicitly set to ``None`` or ``False``.
+            activation (``nn.Module | None | bool``): Activation function. Defaults to ``nn.ReLu`` if not explicitly set to ``None`` or ``False``.
             use_norm (bool): Whether to use batch normalization. Defaults to True.
             norm_momentum (float): Momentum for batch normalization. Defaults to 0.1.
 
@@ -300,7 +300,7 @@ class SqueezeExciteBlock(nn.Sequential):
             in_channels (int): Number of input channels.
             intermediate_channels (int): Number of intermediate channels.
             hard_sigmoid (bool): Whether to use hard sigmoid function. Defaults to False.
-            activation (`nn.Module` | None): Activation function. Defaults to `nn.ReLU`.
+            activation (``nn.Module | None``): Activation function. Defaults to ``nn.ReLU``.
 
         """
         super().__init__(
@@ -355,10 +355,10 @@ class GeneralReparametrizableBlock(Reparametrizable):
             padding (int): Padding. Defaults to ``1``.
             groups (int): Groups. Defaults to ``1``.
             n_branches (int): Number of convolutional branches. During reparametrization, the branches are fused to a single convolutional layer. Defaults to ``1``.
-            refine_block (nn.Module | Literal["se"] | None): A block to refine the output. Placed after the convolutional branches and before the activation function. Can be one of the following: - torch module - string `"se"` which will use `SqueezeExciteBlock` - None for no operation Defaults to ``None``.
+            refine_block (``nn.Module | Literal["se"] | None``): A block to refine the output. Placed after the convolutional branches and before the activation function. Can be one of the following: - torch module - string ``"se"`` which will use `SqueezeExciteBlock` - None for no operation Defaults to ``None``.
             use_scale_layer (bool): Whether to add a 1x1 scale branch. Defaults to ``True``.
             scale_layer_padding (int | tuple[int, int] | None): Padding for the scale branch. Defaults to None.
-            activation (nn.Module | None | bool): Activation function. By default ``nn.ReLU``. If ``False`` or ``None`` then no activation.
+            activation (``nn.Module | None | bool``): Activation function. By default ``nn.ReLU``. If ``False`` or ``None`` then no activation.
 
         See Also:
             `https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py <https://github.com/DingXiaoH/RepVGG/blob/main/repvgg.py>`_.
@@ -567,10 +567,10 @@ class GeneralReparametrizableBlock(Reparametrizable):
 class BlockRepeater(nn.Sequential):
     """Module which repeats a given block n times.
 
-    If the block has an `out_channels` and `in_channels` argument, the
-    `in_channels` of the next block will be set to the `out_channels` of
-    the previous block. This allows for repeating blocks which change
-    the number of channels.
+    If the block has an ``out_channels`` and ``in_channels`` argument,
+    the ``in_channels`` of the next block will be set to the
+    ``out_channels`` of the previous block. This allows for repeating
+    blocks which change the number of channels.
 
     """
 
@@ -581,9 +581,9 @@ class BlockRepeater(nn.Sequential):
         """Initialize the repeated block stack.
 
         Args:
-            module (Callable[..., nn.Module]): Module factory to repeat.
+            module (``Callable[..., nn.Module]``): Module factory to repeat.
             n_repeats (int): Number of blocks to repeat. Defaults to ``1``.
-            **kwargs (Any): Keyword arguments forwarded to ``module``.
+            **kwargs (``Any``): Keyword arguments forwarded to ``module``.
 
         """
         blocks = [module(**kwargs)]
@@ -669,7 +669,7 @@ class BottleRep(nn.Module):
             out_channels (int): Number of output channels.
             module (ModuleFactory): Block factory to use. Defaults to `GeneralReparametrizableBlock`.
             weight (bool): If using learnable or static shortcut weight. Defaults to ``True``.
-            **kwargs (Any): Keyword arguments forwarded to ``module``.
+            **kwargs (``Any``): Keyword arguments forwarded to ``module``.
 
         """
         super().__init__()
@@ -821,12 +821,12 @@ class UpscaleOnline(nn.Module):
         """Upscale the input tensor to the specified height and width.
 
         Args:
-            x (Tensor): Input tensor to be upscaled.
+            x (``Tensor``): Input tensor to be upscaled.
             output_height (int): Desired height of the output tensor.
             output_width (int): Desired width of the output tensor.
 
         Returns:
-            Tensor: Upscaled tensor.
+            ``Tensor``: Upscaled tensor.
 
         """
         return F.interpolate(
@@ -861,10 +861,10 @@ class DropPath(nn.Module):
         """Drop paths per sample when training.
 
         Args:
-            x (Tensor): Input tensor.
+            x (``Tensor``): Input tensor.
 
         Returns:
-            Tensor: Tensor with paths dropped according to ``drop_prob``.
+            ``Tensor``: ``Tensor`` with paths dropped according to ``drop_prob``.
 
         """
         keep_prob = 1 - self.drop_prob

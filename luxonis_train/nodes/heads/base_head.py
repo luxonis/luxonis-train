@@ -64,18 +64,19 @@ class BaseHead(BaseNode):
         image_paths: list[Path],
         config_preprocessing: PreprocessingConfig,
     ) -> DatasetIterator:
-        """Convert head output to a DatasetIterator for annotation.
+        """Convert head output to a `DatasetIterator
+        <luxonis_ml.data.datasets.DatasetIterator>` for annotation.
 
         Data should be in standard `luxonis-ml record format <https://github.com/luxonis/luxonis-
         ml/blob/main/luxonis_ml/data/README.md>`_.
 
         Args:
-            head_output (Packet[Tensor]): Raw outputs from this head.
-            image_paths (list[Path]): List of original image file paths to annotate.
+            head_output (``Packet[Tensor]``): Raw outputs from this head.
+            image_paths (``list[Path]``): List of original image file paths to annotate.
             config_preprocessing (PreprocessingConfig): Config containing train_image_size, keep_aspect_ratio, etc.
 
         Returns:
-            DatasetIterator: Iterator yielding annotation records in luxonis-ml format.
+            `DatasetIterator <luxonis_ml.data.datasets.DatasetIterator>`: Iterator yielding annotation records in luxonis-ml format.
 
         """
         return default_annotate(

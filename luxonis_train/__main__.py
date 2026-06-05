@@ -15,14 +15,33 @@ from luxonis_ml.typing import Params, PathType
 
 from luxonis_train.upgrade import upgrade_config, upgrade_installation
 
-OptsType: TypeAlias = Annotated[
-    list[str] | None, Parameter(json_list=False, json_dict=False)
-]
+
+def _annotated(annotation: object, *metadata: object) -> object:
+    return Annotated.__class_getitem__((annotation, *metadata))
+
 
 if TYPE_CHECKING:
     import numpy as np
 
     from luxonis_train import LuxonisModel
+
+    OptsType: TypeAlias = list[str] | None
+    LauncherToken: TypeAlias = str
+    LauncherSource: TypeAlias = list[Path] | None
+else:
+    OptsType = _annotated(
+        list[str] | None, Parameter(json_list=False, json_dict=False)
+    )
+    LauncherToken = _annotated(
+        str, Parameter(show=False, allow_leading_hyphen=True)
+    )
+    LauncherSource = _annotated(
+        list[Path] | None,
+        Parameter(
+            help="Path to a python module with custom components. "
+            "This module will be sourced before running a command."
+        ),
+    )
 
 
 app = App(
@@ -73,8 +92,8 @@ def train(
 
     Args:
         opts (list[str]): A list of optional CLI overrides of the config file.
-        config (str | None): Path to the configuration file.
-        weights (str | None): Path to the model weights.
+        config (str | None): ``Path`` to the configuration file.
+        weights (str | None): ``Path`` to the model weights.
         debug (bool): If ``True``, allows the model to be constructed without
             a valid dataset by setting ``allow_empty_dataset`` to ``True``.
 
@@ -97,8 +116,8 @@ def tune(
 
     Args:
         opts (list[str]): A list of optional CLI overrides of the config file.
-        config (str | None): Path to the configuration file.
-        weights (str | None): Path to the model weights.
+        config (str | None): ``Path`` to the configuration file.
+        weights (str | None): ``Path`` to the model weights.
         debug (bool): If ``True``, allows the model to be constructed without
             a valid dataset by setting ``allow_empty_dataset`` to ``True``.
 
@@ -218,8 +237,8 @@ def inspect(
 
     Args:
         opts (list[str]): A list of optional CLI overrides of the config file.
-        config (str | None): Path to the configuration file.
-        view (Literal["train", "val", "test"]): Dataset view to inspect.
+        config (str | None): ``Path`` to the configuration file.
+        view (``Literal["train", "val", "test"]``): Dataset view to inspect.
         size_multiplier (float): Multiplier for the image size. By default,
             images are shown in their original size.
         list_augmentations (bool): Whether to show applied augmentations in the
@@ -263,10 +282,10 @@ def test(
 
     Args:
         opts (list[str]): A list of optional CLI overrides of the config file.
-        config (str | None): Path to the configuration file or predefined model
+        config (str | None): ``Path`` to the configuration file or predefined model
             name.
-        view (Literal["train", "val", "test"]): Dataset view to evaluate.
-        weights (str | None): Path to the model weights.
+        view (``Literal["train", "val", "test"]``): Dataset view to evaluate.
+        weights (str | None): ``Path`` to the model weights.
         debug (bool): If ``True``, allows the model to be constructed without
             a valid dataset by setting ``allow_empty_dataset`` to ``True``.
 
@@ -293,15 +312,15 @@ def infer(
 
     Args:
         opts (list[str]): A list of optional CLI overrides of the config file.
-        config (str | None): Path to the configuration file or predefined model
+        config (str | None): ``Path`` to the configuration file or predefined model
             name.
-        view (Literal["train", "val", "test"]): Dataset view to use when
+        view (``Literal["train", "val", "test"]``): Dataset view to use when
             ``source_path`` is not provided.
-        save_dir (Path | None): Directory where inference results are saved.
-        source_path (str | None): Path to an image file, image directory, or
+        save_dir (``Path | None``): Directory where inference results are saved.
+        source_path (str | None): ``Path`` to an image file, image directory, or
             video file. If not provided, the loader from the configuration file
             is used.
-        weights (str | None): Path to the model weights.
+        weights (str | None): ``Path`` to the model weights.
 
     """
     create_model(
@@ -332,14 +351,14 @@ def annotate(
 
     Args:
         opts (list[str]): A list of optional CLI overrides of the config file.
-        dir_path (Path): Path to the directory containing images to annotate.
+        dir_path (``Path``): ``Path`` to the directory containing images to annotate.
         dataset_name (str): Name of the dataset for the annotated images.
-        config (str | None): Path to the configuration file used by the model
+        config (str | None): ``Path`` to the configuration file used by the model
             to annotate images.
-        weights (str | None): Path to the model weights. If provided, the
+        weights (str | None): ``Path`` to the model weights. If provided, the
             model uses these weights instead of those in the configuration
             file.
-        bucket_storage (Literal["local", "gcs"]): Storage type for the new
+        bucket_storage (``Literal["local", "gcs"]``): Storage type for the new
             annotated dataset.
         delete_local (bool): Whether to delete the local dataset before
             writing.
@@ -377,12 +396,12 @@ def export(
 
     Args:
         opts (list[str]): A list of optional CLI overrides of the config file.
-        config (str | None): Path to the configuration file or predefined model
+        config (str | None): ``Path`` to the configuration file or predefined model
             name.
         save_path (str | None): Directory where exported model files are
             saved. If not specified, files are saved to the ``"export"``
             directory in the run save directory.
-        weights (str | None): Path to the model weights.
+        weights (str | None): ``Path`` to the model weights.
         ckpt_only (bool): If ``True``, only the ``.ckpt`` file is exported.
 
     """
@@ -404,10 +423,10 @@ def archive(
 
     Args:
         opts (list[str]): A list of optional CLI overrides of the config file.
-        config (str | None): Path to the configuration file.
-        executable (str | None): Path to the exported model, usually an ONNX
+        config (str | None): ``Path`` to the configuration file.
+        executable (str | None): ``Path`` to the exported model, usually an ONNX
             file. If not provided, the model is exported first.
-        weights (str | None): Path to the model weights.
+        weights (str | None): ``Path`` to the model weights.
 
     """
     create_model(
@@ -432,10 +451,10 @@ def convert(
 
     Args:
         opts (list[str]): A list of optional CLI overrides of the config file.
-        config (str | None): Path to the configuration file.
+        config (str | None): ``Path`` to the configuration file.
         save_dir (str | None): Directory where outputs are saved. If not
             specified, the default run save directory is used.
-        weights (str | None): Path to the model weights.
+        weights (str | None): ``Path`` to the model weights.
 
     """
     create_model(
@@ -458,8 +477,8 @@ def config(
     """Upgrade luxonis-train configuration file.
 
     Args:
-        config (Path): Path to configuration file to be upgraded.
-        output (Path | None): Where to save the upgraded config. If omitted,
+        config (``Path``): ``Path`` to configuration file to be upgraded.
+        output (``Path | None``): Where to save the upgraded config. If omitted,
             the old file is overwritten.
 
     """
@@ -496,10 +515,10 @@ def checkpoint(
 
     Args:
         opts (list[str]): A list of optional CLI overrides of the config file.
-        path (Path): Path to the checkpoint.
-        output (Path | None): Where to save the upgraded checkpoint. If
+        path (``Path``): ``Path`` to the checkpoint.
+        output (``Path | None``): Where to save the upgraded checkpoint. If
             omitted, the old file is overwritten.
-        config (Path | None): Optional configuration file used to construct the
+        config (``Path | None``): Optional configuration file used to construct the
             model.
 
     """
@@ -532,14 +551,8 @@ def upgrade():
 
 @app.meta.default
 def launcher(
-    *tokens: Annotated[str, Parameter(show=False, allow_leading_hyphen=True)],
-    source: Annotated[
-        list[Path] | None,
-        Parameter(
-            help="Path to a python module with custom components. "
-            "This module will be sourced before running a command."
-        ),
-    ] = None,
+    *tokens: LauncherToken,
+    source: LauncherSource = None,
 ):
     if source:
         for src in source:

@@ -50,13 +50,13 @@ class OHEMLoss(BaseLoss):
         """Initialize the OHEM loss.
 
         Args:
-            criterion (BaseLoss | str | Literal["auto"]): The criterion to use. It can be a string
+            criterion (``BaseLoss | str | Literal["auto"]``): The criterion to use. It can be a string
                 name of the criterion (e.g., "CrossEntropyLoss"), a class that inherits from
                 ``BaseLoss``, or "auto" to infer the criterion based on the task and other
                 parameters.
             ohem_ratio (float): The ratio of pixels to keep.
             ohem_threshold (float): The threshold for pixels to keep.
-            **kwargs (Any): Additional keyword arguments that are passed to the criterion.
+            **kwargs (``Any``): Additional keyword arguments that are passed to the criterion.
 
         """
         super().__init__(**kwargs)

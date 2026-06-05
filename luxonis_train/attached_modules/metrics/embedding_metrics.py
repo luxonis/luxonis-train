@@ -235,10 +235,10 @@ def _get_pairwise_distances(embeddings: Tensor) -> Tensor:
     """Compute the 2D matrix of distances between all the embeddings.
 
     Args:
-        embeddings (Tensor): Tensor of shape (batch_size, embed_dim)
+        embeddings (``Tensor``): ``Tensor`` of shape (batch_size, embed_dim)
 
     Returns:
-        Tensor: pairwise_distances: tensor of shape (batch_size, batch_size)
+        ``Tensor``: pairwise_distances: tensor of shape (batch_size, batch_size)
 
     """
     dot_product = embeddings @ embeddings.T

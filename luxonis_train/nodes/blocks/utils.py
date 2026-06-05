@@ -14,11 +14,11 @@ def autopad(kernel_size: T, padding: T | None = None) -> T:
     """Compute padding based on kernel size.
 
     Args:
-        kernel_size (int | tuple[int, ...]): Kernel size.
-        padding (int | tuple[int, ...] | None): Padding. Defaults to None.
+        kernel_size (``int | tuple[int, ...]``): Kernel size.
+        padding (``int | tuple[int, ...] | None``): Padding. Defaults to None.
 
     Returns:
-        int | tuple[int, ...]: Computed padding. The output type is the same as the type of the ``kernel_size``.
+        ``int | tuple[int, ...]``: Computed padding. The output type is the same as the type of the ``kernel_size``.
 
     """
     if padding is not None:
@@ -32,11 +32,11 @@ def forward_gather(x: Tensor, modules: Iterable[nn.Module]) -> list[Tensor]:
     """Run modules sequentially and gather intermediate outputs.
 
     Args:
-        x (Tensor): Input tensor.
-        modules (Iterable[nn.Module]): List of modules to apply.
+        x (``Tensor``): Input tensor.
+        modules (``Iterable[nn.Module]``): List of modules to apply.
 
     Returns:
-        list[Tensor]: List of intermediate outputs.
+        ``list[Tensor]``: List of intermediate outputs.
 
     """
     out = []

@@ -50,8 +50,8 @@ class EfficientNet(BaseNode):
 
         Args:
             out_indices (list[int] | None): Indices of the output layers. Defaults to [0, 1, 2, 4, 6].
-            weights (Literal["download", "none"] | None): Whether to download pretrained weights. Defaults to None.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            weights (``Literal["download", "none"] | None``): Whether to download pretrained weights. Defaults to None.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         Notes:
             License: `Apache License, Version 2.0 <https://github.com/rwightman/gen-efficientnet-pytorch/blob/master/LICENSE>`_

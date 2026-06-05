@@ -10,10 +10,10 @@ def create_trainer(cfg: TrainerConfig, **kwargs: Any) -> pl.Trainer:
 
     Args:
         cfg (TrainerConfig): Trainer configuration object.
-        **kwargs (Any): Additional arguments to pass to the trainer.
+        **kwargs (``Any``): Additional arguments to pass to the trainer.
 
     Returns:
-        pl.Trainer: Pytorch Lightning trainer.
+        ``pl.Trainer``: Pytorch Lightning trainer.
 
     """
     return pl.Trainer(

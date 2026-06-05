@@ -50,7 +50,7 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
     ):
         """Forward pass of the visualizer.
 
-        Takes an image and the prepared inputs from the `prepare` method and
+        Takes an image and the prepared inputs from the ``prepare`` method and
         produces visualizations. Visualizations can be either:
 
             - A single image (*e.g.* for classification, weight visualization).
@@ -62,12 +62,12 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
             - A list of images, representing unrelated visualizations.
 
         Args:
-            target_canvas (Tensor): An image to draw the labels on.
-            prediction_canvas (Tensor): An image to draw the predictions on.
-            *args (Unpack[Ts]): Prepared inputs from the `prepare` method.
+            target_canvas (``Tensor``): An image to draw the labels on.
+            prediction_canvas (``Tensor``): An image to draw the predictions on.
+            *args (``Unpack[Ts]``): Prepared inputs from the ``prepare`` method.
 
         Returns:
-            Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]] | list[Tensor]:
+            ``Tensor`` | tuple[``Tensor``, ``Tensor``] | tuple[``Tensor``, list[``Tensor``]] | list[``Tensor``]:
                 Visualizations.
 
         Raises:

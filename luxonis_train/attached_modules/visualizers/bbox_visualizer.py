@@ -77,7 +77,7 @@ class BBoxVisualizer(BaseVisualizer):
             width (int | None): The width of the bounding box lines. Defaults to ``1``.
             font (str | None): A filename containing a TrueType font. Defaults to ``None``.
             font_size (int | None): The font size to use for the labels. Defaults to ``None``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -186,12 +186,12 @@ class BBoxVisualizer(BaseVisualizer):
         """Create visualizations of bounding box predictions and labels.
 
         Args:
-            prediction_canvas (Tensor): The canvas containing the predictions.
-            target_canvas (Tensor): The canvas containing the labels.
-            predictions (list[Tensor]): Predicted bounding boxes grouped by
+            prediction_canvas (``Tensor``): The canvas containing the predictions.
+            target_canvas (``Tensor``): The canvas containing the labels.
+            predictions (``list[Tensor]``): Predicted bounding boxes grouped by
                 image. Each tensor has shape ``[N, 6]`` with rows in
                 ``[x1, y1, x2, y2, conf, class]`` format.
-            targets (Tensor | None): Target bounding boxes, or ``None`` when
+            targets (``Tensor | None``): Target bounding boxes, or ``None`` when
                 targets are unavailable.
 
         """

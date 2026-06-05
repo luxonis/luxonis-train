@@ -55,7 +55,7 @@ class FOMOHead(BaseHead):
             n_conv_layers (int): Number of convolutional layers to use. Defaults to ``3``.
             conv_channels (int): Number of channels to use in the convolutional layers. Defaults to ``16``.
             use_nms (bool): Whether to apply local-max NMS to the heatmap during export and inference. Defaults to ``True``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -115,7 +115,7 @@ class FOMOHead(BaseHead):
         Only the strongest local peak in a neighborhood is retained.
 
         Args:
-            heatmap (Tensor): Heatmap to convert to keypoints.
+            heatmap (``Tensor``): Heatmap to convert to keypoints.
 
         """
         device = heatmap.device
@@ -156,10 +156,10 @@ class FOMOHead(BaseHead):
         """Generate a mask for keypoints using NMS if enabled.
 
         Args:
-            prob_map (Tensor): Probability map for a specific class.
+            prob_map (``Tensor``): Probability map for a specific class.
 
         Returns:
-            Tensor: Binary mask indicating keypoint positions.
+            ``Tensor``: Binary mask indicating keypoint positions.
 
         """
         if self.use_nms:

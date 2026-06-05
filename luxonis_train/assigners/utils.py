@@ -11,14 +11,14 @@ def candidates_in_gt(
     """Check if anchor box's center is in any GT bbox.
 
     Args:
-        anchor_centers (Tensor): Centers of anchor bboxes with shape
+        anchor_centers (``Tensor``): Centers of anchor bboxes with shape
             ``[n_anchors, 2]``.
-        gt_bboxes (Tensor): Ground truth bboxes with shape
+        gt_bboxes (``Tensor``): Ground truth bboxes with shape
             ``[bs * n_max_boxes, 4]``.
         eps (float): Threshold for minimum delta. Defaults to ``1e-9``.
 
     Returns:
-        Tensor: Mask for anchors inside any GT bbox.
+        ``Tensor``: Mask for anchors inside any GT bbox.
 
     """
     n_anchors = anchor_centers.size(0)
@@ -40,14 +40,14 @@ def fix_collisions(
     IoU.
 
     Args:
-        mask_pos (Tensor): Mask of assigned anchors with shape
+        mask_pos (``Tensor``): Mask of assigned anchors with shape
             ``[bs, n_max_boxes, n_anchors]``.
-        overlaps (Tensor): IoUs between GTs and anchors with shape
+        overlaps (``Tensor``): IoUs between GTs and anchors with shape
             ``[bs, n_max_boxes, n_anchors]``.
         n_max_boxes (int): Maximum number of boxes per image.
 
     Returns:
-        tuple[Tensor, Tensor, Tensor]: A tuple
+        ``tuple[Tensor, Tensor, Tensor]``: A tuple
         ``(assigned_gt_idx, mask_pos_sum, mask_pos)`` containing assigned
         indices, the positive-mask sum, and the resolved positive mask.
 
@@ -72,13 +72,13 @@ def batch_iou(batch1: Tensor, batch2: Tensor) -> Tensor:
     Bounding boxes must be in the "xyxy" format.
 
     Args:
-        batch1 (Tensor): Tensor of bounding boxes with shape
+        batch1 (``Tensor``): ``Tensor`` of bounding boxes with shape
             ``[bs, N, 4]``.
-        batch2 (Tensor): Tensor of bounding boxes with shape
+        batch2 (``Tensor``): ``Tensor`` of bounding boxes with shape
             ``[bs, M, 4]``.
 
     Returns:
-        Tensor: Per-image box IoU values with shape ``[bs, N, M]``.
+        ``Tensor``: Per-image box IoU values with shape ``[bs, N, M]``.
 
     """
     return torch.stack(

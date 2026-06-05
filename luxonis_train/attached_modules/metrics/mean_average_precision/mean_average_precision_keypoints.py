@@ -46,7 +46,7 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         normalized keypoint and bbox targets.
 
     Formula:
-        Converts cached predictions and targets to COCO objects and evaluates
+        Converts cached predictions and targets to ``COCO`` objects and evaluates
         keypoint AP/AR using OKS.
 
     Provenance:
@@ -84,14 +84,14 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
 
         Args:
             sigmas (list[float] | None): Sigma for each keypoint to weigh its importance, if
-                ``None``, then use COCO if possible otherwise defaults. Defaults to ``None``.
+                ``None``, then use ``COCO`` if possible otherwise defaults. Defaults to ``None``.
             area_factor (float | None): Factor by which we multiply the bounding box area. If not
                 set, the default factor of ``0.53`` is used.
             max_dets (int): Maximum number of detections to be considered per image. Defaults to
                 ``20``.
-            box_format (Literal["xyxy", "xywh", "cxcywh"]): Input bounding box format. Defaults to
+            box_format (``Literal["xyxy", "xywh", "cxcywh"]``): Input bounding box format. Defaults to
                 ``"xyxy"``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -189,20 +189,20 @@ class MeanAveragePrecisionKeypoints(BaseMetric):
         classes_list: list[Tensor],
         scores_list: list[Tensor] | None = None,
     ) -> COCO:
-        """Transform cached targets or predictions into COCO format.
+        """Transform cached targets or predictions into ``COCO`` format.
 
         Format is defined in the
         `COCO data format <https://cocodataset.org/#format-data>`_.
 
         Args:
-            bboxes_list (list[Tensor]): Bounding boxes grouped by image.
-            keypoints_list (list[Tensor]): Keypoints grouped by image.
-            classes_list (list[Tensor]): Class IDs grouped by image.
-            scores_list (list[Tensor] | None): Optional prediction scores
+            bboxes_list (``list[Tensor]``): Bounding boxes grouped by image.
+            keypoints_list (``list[Tensor]``): Keypoints grouped by image.
+            classes_list (``list[Tensor]``): Class IDs grouped by image.
+            scores_list (``list[Tensor] | None``): Optional prediction scores
                 grouped by image.
 
         Returns:
-            COCO: COCO object containing the cached annotations.
+            ``COCO``: ``COCO`` object containing the cached annotations.
 
         """
         annotations = []

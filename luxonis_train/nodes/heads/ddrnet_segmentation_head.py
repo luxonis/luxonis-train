@@ -63,8 +63,8 @@ class DDRNetSegmentationHead(BaseHead):
 
         Args:
             inter_channels (int): Width of internal conv. Must be a multiple of scale_factor^2 when inter_mode is pixel_shuffle. Defaults to 64.
-            inter_mode (Literal["nearest", "linear", "bilinear", "bicubic", "trilinear", "area", "pixel_shuffle"]): Upsampling method. If pixel_shuffle is set, nn.PixelShuffle is used for scaling. Defaults to "bilinear".
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            inter_mode (``Literal["nearest", "linear", "bilinear", "bicubic", "trilinear", "area", "pixel_shuffle"]``): Upsampling method. If pixel_shuffle is set, nn.PixelShuffle is used for scaling. Defaults to "bilinear".
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         Notes:
             License: `Apache License, Version 2.0 <https://github.com/Deci-AI/super- gradients/blob/master/LICENSE.md>`_

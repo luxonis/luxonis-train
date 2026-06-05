@@ -38,20 +38,20 @@ class ATSSAssigner(nn.Module):
         """Generate final assignments.
 
         Args:
-            anchor_bboxes (Tensor): Anchor bboxes with shape
+            anchor_bboxes (``Tensor``): Anchor bboxes with shape
                 ``[n_anchors, 4]``.
             n_level_bboxes (list[int]): Number of bboxes per level.
-            gt_labels (Tensor): Initial GT labels with shape
+            gt_labels (``Tensor``): Initial GT labels with shape
                 ``[bs, n_max_boxes, 1]``.
-            gt_bboxes (Tensor): Initial GT bboxes with shape
+            gt_bboxes (``Tensor``): Initial GT bboxes with shape
                 ``[bs, n_max_boxes, 4]``.
-            mask_gt (Tensor): Mask for valid GTs with shape
+            mask_gt (``Tensor``): Mask for valid GTs with shape
                 ``[bs, n_max_boxes, 1]``.
-            pred_bboxes (Tensor): Predicted bboxes with shape
+            pred_bboxes (``Tensor``): Predicted bboxes with shape
                 ``[bs, n_anchors, 4]``.
 
         Returns:
-            tuple[Tensor, Tensor, Tensor, Tensor, Tensor]: Assigned labels
+            ``tuple[Tensor, Tensor, Tensor, Tensor, Tensor]``: Assigned labels
             with shape ``[bs, n_anchors]``, assigned bboxes with shape
             ``[bs, n_anchors, 4]``, assigned scores with shape
             ``[bs, n_anchors, n_classes]``, output positive mask with shape
@@ -140,10 +140,10 @@ class ATSSAssigner(nn.Module):
         """Compute centers of bboxes.
 
         Args:
-            bbox (Tensor): Bounding boxes with shape ``[N, 4]``.
+            bbox (``Tensor``): Bounding boxes with shape ``[N, 4]``.
 
         Returns:
-            Tensor: Bounding-box centers with shape ``[N, 2]``.
+            ``Tensor``: Bounding-box centers with shape ``[N, 2]``.
 
         """
         cx = (bbox[:, 0] + bbox[:, 2]) / 2.0
@@ -156,14 +156,14 @@ class ATSSAssigner(nn.Module):
         """Select k anchors whose centers are closest to GT.
 
         Args:
-            distances (Tensor): Distances between GT and anchor centers with
+            distances (``Tensor``): Distances between GT and anchor centers with
                 shape ``[bs, n_max_boxes, n_anchors]``.
             n_level_bboxes (list[int]): Number of bboxes per level.
-            mask_gt (Tensor): Mask for valid GTs per image with shape
+            mask_gt (``Tensor``): Mask for valid GTs per image with shape
                 ``[bs, n_max_boxes, 1]``.
 
         Returns:
-            tuple[Tensor, Tensor]: A tuple ``(is_in_topk, topk_idxs)``
+            ``tuple[Tensor, Tensor]``: A tuple ``(is_in_topk, topk_idxs)``
             containing the selected-anchor mask and selected-anchor indices.
 
         """
@@ -203,15 +203,15 @@ class ATSSAssigner(nn.Module):
         """Compute threshold and return mask for samples over threshold.
 
         Args:
-            is_in_topk (Tensor): Mask of selected anchors with shape
+            is_in_topk (``Tensor``): Mask of selected anchors with shape
                 ``[bs, n_max_boxes, n_anchors]``.
-            topk_idxs (Tensor): Indices of selected anchors with shape
+            topk_idxs (``Tensor``): Indices of selected anchors with shape
                 ``[bs, n_max_boxes, topk * n_levels]``.
-            overlaps (Tensor): IoUs between GTs and anchors with shape
+            overlaps (``Tensor``): IoUs between GTs and anchors with shape
                 ``[bs, n_max_boxes, n_anchors]``.
 
         Returns:
-            Tensor: Mask of positive samples with shape
+            ``Tensor``: Mask of positive samples with shape
             ``[bs, n_max_boxes, n_anchors]``.
 
         """
@@ -251,17 +251,17 @@ class ATSSAssigner(nn.Module):
         """Generate final assignments based on the mask.
 
         Args:
-            gt_labels (Tensor): Initial GT labels with shape
+            gt_labels (``Tensor``): Initial GT labels with shape
                 ``[bs, n_max_boxes, 1]``.
-            gt_bboxes (Tensor): Initial GT bboxes with shape
+            gt_bboxes (``Tensor``): Initial GT bboxes with shape
                 ``[bs, n_max_boxes, 4]``.
-            assigned_gt_idx (Tensor): Indices of matched GTs with shape
+            assigned_gt_idx (``Tensor``): Indices of matched GTs with shape
                 ``[bs, n_anchors]``.
-            mask_pos_sum (Tensor): Mask of matched GTs with shape
+            mask_pos_sum (``Tensor``): Mask of matched GTs with shape
                 ``[bs, n_anchors]``.
 
         Returns:
-            tuple[Tensor, Tensor, Tensor]: Assigned labels with shape
+            ``tuple[Tensor, Tensor, Tensor]``: Assigned labels with shape
             ``[bs, n_anchors]``, assigned bboxes with shape
             ``[bs, n_anchors, 4]``, and assigned scores with shape
             ``[bs, n_anchors, n_classes]``.

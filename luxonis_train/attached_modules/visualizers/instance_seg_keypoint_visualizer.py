@@ -87,7 +87,7 @@ class InstanceSegKeypointVisualizer(BaseVisualizer):
             nonvisible_color (Color | None): Color for non-visible keypoints.
             radius (int | None): Keypoint radius.
             draw_indices (bool): Whether to draw keypoint indices.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

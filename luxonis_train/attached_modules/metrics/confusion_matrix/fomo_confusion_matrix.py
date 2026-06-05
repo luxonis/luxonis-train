@@ -58,8 +58,8 @@ class FomoConfusionMatrix(DetectionConfusionMatrix):
         """Convert FOMO keypoints into bounding boxes before updating.
 
         Args:
-            keypoints (list[Tensor]): Predicted FOMO keypoints.
-            target_boundingbox (Tensor): Target bounding boxes.
+            keypoints (``list[Tensor]``): Predicted FOMO keypoints.
+            target_boundingbox (``Tensor``): Target bounding boxes.
 
         """
         pred_bboxes = keypoints_to_bboxes(

@@ -9,7 +9,7 @@ from typing import Literal, Union, get_args, get_origin
 from bidict import bidict
 from loguru import logger
 from luxonis_ml.typing import check_type
-from luxonis_ml.utils.registry import AutoRegisterMeta
+from luxonis_ml.utils import AutoRegisterMeta
 from torch import Size, Tensor, nn
 
 from luxonis_train.nodes import BaseNode
@@ -21,7 +21,7 @@ from luxonis_train.utils import IncompatibleError
 class BaseAttachedModule(
     nn.Module, ABC, metaclass=AutoRegisterMeta, register=False
 ):
-    """Base class for all modules that are attached to a `LuxonisNode`.
+    """Base class for all modules that are attached to a `BaseNode`.
 
     Attached modules include losses, metrics and visualizers.
 
@@ -30,11 +30,11 @@ class BaseAttachedModule(
     override the ``prepare`` method.
 
     When subclassing, the following methods can be overridden:
-        - `prepare`: Prepares node outputs for the forward pass of the module.
+        - ``prepare``: Prepares node outputs for the forward pass of the module.
           Override this method if the default implementation is not sufficient.
 
     Additionally, the following attributes can be overridden:
-        - `supported_tasks`: List of task types that the module supports.
+        - ``supported_tasks``: List of task types that the module supports.
           Used to determine which labels to extract from the dataset and to validate
           compatibility with the node based on the node's tasks.
 
@@ -51,7 +51,7 @@ class BaseAttachedModule(
 
         Args:
             node (BaseNode): Reference to the node that this module is attached to.
-            **kwargs (Any): Additional keyword arguments.
+            **kwargs (``Any``): Additional keyword arguments.
 
         """
         super().__init__(**kwargs)
@@ -142,7 +142,7 @@ class BaseAttachedModule(
 
         Raises:
             RuntimeError: If the node doesn't define any task.
-            ValueError: If the number of classes is different for different tasks. In that case, use the `get_n_classes` method.
+            ValueError: If the number of classes is different for different tasks. In that case, use the ``get_n_classes`` method.
 
         """
         return self.node.n_classes
@@ -158,7 +158,7 @@ class BaseAttachedModule(
 
         Raises:
             RuntimeError: If the node doesn't define any task.
-            ValueError: If the class names are different for different tasks. In that case, use the `get_class_names` method.
+            ValueError: If the class names are different for different tasks. In that case, use the ``get_class_names`` method.
 
         """
         return self.node.classes

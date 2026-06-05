@@ -120,7 +120,7 @@ class GhostFaceNet(BaseNode):
         Args:
             width_multiplier (int): Width multiplier for the blocks.
             layer_params (list[LayerParamsDict]): Parameters for each Ghost bottleneck layer.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

@@ -42,7 +42,7 @@ class CTCLoss(BaseLoss):
 
         Args:
             use_focal_loss (bool): Whether to apply focal loss weighting to the CTC loss. Defaults to True.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -53,12 +53,12 @@ class CTCLoss(BaseLoss):
         """Compute the CTC loss, optionally applying focal loss.
 
         Args:
-            predictions (Tensor): Network predictions of shape ``[B, T, C]``,
+            predictions (``Tensor``): Network predictions of shape ``[B, T, C]``,
                 where ``T`` is the sequence length, ``B`` is the batch size, and ``C`` is the number of classes.
-            target (Tensor): Raw target sequences encoded by the node encoder.
+            target (``Tensor``): Raw target sequences encoded by the node encoder.
 
         Returns:
-            Tensor: The computed loss as a scalar tensor.
+            ``Tensor``: The computed loss as a scalar tensor.
 
         """
         target = self.node.encoder(target).to(predictions.device)

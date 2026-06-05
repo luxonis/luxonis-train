@@ -31,7 +31,7 @@ class MicroBlock(nn.Module):
         Args:
             in_channels (int): Number of input channels.
             out_channels (int): Number of output channels.
-            kernel_size (int): Size of the convolution kernel. Defaults to 3.
+            kernel_size (int): ``Size`` of the convolution kernel. Defaults to 3.
             stride (int): Stride of the convolution. Defaults to 1.
             expand_ratio (tuple[int, int]): Expansion ratios for the intermediate channels. Defaults to (2, 2).
             groups_1 (tuple[int, int]): Groups for the first set of convolutions. Defaults to (0, 6).

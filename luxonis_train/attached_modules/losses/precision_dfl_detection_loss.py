@@ -74,7 +74,7 @@ class PrecisionDFLDetectionLoss(BaseLoss):
                 multiply with accumulate_grad_batches.
             skip_stal (bool): If True, disables the Small-Target-Aware Label Assignment candidate
                 expansion. Defaults to False.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -182,13 +182,13 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         distributions.
 
         Args:
-            anchor_points (Tensor): Anchor points tensor of shape [N, 4] where N is the number of
+            anchor_points (``Tensor``): Anchor points tensor of shape [N, 4] where N is the number of
                 anchors.
-            pred_dist (Tensor): Predicted distribution tensor of shape [batch_size, N, 4 * reg_max]
+            pred_dist (``Tensor``): Predicted distribution tensor of shape [batch_size, N, 4 * reg_max]
                 where N is the number of anchors.
 
         Returns:
-            Tensor: Return value.
+            ``Tensor``: Return value.
 
         """
         if self.node.dfl:

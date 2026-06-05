@@ -73,12 +73,12 @@ class ObjectKeypointSimilarity(BaseMetric):
 
         Args:
             sigmas (list[float] | None): Sigma for each keypoint to weigh its importance, if
-                ``None``, then use COCO if possible otherwise defaults. Defaults to ``None``.
+                ``None``, then use ``COCO`` if possible otherwise defaults. Defaults to ``None``.
             area_factor (float | None): Factor by which we multiply the bounding box area. If not
                 set, the default factor of ``0.53`` is used.
             use_cocoeval_oks (bool): Whether to use same OKS formula as in COCOeval or use the one
                 from definition. Defaults to ``True``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

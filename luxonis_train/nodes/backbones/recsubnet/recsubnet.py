@@ -70,7 +70,7 @@ class RecSubNet(BaseNode):
             base_channels (int): The base width of the network. Determines the number of filters in the encoder and decoder.
             width_multipliers (list[float] | None): Width multipliers for encoder and decoder stages. Defaults to [1, 2, 4, 8].
             out_channels (int): Number of output channels for the decoder. Defaults to 3.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

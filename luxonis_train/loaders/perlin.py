@@ -131,13 +131,13 @@ def apply_anomaly_to_img(
     """Apply Perlin noise-based anomalies to a single image.
 
     Args:
-        img (Tensor): Input image tensor with shape ``[C, H, W]``.
-        anomaly_img (Tensor): Anomaly image tensor with shape ``[C, H, W]``.
+        img (``Tensor``): Input image tensor with shape ``[C, H, W]``.
+        anomaly_img (``Tensor``): Anomaly image tensor with shape ``[C, H, W]``.
         beta (float | None): Blending factor for the anomaly and source image.
             If ``None``, a random value in the range ``[0, 0.8]`` is used.
 
     Returns:
-        tuple[Tensor, Tensor]: A tuple ``(augmented_img, perlin_mask)``, where
+        ``tuple[Tensor, Tensor]``: A tuple ``(augmented_img, perlin_mask)``, where
         ``augmented_img`` is the image with the anomaly applied and
         ``perlin_mask`` is the mask applied to the image.
 

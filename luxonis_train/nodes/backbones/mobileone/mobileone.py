@@ -91,7 +91,7 @@ class MobileOne(BaseNode):
             width_multipliers (tuple[float, float, float, float]): Width multipliers for each stage.
             n_conv_branches (int): Number of linear convolution branches in MobileOne block.
             use_se (bool): Whether to use ``Squeeze-and-Excitation`` blocks in the network. Default is ``False``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -176,7 +176,7 @@ class MobileOne(BaseNode):
             n_se_blocks (int): Number of SE blocks in this stage.
 
         Returns:
-            nn.Sequential: A stage of MobileOne model.
+            ``nn.Sequential``: A stage of MobileOne model.
 
         """
         # Get strides for all layers

@@ -65,13 +65,13 @@ class PrecisionSegmentBBoxHead(PrecisionBBoxHead):
         for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
 
         Args:
-            n_heads (Literal[2, 3, 4]): Number of output heads. Defaults to 3.
+            n_heads (``Literal[2, 3, 4]``): Number of output heads. Defaults to 3.
             n_masks (int): Number of masks.
             n_proto (int): Number of prototypes for segmentation.
             conf_thres (float): Confidence threshold for NMS.
             iou_thres (float): IoU threshold for NMS.
             max_det (int): Maximum number of detections retained after NMS.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(
@@ -207,18 +207,18 @@ def refine_and_apply_masks(
     """Refine and apply masks to bounding boxes from the mask head.
 
     Args:
-        mask_prototypes (Tensor): Prototype masks with shape
+        mask_prototypes (``Tensor``): Prototype masks with shape
             ``[mask_dim, mask_height, mask_width]``.
-        predicted_masks (Tensor): Predicted mask coefficients with shape
+        predicted_masks (``Tensor``): Predicted mask coefficients with shape
             ``[n_masks, mask_dim]``.
-        bounding_boxes (Tensor): Bounding boxes with shape ``[n_masks, 4]``.
+        bounding_boxes (``Tensor``): Bounding boxes with shape ``[n_masks, 4]``.
         height (int): Target image height.
         width (int): Target image width.
         upsample (bool): Whether to upsample masks to ``height`` and ``width``.
             Defaults to ``False``.
 
     Returns:
-        Tensor: Binary mask tensor with shape ``[n_masks, height, width]``.
+        ``Tensor``: Binary mask tensor with shape ``[n_masks, height, width]``.
 
     """
     if predicted_masks.size(0) == 0 or bounding_boxes.size(0) == 0:

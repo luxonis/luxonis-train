@@ -26,7 +26,7 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
 
         Args:
             final_loss_weight (float): Optional weight by which the final loss is multiplied.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -39,7 +39,7 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
         """Forward pass of the loss function.
 
         Returns:
-            Tensor | tuple[Tensor, dict[str, Tensor]]: The main loss and optional a dictionary of sub-losses (for logging). Only the main loss is used for backpropagation.
+            ``Tensor | tuple[Tensor, dict[str, Tensor]]``: The main loss and optional a dictionary of sub-losses (for logging). Only the main loss is used for backpropagation.
 
         """
         ...
@@ -55,11 +55,11 @@ class BaseLoss(BaseAttachedModule, register=False, registry=LOSSES):
         inputs.
 
         Args:
-            inputs (Packet[Tensor]): Outputs from the node.
+            inputs (``Packet[Tensor]``): Outputs from the node.
             labels (`Labels`): Labels from the dataset.
 
         Returns:
-            Tensor | tuple[Tensor, dict[str, Tensor]]: The main loss and optional a dictionary of sub-losses (for logging). Only the main loss is used for backpropagation.
+            ``Tensor | tuple[Tensor, dict[str, Tensor]]``: The main loss and optional a dictionary of sub-losses (for logging). Only the main loss is used for backpropagation.
 
         Raises:
             IncompatibleError: If the inputs are not compatible with the module.

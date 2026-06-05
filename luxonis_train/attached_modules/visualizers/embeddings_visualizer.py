@@ -47,7 +47,7 @@ class EmbeddingsVisualizer(BaseVisualizer):
 
         Args:
             z_score_threshold (float): The threshold for filtering out outliers.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -68,13 +68,13 @@ class EmbeddingsVisualizer(BaseVisualizer):
         """Create a visualization of the embeddings.
 
         Args:
-            prediction_canvas (Tensor): The canvas to draw the predictions on.
-            target_canvas (Tensor): The canvas to draw the labels on.
-            predictions (Tensor): Embeddings to visualize.
-            target (Tensor): IDs of the embeddings.
+            prediction_canvas (``Tensor``): The canvas to draw the predictions on.
+            target_canvas (``Tensor``): The canvas to draw the labels on.
+            predictions (``Tensor``): Embeddings to visualize.
+            target (``Tensor``): IDs of the embeddings.
 
         Returns:
-            tuple[Tensor, Tensor]: KDE and scatter plot projections of the
+            ``tuple[Tensor, Tensor]``: KDE and scatter plot projections of the
                 embedding space.
 
         """

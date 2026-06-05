@@ -24,18 +24,18 @@ def dist2bbox(
     """Transform distance (ltrb) to box ("xyxy", "xywh" or "cxcywh").
 
     Args:
-        distance (Tensor): Distance predictions.
-        anchor_points (Tensor): Head anchor points.
+        distance (``Tensor``): Distance predictions.
+        anchor_points (``Tensor``): Head anchor points.
         out_format (BBoxFormatType): BBox output format. Defaults to
             ``"xyxy"``.
         dim (int): Dimension to split the distance tensor on. Defaults to
             ``-1``.
 
     Returns:
-        Tensor: Bounding boxes in `out_format`.
+        ``Tensor``: Bounding boxes in ``out_format``.
 
     Raises:
-        ValueError: If `out_format` is not supported.
+        ValueError: If ``out_format`` is not supported.
 
     """
     lt, rb = torch.split(distance, 2, dim=dim)
@@ -53,12 +53,12 @@ def bbox2dist(bbox: Tensor, anchor_points: Tensor, reg_max: float) -> Tensor:
     """Transform bbox(xyxy) to distance(ltrb).
 
     Args:
-        bbox (Tensor): Bounding boxes in ``"xyxy"`` format.
-        anchor_points (Tensor): Head anchor points.
+        bbox (``Tensor``): Bounding boxes in ``"xyxy"`` format.
+        anchor_points (``Tensor``): Head anchor points.
         reg_max (float): Maximum regression distance.
 
     Returns:
-        Tensor: Bounding boxes in distance ``ltrb`` format.
+        ``Tensor``: Bounding boxes in distance ``ltrb`` format.
 
     """
     x1y1, x2y2 = torch.split(bbox, 2, -1)
@@ -78,11 +78,11 @@ def bbox_iou(
     """Compute IoU between two sets of bounding boxes.
 
     Args:
-        bbox1 (Tensor): First set of bounding boxes with shape ``[N, 4]``.
-        bbox2 (Tensor): Second set of bounding boxes with shape ``[M, 4]``.
+        bbox1 (``Tensor``): First set of bounding boxes with shape ``[N, 4]``.
+        bbox2 (``Tensor``): Second set of bounding boxes with shape ``[M, 4]``.
         bbox_format (BBoxFormatType): Input bounding box format. Defaults to
             ``"xyxy"``.
-        iou_type (IoUType): IoU type. Defaults to ``"none"``. Supported values
+        iou_type (``IoUType``): IoU type. Defaults to ``"none"``. Supported values
             are ``"none"`` for standard IoU, ``"giou"`` for Generalized IoU,
             ``"diou"`` for Distance IoU, ``"ciou"`` for Complete IoU from
             `Enhancing Geometric Factors in Model Learning and Inference for
@@ -96,11 +96,11 @@ def bbox_iou(
             ``False``.
 
     Returns:
-        Tensor: IoU between `bbox1` and `bbox2`. When `element_wise` is
+        ``Tensor``: IoU between ``bbox1`` and ``bbox2``. When ``element_wise`` is
         ``True``, returns shape ``[N]``; otherwise returns shape ``[N, M]``.
 
     Raises:
-        ValueError: If `iou_type` is not supported.
+        ValueError: If ``iou_type`` is not supported.
 
     """
     if bbox_format != "xyxy":
@@ -202,7 +202,7 @@ def non_max_suppression(
     """Run non-maximum suppression on model predictions.
 
     Args:
-        preds (Tensor): Model prediction tensor with shape ``[bs, N, M]``.
+        preds (``Tensor``): Model prediction tensor with shape ``[bs, N, M]``.
         n_classes (int): Number of model classes.
         conf_thres (float): Boxes with confidence higher than this value are
             kept. Defaults to ``0.25``.
@@ -222,11 +222,11 @@ def non_max_suppression(
             confidence. Defaults to ``True``.
 
     Returns:
-        list[Tensor]: Kept detections for each image, with boxes in ``"xyxy"``
+        ``list[Tensor]``: Kept detections for each image, with boxes in ``"xyxy"``
         format and tensors shaped ``[n_kept, M]``.
 
     Raises:
-        ValueError: If `conf_thres` or `iou_thres` is outside ``[0, 1]``.
+        ValueError: If ``conf_thres`` or ``iou_thres`` is outside ``[0, 1]``.
 
     """
     if not (0 <= conf_thres <= 1):
@@ -336,8 +336,8 @@ def anchors_for_fpn_features(
     """Generate anchor boxes, points, and strides for FPN features.
 
     Args:
-        features (list[Tensor]): FPN feature tensors.
-        strides (Tensor): Strides of the FPN features.
+        features (``list[Tensor]``): FPN feature tensors.
+        strides (``Tensor``): Strides of the FPN features.
         grid_cell_size (float): Cell size with respect to input image size.
             Defaults to ``5.0``.
         grid_cell_offset (float): Percent offset of the grid cell center.
@@ -346,7 +346,7 @@ def anchors_for_fpn_features(
             their stride. Defaults to ``False``.
 
     Returns:
-        tuple[Tensor, Tensor, list[int], Tensor]: A tuple containing bounding
+        ``tuple[Tensor, Tensor, list[int], Tensor]``: A tuple containing bounding
         box anchors, center anchors, number of anchors per feature map, and
         stride tensor.
 
@@ -409,11 +409,11 @@ def apply_bounding_box_to_masks(
     """Crop masks to the regions specified by corresponding boxes.
 
     Args:
-        masks (Tensor): Masks tensor with shape ``[n, h, w]``.
-        bounding_boxes (Tensor): Bounding boxes tensor with shape ``[n, 4]``.
+        masks (``Tensor``): Masks tensor with shape ``[n, h, w]``.
+        bounding_boxes (``Tensor``): Bounding boxes tensor with shape ``[n, 4]``.
 
     Returns:
-        Tensor: Cropped masks tensor with shape ``[n, h, w]``.
+        ``Tensor``: Cropped masks tensor with shape ``[n, h, w]``.
 
     """
     _, mask_height, mask_width = masks.shape
@@ -448,24 +448,24 @@ def compute_iou_loss(
     """Compute an IoU loss between 2 sets of bounding boxes.
 
     Args:
-        pred_bboxes (Tensor): Predicted bounding boxes.
-        target_bboxes (Tensor): Target bounding boxes.
-        target_scores (Tensor | None): Target scores. Defaults to ``None``.
-        mask_positive (Tensor | None): Mask for positive samples. Defaults to
+        pred_bboxes (``Tensor``): Predicted bounding boxes.
+        target_bboxes (``Tensor``): Target bounding boxes.
+        target_scores (``Tensor | None``): Target scores. Defaults to ``None``.
+        mask_positive (``Tensor | None``): Mask for positive samples. Defaults to
             ``None``.
-        iou_type (IoUType): IoU type. Defaults to ``"giou"``.
+        iou_type (``IoUType``): IoU type. Defaults to ``"giou"``.
         bbox_format (BBoxFormatType): Bounding box format. Defaults to
             ``"xyxy"``.
-        reduction (Literal["sum", "mean"]): Reduction type. Defaults to
+        reduction (``Literal["sum", "mean"]``): Reduction type. Defaults to
             ``"mean"``.
 
     Returns:
-        tuple[Tensor, Tensor]: IoU loss and detached IoU values.
+        ``tuple[Tensor, Tensor]``: IoU loss and detached IoU values.
 
     Raises:
         NotImplementedError: If ``reduction="sum"`` is used without
-            `target_scores`.
-        ValueError: If `reduction` or `iou_type` is unsupported.
+            ``target_scores``.
+        ValueError: If ``reduction`` or ``iou_type`` is unsupported.
 
     """
     device = pred_bboxes.device
@@ -534,7 +534,7 @@ def keypoints_to_bboxes(
     Low-visibility keypoints are filtered out.
 
     Args:
-        keypoints (list[Tensor]): Keypoint tensors with shape ``[N, 1, 4]`` in
+        keypoints (``list[Tensor]``): Keypoint tensors with shape ``[N, 1, 4]`` in
             ``(x, y, v, cls_id)`` order.
         img_height (int): Image height.
         img_width (int): Image width.
@@ -543,7 +543,7 @@ def keypoints_to_bboxes(
             include a keypoint. Defaults to ``0.5``.
 
     Returns:
-        list[Tensor]: Bounding box tensors with shape ``[N, 6]`` in
+        ``list[Tensor]``: Bounding box tensors with shape ``[N, 6]`` in
         ``(x_min, y_min, x_max, y_max, score, cls_id)`` order.
 
     """

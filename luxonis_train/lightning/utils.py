@@ -11,8 +11,7 @@ from lightning.pytorch.callbacks import (
 )
 from loguru import logger
 from luxonis_ml.typing import ConfigItem, check_type
-from luxonis_ml.utils import traverse_graph
-from luxonis_ml.utils.registry import Registry
+from luxonis_ml.utils import Registry, traverse_graph
 from torch import Size, Tensor, nn
 from torch.optim.lr_scheduler import LRScheduler, SequentialLR
 from torch.optim.optimizer import Optimizer
@@ -323,7 +322,7 @@ def compute_losses(
 
     Args:
         cfg (Config): Training configuration that controls loss logging.
-        losses (dict[str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]]):
+        losses (``dict[str, dict[str, Tensor | tuple[Tensor, dict[str, Tensor]]]]``):
             Computed losses. Each node can have multiple losses attached. The
             first key identifies the node, and the second key identifies the
             specific loss. Values are either single tensors or tuples of a
@@ -331,7 +330,7 @@ def compute_losses(
         device (torch.device): Device on which to create the accumulated loss.
 
     Returns:
-        tuple[Tensor, dict[str, Tensor]]: A tuple ``(final_loss, all_losses)``,
+        ``tuple[Tensor, dict[str, Tensor]]``: A tuple ``(final_loss, all_losses)``,
             where ``final_loss`` is the weighted sum and ``all_losses`` maps
             loss names to tensors for logging.
 
@@ -663,17 +662,17 @@ def compute_visualization_buffer(
     The buffer fills up to ``max_log_images`` frames.
 
     Args:
-        seq_buffer (list[dict[str, dict[str, Tensor]]]): Previously buffered
+        seq_buffer (``list[dict[str, dict[str, Tensor]]]``): Previously buffered
             visualizations. Each item maps node names to visualization names
-            and tensors with shape ``[N, ...]``.
-        visualizations (dict[str, dict[str, Tensor]]): Current batch
+            and tensors with shape ``[N, ``...``]``.
+        visualizations (``dict[str, dict[str, Tensor]]``): Current batch
             visualizations with the same nested structure.
         logged_idxs (list[int]): Batch indices already logged by the
             class-balanced logger.
         max_log_images (int): Total number of images to log per epoch.
 
     Returns:
-        dict[str, dict[str, Tensor]] | None: Up to the remaining number of
+        ``dict[str, dict[str, Tensor]] | None``: Up to the remaining number of
             images needed to reach ``max_log_images``, excluding indices in
             ``logged_idxs``. Returns ``None`` if the buffer is already full or
             no leftovers exist.
@@ -754,7 +753,7 @@ def check_tensor_device(
     """Check whether one or more tensors reside on a device.
 
     Args:
-        x (Tensor | list[Tensor]): Tensor or list of tensors to check.
+        x (``Tensor | list[Tensor]``): ``Tensor`` or list of tensors to check.
         device (torch.device): Device to check against.
 
     Returns:

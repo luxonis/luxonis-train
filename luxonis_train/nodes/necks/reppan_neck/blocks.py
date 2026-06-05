@@ -22,7 +22,7 @@ class PANUpBlockBase(ABC, nn.Module):
         Args:
             in_channels (int): Number of input channels.
             out_channels (int): Number of output channels.
-            encode_block (nn.Module): Encode block that is used.
+            encode_block (``nn.Module``): Encode block that is used.
 
         """
         super().__init__()
@@ -125,7 +125,7 @@ class PANDownBlockBase(ABC, nn.Module):
         Args:
             in_channels (int): Number of input channels.
             downsample_out_channels (int): Number of output channels after downsample.
-            encode_block (nn.Module): Encode block that is used after concatenation.
+            encode_block (``nn.Module``): Encode block that is used after concatenation.
 
         """
         super().__init__()

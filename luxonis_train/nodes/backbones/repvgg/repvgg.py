@@ -81,7 +81,7 @@ class RepVGG(BaseNode):
             width_multiplier (tuple[float, float, float, float]): Width multiplier for each stage.
             override_groups_map (dict[int, int] | None): Dictionary mapping layer index to number of groups. The layers are indexed starting from 0.
             use_se (bool): Whether to use Squeeze-and-Excitation blocks.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         Notes:
             License: `MIT <https://github.com/DingXiaoH/RepVGG/blob/main/LICENSE>`_.

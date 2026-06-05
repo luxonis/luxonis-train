@@ -77,19 +77,19 @@ class DDRNet(BaseNode):
             channels (int): Base number of channels. If provided, overrides the variant values.
             high_resolution_channels (int): Number of channels in the high resolution net. If provided, overrides the variant values.
             use_aux_heads (bool): Whether to use auxiliary heads. Defaults to True.
-            upscale_module (nn.Module | None): Module for upscaling (e.g., bilinear interpolation). Defaults to UpscaleOnline().
+            upscale_module (``nn.Module | None``): Module for upscaling (e.g., bilinear interpolation). Defaults to UpscaleOnline().
             spp_width (int): Width of the branches in the SPP block. Defaults to 128.
             ssp_interpolation_mode (str): Interpolation mode for the SPP block. Defaults to "bilinear".
             segmentation_interpolation_mode (str): Interpolation mode for the segmentation head. Defaults to "bilinear".
-            block (type[nn.Module]): type of block to use in the backbone. Defaults to ResNetBlock.
-            skip_block (type[nn.Module]): type of block for skip connections. Defaults to ResNetBlock.
-            layer5_block (type[nn.Module]): type of block for layer5 and layer5_skip. Defaults to Bottleneck.
+            block (``type[nn.Module]``): type of block to use in the backbone. Defaults to ResNetBlock.
+            skip_block (``type[nn.Module]``): type of block for skip connections. Defaults to ResNetBlock.
+            layer5_block (``type[nn.Module]``): type of block for layer5 and layer5_skip. Defaults to Bottleneck.
             layer5_bottleneck_expansion (int): Expansion factor for Bottleneck block in layer5. Defaults to 2.
             spp_kernel_sizes (list[int] | None): Kernel sizes for the SPP module pooling. Defaults to [1, 5, 9, 17, 0].
             spp_strides (list[int] | None): Strides for the SPP module pooling. Defaults to [1, 2, 4, 8, 0].
             layer3_repeats (int): Number of times to repeat the 3rd stage. Defaults to 1.
             layers (list[int] | None): Number of blocks in each layer of the backbone. Defaults to [2, 2, 2, 2, 1, 2, 2, 1].
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         Notes:
             License: `Apache License, Version 2.0 <https://github.com/Deci-AI/super- gradients/blob/master/LICENSE.md>`_

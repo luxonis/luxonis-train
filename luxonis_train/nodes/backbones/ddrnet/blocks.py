@@ -184,10 +184,10 @@ class DAPPM(nn.Module):
         """Forward pass through the DAPPM module.
 
         Args:
-            x (Tensor): Input tensor.
+            x (``Tensor``): Input tensor.
 
         Returns:
-            Tensor: Output tensor after processing through all branches and compression.
+            ``Tensor``: Output tensor after processing through all branches and compression.
 
         """
         x_list = [self.start_branch(x)]
@@ -210,7 +210,7 @@ class BasicDDRBackbone(nn.Module):
         """Initialize the BasicDDRBackBone with specified parameters.
 
         Args:
-            block (Type[nn.Module]): The block class to use for layers.
+            block (``Type[nn.Module]``): The block class to use for layers.
             stem_channels (int): Number of output channels in the stem layer.
             layers (list[int]): Number of blocks in each layer.
             in_channels (int): Number of input channels.
@@ -323,7 +323,7 @@ def make_layer(
     """Create a sequential layer consisting of a series of blocks.
 
     Args:
-        block (type[nn.Module]): The block class to be used.
+        block (``type[nn.Module]``): The block class to be used.
         in_channels (int): Number of input channels.
         channels (int): Number of output channels.
         n_blocks (int): Number of blocks in the layer.
@@ -331,7 +331,7 @@ def make_layer(
         expansion (int): Expansion factor for the block. Defaults to 1.
 
     Returns:
-        nn.Sequential: A sequential container of the blocks.
+        ``nn.Sequential``: A sequential container of the blocks.
 
     """
     layers: list[nn.Module] = []

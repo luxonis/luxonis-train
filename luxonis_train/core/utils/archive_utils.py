@@ -18,7 +18,7 @@ def get_inputs(path: Path) -> dict[str, ArchiveMetadataDict]:
     """Get inputs of a model executable.
 
     Args:
-        path (Path): Path to model executable file.
+        path (``Path``): ``Path`` to model executable file.
 
     Returns:
         dict[str, ArchiveMetadataDict]: Input metadata keyed by input name.
@@ -35,7 +35,7 @@ def get_outputs(path: Path) -> dict[str, ArchiveMetadataDict]:
     """Get outputs of a model executable.
 
     Args:
-        path (Path): Path to model executable file.
+        path (``Path``): ``Path`` to model executable file.
 
     Returns:
         dict[str, ArchiveMetadataDict]: Output metadata keyed by output name.
@@ -103,7 +103,7 @@ def _get_head_outputs(outputs: list[dict], head_name: str) -> list[str]:
 
     Args:
         outputs (list[dict]): List of NN Archive outputs.
-        head_name (str): Type of the head, such as ``"EfficientBBoxHead"``, or
+        head_name (str): ``Type`` of the head, such as ``"EfficientBBoxHead"``, or
             its custom alias.
 
     Returns:

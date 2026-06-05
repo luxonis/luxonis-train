@@ -48,7 +48,7 @@ class BiSeNetHead(BaseHead):
 
         Args:
             intermediate_channels (int): How many intermediate channels to use. Defaults to ``64``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         Notes:
             License: NOT SPECIFIED.

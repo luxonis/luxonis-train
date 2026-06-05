@@ -51,7 +51,7 @@ class OCRVisualizer(BaseVisualizer):
             font_scale (float): Font scale of the text. Defaults to ``0.5``.
             color (tuple[int, int, int]): Color of the text. Defaults to ``(0, 0, 0)``.
             thickness (int): Thickness of the text. Defaults to ``1``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -69,14 +69,14 @@ class OCRVisualizer(BaseVisualizer):
         """Create a visualization of the OCR predictions and labels.
 
         Args:
-            prediction_canvas (Tensor): The canvas to draw the predictions on.
-            target_canvas (Tensor): The canvas to draw the labels on.
-            predictions (Tensor): The predictions to visualize.
-            targets (Tensor | None): The targets to visualize, or ``None``
+            prediction_canvas (``Tensor``): The canvas to draw the predictions on.
+            target_canvas (``Tensor``): The canvas to draw the labels on.
+            predictions (``Tensor``): The predictions to visualize.
+            targets (``Tensor | None``): The targets to visualize, or ``None``
                 when targets are unavailable.
 
         Returns:
-            tuple[Tensor, Tensor]: A tuple of the label and prediction visualizations.
+            ``tuple[Tensor, Tensor]``: A tuple of the label and prediction visualizations.
 
         """
         decoded_predictions = self.node.decoder(predictions)

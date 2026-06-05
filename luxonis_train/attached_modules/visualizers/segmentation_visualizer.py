@@ -65,7 +65,7 @@ class SegmentationVisualizer(BaseVisualizer):
             background_color (Color): Color of the background class. Defaults to
                 ``"#000000"``.
             alpha (float): Alpha value of the segmentation masks. Defaults to ``0.6``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -126,14 +126,14 @@ class SegmentationVisualizer(BaseVisualizer):
         """Create visualizations of segmentation predictions and labels.
 
         Args:
-            prediction_canvas (Tensor): The canvas to draw the predictions on.
-            target_canvas (Tensor): The canvas to draw the labels on.
-            predictions (Tensor): The predictions to visualize.
-            target (Tensor | None): The targets to visualize, or ``None`` when
+            prediction_canvas (``Tensor``): The canvas to draw the predictions on.
+            target_canvas (``Tensor``): The canvas to draw the labels on.
+            predictions (``Tensor``): The predictions to visualize.
+            target (``Tensor | None``): The targets to visualize, or ``None`` when
                 targets are unavailable.
 
         Returns:
-            tuple[Tensor, Tensor]: A tuple of the label and prediction visualizations.
+            ``tuple[Tensor, Tensor]``: A tuple of the label and prediction visualizations.
 
         """
         colors = self._adjust_colors(

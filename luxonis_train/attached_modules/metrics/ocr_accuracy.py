@@ -57,7 +57,7 @@ class OCRAccuracy(BaseMetric):
 
         Args:
             blank_class (int): Index of the blank class. Defaults to ``0``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -68,8 +68,8 @@ class OCRAccuracy(BaseMetric):
         """Update the running metric with predictions and targets.
 
         Args:
-            predictions (Tensor): A tensor containing the network predictions.
-            target (Tensor): A tensor containing the target labels.
+            predictions (``Tensor``): A tensor containing the network predictions.
+            target (``Tensor``): A tensor containing the target labels.
 
         """
         target = self.node.encoder(target).to(self.device)
@@ -106,7 +106,7 @@ class OCRAccuracy(BaseMetric):
         """Compute the OCR accuracy.
 
         Returns:
-            tuple[Tensor, dict[str, Tensor]]: A tuple containing the OCR accuracy and a dictionary
+            ``tuple[Tensor, dict[str, Tensor]]``: A tuple containing the OCR accuracy and a dictionary
                 of individual accuracies.
 
         """

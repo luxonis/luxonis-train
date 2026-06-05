@@ -56,8 +56,8 @@ class SoftmaxFocalLoss(BaseLoss):
             alpha (float | list[float]): Weighting factor for the rare class. Defaults to ``0.25``.
             gamma (float): Focusing parameter. Defaults to ``2.0``.
             smooth (float): Label smoothing factor. Defaults to ``0.0``.
-            reduction (Literal["none", "mean", "sum"]): Reduction type. Defaults to ``"mean"``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            reduction (``Literal["none", "mean", "sum"]``): Reduction type. Defaults to ``"mean"``.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

@@ -34,9 +34,9 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
     Furthermore, it utilizes automatic registration of defined subclasses
     to a `NODES` registry.
 
-    Inputs and outputs of nodes are defined as `Packet`s. A `Packet` is a dictionary
+    Inputs and outputs of nodes are defined as ``Packet``s. A ``Packet`` is a dictionary
     of lists of tensors. Each key in the dictionary represents a different output
-    from the previous node. Input to the node is a list of `Packet`s, output is a single `Packet`.
+    from the previous node. Input to the node is a list of ``Packet``s, output is a single ``Packet``.
 
     When subclassing, the following methods should be implemented:
         - `forward`: Forward pass of the module.
@@ -75,17 +75,17 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         """Initialize the node.
 
         Args:
-            input_shapes (list[Packet[Size]] | None): List of input shapes for the module.
-            original_in_shape (Size | None): Original input shape of the model. Some nodes won't function if not provided.
-            dataset_metadata (`DatasetMetadata` | None): Metadata of the dataset. Some nodes won't function if not provided.
+            input_shapes (``list[Packet[Size]] | None``): List of input shapes for the module.
+            original_in_shape (``Size | None``): Original input shape of the model. Some nodes won't function if not provided.
+            dataset_metadata (``DatasetMetadata | None``): Metadata of the dataset. Some nodes won't function if not provided.
             n_classes (int | None): Number of classes in the dataset. Provide only in case ``dataset_metadata`` is not provided. Defaults to None.
             n_keypoints (int | None): Number of keypoints in the dataset. Provide only in case ``dataset_metadata`` is not provided. Defaults to None.
-            in_sizes (Size | list[Size] | None): List of input sizes for the node. Provide only in case the ``input_shapes`` were not provided.
+            in_sizes (``Size | list[Size] | None``): List of input sizes for the node. Provide only in case the ``input_shapes`` were not provided.
             remove_on_export (bool): If set to True, the node will be removed from the model during export. Defaults to False.
             export_output_names (list[str] | None): List of output names for the export.
             attach_index (AttachIndexType | None): Index of previous output that this node attaches to. Can be a single integer to specify a single output, a tuple of two or three integers to specify a range of outputs or ``"all"`` to specify all outputs. Defaults to "all". Python indexing conventions apply. If provided as a constructor argument, overrides the class attribute.
             task_name (str | None): Specifies which task group from the dataset to use in case the dataset contains multiple tasks. Otherwise, the task group is inferred from the dataset metadata.
-            weights (str | Literal["download", "yolo", "none"] | None): Checkpoint URL, special initialization mode, or weight-loading mode. Defaults to None.
+            weights (``str | Literal["download", "yolo", "none"] | None``): Checkpoint URL, special initialization mode, or weight-loading mode. Defaults to None.
 
         """
         super().__init__()
@@ -174,7 +174,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         predefined model constructor.
 
         Returns:
-            tuple[str, dict[str, Params]]: A tuple containing the default variant name and a dictionary of available variants with their parameters.
+            ``tuple[str, dict[str, Params]]``: A tuple containing the default variant name and a dictionary of available variants with their parameters.
 
         """
         raise NotImplementedError
@@ -270,13 +270,13 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         Example::
 
-            >>> input_shapes = [{"features": [Size((64, 128, 128)), Size((3, 224, 224))]}]
+            >>> input_shapes = [{"features": [``Size``((64, 128, 128)), ``Size``((3, 224, 224))]}]
             >>> attach_index = -1
-            >>> in_sizes = Size((3, 224, 224))
+            >>> in_sizes = ``Size``((3, 224, 224))
 
-            >>> input_shapes = [{"features": [Size((64, 128, 128)), Size((3, 224, 224))]}]
+            >>> input_shapes = [{"features": [``Size``((64, 128, 128)), ``Size``((3, 224, 224))]}]
             >>> attach_index = "all"
-            >>> in_sizes = [Size((64, 128, 128)), Size((3, 224, 224))]
+            >>> in_sizes = [``Size``((64, 128, 128)), ``Size``((3, 224, 224))]
 
         Raises:
             RuntimeError: If the ``input_shapes`` are too complicated for the default implementation.
@@ -420,7 +420,7 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         """Load checkpoint for the module.
 
         Args:
-            ckpt (str | dict[str, Tensor] | None): Path to local or remote .ckpt file.
+            ckpt (``str | dict[str, Tensor] | None``): ``Path`` to local or remote .ckpt file.
             strict (bool): Whether to load weights strictly or not. Defaults to True.
 
         """
@@ -502,10 +502,10 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         """Forward pass of the module.
 
         Args:
-            inputs (Tensor | list[Tensor] | Packet[Tensor] | list[Packet[Tensor]]): Inputs to the module. Can be either a single tensor, a list of tensors or a tensor packet.
+            inputs (``Tensor | list[Tensor] | Packet[Tensor] | list[Packet[Tensor]]``): Inputs to the module. Can be either a single tensor, a list of tensors or a tensor packet.
 
         Returns:
-            Tensor | list[Tensor] | Packet[Tensor]: Result of the forward pass. Can be either a single tensor, a list of tensors or a tensor packet.
+            ``Tensor | list[Tensor] | Packet[Tensor]``: Result of the forward pass. Can be either a single tensor, a list of tensors or a tensor packet.
 
         """
         ...
@@ -514,11 +514,11 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
         """Combine the forward pass with automatic input wrapping.
 
         Args:
-            inputs (list[Packet[Tensor]]): Inputs to the module.
+            inputs (``list[Packet[Tensor]]``): Inputs to the module.
 
         Returns:
-            Packet[Tensor]: Outputs of the module as a packet of tensors, for
-            example ``{"features": [Tensor, ...], "segmentation": Tensor}``.
+            ``Packet[Tensor]``: Outputs of the module as a packet of tensors, for
+            example ``{"features": [``Tensor``, ``...``], "segmentation": ``Tensor``}``.
 
         """
         kwargs = {}

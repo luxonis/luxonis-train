@@ -340,7 +340,7 @@ class MicroNet(BaseNode):
             init_b (tuple[float, float]): Initialization parameters for Dynamic Shift-Max. Defaults to (0.0, 0.0).
             out_indices (list[int] | None): Indices of the output layers. If provided, overrides the variant value.
             layer_params (list[LayerParamsDict] | None): Parameters for each MicroBlock. If provided, overrides the variant value.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

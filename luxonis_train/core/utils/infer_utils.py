@@ -77,8 +77,8 @@ def infer_from_video(
 
     Args:
         model (LuxonisModel): Model to use for inference.
-        video_path (PathType): Path to the video.
-        save_dir (Path | None): Directory where visualizations are saved. If
+        video_path (`PathType <luxonis_ml.typing.PathType>`): ``Path`` to the video.
+        save_dir (``Path | None``): Directory where visualizations are saved. If
             ``None``, visualizations are displayed on screen.
 
     """
@@ -138,9 +138,9 @@ def infer_from_loader(
     Args:
         model (LuxonisModel): Model to use for inference.
         loader (torch_data.DataLoader): Loader to use for inference.
-        save_dir (PathType | None): Directory where visualizations are saved.
+        save_dir (``PathType | None``): Directory where visualizations are saved.
             If ``None``, visualizations are displayed on screen.
-        img_paths (list[PathType] | None): Paths to the images.
+        img_paths (``list[PathType] | None``): Paths to the images.
 
     """
     if save_dir is not None:
@@ -258,7 +258,7 @@ def create_loader_from_directory(
     """Create a DataLoader from a directory of images.
 
     Args:
-        img_paths (Iterable[PathType]): Iterable of paths to the images.
+        img_paths (``Iterable[PathType]``): Iterable of paths to the images.
         model (LuxonisModel): Model to use for inference.
         add_path_annotation (bool): Whether to add the image path as an
             annotation in the dataset.
@@ -328,8 +328,8 @@ def infer_from_directory(
 
     Args:
         model (LuxonisModel): Model to use for inference.
-        img_paths (Iterable[PathType]): Iterable of paths to the images.
-        save_dir (Path | None): Directory where visualizations are saved. If
+        img_paths (``Iterable[PathType]``): Iterable of paths to the images.
+        save_dir (``Path | None``): Directory where visualizations are saved. If
             ``None``, visualizations are displayed on screen.
 
     """
@@ -369,8 +369,8 @@ def infer_from_dataset(
 
     Args:
         model (LuxonisModel): Model to use for inference.
-        view (Literal["train", "val", "test"]): Dataset view to use.
-        save_dir (PathType | None): Directory where visualizations are saved.
+        view (``Literal["train", "val", "test"]``): Dataset view to use.
+        save_dir (``PathType | None``): Directory where visualizations are saved.
             If ``None``, visualizations are displayed on screen.
 
     """

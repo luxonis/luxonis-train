@@ -56,14 +56,14 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
             bce_pow (float): Weight for positive samples. Defaults to ``1.0``.
             weight (list[float] | None): a manual rescaling weight given to the loss of each batch
                 element. If given, it has to be a list of length ``nbatch``.
-            reduction (Literal["mean", "sum", "none"]): Specifies the reduction to apply to the
+            reduction (``Literal["mean", "sum", "none"]``): Specifies the reduction to apply to the
                 output: ``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction will be
-                applied, ``'mean'``: the sum of the output will be divided by the number of
-                elements in the output, ``'sum'``: the output will be summed. Note:
+                ``applied, 'mean'``: the sum of the output will be divided by the number of
+                ``elements in the output, 'sum'``: the output will be summed. Note:
                 ``size_average`` and ``reduce`` are in the process of being deprecated, and in the
                 meantime, specifying either of those two args will override ``reduction``. Defaults
                 to ``'mean'``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -79,11 +79,11 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
         """Compute the BCE loss with label smoothing.
 
         Args:
-            predictions (Tensor): Network predictions of shape (N, C, ...)
-            target (Tensor): A tensor of the same shape as predictions.
+            predictions (``Tensor``): Network predictions of shape (N, C, ``...``)
+            target (``Tensor``): A tensor of the same shape as predictions.
 
         Returns:
-            Tensor: A scalar tensor.
+            ``Tensor``: A scalar tensor.
 
         """
         if predictions.shape != target.shape:

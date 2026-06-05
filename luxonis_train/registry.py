@@ -1,25 +1,22 @@
 """Registry objects and helpers for Luxonis Train components.
 
 Attributes:
-    CALLBACKS (Registry[type[pl.Callback]]): Registered Lightning callback
-        classes.
-    LOADERS (Registry[type[lxt.BaseLoaderTorch]]): Registered loader classes.
-    LOSSES (Registry[type[lxt.BaseLoss]]): Registered loss classes.
-    METRICS (Registry[type[lxt.BaseMetric]]): Registered metric classes.
-    MODELS (Registry[type[lxt.BasePredefinedModel]]): Registered model classes.
-    NODES (Registry[type[lxt.BaseNode]]): Registered node classes.
-    OPTIMIZERS (Registry[type[Optimizer]]): Registered optimizer classes.
-    SCHEDULERS (Registry[type[LRScheduler]]): Registered scheduler classes.
-    STRATEGIES (Registry[type[lxt.BaseTrainingStrategy]]): Registered strategy
-        classes.
-    VISUALIZERS (Registry[type[lxt.BaseVisualizer]]): Registered visualizer
-        classes.
+    CALLBACKS (Registry): Registered Lightning callback classes.
+    LOADERS (Registry): Registered loader classes.
+    LOSSES (Registry): Registered loss classes.
+    METRICS (Registry): Registered metric classes.
+    MODELS (Registry): Registered model classes.
+    NODES (Registry): Registered node classes.
+    OPTIMIZERS (Registry): Registered optimizer classes.
+    SCHEDULERS (Registry): Registered scheduler classes.
+    STRATEGIES (Registry): Registered strategy classes.
+    VISUALIZERS (Registry): Registered visualizer classes.
 
 """
 
 from typing import TYPE_CHECKING, TypeVar
 
-from luxonis_ml.utils.registry import Registry
+from luxonis_ml.utils import Registry
 
 if TYPE_CHECKING:
     import lightning.pytorch as pl
@@ -59,8 +56,8 @@ def from_registry(registry: Registry[type[T]], key: str, *args, **kwargs) -> T:
     Args:
         registry (Registry[type[T]]): Registry to get the class from.
         key (str): Key to get the class for.
-        *args (Any): Positional arguments forwarded to the registered class.
-        **kwargs (Any): Keyword arguments forwarded to the registered class.
+        *args (``Any``): Positional arguments forwarded to the registered class.
+        **kwargs (``Any``): Keyword arguments forwarded to the registered class.
 
     Returns:
         T: Instance of the class registered under the given key.

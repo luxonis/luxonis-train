@@ -29,11 +29,11 @@ from luxonis_train.utils import get_signature
 class MetricState:
     """Marks an attribute that should be registered as a metric state.
     Intended to be used as a type hint for class attributes using the
-    `Annotated` type.
+    ``Annotated`` type.
 
     Upon initialization of a metric, all attributes of the metric that
     are marked as metric states will be registered using the
-    `add_state` method. The state will be accessible as an attribute
+    ``add_state`` method. The state will be accessible as an attribute
     of the metric instance.
 
     Metric state variables are either ``Tensor`` or an empty list, which
@@ -48,24 +48,24 @@ class MetricState:
     Example usage::
 
         class MyMetric(BaseMetric):
-            true_positives: Annotated[Tensor, MetricState(default=0)]
-            false_positives: Annotated[Tensor, MetricState(default=0)]
-            total: Annotated[Tensor, MetricState(default=0)]
+            true_positives: ``Annotated``[``Tensor``, MetricState(default=0)]
+            false_positives: ``Annotated``[``Tensor``, MetricState(default=0)]
+            total: ``Annotated``[``Tensor``, MetricState(default=0)]
 
     Keyword Args:
-        name (Any): The name of the state variable. The variable will then be accessible at
+        name (``Any``): The name of the state variable. The variable will then be accessible at
             ``self.name``.
-        default (Any): Default value of the state; can either be a ``Tensor`` or an empty list.
+        default (``Any``): Default value of the state; can either be a ``Tensor`` or an empty list.
             The state will be reset to this value when ``self.reset()`` is called. If the
             default value is a float, it will be converted to a ``Tensor``.
-        dist_reduce_fx (Any): Function to reduce state across multiple processes in distributed
+        dist_reduce_fx (``Any``): Function to reduce state across multiple processes in distributed
             mode. If value is ``"sum"``, ``"mean"``, ``"cat"``, ``"min"`` or ``"max"`` we will
             use ``torch.sum``, ``torch.mean``, ``torch.cat``, ``torch.min`` and ``torch.max``
             respectively, each with argument ``dim=0``. Note that the ``"cat"`` reduction only
             makes sense if the state is a list, and not a tensor. The user can also pass a
             custom function in this parameter. If not specified, the default is ``"sum"`` if
             the default value is a tensor, and ``"cat"`` if the default value is a list.
-        persistent (Any): Whether the state will be saved as part of the modules
+        persistent (``Any``): Whether the state will be saved as part of the modules
             ``state_dict``. Default is ``False``.
 
     """
@@ -145,7 +145,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         """Update the inner state of the metric.
 
         Args:
-            *args (Tensor | list[Tensor]): Arguments for the specific implementation
+            *args (``Tensor | list[Tensor]``): Arguments for the specific implementation
                 of the `update` method.
 
         """
@@ -158,8 +158,8 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         """Compute the metric.
 
         Returns:
-            Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]: The computed metric. Can
-                be one of: - A single Tensor. - A tuple of a Tensor and a dictionary of
+            ``Tensor | tuple[Tensor, dict[str, Tensor]] | dict[str, Tensor]``: The computed metric. Can
+                be one of: - A single ``Tensor``. - A tuple of a ``Tensor`` and a dictionary of
                 sub-metrics. - A dictionary of sub-metrics. If this is the case, then the metric
                 cannot be used as the main metric of the model.
 
@@ -177,7 +177,7 @@ class BaseMetric(BaseAttachedModule, Metric, register=False, registry=METRICS):
         update method.
 
         Args:
-            inputs (Packet[Tensor]): The outputs of the model.
+            inputs (``Packet[Tensor]``): The outputs of the model.
             labels (Labels): The labels of the model.
 
         Raises:

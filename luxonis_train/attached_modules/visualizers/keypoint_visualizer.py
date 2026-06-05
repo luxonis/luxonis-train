@@ -64,12 +64,12 @@ class KeypointVisualizer(BBoxVisualizer):
                 define the connections in the skeleton. Defaults to ``None``.
             visible_color (`Color`): Color of visible keypoints. Either a string or a tuple of RGB
                 values. Defaults to ``"red"``.
-            nonvisible_color (`Color` | None): Color of nonvisible keypoints. If ``None``,
+            nonvisible_color (``Color | None``): Color of nonvisible keypoints. If ``None``,
                 nonvisible keypoints are not drawn. Defaults to ``None``.
             radius (int | None): Radius of drawn keypoints.
             draw_indices (bool): Whether to draw keypoint indices. Defaults
                 to ``False``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -182,14 +182,14 @@ class KeypointVisualizer(BBoxVisualizer):
         symmetrically.
 
         Args:
-            canvas (Tensor): Image tensor to draw on.
-            keypoints (Tensor): Keypoints with ``(x, y, visibility)`` values.
+            canvas (``Tensor``): Image tensor to draw on.
+            keypoints (``Tensor``): Keypoints with ``(x, y, visibility)`` values.
             offset (tuple[int, int]): Text offset used for cycling label
                 positions. Defaults to ``(7, 7)``.
             colors (Color): Text color. Defaults to ``"red"``.
 
         Returns:
-            Tensor: Image tensor with keypoint indices drawn.
+            ``Tensor``: Image tensor with keypoint indices drawn.
 
         """
         ndarr = canvas.permute(1, 2, 0).detach().cpu().numpy()

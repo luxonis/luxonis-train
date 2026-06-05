@@ -60,7 +60,7 @@ class FOMOLocalizationLoss(BaseLoss):
             gamma (float): Focal loss gamma parameter for hard example focusing
                 (gamma >= 0). Higher values focus more on hard misclassified
                 examples.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

@@ -92,10 +92,10 @@ class EfficientRep(BaseNode):
             n_repeats (list[int] | None): List of number of repeats of RepVGGBlock. If unspecified, defaults to [1, 6, 12, 18, 6].
             depth_multiplier (float): Depth multiplier. If provided, overrides the variant value.
             width_multiplier (float): Width multiplier. If provided, overrides the variant value.
-            block (Literal["RepBlock", "CSPStackRepBlock"]): Base block used when building the backbone. If provided, overrides the variant value.
+            block (``Literal["RepBlock", "CSPStackRepBlock"]``): Base block used when building the backbone. If provided, overrides the variant value.
             csp_e (float): Factor that controls number of intermediate channels if block="CSPStackRepBlock". If provided, overrides the variant value.
             weights (str): Weights identifier forwarded to the parent class. Defaults to ``"yolo"``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(weights=weights, **kwargs)

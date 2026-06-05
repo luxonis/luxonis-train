@@ -4,8 +4,9 @@ from luxonis_ml.tracker import LuxonisTracker
 
 
 class LuxonisTrackerPL(LuxonisTracker, Logger):
-    """`LuxonisTracker` implementation compatible with PyTorch
-    Lightning.
+    """`LuxonisTracker <luxonis_ml.tracker.`LuxonisTracker
+    <luxonis_ml.tracker.LuxonisTracker>`>` implementation compatible
+    with PyTorch Lightning.
     """
 
     def __init__(self, *, _auto_finalize: bool = True, **kwargs):
@@ -15,8 +16,8 @@ class LuxonisTrackerPL(LuxonisTracker, Logger):
             _auto_finalize (bool): If ``True``, finalize the run automatically
                 when training ends. If ``False``, the user must call
                 `_finalize` manually.
-            **kwargs (Any): Additional keyword arguments passed to
-                `LuxonisTracker`.
+            **kwargs (``Any``): Additional keyword arguments passed to
+                `LuxonisTracker <luxonis_ml.tracker.`LuxonisTracker <luxonis_ml.tracker.LuxonisTracker>`>`.
 
         """
         LuxonisTracker.__init__(self, **kwargs)

@@ -58,12 +58,12 @@ def figure_to_torch(fig: Figure, width: int, height: int) -> Tensor:
     """Convert a matplotlib figure to a tensor.
 
     Args:
-        fig (Figure): Matplotlib figure to convert.
+        fig (``Figure``): Matplotlib figure to convert.
         width (int): Output image width.
         height (int): Output image height.
 
     Returns:
-        Tensor: Converted image tensor in ``CHW`` format.
+        ``Tensor``: Converted image tensor in ``CHW`` format.
 
     """
     buf = io.BytesIO()
@@ -83,12 +83,12 @@ def torch_img_to_numpy(
     """Convert a torch image (CHW) to a numpy array (HWC).
 
     Args:
-        img (Tensor): Torch image in ``CHW`` format.
+        img (``Tensor``): Torch image in ``CHW`` format.
         reverse_colors (bool): Whether to reverse colors from RGB to BGR.
             Defaults to ``False``.
 
     Returns:
-        npt.NDArray[np.uint8]: NumPy image in ``HWC`` format.
+        ``npt.NDArray[np.uint8]``: NumPy image in ``HWC`` format.
 
     """
     if img.is_floating_point():
@@ -105,10 +105,10 @@ def numpy_to_torch_img(img: np.ndarray) -> Tensor:
     """Convert a NumPy image to a torch image.
 
     Args:
-        img (np.ndarray): NumPy image in ``HWC`` format.
+        img (``np.ndarray``): NumPy image in ``HWC`` format.
 
     Returns:
-        Tensor: Torch image in ``CHW`` format.
+        ``Tensor``: Torch image in ``CHW`` format.
 
     """
     return torch.from_numpy(img).permute(2, 0, 1)
@@ -124,12 +124,12 @@ def preprocess_images(
     Preprocessing includes denormalizing and converting to uint8.
 
     Args:
-        imgs (Tensor): Batch of images.
+        imgs (``Tensor``): Batch of images.
         mean (list[float] | float | None): Mean used for denormalization. Defaults to ``None``.
         std (list[float] | float | None): Std used for denormalization. Defaults to ``None``.
 
     Returns:
-        Tensor: Batch of preprocessed images.
+        ``Tensor``: Batch of preprocessed images.
 
     """
     out_imgs = []
@@ -154,14 +154,14 @@ def draw_segmentation_targets(
     """Draw segmentation labels on an image.
 
     Args:
-        image (Tensor): Image to draw on.
-        target (Tensor): Segmentation label.
+        image (``Tensor``): Image to draw on.
+        target (``Tensor``): Segmentation label.
         alpha (float): Alpha value for blending. Defaults to ``0.4``.
         colors (Color | list[Color] | None): Mask colors. Defaults to
             ``None``.
 
     Returns:
-        Tensor: Image with segmentation labels drawn on.
+        ``Tensor``: Image with segmentation labels drawn on.
 
     """
     masks = target.bool()
@@ -174,14 +174,14 @@ def draw_bounding_box_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
     """Draw bounding box labels on an image.
 
     Args:
-        img (Tensor): Image to draw on.
-        label (Tensor): Bounding box label. The shape should be (n_instances, 4), where the
+        img (``Tensor``): Image to draw on.
+        label (``Tensor``): Bounding box label. The shape should be (n_instances, 4), where the
             last dimension is (x, y, w, h).
-        **kwargs (Any): Additional arguments to pass to
-            `torchvision.utils.draw_bounding_boxes`.
+        **kwargs (``Any``): Additional arguments to pass to
+            ``torchvision.utils.draw_bounding_boxes``.
 
     Returns:
-        Tensor: Image with bounding box labels drawn on.
+        ``Tensor``: Image with bounding box labels drawn on.
 
     """
     _, H, W = img.shape
@@ -195,14 +195,14 @@ def draw_keypoint_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
     """Draw keypoint labels on an image.
 
     Args:
-        img (Tensor): Image to draw on.
-        label (Tensor): Keypoint label. The shape should be (n_instances, 3), where the last
+        img (``Tensor``): Image to draw on.
+        label (``Tensor``): Keypoint label. The shape should be (n_instances, 3), where the last
             dimension is (x, y, visibility).
-        **kwargs (Any): Additional arguments to pass to
-            `torchvision.utils.draw_keypoints`.
+        **kwargs (``Any``): Additional arguments to pass to
+            ``torchvision.utils.draw_keypoints``.
 
     Returns:
-        Tensor: Image with keypoint labels drawn on.
+        ``Tensor``: Image with keypoint labels drawn on.
 
     """
     _, H, W = img.shape
@@ -231,13 +231,13 @@ def denormalize(
     """Denormalize an image and optionally convert it to uint8.
 
     Args:
-        img (Tensor): Image to denormalize.
+        img (``Tensor``): Image to denormalize.
         mean (list[float] | float | None): Mean used for denormalization. Defaults to ``None``.
         std (list[float] | float | None): Std used for denormalization. Defaults to ``None``.
         to_uint8 (bool): Whether to convert to uint8. Defaults to ``False``.
 
     Returns:
-        Tensor: Denormalized image.
+        ``Tensor``: Denormalized image.
 
     """
     mean = mean or 0
@@ -337,11 +337,11 @@ def potentially_upscale_masks(
     """Upscales boolean segmentation masks.
 
     Args:
-        image_masks (Tensor): Boolean masks to upscale.
+        image_masks (``Tensor``): Boolean masks to upscale.
         scale (float): Scale factor. Defaults to ``1.0``.
 
     Returns:
-        Tensor: Upscaled image masks.
+        ``Tensor``: Upscaled image masks.
 
     """
     if scale is not None and scale != 1:
@@ -405,11 +405,11 @@ def combine_visualizations(
     """Combine multiple visualizations into one final image.
 
     Args:
-        visualization (Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]): Visualization
+        visualization (``Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]``): Visualization
             output to combine.
 
     Returns:
-        Tensor: Combined visualization image.
+        ``Tensor``: Combined visualization image.
 
     """
 
@@ -427,14 +427,14 @@ def combine_visualizations(
         configure how the images are resized.
 
         Args:
-            fst (Tensor[C, H, W]): First image.
-            snd (Tensor[C, H, W]): Second image.
-            keep_size (Literal["larger", "smaller", "first", "second"]): Which size to keep.
+            fst (``Tensor[C, H, W]``): First image.
+            snd (``Tensor[C, H, W]``): Second image.
+            keep_size (``Literal["larger", "smaller", "first", "second"]``): Which size to keep.
                 Options are: - "larger": Resize the smaller image to match the size of the larger
                 image. - "smaller": Resize the larger image to match the size of the smaller image.
                 - "first": Resize the second image to match the size of the first image. -
                 "second": Resize the first image to match the size of the second image.
-            resize_along (Literal["width", "height", "exact"]): Which dimensions to match. Options
+            resize_along (``Literal["width", "height", "exact"]``): Which dimensions to match. Options
                 are: - "width": Resize images along the width dimension. - "height": Resize images
                 along the height dimension. - "exact": Resize images to match both width and height
                 dimensions.
@@ -443,7 +443,7 @@ def combine_visualizations(
                 Defaults to ``True``.
 
         Returns:
-            tuple[Tensor[C, H, W], Tensor[C, H, W]]: Resized images.
+            ``tuple[Tensor[C, H, W], Tensor[C, H, W]]``: Resized images.
 
         """
         if resize_along not in ["width", "height", "exact"]:

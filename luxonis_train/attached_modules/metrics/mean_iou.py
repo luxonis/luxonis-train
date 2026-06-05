@@ -58,8 +58,8 @@ class MIoU(BaseMetric):
             num_classes (int): Number of classes.
             include_background (bool): Whether to include the background class.
             per_class (bool): Whether to compute the IoU per class.
-            input_format (Literal["one-hot", "index"]): Format of the input.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            input_format (``Literal["one-hot", "index"]``): Format of the input.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

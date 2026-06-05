@@ -38,20 +38,21 @@ def default_annotate(
     image_paths: list[Path],
     config_preprocessing: PreprocessingConfig,
 ) -> DatasetIterator:
-    """Convert head output to LuxonisDataset annotations.
+    """Convert head output to `LuxonisDataset
+    <luxonis_ml.data.datasets.LuxonisDataset>` annotations.
 
     Args:
-        head (lxt.nodes.BaseHead): Head from which to extract annotations.
-        head_output (Packet[Tensor]): Output from the head containing
+        head (`luxonis_train.nodes.BaseHead`): Head from which to extract annotations.
+        head_output (``Packet[Tensor]``): Output from the head containing
             predictions.
-        image_paths (list[Path]): Paths to the images corresponding to the
+        image_paths (``list[Path]``): Paths to the images corresponding to the
             head output.
         config_preprocessing (PreprocessingConfig): Preprocessing configuration
             containing image size and aspect ratio settings.
 
     Yields:
-        DatasetIterator: Annotation records in a format suitable for
-        `LuxonisDataset`.
+        `DatasetIterator <luxonis_ml.data.datasets.DatasetIterator>`: Annotation records in a format suitable for
+        `LuxonisDataset <luxonis_ml.data.datasets.LuxonisDataset>`.
 
     Raises:
         ValueError: If the task is unsupported or OCR output is missing a

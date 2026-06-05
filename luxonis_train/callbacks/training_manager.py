@@ -43,8 +43,8 @@ class TrainingManager(BaseFinetuning):
         pass.
 
         Args:
-            trainer (pl.Trainer): The trainer object.
-            pl_module (pl.LightningModule): The pl_module object.
+            trainer (``pl.Trainer``): The trainer object.
+            pl_module (``pl.LightningModule``): The pl_module object.
 
         """
         if pl_module.training_strategy is not None:

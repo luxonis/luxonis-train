@@ -55,10 +55,10 @@ class GhostFaceNetHead(BaseHead):
         Source: `https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py <https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py>`_
 
         Args:
-            embedding_size (int): Size of the embedding. Defaults to 512.
-            cross_batch_memory_size (int | None): Size of the cross-batch memory. Defaults to None.
+            embedding_size (int): ``Size`` of the embedding. Defaults to 512.
+            cross_batch_memory_size (int | None): ``Size`` of the cross-batch memory. Defaults to None.
             dropout (float): Dropout rate. Defaults to 0.2.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         Notes:
             License: `MIT License <https://github.com/Hazqeel09/ellzaf_ml/blob/main/LICENSE>`_

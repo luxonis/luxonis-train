@@ -45,8 +45,19 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
 
-      - name: Install dependencies
+      - name: Install pydoctor
         run: pip install pydoctor
+
+      - name: Install released version of LuxonisML
+        if: startsWith(github.head_ref, 'release/') == true
+        run: pip install luxonis-ml[utils]
+
+      - name: Install dev version of LuxonisML
+        if: startsWith(github.head_ref, 'release/') == false
+        run: pip install "luxonis-ml[utils] @ git+https://github.com/luxonis/luxonis-ml.git@main"
+
+      - name: Build LuxonisML intersphinx inventory
+        run: python scripts/build_luxonis_ml_intersphinx.py
 
       - name: Build docs
         run: pydoctor

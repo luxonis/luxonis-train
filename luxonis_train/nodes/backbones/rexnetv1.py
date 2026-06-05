@@ -74,7 +74,7 @@ class ReXNetV1_lite(BaseNode):
             multiplier (float): Channel dimension multiplier. Defaults to 1.0.
             kernel_sizes (int | list[int]): Kernel size for each block. Defaults to 3.
             out_indices (list[int] | None): Indices of the output layers. Defaults to [1, 4, 10, 17].
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         Notes:
             License: `MIT <https://github.com/clovaai/rexnet/blob/master/LICENSE>`_. Copyright: 2021-present NAVER Corp.

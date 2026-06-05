@@ -87,7 +87,7 @@ class PPLCNetV3(BaseNode):
             use_detection_backbone (bool): Whether to use the detection backbone. Defaults to False.
             max_text_len (int): Maximum text length. Defaults to 40.
             layer_params (list[LayerParamsDict] | None): Parameters for each LCNetV3 layer.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

@@ -7,7 +7,7 @@ import numpy.typing as npt
 import torch
 from luxonis_ml.data import Category
 from luxonis_ml.data.utils import get_task_type, task_is_metadata
-from luxonis_ml.utils.registry import AutoRegisterMeta
+from luxonis_ml.utils import AutoRegisterMeta
 from torch import Size, Tensor
 from torch.utils.data import Dataset
 
@@ -63,7 +63,7 @@ class BaseLoaderTorch(
                 for visualizations.
             keep_aspect_ratio (bool): Whether to keep the output image aspect
                 ratio after resizing.
-            color_space (Literal["RGB", "BGR", "GRAY"]): Output image color
+            color_space (``Literal["RGB", "BGR", "GRAY"]``): Output image color
                 space.
             seed (int | None): Random seed used for augmentations.
 
@@ -117,7 +117,9 @@ class BaseLoaderTorch(
 
     @property
     def color_space(self) -> Literal["RGB", "BGR"]:
-        """Literal["RGB", "BGR"]: Color space of the output image."""
+        """``Literal["RGB", "BGR"]``: Color space of the output
+        image.
+        """
         return self._getter_check_none("color_space")
 
     @property
@@ -128,7 +130,8 @@ class BaseLoaderTorch(
     @property
     @abstractmethod
     def input_shapes(self) -> dict[str, Size]:
-        """Dict[str, Size]: Shape ``(c, h, w)`` of each loader group.
+        """``dict[str, Size]``: Shape ``(c, h, w)`` of each loader
+        group.
 
         Shapes do not include the batch dimension.
 
@@ -167,8 +170,8 @@ class BaseLoaderTorch(
 
     @property
     def input_shape(self) -> Size:
-        """Size: Shape ``(c, h, w)`` of the input tensor without batch
-        dimension.
+        """``Size``: Shape ``(c, h, w)`` of the input tensor without
+        batch dimension.
         """
         return self.input_shapes[self.image_source]
 
@@ -209,7 +212,7 @@ class BaseLoaderTorch(
         """Get classes according to computer vision task.
 
         Returns:
-            dict[str, dict[str, int]]: Mapping of task names to class name and
+            dict[str, dict[str, int]]: ``Mapping`` of task names to class name and
             class ID mappings.
 
         """
@@ -220,7 +223,7 @@ class BaseLoaderTorch(
         keypoints.
 
         Returns:
-            dict[str, int] | None: Mapping of task names to keypoint counts, or
+            dict[str, int] | None: ``Mapping`` of task names to keypoint counts, or
             ``None`` when keypoints are not available.
 
         """
@@ -240,11 +243,11 @@ class BaseLoaderTorch(
         """Convert a dictionary of NumPy arrays to torch tensors.
 
         Args:
-            numpy_dictionary (dict[str, np.ndarray]): Dictionary of NumPy
+            numpy_dictionary (``dict[str, np.ndarray]``): Dictionary of NumPy
                 arrays.
 
         Returns:
-            dict[str, Tensor]: Dictionary of torch tensors.
+            ``dict[str, Tensor]``: Dictionary of torch tensors.
 
         """
         torch_dictionary = {}
@@ -260,10 +263,10 @@ class BaseLoaderTorch(
         """Read an unnormalized image from a file as a NumPy array.
 
         Args:
-            path (str): Path to the image file.
+            path (str): ``Path`` to the image file.
 
         Returns:
-            np.ndarray[np.uint8]: Image as a NumPy array.
+            ``np.ndarray[np.uint8]``: Image as a NumPy array.
 
         """
         img = cv2.imread(path, cv2.IMREAD_COLOR)
@@ -305,7 +308,7 @@ class BaseLoaderTorch(
                 input tensors and labels in `LuxonisLoaderTorchOutput` format.
 
         Returns:
-            tuple[dict[str, Tensor], Labels]: Inputs and annotations in the
+            ``tuple[dict[str, Tensor], Labels]``: Inputs and annotations in the
             format expected by the model.
 
         """

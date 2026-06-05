@@ -81,16 +81,16 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
 
         Args:
             n_warmup_epochs (int): Number of epochs where ATSS assigner is used, after that we switch to TAL assigner.
-            iou_type (Literal["none", "giou", "diou", "ciou", "siou"]): IoU type used for bbox regression loss.
-            reduction (Literal["sum", "mean"]): Reduction type for loss.
+            iou_type (``Literal["none", "giou", "diou", "ciou", "siou"]``): IoU type used for bbox regression loss.
+            reduction (``Literal["sum", "mean"]``): Reduction type for loss.
             class_loss_weight (float): Weight of classification loss for bounding boxes.
             regr_kpts_loss_weight (float): Weight of regression loss for keypoints. Defaults to 12.0. For optimal results, multiply with accumulate_grad_batches.
             vis_kpts_loss_weight (float): Weight of visibility loss for keypoints. Defaults to 1.0. For optimal results, multiply with accumulate_grad_batches.
             iou_loss_weight (float): Weight of IoU loss. Defaults to 2.5. For optimal results, multiply with accumulate_grad_batches.
             viz_pw (float): Positive example weight for the keypoint visibility BCE loss.
-            sigmas (list[float] | None): Sigmas used in keypoint loss for OKS metric. If None then use COCO ones if possible or default ones. Defaults to ``None``.
-            area_factor (float | None): Factor by which we multiply bounding box area which is used in the keypoint loss. If not set, the default factor of `0.53` is used.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            sigmas (list[float] | None): Sigmas used in keypoint loss for OKS metric. If None then use ``COCO`` ones if possible or default ones. Defaults to ``None``.
+            area_factor (float | None): Factor by which we multiply bounding box area which is used in the keypoint loss. If not set, the default factor of ``0.53`` is used.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(

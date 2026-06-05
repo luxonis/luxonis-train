@@ -86,7 +86,7 @@ class RepPANNeck(BaseNode):
         """Initialize the RepPAN neck.
 
         Args:
-            n_heads (Literal[2, 3, 4]): Number of output heads. This should
+            n_heads (``Literal[2, 3, 4]``): Number of output heads. This should
                 usually match the downstream head. Defaults to ``3``.
             channels_list (list[int] | None): Number of channels for each
                 block. Defaults to ``[256, 128, 128, 256, 256, 512]``.
@@ -94,12 +94,12 @@ class RepPANNeck(BaseNode):
                 block. Defaults to ``[12, 12, 12, 12]``.
             depth_multiplier (float): Depth multiplier. Defaults to ``0.33``.
             width_multiplier (float): Width multiplier. Defaults to ``0.25``.
-            block (Literal["RepBlock", "CSPStackRepBlock"]): Base block used
+            block (``Literal["RepBlock", "CSPStackRepBlock"]``): Base block used
                 when building the neck. Defaults to ``"RepBlock"``.
             e (float | None): Intermediate-channel scaling factor used only
                 when ``block="CSPStackRepBlock"``. Defaults to ``None``.
             weights (str): Weights preset name. Defaults to ``"yolo"``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(weights=weights, **kwargs)

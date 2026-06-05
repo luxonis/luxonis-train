@@ -29,8 +29,8 @@ class FOMOVisualizer(BBoxVisualizer):
 
     Prediction format:
         - ``keypoints`` is a list of per-image tensors. Single-class tensors
-          use ``[..., 3]`` as ``(x, y, visibility)``; multi-class tensors use
-          ``[..., 4]`` as ``(x, y, visibility, class)``.
+          use ``[``...``, 3]`` as ``(x, y, visibility)``; multi-class tensors use
+          ``[``...``, 4]`` as ``(x, y, visibility, class)``.
 
     Target format:
         - ``target_boundingbox`` follows the bounding box target tensor

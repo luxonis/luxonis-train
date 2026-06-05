@@ -60,11 +60,11 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
 
         Args:
-            n_heads (Literal[2, 3, 4]): Number of output heads. Defaults to ``3``. Note: Should be same also on neck in most cases.
+            n_heads (``Literal[2, 3, 4]``): Number of output heads. Defaults to ``3``. Note: Should be same also on neck in most cases.
             conf_thres (float): Threshold for confidence. Defaults to ``0.25``.
             iou_thres (float): Threshold for IoU. Defaults to ``0.45``.
             max_det (int): Maximum number of detections retained after NMS. Defaults to ``300``.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(

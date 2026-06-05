@@ -18,10 +18,10 @@ def get_sigmas(
             logging. Defaults to ``None``.
 
     Returns:
-        Tensor: Sigma tensor.
+        ``Tensor``: Sigma tensor.
 
     Raises:
-        ValueError: If `sigmas` length differs from `n_keypoints`.
+        ValueError: If ``sigmas`` length differs from `n_keypoints`.
 
     """
     if sigmas is not None:
@@ -71,14 +71,14 @@ def get_center_keypoints(
     """Get center keypoints from bounding boxes.
 
     Args:
-        bboxes (Tensor): Bounding box tensor.
+        bboxes (``Tensor``): Bounding box tensor.
         height (int): Image height. Defaults to ``1`` for normalized
             coordinates.
         width (int): Image width. Defaults to ``1`` for normalized
             coordinates.
 
     Returns:
-        Tensor: Center keypoint tensor.
+        ``Tensor``: Center keypoint tensor.
 
     """
     keypoints = torch.full(
@@ -94,11 +94,11 @@ def insert_class(keypoints: Tensor, bboxes: Tensor) -> Tensor:
     """Insert class index into keypoints tensor.
 
     Args:
-        keypoints (Tensor): Keypoint tensor.
-        bboxes (Tensor): Bounding box tensor with class index.
+        keypoints (``Tensor``): Keypoint tensor.
+        bboxes (``Tensor``): Bounding box tensor with class index.
 
     Returns:
-        Tensor: Keypoint tensor with class index inserted.
+        ``Tensor``: Keypoint tensor with class index inserted.
 
     """
     classes = bboxes[:, 1]
@@ -125,16 +125,16 @@ def compute_pose_oks(
     """Compute batched Object Keypoint Similarity between keypoints.
 
     Args:
-        predictions (Tensor): Predicted keypoints with shape
+        predictions (``Tensor``): Predicted keypoints with shape
             ``[N, M2, n_keypoints, 3]``.
-        targets (Tensor): Ground-truth keypoints with shape
+        targets (``Tensor``): Ground-truth keypoints with shape
             ``[N, M1, n_keypoints, 3]``.
-        sigmas (Tensor): Sigma values for each keypoint, with shape
+        sigmas (``Tensor``): Sigma values for each keypoint, with shape
             ``[n_keypoints]``.
-        gt_bboxes (Tensor | None): Ground-truth bounding boxes in ``xyxy``
-            format with shape ``[N, M1, 4]``. Required when `pose_area` is
+        gt_bboxes (``Tensor | None``): Ground-truth bounding boxes in ``xyxy``
+            format with shape ``[N, M1, 4]``. Required when ``pose_area`` is
             ``None``. Defaults to ``None``.
-        pose_area (Tensor | None): Pose area with shape ``[N, M1, 1, 1]``.
+        pose_area (``Tensor | None``): Pose area with shape ``[N, M1, 1, 1]``.
             Defaults to ``None``.
         eps (float): Small constant for numerical stability. Defaults to
             ``1e-9``.
@@ -144,16 +144,16 @@ def compute_pose_oks(
             instead of the original definition. Defaults to ``True``.
 
     Returns:
-        Tensor: OKS values with shape ``[N, M1, M2]``.
+        ``Tensor``: OKS values with shape ``[N, M1, M2]``.
 
     Raises:
-        ValueError: If neither `pose_area` nor `gt_bboxes` is provided.
+        ValueError: If neither ``pose_area`` nor ``gt_bboxes`` is provided.
 
     """
     if pose_area is None:
         if gt_bboxes is None:
             raise ValueError(
-                "Either 'pose_area' or 'gt_bboxes' must be provided."
+                "Either '``pose_area``' or '``gt_bboxes``' must be provided."
             )
         width = gt_bboxes[:, :, 2] - gt_bboxes[:, :, 0]
         height = gt_bboxes[:, :, 3] - gt_bboxes[:, :, 1]

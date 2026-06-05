@@ -16,7 +16,7 @@ class OCRDecoder:
         """Initialize the OCR decoder.
 
         Args:
-            char_to_int (dict): Mapping from characters to integer token IDs.
+            char_to_int (dict): ``Mapping`` from characters to integer token IDs.
             ignored_tokens (list[int] | None): Token IDs to ignore when
                 decoding. Defaults to ``[0]``.
             is_remove_duplicate (bool): Whether to remove duplicate
@@ -33,7 +33,7 @@ class OCRDecoder:
         """Decode the model predictions to text.
 
         Args:
-            preds (Tensor): Tensor containing model predictions.
+            preds (``Tensor``): ``Tensor`` containing model predictions.
 
         Returns:
             list[tuple[str, float]]: Decoded text and confidence score for
@@ -98,11 +98,11 @@ class OCREncoder:
         """Encode the text targets to model targets.
 
         Args:
-            targets (Tensor): Text targets represented as character-code
+            targets (``Tensor``): Text targets represented as character-code
                 tensors.
 
         Returns:
-            Tensor: Encoded target tensor.
+            ``Tensor``: Encoded target tensor.
 
         """
         encoded_targets = []

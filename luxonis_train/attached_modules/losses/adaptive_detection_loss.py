@@ -78,13 +78,13 @@ class AdaptiveDetectionLoss(BaseLoss):
 
         Args:
             n_warmup_epochs (int): Number of epochs where ATSS assigner is used, after that we switch to TAL assigner.
-            iou_type (`IoUType`): IoU type used for bbox regression loss.
-            reduction (Literal["sum", "mean"]): Reduction type for loss.
+            iou_type (``IoUType``): IoU type used for bbox regression loss.
+            reduction (``Literal["sum", "mean"]``): Reduction type for loss.
             class_loss_weight (float): Weight of classification loss. Defaults to 1.0. For optimal results, multiply with accumulate_grad_batches.
             iou_loss_weight (float): Weight of IoU loss. Defaults to 2.5. For optimal results, multiply with accumulate_grad_batches.
             per_class_weights (list[float] | None): A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
             skip_stal (bool): If True, disables the Small-Target-Aware Label Assignment candidate expansion when the loss switches to TAL after warmup.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
@@ -297,7 +297,7 @@ class VarifocalLoss(nn.Module):
         Args:
             alpha (float): alpha parameter in focal loss, default is 0.75.
             gamma (float): gamma parameter in focal loss, default is 2.0.
-            per_class_weights (Tensor | None): A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
+            per_class_weights (``Tensor | None``): A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
 
         """
         super().__init__()

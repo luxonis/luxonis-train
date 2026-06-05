@@ -57,9 +57,9 @@ class DiceCoefficient(BaseMetric):
         Args:
             num_classes (int): Number of classes.
             include_background (bool): Whether to include the background class.
-            average (Literal["micro", "macro", "weighted", "none"]): Type of averaging.
-            input_format (Literal["one-hot", "index"]): Format of the input.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            average (``Literal["micro", "macro", "weighted", "none"]``): ``Type`` of averaging.
+            input_format (``Literal["one-hot", "index"]``): Format of the input.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)

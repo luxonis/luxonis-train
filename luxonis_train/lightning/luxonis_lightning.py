@@ -55,7 +55,7 @@ class LuxonisLightningModule(pl.LightningModule):
     The graph is saved as a dictionary of predecessors.
 
     Attributes:
-        save_dir (Path): Directory where checkpoints and logs are saved.
+        save_dir (``Path``): Directory where checkpoints and logs are saved.
         nodes (Nodes): Model nodes keyed by unique node name.
         dataset_metadata (DatasetMetadata): Metadata of the dataset.
         outputs (list[str]): Names of output nodes.
@@ -83,13 +83,13 @@ class LuxonisLightningModule(pl.LightningModule):
 
         Args:
             cfg (Config): Config object.
-            save_dir (PathType): Directory where checkpoints are saved.
-            input_shapes (dict[str, Size]): Input shapes keyed by input name.
+            save_dir (`PathType <luxonis_ml.typing.PathType>`): Directory where checkpoints are saved.
+            input_shapes (``dict[str, Size]``): Input shapes keyed by input name.
             dataset_metadata (DatasetMetadata | None): Dataset metadata.
             _core (luxonis_train.core.LuxonisModel | None): Optional core
                 model reference.
-            **kwargs (Any): Additional arguments passed to the
-                `LightningModule` constructor.
+            **kwargs (``Any``): Additional arguments passed to the
+                ``LightningModule`` constructor.
 
         """
         super().__init__(**kwargs)
@@ -221,9 +221,9 @@ class LuxonisLightningModule(pl.LightningModule):
         anymore, they are removed from the memory.
 
         Args:
-            inputs (dict[str, Tensor]): Input tensors keyed by input name.
+            inputs (``dict[str, Tensor]``): Input tensors keyed by input name.
             labels (Labels | None): Labels dictionary. Defaults to ``None``.
-            images (Tensor | None): Canvas tensor for visualizers. Defaults to
+            images (``Tensor | None``): Canvas tensor for visualizers. Defaults to
                 ``None``.
             compute_loss (bool): Whether to compute losses. Defaults to
                 ``True``.
@@ -307,11 +307,11 @@ class LuxonisLightningModule(pl.LightningModule):
         """Export the model to ONNX format.
 
         Args:
-            save_path (PathType): Path where the exported model will be saved.
-            **kwargs (Any): Additional arguments for `torch.onnx.export`.
+            save_path (`PathType <luxonis_ml.typing.PathType>`): ``Path`` where the exported model will be saved.
+            **kwargs (``Any``): Additional arguments for `torch.onnx.export`.
 
         Returns:
-            Path: Path to the exported model.
+            ``Path``: ``Path`` to the exported model.
 
         """
         device_before = self.device
@@ -467,24 +467,24 @@ class LuxonisLightningModule(pl.LightningModule):
     @override
     def setup(self, stage: str) -> None:
         """Temporarily make validation run after the first training
-        epoch if the config item `run_validation_after_first_epoch` is
+        epoch if the config item ``run_validation_after_first_epoch`` is
         set.
 
         Lightning decides whether validation should run at epoch end
-        from the public trainer attribute `check_val_every_n_epoch`.
-        When `trainer.run_validation_after_first_epoch` is enabled, we
+        from the public trainer attribute ``check_val_every_n_epoch``.
+        When ``trainer.run_validation_after_first_epoch`` is enabled, we
         want to keep using Lightning's normal validation path, but also
         ensure that epoch 1 gets validated even if the configured
-        `validation_interval` normally skips it.
+        ``validation_interval`` normally skips it.
 
-        `trainer.check_val_every_n_epoch` is temporarily overridden to
-        `1` before fitting starts. After that first real validation
+        ``trainer.check_val_every_n_epoch`` is temporarily overridden to
+        ``1`` before fitting starts. After that first real validation
         epoch completes, `on_validation_epoch_end()` restores the
         original interval so the rest of training follows the configured
         cadence.
 
         This override is intentionally applied only when
-        `run_validation_after_first_epoch=True`
+        ``run_validation_after_first_epoch=True``
 
         """
         if getattr(stage, "value", stage) != "fit":
@@ -580,7 +580,7 @@ class LuxonisLightningModule(pl.LightningModule):
         found in the model state dict or in the checkpoint.
 
         Args:
-            ckpt (PathType | dict[str, Any] | None): Either a path to or a
+            ckpt (``PathType | dict[str, Any] | None``): Either a path to or a
                 loaded checkpoint. If ``None``, no checkpoint will be loaded.
 
         Raises:

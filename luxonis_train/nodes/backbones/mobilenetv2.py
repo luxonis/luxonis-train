@@ -59,8 +59,8 @@ class MobileNetV2(BaseNode):
 
         Args:
             out_indices (list[int] | None): Indices of the output layers. Defaults to [3, 6, 13, 18].
-            weights (Literal["download", "none"] | None): Whether to download pretrained weights. Defaults to None.
-            **kwargs (Any): Keyword arguments forwarded to the parent class.
+            weights (``Literal["download", "none"] | None``): Whether to download pretrained weights. Defaults to None.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
         """
         super().__init__(**kwargs)
