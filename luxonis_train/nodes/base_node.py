@@ -270,13 +270,13 @@ class BaseNode(nn.Module, VariantBase, register=False, registry=NODES):
 
         Example::
 
-            >>> input_shapes = [{"features": [``Size``((64, 128, 128)), ``Size``((3, 224, 224))]}]
+            >>> input_shapes = [{"features": [Size((64, 128, 128)), Size((3, 224, 224))]}]
             >>> attach_index = -1
-            >>> in_sizes = ``Size``((3, 224, 224))
+            >>> in_sizes = Size((3, 224, 224))
 
-            >>> input_shapes = [{"features": [``Size``((64, 128, 128)), ``Size``((3, 224, 224))]}]
+            >>> input_shapes = [{"features": [Size((64, 128, 128)), Size((3, 224, 224))]}]
             >>> attach_index = "all"
-            >>> in_sizes = [``Size``((64, 128, 128)), ``Size``((3, 224, 224))]
+            >>> in_sizes = [Size((64, 128, 128)), Size((3, 224, 224))]
 
         Raises:
             RuntimeError: If the ``input_shapes`` are too complicated for the default implementation.

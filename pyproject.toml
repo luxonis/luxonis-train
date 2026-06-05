@@ -127,7 +127,7 @@ unfixable = ["B905"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN201"]
-"scripts/*" = ["INP001"]
+"scripts/*" = ["INP001", "T201"]
 "__main__.py" = ["ANN201", "T201", "PT028"]
 "__init__.py" = ["F403"]
 

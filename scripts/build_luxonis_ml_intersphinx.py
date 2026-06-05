@@ -10,7 +10,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "docs" / "_intersphinx" / "luxonis_ml"
 
@@ -27,7 +26,9 @@ def _find_luxonis_ml_package() -> Path:
 
 
 def build_inventory(output_dir: Path) -> int:
-    """Build ``objects.inv`` from the installed ``luxonis_ml`` package."""
+    """Build ``objects.inv`` from the installed ``luxonis_ml``
+    package.
+    """
     try:
         from pydoctor.driver import main as pydoctor_main
     except ImportError as exc:

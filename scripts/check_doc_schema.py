@@ -11,8 +11,6 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
-from rich import print
-
 ROOT = Path(__file__).resolve().parents[1]
 NODE_ROOT = ROOT / "luxonis_train" / "nodes"
 ATTACHED_ROOT = ROOT / "luxonis_train" / "attached_modules"

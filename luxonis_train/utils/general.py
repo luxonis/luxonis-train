@@ -263,12 +263,12 @@ def get_attribute_check_none(obj: object, attribute: str) -> Any:
 
     Examples:
         >>> class Person:
-        ``...     def __init__(self, age``: int | None = None):
-        ``...``         self._age = age
-        ``...``
-        ``...``     @property
-        ``...``     def age(self):
-        ``...``         return get_attribute_check_none(self, "age")
+        ...     def __init__(self, age: int | None = None):
+        ...         self._age = age
+        ...
+        ...     @property
+        ...     def age(self):
+        ...         return get_attribute_check_none(self, "age")
 
         >>> mike = Person(20)
         >>> print(mike.age)
@@ -350,7 +350,7 @@ def instances_from_batch(
         >>> bboxes = torch.tensor([[0, 1], [0, 2], [1, 3]])
         >>> keypoints = torch.tensor([[10], [20], [30]])
         >>> for bbox, kpt in instances_from_batch(bboxes, keypoints):
-        ``...``     print(bbox.tolist(), kpt.tolist())
+        ...     print(bbox.tolist(), kpt.tolist())
         [[1], [2]] [[10], [20]]
         [[3]] [[30]]
 
