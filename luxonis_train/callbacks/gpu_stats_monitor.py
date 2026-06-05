@@ -67,7 +67,7 @@ class GPUStatsMonitor(pl.Callback):
         Args:
             memory_utilization (bool): Set to ``True`` to monitor used, free and percentage of memory utilization at the start and end of each step. Defaults to ``True``.
             gpu_utilization (bool): Set to ``True`` to monitor percentage of GPU utilization at the start and end of each step. Defaults to ``True``.
-            intra_step_time (bool): Set to ``True`` to monitor the time of each step. Defaults to {False}.
+            intra_step_time (bool): Set to ``True`` to monitor the time of each step. Defaults to ``False``.
             inter_step_time (bool): Set to ``True`` to monitor the time between the end of one step and the start of the next step. Defaults to ``False``.
             fan_speed (bool): Set to ``True`` to monitor percentage of fan speed. Defaults to ``False``.
             temperature (bool): Set to ``True`` to monitor the memory and gpu temperature in degree Celsius. Defaults to ``False``.

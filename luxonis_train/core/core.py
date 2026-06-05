@@ -704,8 +704,8 @@ class LuxonisModel:
     def finalize_run(self, status: str = "success") -> None:
         """Upload run metadata and finalize the tracker.
 
-        @type status: str @param status: Final run status passed to the
-        tracker.
+        Args:
+            status (str): Final run status passed to the tracker.
 
         """
         self._upload_run_metadata()

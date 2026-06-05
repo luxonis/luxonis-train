@@ -203,6 +203,9 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
             proto (``Tensor``): Prototype masks. Shape: (B, 32, H, W).
             pred_masks (``Tensor``): Predicted mask coefficients. Shape: (B, N_anchor, 32).
 
+        Returns:
+            Tensor: Scalar segmentation loss normalized by the number of positive anchors.
+
         """
         _, _, h, w = proto.shape
         total_loss = 0

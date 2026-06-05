@@ -133,7 +133,9 @@ class SegmentationVisualizer(BaseVisualizer):
                 targets are unavailable.
 
         Returns:
-            ``tuple[Tensor, Tensor]``: A tuple of the label and prediction visualizations.
+            ``Tensor | tuple[Tensor, Tensor]``: Prediction visualization only when
+                ``target`` is ``None``; otherwise a tuple of target and prediction
+                visualizations.
 
         """
         colors = self._adjust_colors(

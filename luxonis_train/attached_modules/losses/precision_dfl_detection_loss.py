@@ -188,7 +188,7 @@ class PrecisionDFLDetectionLoss(BaseLoss):
                 where N is the number of anchors.
 
         Returns:
-            ``Tensor``: Return value.
+            ``Tensor``: Decoded bounding boxes with shape [batch_size, N, 4] in xyxy format.
 
         """
         if self.node.dfl:

@@ -24,7 +24,7 @@ class DDRNetSegmentationHead(BaseHead):
 
     Provenance:
         - Source: SuperGradients DDRNet implementation
-        - License: Apache License, Version 2.0
+        - License: `Apache License, Version 2.0 <https://github.com/Deci-AI/super-gradients/blob/master/LICENSE.md>`_
         - Implementation notes: Applies batch normalization,
           convolutional projection, and configurable upsampling to
           segmentation logits.
@@ -35,6 +35,11 @@ class DDRNetSegmentationHead(BaseHead):
             - Aliases: None
             - Parameters:
                 - No predefined variants.
+
+    See Also:
+        `Adapted from <https://github.com/Deci-AI/super-gradients/blob/master/src/super_gradients/training/models/segmentation_models/ddrnet.py>`_
+        `Original code <https://github.com/ydhongHIT/DDRNet>`_
+        `Paper <https://arxiv.org/pdf/2101.06085.pdf>`_
 
     """
 
@@ -65,14 +70,6 @@ class DDRNetSegmentationHead(BaseHead):
             inter_channels (int): Width of internal conv. Must be a multiple of scale_factor^2 when inter_mode is pixel_shuffle. Defaults to 64.
             inter_mode (``Literal["nearest", "linear", "bilinear", "bicubic", "trilinear", "area", "pixel_shuffle"]``): Upsampling method. If pixel_shuffle is set, nn.PixelShuffle is used for scaling. Defaults to "bilinear".
             **kwargs (``Any``): Keyword arguments forwarded to the parent class.
-
-        Notes:
-            License: `Apache License, Version 2.0 <https://github.com/Deci-AI/super- gradients/blob/master/LICENSE.md>`_
-
-        See Also:
-            `Adapted from <https://github.com/Deci-AI/super-gradients/blob/master/src /super_gradients/training/models/segmentation_models/ddrnet.py>`_
-            `Original code <https://github.com/ydhongHIT/DDRNet>`_
-            `Paper <https://arxiv.org/pdf/2101.06085.pdf>`_
 
         """
         super().__init__(**kwargs)
