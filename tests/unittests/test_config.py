@@ -13,6 +13,18 @@ from luxonis_train.config.config import (
 )
 
 
+@pytest.mark.parametrize(
+    "path",
+    Path("configs").glob("*.yaml"),
+)
+def test_config_load(path: Path):
+    cfg = Config.get_config(path)
+
+    assert cfg.model is not None
+    assert cfg.trainer is not None
+    assert cfg.loader is not None
+
+
 def test_smart_cfg_auto_populate(coco_dataset: LuxonisDataset):
     cfg = {
         "model": {
