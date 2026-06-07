@@ -21,6 +21,7 @@ List of all supported callbacks.
 - [`UploadCheckpoint`](#uploadcheckpoint)
 - [`GradCamCallback`](#gradcamcallback)
 - [`EMACallback`](#emacallback)
+- [`AIMETCallback`](#aimetcallback)
 - [`TrainingProgressCallback`](#trainingprogresscallback)
 
 ## `PytorchLightning` Callbacks
@@ -191,6 +192,8 @@ A callback that maintains an exponential moving average (EMA) of the model's par
 Callback to perform AIMET quantization at the end of the training.
 
 This callback runs AIMET post-training static quantization using the best checkpoint (by default based on the main metric) at the end of training.
+
+Quantization options are configured in the `exporter.aimet` section of the config file. Advanced PTQ techniques such as Adaround can be time-intensive, potentially taking from 40 minutes to several hours depending on dataset and model size. See the [config documentation](../../configs/README.md) for available AIMET configuration options.
 
 **Parameters:**
 
