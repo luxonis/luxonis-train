@@ -224,7 +224,10 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
         return self.dataset.get_categorical_encodings()
 
     @override
-    def augment_test_image(self, img: dict[str, Tensor]) -> Tensor:
+    def augment_test_image(self, img: dict[str, Tensor] | Tensor) -> Tensor:
+        if isinstance(img, Tensor):
+            img = {self.image_source: img}
+
         if self.loader.augmentations is None:
             return img[self.image_source]
         img_arr = {k: v.numpy() for k, v in img.items()}
