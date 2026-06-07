@@ -762,34 +762,6 @@ class AIMETConfig(BaseModelExtraForbid):
         )
     )
 
-    @model_validator(mode="before")
-    @classmethod
-    def validate_active(cls, data: Params) -> Params:
-        if not data.get("active", False):
-            return data
-        for required_field in [
-            "fold_batch_norms",
-            "cross_layer_equalization",
-            "batch_norm_reestimation",
-            "sequential_mse",
-        ]:
-            if required_field not in data:
-                raise ValueError(
-                    f"AIMET config is active but missing required field '{required_field}'."
-                )
-        adaround = data.get("adaround", {})
-        if not isinstance(adaround, dict):
-            raise TypeError(
-                f"Invalid type for 'adaround': {type(adaround)}. "
-                "Expected a dict."
-            )
-        if "active" not in adaround:
-            raise ValueError(
-                "AIMET config is active but missing required field "
-                "'adaround.active'."
-            )
-        return data
-
     @field_validator("config", mode="before")
     @classmethod
     def validate_config(cls, value: ParamValue) -> Any:
