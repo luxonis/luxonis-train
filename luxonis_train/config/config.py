@@ -852,7 +852,7 @@ class Config(LuxonisConfig):
                 "Expected a boolean."
             )
 
-        with suppress(ModuleNotFoundError):
+        with suppress(ImportError):
             from luxonis_train.utils import setup_logging
 
             setup_logging(use_rich=use_rich)
