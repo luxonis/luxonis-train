@@ -1,19 +1,3 @@
-"""Registry objects and helpers for Luxonis Train components.
-
-Attributes:
-    CALLBACKS (Registry): Registered Lightning callback classes.
-    LOADERS (Registry): Registered loader classes.
-    LOSSES (Registry): Registered loss classes.
-    METRICS (Registry): Registered metric classes.
-    MODELS (Registry): Registered model classes.
-    NODES (Registry): Registered node classes.
-    OPTIMIZERS (Registry): Registered optimizer classes.
-    SCHEDULERS (Registry): Registered scheduler classes.
-    STRATEGIES (Registry): Registered strategy classes.
-    VISUALIZERS (Registry): Registered visualizer classes.
-
-"""
-
 from typing import TYPE_CHECKING, TypeVar
 
 from luxonis_ml.utils import Registry
