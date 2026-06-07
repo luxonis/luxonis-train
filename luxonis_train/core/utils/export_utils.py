@@ -210,7 +210,7 @@ def hubai_export(
             f"Creating new variant '{variant_name}' under existing model."
         )
     else:
-        new_model = client.models.create_model(model_name, silent=True)
+        new_model = client.models.create_model(model_name)
         base_kwargs["model_id"] = str(new_model.id)
         created_new_model = True
         logger.info(
