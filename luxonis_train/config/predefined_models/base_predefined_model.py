@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Literal
+from typing import Final, Literal
 
 from loguru import logger
 from luxonis_ml.typing import Kwargs, Params, check_type
@@ -13,8 +13,12 @@ from luxonis_train.config import (
     NodeConfig,
 )
 from luxonis_train.config.config import FreezingConfig
-from luxonis_train.registry import METRICS, MODELS, NODES
+from luxonis_train.registry import MODELS
 from luxonis_train.variants import VariantBase
+
+PER_CLASS_OVERRIDES: Final[dict[str, dict[str, str]]] = {
+    "MeanAveragePrecision": {"per_class_metrics": "class_metrics"},
+}
 
 
 class BasePredefinedModel(VariantBase, registry=MODELS, register=False):
@@ -218,14 +222,12 @@ class SimplePredefinedModel(BasePredefinedModel):
                 for metric in self._metrics
             ]
 
-        task = NODES.get(self._head).task
         metrics = []
         applied_per_class_override = False
 
         for metric in self._metrics:
             metric_params = dict(self._metrics_params)
-            metric_cls = METRICS.get(metric)
-            aliases = metric_cls.get_predefined_model_params_aliases(task)
+            aliases = PER_CLASS_OVERRIDES.get(metric, {})
             param_name = aliases.get("per_class_metrics")
             if param_name is not None:
                 metric_params[param_name] = self._per_class_metrics
