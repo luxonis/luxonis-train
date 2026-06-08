@@ -577,6 +577,9 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             ),
         ]
 
+        if self.cfg.exporter.aimet.active:
+            callbacks.append(AIMETCallback())
+
         if self.main_metric is not None:
             node_name, metric_name = self.main_metric
             formatted_node = self.formatted_name(node_name)
@@ -697,76 +700,6 @@ def build_training_strategy(
             pl_module=pl_module,
         )
     return None
-
-
-def build_callbacks(
-    cfg: Config,
-    main_metric: tuple[str, str] | None,
-    save_dir: Path,
-    nodes: Nodes,
-) -> list[pl.Callback]:
-    """Configure Pytorch Lightning callbacks."""
-    model_name = cfg.model.name
-
-    callbacks: list[pl.Callback] = [
-        TrainingManager(),
-        LuxonisModelSummary(max_depth=2, rich=cfg.rich_logging),
-    ]
-
-    for callback in cfg.trainer.callbacks:
-        if callback.active:
-            callbacks.append(
-                from_registry(CALLBACKS, callback.name, **callback.params)
-            )
-        else:
-            logger.info(f"Callback '{callback.name}' is inactive.")
-
-    if cfg.trainer.accumulate_grad_batches is not None:
-        if not any(
-            isinstance(cb, GradientAccumulationScheduler) for cb in callbacks
-        ):
-            gas = GradientAccumulationScheduler(
-                scheduling={0: cfg.trainer.accumulate_grad_batches}
-            )
-            callbacks.append(gas)
-        else:
-            logger.warning(
-                "'GradientAccumulationScheduler' is already present "
-                "in the callbacks list. The `accumulate_grad_batches` "
-                "parameter in the config will be ignored."
-            )
-    if cfg.exporter.aimet.active:
-        callbacks.append(AIMETCallback())
-
-    if main_metric is not None:
-        node_name, metric_name = main_metric
-        formatted_node = nodes.formatted_name(node_name)
-        metric_path = f"{formatted_node}/{metric_name}"
-        filename_path = metric_path.replace("/", "_")
-        callbacks.append(
-            ModelCheckpoint(
-                dirpath=save_dir / "best_val_metric",
-                filename=f"{model_name}_{filename_path}="
-                f"{{val/metric/{metric_path}:.4f}}"
-                f"_loss={{val/loss:.4f}}_{{epoch:02d}}",
-                monitor=f"val/metric/{metric_path}",
-                auto_insert_metric_name=False,
-                save_top_k=cfg.trainer.save_top_k,
-                mode="max",
-            )
-        )
-
-    callbacks.append(
-        ModelCheckpoint(
-            dirpath=save_dir / "min_val_loss",
-            filename=f"{model_name}_loss={{val/loss:.4f}}_{{epoch:02d}}",
-            monitor="val/loss",
-            auto_insert_metric_name=False,
-            save_top_k=cfg.trainer.save_top_k,
-            mode="min",
-        )
-    )
-    return callbacks
 
 
 def postprocess_metrics(
@@ -1060,9 +993,12 @@ def build_optimizer_scheduler(
 
     if cfg_scheduler.name == "CosineAnnealingLR":
         if "T_max" not in cfg_scheduler.params:
-            cfg_scheduler.params["T_max"] = cfg.trainer.epochs
+            cfg_scheduler = SchedulerConfig(
+                name=cfg_scheduler.name,
+                params={**cfg_scheduler.params, "T_max": cfg.trainer.epochs},
+            )
             logger.warning(
-                "`T_max` was not set for 'CosineAnnealingLR'"
+                "`T_max` was not set for 'CosineAnnealingLR' "
                 "Automatically setting `T_max` to number of epochs."
             )
         elif cfg_scheduler.params["T_max"] != cfg.trainer.epochs:
