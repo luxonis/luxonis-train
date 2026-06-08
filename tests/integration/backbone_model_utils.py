@@ -3,13 +3,13 @@ from luxonis_ml.typing import Params
 from luxonis_train.nodes.backbones import __all__ as BACKBONES
 from tests.conftest import LuxonisTestDataset, LuxonisTestDatasets
 
-BACKBONES = [
+BACKBONES: list[str] = [
     backbone
     for backbone in BACKBONES
     if backbone not in {"PPLCNetV3", "GhostFaceNet", "RecSubNet"}
 ]
 
-PREDEFINED_MODELS = [
+PREDEFINED_MODELS: list[tuple[str, Params | None]] = [
     ("anomaly_detection_model", None),
     ("embeddings_model", None),
     ("fomo_light_model", None),

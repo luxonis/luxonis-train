@@ -463,6 +463,14 @@ def pytest_configure(config: Config):
         "markers", "predefined: mark test as a predefined model test"
     )
     config.addinivalue_line(
+        "markers",
+        "predefined_light: mark test as a light predefined model test",
+    )
+    config.addinivalue_line(
+        "markers",
+        "predefined_heavy: mark test as a heavy predefined model test",
+    )
+    config.addinivalue_line(
         "markers", "combinations: mark test as a combinations test"
     )
     config.addinivalue_line(
