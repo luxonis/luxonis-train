@@ -126,10 +126,15 @@ def add_variant_aliases(
             "small": ["s"],
             "medium": ["m"],
             "large": ["l"],
+            "t": ["tiny"],
+            "n": ["nano"],
+            "s": ["small"],
+            "m": ["medium"],
+            "l": ["large"],
         }
-    else:
-        for alias, names in aliases.items():
-            for name in names:
+    for name, als in aliases.items():
+        if name in variants:
+            for alias in als:
                 variants[alias] = variants[name]
 
     return variants

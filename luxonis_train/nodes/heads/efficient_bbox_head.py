@@ -150,7 +150,7 @@ class EfficientBBoxHead(BaseDetectionHead):
 
     @override
     def get_weights_url(self) -> str:
-        return "{github}/efficientbbox_head_{variant}_coco.ckpt"
+        return f"{{github}}/efficientbbox_head_{self.variant[0]}_coco.ckpt"
 
     @property
     @override
