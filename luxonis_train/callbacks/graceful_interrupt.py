@@ -18,6 +18,7 @@ class GracefulInterruptCallback(pl.Callback):
     Behavior:
      - First interrupt: save checkpoint, stop training, skip all train-end callbacks.
      - Second interrupt: immediate exit, skip saving resume.ckpt.
+
     """
 
     def __init__(

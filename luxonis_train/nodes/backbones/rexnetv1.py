@@ -7,6 +7,34 @@ from luxonis_train.utils import make_divisible
 
 
 class ReXNetV1_lite(BaseNode):
+    """Lite ReXNetV1 backbone for lightweight convolutional features.
+
+    ReXNetV1 expands channel dimensions across the network to improve
+    representational rank while keeping the model efficient.
+
+    Metadata:
+        - Node type: backbone
+        - Registry name: ``ReXNetV1_lite``
+        - Task: None
+        - Attach index: ``-1``
+        - Inputs: ``features`` tensor
+        - Outputs: ``features`` list of tensors
+
+    Provenance:
+        - Source: ``clovaai/rexnet``
+        - License: MIT
+        - Implementation notes: Implements the lite ReXNetV1 block schedule
+          locally and returns configured intermediate outputs.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
+    """
+
     def __init__(
         self,
         fix_head_stem: bool = False,
@@ -36,26 +64,24 @@ class ReXNetV1_lite(BaseNode):
         ReXNet achieves state-of-the-art performance among lightweight models on ImageNet
         classification and transfers well to tasks like object detection and fine-grained classification.
 
-        Source: U{https://github.com/clovaai/rexnet}
+        Source: `https://github.com/clovaai/rexnet <https://github.com/clovaai/rexnet>`_
 
-        @license: U{MIT
-            <https://github.com/clovaai/rexnet/blob/master/LICENSE>}
-        @copyright: 2021-present NAVER Corp.
-        @see U{Rethinking Channel Dimensions for Efficient Model Design <https://arxiv.org/abs/2007.00992>}
-        @type fix_head_stem: bool
-        @param fix_head_stem: Whether to multiply head stem. Defaults to False.
-        @type divisible_value: int
-        @param divisible_value: Divisor used. Defaults to 8.
-        @type input_ch: int
-        @param input_ch: Starting channel dimension. Defaults to 16.
-        @type final_ch: int
-        @param final_ch: Final channel dimension. Defaults to 164.
-        @type multiplier: float
-        @param multiplier: Channel dimension multiplier. Defaults to 1.0.
-        @type kernel_sizes: int | list[int]
-        @param kernel_sizes: Kernel size for each block. Defaults to 3.
-        @param out_indices: list[int] | None
-        @param out_indices: Indices of the output layers. Defaults to [1, 4, 10, 17].
+        Args:
+            fix_head_stem (bool): Whether to multiply head stem. Defaults to False.
+            divisible_value (int): Divisor used. Defaults to 8.
+            input_ch (int): Starting channel dimension. Defaults to 16.
+            final_ch (int): Final channel dimension. Defaults to 164.
+            multiplier (float): Channel dimension multiplier. Defaults to 1.0.
+            kernel_sizes (int | list[int]): Kernel size for each block. Defaults to 3.
+            out_indices (list[int] | None): Indices of the output layers. Defaults to [1, 4, 10, 17].
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
+        Notes:
+            License: `MIT <https://github.com/clovaai/rexnet/blob/master/LICENSE>`_. Copyright: 2021-present NAVER Corp.
+
+        See Also:
+            `Rethinking Channel Dimensions for Efficient Model Design <https://arxiv.org/abs/2007.00992>`_
+
         """
         super().__init__(**kwargs)
 

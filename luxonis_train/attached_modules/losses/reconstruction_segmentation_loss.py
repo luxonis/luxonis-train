@@ -13,6 +13,38 @@ from .softmax_focal_loss import SoftmaxFocalLoss
 
 
 class ReconstructionSegmentationLoss(BaseLoss):
+    """Anomaly reconstruction and segmentation loss.
+
+    Metadata:
+        - Module type: loss
+        - Registry name: ``ReconstructionSegmentationLoss``
+        - Task: ANOMALY_DETECTION
+        - Attached node types: ``DiscSubNetHead``
+        - Inputs: ``predictions``, ``reconstruction``,
+          ``target_original_segmentation``, ``target_segmentation``
+        - Outputs: scalar total loss and ``l2_loss``/``ssim_loss``/
+          ``focal_loss`` sub-losses
+
+    Prediction format:
+        ``predictions`` contains anomaly segmentation logits and
+        ``reconstruction`` contains reconstructed input imagery.
+
+    Target format:
+        ``target_original_segmentation`` contains the reconstruction target, and
+        ``target_segmentation`` contains segmentation labels for focal loss.
+
+    Formula:
+        Computes ``MSE(reconstruction, target_original_segmentation) + SSIM
+        loss + SoftmaxFocalLoss(predictions, target_segmentation)``.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Uses a local SSIM implementation and the
+          attached ``SoftmaxFocalLoss`` for segmentation supervision.
+
+    """
+
     node: DiscSubNetHead
     supported_tasks = [Tasks.ANOMALY_DETECTION]
 
@@ -24,24 +56,19 @@ class ReconstructionSegmentationLoss(BaseLoss):
         smooth: float = 1e-5,
         **kwargs,
     ):
-        """ReconstructionSegmentationLoss implements a combined loss
-        function for reconstruction and segmentation tasks.
+        """Combine reconstruction and segmentation losses.
 
         It combines L2 loss for reconstruction, SSIM loss, and Focal
         loss for segmentation.
 
-        @type alpha: float
-        @param alpha: Weighting factor for the rare class in the focal
-            loss. Defaults to C{1}.
-        @type gamma: float
-        @param gamma: Focusing parameter for the focal loss. Defaults to
-            C{2.0}.
-        @type smooth: float
-        @param smooth: Label smoothing factor for the focal loss.
-            Defaults to C{1e-5}.
-        @type reduction: Literal["none", "mean", "sum"]
-        @param reduction: Reduction type for the focal loss. Defaults to
-            C{"mean"}.
+        Args:
+            alpha (float): Weighting factor for the rare class in the focal loss. Defaults to ``1``.
+            gamma (float): Focusing parameter for the focal loss. Defaults to ``2.0``.
+            smooth (float): Label smoothing factor for the focal loss. Defaults to ``1e-5``.
+            reduction (``Literal["none", "mean", "sum"]``): Reduction type for the focal loss. Defaults
+                to ``"mean"``.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.loss_l2 = nn.MSELoss()

@@ -17,13 +17,13 @@ class PANUpBlockBase(ABC, nn.Module):
     def __init__(
         self, in_channels: int, out_channels: int, encode_block: nn.Module
     ):
-        """
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type encode_block: nn.Module
-        @param encode_block: Encode block that is used.
+        """Initialize the base upsampling block.
+
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            encode_block (``nn.Module``): Encode block that is used.
+
         """
         super().__init__()
 
@@ -60,15 +60,12 @@ class RepUpBlock(PANUpBlockBase):
     ):
         """RepPANNeck up block for smaller networks that uses RepBlock.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input
-            which is used in concat.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of RepVGGBlock repeats.
+        Args:
+            in_channels (int): Number of input channels.
+            in_channels_next (int): Number of input channels of next input which is used in concat.
+            out_channels (int): Number of output channels.
+            n_repeats (int): Number of RepVGGBlock repeats.
+
         """
         super().__init__(
             in_channels=in_channels,
@@ -94,17 +91,13 @@ class CSPUpBlock(PANUpBlockBase):
         """RepPANNeck up block for larger networks that uses
         CSPStackRepBlock.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input
-            which is used in concat.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of RepVGGBlock repeats.
-        @type e: float
-        @param e: Factor that controls number of intermediate channels.
+        Args:
+            in_channels (int): Number of input channels.
+            in_channels_next (int): Number of input channels of next input which is used in concat.
+            out_channels (int): Number of output channels.
+            n_repeats (int): Number of RepVGGBlock repeats.
+            e (float): Factor that controls number of intermediate channels.
+
         """
         super().__init__(
             in_channels=in_channels,
@@ -127,19 +120,13 @@ class PANDownBlockBase(ABC, nn.Module):
         downsample_out_channels: int,
         encode_block: nn.Module,
     ):
-        """
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type downsample_out_channels: int
-        @param downsample_out_channels: Number of output channels after
-            downsample.
-        @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input
-            which is used in concat.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of RepVGGBlock repeats.
+        """Initialize the base downsampling block.
+
+        Args:
+            in_channels (int): Number of input channels.
+            downsample_out_channels (int): Number of output channels after downsample.
+            encode_block (``nn.Module``): Encode block that is used after concatenation.
+
         """
         super().__init__()
 
@@ -170,18 +157,13 @@ class RepDownBlock(PANDownBlockBase):
         """RepPANNeck down block for smaller networks that uses
         RepBlock.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type downsample_out_channels: int
-        @param downsample_out_channels: Number of output channels after
-            downsample.
-        @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input
-            which is used in concat.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of RepVGGBlock repeats.
+        Args:
+            in_channels (int): Number of input channels.
+            downsample_out_channels (int): Number of output channels after downsample.
+            in_channels_next (int): Number of input channels of next input which is used in concat.
+            out_channels (int): Number of output channels.
+            n_repeats (int): Number of RepVGGBlock repeats.
+
         """
         super().__init__(
             in_channels=in_channels,
@@ -208,20 +190,14 @@ class CSPDownBlock(PANDownBlockBase):
         """RepPANNeck up block for larger networks that uses
         CSPStackRepBlock.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type downsample_out_channels: int
-        @param downsample_out_channels: Number of output channels after
-            downsample.
-        @type in_channels_next: int
-        @param in_channels_next: Number of input channels of next input
-            which is used in concat.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type n_repeats: int
-        @param n_repeats: Number of RepVGGBlock repeats.
-        @type e: float
-        @param e: Factor that controls number of intermediate channels.
+        Args:
+            in_channels (int): Number of input channels.
+            downsample_out_channels (int): Number of output channels after downsample.
+            in_channels_next (int): Number of input channels of next input which is used in concat.
+            out_channels (int): Number of output channels.
+            n_repeats (int): Number of RepVGGBlock repeats.
+            e (float): Factor that controls number of intermediate channels.
+
         """
         super().__init__(
             in_channels=in_channels,

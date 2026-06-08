@@ -12,16 +12,30 @@ from luxonis_train.nodes.necks.svtr_neck.blocks import SVTRBlock
 class SVTRNeck(BaseNode):
     """SVTR neck.
 
-    @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/
-        blob/main/ppocr/modeling/necks/rnn.py>}
-    @see: U{Original code <https://github.com/PaddlePaddle/PaddleOCR>}
-    @license: U{Apache License, Version 2.0
-        <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE >}
-    @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/
-        blob/main/ppocr/modeling/necks/rnn.py>}
-    @see: U{Original code <https://github.com/PaddlePaddle/PaddleOCR>}
-    @license: U{Apache License, Version 2.0
-        <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE >}
+    SVTRNeck applies convolutional projection and SVTR transformer blocks
+    for OCR-style feature refinement.
+
+    Metadata:
+        - Node type: neck
+        - Registry name: ``SVTRNeck``
+        - Task: None
+        - Attach index: ``-1``
+        - Inputs: ``features`` tensor
+        - Outputs: ``features`` tensor
+
+    Provenance:
+        - Source: ``PaddlePaddle/PaddleOCR``
+        - License: Apache License, Version 2.0
+        - Implementation notes: Local implementation adapted from the
+          PaddleOCR SVTR neck components.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
     """
 
     in_channels: int

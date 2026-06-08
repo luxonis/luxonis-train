@@ -13,15 +13,43 @@ from luxonis_train.nodes.blocks.utils import forward_gather
 class RepVGG(BaseNode):
     """RepVGG backbone.
 
-    Variants
-    ========
+    RepVGG is a VGG-style convolutional backbone with simple staged feature
+    extraction and configurable stage widths.
 
-    The variant determines the number of blocks in each stage and the width multiplier.
+    Metadata:
+        - Node type: backbone
+        - Registry name: ``RepVGG``
+        - Task: None
+        - Attach index: ``-1``
+        - Inputs: ``features`` tensor
+        - Outputs: ``features`` list of tensors
 
-    The following variants are available:
-        - "A0" (default): n_blocks=(2, 4, 14, 1), width_multiplier=(0.75, 0.75, 0.75, 2.5)
-        - "A1": n_blocks=(2, 4, 14, 1), width_multiplier=(1, 1, 1, 2.5)
-        - "A2": n_blocks=(2, 4, 14, 1), width_multiplier=(1.5, 1.5, 1.5, 2.75)
+    Provenance:
+        - Source: ``DingXiaoH/RepVGG``
+        - License: MIT
+        - Implementation notes: Local staged RepVGG-style implementation
+          returning gathered stage outputs.
+
+    Variants:
+        - ``"A0"``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - ``n_blocks``: ``(2, 4, 14, 1)``
+                - ``width_multiplier``: ``(0.75, 0.75, 0.75, 2.5)``
+        - ``"A1"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``n_blocks``: ``(2, 4, 14, 1)``
+                - ``width_multiplier``: ``(1, 1, 1, 2.5)``
+        - ``"A2"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``n_blocks``: ``(2, 4, 14, 1)``
+                - ``width_multiplier``: ``(1.5, 1.5, 1.5, 2.75)``
+
     """
 
     in_channels: int
@@ -48,23 +76,21 @@ class RepVGG(BaseNode):
             - 3x3 convolutions and ReLU activations.
             - No automatic search, manual refinement or compound scaling.
 
-        @license: U{MIT
-            <https://github.com/DingXiaoH/RepVGG/blob/main/LICENSE>}.
+        Args:
+            n_blocks (tuple[int, int, int, int]): Number of blocks in each stage.
+            width_multiplier (tuple[float, float, float, float]): Width multiplier for each stage.
+            override_groups_map (dict[int, int] | None): Dictionary mapping layer index to number of groups. The layers are indexed starting from 0.
+            use_se (bool): Whether to use Squeeze-and-Excitation blocks.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
-        @see: U{https://github.com/DingXiaoH/RepVGG}
-        @see: U{https://paperswithcode.com/method/repvgg}
-        @see: U{RepVGG: Making VGG-style ConvNets Great Again
-            <https://arxiv.org/abs/2101.03697>}
+        Notes:
+            License: `MIT <https://github.com/DingXiaoH/RepVGG/blob/main/LICENSE>`_.
 
+        See Also:
+            `https://github.com/DingXiaoH/RepVGG <https://github.com/DingXiaoH/RepVGG>`_
+            `https://paperswithcode.com/method/repvgg <https://paperswithcode.com/method/repvgg>`_
+            `RepVGG: Making VGG-style ConvNets Great Again <https://arxiv.org/abs/2101.03697>`_
 
-        @type n_blocks: tuple[int, int, int, int]
-        @param n_blocks: Number of blocks in each stage.
-        @type width_multiplier: tuple[float, float, float, float]
-        @param width_multiplier: Width multiplier for each stage.
-        @type override_groups_map: dict[int, int] | None
-        @param override_groups_map: Dictionary mapping layer index to number of groups. The layers are indexed starting from 0.
-        @type use_se: bool
-        @param use_se: Whether to use Squeeze-and-Excitation blocks.
         """
         super().__init__(**kwargs)
 

@@ -12,7 +12,36 @@ from .base_metric import BaseMetric, MetricState
 
 
 class OCRAccuracy(BaseMetric):
-    """Accuracy metric for OCR tasks."""
+    """Ranked sequence accuracy metric for OCR predictions.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``OCRAccuracy``
+        - Task: OCR
+        - Attached node types: ``OCRCTCHead``
+        - Inputs: ``predictions``, ``target``
+        - Outputs: rank-0 accuracy and ``rank_0``/``rank_1``/``rank_2``
+          sub-metrics
+        - State: ``rank_0``, ``rank_1``, ``rank_2``, ``total``
+
+    Prediction format:
+        ``predictions`` contains OCR logits shaped ``[B, T, C]``.
+
+    Target format:
+        ``target`` contains raw OCR labels encoded by the attached node encoder.
+
+    Formula:
+        Applies greedy CTC decoding by collapsing consecutive duplicate classes
+        and removing blanks, then counts sequences with 0, 1, or 2 character
+        mismatches.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Pads encoded targets to prediction length using
+          the configured blank class before computing mismatch ranks.
+
+    """
 
     supported_tasks = [Tasks.OCR]
 
@@ -24,22 +53,24 @@ class OCRAccuracy(BaseMetric):
     total: Annotated[Tensor, MetricState()]
 
     def __init__(self, blank_class: int = 0, **kwargs):
-        """
-        @type blank_class: int
-        @param blank_class: Index of the blank class. Defaults to C{0}.
+        """Initialize the OCR accuracy metric.
+
+        Args:
+            blank_class (int): Index of the blank class. Defaults to ``0``.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.blank_class = blank_class
 
     @override
     def update(self, predictions: Tensor, target: Tensor) -> None:
-        """Update the running metric with the given predictions and
-        targets.
+        """Update the running metric with predictions and targets.
 
-        @type predictions: Tensor
-        @param predictions: A tensor containing the network predictions.
-        @type targets: Tensor
-        @param targets: A tensor containing the target labels.
+        Args:
+            predictions (``Tensor``): A tensor containing the network predictions.
+            target (``Tensor``): A tensor containing the target labels.
+
         """
         target = self.node.encoder(target).to(self.device)
 
@@ -74,9 +105,10 @@ class OCRAccuracy(BaseMetric):
     def compute(self) -> tuple[Tensor, dict[str, Tensor]]:
         """Compute the OCR accuracy.
 
-        @rtype: tuple[Tensor, dict[str, Tensor]]
-        @return: A tuple containing the OCR accuracy and a dictionary of
-            individual accuracies.
+        Returns:
+            ``tuple[Tensor, dict[str, Tensor]]``: A tuple containing the OCR accuracy and a dictionary
+                of individual accuracies.
+
         """
         return self.rank_0 / self.total, {
             "rank_0": self.rank_0 / self.total,

@@ -21,6 +21,40 @@ from .bce_with_logits import BCEWithLogitsLoss
 
 
 class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
+    """Efficient keypoint detection loss with bbox supervision.
+
+    Metadata:
+        - Module type: loss
+        - Registry name: ``EfficientKeypointBBoxLoss``
+        - Task: INSTANCE_KEYPOINTS
+        - Attached node types: ``EfficientKeypointBBoxHead``
+        - Inputs: ``features``, ``class_scores``, ``distributions``,
+          ``keypoints_raw``, ``target_boundingbox``, ``target_keypoints``
+        - Outputs: scalar total loss and ``class``/``iou``/``regression``/
+          ``visibility`` sub-losses
+
+    Prediction format:
+        ``features`` are FPN feature maps, ``class_scores`` are per-anchor class
+        scores, ``distributions`` encode boxes, and ``keypoints_raw`` encodes
+        anchor-relative keypoint coordinates and visibility logits.
+
+    Target format:
+        ``target_boundingbox`` contains batch-indexed boxes with class IDs and
+        normalized ``xywh`` coordinates. ``target_keypoints`` contains
+        batch-indexed keypoints in normalized ``x, y, visibility`` triplets.
+
+    Formula:
+        Combines varifocal classification, IoU bbox regression, OKS-style
+        keypoint regression, and BCE visibility losses.
+
+    Provenance:
+        - Source: YOLOv6 / PPYOLOE-inspired implementation
+        - License: Unknown
+        - Implementation notes: Extends ``AdaptiveDetectionLoss`` with keypoint
+          assignment inputs and cached keypoint scaling.
+
+    """
+
     node: EfficientKeypointBBoxHead
     supported_tasks = [Tasks.INSTANCE_KEYPOINTS]
 
@@ -40,30 +74,24 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
         area_factor: float | None = None,
         **kwargs,
     ):
-        """BBox loss adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
-        <https://arxiv.org/pdf/2209.02976.pdf>}. It combines IoU based bbox regression loss and varifocal loss
-        for classification.
-        Code is adapted from U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models}.
+        """Combine bbox, classification, and keypoint losses.
 
-        @type n_warmup_epochs: int
-        @param n_warmup_epochs: Number of epochs where ATSS assigner is used, after that we switch to TAL assigner.
-        @type iou_type: Literal["none", "giou", "diou", "ciou", "siou"]
-        @param iou_type: IoU type used for bbox regression loss.
-        @type reduction: Literal["sum", "mean"]
-        @param reduction: Reduction type for loss.
-        @type class_loss_weight: float
-        @param class_loss_weight: Weight of classification loss for bounding boxes.
-        @type regr_kpts_loss_weight: float
-        @param regr_kpts_loss_weight: Weight of regression loss for keypoints. Defaults to 12.0. For optimal results, multiply with accumulate_grad_batches.
-        @type vis_kpts_loss_weight: float
-        @param vis_kpts_loss_weight: Weight of visibility loss for keypoints. Defaults to 1.0. For optimal results, multiply with accumulate_grad_batches.
-        @type iou_loss_weight: float
-        @param iou_loss_weight: Weight of IoU loss. Defaults to 2.5. For optimal results, multiply with accumulate_grad_batches.
-        @type sigmas: list[float] | None
-        @param sigmas: Sigmas used in keypoint loss for OKS metric. If None then use COCO ones if possible or default ones. Defaults to C{None}.
-        @type area_factor: float | None
-        @param area_factor: Factor by which we multiply bounding box area which is used in the keypoint loss.
-            If not set, the default factor of `0.53` is used.
+        BBox loss adapted from `YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
+        Code is adapted from `https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models <https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models>`_.
+
+        Args:
+            n_warmup_epochs (int): Number of epochs where ATSS assigner is used, after that we switch to TAL assigner.
+            iou_type (``Literal["none", "giou", "diou", "ciou", "siou"]``): IoU type used for bbox regression loss.
+            reduction (``Literal["sum", "mean"]``): Reduction type for loss.
+            class_loss_weight (float): Weight of classification loss for bounding boxes.
+            regr_kpts_loss_weight (float): Weight of regression loss for keypoints. Defaults to 12.0. For optimal results, multiply with accumulate_grad_batches.
+            vis_kpts_loss_weight (float): Weight of visibility loss for keypoints. Defaults to 1.0. For optimal results, multiply with accumulate_grad_batches.
+            iou_loss_weight (float): Weight of IoU loss. Defaults to 2.5. For optimal results, multiply with accumulate_grad_batches.
+            viz_pw (float): Positive example weight for the keypoint visibility BCE loss.
+            sigmas (list[float] | None): Sigmas used in keypoint loss for OKS metric. If None then use ``COCO`` ones if possible or default ones. Defaults to ``None``.
+            area_factor (float | None): Factor by which we multiply bounding box area which is used in the keypoint loss. If not set, the default factor of ``0.53`` is used.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(
             n_warmup_epochs=n_warmup_epochs,
@@ -233,9 +261,11 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
     def _preprocess_kpts_target(
         self, kpts_target: Tensor, batch_size: int, scale_tensor: Tensor
     ) -> Tensor:
-        """Preprocesses the target keypoints in shape [batch_size, N,
-        n_keypoints, 3] where N is the maximum number of keypoints in
-        one image.
+        """Preprocess target keypoints into shape ``[batch_size, N,
+        n_keypoints, 3]``.
+
+        ``N`` is the maximum number of keypoints in one image.
+
         """
         _, counts = torch.unique(kpts_target[:, 0].int(), return_counts=True)
         max_kpts = int(counts.max()) if counts.numel() > 0 else 0
@@ -255,7 +285,7 @@ class EfficientKeypointBBoxLoss(AdaptiveDetectionLoss):
 
     def dist2kpts_noscale(self, anchor_points: Tensor, kpts: Tensor) -> Tensor:
         """Adjust and scale predicted keypoints relative to anchor
-        points without considering image stride.
+        points.
         """
         adj_kpts = kpts.clone()
         scale = 2.0

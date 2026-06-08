@@ -17,11 +17,12 @@ from .base_loader import BaseLoaderTorch
 class DummyLoader(BaseLoaderTorch):
     """A dummy data loader for testing purposes.
 
-    It serves as a placeholder in place of C{LuxonisLoaderTorch} when no
+    It serves as a placeholder in place of `LuxonisLoaderTorch` when no
     real data is available.
 
     It can be extended to be used instead of custom loaders as well by
-    overriding the C{get_label_shapes} method.
+    overriding the `get_label_shapes` method.
+
     """
 
     def __init__(
@@ -114,6 +115,7 @@ class DummyLoader(BaseLoaderTorch):
 
         Handles all LDF-native labels by default, but needs to be
         extended for custom loaders.
+
         """
         shapes = {}
         for task_name, task_types in labels.items():

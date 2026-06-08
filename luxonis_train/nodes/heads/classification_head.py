@@ -11,6 +11,28 @@ class ClassificationHead(BaseHead):
 
     Consists of a global average pooling layer followed by a dropout
     layer and a single linear layer.
+
+    Metadata:
+        - Node type: head
+        - Registry name: ``ClassificationHead``
+        - Task: classification
+        - Attach index: None
+        - Inputs: ``features`` tensor
+        - Outputs: classification logits tensor
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Applies global average pooling, dropout,
+          and a linear classifier.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
     """
 
     in_channels: int
@@ -18,10 +40,12 @@ class ClassificationHead(BaseHead):
     parser: str = "ClassificationParser"
 
     def __init__(self, dropout_rate: float = 0.2, **kwargs):
-        """
-        @type dropout_rate: float
-        @param dropout_rate: Dropout rate before last layer, range C{[0,
-            1]}. Defaults to C{0.2}.
+        """Initialize the classification head.
+
+        Args:
+            dropout_rate (float): Dropout rate before last layer, range ``[0, 1]``. Defaults to ``0.2``.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
 

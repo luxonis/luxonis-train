@@ -10,7 +10,36 @@ from .base_metric import BaseMetric
 
 
 class DiceCoefficient(BaseMetric):
-    """Dice coefficient metric for SEGMENTATION tasks."""
+    """Dice coefficient metric for segmentation masks.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``DiceCoefficient``
+        - Task: SEGMENTATION
+        - Attached node types: None
+        - Inputs: ``predictions``, ``target``
+        - Outputs: scalar Dice coefficient tensor
+        - State: wrapped ``torchmetrics.segmentation.DiceScore`` state
+
+    Prediction format:
+        ``predictions`` contains segmentation logits or one-hot masks, depending
+        on ``input_format``.
+
+    Target format:
+        ``target`` contains segmentation labels in index or one-hot format,
+        matching ``input_format``.
+
+    Formula:
+        Converts predictions and targets to the configured format and delegates
+        Dice computation to ``torchmetrics.segmentation.DiceScore``.
+
+    Provenance:
+        - Source: torchmetrics
+        - License: Project license
+        - Implementation notes: Converts logits to argmax labels or one-hot
+          masks before updating the wrapped metric.
+
+    """
 
     supported_tasks = [Tasks.SEGMENTATION]
 
@@ -23,16 +52,15 @@ class DiceCoefficient(BaseMetric):
         input_format: Literal["one-hot", "index"] = "index",
         **kwargs,
     ):
-        """
-        @type num_classes: int
-        @param num_classes: Number of classes.
-        @type include_background: bool
-        @param include_background: Whether to include the background
-            class.
-        @type average: Literal["micro", "macro", "weighted", "none"]
-        @param average: Type of averaging.
-        @type input_format: Literal["one-hot", "index"]
-        @param input_format: Format of the input.
+        """Initialize the Dice coefficient metric.
+
+        Args:
+            num_classes (int): Number of classes.
+            include_background (bool): Whether to include the background class.
+            average (``Literal["micro", "macro", "weighted", "none"]``): ``Type`` of averaging.
+            input_format (``Literal["one-hot", "index"]``): Format of the input.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.input_format = input_format

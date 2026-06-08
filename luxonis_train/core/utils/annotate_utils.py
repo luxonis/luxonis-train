@@ -25,25 +25,22 @@ def annotate_from_directory(
     delete_remote: bool = True,
     team_id: str | None = None,
 ) -> LuxonisDataset:
-    """Annotate images from a directory using the specified model and
-    create a LuxonisDataset.
+    """Annotate images from a directory and create a `LuxonisDataset
+    <luxonis_ml.data.datasets.LuxonisDataset>`.
 
-    @param model: The LuxonisModel to use for annotation.
-    @type model: lxt.LuxonisModel
-    @param img_paths: Iterable of image paths to annotate.
-    @type img_paths: Iterable[PathType]
-    @param dataset_name: Name of the dataset to create.
-    @type dataset_name: str
-    @param bucket_storage: Storage type for the dataset, either 'local'
-        or 'gcs'.
-    @type bucket_storage: Literal['local', 'gcs']
-    @param delete_local: Whether to delete local files after processing.
-    @type delete_local: bool
-    @param delete_remote: Whether to delete remote files after
-        processing.
-    @type delete_remote: bool
-    @param team_id: Optional team ID for the dataset.
-    @type team_id: str | None
+    Args:
+        model (lxt.LuxonisModel): Model to use for annotation.
+        img_paths (``Iterable[PathType]``): Iterable of image paths to annotate.
+        dataset_name (str): Name of the dataset to create.
+        bucket_storage (``Literal["local", "gcs"]``): Storage type for the
+            dataset.
+        delete_local (bool): Whether to delete local files after processing.
+        delete_remote (bool): Whether to delete remote files after processing.
+        team_id (str | None): Optional team ID for the dataset.
+
+    Returns:
+        `LuxonisDataset <luxonis_ml.data.datasets.LuxonisDataset>`: Dataset containing generated annotations.
+
     """
     img_paths = list(img_paths)
 

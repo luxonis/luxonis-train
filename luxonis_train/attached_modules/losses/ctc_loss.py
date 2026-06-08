@@ -7,16 +7,43 @@ from .base_loss import BaseLoss
 
 
 class CTCLoss(BaseLoss):
-    """CTC loss with optional focal loss weighting."""
+    """CTC loss with optional focal weighting for OCR.
+
+    Metadata:
+        - Module type: loss
+        - Registry name: ``CTCLoss``
+        - Task: OCR
+        - Attached node types: ``OCRCTCHead``
+        - Inputs: ``predictions``, ``target``
+        - Outputs: scalar CTC loss
+
+    Prediction format:
+        ``predictions`` contains OCR logits shaped ``[B, T, C]``.
+
+    Target format:
+        ``target`` contains raw OCR labels encoded by the attached node encoder.
+
+    Formula:
+        Applies PyTorch ``nn.CTCLoss`` over log-softmax predictions and,
+        optionally, focal weighting ``(1 - exp(-loss)) ** 2``.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: OCR task support is inferred from the attached
+          ``OCRCTCHead`` rather than declared with ``supported_tasks``.
+
+    """
 
     node: OCRCTCHead
 
     def __init__(self, use_focal_loss: bool = True, **kwargs):
         """Initialize the CTC loss with optional focal loss support.
 
-        @type use_focal_loss: bool
-        @param use_focal_loss: Whether to apply focal loss weighting to
-            the CTC loss. Defaults to True.
+        Args:
+            use_focal_loss (bool): Whether to apply focal loss weighting to the CTC loss. Defaults to True.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.loss_func = nn.CTCLoss(blank=0, reduction="none")
@@ -25,14 +52,14 @@ class CTCLoss(BaseLoss):
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
         """Compute the CTC loss, optionally applying focal loss.
 
-        @type preds: Tensor
-        @param preds: Network predictions of shape (B, T, C), where T is
-            the sequence length, B is the batch size, and C is the
-            number of classes.
-        @type targets: Tensor
-        @param targets: Encoded target sequences.
-        @rtype: Tensor
-        @return: The computed loss as a scalar tensor.
+        Args:
+            predictions (``Tensor``): Network predictions of shape ``[B, T, C]``,
+                where ``T`` is the sequence length, ``B`` is the batch size, and ``C`` is the number of classes.
+            target (``Tensor``): Raw target sequences encoded by the node encoder.
+
+        Returns:
+            ``Tensor``: The computed loss as a scalar tensor.
+
         """
         target = self.node.encoder(target).to(predictions.device)
         target_lengths = torch.sum(target != 0, dim=1)

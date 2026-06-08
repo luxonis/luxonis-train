@@ -12,6 +12,41 @@ from luxonis_train.typing import Packet
 # an arbitrary head. This node is intended to be used specifically
 # with the DiscSubNetHead for anomaly detection tasks.
 class RecSubNet(BaseNode):
+    """RecSubNet reconstruction backbone.
+
+    RecSubNet is an encoder-decoder node for anomaly reconstruction flows
+    that outputs both the reconstruction and original input tensor.
+
+    Metadata:
+        - Node type: backbone
+        - Registry name: ``RecSubNet``
+        - Task: None
+        - Attach index: ``-1``
+        - Inputs: ``features`` tensor
+        - Outputs: ``reconstruction`` tensor and ``original`` tensor
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Local reconstruction-specific backbone using
+          ``SimpleEncoder`` and ``SimpleDecoder``.
+
+    Variants:
+        - ``"n"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``base_channels``: ``64``
+                - ``width_multipliers``: ``[1, 1.1]``
+        - ``"l"``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - ``base_channels``: ``128``
+                - ``width_multipliers``: ``[1, 2, 4, 8]``
+
+    """
+
     in_channels: int
 
     def __init__(
@@ -21,8 +56,8 @@ class RecSubNet(BaseNode):
         out_channels: int = 3,
         **kwargs,
     ):
-        """RecSubNet: A reconstruction sub-network that consists of an
-        encoder and a decoder.
+        """RecSubNet reconstruction backbone with an encoder and
+        decoder.
 
         This model is designed to reconstruct the original image from an input image that contains noise or anomalies.
         The encoder extracts relevant features from the noisy input, and the decoder attempts to reconstruct the clean
@@ -31,18 +66,12 @@ class RecSubNet(BaseNode):
         This architecture is based on the paper:
         "Data-Efficient Image Transformers: A Deeper Look" (https://arxiv.org/abs/2108.07610).
 
-        @type out_channels: int
-        @param out_channels: Number of output channels for the decoder. Defaults to 3.
+        Args:
+            base_channels (int): The base width of the network. Determines the number of filters in the encoder and decoder.
+            width_multipliers (list[float] | None): Width multipliers for encoder and decoder stages. Defaults to [1, 2, 4, 8].
+            out_channels (int): Number of output channels for the decoder. Defaults to 3.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
-        @type base_channels: int
-        @param base_channels: The base width of the network.
-            Determines the number of filters in the encoder and decoder.
-
-        @type encoder: nn.Module
-        @param encoder: The encoder block to use. Defaults to Encoder.
-
-        @type decoder: nn.Module
-        @param decoder: The decoder block to use. Defaults to Decoder.
         """
         super().__init__(**kwargs)
         width_multipliers = width_multipliers or [1, 2, 4, 8]

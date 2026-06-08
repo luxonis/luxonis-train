@@ -4,18 +4,21 @@ from luxonis_ml.tracker import LuxonisTracker
 
 
 class LuxonisTrackerPL(LuxonisTracker, Logger):
-    """Implementation of LuxonisTracker that is compatible with
-    PytorchLightning.
+    """`LuxonisTracker <luxonis_ml.tracker.`LuxonisTracker
+    <luxonis_ml.tracker.LuxonisTracker>`>` implementation compatible
+    with PyTorch Lightning.
     """
 
     def __init__(self, *, _auto_finalize: bool = True, **kwargs):
-        """
-        @type _auto_finalize: bool
-        @param _auto_finalize: If True, the run will be finalized automatically when the training ends.
-            If set to C{False}, the user will have to call the L{_finalize} method manually.
+        """Initialize the PyTorch Lightning tracker adapter.
 
-        @type kwargs: dict
-        @param kwargs: Additional keyword arguments to be passed to the L{LuxonisTracker}.
+        Args:
+            _auto_finalize (bool): If ``True``, finalize the run automatically
+                when training ends. If ``False``, the user must call
+                `_finalize` manually.
+            **kwargs (``Any``): Additional keyword arguments passed to
+                `LuxonisTracker <luxonis_ml.tracker.`LuxonisTracker <luxonis_ml.tracker.LuxonisTracker>`>`.
+
         """
         LuxonisTracker.__init__(self, **kwargs)
         Logger.__init__(self)
@@ -24,7 +27,12 @@ class LuxonisTrackerPL(LuxonisTracker, Logger):
 
     @rank_zero_only
     def _finalize(self, status: str = "success") -> None:  # pragma: no cover
-        """Finalize current run."""
+        """Finalize current run.
+
+        Args:
+            status (str): Final run status. Defaults to ``"success"``.
+
+        """
         if self.is_tensorboard:
             self.experiment["tensorboard"].flush()
             self.experiment["tensorboard"].close()

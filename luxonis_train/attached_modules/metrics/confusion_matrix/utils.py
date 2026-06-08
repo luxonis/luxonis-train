@@ -12,8 +12,23 @@ def preprocess_instance_masks(
     width: int,
     device: torch.device,
 ) -> tuple[Tensor, Tensor]:
-    """Merge instance segmentation masks of the same class into a single
-    semantic mask.
+    """Merge same-class instance segmentation masks into semantic masks.
+
+    Args:
+        predicted_boundingbox (``list[Tensor]``): Predicted bounding boxes grouped
+            by image.
+        predicted_instance_segmentation (``list[Tensor]``): Predicted instance
+            masks grouped by image.
+        target_boundingbox (``Tensor``): Target bounding boxes.
+        target_instance_segmentation (``Tensor``): Target instance masks.
+        n_classes (int): Number of classes.
+        height (int): Output mask height.
+        width (int): Output mask width.
+        device (torch.device): Device on which to create the masks.
+
+    Returns:
+        ``tuple[Tensor, Tensor]``: Predicted and target semantic masks.
+
     """
     batch_size = len(predicted_boundingbox)
     return (
@@ -42,10 +57,12 @@ def compute_mcc(cm: Tensor) -> Tensor:
     """Compute the Matthews correlation coefficient from a confusion
     matrix.
 
-    @type cm: Tensor
-    @param cm: Confusion matrix.
-    @rtype: Tensor
-    @return: Matthews correlation coefficient.
+    Args:
+        cm (``Tensor``): Confusion matrix.
+
+    Returns:
+        ``Tensor``: Matthews correlation coefficient.
+
     """
     N = cm.sum()
     if N == 0:

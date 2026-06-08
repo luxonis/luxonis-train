@@ -18,17 +18,91 @@ class GhostFaceNet(BaseNode):
     GhostFaceNetsV2 is a convolutional neural network architecture focused on face recognition, but it is
     adaptable to generic embedding tasks. It is based on the GhostNet architecture and uses Ghost BottleneckV2 blocks.
 
-    Source: U{https://github.com/Hazqeel09/ellzaf_ml/blob/main/ellzaf_ml/models/ghostfacenetsv2.py}
+    Metadata:
+        - Node type: backbone
+        - Registry name: ``GhostFaceNet``
+        - Task: None
+        - Attach index: ``-1``
+        - Inputs: ``features`` tensor
+        - Outputs: ``features`` list of tensors
 
-    Variants
-    ========
-    This backbone offers a single variant, V2, which is the default variant.
+    Provenance:
+        - Source: ``Hazqeel09/ellzaf_ml``
+        - License: MIT
+        - Implementation notes: Local GhostFaceNetsV2-style backbone built
+          from Ghost bottleneck layer presets.
 
-    @license: U{MIT License
-        <https://github.com/Hazqeel09/ellzaf_ml/blob/main/LICENSE>}
+    Variants:
+        - ``"V2"``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - ``width_multiplier``: ``1``
+            - Layers:
+                - ``0``:
+                    - ``mode``: ``"original"``
+                    - ``kernel_sizes``: ``[3]``
+                    - ``expand_sizes``: ``[16]``
+                    - ``output_channels``: ``[16]``
+                    - ``se_ratios``: ``[0.0]``
+                    - ``strides``: ``[1]``
+                - ``1``:
+                    - ``mode``: ``"original"``
+                    - ``kernel_sizes``: ``[3]``
+                    - ``expand_sizes``: ``[48]``
+                    - ``output_channels``: ``[24]``
+                    - ``se_ratios``: ``[0.0]``
+                    - ``strides``: ``[2]``
+                - ``2``:
+                    - ``mode``: ``"attention"``
+                    - ``kernel_sizes``: ``[3]``
+                    - ``expand_sizes``: ``[72]``
+                    - ``output_channels``: ``[24]``
+                    - ``se_ratios``: ``[0.0]``
+                    - ``strides``: ``[1]``
+                - ``3``:
+                    - ``mode``: ``"attention"``
+                    - ``kernel_sizes``: ``[5]``
+                    - ``expand_sizes``: ``[72]``
+                    - ``output_channels``: ``[40]``
+                    - ``se_ratios``: ``[0.25]``
+                    - ``strides``: ``[2]``
+                - ``4``:
+                    - ``mode``: ``"attention"``
+                    - ``kernel_sizes``: ``[5]``
+                    - ``expand_sizes``: ``[120]``
+                    - ``output_channels``: ``[40]``
+                    - ``se_ratios``: ``[0.25]``
+                    - ``strides``: ``[1]``
+                - ``5``:
+                    - ``mode``: ``"attention"``
+                    - ``kernel_sizes``: ``[3]``
+                    - ``expand_sizes``: ``[240]``
+                    - ``output_channels``: ``[80]``
+                    - ``se_ratios``: ``[0.0]``
+                    - ``strides``: ``[2]``
+                - ``6``:
+                    - ``mode``: ``"attention"``
+                    - ``kernel_sizes``: ``[3, 3, 3, 3, 3]``
+                    - ``expand_sizes``: ``[200, 184, 184, 480, 672]``
+                    - ``output_channels``: ``[80, 80, 80, 112, 112]``
+                    - ``se_ratios``: ``[0.0, 0.0, 0.0, 0.25, 0.25]``
+                    - ``strides``: ``[1, 1, 1, 1, 1]``
+                - ``7``:
+                    - ``mode``: ``"attention"``
+                    - ``kernel_sizes``: ``[5]``
+                    - ``expand_sizes``: ``[672]``
+                    - ``output_channels``: ``[160]``
+                    - ``se_ratios``: ``[0.25]``
+                    - ``strides``: ``[2]``
+                - ``8``:
+                    - ``mode``: ``"attention"``
+                    - ``kernel_sizes``: ``[5, 5, 5, 5]``
+                    - ``expand_sizes``: ``[960, 960, 960, 960]``
+                    - ``output_channels``: ``[160, 160, 160, 160]``
+                    - ``se_ratios``: ``[0.0, 0.25, 0.0, 0.25]``
+                    - ``strides``: ``[1, 1, 1, 1]``
 
-    @see: U{GhostFaceNets: Lightweight Face Recognition Model From Cheap Operations
-        <https://www.researchgate.net/publication/369930264_GhostFaceNets_Lightweight_Face_Recognition_Model_from_Cheap_Operations>}
     """
 
     in_channels: int
@@ -41,19 +115,13 @@ class GhostFaceNet(BaseNode):
         layer_params: list["LayerParamsDict"],
         **kwargs,
     ):
-        """
-        @type width_multiplier: int
-        @param width_multiplier: Width multiplier for the blocks.
-        @type kernel_sizes: list[list[int]]
-        @param kernel_sizes: List of kernel sizes for block in each stage.
-        @type expand_sizes: list[list[int]]
-        @param expand_sizes: List of expansion sizes for block in each stage.
-        @type output_channels: list[list[int]]
-        @param output_channels: List of output channels for block in each stage.
-        @type se_ratios: list[list[float]]
-        @param se_ratios: List of Squeeze-and-Excitation ratios for block in each stage.
-        @type strides: list[list[int]]
-        @param strides: List of strides for block in each stage.
+        """Initialize the GhostFaceNetsV2 backbone.
+
+        Args:
+            width_multiplier (int): Width multiplier for the blocks.
+            layer_params (list[LayerParamsDict]): Parameters for each Ghost bottleneck layer.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
 

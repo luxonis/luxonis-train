@@ -9,6 +9,39 @@ from .utils import compute_metric_lists, postprocess_metrics
 
 
 class MeanAveragePrecisionSegmentation(MeanAveragePrecision, BaseMetric):
+    """Mean average precision for instance segmentation masks.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``MeanAveragePrecisionSegmentation``
+        - Task: INSTANCE_SEGMENTATION, INSTANCE_SEGMENTATION_KEYPOINTS
+        - Attached node types: None
+        - Inputs: ``boundingbox``, ``instance_segmentation``,
+          ``target_boundingbox``, ``target_instance_segmentation``
+        - Outputs: main ``segm_map`` tensor and dictionary of AP/AR sub-metrics
+        - State: wrapped ``torchmetrics.detection.MeanAveragePrecision`` state
+
+    Prediction format:
+        ``boundingbox`` is a list of per-image detections, and
+        ``instance_segmentation`` is a list of predicted masks.
+
+    Target format:
+        ``target_boundingbox`` contains batch-indexed boxes with class IDs and
+        normalized ``xywh`` coordinates. ``target_instance_segmentation``
+        contains instance masks aligned to those boxes.
+
+    Formula:
+        Converts predictions and targets into torchmetrics detection lists and
+        evaluates bbox and segmentation mAP/mAR.
+
+    Provenance:
+        - Source: torchmetrics
+        - License: Project license
+        - Implementation notes: Uses ``iou_type=("bbox", "segm")`` and
+          postprocesses segmentation metrics with dataset class names.
+
+    """
+
     supported_tasks = [
         Tasks.INSTANCE_SEGMENTATION,
         Tasks.INSTANCE_SEGMENTATION_KEYPOINTS,

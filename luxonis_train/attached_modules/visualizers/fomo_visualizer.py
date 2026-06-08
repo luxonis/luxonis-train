@@ -9,6 +9,35 @@ from .keypoint_visualizer import KeypointVisualizer
 
 
 class FOMOVisualizer(BBoxVisualizer):
+    """Visualize FOMO heatmap detections as points and optional boxes.
+
+    Metadata:
+        - Module type: visualizer
+        - Registry name: ``FOMOVisualizer``
+        - Task: fomo
+        - Attached node types: None
+        - Inputs: prediction and target canvases, ``heatmap`` keypoint
+          predictions, and optional ``boundingbox`` targets.
+        - Outputs: prediction visualization, or ``(target_viz, pred_viz)``
+          when targets are provided.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Reuses bounding box target drawing and
+          keypoint rendering for decoded FOMO predictions.
+
+    Prediction format:
+        - ``keypoints`` is a list of per-image tensors. Single-class tensors
+          use ``[``...``, 3]`` as ``(x, y, visibility)``; multi-class tensors use
+          ``[``...``, 4]`` as ``(x, y, visibility, class)``.
+
+    Target format:
+        - ``target_boundingbox`` follows the bounding box target tensor
+          format.
+
+    """
+
     supported_tasks = [Tasks.FOMO]
 
     def __init__(

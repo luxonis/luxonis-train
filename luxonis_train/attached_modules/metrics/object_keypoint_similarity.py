@@ -19,6 +19,38 @@ from .utils import fix_empty_tensor
 
 
 class ObjectKeypointSimilarity(BaseMetric):
+    """Object Keypoint Similarity metric for keypoint predictions.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``ObjectKeypointSimilarity``
+        - Task: KEYPOINTS, INSTANCE_KEYPOINTS, INSTANCE_SEGMENTATION_KEYPOINTS,
+          FOMO
+        - Attached node types: None
+        - Inputs: ``keypoints``, ``target_boundingbox``, ``target_keypoints``
+        - Outputs: scalar mean OKS tensor
+        - State: ``pred_keypoints``, ``target_keypoints``, ``scales``
+
+    Prediction format:
+        ``keypoints`` is a list of per-image keypoint predictions.
+
+    Target format:
+        ``target_boundingbox`` contains batch-indexed boxes used for scale, and
+        ``target_keypoints`` contains normalized keypoint triplets unless the
+        task is FOMO.
+
+    Formula:
+        Computes OKS between predicted and target poses and uses Hungarian
+        matching to average the best assignments per image.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: For FOMO, derives target keypoints from bbox
+          centers and does not require explicit keypoint targets.
+
+    """
+
     supported_tasks = [
         Tasks.KEYPOINTS,
         Tasks.INSTANCE_KEYPOINTS,
@@ -37,20 +69,17 @@ class ObjectKeypointSimilarity(BaseMetric):
         use_cocoeval_oks: bool = True,
         **kwargs,
     ) -> None:
-        """Object Keypoint Similarity metric for evaluating keypoint
-        predictions.
+        """Initialize the Object Keypoint Similarity metric.
 
-        @type sigmas: list[float] | None
-        @param sigmas: Sigma for each keypoint to weigh its importance,
-            if C{None}, then use COCO if possible otherwise defaults.
-            Defaults to C{None}.
-        @type area_factor: float | None
-        @param area_factor: Factor by which we multiply the bounding box
-            area. If not set, the default factor of C{0.53} is used.
-        @type use_cocoeval_oks: bool
-        @param use_cocoeval_oks: Whether to use same OKS formula as in
-            COCOeval or use the one from definition. Defaults to
-            C{True}.
+        Args:
+            sigmas (list[float] | None): Sigma for each keypoint to weigh its importance, if
+                ``None``, then use ``COCO`` if possible otherwise defaults. Defaults to ``None``.
+            area_factor (float | None): Factor by which we multiply the bounding box area. If not
+                set, the default factor of ``0.53`` is used.
+            use_cocoeval_oks (bool): Whether to use same OKS formula as in COCOeval or use the one
+                from definition. Defaults to ``True``.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
 

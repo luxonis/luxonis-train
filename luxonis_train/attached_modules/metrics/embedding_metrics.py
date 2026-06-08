@@ -15,6 +15,36 @@ from .base_metric import BaseMetric, MetricState
 
 
 class ClosestIsPositiveAccuracy(BaseMetric):
+    """Accuracy of nearest-neighbor identity matches for embeddings.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``ClosestIsPositiveAccuracy``
+        - Task: EMBEDDINGS
+        - Attached node types: ``GhostFaceNetHead``
+        - Inputs: ``predictions``, ``target``
+        - Outputs: scalar nearest-positive accuracy tensor
+        - State: ``cross_batch_memory``, ``correct``, ``total``
+
+    Prediction format:
+        ``predictions`` contains embedding vectors.
+
+    Target format:
+        ``target`` contains embedding class or identity labels.
+
+    Formula:
+        Computes pairwise Euclidean distances, finds each sample's nearest
+        neighbor, and counts it correct when the nearest label matches the
+        anchor label.
+
+    Provenance:
+        - Source: TensorFlow triplet-loss example adapted internally
+        - License: Unknown
+        - Implementation notes: Optionally accumulates embeddings across
+          batches using the attached node's cross-batch memory size.
+
+    """
+
     supported_tasks = [Tasks.EMBEDDINGS]
     node: GhostFaceNetHead
 
@@ -77,6 +107,37 @@ class ClosestIsPositiveAccuracy(BaseMetric):
 
 
 class MedianDistances(BaseMetric):
+    """Median embedding distance diagnostics.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``MedianDistances``
+        - Task: EMBEDDINGS
+        - Attached node types: ``GhostFaceNetHead``
+        - Inputs: ``embeddings``, ``target``
+        - Outputs: dictionary of median distance tensors
+        - State: ``cross_batch_memory``, ``all_distances``,
+          ``closest_distances``, ``positive_distances``,
+          ``closest_vs_positive_distances``
+
+    Prediction format:
+        ``embeddings`` contains embedding vectors.
+
+    Target format:
+        ``target`` contains embedding class or identity labels.
+
+    Formula:
+        Computes pairwise Euclidean distances and reports median all-pair,
+        nearest-neighbor, nearest-positive, and nearest-vs-positive distances.
+
+    Provenance:
+        - Source: TensorFlow triplet-loss example adapted internally
+        - License: Unknown
+        - Implementation notes: Returns NaN-valued diagnostics when no
+          distances have been accumulated.
+
+    """
+
     supported_tasks = [Tasks.EMBEDDINGS]
     node: GhostFaceNetHead
 
@@ -173,11 +234,12 @@ class MedianDistances(BaseMetric):
 def _get_pairwise_distances(embeddings: Tensor) -> Tensor:
     """Compute the 2D matrix of distances between all the embeddings.
 
-    @type embeddings: Tensor
-    @param embeddings: Tensor of shape (batch_size, embed_dim)
-    @rtype: Tensor
-    @return: pairwise_distances: tensor of shape (batch_size,
-        batch_size)
+    Args:
+        embeddings (``Tensor``): ``Tensor`` of shape (batch_size, embed_dim)
+
+    Returns:
+        ``Tensor``: pairwise_distances: tensor of shape (batch_size, batch_size)
+
     """
     dot_product = embeddings @ embeddings.T
 

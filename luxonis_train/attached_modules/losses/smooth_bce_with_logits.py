@@ -10,6 +10,35 @@ from .bce_with_logits import BCEWithLogitsLoss
 
 
 class SmoothBCEWithLogitsLoss(BaseLoss):
+    """BCE-with-logits loss with label smoothing.
+
+    Metadata:
+        - Module type: loss
+        - Registry name: ``SmoothBCEWithLogitsLoss``
+        - Task: SEGMENTATION, CLASSIFICATION
+        - Attached node types: None
+        - Inputs: ``predictions``, ``target``
+        - Outputs: scalar BCE-with-logits loss
+
+    Prediction format:
+        ``predictions`` contains logits with the same shape as ``target``.
+
+    Target format:
+        ``target`` contains binary or multi-label targets with the same shape
+        as ``predictions``.
+
+    Formula:
+        Smooths targets toward the opposite class, then delegates to
+        ``BCEWithLogitsLoss``.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Supports positive-class weighting through the
+          wrapped BCE loss.
+
+    """
+
     supported_tasks = [Tasks.SEGMENTATION, Tasks.CLASSIFICATION]
 
     def __init__(
@@ -22,24 +51,20 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
     ):
         """BCE with logits loss and label smoothing.
 
-        @type label_smoothing: float
-        @param label_smoothing: Label smoothing factor. Defaults to
-            C{0.0}.
-        @type bce_pow: float
-        @param bce_pow: Weight for positive samples. Defaults to C{1.0}.
-        @type weight: list[float] | None
-        @param weight: a manual rescaling weight given to the loss of
-            each batch element. If given, it has to be a list of length
-            C{nbatch}.
-        @type reduction: Literal["mean", "sum", "none"]
-        @param reduction: Specifies the reduction to apply to the
-            output: C{'none'} | C{'mean'} | C{'sum'}. C{'none'}: no
-            reduction will be applied, C{'mean'}: the sum of the output
-            will be divided by the number of elements in the output,
-            C{'sum'}: the output will be summed. Note: C{size_average}
-            and C{reduce} are in the process of being deprecated, and in
-            the meantime, specifying either of those two args will
-            override C{reduction}. Defaults to C{'mean'}.
+        Args:
+            label_smoothing (float): Label smoothing factor. Defaults to ``0.0``.
+            bce_pow (float): Weight for positive samples. Defaults to ``1.0``.
+            weight (list[float] | None): a manual rescaling weight given to the loss of each batch
+                element. If given, it has to be a list of length ``nbatch``.
+            reduction (``Literal["mean", "sum", "none"]``): Specifies the reduction to apply to the
+                output: ``'none'`` | ``'mean'`` | ``'sum'``. ``'none'``: no reduction will be
+                ``applied, 'mean'``: the sum of the output will be divided by the number of
+                ``elements in the output, 'sum'``: the output will be summed. Note:
+                ``size_average`` and ``reduce`` are in the process of being deprecated, and in the
+                meantime, specifying either of those two args will override ``reduction``. Defaults
+                to ``'mean'``.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.positive_smooth_const = 1.0 - label_smoothing
@@ -53,12 +78,13 @@ class SmoothBCEWithLogitsLoss(BaseLoss):
     def forward(self, predictions: Tensor, target: Tensor) -> Tensor:
         """Compute the BCE loss with label smoothing.
 
-        @type predictions: Tensor
-        @param predictions: Network predictions of shape (N, C, ...)
-        @type target: Tensor
-        @param target: A tensor of the same shape as predictions.
-        @rtype: Tensor
-        @return: A scalar tensor.
+        Args:
+            predictions (``Tensor``): Network predictions of shape (N, C, ``...``)
+            target (``Tensor``): A tensor of the same shape as predictions.
+
+        Returns:
+            ``Tensor``: A scalar tensor.
+
         """
         if predictions.shape != target.shape:
             raise RuntimeError(

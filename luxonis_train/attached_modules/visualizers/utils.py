@@ -55,7 +55,17 @@ def get_prediction_labels(
 
 
 def figure_to_torch(fig: Figure, width: int, height: int) -> Tensor:
-    """Convert a matplotlib `Figure` to a `Tensor`."""
+    """Convert a matplotlib figure to a tensor.
+
+    Args:
+        fig (``Figure``): Matplotlib figure to convert.
+        width (int): Output image width.
+        height (int): Output image height.
+
+    Returns:
+        ``Tensor``: Converted image tensor in ``CHW`` format.
+
+    """
     buf = io.BytesIO()
     fig.savefig(buf, format="png", bbox_inches="tight", pad_inches=0)
     buf.seek(0)
@@ -72,13 +82,14 @@ def torch_img_to_numpy(
 ) -> npt.NDArray[np.uint8]:
     """Convert a torch image (CHW) to a numpy array (HWC).
 
-    @type img: Tensor
-    @param img: Torch image (CHW)
-    @type reverse_colors: bool
-    @param reverse_colors: Whether to reverse colors (RGB to BGR).
-        Defaults to False.
-    @rtype: npt.NDArray[np.uint8]
-    @return: Numpy image (HWC)
+    Args:
+        img (``Tensor``): Torch image in ``CHW`` format.
+        reverse_colors (bool): Whether to reverse colors from RGB to BGR.
+            Defaults to ``False``.
+
+    Returns:
+        ``npt.NDArray[np.uint8]``: NumPy image in ``HWC`` format.
+
     """
     if img.is_floating_point():
         img = img.mul(255).int()
@@ -91,7 +102,15 @@ def torch_img_to_numpy(
 
 
 def numpy_to_torch_img(img: np.ndarray) -> Tensor:
-    """Convert numpy image (HWC) to torch image (CHW)."""
+    """Convert a NumPy image to a torch image.
+
+    Args:
+        img (``np.ndarray``): NumPy image in ``HWC`` format.
+
+    Returns:
+        ``Tensor``: Torch image in ``CHW`` format.
+
+    """
     return torch.from_numpy(img).permute(2, 0, 1)
 
 
@@ -104,14 +123,14 @@ def preprocess_images(
 
     Preprocessing includes denormalizing and converting to uint8.
 
-    @type imgs: Tensor
-    @param imgs: Batch of images.
-    @type mean: list[float] | float | None
-    @param mean: Mean used for denormalization. Defaults to C{None}.
-    @type std: list[float] | float | None
-    @param std: Std used for denormalization. Defaults to C{None}.
-    @rtype: Tensor
-    @return: Batch of preprocessed images.
+    Args:
+        imgs (``Tensor``): Batch of images.
+        mean (list[float] | float | None): Mean used for denormalization. Defaults to ``None``.
+        std (list[float] | float | None): Std used for denormalization. Defaults to ``None``.
+
+    Returns:
+        ``Tensor``: Batch of preprocessed images.
+
     """
     out_imgs = []
     for i in range(imgs.shape[0]):
@@ -132,16 +151,18 @@ def draw_segmentation_targets(
     alpha: float = 0.4,
     colors: Color | list[Color] | None = None,
 ) -> Tensor:
-    """Draws segmentation labels on an image.
+    """Draw segmentation labels on an image.
 
-    @type image: Tensor
-    @param image: Image to draw on.
-    @type target: Tensor
-    @param target: Segmentation label.
-    @type alpha: float
-    @param alpha: Alpha value for blending. Defaults to C{0.4}.
-    @rtype: Tensor
-    @return: Image with segmentation labels drawn on.
+    Args:
+        image (``Tensor``): Image to draw on.
+        target (``Tensor``): Segmentation label.
+        alpha (float): Alpha value for blending. Defaults to ``0.4``.
+        colors (Color | list[Color] | None): Mask colors. Defaults to
+            ``None``.
+
+    Returns:
+        ``Tensor``: Image with segmentation labels drawn on.
+
     """
     masks = target.bool()
     masks = masks.cpu()
@@ -150,18 +171,18 @@ def draw_segmentation_targets(
 
 
 def draw_bounding_box_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
-    """Draws bounding box labels on an image.
+    """Draw bounding box labels on an image.
 
-    @type img: Tensor
-    @param img: Image to draw on.
-    @type label: Tensor
-    @param label: Bounding box label. The shape should be (n_instances,
-        4), where the last dimension is (x, y, w, h).
-    @type kwargs: dict
-    @param kwargs: Additional arguments to pass to
-        L{torchvision.utils.draw_bounding_boxes}.
-    @rtype: Tensor
-    @return: Image with bounding box labels drawn on.
+    Args:
+        img (``Tensor``): Image to draw on.
+        label (``Tensor``): Bounding box label. The shape should be (n_instances, 4), where the
+            last dimension is (x, y, w, h).
+        **kwargs (``Any``): Additional arguments to pass to
+            ``torchvision.utils.draw_bounding_boxes``.
+
+    Returns:
+        ``Tensor``: Image with bounding box labels drawn on.
+
     """
     _, H, W = img.shape
     bboxs = box_convert(label, "xywh", "xyxy")
@@ -171,18 +192,18 @@ def draw_bounding_box_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
 
 
 def draw_keypoint_labels(img: Tensor, label: Tensor, **kwargs) -> Tensor:
-    """Draws keypoint labels on an image.
+    """Draw keypoint labels on an image.
 
-    @type img: Tensor
-    @param img: Image to draw on.
-    @type label: Tensor
-    @param label: Keypoint label. The shape should be (n_instances, 3),
-        where the last dimension is (x, y, visibility).
-    @type kwargs: dict
-    @param kwargs: Additional arguments to pass to
-        L{torchvision.utils.draw_keypoints}.
-    @rtype: Tensor
-    @return: Image with keypoint labels drawn on.
+    Args:
+        img (``Tensor``): Image to draw on.
+        label (``Tensor``): Keypoint label. The shape should be (n_instances, 3), where the last
+            dimension is (x, y, visibility).
+        **kwargs (``Any``): Additional arguments to pass to
+            ``torchvision.utils.draw_keypoints``.
+
+    Returns:
+        ``Tensor``: Image with keypoint labels drawn on.
+
     """
     _, H, W = img.shape
     keypoints_unflat = label.reshape(-1, 3)
@@ -207,19 +228,17 @@ def denormalize(
     std: list[float] | float | None = None,
     to_uint8: bool = False,
 ) -> Tensor:
-    """Denormalizes an image back to original values, optionally
-    converts it to uint8.
+    """Denormalize an image and optionally convert it to uint8.
 
-    @type img: Tensor
-    @param img: Image to denormalize.
-    @type mean: list[float] | float | None
-    @param mean: Mean used for denormalization. Defaults to C{None}.
-    @type std: list[float] | float | None
-    @param std: Std used for denormalization. Defaults to C{None}.
-    @type to_uint8: bool
-    @param to_uint8: Whether to convert to uint8. Defaults to C{False}.
-    @rtype: Tensor
-    @return: denormalized image.
+    Args:
+        img (``Tensor``): Image to denormalize.
+        mean (list[float] | float | None): Mean used for denormalization. Defaults to ``None``.
+        std (list[float] | float | None): Std used for denormalization. Defaults to ``None``.
+        to_uint8 (bool): Whether to convert to uint8. Defaults to ``False``.
+
+    Returns:
+        ``Tensor``: Denormalized image.
+
     """
     mean = mean or 0
     std = std or 1
@@ -248,7 +267,15 @@ def get_denormalized_images(cfg: Config, images: Tensor) -> Tensor:
 
 
 def number_to_hsl(seed: int) -> tuple[float, float, float]:
-    """Map a number to a distinct HSL color."""
+    """Map a number to a distinct HSL color.
+
+    Args:
+        seed (int): Seed used to derive the color.
+
+    Returns:
+        tuple[float, float, float]: HSL color components.
+
+    """
     # Use a prime number to spread the hues more evenly
     # and ensure they are visually distinguishable
     hue = (seed * 157) % 360
@@ -258,7 +285,15 @@ def number_to_hsl(seed: int) -> tuple[float, float, float]:
 
 
 def hsl_to_rgb(hsl: tuple[float, float, float]) -> Color:
-    """Convert HSL color to RGB."""
+    """Convert HSL color to RGB.
+
+    Args:
+        hsl (tuple[float, float, float]): HSL color components.
+
+    Returns:
+        Color: RGB color.
+
+    """
     r, g, b = colorsys.hls_to_rgb(hsl[0] / 360, hsl[2], hsl[1])
     return int(r * 255), int(g * 255), int(b * 255)
 
@@ -266,10 +301,12 @@ def hsl_to_rgb(hsl: tuple[float, float, float]) -> Color:
 def get_color(seed: int) -> Color:
     """Generate a random color from a seed.
 
-    @type seed: int
-    @param seed: Seed to use for the generator.
-    @rtype: L{Color}
-    @return: Generated color.
+    Args:
+        seed (int): Seed to use for the generator.
+
+    Returns:
+        Color: Generated color.
+
     """
     return hsl_to_rgb(number_to_hsl(seed + 45))
 
@@ -299,9 +336,13 @@ def potentially_upscale_masks(
 ) -> Tensor:
     """Upscales boolean segmentation masks.
 
-    @param image_masks:
-    @param scale: scale factor
-    @return: Upscaled image masks
+    Args:
+        image_masks (``Tensor``): Boolean masks to upscale.
+        scale (float): Scale factor. Defaults to ``1.0``.
+
+    Returns:
+        ``Tensor``: Upscaled image masks.
+
     """
     if scale is not None and scale != 1:
         image_masks = image_masks.unsqueeze(1)
@@ -361,8 +402,15 @@ def combine_visualizations(
     | tuple[Tensor, Tensor]
     | tuple[Tensor, list[Tensor]],
 ) -> Tensor:
-    """Default way of combining multiple visualizations into one final
-    image.
+    """Combine multiple visualizations into one final image.
+
+    Args:
+        visualization (``Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]]``): Visualization
+            output to combine.
+
+    Returns:
+        ``Tensor``: Combined visualization image.
+
     """
 
     def resize_to_match(
@@ -378,30 +426,25 @@ def combine_visualizations(
         Resizes two images so they can be concateneted together. It's possible to
         configure how the images are resized.
 
-        @type fst: Tensor[C, H, W]
-        @param fst: First image.
-        @type snd: Tensor[C, H, W]
-        @param snd: Second image.
-        @type keep_size: Literal["larger", "smaller", "first", "second"]
-        @param keep_size: Which size to keep. Options are:
-            - "larger": Resize the smaller image to match the size of the larger image.
-            - "smaller": Resize the larger image to match the size of the smaller image.
-            - "first": Resize the second image to match the size of the first image.
-            - "second": Resize the first image to match the size of the second image.
+        Args:
+            fst (``Tensor[C, H, W]``): First image.
+            snd (``Tensor[C, H, W]``): Second image.
+            keep_size (``Literal["larger", "smaller", "first", "second"]``): Which size to keep.
+                Options are: - "larger": Resize the smaller image to match the size of the larger
+                image. - "smaller": Resize the larger image to match the size of the smaller image.
+                - "first": Resize the second image to match the size of the first image. -
+                "second": Resize the first image to match the size of the second image.
+            resize_along (``Literal["width", "height", "exact"]``): Which dimensions to match. Options
+                are: - "width": Resize images along the width dimension. - "height": Resize images
+                along the height dimension. - "exact": Resize images to match both width and height
+                dimensions.
+            keep_aspect_ratio (bool): Whether to keep the aspect ratio of the images. Only takes
+                effect when the "exact" option is selected for the ``resize_along`` argument.
+                Defaults to ``True``.
 
-        @type resize_along: Literal["width", "height", "exact"]
-        @param resize_along: Which dimensions to match. Options are:
-            - "width": Resize images along the width dimension.
-            - "height": Resize images along the height dimension.
-            - "exact": Resize images to match both width and height dimensions.
+        Returns:
+            ``tuple[Tensor[C, H, W], Tensor[C, H, W]]``: Resized images.
 
-        @type keep_aspect_ratio: bool
-        @param keep_aspect_ratio: Whether to keep the aspect ratio of the images.
-            Only takes effect when the "exact" option is selected for the
-            C{resize_along} argument. Defaults to C{True}.
-
-        @rtype: tuple[Tensor[C, H, W], Tensor[C, H, W]]
-        @return: Resized images.
         """
         if resize_along not in ["width", "height", "exact"]:
             raise ValueError(

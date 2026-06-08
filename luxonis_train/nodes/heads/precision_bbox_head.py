@@ -20,6 +20,34 @@ from .base_detection_head import BaseDetectionHead
 
 
 class PrecisionBBoxHead(BaseDetectionHead):
+    """Precision bounding box detection head.
+
+    Metadata:
+        - Node type: head
+        - Registry name: ``PrecisionBBoxHead``
+        - Task: boundingbox
+        - Attach index: ``(-n_heads - 1, -1)`` by default
+        - Inputs: list of feature tensors
+        - Outputs: training returns ``features``; evaluation returns
+          ``features`` and ``boundingbox``; export returns raw
+          ``boundingbox`` tensors.
+
+    Provenance:
+        - Source: YOLOv8 and YOLOv6
+        - License: Unknown
+        - Implementation notes: Uses decoupled regression and
+          classification heads with DFL decoding and NMS outside export
+          mode.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
+    """
+
     task = Tasks.BOUNDINGBOX
 
     def __init__(
@@ -31,22 +59,19 @@ class PrecisionBBoxHead(BaseDetectionHead):
         reg_max: int = 16,
         **kwargs,
     ):
-        """
-        Adapted from U{Real-Time Flying Object Detection with YOLOv8
-        <https://arxiv.org/pdf/2305.09972>} and from U{YOLOv6: A Single-Stage Object Detection Framework
-        for Industrial Applications
-        <https://arxiv.org/pdf/2209.02976.pdf>}.
+        """Precision bounding box head.
 
-        @type n_heads: Literal[2, 3, 4]
-        @param n_heads: Number of output heads.
-        @type conf_thres: float
-        @param conf_thres: Confidence threshold for NMS.
-        @type iou_thres: float
-        @param iou_thres: IoU threshold for NMS.
-        @type max_det: int
-        @param max_det: Maximum number of detections retained after NMS.
-        @type reg_max: int
-        @param reg_max: Maximum number of regression channels.
+        Adapted from `Real-Time Flying Object Detection with YOLOv8 <https://arxiv.org/pdf/2305.09972>`_ and from `YOLOv6: A Single-Stage Object Detection Framework
+        for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
+
+        Args:
+            n_heads (``Literal[2, 3, 4]``): Number of output heads.
+            conf_thres (float): Confidence threshold for NMS.
+            iou_thres (float): IoU threshold for NMS.
+            max_det (int): Maximum number of detections retained after NMS.
+            reg_max (int): Maximum number of regression channels.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(
             n_heads=n_heads,
@@ -130,6 +155,7 @@ class PrecisionBBoxHead(BaseDetectionHead):
 
         Assumes detection_heads structure with separate regression and
         classification branches.
+
         """
         super().initialize_weights(method)
         for head, stride in zip(self.heads, self.stride, strict=True):
@@ -174,7 +200,7 @@ class PrecisionBBoxHead(BaseDetectionHead):
     def _prepare_bbox_inference_output(
         self, classes_list: list[Tensor], regressions_list: list[Tensor]
     ) -> Tensor:
-        """Perform inference on predicted bounding boxes and class
+        """Perform inference on bounding boxes and class
         probabilities.
         """
         raw_bboxes = self._construct_raw_bboxes(classes_list, regressions_list)

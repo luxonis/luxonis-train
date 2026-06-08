@@ -14,6 +14,23 @@ class MeanAveragePrecision:
     """Factory class for Mean Average Precision (mAP) metrics.
 
     Creates the appropriate mAP metric based on the task of the node.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``MeanAveragePrecision``
+        - Task: BOUNDINGBOX, INSTANCE_SEGMENTATION, INSTANCE_KEYPOINTS,
+          INSTANCE_SEGMENTATION_KEYPOINTS
+        - Attached node types: detection, instance segmentation, and keypoint
+          heads
+        - Inputs: attached node and metric keyword arguments
+        - Outputs: task-specific mean average precision metric instance
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Registry-facing factory that returns the
+          concrete mAP implementation for the attached node task.
+
     """
 
     @classmethod

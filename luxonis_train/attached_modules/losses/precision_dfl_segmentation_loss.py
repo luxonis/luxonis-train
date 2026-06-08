@@ -11,6 +11,40 @@ from .precision_dfl_detection_loss import PrecisionDFLDetectionLoss
 
 
 class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
+    """Precision instance segmentation loss with DFL bbox terms.
+
+    Metadata:
+        - Module type: loss
+        - Registry name: ``PrecisionDFLSegmentationLoss``
+        - Task: INSTANCE_SEGMENTATION
+        - Attached node types: ``PrecisionSegmentBBoxHead``
+        - Inputs: ``features``, ``prototypes``, ``mask_coeficients``,
+          ``target_boundingbox``, ``target_instance_segmentation``
+        - Outputs: scalar total loss and ``class``/``iou``/``dfl``/``seg``
+          sub-losses
+
+    Prediction format:
+        ``features`` contains detection feature maps, ``prototypes`` contains
+        prototype masks, and ``mask_coeficients`` contains per-anchor mask
+        coefficients.
+
+    Target format:
+        ``target_boundingbox`` contains batch-indexed boxes with class IDs and
+        normalized ``xywh`` coordinates. ``target_instance_segmentation``
+        contains instance masks aligned to those boxes.
+
+    Formula:
+        Extends ``PrecisionDFLDetectionLoss`` with BCE mask reconstruction over
+        cropped prototype-composed masks.
+
+    Provenance:
+        - Source: YOLOv8 / YOLOv6 / PPYOLOE-inspired implementation
+        - License: Unknown
+        - Implementation notes: Reuses bbox assignment and DFL terms from the
+          detection loss and adds mask prototype supervision.
+
+    """
+
     node: PrecisionSegmentBBoxHead
     supported_tasks = [Tasks.INSTANCE_SEGMENTATION]
 
@@ -23,21 +57,21 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
         skip_stal: bool = False,
         **kwargs,
     ):
-        """Instance Segmentation and BBox loss adapted from  U{Real-Time Flying Object Detection with YOLOv8
-        <https://arxiv.org/pdf/2305.09972>} and from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
-        <https://arxiv.org/pdf/2209.02976.pdf>}.
-        Code is adapted from U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models}.
+        """Instance Segmentation and BBox loss adapted from `Real-Time Flying Object Detection with YOLOv8 <https://arxiv.org/pdf/2305.09972>`_ and from `YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
+        Code is adapted from `https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models <https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models>`_.
 
-        @type tal_topk: int
-        @param tal_topk: Number of anchors considered in selection. Defaults to 10.
-        @type class_loss_weight: float
-        @param class_loss_weight: Weight for classification loss. Defaults to 0.5. For optimal results, multiply with accumulate_grad_batches.
-        @type bbox_loss_weight: float
-        @param bbox_loss_weight: Weight for bbox loss. Defaults to 7.5. For optimal results, multiply with accumulate_grad_batches.
-        @type dfl_loss_weight: float
-        @param dfl_loss_weight: Weight for DFL loss. Defaults to 1.5. For optimal results, multiply with accumulate_grad_batches.
-        @type skip_stal: bool
-        @param skip_stal: If True, disables Small-Target-Aware Label Assignment candidate expansion. Defaults to False.
+        Args:
+            tal_topk (int): Number of anchors considered in selection. Defaults to 10.
+            class_loss_weight (float): Weight for classification loss. Defaults to 0.5. For optimal
+                results, multiply with accumulate_grad_batches.
+            bbox_loss_weight (float): Weight for bbox loss. Defaults to 7.5. For optimal results,
+                multiply with accumulate_grad_batches.
+            dfl_loss_weight (float): Weight for DFL loss. Defaults to 1.5. For optimal results,
+                multiply with accumulate_grad_batches.
+            skip_stal (bool): If True, disables Small-Target-Aware Label Assignment candidate
+                expansion. Defaults to False.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(
             tal_topk=tal_topk,
@@ -160,22 +194,18 @@ class PrecisionDFLSegmentationLoss(PrecisionDFLDetectionLoss):
     ) -> Tensor:
         """Compute the segmentation loss for the entire batch.
 
-        @type fg_mask: Tensor
-        @param fg_mask: Foreground mask. Shape: (B, N_anchor).
-        @type gt_masks: Tensor
-        @param gt_masks: Ground truth masks. Shape: (n, H, W).
-        @type gt_idx: Tensor
-        @param gt_idx: Ground truth mask indices. Shape: (B, N_anchor).
-        @type bboxes: Tensor
-        @param bboxes: Ground truth bounding boxes in xyxy format.
-            Shape: (B, N_anchor, 4).
-        @type batch_ids: Tensor
-        @param batch_ids: Batch indices. Shape: (n, 1).
-        @type proto: Tensor
-        @param proto: Prototype masks. Shape: (B, 32, H, W).
-        @type pred_masks: Tensor
-        @param pred_masks: Predicted mask coefficients. Shape: (B,
-            N_anchor, 32).
+        Args:
+            fg_mask (``Tensor``): Foreground mask. Shape: (B, N_anchor).
+            gt_masks (``Tensor``): Ground truth masks. Shape: (n, H, W).
+            gt_idx (``Tensor``): Ground truth mask indices. Shape: (B, N_anchor).
+            bboxes (``Tensor``): Ground truth bounding boxes in xyxy format. Shape: (B, N_anchor, 4).
+            batch_ids (``Tensor``): Batch indices. Shape: (n, 1).
+            proto (``Tensor``): Prototype masks. Shape: (B, 32, H, W).
+            pred_masks (``Tensor``): Predicted mask coefficients. Shape: (B, N_anchor, 32).
+
+        Returns:
+            Tensor: Scalar segmentation loss normalized by the number of positive anchors.
+
         """
         _, _, h, w = proto.shape
         total_loss = 0

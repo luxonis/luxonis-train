@@ -5,13 +5,13 @@ from typing import Any
 from bidict import bidict
 from luxonis_ml.data import Category
 
-from luxonis_train.loaders import BaseLoaderTorch
-
 
 class DatasetMetadata:
-    """A class encapsulating various metadata about a dataset, such as
-    the number of classes, the number of keypoints, and the types of
-    additional labels.
+    """Dataset metadata used to configure model outputs.
+
+    The metadata includes class definitions, keypoint counts, and
+    additional label metadata types.
+
     """
 
     def __init__(
@@ -23,18 +23,20 @@ class DatasetMetadata:
             str, type[int] | type[Category] | type[float] | type[str]
         ]
         | None = None,
-        loader: BaseLoaderTorch | None = None,
+        loader: Any = None,
     ):
-        """Use to infer the number of classes, number of keypoints,
-        I{etc.} instead of passing them as arguments to the model.
+        """Create dataset metadata.
 
-        @type classes: dict[str, dict[str, int]] | None
-        @param classes: Dictionary mapping tasks to the classes.
-        @type n_keypoints: dict[str, int] | None
-        @param n_keypoints: Dictionary mapping tasks to the number of
-            keypoints.
-        @type loader: DataLoader | None
-        @param loader: Dataset loader.
+        Args:
+            classes (dict[str, dict[str, int]] | None): Dictionary mapping
+                task names to class-name-to-index mappings.
+            n_keypoints (dict[str, int] | None): Dictionary mapping task names
+                to the number of keypoints.
+            metadata_types (``dict[str, type[int] | type[Category] | type[float] | type[str]] | None``):
+                Dictionary mapping metadata names to metadata value types.
+            loader (``BaseLoaderTorch | None``): Dataset loader associated with
+                this metadata.
+
         """
         self._classes = classes or {}
         self._n_keypoints = n_keypoints or {}
@@ -57,8 +59,9 @@ class DatasetMetadata:
     def dump(self) -> dict[str, Any]:
         """Dump the metadata to a dictionary.
 
-        @rtype: dict[str, dict[str, int] | int | dict[str, type]]
-        @return: Dictionary containing the metadata.
+        Returns:
+            ``dict[str, Any]``: Dictionary containing the metadata.
+
         """
         return {
             "classes": {k: dict(v) for k, v in self._classes.items()},
@@ -82,25 +85,24 @@ class DatasetMetadata:
 
     @property
     def task_names(self) -> set[str]:
-        """Gets the names of the tasks present in the dataset.
-
-        @rtype: set[str]
-        @return: Names of the tasks present in the dataset.
-        """
+        """Set[str]: Names of the tasks present in the dataset."""
         return set(self._classes.keys())
 
     def n_classes(self, task_name: str | None = None) -> int:
         """Get the number of classes for the specified task.
 
-        @type task_name: str | None
-        @param task_name: Task to get the number of classes for.
-        @rtype: int
-        @return: Number of classes for the specified task type.
-        @raises ValueError: If the C{task} is not present in the
-            dataset.
-        @raises RuntimeError: If the C{task} was not provided and the
-            dataset contains different number of classes for different
-            task types.
+        Args:
+            task_name (str | None): Task to get the number of classes for.
+                Defaults to ``None``.
+
+        Returns:
+            int: Number of classes for the specified task.
+
+        Raises:
+            ValueError: If ``task_name`` is not present in the dataset.
+            RuntimeError: If ``task_name`` was not provided and the dataset
+                contains different numbers of classes for different tasks.
+
         """
         if task_name is not None:
             if task_name not in self._classes:
@@ -120,15 +122,18 @@ class DatasetMetadata:
     def n_keypoints(self, task_name: str | None = None) -> int:
         """Get the number of keypoints for the specified task.
 
-        @type task_name: str | None
-        @param task_name: Task to get the number of keypoints for.
-        @rtype: int
-        @return: Number of keypoints for the specified task type.
-        @raises ValueError: If the C{task} is not present in the
-            dataset.
-        @raises RuntimeError: If the C{task} was not provided and the
-            dataset contains different number of keypoints for different
-            task types.
+        Args:
+            task_name (str | None): Task to get the number of keypoints for.
+                Defaults to ``None``.
+
+        Returns:
+            int: Number of keypoints for the specified task.
+
+        Raises:
+            ValueError: If ``task_name`` is not present in the dataset.
+            RuntimeError: If ``task_name`` was not provided and the dataset
+                contains different numbers of keypoints for different tasks.
+
         """
         if task_name is not None:
             if task_name not in self._n_keypoints:
@@ -148,16 +153,19 @@ class DatasetMetadata:
     def classes(self, task_name: str | None = None) -> bidict[str, int]:
         """Get the class names for the specified task.
 
-        @type task_name: str | None
-        @param task_name: Task to get the class names for.
-        @rtype: bidict[str, int]
-        @return: Bidirectional dictionary mapping class names to their
-            indices for the specified task type.
-        @raises ValueError: If the C{task} is not present in the
-            dataset.
-        @raises RuntimeError: If the C{task} was not provided and the
-            dataset contains different class names for different label
-            types.
+        Args:
+            task_name (str | None): Task to get the class names for. Defaults
+                to ``None``.
+
+        Returns:
+            ``bidict[str, int]``: Bidirectional dictionary mapping class names to
+            their indices for the specified task.
+
+        Raises:
+            ValueError: If ``task_name`` is not present in the dataset.
+            RuntimeError: If ``task_name`` was not provided and the dataset
+                contains different class names for different tasks.
+
         """
         if task_name is not None:
             if task_name not in self._classes:
@@ -178,25 +186,28 @@ class DatasetMetadata:
     def metadata_types(
         self,
     ) -> dict[str, type[int] | type[Category] | type[float] | type[str]]:
-        """Gets the types of metadata for the dataset.
+        """Dict[str, type[int] | type[`Category
+        <luxonis_ml.data.datasets.Category>`] | type[float] |
+        type[str]]: Metadata names mapped to their types.
 
-        @rtype: dict[str, type[int] | type[Category] | type[float] |
-            type[str]
-        @return: Dictionary mapping metadata names to their types.
+        Raises:
+            RuntimeError: If the dataset does not define metadata types.
+
         """
         if self._metadata_types is None:
             raise RuntimeError("The dataset does define metadata types.")
         return self._metadata_types
 
     @classmethod
-    def from_loader(cls, loader: BaseLoaderTorch) -> "DatasetMetadata":
-        """Create a L{DatasetMetadata} object from a L{LuxonisDataset}.
+    def from_loader(cls, loader: Any) -> "DatasetMetadata":
+        """Create a `DatasetMetadata` object from a dataset loader.
 
-        @type loader: LuxonisDataset
-        @param loader: Loader to read the metadata from.
-        @rtype: DatasetMetadata
-        @return: Instance of L{DatasetMetadata} created from the
-            provided dataset.
+        Args:
+            loader (``BaseLoaderTorch``): Loader to read the metadata from.
+
+        Returns:
+            DatasetMetadata: Instance created from the provided loader.
+
         """
         return cls(
             classes=loader.get_classes(),

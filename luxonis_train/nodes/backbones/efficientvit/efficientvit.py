@@ -15,24 +15,56 @@ from .blocks import (
 
 
 class EfficientViT(BaseNode):
-    """EfficientViT backbone implementation based on a lightweight
-    transformer architecture.
+    """EfficientViT lightweight transformer backbone.
 
-    This implementation is inspired by the architecture described in the paper:
-    "EfficientViT: Multi-Scale Linear Attention for High-Resolution Dense Prediction"
-    (https://arxiv.org/abs/2205.14756).
+    EfficientViT combines efficient convolutional blocks with lightweight
+    attention blocks for high-resolution dense prediction features.
 
-    The EfficientViT model is designed to provide a balance between computational efficiency
-    and performance, making it suitable for deployment on edge devices with limited resources.
+    Metadata:
+        - Node type: backbone
+        - Registry name: ``EfficientViT``
+        - Task: None
+        - Attach index: ``-1``
+        - Inputs: ``features`` tensor
+        - Outputs: ``features`` list of tensors
 
-    Variants
-    ========
-    The variant determines the width, depth, and dimension of the network.
-    Available variants are:
-      - "n" or "nano" (default): width_list=[8, 16, 32, 64, 128], depth_list=[1, 2, 2, 2, 2], dim=16
-      - "s" or "small": width_list=[16, 32, 64, 128, 256], depth_list=[1, 2, 3, 3, 4], dim=16
-      - "m" or "medium": width_list=[24, 48, 96, 192, 384], depth_list=[1, 3, 4, 4, 6], dim=32
-      - "l" or "large": width_list=[32, 64, 128, 256, 512], depth_list=[1, 4, 6, 6, 9], dim=32
+    Provenance:
+        - Source: ``EfficientViT: Multi-Scale Linear Attention for
+          High-Resolution Dense Prediction``
+        - License: Project license
+        - Implementation notes: Local implementation using EfficientViT,
+          mobile bottleneck, and depthwise separable convolution blocks.
+
+    Variants:
+        - ``"n"``:
+            - Default: yes
+            - Aliases: ``"nano"``
+            - Parameters:
+                - ``width_list``: ``[8, 16, 32, 64, 128]``
+                - ``depth_list``: ``[1, 2, 2, 2, 2]``
+                - ``dim``: ``16``
+        - ``"s"``:
+            - Default: no
+            - Aliases: ``"small"``
+            - Parameters:
+                - ``width_list``: ``[16, 32, 64, 128, 256]``
+                - ``depth_list``: ``[1, 2, 3, 3, 4]``
+                - ``dim``: ``16``
+        - ``"m"``:
+            - Default: no
+            - Aliases: ``"medium"``
+            - Parameters:
+                - ``width_list``: ``[24, 48, 96, 192, 384]``
+                - ``depth_list``: ``[1, 3, 4, 4, 6]``
+                - ``dim``: ``32``
+        - ``"l"``:
+            - Default: no
+            - Aliases: ``"large"``
+            - Parameters:
+                - ``width_list``: ``[32, 64, 128, 256, 512]``
+                - ``depth_list``: ``[1, 4, 6, 6, 9]``
+                - ``dim``: ``32``
+
     """
 
     in_channels: int
@@ -46,15 +78,15 @@ class EfficientViT(BaseNode):
         expand_ratio: int = 4,
         **kwargs,
     ):
-        """
-        @type width_list: list[int]
-        @param width_list: List of number of channels for each block.
-        @type depth_list: list[int]
-        @param depth_list: List of number of layers in each block.
-        @type dim: int | None
-        @param dim: Dimension of the transformer.
-        @type expand_ratio: int
-        @param expand_ratio: Expansion ratio for the L{MobileBottleneckBlock}. Defaults to C{4}.
+        """Initialize the EfficientViT backbone.
+
+        Args:
+            width_list (list[int] | None): List of number of channels for each block.
+            depth_list (list[int] | None): List of number of layers in each block.
+            dim (int): Dimension of the transformer.
+            expand_ratio (int): Expansion ratio for the `MobileBottleneckBlock`. Defaults to ``4``.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         width_list = width_list or [8, 16, 32, 64, 128]

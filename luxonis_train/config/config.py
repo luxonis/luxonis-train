@@ -467,8 +467,10 @@ class PreprocessingConfig(BaseModelExtraForbid):
     def get_active_augmentations(self) -> list[AugmentationConfig]:
         """Get a list of augmentations that are active.
 
-        @rtype: list[AugmentationConfig]
-        @return: Filtered list of active augmentation configs
+        Returns:
+            list[AugmentationConfig]: Filtered list of active augmentation
+            configs.
+
         """
         return [
             AugmentationConfig(
@@ -560,6 +562,7 @@ class TrainerConfig(BaseModelExtraForbid):
         strings.
 
         This converts them back to ints if possible.
+
         """
         for callback in self.callbacks:
             if callback.name != "GradientAccumulationScheduler":

@@ -20,6 +20,36 @@ from .base_loss import BaseLoss
 
 
 class AdaptiveDetectionLoss(BaseLoss):
+    """Adaptive bbox detection loss with warmup assignment.
+
+    Metadata:
+        - Module type: loss
+        - Registry name: ``AdaptiveDetectionLoss``
+        - Task: BOUNDINGBOX
+        - Attached node types: ``EfficientBBoxHead``
+        - Inputs: ``features``, ``class_scores``, ``distributions``, ``target``
+        - Outputs: scalar total loss and ``class``/``iou`` sub-losses
+
+    Prediction format:
+        ``features`` are FPN feature maps, ``class_scores`` are per-anchor class
+        scores, and ``distributions`` encode anchor-relative boxes.
+
+    Target format:
+        ``target`` contains batch-indexed bounding boxes with class IDs and
+        normalized ``xywh`` coordinates.
+
+    Formula:
+        Combines varifocal classification loss with IoU bbox regression loss.
+        ATSS assignment is used during warmup, then task-aligned assignment.
+
+    Provenance:
+        - Source: YOLOv6 / PPYOLOE-inspired implementation
+        - License: Unknown
+        - Implementation notes: Caches anchors, anchor points, strides, and bbox
+          scaling tensors from the first feature-map batch.
+
+    """
+
     supported_tasks = [Tasks.BOUNDINGBOX]
 
     node: EfficientBBoxHead
@@ -41,27 +71,21 @@ class AdaptiveDetectionLoss(BaseLoss):
         skip_stal: bool = False,
         **kwargs,
     ):
-        """BBox loss adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
-        <https://arxiv.org/pdf/2209.02976.pdf>}. It combines IoU based bbox regression loss and varifocal loss
-        for classification.
-        Code is adapted from U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models}.
+        """Combine IoU-based bbox regression loss and varifocal loss.
 
-        @type n_warmup_epochs: int
-        @param n_warmup_epochs: Number of epochs where ATSS assigner is used, after that we switch to TAL assigner.
-        @type iou_type: L{IoUType}
-        @param iou_type: IoU type used for bbox regression loss.
-        @type reduction: Literal["sum", "mean"]
-        @param reduction: Reduction type for loss.
-        @type class_loss_weight: float
-        @param class_loss_weight: Weight of classification loss. Defaults to 1.0. For optimal results, multiply with accumulate_grad_batches.
-        @type iou_loss_weight: float
-        @param iou_loss_weight: Weight of IoU loss. Defaults to 2.5. For optimal results, multiply with accumulate_grad_batches.
-        @type per_class_weights: list[float] | None
-        @param per_class_weights: A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
-        @type skip_stal: bool
-        @param skip_stal: If True, disables the
-            Small-Target-Aware Label Assignment candidate expansion
-            when the loss switches to TAL after warmup.
+        BBox loss adapted from `YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
+        Code is adapted from `https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models <https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models>`_.
+
+        Args:
+            n_warmup_epochs (int): Number of epochs where ATSS assigner is used, after that we switch to TAL assigner.
+            iou_type (``IoUType``): IoU type used for bbox regression loss.
+            reduction (``Literal["sum", "mean"]``): Reduction type for loss.
+            class_loss_weight (float): Weight of classification loss. Defaults to 1.0. For optimal results, multiply with accumulate_grad_batches.
+            iou_loss_weight (float): Weight of IoU loss. Defaults to 2.5. For optimal results, multiply with accumulate_grad_batches.
+            per_class_weights (list[float] | None): A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
+            skip_stal (bool): If True, disables the Small-Target-Aware Label Assignment candidate expansion when the loss switches to TAL after warmup.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
 
@@ -227,8 +251,10 @@ class AdaptiveDetectionLoss(BaseLoss):
     def _preprocess_bbox_target(
         self, target: Tensor, batch_size: int
     ) -> Tensor:
-        """Preprocess target in shape [batch_size, N, 5] where N is the
-        maximum number of instances in one image.
+        """Preprocess targets into shape ``[batch_size, N, 5]``.
+
+        ``N`` is the maximum number of instances in one image.
+
         """
         sample_ids, counts = cast(
             tuple[Tensor, Tensor],
@@ -262,16 +288,17 @@ class VarifocalLoss(nn.Module):
         gamma: float = 2.0,
         per_class_weights: Tensor | None = None,
     ):
-        """Varifocal Loss is a loss function for training a dense object detector to predict
-        the IoU-aware classification score, inspired by focal loss.
-        Code is adapted from: U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models/losses.py}.
+        """Train a dense object detector to predict IoU-aware
+        classification scores.
 
-        @type alpha: float
-        @param alpha: alpha parameter in focal loss, default is 0.75.
-        @type gamma: float
-        @param gamma: gamma parameter in focal loss, default is 2.0.
-        @type per_class_weights: Tensor | None
-        @param per_class_weights: A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
+        Varifocal Loss is inspired by focal loss.
+        Code is adapted from: `https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models/losses.py <https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models/losses.py>`_.
+
+        Args:
+            alpha (float): alpha parameter in focal loss, default is 0.75.
+            gamma (float): gamma parameter in focal loss, default is 2.0.
+            per_class_weights (``Tensor | None``): A list of weights to scale the loss for each class during training. This allows you to emphasize or de-emphasize certain classes based on their importance or representation in the dataset. The weights' length must be equal to the number of classes.
+
         """
         super().__init__()
 

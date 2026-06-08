@@ -243,29 +243,19 @@ class UpBlock(nn.Sequential):
             "nearest", "linear", "bilinear", "bicubic", "trilinear"
         ] = "bilinear",
     ):
-        """Upsampling with ConvTranspose2D or Upsample (based on the
-        mode).
+        """Upsample with ConvTranspose2d or interpolation.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Kernel size. Defaults to C{2}.
-        @type stride: int
-        @param stride: Stride. Defaults to C{2}.
-        @type upsample_mode: Literal["simple_upsample", "conv_upsample",
-            "conv_transpose"]
-        @param upsample_mode: Upsampling method, either 'conv_transpose'
-            (for ConvTranspose2D) or one of 'simple_upsample' or
-            'conv_upsample' (for nn.Upsample). 'conv_upsample' adds an
-            additional 1x1 convolution after calling nn.Upsample.
-        @type inter_mode: str
-        @param inter_mode: Interpolation mode used for nn.Upsample
-            (e.g., 'bilinear', 'nearest').
-        @type align_corners: bool
-        @param align_corners: Align corners option for upsampling
-            methods that support it. Defaults to False.
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            upsample_mode (``Literal["simple_upsample", "conv_upsample", "conv_transpose"]``): Upsampling method, either 'conv_transpose' (for ConvTranspose2D) or one of 'simple_upsample' or 'conv_upsample' (for nn.Upsample). 'conv_upsample' adds an additional 1x1 convolution after calling nn.Upsample.
+            kernel_size (int): Kernel size.
+            use_norm (bool): Whether to use batch normalization in the convolution block.
+            align_corners (bool): Align corners option for upsampling methods that support it.
+            stride (int): Stride. Defaults to ``2``.
+            activation (``nn.Module | None | bool``): Activation for the convolution block. Defaults to ``True``.
+            interpolation_mode (``Literal["nearest", "linear", "bilinear", "bicubic", "trilinear"]``): Interpolation mode used for ``nn.Upsample``. Defaults to ``"bilinear"``.
+
         """
         layers = []
 

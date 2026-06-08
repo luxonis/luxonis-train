@@ -10,7 +10,36 @@ from .base_metric import BaseMetric
 
 
 class MIoU(BaseMetric):
-    """Mean IoU metric for SEGMENTATION tasks."""
+    """Mean Intersection over Union metric for segmentation masks.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``MIoU``
+        - Task: SEGMENTATION
+        - Attached node types: None
+        - Inputs: ``predictions``, ``target``
+        - Outputs: scalar mean IoU tensor, or scalar plus per-class IoU metrics
+        - State: wrapped ``torchmetrics.segmentation.MeanIoU`` state
+
+    Prediction format:
+        ``predictions`` contains segmentation logits or one-hot masks, depending
+        on ``input_format``.
+
+    Target format:
+        ``target`` contains segmentation labels in index or one-hot format,
+        matching ``input_format``.
+
+    Formula:
+        Converts predictions and targets to the configured format and delegates
+        IoU accumulation to ``torchmetrics.segmentation.MeanIoU``.
+
+    Provenance:
+        - Source: torchmetrics
+        - License: Project license
+        - Implementation notes: Can return per-class sub-metrics when
+          ``per_class`` is enabled and class names are available from the node.
+
+    """
 
     supported_tasks = [Tasks.SEGMENTATION]
     predefined_model_params_aliases = {"per_class_metrics": "per_class"}
@@ -23,16 +52,15 @@ class MIoU(BaseMetric):
         input_format: Literal["one-hot", "index"] = "index",
         **kwargs,
     ):
-        """
-        @type num_classes: int
-        @param num_classes: Number of classes.
-        @type include_background: bool
-        @param include_background: Whether to include the background
-            class.
-        @type per_class: bool
-        @param per_class: Whether to compute the IoU per class.
-        @type input_format: Literal["one-hot", "index"]
-        @param input_format: Format of the input.
+        """Initialize the mean IoU metric.
+
+        Args:
+            num_classes (int): Number of classes.
+            include_background (bool): Whether to include the background class.
+            per_class (bool): Whether to compute the IoU per class.
+            input_format (``Literal["one-hot", "index"]``): Format of the input.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.input_format = input_format

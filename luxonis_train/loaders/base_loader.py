@@ -7,7 +7,7 @@ import numpy.typing as npt
 import torch
 from luxonis_ml.data import Category
 from luxonis_ml.data.utils import get_task_type, task_is_metadata
-from luxonis_ml.utils.registry import AutoRegisterMeta
+from luxonis_ml.utils import AutoRegisterMeta
 from torch import Size, Tensor
 from torch.utils.data import Dataset
 
@@ -26,8 +26,8 @@ class BaseLoaderTorch(
     register=False,
     registry=LOADERS,
 ):
-    """Base abstract loader class that enforces LuxonisLoaderTorchOutput
-    output label structure.
+    """Base abstract loader class for `LuxonisLoaderTorchOutput`
+    samples.
     """
 
     def __init__(
@@ -42,56 +42,31 @@ class BaseLoaderTorch(
         color_space: Literal["RGB", "BGR", "GRAY"] = "RGB",
         seed: int | None = None,
     ):
-        """
+        """Initialize the base loader.
 
-        @type view: list[str]
-        @param view: List of splits that form the view.
-            Usually contains only one split, e.g. C{["train"]}
-            or C{["test"]}. However, more complex datasets
-            can make use of multi-split views, e.g. C{["train_synthetic",
-            "train_real"]}.
+        Args:
+            view (list[str]): Splits that form the view. Usually contains a
+                single split, such as ``["train"]`` or ``["test"]``. More
+                complex datasets can use multi-split views, such as
+                ``["train_synthetic", "train_real"]``.
+            height (int | None): Height of the output image.
+            width (int | None): Width of the output image.
+            augmentation_engine (str): Name of the augmentation engine. This
+                can be used to swap between augmentation engines or select
+                predefined engines, such as ``AlbumentationsEngine``.
+            augmentation_config (list[AugmentationConfig] | None): List of
+                augmentation configurations. Each configuration contains a
+                ``name`` and a ``params`` dictionary.
+            image_source (str): Name of the image source. This is only
+                relevant for datasets with multiple image sources, such as
+                ``"left"`` and ``"right"``, and defines which source is used
+                for visualizations.
+            keep_aspect_ratio (bool): Whether to keep the output image aspect
+                ratio after resizing.
+            color_space (``Literal["RGB", "BGR", "GRAY"]``): Output image color
+                space.
+            seed (int | None): Random seed used for augmentations.
 
-        @type height: int
-        @param height: Height of the output image.
-
-        @type width: int
-        @param width: Width of the output image.
-
-        @type augmentation_engine: str
-        @param augmentation_engine: Name of the augmentation engine. Can
-            be used to enable swapping between different augmentation engines or making use of pre-defined engines, e.g. C{AlbumentationsEngine}.
-
-        @type augmentation_config: list[AugmentationConfig] | None
-        @param augmentation_config: List of augmentation configurations.
-            Individual configurations are in the form of::
-
-                class ConfigItem:
-                    name: str
-                    params: dict[str, JsonValue]
-
-            Where C{name} is the name of the augmentation and C{params} is a
-            dictionary of its parameters.
-
-            Example::
-
-                ConfigItem(
-                    name="HorizontalFlip",
-                    params={"p": 0.5},
-                )
-
-        @type image_source: str
-        @param image_source: Name of the image source. Only relevant for
-            datasets with multiple image sources, e.g. C{"left"} and C{"right"}. This parameter defines which of these sources is used for
-            visualizations.
-
-        @type keep_aspect_ratio: bool
-        @param keep_aspect_ratio: Whether to keep the aspect ratio of the output image after resizing.
-
-        @type color_space: Literal["RGB", "BGR", "GRAY"]
-        @param color_space: Color space of the output image.
-
-        @type seed: Optional[int]
-        @param seed: The random seed to use for the augmentations.
         """
         self._view = view
         self._image_source = image_source
@@ -105,117 +80,98 @@ class BaseLoaderTorch(
 
     @property
     def image_source(self) -> str:
-        """Name of the input image group.
-
-        @type: str
-        """
+        """Str: Name of the input image group."""
         return self._getter_check_none("image_source")
 
     @property
     def view(self) -> list[str]:
-        """List of splits forming this dataset's view.
-
-        @type: list[str]
-        """
+        """List[str]: Splits forming this dataset's view."""
         return self._view
 
     @property
     def augmentation_engine(self) -> str:
-        """Name of the augmentation engine.
-
-        @type: str
-        """
+        """Str: Name of the augmentation engine."""
         return self._getter_check_none("augmentation_engine")
 
     @property
     def augmentation_config(self) -> list[AugmentationConfig]:
-        """List of augmentation configurations.
-
-        @type: list[AugmentationConfig]
-        """
+        """List[AugmentationConfig]: Augmentation configurations."""
         return self._getter_check_none("augmentation_config")
 
     @property
     def height(self) -> int:
-        """Height of the output image.
-
-        @type: int
-        """
+        """Int: Height of the output image."""
         return self._getter_check_none("height")
 
     @property
     def width(self) -> int:
-        """Width of the output image.
-
-        @type: int
-        """
+        """Int: Width of the output image."""
         return self._getter_check_none("width")
 
     @property
     def keep_aspect_ratio(self) -> bool:
-        """Whether to keep the aspect ratio of the output image after
+        """Bool: Whether to keep the output image aspect ratio after
         resizing.
-
-        @type: bool
         """
         return self._getter_check_none("keep_aspect_ratio")
 
     @property
     def color_space(self) -> Literal["RGB", "BGR"]:
-        """Color space of the output image.
-
-        @type: Literal["RGB", "BGR"]
+        """``Literal["RGB", "BGR"]``: Color space of the output
+        image.
         """
         return self._getter_check_none("color_space")
 
     @property
     def seed(self) -> int | None:
-        """The random seed to use for the augmentations.
-
-        @type: int | None
-        """
+        """Int | None: Random seed used for augmentations."""
         return self._seed
 
     @property
     @abstractmethod
     def input_shapes(self) -> dict[str, Size]:
-        """Shape (c, h, w) of each loader group (sub-element), WITHOUT
-        batch dimension.
+        """``dict[str, Size]``: Shape ``(c, h, w)`` of each loader
+        group.
 
-            1. Single image input::
+        Shapes do not include the batch dimension.
+
+        Examples:
+            Single image input::
+
                 {
-                    'image': torch.Size([3, 224, 224]),
+                    "image": torch.Size([3, 224, 224]),
                 }
 
-            2. Image and segmentation input::
+            Image and segmentation input::
+
                 {
-                    'image': torch.Size([3, 224, 224]),
-                    'segmentation': torch.Size([1, 224, 224]),
+                    "image": torch.Size([3, 224, 224]),
+                    "segmentation": torch.Size([1, 224, 224]),
                 }
 
-            3. Left image, right image and disparity input::
+            Left image, right image, and disparity input::
+
                 {
-                    'left': torch.Size([3, 224, 224]),
-                    'right': torch.Size([3, 224, 224]),
-                    'disparity': torch.Size([1, 224, 224]),
+                    "left": torch.Size([3, 224, 224]),
+                    "right": torch.Size([3, 224, 224]),
+                    "disparity": torch.Size([1, 224, 224]),
                 }
 
-            4. Image, keypoints, and point cloud input::
+            Image, keypoints, and point cloud input::
+
                 {
-                    'image': torch.Size([3, 224, 224]),
-                    'keypoints': torch.Size([17, 2]),
-                    'point_cloud': torch.Size([20000, 3]),
+                    "image": torch.Size([3, 224, 224]),
+                    "keypoints": torch.Size([17, 2]),
+                    "point_cloud": torch.Size([20000, 3]),
                 }
 
-        @type: dict[str, Size]
         """
         ...
 
     @property
     def input_shape(self) -> Size:
-        """Shape (c, h, w) of the input tensor, WITHOUT batch dimension.
-
-        @type: torch.Size
+        """``Size``: Shape ``(c, h, w)`` of the input tensor without
+        batch dimension.
         """
         return self.input_shapes[self.image_source]
 
@@ -241,10 +197,13 @@ class BaseLoaderTorch(
     def get(self, idx: int) -> tuple[Tensor | dict[str, Tensor], Labels]:
         """Load sample from dataset.
 
-        @type idx: int
-        @param idx: Sample index.
-        @rtype: L{LuxonisLoaderTorchOutput}
-        @return: Sample's data in L{LuxonisLoaderTorchOutput} format.
+        Args:
+            idx (int): Sample index.
+
+        Returns:
+            LuxonisLoaderTorchOutput: Sample data in
+            `LuxonisLoaderTorchOutput` format.
+
         """
         ...
 
@@ -252,19 +211,21 @@ class BaseLoaderTorch(
     def get_classes(self) -> dict[str, dict[str, int]]:
         """Get classes according to computer vision task.
 
-        @rtype: dict[LabelType, dict[str, int]]
-        @return: A dictionary mapping tasks to their classes as a
-            mappings from class name to class IDs.
+        Returns:
+            dict[str, dict[str, int]]: ``Mapping`` of task names to class name and
+            class ID mappings.
+
         """
         ...
 
     def get_n_keypoints(self) -> dict[str, int] | None:
-        """Get a dictionary defining the semantic skeleton for each
-        class using keypoints.
+        """Get semantic skeleton definitions for classes using
+        keypoints.
 
-        @rtype: dict[str, Dict] | None
-        @return: A dictionary mapping classes to their skeleton
-            definitions.
+        Returns:
+            dict[str, int] | None: ``Mapping`` of task names to keypoint counts, or
+            ``None`` when keypoints are not available.
+
         """
         return None
 
@@ -279,13 +240,15 @@ class BaseLoaderTorch(
     def dict_numpy_to_torch(
         self, numpy_dictionary: dict[str, np.ndarray]
     ) -> dict[str, Tensor]:
-        """Convert a dictionary of numpy arrays to a dictionary of torch
-        tensors.
+        """Convert a dictionary of NumPy arrays to torch tensors.
 
-        @type numpy_dictionary: dict[str, np.ndarray]
-        @param numpy_dictionary: Dictionary of numpy arrays.
-        @rtype: dict[str, Tensor]
-        @return: Dictionary of torch tensors.
+        Args:
+            numpy_dictionary (``dict[str, np.ndarray]``): Dictionary of NumPy
+                arrays.
+
+        Returns:
+            ``dict[str, Tensor]``: Dictionary of torch tensors.
+
         """
         torch_dictionary = {}
 
@@ -297,13 +260,14 @@ class BaseLoaderTorch(
         return torch_dictionary
 
     def read_image(self, path: str) -> npt.NDArray[np.uint8]:
-        """Read an image from a file and returns an unnormalized image
-        as a numpy array.
+        """Read an unnormalized image from a file as a NumPy array.
 
-        @type path: str
-        @param path: Path to the image file.
-        @rtype: np.ndarray[np.uint8]
-        @return: Image as a numpy array.
+        Args:
+            path (str): ``Path`` to the image file.
+
+        Returns:
+            ``np.ndarray[np.uint8]``: Image as a NumPy array.
+
         """
         img = cv2.imread(path, cv2.IMREAD_COLOR)
         if self.color_space == "RGB":
@@ -339,13 +303,14 @@ class BaseLoaderTorch(
     ) -> tuple[dict[str, Tensor], Labels]:
         """Default collate function used for training.
 
-        @type batch: list[LuxonisLoaderTorchOutput]
-        @param batch: List of loader outputs (dict of Tensors) and
-            labels (dict of Tensors) in the LuxonisLoaderTorchOutput
-            format.
-        @rtype: tuple[dict[str, Tensor], dict[str, Tensor]]
-        @return: Tuple of inputs and annotations in the format expected
-            by the model.
+        Args:
+            batch (list[LuxonisLoaderTorchOutput]): Loader outputs containing
+                input tensors and labels in `LuxonisLoaderTorchOutput` format.
+
+        Returns:
+            ``tuple[dict[str, Tensor], Labels]``: Inputs and annotations in the
+            format expected by the model.
+
         """
         inputs: tuple[dict[str, Tensor], ...]
         labels: tuple[Labels, ...]

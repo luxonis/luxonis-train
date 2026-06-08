@@ -15,27 +15,27 @@ class TrainingProgressCallback(pl.Callback):
     """Publish training progress metrics.
 
     Metrics published:
-        - C{train/epoch_progress_percent}: Percentage of current epoch completed
-        - C{train/epoch_duration_sec}: Time elapsed so far in current epoch (updated per batch)
-        - C{train/epoch_completion_sec}: Total duration of completed training epoch in seconds
-        - C{train/batch_total_sec}: Time spent processing one training batch
-        - C{val/epoch_progress_percent}: Percentage of current validation epoch completed
-        - C{val/epoch_duration_sec}: Time elapsed so far in current validation epoch
-        - C{val/epoch_completion_sec}: Total duration of completed validation epoch in seconds
-        - C{val/batch_total_sec}: Time spent processing one validation batch
-        - C{test/epoch_progress_percent}: Percentage of current test epoch completed
-        - C{test/epoch_duration_sec}: Time elapsed so far in current test epoch
-        - C{test/epoch_completion_sec}: Total duration of completed test epoch in seconds
-        - C{test/batch_total_sec}: Time spent processing one test batch
+        - ``train/epoch_progress_percent``: Percentage of current epoch completed
+        - ``train/epoch_duration_sec``: Time elapsed so far in current epoch (updated per batch)
+        - ``train/epoch_completion_sec``: Total duration of completed training epoch in seconds
+        - ``train/batch_total_sec``: Time spent processing one training batch
+        - ``val/epoch_progress_percent``: Percentage of current validation epoch completed
+        - ``val/epoch_duration_sec``: Time elapsed so far in current validation epoch
+        - ``val/epoch_completion_sec``: Total duration of completed validation epoch in seconds
+        - ``val/batch_total_sec``: Time spent processing one validation batch
+        - ``test/epoch_progress_percent``: Percentage of current test epoch completed
+        - ``test/epoch_duration_sec``: Time elapsed so far in current test epoch
+        - ``test/epoch_completion_sec``: Total duration of completed test epoch in seconds
+        - ``test/batch_total_sec``: Time spent processing one test batch
+
     """
 
     def __init__(self, log_every_n_batches: int = 1):
-        """
-        @type log_every_n_batches: int
-        @param log_every_n_batches: How often to log progress metrics
-        (every N batches). Can be set to higher to prevent logging
-        in real-time if there is too much logging overhead.
-        By default 1 means real-time.
+        """Initialize training progress logging frequency.
+
+        Args:
+            log_every_n_batches (int): How often to log progress metrics (every N batches). Can be set to higher to prevent logging in real-time if there is too much logging overhead. By default 1 means real-time.
+
         """
         super().__init__()
         self.log_every_n_batches = max(1, log_every_n_batches)

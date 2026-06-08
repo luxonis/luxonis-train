@@ -19,6 +19,7 @@ class TransformerBackboneReturnsIntermediateLayers(nn.Module):
     To properly declare the
     dinov3.models.vision_transformer.DinoVisionTransformer
     type, the DINOv3 repository needs to be cloned locally.
+
     """
 
     embed_dim: int
@@ -49,13 +50,78 @@ DINOv3Variant: TypeAlias = Literal[
 
 
 class DinoV3(BaseNode):
-    """DINOv3 backbone: a self-supervised vision transformer encoder
-    that learns strong, dense feature representations useful for various
-    downstream tasks.
+    """DINOv3 self-supervised vision transformer backbone.
 
-    Source: U{https://github.com/facebookresearch/dinov3}
-    @license: U{https://github.com/facebookresearch/dinov3?
-    tab=License-1-ov-file#readme}
+    DINOv3 learns strong, dense feature representations useful for various
+    downstream tasks and can return either dense feature maps or CLS token
+    embeddings.
+
+    Metadata:
+        - Node type: backbone
+        - Registry name: ``DinoV3``
+        - Task: None
+        - Attach index: ``-1``
+        - Inputs: ``features`` tensor
+        - Outputs: ``features`` list of tensors
+
+    Provenance:
+        - Source: ``facebookresearch/dinov3``
+        - License: Unknown
+        - Implementation notes: Loads DINOv3 through ``torch.hub`` and
+          replaces RoPE with an ONNX-friendly local module.
+
+    Variants:
+        - ``"vits16"``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - ``variant``: ``"vits16"``
+        - ``"vits16plus"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``variant``: ``"vits16plus"``
+        - ``"vitb16"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``variant``: ``"vitb16"``
+        - ``"vitl16"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``variant``: ``"vitl16"``
+        - ``"vith16plus"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``variant``: ``"vith16plus"``
+        - ``"vit7b16"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``variant``: ``"vit7b16"``
+        - ``"convnext_tiny"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``variant``: ``"convnext_tiny"``
+        - ``"convnext_small"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``variant``: ``"convnext_small"``
+        - ``"convnext_base"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``variant``: ``"convnext_base"``
+        - ``"convnext_large"``:
+            - Default: no
+            - Aliases: None
+            - Parameters:
+                - ``variant``: ``"convnext_large"``
+
     """
 
     in_height: int
@@ -71,31 +137,17 @@ class DinoV3(BaseNode):
         depth: int = 4,
         **kwargs,
     ):
-        """
-        @type weights_link: string
-        @param weights_link: A link for the specific model, which needs to be requested here U{https://pytorch.org/get-started/locally/}.
+        """Initialize the DINOv3 backbone.
 
-        @param return_sequence: If True, return the CLS embedding
-        [B, C] for downstream classification heads. Otherwise, turn
-        patch embeddings into [B, C, H, W] feature maps to be passed
-        to dense prediction heads
-        @type return_sequence: bool
+        Args:
+            weights_link (str): Weights value passed to ``torch.hub.load``.
+            return_sequence (bool): If True, return the CLS embedding [B, C] for downstream classification heads. Otherwise, turn patch embeddings into [B, C, H, W] feature maps to be passed to dense prediction heads.
+            variant (DINOv3Variant): Architecture variant of the DINOv3 backbone.
+            repo_or_dir (str): GitHub repository or local directory passed to ``torch.hub.load``. Defaults to ``facebookresearch/dinov3``.
+            freeze_backbone (bool): If True, freeze the backbone so only downstream heads contain trainable parameters.
+            depth (int): Number of last layers taken from the transformer output and converted to feature maps.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class and ``torch.hub.load``.
 
-        @param variant: Architecture variant of the DINOv3 backbone.
-        @type variant: Literal DINOv3Variant.
-
-        @param repo_dir: "facebookresearch/dinov3" if the repository
-        is not locally downloaded or cached, "local" otherwise
-        @type repo_dir: str
-
-        @param freeze_backbone: if True, freeze the backbone;
-        this will lead to a transfer learning scenario where
-        only the head contains trainable parameters
-        @type freeze_backbone: bool
-
-        @param depth: number of last layers that are taken
-        from the transformer output and converted to feature maps
-        @type depth: int
         """
         super().__init__(**kwargs)
 
@@ -131,12 +183,11 @@ class DinoV3(BaseNode):
             )
 
     def _replace_rope_embedding(self) -> None:
-        """Replace the default RoPE embedding in the DINOv3 backbone
-        with a nearly-identical implementation that is ONNX-
-        convertible.
+        """Replace the default RoPE embedding in the DINOv3 backbone.
 
         angles.tile(2) is not ONNX-convertible and was replaced by
         angles.repeat(1, 2)
+
         """
         old_rope = self.backbone.rope_embed
 
@@ -153,13 +204,22 @@ class DinoV3(BaseNode):
         self.backbone.rope_embed = RopePositionEmbedding(**rope_kwargs)
 
     def forward(self, inputs: Tensor) -> list[Tensor]:
-        """If self.return_sequence is True, a list containing the CLS
-        token embedding [B, C] is returned and this can be used for
-        downstream classification tasks.
+        """Run the DINOv3 backbone.
 
-        Otherwise, the last `self.depth` layers of the network are
+        If self.return_sequence is True, a list containing the CLS token
+        embedding [B, C] is returned and this can be used for downstream
+        classification tasks.
+
+        Otherwise, the last ``self.depth`` layers of the network are
         returned as [B, C, H, W] feature maps, which can be used for
-        downstream segmentation and other dense feature tasks
+        downstream segmentation and other dense feature tasks.
+
+        Args:
+            inputs (``Tensor``): Input image tensor with shape [B, C, H, W].
+
+        Returns:
+            ``list[Tensor]``: CLS token embeddings or dense feature maps.
+
         """
         outs: list[Tensor] = []
 

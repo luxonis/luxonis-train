@@ -19,6 +19,36 @@ from .base_loss import BaseLoss
 
 
 class PrecisionDFLDetectionLoss(BaseLoss):
+    """Precision bbox loss with distribution focal regression.
+
+    Metadata:
+        - Module type: loss
+        - Registry name: ``PrecisionDFLDetectionLoss``
+        - Task: BOUNDINGBOX
+        - Attached node types: ``PrecisionBBoxHead``
+        - Inputs: ``features``, ``target``
+        - Outputs: scalar total loss and ``class``/``iou``/``dfl`` sub-losses
+
+    Prediction format:
+        ``features`` contains detection feature maps whose channels are split
+        into bbox distribution logits and class logits.
+
+    Target format:
+        ``target`` contains batch-indexed bounding boxes with class IDs and
+        normalized ``xywh`` coordinates.
+
+    Formula:
+        Combines BCE classification loss, CIoU bbox loss, and distribution focal
+        loss after task-aligned assignment.
+
+    Provenance:
+        - Source: YOLOv8 / YOLOv6 / PPYOLOE-inspired implementation
+        - License: Unknown
+        - Implementation notes: Caches anchor points, stride tensors, bbox
+          scaling tensors, and projection bins from the attached node.
+
+    """
+
     node: PrecisionBBoxHead
     supported_tasks = [Tasks.BOUNDINGBOX]
 
@@ -31,23 +61,21 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         skip_stal: bool = False,
         **kwargs,
     ):
-        """BBox loss adapted from  U{Real-Time Flying Object Detection with YOLOv8
-        <https://arxiv.org/pdf/2305.09972>} and from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications
-        <https://arxiv.org/pdf/2209.02976.pdf>}.
-        Code is adapted from U{https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models}.
+        """BBox loss adapted from `Real-Time Flying Object Detection with YOLOv8 <https://arxiv.org/pdf/2305.09972>`_ and from `YOLOv6: A Single-Stage Object Detection Framework for Industrial Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
+        Code is adapted from `https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models <https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/models>`_.
 
-        @type tal_topk: int
-        @param tal_topk: Number of anchors considered in selection. Defaults to 10.
-        @type class_loss_weight: float
-        @param class_loss_weight: Weight for classification loss. Defaults to 0.5. For optimal results, multiply with accumulate_grad_batches.
-        @type bbox_loss_weight: float
-        @param bbox_loss_weight: Weight for bbox loss. Defaults to 7.5. For optimal results, multiply with accumulate_grad_batches.
-        @type dfl_loss_weight: float
-        @param dfl_loss_weight: Weight for DFL loss. Defaults to 1.5. For optimal results, multiply with accumulate_grad_batches.
-        @type skip_stal: bool
-        @param skip_stal: If True, disables the
-            Small-Target-Aware Label Assignment candidate expansion.
-            Defaults to False.
+        Args:
+            tal_topk (int): Number of anchors considered in selection. Defaults to 10.
+            class_loss_weight (float): Weight for classification loss. Defaults to 0.5. For optimal
+                results, multiply with accumulate_grad_batches.
+            bbox_loss_weight (float): Weight for bbox loss. Defaults to 7.5. For optimal results,
+                multiply with accumulate_grad_batches.
+            dfl_loss_weight (float): Weight for DFL loss. Defaults to 1.5. For optimal results,
+                multiply with accumulate_grad_batches.
+            skip_stal (bool): If True, disables the Small-Target-Aware Label Assignment candidate
+                expansion. Defaults to False.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.stride = self.node.stride
@@ -150,17 +178,18 @@ class PrecisionDFLDetectionLoss(BaseLoss):
         return out_target
 
     def decode_bbox(self, anchor_points: Tensor, pred_dist: Tensor) -> Tensor:
-        """Decode predicted object bounding box coordinates from anchor
-        points and distribution.
+        """Decode predicted object bounding boxes from anchors and
+        distributions.
 
-        @type anchor_points: Tensor
-        @param anchor_points: Anchor points tensor of shape [N, 4] where
-            N is the number of anchors.
-        @type pred_dist: Tensor
-        @param pred_dist: Predicted distribution tensor of shape
-            [batch_size, N, 4 * reg_max] where N is the number of
-            anchors.
-        @rtype: Tensor
+        Args:
+            anchor_points (``Tensor``): Anchor points tensor of shape [N, 4] where N is the number of
+                anchors.
+            pred_dist (``Tensor``): Predicted distribution tensor of shape [batch_size, N, 4 * reg_max]
+                where N is the number of anchors.
+
+        Returns:
+            ``Tensor``: Decoded bounding boxes with shape [batch_size, N, 4] in xyxy format.
+
         """
         if self.node.dfl:
             batch_size, n_anchors, n_channels = pred_dist.shape
@@ -201,9 +230,9 @@ class BBoxLoss(nn.Module):
     def __init__(self, reg_max: int = 16):
         """BBox loss that combines IoU and DFL losses.
 
-        @type reg_max: int
-        @param reg_max: Maximum number of regression channels. Defaults
-            to 16.
+        Args:
+            reg_max (int): Maximum number of regression channels. Defaults to 16.
+
         """
         super().__init__()
         self.dist_loss = DFLoss(reg_max) if reg_max > 1 else None
@@ -250,9 +279,9 @@ class DFLoss(nn.Module):
     def __init__(self, reg_max: int = 16):
         """DFL loss that combines classification and regression losses.
 
-        @type reg_max: int
-        @param reg_max: Maximum number of regression channels. Defaults
-            to 16.
+        Args:
+            reg_max (int): Maximum number of regression channels. Defaults to 16.
+
         """
         super().__init__()
         self.reg_max = reg_max

@@ -18,17 +18,17 @@ from luxonis_train.typing import Packet
 
 
 def make_divisible(x: float, divisor: int) -> int:
-    """Upward revision the value x to make it evenly divisible by the
-    divisor.
+    """Round ``x`` upward to make it evenly divisible by ``divisor``.
 
-    Equivalent to M{ceil(x / divisor) * divisor}.
+    Equivalent to :math:`ceil(x / divisor) * divisor`.
 
-    @type x: int | float
-    @param x: Value to be revised.
-    @type divisor: int
-    @param divisor: Divisor.
-    @rtype: int
-    @return: Revised value.
+    Args:
+        x (float): Value to revise.
+        divisor (int): Divisor.
+
+    Returns:
+        int: Revised value.
+
     """
     return math.ceil(x / divisor) * divisor
 
@@ -36,20 +36,21 @@ def make_divisible(x: float, divisor: int) -> int:
 def infer_upscale_factor(
     in_size: tuple[int, int] | int, orig_size: tuple[int, int] | int
 ) -> int:
-    """Infer the upscale factor from the input shape and the original
-    shape.
+    """Infer the upscale factor from input and original shapes.
 
-    @type in_size: tuple[int, int] | int
-    @param in_size: Input shape as a tuple of (height, width) or just
-        one of them.
-    @type orig_size: tuple[int, int] | int
-    @param orig_size: Original shape as a tuple of (height, width) or
-        just one of them.
-    @rtype: int
-    @return: Upscale factor.
-    @raise ValueError: If the C{in_size} cannot be upscaled to the
-        C{orig_size}. This can happen if the upscale factors are not
-        integers or are different.
+    Args:
+        in_size (tuple[int, int] | int): Input shape as ``(height, width)`` or
+            a single size.
+        orig_size (tuple[int, int] | int): Original shape as
+            ``(height, width)`` or a single size.
+
+    Returns:
+        int: Upscale factor.
+
+    Raises:
+        ValueError: If ``in_size`` cannot be upscaled to ``orig_size`` because the
+            upscale factors are not integers or are different.
+
     """
 
     def _infer_upscale_factor(in_size: int, orig_size: int) -> int | float:
@@ -103,10 +104,12 @@ def to_shape_packet(packet: Packet[Tensor]) -> Packet[Size]:
 
     Used for debugging purposes.
 
-    @type packet: Packet[Tensor]
-    @param packet: Packet of tensors.
-    @rtype: Packet[Size]
-    @return: Packet of shapes.
+    Args:
+        packet (``Packet[Tensor]``): Packet of tensors.
+
+    Returns:
+        ``Packet[Size]``: Packet of shapes.
+
     """
     shape_packet: Packet[Size] = {}
     for name, value in packet.items():
@@ -130,20 +133,20 @@ def get_with_default(
 ) -> T:
     """Get value with default.
 
-    Returns the value if it is not C{None}, otherwise returns the
-    default value and log an info.
+    Returns ``value`` if it is not ``None``. Otherwise, logs that the default is
+    being used and returns ``default``.
 
-    @type value: T | None
-    @param value: Value to return.
-    @type action_name: str
-    @param action_name: Name of the action for which the default value
-        is being used. Used for logging.
-    @type caller_name: str | None
-    @param caller_name: Name of the caller function. Used for logging.
-    @type default: T
-    @param default: Default value to return if C{value} is C{None}.
-    @rtype: T
-    @return: C{value} if it is not C{None}, otherwise C{default}.
+    Args:
+        value (T | None): Value to return.
+        action_name (str): Name of the action for which the default value is
+            being used.
+        caller_name (str | None): Name of the caller function, used for
+            logging. Defaults to ``None``.
+        default (T): Default value to return if ``value`` is ``None``.
+
+    Returns:
+        T: ``value`` if it is not ``None``; otherwise ``default``.
+
     """
     if value is not None:
         return value
@@ -160,17 +163,18 @@ def get_with_default(
 def get_signature(
     func: Callable, exclude: Collection[str] | None = None
 ) -> dict[str, Parameter]:
-    """Get the signature of a function, excluding certain parameters
-    like 'self' and 'kwargs'.
+    """Get a function signature without selected parameters.
 
-    @type func: Callable
-    @param func: The function to get the signature of.
-    @type exclude: Collection[str] | None
-    @param exclude: A collection of parameter names to exclude from the
-        signature. Defaults to None, which excludes 'self' and 'kwargs'.
-    @rtype: dict[str, Parameter]
-    @return: A dictionary mapping parameter names to their Parameter
-        objects, excluding the specified parameters.
+    Args:
+        func (``Callable``): Function to get the signature of.
+        exclude (``Collection[str] | None``): ``Parameter`` names to exclude from the
+            signature. Defaults to ``None``, which excludes ``"self"`` and
+            ``"kwargs"``.
+
+    Returns:
+        ``dict[str, Parameter]``: ``Parameter`` names mapped to their
+        `inspect.Parameter` objects.
+
     """
     exclude = set(exclude or [])
     exclude |= {"self", "kwargs"}
@@ -187,25 +191,22 @@ def safe_download(
     retry: int = 3,
     force: bool = False,
 ) -> Path | None:
-    """Download file from the web and returns either local path or None
-    if downloading failed.
+    """Download a remote file and return its local path.
 
-    @type url: str | None
-    @param url: URL of the file you want to download. If None, returns
-        None.
-    @type file: str | None
-    @param file: Name of the saved file, if None infers it from URL.
-        Defaults to None.
-    @type dir: str
-    @param dir: Directory to store downloaded file in. Defaults to
-        '.cache_data'.
-    @type retry: int
-    @param retry: Number of retries when downloading. Defaults to 3.
-    @type force: bool
-    @param force: Whether to force redownload if file already exists.
-        Defaults to False.
-    @rtype: Path | None
-    @return: Path to local file or None if downloading failed.
+    Args:
+        url (``PathType | None``): URL of the file to download. If ``None``,
+            returns ``None``.
+        file (str | None): Name of the saved file. If ``None``, the name is
+            inferred from ``url``. Defaults to ``None``.
+        cache_dir (`PathType <luxonis_ml.typing.PathType>`): Directory to store downloaded files in. Defaults
+            to ``".cache/luxonis_train"``.
+        retry (int): Number of retries when downloading. Defaults to ``3``.
+        force (bool): Whether to force redownload if the file already exists.
+            Defaults to ``False``.
+
+    Returns:
+        ``Path | None``: Local file path, or ``None`` if downloading failed.
+
     """
     if url is None or isinstance(url, Path):
         return url
@@ -250,7 +251,17 @@ def url2file(url: str) -> str:
 def get_attribute_check_none(obj: object, attribute: str) -> Any:
     """Get private attribute from object and check if it is not None.
 
-    Example:
+    Args:
+        obj (object): Object to get the attribute from.
+        attribute (str): Name of the attribute to get.
+
+    Returns:
+        ``Any``: Value of the attribute.
+
+    Raises:
+        ValueError: If the attribute is ``None``.
+
+    Examples:
         >>> class Person:
         ...     def __init__(self, age: int | None = None):
         ...         self._age = age
@@ -268,17 +279,6 @@ def get_attribute_check_none(obj: object, attribute: str) -> Any:
         Traceback (most recent call last):
         ValueError: attribute 'age' was not set
 
-    @type obj: object
-    @param obj: Object to get attribute from.
-
-    @type attribute: str
-    @param attribute: Name of the attribute to get.
-
-    @rtype: Any
-    @return: Value of the attribute.
-
-    @raise ValueError: If the attribute is None.
-
     """
     value = getattr(obj, f"_{attribute}")
     if value is None:
@@ -289,22 +289,19 @@ def get_attribute_check_none(obj: object, attribute: str) -> Any:
 def get_batch_instances(
     batch_index: int, bboxes: Tensor, payload: Tensor | None = None
 ) -> Tensor:
-    """Get instances from batched data, where the batch index is
-    encoded.
+    """Get instances for one batch index from batched data.
 
-    as the first column of the bounding boxes.
-    @type batch_index: int
-    @param batch_index: Batch index.
-    @type bboxes: Tensor
-    @param bboxes: Tensor of bounding boxes. Must have the batch index
-        as the first column.
-    @type payload: Tensor | None
-    @param payload: Additional tensor to be batched with the bounding
-        boxes. This tensor is in the same batch order, but doesn't
-        contain the batch index itself. If unset, returns the bounding
-        box instances (without the batch index).
-    @rtype: Tensor
-    @return: Instances from the batched data.
+    Args:
+        batch_index (int): Batch index.
+        bboxes (``Tensor``): Bounding boxes with the batch index in the first
+            column.
+        payload (``Tensor | None``): Additional tensor to select using the same
+            batch order. If unset, returns bounding box instances without the
+            batch index. Defaults to ``None``.
+
+    Returns:
+        ``Tensor``: Instances from the batched data.
+
     """
     if payload is None:
         return bboxes[bboxes[:, 0] == batch_index][:, 1:]
@@ -326,33 +323,37 @@ def instances_from_batch(
 def instances_from_batch(
     bboxes: Tensor, *args: Tensor, batch_size: int | None = None
 ) -> Iterator[tuple[Tensor, ...]] | Iterator[Tensor]:
-    """Generate instances from batched data, where the batch index is
-    encoded as the first column of the bounding boxes.
+    """Generate instances from batched data.
 
-    Example::
+    The batch index is expected in the first column of ``bboxes``.
+
+    Args:
+        bboxes (``Tensor``): Bounding boxes with the batch index in the first
+            column.
+        *args (``Tensor``): Additional tensors in the same batch order. These
+            tensors do not contain the batch index themselves.
+        batch_size (int | None): Batch size. When tensors are empty, providing
+            this value yields ``batch_size`` empty tensors. If omitted, empty
+            input yields nothing. Defaults to ``None``.
+
+    Yields:
+        ``Tensor | tuple[Tensor, ...]``: Per-batch instances. When no extra tensors
+        are provided, each item is a bounding box tensor with the batch index
+        stripped. Otherwise, each item is a tuple containing the bounding boxes
+        followed by the matching tensors from ``args``.
+
+    Raises:
+        ValueError: If any tensor in ``args`` has a different length than
+            ``bboxes``.
+
+    Examples:
         >>> bboxes = torch.tensor([[0, 1], [0, 2], [1, 3]])
-        >>> keypoints = torch.tensor([[0.1], [0.2], [0.3]])
+        >>> keypoints = torch.tensor([[10], [20], [30]])
         >>> for bbox, kpt in instances_from_batch(bboxes, keypoints):
-        ...     print(bbox, kpt)
-        tensor([[1], [2]]) tensor([[0.1], [0.2]])
-        tensor([[3]]) tensor([[0.3]])
+        ...     print(bbox.tolist(), kpt.tolist())
+        [[1], [2]] [[10], [20]]
+        [[3]] [[30]]
 
-    @type bboxes: Tensor
-    @param bboxes: Tensor of bounding boxes. Must have the batch index
-        as the first column.
-    @type *args: Tensor
-    @param *args: Additional tensors to be batched with the bounding
-        boxes. These tensors are in the same batch order, but don't
-        contain the batch index themselves.
-    @type batch_size: int
-    @param batch_size: The batch size. Important in case of empty
-        tensors. If provided and the tensors are empty, the generator
-        will yield C{batch_size} empty tensors. If not provided, the
-        generator will yield nothing. Defaults to C{None}.
-    @rtype: Iterator[tuple[Tensor, ...]]
-    @return: Generator of instances, where the first element is the
-        bounding box tensor (with the batch index stripped) and the
-        rest are the additional tensors (keypoints, masks, etc.).
     """
     if not all(len(arg) == len(bboxes) for arg in args):
         raise ValueError("All tensors must have the same length.")

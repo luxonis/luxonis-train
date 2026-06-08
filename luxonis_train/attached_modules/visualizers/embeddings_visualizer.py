@@ -15,14 +15,40 @@ from .utils import figure_to_torch
 
 
 class EmbeddingsVisualizer(BaseVisualizer):
+    """Visualize embedding spaces as two-dimensional plots.
+
+    Metadata:
+        - Module type: visualizer
+        - Registry name: ``EmbeddingsVisualizer``
+        - Task: embeddings
+        - Attached node types: None
+        - Inputs: prediction and target canvases, ``embeddings`` predictions,
+          and metadata ID targets.
+        - Outputs: ``(kde_plot, scatter_plot)`` tensors.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Projects embeddings with PCA, filters
+          z-score outliers, and renders Seaborn plots as tensors.
+
+    Prediction format:
+        - ``predictions`` is a tensor of embedding vectors.
+
+    Target format:
+        - ``target`` is a tensor of integer IDs used as plot labels.
+
+    """
+
     supported_tasks = [Tasks.EMBEDDINGS]
 
     def __init__(self, z_score_threshold: float = 3, **kwargs):
         """Visualizer for embedding tasks like reID.
 
-        @type z_score_threshold: float
-        @param z_score_threshold: The threshold for filtering out
-            outliers.
+        Args:
+            z_score_threshold (float): The threshold for filtering out outliers.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.colors = ColorMap()
@@ -41,16 +67,16 @@ class EmbeddingsVisualizer(BaseVisualizer):
     ) -> tuple[Tensor, Tensor]:
         """Create a visualization of the embeddings.
 
-        @type target_canvas: Tensor
-        @param target_canvas: The canvas to draw the labels on.
-        @type prediction_canvas: Tensor
-        @param prediction_canvas: The canvas to draw the predictions on.
-        @type embeddings: Tensor
-        @param embeddings: The embeddings to visualize.
-        @type target: Tensor
-        @param target: Ids of the embeddings.
-        @rtype: Tensor
-        @return: An embedding space projection.
+        Args:
+            prediction_canvas (``Tensor``): The canvas to draw the predictions on.
+            target_canvas (``Tensor``): The canvas to draw the labels on.
+            predictions (``Tensor``): Embeddings to visualize.
+            target (``Tensor``): IDs of the embeddings.
+
+        Returns:
+            ``tuple[Tensor, Tensor]``: KDE and scatter plot projections of the
+                embedding space.
+
         """
         embeddings_np = predictions.detach().cpu().numpy()
         ids_np = target.detach().cpu().numpy().astype(int)

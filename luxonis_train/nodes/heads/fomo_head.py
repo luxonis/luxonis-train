@@ -10,6 +10,34 @@ from luxonis_train.typing import Packet
 
 
 class FOMOHead(BaseHead):
+    """FOMO heatmap detection head.
+
+    Metadata:
+        - Node type: head
+        - Registry name: ``FOMOHead``
+        - Task: fomo
+        - Attach index: ``1``
+        - Inputs: ``features`` tensor
+        - Outputs: training returns ``heatmap``; evaluation returns
+          ``keypoints`` and ``heatmap``; export returns ``outputs``
+          containing the heatmap tensor.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Predicts class heatmaps with pointwise
+          convolutions and optionally applies local-max NMS for inference
+          and export.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
+    """
+
     task: Task = Tasks.FOMO
     attach_index: int = 1
     in_channels: int
@@ -23,11 +51,12 @@ class FOMOHead(BaseHead):
     ):
         """FOMO Head for object detection using heatmaps.
 
-        @type n_conv_layers: int
-        @param n_conv_layers: Number of convolutional layers to use.
-        @type conv_channels: int
-        @param conv_channels: Number of channels to use in the
-            convolutional layers.
+        Args:
+            n_conv_layers (int): Number of convolutional layers to use. Defaults to ``3``.
+            conv_channels (int): Number of channels to use in the convolutional layers. Defaults to ``16``.
+            use_nms (bool): Whether to apply local-max NMS to the heatmap during export and inference. Defaults to ``True``.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         self.n_conv_layers = n_conv_layers
@@ -81,11 +110,13 @@ class FOMOHead(BaseHead):
         }
 
     def _heatmap_to_kpts(self, heatmap: Tensor) -> list[Tensor]:
-        """Convert heatmap to keypoint pairs using local-max NMS so that
-        only the strongest local peak in a neighborhood is retained.
+        """Convert heatmap to keypoint pairs with local-max NMS.
 
-        @type heatmap: Tensor
-        @param heatmap: Heatmap to convert to keypoints.
+        Only the strongest local peak in a neighborhood is retained.
+
+        Args:
+            heatmap (``Tensor``): Heatmap to convert to keypoints.
+
         """
         device = heatmap.device
         batch_size, n_classes, height, width = heatmap.shape
@@ -124,9 +155,12 @@ class FOMOHead(BaseHead):
     def _get_keypoint_mask(self, prob_map: Tensor) -> Tensor:
         """Generate a mask for keypoints using NMS if enabled.
 
-        @type prob_map: Tensor
-        @param prob_map: Probability map for a specific class.
-        @return: Binary mask indicating keypoint positions.
+        Args:
+            prob_map (``Tensor``): Probability map for a specific class.
+
+        Returns:
+            ``Tensor``: Binary mask indicating keypoint positions.
+
         """
         if self.use_nms:
             pooled_map = (

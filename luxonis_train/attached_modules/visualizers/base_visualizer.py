@@ -19,7 +19,8 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
 
     This class defines the basic interface for all visualizers. It
     utilizes automatic registration of defined subclasses to the
-    L{VISUALIZERS} registry.
+    `VISUALIZERS` registry.
+
     """
 
     def __init__(self, *args, scale: float = 1.0, **kwargs) -> None:
@@ -49,28 +50,29 @@ class BaseVisualizer(BaseAttachedModule, register=False, registry=VISUALIZERS):
     ):
         """Forward pass of the visualizer.
 
-        Takes an image and the prepared inputs from the `prepare` method and
+        Takes an image and the prepared inputs from the ``prepare`` method and
         produces visualizations. Visualizations can be either:
 
-            - A single image (I{e.g.} for classification, weight visualization).
-            - A tuple of two images, representing (labels, predictions) (I{e.g.} for
+            - A single image (*e.g.* for classification, weight visualization).
+            - A tuple of two images, representing (labels, predictions) (*e.g.* for
               bounding boxes, keypoints).
             - A tuple of an image and a list of images,
-              representing (labels, multiple visualizations) (I{e.g.} for segmentation,
+              representing (labels, multiple visualizations) (*e.g.* for segmentation,
               depth estimation).
             - A list of images, representing unrelated visualizations.
 
-        @type target_canvas: Tensor
-        @param target_canvas: An image to draw the labels on.
-        @type prediction_canvas: Tensor
-        @param prediction_canvas: An image to draw the predictions on.
-        @type args: Unpack[Ts]
-        @param args: Prepared inputs from the `prepare` method.
+        Args:
+            target_canvas (``Tensor``): An image to draw the labels on.
+            prediction_canvas (``Tensor``): An image to draw the predictions on.
+            *args (``Unpack[Ts]``): Prepared inputs from the ``prepare`` method.
 
-        @rtype: Tensor | tuple[Tensor, Tensor] | tuple[Tensor, list[Tensor]] | list[Tensor]
-        @return: Visualizations.
+        Returns:
+            ``Tensor`` | tuple[``Tensor``, ``Tensor``] | tuple[``Tensor``, list[``Tensor``]] | list[``Tensor``]:
+                Visualizations.
 
-        @raise IncompatibleError: If the inputs are not compatible with the module.
+        Raises:
+            IncompatibleError: If the inputs are not compatible with the module.
+
         """
         ...
 

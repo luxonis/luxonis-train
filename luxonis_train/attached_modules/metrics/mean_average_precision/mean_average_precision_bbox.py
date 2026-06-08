@@ -9,6 +9,38 @@ from .utils import compute_metric_lists, postprocess_metrics
 
 
 class MeanAveragePrecisionBBox(MeanAveragePrecision, BaseMetric):
+    """Mean average precision for bbox detections.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``MeanAveragePrecisionBBox``
+        - Task: BOUNDINGBOX, INSTANCE_KEYPOINTS, INSTANCE_SEGMENTATION,
+          INSTANCE_SEGMENTATION_KEYPOINTS
+        - Attached node types: None
+        - Inputs: ``boundingbox``, ``target_boundingbox``
+        - Outputs: main ``map`` tensor and dictionary of AP/AR sub-metrics
+        - State: wrapped ``torchmetrics.detection.MeanAveragePrecision`` state
+
+    Prediction format:
+        ``boundingbox`` is a list of per-image detections with boxes, scores,
+        and predicted class IDs.
+
+    Target format:
+        ``target_boundingbox`` contains batch-indexed boxes with class IDs and
+        normalized ``xywh`` coordinates.
+
+    Formula:
+        Converts predictions and targets into torchmetrics detection lists and
+        evaluates bbox mAP/mAR.
+
+    Provenance:
+        - Source: torchmetrics
+        - License: Project license
+        - Implementation notes: Uses ``iou_type="bbox"`` and postprocesses
+          class metrics with dataset class names.
+
+    """
+
     supported_tasks = [
         Tasks.BOUNDINGBOX,
         Tasks.INSTANCE_KEYPOINTS,

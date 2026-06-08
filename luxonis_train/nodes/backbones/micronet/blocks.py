@@ -28,36 +28,19 @@ class MicroBlock(nn.Module):
         different combinations of these components based on the network
         design.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type kernel_size: int
-        @param kernel_size: Size of the convolution kernel. Defaults to
-            3.
-        @type stride: int
-        @param stride: Stride of the convolution. Defaults to 1.
-        @type expansion_ratios: tuple[int, int]
-        @param expansion_ratios: Expansion ratios for the intermediate
-            channels. Defaults to (2, 2).
-        @type groups_1: tuple[int, int]
-        @param groups_1: Groups for the first set of convolutions.
-            Defaults to (0, 6).
-        @type groups_2: tuple[int, int]
-        @param groups_2: Groups for the second set of convolutions.
-            Defaults to (1, 1).
-        @type use_dynamic_shift: tuple[int, int, int]
-        @param use_dynamic_shift: Flags to use Dynamic Shift-Max in
-            different positions. Defaults to (2, 0, 1).
-        @type reduction_factor: int
-        @param reduction_factor: Reduction factor for the squeeze-and-
-            excitation-like operation. Defaults to 1.
-        @type init_a: tuple[float, float]
-        @param init_a: Initialization parameters for Dynamic Shift-Max.
-            Defaults to (1.0, 1.0).
-        @type init_b: tuple[float, float]
-        @param init_b: Initialization parameters for Dynamic Shift-Max.
-            Defaults to (0.0, 0.0).
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            kernel_size (int): ``Size`` of the convolution kernel. Defaults to 3.
+            stride (int): Stride of the convolution. Defaults to 1.
+            expand_ratio (tuple[int, int]): Expansion ratios for the intermediate channels. Defaults to (2, 2).
+            groups_1 (tuple[int, int]): Groups for the first set of convolutions. Defaults to (0, 6).
+            groups_2 (tuple[int, int]): Groups for the second set of convolutions. Defaults to (1, 1).
+            dy_shift (tuple[int, int, int]): Flags to use Dynamic Shift-Max in different positions. Defaults to (2, 0, 1).
+            reduction_factor (int): Reduction factor for the squeeze-and- excitation-like operation. Defaults to 1.
+            init_a (tuple[float, float]): Initialization parameters for Dynamic Shift-Max. Defaults to (1.0, 1.0).
+            init_b (tuple[float, float]): Initialization parameters for Dynamic Shift-Max. Defaults to (0.0, 0.0).
+
         """
         super().__init__()
 
@@ -297,9 +280,9 @@ class ChannelShuffle(nn.Module):
         This operation is used to mix information between groups after
         grouped convolutions.
 
-        @type groups: int
-        @param groups: Number of groups to divide the channels into
-            before shuffling.
+        Args:
+            groups (int): Number of groups to divide the channels into before shuffling.
+
         """
         super().__init__()
         self.groups = groups
@@ -330,28 +313,16 @@ class DYShiftMax(nn.Module):
         adaptively fuses and selects channel information based on the
         input.
 
-        @type in_channels: int
-        @param in_channels: Number of input channels.
-        @type out_channels: int
-        @param out_channels: Number of output channels.
-        @type init_a: tuple[float, float]
-        @param init_a: Initial values for the 'a' parameters. Defaults
-            to (0.0, 0.0).
-        @type init_b: tuple[float, float]
-        @param init_b: Initial values for the 'b' parameters. Defaults
-            to (0.0, 0.0).
-        @type use_relu: bool
-        @param use_relu: Whether to use ReLU activation. Defaults to
-            True.
-        @type groups: int
-        @param groups: Number of groups for channel shuffling. Defaults
-            to 6.
-        @type reduction: int
-        @param reduction: Reduction factor for the squeeze operation.
-            Defaults to 4.
-        @type expansion: bool
-        @param expansion: Whether to use expansion in grouping. Defaults
-            to False.
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            init_a (tuple[float, float]): Initial values for the 'a' parameters. Defaults to (0.0, 0.0).
+            init_b (tuple[float, float]): Initial values for the 'b' parameters. Defaults to (0.0, 0.0).
+            use_relu (bool): Whether to use ReLU activation. Defaults to True.
+            groups (int): Number of groups for channel shuffling. Defaults to 6.
+            reduction (int): Reduction factor for the squeeze operation. Defaults to 4.
+            expansion (bool): Whether to use expansion in grouping. Defaults to False.
+
         """
         super().__init__()
         self.exp: Literal[2, 4] = 4 if use_relu else 2

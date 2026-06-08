@@ -11,6 +11,37 @@ from .utils import compute_mcc
 
 
 class DetectionConfusionMatrix(BaseMetric):
+    """Confusion matrix for detection-style predictions.
+
+    Metadata:
+        - Module type: metric
+        - Registry name: ``DetectionConfusionMatrix``
+        - Task: BOUNDINGBOX, INSTANCE_KEYPOINTS, INSTANCE_SEGMENTATION
+        - Attached node types: None
+        - Inputs: ``boundingbox``, ``target_boundingbox``
+        - Outputs: dictionary with ``mcc`` and ``confusion_matrix``
+        - State: ``confusion_matrix``
+
+    Prediction format:
+        ``boundingbox`` is a list of per-image detections with ``xyxy`` boxes,
+        scores, and predicted class IDs.
+
+    Target format:
+        ``target_boundingbox`` contains batch-indexed boxes with class IDs and
+        normalized ``xywh`` coordinates.
+
+    Formula:
+        Matches predictions to targets by IoU threshold and accumulates a
+        class-by-class confusion matrix with an extra background row and column.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Reports Matthews correlation coefficient from
+          the accumulated confusion matrix.
+
+    """
+
     supported_tasks = [
         Tasks.BOUNDINGBOX,
         Tasks.INSTANCE_KEYPOINTS,

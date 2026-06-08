@@ -16,6 +16,35 @@ log_disable = False
 
 
 class SegmentationVisualizer(BaseVisualizer):
+    """Visualize semantic segmentation and anomaly masks.
+
+    Metadata:
+        - Module type: visualizer
+        - Registry name: ``SegmentationVisualizer``
+        - Task: segmentation, anomaly_detection
+        - Attached node types: None
+        - Inputs: prediction and target canvases, ``segmentation``
+          predictions, and optional ``segmentation`` targets.
+        - Outputs: prediction visualization, or ``(targets_vis,
+          predictions_vis)`` when targets are provided.
+        - State: Tracks whether the color-mismatch warning has already been
+          emitted.
+
+    Provenance:
+        - Source: Internal
+        - License: Project license
+        - Implementation notes: Converts segmentation outputs to boolean
+          masks, optionally upscales masks, and overlays class colors.
+
+    Prediction format:
+        - ``predictions`` is a segmentation tensor converted by
+          ``seg_output_to_bool``.
+
+    Target format:
+        - ``target`` is an optional segmentation mask tensor.
+
+    """
+
     supported_tasks = [Tasks.SEGMENTATION, Tasks.ANOMALY_DETECTION]
 
     def __init__(
@@ -28,19 +57,16 @@ class SegmentationVisualizer(BaseVisualizer):
     ):
         """Visualizer for segmentation tasks.
 
-        @type colors: L{Color} | list[L{Color}]
-        @param colors: Color of the segmentation masks. Defaults to
-            C{"#5050FF"}.
-        @type background_class: int | None
-        @param background_class: Index of the background class. Defaults
-            to C{0}. If set, the background class will be drawn with the
-            `background_color`.
-        @type background_color: L{Color} | None
-        @param background_color: Color of the background class. Defaults
-            to C{"#000000"}.
-        @type alpha: float
-        @param alpha: Alpha value of the segmentation masks. Defaults to
-            C{0.6}.
+        Args:
+            colors (Color | list[Color] | None): Color of the segmentation masks. Defaults to
+                ``"#5050FF"``.
+            background_class (int | None): Index of the background class. Defaults to ``0``. If
+                set, the background class will be drawn with ``background_color``.
+            background_color (Color): Color of the background class. Defaults to
+                ``"#000000"``.
+            alpha (float): Alpha value of the segmentation masks. Defaults to ``0.6``.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         if colors is not None and not isinstance(colors, list):
@@ -97,19 +123,20 @@ class SegmentationVisualizer(BaseVisualizer):
         predictions: Tensor,
         target: Tensor | None,
     ) -> tuple[Tensor, Tensor] | Tensor:
-        """Create a visualization of the segmentation predictions and
-        labels.
+        """Create visualizations of segmentation predictions and labels.
 
-        @type target_canvas: Tensor
-        @param target_canvas: The canvas to draw the labels on.
-        @type prediction_canvas: Tensor
-        @param prediction_canvas: The canvas to draw the predictions on.
-        @type predictions: Tensor
-        @param predictions: The predictions to visualize.
-        @type targets: Tensor
-        @param targets: The targets to visualize.
-        @rtype: tuple[Tensor, Tensor]
-        @return: A tuple of the label and prediction visualizations.
+        Args:
+            prediction_canvas (``Tensor``): The canvas to draw the predictions on.
+            target_canvas (``Tensor``): The canvas to draw the labels on.
+            predictions (``Tensor``): The predictions to visualize.
+            target (``Tensor | None``): The targets to visualize, or ``None`` when
+                targets are unavailable.
+
+        Returns:
+            ``Tensor | tuple[Tensor, Tensor]``: Prediction visualization only when
+                ``target`` is ``None``; otherwise a tuple of target and prediction
+                visualizations.
+
         """
         colors = self._adjust_colors(
             self.colors, self.background_class, self.background_color

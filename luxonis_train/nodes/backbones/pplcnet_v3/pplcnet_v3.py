@@ -13,17 +13,58 @@ from .blocks import LCNetV3Layer, scale_up
 class PPLCNetV3(BaseNode):
     """PPLCNetV3 backbone.
 
-    Variants
-    ========
-    Only one variant is available, "rec-light".
+    PPLCNetV3 is a PaddleOCR-inspired lightweight convolutional backbone
+    for OCR recognition and optional detection-style feature outputs.
 
-    @see: U{Adapted from <https://github.com/PaddlePaddle/PaddleOCR/
-        blob/main/ppocr/modeling/backbones/rec_lcnetv3.py>}
-    @see: U{Original code
-        <https://github.com/PaddlePaddle/PaddleOCR>}
-    @license: U{Apache License, Version 2.0
-        <https://github.com/PaddlePaddle/PaddleOCR/blob/main/LICENSE
-        >}
+    Metadata:
+        - Node type: backbone
+        - Registry name: ``PPLCNetV3``
+        - Task: None
+        - Attach index: ``-1``
+        - Inputs: ``features`` tensor
+        - Outputs: ``features`` list of tensors
+
+    Provenance:
+        - Source: ``PaddlePaddle/PaddleOCR``
+        - License: Apache License, Version 2.0
+        - Implementation notes: Local LCNetV3 layer implementation with
+          recognition and detection-backbone output modes.
+
+    Variants:
+        - ``"rec-light"``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - ``scale``: ``0.95``
+                - ``n_branches``: ``4``
+                - ``use_detection_backbone``: ``False``
+            - Layers:
+                - ``0``:
+                    - ``kernel_sizes``: ``[3]``
+                    - ``out_channels``: ``[32]``
+                    - ``strides``: ``[1]``
+                    - ``use_se``: ``[False]``
+                - ``1``:
+                    - ``kernel_sizes``: ``[3, 3]``
+                    - ``out_channels``: ``[64, 64]``
+                    - ``strides``: ``[2, 1]``
+                    - ``use_se``: ``[False, False]``
+                - ``2``:
+                    - ``kernel_sizes``: ``[3, 3]``
+                    - ``out_channels``: ``[128, 128]``
+                    - ``strides``: ``[1, 1]``
+                    - ``use_se``: ``[False, False]``
+                - ``3``:
+                    - ``kernel_sizes``: ``[3, 5, 5, 5, 5]``
+                    - ``out_channels``: ``[256, 256, 256, 256, 256]``
+                    - ``strides``: ``[2, 1, 1, 1, 1]``
+                    - ``use_se``: ``[False, False, False, False, False]``
+                - ``4``:
+                    - ``kernel_sizes``: ``[5, 5, 5, 5]``
+                    - ``out_channels``: ``[512, 512, 512, 512]``
+                    - ``strides``: ``[1, 1, 1, 1]``
+                    - ``use_se``: ``[True, True, False, False]``
+
     """
 
     in_channels: int
@@ -38,17 +79,16 @@ class PPLCNetV3(BaseNode):
         layer_params: list["LayerParamsDict"] | None = None,
         **kwargs,
     ):
-        """
-        @type scale: float
-        @param scale: Scale factor. Defaults to 0.95.
-        @type n_branches: int
-        @param n_branches: Number of convolution branches.
-            Defaults to 4.
-        @type use_detection_backbone: bool
-        @param use_detection_backbone: Whether to use the detection backbone.
-            Defaults to False.
-        @type max_text_len: int
-        @param max_text_len: Maximum text length. Defaults to 40.
+        """Initialize the PPLCNetV3 backbone.
+
+        Args:
+            scale (float): Scale factor. Defaults to 0.95.
+            n_branches (int): Number of convolution branches. Defaults to 4.
+            use_detection_backbone (bool): Whether to use the detection backbone. Defaults to False.
+            max_text_len (int): Maximum text length. Defaults to 40.
+            layer_params (list[LayerParamsDict] | None): Parameters for each LCNetV3 layer.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
+
         """
         super().__init__(**kwargs)
         layer_params = layer_params or []

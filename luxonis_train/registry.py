@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, TypeVar
 
-from luxonis_ml.utils.registry import Registry
+from luxonis_ml.utils import Registry
 
 if TYPE_CHECKING:
     import lightning.pytorch as pl
@@ -31,18 +31,20 @@ STRATEGIES: Registry[type["lxt.BaseTrainingStrategy"]] = Registry(
 
 VISUALIZERS: Registry[type["lxt.BaseVisualizer"]] = Registry("visualizers")
 
-
 T = TypeVar("T")
 
 
 def from_registry(registry: Registry[type[T]], key: str, *args, **kwargs) -> T:
     """Get an instance of the class registered under the given key.
 
-    @type registry: Registry[type[T]]
-    @param registry: Registry to get the class from.
-    @type key: str
-    @param key: Key to get the class for.
-    @rtype: T
-    @return: Instance of the class registered under the given key.
+    Args:
+        registry (Registry[type[T]]): Registry to get the class from.
+        key (str): Key to get the class for.
+        *args (``Any``): Positional arguments forwarded to the registered class.
+        **kwargs (``Any``): Keyword arguments forwarded to the registered class.
+
+    Returns:
+        T: Instance of the class registered under the given key.
+
     """
     return registry.get(key)(*args, **kwargs)

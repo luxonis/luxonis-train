@@ -14,6 +14,35 @@ from .efficient_bbox_head import EfficientBBoxHead
 
 
 class EfficientKeypointBBoxHead(EfficientBBoxHead):
+    """Efficient object and keypoint detection head.
+
+    Metadata:
+        - Node type: head
+        - Registry name: ``EfficientKeypointBBoxHead``
+        - Task: keypoints
+        - Attach index: ``(-n_heads - 1, -1)`` by default
+        - Inputs: list of feature tensors
+        - Outputs: training returns detection intermediates and
+          ``keypoints_raw``; evaluation returns ``boundingbox``,
+          ``keypoints``, and intermediates; export returns raw
+          ``boundingbox`` and ``keypoints`` tensors.
+
+    Provenance:
+        - Source: YOLOv6
+        - License: Unknown
+        - Implementation notes: Extends ``EfficientBBoxHead`` with
+          per-scale keypoint heads and keypoint decoding relative to FPN
+          anchors.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
+    """
+
     parser = "YOLOExtendedParser"
     task = Tasks.INSTANCE_KEYPOINTS
 
@@ -27,21 +56,16 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
     ):
         """Head for object and keypoint detection.
 
-        Adapted from U{YOLOv6: A Single-Stage Object Detection Framework for Industrial
-        Applications<https://arxiv.org/pdf/2209.02976.pdf>}.
+        Adapted from `YOLOv6: A Single-Stage Object Detection Framework for Industrial
+        Applications <https://arxiv.org/pdf/2209.02976.pdf>`_.
 
-        @param n_heads: Number of output heads. Defaults to C{3}.
-            B{Note:} Should be same also on neck in most cases.
-        @type n_heads: int
+        Args:
+            n_heads (``Literal[2, 3, 4]``): Number of output heads. Defaults to ``3``. Note: Should be same also on neck in most cases.
+            conf_thres (float): Threshold for confidence. Defaults to ``0.25``.
+            iou_thres (float): Threshold for IoU. Defaults to ``0.45``.
+            max_det (int): Maximum number of detections retained after NMS. Defaults to ``300``.
+            **kwargs (``Any``): Keyword arguments forwarded to the parent class.
 
-        @param conf_thres: Threshold for confidence. Defaults to C{0.25}.
-        @type conf_thres: float
-
-        @param iou_thres: Threshold for IoU. Defaults to C{0.45}.
-        @type iou_thres: float
-
-        @param max_det: Maximum number of detections retained after NMS. Defaults to C{300}.
-        @type max_det: int
         """
         super().__init__(
             n_heads=n_heads,
@@ -211,7 +235,7 @@ class EfficientKeypointBBoxHead(EfficientBBoxHead):
         anchor_points: Tensor,
         stride_tensor: Tensor,
     ) -> tuple[list[Tensor], list[Tensor]]:
-        """Perform post-processing of the output and returns bboxs after
+        """Post-process output and return boxes and keypoints after
         NMS.
         """
         detections = super()._postprocess_detections(

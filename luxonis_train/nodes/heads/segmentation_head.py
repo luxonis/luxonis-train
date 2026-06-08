@@ -11,7 +11,30 @@ from luxonis_train.utils import infer_upscale_factor
 
 
 class SegmentationHead(BaseHead):
-    """Basic segmentation FCN head."""
+    """Basic segmentation FCN head.
+
+    Metadata:
+        - Node type: head
+        - Registry name: ``SegmentationHead``
+        - Task: segmentation
+        - Attach index: None
+        - Inputs: ``features`` tensor
+        - Outputs: segmentation logits tensor
+
+    Provenance:
+        - Source: torchvision FCN
+        - License: BSD-3-Clause
+        - Implementation notes: Upsamples feature maps to the original
+          input resolution and predicts per-class segmentation logits.
+
+    Variants:
+        - ``None``:
+            - Default: yes
+            - Aliases: None
+            - Parameters:
+                - No predefined variants.
+
+    """
 
     in_height: int
     in_width: int
@@ -22,9 +45,11 @@ class SegmentationHead(BaseHead):
 
     def __init__(self, **kwargs: Any):
         """
-        Adapted from: U{https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py}.
+        Adapted from: `https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py <https://github.com/pytorch/vision/blob/main/torchvision/models/segmentation/fcn.py>`_.
 
-        @license: U{BSD-3 <https://github.com/pytorch/vision/blob/main/LICENSE>}
+        Notes:
+            License: `BSD-3 <https://github.com/pytorch/vision/blob/main/LICENSE>`_
+
         """
         super().__init__(**kwargs)
         h, w = self.original_in_shape[1:]

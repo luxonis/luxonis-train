@@ -10,9 +10,8 @@ from luxonis_ml.enums import DatasetType
 from torch import Size, Tensor
 from typing_extensions import override
 
+from luxonis_train.loaders import BaseLoaderTorch
 from luxonis_train.typing import Labels
-
-from .base_loader import BaseLoaderTorch
 
 
 class LuxonisLoaderTorch(BaseLoaderTorch):
@@ -35,58 +34,45 @@ class LuxonisLoaderTorch(BaseLoaderTorch):
     ):
         """Torch-compatible loader for Luxonis datasets.
 
-        Can either use an already existing dataset or parse a new one
-        from a directory.
+        Can either use an already existing dataset or parse a new one from a
+        directory.
 
-        @type dataset_name: str | None
-        @param dataset_name: Name of the dataset to load. If not
-            provided, the C{dataset_dir} argument must be provided
-            instead. If both C{dataset_dir} and C{dataset_name} are
-            provided, the dataset will be parsed from the directory and
-            saved with the provided name.
-        @type dataset_dir: str | None
-        @param dataset_dir: Path to the dataset directory. It can be
-            either a local path or a URL. The data can be in a zip file.
-            If not provided, C{dataset_name} of an existing dataset must
-            be provided.
-        @type dataset_type: str | None
-        @param dataset_type: Type of the dataset. Only relevant when
-            C{dataset_dir} is provided. If not provided, the type will
-            be inferred from the directory structure.
-        @type team_id: str | None
-        @param team_id: Optional unique team identifier for the cloud.
-        @type bucket_type: Literal["internal", "external"]
-        @param bucket_type: Type of the bucket. Only relevant for remote
-            datasets. Defaults to 'internal'.
-        @type bucket_storage: Literal["local", "s3", "gcs", "azure"]
-        @param bucket_storage: Type of the bucket storage. Defaults to
-            'local'.
-        @type update_mode: Literal["all", "missing"]
-        @param update_mode: Enum that determines the sync mode for media files of the remote dataset (annotations and metadata are always overwritten):
-            - UpdateMode.MISSING: Downloads only the missing media files for the dataset.
-            - UpdateMode.ALL: Always downloads and overwrites all media files in the local dataset.
-        @type delete_existing: bool
-        @param delete_existing: Only relevant when C{dataset_dir} is
-            provided. By default, the dataset is parsed again every time
-            the loader is created because the underlying data might have
-            changed. If C{delete_existing} is set to C{False} and a
-            dataset of the same name already exists, the existing
-            dataset will be used instead of re-parsing the data.
-        @type filter_task_names: list[str] | None
-        @param filter_task_names: List of task names to filter the
-            dataset by. If provided, only the tasks with the specified
-            names will be loaded. If not provided, all tasks will be
-            loaded.
-        @type min_bbox_visibility: float
-        @param min_bbox_visibility: Minimum fraction of the original bounding box that must remain visible after augmentation.
-        @type bbox_area_threshold: float
-        @param bbox_area_threshold: Minimum area threshold for bounding boxes to be considered valid. In the range [0, 1].
-            Default is 0.0004, which corresponds to a small area threshold to remove invalid bboxes and respective keypoints.
-        @type class_order_per_task: dict[str, list[str]] | None
-        @param class_order_per_task: Dictionary mapping task names to a list of class names.
-            If provided, the classes for the specified tasks will be reordered.
-        @type kpts_mapping_per_task: dict[str, list[int]] | None
-        @param kpts_mapping_per_task: Dictionary mapping task names to custom keypoint mappings. If provided, the keypoints for the specified tasks will be reordered.
+        Args:
+            dataset_name (str | None): Name of the dataset to load. If not
+                provided, ``dataset_dir`` must be provided instead. If both
+                ``dataset_dir`` and ``dataset_name`` are provided, the dataset
+                is parsed from the directory and saved with the provided name.
+            dataset_dir (str | None): ``Path`` to the dataset directory. It can be
+                a local path, URL, or zip file. If not provided,
+                ``dataset_name`` for an existing dataset must be provided.
+            dataset_type (DatasetType | None): ``Type`` of the dataset. Only
+                relevant when ``dataset_dir`` is provided. If not provided, the
+                type is inferred from the directory structure.
+            team_id (str | None): Optional unique team identifier for cloud
+                datasets.
+            bucket_type (``Literal["internal", "external"]``): Bucket type for
+                remote datasets.
+            bucket_storage (``Literal["local", "s3", "gcs", "azure"]``): Bucket
+                storage type.
+            update_mode (``Literal["all", "missing"]``): Sync mode for media
+                files of a remote dataset. Annotations and metadata are always
+                overwritten.
+            delete_existing (bool): Whether to delete and re-parse an existing
+                dataset when ``dataset_dir`` is provided. When ``False`` and a
+                dataset with the same name exists, the existing dataset is
+                reused.
+            filter_task_names (list[str] | None): Task names to keep. If
+                provided, only tasks with these names are loaded.
+            min_bbox_visibility (float): Minimum fraction of the original
+                bounding box that must remain visible after augmentation.
+            bbox_area_threshold (float): Minimum bounding box area threshold in
+                the range ``[0, 1]``.
+            class_order_per_task (dict[str, list[str]] | None): ``Mapping`` of task
+                names to class-name orderings.
+            kpts_mapping_per_task (dict[str, list[int]] | None): ``Mapping`` of
+                task names to custom keypoint index orderings.
+            **kwargs (``Any``): Arguments forwarded to ``BaseLoaderTorch``.
+
         """
         super().__init__(**kwargs)
         if dataset_dir is not None:
