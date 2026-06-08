@@ -484,22 +484,44 @@ class LuxonisLightningModule(pl.LightningModule):
             optimizer.step()
         if self.trainer.is_last_batch:
             for scheduler in schedulers:
-                if isinstance(scheduler, ReduceLROnPlateau):
-                    if scheduler.mode == "min":
-                        scheduler.step(loss)
-                    else:
-                        match self.nodes.main_metric_reference.compute():
-                            case dict():
-                                raise ValueError(
-                                    "Cannot use ReduceLROnPlateau scheduler when main metric is a dictionary. "
-                                    "Consider changing the main metric to return a single value or using a different scheduler."
-                                )
-                            case (value, _) | value:
-                                scheduler.step(value)
-
-                else:
+                if not isinstance(scheduler, ReduceLROnPlateau):
                     scheduler.step()
         return loss
+
+    def _step_reduce_lr_on_plateau_schedulers(
+        self, loss: float, metrics: dict[str, dict[str, float]]
+    ) -> None:
+        if self.automatic_optimization:
+            return
+
+        schedulers = self.lr_schedulers()
+        if schedulers is None:
+            return
+        if not isinstance(schedulers, list):
+            schedulers = [schedulers]
+
+        for scheduler in schedulers:
+            if not isinstance(scheduler, ReduceLROnPlateau):
+                continue
+            if scheduler.mode == "min":
+                scheduler.step(loss)
+                continue
+
+            if self.nodes.main_metric is None:
+                raise RuntimeError(
+                    "Cannot step ReduceLROnPlateau scheduler with 'max' mode "
+                    "without a main metric."
+                )
+            node_name, metric_name = self.nodes.main_metric
+            try:
+                value = metrics[node_name][metric_name]
+            except KeyError as exc:
+                raise ValueError(
+                    "Cannot use ReduceLROnPlateau scheduler when main metric "
+                    "is not a logged scalar. Consider changing the main metric "
+                    "to return a single value or using a different scheduler."
+                ) from exc
+            scheduler.step(value)
 
     @override
     def validation_step(
@@ -931,12 +953,16 @@ class LuxonisLightningModule(pl.LightningModule):
                             sync_dist=True,
                         )
 
+        loss = self._loss_accumulators[mode]["loss"]
         self._print_results(
             stage="Validation" if mode == "val" else "Test",
-            loss=self._loss_accumulators[mode]["loss"],
+            loss=loss,
             metrics=table,
             matrices=matrices,
         )
+
+        if mode == "val" and not self.trainer.sanity_checking:
+            self._step_reduce_lr_on_plateau_schedulers(loss, table)
 
         if self._n_logged_images != self.cfg.trainer.n_log_images:
             logger.warning(

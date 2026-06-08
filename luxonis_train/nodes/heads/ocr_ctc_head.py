@@ -38,8 +38,6 @@ class OCRCTCHead(BaseHead):
         @type ignore_unknown: bool
         @param ignore_unknown: Whether to ignore unknown characters.
             Defaults to True.
-        @type fc_decay: float
-        @param fc_decay: L2 regularization factor. Defaults to 0.0004.
         @type mid_channels: int
         @param mid_channels: Number of middle channels. Defaults to
             None.

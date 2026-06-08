@@ -1,7 +1,12 @@
 import pytest
 from luxonis_ml.typing import Params
 from torch.optim import SGD, Adam, AdamW
-from torch.optim.lr_scheduler import ConstantLR, CosineAnnealingLR, StepLR
+from torch.optim.lr_scheduler import (
+    ConstantLR,
+    CosineAnnealingLR,
+    ReduceLROnPlateau,
+    StepLR,
+)
 
 from ._helpers import (
     assert_all_trainable_parameters_assigned,
@@ -317,6 +322,83 @@ def test_same_optimizer_scheduler_keeps_distinct_hyperparameter_groups(
     assert_group_options(linear_group, {"lr": 1e-2})
     assert_no_duplicate_parameters(snapshot)
     assert_all_trainable_parameters_assigned(snapshot)
+
+
+def test_same_scheduler_name_with_different_params_uses_distinct_optimizers(
+    opts: Params,
+):
+    snapshot = build_snapshot(
+        config(
+            [
+                tiny_head_node(
+                    [
+                        {
+                            "parameters": [{"module_type": "Conv2d"}],
+                            "optimizer": {"params": {"lr": 1e-3}},
+                            "scheduler": {
+                                "name": "StepLR",
+                                "params": {"step_size": 2, "gamma": 0.5},
+                            },
+                        },
+                        {
+                            "parameters": [{"module_type": "Linear"}],
+                            "optimizer": {"params": {"lr": 1e-2}},
+                            "scheduler": {
+                                "name": "StepLR",
+                                "params": {"step_size": 4, "gamma": 0.8},
+                            },
+                        },
+                    ]
+                )
+            ]
+        ),
+        opts,
+    )
+
+    assert len(snapshot.optimizers) == len(snapshot.schedulers) == 2
+    conv_idx, _, conv_group = find_group(
+        snapshot, matching_names(snapshot, "Head.Conv2d")
+    )
+    linear_idx, _, linear_group = find_group(
+        snapshot, matching_names(snapshot, "Head.Linear.fc")
+    )
+    conv_scheduler = scheduler(snapshot.schedulers[conv_idx])
+    linear_scheduler = scheduler(snapshot.schedulers[linear_idx])
+
+    assert isinstance(conv_scheduler, StepLR)
+    assert isinstance(linear_scheduler, StepLR)
+    assert conv_scheduler.step_size == 2
+    assert conv_scheduler.gamma == pytest.approx(0.5)
+    assert linear_scheduler.step_size == 4
+    assert linear_scheduler.gamma == pytest.approx(0.8)
+    assert_group_options(conv_group, {"lr": 1e-3})
+    assert_group_options(linear_group, {"lr": 1e-2})
+    assert_no_duplicate_parameters(snapshot)
+    assert_all_trainable_parameters_assigned(snapshot)
+
+
+def test_reduce_on_plateau_monitor_uses_formatted_main_metric_name(
+    opts: Params,
+):
+    node_cfg = tiny_head_node(
+        {
+            "scheduler": {
+                "name": "ReduceLROnPlateau",
+                "params": {"mode": "max"},
+            }
+        }
+    )
+    node_cfg["task_name"] = "classification"
+    node_cfg["metrics"] = [{"name": "Accuracy", "is_main_metric": True}]
+
+    snapshot = build_snapshot(config([node_cfg]), opts)
+    scheduler_cfg = snapshot.schedulers[0]
+
+    assert isinstance(scheduler_cfg, dict)
+    assert isinstance(scheduler_cfg["scheduler"], ReduceLROnPlateau)
+    assert (
+        scheduler_cfg["monitor"] == "val/metric/classification-Head/Accuracy"
+    )
 
 
 def test_overlapping_rules_claim_parameters_once(opts: Params):

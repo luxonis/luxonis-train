@@ -1,8 +1,16 @@
 from collections import defaultdict
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Hashable, Iterable, Iterator, Mapping, Sequence
 from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeVar, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Literal,
+    NamedTuple,
+    TypeVar,
+    cast,
+    overload,
+)
 
 import lightning.pytorch as pl
 import torch
@@ -62,6 +70,35 @@ from luxonis_train.utils.general import to_shape_packet
 class MainMetric(NamedTuple):
     node_name: str
     metric_name: str
+
+
+def _freeze_config_value(value: Any) -> Hashable:
+    if isinstance(value, Mapping):
+        return tuple(
+            (str(key), _freeze_config_value(item))
+            for key, item in sorted(
+                value.items(), key=lambda item: str(item[0])
+            )
+        )
+    if isinstance(value, list | tuple):
+        return tuple(_freeze_config_value(item) for item in value)
+    if isinstance(value, set | frozenset):
+        return tuple(
+            sorted(
+                (_freeze_config_value(item) for item in value),
+                key=repr,
+            )
+        )
+
+    model_dump = getattr(value, "model_dump", None)
+    if callable(model_dump):
+        return _freeze_config_value(model_dump(mode="json"))
+
+    try:
+        hash(value)
+    except TypeError:
+        return repr(value)
+    return cast(Hashable, value)
 
 
 class LossAccumulator(defaultdict[str, float]):
@@ -292,7 +329,8 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         cfg_base_optimizer = cfg_base_optimizer or self.cfg.trainer.optimizer
         cfg_base_scheduler = cfg_base_scheduler or self.cfg.trainer.scheduler
         groups: dict[
-            tuple[str, str], tuple[list[Kwargs], SchedulerConfig]
+            tuple[str, str, Hashable],
+            tuple[list[Kwargs], SchedulerConfig],
         ] = {}
         used_params = set(used_params or set())
         for node in self.values():
@@ -353,16 +391,18 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
                         )
                     continue
 
-                if (cfg_optimizer.name, cfg_scheduler.name) not in groups:
-                    groups[(cfg_optimizer.name, cfg_scheduler.name)] = (
-                        [],
-                        cfg_scheduler,
-                    )
-                groups[(cfg_optimizer.name, cfg_scheduler.name)][0].append(
+                group_key = (
+                    cfg_optimizer.name,
+                    cfg_scheduler.name,
+                    _freeze_config_value(cfg_scheduler.params),
+                )
+                if group_key not in groups:
+                    groups[group_key] = ([], cfg_scheduler)
+                groups[group_key][0].append(
                     {"params": params} | cfg_optimizer.params
                 )
 
-        for (optimizer_name, _), (
+        for (optimizer_name, _, _), (
             optimizer_params,
             scheduler,
         ) in groups.items():
@@ -449,6 +489,13 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         optimizers = []
         schedulers = []
 
+        main_metric_monitor = None
+        if self.main_metric is not None:
+            formatted_node = self.formatted_name(self.main_metric.node_name)
+            main_metric_monitor = (
+                f"val/metric/{formatted_node}/{self.main_metric.metric_name}"
+            )
+
         for cfg_optimizer, cfg_scheduler in self._extract_optimizer_params(
             base_optimizer,
             base_scheduler,
@@ -457,7 +504,7 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
         ):
             optimizer, scheduler = build_optimizer_scheduler(
                 self.cfg,
-                self.main_metric,
+                main_metric_monitor,
                 cfg_optimizer,
                 cfg_scheduler,
             )
@@ -941,7 +988,7 @@ def merge_config_items(
 
 def build_optimizer_scheduler(
     cfg: Config,
-    main_metric: MainMetric | None,
+    main_metric_monitor: str | None,
     cfg_optimizer: OptimizerConfig,
     cfg_scheduler: SchedulerConfig,
 ) -> tuple[Optimizer, LRScheduler | LRSchedulerConfigType]:
@@ -999,14 +1046,12 @@ def build_optimizer_scheduler(
     elif cfg_scheduler.name == "ReduceLROnPlateau":
         reduce_scheduler = _get_scheduler(cfg_scheduler, optimizer)
         if cfg_scheduler.params.get("mode") == "max":
-            if main_metric is None:
+            if main_metric_monitor is None:
                 raise ValueError(
                     "ReduceLROnPlateau with 'max' mode "
                     "requires a metric to monitor."
                 )
-            monitor = (
-                f"val/metric/{main_metric.node_name}/{main_metric.metric_name}"
-            )
+            monitor = main_metric_monitor
         else:
             monitor = "val/loss"
 
