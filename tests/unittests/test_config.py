@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from luxonis_ml.typing import Params
@@ -118,13 +118,15 @@ def test_config_dump_roundtrip_without_dataset_fixture(tmp_path: Path):
 
 
 def test_model_node_validation_linearizes_heads_and_outputs():
-    model = ModelConfig(
-        nodes=[
-            {"name": "Backbone"},
-            {"name": "Neck"},
-            {"name": "FirstHead"},
-            {"name": "SecondHead"},
-        ]
+    model = ModelConfig.model_validate(
+        {
+            "nodes": [
+                {"name": "Backbone"},
+                {"name": "Neck"},
+                {"name": "FirstHead"},
+                {"name": "SecondHead"},
+            ]
+        }
     )
 
     assert [node.inputs for node in model.nodes] == [
@@ -138,7 +140,7 @@ def test_model_node_validation_linearizes_heads_and_outputs():
 
 def test_model_node_validation_rejects_missing_name():
     with pytest.raises(ValueError, match="does not specify"):
-        ModelConfig(nodes=[{}])
+        ModelConfig.model_validate({"nodes": [{}]})
 
 
 def test_model_config_accepts_existing_node_instances():
@@ -148,34 +150,42 @@ def test_model_config_accepts_existing_node_instances():
 
 def test_model_config_rejects_invalid_graph_and_names():
     with pytest.raises(ValueError, match="not acyclic"):
-        ModelConfig(
-            nodes=[
-                {"name": "A", "inputs": ["B"]},
-                {"name": "B", "inputs": ["A"]},
-            ]
+        ModelConfig.model_validate(
+            {
+                "nodes": [
+                    {"name": "A", "inputs": ["B"]},
+                    {"name": "B", "inputs": ["A"]},
+                ]
+            }
         )
 
     with pytest.raises(ValueError, match="contain a '/'"):
-        ModelConfig(nodes=[{"name": "Invalid/Node"}])
+        ModelConfig.model_validate({"nodes": [{"name": "Invalid/Node"}]})
 
     with pytest.raises(ValueError, match="contain a '/'"):
-        ModelConfig(
-            nodes=[
-                {
-                    "name": "Head",
-                    "metrics": [{"name": "Invalid/Metric"}],
-                }
-            ]
+        ModelConfig.model_validate(
+            {
+                "nodes": [
+                    {
+                        "name": "Head",
+                        "metrics": [{"name": "Invalid/Metric"}],
+                    }
+                ]
+            }
         )
 
     with pytest.raises(ValueError, match="contain a '/'"):
-        ModelConfig(
-            nodes=[
-                {
-                    "name": "Head",
-                    "metrics": [{"name": "Metric", "alias": "Invalid/Alias"}],
-                }
-            ]
+        ModelConfig.model_validate(
+            {
+                "nodes": [
+                    {
+                        "name": "Head",
+                        "metrics": [
+                            {"name": "Metric", "alias": "Invalid/Alias"}
+                        ],
+                    }
+                ]
+            }
         )
 
 
@@ -189,25 +199,27 @@ def test_model_config_no_outputs_guard(monkeypatch: pytest.MonkeyPatch):
     )
 
     with pytest.raises(ValueError, match="No outputs"):
-        model.check_graph()
+        cast(Any, model).check_graph()
 
 
 def test_model_config_main_metric_and_duplicate_name_handling():
-    model = ModelConfig(
-        nodes=[
-            {
-                "name": "Head",
-                "alias": "dup",
-                "losses": [
-                    {"name": "dup"},
-                    {"name": "Other", "alias": "dup"},
-                ],
-                "metrics": [
-                    {"name": "Accuracy"},
-                    {"name": "Accuracy"},
-                ],
-            }
-        ]
+    model = ModelConfig.model_validate(
+        {
+            "nodes": [
+                {
+                    "name": "Head",
+                    "alias": "dup",
+                    "losses": [
+                        {"name": "dup"},
+                        {"name": "Other", "alias": "dup"},
+                    ],
+                    "metrics": [
+                        {"name": "Accuracy"},
+                        {"name": "Accuracy"},
+                    ],
+                }
+            ]
+        }
     )
 
     node = model.nodes[0]
@@ -227,20 +239,22 @@ def test_model_config_main_metric_and_duplicate_name_handling():
     model = ModelConfig.model_construct(
         nodes=[node_with_node_module], outputs=["dup"]
     )
-    model.check_unique_names()
+    cast(Any, model).check_unique_names()
     assert nested_node.alias == "dup_0"
 
     with pytest.raises(ValueError, match="Only one main metric"):
-        ModelConfig(
-            nodes=[
-                {
-                    "name": "Head",
-                    "metrics": [
-                        {"name": "Accuracy", "is_main_metric": True},
-                        {"name": "JaccardIndex", "is_main_metric": True},
-                    ],
-                }
-            ]
+        ModelConfig.model_validate(
+            {
+                "nodes": [
+                    {
+                        "name": "Head",
+                        "metrics": [
+                            {"name": "Accuracy", "is_main_metric": True},
+                            {"name": "JaccardIndex", "is_main_metric": True},
+                        ],
+                    }
+                ]
+            }
         )
 
 
@@ -252,7 +266,7 @@ def test_head_nodes_uses_lazy_nodes_import(monkeypatch: pytest.MonkeyPatch):
         pass
 
     fake_nodes = ModuleType("luxonis_train.nodes")
-    fake_nodes.BaseHead = FakeBaseHead
+    cast(Any, fake_nodes).BaseHead = FakeBaseHead
     monkeypatch.setitem(sys.modules, "luxonis_train.nodes", fake_nodes)
 
     import luxonis_train.config.config as config_module
@@ -261,29 +275,33 @@ def test_head_nodes_uses_lazy_nodes_import(monkeypatch: pytest.MonkeyPatch):
         config_module.NODES._module_dict, "FakeOutput", FakeOutput
     )
 
-    model = ModelConfig(
-        nodes=[
-            {"name": "FakeOutput"},
-            {"name": "OtherNode"},
-        ]
+    model = ModelConfig.model_validate(
+        {
+            "nodes": [
+                {"name": "FakeOutput"},
+                {"name": "OtherNode"},
+            ]
+        }
     )
 
     assert [node.name for node in model.head_nodes] == ["FakeOutput"]
 
 
 def test_loader_config_validation_and_serialization():
-    cfg = LoaderConfig(
-        name="DummyLoader",
-        train_view="train",
-        val_view=["val"],
-        test_view="test",
-        params={
-            "dataset_type": "coco",
-            "n_classes": 3,
-            "n_keypoints": 2,
-            "class_names": ["a", "b", "c"],
-            "kept": True,
-        },
+    cfg = LoaderConfig.model_validate(
+        {
+            "name": "DummyLoader",
+            "train_view": "train",
+            "val_view": ["val"],
+            "test_view": "test",
+            "params": {
+                "dataset_type": "coco",
+                "n_classes": 3,
+                "n_keypoints": 2,
+                "class_names": ["a", "b", "c"],
+                "kept": True,
+            },
+        }
     )
 
     dumped = cfg.model_dump()
@@ -299,24 +317,26 @@ def test_loader_config_validation_and_serialization():
         LoaderConfig(params={"dataset_type": "unknown"})
 
     with pytest.raises(TypeError, match="train_view"):
-        LoaderConfig(train_view=1)
+        LoaderConfig.model_validate({"train_view": 1})
 
 
 def test_preprocessing_normalization_and_resizing():
-    cfg = PreprocessingConfig(
-        train_image_size=(128, 256),
-        augmentations=[
-            AugmentationConfig(name="Normalize", params={"mean": [0]}),
-            AugmentationConfig(
-                name="Resize",
-                params={"height": 1, "width": 2},
-                use_for_resizing=True,
-            ),
-            AugmentationConfig(name="Inactive", active=False),
-            AugmentationConfig(
-                name="Active", apply_on_stages=["train", "val"]
-            ),
-        ],
+    cfg = PreprocessingConfig.model_validate(
+        {
+            "train_image_size": (128, 256),
+            "augmentations": [
+                AugmentationConfig(name="Normalize", params={"mean": [0]}),
+                AugmentationConfig(
+                    name="Resize",
+                    params={"height": 1, "width": 2},
+                    use_for_resizing=True,
+                ),
+                AugmentationConfig(name="Inactive", active=False),
+                AugmentationConfig(
+                    name="Active", apply_on_stages=["train", "val"]
+                ),
+            ],
+        }
     )
 
     assert cfg.normalize.params == {"mean": [0]}
@@ -347,19 +367,23 @@ def test_preprocessing_normalization_and_resizing():
     ("trainer", "expected"),
     [
         (
-            TrainerConfig(
-                epochs=7,
-                scheduler={"name": "CosineAnnealingLR"},
+            TrainerConfig.model_validate(
+                {
+                    "epochs": 7,
+                    "scheduler": {"name": "CosineAnnealingLR"},
+                }
             ),
             {"T_max": 7},
         ),
         (
-            TrainerConfig(
-                epochs=7,
-                scheduler={
-                    "name": "CosineAnnealingLR",
-                    "params": {"T_max": 3},
-                },
+            TrainerConfig.model_validate(
+                {
+                    "epochs": 7,
+                    "scheduler": {
+                        "name": "CosineAnnealingLR",
+                        "params": {"T_max": 3},
+                    },
+                }
             ),
             {"T_max": 3},
         ),
@@ -372,20 +396,22 @@ def test_trainer_scheduler_validation(
 
 
 def test_trainer_validation_branches(monkeypatch: pytest.MonkeyPatch):
-    trainer = TrainerConfig(
-        seed=1,
-        deterministic=None,
-        overfit_batches=1,
-        validation_interval=10,
-        epochs=2,
-        callbacks=[
-            {"name": "Later"},
-            {"name": "EMACallback"},
-            {
-                "name": "GradientAccumulationScheduler",
-                "params": {"scheduling": {"1": 2, "x": 3}},
-            },
-        ],
+    trainer = TrainerConfig.model_validate(
+        {
+            "seed": 1,
+            "deterministic": None,
+            "overfit_batches": 1,
+            "validation_interval": 10,
+            "epochs": 2,
+            "callbacks": [
+                {"name": "Later"},
+                {"name": "EMACallback"},
+                {
+                    "name": "GradientAccumulationScheduler",
+                    "params": {"scheduling": {"1": 2, "x": 3}},
+                },
+            ],
+        }
     )
 
     assert trainer.deterministic is True
@@ -396,13 +422,15 @@ def test_trainer_validation_branches(monkeypatch: pytest.MonkeyPatch):
     ]
     assert trainer.callbacks[2].params["scheduling"] == {1: 2, "x": 3}
 
-    trainer = TrainerConfig(
-        callbacks=[
-            {
-                "name": "GradientAccumulationScheduler",
-                "params": {"scheduling": ["not", "mapping"]},
-            }
-        ]
+    trainer = TrainerConfig.model_validate(
+        {
+            "callbacks": [
+                {
+                    "name": "GradientAccumulationScheduler",
+                    "params": {"scheduling": ["not", "mapping"]},
+                }
+            ]
+        }
     )
     assert trainer.callbacks[0].params["scheduling"] == ["not", "mapping"]
 
@@ -453,7 +481,10 @@ def test_convert_callback_deactivates_export_and_archive(
     callbacks_input: list[Params], expected_active: dict[str, bool]
 ):
     cfg = Config.get_config(
-        BASE_MODEL_CFG | {"trainer": {"callbacks": callbacks_input}}
+        cast(
+            Params,
+            BASE_MODEL_CFG | {"trainer": {"callbacks": callbacks_input}},
+        )
     )
 
     callbacks_by_name = {cb.name: cb for cb in cfg.trainer.callbacks}
@@ -464,9 +495,12 @@ def test_convert_callback_deactivates_export_and_archive(
 
 def test_export_config_validation():
     assert _validate_quantization_mode("fp16") == "FP16_STANDARD"
-    assert ExportConfig(data_type="fp32").quantization_mode == "FP32_STANDARD"
-    assert ExportConfig(
-        scale_values=1, mean_values=[2, 3, 4]
+    assert (
+        ExportConfig.model_validate({"data_type": "fp32"}).quantization_mode
+        == "FP32_STANDARD"
+    )
+    assert ExportConfig.model_validate(
+        {"scale_values": 1, "mean_values": [2, 3, 4]}
     ).scale_values == [
         1,
         1,
@@ -520,13 +554,13 @@ def test_config_validators_and_storage(monkeypatch: pytest.MonkeyPatch):
     def setup_logging(*, use_rich: bool) -> None:
         calls.append(use_rich)
 
-    fake_utils.setup_logging = setup_logging
+    cast(Any, fake_utils).setup_logging = setup_logging
     monkeypatch.setitem(sys.modules, "luxonis_train.utils", fake_utils)
     Config.get_config(BASE_MODEL_CFG | {"rich_logging": False})
     assert calls == [False]
 
     constructed = Config.model_construct(tuner=None)
-    assert constructed.check_tune_storage() is constructed
+    assert cast(Any, constructed).check_tune_storage() is constructed
 
 
 def test_config_get_config_handles_string_mlflow_paths(
@@ -594,7 +628,9 @@ def test_smart_cfg_auto_populate_without_dataset_fixture():
     )
     assert cfg.trainer.accumulate_grad_batches == 32
     assert cfg.model.predefined_model is not None
-    loss_params = cfg.model.predefined_model.params["loss_params"]
+    loss_params = cast(
+        dict[str, Any], cfg.model.predefined_model.params["loss_params"]
+    )
     assert loss_params["iou_loss_weight"] == 80.0
     assert loss_params["class_loss_weight"] == 32
     assert [cb.name for cb in cfg.trainer.callbacks] == [
@@ -744,7 +780,7 @@ def test_predefined_model_loading_can_exclude_attachments():
     ],
 )
 def test_predefined_model_defaults_and_variants(
-    model_cls: type[SimplePredefinedModel],
+    model_cls: Any,
     expected_default: str,
     expected_nodes: list[str],
 ):
@@ -767,7 +803,7 @@ def test_simple_predefined_model_branches():
         visualizer="Visualizer",
         confusion_matrix_available=True,
         backbone_params={"freezing": {"unfreeze_after": 1}},
-        neck_params={"freezing": FreezingConfig(active=True)},
+        neck_params=cast(Any, {"freezing": FreezingConfig(active=True)}),
         head_params={"freezing": {"lr_after_unfreeze": 0.1}},
         metrics_params={"shared": True},
         visualizer_params={"alpha": 1},
@@ -862,7 +898,7 @@ def test_ocr_recognition_model_alphabets_and_overrides():
     assert OCRRecognitionModel._generate_alphabet(["a", "b"]) == ["a", "b"]
 
     with pytest.raises(ValueError, match="Invalid alphabet"):
-        OCRRecognitionModel._generate_alphabet("bad")
+        OCRRecognitionModel._generate_alphabet(cast(Any, "bad"))
 
 
 def test_segmentation_model_auxiliary_head_branches():
@@ -894,13 +930,15 @@ def test_segmentation_model_auxiliary_head_branches():
 
 def test_pydantic_validation_errors_are_raised():
     with pytest.raises(ValidationError):
-        ExportConfig(blobconverter={"version": "bad"})
+        ExportConfig.model_validate({"blobconverter": {"version": "bad"}})
 
     with pytest.raises(ValidationError):
         TrainerConfig(batch_size=0)
 
     with pytest.raises(ValidationError):
-        AugmentationConfig(apply_on_stages=["invalid"])
+        AugmentationConfig.model_validate(
+            {"name": "Invalid", "apply_on_stages": ["invalid"]}
+        )
 
 
 def test_simple_config_model_has_no_outputs_when_empty():
