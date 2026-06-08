@@ -1,5 +1,3 @@
-# pyright: reportArgumentType=false, reportCallIssue=false, reportAttributeAccessIssue=false, reportIndexIssue=false, reportOptionalSubscript=false
-
 import sys
 from pathlib import Path
 from types import ModuleType
