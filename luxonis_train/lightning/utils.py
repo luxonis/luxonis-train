@@ -24,7 +24,7 @@ from lightning.pytorch.utilities.types import (
     LRSchedulerTypeUnion,
 )
 from loguru import logger
-from luxonis_ml.typing import Kwargs
+from luxonis_ml.typing import Kwargs, Params
 from luxonis_ml.utils import traverse_graph
 from luxonis_ml.utils.registry import Registry
 from torch import Size, Tensor, nn
@@ -333,6 +333,38 @@ class Nodes(dict[str, NodeWrapper] if TYPE_CHECKING else nn.ModuleDict):
             tuple[list[Kwargs], SchedulerConfig],
         ] = {}
         used_params = set(used_params or set())
+        if include_default and not any(
+            node.cfg.finetuning for node in self.values()
+        ):
+            params = []
+            for node in self.values():
+                for module in node.module.modules():
+                    if list(module.parameters()) and not list(
+                        module.children()
+                    ):
+                        for p in module.parameters():
+                            if p.requires_grad and id(p) not in used_params:
+                                params.append(p)
+                                used_params.add(id(p))
+
+            if params:
+                yield (
+                    OptimizerConfig(
+                        name=cfg_base_optimizer.name,
+                        params=cast(
+                            Params,
+                            {
+                                "params": [
+                                    {"params": params}
+                                    | cfg_base_optimizer.params
+                                ]
+                            },
+                        ),
+                    ),
+                    cfg_base_scheduler,
+                )
+            return
+
         for node in self.values():
             finetunings = [
                 (finetuning, False) for finetuning in node.cfg.finetuning

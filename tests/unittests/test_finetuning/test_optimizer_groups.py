@@ -154,6 +154,7 @@ def test_no_finetuning_uses_single_default_optimizer_for_all_trainable_params(
 
     assert len(snapshot.optimizers) == len(snapshot.schedulers) == 1
     assert isinstance(snapshot.optimizers[0], AdamW)
+    assert len(snapshot.optimizers[0].param_groups) == 1
     assert isinstance(scheduler(snapshot.schedulers[0]), StepLR)
     assert scheduler(snapshot.schedulers[0]).step_size == 3
     assert scheduler(snapshot.schedulers[0]).gamma == pytest.approx(0.7)
