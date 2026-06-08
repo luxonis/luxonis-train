@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -7,6 +7,10 @@ from typing import Any, Literal, cast
 import lightning.pytorch as pl
 import torch
 from lightning.pytorch.utilities import rank_zero_only
+from lightning.pytorch.utilities.types import (
+    LRSchedulerConfig,
+    LRSchedulerTypeUnion,
+)
 from loguru import logger
 from luxonis_ml import __version__ as luxonis_ml_version
 from luxonis_ml.typing import PathType
@@ -14,6 +18,8 @@ from packaging import version
 from semver import Version
 from torch import Size, Tensor
 from torch.nn.modules.module import _IncompatibleKeys
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from typing_extensions import Self, override
 
 import luxonis_train
@@ -37,8 +43,6 @@ from .luxonis_output import LuxonisOutput
 from .utils import (
     LossAccumulator,
     Nodes,
-    build_callbacks,
-    build_optimizers,
     build_training_strategy,
     check_tensor_device,
     compute_losses,
@@ -454,7 +458,57 @@ class LuxonisLightningModule(pl.LightningModule):
 
         loss, losses = compute_losses(self.cfg, outputs.losses, self.device)
         self._loss_accumulators["train"].update(losses)
+        if self.automatic_optimization:
+            return loss
+        optimizers = self.optimizers()
+        schedulers = self.lr_schedulers()
+        assert isinstance(optimizers, list)
+        assert isinstance(schedulers, list)
+        for optimizer in optimizers:
+            optimizer.zero_grad()
+        self.manual_backward(loss)
+        for optimizer in optimizers:
+            optimizer.step()
+        if self.trainer.is_last_batch:
+            for scheduler in schedulers:
+                if not isinstance(scheduler, ReduceLROnPlateau):
+                    scheduler.step()
         return loss
+
+    def _step_reduce_lr_on_plateau_schedulers(
+        self, loss: float, metrics: dict[str, dict[str, float]]
+    ) -> None:
+        if self.automatic_optimization:
+            return
+
+        schedulers = self.lr_schedulers()
+        if schedulers is None:
+            return
+        if not isinstance(schedulers, list):
+            schedulers = [schedulers]
+
+        for scheduler in schedulers:
+            if not isinstance(scheduler, ReduceLROnPlateau):
+                continue
+            if scheduler.mode == "min":
+                scheduler.step(loss)
+                continue
+
+            if self.nodes.main_metric is None:
+                raise RuntimeError(
+                    "Cannot step ReduceLROnPlateau scheduler with 'max' mode "
+                    "without a main metric."
+                )
+            node_name, metric_name = self.nodes.main_metric
+            try:
+                value = metrics[node_name][metric_name]
+            except KeyError as exc:
+                raise ValueError(
+                    "Cannot use ReduceLROnPlateau scheduler when main metric "
+                    "is not a logged scalar. Consider changing the main metric "
+                    "to return a single value or using a different scheduler."
+                ) from exc
+            scheduler.step(value)
 
     @override
     def validation_step(
@@ -577,22 +631,43 @@ class LuxonisLightningModule(pl.LightningModule):
 
     @override
     def configure_callbacks(self) -> list[pl.Callback]:
-        return build_callbacks(
-            self.cfg, self.nodes.main_metric, self.save_dir, self.nodes
-        )
+        optimizers, _ = self.configure_optimizers()
+        return self.nodes.build_callbacks(self.save_dir, len(optimizers))
 
     @override
     def configure_optimizers(
         self,
     ) -> tuple[
-        list[torch.optim.Optimizer],
-        list[torch.optim.lr_scheduler.LRScheduler | dict[str, Any]],
+        Sequence[Optimizer], Sequence[LRSchedulerTypeUnion | LRSchedulerConfig]
     ]:
         if self.training_strategy is not None:
-            return self.training_strategy.configure_optimizers()
-        return build_optimizers(
-            self.cfg, self.parameters(), self.nodes.main_metric, self.nodes
-        )
+            base_optimizer_cfg, base_scheduler_cfg = (
+                self.training_strategy.get_base_configs()
+            )
+            optimizers, schedulers = self.nodes.build_optimizers(
+                base_optimizer_cfg,
+                base_scheduler_cfg,
+                include_default=False,
+            )
+            used_params = {
+                id(p)
+                for optimizer in optimizers
+                for group in optimizer.param_groups
+                for p in group["params"]
+            }
+            strategy_optimizers, strategy_schedulers = (
+                self.training_strategy.configure_optimizers(used_params)
+            )
+            optimizers = [*optimizers, *strategy_optimizers]
+            schedulers = [*schedulers, *strategy_schedulers]
+        else:
+            optimizers, schedulers = self.nodes.build_optimizers()
+        if len(optimizers) > 1:
+            self.automatic_optimization = False
+
+        self._log_optimizer_scheduler_info(optimizers, schedulers)
+
+        return optimizers, schedulers
 
     def load_checkpoint(self, ckpt: PathType | dict[str, Any] | None) -> None:
         """Load checkpoint weights from provided path.
@@ -878,12 +953,16 @@ class LuxonisLightningModule(pl.LightningModule):
                             sync_dist=True,
                         )
 
+        loss = self._loss_accumulators[mode]["loss"]
         self._print_results(
             stage="Validation" if mode == "val" else "Test",
-            loss=self._loss_accumulators[mode]["loss"],
+            loss=loss,
             metrics=table,
             matrices=matrices,
         )
+
+        if mode == "val" and not self.trainer.sanity_checking:
+            self._step_reduce_lr_on_plateau_schedulers(loss, table)
 
         if self._n_logged_images != self.cfg.trainer.n_log_images:
             logger.warning(
@@ -1090,6 +1169,23 @@ class LuxonisLightningModule(pl.LightningModule):
     def _strip_state_prefix(key: str) -> str:
         idx = 3 if "module." in key else 2
         return ".".join(key.split(".")[idx:])
+
+    def _log_optimizer_scheduler_info(
+        self,
+        optimizers: Sequence[Optimizer],
+        schedulers: Sequence[LRSchedulerTypeUnion | LRSchedulerConfig],
+    ) -> None:
+        logger.info(f"Using {len(optimizers)} optimizer(s).")
+        for optimizer, scheduler in zip(optimizers, schedulers, strict=True):
+            optimizer_name = type(optimizer).__name__
+            if isinstance(scheduler, dict):
+                scheduler_name = type(scheduler["scheduler"]).__name__
+            else:
+                scheduler_name = type(scheduler).__name__
+            logger.info(
+                f"Using optimizer: '{optimizer_name}' with scheduler: '{scheduler_name}'"
+            )
+            logger.info(optimizer)
 
     def _get_output_onnx_names(self, inputs: dict[str, Tensor]) -> list[str]:
         outputs = self.full_forward(inputs).outputs

@@ -12,7 +12,7 @@ from luxonis_train.config import (
     MetricModuleConfig,
     NodeConfig,
 )
-from luxonis_train.config.config import FreezingConfig
+from luxonis_train.config.config import FinetuningConfig, FreezingConfig
 from luxonis_train.registry import METRICS, MODELS, NODES
 from luxonis_train.variants import VariantBase
 
@@ -97,6 +97,8 @@ class SimplePredefinedModel(BasePredefinedModel):
         torchmetrics_task: Literal["binary", "multiclass", "multilabel"]
         | None = None,
         per_class_metrics: bool | None = None,
+        finetuning: dict[Literal["backbone", "neck", "head"], list[Params]]
+        | None = None,
     ):
         self._backbone = backbone
         self._backbone_params = backbone_params or {}
@@ -107,6 +109,7 @@ class SimplePredefinedModel(BasePredefinedModel):
         self._head = head
         self._head_params = head_params or {}
         self._head_variant = head_variant
+        self._finetuning = finetuning or {}
 
         self._task_name = task_name
         self._use_neck = use_neck
@@ -141,6 +144,14 @@ class SimplePredefinedModel(BasePredefinedModel):
         )
         self._confusion_matrix_params = confusion_matrix_params or {}
 
+    def _get_finetuning(
+        self, module: Literal["backbone", "neck", "head"]
+    ) -> list[FinetuningConfig]:
+        return [
+            FinetuningConfig(**params)  # type: ignore
+            for params in self._finetuning.get(module, [])
+        ]
+
     @property
     @override
     def nodes(self) -> list[NodeConfig]:
@@ -152,6 +163,7 @@ class SimplePredefinedModel(BasePredefinedModel):
                 params=self._backbone_params,
                 variant=self._backbone_variant,
                 freezing=self._get_freezing(self._backbone_params),
+                finetuning=self._get_finetuning("backbone"),
             )
         ]
         if self._neck is not None and self._use_neck:
@@ -162,6 +174,7 @@ class SimplePredefinedModel(BasePredefinedModel):
                     variant=self._neck_variant,
                     inputs=[self._backbone],
                     freezing=self._get_freezing(self._neck_params),
+                    finetuning=self._get_finetuning("neck"),
                 )
             )
         nodes.append(
@@ -203,6 +216,7 @@ class SimplePredefinedModel(BasePredefinedModel):
                 ]
                 if self._visualizer is not None
                 else [],
+                finetuning=self._get_finetuning("head"),
             )
         )
         return nodes

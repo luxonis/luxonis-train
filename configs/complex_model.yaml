@@ -4,14 +4,42 @@ model:
   name: complex_model
   nodes:
     - name: EfficientRep
+      finetuning:
+        parameters: repvgg_encoder
+        optimizer:
+          params:
+            nesterov: false
 
     - name: RepPANNeck
       inputs:
         - EfficientRep
 
+      finetuning:
+        optimizer:
+          name: SGD
+          params:
+            lr: 0.01
+        scheduler:
+          name: ConstantLR
+
     - name: EfficientKeypointBBoxHead
       inputs:
         - RepPANNeck
+
+      finetuning:
+        - parameters: keypoint_heads
+          optimizer:
+            name: Adam
+            params:
+              lr: 0.0042
+          scheduler:
+            name: ReduceLROnPlateau
+            params:
+              mode: max
+        - parameters: Conv2d
+          optimizer:
+            params:
+              weight_decay: 0.0001
 
       losses:
         - name: EfficientKeypointBBoxLoss
