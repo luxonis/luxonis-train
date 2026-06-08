@@ -105,7 +105,9 @@ def test_representative_finetuning_builds_expected_optimizer_groups(
         matching_names(snapshot, "Backbone.Conv2d.conv1")
         | matching_names(snapshot, "Backbone.Conv2d.conv2"),
     )
-    _, neck_optimizer, _ = find_group(snapshot, matching_names(snapshot, "Neck."))
+    _, neck_optimizer, _ = find_group(
+        snapshot, matching_names(snapshot, "Neck.")
+    )
     _, head_sgd_optimizer, head_branch_group = find_group(
         snapshot, matching_names(snapshot, "Head.Conv2d.branch1")
     )
@@ -150,7 +152,9 @@ def test_no_finetuning_uses_single_default_optimizer_for_all_trainable_params(
     assert isinstance(scheduler(snapshot.schedulers[0]), StepLR)
     assert scheduler(snapshot.schedulers[0]).step_size == 3
     assert scheduler(snapshot.schedulers[0]).gamma == pytest.approx(0.7)
-    assert optimizer_parameter_names(snapshot) == trainable_parameter_names(snapshot)
+    assert optimizer_parameter_names(snapshot) == trainable_parameter_names(
+        snapshot
+    )
     assert_group_options(snapshot.optimizers[0].param_groups[0], {"lr": 0.004})
     assert_no_duplicate_parameters(snapshot)
     assert_all_trainable_parameters_assigned(snapshot)
@@ -198,7 +202,10 @@ def test_no_finetuning_uses_single_default_optimizer_for_all_trainable_params(
             [
                 {
                     "parameters": [{"name": "conv1"}],
-                    "scheduler": {"name": "StepLR", "params": {"step_size": 2}},
+                    "scheduler": {
+                        "name": "StepLR",
+                        "params": {"step_size": 2},
+                    },
                 },
                 {"parameters": [{"name": "conv2"}]},
             ],
@@ -263,9 +270,9 @@ def test_grouping_matrix(
         type(scheduler_cfg)
         for scheduler_cfg in map(scheduler, snapshot.schedulers)
     } == expected_scheduler_types
-    assert sum(len(optimizer.param_groups) for optimizer in snapshot.optimizers) == (
-        expected_group_count
-    )
+    assert sum(
+        len(optimizer.param_groups) for optimizer in snapshot.optimizers
+    ) == (expected_group_count)
     find_group(snapshot, matching_names(snapshot, "Backbone.Conv2d.conv1"))
     find_group(snapshot, matching_names(snapshot, "Backbone.Conv2d.conv2"))
     find_group(snapshot, matching_names(snapshot, "Backbone.Conv2d.conv3"))
@@ -346,7 +353,9 @@ def test_overlapping_rules_claim_parameters_once(opts: Params):
     assert_all_trainable_parameters_assigned(snapshot)
 
 
-def test_default_optimizer_receives_unclaimed_trainable_parameters(opts: Params):
+def test_default_optimizer_receives_unclaimed_trainable_parameters(
+    opts: Params,
+):
     snapshot = build_snapshot(
         config(
             [

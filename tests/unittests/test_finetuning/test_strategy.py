@@ -103,11 +103,7 @@ def _capturing_strategy(
 def test_strategy_base_configs_are_inherited_by_finetuning_rules(opts: Params):
     snapshot = build_snapshot(
         config(
-            [
-                tiny_head_node(
-                    {"parameters": [{"module_type": "Linear"}]}
-                )
-            ],
+            [tiny_head_node({"parameters": [{"module_type": "Linear"}]})],
             trainer={
                 "optimizer": {"name": "AdamW", "params": {"lr": 0.9}},
                 "scheduler": {

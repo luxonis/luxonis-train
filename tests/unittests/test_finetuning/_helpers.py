@@ -201,7 +201,9 @@ def optimizer_names(
     }
 
 
-def names_for_ids(snapshot: OptimizerSnapshot, parameter_ids: set[int]) -> set[str]:
+def names_for_ids(
+    snapshot: OptimizerSnapshot, parameter_ids: set[int]
+) -> set[str]:
     return {
         snapshot.names_by_id[param_id]
         for param_id in parameter_ids
@@ -210,7 +212,9 @@ def names_for_ids(snapshot: OptimizerSnapshot, parameter_ids: set[int]) -> set[s
 
 
 def ids_for_names(snapshot: OptimizerSnapshot, names: set[str]) -> set[int]:
-    ids_by_name = {name: param_id for param_id, name in snapshot.names_by_id.items()}
+    ids_by_name = {
+        name: param_id for param_id, name in snapshot.names_by_id.items()
+    }
     return {ids_by_name[name] for name in names}
 
 
@@ -289,7 +293,9 @@ def assert_no_duplicate_parameters(snapshot: OptimizerSnapshot) -> None:
 def assert_all_trainable_parameters_assigned(
     snapshot: OptimizerSnapshot,
 ) -> None:
-    assert optimizer_parameter_ids(snapshot) == trainable_parameter_ids(snapshot)
+    assert optimizer_parameter_ids(snapshot) == trainable_parameter_ids(
+        snapshot
+    )
 
 
 def assert_group_options(

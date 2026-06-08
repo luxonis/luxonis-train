@@ -48,9 +48,7 @@ def test_optimizer_inheritance_and_override(
     expected_group_options: dict[str, float],
     opts: Params,
 ):
-    finetuning: dict[str, Any] = {
-        "parameters": [{"module_type": "Linear"}]
-    }
+    finetuning: dict[str, Any] = {"parameters": [{"module_type": "Linear"}]}
     if override is not None:
         finetuning["optimizer"] = override
 
@@ -87,7 +85,10 @@ def test_optimizer_inheritance_and_override(
             {"step_size": 5, "gamma": 0.2},
         ),
         (
-            {"name": "ConstantLR", "params": {"factor": 1.0, "total_iters": 2}},
+            {
+                "name": "ConstantLR",
+                "params": {"factor": 1.0, "total_iters": 2},
+            },
             ConstantLR,
             {"factor": 1.0, "total_iters": 2},
         ),
@@ -99,9 +100,7 @@ def test_scheduler_inheritance_and_override(
     expected_attrs: dict[str, Any],
     opts: Params,
 ):
-    finetuning: dict[str, Any] = {
-        "parameters": [{"module_type": "Linear"}]
-    }
+    finetuning: dict[str, Any] = {"parameters": [{"module_type": "Linear"}]}
     if override is not None:
         finetuning["scheduler"] = override
 
@@ -118,7 +117,9 @@ def test_scheduler_inheritance_and_override(
         opts,
     )
 
-    idx, _, _ = find_group(snapshot, matching_names(snapshot, "Head.Linear.fc"))
+    idx, _, _ = find_group(
+        snapshot, matching_names(snapshot, "Head.Linear.fc")
+    )
     scheduler_cfg = scheduler(snapshot.schedulers[idx])
     assert isinstance(scheduler_cfg, expected_scheduler_type)
     for attr, value in expected_attrs.items():

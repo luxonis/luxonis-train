@@ -71,7 +71,11 @@ def test_valid_parameter_selectors(
         ),
         ({"parameters": [1]}, TypeError, "Parameter patterns must be"),
         ({"parameters": [object()]}, TypeError, "Parameter patterns must be"),
-        ({"parameters": [{"name": "missing"}]}, ValueError, "did not match any"),
+        (
+            {"parameters": [{"name": "missing"}]},
+            ValueError,
+            "did not match any",
+        ),
     ],
 )
 def test_invalid_parameter_selectors(
