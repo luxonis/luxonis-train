@@ -184,6 +184,7 @@ def hubai_export(
 
     existing_model = None
     created_new_model = False
+    created_model_id = None
     try:
         models = client.models.list_models()
         if models:
@@ -210,8 +211,9 @@ def hubai_export(
             f"Creating new variant '{variant_name}' under existing model."
         )
     else:
-        new_model = client.models.create_model(model_name, silent=True)
-        base_kwargs["model_id"] = str(new_model.id)
+        new_model = client.models.create_model(model_name)
+        created_model_id = str(new_model.id)
+        base_kwargs["model_id"] = created_model_id
         created_new_model = True
         logger.info(
             f"Created new model '{model_name}' on HubAI. "
@@ -256,10 +258,10 @@ def hubai_export(
     finally:
         if cfg.delete_remote_model:
             try:
-                if created_new_model:
-                    client.models.delete_model(model_name)
+                if created_new_model and created_model_id:
+                    client.models.delete_model(created_model_id)
                     logger.debug(
-                        f"Cleaned up temporary HubAI model: {model_name}"
+                        f"Cleaned up temporary HubAI model: {created_model_id}"
                     )
                 elif variant_id:
                     client.variants.delete_variant(variant_id)
@@ -268,7 +270,9 @@ def hubai_export(
                     )
             except Exception as e:
                 resource_type = "model" if created_new_model else "variant"
-                resource_id = model_name if created_new_model else variant_id
+                resource_id = (
+                    created_model_id if created_new_model else variant_id
+                )
                 logger.warning(
                     f"Failed to cleanup HubAI {resource_type} "
                     f"'{resource_id}': {e}"
